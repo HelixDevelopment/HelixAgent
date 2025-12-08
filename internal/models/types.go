@@ -116,5 +116,14 @@ type ProviderCapabilities struct {
 	SupportsStreaming       bool              `json:"supports_streaming"`
 	SupportsFunctionCalling bool              `json:"supports_function_calling"`
 	SupportsVision          bool              `json:"supports_vision"`
+	Limits                  ModelLimits       `json:"limits"`
 	Metadata                map[string]string `json:"metadata"`
+}
+
+// ModelLimits defines the operational limits of an LLM model.
+type ModelLimits struct {
+	MaxTokens             int `json:"max_tokens"`
+	MaxInputLength        int `json:"max_input_length"`
+	MaxOutputLength       int `json:"max_output_length"`
+	MaxConcurrentRequests int `json:"max_concurrent_requests"`
 }

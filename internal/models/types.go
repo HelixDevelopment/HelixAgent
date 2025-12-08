@@ -31,6 +31,7 @@ type LLMRequest struct {
 	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
 	StartedAt      *time.Time      `json:"started_at" db:"started_at"`
 	CompletedAt    *time.Time      `json:"completed_at" db:"completed_at"`
+	RequestType    string          `json:"request_type" db:"request_type"`
 }
 
 type LLMResponse struct {

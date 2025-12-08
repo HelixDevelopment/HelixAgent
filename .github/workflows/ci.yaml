@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [ main, 001-super-agent ]
+  pull_request:
+    branches: [ main, 001-super-agent ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.x'
+
+      - name: Install protoc (protobuf-compiler)
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc-gen-go
+        run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Proto codegen
+        run: bash .specify/scripts/bash/create-proto-code.sh
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...

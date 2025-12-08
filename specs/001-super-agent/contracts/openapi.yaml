@@ -1,3 +1,334 @@
+# API Contracts
+
+## gRPC Service Definitions
+
+### LLM Facade Service
+```protobuf
+syntax = "proto3";
+
+package llm;
+
+option go_package = "github.com/superagent/pkg/api";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+service LLMFacade {
+  // Core completion operations
+  rpc Complete(CompletionRequest) returns (CompletionResponse);
+  rpc CompleteStream(CompletionRequest) returns (stream CompletionResponse);
+  
+  // Chat operations with context
+  rpc Chat(ChatRequest) returns (ChatResponse);
+  rpc ChatStream(ChatRequest) returns (stream ChatResponse);
+  
+  // Plugin management
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  rpc AddProvider(AddProviderRequest) returns (ProviderResponse);
+  rpc UpdateProvider(UpdateProviderRequest) returns (ProviderResponse);
+  rpc RemoveProvider(RemoveProviderRequest) returns (ProviderResponse);
+  
+  // Health and monitoring
+  rpc HealthCheck(HealthRequest) returns (HealthResponse);
+  rpc GetMetrics(GetMetricsRequest) returns (MetricsResponse);
+  
+  // Session management
+  rpc CreateSession(CreateSessionRequest) returns (SessionResponse);
+  rpc GetSession(GetSessionRequest) returns (SessionResponse);
+  rpc TerminateSession(TerminateSessionRequest) returns (SessionResponse);
+}
+
+// Request messages
+message CompletionRequest {
+  string request_id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string prompt = 4;
+  repeated Message messages = 5;
+  ModelParameters model_params = 6;
+  EnsembleConfig ensemble_config = 7;
+  bool memory_enhanced = 8;
+  map<string, string> metadata = 9;
+  string request_type = 10; // code_generation, reasoning, tool_use
+  int32 priority = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message CompletionResponse {
+  string response_id = 1;
+  string request_id = 2;
+  string content = 3;
+  double confidence = 4;
+  int32 tokens_used = 5;
+  int64 response_time_ms = 6;
+  string finish_reason = 7;
+  map<string, string> metadata = 8;
+  bool selected = 9;
+  double selection_score = 10;
+  string provider_name = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+// Chat messages
+message ChatRequest {
+  string session_id = 1;
+  repeated Message messages = 2;
+  ModelParameters model_params = 3;
+  bool memory_enhanced = 4;
+  map<string, string> metadata = 5;
+}
+
+message ChatResponse {
+  string response_id = 1;
+  string content = 2;
+  double confidence = 3;
+  int32 tokens_used = 4;
+  string provider_name = 5;
+  bool is_streaming = 6;
+  bool is_complete = 7;
+  repeated MemorySource memory_sources = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message Message {
+  string role = 1; // system, user, assistant, tool
+  string content = 2;
+  string name = 3; // optional for tool messages
+  map<string, string> tool_calls = 4; // for function calling
+}
+
+message ModelParameters {
+  string model = 1;
+  double temperature = 2;
+  int32 max_tokens = 3;
+  double top_p = 4;
+  repeated string stop_sequences = 5;
+  map<string, string> provider_specific = 6;
+}
+
+message EnsembleConfig {
+  string strategy = 1; // confidence_weighted, majority_vote, random
+  int32 min_providers = 2;
+  double confidence_threshold = 3;
+  bool fallback_to_best = 4;
+  int32 timeout_seconds = 5;
+  repeated string preferred_providers = 6;
+}
+
+message MemorySource {
+  string dataset_name = 1;
+  string content = 2;
+  double relevance_score = 3;
+  string source_type = 4; // vector, graph, summary
+}
+
+// Provider management messages
+message ListProvidersRequest {
+  bool enabled_only = 1;
+  string provider_type = 2;
+}
+
+message ListProvidersResponse {
+  repeated ProviderInfo providers = 1;
+}
+
+message AddProviderRequest {
+  string name = 1;
+  string type = 2; // deepseek, claude, gemini, qwen, zai
+  string api_key = 3;
+  string base_url = 4;
+  string model = 5;
+  double weight = 6;
+  bool enabled = 7;
+  map<string, string> config = 8;
+}
+
+message UpdateProviderRequest {
+  string id = 1;
+  string name = 2;
+  string api_key = 3;
+  string base_url = 4;
+  string model = 5;
+  double weight = 6;
+  bool enabled = 7;
+  map<string, string> config = 8;
+}
+
+message RemoveProviderRequest {
+  string id = 1;
+  bool force = 2;
+}
+
+message ProviderResponse {
+  bool success = 1;
+  string message = 2;
+  ProviderInfo provider = 3;
+}
+
+message ProviderInfo {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string model = 4;
+  double weight = 5;
+  bool enabled = 6;
+  string health_status = 7;
+  int64 response_time_ms = 8;
+  double success_rate = 9;
+  ProviderCapabilities capabilities = 10;
+  google.protobuf.Timestamp last_updated = 11;
+}
+
+message ProviderCapabilities {
+  repeated string supported_models = 1;
+  repeated string supported_features = 2; // streaming, function_calling, vision
+  ModelLimits limits = 3;
+  repeated string supported_request_types = 4;
+  bool supports_streaming = 5;
+  bool supports_function_calling = 6;
+  bool supports_vision = 7;
+}
+
+message ModelLimits {
+  int32 max_tokens = 1;
+  int32 max_input_length = 2;
+  int32 max_output_length = 3;
+  int32 max_concurrent_requests = 4;
+}
+
+// Health and monitoring messages
+message HealthRequest {
+  bool detailed = 1;
+  repeated string check_components = 2; // database, cognee, providers
+}
+
+message HealthResponse {
+  string status = 1; // healthy, degraded, unhealthy
+  repeated ComponentHealth components = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  string version = 4;
+}
+
+message ComponentHealth {
+  string name = 1;
+  string status = 2;
+  string message = 3;
+  int64 response_time_ms = 4;
+  map<string, string> details = 5;
+}
+
+message GetMetricsRequest {
+  string time_range = 1; // 1h, 24h, 7d, 30d
+  repeated string metrics = 2;
+}
+
+message MetricsResponse {
+  map<string, double> metrics = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+// Session management messages
+message CreateSessionRequest {
+  string user_id = 1;
+  map<string, string> initial_context = 2;
+  int32 ttl_hours = 3;
+  bool memory_enabled = 4;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+  bool include_context = 2;
+}
+
+message TerminateSessionRequest {
+  string session_id = 1;
+  bool graceful = 2;
+}
+
+message SessionResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+  string user_id = 4;
+  string status = 5; // active, expired, terminated
+  int32 request_count = 6;
+  google.protobuf.Timestamp last_activity = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  map<string, string> context = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+```
+
+### LLM Provider Plugin Service
+```protobuf
+syntax = "proto3";
+
+package llm;
+
+option go_package = "github.com/superagent/pkg/api";
+
+service LLMProvider {
+  // Core LLM operations
+  rpc Complete(CompletionRequest) returns (CompletionResponse);
+  rpc CompleteStream(CompletionRequest) returns (stream CompletionResponse);
+  
+  // Provider capabilities
+  rpc GetCapabilities(CapabilitiesRequest) returns (CapabilitiesResponse);
+  rpc ValidateConfig(ConfigValidationRequest) returns (ConfigValidationResponse);
+  
+  // Health and monitoring
+  rpc HealthCheck(HealthRequest) returns (ProviderHealthResponse);
+  rpc GetMetrics(ProviderMetricsRequest) returns (ProviderMetricsResponse);
+}
+
+message CapabilitiesRequest {}
+
+message CapabilitiesResponse {
+  repeated string supported_models = 1;
+  repeated string supported_features = 2;
+  ModelLimits limits = 3;
+  repeated string supported_request_types = 4;
+  bool supports_streaming = 5;
+  bool supports_function_calling = 6;
+  bool supports_vision = 7;
+  map<string, string> metadata = 8;
+}
+
+message ConfigValidationRequest {
+  map<string, string> config = 1;
+}
+
+message ConfigValidationResponse {
+  bool valid = 1;
+  repeated string errors = 2;
+  repeated string warnings = 3;
+}
+
+message ProviderHealthResponse {
+  string status = 1;
+  string message = 2;
+  int64 response_time_ms = 3;
+  map<string, double> metrics = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message ProviderMetricsRequest {
+  string time_range = 1;
+}
+
+message ProviderMetricsResponse {
+  map<string, double> metrics = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+```
+
+## REST API Specification
+
+### OpenAPI 3.0 Specification
+
+```yaml
 openapi: 3.0.3
 info:
   title: SuperAgent LLM Facade API
@@ -6,26 +337,23 @@ info:
   contact:
     name: SuperAgent Team
     email: support@superagent.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+  license: MIT
 
 servers:
   - url: https://api.superagent.com/v1
     description: Production server
   - url: https://staging-api.superagent.com/v1
     description: Staging server
-  - url: http://localhost:8080/v1
-    description: Development server
 
 paths:
   /completions:
     post:
-      summary: Generate text completion
-      description: Generate text completion using ensemble of LLM providers
-      operationId: createCompletion
+      summary: Generate text completion using ensemble of LLM providers
+      operationId: generateCompletion
       tags:
-        - Completions
+        - LLM
+        - Ensemble
+        - Completion
       requestBody:
         required: true
         content:
@@ -40,21 +368,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/CompletionResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
-          $ref: '#/components/responses/InternalError'
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /completions/stream:
     post:
       summary: Generate streaming text completion
-      description: Generate streaming text completion using server-sent events
-      operationId: createCompletionStream
+      operationId: streamCompletion
       tags:
-        - Completions
+        - LLM
+        - Streaming
+        - SSE
       requestBody:
         required: true
         content:
@@ -63,28 +396,24 @@ paths:
               $ref: '#/components/schemas/CompletionRequest'
       responses:
         '200':
-          description: Successful streaming response
+          description: Streaming response
           content:
             text/event-stream:
               schema:
                 type: string
-                description: Server-sent events with completion chunks
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+          description: Bad request
         '500':
-          $ref: '#/components/responses/InternalError'
+          description: Internal server error
 
   /chat/completions:
     post:
-      summary: Generate chat completion
-      description: Generate chat completion with message history
-      operationId: createChatCompletion
+      summary: Generate chat completion with context
+      operationId: generateChatCompletion
       tags:
+        - LLM
         - Chat
+        - Context
       requestBody:
         required: true
         content:
@@ -99,21 +428,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+          description: Bad request
         '500':
-          $ref: '#/components/responses/InternalError'
+          description: Internal server error
 
   /chat/completions/stream:
     post:
       summary: Generate streaming chat completion
-      description: Generate streaming chat completion with message history
-      operationId: createChatCompletionStream
+      operationId: streamChatCompletion
       tags:
+        - LLM
         - Chat
+        - Streaming
+        - SSE
       requestBody:
         required: true
         content:
@@ -122,61 +449,33 @@ paths:
               $ref: '#/components/schemas/ChatRequest'
       responses:
         '200':
-          description: Successful streaming chat completion
+          description: Streaming chat response
           content:
-            text/event-stream:
-              schema:
-                type: string
-                description: Server-sent events with chat completion chunks
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
+            text/event-stream
 
   /providers:
     get:
-      summary: List LLM providers
-      description: List all configured LLM providers
+      summary: List available LLM providers
       operationId: listProviders
       tags:
+        - LLM
         - Providers
-      parameters:
-        - name: enabled_only
-          in: query
-          description: Filter to only enabled providers
-          required: false
-          schema:
-            type: boolean
-            default: false
-        - name: provider_type
-          in: query
-          description: Filter by provider type
-          required: false
-          schema:
-            type: string
-            enum: [deepseek, claude, gemini, qwen, zai]
       responses:
         '200':
-          description: Successful response
+          description: List of providers
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  providers:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ProviderInfo'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderInfo'
 
+  /providers:
     post:
       summary: Add new LLM provider
-      description: Add a new LLM provider to the system
       operationId: addProvider
       tags:
+        - LLM
         - Providers
       requestBody:
         required: true
@@ -192,43 +491,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProviderResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Bad request
         '409':
-          description: Provider with same name already exists
-          content:
-            $ref: '#/components/responses/Error'
+          description: Provider already exists
 
-  /providers/{provider_id}:
+  /providers/{providerId}:
     get:
-      summary: Get provider details
-      description: Get detailed information about a specific provider
+      summary: Get provider by ID
       operationId: getProvider
       tags:
+        - LLM
         - Providers
       parameters:
-        - name: provider_id
+        - name: providerId
           in: path
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: Successful response
+          description: Provider details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProviderInfo'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Provider not found
 
+  /providers/{providerId}:
     put:
-      summary: Update provider configuration
-      description: Update configuration for an existing provider
+      summary: Update LLM provider
       operationId: updateProvider
       tags:
+        - LLM
         - Providers
       parameters:
-        - name: provider_id
+        - name: providerId
           in: path
           required: true
           schema:
@@ -246,30 +544,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProviderResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Provider not found
 
+  /providers/{providerId}:
     delete:
-      summary: Remove provider
-      description: Remove a provider from the system
+      summary: Remove LLM provider
       operationId: removeProvider
       tags:
+        - LLM
         - Providers
       parameters:
-        - name: provider_id
+        - name: providerId
           in: path
           required: true
           schema:
             type: string
-        - name: force
-          in: query
-          description: Force removal even if in use
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: Provider removed successfully
@@ -278,76 +568,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProviderResponse'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Provider not found
         '409':
-          description: Provider cannot be removed (in use and not forced)
-          content:
-            $ref: '#/components/responses/Error'
+          description: Cannot remove provider (in use)
 
   /health:
     get:
-      summary: Health check
-      description: Check system health and component status
+      summary: Health check endpoint
       operationId: healthCheck
       tags:
         - Health
+        - Monitoring
       parameters:
         - name: detailed
           in: query
-          description: Return detailed component information
           required: false
           schema:
             type: boolean
-            default: false
         - name: components
           in: query
-          description: Specific components to check
           required: false
           schema:
             type: array
             items:
               type: string
-              enum: [database, cognee, providers, redis]
       responses:
         '200':
-          description: Health check successful
+          description: System health status
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
         '503':
           description: Service unhealthy
-          content:
-            $ref: '#/components/responses/HealthError'
 
   /metrics:
     get:
       summary: Get system metrics
-      description: Get performance and usage metrics
       operationId: getMetrics
       tags:
         - Monitoring
+        - Metrics
       parameters:
-        - name: time_range
+        - name: timeRange
           in: query
-          description: Time range for metrics
           required: false
           schema:
             type: string
             enum: [1h, 24h, 7d, 30d]
-            default: 24h
         - name: metrics
           in: query
-          description: Specific metrics to retrieve
           required: false
           schema:
             type: array
             items:
               type: string
-              enum: [request_count, response_time, error_rate, token_usage, provider_performance]
       responses:
         '200':
-          description: Metrics retrieved successfully
+          description: System metrics
           content:
             application/json:
               schema:
@@ -355,11 +633,11 @@ paths:
 
   /sessions:
     post:
-      summary: Create new session
-      description: Create a new user session
+      summary: Create new user session
       operationId: createSession
       tags:
         - Sessions
+        - Authentication
       requestBody:
         required: true
         content:
@@ -373,58 +651,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
 
-  /sessions/{session_id}:
+  /sessions/{sessionId}:
     get:
       summary: Get session details
-      description: Get information about a specific session
       operationId: getSession
       tags:
         - Sessions
+        - Authentication
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           required: true
           schema:
             type: string
-        - name: include_context
+        - name: includeContext
           in: query
-          description: Include session context in response
           required: false
           schema:
             type: boolean
-            default: false
       responses:
         '200':
-          description: Session details retrieved successfully
+          description: Session details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Session not found
 
+  /sessions/{sessionId}:
     delete:
-      summary: Terminate session
-      description: Terminate an active session
+      summary: Terminate user session
       operationId: terminateSession
       tags:
         - Sessions
+        - Authentication
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           required: true
           schema:
             type: string
         - name: graceful
           in: query
-          description: Graceful termination
           required: false
           schema:
             type: boolean
-            default: true
       responses:
         '200':
           description: Session terminated successfully
@@ -432,8 +705,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
 components:
   schemas:
@@ -441,90 +712,85 @@ components:
       type: object
       required:
         - prompt
+        - request_type
       properties:
         prompt:
           type: string
-          description: The prompt to generate completion for
+          description: The text prompt for completion
           maxLength: 32000
-        messages:
-          type: array
-          description: Array of previous messages for context
-          items:
-            $ref: '#/components/schemas/Message'
-          maxItems: 100
+        request_type:
+          type: string
+          enum: [code_generation, reasoning, tool_use]
+          description: Type of request
         model_params:
           $ref: '#/components/schemas/ModelParameters'
         ensemble_config:
           $ref: '#/components/schemas/EnsembleConfig'
         memory_enhanced:
           type: boolean
-          description: Enable memory enhancement
-          default: false
-        request_type:
-          type: string
-          enum: [code_generation, reasoning, tool_use]
-          default: reasoning
+          description: Whether to enhance with Cognee memory
         priority:
           type: integer
-          description: Request priority (0-10)
           minimum: 0
           maximum: 10
-          default: 0
+          description: Request priority (0-10)
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
         metadata:
           type: object
           description: Additional metadata
-          additionalProperties:
-            type: string
+        session_id:
+          type: string
+          description: Session ID for context
+        user_id:
+          type: string
+          description: User ID for tracking
 
     CompletionResponse:
       type: object
       properties:
         response_id:
           type: string
-          description: Unique identifier for the response
+          description: Unique response identifier
         request_id:
           type: string
-          description: Request identifier
+          description: Associated request ID
         content:
           type: string
           description: Generated completion text
         confidence:
           type: number
-          description: Confidence score (0.0-1.0)
-          minimum: 0.0
-          maximum: 1.0
+          minimum: 0
+          maximum: 1
+          description: Confidence score (0-1)
         tokens_used:
           type: integer
-          description: Number of tokens used
           minimum: 0
+          description: Number of tokens used
         response_time_ms:
           type: integer
-          description: Response time in milliseconds
           minimum: 0
-        provider_name:
-          type: string
-          description: Name of the provider that generated this response
+          description: Response time in milliseconds
         finish_reason:
           type: string
-          enum: [stop, length, content_filter, tool_calls]
-          description: Reason for completion termination
-        selected:
-          type: boolean
-          description: Whether this response was selected in ensemble voting
-          default: false
-        selection_score:
-          type: number
-          description: Selection score in ensemble voting
-          minimum: 0.0
-        memory_sources:
-          type: array
-          description: Sources used for memory enhancement
-          items:
-            $ref: '#/components/schemas/MemorySource'
-        provider_metadata:
+          enum: [stop, length, content_filter, tool_calls, max_tokens]
+          description: Reason for completion
+        metadata:
           type: object
           description: Provider-specific metadata
-          additionalProperties: true
+        selected:
+          type: boolean
+          description: Whether response was selected by ensemble
+        selection_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Ensemble selection score
+        provider_name:
+          type: string
+          description: Name of generating provider
         created_at:
           type: string
           format: date-time
@@ -537,58 +803,49 @@ components:
       properties:
         session_id:
           type: string
-          description: Session identifier for context
+          description: Session ID for context
         messages:
           type: array
-          description: Array of messages in the conversation
           items:
             $ref: '#/components/schemas/Message'
-          minItems: 1
-          maxItems: 100
         model_params:
           $ref: '#/components/schemas/ModelParameters'
         memory_enhanced:
           type: boolean
-          description: Enable memory enhancement
-          default: false
+          description: Whether to enhance with Cognee memory
         metadata:
           type: object
           description: Additional metadata
-          additionalProperties:
-            type: string
 
     ChatResponse:
       type: object
       properties:
         response_id:
           type: string
-          description: Unique identifier for the response
+          description: Unique response identifier
         content:
           type: string
-          description: Generated response text
+          description: Generated chat response
         confidence:
           type: number
-          description: Confidence score (0.0-1.0)
-          minimum: 0.0
-          maximum: 1.0
+          minimum: 0
+          maximum: 1
+          description: Confidence score (0-1)
         tokens_used:
           type: integer
-          description: Number of tokens used
           minimum: 0
+          description: Number of tokens used
         provider_name:
           type: string
-          description: Name of the provider that generated this response
+          description: Name of generating provider
         is_streaming:
           type: boolean
-          description: Whether this is a streaming response
-          default: false
+          description: Whether response is streaming
         is_complete:
           type: boolean
-          description: Whether the response is complete
-          default: true
+          description: Whether streaming response is complete
         memory_sources:
           type: array
-          description: Sources used for memory enhancement
           items:
             $ref: '#/components/schemas/MemorySource'
         created_at:
@@ -608,15 +865,14 @@ components:
           description: Message role
         content:
           type: string
+          maxLength: 8000
           description: Message content
-          maxLength: 32000
         name:
           type: string
           description: Optional name for tool messages
         tool_calls:
           type: object
           description: Tool/function calls
-          additionalProperties: true
 
     ModelParameters:
       type: object
@@ -624,185 +880,78 @@ components:
         model:
           type: string
           description: Model name
-          default: auto
         temperature:
           type: number
-          description: Sampling temperature (0.0-2.0)
-          minimum: 0.0
-          maximum: 2.0
-          default: 1.0
+          minimum: 0
+          maximum: 2
+          description: Sampling temperature
         max_tokens:
           type: integer
-          description: Maximum tokens to generate
           minimum: 1
-          maximum: 32000
-          default: 1000
+          maximum: 128000
+          description: Maximum tokens to generate
         top_p:
           type: number
-          description: Nucleus sampling parameter (0.0-1.0)
-          minimum: 0.0
-          maximum: 1.0
-          default: 1.0
+          minimum: 0
+          maximum: 1
+          description: Nucleus sampling parameter
         stop_sequences:
           type: array
-          description: Stop sequences
           items:
             type: string
-          maxItems: 4
+          description: Stop sequences
         provider_specific:
           type: object
           description: Provider-specific parameters
-          additionalProperties: true
 
     EnsembleConfig:
       type: object
       properties:
         strategy:
           type: string
-          enum: [confidence_weighted, majority_vote]
+          enum: [confidence_weighted, majority_vote, random]
           description: Ensemble voting strategy
-          default: confidence_weighted
         min_providers:
           type: integer
-          description: Minimum providers required
           minimum: 1
-          default: 2
+          description: Minimum providers required
         confidence_threshold:
           type: number
+          minimum: 0
+          maximum: 1
           description: Minimum confidence threshold
-          minimum: 0.0
-          maximum: 1.0
-          default: 0.7
         fallback_to_best:
           type: boolean
           description: Fallback to best single response
-          default: true
         timeout_seconds:
           type: integer
-          description: Timeout in seconds
           minimum: 5
           maximum: 300
-          default: 30
+          description: Timeout in seconds
         preferred_providers:
           type: array
-          description: Preferred providers for ensemble
           items:
             type: string
+          description: Preferred provider list
 
     MemorySource:
       type: object
       properties:
         dataset_name:
           type: string
-          description: Dataset name
+          description: Cognee dataset name
         content:
           type: string
           description: Memory content
         relevance_score:
           type: number
-          description: Relevance score (0.0-1.0)
-          minimum: 0.0
-          maximum: 1.0
+          minimum: 0
+          maximum: 1
+          description: Relevance score (0-1)
         source_type:
           type: string
           enum: [vector, graph, summary]
           description: Type of memory source
-
-    ProviderInfo:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Provider identifier
-        name:
-          type: string
-          description: Provider name
-        type:
-          type: string
-          enum: [deepseek, claude, gemini, qwen, zai]
-          description: Provider type
-        model:
-          type: string
-          description: Default model
-        weight:
-          type: number
-          description: Provider weight in ensemble
-          minimum: 0.1
-          maximum: 5.0
-        enabled:
-          type: boolean
-          description: Whether provider is enabled
-        health_status:
-          type: string
-          enum: [healthy, degraded, unhealthy, unknown]
-          description: Provider health status
-        response_time_ms:
-          type: integer
-          description: Average response time
-          minimum: 0
-        success_rate:
-          type: number
-          description: Success rate (0.0-1.0)
-          minimum: 0.0
-          maximum: 1.0
-        capabilities:
-          $ref: '#/components/schemas/ProviderCapabilities'
-        last_updated:
-          type: string
-          format: date-time
-          description: Last update timestamp
-
-    ProviderCapabilities:
-      type: object
-      properties:
-        supported_models:
-          type: array
-          description: Supported models
-          items:
-            type: string
-        supported_features:
-          type: array
-          description: Supported features
-          items:
-            type: string
-            enum: [streaming, function_calling, vision, image_generation]
-        limits:
-          $ref: '#/components/schemas/ModelLimits'
-        supported_request_types:
-          type: array
-          description: Supported request types
-          items:
-            type: string
-            enum: [code_generation, reasoning, tool_use]
-        supports_streaming:
-          type: boolean
-          description: Whether streaming is supported
-        supports_function_calling:
-          type: boolean
-          description: Whether function calling is supported
-        supports_vision:
-          type: boolean
-          description: Whether vision capabilities are supported
-
-    ModelLimits:
-      type: object
-      properties:
-        max_tokens:
-          type: integer
-          description: Maximum tokens
-          minimum: 1
-        max_input_length:
-          type: integer
-          description: Maximum input length
-          minimum: 1
-        max_output_length:
-          type: integer
-          description: Maximum output length
-          minimum: 1
-        max_concurrent_requests:
-          type: integer
-          description: Maximum concurrent requests
-          minimum: 1
 
     AddProviderRequest:
       type: object
@@ -815,78 +964,215 @@ components:
       properties:
         name:
           type: string
-          description: Provider name
           maxLength: 100
+          description: Provider name
         type:
           type: string
           enum: [deepseek, claude, gemini, qwen, zai]
           description: Provider type
         api_key:
           type: string
-          description: API key (will be encrypted)
-          format: password
+          description: API key (encrypted)
         base_url:
           type: string
-          description: Base URL for API
           format: uri
+          description: Base URL
         model:
           type: string
           description: Default model
-          maxLength: 100
         weight:
           type: number
-          description: Provider weight in ensemble
           minimum: 0.1
-          maximum: 5.0
-          default: 1.0
-        config:
-          type: object
-          description: Provider-specific configuration
-          additionalProperties: true
-
-    UpdateProviderRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Provider name
-          maxLength: 100
-        api_key:
-          type: string
-          description: API key (will be encrypted)
-          format: password
-        base_url:
-          type: string
-          description: Base URL for API
-          format: uri
-        model:
-          type: string
-          description: Default model
-          maxLength: 100
-        weight:
-          type: number
+          maximum: 10
           description: Provider weight in ensemble
-          minimum: 0.1
-          maximum: 5.0
         enabled:
           type: boolean
           description: Whether provider is enabled
         config:
           type: object
           description: Provider-specific configuration
-          additionalProperties: true
 
-    ProviderResponse:
+    UpdateProviderRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: Provider ID
+        name:
+          type: string
+          description: Provider name
+        api_key:
+          type: string
+          description: API key
+        base_url:
+          type: string
+          description: Base URL
+        model:
+          type: string
+          description: Default model
+        weight:
+          type: number
+          description: Provider weight
+        enabled:
+          type: boolean
+          description: Whether provider is enabled
+        config:
+          type: object
+          description: Provider-specific configuration
+
+    CreateSessionRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: User ID
+        initial_context:
+          type: object
+          description: Initial session context
+        ttl_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+          description: Session TTL in hours
+        memory_enabled:
+          type: boolean
+          description: Enable memory for session
+
+    SessionResponse:
       type: object
       properties:
         success:
           type: boolean
-          description: Whether operation was successful
+          description: Request success
         message:
           type: string
           description: Response message
-        provider:
-          $ref: '#/components/schemas/ProviderInfo'
+        session_id:
+          type: string
+          description: Session ID
+        user_id:
+          type: string
+          description: User ID
+        status:
+          type: string
+          enum: [active, expired, terminated]
+          description: Session status
+        request_count:
+          type: integer
+          description: Number of requests
+        last_activity:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        expires_at:
+          type: string
+          format: date-time
+          description: Expiration timestamp
+        context:
+          type: object
+          description: Session context
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    ProviderInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Provider ID
+        name:
+          type: string
+          description: Provider name
+        type:
+          type: string
+          enum: [deepseek, claude, gemini, qwen, zai]
+          description: Provider type
+        model:
+          type: string
+          description: Default model
+        weight:
+          type: number
+          description: Provider weight
+        enabled:
+          type: boolean
+          description: Whether provider is enabled
+        health_status:
+          type: string
+          enum: [healthy, degraded, unhealthy, unknown]
+          description: Provider health status
+        response_time_ms:
+          type: integer
+          description: Average response time
+        success_rate:
+          type: number
+          description: Success rate (0-1)
+        capabilities:
+          $ref: '#/components/schemas/ProviderCapabilities'
+        last_updated:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    ProviderCapabilities:
+      type: object
+      properties:
+        supported_models:
+          type: array
+          items:
+            type: string
+          description: Supported models
+        supported_features:
+          type: array
+          items:
+            type: string
+            enum: [streaming, function_calling, vision]
+          description: Supported features
+        limits:
+          $ref: '#/components/schemas/ModelLimits'
+        supported_request_types:
+          type: array
+          items:
+            type: string
+            enum: [code_generation, reasoning, tool_use]
+          description: Supported request types
+        supports_streaming:
+          type: boolean
+          description: Streaming support
+        supports_function_calling:
+          type: boolean
+          description: Function calling support
+        supports_vision:
+          type: boolean
+          description: Vision capabilities
+        metadata:
+          type: object
+          description: Additional capabilities metadata
+
+    ModelLimits:
+      type: object
+      properties:
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Maximum tokens
+        max_input_length:
+          type: integer
+          minimum: 1
+          description: Maximum input length
+        max_output_length:
+          type: integer
+          minimum: 1
+          description: Maximum output length
+        max_concurrent_requests:
+          type: integer
+          minimum: 1
+          description: Maximum concurrent requests
 
     HealthResponse:
       type: object
@@ -897,9 +1183,9 @@ components:
           description: Overall system status
         components:
           type: array
-          description: Component health information
           items:
             $ref: '#/components/schemas/ComponentHealth'
+          description: Component health details
         timestamp:
           type: string
           format: date-time
@@ -924,89 +1210,27 @@ components:
         response_time_ms:
           type: integer
           description: Response time in milliseconds
-          minimum: 0
         details:
           type: object
           description: Additional details
-          additionalProperties:
-            type: string
 
     MetricsResponse:
       type: object
       properties:
         metrics:
           type: object
-          description: Metrics data
-          additionalProperties: true
+          description: System metrics
         start_time:
           type: string
           format: date-time
-          description: Start time for metrics
+          description: Metrics start time
         end_time:
           type: string
           format: date-time
-          description: End time for metrics
-
-    CreateSessionRequest:
-      type: object
-      required:
-        - user_id
-      properties:
-        user_id:
-          type: string
-          description: User identifier
-        initial_context:
-          type: object
-          description: Initial session context
-          additionalProperties: true
-        ttl_hours:
-          type: integer
-          description: Session TTL in hours
-          minimum: 1
-          maximum: 168
-          default: 24
-        memory_enabled:
-          type: boolean
-          description: Enable memory for session
-          default: true
-
-    SessionResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          description: Whether operation was successful
-        session_id:
-          type: string
-          description: Session identifier
-        user_id:
-          type: string
-          description: User identifier
-        status:
-          type: string
-          enum: [active, expired, terminated]
-          description: Session status
-        request_count:
-          type: integer
-          description: Number of requests in session
-          minimum: 0
-        last_activity:
-          type: string
-          format: date-time
-          description: Last activity timestamp
-        expires_at:
-          type: string
-          format: date-time
-          description: Session expiry timestamp
-        context:
-          type: object
-          description: Session context
-          additionalProperties: true
+          description: Metrics end time
 
     Error:
       type: object
-      required:
-        - error
       properties:
         error:
           type: string
@@ -1017,83 +1241,18 @@ components:
         details:
           type: object
           description: Additional error details
-          additionalProperties: true
-
-  responses:
-    BadRequest:
-      description: Bad request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    TooManyRequests:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    HealthError:
-      description: Service unhealthy
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/HealthResponse'
-              - type: object
-                properties:
-                  error:
-                    type: string
-                    description: Error details
-
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for authentication
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT token for authentication
 
 security:
-  - ApiKeyAuth: []
-  - BearerAuth: []
+  - BearerAuth:
+      type: apiKey
+      description: JWT or API key authentication
+      bearerFormat: JWT
+      
+servers:
+  - url: http://localhost:8080/v1
+    description: Development server
 
 tags:
-  - name: Completions
-    description: Text completion endpoints
-  - name: Chat
-    description: Chat completion endpoints
-  - name: Providers
-    description: LLM provider management
-  - name: Health
-    description: Health check endpoints
-  - name: Monitoring
-    description: Monitoring and metrics
-  - name: Sessions
-    description: Session management
+  - name: SuperAgent API
+    description: Main API endpoints
+```

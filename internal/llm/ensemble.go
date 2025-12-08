@@ -2,26 +2,49 @@ package llm
 
 import (
 	"github.com/superagent/superagent/internal/models"
+	"sync"
 )
 
-// RunEnsemble executes a simple ensemble of LLM providers and returns the aggregated responses
+// RunEnsemble executes a parallel ensemble of LLM providers and returns the aggregated responses
 func RunEnsemble(req *models.LLMRequest) ([]*models.LLMResponse, *models.LLMResponse, error) {
-	providers := []LLMProvider{&DeepSeekProvider{}, &ClaudeProvider{}, &GeminiProvider{}, &QwenProvider{}, &ZaiProvider{}}
+	provs := []LLMProvider{&DeepSeekProvider{}, &ClaudeProvider{}, &GeminiProvider{}, &QwenProvider{}, &ZaiProvider{}}
+
+	var wg sync.WaitGroup
+	respCh := make(chan *models.LLMResponse, len(provs))
+
+	for _, p := range provs {
+		pp := p
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, err := pp.Complete(req)
+			if err == nil && r != nil {
+				respCh <- r
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(respCh)
+	}()
 
 	var responses []*models.LLMResponse
-	var selected *models.LLMResponse
+	for r := range respCh {
+		responses = append(responses, r)
+	}
 
-	for _, p := range providers {
-		resp, err := p.Complete(req)
-		if err != nil {
-			continue
+	// Choose the best by highest confidence if available
+	var selected *models.LLMResponse
+	max := -1.0
+	for _, r := range responses {
+		if r != nil && r.Confidence > max {
+			max = r.Confidence
+			selected = r
 		}
-		if resp != nil {
-			responses = append(responses, resp)
-			if selected == nil {
-				selected = resp
-			}
-		}
+	}
+	if len(responses) == 0 {
+		return nil, nil, nil
 	}
 	return responses, selected, nil
 }

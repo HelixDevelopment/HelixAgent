@@ -24,9 +24,9 @@ func (g *GeminiProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, 
 	return resp, nil
 }
 
-func (g GeminiProvider) HealthCheck() error { return nil }
+func (g *GeminiProvider) HealthCheck() error { return nil }
 
-func (g GeminiProvider) GetCapabilities() *ProviderCapabilities {
+func (g *GeminiProvider) GetCapabilities() *ProviderCapabilities {
 	return &ProviderCapabilities{
 		SupportedModels:         []string{"gemini"},
 		SupportedFeatures:       []string{"streaming"},
@@ -38,6 +38,6 @@ func (g GeminiProvider) GetCapabilities() *ProviderCapabilities {
 	}
 }
 
-func (g GeminiProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
+func (g *GeminiProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	return true, nil
 }

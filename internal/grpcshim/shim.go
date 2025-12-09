@@ -1,8 +1,9 @@
 package grpcshim
 
 import (
-	"github.com/superagent/superagent/internal/models"
 	"time"
+
+	"github.com/superagent/superagent/internal/models"
 )
 
 type ShimCompleteRequest struct {

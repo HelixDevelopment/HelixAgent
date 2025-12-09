@@ -1,9 +1,10 @@
 package unit
 
 import (
+	"testing"
+
 	"github.com/superagent/superagent/internal/llm"
 	"github.com/superagent/superagent/internal/models"
-	"testing"
 )
 
 func TestRunEnsembleBasic(t *testing.T) {

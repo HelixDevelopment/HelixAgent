@@ -1,43 +1,44 @@
 package llm
 
 import (
+	"context"
+
+	"github.com/superagent/superagent/internal/llm/providers/claude"
 	"github.com/superagent/superagent/internal/models"
-	"time"
 )
 
-// ClaudeProvider stub
-type ClaudeProvider struct{}
-
-func (c *ClaudeProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
-	resp := &models.LLMResponse{
-		ID:           "rsp-claude-1",
-		RequestID:    req.ID,
-		ProviderName: "Claude",
-		Content:      "stub completion from Claude",
-		Confidence:   0.85,
-		TokensUsed:   42,
-		ResponseTime: 42,
-		FinishReason: "stop",
-		Metadata:     map[string]interface{}{},
-		CreatedAt:    time.Now(),
-	}
-	return resp, nil
+// ClaudeProvider wraps the complete Claude provider implementation
+type ClaudeProvider struct {
+	provider *claude.ClaudeProvider
 }
 
-func (c ClaudeProvider) HealthCheck() error { return nil }
+func NewClaudeProvider(apiKey, baseURL, model string) *ClaudeProvider {
+	return &ClaudeProvider{
+		provider: claude.NewClaudeProvider(apiKey, baseURL, model),
+	}
+}
 
-func (c ClaudeProvider) GetCapabilities() *ProviderCapabilities {
+func (c *ClaudeProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	return c.provider.Complete(context.Background(), req)
+}
+
+func (c *ClaudeProvider) HealthCheck() error {
+	// TODO: Implement actual health check
+	return nil
+}
+
+func (c *ClaudeProvider) GetCapabilities() *ProviderCapabilities {
 	return &ProviderCapabilities{
-		SupportedModels:         []string{"claude"},
-		SupportedFeatures:       []string{"streaming"},
-		SupportedRequestTypes:   []string{"code_generation"},
+		SupportedModels:         []string{"claude-3-sonnet-20240229", "claude-3-opus-20240229"},
+		SupportedFeatures:       []string{"streaming", "function_calling"},
+		SupportedRequestTypes:   []string{"text_completion", "chat"},
 		SupportsStreaming:       true,
-		SupportsFunctionCalling: false,
+		SupportsFunctionCalling: true,
 		SupportsVision:          false,
 		Metadata:                map[string]string{},
 	}
 }
 
-func (c ClaudeProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
+func (c *ClaudeProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	return true, nil
 }

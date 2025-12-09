@@ -1,13 +1,21 @@
 package llm
 
 import (
-	"github.com/superagent/superagent/internal/models"
 	"sync"
+
+	"github.com/superagent/superagent/internal/models"
 )
 
 // RunEnsemble executes a parallel ensemble of LLM providers and returns the aggregated responses
 func RunEnsemble(req *models.LLMRequest) ([]*models.LLMResponse, *models.LLMResponse, error) {
-	provs := []LLMProvider{&DeepSeekProvider{}, &ClaudeProvider{}, &GeminiProvider{}, &QwenProvider{}, &ZaiProvider{}}
+	// Initialize providers with default configurations
+	provs := []LLMProvider{
+		NewDeepSeekProvider("", "", ""),
+		NewClaudeProvider("", "", ""),
+		NewGeminiProvider("", "", ""),
+		&QwenProvider{},
+		&ZaiProvider{},
+	}
 
 	var wg sync.WaitGroup
 	respCh := make(chan *models.LLMResponse, len(provs))

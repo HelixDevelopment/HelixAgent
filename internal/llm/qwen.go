@@ -1,8 +1,9 @@
 package llm
 
 import (
-	"github.com/superagent/superagent/internal/models"
 	"time"
+
+	"github.com/superagent/superagent/internal/models"
 )
 
 // QwenProvider stub

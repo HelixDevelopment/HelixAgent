@@ -1,36 +1,37 @@
 package llm
 
 import (
+	"context"
+
+	"github.com/superagent/superagent/internal/llm/providers/deepseek"
 	"github.com/superagent/superagent/internal/models"
-	"time"
 )
 
-// DeepSeekProvider implemented in the llm package for MVP ensemble
-type DeepSeekProvider struct{}
-
-func (d *DeepSeekProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
-	resp := &models.LLMResponse{
-		ID:           "rsp-deepseek-1",
-		RequestID:    req.ID,
-		ProviderName: "DeepSeek",
-		Content:      "stub completion from DeepSeek",
-		Confidence:   0.9,
-		TokensUsed:   10,
-		ResponseTime: 10,
-		FinishReason: "stop",
-		Metadata:     map[string]interface{}{},
-		CreatedAt:    time.Now(),
-	}
-	return resp, nil
+// DeepSeekProvider wraps the complete DeepSeek provider implementation
+type DeepSeekProvider struct {
+	provider *deepseek.DeepSeekProvider
 }
 
-func (d *DeepSeekProvider) HealthCheck() error { return nil }
+func NewDeepSeekProvider(apiKey, baseURL, model string) *DeepSeekProvider {
+	return &DeepSeekProvider{
+		provider: deepseek.NewDeepSeekProvider(apiKey, baseURL, model),
+	}
+}
+
+func (d *DeepSeekProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	return d.provider.Complete(context.Background(), req)
+}
+
+func (d *DeepSeekProvider) HealthCheck() error {
+	// TODO: Implement actual health check
+	return nil
+}
 
 func (d *DeepSeekProvider) GetCapabilities() *ProviderCapabilities {
 	return &ProviderCapabilities{
-		SupportedModels:         []string{"deepseek"},
+		SupportedModels:         []string{"deepseek-coder", "deepseek-chat"},
 		SupportedFeatures:       []string{"streaming"},
-		SupportedRequestTypes:   []string{"code_generation"},
+		SupportedRequestTypes:   []string{"code_generation", "text_completion"},
 		SupportsStreaming:       true,
 		SupportsFunctionCalling: false,
 		SupportsVision:          false,

@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"log"
+	"net"
+	"time"
+
 	llm "github.com/superagent/superagent/internal/llm"
 	models "github.com/superagent/superagent/internal/models"
 	pb "github.com/superagent/superagent/pkg/api"
 	"google.golang.org/grpc"
-	"log"
-	"net"
-	"time"
 )
 
 type grpcServer struct{}

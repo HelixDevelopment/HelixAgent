@@ -1,39 +1,40 @@
 package llm
 
 import (
+	"context"
+
+	"github.com/superagent/superagent/internal/llm/providers/gemini"
 	"github.com/superagent/superagent/internal/models"
-	"time"
 )
 
-// GeminiProvider stub
-type GeminiProvider struct{}
-
-func (g *GeminiProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
-	resp := &models.LLMResponse{
-		ID:           "rsp-gemini-1",
-		RequestID:    req.ID,
-		ProviderName: "Gemini",
-		Content:      "stub completion from Gemini",
-		Confidence:   0.8,
-		TokensUsed:   30,
-		ResponseTime: 30,
-		FinishReason: "stop",
-		Metadata:     map[string]interface{}{},
-		CreatedAt:    time.Now(),
-	}
-	return resp, nil
+// GeminiProvider wraps the complete Gemini provider implementation
+type GeminiProvider struct {
+	provider *gemini.GeminiProvider
 }
 
-func (g *GeminiProvider) HealthCheck() error { return nil }
+func NewGeminiProvider(apiKey, baseURL, model string) *GeminiProvider {
+	return &GeminiProvider{
+		provider: gemini.NewGeminiProvider(apiKey, baseURL, model),
+	}
+}
+
+func (g *GeminiProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	return g.provider.Complete(context.Background(), req)
+}
+
+func (g *GeminiProvider) HealthCheck() error {
+	// TODO: Implement actual health check
+	return nil
+}
 
 func (g *GeminiProvider) GetCapabilities() *ProviderCapabilities {
 	return &ProviderCapabilities{
-		SupportedModels:         []string{"gemini"},
-		SupportedFeatures:       []string{"streaming"},
-		SupportedRequestTypes:   []string{"code_generation"},
+		SupportedModels:         []string{"gemini-pro", "gemini-pro-vision"},
+		SupportedFeatures:       []string{"streaming", "vision"},
+		SupportedRequestTypes:   []string{"text_completion", "chat", "multimodal"},
 		SupportsStreaming:       true,
 		SupportsFunctionCalling: false,
-		SupportsVision:          false,
+		SupportsVision:          true,
 		Metadata:                map[string]string{},
 	}
 }

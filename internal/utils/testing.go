@@ -10,7 +10,8 @@ import (
 
 // TestContext provides a common context for testing
 func TestContext() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	cancel() // Cancel immediately since we don't need the timeout
 	return ctx
 }
 

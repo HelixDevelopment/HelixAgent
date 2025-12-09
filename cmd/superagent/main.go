@@ -1,20 +1,34 @@
 package main
 
 import (
+	"time"
+
+	"net/http"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/superagent/superagent/internal/config"
 	llm "github.com/superagent/superagent/internal/llm"
 	"github.com/superagent/superagent/internal/middleware"
 	"github.com/superagent/superagent/internal/models"
-	"net/http"
-	"os"
 )
 
 func main() {
 	cfg := config.Load()
 	r := gin.Default()
+
+	// Create auth middleware
+	authConfig := middleware.AuthConfig{
+		SecretKey:   cfg.Server.JWTSecret,
+		TokenExpiry: 24 * time.Hour,
+		Issuer:      "superagent",
+		SkipPaths:   []string{"/health", "/v1/health"},
+		Required:    true,
+	}
+	auth := middleware.NewAuthMiddleware(authConfig)
+
 	// Attach auth middleware to protected routes
-	protected := r.Group("", middleware.JWTMiddleware(cfg))
+	protected := r.Group("", auth.Middleware([]string{"/health", "/v1/health"}))
 
 	// Health endpoint
 	r.GET("/health", func(c *gin.Context) {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/superagent/superagent/internal/models"
@@ -133,4 +134,15 @@ func (p *ExamplePlugin) CompleteStream(ctx context.Context, req *models.LLMReque
 	}()
 
 	return ch, nil
+}
+
+func main() {
+	// Plugin entry point - this makes it a valid main package
+	// The actual plugin functionality is exported via the Plugin variable
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		println("Example Plugin v1.0.0")
+		os.Exit(0)
+	}
+	// Keep the process alive for plugin loading
+	select {}
 }

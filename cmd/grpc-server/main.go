@@ -14,14 +14,23 @@ import (
 type grpcServer struct{}
 
 func (s *grpcServer) Complete(ctx context.Context, req *pb.CompletionRequest) (*pb.CompletionResponse, error) {
+	modelParams := models.ModelParameters{
+		Model:            "default",
+		Temperature:      0.7,
+		MaxTokens:        1000,
+		TopP:             1.0,
+		StopSequences:    []string{},
+		ProviderSpecific: map[string]any{},
+	}
+
 	internal := &models.LLMRequest{
 		ID:             "",
 		SessionID:      req.SessionID,
 		UserID:         req.UserID,
 		Prompt:         req.Prompt,
 		MemoryEnhanced: req.MemoryEnhanced,
-		Memory:         nil,
-		ModelParams:    nil,
+		Memory:         map[string]string{},
+		ModelParams:    modelParams,
 		EnsembleConfig: nil,
 		Status:         "pending",
 		CreatedAt:      time.Now(),

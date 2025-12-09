@@ -1,0 +1,352 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "SuperAgent LLM Facade - Production Monitoring",
+    "tags": ["superagent", "llm", "monitoring"],
+    "timezone": "UTC",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"superagent\"}",
+            "legendFormat": "Service Status"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "LLM Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(llm_requests_total[5m])",
+            "legendFormat": "{{provider}} - {{request_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "reqps",
+            "label": "Requests per Second"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Response Time Distribution",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(llm_response_time_seconds_bucket[5m])",
+            "legendFormat": "{{le}}"
+          }
+        ],
+        "yAxis": {
+          "unit": "s",
+          "label": "Response Time"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Provider Health Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "llm_provider_health_status",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "text": "UNHEALTHY",
+                          "color": "red"
+                        },
+                        "1": {
+                          "text": "HEALTHY",
+                          "color": "green"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "title": "Token Usage",
+        "type": "barchart",
+        "targets": [
+          {
+            "expr": "rate(llm_tokens_used_total[1h])",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "tokens",
+            "label": "Tokens per Hour"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Error Rate by Provider",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(llm_requests_total{status=\"error\"}[5m]) / rate(llm_requests_total[5m]) * 100",
+            "legendFormat": "{{provider}} Error Rate"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "percent",
+            "label": "Error Rate (%)"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))) * 100",
+            "legendFormat": "Cache Hit Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Database Connection Pool",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count{datname=\"superagent_db\"}",
+            "legendFormat": "Active Connections"
+          },
+          {
+            "expr": "pg_stat_activity_count{datname=\"superagent_db\", state=\"idle\"}",
+            "legendFormat": "Idle Connections"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job=\"superagent\"}",
+            "legendFormat": "Resident Memory"
+          },
+          {
+            "expr": "go_memstats_heap_alloc_bytes{job=\"superagent\"}",
+            "legendFormat": "Heap Allocated"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "bytes",
+            "label": "Memory Usage"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Goroutine Count",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "go_goroutines{job=\"superagent\"}",
+            "legendFormat": "Goroutines"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "HTTP Request Duration",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(http_request_duration_seconds_bucket{job=\"superagent\"}[5m])",
+            "legendFormat": "{{le}}"
+          }
+        ],
+        "yAxis": {
+          "unit": "s",
+          "label": "Request Duration"
+        }
+      },
+      {
+        "id": 12,
+        "title": "Plugin Health",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "plugin_health_status",
+            "legendFormat": "{{plugin}}"
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "text": "UNHEALTHY",
+                          "color": "red"
+                        },
+                        "1": {
+                          "text": "HEALTHY",
+                          "color": "green"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 13,
+        "title": "Ensemble Voting Statistics",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ensemble_voting_count",
+            "legendFormat": "{{strategy}} - {{provider}}"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Circuit Breaker Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "circuit_breaker_state",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "text": "CLOSED",
+                          "color": "green"
+                        },
+                        "1": {
+                          "text": "OPEN",
+                          "color": "red"
+                        },
+                        "2": {
+                          "text": "HALF-OPEN",
+                          "color": "yellow"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 15,
+        "title": "Rate Limiting",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rate_limit_exceeded_total[5m])",
+            "legendFormat": "Rate Limit Exceeded"
+          },
+          {
+            "expr": "rate(requests_total[5m])",
+            "legendFormat": "Total Requests"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

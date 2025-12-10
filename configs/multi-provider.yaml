@@ -1,0 +1,170 @@
+# SuperAgent Multi-Provider Configuration Example
+# This configuration enables DeepSeek, Qwen, and OpenRouter (Grok-4 and Gemini 2.5)
+# All requests will automatically use ensemble voting to return the best possible result
+
+# SuperAgent server configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+  debug: false
+  timeout: 30s
+
+# Database configuration
+database:
+  host: "localhost"
+  port: 5432
+  name: "superagent"
+  user: "postgres"
+  password: "${DB_PASSWORD}"
+  ssl_mode: "disable"
+
+# Redis configuration for caching
+redis:
+  host: "localhost"
+  port: 6379
+  password: "${REDIS_PASSWORD}"
+  db: 0
+
+# LLM Provider Configuration
+providers:
+  # DeepSeek Coder - Excellent for code generation
+  deepseek:
+    name: "deepseek"
+    type: "deepseek"
+    enabled: true
+    api_key: "${DEEPSEEK_API_KEY}"
+    base_url: "https://api.deepseek.com/v1"
+    timeout: 30s
+    max_retries: 3
+    weight: 1.0
+    models:
+      - id: "deepseek-coder"
+        name: "DeepSeek Coder"
+        enabled: true
+        weight: 1.2  # Higher weight for coding tasks
+        capabilities:
+          - "code-generation"
+          - "code-completion"
+          - "debugging"
+        custom_params:
+          temperature: 0.1
+          max_tokens: 4096
+
+  # Qwen - Alibaba's powerful LLM
+  qwen:
+    name: "qwen"
+    type: "qwen"
+    enabled: true
+    api_key: "${QWEN_API_KEY}"
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    timeout: 30s
+    max_retries: 3
+    weight: 1.0
+    models:
+      - id: "qwen-turbo"
+        name: "Qwen Turbo"
+        enabled: true
+        weight: 1.0
+        capabilities:
+          - "general"
+          - "reasoning"
+          - "multilingual"
+        custom_params:
+          temperature: 0.3
+          max_tokens: 6144
+
+  # OpenRouter - Access to multiple models including Grok-4 and Gemini 2.5
+  openrouter:
+    name: "openrouter"
+    type: "openrouter"
+    enabled: true
+    api_key: "${OPENROUTER_API_KEY}"
+    base_url: "https://openrouter.ai/api/v1"
+    timeout: 45s
+    max_retries: 3
+    weight: 1.3  # Higher weight due to model variety
+    models:
+      # Grok-4 via OpenRouter
+      - id: "x-ai/grok-4"
+        name: "Grok-4 via OpenRouter"
+        enabled: true
+        weight: 1.3  # High weight for reasoning
+        capabilities:
+          - "reasoning"
+          - "analysis"
+          - "problem-solving"
+          - "real-time-data"
+        custom_params:
+          temperature: 0.2
+          max_tokens: 8192
+      
+      # Gemini 2.5 Flash via OpenRouter
+      - id: "google/gemini-2.0-flash-exp"
+        name: "Gemini 2.0 Flash via OpenRouter"
+        enabled: true
+        weight: 1.25
+        capabilities:
+          - "multimodal"
+          - "reasoning"
+          - "code-generation"
+          - "mathematics"
+        custom_params:
+          temperature: 0.1
+          max_tokens: 8192
+
+# Ensemble configuration for automatic multi-provider voting
+ensemble:
+  strategy: "confidence_weighted"  # Options: majority_vote, confidence_weighted, quality_weighted
+  min_providers: 2                 # Minimum providers to include in ensemble
+  max_providers: 4                 # Maximum providers to query simultaneously
+  confidence_threshold: 0.75       # Minimum confidence to accept response
+  fallback_to_best: true           # If no consensus, use highest confidence response
+  timeout: 60s                     # Maximum time for ensemble decision
+  preferred_providers: []          # No preference - let ensemble decide
+  provider_weights:
+    deepseek: 1.0
+    qwen: 1.0
+    openrouter: 1.2
+
+# OpenAI compatibility configuration
+openai_compatible:
+  enabled: true
+  base_path: "/v1"                  # OpenAI API compatible endpoint
+  expose_all_models: true           # Show all provider models in /v1/models
+  ensemble_model_name: "superagent-ensemble"  # Primary model name for ensemble
+  enable_streaming: true           # Support for Server-Sent Events streaming
+  enable_functions: true           # Support for OpenAI function calling
+  enable_tools: true               # Support for OpenAI tools
+
+# MCP (Model Context Protocol) configuration
+mcp:
+  enabled: true
+  expose_all_tools: true           # Expose all available tools from all providers
+  unified_tool_namespace: true     # Use superagent namespace for all tools
+  
+# LSP (Language Server Protocol) configuration  
+lsp:
+  enabled: true
+  expose_all_capabilities: true    # Expose all LSP capabilities from providers
+  
+# Memory configuration
+memory:
+  enabled: true
+  provider: "postgres"             # Options: postgres, redis, memory
+  max_context_length: 32000
+  retention_days: 30
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  enable_request_logging: true
+  enable_response_logging: true
+
+# Metrics configuration
+metrics:
+  enabled: true
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"

@@ -1,0 +1,175 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: superagent-postgres
+    environment:
+      POSTGRES_DB: superagent_db
+      POSTGRES_USER: superagent
+      POSTGRES_PASSWORD: superagent123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superagent -d superagent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - superagent-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: superagent-redis
+    command: redis-server --requirepass superagent123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - superagent-network
+
+  # SuperAgent Multi-Provider Server
+  superagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superagent-server
+    ports:
+      - "8080:8080"
+    environment:
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: superagent
+      DB_PASSWORD: superagent123
+      DB_NAME: superagent_db
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: superagent123
+      REDIS_DB: 0
+      
+      # Multi-Provider API Keys (set your actual keys here)
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      QWEN_API_KEY: ${QWEN_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      
+      # Server Configuration
+      SUPERAGENT_HOST: 0.0.0.0
+      SUPERAGENT_PORT: 8080
+      SUPERAGENT_DEBUG: "false"
+      
+      # JWT Configuration
+      JWT_SECRET: superagent-jwt-secret-key-minimum-32-characters-long
+      
+      # Configuration Path
+      CONFIG_PATH: /app/configs/multi-provider.yaml
+      
+      # CORS and Security
+      CORS_ORIGINS: "*"
+      RATE_LIMIT_REQUESTS: 100
+      RATE_LIMIT_WINDOW: 1m
+      
+      # Logging
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      
+      # Metrics
+      PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_PORT: 9090
+      
+      # MCP/LSP
+      MCP_ENABLED: "true"
+      LSP_ENABLED: "true"
+      
+      # Ensemble Configuration
+      ENSEMBLE_STRATEGY: confidence_weighted
+      ENSEMBLE_MIN_PROVIDERS: 2
+      ENSEMBLE_MAX_PROVIDERS: 4
+      CONFIDENCE_THRESHOLD: 0.75
+      TIMEOUT_SECONDS: 60
+      
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - superagent-network
+
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: superagent-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - superagent-network
+    profiles:
+      - monitoring
+      - full
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: superagent-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - superagent-network
+    profiles:
+      - monitoring
+      - full
+
+# Volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Networks
+networks:
+  superagent-network:
+    driver: bridge

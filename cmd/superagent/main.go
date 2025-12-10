@@ -127,7 +127,7 @@ func main() {
 						"name":    name,
 						"enabled": config.Enabled,
 						"type":    config.Type,
-						"model":   config.Model,
+						"models":  config.Models,
 					})
 				}
 			}

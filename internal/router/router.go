@@ -41,6 +41,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// Initialize completion handler
 	completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())
+	
+	// Initialize unified OpenAI-compatible handler
+	unifiedHandler := handlers.NewUnifiedHandler(providerRegistry, cfg)
 
 	// Initialize auth middleware
 	authConfig := middleware.AuthConfig{
@@ -111,7 +114,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Protected API endpoints (auth required)
 	protected := r.Group("/v1", auth.Middleware([]string{"/health", "/v1/health", "/metrics"}))
 	{
-		// Completion endpoints
+		// Register OpenAI-compatible routes for seamless integration
+		unifiedHandler.RegisterOpenAIRoutes(&protected, auth.Middleware)
+		
+		// Legacy endpoints (keep for backward compatibility)
 		protected.POST("/completions", completionHandler.Complete)
 		protected.POST("/completions/stream", completionHandler.CompleteStream)
 

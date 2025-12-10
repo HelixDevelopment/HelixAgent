@@ -2,16 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/superagent/superagent/internal/llm/providers/openrouter"
-	"github.com/superagent/superagent/internal/models"
 )
 
-// OpenRouterModels handles model listing and metadata for OpenRouter
+// OpenRouterModelsHandler handles model listing for OpenRouter
 type OpenRouterModelsHandler struct {
-	openrouterManager *openrouter.OpenRouterConfigManager
 }
 
 // NewOpenRouterModelsHandler creates a new models handler
@@ -147,7 +143,7 @@ func (h *OpenRouterModelsHandler) HandleModels(c *gin.Context) {
 
 	// Add configuration-specific models if API key is provided
 	apiKey := c.GetHeader("Authorization")
-	if apiKey != nil && len(apiKey) > 7 && apiKey[:7] == "Bearer " {
+	if apiKey != "" && len(apiKey) > 7 && apiKey[:7] == "Bearer " {
 		// Add user-specific models
 		userModels := []map[string]interface{}{
 			{

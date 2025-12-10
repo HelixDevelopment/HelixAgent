@@ -27,7 +27,7 @@ type ProviderConfig struct {
 	Enabled        bool              `json:"enabled"`
 	APIKey         string            `json:"api_key"`
 	BaseURL        string            `json:"base_url"`
-	Model          string            `json:"model"`
+	Models         []ModelConfig     `json:"models"`
 	Timeout        time.Duration     `json:"timeout"`
 	MaxRetries     int               `json:"max_retries"`
 	HealthCheckURL string            `json:"health_check_url"`
@@ -35,6 +35,16 @@ type ProviderConfig struct {
 	Tags           []string          `json:"tags"`
 	Capabilities   map[string]string `json:"capabilities"`
 	CustomSettings map[string]any    `json:"custom_settings"`
+}
+
+// ModelConfig holds configuration for a specific model
+type ModelConfig struct {
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	Enabled        bool              `json:"enabled"`
+	Weight         float64           `json:"weight"`
+	Capabilities   []string          `json:"capabilities"`
+	CustomParams   map[string]any    `json:"custom_params"`
 }
 
 // RegistryConfig holds configuration for provider registry
@@ -99,14 +109,19 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 			Name:    "deepseek",
 			Type:    "deepseek",
 			Enabled: true,
-			Model:   "deepseek-coder",
+			Models: []ModelConfig{{
+				ID:      "deepseek-coder",
+				Name:    "DeepSeek Coder",
+				Enabled: true,
+				Weight:  1.0,
+			}},
 		}
 	}
 	if deepseekConfig.Enabled {
 		r.RegisterProvider(deepseekConfig.Name, llm.NewDeepSeekProvider(
 			deepseekConfig.APIKey,
 			deepseekConfig.BaseURL,
-			deepseekConfig.Model,
+			deepseekConfig.Models[0].ID,
 		))
 	}
 
@@ -117,14 +132,19 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 			Name:    "claude",
 			Type:    "claude",
 			Enabled: true,
-			Model:   "claude-3-sonnet-20240229",
+			Models: []ModelConfig{{
+				ID:      "claude-3-sonnet-20240229",
+				Name:    "Claude 3 Sonnet",
+				Enabled: true,
+				Weight:  1.0,
+			}},
 		}
 	}
 	if claudeConfig.Enabled {
 		r.RegisterProvider(claudeConfig.Name, llm.NewClaudeProvider(
 			claudeConfig.APIKey,
 			claudeConfig.BaseURL,
-			claudeConfig.Model,
+			claudeConfig.Models[0].ID,
 		))
 	}
 
@@ -135,14 +155,63 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 			Name:    "gemini",
 			Type:    "gemini",
 			Enabled: true,
-			Model:   "gemini-pro",
+			Models: []ModelConfig{{
+				ID:      "gemini-pro",
+				Name:    "Gemini Pro",
+				Enabled: true,
+				Weight:  1.0,
+			}},
 		}
 	}
 	if geminiConfig.Enabled {
 		r.RegisterProvider(geminiConfig.Name, llm.NewGeminiProvider(
 			geminiConfig.APIKey,
 			geminiConfig.BaseURL,
-			geminiConfig.Model,
+			geminiConfig.Models[0].ID,
+		))
+	}
+
+	// Register Qwen provider
+	qwenConfig := cfg.Providers["qwen"]
+	if qwenConfig == nil {
+		qwenConfig = &ProviderConfig{
+			Name:    "qwen",
+			Type:    "qwen",
+			Enabled: true,
+			Models: []ModelConfig{{
+				ID:      "qwen-turbo",
+				Name:    "Qwen Turbo",
+				Enabled: true,
+				Weight:  1.0,
+			}},
+		}
+	}
+	if qwenConfig.Enabled {
+		r.RegisterProvider(qwenConfig.Name, llm.NewQwenProvider(
+			qwenConfig.APIKey,
+			qwenConfig.BaseURL,
+			qwenConfig.Models[0].ID,
+		))
+	}
+
+	// Register OpenRouter provider
+	openrouterConfig := cfg.Providers["openrouter"]
+	if openrouterConfig == nil {
+		openrouterConfig = &ProviderConfig{
+			Name:    "openrouter",
+			Type:    "openrouter",
+			Enabled: true,
+			Models: []ModelConfig{{
+				ID:      "x-ai/grok-4",
+				Name:    "Grok-4 via OpenRouter",
+				Enabled: true,
+				Weight:  1.3,
+			}},
+		}
+	}
+	if openrouterConfig.Enabled {
+		r.RegisterProvider(openrouterConfig.Name, llm.NewOpenRouterProvider(
+			openrouterConfig.APIKey,
 		))
 	}
 }
@@ -340,7 +409,12 @@ func LoadRegistryConfigFromAppConfig(appConfig *config.Config) *RegistryConfig {
 		Name:    "deepseek",
 		Type:    "deepseek",
 		Enabled: true,
-		Model:   "deepseek-coder",
+		Models: []ModelConfig{{
+			ID:      "deepseek-coder",
+			Name:    "DeepSeek Coder",
+			Enabled: true,
+			Weight:  1.0,
+		}},
 		APIKey:  "", // Should come from config or env
 		Timeout: cfg.DefaultTimeout,
 		Weight:  1.0,
@@ -350,7 +424,12 @@ func LoadRegistryConfigFromAppConfig(appConfig *config.Config) *RegistryConfig {
 		Name:    "claude",
 		Type:    "claude",
 		Enabled: true,
-		Model:   "claude-3-sonnet-20240229",
+		Models: []ModelConfig{{
+			ID:      "claude-3-sonnet-20240229",
+			Name:    "Claude 3 Sonnet",
+			Enabled: true,
+			Weight:  1.0,
+		}},
 		APIKey:  "", // Should come from config or env
 		Timeout: cfg.DefaultTimeout,
 		Weight:  1.0,
@@ -360,10 +439,45 @@ func LoadRegistryConfigFromAppConfig(appConfig *config.Config) *RegistryConfig {
 		Name:    "gemini",
 		Type:    "gemini",
 		Enabled: true,
-		Model:   "gemini-pro",
+		Models: []ModelConfig{{
+			ID:      "gemini-pro",
+			Name:    "Gemini Pro",
+			Enabled: true,
+			Weight:  1.0,
+		}},
 		APIKey:  "", // Should come from config or env
 		Timeout: cfg.DefaultTimeout,
 		Weight:  1.0,
+	}
+
+	cfg.Providers["qwen"] = &ProviderConfig{
+		Name:    "qwen",
+		Type:    "qwen",
+		Enabled: true,
+		Models: []ModelConfig{{
+			ID:      "qwen-turbo",
+			Name:    "Qwen Turbo",
+			Enabled: true,
+			Weight:  1.0,
+		}},
+		APIKey:  "", // Should come from config or env
+		Timeout: cfg.DefaultTimeout,
+		Weight:  1.0,
+	}
+
+	cfg.Providers["openrouter"] = &ProviderConfig{
+		Name:    "openrouter",
+		Type:    "openrouter",
+		Enabled: true,
+		Models: []ModelConfig{{
+			ID:      "x-ai/grok-4",
+			Name:    "Grok-4 via OpenRouter",
+			Enabled: true,
+			Weight:  1.3,
+		}},
+		APIKey:  "", // Should come from config or env
+		Timeout: cfg.DefaultTimeout,
+		Weight:  1.3,
 	}
 
 	return cfg

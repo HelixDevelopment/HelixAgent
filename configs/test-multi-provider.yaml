@@ -1,0 +1,113 @@
+# Test configuration for multi-provider setup
+server:
+  host: "0.0.0.0"
+  port: 8080
+  debug: true
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "superagent_db"
+  user: "superagent"
+  password: "password"
+  sslmode: "disable"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+ensemble:
+  strategy: "confidence_weighted"
+  min_providers: 2
+  max_providers: 3
+  confidence_threshold: 0.7
+  fallback_to_best: true
+  timeout: 30s
+  provider_weights:
+    deepseek: 0.4
+    qwen: 0.3
+    openrouter: 0.3
+  preferred_providers: []
+
+openai_compatibility:
+  enabled: true
+  route_prefix: "/v1"
+  enforce_auth: false
+
+providers:
+  deepseek:
+    name: "DeepSeek"
+    type: "deepseek"
+    enabled: true
+    api_key: "sk-test-deepseek-key"
+    base_url: "https://api.deepseek.com"
+    timeout: 30s
+    weight: 0.4
+    tags: ["coding", "reasoning"]
+    models:
+      - name: "deepseek-chat"
+        display_name: "DeepSeek Chat"
+        type: "chat"
+        context_length: 32000
+        input_price: 0.14
+        output_price: 0.28
+        capabilities: ["chat", "coding"]
+      - name: "deepseek-coder"
+        display_name: "DeepSeek Coder"
+        type: "coding"
+        context_length: 16000
+        input_price: 0.19
+        output_price: 0.38
+        capabilities: ["coding", "analysis"]
+
+  qwen:
+    name: "Qwen"
+    type: "qwen"
+    enabled: true
+    api_key: "sk-test-qwen-key"
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    timeout: 30s
+    weight: 0.3
+    tags: ["multimodal", "coding"]
+    models:
+      - name: "qwen-turbo"
+        display_name: "Qwen Turbo"
+        type: "chat"
+        context_length: 8000
+        input_price: 0.002
+        output_price: 0.006
+        capabilities: ["chat", "reasoning"]
+      - name: "qwen-plus"
+        display_name: "Qwen Plus"
+        type: "chat"
+        context_length: 32000
+        input_price: 0.008
+        output_price: 0.024
+        capabilities: ["chat", "reasoning", "coding"]
+
+  openrouter:
+    name: "OpenRouter"
+    type: "openrouter"
+    enabled: true
+    api_key: "sk-or-test-openrouter-key"
+    base_url: "https://openrouter.ai/api/v1"
+    timeout: 30s
+    weight: 0.3
+    tags: ["routing", "variety"]
+    models:
+      - name: "anthropic/claude-3.5-sonnet"
+        display_name: "Claude 3.5 Sonnet (via OpenRouter)"
+        type: "chat"
+        context_length: 200000
+        input_price: 3.0
+        output_price: 15.0
+        capabilities: ["chat", "reasoning", "coding"]
+      - name: "google/gemini-2.5-flash-preview"
+        display_name: "Gemini 2.5 Flash (via OpenRouter)"
+        type: "chat"
+        context_length: 1000000
+        input_price: 0.075
+        output_price: 0.3
+        capabilities: ["chat", "reasoning", "multimodal"]

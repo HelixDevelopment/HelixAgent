@@ -1,6 +1,7 @@
 package openrouter
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,15 +15,15 @@ const (
 	BaseURL = "https://openrouter.ai/api/v1"
 )
 
-// OpenRouterProvider implements LLM provider interface for OpenRouter
-type OpenRouterProvider struct {
+// SimpleOpenRouterProvider implements LLM provider interface for OpenRouter
+type SimpleOpenRouterProvider struct {
 	apiKey string
 	client *http.Client
 }
 
-// NewOpenRouterProvider creates a new OpenRouter provider
-func NewOpenRouterProvider(apiKey string) *OpenRouterProvider {
-	return &OpenRouterProvider{
+// NewSimpleOpenRouterProvider creates a new OpenRouter provider
+func NewSimpleOpenRouterProvider(apiKey string) *SimpleOpenRouterProvider {
+	return &SimpleOpenRouterProvider{
 		apiKey: apiKey,
 		client: &http.Client{
 			Timeout: 60 * time.Second,
@@ -31,15 +32,27 @@ func NewOpenRouterProvider(apiKey string) *OpenRouterProvider {
 }
 
 // Complete implements LLM provider interface
-func (p *OpenRouterProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
+	// Use provided context or create timeout context
+	if ctx == nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+	}
 
 	// Convert to OpenRouter format
-	orReq := struct {
+	type OpenRouterRequest struct {
+		Model       string                `json:"model"`
+		Messages    []models.Message      `json:"messages"`
+		Prompt      string                `json:"prompt,omitempty"`
+		MaxTokens   int                   `json:"max_tokens,omitempty"`
+		Temperature float64               `json:"temperature,omitempty"`
+	}
+	
+	orReq := OpenRouterRequest{
 		Model:       req.ModelParams.Model,
 		Messages:    req.Messages,
-		Prompt:     req.Prompt,
+		Prompt:      req.Prompt,
 		MaxTokens:   req.ModelParams.MaxTokens,
 		Temperature: req.ModelParams.Temperature,
 	}
@@ -69,12 +82,13 @@ func (p *OpenRouterProvider) Complete(req *models.LLMRequest) (*models.LLMRespon
 
 	// Parse response
 	var orResp struct {
+		ID      string `json:"id"`
 		Choices []struct {
 			Message struct {
 				Role    string `json:"role"`
 				Content string `json:"content"`
-			} `json:"choices"`
-		} `json:"id"`
+			} `json:"message"`
+		} `json:"choices"`
 		Created int64   `json:"created"`
 		Model   string   `json:"model"`
 		Usage   *struct {
@@ -108,7 +122,6 @@ func (p *OpenRouterProvider) Complete(req *models.LLMRequest) (*models.LLMRespon
 		RequestID:    req.ID,
 		ProviderID:   "openrouter",
 		ProviderName: "OpenRouter",
-		Model:        orResp.Model,
 		Content:      choice.Message.Content,
 		Confidence:   0.85, // OpenRouter doesn't provide confidence
 		TokensUsed:   0,
@@ -131,7 +144,7 @@ func (p *OpenRouterProvider) Complete(req *models.LLMRequest) (*models.LLMRespon
 }
 
 // CompleteStream implements streaming completion
-func (p *OpenRouterProvider) CompleteStream(req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+func (p *SimpleOpenRouterProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -156,7 +169,7 @@ func (p *OpenRouterProvider) CompleteStream(req *models.LLMRequest) (<-chan *mod
 }
 
 // HealthCheck implements provider health monitoring
-func (p *OpenRouterProvider) HealthCheck() error {
+func (p *SimpleOpenRouterProvider) HealthCheck() error {
 	// OpenRouter doesn't have a specific health check endpoint
 	if p.apiKey == "" {
 		return fmt.Errorf("OpenRouter API key is required for health check")
@@ -165,7 +178,7 @@ func (p *OpenRouterProvider) HealthCheck() error {
 }
 
 // GetCapabilities returns provider capabilities
-func (p *OpenRouterProvider) GetCapabilities() *models.ProviderCapabilities {
+func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilities {
 	return &models.ProviderCapabilities{
 		SupportedModels: []string{
 			"openrouter/anthropic/claude-3.5-sonnet",
@@ -244,7 +257,7 @@ func (p *OpenRouterProvider) GetCapabilities() *models.ProviderCapabilities {
 }
 
 // ValidateConfig validates provider configuration
-func (p *OpenRouterProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
+func (p *SimpleOpenRouterProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	if p.apiKey == "" {
 		return false, []string{"api_key is required"}
 	}

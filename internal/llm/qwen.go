@@ -1,44 +1,44 @@
 package llm
 
 import (
-	"time"
+	"context"
 
+	"github.com/superagent/superagent/internal/llm/providers/qwen"
 	"github.com/superagent/superagent/internal/models"
 )
 
-// QwenProvider stub
-type QwenProvider struct{}
-
-func (q *QwenProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
-	resp := &models.LLMResponse{
-		ID:           "rsp-qwen-1",
-		RequestID:    req.ID,
-		ProviderName: "Qwen",
-		Content:      "stub completion from Qwen",
-		Confidence:   0.75,
-		TokensUsed:   20,
-		ResponseTime: 25,
-		FinishReason: "stop",
-		Metadata:     map[string]interface{}{},
-		CreatedAt:    time.Now(),
-	}
-	return resp, nil
+// QwenProvider wraps the complete Qwen provider implementation
+type QwenProvider struct {
+	provider *qwen.QwenProvider
 }
 
-func (q *QwenProvider) HealthCheck() error { return nil }
+func NewQwenProvider(apiKey, baseURL, model string) *QwenProvider {
+	return &QwenProvider{
+		provider: qwen.NewQwenProvider(apiKey, baseURL, model),
+	}
+}
+
+func (q *QwenProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	return q.provider.Complete(context.Background(), req)
+}
+
+func (q *QwenProvider) HealthCheck() error {
+	return q.provider.HealthCheck()
+}
 
 func (q *QwenProvider) GetCapabilities() *ProviderCapabilities {
+	caps := q.provider.GetCapabilities()
 	return &ProviderCapabilities{
-		SupportedModels:         []string{"qwen"},
-		SupportedFeatures:       []string{"streaming"},
-		SupportedRequestTypes:   []string{"code_generation"},
-		SupportsStreaming:       true,
-		SupportsFunctionCalling: false,
-		SupportsVision:          false,
-		Metadata:                map[string]string{},
+		SupportedModels:         caps.SupportedModels,
+		SupportedFeatures:       caps.SupportedFeatures,
+		SupportedRequestTypes:   caps.SupportedRequestTypes,
+		SupportsStreaming:       caps.SupportsStreaming,
+		SupportsFunctionCalling: caps.SupportsFunctionCalling,
+		SupportsVision:          caps.SupportsVision,
+		Metadata:                caps.Metadata,
 	}
 }
 
 func (q *QwenProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
-	return true, nil
+	return q.provider.ValidateConfig(config)
 }

@@ -13,7 +13,7 @@ func RunEnsemble(req *models.LLMRequest) ([]*models.LLMResponse, *models.LLMResp
 		NewDeepSeekProvider("", "", ""),
 		NewClaudeProvider("", "", ""),
 		NewGeminiProvider("", "", ""),
-		&QwenProvider{},
+		NewQwenProvider("", "", ""),
 		&ZaiProvider{},
 	}
 

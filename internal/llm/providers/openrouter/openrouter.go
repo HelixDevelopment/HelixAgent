@@ -241,6 +241,12 @@ func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilitie
 		SupportsStreaming:       true,
 		SupportsFunctionCalling: false,
 		SupportsVision:          false,
+		SupportsTools:           true,
+		SupportsSearch:          true,
+		SupportsReasoning:       true,
+		SupportsCodeCompletion:  true,
+		SupportsCodeAnalysis:    true,
+		SupportsRefactoring:      true,
 		Limits: models.ModelLimits{
 			MaxTokens:             200000,
 			MaxInputLength:        200000,

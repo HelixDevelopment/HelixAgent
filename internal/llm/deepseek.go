@@ -30,12 +30,24 @@ func (d *DeepSeekProvider) HealthCheck() error {
 func (d *DeepSeekProvider) GetCapabilities() *ProviderCapabilities {
 	return &ProviderCapabilities{
 		SupportedModels:         []string{"deepseek-coder", "deepseek-chat"},
-		SupportedFeatures:       []string{"streaming"},
+		SupportedFeatures:       []string{"streaming", "coding", "reasoning"},
 		SupportedRequestTypes:   []string{"code_generation", "text_completion"},
 		SupportsStreaming:       true,
 		SupportsFunctionCalling: false,
 		SupportsVision:          false,
-		Metadata:                map[string]string{},
+		SupportsTools:           true,
+		SupportsSearch:          false,
+		SupportsReasoning:       true,
+		SupportsCodeCompletion:  true,
+		SupportsCodeAnalysis:    true,
+		SupportsRefactoring:      true,
+		Limits: ModelLimits{
+			MaxTokens:             4096,
+			MaxInputLength:        4096,
+			MaxOutputLength:       2048,
+			MaxConcurrentRequests: 10,
+		},
+		Metadata: map[string]string{},
 	}
 }
 

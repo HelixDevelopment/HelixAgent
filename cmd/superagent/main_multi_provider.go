@@ -75,6 +75,18 @@ func main() {
 	
 	// Initialize handlers
 	unifiedHandler := handlers.NewUnifiedHandler(providerRegistry, dbConfig)
+	
+	// Initialize MCP/LSP handlers
+	var mcpHandler *handlers.MCPHandler
+	var lspHandler *handlers.LSPHandler
+	
+	if multiConfig.MCP != nil && multiConfig.MCP.Enabled {
+		mcpHandler = handlers.NewMCPHandler(providerRegistry, multiConfig.MCP)
+	}
+	
+	if multiConfig.LSP != nil && multiConfig.LSP.Enabled {
+		lspHandler = handlers.NewLSPHandler(providerRegistry, multiConfig.LSP)
+	}
 
 	// Initialize Gin
 	if !multiConfig.Server.Debug {
@@ -125,6 +137,29 @@ func main() {
 				"max_providers": multiConfig.Ensemble.MaxProviders,
 			})
 		})
+	}
+	
+	// MCP (Model Context Protocol) endpoints
+	if mcpHandler != nil {
+		mcp := router.Group("/mcp")
+		{
+			mcp.GET("/capabilities", mcpHandler.MCPCapabilities)
+			mcp.GET("/tools", mcpHandler.MCPTools)
+			mcp.POST("/tools/call", mcpHandler.MCPToolsCall)
+			mcp.GET("/prompts", mcpHandler.MCPPrompts)
+			mcp.GET("/resources", mcpHandler.MCPResources)
+		}
+	}
+	
+	// LSP (Language Server Protocol) endpoints  
+	if lspHandler != nil {
+		lsp := router.Group("/lsp")
+		{
+			lsp.GET("/capabilities", lspHandler.LSPCapabilities)
+			lsp.POST("/completion", lspHandler.LSPCompletion)
+			lsp.POST("/hover", lspHandler.LSPHover)
+			lsp.POST("/codeActions", lspHandler.LSPCodeActions)
+		}
 	}
 
 	// Start server

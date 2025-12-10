@@ -119,6 +119,14 @@ type ProviderCapabilities struct {
 	SupportsVision          bool              `json:"supports_vision"`
 	Limits                  ModelLimits       `json:"limits"`
 	Metadata                map[string]string `json:"metadata"`
+	
+	// LSP specific capabilities
+	SupportsTools           bool              `json:"supports_tools"`
+	SupportsSearch          bool              `json:"supports_search"`
+	SupportsReasoning       bool              `json:"supports_reasoning"`
+	SupportsCodeCompletion  bool              `json:"supports_code_completion"`
+	SupportsCodeAnalysis    bool              `json:"supports_code_analysis"`
+	SupportsRefactoring      bool              `json:"supports_refactoring"`
 }
 
 // ModelLimits defines the operational limits of an LLM model.

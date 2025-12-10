@@ -36,6 +36,17 @@ openai_compatibility:
   route_prefix: "/v1"
   enforce_auth: false
 
+# MCP (Model Context Protocol) configuration
+mcp:
+  enabled: true
+  expose_all_tools: true
+  unified_tool_namespace: true
+
+# LSP (Language Server Protocol) configuration
+lsp:
+  enabled: true
+  expose_all_capabilities: true
+
 providers:
   deepseek:
     name: "DeepSeek"

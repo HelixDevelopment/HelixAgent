@@ -1,4 +1,4 @@
-package cognee
+package llm
 
 import (
 	"bytes"
@@ -116,6 +116,11 @@ func (c *Client) SearchMemory(req *SearchRequest) (*SearchResponse, error) {
 	}
 
 	return &response, nil
+}
+
+// GetBaseURL returns the base URL of the client
+func (c *Client) GetBaseURL() string {
+	return c.baseURL
 }
 
 // AutoContainerize starts Cognee in a container if not running.

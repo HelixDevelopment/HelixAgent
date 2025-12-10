@@ -33,7 +33,7 @@ func NewMemoryService(cfg *config.Config) *MemoryService {
 
 	return &MemoryService{
 		client: llm.NewClient(&config.Config{
-			Cognee: config.Cognee,
+			Cognee: cfg.Cognee,
 		}),
 		enabled: true,
 		dataset: "default",
@@ -62,7 +62,7 @@ func (m *MemoryService) AddMemory(ctx context.Context, req *MemoryRequest) error
 		ContentType: req.ContentType,
 	}
 
-	resp, err := m.client.AddMemory(ctx, memReq)
+	resp, err := m.client.AddMemory(memReq)
 	if err != nil {
 		return fmt.Errorf("failed to add memory to Cognee: %w", err)
 	}
@@ -96,13 +96,13 @@ func (m *MemoryService) SearchMemory(ctx context.Context, req *SearchRequest) ([
 		Limit:       req.Limit,
 	}
 
-	resp, err := m.client.SearchMemory(ctx, cogneeReq)
+	resp, err := m.client.SearchMemory(cogneeReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search memory in Cognee: %w", err)
 	}
 
 	// Convert to MemorySource format
-	sources := m.convertToMemorySources(resp)
+	sources := m.convertToMemorySourcesFromSearch(resp)
 
 	// Cache the results
 	m.cache[cacheKey] = sources
@@ -184,10 +184,10 @@ func (m *MemoryService) convertToMemorySources(resp *llm.MemoryResponse) []model
 	sources := make([]models.MemorySource, 0, len(resp.GraphNodes))
 
 	for _, node := range resp.GraphNodes {
-		if node.Content != "" {
+		if content, ok := node.(string); ok && content != "" {
 			sources = append(sources, models.MemorySource{
-				DatasetName:    resp.DatasetName,
-				Content:        node.Content,
+				DatasetName:    "default", // MemoryResponse doesn't have DatasetName
+				Content:        content,
 				RelevanceScore: 1.0, // Default relevance
 				SourceType:     "cognee",
 			})
@@ -197,8 +197,8 @@ func (m *MemoryService) convertToMemorySources(resp *llm.MemoryResponse) []model
 	return sources
 }
 
-// convertToMemorySources converts Cognee search responses to MemorySource format
-func (m *MemoryService) convertToMemorySources(resp *llm.MemoryResponse) []models.MemorySource {
+// convertToMemorySourcesFromSearch converts Cognee search responses to MemorySource format
+func (m *MemoryService) convertToMemorySourcesFromSearch(resp *llm.SearchResponse) []models.MemorySource {
 	if resp == nil {
 		return nil
 	}

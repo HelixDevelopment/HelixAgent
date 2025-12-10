@@ -15,6 +15,7 @@ import (
 type RequestService struct {
 	providers map[string]LLMProvider
 	ensemble  *EnsembleService
+	memory    *MemoryService
 	strategy  RoutingStrategy
 	mu        sync.RWMutex
 }
@@ -58,7 +59,7 @@ type LatencyBasedStrategy struct{}
 // RandomStrategy implements random provider selection
 type RandomStrategy struct{}
 
-func NewRequestService(strategy string, ensemble *EnsembleService) *RequestService {
+func NewRequestService(strategy string, ensemble *EnsembleService, memory *MemoryService) *RequestService {
 	var routingStrategy RoutingStrategy
 
 	switch strategy {
@@ -79,6 +80,7 @@ func NewRequestService(strategy string, ensemble *EnsembleService) *RequestServi
 	return &RequestService{
 		providers: make(map[string]LLMProvider),
 		ensemble:  ensemble,
+		memory:    memory,
 		strategy:  routingStrategy,
 	}
 }
@@ -118,6 +120,14 @@ func (r *RequestService) ProcessRequest(ctx context.Context, req *models.LLMRequ
 		return nil, fmt.Errorf("no providers available")
 	}
 
+	// Enhance request with memory if enabled
+	if r.memory != nil && req.MemoryEnhanced {
+		if err := r.memory.EnhanceRequest(ctx, req); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Memory enhancement failed: %v\n", err)
+		}
+	}
+
 	// Check if ensemble is requested and we have multiple providers
 	if req.EnsembleConfig != nil && len(providers) >= req.EnsembleConfig.MinProviders {
 		result, err := r.ensemble.RunEnsemble(ctx, req)
@@ -142,6 +152,14 @@ func (r *RequestService) ProcessRequestStream(ctx context.Context, req *models.L
 
 	if len(providers) == 0 {
 		return nil, fmt.Errorf("no providers available")
+	}
+
+	// Enhance request with memory if enabled
+	if r.memory != nil && req.MemoryEnhanced {
+		if err := r.memory.EnhanceRequest(ctx, req); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Memory enhancement failed: %v\n", err)
+		}
 	}
 
 	// Check if ensemble is requested and we have multiple providers

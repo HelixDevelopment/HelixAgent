@@ -10,6 +10,7 @@ import (
 func RunEnsemble(req *models.LLMRequest) ([]*models.LLMResponse, *models.LLMResponse, error) {
 	// Initialize providers with default configurations
 	provs := []LLMProvider{
+		NewOllamaProvider("", ""),
 		NewDeepSeekProvider("", "", ""),
 		NewClaudeProvider("", "", ""),
 		NewGeminiProvider("", "", ""),

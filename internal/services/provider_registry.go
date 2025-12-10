@@ -16,6 +16,7 @@ type ProviderRegistry struct {
 	providers      map[string]llm.LLMProvider
 	ensemble       *EnsembleService
 	requestService *RequestService
+	memory         *MemoryService
 	mu             sync.RWMutex
 }
 
@@ -60,13 +61,14 @@ type RoutingConfig struct {
 	Weights  map[string]float64 `json:"weights"`
 }
 
-func NewProviderRegistry(cfg *RegistryConfig) *ProviderRegistry {
+func NewProviderRegistry(cfg *RegistryConfig, memory *MemoryService) *ProviderRegistry {
 	if cfg == nil {
 		cfg = getDefaultRegistryConfig()
 	}
 
 	registry := &ProviderRegistry{
 		providers: make(map[string]llm.LLMProvider),
+		memory:    memory,
 	}
 
 	// Initialize ensemble service
@@ -81,7 +83,7 @@ func NewProviderRegistry(cfg *RegistryConfig) *ProviderRegistry {
 	if cfg.Routing != nil {
 		routingStrategy = cfg.Routing.Strategy
 	}
-	registry.requestService = NewRequestService(routingStrategy, registry.ensemble)
+	registry.requestService = NewRequestService(routingStrategy, registry.ensemble, memory)
 
 	// Register default providers
 	registry.registerDefaultProviders(cfg)

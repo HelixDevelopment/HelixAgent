@@ -32,9 +32,12 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Initialize user service
 	userService := services.NewUserService(db, cfg.Server.JWTSecret, 24*time.Hour)
 
+	// Initialize memory service
+	memoryService := services.NewMemoryService(cfg)
+
 	// Initialize services
 	registryConfig := services.LoadRegistryConfigFromAppConfig(cfg)
-	providerRegistry := services.NewProviderRegistry(registryConfig)
+	providerRegistry := services.NewProviderRegistry(registryConfig, memoryService)
 
 	// Initialize completion handler
 	completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())

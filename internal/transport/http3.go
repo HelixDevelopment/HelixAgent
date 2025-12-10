@@ -1,19 +1,28 @@
 package transport
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/net/http2"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 // HTTP3Server represents an HTTP3/HTTP2 server with fallback to HTTP1.1.
 type HTTP3Server struct {
+	http3Server *http3.Server
 	httpServer  *http.Server
-	http2Server *http2.Server
 	enableHTTP3 bool
 	enableHTTP2 bool
 	addr        string
@@ -51,23 +60,33 @@ func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) *HTTP3Server {
 	tlsConfig := createTLSConfig(config)
 
 	server := &HTTP3Server{
-		httpServer: &http.Server{
-			Addr:         config.Address,
-			Handler:      handler,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-			IdleTimeout:  config.IdleTimeout,
-			TLSConfig:    tlsConfig,
-		},
 		enableHTTP3: config.EnableHTTP3,
 		enableHTTP2: config.EnableHTTP2,
 		addr:        config.Address,
 		tlsConfig:   tlsConfig,
 	}
 
-	// Setup HTTP2 server if enabled
-	if config.EnableHTTP2 {
-		server.http2Server = &http2.Server{}
+	// Setup HTTP3 server if enabled
+	if config.EnableHTTP3 {
+		server.http3Server = &http3.Server{
+			Handler:   handler,
+			Addr:      config.Address,
+			TLSConfig: tlsConfig,
+			QUICConfig: &quic.Config{
+				MaxIdleTimeout:  config.IdleTimeout,
+				KeepAlivePeriod: 10 * time.Second,
+			},
+		}
+	}
+
+	// Setup HTTP server for HTTP2/HTTP1.1 fallback
+	server.httpServer = &http.Server{
+		Addr:         config.Address,
+		Handler:      handler,
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
+		IdleTimeout:  config.IdleTimeout,
+		TLSConfig:    tlsConfig,
 	}
 
 	return server
@@ -75,49 +94,54 @@ func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) *HTTP3Server {
 
 // Start starts the HTTP3 server with HTTP2 fallback.
 func (s *HTTP3Server) Start() error {
-	if s.enableHTTP3 {
-		// Start HTTP2 server with HTTP/3 support
-		if s.enableHTTP2 && s.http2Server != nil {
-			go s.serveHTTP2()
-			fmt.Printf("HTTP2 server with HTTP/3 support enabled on %s\n", s.addr)
-		} else {
-			// Start HTTP server for fallback
-			go s.serveHTTP()
-			fmt.Printf("HTTP server fallback enabled on %s\n", s.addr)
-		}
+	if s.enableHTTP3 && s.http3Server != nil {
+		// Start HTTP3 server
+		go func() {
+			fmt.Printf("Starting HTTP/3 server on %s\n", s.addr)
+			if err := s.http3Server.ListenAndServe(); err != nil {
+				fmt.Printf("HTTP/3 server error: %v\n", err)
+			}
+		}()
+	}
+
+	if s.enableHTTP2 {
+		// Start HTTP2/HTTP1.1 server
+		go func() {
+			fmt.Printf("Starting HTTP/2 + HTTP/1.1 server on %s\n", s.addr)
+			if err := s.httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("HTTP server error: %v\n", err)
+			}
+		}()
 	} else {
-		// Start HTTP server for fallback
-		go s.serveHTTP()
-		fmt.Printf("HTTP server enabled on %s\n", s.addr)
+		// Start HTTP1.1 only
+		go func() {
+			fmt.Printf("Starting HTTP/1.1 server on %s\n", s.addr)
+			if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("HTTP server error: %v\n", err)
+			}
+		}()
 	}
 
 	return nil
 }
 
-// serveHTTP2 handles HTTP2 connections with HTTP/3 support
-func (s *HTTP3Server) serveHTTP2() {
-	if s.http2Server != nil {
-		// HTTP2 server would be configured here
-		// For now, delegate to HTTP server
-		s.serveHTTP()
-	}
-}
-
-// serveHTTP handles standard HTTP connections
-func (s *HTTP3Server) serveHTTP() {
-	err := s.httpServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		fmt.Printf("HTTP server error: %v\n", err)
-	}
-}
-
 // Stop stops the server gracefully.
 func (s *HTTP3Server) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	var errs []error
 
+	// Close HTTP3 server
+	if s.http3Server != nil {
+		if err := s.http3Server.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("HTTP/3 server close error: %w", err))
+		}
+	}
+
 	// Close HTTP server
-	if err := s.httpServer.Close(); err != nil {
-		errs = append(errs, fmt.Errorf("HTTP server close error: %w", err))
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("HTTP server shutdown error: %w", err))
 	}
 
 	if len(errs) > 0 {
@@ -129,34 +153,31 @@ func (s *HTTP3Server) Stop() error {
 
 // GetServerInfo returns information about the server configuration
 func (s *HTTP3Server) GetServerInfo() map[string]interface{} {
+	protocols := []string{}
+	if s.enableHTTP3 {
+		protocols = append(protocols, "HTTP/3")
+	}
+	if s.enableHTTP2 {
+		protocols = append(protocols, "HTTP/2")
+	}
+	protocols = append(protocols, "HTTP/1.1")
+
+	features := []string{"TLS encryption"}
+	if s.enableHTTP3 {
+		features = append(features, "HTTP/3 with QUIC")
+	}
+	if s.enableHTTP2 {
+		features = append(features, "HTTP/2 with server push")
+	}
+	features = append(features, "HTTP/1.1 fallback")
+
 	return map[string]interface{}{
 		"http3_enabled": s.enableHTTP3,
 		"http2_enabled": s.enableHTTP2,
 		"address":       s.addr,
-		"protocols":     []string{"HTTP/3", "HTTP/2", "HTTP/1.1"},
-		"features": []string{
-			"HTTP/3 support",
-			"TLS encryption",
-			"HTTP/2 with server push",
-			"HTTP/1.1 fallback",
-		},
+		"protocols":     protocols,
+		"features":      features,
 	}
-}
-
-// UpgradeConnection attempts to upgrade an HTTP connection to HTTP3 if supported
-func (s *HTTP3Server) UpgradeConnection(w http.ResponseWriter, r *http.Request) bool {
-	// Check if client supports HTTP/3
-	if r.Header.Get("HTTP3-Settings") != "" || r.Header.Get("Alt-Svc") == "h3" {
-		// Perform HTTP3 upgrade
-		w.Header().Set("Alt-Svc", "h3")
-		w.WriteHeader(http.StatusEarlyHints)
-
-		// This would be followed by actual HTTP3 handling
-		// For now, indicate upgrade initiated
-		return true
-	}
-
-	return false
 }
 
 // createTLSConfig creates a TLS configuration for the server
@@ -173,6 +194,7 @@ func createTLSConfig(config *HTTP3Config) *tls.Config {
 			tls.TLS_AES_256_GCM_SHA384,
 			tls.TLS_CHACHA20_POLY1305_SHA256,
 		},
+		NextProtos: []string{"h3", "h2", "http/1.1"},
 	}
 
 	// Load certificates if provided
@@ -180,33 +202,51 @@ func createTLSConfig(config *HTTP3Config) *tls.Config {
 		cert, err := tls.LoadX509KeyPair(config.TLSCertFile, config.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("Warning: Failed to load TLS certificates: %v\n", err)
-		} else {
-			tlsConfig.Certificates = []tls.Certificate{cert}
+			// Generate self-signed certificate for development
+			cert = generateSelfSignedCert()
 		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	} else {
+		// Generate self-signed certificate for development
+		tlsConfig.Certificates = []tls.Certificate{generateSelfSignedCert()}
 	}
 
 	return tlsConfig
 }
 
-// HandleHTTP3Request handles HTTP/3 specific request processing
-func (s *HTTP3Server) HandleHTTP3Request(w http.ResponseWriter, r *http.Request) {
-	// Basic HTTP/3 handling
-	// In a full implementation, this would handle:
-	// - QPACK encoding/decoding
-	// - Stream multiplexing
-	// - 0-RTT connection establishment
-	// - Server push
-
-	// For now, we'll provide a basic implementation
-	w.Header().Set("HTTP3-Settings", "foo=bar")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("HTTP/3 response (basic implementation)"))
-}
-
-// SetHTTP3Handler allows updating the HTTP3 handler
-func (s *HTTP3Server) SetHTTP3Handler(handler http.Handler) {
-	s.httpServer.Handler = handler
-	if s.http2Server != nil {
-		// HTTP2 server would use the same handler
+// generateSelfSignedCert generates a self-signed certificate for development
+func generateSelfSignedCert() tls.Certificate {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
 	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"SuperAgent Dev"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
+		DNSNames:              []string{"localhost"},
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		panic(err)
+	}
+
+	return cert
 }

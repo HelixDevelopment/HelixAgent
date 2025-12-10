@@ -26,8 +26,8 @@ func (s *grpcServer) Complete(ctx context.Context, req *pb.CompletionRequest) (*
 
 	internal := &models.LLMRequest{
 		ID:             "",
-		SessionID:      req.SessionID,
-		UserID:         req.UserID,
+		SessionID:      req.SessionId,
+		UserID:         "", // Not in proto, set empty
 		Prompt:         req.Prompt,
 		MemoryEnhanced: req.MemoryEnhanced,
 		Memory:         map[string]string{},
@@ -38,16 +38,16 @@ func (s *grpcServer) Complete(ctx context.Context, req *pb.CompletionRequest) (*
 	}
 	responses, selected, err := llm.RunEnsemble(internal)
 	if err != nil {
-		return &pb.CompletionResponse{Response: "", Confidence: 0}, err
+		return &pb.CompletionResponse{Content: "", Confidence: 0}, err
 	}
 	var out pb.CompletionResponse
 	if len(responses) > 0 && responses[0] != nil {
-		out.Response = responses[0].Content
+		out.Content = responses[0].Content
 		out.Confidence = responses[0].Confidence
 		out.ProviderName = responses[0].ProviderName
 	}
 	if selected != nil {
-		out.Response = selected.Content
+		out.Content = selected.Content
 		out.Confidence = selected.Confidence
 	}
 	return &out, nil

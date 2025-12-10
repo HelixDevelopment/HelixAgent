@@ -18,6 +18,7 @@ type LLMProvider struct {
 	UpdatedAt    time.Time              `json:"updated_at" db:"updated_at"`
 }
 
+// LLMRequest represents a request to an LLM provider
 type LLMRequest struct {
 	ID             string            `json:"id" db:"id"`
 	SessionID      string            `json:"session_id" db:"session_id"`

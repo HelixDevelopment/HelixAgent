@@ -34,6 +34,8 @@ func TestFullSystemIntegration(t *testing.T) {
 					return nil, fmt.Errorf("failed to marshal request: %w", err)
 				}
 				reqBody = bytes.NewBuffer(jsonData)
+			} else {
+				reqBody = bytes.NewBuffer(nil)
 			}
 
 			req, err := http.NewRequest(method, url, reqBody)

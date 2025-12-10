@@ -169,7 +169,7 @@ install-deps:
 		echo "✅ golangci-lint already installed"; \
 	else \
 		echo "📦 Installing golangci-lint..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin; \
 	fi
 	@if command -v gosec >/dev/null 2>&1; then \
 		echo "✅ gosec already installed"; \

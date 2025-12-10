@@ -1,11 +1,13 @@
 package router
 
 import (
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/superagent/superagent/internal/config"
+	"github.com/superagent/superagent/internal/database"
 	"github.com/superagent/superagent/internal/handlers"
 	"github.com/superagent/superagent/internal/middleware"
 	"github.com/superagent/superagent/internal/models"
@@ -21,6 +23,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
+	// Initialize database
+	db, err := database.NewPostgresDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Initialize user service
+	userService := services.NewUserService(db, cfg.Server.JWTSecret, 24*time.Hour)
+
 	// Initialize services
 	registryConfig := services.LoadRegistryConfigFromAppConfig(cfg)
 	providerRegistry := services.NewProviderRegistry(registryConfig)
@@ -33,10 +44,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		SecretKey:   cfg.Server.JWTSecret,
 		TokenExpiry: 24 * time.Hour,
 		Issuer:      "superagent",
-		SkipPaths:   []string{"/health", "/v1/health", "/metrics"},
+		SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login"},
 		Required:    true,
 	}
-	auth := middleware.NewAuthMiddleware(authConfig)
+	auth := middleware.NewAuthMiddleware(authConfig, userService)
 
 	// Health endpoints
 	r.GET("/health", func(c *gin.Context) {

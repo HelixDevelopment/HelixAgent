@@ -131,7 +131,8 @@ func (c *ConfigManager) ValidateConfig(pluginName string, config map[string]inte
 	
 	// Validate model configuration
 	if models, exists := config["models"]; exists {
-		if modelsSlice, ok := models.([]interface{}); !ok {
+		modelsSlice, ok := models.([]interface{})
+		if !ok {
 			return fmt.Errorf("plugin models must be an array")
 		}
 		

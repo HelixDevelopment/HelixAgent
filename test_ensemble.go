@@ -9,18 +9,18 @@ import (
 	"time"
 )
 
-type TestRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	MaxTokens int      `json:"max_tokens,omitempty"`
+type EnsembleTestRequest struct {
+	Model    string              `json:"model"`
+	Messages []EnsembleMessage   `json:"messages"`
+	MaxTokens int               `json:"max_tokens,omitempty"`
 }
 
-type Message struct {
+type EnsembleMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-func main() {
+func testEnsemble() {
 	baseURL := "http://localhost:8080/v1"
 	
 	// Test 1: Check ensemble status
@@ -34,9 +34,9 @@ func main() {
 	
 	// Test 2: Test ensemble model specifically
 	fmt.Println("🤖 Testing superagent-ensemble model...")
-	request := TestRequest{
+	request := EnsembleTestRequest{
 		Model: "superagent-ensemble",
-		Messages: []Message{
+		Messages: []EnsembleMessage{
 			{Role: "user", Content: "What is microservices architecture? Explain in one sentence."},
 		},
 		MaxTokens: 50,
@@ -92,4 +92,8 @@ func main() {
 	fmt.Println("✅ LSP Protocol Support: WORKING")
 	fmt.Println("✅ All 22 Models Available: WORKING")
 	fmt.Println("\n🚀 System ready for AI CLI tools like OpenCode and Crush!")
+}
+
+func main() {
+	testEnsemble()
 }

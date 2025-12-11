@@ -3,9 +3,13 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/superagent/superagent/internal/utils"
 )
 
@@ -81,13 +85,79 @@ func (r *Reloader) ReloadAllConfigs(ctx context.Context) error {
 }
 
 func (r *Reloader) WatchForConfigChanges(ctx context.Context, configDir string) {
-	// TODO: Implement configuration file watching
-	// This would require:
-	// 1. Setting up a file system watcher (e.g., using fsnotify)
-	// 2. Detecting changes to plugin configuration files
-	// 3. Triggering hot reload when configs change
-	// 4. Debouncing to avoid rapid reloads
-	utils.GetLogger().Info("Configuration watching not yet implemented")
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		utils.GetLogger().Errorf("Failed to create file watcher: %v", err)
+		return
+	}
+	defer watcher.Close()
+
+	// Add config directory to watcher
+	if err := watcher.Add(configDir); err != nil {
+		utils.GetLogger().Errorf("Failed to watch config directory %s: %v", configDir, err)
+		return
+	}
+
+	utils.GetLogger().Infof("Watching for config changes in: %s", configDir)
+
+	// Debounce mechanism
+	debounceTimers := make(map[string]*time.Timer)
+	debounceDelay := 2 * time.Second
+
+	for {
+		select {
+		case <-ctx.Done():
+			utils.GetLogger().Info("Stopping config watcher")
+			return
+
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+
+			// Only process write and create events for YAML files
+			if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
+				continue
+			}
+
+			if !strings.HasSuffix(event.Name, ".yaml") && !strings.HasSuffix(event.Name, ".yml") {
+				continue
+			}
+
+			// Extract plugin name from filename
+			filename := filepath.Base(event.Name)
+			pluginName := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+			// Debounce: cancel previous timer if exists
+			if timer, exists := debounceTimers[pluginName]; exists {
+				timer.Stop()
+			}
+
+			// Create new debounce timer
+			debounceTimers[pluginName] = time.AfterFunc(debounceDelay, func() {
+				r.mu.Lock()
+				delete(debounceTimers, pluginName)
+				r.mu.Unlock()
+
+				// Check if file still exists
+				if _, err := os.Stat(event.Name); os.IsNotExist(err) {
+					utils.GetLogger().Debugf("Config file no longer exists: %s", event.Name)
+					return
+				}
+
+				utils.GetLogger().Infof("Config file changed: %s, reloading plugin: %s", event.Name, pluginName)
+				if err := r.ReloadPluginConfig(ctx, pluginName); err != nil {
+					utils.GetLogger().Warnf("Failed to reload plugin %s: %v", pluginName, err)
+				}
+			})
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			utils.GetLogger().Errorf("File watcher error: %v", err)
+		}
+	}
 }
 
 func (r *Reloader) GetLastReloadTime(pluginName string) (time.Time, bool) {

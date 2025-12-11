@@ -40,19 +40,21 @@ func (h *MCPHandler) MCPCapabilities(c *gin.Context) {
 	capabilities := make(map[string]interface{})
 
 	// Get capabilities from LLM providers
-	providers := h.providerRegistry.ListProviders()
-	for _, providerName := range providers {
-		if provider, err := h.providerRegistry.GetProvider(providerName); err == nil {
-			providerCaps := provider.GetCapabilities()
-			if h.config.ExposeAllTools {
-				// Get tools from provider
-				tools := h.getProviderTools(providerName)
-				capabilities[providerName] = map[string]interface{}{
-					"capabilities": providerCaps,
-					"tools":        tools,
+	if h.providerRegistry != nil {
+		providers := h.providerRegistry.ListProviders()
+		for _, providerName := range providers {
+			if provider, err := h.providerRegistry.GetProvider(providerName); err == nil {
+				providerCaps := provider.GetCapabilities()
+				if h.config.ExposeAllTools {
+					// Get tools from provider
+					tools := h.getProviderTools(providerName)
+					capabilities[providerName] = map[string]interface{}{
+						"capabilities": providerCaps,
+						"tools":        tools,
+					}
+				} else {
+					capabilities[providerName] = providerCaps
 				}
-			} else {
-				capabilities[providerName] = providerCaps
 			}
 		}
 	}
@@ -98,20 +100,22 @@ func (h *MCPHandler) MCPTools(c *gin.Context) {
 	var allTools []interface{}
 
 	// Get tools from LLM providers
-	providers := h.providerRegistry.ListProviders()
-	for _, providerName := range providers {
-		tools := h.getProviderTools(providerName)
-		if h.config.UnifiedToolNamespace {
-			// Prefix tool names with provider
-			for _, tool := range tools {
-				if toolMap, ok := tool.(map[string]interface{}); ok {
-					if name, ok := toolMap["name"].(string); ok {
-						toolMap["name"] = fmt.Sprintf("%s_%s", providerName, name)
+	if h.providerRegistry != nil {
+		providers := h.providerRegistry.ListProviders()
+		for _, providerName := range providers {
+			tools := h.getProviderTools(providerName)
+			if h.config.UnifiedToolNamespace {
+				// Prefix tool names with provider
+				for _, tool := range tools {
+					if toolMap, ok := tool.(map[string]interface{}); ok {
+						if name, ok := toolMap["name"].(string); ok {
+							toolMap["name"] = fmt.Sprintf("%s_%s", providerName, name)
+						}
 					}
 				}
 			}
+			allTools = append(allTools, tools...)
 		}
-		allTools = append(allTools, tools...)
 	}
 
 	// Get tools from MCP servers
@@ -218,6 +222,13 @@ func (h *MCPHandler) MCPToolsCall(c *gin.Context) {
 	}
 
 	// Execute tool call using ensemble
+	if h.providerRegistry == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Provider registry not available",
+		})
+		return
+	}
+
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

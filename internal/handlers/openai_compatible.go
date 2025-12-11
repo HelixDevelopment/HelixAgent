@@ -286,66 +286,70 @@ func (h *UnifiedHandler) CompletionsStream(c *gin.Context) {
 
 // Models returns all available models from all configured providers
 func (h *UnifiedHandler) Models(c *gin.Context) {
-	// Get all providers and their capabilities
-	providers := h.providerRegistry.ListProviders()
 	var models []OpenAIModel
 
-	for _, providerName := range providers {
-		provider, err := h.providerRegistry.GetProvider(providerName)
-		if err != nil {
-			continue
-		}
+	// Check if provider registry is available
+	if h.providerRegistry != nil {
+		// Get all providers and their capabilities
+		providers := h.providerRegistry.ListProviders()
 
-		capabilities := provider.GetCapabilities()
+		for _, providerName := range providers {
+			provider, err := h.providerRegistry.GetProvider(providerName)
+			if err != nil {
+				continue
+			}
 
-		// Add each model from this provider
-		for _, modelName := range capabilities.SupportedModels {
-			// Determine model ownership
-			ownedBy := providerName
-			switch providerName {
-			case "openrouter":
-				if contains(modelName, "anthropic") {
+			capabilities := provider.GetCapabilities()
+
+			// Add each model from this provider
+			for _, modelName := range capabilities.SupportedModels {
+				// Determine model ownership
+				ownedBy := providerName
+				switch providerName {
+				case "openrouter":
+					if contains(modelName, "anthropic") {
+						ownedBy = "anthropic"
+					} else if contains(modelName, "openai") {
+						ownedBy = "openai"
+					} else if contains(modelName, "google") {
+						ownedBy = "google"
+					}
+				case "deepseek":
+					ownedBy = "deepseek"
+				case "claude":
 					ownedBy = "anthropic"
-				} else if contains(modelName, "openai") {
-					ownedBy = "openai"
-				} else if contains(modelName, "google") {
+				case "gemini":
 					ownedBy = "google"
+				case "qwen":
+					ownedBy = "alibaba"
 				}
-			case "deepseek":
-				ownedBy = "deepseek"
-			case "claude":
-				ownedBy = "anthropic"
-			case "gemini":
-				ownedBy = "google"
-			case "qwen":
-				ownedBy = "alibaba"
-			}
 
-			model := OpenAIModel{
-				ID:      modelName,
-				Object:  "model",
-				Created: time.Now().Unix(),
-				OwnedBy: ownedBy,
-				Permission: []OpenAIModelPermission{
-					{
-						ID:                 modelName + "-permission",
-						Object:             "model_permission",
-						Created:            time.Now().Unix(),
-						AllowCreateEngine:  true,
-						AllowSampling:      true,
-						AllowLogprobs:      false,
-						AllowSearchIndices: false,
-						AllowView:          true,
-						AllowFineTuning:    false,
-						Organization:       "superagent",
-						IsBlocking:         false,
+				model := OpenAIModel{
+					ID:      modelName,
+					Object:  "model",
+					Created: time.Now().Unix(),
+					OwnedBy: ownedBy,
+					Permission: []OpenAIModelPermission{
+						{
+							ID:                 modelName + "-permission",
+							Object:             "model_permission",
+							Created:            time.Now().Unix(),
+							AllowCreateEngine:  true,
+							AllowSampling:      true,
+							AllowLogprobs:      false,
+							AllowSearchIndices: false,
+							AllowView:          true,
+							AllowFineTuning:    false,
+							Organization:       "superagent",
+							IsBlocking:         false,
+						},
 					},
-				},
-				Root:   modelName,
-				Parent: nil,
-			}
+					Root:   modelName,
+					Parent: nil,
+				}
 
-			models = append(models, model)
+				models = append(models, model)
+			}
 		}
 	}
 
@@ -475,6 +479,11 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 }
 
 func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (*services.EnsembleResult, error) {
+	// Check if provider registry is available
+	if h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available")
+	}
+
 	// Get ensemble service
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {
@@ -510,6 +519,11 @@ func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LL
 }
 
 func (h *UnifiedHandler) processWithEnsembleStream(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (<-chan *models.LLMResponse, error) {
+	// Check if provider registry is available
+	if h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available")
+	}
+
 	// Get ensemble service
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {

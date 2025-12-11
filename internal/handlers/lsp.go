@@ -93,22 +93,25 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 		},
 	}
 
-	providers := h.providerRegistry.ListProviders()
 	capabilities := map[string]interface{}{}
 
-	for _, providerName := range providers {
-		// Provide basic LSP capabilities for each provider
-		capabilities[providerName] = map[string]interface{}{
-			"textDocumentSync": map[string]interface{}{
-				"openClose": true,
-				"change":    2,
-			},
-			"completionProvider": map[string]interface{}{
-				"resolveProvider":   true,
-				"triggerCharacters": []string{".", "(", "["},
-			},
-			"hoverProvider":      true,
-			"definitionProvider": true,
+	// Only list providers if registry is available
+	if h.providerRegistry != nil {
+		providers := h.providerRegistry.ListProviders()
+		for _, providerName := range providers {
+			// Provide basic LSP capabilities for each provider
+			capabilities[providerName] = map[string]interface{}{
+				"textDocumentSync": map[string]interface{}{
+					"openClose": true,
+					"change":    2,
+				},
+				"completionProvider": map[string]interface{}{
+					"resolveProvider":   true,
+					"triggerCharacters": []string{".", "(", "["},
+				},
+				"hoverProvider":      true,
+				"definitionProvider": true,
+			}
 		}
 	}
 
@@ -206,6 +209,13 @@ func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 	}
 
 	// Get ensemble service
+	if h.providerRegistry == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Provider registry not available",
+		})
+		return
+	}
+
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -283,6 +293,13 @@ func (h *LSPHandler) LSPHover(c *gin.Context) {
 	}
 
 	// Get ensemble service
+	if h.providerRegistry == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Provider registry not available",
+		})
+		return
+	}
+
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -379,6 +396,13 @@ func (h *LSPHandler) LSPCodeActions(c *gin.Context) {
 	}
 
 	// Get ensemble service
+	if h.providerRegistry == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Provider registry not available",
+		})
+		return
+	}
+
 	ensembleService := h.providerRegistry.GetEnsembleService()
 	if ensembleService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

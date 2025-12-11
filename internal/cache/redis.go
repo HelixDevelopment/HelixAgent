@@ -14,6 +14,14 @@ type RedisClient struct {
 }
 
 func NewRedisClient(cfg *config.Config) *RedisClient {
+	if cfg == nil {
+		// Return a client that will fail on connection attempts
+		// This ensures caching is disabled when config is nil
+		return &RedisClient{client: redis.NewClient(&redis.Options{
+			Addr: "localhost:0", // Invalid address to ensure connection fails
+		})}
+	}
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis.Host + ":" + cfg.Redis.Port,
 		Password: cfg.Redis.Password,

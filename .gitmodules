@@ -1,0 +1,3 @@
+[submodule "Toolkit/SiliconFlow"]
+	path = Toolkit/SiliconFlow
+	url = git@github.com:vasic-digital/SiliconFlow-Toolkit.git

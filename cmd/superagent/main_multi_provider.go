@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/superagent/superagent/internal/cache"
 	"github.com/superagent/superagent/internal/config"
 	"github.com/superagent/superagent/internal/database"
-	"github.com/superagent/superagent/internal/cache"
 	"github.com/superagent/superagent/internal/handlers"
-	"github.com/superagent/superagent/internal/services"
 	"github.com/superagent/superagent/internal/models"
+	"github.com/superagent/superagent/internal/services"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	dbConfig := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     multiConfig.Database.Host,
-			Port:     fmt.Sprintf("%d", multiConfig.Database.Port),
+			Port:     multiConfig.Database.Port,
 			User:     multiConfig.Database.User,
 			Password: multiConfig.Database.Password,
 			Name:     multiConfig.Database.Name,
@@ -44,14 +44,14 @@ func main() {
 		Redis: multiConfig.Redis,
 		LLM: config.LLMConfig{
 			DefaultTimeout: multiConfig.Server.Timeout,
-			MaxRetries:    3,
+			MaxRetries:     3,
 		},
 		Server: config.ServerConfig{
 			Host: multiConfig.Server.Host,
 			Port: fmt.Sprintf("%d", multiConfig.Server.Port),
 		},
 	}
-	
+
 	db, err := database.NewPostgresDB(dbConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -66,35 +66,44 @@ func main() {
 
 	// Convert multi-provider config to registry config
 	registryConfig := convertToRegistryConfig(multiConfig)
-	
+
 	// Initialize memory service
 	memoryService := services.NewMemoryService(dbConfig)
-	
+
 	// Initialize provider registry
 	providerRegistry := services.NewProviderRegistry(registryConfig, memoryService)
-	
+
 	// Initialize handlers
 	unifiedHandler := handlers.NewUnifiedHandler(providerRegistry, dbConfig)
-	
+
 	// Initialize MCP/LSP handlers
 	var mcpHandler *handlers.MCPHandler
 	var lspHandler *handlers.LSPHandler
-	
+	var mcpManager *services.MCPManager
+
 	if multiConfig.MCP != nil && multiConfig.MCP.Enabled {
 		mcpHandler = handlers.NewMCPHandler(providerRegistry, multiConfig.MCP)
+		mcpManager = mcpHandler.GetMCPManager()
 	}
-	
+
 	if multiConfig.LSP != nil && multiConfig.LSP.Enabled {
 		lspHandler = handlers.NewLSPHandler(providerRegistry, multiConfig.LSP)
+		// LSP client will be initialized per request
+	}
+
+	// Initialize tool registry
+	toolRegistry := services.NewToolRegistry(mcpManager, nil) // LSP client added later if needed
+	if err := toolRegistry.RefreshTools(context.Background()); err != nil {
+		log.Printf("Failed to refresh tools: %v", err)
 	}
 
 	// Initialize Gin
 	if !multiConfig.Server.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	
+
 	router := gin.New()
-	
+
 	// Add middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -123,22 +132,22 @@ func main() {
 				"count":     len(providers),
 			})
 		})
-		
+
 		admin.GET("/ensemble/status", func(c *gin.Context) {
-		ensemble := providerRegistry.GetEnsembleService()
+			ensemble := providerRegistry.GetEnsembleService()
 			if ensemble == nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Ensemble service not available"})
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{
-				"status": "active",
-				"strategy": multiConfig.Ensemble.Strategy,
+				"status":        "active",
+				"strategy":      multiConfig.Ensemble.Strategy,
 				"min_providers": multiConfig.Ensemble.MinProviders,
 				"max_providers": multiConfig.Ensemble.MaxProviders,
 			})
 		})
 	}
-	
+
 	// MCP (Model Context Protocol) endpoints
 	if mcpHandler != nil {
 		mcp := router.Group("/mcp")
@@ -150,8 +159,8 @@ func main() {
 			mcp.GET("/resources", mcpHandler.MCPResources)
 		}
 	}
-	
-	// LSP (Language Server Protocol) endpoints  
+
+	// LSP (Language Server Protocol) endpoints
 	if lspHandler != nil {
 		lsp := router.Group("/lsp")
 		{
@@ -220,18 +229,18 @@ func convertToRegistryConfig(multiConfig *config.MultiProviderConfig) *services.
 	// Convert providers
 	for name, provider := range multiConfig.Providers {
 		registryConfig.Providers[name] = &services.ProviderConfig{
-			Name:    provider.Name,
-			Type:    provider.Type,
-			Enabled: provider.Enabled,
-			APIKey:  provider.APIKey,
-			BaseURL: provider.BaseURL,
-			Timeout: provider.Timeout,
-			MaxRetries: provider.MaxRetries,
-			Weight:  provider.Weight,
-			Tags:    provider.Tags,
-			Capabilities: provider.Capabilities,
+			Name:           provider.Name,
+			Type:           provider.Type,
+			Enabled:        provider.Enabled,
+			APIKey:         provider.APIKey,
+			BaseURL:        provider.BaseURL,
+			Timeout:        provider.Timeout,
+			MaxRetries:     provider.MaxRetries,
+			Weight:         provider.Weight,
+			Tags:           provider.Tags,
+			Capabilities:   provider.Capabilities,
 			CustomSettings: provider.CustomSettings,
-			Models: convertModelConfigs(provider.Models),
+			Models:         convertModelConfigs(provider.Models),
 		}
 	}
 

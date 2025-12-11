@@ -15,15 +15,27 @@ import (
 // LSPHandler implements Language Server Protocol endpoints
 type LSPHandler struct {
 	providerRegistry *services.ProviderRegistry
-	config          *config.LSPConfig
+	lspClient        *services.LSPClient
+	config           *config.LSPConfig
 }
 
 // NewLSPHandler creates a new LSP handler
 func NewLSPHandler(registry *services.ProviderRegistry, config *config.LSPConfig) *LSPHandler {
 	return &LSPHandler{
 		providerRegistry: registry,
-		config:          config,
+		config:           config,
 	}
+}
+
+// InitializeLSP initializes the LSP client for a specific language
+func (h *LSPHandler) InitializeLSP(ctx context.Context, workspaceRoot, languageID string) error {
+	h.lspClient = services.NewLSPClient(workspaceRoot, languageID)
+	return h.lspClient.StartServer(ctx)
+}
+
+// GetLSPClient returns the LSP client
+func (h *LSPHandler) GetLSPClient() *services.LSPClient {
+	return h.lspClient
 }
 
 // LSPCapabilities returns LSP capabilities from all providers
@@ -42,13 +54,13 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 			"change":    2, // Incremental
 		},
 		"completionProvider": map[string]interface{}{
-			"resolveProvider": true,
+			"resolveProvider":   true,
 			"triggerCharacters": []string{".", "(", "["},
 		},
-		"hoverProvider": true,
-		"definitionProvider": true,
-		"referencesProvider": true,
-		"documentSymbolProvider": true,
+		"hoverProvider":           true,
+		"definitionProvider":      true,
+		"referencesProvider":      true,
+		"documentSymbolProvider":  true,
 		"workspaceSymbolProvider": true,
 		"codeActionProvider": map[string]interface{}{
 			"resolveProvider": true,
@@ -56,14 +68,14 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 		"codeLensProvider": map[string]interface{}{
 			"resolveProvider": true,
 		},
-		"documentFormattingProvider": true,
+		"documentFormattingProvider":      true,
 		"documentRangeFormattingProvider": true,
 		"renameProvider": map[string]interface{}{
 			"prepareProvider": true,
 		},
-		"foldingRangeProvider": true,
+		"foldingRangeProvider":   true,
 		"selectionRangeProvider": true,
-		"callHierarchyProvider": true,
+		"callHierarchyProvider":  true,
 		"semanticTokensProvider": map[string]interface{}{
 			"legend": map[string]interface{}{
 				"tokenTypes": []string{
@@ -83,7 +95,7 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 
 	providers := h.providerRegistry.ListProviders()
 	capabilities := map[string]interface{}{}
-	
+
 	for _, providerName := range providers {
 		// Provide basic LSP capabilities for each provider
 		capabilities[providerName] = map[string]interface{}{
@@ -95,7 +107,7 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 				"resolveProvider":   true,
 				"triggerCharacters": []string{".", "(", "["},
 			},
-			"hoverProvider": true,
+			"hoverProvider":      true,
 			"definitionProvider": true,
 		}
 	}
@@ -106,11 +118,11 @@ func (h *LSPHandler) LSPCapabilities(c *gin.Context) {
 			"version": "1.0.0",
 		},
 		"capabilities": unifiedCaps,
-		"providers":   capabilities,
+		"providers":    capabilities,
 	})
 }
 
-// LSPCompletion provides code completion using multiple LLMs
+// LSPCompletion provides code completion using LSP client or fallback to LLMs
 func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 	if !h.config.Enabled {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -121,7 +133,7 @@ func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 
 	var request struct {
 		TextDocument struct {
-			URI   string `json:"uri"`
+			URI   string   `json:"uri"`
 			Lines []string `json:"lines"`
 		} `json:"textDocument"`
 		Position struct {
@@ -129,8 +141,8 @@ func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 			Character int `json:"character"`
 		} `json:"position"`
 		Context struct {
-			TriggerKind      int      `json:"triggerKind"`
-			TriggerCharacter string   `json:"triggerCharacter"`
+			TriggerKind      int    `json:"triggerKind"`
+			TriggerCharacter string `json:"triggerCharacter"`
 		} `json:"context"`
 	}
 
@@ -141,12 +153,41 @@ func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 		return
 	}
 
-	// Use ensemble for best completion results
+	// Try LSP client first if available
+	if h.lspClient != nil {
+		cursorPos := &models.Position{
+			Line:      request.Position.Line,
+			Character: request.Position.Character,
+		}
+
+		intelligence, err := h.lspClient.GetCodeIntelligence(c.Request.Context(), request.TextDocument.URI, cursorPos)
+		if err == nil && len(intelligence.Completions) > 0 {
+			// Convert LSP completions to response format
+			completions := make([]interface{}, len(intelligence.Completions))
+			for i, item := range intelligence.Completions {
+				completions[i] = map[string]interface{}{
+					"label":         item.Label,
+					"kind":          item.Kind,
+					"detail":        item.Detail,
+					"documentation": item.Documentation,
+					"insertText":    item.InsertText,
+				}
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"isIncomplete": false,
+				"items":        completions,
+			})
+			return
+		}
+	}
+
+	// Fallback to LLM-based completion
 	prompt := h.buildCompletionPrompt(request.TextDocument.Lines, request.Position.Line, request.Position.Character)
-	
+
 	req := &models.LLMRequest{
-		ID:       fmt.Sprintf("lsp-%d", time.Now().Unix()),
-		Prompt:    prompt,
+		ID:     fmt.Sprintf("lsp-%d", time.Now().Unix()),
+		Prompt: prompt,
 		Messages: []models.Message{
 			{
 				Role:    "system",
@@ -187,7 +228,7 @@ func (h *LSPHandler) LSPCompletion(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"isIncomplete": false,
-		"items":       completions,
+		"items":        completions,
 	})
 }
 
@@ -202,7 +243,7 @@ func (h *LSPHandler) LSPHover(c *gin.Context) {
 
 	var request struct {
 		TextDocument struct {
-			URI   string `json:"uri"`
+			URI   string   `json:"uri"`
 			Lines []string `json:"lines"`
 		} `json:"textDocument"`
 		Position struct {
@@ -220,10 +261,10 @@ func (h *LSPHandler) LSPHover(c *gin.Context) {
 
 	// Build context for hover
 	prompt := h.buildHoverPrompt(request.TextDocument.Lines, request.Position.Line, request.Position.Character)
-	
+
 	req := &models.LLMRequest{
-		ID:       fmt.Sprintf("lsp-hover-%d", time.Now().Unix()),
-		Prompt:    prompt,
+		ID:     fmt.Sprintf("lsp-hover-%d", time.Now().Unix()),
+		Prompt: prompt,
 		Messages: []models.Message{
 			{
 				Role:    "system",
@@ -260,7 +301,7 @@ func (h *LSPHandler) LSPHover(c *gin.Context) {
 
 	hoverResponse := map[string]interface{}{
 		"contents": map[string]interface{}{
-			"kind": "markdown",
+			"kind":  "markdown",
 			"value": result.Selected.Content,
 		},
 		"range": map[string]interface{}{
@@ -289,7 +330,7 @@ func (h *LSPHandler) LSPCodeActions(c *gin.Context) {
 
 	var request struct {
 		TextDocument struct {
-			URI   string `json:"uri"`
+			URI   string   `json:"uri"`
 			Lines []string `json:"lines"`
 		} `json:"textDocument"`
 		Range struct {
@@ -316,10 +357,10 @@ func (h *LSPHandler) LSPCodeActions(c *gin.Context) {
 
 	// Build context for code actions
 	prompt := h.buildCodeActionPrompt(request.TextDocument.Lines, request.Range)
-	
+
 	req := &models.LLMRequest{
-		ID:       fmt.Sprintf("lsp-action-%d", time.Now().Unix()),
-		Prompt:    prompt,
+		ID:     fmt.Sprintf("lsp-action-%d", time.Now().Unix()),
+		Prompt: prompt,
 		Messages: []models.Message{
 			{
 				Role:    "system",
@@ -406,7 +447,7 @@ func (h *LSPHandler) buildCompletionPrompt(lines []string, line, char int) strin
 		if end >= len(lines) {
 			end = len(lines) - 1
 		}
-		
+
 		for i := start; i <= end; i++ {
 			context += fmt.Sprintf("%d: %s\n", i, lines[i])
 		}
@@ -469,12 +510,12 @@ func (h *LSPHandler) convertToCompletionItems(content string, line, char int) []
 	// For now, return a basic structure
 	return []interface{}{
 		map[string]interface{}{
-			"label": "Example completion",
-			"kind":  1, // Text
+			"label":      "Example completion",
+			"kind":       1, // Text
 			"insertText": content,
-			"detail": "Suggested by SuperAgent ensemble",
+			"detail":     "Suggested by SuperAgent ensemble",
 			"documentation": map[string]interface{}{
-				"kind": "markdown",
+				"kind":  "markdown",
 				"value": "Code completion generated using multiple LLM providers",
 			},
 		},
@@ -489,7 +530,7 @@ func (h *LSPHandler) convertToCodeActions(content string, range_ interface{}) in
 			"title": "Suggested refactoring",
 			"kind":  "refactor",
 			"edit": map[string]interface{}{
-				"range": range_,
+				"range":   range_,
 				"newText": content,
 			},
 		},

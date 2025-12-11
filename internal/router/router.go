@@ -41,7 +41,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// Initialize completion handler
 	completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())
-	
+
 	// Initialize unified OpenAI-compatible handler
 	unifiedHandler := handlers.NewUnifiedHandler(providerRegistry, cfg)
 
@@ -50,7 +50,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		SecretKey:   cfg.Server.JWTSecret,
 		TokenExpiry: 24 * time.Hour,
 		Issuer:      "superagent",
-		SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login"},
+		SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login", "/v1/auth/register"},
 		Required:    true,
 	}
 	auth := middleware.NewAuthMiddleware(authConfig, userService)
@@ -87,6 +87,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Authentication endpoints
 	authGroup := r.Group("/v1/auth")
 	{
+		authGroup.POST("/register", auth.Register)
 		authGroup.POST("/login", auth.Login)
 		authGroup.POST("/refresh", auth.Refresh)
 		authGroup.POST("/logout", auth.Logout)
@@ -118,7 +119,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		unifiedHandler.RegisterOpenAIRoutes(protected, func(c *gin.Context) {
 			c.Next() // Already authenticated by the group middleware
 		})
-		
+
 		// Legacy endpoints (keep for backward compatibility)
 		protected.POST("/completions", completionHandler.Complete)
 		protected.POST("/completions/stream", completionHandler.CompleteStream)

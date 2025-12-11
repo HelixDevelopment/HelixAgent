@@ -42,13 +42,13 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 
 	// Convert to OpenRouter format
 	type OpenRouterRequest struct {
-		Model       string                `json:"model"`
-		Messages    []models.Message      `json:"messages"`
-		Prompt      string                `json:"prompt,omitempty"`
-		MaxTokens   int                   `json:"max_tokens,omitempty"`
-		Temperature float64               `json:"temperature,omitempty"`
+		Model       string           `json:"model"`
+		Messages    []models.Message `json:"messages"`
+		Prompt      string           `json:"prompt,omitempty"`
+		MaxTokens   int              `json:"max_tokens,omitempty"`
+		Temperature float64          `json:"temperature,omitempty"`
 	}
-	
+
 	orReq := OpenRouterRequest{
 		Model:       req.ModelParams.Model,
 		Messages:    req.Messages,
@@ -89,14 +89,14 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
-		Created int64   `json:"created"`
-		Model   string   `json:"model"`
+		Created int64  `json:"created"`
+		Model   string `json:"model"`
 		Usage   *struct {
 			PromptTokens     int `json:"prompt_tokens"`
 			CompletionTokens int `json:"completion_tokens"`
-			TotalTokens     int `json:"total_tokens"`
+			TotalTokens      int `json:"total_tokens"`
 		} `json:"usage,omitempty"`
-		Error   *struct {
+		Error *struct {
 			Message string `json:"message"`
 			Type    string `json:"type"`
 			Code    int    `json:"code,omitempty"`
@@ -125,15 +125,15 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 		Content:      choice.Message.Content,
 		Confidence:   0.85, // OpenRouter doesn't provide confidence
 		TokensUsed:   0,
-		ResponseTime:  time.Now().UnixMilli(),
-		FinishReason:  "stop",
+		ResponseTime: time.Now().UnixMilli(),
+		FinishReason: "stop",
 		Metadata: map[string]any{
-			"model": orResp.Model,
+			"model":    orResp.Model,
 			"provider": "openrouter",
 		},
-		Selected:     false,
+		Selected:       false,
 		SelectionScore: 0.0,
-		CreatedAt:    time.Now(),
+		CreatedAt:      time.Now(),
 	}
 
 	if orResp.Usage != nil {
@@ -155,13 +155,13 @@ func (p *SimpleOpenRouterProvider) CompleteStream(ctx context.Context, req *mode
 
 		// OpenRouter streaming not implemented in this simple version
 		ch <- &models.LLMResponse{
-			ID:        "stream-not-supported",
-			RequestID:  req.ID,
-			ProviderID: "openrouter",
+			ID:           "stream-not-supported",
+			RequestID:    req.ID,
+			ProviderID:   "openrouter",
 			ProviderName: "OpenRouter",
-			Content:   "Streaming not supported by OpenRouter provider",
+			Content:      "Streaming not supported by OpenRouter provider",
 			FinishReason: "error",
-			CreatedAt:  time.Now(),
+			CreatedAt:    time.Now(),
 		}
 	}()
 
@@ -185,9 +185,9 @@ func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilitie
 			"openrouter/openai/gpt-4o",
 			"openrouter/google/gemini-pro",
 			"openrouter/meta-llama/llama-3.1-405b",
-		"openrouter/mistralai/mistral-large",
+			"openrouter/mistralai/mistral-large",
 			"openrouter/meta-llama/llama-3.1-70b",
-		"openrouter/perplexity-70b",
+			"openrouter/perplexity-70b",
 			"openwizard/cohere-2",
 			"openwizard/palm-2-chat-bison",
 			"openwizard/gemma-2-7b",
@@ -221,7 +221,7 @@ func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilitie
 			"openwizard/grande-3",
 			"openwizard/grande-3-instruct",
 			"openwizard/yi-6b",
-		"openwizard/mistral-7b",
+			"openwizard/mistral-7b",
 			"openwizard/mixtral-8x7b",
 			"openwizard/mixtral-8x22b",
 			"openwizard/pixtral-12b",
@@ -246,7 +246,7 @@ func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilitie
 		SupportsReasoning:       true,
 		SupportsCodeCompletion:  true,
 		SupportsCodeAnalysis:    true,
-		SupportsRefactoring:      true,
+		SupportsRefactoring:     true,
 		Limits: models.ModelLimits{
 			MaxTokens:             200000,
 			MaxInputLength:        200000,
@@ -257,7 +257,7 @@ func (p *SimpleOpenRouterProvider) GetCapabilities() *models.ProviderCapabilitie
 			"provider":      "OpenRouter",
 			"api_version":   "v1",
 			"routing":       "basic",
-			"multi_tenancy":   "true",
+			"multi_tenancy": "true",
 		},
 	}
 }

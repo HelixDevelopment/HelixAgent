@@ -164,7 +164,7 @@ func (q *QwenProvider) GetCapabilities() *models.ProviderCapabilities {
 		SupportsReasoning:       true,
 		SupportsCodeCompletion:  true,
 		SupportsCodeAnalysis:    true,
-		SupportsRefactoring:      false,
+		SupportsRefactoring:     false,
 		Limits: models.ModelLimits{
 			MaxTokens:             6000,
 			MaxInputLength:        30000,

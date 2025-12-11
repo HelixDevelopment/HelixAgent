@@ -10,41 +10,41 @@ import (
 
 // MultiProviderConfig represents the full multi-provider configuration
 type MultiProviderConfig struct {
-	Server    MultiServerConfig     `yaml:"server"`
+	Server    MultiServerConfig       `yaml:"server"`
 	Database  DatabaseConfig          `yaml:"database"`
 	Redis     RedisConfig             `yaml:"redis"`
-	Providers map[string]*LLMProvider  `yaml:"providers"`
+	Providers map[string]*LLMProvider `yaml:"providers"`
 	Ensemble  *MultiEnsembleConfig    `yaml:"ensemble"`
 	OpenAI    *OpenAIConfig           `yaml:"openai_compatible"`
 	MCP       *MCPConfig              `yaml:"mcp"`
 	LSP       *LSPConfig              `yaml:"lsp"`
 	Memory    *MemoryConfig           `yaml:"memory"`
 	Logging   *LoggingConfig          `yaml:"logging"`
-	Metrics   *MultiMetricsConfig      `yaml:"metrics"`
+	Metrics   *MultiMetricsConfig     `yaml:"metrics"`
 }
 
 // MultiServerConfig holds server configuration
 type MultiServerConfig struct {
-	Host     string        `yaml:"host"`
-	Port     int           `yaml:"port"`
-	Debug    bool          `yaml:"debug"`
-	Timeout  time.Duration `yaml:"timeout"`
+	Host    string        `yaml:"host"`
+	Port    int           `yaml:"port"`
+	Debug   bool          `yaml:"debug"`
+	Timeout time.Duration `yaml:"timeout"`
 }
 
 // LLMProvider holds provider-specific configuration
 type LLMProvider struct {
-	Name         string                 `yaml:"name"`
-	Type         string                 `yaml:"type"`
-	Enabled      bool                   `yaml:"enabled"`
-	APIKey       string                 `yaml:"api_key"`
-	BaseURL      string                 `yaml:"base_url"`
-	Timeout      time.Duration          `yaml:"timeout"`
-	MaxRetries   int                    `yaml:"max_retries"`
-	Weight       float64                `yaml:"weight"`
-	Tags         []string               `yaml:"tags"`
-	Capabilities map[string]string      `yaml:"capabilities"`
+	Name           string                 `yaml:"name"`
+	Type           string                 `yaml:"type"`
+	Enabled        bool                   `yaml:"enabled"`
+	APIKey         string                 `yaml:"api_key"`
+	BaseURL        string                 `yaml:"base_url"`
+	Timeout        time.Duration          `yaml:"timeout"`
+	MaxRetries     int                    `yaml:"max_retries"`
+	Weight         float64                `yaml:"weight"`
+	Tags           []string               `yaml:"tags"`
+	Capabilities   map[string]string      `yaml:"capabilities"`
 	CustomSettings map[string]interface{} `yaml:"custom_settings"`
-	Models       []ModelConfig          `yaml:"models"`
+	Models         []ModelConfig          `yaml:"models"`
 }
 
 // ModelConfig holds model-specific configuration
@@ -59,25 +59,25 @@ type ModelConfig struct {
 
 // MultiEnsembleConfig holds ensemble configuration
 type MultiEnsembleConfig struct {
-	Strategy            string    `yaml:"strategy"`
-	MinProviders       int        `yaml:"min_providers"`
-	MaxProviders       int        `yaml:"max_providers"`
-	ConfidenceThreshold float64   `yaml:"confidence_threshold"`
-	FallbackToBest     bool       `yaml:"fallback_to_best"`
-	Timeout           time.Duration `yaml:"timeout"`
-	PreferredProviders []string   `yaml:"preferred_providers"`
-	ProviderWeights   map[string]float64 `yaml:"provider_weights"`
+	Strategy            string             `yaml:"strategy"`
+	MinProviders        int                `yaml:"min_providers"`
+	MaxProviders        int                `yaml:"max_providers"`
+	ConfidenceThreshold float64            `yaml:"confidence_threshold"`
+	FallbackToBest      bool               `yaml:"fallback_to_best"`
+	Timeout             time.Duration      `yaml:"timeout"`
+	PreferredProviders  []string           `yaml:"preferred_providers"`
+	ProviderWeights     map[string]float64 `yaml:"provider_weights"`
 }
 
 // OpenAIConfig holds OpenAI compatibility configuration
 type OpenAIConfig struct {
-	Enabled             bool   `yaml:"enabled"`
-	BasePath            string `yaml:"base_path"`
-	ExposeAllModels     bool   `yaml:"expose_all_models"`
-	EnsembleModelName   string `yaml:"ensemble_model_name"`
-	EnableStreaming     bool   `yaml:"enable_streaming"`
-	EnableFunctions    bool   `yaml:"enable_functions"`
-	EnableTools        bool   `yaml:"enable_tools"`
+	Enabled           bool   `yaml:"enabled"`
+	BasePath          string `yaml:"base_path"`
+	ExposeAllModels   bool   `yaml:"expose_all_models"`
+	EnsembleModelName string `yaml:"ensemble_model_name"`
+	EnableStreaming   bool   `yaml:"enable_streaming"`
+	EnableFunctions   bool   `yaml:"enable_functions"`
+	EnableTools       bool   `yaml:"enable_tools"`
 }
 
 // MCPConfig holds Model Context Protocol configuration
@@ -89,24 +89,24 @@ type MCPConfig struct {
 
 // LSPConfig holds Language Server Protocol configuration
 type LSPConfig struct {
-	Enabled              bool `yaml:"enabled"`
+	Enabled               bool `yaml:"enabled"`
 	ExposeAllCapabilities bool `yaml:"expose_all_capabilities"`
 }
 
 // MemoryConfig holds memory configuration
 type MemoryConfig struct {
-	Enabled         bool   `yaml:"enabled"`
-	Provider        string `yaml:"provider"`
+	Enabled          bool   `yaml:"enabled"`
+	Provider         string `yaml:"provider"`
 	MaxContextLength int    `yaml:"max_context_length"`
-	RetentionDays   int    `yaml:"retention_days"`
+	RetentionDays    int    `yaml:"retention_days"`
 }
 
 // LoggingConfig holds logging configuration
 type LoggingConfig struct {
-	Level                string `yaml:"level"`
-	Format               string `yaml:"format"`
-	EnableRequestLogging bool   `yaml:"enable_request_logging"`
-	EnableResponseLogging bool  `yaml:"enable_response_logging"`
+	Level                 string `yaml:"level"`
+	Format                string `yaml:"format"`
+	EnableRequestLogging  bool   `yaml:"enable_request_logging"`
+	EnableResponseLogging bool   `yaml:"enable_response_logging"`
 }
 
 // MetricsConfig holds metrics configuration
@@ -117,7 +117,7 @@ type MetricsConfig struct {
 
 // MultiMetricsConfig holds metrics configuration
 type MultiMetricsConfig struct {
-	Enabled    bool              `yaml:"enabled"`
+	Enabled    bool                   `yaml:"enabled"`
 	Prometheus *MultiPrometheusConfig `yaml:"prometheus"`
 }
 
@@ -158,7 +158,7 @@ func substituteEnvVars(config *MultiProviderConfig) error {
 		if provider.BaseURL != "" {
 			provider.BaseURL = os.ExpandEnv(provider.BaseURL)
 		}
-		
+
 		// Substitute model-specific custom parameters
 		for i := range provider.Models {
 			for key, value := range provider.Models[i].CustomParams {
@@ -167,7 +167,7 @@ func substituteEnvVars(config *MultiProviderConfig) error {
 				}
 			}
 		}
-		
+
 		config.Providers[name] = provider
 	}
 
@@ -176,7 +176,7 @@ func substituteEnvVars(config *MultiProviderConfig) error {
 	config.Database.User = os.ExpandEnv(config.Database.User)
 	config.Database.Password = os.ExpandEnv(config.Database.Password)
 	config.Database.Name = os.ExpandEnv(config.Database.Name)
-	
+
 	config.Redis.Host = os.ExpandEnv(config.Redis.Host)
 	config.Redis.Password = os.ExpandEnv(config.Redis.Password)
 

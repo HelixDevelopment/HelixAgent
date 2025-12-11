@@ -23,8 +23,7 @@ func (o *OpenRouterProvider) Complete(req *models.LLMRequest) (*models.LLMRespon
 }
 
 func (o *OpenRouterProvider) HealthCheck() error {
-	// TODO: Implement actual health check
-	return nil
+	return o.provider.HealthCheck()
 }
 
 func (o *OpenRouterProvider) GetCapabilities() *ProviderCapabilities {
@@ -53,28 +52,28 @@ func (o *OpenRouterProvider) GetCapabilities() *ProviderCapabilities {
 			"chat",
 			"completion",
 		},
-		SupportsStreaming: true,
+		SupportsStreaming:       true,
 		SupportsFunctionCalling: true,
-		SupportsVision: false,
+		SupportsVision:          false,
 		Metadata: map[string]string{
 			"provider": "openrouter",
-			"models": "100+ models available",
+			"models":   "100+ models available",
 		},
 	}
 }
 
 func (o *OpenRouterProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	var warnings []string
-	
+
 	// Check required fields
 	if apiKey, ok := config["api_key"]; !ok || apiKey.(string) == "" {
 		return false, []string{"API key is required"}
 	}
-	
+
 	// Optional warnings
 	if _, ok := config["base_url"]; ok {
 		warnings = append(warnings, "Custom base URL may not be supported by OpenRouter")
 	}
-	
+
 	return true, warnings
 }

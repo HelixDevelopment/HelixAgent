@@ -93,56 +93,56 @@ func (c *ConfigManager) UpdatePluginConfig(pluginName string, updates map[string
 
 func (c *ConfigManager) ValidateConfig(pluginName string, config map[string]interface{}) error {
 	utils.GetLogger().Infof("Validating configuration for plugin %s", pluginName)
-	
+
 	// Basic structure validation
 	if config == nil {
 		return fmt.Errorf("plugin config cannot be nil")
 	}
-	
+
 	// Validate common required fields
 	if _, exists := config["name"]; !exists {
 		return fmt.Errorf("plugin config missing required field: name")
 	}
-	
+
 	if _, exists := config["version"]; !exists {
 		return fmt.Errorf("plugin config missing required field: version")
 	}
-	
+
 	// Validate API key if required
 	if apiKey, exists := config["api_key"]; exists {
 		if apiKeyStr, ok := apiKey.(string); !ok || len(apiKeyStr) < 10 {
 			return fmt.Errorf("plugin api_key must be a string with at least 10 characters")
 		}
 	}
-	
+
 	// Validate timeout
 	if timeout, exists := config["timeout"]; exists {
 		if timeoutFloat, ok := timeout.(float64); !ok || timeoutFloat <= 0 || timeoutFloat > 300 {
 			return fmt.Errorf("plugin timeout must be between 0 and 300 seconds")
 		}
 	}
-	
+
 	// Validate retry configuration
 	if maxRetries, exists := config["max_retries"]; exists {
 		if retryInt, ok := maxRetries.(int); !ok || retryInt < 0 || retryInt > 10 {
 			return fmt.Errorf("plugin max_retries must be between 0 and 10")
 		}
 	}
-	
+
 	// Validate model configuration
 	if models, exists := config["models"]; exists {
 		modelsSlice, ok := models.([]interface{})
 		if !ok {
 			return fmt.Errorf("plugin models must be an array")
 		}
-		
+
 		for i, model := range modelsSlice {
 			if _, ok := model.(map[string]interface{}); !ok {
 				return fmt.Errorf("plugin model at index %d must be an object", i)
 			}
 		}
 	}
-	
+
 	utils.GetLogger().Infof("Configuration validation successful for plugin %s", pluginName)
 	return nil
 }

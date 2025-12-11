@@ -23,8 +23,7 @@ func (g *GeminiProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, 
 }
 
 func (g *GeminiProvider) HealthCheck() error {
-	// TODO: Implement actual health check
-	return nil
+	return g.provider.HealthCheck()
 }
 
 func (g *GeminiProvider) GetCapabilities() *ProviderCapabilities {

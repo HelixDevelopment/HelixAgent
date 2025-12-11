@@ -16,17 +16,17 @@ type SecurityValidator struct {
 
 // PluginSecurityContext provides security constraints for plugins
 type PluginSecurityContext struct {
-	AllowedPaths      []string
-	BlockedFunctions  []string
-	ResourceLimits    ResourceLimits
+	AllowedPaths     []string
+	BlockedFunctions []string
+	ResourceLimits   ResourceLimits
 }
 
 // ResourceLimits defines resource constraints for plugins
 type ResourceLimits struct {
-	MaxMemoryMB       int
-	MaxCPUPercent     int
+	MaxMemoryMB        int
+	MaxCPUPercent      int
 	MaxFileDescriptors int
-	NetworkAccess     bool
+	NetworkAccess      bool
 }
 
 func NewSecurityValidator(allowedPaths []string) *SecurityValidator {
@@ -98,24 +98,24 @@ func (s *SecurityValidator) ValidatePluginCapabilities(plugin LLMPlugin) error {
 
 func (s *SecurityValidator) SandboxPlugin(plugin LLMPlugin) error {
 	utils.GetLogger().Infof("Setting up sandbox for plugin %s", plugin.Name())
-	
+
 	// Create plugin-specific security context
 	securityContext := &PluginSecurityContext{
 		AllowedPaths:     s.allowedPaths,
-		BlockedFunctions:  s.blockedFunctions,
+		BlockedFunctions: s.blockedFunctions,
 		ResourceLimits: ResourceLimits{
-			MaxMemoryMB:    256,
-			MaxCPUPercent:  50,
+			MaxMemoryMB:        256,
+			MaxCPUPercent:      50,
 			MaxFileDescriptors: 100,
-			NetworkAccess:  false,
+			NetworkAccess:      false,
 		},
 	}
-	
+
 	// Register security context with plugin
 	if err := plugin.SetSecurityContext(securityContext); err != nil {
 		return fmt.Errorf("failed to set security context: %w", err)
 	}
-	
+
 	utils.GetLogger().Infof("Successfully sandboxed plugin %s", plugin.Name())
 	return nil
 }

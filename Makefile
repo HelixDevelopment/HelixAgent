@@ -49,16 +49,60 @@ test:
 test-coverage:
 	@echo "📊 Running tests with coverage..."
 	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "📈 Coverage report generated: coverage.html"
 
+test-coverage-100:
+	@echo "📊 Running tests with 100% coverage requirement..."
+	@go test -v -race -coverprofile=coverage.out ./...
+	@coverage=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	if [ $$(echo "$$coverage < 100" | bc -l) -eq 1 ]; then \
+		echo "❌ Coverage is $$coverage%, required 100%"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage is $$coverage%"; \
+	fi
+	go tool cover -html=coverage.out -o coverage.html
+
 test-unit:
 	@echo "🧪 Running unit tests..."
-	go test -v ./tests/unit
+	go test -v ./internal/... -short
 
 test-integration:
 	@echo "🧪 Running integration tests..."
 	go test -v ./tests/integration
+
+test-e2e:
+	@echo "🧪 Running end-to-end tests..."
+	go test -v ./tests/e2e
+
+test-security:
+	@echo "🔒 Running security tests..."
+	go test -v ./tests/security
+
+test-stress:
+	@echo "⚡ Running stress tests..."
+	go test -v ./tests/stress
+
+test-chaos:
+	@echo "🌀 Running chaos tests..."
+	go test -v ./tests/challenge
+
+test-all-types:
+	@echo "🧪 Running all 6 test types..."
+	@echo "1. Unit tests..."
+	go test -v ./internal/... -short
+	@echo "2. Integration tests..."
+	go test -v ./tests/integration
+	@echo "3. E2E tests..."
+	go test -v ./tests/e2e
+	@echo "4. Security tests..."
+	go test -v ./tests/security
+	@echo "5. Stress tests..."
+	go test -v ./tests/stress
+	@echo "6. Chaos tests..."
+	go test -v ./tests/challenge
 
 test-bench:
 	@echo "⚡ Running benchmark tests..."
@@ -236,6 +280,24 @@ docs-api:
 	@echo "📚 Generating API documentation..."
 	@echo "API documentation available at: http://localhost:8080/docs"
 
+docs-build:
+	@echo "📚 Building comprehensive documentation..."
+	@mkdir -p Website/docs
+	@cp -r docs/* Website/docs/
+	@echo "✅ Documentation built in Website/docs/"
+
+docs-user-manuals:
+	@echo "📚 Building user manuals..."
+	@mkdir -p Website/user-manuals
+	@echo "User manuals will be generated here" > Website/user-manuals/README.md
+	@echo "✅ User manuals directory created"
+
+docs-video-courses:
+	@echo "🎥 Building video course materials..."
+	@mkdir -p Website/video-courses
+	@echo "Video course materials will be generated here" > Website/video-courses/README.md
+	@echo "✅ Video courses directory created"
+
 # =============================================================================
 # PROVISIONING TARGETS
 # =============================================================================
@@ -268,11 +330,17 @@ help:
 	@echo "  run                Run SuperAgent locally"
 	@echo "  run-dev            Run SuperAgent in development mode"
 	@echo ""
-	@echo "🧪 Test Commands:"
+	@echo "🧪 Test Commands (6 Types):"
 	@echo "  test               Run all tests"
-	@echo "  test-coverage     Run tests with coverage report"
+	@echo "  test-coverage      Run tests with coverage report"
+	@echo "  test-coverage-100  Run tests with 100% coverage requirement"
 	@echo "  test-unit          Run unit tests only"
 	@echo "  test-integration   Run integration tests only"
+	@echo "  test-e2e           Run end-to-end tests"
+	@echo "  test-security      Run security tests"
+	@echo "  test-stress        Run stress tests"
+	@echo "  test-chaos         Run chaos tests"
+	@echo "  test-all-types     Run all 6 test types"
 	@echo "  test-bench         Run benchmark tests"
 	@echo "  test-race          Run tests with race detection"
 	@echo ""
@@ -307,6 +375,9 @@ help:
 	@echo "📚 Documentation:"
 	@echo "  docs               Serve documentation"
 	@echo "  docs-api           Show API documentation endpoint"
+	@echo "  docs-build         Build comprehensive documentation"
+	@echo "  docs-user-manuals  Build user manuals"
+	@echo "  docs-video-courses Build video course materials"
 	@echo ""
 	@echo "⚙️  Setup:"
 	@echo "  setup-dev          Setup development environment"

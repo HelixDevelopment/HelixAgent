@@ -117,8 +117,13 @@ func (d *DependencyResolver) checkConflicts(plugin string, deps []string) error 
 	// Check if any dependency conflicts with existing plugins
 	for _, dep := range deps {
 		if existing, exists := d.registry.Get(dep); exists {
-			// Check version compatibility (simplified)
-			if existing.Version() != "1.0.0" { // TODO: Implement proper version checking
+			// TODO: Implement proper version compatibility checking
+			// This requires:
+			// 1. Storing version constraints in dependencies (not just plugin names)
+			// 2. Using semantic version parsing and compatibility rules
+			// 3. Possibly integrating with VersionManager
+			// For now, using a simplified check
+			if existing.Version() != "1.0.0" {
 				return fmt.Errorf("version conflict for dependency %s", dep)
 			}
 		}

@@ -13,7 +13,7 @@ type ProviderCapabilities struct {
 	SupportsReasoning       bool              `json:"supports_reasoning"`
 	SupportsCodeCompletion  bool              `json:"supports_code_completion"`
 	SupportsCodeAnalysis    bool              `json:"supports_code_analysis"`
-	SupportsRefactoring      bool              `json:"supports_refactoring"`
+	SupportsRefactoring     bool              `json:"supports_refactoring"`
 	Limits                  ModelLimits       `json:"limits"`
 	Metadata                map[string]string `json:"metadata"`
 }

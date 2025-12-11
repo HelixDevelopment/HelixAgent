@@ -23,8 +23,7 @@ func (c *ClaudeProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, 
 }
 
 func (c *ClaudeProvider) HealthCheck() error {
-	// TODO: Implement actual health check
-	return nil
+	return c.provider.HealthCheck()
 }
 
 func (c *ClaudeProvider) GetCapabilities() *ProviderCapabilities {

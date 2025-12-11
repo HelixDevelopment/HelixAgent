@@ -81,8 +81,12 @@ func (r *Reloader) ReloadAllConfigs(ctx context.Context) error {
 }
 
 func (r *Reloader) WatchForConfigChanges(ctx context.Context, configDir string) {
-	// TODO: Watch configuration files for changes
-	// This would integrate with the file watcher
+	// TODO: Implement configuration file watching
+	// This would require:
+	// 1. Setting up a file system watcher (e.g., using fsnotify)
+	// 2. Detecting changes to plugin configuration files
+	// 3. Triggering hot reload when configs change
+	// 4. Debouncing to avoid rapid reloads
 	utils.GetLogger().Info("Configuration watching not yet implemented")
 }
 

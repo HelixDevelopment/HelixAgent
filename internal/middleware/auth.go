@@ -351,10 +351,6 @@ func (a *AuthMiddleware) Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement actual user authentication against database
-	// For now, accept any username/password and create a token
-	// In production, you would validate against a user database
-
 	// Authenticate user against database
 	user, err := a.authenticateUser(req.Username, req.Password)
 	if err != nil {
@@ -380,13 +376,58 @@ func (a *AuthMiddleware) Login(c *gin.Context) {
 		Token:     token,
 		ExpiresIn: int(a.tokenExpiry.Seconds()),
 		User: UserInfo{
-			ID:       "user123",
-			Username: req.Username,
-			Role:     "user",
+			ID:       fmt.Sprintf("%d", user.ID),
+			Username: user.Username,
+			Role:     user.Role,
 		},
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// Register handles user registration
+func (a *AuthMiddleware) Register(c *gin.Context) {
+	var req services.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	// Register user
+	user, err := a.userService.Register(context.Background(), &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "registration_failed",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Generate token for the new user
+	token, err := a.GenerateToken(fmt.Sprintf("%d", user.ID), user.Username, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "token_generation_failed",
+			"message": "Failed to generate token",
+		})
+		return
+	}
+
+	// Return token and user info
+	response := LoginResponse{
+		Token:     token,
+		ExpiresIn: int(a.tokenExpiry.Seconds()),
+		User: UserInfo{
+			ID:       fmt.Sprintf("%d", user.ID),
+			Username: user.Username,
+			Role:     user.Role,
+		},
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // Logout handles user logout

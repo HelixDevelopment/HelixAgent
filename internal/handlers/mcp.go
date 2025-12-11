@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,18 +15,20 @@ import (
 // MCPHandler implements Model Context Protocol endpoints
 type MCPHandler struct {
 	providerRegistry *services.ProviderRegistry
-	config          *config.MCPConfig
+	mcpManager       *services.MCPManager
+	config           *config.MCPConfig
 }
 
 // NewMCPHandler creates a new MCP handler
 func NewMCPHandler(registry *services.ProviderRegistry, config *config.MCPConfig) *MCPHandler {
 	return &MCPHandler{
 		providerRegistry: registry,
-		config:          config,
+		mcpManager:       services.NewMCPManager(),
+		config:           config,
 	}
 }
 
-// MCPCapabilities returns MCP capabilities from all providers
+// MCPCapabilities returns MCP capabilities from all providers and MCP servers
 func (h *MCPHandler) MCPCapabilities(c *gin.Context) {
 	if !h.config.Enabled {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -34,9 +37,10 @@ func (h *MCPHandler) MCPCapabilities(c *gin.Context) {
 		return
 	}
 
-	providers := h.providerRegistry.ListProviders()
 	capabilities := make(map[string]interface{})
-	
+
+	// Get capabilities from LLM providers
+	providers := h.providerRegistry.ListProviders()
 	for _, providerName := range providers {
 		if provider, err := h.providerRegistry.GetProvider(providerName); err == nil {
 			providerCaps := provider.GetCapabilities()
@@ -53,6 +57,17 @@ func (h *MCPHandler) MCPCapabilities(c *gin.Context) {
 		}
 	}
 
+	// Get capabilities from MCP servers
+	mcpTools := h.mcpManager.ListTools()
+	mcpCapabilities := make(map[string]interface{})
+	for _, tool := range mcpTools {
+		mcpCapabilities[tool.Name] = map[string]interface{}{
+			"description": tool.Description,
+			"inputSchema": tool.InputSchema,
+			"server":      tool.Server.Name,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"version": "2024-11-05",
 		"capabilities": map[string]interface{}{
@@ -66,11 +81,12 @@ func (h *MCPHandler) MCPCapabilities(c *gin.Context) {
 				"listChanged": true,
 			},
 		},
-		"providers": capabilities,
+		"providers":   capabilities,
+		"mcp_servers": mcpCapabilities,
 	})
 }
 
-// MCPTools lists all available tools from all providers
+// MCPTools lists all available tools from all providers and MCP servers
 func (h *MCPHandler) MCPTools(c *gin.Context) {
 	if !h.config.Enabled {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -79,9 +95,10 @@ func (h *MCPHandler) MCPTools(c *gin.Context) {
 		return
 	}
 
-	providers := h.providerRegistry.ListProviders()
 	var allTools []interface{}
 
+	// Get tools from LLM providers
+	providers := h.providerRegistry.ListProviders()
 	for _, providerName := range providers {
 		tools := h.getProviderTools(providerName)
 		if h.config.UnifiedToolNamespace {
@@ -95,6 +112,24 @@ func (h *MCPHandler) MCPTools(c *gin.Context) {
 			}
 		}
 		allTools = append(allTools, tools...)
+	}
+
+	// Get tools from MCP servers
+	mcpTools := h.mcpManager.ListTools()
+	for _, tool := range mcpTools {
+		toolInfo := map[string]interface{}{
+			"name":        tool.Name,
+			"description": tool.Description,
+			"inputSchema": tool.InputSchema,
+			"type":        "mcp_server",
+			"server":      tool.Server.Name,
+		}
+
+		if h.config.UnifiedToolNamespace {
+			toolInfo["name"] = fmt.Sprintf("mcp_%s_%s", tool.Server.Name, tool.Name)
+		}
+
+		allTools = append(allTools, toolInfo)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -123,19 +158,55 @@ func (h *MCPHandler) MCPToolsCall(c *gin.Context) {
 		return
 	}
 
+	// Check if this is an MCP server tool call
+	if _, err := h.mcpManager.GetTool(request.Name); err == nil {
+		// Execute MCP server tool
+		result, err := h.mcpManager.CallTool(c.Request.Context(), request.Name, request.Arguments)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("MCP tool call failed: %v", err),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("%v", result),
+				},
+			},
+			"isError":  false,
+			"toolType": "mcp_server",
+		})
+		return
+	}
+
 	// Extract provider name if using unified namespace
 	providerName := "superagent-ensemble"
+	toolName := request.Name
+
+	if h.config.UnifiedToolNamespace {
+		// Parse tool name to extract provider
+		if strings.Contains(request.Name, "_") {
+			parts := strings.SplitN(request.Name, "_", 2)
+			if len(parts) == 2 {
+				providerName = parts[0]
+				toolName = parts[1]
+			}
+		}
+	}
 
 	// Create LLM request for tool call
 	req := &models.LLMRequest{
-		ID:       fmt.Sprintf("mcp-%d", time.Now().Unix()),
-		Prompt:    fmt.Sprintf("Execute tool: %s with args: %v", request.Name, request.Arguments),
+		ID:     fmt.Sprintf("mcp-%d", time.Now().Unix()),
+		Prompt: fmt.Sprintf("Execute tool: %s with args: %v", toolName, request.Arguments),
 		Messages: []models.Message{
 			{
 				Role:    "user",
-				Content: fmt.Sprintf("Please execute the tool '%s' with these arguments: %v", request.Name, request.Arguments),
+				Content: fmt.Sprintf("Please execute the tool '%s' with these arguments: %v", toolName, request.Arguments),
 				ToolCalls: map[string]interface{}{
-					"name": request.Name,
+					"name":      toolName,
 					"arguments": request.Arguments,
 				},
 			},
@@ -170,7 +241,8 @@ func (h *MCPHandler) MCPToolsCall(c *gin.Context) {
 				"text": result.Selected.Content,
 			},
 		},
-		"isError": false,
+		"isError":  false,
+		"toolType": "llm_provider",
 	})
 }
 
@@ -246,6 +318,16 @@ func (h *MCPHandler) MCPResources(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"resources": resources,
 	})
+}
+
+// RegisterMCPServer registers an MCP server with the handler
+func (h *MCPHandler) RegisterMCPServer(serverConfig map[string]interface{}) error {
+	return h.mcpManager.RegisterServer(serverConfig)
+}
+
+// GetMCPManager returns the MCP manager for external access
+func (h *MCPHandler) GetMCPManager() *services.MCPManager {
+	return h.mcpManager
 }
 
 // Helper functions

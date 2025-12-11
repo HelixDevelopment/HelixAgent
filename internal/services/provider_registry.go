@@ -39,12 +39,12 @@ type ProviderConfig struct {
 
 // ModelConfig holds configuration for a specific model
 type ModelConfig struct {
-	ID             string            `json:"id"`
-	Name           string            `json:"name"`
-	Enabled        bool              `json:"enabled"`
-	Weight         float64           `json:"weight"`
-	Capabilities   []string          `json:"capabilities"`
-	CustomParams   map[string]any    `json:"custom_params"`
+	ID           string         `json:"id"`
+	Name         string         `json:"name"`
+	Enabled      bool           `json:"enabled"`
+	Weight       float64        `json:"weight"`
+	Capabilities []string       `json:"capabilities"`
+	CustomParams map[string]any `json:"custom_params"`
 }
 
 // RegistryConfig holds configuration for provider registry

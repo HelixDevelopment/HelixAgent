@@ -119,14 +119,14 @@ type ProviderCapabilities struct {
 	SupportsVision          bool              `json:"supports_vision"`
 	Limits                  ModelLimits       `json:"limits"`
 	Metadata                map[string]string `json:"metadata"`
-	
+
 	// LSP specific capabilities
-	SupportsTools           bool              `json:"supports_tools"`
-	SupportsSearch          bool              `json:"supports_search"`
-	SupportsReasoning       bool              `json:"supports_reasoning"`
-	SupportsCodeCompletion  bool              `json:"supports_code_completion"`
-	SupportsCodeAnalysis    bool              `json:"supports_code_analysis"`
-	SupportsRefactoring      bool              `json:"supports_refactoring"`
+	SupportsTools          bool `json:"supports_tools"`
+	SupportsSearch         bool `json:"supports_search"`
+	SupportsReasoning      bool `json:"supports_reasoning"`
+	SupportsCodeCompletion bool `json:"supports_code_completion"`
+	SupportsCodeAnalysis   bool `json:"supports_code_analysis"`
+	SupportsRefactoring    bool `json:"supports_refactoring"`
 }
 
 // ModelLimits defines the operational limits of an LLM model.
@@ -135,4 +135,92 @@ type ModelLimits struct {
 	MaxInputLength        int `json:"max_input_length"`
 	MaxOutputLength       int `json:"max_output_length"`
 	MaxConcurrentRequests int `json:"max_concurrent_requests"`
+}
+
+// LSP-related types for Language Server Protocol integration
+
+// CodeIntelligence represents comprehensive code intelligence from LSP
+type CodeIntelligence struct {
+	FilePath       string            `json:"file_path"`
+	Diagnostics    []*Diagnostic     `json:"diagnostics"`
+	Completions    []*CompletionItem `json:"completions"`
+	Hover          *HoverInfo        `json:"hover"`
+	Definitions    []*Location       `json:"definitions"`
+	References     []*Location       `json:"references"`
+	Symbols        []*SymbolInfo     `json:"symbols"`
+	SemanticTokens *SemanticTokens   `json:"semantic_tokens"`
+}
+
+// Diagnostic represents a diagnostic message from LSP
+type Diagnostic struct {
+	Range              Range                          `json:"range"`
+	Severity           int                            `json:"severity"`
+	Code               string                         `json:"code"`
+	Source             string                         `json:"source"`
+	Message            string                         `json:"message"`
+	RelatedInformation []DiagnosticRelatedInformation `json:"related_information"`
+}
+
+// DiagnosticRelatedInformation represents related diagnostic information
+type DiagnosticRelatedInformation struct {
+	Location Location `json:"location"`
+	Message  string   `json:"message"`
+}
+
+// CompletionItem represents a completion item from LSP
+type CompletionItem struct {
+	Label         string `json:"label"`
+	Kind          int    `json:"kind"`
+	Detail        string `json:"detail"`
+	Documentation string `json:"documentation"`
+	InsertText    string `json:"insert_text"`
+}
+
+// HoverInfo represents hover information from LSP
+type HoverInfo struct {
+	Content  string `json:"content"`
+	Language string `json:"language"`
+}
+
+// Location represents a location in a file
+type Location struct {
+	URI   string `json:"uri"`
+	Range Range  `json:"range"`
+}
+
+// Range represents a range in a text document
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+// Position represents a position in a text document
+type Position struct {
+	Line      int `json:"line"`
+	Character int `json:"character"`
+}
+
+// SymbolInfo represents symbol information from LSP
+type SymbolInfo struct {
+	Name          string        `json:"name"`
+	Kind          int           `json:"kind"`
+	Location      Location      `json:"location"`
+	ContainerName string        `json:"container_name"`
+	Children      []*SymbolInfo `json:"children"`
+}
+
+// SemanticTokens represents semantic tokens from LSP
+type SemanticTokens struct {
+	Data []int `json:"data"`
+}
+
+// WorkspaceEdit represents a workspace edit from LSP
+type WorkspaceEdit struct {
+	Changes map[string][]*TextEdit `json:"changes"`
+}
+
+// TextEdit represents a text edit
+type TextEdit struct {
+	Range   Range  `json:"range"`
+	NewText string `json:"newText"`
 }

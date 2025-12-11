@@ -88,7 +88,7 @@ func (d *Discovery) WatchForChanges() {
 		utils.GetLogger().Errorf("Failed to create plugin watcher: %v", err)
 		return
 	}
-	
+
 	watcher.Start()
 	utils.GetLogger().Info("Started plugin discovery watching for hot-reload")
 }
@@ -96,7 +96,7 @@ func (d *Discovery) WatchForChanges() {
 // onPluginChange handles plugin file changes for hot-reload
 func (d *Discovery) onPluginChange(path string) {
 	utils.GetLogger().Infof("Plugin file changed: %s", path)
-	
+
 	// Check if it's a create/update event
 	if err := d.loadPlugin(path); err != nil {
 		utils.GetLogger().Errorf("Failed to hot-reload plugin %s: %v", path, err)

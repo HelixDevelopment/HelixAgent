@@ -2,7 +2,7 @@
 
 ## Overview
 
-SuperAgent provides a unified OpenAI-compatible API that aggregates responses from multiple LLM providers (DeepSeek, Qwen, OpenRouter) and offers intelligent ensemble capabilities.
+SuperAgent provides a unified OpenAI-compatible API that aggregates responses from multiple LLM providers (DeepSeek, Qwen, OpenRouter, Claude, Gemini) and offers intelligent ensemble capabilities. The system includes advanced features like Model Context Protocol (MCP) support, Language Server Protocol (LSP) integration, intelligent tool orchestration, context management, and security sandboxing.
 
 ## Base URL
 
@@ -500,6 +500,82 @@ curl -X POST http://admin:admin@localhost:3000/api/dashboards/db \
   -H "Content-Type: application/json" \
   -d @monitoring/dashboards/superagent-dashboard.json
 ```
+
+## Advanced Services
+
+SuperAgent includes several advanced services that enhance LLM interactions and provide enterprise-grade capabilities. These services are currently available as internal APIs and will be exposed via REST endpoints in future releases.
+
+### 1. Model Context Protocol (MCP)
+
+The MCP service enables seamless integration with external tools and services through a standardized protocol.
+
+**Features:**
+- Auto-discovery of MCP servers
+- Tool registration and management
+- Health monitoring and failover
+- Secure tool execution
+
+**Current Status:** Internal service, REST API integration planned
+
+### 2. Language Server Protocol (LSP)
+
+LSP integration provides advanced code intelligence capabilities.
+
+**Features:**
+- Workspace symbols and references
+- Code completion with context awareness
+- Refactoring support
+- Multi-language support (Go, Python, JavaScript, etc.)
+
+**Current Status:** Internal service, REST API integration planned
+
+### 3. Tool Registry & Orchestration
+
+Intelligent tool management and execution orchestration.
+
+**Features:**
+- Dynamic tool discovery and registration
+- Tool validation and security checks
+- Parallel tool execution
+- Dependency management and cycle detection
+
+**Current Status:** Internal service, REST API integration planned
+
+### 4. Context Management
+
+Advanced context handling with ML-based relevance scoring.
+
+**Features:**
+- Multi-source context aggregation
+- Relevance scoring and ranking
+- Context compression and optimization
+- Conflict detection and resolution
+
+**Current Status:** Internal service, REST API integration planned
+
+### 5. Security Sandbox
+
+Secure execution environment for tool operations.
+
+**Features:**
+- Docker containerization
+- Resource limits and isolation
+- Command validation and sanitization
+- Audit logging and monitoring
+
+**Current Status:** Internal service, REST API integration planned
+
+### 6. Integration Orchestrator
+
+Workflow orchestration for complex multi-step operations.
+
+**Features:**
+- Code analysis workflows
+- Tool chain execution
+- Parallel processing
+- Error handling and recovery
+
+**Current Status:** Internal service, REST API integration planned
 
 ## Best Practices
 

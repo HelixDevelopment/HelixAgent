@@ -23,8 +23,7 @@ func (d *DeepSeekProvider) Complete(req *models.LLMRequest) (*models.LLMResponse
 }
 
 func (d *DeepSeekProvider) HealthCheck() error {
-	// TODO: Implement actual health check
-	return nil
+	return d.provider.HealthCheck()
 }
 
 func (d *DeepSeekProvider) GetCapabilities() *ProviderCapabilities {
@@ -40,7 +39,7 @@ func (d *DeepSeekProvider) GetCapabilities() *ProviderCapabilities {
 		SupportsReasoning:       true,
 		SupportsCodeCompletion:  true,
 		SupportsCodeAnalysis:    true,
-		SupportsRefactoring:      true,
+		SupportsRefactoring:     true,
 		Limits: ModelLimits{
 			MaxTokens:             4096,
 			MaxInputLength:        4096,

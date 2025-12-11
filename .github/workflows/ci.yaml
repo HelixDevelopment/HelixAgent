@@ -29,5 +29,45 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
-        run: go test ./...
+       - name: Run Unit Tests
+         run: go test -v -coverprofile=coverage_unit.out ./internal/...
+
+       - name: Run Integration Tests
+         run: go test -v -coverprofile=coverage_integration.out ./tests/integration/...
+
+       - name: Run E2E Tests
+         run: go test -v ./tests/e2e/...
+         env:
+           TEST_ENV: ci
+
+       - name: Run Stress Tests
+         run: go test -v ./tests/stress/...
+         env:
+           TEST_ENV: ci
+
+       - name: Run Security Tests
+         run: go test -v ./tests/security/...
+         env:
+           TEST_ENV: ci
+
+       - name: Run Standalone Tests
+         run: |
+           cd tests/standalone
+           go run test_api_standalone.go
+           go run test_ensemble_standalone.go
+           go run test_final_production.go
+
+       - name: Generate Coverage Report
+         run: |
+           go tool cover -html=coverage_unit.out -o coverage_unit.html
+           go tool cover -html=coverage_integration.out -o coverage_integration.html
+           go tool cover -func=coverage_unit.out
+           go tool cover -func=coverage_integration.out
+
+       - name: Upload Coverage Reports
+         uses: actions/upload-artifact@v3
+         with:
+           name: coverage-reports
+           path: |
+             coverage_*.out
+             coverage_*.html

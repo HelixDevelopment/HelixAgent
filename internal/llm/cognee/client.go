@@ -137,14 +137,14 @@ func (c *Client) AutoContainerize() error {
 // testConnection checks if Cognee is already running
 func (c *Client) testConnection() bool {
 	url := fmt.Sprintf("%s/health", c.baseURL)
-	
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	return resp.StatusCode == http.StatusOK
 }
 

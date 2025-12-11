@@ -213,3 +213,14 @@ type SymbolInfo struct {
 type SemanticTokens struct {
 	Data []int `json:"data"`
 }
+
+// WorkspaceEdit represents a workspace edit from LSP
+type WorkspaceEdit struct {
+	Changes map[string][]*TextEdit `json:"changes"`
+}
+
+// TextEdit represents a text edit
+type TextEdit struct {
+	Range   Range  `json:"range"`
+	NewText string `json:"newText"`
+}

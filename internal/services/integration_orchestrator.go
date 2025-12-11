@@ -354,10 +354,52 @@ func (io *IntegrationOrchestrator) executeOperation(ctx context.Context, op Oper
 
 func (io *IntegrationOrchestrator) buildDependencyGraph(steps []WorkflowStep) map[string][]string {
 	graph := make(map[string][]string)
-	for _, step := range steps {
-		graph[step.ID] = step.DependsOn
+	stepMap := make(map[string]*WorkflowStep)
+
+	for i := range steps {
+		stepMap[steps[i].ID] = &steps[i]
+		graph[steps[i].ID] = steps[i].DependsOn
 	}
+
+	// Detect cycles
+	if io.hasCycles(graph) {
+		log.Printf("Warning: Cycle detected in workflow dependencies")
+		// Could implement cycle breaking logic here
+	}
+
 	return graph
+}
+
+// hasCycles detects if the dependency graph has cycles
+func (io *IntegrationOrchestrator) hasCycles(graph map[string][]string) bool {
+	visited := make(map[string]bool)
+	recStack := make(map[string]bool)
+
+	for node := range graph {
+		if !visited[node] {
+			if io.hasCyclesUtil(node, graph, visited, recStack) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// hasCyclesUtil is a utility function for cycle detection
+func (io *IntegrationOrchestrator) hasCyclesUtil(node string, graph map[string][]string, visited, recStack map[string]bool) bool {
+	visited[node] = true
+	recStack[node] = true
+
+	for _, neighbor := range graph[node] {
+		if !visited[neighbor] && io.hasCyclesUtil(neighbor, graph, visited, recStack) {
+			return true
+		} else if recStack[neighbor] {
+			return true
+		}
+	}
+
+	recStack[node] = false
+	return false
 }
 
 func (io *IntegrationOrchestrator) findExecutableSteps(steps []WorkflowStep, graph map[string][]string, completed, running map[string]bool) []WorkflowStep {

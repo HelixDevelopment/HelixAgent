@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -36,7 +37,7 @@ func NewToolRegistry(mcpManager *MCPManager, lspClient *LSPClient) *ToolRegistry
 	}
 }
 
-// RegisterCustomTool registers a custom tool
+// RegisterCustomTool registers a custom tool with validation
 func (tr *ToolRegistry) RegisterCustomTool(tool Tool) error {
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
@@ -46,8 +47,82 @@ func (tr *ToolRegistry) RegisterCustomTool(tool Tool) error {
 		return fmt.Errorf("tool %s already registered", name)
 	}
 
+	// Validate tool metadata
+	if err := tr.validateToolMetadata(tool); err != nil {
+		return fmt.Errorf("tool validation failed: %w", err)
+	}
+
 	tr.tools[name] = tool
 	tr.customTools[name] = tool
+	return nil
+}
+
+// validateToolMetadata validates tool metadata
+func (tr *ToolRegistry) validateToolMetadata(tool Tool) error {
+	if tool.Name() == "" {
+		return fmt.Errorf("tool name cannot be empty")
+	}
+
+	if tool.Description() == "" {
+		return fmt.Errorf("tool description cannot be empty")
+	}
+
+	params := tool.Parameters()
+	if params == nil {
+		return fmt.Errorf("tool parameters cannot be nil")
+	}
+
+	// Validate parameter schemas
+	for paramName, paramSchema := range params {
+		if err := tr.validateParameterSchema(paramName, paramSchema); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateParameterSchema validates a parameter schema
+func (tr *ToolRegistry) validateParameterSchema(name string, schema interface{}) error {
+	// Basic validation - can be enhanced with JSON Schema validation
+	schemaMap, ok := schema.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("parameter %s schema must be a map", name)
+	}
+
+	if _, hasType := schemaMap["type"]; !hasType {
+		return fmt.Errorf("parameter %s schema must have a type", name)
+	}
+
+	return nil
+}
+
+// RegisterExternalToolSource registers tools from an external source
+func (tr *ToolRegistry) RegisterExternalToolSource(sourceName string, toolFetcher func() ([]Tool, error)) error {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	tools, err := toolFetcher()
+	if err != nil {
+		return fmt.Errorf("failed to fetch tools from %s: %w", sourceName, err)
+	}
+
+	for _, tool := range tools {
+		name := tool.Name()
+		if _, exists := tr.tools[name]; exists {
+			log.Printf("Tool %s from %s already exists, skipping", name, sourceName)
+			continue
+		}
+
+		if err := tr.validateToolMetadata(tool); err != nil {
+			log.Printf("Tool %s from %s validation failed: %v, skipping", name, sourceName, err)
+			continue
+		}
+
+		tr.tools[name] = tool
+		log.Printf("Registered tool %s from external source %s", name, sourceName)
+	}
+
 	return nil
 }
 

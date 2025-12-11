@@ -778,6 +778,150 @@ func (c *LSPClient) parseSemanticTokens(result interface{}) (*models.SemanticTok
 	return tokens, nil
 }
 
+// GetWorkspaceSymbols gets symbols from the entire workspace
+func (c *LSPClient) GetWorkspaceSymbols(ctx context.Context) ([]*models.SymbolInfo, error) {
+	c.mu.RLock()
+	server := c.server
+	c.mu.RUnlock()
+
+	if server == nil || !server.Initialized {
+		return nil, fmt.Errorf("LSP server not initialized")
+	}
+
+	if !c.supportsCapability(server, "workspaceSymbolProvider") {
+		return nil, fmt.Errorf("server does not support workspace symbols")
+	}
+
+	request := LSPMessage{
+		JSONRPC: "2.0",
+		ID:      c.nextMessageID(),
+		Method:  "workspace/symbol",
+		Params: map[string]interface{}{
+			"query": "",
+		},
+	}
+
+	response, err := c.sendMessage(server, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Error != nil {
+		return nil, fmt.Errorf("workspace symbol error: %s", response.Error.Message)
+	}
+
+	return c.parseSymbols(response.Result)
+}
+
+// GetReferences gets all references to a symbol at a position across the workspace
+func (c *LSPClient) GetReferences(ctx context.Context, filePath string, position models.Position, includeDeclaration bool) ([]*models.Location, error) {
+	c.mu.RLock()
+	server := c.server
+	c.mu.RUnlock()
+
+	if server == nil || !server.Initialized {
+		return nil, fmt.Errorf("LSP server not initialized")
+	}
+
+	if !c.supportsCapability(server, "referencesProvider") {
+		return nil, fmt.Errorf("server does not support references")
+	}
+
+	request := LSPMessage{
+		JSONRPC: "2.0",
+		ID:      c.nextMessageID(),
+		Method:  "textDocument/references",
+		Params: map[string]interface{}{
+			"textDocument": LSPTextDocument{URI: fmt.Sprintf("file://%s", filePath)},
+			"position":     position,
+			"context": map[string]interface{}{
+				"includeDeclaration": includeDeclaration,
+			},
+		},
+	}
+
+	response, err := c.sendMessage(server, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Error != nil {
+		return nil, fmt.Errorf("references error: %s", response.Error.Message)
+	}
+
+	return c.parseLocations(response.Result)
+}
+
+// RenameSymbol performs a workspace-wide rename of a symbol
+func (c *LSPClient) RenameSymbol(ctx context.Context, filePath string, position models.Position, newName string) (*models.WorkspaceEdit, error) {
+	c.mu.RLock()
+	server := c.server
+	c.mu.RUnlock()
+
+	if server == nil || !server.Initialized {
+		return nil, fmt.Errorf("LSP server not initialized")
+	}
+
+	if !c.supportsCapability(server, "renameProvider") {
+		return nil, fmt.Errorf("server does not support rename")
+	}
+
+	request := LSPMessage{
+		JSONRPC: "2.0",
+		ID:      c.nextMessageID(),
+		Method:  "textDocument/rename",
+		Params: map[string]interface{}{
+			"textDocument": LSPTextDocument{URI: fmt.Sprintf("file://%s", filePath)},
+			"position":     position,
+			"newName":      newName,
+		},
+	}
+
+	response, err := c.sendMessage(server, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Error != nil {
+		return nil, fmt.Errorf("rename error: %s", response.Error.Message)
+	}
+
+	return c.parseWorkspaceEdit(response.Result)
+}
+
+// parseWorkspaceEdit parses a workspace edit response
+func (c *LSPClient) parseWorkspaceEdit(result interface{}) (*models.WorkspaceEdit, error) {
+	edit := &models.WorkspaceEdit{}
+
+	if resultMap, ok := result.(map[string]interface{}); ok {
+		if changes, ok := resultMap["changes"].(map[string]interface{}); ok {
+			edit.Changes = make(map[string][]*models.TextEdit)
+			for uri, edits := range changes {
+				if editsArray, ok := edits.([]interface{}); ok {
+					textEdits := make([]*models.TextEdit, len(editsArray))
+					for i, editData := range editsArray {
+						if editMap, ok := editData.(map[string]interface{}); ok {
+							textEdit := &models.TextEdit{}
+							if rangeData, ok := editMap["range"].(map[string]interface{}); ok {
+								if rng, err := c.parseRange(rangeData); err == nil {
+									textEdit.Range = *rng
+								}
+							}
+							if newText, ok := editMap["newText"].(string); ok {
+								textEdit.NewText = newText
+							}
+							textEdits[i] = textEdit
+						}
+					}
+					edit.Changes[uri] = textEdits
+				}
+			}
+		}
+	}
+
+	return edit, nil
+}
+
 // Helper methods for parsing LSP responses
 func (c *LSPClient) parseCompletionItems(result interface{}) ([]*models.CompletionItem, error) {
 	// Simplified parsing - would need full implementation

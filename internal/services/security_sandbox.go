@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -10,9 +11,19 @@ import (
 
 // SecuritySandbox provides sandboxed execution for tools and plugins
 type SecuritySandbox struct {
-	allowedCommands map[string]bool
-	timeout         time.Duration
-	maxOutputSize   int
+	allowedCommands        map[string]bool
+	timeout                time.Duration
+	maxOutputSize          int
+	enableContainerization bool
+	containerImage         string
+	resourceLimits         ResourceLimits
+}
+
+// ResourceLimits defines resource constraints
+type ResourceLimits struct {
+	MaxCPU    string // e.g., "500m"
+	MaxMemory string // e.g., "256Mi"
+	MaxDisk   string // e.g., "100Mi"
 }
 
 // NewSecuritySandbox creates a new security sandbox
@@ -54,13 +65,52 @@ func (s *SecuritySandbox) ExecuteSandboxed(ctx context.Context, command string, 
 		}
 	}
 
-	// Create execution context with timeout
+	if s.enableContainerization {
+		return s.executeInContainer(ctx, command, args)
+	}
+
+	return s.executeDirectly(ctx, command, args)
+}
+
+// executeInContainer executes command in a Docker container
+func (s *SecuritySandbox) executeInContainer(ctx context.Context, command string, args []string) (*SandboxedResult, error) {
+	// Build docker run command
+	dockerArgs := []string{
+		"run", "--rm",
+		"--cpus", s.resourceLimits.MaxCPU,
+		"--memory", s.resourceLimits.MaxMemory,
+		"--read-only",
+		"--tmpfs", "/tmp",
+		"--network", "none",
+		s.containerImage,
+		command,
+	}
+	dockerArgs = append(dockerArgs, args...)
+
+	// Check if docker is available
+	if _, err := exec.LookPath("docker"); err != nil {
+		log.Printf("Docker not available, falling back to direct execution")
+		return s.executeDirectly(ctx, command, args)
+	}
+
+	return s.executeDirectly(ctx, "docker", dockerArgs)
+}
+
+// executeDirectly executes command directly with resource monitoring
+func (s *SecuritySandbox) executeDirectly(ctx context.Context, command string, args []string) (*SandboxedResult, error) {
+	// Prepare execution context with timeout
 	execCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	// Execute command
 	cmd := exec.CommandContext(execCtx, command, args...)
-	output, err := cmd.CombinedOutput()
+
+	// Capture output
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Run command
+	err := cmd.Run()
 
 	result := &SandboxedResult{
 		Command: command,
@@ -70,13 +120,15 @@ func (s *SecuritySandbox) ExecuteSandboxed(ctx context.Context, command string, 
 
 	if err != nil {
 		result.Error = err.Error()
+		result.Output = stderr.String()
 	} else {
 		// Limit output size
+		output := stdout.String()
 		if len(output) > s.maxOutputSize {
 			output = output[:s.maxOutputSize]
 			result.Truncated = true
 		}
-		result.Output = string(output)
+		result.Output = output
 	}
 
 	return result, nil

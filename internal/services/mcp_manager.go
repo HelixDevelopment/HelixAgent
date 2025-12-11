@@ -14,10 +14,13 @@ import (
 
 // MCPManager manages Model Context Protocol servers and tools
 type MCPManager struct {
-	servers        map[string]*MCPServer
-	availableTools map[string]*MCPTool
-	messageID      int
-	mu             sync.RWMutex
+	servers             map[string]*MCPServer
+	availableTools      map[string]*MCPTool
+	messageID           int
+	mu                  sync.RWMutex
+	autoDiscover        bool
+	retryAttempts       int
+	healthCheckInterval time.Duration
 }
 
 // MCPServer represents a registered MCP server
@@ -61,70 +64,132 @@ type MCPError struct {
 // NewMCPManager creates a new MCP manager
 func NewMCPManager() *MCPManager {
 	return &MCPManager{
-		servers:        make(map[string]*MCPServer),
-		availableTools: make(map[string]*MCPTool),
-		messageID:      1,
+		servers:             make(map[string]*MCPServer),
+		availableTools:      make(map[string]*MCPTool),
+		messageID:           1,
+		autoDiscover:        true,
+		retryAttempts:       3,
+		healthCheckInterval: 30 * time.Second,
 	}
 }
 
-// RegisterServer registers an MCP server
+// NewMCPManagerWithConfig creates a new MCP manager with configuration
+func NewMCPManagerWithConfig(autoDiscover bool, retryAttempts int, healthInterval time.Duration) *MCPManager {
+	return &MCPManager{
+		servers:             make(map[string]*MCPServer),
+		availableTools:      make(map[string]*MCPTool),
+		messageID:           1,
+		autoDiscover:        autoDiscover,
+		retryAttempts:       retryAttempts,
+		healthCheckInterval: healthInterval,
+	}
+}
+
+// RegisterServer registers an MCP server with enhanced error handling
 func (m *MCPManager) RegisterServer(serverConfig map[string]interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	serverName, ok := serverConfig["name"].(string)
+	name, ok := serverConfig["name"].(string)
 	if !ok {
-		return fmt.Errorf("server config missing 'name' field")
+		return fmt.Errorf("server config must include 'name'")
 	}
 
-	if _, exists := m.servers[serverName]; exists {
-		return fmt.Errorf("server %s already registered", serverName)
+	if _, exists := m.servers[name]; exists {
+		return fmt.Errorf("server %s already registered", name)
 	}
 
-	// Extract command configuration
 	command, ok := serverConfig["command"].([]interface{})
 	if !ok {
-		return fmt.Errorf("server config missing 'command' field")
+		return fmt.Errorf("server config must include 'command' as array")
 	}
 
-	cmdArgs := make([]string, len(command))
-	for i, arg := range command {
-		cmdArgs[i] = arg.(string)
+	cmd := make([]string, len(command))
+	for i, c := range command {
+		cmd[i] = c.(string)
 	}
 
-	// Create server instance
 	server := &MCPServer{
-		Name:         serverName,
-		Command:      cmdArgs,
+		Name:         name,
+		Command:      cmd,
 		Capabilities: make(map[string]interface{}),
 		Tools:        []*MCPTool{},
 	}
 
-	// Start the server process
-	if err := m.startServerProcess(server); err != nil {
-		return fmt.Errorf("failed to start server %s: %w", serverName, err)
+	// Validate command exists
+	if len(cmd) == 0 {
+		return fmt.Errorf("server command cannot be empty")
 	}
 
-	// Initialize the server
-	if err := m.initializeServer(server); err != nil {
-		if server.Process.Process != nil {
-			server.Process.Process.Kill()
+	// Try to start server immediately if auto-discover is enabled
+	if m.autoDiscover {
+		if err := m.startServerProcess(server); err != nil {
+			log.Printf("Failed to start server %s: %v", name, err)
+			// Don't fail registration, just log
+		} else {
+			if err := m.initializeServer(server); err != nil {
+				log.Printf("Failed to initialize server %s: %v", name, err)
+				m.stopServer(server)
+			} else {
+				if err := m.discoverServerTools(server); err != nil {
+					log.Printf("Failed to discover tools for server %s: %v", name, err)
+				}
+			}
 		}
-		return fmt.Errorf("failed to initialize server %s: %w", serverName, err)
 	}
 
-	// Discover tools
-	if err := m.discoverServerTools(server); err != nil {
-		if server.Process.Process != nil {
-			server.Process.Process.Kill()
-		}
-		return fmt.Errorf("failed to discover tools for server %s: %w", serverName, err)
-	}
-
-	m.servers[serverName] = server
-	log.Printf("Successfully registered MCP server: %s", serverName)
+	m.servers[name] = server
+	log.Printf("Registered MCP server: %s", name)
 
 	return nil
+}
+
+// AutoDiscoverServers attempts to auto-discover available MCP servers
+func (m *MCPManager) AutoDiscoverServers(ctx context.Context) error {
+	if !m.autoDiscover {
+		return nil
+	}
+
+	// Common MCP server configurations to try
+	commonServers := []map[string]interface{}{
+		{
+			"name":    "filesystem",
+			"command": []string{"npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
+		},
+		{
+			"name":    "git",
+			"command": []string{"npx", "-y", "@modelcontextprotocol/server-git", "--repository", "."},
+		},
+		{
+			"name":    "sqlite",
+			"command": []string{"npx", "-y", "@modelcontextprotocol/server-sqlite", "--db-path", ":memory:"},
+		},
+	}
+
+	for _, serverConfig := range commonServers {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			if err := m.RegisterServer(serverConfig); err != nil {
+				log.Printf("Failed to auto-discover server %s: %v", serverConfig["name"], err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// stopServer stops an MCP server process
+func (m *MCPManager) stopServer(server *MCPServer) {
+	if server.Process != nil && server.Process.Process != nil {
+		server.Process.Process.Kill()
+		server.Process.Wait()
+	}
+	server.Process = nil
+	server.Stdin = nil
+	server.Stdout = nil
+	server.Initialized = false
 }
 
 // startServerProcess starts the MCP server process

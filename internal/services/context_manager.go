@@ -314,25 +314,112 @@ func (cm *ContextManager) evictLowPriorityEntries() error {
 }
 
 func (cm *ContextManager) selectRelevantEntries(entries []*ContextEntry, requestType string, maxTokens int) []*ContextEntry {
+	// Score entries by relevance
+	type scoredEntry struct {
+		entry *ContextEntry
+		score float64
+	}
+
+	var scoredEntries []scoredEntry
+	for _, entry := range entries {
+		score := cm.calculateRelevanceScore(entry, requestType)
+		scoredEntries = append(scoredEntries, scoredEntry{entry: entry, score: score})
+	}
+
+	// Sort by score (descending) then by recency
+	sort.Slice(scoredEntries, func(i, j int) bool {
+		if scoredEntries[i].score != scoredEntries[j].score {
+			return scoredEntries[i].score > scoredEntries[j].score
+		}
+		return scoredEntries[i].entry.Timestamp.After(scoredEntries[j].entry.Timestamp)
+	})
+
+	// Select entries within token limit
 	selected := []*ContextEntry{}
 	totalTokens := 0
 
-	for _, entry := range entries {
-		// Estimate tokens (rough approximation: 4 chars per token)
-		estimatedTokens := len(entry.Content) / 4
-
+	for _, scored := range scoredEntries {
+		estimatedTokens := len(scored.entry.Content) / 4
 		if totalTokens+estimatedTokens > maxTokens {
 			break
 		}
 
-		// Relevance check based on request type
-		if cm.isRelevant(entry, requestType) {
-			selected = append(selected, entry)
-			totalTokens += estimatedTokens
-		}
+		selected = append(selected, scored.entry)
+		totalTokens += estimatedTokens
 	}
 
 	return selected
+}
+
+// calculateRelevanceScore calculates ML-based relevance score
+func (cm *ContextManager) calculateRelevanceScore(entry *ContextEntry, requestType string) float64 {
+	score := 0.0
+
+	// Base score from priority
+	score += float64(entry.Priority) * 10.0
+
+	// Recency bonus (newer entries get higher score)
+	hoursOld := time.Since(entry.Timestamp).Hours()
+	recencyScore := 1.0 / (1.0 + hoursOld/24.0) // Exponential decay
+	score += recencyScore * 5.0
+
+	// Content-based scoring
+	contentLower := strings.ToLower(entry.Content)
+
+	// Keyword matching
+	keywords := cm.extractKeywords(requestType)
+	keywordMatches := 0
+	for _, keyword := range keywords {
+		if strings.Contains(contentLower, keyword) {
+			keywordMatches++
+		}
+	}
+	score += float64(keywordMatches) * 2.0
+
+	// Type-specific scoring
+	switch requestType {
+	case "code_completion":
+		if entry.Type == "lsp" {
+			score += 15.0
+		}
+	case "tool_execution":
+		if entry.Type == "tool" || entry.Type == "mcp" {
+			score += 15.0
+		}
+	case "chat":
+		if entry.Type == "llm" {
+			score += 10.0
+		}
+	}
+
+	// Source reliability scoring
+	switch entry.Source {
+	case "lsp":
+		score += 8.0
+	case "mcp":
+		score += 7.0
+	case "tool":
+		score += 6.0
+	}
+
+	return score
+}
+
+// extractKeywords extracts keywords from request type
+func (cm *ContextManager) extractKeywords(requestType string) []string {
+	// Simple keyword extraction - can be enhanced with NLP
+	keywords := []string{requestType}
+
+	switch requestType {
+	case "code_completion":
+		keywords = append(keywords, "function", "class", "variable", "import", "syntax")
+	case "tool_execution":
+		keywords = append(keywords, "run", "execute", "command", "script")
+	case "chat":
+		keywords = append(keywords, "conversation", "question", "answer")
+	}
+
+	return keywords
 }
 
 func (cm *ContextManager) isRelevant(entry *ContextEntry, requestType string) bool {

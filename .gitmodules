@@ -1,3 +1,6 @@
 [submodule "Toolkit/SiliconFlow"]
 	path = Toolkit/SiliconFlow
 	url = git@github.com:vasic-digital/SiliconFlow-Toolkit.git
+[submodule "Toolkit/Chutes"]
+	path = Toolkit/Chutes
+	url = git@github.com:vasic-digital/Chutes-Toolkit.git

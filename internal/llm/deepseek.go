@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/superagent/superagent/internal/llm/providers/deepseek"
 	"github.com/superagent/superagent/internal/models"
@@ -19,10 +20,16 @@ func NewDeepSeekProvider(apiKey, baseURL, model string) *DeepSeekProvider {
 }
 
 func (d *DeepSeekProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	if d.provider == nil {
+		return nil, fmt.Errorf("DeepSeek provider not initialized")
+	}
 	return d.provider.Complete(context.Background(), req)
 }
 
 func (d *DeepSeekProvider) HealthCheck() error {
+	if d.provider == nil {
+		return fmt.Errorf("DeepSeek provider not initialized")
+	}
 	return d.provider.HealthCheck()
 }
 

@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/superagent/superagent/internal/llm/providers/gemini"
 	"github.com/superagent/superagent/internal/models"
@@ -19,10 +20,16 @@ func NewGeminiProvider(apiKey, baseURL, model string) *GeminiProvider {
 }
 
 func (g *GeminiProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	if g.provider == nil {
+		return nil, fmt.Errorf("Gemini provider not initialized")
+	}
 	return g.provider.Complete(context.Background(), req)
 }
 
 func (g *GeminiProvider) HealthCheck() error {
+	if g.provider == nil {
+		return fmt.Errorf("Gemini provider not initialized")
+	}
 	return g.provider.HealthCheck()
 }
 

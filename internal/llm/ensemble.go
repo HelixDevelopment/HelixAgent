@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/superagent/superagent/internal/models"
@@ -8,6 +9,10 @@ import (
 
 // RunEnsemble executes a parallel ensemble of LLM providers and returns the aggregated responses
 func RunEnsemble(req *models.LLMRequest) ([]*models.LLMResponse, *models.LLMResponse, error) {
+	if req == nil {
+		return nil, nil, fmt.Errorf("request cannot be nil")
+	}
+
 	// Initialize providers with default configurations
 	provs := []LLMProvider{
 		NewOllamaProvider("", ""),

@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/superagent/superagent/internal/llm/providers/claude"
 	"github.com/superagent/superagent/internal/models"
@@ -19,10 +20,16 @@ func NewClaudeProvider(apiKey, baseURL, model string) *ClaudeProvider {
 }
 
 func (c *ClaudeProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+	if c.provider == nil {
+		return nil, fmt.Errorf("Claude provider not initialized")
+	}
 	return c.provider.Complete(context.Background(), req)
 }
 
 func (c *ClaudeProvider) HealthCheck() error {
+	if c.provider == nil {
+		return fmt.Errorf("Claude provider not initialized")
+	}
 	return c.provider.HealthCheck()
 }
 

@@ -2,6 +2,18 @@ package models
 
 import "time"
 
+// User represents a user in the system
+type User struct {
+	ID           string    `json:"id" db:"id"`
+	Username     string    `json:"username" db:"username"`
+	Email        string    `json:"email" db:"email"`
+	PasswordHash string    `json:"-" db:"password_hash"`
+	APIKey       string    `json:"api_key" db:"api_key"`
+	Role         string    `json:"role" db:"role"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+}
+
 type LLMProvider struct {
 	ID           string                 `json:"id" db:"id"`
 	Name         string                 `json:"name" db:"name"`

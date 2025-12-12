@@ -29,6 +29,29 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   http://localhost:8080/v1/models
 ```
 
+## API Endpoint Summary
+
+| Endpoint | Method | Authentication | Description |
+|----------|--------|----------------|-------------|
+| `/health` | GET | None | Basic health check |
+| `/v1/health` | GET | None | Enhanced health with provider status |
+| `/metrics` | GET | None | Prometheus metrics |
+| `/v1/models` | GET | None | List available models |
+| `/v1/providers` | GET | None | Public provider listing |
+| `/v1/auth/register` | POST | None | Register new user |
+| `/v1/auth/login` | POST | None | Authenticate user |
+| `/v1/auth/refresh` | POST | Bearer Token | Refresh JWT token |
+| `/v1/auth/logout` | POST | Bearer Token | Invalidate token |
+| `/v1/auth/me` | GET | Bearer Token | Get current user info |
+| `/v1/completions` | POST | Bearer Token | Legacy text completion |
+| `/v1/completions/stream` | POST | Bearer Token | Streaming text completion |
+| `/v1/chat/completions` | POST | Bearer Token | Chat completion |
+| `/v1/chat/completions/stream` | POST | Bearer Token | Streaming chat completion |
+| `/v1/ensemble/completions` | POST | Bearer Token | Direct ensemble completion |
+| `/v1/providers` | GET | Bearer Token | Detailed provider info |
+| `/v1/providers/:name/health` | GET | Bearer Token | Provider-specific health |
+| `/v1/admin/health/all` | GET | Admin Token | Comprehensive system health |
+
 ## Available Models
 
 SuperAgent supports 22+ models from multiple providers:
@@ -311,39 +334,271 @@ Check health status of all providers.
 }
 ```
 
-### 7. Ensemble Configuration
+### 7. Authentication Endpoints
 
-#### POST /v1/ensemble/configure
-Configure ensemble behavior for intelligent response aggregation.
+#### POST /v1/auth/register
+Register a new user account.
 
 **Request Body:**
 ```json
 {
-  "strategy": "confidence_weighted",
-  "min_providers": 2,
-  "confidence_threshold": 0.7,
-  "timeout": 30,
-  "providers": ["deepseek", "qwen", "openrouter"],
-  "weights": {
-    "deepseek": 0.4,
-    "qwen": 0.3, 
-    "openrouter": 0.3
-  }
+  "username": "newuser",
+  "password": "securepassword123",
+  "email": "user@example.com"
 }
 ```
 
 **Response:**
 ```json
 {
-  "status": "configured",
-  "ensemble_id": "ensemble-123",
-  "configuration": {
-    "strategy": "confidence_weighted",
-    "min_providers": 2,
-    "confidence_threshold": 0.7,
-    "providers": ["deepseek", "qwen", "openrouter"]
+  "success": true,
+  "message": "User registered successfully",
+  "user_id": "user_123456",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### POST /v1/auth/login
+Authenticate and get JWT token.
+
+**Request Body:**
+```json
+{
+  "username": "existinguser",
+  "password": "securepassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 86400,
+  "user": {
+    "id": "user_123456",
+    "username": "existinguser",
+    "email": "user@example.com"
   }
 }
+```
+
+#### POST /v1/auth/refresh
+Refresh JWT token.
+
+**Headers:**
+```
+Authorization: Bearer <current_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 86400
+}
+```
+
+#### POST /v1/auth/logout
+Invalidate current token.
+
+**Headers:**
+```
+Authorization: Bearer <current_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+#### GET /v1/auth/me
+Get current user information.
+
+**Headers:**
+```
+Authorization: Bearer <current_token>
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": "user_123456",
+    "username": "existinguser",
+    "email": "user@example.com",
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### 8. Ensemble Configuration
+
+#### POST /v1/ensemble/completions
+Direct ensemble completion endpoint with advanced configuration.
+
+**Request Body:**
+```json
+{
+  "prompt": "Explain quantum computing",
+  "model": "superagent-ensemble",
+  "temperature": 0.7,
+  "max_tokens": 1000,
+  "ensemble_config": {
+    "strategy": "confidence_weighted",
+    "min_providers": 2,
+    "confidence_threshold": 0.8,
+    "fallback_to_best": true,
+    "timeout": 30,
+    "preferred_providers": ["deepseek", "qwen"]
+  },
+  "memory_enhanced": true
+}
+```
+
+**Response:**
+```json
+{
+  "id": "ensemble-123",
+  "object": "ensemble.completion",
+  "created": 1703123456,
+  "model": "deepseek-chat",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Quantum computing is..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 25,
+    "completion_tokens": 75,
+    "total_tokens": 100
+  },
+  "ensemble": {
+    "voting_method": "confidence_weighted",
+    "responses_count": 3,
+    "scores": {
+      "deepseek": 0.92,
+      "qwen": 0.85,
+      "openrouter": 0.78
+    },
+    "metadata": {
+      "selection_reason": "highest_confidence"
+    },
+    "selected_provider": "deepseek",
+    "selection_score": 0.92
+  }
+}
+```
+
+### 9. Provider Management
+
+#### GET /v1/providers (Protected)
+Get detailed provider information including capabilities.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "providers": [
+    {
+      "name": "deepseek",
+      "supported_models": ["deepseek-chat", "deepseek-coder"],
+      "supported_features": ["streaming", "function_calling"],
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_vision": false,
+      "metadata": {
+        "max_tokens": 4096,
+        "rate_limit": "100/min"
+      }
+    }
+  ],
+  "count": 3
+}
+```
+
+#### GET /v1/providers/:name/health
+Check health status of specific provider.
+
+**Example:** `GET /v1/providers/deepseek/health`
+
+**Response:**
+```json
+{
+  "provider": "deepseek",
+  "healthy": true,
+  "response_time_ms": 850,
+  "last_check": "2024-01-15T10:30:00Z"
+}
+```
+
+**Error Response (unhealthy):**
+```json
+{
+  "provider": "openrouter",
+  "healthy": false,
+  "error": "API key invalid or expired",
+  "last_check": "2024-01-15T10:30:00Z"
+}
+```
+
+### 10. Admin Endpoints
+
+#### GET /v1/admin/health/all
+Get comprehensive health status of all components (admin only).
+
+**Headers:**
+```
+Authorization: Bearer <admin_token>
+```
+
+**Response:**
+```json
+{
+  "provider_health": {
+    "deepseek": null,
+    "qwen": "connection timeout",
+    "openrouter": null,
+    "claude": "rate limit exceeded"
+  },
+  "timestamp": 1703123456,
+  "overall_status": "degraded"
+}
+```
+
+### 11. Metrics Endpoint
+
+#### GET /metrics
+Prometheus metrics endpoint (no authentication required).
+
+**Response:**
+```
+# HELP superagent_requests_total Total number of requests
+# TYPE superagent_requests_total counter
+superagent_requests_total{endpoint="/v1/chat/completions",method="POST"} 1234
+
+# HELP superagent_request_duration_seconds Request duration in seconds
+# TYPE superagent_request_duration_seconds histogram
+superagent_request_duration_seconds_bucket{endpoint="/v1/chat/completions",le="0.1"} 1000
+superagent_request_duration_seconds_bucket{endpoint="/v1/chat/completions",le="0.5"} 1200
+
+# HELP superagent_provider_responses_total Total provider responses
+# TYPE superagent_provider_responses_total counter
+superagent_provider_responses_total{provider="deepseek",status="success"} 1000
+superagent_provider_responses_total{provider="deepseek",status="error"} 50
 ```
 
 ## Error Handling
@@ -577,6 +832,122 @@ Workflow orchestration for complex multi-step operations.
 
 **Current Status:** Internal service, REST API integration planned
 
+## OpenAPI Specification
+
+SuperAgent provides a complete OpenAPI 3.0 specification for automated API documentation and client generation.
+
+### Accessing the OpenAPI Spec
+
+**Local Development:**
+```bash
+# Download the OpenAPI spec
+curl -o superagent-openapi.yaml http://localhost:8080/openapi.yaml
+
+# Or view in browser
+open http://localhost:8080/swagger-ui/
+```
+
+**Production:**
+```bash
+curl -o superagent-openapi.yaml https://api.yourdomain.com/openapi.yaml
+```
+
+### Generating Clients
+
+**TypeScript/JavaScript:**
+```bash
+npx openapi-typescript-codegen --input superagent-openapi.yaml --output ./client --client axios
+```
+
+**Python:**
+```bash
+pip install openapi-python-client
+openapi-python-client generate --path superagent-openapi.yaml --output ./python-client
+```
+
+**Go:**
+```bash
+go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+oapi-codegen -package superagent superagent-openapi.yaml > client.gen.go
+```
+
+### Example OpenAPI Usage
+
+**TypeScript Client Example:**
+```typescript
+import { SuperAgentClient } from './client';
+
+const client = new SuperAgentClient({
+  BASE: 'http://localhost:8080',
+  TOKEN: 'your-jwt-token'
+});
+
+// Make a chat completion request
+const response = await client.chatCompletions({
+  model: 'superagent-ensemble',
+  messages: [
+    { role: 'user', content: 'Explain quantum computing' }
+  ],
+  temperature: 0.7,
+  max_tokens: 1000
+});
+
+console.log(response.choices[0].message.content);
+```
+
+**Python Client Example:**
+```python
+from superagent_client import SuperAgentClient
+
+client = SuperAgentClient(
+    base_url="http://localhost:8080",
+    token="your-jwt-token"
+)
+
+response = client.chat_completions(
+    model="superagent-ensemble",
+    messages=[
+        {"role": "user", "content": "Explain quantum computing"}
+    ],
+    temperature=0.7,
+    max_tokens=1000
+)
+
+print(response.choices[0].message.content)
+```
+
+**Go Client Example:**
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/your-org/superagent-client"
+)
+
+func main() {
+    client := superagent.NewClient("http://localhost:8080")
+    client.SetToken("your-jwt-token")
+    
+    req := superagent.ChatCompletionRequest{
+        Model: "superagent-ensemble",
+        Messages: []superagent.Message{
+            {Role: "user", Content: "Explain quantum computing"},
+        },
+        Temperature: 0.7,
+        MaxTokens:   1000,
+    }
+    
+    resp, err := client.ChatCompletions(context.Background(), req)
+    if err != nil {
+        panic(err)
+    }
+    
+    fmt.Println(resp.Choices[0].Message.Content)
+}
+```
+
 ## Best Practices
 
 ### 1. Model Selection
@@ -598,6 +969,12 @@ Workflow orchestration for complex multi-step operations.
 - Use JWT tokens for authentication
 - Validate input parameters
 - Implement rate limiting client-side
+
+### 5. API Client Usage
+- Use generated clients from OpenAPI spec for type safety
+- Implement proper error handling in clients
+- Cache responses when appropriate
+- Monitor API usage and costs
 
 ---
 

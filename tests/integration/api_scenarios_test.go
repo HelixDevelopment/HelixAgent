@@ -238,6 +238,26 @@ func TestAPIEndToEndScenarios(t *testing.T) {
 	})
 
 	t.Run("Memory enhanced completion", func(t *testing.T) {
+		// Create isolated services for memory test
+		isolatedEnsembleService := services.NewEnsembleService("confidence_weighted", 30*time.Second)
+		isolatedRequestService := services.NewRequestService("weighted", isolatedEnsembleService, nil)
+
+		// Register only the mock provider for this test
+		isolatedMockProvider := &MockProvider{
+			name:          "memory-test-provider",
+			response:      "API test response from mock provider",
+			shouldSucceed: true,
+			confidence:    0.95,
+		}
+		isolatedRequestService.RegisterProvider(isolatedMockProvider.name, isolatedMockProvider)
+
+		// Create isolated handler
+		isolatedHandler := handlers.NewCompletionHandler(isolatedRequestService)
+
+		// Create isolated router
+		isolatedRouter := gin.New()
+		isolatedRouter.POST("/v1/completions", isolatedHandler.Complete)
+
 		// Create request with memory enhancement
 		reqBody := map[string]interface{}{
 			"model":           "test-model",
@@ -257,7 +277,7 @@ func TestAPIEndToEndScenarios(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		isolatedRouter.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 

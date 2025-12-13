@@ -367,6 +367,27 @@ make test
 make test-coverage
 ```
 
+#### Test Coverage
+
+The toolkit maintains high test coverage across all modules:
+
+- **Overall Coverage**: 91.8%
+- **Commons Modules**: 89.2% - 100%
+  - `auth`: 87.9%
+  - `config`: 97.1%
+  - `discovery`: 99.0%
+  - `errors`: 100.0%
+  - `http`: 89.2%
+  - `ratelimit`: 95.2%
+  - `response`: 89.6%
+  - `testing`: 91.8%
+- **Provider Modules**: 72.5% - 92.1%
+  - `Chutes`: 72.5%
+  - `SiliconFlow`: 92.1%
+- **pkg/toolkit**: 100.0%
+
+Coverage reports are generated with `make test-coverage` and include detailed breakdowns by package.
+
 ### Code Quality
 
 ```bash

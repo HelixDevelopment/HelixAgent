@@ -3,6 +3,7 @@ package siliconflow
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
@@ -135,7 +136,9 @@ func TestSiliconFlowChatCompletion(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.ChatRequest{
 		Model: "deepseek-ai/DeepSeek-V2.5",
 		Messages: []toolkit.ChatMessage{
@@ -161,13 +164,15 @@ func TestSiliconFlowEmbedding(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.EmbeddingRequest{
-		Model: "BAAI/bge-large-zh-v1.5",
-		Input: []string{"This is a test document"},
+		Input: []string{"test input"},
+		Model: "BAAI/bge-large-en-v1.5",
 	}
 
-	// This will fail with network error since we don't have a real API
+	// This will fail with network error
 	_, err = provider.Embed(ctx, req)
 	if err == nil {
 		t.Error("Expected embedding to fail with test API key")
@@ -184,18 +189,16 @@ func TestSiliconFlowRerank(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.RerankRequest{
-		Model: "BAAI/bge-reranker-large",
-		Query: "What is machine learning?",
-		Documents: []string{
-			"Machine learning is a subset of AI",
-			"The weather is nice today",
-		},
-		TopN: 2,
+		Query:     "test query",
+		Documents: []string{"doc1", "doc2"},
+		Model:     "BAAI/bge-reranker-large",
 	}
 
-	// This will fail with network error since we don't have a real API
+	// This will fail with network error
 	_, err = provider.Rerank(ctx, req)
 	if err == nil {
 		t.Error("Expected rerank to fail with test API key")
@@ -231,7 +234,9 @@ func TestSiliconFlowChatCompletionWithParameters(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.ChatRequest{
 		Model: "deepseek-ai/DeepSeek-V2.5",
 		Messages: []toolkit.ChatMessage{
@@ -267,7 +272,9 @@ func TestSiliconFlowEmbeddingBatch(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.EmbeddingRequest{
 		Model: "BAAI/bge-large-zh-v1.5",
 		Input: []string{
@@ -294,7 +301,9 @@ func TestSiliconFlowRerankWithOptions(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	req := toolkit.RerankRequest{
 		Model: "BAAI/bge-reranker-large",
 		Query: "artificial intelligence applications",

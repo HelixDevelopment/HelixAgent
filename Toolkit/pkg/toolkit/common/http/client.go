@@ -49,20 +49,20 @@ func (c *Client) Do(ctx context.Context, method, path string, body interface{}, 
 
 	for attempt := 0; attempt <= c.retryCount; attempt++ {
 		resp, err := c.doRequest(ctx, method, path, body, headers)
-		if err == nil {
+		if err == nil && resp.StatusCode < 500 {
 			return resp, nil
 		}
 
 		lastErr = err
 
-		// Don't retry on context cancellation or client errors
+		// Don't retry on context cancellation
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 
-		// Only retry on server errors (5xx) or network errors
-		if resp != nil && resp.StatusCode < 500 {
-			return resp, err
+		// Don't retry on client errors (4xx)
+		if err == nil && resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return resp, fmt.Errorf("client error: %d", resp.StatusCode)
 		}
 
 		// Wait before retrying (exponential backoff)

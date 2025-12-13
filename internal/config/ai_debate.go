@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"time"
 )
 
 // AIDebateConfig represents the complete AI debate configuration
@@ -46,7 +45,7 @@ type CogneeDebateConfig struct {
 	AnalyzeConsensus     bool     `yaml:"analyze_consensus" json:"analyze_consensus"`
 	GenerateInsights     bool     `yaml:"generate_insights" json:"generate_insights"`
 	DatasetName          string   `yaml:"dataset_name" json:"dataset_name"`
-	MaxEnhancementTime   time.Duration `yaml:"max_enhancement_time" json:"max_enhancement_time"`
+	MaxEnhancementTime   int           `yaml:"max_enhancement_time" json:"max_enhancement_time"` // milliseconds
 	EnhancementStrategy  string   `yaml:"enhancement_strategy" json:"enhancement_strategy"`
 	MemoryIntegration    bool     `yaml:"memory_integration" json:"memory_integration"`
 	ContextualAnalysis   bool     `yaml:"contextual_analysis" json:"contextual_analysis"`
@@ -65,7 +64,7 @@ type DebateParticipant struct {
 	
 	// Participant-specific settings
 	MaximalRepeatRounds *int                `yaml:"maximal_repeat_rounds,omitempty" json:"maximal_repeat_rounds,omitempty"`
-	ResponseTimeout     time.Duration       `yaml:"response_timeout" json:"response_timeout"`
+	ResponseTimeout     int                 `yaml:"response_timeout" json:"response_timeout"` // milliseconds
 	Weight              float64             `yaml:"weight" json:"weight"`
 	Priority            int                 `yaml:"priority" json:"priority"`
 	
@@ -105,7 +104,7 @@ type LLMConfiguration struct {
 	// Connection and authentication
 	APIKey           string                 `yaml:"api_key,omitempty" json:"api_key,omitempty"`
 	BaseURL          string                 `yaml:"base_url,omitempty" json:"base_url,omitempty"`
-	Timeout          time.Duration          `yaml:"timeout" json:"timeout"`
+	Timeout          int                    `yaml:"timeout" json:"timeout"` // milliseconds
 	MaxRetries       int                    `yaml:"max_retries" json:"max_retries"`
 	
 	// Model parameters and behavior
@@ -123,11 +122,11 @@ type LLMConfiguration struct {
 	// Performance and quality settings
 	Weight           float64                `yaml:"weight" json:"weight"`
 	RateLimitRPS     int                    `yaml:"rate_limit_rps,omitempty" json:"rate_limit_rps,omitempty"`
-	RequestTimeout   time.Duration          `yaml:"request_timeout,omitempty" json:"request_timeout,omitempty"`
+	RequestTimeout   int                    `yaml:"request_timeout,omitempty" json:"request_timeout,omitempty"` // milliseconds
 	
 	// Health and monitoring
 	HealthCheckURL   string                 `yaml:"health_check_url,omitempty" json:"health_check_url,omitempty"`
-	HealthCheckInterval time.Duration       `yaml:"health_check_interval,omitempty" json:"health_check_interval,omitempty"`
+	HealthCheckInterval int                  `yaml:"health_check_interval,omitempty" json:"health_check_interval,omitempty"` // milliseconds
 }
 
 // Validate performs comprehensive validation of the AI debate configuration

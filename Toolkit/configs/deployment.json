@@ -1,0 +1,57 @@
+{
+  "deployment": {
+    "agents": [
+      {
+        "enabled": true,
+        "name": "code-assistant",
+        "replicas": 2,
+        "resources": {
+          "cpu": "500m",
+          "memory": "1Gi"
+        }
+      },
+      {
+        "enabled": true,
+        "name": "creative-writer",
+        "replicas": 1,
+        "resources": {
+          "cpu": "250m",
+          "memory": "512Mi"
+        }
+      },
+      {
+        "enabled": true,
+        "name": "data-analyst",
+        "replicas": 1,
+        "resources": {
+          "cpu": "1000m",
+          "memory": "2Gi"
+        }
+      }
+    ],
+    "name": "multi-agent-system",
+    "providers": [
+      {
+        "enabled": true,
+        "name": "siliconflow",
+        "priority": 1
+      },
+      {
+        "enabled": true,
+        "name": "openrouter",
+        "priority": 2
+      },
+      {
+        "enabled": true,
+        "name": "nvidia",
+        "priority": 3
+      }
+    ],
+    "version": "1.0.0"
+  },
+  "metadata": {
+    "description": "Deployment configuration for multi-agent system",
+    "generated_at": "2024-01-01T00:00:00Z",
+    "version": "1.0"
+  }
+}

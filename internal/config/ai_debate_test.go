@@ -800,6 +800,9 @@ enabled: true
 maximal_repeat_rounds: 3
 debate_timeout: 300000
 consensus_threshold: 0.75
+max_response_time: 30000
+max_context_length: 32000
+quality_threshold: 0.7
 participants:
   - name: "TestParticipant"
     role: "Analyst"
@@ -816,6 +819,27 @@ participants:
     weight: 1.0
     priority: 1
     debate_style: "analytical"
+    argumentation_style: "logical"
+    persuasion_level: 0.5
+    openness_to_change: 0.5
+    quality_threshold: 0.7
+    min_response_length: 50
+    max_response_length: 1000
+  - name: "TestParticipant2"
+    role: "Critic"
+    enabled: true
+    llms:
+      - name: "Test LLM2"
+        provider: "deepseek"
+        model: "deepseek-coder"
+        enabled: true
+        timeout: 30000
+        max_tokens: 1000
+        temperature: 0.7
+    response_timeout: 30000
+    weight: 1.0
+    priority: 2
+    debate_style: "critical"
     argumentation_style: "logical"
     persuasion_level: 0.5
     openness_to_change: 0.5
@@ -848,6 +872,9 @@ voting_strategy: "confidence_weighted"
 			yamlContent: `
 enabled: true
 maximal_repeat_rounds: 0  # Invalid: too low
+max_response_time: 30000
+max_context_length: 32000
+quality_threshold: 0.7
 participants:
   - name: "TestParticipant"
     role: "Analyst"
@@ -913,10 +940,18 @@ enabled: true
 maximal_repeat_rounds: 3
 debate_timeout: 300000
 consensus_threshold: 0.75
+max_response_time: 30000
+max_context_length: 32000
+quality_threshold: 0.7
 enable_cognee: true
 cognee_config:
   enabled: true
   dataset_name: "${TEST_DATASET}"
+  max_enhancement_time: 10000
+  enhancement_strategy: "hybrid"
+  enhance_responses: true
+  analyze_consensus: true
+  generate_insights: true
 participants:
   - name: "TestParticipant"
     role: "Analyst"
@@ -943,7 +978,33 @@ participants:
     max_response_length: 1000
     enable_cognee: true
     cognee_settings:
+      enhance_responses: true
+      analyze_sentiment: true
+      extract_entities: true
+      generate_summary: true
       dataset_name: "${TEST_DATASET}_participant"
+  - name: "TestParticipant2"
+    role: "Critic"
+    enabled: true
+    llms:
+      - name: "Test LLM2"
+        provider: "deepseek"
+        model: "deepseek-coder"
+        enabled: true
+        api_key: "test-api-key-2"
+        timeout: 30000
+        max_tokens: 1000
+        temperature: 0.7
+    response_timeout: 30000
+    weight: 1.0
+    priority: 2
+    debate_style: "critical"
+    argumentation_style: "logical"
+    persuasion_level: 0.5
+    openness_to_change: 0.5
+    quality_threshold: 0.7
+    min_response_length: 50
+    max_response_length: 1000
 debate_strategy: "structured"
 voting_strategy: "confidence_weighted"
 `

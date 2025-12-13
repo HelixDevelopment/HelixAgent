@@ -29,6 +29,11 @@ enable_cognee: true
 cognee_config:
   enabled: true
   dataset_name: "test_dataset"
+  max_enhancement_time: 10000
+  enhancement_strategy: "hybrid"
+  enhance_responses: true
+  analyze_consensus: true
+  generate_insights: true
 participants:
   - name: "TestParticipant1"
     role: "Analyst"
@@ -175,6 +180,32 @@ voting_strategy: "confidence_weighted"
 					MinResponseLength:  50,
 					MaxResponseLength:  1000,
 				},
+t			{
+					Name:               "SaveTestParticipant2",
+					Role:               "Test Critic",
+					Enabled:            true,
+					LLMs: []LLMConfiguration{
+						{
+							Name:     "SaveTest LLM2",
+							Provider: "deepseek",
+							Model:    "deepseek-coder",
+							Enabled:  true,
+							Timeout:  30000,
+							MaxTokens: 1000,
+							Temperature: 0.7,
+					},
+				},
+				ResponseTimeout:    30000,
+				Weight:             1.0,
+				Priority:           2,
+				DebateStyle:        "critical",
+				ArgumentationStyle: "logical",
+				PersuasionLevel:    0.5,
+				OpennessToChange:   0.5,
+				QualityThreshold:   0.7,
+				MinResponseLength:  50,
+				MaxResponseLength:  1000,
+			},
 			},
 			DebateStrategy: "structured",
 			VotingStrategy: "confidence_weighted",

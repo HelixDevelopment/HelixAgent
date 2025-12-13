@@ -3,10 +3,9 @@ package siliconflow
 
 import (
 	"context"
-	"time"
 
-	"github.com/superagent/toolkit/pkg/toolkit"
-	"github.com/superagent/toolkit/pkg/toolkit/common/http"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http"
 )
 
 // Client represents a SiliconFlow API client.
@@ -16,12 +15,7 @@ type Client struct {
 
 // NewClient creates a new SiliconFlow API client.
 func NewClient(apiKey string) *Client {
-	httpClient := http.NewClient(http.ClientConfig{
-		BaseURL:    "https://api.siliconflow.com/v1",
-		Timeout:    30 * time.Second,
-		MaxRetries: 3,
-	})
-	httpClient.SetAuth("Authorization", "Bearer "+apiKey)
+	httpClient := http.NewClient("https://api.siliconflow.com/v1", apiKey)
 
 	return &Client{
 		httpClient: httpClient,

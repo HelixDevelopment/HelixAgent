@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/superagent/toolkit/pkg/toolkit/common/ratelimit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/ratelimit"
 )
 
 // RequestInterceptor is a function that can modify a request before it's sent.

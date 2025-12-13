@@ -4,7 +4,7 @@ package discovery
 import (
 	"strings"
 
-	"github.com/superagent/toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
 // CapabilityInferrer defines the interface for inferring model capabilities.
@@ -86,7 +86,7 @@ func (d *DefaultCapabilityInferrer) InferCapabilities(modelID, modelType string)
 	// Chat capabilities - conservative approach
 	specializedKeywords := []string{
 		"embedding", "rerank", "tts", "speech", "audio", "video",
-		"t2v", "i2v", "flux", "vl", "vision", "visual", "multimodal", "image",
+		"t2v", "i2v", "flux", "image",
 	}
 
 	isSpecialized := d.containsAny(modelLower, specializedKeywords)
@@ -98,9 +98,13 @@ func (d *DefaultCapabilityInferrer) InferCapabilities(modelID, modelType string)
 	}
 	hasChatID := d.containsAny(modelLower, chatIDIndicators)
 
-	if hasChatType && !isSpecialized {
+	// Multimodal and vision models can still support chat
+	isMultimodal := d.containsAny(modelLower, []string{"vl", "vision", "visual", "multimodal"}) ||
+		d.containsAny(typeLower, []string{"multimodal"})
+
+	if hasChatType && (!isSpecialized || isMultimodal) {
 		capabilities.SupportsChat = true
-	} else if hasChatID && !isSpecialized {
+	} else if hasChatID && (!isSpecialized || isMultimodal) {
 		capabilities.SupportsChat = true
 	} else if typeLower == "" || typeLower == "unknown" {
 		capabilities.SupportsChat = false

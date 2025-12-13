@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/superagent/toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
 // Provider implements the Provider interface for Chutes.

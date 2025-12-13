@@ -3,7 +3,7 @@ package chutes
 import (
 	"testing"
 
-	"github.com/superagent/toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
 func TestChutesProvider(t *testing.T) {
@@ -147,16 +147,16 @@ func TestChutesRegistration(t *testing.T) {
 func TestChutesAutoRegistration(t *testing.T) {
 	// Test auto-registration via init function
 	registry := toolkit.NewProviderFactoryRegistry()
-	
+
 	// Set the global registry (simulating what happens in main)
 	SetGlobalProviderRegistry(registry)
-	
+
 	// The init function should have registered the provider
 	// when the package was imported, so we should be able to create it
 	config := map[string]interface{}{
 		"api_key": "test-api-key",
 	}
-	
+
 	provider, err := registry.Create("chutes", config)
 	if err != nil {
 		// This is expected since init() runs at package import time

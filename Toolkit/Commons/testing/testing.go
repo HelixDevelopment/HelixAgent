@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/superagent/toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
 // MockHTTPClient is a mock HTTP client for testing.
@@ -229,7 +229,7 @@ func (tf *TestFixtures) ChatResponse() toolkit.ChatResponse {
 		Object:  "chat.completion",
 		Created: 1234567890,
 		Model:   "test-model",
-		Choices: []toolkit.ChatChoice{
+		Choices: []toolkit.Choice{
 			{
 				Index: 0,
 				Message: toolkit.ChatMessage{

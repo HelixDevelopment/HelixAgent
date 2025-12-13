@@ -196,7 +196,7 @@ func MinLength(key string, minLen int) ValidateFunc {
 // Environment variable handling
 
 // LoadFromEnv loads configuration from environment variables.
-// Keys are converted to uppercase with underscores.
+// Environment variables are converted to config keys by removing prefix and lowercasing.
 func (c Config) LoadFromEnv(prefix string) {
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
@@ -211,7 +211,6 @@ func (c Config) LoadFromEnv(prefix string) {
 
 		// Remove prefix and convert to config key
 		configKey := strings.ToLower(strings.TrimPrefix(key, prefix))
-		configKey = strings.ReplaceAll(configKey, "_", ".")
 
 		// Try to parse as different types
 		if intVal, err := strconv.Atoi(value); err == nil {

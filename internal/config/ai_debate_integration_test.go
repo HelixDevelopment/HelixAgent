@@ -145,6 +145,9 @@ voting_strategy: "confidence_weighted"
 			MaximalRepeatRounds: 5,
 			DebateTimeout:       600000,
 			ConsensusThreshold:  0.8,
+			MaxResponseTime:     30000,
+			MaxContextLength:    32000,
+			QualityThreshold:    0.7,
 			Participants: []DebateParticipant{
 				{
 					Name:               "SaveTestParticipant",
@@ -159,6 +162,32 @@ voting_strategy: "confidence_weighted"
 							Timeout:  30000,
 							MaxTokens: 1000,
 							Temperature: 0.7,
+						},
+						{
+							Name:               "ValidParticipant2",
+							Role:               "Critic",
+							Enabled:            true,
+							LLMs: []LLMConfiguration{
+								{
+									Name:     "ValidLLM2",
+									Provider: "deepseek",
+									Model:    "deepseek-coder",
+									Enabled:  true,
+									Timeout:  30000,
+									MaxTokens: 1000,
+									Temperature: 0.7,
+								},
+							},
+							ResponseTimeout:    30000,
+							Weight:             1.0,
+							Priority:           2,
+							DebateStyle:        "critical",
+							ArgumentationStyle: "logical",
+							PersuasionLevel:    0.5,
+							OpennessToChange:   0.5,
+							QualityThreshold:   0.7,
+							MinResponseLength:  50,
+							MaxResponseLength:  1000,
 						},
 					},
 					ResponseTimeout:    30000,
@@ -668,6 +697,9 @@ func TestAIDebateConfigLoader_SaveValidation(t *testing.T) {
 				MaximalRepeatRounds: 3,
 				DebateTimeout:       300000,
 				ConsensusThreshold:  0.75,
+				MaxResponseTime:     30000,
+				MaxContextLength:    32000,
+				QualityThreshold:    0.7,
 				Participants: []DebateParticipant{
 					{
 						Name:               "ValidParticipant",

@@ -178,6 +178,7 @@ type ConfigBuilder interface {
 - **SiliconFlow**: High-performance AI inference platform
 - **OpenRouter**: Unified API for multiple AI providers
 - **NVIDIA**: Enterprise-grade AI solutions
+- **Claude**: Anthropic's Claude models
 - **Chutes**: Custom AI deployment platform
 
 ### Built-in Agents
@@ -487,7 +488,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### v1.0.0
 - Initial release
-- Multi-provider support (SiliconFlow, OpenRouter, NVIDIA, Chutes)
+- Multi-provider support (SiliconFlow, OpenRouter, NVIDIA, Claude, Chutes)
 - Built-in agents (Generic, Code Review, OpenCode, Crush)
 - CLI tool
 - Configuration management

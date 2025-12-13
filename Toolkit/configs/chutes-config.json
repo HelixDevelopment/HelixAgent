@@ -1,0 +1,8 @@
+{
+  "name": "chutes",
+  "api_key": "your-chutes-api-key-here",
+  "base_url": "https://api.chutes.ai/v1",
+  "timeout": 30000,
+  "retries": 3,
+  "rate_limit": 60
+}

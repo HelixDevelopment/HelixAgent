@@ -15,9 +15,12 @@ type Client struct {
 }
 
 // NewClient creates a new Chutes API client.
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey string, baseURL string) *Client {
+	if baseURL == "" {
+		baseURL = "https://api.chutes.ai/v1"
+	}
 	httpClient := http.NewClient(http.ClientConfig{
-		BaseURL:    "https://api.chutes.ai/v1",
+		BaseURL:    baseURL,
 		Timeout:    30 * time.Second,
 		MaxRetries: 3,
 	})

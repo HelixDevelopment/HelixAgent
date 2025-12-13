@@ -30,7 +30,7 @@ func NewProvider(config map[string]interface{}) (toolkit.Provider, error) {
 	}
 
 	return &Provider{
-		client:    NewClient(chutesConfig.APIKey),
+		client:    NewClient(chutesConfig.APIKey, chutesConfig.BaseURL),
 		discovery: NewDiscovery(chutesConfig.APIKey),
 		config:    chutesConfig,
 	}, nil
@@ -80,4 +80,20 @@ func Factory(config map[string]interface{}) (toolkit.Provider, error) {
 // Register registers the Chutes provider with the registry.
 func Register(registry *toolkit.ProviderFactoryRegistry) error {
 	return registry.Register("chutes", Factory)
+}
+
+// Global registry for auto-registration
+var globalProviderRegistry *toolkit.ProviderFactoryRegistry
+
+// SetGlobalProviderRegistry sets the global provider registry for auto-registration.
+func SetGlobalProviderRegistry(registry *toolkit.ProviderFactoryRegistry) {
+	globalProviderRegistry = registry
+}
+
+// init registers the Chutes provider when the package is imported.
+func init() {
+	// Register with global registry if available
+	if globalProviderRegistry != nil {
+		globalProviderRegistry.Register("chutes", Factory)
+	}
 }

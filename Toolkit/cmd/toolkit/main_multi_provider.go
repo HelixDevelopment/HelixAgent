@@ -439,6 +439,8 @@ func generateProviderConfig(name string) map[string]interface{} {
 	switch name {
 	case "siliconflow":
 		baseConfig["base_url"] = "https://api.siliconflow.com"
+	case "chutes":
+		baseConfig["base_url"] = "https://api.chutes.ai/v1"
 	case "claude":
 		baseConfig["base_url"] = "https://api.anthropic.com"
 		baseConfig["version"] = "2023-06-01"
@@ -596,6 +598,18 @@ func getDefaultProviderConfigs() []map[string]interface{} {
 			"base_url": "https://api.anthropic.com",
 			"timeout":  30000,
 			"retries":  3,
+		})
+	}
+
+	// Chutes
+	if apiKey := os.Getenv("CHUTES_API_KEY"); apiKey != "" {
+		configs = append(configs, map[string]interface{}{
+			"name":       "chutes",
+			"api_key":    apiKey,
+			"base_url":   "https://api.chutes.ai/v1",
+			"timeout":    30000,
+			"retries":    3,
+			"rate_limit": 60,
 		})
 	}
 

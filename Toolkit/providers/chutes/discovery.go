@@ -195,7 +195,7 @@ type Discovery struct {
 
 // NewDiscovery creates a new Chutes model discovery instance.
 func NewDiscovery(apiKey string) *Discovery {
-	client := NewClient(apiKey)
+	client := NewClient(apiKey, "")
 	base := discovery.NewBaseDiscovery(
 		"chutes",
 		&ChutesCapabilityInferrer{},

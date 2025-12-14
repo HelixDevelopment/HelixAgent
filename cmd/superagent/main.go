@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,7 +19,7 @@ func main() {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
 	// Simple server startup
-	port := "8080"
+	port := "9002"
 	server := &http.Server{
 		Addr: ":" + port,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

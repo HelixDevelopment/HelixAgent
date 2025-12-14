@@ -12,12 +12,16 @@ build: ## Build all packages
 	@echo "Building HelixAgent Toolkit..."
 	@go build ./...
 
+build-cli: ## Build the CLI tool
+	@echo "Building CLI tool..."
+	@go build -o bin/toolkit ./cmd/toolkit
+
 build-all: ## Build for multiple architectures
 	@echo "Building for multiple architectures..."
-	@GOOS=linux GOARCH=amd64 go build -o bin/helixagent-linux-amd64 ./...
-	@GOOS=darwin GOARCH=amd64 go build -o bin/helixagent-darwin-amd64 ./...
-	@GOOS=darwin GOARCH=arm64 go build -o bin/helixagent-darwin-arm64 ./...
-	@GOOS=windows GOARCH=amd64 go build -o bin/helixagent-windows-amd64.exe ./...
+	@GOOS=linux GOARCH=amd64 go build -o bin/helixagent-linux-amd64 ./cmd/toolkit
+	@GOOS=darwin GOARCH=amd64 go build -o bin/helixagent-darwin-amd64 ./cmd/toolkit
+	@GOOS=darwin GOARCH=arm64 go build -o bin/helixagent-darwin-arm64 ./cmd/toolkit
+	@GOOS=windows GOARCH=amd64 go build -o bin/helixagent-windows-amd64.exe ./cmd/toolkit
 
 # Test targets
 test: ## Run all tests

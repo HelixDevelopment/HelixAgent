@@ -109,24 +109,20 @@ func main() {
 ### Using the CLI
 
 ```bash
-# List available providers and agents
-toolkit list all
-
-# Execute a task
-toolkit execute generic "Explain quantum computing in simple terms"
-
-# Discover models
-toolkit discover siliconflow
-
-# Generate configuration files
-toolkit config generate provider siliconflow
-toolkit config generate agent generic
-
-# Validate configurations
-toolkit validate provider siliconflow config.json
+# Show version
+toolkit version
 
 # Run integration tests
 toolkit test
+
+# Start interactive chat session
+toolkit chat --provider siliconflow --api-key YOUR_API_KEY
+
+# Execute tasks with AI agents
+toolkit agent --type generic --task "Explain quantum computing" --api-key YOUR_API_KEY
+
+# With custom model and base URL
+toolkit chat --provider siliconflow --api-key YOUR_API_KEY --model deepseek-chat --base-url https://api.siliconflow.com
 ```
 
 ## Architecture
@@ -267,53 +263,58 @@ See `examples/custom_agent/main.go` for creating custom agents:
 
 ### Commands
 
-#### `toolkit list [type]`
-List available providers, agents, or both.
+#### `toolkit version`
+Show version information.
 
 ```bash
-toolkit list providers  # List providers
-toolkit list agents     # List agents
-toolkit list all        # List both
-```
-
-#### `toolkit execute <agent> <task>`
-Execute a task using the specified agent.
-
-```bash
-toolkit execute generic "Hello world"
-toolkit execute code-review "Review this function: func add(a, b int) int { return a + b }"
-```
-
-#### `toolkit discover [provider]`
-Discover available models from providers.
-
-```bash
-toolkit discover           # Discover from all providers
-toolkit discover siliconflow # Discover from specific provider
-```
-
-#### `toolkit validate <type> <name> <config-file>`
-Validate a provider or agent configuration file.
-
-```bash
-toolkit validate provider siliconflow provider-config.json
-toolkit validate agent generic agent-config.json
-```
-
-#### `toolkit config generate <type> <name>`
-Generate a sample configuration file.
-
-```bash
-toolkit config generate provider siliconflow
-toolkit config generate agent generic
+toolkit version
+# Output: HelixAgent Toolkit v1.0.0
 ```
 
 #### `toolkit test`
-Run integration tests.
+Run integration tests to validate provider connections.
 
 ```bash
 toolkit test
+# Runs basic provider creation and model discovery tests
 ```
+
+#### `toolkit chat`
+Start an interactive chat session with an AI provider.
+
+```bash
+# Basic chat
+toolkit chat --provider siliconflow --api-key YOUR_API_KEY
+
+# With custom model
+toolkit chat --provider siliconflow --api-key YOUR_API_KEY --model deepseek-chat
+
+# With custom base URL
+toolkit chat --provider siliconflow --api-key YOUR_API_KEY --base-url https://api.siliconflow.com
+```
+
+#### `toolkit agent`
+Execute tasks using specialized AI agents.
+
+```bash
+# Generic agent
+toolkit agent --type generic --task "Explain machine learning" --api-key YOUR_API_KEY
+
+# Code review agent
+toolkit agent --type codereview --task "Review this Go function" --api-key YOUR_API_KEY
+
+# With custom model
+toolkit agent --type generic --task "Hello" --api-key YOUR_API_KEY --model deepseek-chat
+```
+
+### Flags
+
+- `--provider, -p`: Provider name (siliconflow, chutes)
+- `--api-key, -k`: API key for authentication
+- `--base-url, -u`: Custom base URL for the provider
+- `--model, -m`: Model name to use
+- `--type, -t`: Agent type (generic, codereview)
+- `--task`: Task description for agent execution
 
 ## Development
 

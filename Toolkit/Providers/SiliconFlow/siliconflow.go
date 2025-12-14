@@ -9,6 +9,10 @@ import (
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
+func init() {
+	toolkit.RegisterProviderFactory("siliconflow", NewProvider)
+}
+
 // Provider implements the Provider interface for SiliconFlow.
 type Provider struct {
 	client    *Client

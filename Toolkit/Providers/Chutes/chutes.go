@@ -9,6 +9,10 @@ import (
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
 )
 
+func init() {
+	toolkit.RegisterProviderFactory("chutes", NewProvider)
+}
+
 // Provider implements the Provider interface for Chutes.
 type Provider struct {
 	client    *Client

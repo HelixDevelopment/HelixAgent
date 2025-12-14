@@ -177,6 +177,24 @@ type ModelCapabilities struct {
 // ProviderFactory is a function that creates a provider from configuration
 type ProviderFactory func(config map[string]interface{}) (Provider, error)
 
+// Global provider registry
+var globalProviderRegistry = NewProviderFactoryRegistry()
+
+// RegisterProviderFactory registers a provider factory globally
+func RegisterProviderFactory(name string, factory ProviderFactory) {
+	globalProviderRegistry.Register(name, factory)
+}
+
+// CreateProvider creates a provider using the global registry
+func CreateProvider(name string, config map[string]interface{}) (Provider, error) {
+	return globalProviderRegistry.Create(name, config)
+}
+
+// ListProviders returns a list of registered provider names
+func ListProviders() []string {
+	return globalProviderRegistry.ListProviders()
+}
+
 // ProviderFactoryRegistry manages provider factories
 type ProviderFactoryRegistry struct {
 	factories map[string]ProviderFactory

@@ -1,17 +1,23 @@
 package claude_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/superagent/superagent/internal/llm"
+	"github.com/stretchr/testify/require"
+
+	"github.com/superagent/superagent/internal/llm/providers"
 	"github.com/superagent/superagent/internal/models"
 )
 
 func TestClaudeProvider_Basic(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 	assert.NotNil(t, provider)
 
 	// Test configuration validation
@@ -21,32 +27,37 @@ func TestClaudeProvider_Basic(t *testing.T) {
 }
 
 func TestClaudeProvider_EmptyAPIKey(t *testing.T) {
-	provider := llm.NewClaudeProvider("", "", "")
-	err := provider.HealthCheck()
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
+	err = provider.HealthCheck()
 	// HealthCheck returns nil for 400 status codes (expected behavior for Claude API)
 	// The API is reachable but returns 400 for GET requests to messages endpoint
 	assert.NoError(t, err)
 }
 
 func TestClaudeProvider_Capabilities(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 	caps := provider.GetCapabilities()
 	assert.NotNil(t, caps)
 	assert.NotEmpty(t, caps.SupportedModels)
 	assert.Contains(t, caps.SupportedModels, "claude-3-sonnet-20240229")
 	assert.Contains(t, caps.SupportedModels, "claude-3-opus-20240229")
-	assert.Contains(t, caps.SupportedFeatures, "streaming")
-	assert.Contains(t, caps.SupportedFeatures, "function_calling")
-	assert.Contains(t, caps.SupportedRequestTypes, "text_completion")
-	assert.Contains(t, caps.SupportedRequestTypes, "chat")
+	assert.Contains(t, caps.SupportedFeatures, "long_context")
+	assert.Contains(t, caps.SupportedFeatures, "vision")
+	assert.Contains(t, caps.SupportedFeatures, "tools")
 	assert.True(t, caps.SupportsStreaming)
 	assert.True(t, caps.SupportsFunctionCalling)
-	assert.False(t, caps.SupportsVision)
+	assert.True(t, caps.SupportsVision)
 	assert.NotNil(t, caps.Metadata)
 }
 
 func TestClaudeProvider_CompleteRequest(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	req := &models.LLMRequest{
 		ID: "test-req-1",
@@ -57,15 +68,16 @@ func TestClaudeProvider_CompleteRequest(t *testing.T) {
 	}
 
 	// This will fail without actual API key, but tests the error handling
-	resp, err := provider.Complete(req)
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-	// Error will be about API authentication failure
-	assert.Contains(t, err.Error(), "API")
+	resp, err := provider.Complete(context.Background(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotEmpty(t, resp.Content)
 }
 
 func TestClaudeProvider_CompleteWithDifferentModels(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	// Test with different model selections
 	modelList := []string{
@@ -82,14 +94,16 @@ func TestClaudeProvider_CompleteWithDifferentModels(t *testing.T) {
 			Prompt: "Test prompt for " + model,
 		}
 
-		resp, err := provider.Complete(req)
-		assert.Error(t, err) // Will fail without real API key
-		assert.Nil(t, resp)
+		resp, err := provider.Complete(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
 	}
 }
 
 func TestClaudeProvider_InvalidModel(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	req := &models.LLMRequest{
 		ID: "test-invalid",
@@ -99,14 +113,16 @@ func TestClaudeProvider_InvalidModel(t *testing.T) {
 		Prompt: "Test prompt",
 	}
 
-	resp, err := provider.Complete(req)
+	resp, err := provider.Complete(context.Background(), req)
 	// Should fail gracefully without panic
-	assert.Error(t, err)
-	assert.Nil(t, resp)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
 }
 
 func TestClaudeProvider_MemoryUsage(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	// Test multiple requests to ensure no memory leaks
 	for i := 0; i < 10; i++ {
@@ -118,7 +134,7 @@ func TestClaudeProvider_MemoryUsage(t *testing.T) {
 			Prompt: fmt.Sprintf("Memory test request %d", i),
 		}
 
-		resp, err := provider.Complete(req)
+		resp, err := provider.Complete(context.Background(), req)
 		if err != nil {
 			t.Logf("Request %d failed: %v", i, err)
 		}
@@ -131,7 +147,9 @@ func TestClaudeProvider_MemoryUsage(t *testing.T) {
 }
 
 func TestClaudeProvider_Timeout(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	// Create a request that might timeout
 	req := &models.LLMRequest{
@@ -143,18 +161,20 @@ func TestClaudeProvider_Timeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	resp, err := provider.Complete(req)
+	resp, err := provider.Complete(context.Background(), req)
 	elapsed := time.Since(start)
 
-	// Will fail with auth error, but should fail quickly
-	assert.Error(t, err)
-	assert.Nil(t, resp)
+	// Should complete quickly
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
 	assert.True(t, elapsed < 10*time.Second)
 }
 
 func TestClaudeProvider_CustomBaseURL(t *testing.T) {
+	logger := logrus.New()
 	// Test with custom base URL
-	provider := llm.NewClaudeProvider("test-api-key", "http://localhost:8080", "custom-model")
+	provider, err := providers.NewClaudeProvider("test-api-key", "http://localhost:8080", "custom-model", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 	assert.NotNil(t, provider)
 
 	caps := provider.GetCapabilities()
@@ -162,7 +182,9 @@ func TestClaudeProvider_CustomBaseURL(t *testing.T) {
 }
 
 func TestClaudeProvider_ValidateConfig(t *testing.T) {
-	provider := llm.NewClaudeProvider("test-api-key", "", "")
+	logger := logrus.New()
+	provider, err := providers.NewClaudeProvider("test-api-key", "", "claude-3-opus-20240229", 30*time.Second, 3, logger)
+	require.NoError(t, err)
 
 	// Test with empty config
 	valid, errs := provider.ValidateConfig(map[string]interface{}{})

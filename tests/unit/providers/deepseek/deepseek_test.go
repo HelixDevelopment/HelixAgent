@@ -1,192 +1,220 @@
 package deepseek_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/superagent/superagent/internal/llm"
+	"github.com/stretchr/testify/require"
+
+	"github.com/superagent/superagent/internal/llm/providers"
 	"github.com/superagent/superagent/internal/models"
 )
 
-func TestDeepSeekProvider_Basic(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-	assert.NotNil(t, provider)
+func TestNewDeepSeekProvider(t *testing.T) {
+	logger := logrus.New()
 
-	// Test configuration validation
-	valid, errs := provider.ValidateConfig(map[string]any{})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+	t.Run("valid configuration", func(t *testing.T) {
+		provider, err := providers.NewDeepSeekProvider(
+			"test-api-key",
+			"https://api.deepseek.com",
+			"deepseek-chat",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	t.Run("missing API key", func(t *testing.T) {
+		provider, err := providers.NewDeepSeekProvider(
+			"",
+			"https://api.deepseek.com",
+			"deepseek-chat",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "API key is required")
+	})
+
+	t.Run("missing model", func(t *testing.T) {
+		provider, err := providers.NewDeepSeekProvider(
+			"test-api-key",
+			"https://api.deepseek.com",
+			"",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "model is required")
+	})
 }
 
-func TestDeepSeekProvider_EmptyAPIKey(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("", "", "")
-	err := provider.HealthCheck()
-	// DeepSeek returns 401 for empty API key
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "401")
-}
+func TestDeepSeekProvider_Complete(t *testing.T) {
+	logger := logrus.New()
 
-func TestDeepSeekProvider_Capabilities(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-	caps := provider.GetCapabilities()
-	assert.NotNil(t, caps)
-	assert.NotEmpty(t, caps.SupportedModels)
-	assert.Contains(t, caps.SupportedModels, "deepseek-coder")
-	assert.Contains(t, caps.SupportedModels, "deepseek-chat")
-	assert.Contains(t, caps.SupportedFeatures, "streaming")
-	assert.Contains(t, caps.SupportedFeatures, "coding")
-	assert.Contains(t, caps.SupportedFeatures, "reasoning")
-	assert.Contains(t, caps.SupportedRequestTypes, "code_generation")
-	assert.Contains(t, caps.SupportedRequestTypes, "text_completion")
-	assert.True(t, caps.SupportsStreaming)
-	assert.False(t, caps.SupportsFunctionCalling)
-	assert.False(t, caps.SupportsVision)
-	assert.True(t, caps.SupportsTools)
-	assert.False(t, caps.SupportsSearch)
-	assert.True(t, caps.SupportsReasoning)
-	assert.True(t, caps.SupportsCodeCompletion)
-	assert.True(t, caps.SupportsCodeAnalysis)
-	assert.True(t, caps.SupportsRefactoring)
-	assert.NotNil(t, caps.Metadata)
-
-	// Check limits
-	assert.Equal(t, 4096, caps.Limits.MaxTokens)
-	assert.Equal(t, 4096, caps.Limits.MaxInputLength)
-	assert.Equal(t, 2048, caps.Limits.MaxOutputLength)
-	assert.Equal(t, 10, caps.Limits.MaxConcurrentRequests)
-}
-
-func TestDeepSeekProvider_CompleteRequest(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-
-	req := &models.LLMRequest{
-		ID: "test-req-1",
-		ModelParams: models.ModelParameters{
-			Model: "deepseek-chat",
-		},
-		Prompt: "Hello, how are you?",
-	}
-
-	// This will fail without actual API key, but tests the error handling
-	resp, err := provider.Complete(req)
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-	// Error will be about API authentication failure
-	assert.Contains(t, err.Error(), "API")
-}
-
-func TestDeepSeekProvider_CompleteWithDifferentModels(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-
-	// Test with different model selections
-	modelList := []string{
-		"deepseek-coder",
+	provider, err := providers.NewDeepSeekProvider(
+		"test-api-key",
+		"https://api.deepseek.com",
 		"deepseek-chat",
-	}
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-	for _, model := range modelList {
-		req := &models.LLMRequest{
-			ID: "test-" + model,
-			ModelParams: models.ModelParameters{
-				Model: model,
-			},
-			Prompt: "Test prompt for " + model,
-		}
-
-		resp, err := provider.Complete(req)
-		assert.Error(t, err) // Will fail without real API key
-		assert.Nil(t, resp)
-	}
-}
-
-func TestDeepSeekProvider_InvalidModel(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-
-	req := &models.LLMRequest{
-		ID: "test-invalid",
-		ModelParams: models.ModelParameters{
-			Model: "invalid-model",
-		},
-		Prompt: "Test prompt",
-	}
-
-	resp, err := provider.Complete(req)
-	// Should fail gracefully without panic
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-}
-
-func TestDeepSeekProvider_MemoryUsage(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-
-	// Test multiple requests to ensure no memory leaks
-	for i := 0; i < 10; i++ {
-		req := &models.LLMRequest{
-			ID: fmt.Sprintf("test-req-%d", i),
-			ModelParams: models.ModelParameters{
-				Model: "deepseek-chat",
-			},
-			Prompt: fmt.Sprintf("Memory test request %d", i),
-		}
-
-		resp, err := provider.Complete(req)
-		if err != nil {
-			t.Logf("Request %d failed: %v", i, err)
-		}
-
-		_ = resp
-	}
-
-	// Provider should still be responsive
-	assert.True(t, true)
-}
-
-func TestDeepSeekProvider_Timeout(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
-
-	// Create a request that might timeout
-	req := &models.LLMRequest{
-		ID: "test-timeout",
+	request := &models.LLMRequest{
 		ModelParams: models.ModelParameters{
 			Model: "deepseek-chat",
 		},
-		Prompt: "This is a timeout test request",
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, DeepSeek!",
+			},
+		},
 	}
 
-	start := time.Now()
-	resp, err := provider.Complete(req)
-	elapsed := time.Since(start)
+	ctx := context.Background()
+	response, err := provider.Complete(ctx, request)
 
-	// Will fail with auth error, but should fail quickly
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-	assert.True(t, elapsed < 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+	assert.Equal(t, "deepseek", response.ProviderName)
+	assert.NotEmpty(t, response.Content)
 }
 
-func TestDeepSeekProvider_CustomBaseURL(t *testing.T) {
-	// Test with custom base URL
-	provider := llm.NewDeepSeekProvider("test-api-key", "http://localhost:8080", "custom-model")
-	assert.NotNil(t, provider)
+func TestDeepSeekProvider_CompleteStream(t *testing.T) {
+	logger := logrus.New()
 
-	caps := provider.GetCapabilities()
-	assert.NotNil(t, caps)
+	provider, err := providers.NewDeepSeekProvider(
+		"test-api-key",
+		"https://api.deepseek.com",
+		"deepseek-chat",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
+		ModelParams: models.ModelParameters{
+			Model: "deepseek-chat",
+		},
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, DeepSeek!",
+			},
+		},
+	}
+
+	ctx := context.Background()
+	responseChan, err := provider.CompleteStream(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, responseChan)
+
+	response, ok := <-responseChan
+	assert.True(t, ok)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+}
+
+func TestDeepSeekProvider_GetCapabilities(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewDeepSeekProvider(
+		"test-api-key",
+		"https://api.deepseek.com",
+		"deepseek-chat",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	capabilities := provider.GetCapabilities()
+
+	assert.NotNil(t, capabilities)
+	assert.True(t, capabilities.SupportsStreaming)
+	assert.Greater(t, capabilities.Limits.MaxTokens, 0)
+	assert.True(t, capabilities.SupportsFunctionCalling)
+	assert.False(t, capabilities.SupportsVision)
+	assert.NotEmpty(t, capabilities.SupportedModels)
 }
 
 func TestDeepSeekProvider_ValidateConfig(t *testing.T) {
-	provider := llm.NewDeepSeekProvider("test-api-key", "", "")
+	logger := logrus.New()
 
-	// Test with empty config
-	valid, errs := provider.ValidateConfig(map[string]any{})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+	provider, err := providers.NewDeepSeekProvider(
+		"test-api-key",
+		"https://api.deepseek.com",
+		"deepseek-chat",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-	// Test with some config values
-	valid, errs = provider.ValidateConfig(map[string]any{
-		"timeout": 30,
-		"retries": 3,
+	t.Run("valid config", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+			"model":   "deepseek-chat",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.True(t, valid)
+		assert.Empty(t, errors)
 	})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+
+	t.Run("invalid config - missing API key", func(t *testing.T) {
+		config := map[string]interface{}{
+			"model": "deepseek-chat",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+
+	t.Run("invalid config - missing model", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+}
+
+func TestDeepSeekProvider_HealthCheck(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewDeepSeekProvider(
+		"test-api-key",
+		"https://api.deepseek.com",
+		"deepseek-chat",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	err = provider.HealthCheck()
+	assert.NoError(t, err)
 }

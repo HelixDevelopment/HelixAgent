@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/superagent/superagent/internal/llm"
 	"github.com/superagent/superagent/internal/models"
 	"github.com/superagent/superagent/internal/services"
 )
@@ -32,9 +31,9 @@ func (m *MockLLMProvider) HealthCheck() error {
 	return args.Error(0)
 }
 
-func (m *MockLLMProvider) GetCapabilities() *llm.ProviderCapabilities {
+func (m *MockLLMProvider) GetCapabilities() *models.ProviderCapabilities {
 	args := m.Called()
-	return args.Get(0).(*llm.ProviderCapabilities)
+	return args.Get(0).(*models.ProviderCapabilities)
 }
 
 func (m *MockLLMProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {

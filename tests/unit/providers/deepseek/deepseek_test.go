@@ -2,7 +2,6 @@ package deepseek_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 

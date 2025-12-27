@@ -1,12 +1,12 @@
 package services_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/superagent/superagent/internal/llm"
 	"github.com/superagent/superagent/internal/models"
 	"github.com/superagent/superagent/internal/services"
 )
@@ -16,10 +16,10 @@ type mockLLMProvider struct {
 	name         string
 	shouldFail   bool
 	healthError  error
-	capabilities *llm.ProviderCapabilities
+	capabilities *models.ProviderCapabilities
 }
 
-func (m *mockLLMProvider) Complete(req *models.LLMRequest) (*models.LLMResponse, error) {
+func (m *mockLLMProvider) Complete(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
 	if m.shouldFail {
 		return nil, assert.AnError
 	}
@@ -38,15 +38,45 @@ func (m *mockLLMProvider) Complete(req *models.LLMRequest) (*models.LLMResponse,
 	}, nil
 }
 
+func (m *mockLLMProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+	responseChan := make(chan *models.LLMResponse, 1)
+
+	go func() {
+		defer close(responseChan)
+		if m.shouldFail {
+			return
+		}
+		response := &models.LLMResponse{
+			ID:           "mock-stream-" + req.ID,
+			RequestID:    req.ID,
+			ProviderID:   m.name,
+			ProviderName: m.name,
+			Content:      "Mock streaming response",
+			Confidence:   0.9,
+			TokensUsed:   50,
+			ResponseTime: 50,
+			FinishReason: "stop",
+			Metadata:     map[string]any{},
+			CreatedAt:    time.Now(),
+		}
+		responseChan <- response
+	}()
+
+	if m.shouldFail {
+		return responseChan, assert.AnError
+	}
+	return responseChan, nil
+}
+
 func (m *mockLLMProvider) HealthCheck() error {
 	return m.healthError
 }
 
-func (m *mockLLMProvider) GetCapabilities() *llm.ProviderCapabilities {
+func (m *mockLLMProvider) GetCapabilities() *models.ProviderCapabilities {
 	if m.capabilities != nil {
 		return m.capabilities
 	}
-	return &llm.ProviderCapabilities{
+	return &models.ProviderCapabilities{
 		SupportedModels:       []string{"mock-model"},
 		SupportedFeatures:     []string{"completion"},
 		SupportedRequestTypes: []string{"text_completion"},

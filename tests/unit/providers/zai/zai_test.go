@@ -1,144 +1,219 @@
 package zai_test
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/superagent/superagent/internal/llm"
+
+	"github.com/superagent/superagent/internal/llm/providers"
 	"github.com/superagent/superagent/internal/models"
 )
 
-func TestZaiProvider_NewProvider(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	require.NotNil(t, provider)
-}
+func TestNewZaiProvider(t *testing.T) {
+	logger := logrus.New()
 
-func TestZaiProvider_Complete_ValidRequest(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Hello, world!",
-	}
+	t.Run("valid configuration", func(t *testing.T) {
+		provider, err := providers.NewZaiProvider(
+			"test-api-key",
+			"https://api.zai.com",
+			"zai-pro",
+			30*time.Second,
+			3,
+			logger,
+		)
 
-	// This will fail due to network error or API issues
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-	// Don't check specific error message since it could be network-related
-}
-
-func TestZaiProvider_Complete_EmptyAPIKey(t *testing.T) {
-	provider := llm.NewZaiProvider("", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Test prompt",
-	}
-
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
-
-func TestZaiProvider_Complete_NilRequest(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-
-	_, err := provider.Complete(nil)
-	assert.Error(t, err)
-}
-
-func TestZaiProvider_HealthCheck(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-
-	err := provider.HealthCheck()
-	assert.Error(t, err) // Will fail due to API connectivity
-}
-
-func TestZaiProvider_GetCapabilities(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-
-	caps := provider.GetCapabilities()
-	require.NotNil(t, caps)
-
-	assert.Contains(t, caps.SupportedModels, "zephyr")
-	assert.Contains(t, caps.SupportedModels, "mistral")
-	assert.Contains(t, caps.SupportedModels, "llama")
-
-	assert.True(t, caps.SupportsStreaming)
-	assert.True(t, caps.SupportsFunctionCalling)
-	assert.False(t, caps.SupportsVision)
-	assert.True(t, caps.SupportsCodeCompletion)
-	assert.True(t, caps.SupportsSearch)
-
-	assert.Equal(t, 4096, caps.Limits.MaxTokens)
-	assert.Equal(t, 4096, caps.Limits.MaxInputLength)
-	assert.Equal(t, 2048, caps.Limits.MaxOutputLength)
-	assert.Equal(t, 10, caps.Limits.MaxConcurrentRequests)
-
-	assert.Equal(t, "zai", caps.Metadata["provider"])
-	assert.Equal(t, "1.0", caps.Metadata["version"])
-}
-
-func TestZaiProvider_ValidateConfig(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-
-	valid, messages := provider.ValidateConfig(map[string]interface{}{
-		"api_key": "test-key",
-		"model":   "zephyr",
+		require.NoError(t, err)
+		require.NotNil(t, provider)
 	})
 
-	assert.True(t, valid)
-	assert.Empty(t, messages)
+	t.Run("missing API key", func(t *testing.T) {
+		provider, err := providers.NewZaiProvider(
+			"",
+			"https://api.zai.com",
+			"zai-pro",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "API key is required")
+	})
+
+	t.Run("missing model", func(t *testing.T) {
+		provider, err := providers.NewZaiProvider(
+			"test-api-key",
+			"https://api.zai.com",
+			"",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "model is required")
+	})
 }
 
-func TestZaiProvider_Complete_WithMaxTokens(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Write a short story",
+func TestZaiProvider_Complete(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewZaiProvider(
+		"test-api-key",
+		"https://api.zai.com",
+		"zai-pro",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
 		ModelParams: models.ModelParameters{
-			MaxTokens: 100,
+			Model: "zai-pro",
 		},
-	}
-
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
-
-func TestZaiProvider_Complete_WithTemperature(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Explain quantum computing",
-		ModelParams: models.ModelParameters{
-			Temperature: 0.7,
-		},
-	}
-
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
-
-func TestZaiProvider_Complete_WithSearch(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Search for latest AI news",
-		ModelParams: models.ModelParameters{
-			ProviderSpecific: map[string]interface{}{
-				"enable_search": true,
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, Zai!",
 			},
 		},
 	}
 
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
+	ctx := context.Background()
+	response, err := provider.Complete(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+	assert.Equal(t, "zai", response.ProviderName)
+	assert.NotEmpty(t, response.Content)
 }
 
-func TestZaiProvider_Complete_MultipleMessages(t *testing.T) {
-	provider := llm.NewZaiProvider("test-key", "https://api.zai.com", "zephyr")
-	req := &models.LLMRequest{
-		Prompt: "Continue the conversation",
+func TestZaiProvider_CompleteStream(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewZaiProvider(
+		"test-api-key",
+		"https://api.zai.com",
+		"zai-pro",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
+		ModelParams: models.ModelParameters{
+			Model: "zai-pro",
+		},
 		Messages: []models.Message{
-			{Role: "user", Content: "Hello"},
-			{Role: "assistant", Content: "Hi there!"},
-			{Role: "user", Content: "How are you?"},
+			{
+				Role:    "user",
+				Content: "Hello, Zai!",
+			},
 		},
 	}
 
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
+	ctx := context.Background()
+	responseChan, err := provider.CompleteStream(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, responseChan)
+
+	response, ok := <-responseChan
+	assert.True(t, ok)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+}
+
+func TestZaiProvider_GetCapabilities(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewZaiProvider(
+		"test-api-key",
+		"https://api.zai.com",
+		"zai-pro",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	capabilities := provider.GetCapabilities()
+
+	assert.NotNil(t, capabilities)
+	assert.True(t, capabilities.SupportsStreaming)
+	assert.Greater(t, capabilities.Limits.MaxTokens, 0)
+	assert.True(t, capabilities.SupportsFunctionCalling)
+	assert.False(t, capabilities.SupportsVision)
+	assert.NotEmpty(t, capabilities.SupportedModels)
+}
+
+func TestZaiProvider_ValidateConfig(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewZaiProvider(
+		"test-api-key",
+		"https://api.zai.com",
+		"zai-pro",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	t.Run("valid config", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+			"model":   "zai-pro",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.True(t, valid)
+		assert.Empty(t, errors)
+	})
+
+	t.Run("invalid config - missing API key", func(t *testing.T) {
+		config := map[string]interface{}{
+			"model": "zai-pro",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+
+	t.Run("invalid config - missing model", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+}
+
+func TestZaiProvider_HealthCheck(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewZaiProvider(
+		"test-api-key",
+		"https://api.zai.com",
+		"zai-pro",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	err = provider.HealthCheck()
+	assert.NoError(t, err)
 }

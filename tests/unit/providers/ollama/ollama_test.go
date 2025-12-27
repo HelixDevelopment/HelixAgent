@@ -1,173 +1,184 @@
 package ollama_test
 
 import (
-	"fmt"
+	"context"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/superagent/superagent/internal/llm"
+	"github.com/stretchr/testify/require"
+
+	"github.com/superagent/superagent/internal/llm/providers"
 	"github.com/superagent/superagent/internal/models"
 )
 
-func TestOllamaProvider_Basic(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-	assert.NotNil(t, provider)
+func TestNewOllamaProvider(t *testing.T) {
+	logger := logrus.New()
 
-	// Test configuration validation
-	valid, errs := provider.ValidateConfig(map[string]any{})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+	t.Run("valid configuration", func(t *testing.T) {
+		provider, err := providers.NewOllamaProvider(
+			"http://localhost:11434",
+			"llama2",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	t.Run("missing model", func(t *testing.T) {
+		provider, err := providers.NewOllamaProvider(
+			"http://localhost:11434",
+			"",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "model is required")
+	})
 }
 
-func TestOllamaProvider_EmptyBaseURL(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-	err := provider.HealthCheck()
-	// Ollama may return error for invalid base URL
-	assert.Error(t, err)
-}
+func TestOllamaProvider_Complete(t *testing.T) {
+	logger := logrus.New()
 
-func TestOllamaProvider_Capabilities(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-	caps := provider.GetCapabilities()
-	assert.NotNil(t, caps)
-	// Ollama capabilities come from underlying provider
-	assert.NotNil(t, caps.SupportedModels)
-	assert.NotNil(t, caps.SupportedFeatures)
-	assert.NotNil(t, caps.SupportedRequestTypes)
-	assert.NotNil(t, caps.Metadata)
-}
-
-func TestOllamaProvider_CompleteRequest(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-
-	req := &models.LLMRequest{
-		ID: "test-req-1",
-		ModelParams: models.ModelParameters{
-			Model: "llama2",
-		},
-		Prompt: "Hello, how are you?",
-	}
-
-	// This will fail without actual Ollama server, but tests the error handling
-	resp, err := provider.Complete(req)
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-	// Error will be about connection failure
-	assert.Contains(t, err.Error(), "connection")
-}
-
-func TestOllamaProvider_CompleteWithDifferentModels(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-
-	// Test with different model selections
-	modelList := []string{
+	provider, err := providers.NewOllamaProvider(
+		"http://localhost:11434",
 		"llama2",
-		"mistral",
-		"codellama",
-	}
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-	for _, model := range modelList {
-		req := &models.LLMRequest{
-			ID: "test-" + model,
-			ModelParams: models.ModelParameters{
-				Model: model,
-			},
-			Prompt: "Test prompt for " + model,
-		}
-
-		resp, err := provider.Complete(req)
-		assert.Error(t, err) // Will fail without real Ollama server
-		assert.Nil(t, resp)
-	}
-}
-
-func TestOllamaProvider_InvalidModel(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-
-	req := &models.LLMRequest{
-		ID: "test-invalid",
-		ModelParams: models.ModelParameters{
-			Model: "invalid-model",
-		},
-		Prompt: "Test prompt",
-	}
-
-	resp, err := provider.Complete(req)
-	// Should fail gracefully without panic
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-}
-
-func TestOllamaProvider_MemoryUsage(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-
-	// Test multiple requests to ensure no memory leaks
-	for i := 0; i < 10; i++ {
-		req := &models.LLMRequest{
-			ID: fmt.Sprintf("test-req-%d", i),
-			ModelParams: models.ModelParameters{
-				Model: "llama2",
-			},
-			Prompt: fmt.Sprintf("Memory test request %d", i),
-		}
-
-		resp, err := provider.Complete(req)
-		if err != nil {
-			t.Logf("Request %d failed: %v", i, err)
-		}
-
-		_ = resp
-	}
-
-	// Provider should still be responsive
-	assert.True(t, true)
-}
-
-func TestOllamaProvider_Timeout(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
-
-	// Create a request that might timeout
-	req := &models.LLMRequest{
-		ID: "test-timeout",
+	request := &models.LLMRequest{
 		ModelParams: models.ModelParameters{
 			Model: "llama2",
 		},
-		Prompt: "This is a timeout test request",
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, Ollama!",
+			},
+		},
 	}
 
-	start := time.Now()
-	resp, err := provider.Complete(req)
-	elapsed := time.Since(start)
+	ctx := context.Background()
+	response, err := provider.Complete(ctx, request)
 
-	// Will fail with connection error, but should fail quickly
-	assert.Error(t, err)
-	assert.Nil(t, resp)
-	assert.True(t, elapsed < 10*time.Second)
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+	assert.Equal(t, "ollama", response.ProviderName)
+	assert.NotEmpty(t, response.Content)
 }
 
-func TestOllamaProvider_CustomBaseURL(t *testing.T) {
-	// Test with custom base URL
-	provider := llm.NewOllamaProvider("http://localhost:11434", "custom-model")
-	assert.NotNil(t, provider)
+func TestOllamaProvider_CompleteStream(t *testing.T) {
+	logger := logrus.New()
 
-	caps := provider.GetCapabilities()
-	assert.NotNil(t, caps)
+	provider, err := providers.NewOllamaProvider(
+		"http://localhost:11434",
+		"llama2",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
+		ModelParams: models.ModelParameters{
+			Model: "llama2",
+		},
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, Ollama!",
+			},
+		},
+	}
+
+	ctx := context.Background()
+	responseChan, err := provider.CompleteStream(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, responseChan)
+
+	response, ok := <-responseChan
+	assert.True(t, ok)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+}
+
+func TestOllamaProvider_GetCapabilities(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewOllamaProvider(
+		"http://localhost:11434",
+		"llama2",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	capabilities := provider.GetCapabilities()
+
+	assert.NotNil(t, capabilities)
+	assert.True(t, capabilities.SupportsStreaming)
+	assert.Greater(t, capabilities.Limits.MaxTokens, 0)
+	assert.True(t, capabilities.SupportsFunctionCalling)
+	assert.False(t, capabilities.SupportsVision)
+	assert.NotEmpty(t, capabilities.SupportedModels)
 }
 
 func TestOllamaProvider_ValidateConfig(t *testing.T) {
-	provider := llm.NewOllamaProvider("", "")
+	logger := logrus.New()
 
-	// Test with empty config
-	valid, errs := provider.ValidateConfig(map[string]any{})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+	provider, err := providers.NewOllamaProvider(
+		"http://localhost:11434",
+		"llama2",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-	// Test with some config values
-	valid, errs = provider.ValidateConfig(map[string]any{
-		"timeout": 30,
-		"retries": 3,
+	t.Run("valid config", func(t *testing.T) {
+		config := map[string]interface{}{
+			"model": "llama2",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.True(t, valid)
+		assert.Empty(t, errors)
 	})
-	assert.True(t, valid)
-	assert.Empty(t, errs)
+
+	t.Run("invalid config - missing model", func(t *testing.T) {
+		config := map[string]interface{}{}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+}
+
+func TestOllamaProvider_HealthCheck(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewOllamaProvider(
+		"http://localhost:11434",
+		"llama2",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	err = provider.HealthCheck()
+	assert.NoError(t, err)
 }

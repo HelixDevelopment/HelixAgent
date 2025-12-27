@@ -1,126 +1,219 @@
 package qwen_test
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/superagent/superagent/internal/llm"
+
+	"github.com/superagent/superagent/internal/llm/providers"
 	"github.com/superagent/superagent/internal/models"
 )
 
-func TestQwenProvider_NewProvider(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-	require.NotNil(t, provider)
+func TestNewQwenProvider(t *testing.T) {
+	logger := logrus.New()
+
+	t.Run("valid configuration", func(t *testing.T) {
+		provider, err := providers.NewQwenProvider(
+			"test-api-key",
+			"https://dashscope.aliyuncs.com",
+			"qwen-turbo",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	t.Run("missing API key", func(t *testing.T) {
+		provider, err := providers.NewQwenProvider(
+			"",
+			"https://dashscope.aliyuncs.com",
+			"qwen-turbo",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "API key is required")
+	})
+
+	t.Run("missing model", func(t *testing.T) {
+		provider, err := providers.NewQwenProvider(
+			"test-api-key",
+			"https://dashscope.aliyuncs.com",
+			"",
+			30*time.Second,
+			3,
+			logger,
+		)
+
+		require.Error(t, err)
+		require.Nil(t, provider)
+		assert.Contains(t, err.Error(), "model is required")
+	})
 }
 
-func TestQwenProvider_Complete_ValidRequest(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-	req := &models.LLMRequest{
-		Prompt: "Hello, world!",
+func TestQwenProvider_Complete(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewQwenProvider(
+		"test-api-key",
+		"https://dashscope.aliyuncs.com",
+		"qwen-turbo",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
+		ModelParams: models.ModelParameters{
+			Model: "qwen-turbo",
+		},
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, Qwen!",
+			},
+		},
 	}
 
-	// This will fail due to network error or API issues
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-	// Don't check specific error message since it could be network-related
+	ctx := context.Background()
+	response, err := provider.Complete(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
+	assert.Equal(t, "qwen", response.ProviderName)
+	assert.NotEmpty(t, response.Content)
 }
 
-func TestQwenProvider_Complete_EmptyAPIKey(t *testing.T) {
-	provider := llm.NewQwenProvider("", "https://api.qwen.com", "qwen-turbo")
-	req := &models.LLMRequest{
-		Prompt: "Test prompt",
+func TestQwenProvider_CompleteStream(t *testing.T) {
+	logger := logrus.New()
+
+	provider, err := providers.NewQwenProvider(
+		"test-api-key",
+		"https://dashscope.aliyuncs.com",
+		"qwen-turbo",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	request := &models.LLMRequest{
+		ModelParams: models.ModelParameters{
+			Model: "qwen-turbo",
+		},
+		Messages: []models.Message{
+			{
+				Role:    "user",
+				Content: "Hello, Qwen!",
+			},
+		},
 	}
 
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
+	ctx := context.Background()
+	responseChan, err := provider.CompleteStream(ctx, request)
 
-func TestQwenProvider_Complete_NilRequest(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
+	require.NoError(t, err)
+	require.NotNil(t, responseChan)
 
-	_, err := provider.Complete(nil)
-	assert.Error(t, err)
-}
-
-func TestQwenProvider_HealthCheck(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-
-	err := provider.HealthCheck()
-	assert.Error(t, err) // Will fail due to API connectivity
+	response, ok := <-responseChan
+	assert.True(t, ok)
+	assert.NotNil(t, response)
+	assert.NotEmpty(t, response.ID)
 }
 
 func TestQwenProvider_GetCapabilities(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
+	logger := logrus.New()
 
-	caps := provider.GetCapabilities()
-	require.NotNil(t, caps)
+	provider, err := providers.NewQwenProvider(
+		"test-api-key",
+		"https://dashscope.aliyuncs.com",
+		"qwen-turbo",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-	assert.Contains(t, caps.SupportedModels, "qwen-turbo")
-	assert.Contains(t, caps.SupportedModels, "qwen-plus")
-	assert.Contains(t, caps.SupportedModels, "qwen-max")
+	capabilities := provider.GetCapabilities()
 
-	assert.True(t, caps.SupportsStreaming)
-	assert.True(t, caps.SupportsFunctionCalling)
-	assert.True(t, caps.SupportsVision)
-	assert.True(t, caps.SupportsCodeCompletion)
-
-	assert.Equal(t, 8192, caps.Limits.MaxTokens)
-	assert.Equal(t, 8192, caps.Limits.MaxInputLength)
-	assert.Equal(t, 4096, caps.Limits.MaxOutputLength)
-	assert.Equal(t, 5, caps.Limits.MaxConcurrentRequests)
-
-	assert.Equal(t, "qwen", caps.Metadata["provider"])
-	assert.Equal(t, "1.0", caps.Metadata["version"])
+	assert.NotNil(t, capabilities)
+	assert.True(t, capabilities.SupportsStreaming)
+	assert.Greater(t, capabilities.Limits.MaxTokens, 0)
+	assert.True(t, capabilities.SupportsFunctionCalling)
+	assert.True(t, capabilities.SupportsVision)
+	assert.NotEmpty(t, capabilities.SupportedModels)
 }
 
 func TestQwenProvider_ValidateConfig(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
+	logger := logrus.New()
 
-	valid, messages := provider.ValidateConfig(map[string]interface{}{
-		"api_key": "test-key",
-		"model":   "qwen-turbo",
+	provider, err := providers.NewQwenProvider(
+		"test-api-key",
+		"https://dashscope.aliyuncs.com",
+		"qwen-turbo",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
+
+	t.Run("valid config", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+			"model":   "qwen-turbo",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.True(t, valid)
+		assert.Empty(t, errors)
 	})
 
-	assert.True(t, valid)
-	assert.Empty(t, messages)
+	t.Run("invalid config - missing API key", func(t *testing.T) {
+		config := map[string]interface{}{
+			"model": "qwen-turbo",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
+
+	t.Run("invalid config - missing model", func(t *testing.T) {
+		config := map[string]interface{}{
+			"api_key": "test-key",
+		}
+
+		valid, errors := provider.ValidateConfig(config)
+		assert.False(t, valid)
+		assert.NotEmpty(t, errors)
+	})
 }
 
-func TestQwenProvider_Complete_WithMaxTokens(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-	req := &models.LLMRequest{
-		Prompt: "Write a short story",
-		ModelParams: models.ModelParameters{
-			MaxTokens: 100,
-		},
-	}
+func TestQwenProvider_HealthCheck(t *testing.T) {
+	logger := logrus.New()
 
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
+	provider, err := providers.NewQwenProvider(
+		"test-api-key",
+		"https://dashscope.aliyuncs.com",
+		"qwen-turbo",
+		30*time.Second,
+		3,
+		logger,
+	)
+	require.NoError(t, err)
 
-func TestQwenProvider_Complete_WithTemperature(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-	req := &models.LLMRequest{
-		Prompt: "Explain quantum computing",
-		ModelParams: models.ModelParameters{
-			Temperature: 0.7,
-		},
-	}
-
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
-}
-
-func TestQwenProvider_Complete_Timeout(t *testing.T) {
-	provider := llm.NewQwenProvider("test-key", "https://api.qwen.com", "qwen-turbo")
-	req := &models.LLMRequest{
-		Prompt: "This will timeout",
-		EnsembleConfig: &models.EnsembleConfig{
-			Timeout: 100,
-		},
-	}
-
-	_, err := provider.Complete(req)
-	assert.Error(t, err)
+	err = provider.HealthCheck()
+	assert.NoError(t, err)
 }

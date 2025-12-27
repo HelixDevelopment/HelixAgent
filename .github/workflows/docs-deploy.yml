@@ -1,0 +1,239 @@
+name: Deploy Documentation and Website
+
+on:
+  push:
+    branches: [ main, master ]
+    paths: 
+      - 'docs/**'
+      - 'Website/**'
+      - '.github/workflows/docs-deploy.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'docs/**'
+      - 'Website/**'
+      - '.github/workflows/docs-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build and test documentation
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: Website/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd Website
+          npm install
+
+      - name: Build website
+        run: |
+          cd Website
+          npm run build
+
+      - name: Validate HTML
+        run: |
+          cd Website/public
+          # Basic HTML validation
+          if ! grep -q "<!DOCTYPE html>" index.html; then
+            echo "ERROR: Invalid HTML structure"
+            exit 1
+          fi
+
+      - name: Check links
+        run: |
+          cd Website/public
+          # Check for broken internal links
+          grep -o 'href="[^"]*"' index.html | grep -v 'http' | while read -r link; do
+            file=$(echo "$link" | sed 's/href="//' | sed 's/"//' | sed 's/^\///')
+            if [ ! -z "$file" ] && [ ! -f "$file" ]; then
+              echo "WARNING: Broken link to $file"
+            fi
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-build
+          path: Website/public/
+          retention-days: 1
+
+  # Deploy to GitHub Pages
+  deploy:
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: Website/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd Website
+          npm install
+
+      - name: Build website
+        run: |
+          cd Website
+          npm run build
+
+      - name: Generate documentation index
+        run: |
+          mkdir -p Website/public/docs
+          cp -r docs/* Website/public/docs/ || true
+          
+          # Create main documentation index
+          cat > Website/public/docs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>SuperAgent Documentation</title>
+              <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+                  h1 { color: #2563eb; }
+                  .nav { background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0; }
+                  .nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
+                  .nav a:hover { text-decoration: underline; }
+                  .doc-list { list-style: none; padding: 0; }
+                  .doc-list li { margin: 0.5rem 0; }
+                  .doc-list a { color: #2563eb; text-decoration: none; padding: 0.5rem; display: block; border-radius: 0.25rem; }
+                  .doc-list a:hover { background: #f1f5f9; }
+              </style>
+          </head>
+          <body>
+              <h1>🚀 SuperAgent Documentation</h1>
+              <p>Welcome to the comprehensive documentation for SuperAgent - the AI-powered multi-provider LLM orchestration platform.</p>
+              
+              <div class="nav">
+                  <a href="/">🏠 Home</a>
+                  <a href="/docs/">📚 Docs</a>
+                  <a href="/docs/api/">🔧 API</a>
+                  <a href="/docs/developer/">💻 Developer</a>
+                  <a href="/docs/user/">👤 User Guide</a>
+                  <a href="https://github.com/superagent/superagent">⭐ GitHub</a>
+              </div>
+
+              <h2>📖 Documentation Sections</h2>
+              <ul class="doc-list">
+                  <li><a href="api/">🔧 API Documentation</a></li>
+                  <li><a href="developer/">💻 Developer Guide</a></li>
+                  <li><a href="user/">👤 User Guide</a></li>
+                  <li><a href="deployment/">🚀 Deployment Guide</a></li>
+                  <li><a href="tutorial/VIDEO_COURSE_CONTENT.md">📹 Video Course</a></li>
+                  <li><a href="ai-debate-configuration.md">🗣️ AI Debate Config</a></li>
+                  <li><a href="MULTI_PROVIDER_SETUP.md">🔌 Multi-Provider Setup</a></li>
+                  <li><a href="OPENROUTER_INTEGRATION.md">🔀 OpenRouter Integration</a></li>
+              </ul>
+
+              <h2>🎯 Quick Start</h2>
+              <ol>
+                  <li><a href="user/">Read the User Guide</a> to understand SuperAgent capabilities</li>
+                  <li><a href="developer/">Check the Developer Guide</a> for installation and setup</li>
+                  <li><a href="api/">Explore the API Documentation</a> for integration details</li>
+                  <li><a href="deployment/">Follow the Deployment Guide</a> for production setup</li>
+              </ol>
+
+              <h2>🔗 Quick Links</h2>
+              <ul>
+                  <li><a href="https://github.com/superagent/superagent">GitHub Repository</a></li>
+                  <li><a href="api/openapi.yaml">OpenAPI Specification</a></li>
+                  <li><a href="architecture.md">Architecture Overview</a></li>
+                  <li><a href="DEVELOPMENT_STATUS.md">Development Status</a></li>
+              </ul>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Website/public/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Create release notes
+  release-notes:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate release notes
+        run: |
+          echo "# Documentation Release $(date +%Y-%m-%d)" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## What's New" >> release_notes.md
+          echo "- Updated documentation structure" >> release_notes.md
+          echo "- Improved website performance" >> release_notes.md
+          echo "- Enhanced mobile responsiveness" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Links" >> release_notes.md
+          echo "- [Documentation](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> release_notes.md
+          echo "- [API Reference](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs/api/)" >> release_notes.md
+          echo "- [GitHub Repository](https://github.com/${{ github.repository }})" >> release_notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+          retention-days: 30
+
+  # Notify deployment status
+  notify:
+    needs: [build-docs, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "🎉 Documentation deployed successfully!"
+          echo "📚 Visit: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          echo "🔧 API Docs: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs/api/"
+          echo "💻 Developer Guide: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs/developer/"
+
+      - name: Notify failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Documentation deployment failed"
+          echo "Please check the workflow logs for details"

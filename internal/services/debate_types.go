@@ -7,29 +7,29 @@ import (
 
 // DebateResult represents the outcome of a complete AI debate
 type DebateResult struct {
-	DebateID        string                 `json:"debate_id"`
-	SessionID       string                 `json:"session_id,omitempty"`
-	Topic           string                 `json:"topic,omitempty"`
-	StartTime       time.Time              `json:"start_time"`
-	EndTime         time.Time              `json:"end_time"`
-	Duration        time.Duration          `json:"duration"`
-	TotalRounds     int                    `json:"total_rounds"`
-	RoundsConducted int                    `json:"rounds_conducted,omitempty"`
-	Participants    []ParticipantResponse  `json:"participants"`
-	AllResponses    []ParticipantResponse  `json:"all_responses,omitempty"`
-	BestResponse    *ParticipantResponse   `json:"best_response,omitempty"`
-	Consensus       *ConsensusResult       `json:"consensus,omitempty"`
-	CogneeInsights  *CogneeInsights        `json:"cognee_insights,omitempty"`
-	QualityScore    float64                `json:"quality_score"`
-	FinalScore      float64                `json:"final_score,omitempty"`
-	QualityMetrics  *QualityMetrics        `json:"quality_metrics,omitempty"`
-	Success         bool                   `json:"success"`
-	FallbackUsed    bool                   `json:"fallback_used,omitempty"`
-	CogneeEnhanced  bool                   `json:"cognee_enhanced,omitempty"`
-	MemoryUsed      bool                   `json:"memory_used,omitempty"`
-	Recommendations []string               `json:"recommendations,omitempty"`
-	ErrorMessage    string                 `json:"error_message,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	DebateID        string                `json:"debate_id"`
+	SessionID       string                `json:"session_id,omitempty"`
+	Topic           string                `json:"topic,omitempty"`
+	StartTime       time.Time             `json:"start_time"`
+	EndTime         time.Time             `json:"end_time"`
+	Duration        time.Duration         `json:"duration"`
+	TotalRounds     int                   `json:"total_rounds"`
+	RoundsConducted int                   `json:"rounds_conducted,omitempty"`
+	Participants    []ParticipantResponse `json:"participants"`
+	AllResponses    []ParticipantResponse `json:"all_responses,omitempty"`
+	BestResponse    *ParticipantResponse  `json:"best_response,omitempty"`
+	Consensus       *ConsensusResult      `json:"consensus,omitempty"`
+	CogneeInsights  *CogneeInsights       `json:"cognee_insights,omitempty"`
+	QualityScore    float64               `json:"quality_score"`
+	FinalScore      float64               `json:"final_score,omitempty"`
+	QualityMetrics  *QualityMetrics       `json:"quality_metrics,omitempty"`
+	Success         bool                  `json:"success"`
+	FallbackUsed    bool                  `json:"fallback_used,omitempty"`
+	CogneeEnhanced  bool                  `json:"cognee_enhanced,omitempty"`
+	MemoryUsed      bool                  `json:"memory_used,omitempty"`
+	Recommendations []string              `json:"recommendations,omitempty"`
+	ErrorMessage    string                `json:"error_message,omitempty"`
+	Metadata        map[string]any        `json:"metadata,omitempty"`
 }
 
 // ConsensusResult represents the consensus reached during debate
@@ -51,23 +51,23 @@ type ConsensusResult struct {
 
 // ParticipantResponse represents a single participant's response
 type ParticipantResponse struct {
-	ParticipantID   string                 `json:"participant_id"`
-	ParticipantName string                 `json:"participant_name"`
-	Role            string                 `json:"role"`
-	Round           int                    `json:"round"`
-	RoundNumber     int                    `json:"round_number,omitempty"`
-	Response        string                 `json:"response"`
-	Content         string                 `json:"content,omitempty"`
-	Confidence      float64                `json:"confidence"`
-	QualityScore    float64                `json:"quality_score"`
-	ResponseTime    time.Duration          `json:"response_time"`
-	LLMProvider     string                 `json:"llm_provider"`
-	LLMModel        string                 `json:"llm_model"`
-	LLMName         string                 `json:"llm_name,omitempty"`
-	CogneeEnhanced  bool                   `json:"cognee_enhanced"`
-	CogneeAnalysis  *CogneeAnalysis        `json:"cognee_analysis,omitempty"`
-	Timestamp       time.Time              `json:"timestamp"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	ParticipantID   string          `json:"participant_id"`
+	ParticipantName string          `json:"participant_name"`
+	Role            string          `json:"role"`
+	Round           int             `json:"round"`
+	RoundNumber     int             `json:"round_number,omitempty"`
+	Response        string          `json:"response"`
+	Content         string          `json:"content,omitempty"`
+	Confidence      float64         `json:"confidence"`
+	QualityScore    float64         `json:"quality_score"`
+	ResponseTime    time.Duration   `json:"response_time"`
+	LLMProvider     string          `json:"llm_provider"`
+	LLMModel        string          `json:"llm_model"`
+	LLMName         string          `json:"llm_name,omitempty"`
+	CogneeEnhanced  bool            `json:"cognee_enhanced"`
+	CogneeAnalysis  *CogneeAnalysis `json:"cognee_analysis,omitempty"`
+	Timestamp       time.Time       `json:"timestamp"`
+	Metadata        map[string]any  `json:"metadata,omitempty"`
 }
 
 // CogneeInsights represents insights generated by Cognee AI
@@ -158,10 +158,10 @@ type SentimentByRound struct {
 }
 
 type Node struct {
-	ID         string                 `json:"id"`
-	Label      string                 `json:"label"`
-	Type       string                 `json:"type"`
-	Properties map[string]interface{} `json:"properties"`
+	ID         string         `json:"id"`
+	Label      string         `json:"label"`
+	Type       string         `json:"type"`
+	Properties map[string]any `json:"properties"`
 }
 
 type Edge struct {

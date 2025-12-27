@@ -6,15 +6,15 @@ import (
 
 // DebateStatus represents the current status of a debate
 type DebateStatus struct {
-	DebateID         string                 `json:"debate_id"`
-	Status           string                 `json:"status"`
-	CurrentRound     int                    `json:"current_round"`
-	TotalRounds      int                    `json:"total_rounds"`
-	StartTime        time.Time              `json:"start_time"`
-	EstimatedEndTime time.Time              `json:"estimated_end_time,omitempty"`
-	Participants     []ParticipantStatus    `json:"participants"`
-	Errors           []string               `json:"errors,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	DebateID         string              `json:"debate_id"`
+	Status           string              `json:"status"`
+	CurrentRound     int                 `json:"current_round"`
+	TotalRounds      int                 `json:"total_rounds"`
+	StartTime        time.Time           `json:"start_time"`
+	EstimatedEndTime time.Time           `json:"estimated_end_time,omitempty"`
+	Participants     []ParticipantStatus `json:"participants"`
+	Errors           []string            `json:"errors,omitempty"`
+	Metadata         map[string]any      `json:"metadata,omitempty"`
 }
 
 // ParticipantStatus represents a participant's status
@@ -64,26 +64,26 @@ type TimeRange struct {
 
 // DebateReport represents a generated debate report
 type DebateReport struct {
-	ReportID        string                 `json:"report_id"`
-	DebateID        string                 `json:"debate_id"`
-	GeneratedAt     time.Time              `json:"generated_at"`
-	Summary         string                 `json:"summary"`
-	KeyFindings     []string               `json:"key_findings"`
-	Recommendations []string               `json:"recommendations"`
-	Metrics         PerformanceMetrics     `json:"metrics"`
-	Appendices      map[string]interface{} `json:"appendices,omitempty"`
+	ReportID        string             `json:"report_id"`
+	DebateID        string             `json:"debate_id"`
+	GeneratedAt     time.Time          `json:"generated_at"`
+	Summary         string             `json:"summary"`
+	KeyFindings     []string           `json:"key_findings"`
+	Recommendations []string           `json:"recommendations"`
+	Metrics         PerformanceMetrics `json:"metrics"`
+	Appendices      map[string]any     `json:"appendices,omitempty"`
 }
 
 // DebateConfig represents the configuration for a debate
 type DebateConfig struct {
-	DebateID     string                 `json:"debate_id"`
-	Topic        string                 `json:"topic"`
-	Participants []ParticipantConfig    `json:"participants"`
-	MaxRounds    int                    `json:"max_rounds"`
-	Timeout      time.Duration          `json:"timeout"`
-	Strategy     string                 `json:"strategy"`
-	EnableCognee bool                   `json:"enable_cognee"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	DebateID     string              `json:"debate_id"`
+	Topic        string              `json:"topic"`
+	Participants []ParticipantConfig `json:"participants"`
+	MaxRounds    int                 `json:"max_rounds"`
+	Timeout      time.Duration       `json:"timeout"`
+	Strategy     string              `json:"strategy"`
+	EnableCognee bool                `json:"enable_cognee"`
+	Metadata     map[string]any      `json:"metadata,omitempty"`
 }
 
 // ParticipantConfig represents a participant configuration

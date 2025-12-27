@@ -27,7 +27,7 @@ type Workflow struct {
 	Description string
 	Steps       []WorkflowStep
 	Status      string // "pending", "running", "completed", "failed"
-	Results     map[string]interface{}
+	Results     map[string]any
 	Errors      []error
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -38,10 +38,10 @@ type WorkflowStep struct {
 	ID         string
 	Name       string
 	Type       string // "lsp", "mcp", "tool", "llm"
-	Parameters map[string]interface{}
+	Parameters map[string]any
 	DependsOn  []string // IDs of steps this depends on
 	Status     string   // "pending", "running", "completed", "failed"
-	Result     interface{}
+	Result     any
 	Error      error
 	StartTime  *time.Time
 	EndTime    *time.Time
@@ -72,20 +72,20 @@ func (io *IntegrationOrchestrator) ExecuteCodeAnalysis(ctx context.Context, file
 				ID:         "lsp_init",
 				Name:       "Initialize LSP Client",
 				Type:       "lsp",
-				Parameters: map[string]interface{}{"languageID": languageID, "filePath": filePath},
+				Parameters: map[string]any{"languageID": languageID, "filePath": filePath},
 			},
 			{
 				ID:         "lsp_intelligence",
 				Name:       "Get Code Intelligence",
 				Type:       "lsp",
-				Parameters: map[string]interface{}{"filePath": filePath},
+				Parameters: map[string]any{"filePath": filePath},
 				DependsOn:  []string{"lsp_init"},
 			},
 			{
 				ID:         "tool_analysis",
 				Name:       "Run Analysis Tools",
 				Type:       "tool",
-				Parameters: map[string]interface{}{"filePath": filePath},
+				Parameters: map[string]any{"filePath": filePath},
 				DependsOn:  []string{"lsp_intelligence"},
 			},
 		},
@@ -115,7 +115,7 @@ func (io *IntegrationOrchestrator) ExecuteToolChain(ctx context.Context, toolCha
 		Name:        "Tool Chain Execution",
 		Description: "Execute a chain of tools with dependencies",
 		Status:      "pending",
-		Results:     make(map[string]interface{}),
+		Results:     make(map[string]any),
 		CreatedAt:   time.Now(),
 	}
 
@@ -239,7 +239,7 @@ func (io *IntegrationOrchestrator) executeWorkflow(ctx context.Context, workflow
 }
 
 // executeStep executes a single workflow step
-func (io *IntegrationOrchestrator) executeStep(ctx context.Context, step *WorkflowStep) (interface{}, error) {
+func (io *IntegrationOrchestrator) executeStep(ctx context.Context, step *WorkflowStep) (any, error) {
 	step.Status = "running"
 	now := time.Now()
 	step.StartTime = &now
@@ -288,11 +288,7 @@ func (io *IntegrationOrchestrator) executeStep(ctx context.Context, step *Workfl
 }
 
 // executeLSPStep executes an LSP-related step
-func (io *IntegrationOrchestrator) executeLSPStep(ctx context.Context, step *WorkflowStep) (interface{}, error) {
-	if io.lspClient == nil {
-		return nil, fmt.Errorf("LSP client not available")
-	}
-
+func (io *IntegrationOrchestrator) executeLSPStep(ctx context.Context, step *WorkflowStep) (any, error) {
 	switch step.Name {
 	case "Initialize LSP Client":
 		return nil, io.lspClient.StartServer(ctx)
@@ -305,7 +301,7 @@ func (io *IntegrationOrchestrator) executeLSPStep(ctx context.Context, step *Wor
 }
 
 // executeMCPStep executes an MCP-related step
-func (io *IntegrationOrchestrator) executeMCPStep(ctx context.Context, step *WorkflowStep) (interface{}, error) {
+func (io *IntegrationOrchestrator) executeMCPStep(_ context.Context, _ *WorkflowStep) (any, error) {
 	if io.mcpManager == nil {
 		return nil, fmt.Errorf("MCP manager not available")
 	}
@@ -315,7 +311,7 @@ func (io *IntegrationOrchestrator) executeMCPStep(ctx context.Context, step *Wor
 }
 
 // executeToolStep executes a tool-related step
-func (io *IntegrationOrchestrator) executeToolStep(ctx context.Context, step *WorkflowStep) (interface{}, error) {
+func (io *IntegrationOrchestrator) executeToolStep(ctx context.Context, step *WorkflowStep) (any, error) {
 	toolName, ok := step.Parameters["toolName"].(string)
 	if !ok {
 		return nil, fmt.Errorf("toolName parameter required")
@@ -325,7 +321,7 @@ func (io *IntegrationOrchestrator) executeToolStep(ctx context.Context, step *Wo
 }
 
 // executeLLMStep executes an LLM-related step
-func (io *IntegrationOrchestrator) executeLLMStep(ctx context.Context, step *WorkflowStep) (interface{}, error) {
+func (io *IntegrationOrchestrator) executeLLMStep(_ context.Context, _ *WorkflowStep) (any, error) {
 	// Implementation would integrate with LLM providers
 	return nil, fmt.Errorf("LLM steps not implemented")
 }
@@ -432,7 +428,7 @@ func (io *IntegrationOrchestrator) findExecutableSteps(steps []WorkflowStep, gra
 // ToolExecution represents a tool execution request
 type ToolExecution struct {
 	ToolName   string
-	Parameters map[string]interface{}
+	Parameters map[string]any
 	DependsOn  []string
 	MaxRetries int
 }

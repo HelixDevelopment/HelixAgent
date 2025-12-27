@@ -560,7 +560,7 @@ func (e *EnsembleService) confidenceWeightedVoting(responses []*models.LLMRespon
 	return nil
 }
 
-func (e *EnsembleService) majorityVoting(responses []*models.LLMResponse, config *models.EnsembleConfig) *models.LLMResponse {
+func (e *EnsembleService) majorityVoting(responses []*models.LLMResponse, _ *models.EnsembleConfig) *models.LLMResponse {
 	// Simplified majority voting
 	if len(responses) == 0 {
 		return nil

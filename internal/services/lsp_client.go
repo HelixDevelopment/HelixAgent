@@ -32,7 +32,7 @@ type LSPServer struct {
 	Process      *exec.Cmd
 	Stdin        io.WriteCloser
 	Stdout       io.ReadCloser
-	Capabilities map[string]interface{}
+	Capabilities map[string]any
 	Initialized  bool
 	LastHealth   time.Time
 }
@@ -129,9 +129,9 @@ func (c *LSPClient) StartServer(ctx context.Context) error {
 }
 
 // getServerConfig returns the server configuration for the language
-func (c *LSPClient) getServerConfig() (map[string]interface{}, error) {
+func (c *LSPClient) getServerConfig() (map[string]any, error) {
 	// Common LSP server configurations
-	servers := map[string]map[string]interface{}{
+	servers := map[string]map[string]any{
 		"go": {
 			"command": []string{"gopls"},
 			"args":    []string{},
@@ -196,12 +196,12 @@ func (c *LSPClient) startServerProcess(server *LSPServer, config map[string]inte
 }
 
 // initializeServer performs LSP initialization handshake
-func (c *LSPClient) initializeServer(ctx context.Context, server *LSPServer) error {
+func (c *LSPClient) initializeServer(_ context.Context, server *LSPServer) error {
 	initRequest := LSPMessage{
 		JSONRPC: "2.0",
 		ID:      c.nextMessageID(),
 		Method:  "initialize",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"processId":    nil,
 			"rootUri":      fmt.Sprintf("file://%s", c.workspaceRoot),
 			"capabilities": c.getClientCapabilities(),
@@ -586,7 +586,7 @@ func (c *LSPClient) closeDocument(server *LSPServer, filePath string) error {
 }
 
 // getDiagnostics gets diagnostics for a file
-func (c *LSPClient) getDiagnostics(server *LSPServer, filePath string) ([]*models.Diagnostic, error) {
+func (c *LSPClient) getDiagnostics(_ *LSPServer, filePath string) ([]*models.Diagnostic, error) {
 	// Diagnostics are cached from notifications
 	return c.GetDiagnostics(filePath), nil
 }

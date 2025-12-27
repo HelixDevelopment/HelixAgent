@@ -269,7 +269,7 @@ func TestAIDebateSystem_E2E(t *testing.T) {
 
 // Helper functions for creating test configurations
 
-func createTestDebateConfig(t *testing.T, tempDir string) *config.AIDebateConfig {
+func createTestDebateConfig(_ *testing.T, _ string) *config.AIDebateConfig {
 	return &config.AIDebateConfig{
 		Enabled:             true,
 		MaximalRepeatRounds: 3,
@@ -530,7 +530,7 @@ func createStressTestDebateService(t *testing.T, cfg *config.AIDebateConfig) *Mo
 // MockDebateService implements a mock version of the debate service for E2E testing
 type MockDebateService struct {
 	config          *config.AIDebateConfig
-	logger          func(string, ...interface{})
+	logger          func(string, ...any)
 	triggerFallback bool
 	triggerTimeout  bool
 	enableCognee    bool
@@ -564,9 +564,12 @@ func (m *MockDebateService) ConductDebate(ctx context.Context, topic string, ini
 		Duration:        time.Duration(1000+m.stressModeOffset()) * time.Millisecond,
 		RoundsConducted: 2,
 		FinalScore:      0.85,
-		QualityMetrics: map[string]float64{
-			"avg_confidence": 0.8,
-			"avg_quality":    0.75,
+		QualityMetrics: &services.QualityMetrics{
+			Coherence:    0.8,
+			Relevance:    0.75,
+			Accuracy:     0.82,
+			Completeness: 0.78,
+			OverallScore: 0.79,
 		},
 		Consensus: &services.ConsensusResult{
 			Reached:        true,
@@ -576,7 +579,7 @@ func (m *MockDebateService) ConductDebate(ctx context.Context, topic string, ini
 			Summary:        fmt.Sprintf("Mock consensus reached on topic: %s", topic),
 			KeyPoints:      []string{"Point 1", "Point 2", "Point 3"},
 		},
-		BestResponse: services.ParticipantResponse{
+		BestResponse: &services.ParticipantResponse{
 			ParticipantName: "TestAnalyst",
 			LLMName:         "TestLLM",
 			Content:         fmt.Sprintf("Mock response for topic: %s with context: %s", topic, initialContext),
@@ -620,7 +623,7 @@ func (m *MockDebateService) ConductDebate(ctx context.Context, topic string, ini
 	// Add fallback indicators
 	if m.triggerFallback {
 		result.FallbackUsed = true
-		result.BestResponse.Metadata = map[string]interface{}{
+		result.BestResponse.Metadata = map[string]any{
 			"fallback_triggered": true,
 			"fallback_reason":    "primary_llm_failure",
 		}
@@ -630,17 +633,26 @@ func (m *MockDebateService) ConductDebate(ctx context.Context, topic string, ini
 	if m.enableCognee {
 		result.CogneeEnhanced = true
 		result.CogneeInsights = &services.CogneeInsights{
-			SentimentAnalysis: map[string]float64{
-				"positive": 0.7,
-				"neutral":  0.2,
-				"negative": 0.1,
+			SentimentAnalysis: services.SentimentAnalysis{
+				OverallSentiment: "positive",
+				SentimentScore:   0.7,
+				SentimentByRound: []services.SentimentByRound{
+					{Round: 1, Sentiment: "positive", Score: 0.7},
+					{Round: 2, Sentiment: "neutral", Score: 0.2},
+				},
 			},
-			EntityExtraction: []string{"AI", "regulation", "government"},
-			TopicModeling:    []string{"artificial_intelligence", "policy"},
-			CoherenceScore:   0.85,
-			RelevanceScore:   0.9,
-			InnovationScore:  0.7,
-			Summary:          "Cognee analysis shows coherent and relevant discussion",
+			EntityExtraction: []services.Entity{
+				{Text: "AI", Type: "technology", Confidence: 0.9},
+				{Text: "regulation", Type: "policy", Confidence: 0.8},
+				{Text: "government", Type: "organization", Confidence: 0.7},
+			},
+			TopicModeling: map[string]float64{
+				"artificial_intelligence": 0.6,
+				"policy":                  0.4,
+			},
+			CoherenceScore:  0.85,
+			RelevanceScore:  0.9,
+			InnovationScore: 0.7,
 		}
 	}
 

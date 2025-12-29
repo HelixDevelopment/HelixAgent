@@ -64,6 +64,15 @@ func TestUnifiedProtocolManager_ExecuteRequest_MCP(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 	manager := NewUnifiedProtocolManager(nil, nil, logger)
 
+	// Create a test API key
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("test-key", "test", []string{"mcp:*", "acp:*", "embedding:*", "lsp:*"})
+	assert.NoError(t, err)
+
+	// Connect a test MCP server first
+	err = manager.mcpManager.ConnectServer(context.Background(), "test-server", "Test Server", "echo", []string{"test"})
+	assert.NoError(t, err)
+
 	req := UnifiedProtocolRequest{
 		ProtocolType: "mcp",
 		ServerID:     "test-server",
@@ -71,8 +80,11 @@ func TestUnifiedProtocolManager_ExecuteRequest_MCP(t *testing.T) {
 		Arguments:    map[string]interface{}{"arg1": "value1"},
 	}
 
+	// Create context with API key
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
 	// Test
-	response, err := manager.ExecuteRequest(context.Background(), req)
+	response, err := manager.ExecuteRequest(ctx, req)
 
 	// Assert
 	assert.NoError(t, err)
@@ -88,6 +100,11 @@ func TestUnifiedProtocolManager_ExecuteRequest_ACP(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 	manager := NewUnifiedProtocolManager(nil, nil, logger)
 
+	// Create a test API key
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("test-key", "test", []string{"mcp:*", "acp:*", "embedding:*", "lsp:*"})
+	assert.NoError(t, err)
+
 	req := UnifiedProtocolRequest{
 		ProtocolType: "acp",
 		ServerID:     "opencode-1",
@@ -95,8 +112,11 @@ func TestUnifiedProtocolManager_ExecuteRequest_ACP(t *testing.T) {
 		Arguments:    map[string]interface{}{"arg1": "value1"},
 	}
 
+	// Create context with API key
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
 	// Test
-	response, err := manager.ExecuteRequest(context.Background(), req)
+	response, err := manager.ExecuteRequest(ctx, req)
 
 	// Assert
 	assert.NoError(t, err)
@@ -112,13 +132,21 @@ func TestUnifiedProtocolManager_ExecuteRequest_Embedding(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 	manager := NewUnifiedProtocolManager(nil, nil, logger)
 
+	// Create a test API key
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("test-key", "test", []string{"mcp:*", "acp:*", "embedding:*", "lsp:*"})
+	assert.NoError(t, err)
+
 	req := UnifiedProtocolRequest{
 		ProtocolType: "embedding",
 		Arguments:    map[string]interface{}{"text": "test text"},
 	}
 
+	// Create context with API key
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
 	// Test
-	response, err := manager.ExecuteRequest(context.Background(), req)
+	response, err := manager.ExecuteRequest(ctx, req)
 
 	// Assert
 	assert.NoError(t, err)
@@ -134,17 +162,25 @@ func TestUnifiedProtocolManager_ExecuteRequest_UnsupportedProtocol(t *testing.T)
 	logger.SetLevel(logrus.PanicLevel)
 	manager := NewUnifiedProtocolManager(nil, nil, logger)
 
+	// Create a test API key
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("test-key", "test", []string{"mcp:*", "acp:*", "embedding:*", "lsp:*"})
+	assert.NoError(t, err)
+
 	req := UnifiedProtocolRequest{
 		ProtocolType: "unsupported",
 	}
 
+	// Create context with API key
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
 	// Test
-	response, err := manager.ExecuteRequest(context.Background(), req)
+	response, err := manager.ExecuteRequest(ctx, req)
 
 	// Assert
 	assert.Error(t, err)
 	assert.False(t, response.Success)
-	assert.Equal(t, "unsupported protocol type: unsupported", response.Error)
+	assert.Equal(t, "insufficient permissions for unsupported:execute", response.Error)
 }
 
 // TestUnifiedProtocolManager_ListServers tests listing all servers

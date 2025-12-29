@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/superagent/superagent/internal/models"
@@ -415,6 +416,8 @@ func TestMajorityVoteStrategy(t *testing.T) {
 // MCPManager Tests
 
 func TestMCPManager_NewMCPManager(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
 	manager := services.NewMCPManager(nil, nil, logger)
 
 	assert.NotNil(t, manager)

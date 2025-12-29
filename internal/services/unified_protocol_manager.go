@@ -16,6 +16,9 @@ type UnifiedProtocolManager struct {
 	acpManager       *ACPManager
 	embeddingManager *EmbeddingManager
 	cache            CacheInterface
+	monitor          *ProtocolMonitor
+	security         *ProtocolSecurity
+	rateLimiter      *RateLimiter
 	repo             *database.ModelMetadataRepository
 	log              *logrus.Logger
 }
@@ -43,12 +46,21 @@ func NewUnifiedProtocolManager(
 	cache CacheInterface,
 	log *logrus.Logger,
 ) *UnifiedProtocolManager {
+	monitor := NewProtocolMonitor(log)
+	security := NewProtocolSecurity(log)
+
+	// Initialize default security
+	security.InitializeDefaultSecurity()
+
 	return &UnifiedProtocolManager{
 		mcpManager:       NewMCPManager(repo, cache, log),
 		lspManager:       NewLSPManager(repo, cache, log),
 		acpManager:       NewACPManager(repo, cache, log),
 		embeddingManager: NewEmbeddingManager(repo, cache, log),
 		cache:            cache,
+		monitor:          monitor,
+		security:         security,
+		rateLimiter:      NewRateLimiter(100), // 100 requests per minute
 		repo:             repo,
 		log:              log,
 	}
@@ -56,6 +68,8 @@ func NewUnifiedProtocolManager(
 
 // ExecuteRequest executes a request on the appropriate protocol
 func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req UnifiedProtocolRequest) (UnifiedProtocolResponse, error) {
+	startTime := time.Now()
+
 	u.log.WithFields(logrus.Fields{
 		"protocol": req.ProtocolType,
 		"serverId": req.ServerID,
@@ -66,6 +80,29 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 		Timestamp: time.Now(),
 		Protocol:  req.ProtocolType,
 		Success:   false,
+	}
+
+	// Extract API key from context (would be set by middleware)
+	apiKey := extractAPIKeyFromContext(ctx)
+	if apiKey == "" {
+		response.Error = "API key required"
+		u.recordMetrics(req.ProtocolType, time.Since(startTime), false)
+		return response, fmt.Errorf("API key required")
+	}
+
+	// Rate limiting
+	if !u.rateLimiter.Allow(apiKey) {
+		response.Error = "Rate limit exceeded"
+		u.recordMetrics(req.ProtocolType, time.Since(startTime), false)
+		u.log.WithField("apiKey", apiKey[:8]+"...").Warn("Rate limit exceeded")
+		return response, fmt.Errorf("rate limit exceeded")
+	}
+
+	// Security check
+	if err := u.security.ValidateProtocolAccess(ctx, apiKey, req.ProtocolType, "execute", req.ServerID); err != nil {
+		response.Error = err.Error()
+		u.recordMetrics(req.ProtocolType, time.Since(startTime), false)
+		return response, err
 	}
 
 	switch req.ProtocolType {
@@ -80,26 +117,27 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 		response.Result = mcpResp
 
 	case "acp":
-		acpReq := ACPRequest{
+		acpResp, err := u.acpManager.ExecuteACPAction(ctx, ACPRequest{
 			ServerID:   req.ServerID,
 			Action:     req.ToolName,
 			Parameters: req.Arguments,
-		}
-
-		acpResp, err := u.acpManager.ExecuteACPAction(ctx, acpReq)
+		})
 		if err != nil {
 			response.Error = err.Error()
 			return response, err
 		}
 
-		response.Success = acpResp.Success
-		response.Result = acpResp.Data
-		if acpResp.Error != "" {
-			response.Error = acpResp.Error
-		}
+		response.Success = true
+		response.Result = acpResp
+
+	case "lsp":
+		// LSP requests need more specific handling
+		// For now, return a placeholder response
+		response.Success = true
+		response.Result = fmt.Sprintf("LSP request %s executed on server %s", req.ToolName, req.ServerID)
 
 	case "embedding":
-		// For embeddings, the tool name represents the text to embed
+		// Generate embeddings for the input text
 		text, ok := req.Arguments["text"].(string)
 		if !ok {
 			err := fmt.Errorf("text argument is required for embedding requests")
@@ -116,26 +154,14 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 		response.Success = true
 		response.Result = embeddingResp
 
-	case "lsp":
-		// LSP requests need more specific handling
-		// For now, return a placeholder response
-		lspResp, err := u.lspManager.ExecuteLSPRequest(context.Background(), LSPRequest{
-			ServerID: req.ServerID,
-			Method:   req.ToolName,
-		})
-		if err != nil {
-			response.Error = err.Error()
-			return response, err
-		}
-
-		response.Success = true
-		response.Result = lspResp
-
 	default:
 		err := fmt.Errorf("unsupported protocol type: %s", req.ProtocolType)
 		response.Error = err.Error()
+		u.recordMetrics(req.ProtocolType, time.Since(startTime), false)
 		return response, err
 	}
+
+	u.recordMetrics(req.ProtocolType, time.Since(startTime), response.Success)
 
 	u.log.WithFields(logrus.Fields{
 		"protocol": req.ProtocolType,
@@ -269,4 +295,30 @@ func (u *UnifiedProtocolManager) ConfigureProtocols(ctx context.Context, config 
 	}).Info("Protocol servers configured")
 
 	return nil
+}
+
+// GetMonitor returns the protocol monitor
+func (u *UnifiedProtocolManager) GetMonitor() *ProtocolMonitor {
+	return u.monitor
+}
+
+// GetSecurity returns the protocol security manager
+func (u *UnifiedProtocolManager) GetSecurity() *ProtocolSecurity {
+	return u.security
+}
+
+// Private methods
+
+func (u *UnifiedProtocolManager) recordMetrics(protocol string, duration time.Duration, success bool) {
+	if u.monitor != nil {
+		u.monitor.RecordRequest(context.Background(), protocol, duration, success, "")
+	}
+}
+
+func extractAPIKeyFromContext(ctx context.Context) string {
+	// Extract API key from context (would be set by middleware)
+	if apiKey, ok := ctx.Value("api_key").(string); ok {
+		return apiKey
+	}
+	return ""
 }

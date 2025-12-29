@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/superagent/superagent/internal/services"
@@ -339,6 +340,8 @@ func TestE2ENewServicesWorkflow(t *testing.T) {
 
 	t.Run("CompleteCodeAnalysisWorkflow", func(t *testing.T) {
 		// Initialize all services
+		logger := logrus.New()
+		logger.SetLevel(logrus.PanicLevel)
 		mcpManager := services.NewMCPManager(nil, nil, logger)
 		lspClient := services.NewLSPClient("/tmp", "go")
 		toolRegistry := services.NewToolRegistry(mcpManager, lspClient)

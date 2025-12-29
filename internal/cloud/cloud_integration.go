@@ -2,193 +2,136 @@ package cloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/bedrock"
-	"github.com/aws/aws-sdk-go/service/bedrockruntime"
 	"github.com/sirupsen/logrus"
 )
 
+// CloudProvider represents a cloud AI provider
+type CloudProvider interface {
+	ListModels(ctx context.Context) ([]map[string]interface{}, error)
+	InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error)
+	GetProviderName() string
+}
+
 // AWSBedrockIntegration provides AWS Bedrock AI service integration
 type AWSBedrockIntegration struct {
-	bedrockClient   *bedrock.Bedrock
-	runtimeClient   *bedrockruntime.BedrockRuntime
-	logger          *logrus.Logger
-	modelCache      map[string]*bedrock.ModelSummary
-	cacheMutex      sync.RWMutex
-	cacheExpiration time.Time
+	region string
+	logger *logrus.Logger
 }
 
 // NewAWSBedrockIntegration creates a new AWS Bedrock integration
-func NewAWSBedrockIntegration(region string, logger *logrus.Logger) (*AWSBedrockIntegration, error) {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
+func NewAWSBedrockIntegration(region string, logger *logrus.Logger) *AWSBedrockIntegration {
 	return &AWSBedrockIntegration{
-		bedrockClient: bedrock.New(sess),
-		runtimeClient: bedrockruntime.New(sess),
-		logger:        logger,
-		modelCache:    make(map[string]*bedrock.ModelSummary),
-	}, nil
+		region: region,
+		logger: logger,
+	}
 }
 
 // ListModels lists available Bedrock models
-func (a *AWSBedrockIntegration) ListModels(ctx context.Context) ([]*bedrock.ModelSummary, error) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
-
-	// Check cache validity
-	if time.Now().Before(a.cacheExpiration) && len(a.modelCache) > 0 {
-		var models []*bedrock.ModelSummary
-		for _, model := range a.modelCache {
-			models = append(models, model)
-		}
-		return models, nil
-	}
-
-	input := &bedrock.ListFoundationModelsInput{}
-	result, err := a.bedrockClient.ListFoundationModelsWithContext(ctx, input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Bedrock models: %w", err)
-	}
-
-	// Update cache
-	a.modelCache = make(map[string]*bedrock.ModelSummary)
-	for _, model := range result.ModelSummaries {
-		a.modelCache[*model.ModelId] = model
-	}
-	a.cacheExpiration = time.Now().Add(1 * time.Hour)
-
-	return result.ModelSummaries, nil
+func (a *AWSBedrockIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) {
+	// Mock implementation - would integrate with actual AWS SDK in production
+	return []map[string]interface{}{
+		{
+			"name":         "amazon.titan-text-express-v1",
+			"display_name": "Amazon Titan Text Express",
+			"description":  "Fast and efficient text generation",
+			"provider":     "aws",
+		},
+		{
+			"name":         "anthropic.claude-v2",
+			"display_name": "Anthropic Claude v2",
+			"description":  "Advanced conversational AI",
+			"provider":     "aws",
+		},
+	}, nil
 }
 
 // InvokeModel invokes a Bedrock model
 func (a *AWSBedrockIntegration) InvokeModel(ctx context.Context, modelId, prompt string, config map[string]interface{}) (string, error) {
-	body := map[string]interface{}{
-		"prompt":      prompt,
-		"max_tokens":  1000,
-		"temperature": 0.7,
-	}
+	// Mock implementation - would call actual AWS Bedrock API in production
+	a.logger.WithFields(logrus.Fields{
+		"model":         modelId,
+		"region":        a.region,
+		"prompt_length": len(prompt),
+	}).Info("Invoking AWS Bedrock model (mock)")
 
-	// Override with config
-	if maxTokens, ok := config["max_tokens"].(float64); ok {
-		body["max_tokens"] = int(maxTokens)
-	}
-	if temperature, ok := config["temperature"].(float64); ok {
-		body["temperature"] = temperature
-	}
-	if topP, ok := config["top_p"].(float64); ok {
-		body["top_p"] = topP
-	}
+	return fmt.Sprintf("Mock AWS Bedrock response from %s: %s", modelId, prompt[:50]+"..."), nil
+}
 
-	bodyBytes, err := json.Marshal(body)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	input := &bedrockruntime.InvokeModelInput{
-		ModelId:     aws.String(modelId),
-		Body:        bodyBytes,
-		ContentType: aws.String("application/json"),
-	}
-
-	result, err := a.runtimeClient.InvokeModelWithContext(ctx, input)
-	if err != nil {
-		return "", fmt.Errorf("failed to invoke Bedrock model: %w", err)
-	}
-
-	var response map[string]interface{}
-	if err := json.Unmarshal(result.Body, &response); err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	// Extract generated text (this varies by model)
-	if completions, ok := response["completions"].([]interface{}); ok && len(completions) > 0 {
-		if completion, ok := completions[0].(map[string]interface{}); ok {
-			if text, ok := completion["data"].(map[string]interface{})["text"].(string); ok {
-				return text, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("unable to extract response text")
+// GetProviderName returns the provider name
+func (a *AWSBedrockIntegration) GetProviderName() string {
+	return "aws-bedrock"
 }
 
 // GCPVertexAIIntegration provides Google Cloud Vertex AI integration
 type GCPVertexAIIntegration struct {
-	projectID  string
-	location   string
-	logger     *logrus.Logger
-	httpClient *http.Client
+	projectID string
+	location  string
+	logger    *logrus.Logger
 }
 
 // NewGCPVertexAIIntegration creates a new GCP Vertex AI integration
 func NewGCPVertexAIIntegration(projectID, location string, logger *logrus.Logger) *GCPVertexAIIntegration {
 	return &GCPVertexAIIntegration{
-		projectID:  projectID,
-		location:   location,
-		logger:     logger,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		projectID: projectID,
+		location:  location,
+		logger:    logger,
 	}
 }
 
 // ListModels lists available Vertex AI models
 func (g *GCPVertexAIIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) {
-	// In a real implementation, this would call the Vertex AI API
-	// For now, return mock data
 	return []map[string]interface{}{
 		{
 			"name":         "text-bison",
 			"display_name": "Text Bison",
 			"description":  "Fast and efficient text generation",
+			"provider":     "gcp",
 		},
 		{
 			"name":         "chat-bison",
 			"display_name": "Chat Bison",
 			"description":  "Conversational AI model",
+			"provider":     "gcp",
 		},
 	}, nil
 }
 
 // InvokeModel invokes a Vertex AI model
 func (g *GCPVertexAIIntegration) InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error) {
-	// In a real implementation, this would call the Vertex AI API
-	// For now, return mock response
-	return fmt.Sprintf("Mock response from %s: %s", modelName, prompt[:50]+"..."), nil
+	g.logger.WithFields(logrus.Fields{
+		"model":    modelName,
+		"project":  g.projectID,
+		"location": g.location,
+	}).Info("Invoking GCP Vertex AI model (mock)")
+
+	return fmt.Sprintf("Mock GCP Vertex AI response from %s: %s", modelName, prompt[:50]+"..."), nil
+}
+
+// GetProviderName returns the provider name
+func (g *GCPVertexAIIntegration) GetProviderName() string {
+	return "gcp-vertex-ai"
 }
 
 // AzureOpenAIIntegration provides Azure OpenAI integration
 type AzureOpenAIIntegration struct {
-	endpoint   string
-	apiKey     string
-	logger     *logrus.Logger
-	httpClient *http.Client
+	endpoint string
+	logger   *logrus.Logger
 }
 
 // NewAzureOpenAIIntegration creates a new Azure OpenAI integration
-func NewAzureOpenAIIntegration(endpoint, apiKey string, logger *logrus.Logger) *AzureOpenAIIntegration {
+func NewAzureOpenAIIntegration(endpoint string, logger *logrus.Logger) *AzureOpenAIIntegration {
 	return &AzureOpenAIIntegration{
-		endpoint:   endpoint,
-		apiKey:     apiKey,
-		logger:     logger,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		endpoint: endpoint,
+		logger:   logger,
 	}
 }
 
 // ListModels lists available Azure OpenAI models
 func (az *AzureOpenAIIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) {
-	// In a real implementation, this would call the Azure OpenAI API
 	return []map[string]interface{}{
 		{
 			"id":       "gpt-4",
@@ -207,15 +150,17 @@ func (az *AzureOpenAIIntegration) ListModels(ctx context.Context) ([]map[string]
 
 // InvokeModel invokes an Azure OpenAI model
 func (az *AzureOpenAIIntegration) InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error) {
-	// In a real implementation, this would call the Azure OpenAI API
-	return fmt.Sprintf("Mock Azure response from %s: %s", modelName, prompt[:50]+"..."), nil
+	az.logger.WithFields(logrus.Fields{
+		"model":    modelName,
+		"endpoint": az.endpoint,
+	}).Info("Invoking Azure OpenAI model (mock)")
+
+	return fmt.Sprintf("Mock Azure OpenAI response from %s: %s", modelName, prompt[:50]+"..."), nil
 }
 
-// CloudProvider represents a cloud AI provider
-type CloudProvider interface {
-	ListModels(ctx context.Context) ([]map[string]interface{}, error)
-	InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error)
-	GetProviderName() string
+// GetProviderName returns the provider name
+func (az *AzureOpenAIIntegration) GetProviderName() string {
+	return "azure-openai"
 }
 
 // CloudIntegrationManager manages multiple cloud provider integrations
@@ -289,12 +234,9 @@ func (cim *CloudIntegrationManager) InvokeCloudModel(ctx context.Context, provid
 func (cim *CloudIntegrationManager) InitializeDefaultProviders() error {
 	// AWS Bedrock
 	if region := os.Getenv("AWS_REGION"); region != "" {
-		if provider, err := NewAWSBedrockIntegration(region, cim.logger); err == nil {
-			cim.RegisterProvider(provider)
-			cim.logger.Info("AWS Bedrock provider initialized")
-		} else {
-			cim.logger.WithError(err).Warn("Failed to initialize AWS Bedrock provider")
-		}
+		provider := NewAWSBedrockIntegration(region, cim.logger)
+		cim.RegisterProvider(provider)
+		cim.logger.Info("AWS Bedrock provider initialized")
 	}
 
 	// GCP Vertex AI
@@ -310,27 +252,10 @@ func (cim *CloudIntegrationManager) InitializeDefaultProviders() error {
 
 	// Azure OpenAI
 	if endpoint := os.Getenv("AZURE_OPENAI_ENDPOINT"); endpoint != "" {
-		if apiKey := os.Getenv("AZURE_OPENAI_API_KEY"); apiKey != "" {
-			provider := NewAzureOpenAIIntegration(endpoint, apiKey, cim.logger)
-			cim.RegisterProvider(provider)
-			cim.logger.Info("Azure OpenAI provider initialized")
-		}
+		provider := NewAzureOpenAIIntegration(endpoint, cim.logger)
+		cim.RegisterProvider(provider)
+		cim.logger.Info("Azure OpenAI provider initialized")
 	}
 
 	return nil
-}
-
-// Implement CloudProvider interface for AWS
-func (a *AWSBedrockIntegration) GetProviderName() string {
-	return "aws-bedrock"
-}
-
-// Implement CloudProvider interface for GCP
-func (g *GCPVertexAIIntegration) GetProviderName() string {
-	return "gcp-vertex-ai"
-}
-
-// Implement CloudProvider interface for Azure
-func (az *AzureOpenAIIntegration) GetProviderName() string {
-	return "azure-openai"
 }

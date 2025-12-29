@@ -51,6 +51,18 @@ func (r *RedisClient) Delete(ctx context.Context, key string) error {
 	return r.client.Del(ctx, key).Err()
 }
 
+func (r *RedisClient) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+	return r.client.MGet(ctx, keys...).Result()
+}
+
+func (r *RedisClient) Pipeline() redis.Pipeliner {
+	return r.client.Pipeline()
+}
+
+func (r *RedisClient) Client() *redis.Client {
+	return r.client
+}
+
 func (r *RedisClient) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }

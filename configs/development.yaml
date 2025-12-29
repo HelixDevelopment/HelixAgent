@@ -220,3 +220,26 @@ backup:
   schedule: "0 3 * * *"  # 3 AM daily
   retention_days: 7
   storage_path: "./backups/dev"
+
+modelsdev:
+  # Models.dev integration (disabled by default in development)
+  enabled: ${MODELSDEV_ENABLED:-false}
+  api_key: "${MODELSDEV_API_KEY}"
+  base_url: "https://api.models.dev/v1"
+  
+  # Data refresh and caching settings
+  refresh_interval: "24h"
+  cache_ttl: "1h"
+  default_batch_size: 100
+  max_retries: 3
+  auto_refresh: true
+  
+  # API request settings
+  timeout: "30s"
+  user_agent: "SuperAgent/1.0 (Development)"
+  rate_limit: 10
+  
+  # Advanced settings
+  enable_benchmarks: true
+  enable_capabilities: true
+  enable_providers: true

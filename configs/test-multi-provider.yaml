@@ -122,3 +122,27 @@ providers:
         input_price: 0.075
         output_price: 0.3
         capabilities: ["chat", "reasoning", "multimodal"]
+
+# Models.dev integration for testing
+modelsdev:
+  enabled: false  # Disabled for tests by default
+  api_key: "test-api-key"
+  base_url: "https://api.test.models.dev/v1"
+  
+  # Data refresh and caching settings
+  refresh_interval: "5m"  # Short interval for tests
+  cache_ttl: "1m"         # Short TTL for tests
+  default_batch_size: 10  # Small batch for tests
+  max_retries: 1          # Minimal retries for tests
+  auto_refresh: false     # Disable auto-refresh for tests
+  
+  # API request settings
+  timeout: "5s"           # Short timeout for tests
+  user_agent: "SuperAgent-Test/1.0"
+  rate_limit: 5
+  
+  # Features for testing
+  enable_benchmarks: true
+  enable_capabilities: true
+  enable_providers: true
+  enable_ensemble_weighting: false  # Disabled for test stability

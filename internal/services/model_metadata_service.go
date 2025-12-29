@@ -14,7 +14,7 @@ import (
 type ModelMetadataService struct {
 	modelsdevClient *modelsdev.Client
 	repository      *database.ModelMetadataRepository
-	cache           *ModelMetadataCache
+	cache           CacheInterface
 	config          *ModelMetadataConfig
 	log             *logrus.Logger
 }
@@ -28,25 +28,34 @@ type ModelMetadataConfig struct {
 	EnableAutoRefresh bool
 }
 
-type ModelMetadataCache struct {
-	mu     sync.RWMutex
-	models map[string]*database.ModelMetadata
-	ttl    time.Duration
-	timers map[string]*time.Timer
-}
+// CacheInterface defines the interface for model metadata caching
+type CacheInterface interface {
+	// Basic cache operations
+	Get(ctx context.Context, modelID string) (*database.ModelMetadata, bool, error)
+	Set(ctx context.Context, modelID string, metadata *database.ModelMetadata) error
+	Delete(ctx context.Context, modelID string) error
+	Clear(ctx context.Context) error
+	Size(ctx context.Context) (int, error)
 
-func NewModelMetadataCache(ttl time.Duration) *ModelMetadataCache {
-	return &ModelMetadataCache{
-		models: make(map[string]*database.ModelMetadata),
-		ttl:    ttl,
-		timers: make(map[string]*time.Timer),
-	}
+	// Bulk operations
+	GetBulk(ctx context.Context, modelIDs []string) (map[string]*database.ModelMetadata, error)
+	SetBulk(ctx context.Context, models map[string]*database.ModelMetadata) error
+
+	// Provider and capability operations
+	GetProviderModels(ctx context.Context, providerID string) ([]*database.ModelMetadata, error)
+	SetProviderModels(ctx context.Context, providerID string, models []*database.ModelMetadata) error
+	DeleteProviderModels(ctx context.Context, providerID string) error
+	GetByCapability(ctx context.Context, capability string) ([]*database.ModelMetadata, error)
+	SetByCapability(ctx context.Context, capability string, models []*database.ModelMetadata) error
+
+	// Health check
+	HealthCheck(ctx context.Context) error
 }
 
 func NewModelMetadataService(
 	client *modelsdev.Client,
 	repo *database.ModelMetadataRepository,
-	cache *ModelMetadataCache,
+	cache CacheInterface,
 	config *ModelMetadataConfig,
 	log *logrus.Logger,
 ) *ModelMetadataService {
@@ -81,9 +90,11 @@ func getDefaultModelMetadataConfig() *ModelMetadataConfig {
 }
 
 func (s *ModelMetadataService) GetModel(ctx context.Context, modelID string) (*database.ModelMetadata, error) {
-	if cached, exists := s.cache.Get(modelID); exists {
+	if cached, exists, err := s.cache.Get(ctx, modelID); err == nil && exists {
 		s.log.WithField("model_id", modelID).Debug("Cache hit for model")
 		return cached, nil
+	} else if err != nil {
+		s.log.WithError(err).WithField("model_id", modelID).Warn("Cache error, falling back to database")
 	}
 
 	metadata, err := s.repository.GetModelMetadata(ctx, modelID)
@@ -91,7 +102,14 @@ func (s *ModelMetadataService) GetModel(ctx context.Context, modelID string) (*d
 		return nil, fmt.Errorf("failed to get model metadata: %w", err)
 	}
 
-	s.cache.Set(modelID, metadata)
+	// Store in cache (async to not block the request)
+	go func() {
+		ctx := context.Background()
+		if err := s.cache.Set(ctx, modelID, metadata); err != nil {
+			s.log.WithError(err).WithField("model_id", modelID).Warn("Failed to set cache")
+		}
+	}()
+
 	return metadata, nil
 }
 
@@ -106,9 +124,18 @@ func (s *ModelMetadataService) ListModels(ctx context.Context, providerID string
 		return nil, 0, fmt.Errorf("failed to list models: %w", err)
 	}
 
-	for _, model := range models {
-		s.cache.Set(model.ModelID, model)
-	}
+	// Store in cache (async to not block the request)
+	go func(models []*database.ModelMetadata) {
+		ctx := context.Background()
+		cacheEntries := make(map[string]*database.ModelMetadata)
+		for _, model := range models {
+			cacheEntries[model.ModelID] = model
+		}
+
+		if err := s.cache.SetBulk(ctx, cacheEntries); err != nil {
+			s.log.WithError(err).Warn("Failed to set bulk cache")
+		}
+	}(models)
 
 	return models, total, nil
 }
@@ -124,9 +151,18 @@ func (s *ModelMetadataService) SearchModels(ctx context.Context, query string, p
 		return nil, 0, fmt.Errorf("failed to search models: %w", err)
 	}
 
-	for _, model := range models {
-		s.cache.Set(model.ModelID, model)
-	}
+	// Store in cache (async to not block the request)
+	go func(models []*database.ModelMetadata) {
+		ctx := context.Background()
+		cacheEntries := make(map[string]*database.ModelMetadata)
+		for _, model := range models {
+			cacheEntries[model.ModelID] = model
+		}
+
+		if err := s.cache.SetBulk(ctx, cacheEntries); err != nil {
+			s.log.WithError(err).Warn("Failed to set bulk cache")
+		}
+	}(models)
 
 	return models, total, nil
 }
@@ -343,7 +379,12 @@ func (s *ModelMetadataService) refreshProviderModels(ctx context.Context, provid
 			s.storeBenchmarks(ctx, modelInfo.ID, modelInfo.Performance.Benchmarks)
 		}
 
-		s.cache.Set(modelInfo.ID, metadata)
+		go func(modelID string, metadata *database.ModelMetadata) {
+			ctx := context.Background()
+			if err := s.cache.Set(ctx, modelID, metadata); err != nil {
+				s.log.WithError(err).WithField("model_id", modelID).Warn("Failed to set cache")
+			}
+		}(modelInfo.ID, metadata)
 	}
 
 	return len(allModels), nil
@@ -456,14 +497,30 @@ func (s *ModelMetadataService) startAutoRefresh() {
 	}
 }
 
-func (c *ModelMetadataCache) Get(modelID string) (*database.ModelMetadata, bool) {
+// InMemoryCache implements CacheInterface for in-memory caching
+type InMemoryCache struct {
+	mu     sync.RWMutex
+	models map[string]*database.ModelMetadata
+	ttl    time.Duration
+	timers map[string]*time.Timer
+}
+
+func NewInMemoryCache(ttl time.Duration) *InMemoryCache {
+	return &InMemoryCache{
+		models: make(map[string]*database.ModelMetadata),
+		ttl:    ttl,
+		timers: make(map[string]*time.Timer),
+	}
+}
+
+func (c *InMemoryCache) Get(ctx context.Context, modelID string) (*database.ModelMetadata, bool, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	model, exists := c.models[modelID]
-	return model, exists
+	return model, exists, nil
 }
 
-func (c *ModelMetadataCache) Set(modelID string, metadata *database.ModelMetadata) {
+func (c *InMemoryCache) Set(ctx context.Context, modelID string, metadata *database.ModelMetadata) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -473,19 +530,23 @@ func (c *ModelMetadataCache) Set(modelID string, metadata *database.ModelMetadat
 
 	c.models[modelID] = metadata
 	c.timers[modelID] = time.AfterFunc(c.ttl, func() {
-		c.Delete(modelID)
+		ctx := context.Background()
+		c.Delete(ctx, modelID)
 	})
+
+	return nil
 }
 
-func (c *ModelMetadataCache) Delete(modelID string) {
+func (c *InMemoryCache) Delete(ctx context.Context, modelID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	delete(c.models, modelID)
 	delete(c.timers, modelID)
+	return nil
 }
 
-func (c *ModelMetadataCache) Clear() {
+func (c *InMemoryCache) Clear(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -495,10 +556,73 @@ func (c *ModelMetadataCache) Clear() {
 
 	c.models = make(map[string]*database.ModelMetadata)
 	c.timers = make(map[string]*time.Timer)
+	return nil
 }
 
-func (c *ModelMetadataCache) Size() int {
+func (c *InMemoryCache) Size(ctx context.Context) (int, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.models)
+	return len(c.models), nil
+}
+
+func (c *InMemoryCache) GetBulk(ctx context.Context, modelIDs []string) (map[string]*database.ModelMetadata, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	result := make(map[string]*database.ModelMetadata)
+	for _, modelID := range modelIDs {
+		if model, exists := c.models[modelID]; exists {
+			result[modelID] = model
+		}
+	}
+
+	return result, nil
+}
+
+func (c *InMemoryCache) SetBulk(ctx context.Context, models map[string]*database.ModelMetadata) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for modelID, metadata := range models {
+		if timer, exists := c.timers[modelID]; exists {
+			timer.Stop()
+		}
+		c.models[modelID] = metadata
+		c.timers[modelID] = time.AfterFunc(c.ttl, func() {
+			ctx := context.Background()
+			c.Delete(ctx, modelID)
+		})
+	}
+
+	return nil
+}
+
+func (c *InMemoryCache) GetProviderModels(ctx context.Context, providerID string) ([]*database.ModelMetadata, error) {
+	// In-memory cache doesn't support provider-specific queries
+	return nil, nil
+}
+
+func (c *InMemoryCache) SetProviderModels(ctx context.Context, providerID string, models []*database.ModelMetadata) error {
+	// In-memory cache doesn't support provider-specific caching
+	return nil
+}
+
+func (c *InMemoryCache) DeleteProviderModels(ctx context.Context, providerID string) error {
+	// In-memory cache doesn't support provider-specific deletion
+	return nil
+}
+
+func (c *InMemoryCache) GetByCapability(ctx context.Context, capability string) ([]*database.ModelMetadata, error) {
+	// In-memory cache doesn't support capability-specific queries
+	return nil, nil
+}
+
+func (c *InMemoryCache) SetByCapability(ctx context.Context, capability string, models []*database.ModelMetadata) error {
+	// In-memory cache doesn't support capability-specific caching
+	return nil
+}
+
+func (c *InMemoryCache) HealthCheck(ctx context.Context) error {
+	// In-memory cache is always healthy
+	return nil
 }

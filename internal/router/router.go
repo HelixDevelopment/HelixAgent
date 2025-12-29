@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/superagent/superagent/internal/cache"
 	"github.com/superagent/superagent/internal/config"
 	"github.com/superagent/superagent/internal/database"
 	"github.com/superagent/superagent/internal/handlers"
@@ -53,7 +54,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 		logger := logrus.New()
 		modelMetadataRepo := database.NewModelMetadataRepository(db.GetPool(), logger)
-		modelMetadataCache := services.NewModelMetadataCache(cfg.ModelsDev.CacheTTL)
+
+		// Create Redis client for caching if Redis is configured
+		var redisClient *cache.RedisClient
+		if cfg.Redis.Host != "" && cfg.Redis.Port != "" {
+			redisClient = cache.NewRedisClient(cfg)
+		}
+
+		// Create cache factory and get appropriate cache
+		cacheFactory := services.NewCacheFactory(redisClient, logger)
+		modelMetadataCache := cacheFactory.CreateDefaultCache(cfg.ModelsDev.CacheTTL)
 
 		modelMetadataService := services.NewModelMetadataService(
 			modelsDevClient,

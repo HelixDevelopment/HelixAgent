@@ -108,6 +108,19 @@ services:
       # Plugin Configuration
       PLUGIN_WATCH_PATHS: /app/plugins
 
+      # Models.dev Configuration for Testing
+      MODELSDEV_ENABLED: false
+      MODELSDEV_API_KEY: ""
+      MODELSDEV_BASE_URL: "https://api.test.models.dev/v1"
+      MODELSDEV_REFRESH_INTERVAL: "5m"
+      MODELSDEV_CACHE_TTL: "1m"
+      MODELSDEV_BATCH_SIZE: 10
+      MODELSDEV_MAX_RETRIES: 1
+      MODELSDEV_AUTO_REFRESH: false
+      MODELSDEV_TIMEOUT: 5
+      MODELSDEV_USER_AGENT: "SuperAgent-Test/1.0"
+      MODELSDEV_RATE_LIMIT: 5
+
       # Test Environment
       GIN_MODE: release
       LOG_LEVEL: info

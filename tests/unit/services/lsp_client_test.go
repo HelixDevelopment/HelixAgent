@@ -3,10 +3,8 @@ package services_test
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/superagent/superagent/internal/models"
+	"github.com/sirupsen/logrus"
 	"github.com/superagent/superagent/internal/services"
 )
 

@@ -13,6 +13,7 @@ type Config struct {
 	Redis       RedisConfig
 	Cognee      CogneeConfig
 	LLM         LLMConfig
+	ModelsDev   ModelsDevConfig
 	Monitoring  MonitoringConfig
 	Security    SecurityConfig
 	Plugins     PluginConfig
@@ -99,6 +100,17 @@ type StreamingConfig struct {
 	BufferSize      int
 	KeepAlive       time.Duration
 	EnableHeartbeat bool
+}
+
+type ModelsDevConfig struct {
+	Enabled          bool
+	APIKey           string
+	BaseURL          string
+	RefreshInterval  time.Duration
+	CacheTTL         time.Duration
+	DefaultBatchSize int
+	MaxRetries       int
+	AutoRefresh      bool
 }
 
 type MonitoringConfig struct {
@@ -218,6 +230,16 @@ func Load() *Config {
 				BufferSize:      getIntEnv("STREAMING_BUFFER_SIZE", 1024),
 				KeepAlive:       getDurationEnv("STREAMING_KEEP_ALIVE", 30*time.Second),
 				EnableHeartbeat: getBoolEnv("STREAMING_HEARTBEAT", true),
+			},
+			ModelsDev: ModelsDevConfig{
+				Enabled:          getBoolEnv("MODELSDEV_ENABLED", false),
+				APIKey:           getEnv("MODELSDEV_API_KEY", ""),
+				BaseURL:          getEnv("MODELSDEV_BASE_URL", "https://api.models.dev/v1"),
+				RefreshInterval:  getDurationEnv("MODELSDEV_REFRESH_INTERVAL", 24*time.Hour),
+				CacheTTL:         getDurationEnv("MODELSDEV_CACHE_TTL", 1*time.Hour),
+				DefaultBatchSize: getIntEnv("MODELSDEV_BATCH_SIZE", 100),
+				MaxRetries:       getIntEnv("MODELSDEV_MAX_RETRIES", 3),
+				AutoRefresh:      getBoolEnv("MODELSDEV_AUTO_REFRESH", true),
 			},
 		},
 		Monitoring: MonitoringConfig{

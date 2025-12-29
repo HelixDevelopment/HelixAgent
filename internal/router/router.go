@@ -312,18 +312,28 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				name := c.Param("name")
 				health := providerRegistry.HealthCheck()
 
+				response := gin.H{
+					"provider": name,
+				}
+
 				if err, exists := health[name]; exists {
 					if err != nil {
-						c.JSON(503, gin.H{
-							"provider": name,
-							"healthy":  false,
-							"error":    err.Error(),
-						})
+						response["healthy"] = false
+						response["error"] = err.Error()
+						c.JSON(503, response)
 					} else {
-						c.JSON(200, gin.H{
-							"provider": name,
-							"healthy":  true,
-						})
+						response["healthy"] = true
+
+						// Add circuit breaker information if available
+						if cb := providerRegistry.GetCircuitBreaker(name); cb != nil {
+							response["circuit_breaker"] = gin.H{
+								"state":         string(cb.GetState()),
+								"failure_count": cb.GetFailureCount(),
+								"last_failure":  cb.GetLastFailure(),
+							}
+						}
+
+						c.JSON(200, response)
 					}
 				} else {
 					c.JSON(404, gin.H{"error": "provider not found"})

@@ -48,6 +48,15 @@ make docker-ai
 
 ### Step 4: Verify Installation
 ```bash
+# Check that services are healthy
+curl http://localhost:8080/v1/health
+
+# List available providers (should show your configured providers)
+curl http://localhost:8080/v1/providers
+
+# Check provider health with circuit breaker status
+curl http://localhost:8080/v1/providers/claude/health
+```
 # Check if SuperAgent is running
 curl http://localhost:8080/health
 
@@ -129,6 +138,18 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
       "strategy": "confidence_weighted",
       "min_providers": 2
     }
+  }'
+```
+
+### Test 4: Streaming Responses
+```bash
+curl -X POST http://localhost:8080/v1/completions/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Write a short story about a robot learning emotions",
+    "model": "claude-3-sonnet-20240229",
+    "max_tokens": 200,
+    "stream": true
   }'
 ```
 

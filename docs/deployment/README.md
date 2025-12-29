@@ -552,11 +552,23 @@ export GOGC=50  # Lower GC threshold
 
 #### 4. Slow Response Times
 ```bash
-# Check provider health
+# Check provider health and circuit breaker status
 curl http://localhost:8080/v1/providers/claude/health
 
-# Monitor circuit breakers
+# Monitor circuit breakers in metrics
 curl http://localhost:8080/metrics | grep circuit_breaker
+
+# Check provider response times
+curl http://localhost:8080/metrics | grep llm_response_time
+```
+
+#### 5. Circuit Breaker Issues
+```bash
+# Check circuit breaker states
+curl http://localhost:8080/metrics | grep circuit_breaker_state
+
+# Reset circuit breaker manually (development only)
+curl -X POST http://localhost:8080/v1/admin/providers/claude/reset-circuit-breaker
 ```
 
 ### Log Analysis

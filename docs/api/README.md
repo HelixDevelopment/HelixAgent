@@ -229,6 +229,27 @@ Retrieves final results and consensus information.
 }
 ```
 
+#### Stream Debate Progress
+
+**GET** `/debates/{debateId}/stream`
+
+Streams real-time debate progress and participant responses via Server-Sent Events (SSE).
+
+**Response (200 OK, text/event-stream):**
+```
+event: round_started
+data: {"round": 2, "timestamp": "2024-01-15T10:35:00Z"}
+
+event: participant_response
+data: {"participantId": "ai-economist", "response": "Based on economic analysis...", "timestamp": "2024-01-15T10:36:00Z"}
+
+event: round_completed
+data: {"round": 2, "timestamp": "2024-01-15T10:38:00Z"}
+```
+
+**Query Parameters:**
+- `includeResponses` (boolean, optional): Include full response text in events (default: false)
+
 #### Generate Debate Report
 
 **GET** `/debates/{debateId}/report`
@@ -301,9 +322,10 @@ Retrieves all configured LLM providers and their capabilities.
           "function_calling"
         ],
         "supportedRequestTypes": [
-          "completion",
-          "streaming"
-        ],
+           "completion",
+           "streaming"
+         ],
+         "supportsStreaming": true,
         "supportsStreaming": true,
         "supportsFunctionCalling": true,
         "supportsVision": true,
@@ -330,7 +352,7 @@ Retrieves all configured LLM providers and their capabilities.
 
 **GET** `/providers/{providerId}/health`
 
-Retrieves health status of a specific LLM provider.
+Retrieves health status of a specific LLM provider including circuit breaker state.
 
 **Response (200 OK):**
 ```json
@@ -340,9 +362,21 @@ Retrieves health status of a specific LLM provider.
   "lastCheck": "2024-01-15T10:45:00Z",
   "responseTime": 8200,
   "errorCount": 2,
-  "successRate": 0.996
+  "successRate": 0.996,
+  "circuitBreaker": {
+    "state": "closed",
+    "failureCount": 0,
+    "lastFailure": null,
+    "recoveryTimeout": "60s",
+    "nextRetry": null
+  }
 }
 ```
+
+**Circuit Breaker States:**
+- `closed`: Normal operation, requests flow through
+- `open`: Circuit breaker tripped, requests fail fast
+- `half-open`: Testing recovery, limited requests allowed
 
 ### History
 

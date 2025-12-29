@@ -612,6 +612,31 @@ func (cb *CircuitBreaker) Call(fn func() error) error {
 	return nil
 }
 
+// GetState returns the current circuit breaker state
+func (cb *CircuitBreaker) GetState() CircuitState {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	return cb.state
+}
+
+// GetFailureCount returns the current consecutive failure count
+func (cb *CircuitBreaker) GetFailureCount() int {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	return cb.consecutiveFailures
+}
+
+// GetLastFailure returns the timestamp of the last failure
+func (cb *CircuitBreaker) GetLastFailure() *time.Time {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	if cb.lastFailure.IsZero() {
+		return nil
+	}
+	t := cb.lastFailure
+	return &t
+}
+
 func (cb *CircuitBreaker) onFailure() {
 	cb.consecutiveFailures++
 	cb.lastFailure = time.Now()

@@ -158,29 +158,42 @@ func (ds *DebateService) ConductDebate(
 - `ValidateConfig()`: Configuration validation
 - `BuildConsensus()`: Consensus building algorithm
 
-### Provider Manager
+### Provider Registry
 
-**File**: `internal/llm/provider_manager.go`
+**File**: `internal/services/provider_registry.go`
 
 ```go
-type ProviderManager struct {
-    providers map[string]LLMProvider
-    registry  *ProviderRegistry
+type ProviderRegistry struct {
+     providers       map[string]llm.LLMProvider
+     circuitBreakers map[string]*CircuitBreaker
+     config          *RegistryConfig
+     ensemble        *EnsembleService
+     requestService  *RequestService
+     memory          *MemoryService
+     mu              sync.RWMutex
 }
+```
 
-func (pm *ProviderManager) Complete(
-    ctx context.Context,
-    provider string,
-    request *models.LLMRequest,
-) (*models.LLMResponse, error) {
-    // Provider selection and execution
+**Key Features:**
+- **Circuit Breaker Protection**: Automatic failure detection and recovery for LLM providers
+- **Provider Management**: Registration, health monitoring, and capability tracking
+- **Ensemble Support**: Multi-provider voting and consensus building
+- **Caching Integration**: Request caching with Redis backend
+
+**Circuit Breaker Configuration:**
+```go
+type CircuitBreakerConfig struct {
+    Enabled          bool          `json:"enabled"`
+    FailureThreshold int           `json:"failure_threshold"`
+    RecoveryTimeout  time.Duration `json:"recovery_timeout"`
+    SuccessThreshold int           `json:"success_threshold"`
 }
 ```
 
 **Key Methods:**
-- `Complete()`: Execute LLM requests
-- `GetProvider()`: Provider selection
-- `HealthCheck()`: Provider health monitoring
+- `RegisterProvider()`: Register new LLM providers with circuit breaker protection
+- `GetProvider()`: Retrieve providers with automatic failover
+- `HealthCheck()`: Monitor provider health and circuit breaker status
 
 ### Cognee Integration
 
@@ -188,23 +201,55 @@ func (pm *ProviderManager) Complete(
 
 ```go
 type CogneeService struct {
-    client *cognee.Client
-    config *CogneeConfig
+     client *cognee.Client
+     config *CogneeConfig
 }
 
 func (cs *CogneeService) EnhanceResponse(
-    ctx context.Context,
-    response string,
-    dataset string,
-) (*EnhancedResponse, error) {
-    // Cognee AI enhancement
-}
+     ctx context.Context,
+     response string,
+     dataset string,
+ ) (*EnhancedResponse, error) {
+     // Cognee AI enhancement
+ }
 ```
 
 **Key Methods:**
 - `EnhanceResponse()`: Response enhancement
 - `AnalyzeConsensus()`: Consensus analysis
 - `GenerateInsights()`: Insight generation
+
+### Circuit Breaker System
+
+**File**: `internal/services/plugin_system.go`
+
+```go
+type CircuitBreaker struct {
+    state                CircuitState
+    failureThreshold     int
+    successThreshold     int
+    timeout              time.Duration
+    consecutiveFailures  int
+    consecutiveSuccesses int
+    lastFailure          time.Time
+    mu                   sync.Mutex
+}
+
+func (cb *CircuitBreaker) Call(fn func() error) error {
+    // Circuit breaker protection with automatic recovery
+}
+```
+
+**States:**
+- `StateClosed`: Normal operation
+- `StateOpen`: Circuit breaker tripped, requests fail fast
+- `StateHalfOpen`: Testing recovery with limited requests
+
+**Benefits:**
+- Automatic failure detection and recovery
+- Prevents cascade failures in distributed systems
+- Configurable thresholds and timeouts
+- Thread-safe implementation
 
 ---
 

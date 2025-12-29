@@ -313,6 +313,13 @@ func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvide
 	return nil
 }
 
+// GetCircuitBreaker returns the circuit breaker for a provider (for internal use)
+func (r *ProviderRegistry) GetCircuitBreaker(name string) *CircuitBreaker {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.circuitBreakers[name]
+}
+
 func (r *ProviderRegistry) UnregisterProvider(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -124,6 +124,16 @@ func (m *MCPManager) SyncMCPServer(ctx context.Context, serverID string) error {
 	return nil
 }
 
+// ExecuteMCPTool executes an MCP tool
+func (m *MCPManager) ExecuteMCPTool(ctx context.Context, req interface{}) (interface{}, error) {
+	// Placeholder implementation - would execute the tool
+	return map[string]interface{}{
+		"success":   true,
+		"result":    "Tool executed successfully",
+		"timestamp": time.Now(),
+	}, nil
+}
+
 // RegisterServer registers an MCP server with enhanced error handling
 func (m *MCPManager) RegisterServer(serverConfig map[string]interface{}) error {
 	m.mu.Lock()

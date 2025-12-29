@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,42 +20,42 @@ type EmbeddingManager struct {
 
 // EmbeddingRequest represents a request to generate embeddings
 type EmbeddingRequest struct {
-	Text      string   `json:"text"`
-	Model     string   `json:"model,omitempty"`
-	Dimension int      `json:"dimension,omitempty"`
-	Batch     bool     `json:"batch,omitempty"`
+	Text      string `json:"text"`
+	Model     string `json:"model,omitempty"`
+	Dimension int    `json:"dimension,omitempty"`
+	Batch     bool   `json:"batch,omitempty"`
 }
 
 // EmbeddingResponse represents the response from embedding generation
 type EmbeddingResponse struct {
-	Success    bool                     `json:"success"`
-	Embeddings []float64             `json:"embeddings,omitempty"`
-	Error      string                   `json:"error,omitempty"`
-	Timestamp  time.Time                `json:"timestamp"`
+	Success    bool      `json:"success"`
+	Embeddings []float64 `json:"embeddings,omitempty"`
+	Error      string    `json:"error,omitempty"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // VectorSearchRequest represents a vector similarity search request
 type VectorSearchRequest struct {
-	Query      string    `json:"query"`
-	Vector     []float64 `json:"vector"`
-	Limit      int       `json:"limit,omitempty"`
-	Threshold  float64   `json:"threshold,omitempty"`
+	Query     string    `json:"query"`
+	Vector    []float64 `json:"vector"`
+	Limit     int       `json:"limit,omitempty"`
+	Threshold float64   `json:"threshold,omitempty"`
 }
 
 // VectorSearchResponse represents the response from vector search
 type VectorSearchResponse struct {
-	Success    bool                     `json:"success"`
-	Results    []VectorSearchResult    `json:"results,omitempty"`
-	Error      string                   `json:"error,omitempty"`
-	Timestamp  time.Time                `json:"timestamp"`
+	Success   bool                 `json:"success"`
+	Results   []VectorSearchResult `json:"results,omitempty"`
+	Error     string               `json:"error,omitempty"`
+	Timestamp time.Time            `json:"timestamp"`
 }
 
 // VectorSearchResult represents a single search result
 type VectorSearchResult struct {
-	ID        string  `json:"id"`
-	Content   string  `json:"content"`
-	Score     float64 `json:"score"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	ID       string                 `json:"id"`
+	Content  string                 `json:"content"`
+	Score    float64                `json:"score"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // NewEmbeddingManager creates a new embedding manager
@@ -64,8 +64,25 @@ func NewEmbeddingManager(repo *database.ModelMetadataRepository, cache CacheInte
 		repo:           repo,
 		cache:          cache,
 		log:            log,
-		vectorProvider: "pgvector", // Default to pgvector
+		vectorProvider: "pgvector", // Default vector provider
 	}
+}
+
+// GenerateEmbedding generates embeddings for the given text
+func (m *EmbeddingManager) GenerateEmbedding(ctx context.Context, text string) (EmbeddingResponse, error) {
+	// Generate embeddings for the input text
+	embedding := make([]float64, 384) // Placeholder for 384-dimensional embedding
+	for i := range embedding {
+		embedding[i] = 0.1 // Placeholder values
+	}
+
+	response := EmbeddingResponse{
+		Success:    true,
+		Embeddings: embedding,
+		Timestamp:  time.Now(),
+	}
+
+	return response, nil
 }
 
 // GenerateEmbeddings generates embeddings for text
@@ -84,8 +101,8 @@ func (e *EmbeddingManager) GenerateEmbeddings(ctx context.Context, req Embedding
 	}
 
 	response := &EmbeddingResponse{
-		Timestamp: time.Now(),
-		Success:   true,
+		Timestamp:  time.Now(),
+		Success:    true,
 		Embeddings: embeddings,
 	}
 
@@ -96,19 +113,18 @@ func (e *EmbeddingManager) GenerateEmbeddings(ctx context.Context, req Embedding
 // StoreEmbedding stores embeddings in the vector database
 func (e *EmbeddingManager) StoreEmbedding(ctx context.Context, id string, text string, vector []float64) error {
 	e.log.WithFields(logrus.Fields{
-		"id":    id,
-		"text":  text[:min(50, len(text)-3)+"...",
+		"id":   id,
+		"text": text[:min(50, len(text))],
 	}).Debug("Storing embedding in vector database")
 
 	// In a real implementation, this would store in PostgreSQL with pgvector
 	// For now, just cache the embedding
 	cacheKey := fmt.Sprintf("embedding_%s", id)
-	embeddingData := map[string]interface{}{
-		"id":      id,
-		"text":     text,
-		"vector":  vector,
-		"model":    "text-embedding-ada-002",
-		"timestamp": time.Now(),
+	_ = map[string]interface{}{ // embeddingData would be used in real implementation
+		"id":     id,
+		"text":   text,
+		"vector": vector,
+		"stored": time.Now(),
 	}
 
 	// This would use the actual cache interface
@@ -163,8 +179,8 @@ func (e *EmbeddingManager) GetEmbeddingStats(ctx context.Context) (map[string]in
 	stats := map[string]interface{}{
 		"totalEmbeddings": 1000, // Simulated
 		"vectorDimension": 1536,
-		"vectorProvider": e.vectorProvider,
-		"lastUpdate":     time.Now(),
+		"vectorProvider":  e.vectorProvider,
+		"lastUpdate":      time.Now(),
 	}
 
 	e.log.WithFields(stats).Info("Embedding statistics retrieved")
@@ -182,13 +198,13 @@ func (e *EmbeddingManager) ConfigureVectorProvider(ctx context.Context, provider
 func (e *EmbeddingManager) IndexDocument(ctx context.Context, id, title, content string, metadata map[string]interface{}) error {
 	e.log.WithFields(logrus.Fields{
 		"id":    id,
-		"title":  title,
+		"title": title,
 	}).Info("Indexing document for semantic search")
 
 	// Generate embedding for the document
 	embeddingReq := EmbeddingRequest{
 		Text:      content,
-		Model:      "text-embedding-ada-002",
+		Model:     "text-embedding-ada-002",
 		Dimension: 1536,
 	}
 
@@ -211,7 +227,7 @@ func (e *EmbeddingManager) IndexDocument(ctx context.Context, id, title, content
 func (e *EmbeddingManager) BatchIndexDocuments(ctx context.Context, documents []map[string]interface{}) error {
 	e.log.WithField("count", len(documents)).Info("Batch indexing documents for semantic search")
 
-	for i, doc := range documents {
+	for _, doc := range documents {
 		id, _ := doc["id"].(string)
 		title, _ := doc["title"].(string)
 		content, _ := doc["content"].(string)
@@ -227,5 +243,44 @@ func (e *EmbeddingManager) BatchIndexDocuments(ctx context.Context, documents []
 	}
 
 	e.log.Info("Batch document indexing completed")
+	return nil
+}
+
+// cosineSimilarity calculates cosine similarity between two vectors
+func (m *EmbeddingManager) cosineSimilarity(a, b []float64) float64 {
+	if len(a) != len(b) {
+		return 0
+	}
+
+	var dotProduct, normA, normB float64
+	for i := range a {
+		dotProduct += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+
+	return dotProduct / math.Sqrt(normA) / math.Sqrt(normB)
+}
+
+// ListEmbeddingProviders lists all embedding providers
+func (m *EmbeddingManager) ListEmbeddingProviders(ctx context.Context) ([]map[string]interface{}, error) {
+	// Placeholder implementation
+	return []map[string]interface{}{
+		{
+			"name":      "default-embedding",
+			"model":     "text-embedding-ada-002",
+			"dimension": 384,
+			"enabled":   true,
+		},
+	}, nil
+}
+
+// RefreshAllEmbeddings refreshes all embedding providers
+func (m *EmbeddingManager) RefreshAllEmbeddings(ctx context.Context) error {
+	// Placeholder implementation
 	return nil
 }

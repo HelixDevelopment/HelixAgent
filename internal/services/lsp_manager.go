@@ -171,7 +171,7 @@ func (l *LSPManager) ExecuteLSPRequest(ctx context.Context, req LSPRequest) (*LS
 
 	// Cache the response
 	cacheKey := fmt.Sprintf("lsp_response_%s_%s", req.ServerID, req.Method)
-	responseJSON, _ := json.Marshal(response)
+	_, _ = json.Marshal(response) // responseJSON would be used in real implementation
 
 	// This would use the actual cache interface
 	l.log.WithField("cacheKey", cacheKey).Debug("Cached LSP response")
@@ -192,13 +192,19 @@ func (l *LSPManager) GetDiagnostics(ctx context.Context, serverID, fileURI strin
 		"fileUri":  fileURI,
 		"diagnostics": []map[string]interface{}{
 			{
-				"range":    map[string]int{"start": map[string]int{"line": 1, "character": 1}, "end": map[string]int{"line": 1, "character": 50}},
+				"range": map[string]interface{}{
+					"start": map[string]int{"line": 1, "character": 1},
+					"end":   map[string]int{"line": 1, "character": 50},
+				},
 				"severity": "error",
 				"message":  "Unresolved variable",
 				"source":   "go",
 			},
 			{
-				"range":    map[string]int{"start": map[string]int{"line": 2, "character": 5}, "end": map[string]int{"line": 2, "character": 25}},
+				"range": map[string]interface{}{
+					"start": map[string]int{"line": 2, "character": 5},
+					"end":   map[string]int{"line": 2, "character": 25},
+				},
 				"severity": "warning",
 				"message":  "Unused import",
 				"source":   "go",
@@ -234,8 +240,11 @@ func (l *LSPManager) GetCodeActions(ctx context.Context, serverID, text, fileURI
 				"title":   "Quick fix",
 				"command": "editor.action.quickFix",
 				"arguments": map[string]interface{}{
-					"fix":   "remove unused import",
-					"range": map[string]int{"start": map[string]int{"line": 2, "character": 5}, "end": map[string]int{"line": 2, "character": 25}},
+					"fix": "remove unused import",
+					"range": map[string]interface{}{
+						"start": map[string]int{"line": 2, "character": 5},
+						"end":   map[string]int{"line": 2, "character": 25},
+					},
 				},
 			},
 		},
@@ -336,4 +345,10 @@ func (l *LSPManager) GetLSPStats(ctx context.Context) (map[string]interface{}, e
 
 	l.log.WithFields(stats).Info("LSP statistics retrieved")
 	return stats, nil
+}
+
+// RefreshAllLSPServers refreshes all LSP servers
+func (m *LSPManager) RefreshAllLSPServers(ctx context.Context) error {
+	// Placeholder implementation
+	return nil
 }

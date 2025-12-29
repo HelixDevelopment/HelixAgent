@@ -108,7 +108,7 @@ func TestMultiProviderIntegration(t *testing.T) {
 
 func TestMCP_LSP_Integration(t *testing.T) {
 	// Create MCP manager
-	mcpManager := services.NewMCPManager()
+	mcpManager := services.NewMCPManager(nil, nil, nil)
 
 	// Create LSP client
 	lspClient := services.NewLSPClient("/tmp", "go")
@@ -142,7 +142,7 @@ func TestMCP_LSP_Integration(t *testing.T) {
 
 func TestToolRegistry_Integration(t *testing.T) {
 	// Create components
-	mcpManager := services.NewMCPManager()
+	mcpManager := services.NewMCPManager(nil, nil, nil)
 	lspClient := services.NewLSPClient("/tmp", "go")
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 
@@ -232,7 +232,7 @@ func TestContextManager_Integration(t *testing.T) {
 
 func TestIntegrationOrchestrator_Workflow(t *testing.T) {
 	// Create components
-	mcpManager := services.NewMCPManager()
+	mcpManager := services.NewMCPManager(nil, nil, nil)
 	lspClient := services.NewLSPClient("/tmp", "go")
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 	contextManager := services.NewContextManager(100)
@@ -334,7 +334,7 @@ func TestSecuritySandbox_Integration(t *testing.T) {
 
 func TestNewServicesIntegration(t *testing.T) {
 	// Create all components
-	mcpManager := services.NewMCPManager()
+	mcpManager := services.NewMCPManager(nil, nil, nil)
 	lspClient := services.NewLSPClient("/tmp", "go")
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 	contextManager := services.NewContextManager(100)

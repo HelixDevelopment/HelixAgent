@@ -75,7 +75,7 @@ func (h *EmbeddingHandler) IndexDocument(c *gin.Context) {
 		return
 	}
 
-	err = h.embeddingManager.IndexDocument(c.Request.Context(), req.ID, req.Title, req.Content, req.Metadata)
+	err := h.embeddingManager.IndexDocument(c.Request.Context(), req.ID, req.Title, req.Content, req.Metadata)
 	if err != nil {
 		h.log.WithError(err).Error("Failed to index document")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -97,7 +97,7 @@ func (h *EmbeddingHandler) BatchIndexDocuments(c *gin.Context) {
 		return
 	}
 
-	err = h.embeddingManager.BatchIndexDocuments(c.Request.Context(), req.Documents)
+	err := h.embeddingManager.BatchIndexDocuments(c.Request.Context(), req.Documents)
 	if err != nil {
 		h.log.WithError(err).Error("Failed to batch index documents")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -131,7 +131,7 @@ func (h *EmbeddingHandler) ConfigureProvider(c *gin.Context) {
 		return
 	}
 
-	err = h.embeddingManager.ConfigureVectorProvider(c.Request.Context(), req.Provider)
+	err := h.embeddingManager.ConfigureVectorProvider(c.Request.Context(), req.Provider)
 	if err != nil {
 		h.log.WithError(err).Error("Failed to configure vector provider")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

@@ -70,23 +70,14 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 
 	switch req.ProtocolType {
 	case "mcp":
-		mcpReq := MCPRequest{
-			ServerID:  req.ServerID,
-			ToolName:  req.ToolName,
-			Arguments: req.Arguments,
-		}
-
-		mcpResp, err := u.mcpManager.ExecuteMCPTool(ctx, mcpReq)
+		mcpResp, err := u.mcpManager.ExecuteMCPTool(ctx, req)
 		if err != nil {
 			response.Error = err.Error()
 			return response, err
 		}
 
-		response.Success = mcpResp.Success
-		response.Result = mcpResp.Result
-		if mcpResp.Error != "" {
-			response.Error = mcpResp.Error
-		}
+		response.Success = true
+		response.Result = mcpResp
 
 	case "acp":
 		acpReq := ACPRequest{
@@ -128,8 +119,17 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 	case "lsp":
 		// LSP requests need more specific handling
 		// For now, return a placeholder response
+		lspResp, err := u.lspManager.ExecuteLSPRequest(context.Background(), LSPRequest{
+			ServerID: req.ServerID,
+			Method:   req.ToolName,
+		})
+		if err != nil {
+			response.Error = err.Error()
+			return response, err
+		}
+
 		response.Success = true
-		response.Result = fmt.Sprintf("LSP request %s executed on server %s", req.ToolName, req.ServerID)
+		response.Result = lspResp
 
 	default:
 		err := fmt.Errorf("unsupported protocol type: %s", req.ProtocolType)

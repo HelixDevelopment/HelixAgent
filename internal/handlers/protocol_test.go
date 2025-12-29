@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,27 +21,27 @@ type MockUnifiedProtocolManager struct {
 	mock.Mock
 }
 
-func (m *MockUnifiedProtocolManager) ExecuteRequest(ctx interface{}, req services.UnifiedProtocolRequest) (services.UnifiedProtocolResponse, error) {
+func (m *MockUnifiedProtocolManager) ExecuteRequest(ctx context.Context, req services.UnifiedProtocolRequest) (services.UnifiedProtocolResponse, error) {
 	args := m.Called(ctx, req)
 	return args.Get(0).(services.UnifiedProtocolResponse), args.Error(1)
 }
 
-func (m *MockUnifiedProtocolManager) ListServers(ctx interface{}) (map[string]interface{}, error) {
+func (m *MockUnifiedProtocolManager) ListServers(ctx context.Context) (map[string]interface{}, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
-func (m *MockUnifiedProtocolManager) GetMetrics(ctx interface{}) (map[string]interface{}, error) {
+func (m *MockUnifiedProtocolManager) GetMetrics(ctx context.Context) (map[string]interface{}, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
-func (m *MockUnifiedProtocolManager) RefreshAll(ctx interface{}) error {
+func (m *MockUnifiedProtocolManager) RefreshAll(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *MockUnifiedProtocolManager) ConfigureProtocols(ctx interface{}, config map[string]interface{}) error {
+func (m *MockUnifiedProtocolManager) ConfigureProtocols(ctx context.Context, config map[string]interface{}) error {
 	args := m.Called(ctx, config)
 	return args.Error(0)
 }

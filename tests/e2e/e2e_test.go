@@ -343,7 +343,7 @@ func TestE2ENewServicesWorkflow(t *testing.T) {
 		logger := logrus.New()
 		logger.SetLevel(logrus.PanicLevel)
 		mcpManager := services.NewMCPManager(nil, nil, logger)
-		lspClient := services.NewLSPClient("/tmp", "go")
+		lspClient := services.NewLSPClient(logger)
 		toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 		contextManager := services.NewContextManager(100)
 		securitySandbox := services.NewSecuritySandbox()
@@ -468,7 +468,9 @@ func TestE2ENewServicesWorkflow(t *testing.T) {
 
 	t.Run("CompleteMCP_LSP_IntegrationWorkflow", func(t *testing.T) {
 		// Test MCP server registration and tool discovery
-		mcpManager := services.NewMCPManagerWithConfig(false, 3, 30*time.Second)
+		logger := logrus.New()
+		logger.SetLevel(logrus.PanicLevel)
+		mcpManager := services.NewMCPManager(nil, nil, logger)
 
 		serverConfig := map[string]interface{}{
 			"name":    "filesystem-mcp",
@@ -484,7 +486,7 @@ func TestE2ENewServicesWorkflow(t *testing.T) {
 		t.Logf("✅ MCP manager has %d tools available", len(tools))
 
 		// Test LSP client initialization
-		lspClient := services.NewLSPClient("/tmp/project", "go")
+		lspClient := services.NewLSPClient(logger)
 
 		// Test tool registry with MCP and LSP
 		toolRegistry := services.NewToolRegistry(mcpManager, lspClient)

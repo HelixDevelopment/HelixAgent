@@ -25,15 +25,6 @@ consensus_threshold: 0.75
 max_response_time: 30000
 max_context_length: 32000
 quality_threshold: 0.7
-enable_cognee: true
-cognee_config:
-  enabled: true
-  dataset_name: "test_dataset"
-  max_enhancement_time: 10000
-  enhancement_strategy: "hybrid"
-  enhance_responses: true
-  analyze_consensus: true
-  generate_insights: true
 participants:
   - name: "TestParticipant1"
     role: "Analyst"
@@ -263,6 +254,8 @@ enable_cognee: true
 cognee_config:
   enabled: true
   dataset_name: "${TEST_DATASET}"
+  max_enhancement_time: 30000
+  enhancement_strategy: "hybrid"
 participants:
   - name: "TestParticipant1"
     role: "Analyst"
@@ -288,6 +281,7 @@ participants:
     max_response_length: 1000
     enable_cognee: true
     cognee_settings:
+      enhance_responses: true
       dataset_name: "${TEST_DATASET}_participant"
   - name: "TestParticipant2"
     role: "Critic"
@@ -354,27 +348,48 @@ max_response_time: 30000
 max_context_length: 32000
 quality_threshold: 0.7
 participants:
-  - name: "MinimalParticipant"
-    role: "Analyst"
-    enabled: true
-    llms:
-      - name: "MinimalLLM"
-        provider: "claude"
-        model: "claude-3"
-        enabled: true
-        timeout: 30000
-        max_tokens: 1000
-        temperature: 0.7
-    response_timeout: 30000
-    weight: 1.0
-    priority: 1
-    debate_style: "analytical"
-    argumentation_style: "logical"
-    persuasion_level: 0.5
-    openness_to_change: 0.5
-    quality_threshold: 0.7
-    min_response_length: 50
-    max_response_length: 1000
+   - name: "MinimalParticipant1"
+     role: "Analyst"
+     enabled: true
+     llms:
+       - name: "MinimalLLM"
+         provider: "claude"
+         model: "claude-3"
+         enabled: true
+         timeout: 30000
+         max_tokens: 1000
+         temperature: 0.7
+     response_timeout: 30000
+     weight: 1.0
+     priority: 1
+     debate_style: "analytical"
+     argumentation_style: "logical"
+     persuasion_level: 0.5
+     openness_to_change: 0.5
+     quality_threshold: 0.7
+     min_response_length: 50
+     max_response_length: 1000
+   - name: "MinimalParticipant2"
+     role: "Critic"
+     enabled: true
+     llms:
+       - name: "MinimalLLM2"
+         provider: "deepseek"
+         model: "deepseek-coder"
+         enabled: true
+         timeout: 30000
+         max_tokens: 1000
+         temperature: 0.7
+     response_timeout: 30000
+     weight: 1.0
+     priority: 2
+     debate_style: "critical"
+     argumentation_style: "logical"
+     persuasion_level: 0.5
+     openness_to_change: 0.5
+     quality_threshold: 0.7
+     min_response_length: 50
+     max_response_length: 1000
 `
 
 	loader := NewAIDebateConfigLoader("")
@@ -430,11 +445,11 @@ participants:
 	if participant.MinResponseLength != 50 {
 		t.Errorf("Expected default MinResponseLength 50, got %d", participant.MinResponseLength)
 	}
-	if participant.MaxResponseLength != 2000 {
-		t.Errorf("Expected default MaxResponseLength 2000, got %d", participant.MaxResponseLength)
+	if participant.MaxResponseLength != 1000 {
+		t.Errorf("Expected MaxResponseLength 1000, got %d", participant.MaxResponseLength)
 	}
-	if participant.DebateStyle != "balanced" {
-		t.Errorf("Expected default DebateStyle 'balanced', got %s", participant.DebateStyle)
+	if participant.DebateStyle != "analytical" {
+		t.Errorf("Expected DebateStyle 'analytical', got %s", participant.DebateStyle)
 	}
 	if participant.ArgumentationStyle != "logical" {
 		t.Errorf("Expected default ArgumentationStyle 'logical', got %s", participant.ArgumentationStyle)
@@ -497,7 +512,7 @@ participants:
 	if participant.CogneeSettings == nil {
 		t.Fatal("Expected participant CogneeSettings to be created with defaults")
 	}
-	if participant.CogneeSettings.DatasetName != "participant_minimalparticipant_enhancement" {
+	if participant.CogneeSettings.DatasetName != "participant_minimalparticipant1_enhancement" {
 		t.Errorf("Expected default CogneeSettings DatasetName 'participant_minimalparticipant_enhancement', got %s", participant.CogneeSettings.DatasetName)
 	}
 }

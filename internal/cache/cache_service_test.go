@@ -15,18 +15,18 @@ func TestNewCacheService_WithRedisConnectionFailure(t *testing.T) {
 	// Test that cache service handles Redis connection failures gracefully
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
-			Host:     "localhost",
+			Host:     "nonexistent.redis.host",
 			Port:     "6379",
 			Password: "",
 			DB:       0,
 			PoolSize: 10,
-			Timeout:  5 * time.Second,
+			Timeout:  1 * time.Second, // Short timeout for fast test
 		},
 	}
 
 	service, err := NewCacheService(cfg)
 
-	// When Redis is not running, we expect an error but service should be created
+	// When Redis connection fails, we expect an error but service should be created
 	// with caching disabled
 	require.Error(t, err)
 	require.NotNil(t, service)
@@ -184,11 +184,12 @@ func TestCacheService_IsEnabled(t *testing.T) {
 	require.Error(t, err) // Connection will fail with nil config
 	assert.False(t, service1.IsEnabled())
 
-	// Test with config but Redis not running (disabled)
+	// Test with config but Redis not accessible (disabled)
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
-			Host: "localhost",
-			Port: "6379",
+			Host:    "nonexistent.redis.host",
+			Port:    "6379",
+			Timeout: 1 * time.Second,
 		},
 	}
 	service2, err := NewCacheService(cfg)
@@ -198,10 +199,10 @@ func TestCacheService_IsEnabled(t *testing.T) {
 }
 
 func TestRedisClient_Operations(t *testing.T) {
-	// Test Redis client operations with mock Redis (not running)
+	// Test Redis client operations with invalid Redis config
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
-			Host: "localhost",
+			Host: "nonexistent.redis.host",
 			Port: "6379",
 		},
 	}
@@ -211,7 +212,7 @@ func TestRedisClient_Operations(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Test Ping should fail when Redis is not running
+	// Test Ping should fail when Redis is not accessible
 	err := redisClient.Ping(ctx)
 	require.Error(t, err)
 

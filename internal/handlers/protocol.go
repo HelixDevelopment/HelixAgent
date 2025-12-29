@@ -10,12 +10,12 @@ import (
 
 // ProtocolHandler handles unified protocol requests
 type ProtocolHandler struct {
-	protocolService *services.UnifiedProtocolManager
+	protocolService services.ProtocolManagerInterface
 	log             *logrus.Logger
 }
 
 // NewProtocolHandler creates a new protocol handler
-func NewProtocolHandler(protocolService *services.UnifiedProtocolManager, log *logrus.Logger) *ProtocolHandler {
+func NewProtocolHandler(protocolService services.ProtocolManagerInterface, log *logrus.Logger) *ProtocolHandler {
 	return &ProtocolHandler{
 		protocolService: protocolService,
 		log:             log,

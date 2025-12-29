@@ -171,7 +171,10 @@ func (l *AIDebateConfigLoader) applyDefaults(config *AIDebateConfig) {
 		config.ResponseFormat = "detailed"
 	}
 
-	// Apply Cognee defaults
+	// Apply Cognee defaults - enable by default
+	if !config.EnableCognee {
+		config.EnableCognee = true
+	}
 	if config.EnableCognee && config.CogneeConfig == nil {
 		config.CogneeConfig = &CogneeDebateConfig{
 			Enabled:             true,
@@ -219,6 +222,11 @@ func (l *AIDebateConfigLoader) applyDefaults(config *AIDebateConfig) {
 		}
 		if participant.OpennessToChange == 0 {
 			participant.OpennessToChange = 0.5
+		}
+
+		// Apply Cognee participant defaults - enable by default
+		if !participant.EnableCognee {
+			participant.EnableCognee = true
 		}
 
 		// Apply LLM defaults

@@ -9,6 +9,15 @@ import (
 	"github.com/superagent/superagent/internal/database"
 )
 
+// ProtocolManagerInterface defines the interface for protocol managers
+type ProtocolManagerInterface interface {
+	ExecuteRequest(ctx context.Context, req UnifiedProtocolRequest) (UnifiedProtocolResponse, error)
+	ListServers(ctx context.Context) (map[string]interface{}, error)
+	GetMetrics(ctx context.Context) (map[string]interface{}, error)
+	RefreshAll(ctx context.Context) error
+	ConfigureProtocols(ctx context.Context, config map[string]interface{}) error
+}
+
 // UnifiedProtocolManager manages all protocol operations (MCP, LSP, ACP, Embeddings)
 type UnifiedProtocolManager struct {
 	mcpManager       *MCPManager

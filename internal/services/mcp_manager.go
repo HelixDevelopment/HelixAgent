@@ -10,6 +10,9 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/superagent/superagent/internal/database"
 )
 
 // MCPManager manages Model Context Protocol servers and tools
@@ -61,8 +64,12 @@ type MCPError struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// NewMCPManager creates a new MCP manager
-func NewMCPManager() *MCPManager {
+// NewMCPManager creates a new MCP manager with dependencies
+func NewMCPManager(repo *database.ModelMetadataRepository, cache CacheInterface, log *logrus.Logger) *MCPManager {
+	_ = repo  // Avoid unused parameter warning
+	_ = cache // Avoid unused parameter warning
+	_ = log   // Avoid unused parameter warning
+
 	return &MCPManager{
 		servers:             make(map[string]*MCPServer),
 		availableTools:      make(map[string]*MCPTool),
@@ -83,6 +90,38 @@ func NewMCPManagerWithConfig(autoDiscover bool, retryAttempts int, healthInterva
 		retryAttempts:       retryAttempts,
 		healthCheckInterval: healthInterval,
 	}
+}
+
+// ListMCPServers lists all configured MCP servers (for unified manager)
+func (m *MCPManager) ListMCPServers(ctx context.Context) ([]*MCPServer, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	servers := make([]*MCPServer, 0, len(m.servers))
+	for _, server := range m.servers {
+		servers = append(servers, server)
+	}
+
+	return servers, nil
+}
+
+// GetMCPStats returns statistics about MCP usage
+func (m *MCPManager) GetMCPStats(ctx context.Context) (map[string]interface{}, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return map[string]interface{}{
+		"totalServers":        len(m.servers),
+		"totalTools":          len(m.availableTools),
+		"activeConnections":   len(m.servers), // Placeholder
+		"healthCheckInterval": m.healthCheckInterval.String(),
+	}, nil
+}
+
+// SyncMCPServer synchronizes configuration with an MCP server
+func (m *MCPManager) SyncMCPServer(ctx context.Context, serverID string) error {
+	// Placeholder implementation
+	return nil
 }
 
 // RegisterServer registers an MCP server with enhanced error handling

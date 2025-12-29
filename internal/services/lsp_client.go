@@ -19,7 +19,7 @@ import (
 type LSPClient struct {
 	workspaceRoot    string
 	languageID       string
-	server           *LSPServer
+	server           *LSPServerConnection
 	messageID        int
 	mu               sync.RWMutex
 	diagnostics      map[string][]*models.Diagnostic // URI -> diagnostics
@@ -27,8 +27,8 @@ type LSPClient struct {
 	notificationChan chan *LSPMessage
 }
 
-// LSPServer represents a running LSP server
-type LSPServer struct {
+// LSPServerConnection represents a running LSP server connection
+type LSPServerConnection struct {
 	Process      *exec.Cmd
 	Stdin        io.WriteCloser
 	Stdout       io.ReadCloser
@@ -105,7 +105,7 @@ func (c *LSPClient) StartServer(ctx context.Context) error {
 	}
 
 	// Start the server process
-	server := &LSPServer{}
+	server := &LSPServerConnection{}
 	if err := c.startServerProcess(server, serverConfig); err != nil {
 		return fmt.Errorf("failed to start server process: %w", err)
 	}
@@ -167,7 +167,7 @@ func (c *LSPClient) getServerConfig() (map[string]any, error) {
 }
 
 // startServerProcess starts the LSP server process
-func (c *LSPClient) startServerProcess(server *LSPServer, config map[string]interface{}) error {
+func (c *LSPClient) startServerProcess(server *LSPServerConnection, config map[string]interface{}) error {
 	command := config["command"].([]string)
 	args := config["args"].([]string)
 
@@ -196,7 +196,7 @@ func (c *LSPClient) startServerProcess(server *LSPServer, config map[string]inte
 }
 
 // initializeServer performs LSP initialization handshake
-func (c *LSPClient) initializeServer(_ context.Context, server *LSPServer) error {
+func (c *LSPClient) initializeServer(_ context.Context, server *LSPServerConnection) error {
 	initRequest := LSPMessage{
 		JSONRPC: "2.0",
 		ID:      c.nextMessageID(),
@@ -240,7 +240,7 @@ func (c *LSPClient) initializeServer(_ context.Context, server *LSPServer) error
 }
 
 // listenForNotifications listens for incoming notifications from the LSP server
-func (c *LSPClient) listenForNotifications(server *LSPServer) {
+func (c *LSPClient) listenForNotifications(server *LSPServerConnection) {
 	scanner := bufio.NewScanner(server.Stdout)
 
 	for scanner.Scan() {
@@ -533,7 +533,7 @@ func (c *LSPClient) GetCodeIntelligence(ctx context.Context, filePath string, cu
 }
 
 // openDocument opens a document for LSP operations
-func (c *LSPClient) openDocument(server *LSPServer, filePath string) error {
+func (c *LSPClient) openDocument(server *LSPServerConnection, filePath string) error {
 	content, err := c.readFileContent(filePath)
 	if err != nil {
 		return err
@@ -556,7 +556,7 @@ func (c *LSPClient) openDocument(server *LSPServer, filePath string) error {
 }
 
 // updateDocument sends a didChange notification for document updates
-func (c *LSPClient) updateDocument(server *LSPServer, filePath string, changes []LSPTextDocumentContentChangeEvent) error {
+func (c *LSPClient) updateDocument(server *LSPServerConnection, filePath string, changes []LSPTextDocumentContentChangeEvent) error {
 	changeMsg := LSPMessage{
 		JSONRPC: "2.0",
 		Method:  "textDocument/didChange",
@@ -573,7 +573,7 @@ func (c *LSPClient) updateDocument(server *LSPServer, filePath string, changes [
 }
 
 // closeDocument sends a didClose notification
-func (c *LSPClient) closeDocument(server *LSPServer, filePath string) error {
+func (c *LSPClient) closeDocument(server *LSPServerConnection, filePath string) error {
 	closeMsg := LSPMessage{
 		JSONRPC: "2.0",
 		Method:  "textDocument/didClose",
@@ -586,13 +586,13 @@ func (c *LSPClient) closeDocument(server *LSPServer, filePath string) error {
 }
 
 // getDiagnostics gets diagnostics for a file
-func (c *LSPClient) getDiagnostics(_ *LSPServer, filePath string) ([]*models.Diagnostic, error) {
+func (c *LSPClient) getDiagnostics(_ *LSPServerConnection, filePath string) ([]*models.Diagnostic, error) {
 	// Diagnostics are cached from notifications
 	return c.GetDiagnostics(filePath), nil
 }
 
 // getCompletions gets completion items at a position
-func (c *LSPClient) getCompletions(server *LSPServer, filePath string, position models.Position) ([]*models.CompletionItem, error) {
+func (c *LSPClient) getCompletions(server *LSPServerConnection, filePath string, position models.Position) ([]*models.CompletionItem, error) {
 	if !c.supportsCapability(server, "completionProvider") {
 		return nil, fmt.Errorf("server does not support completions")
 	}
@@ -620,7 +620,7 @@ func (c *LSPClient) getCompletions(server *LSPServer, filePath string, position 
 }
 
 // getHover gets hover information at a position
-func (c *LSPClient) getHover(server *LSPServer, filePath string, position models.Position) (*models.HoverInfo, error) {
+func (c *LSPClient) getHover(server *LSPServerConnection, filePath string, position models.Position) (*models.HoverInfo, error) {
 	if !c.supportsCapability(server, "hoverProvider") {
 		return nil, fmt.Errorf("server does not support hover")
 	}
@@ -648,7 +648,7 @@ func (c *LSPClient) getHover(server *LSPServer, filePath string, position models
 }
 
 // getDefinitions gets definitions at a position
-func (c *LSPClient) getDefinitions(server *LSPServer, filePath string, position models.Position) ([]*models.Location, error) {
+func (c *LSPClient) getDefinitions(server *LSPServerConnection, filePath string, position models.Position) ([]*models.Location, error) {
 	if !c.supportsCapability(server, "definitionProvider") {
 		return nil, fmt.Errorf("server does not support definitions")
 	}
@@ -676,7 +676,7 @@ func (c *LSPClient) getDefinitions(server *LSPServer, filePath string, position 
 }
 
 // getReferences gets references at a position
-func (c *LSPClient) getReferences(server *LSPServer, filePath string, position models.Position) ([]*models.Location, error) {
+func (c *LSPClient) getReferences(server *LSPServerConnection, filePath string, position models.Position) ([]*models.Location, error) {
 	if !c.supportsCapability(server, "referencesProvider") {
 		return nil, fmt.Errorf("server does not support references")
 	}
@@ -707,7 +707,7 @@ func (c *LSPClient) getReferences(server *LSPServer, filePath string, position m
 }
 
 // getDocumentSymbols gets symbols in a document
-func (c *LSPClient) getDocumentSymbols(server *LSPServer, filePath string) ([]*models.SymbolInfo, error) {
+func (c *LSPClient) getDocumentSymbols(server *LSPServerConnection, filePath string) ([]*models.SymbolInfo, error) {
 	if !c.supportsCapability(server, "documentSymbolProvider") {
 		return nil, fmt.Errorf("server does not support document symbols")
 	}
@@ -734,7 +734,7 @@ func (c *LSPClient) getDocumentSymbols(server *LSPServer, filePath string) ([]*m
 }
 
 // getSemanticTokens gets semantic tokens for a document
-func (c *LSPClient) getSemanticTokens(server *LSPServer, filePath string) (*models.SemanticTokens, error) {
+func (c *LSPClient) getSemanticTokens(server *LSPServerConnection, filePath string) (*models.SemanticTokens, error) {
 	if !c.supportsCapability(server, "semanticTokensProvider") {
 		return nil, fmt.Errorf("server does not support semantic tokens")
 	}
@@ -1111,7 +1111,7 @@ func (c *LSPClient) parseSingleSymbol(symbolMap map[string]interface{}) (*models
 	return symbol, nil
 }
 
-func (c *LSPClient) supportsCapability(server *LSPServer, capability string) bool {
+func (c *LSPClient) supportsCapability(server *LSPServerConnection, capability string) bool {
 	_, exists := server.Capabilities[capability]
 	return exists
 }
@@ -1125,7 +1125,7 @@ func (c *LSPClient) readFileContent(filePath string) (string, error) {
 }
 
 // sendMessage sends a JSON-RPC request and waits for response
-func (c *LSPClient) sendMessage(server *LSPServer, message LSPMessage) (*LSPMessage, error) {
+func (c *LSPClient) sendMessage(server *LSPServerConnection, message LSPMessage) (*LSPMessage, error) {
 	data, err := json.Marshal(message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
@@ -1150,7 +1150,7 @@ func (c *LSPClient) sendMessage(server *LSPServer, message LSPMessage) (*LSPMess
 }
 
 // sendNotification sends a JSON-RPC notification
-func (c *LSPClient) sendNotification(server *LSPServer, message LSPMessage) error {
+func (c *LSPClient) sendNotification(server *LSPServerConnection, message LSPMessage) error {
 	data, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification: %w", err)

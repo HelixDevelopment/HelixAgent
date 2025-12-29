@@ -25,11 +25,18 @@ type ContextEntry struct {
 	CompressedData []byte                 `json:"compressed_data,omitempty"`
 }
 
+// ContextCacheEntry represents a cached context item
+type ContextCacheEntry struct {
+	Data      interface{}
+	Timestamp time.Time
+	TTL       time.Duration
+}
+
 // ContextManager manages context for LLM requests
 type ContextManager struct {
 	mu                   sync.RWMutex
 	entries              map[string]*ContextEntry
-	cache                map[string]*CacheEntry // For LSP, MCP, tool results
+	cache                map[string]*ContextCacheEntry // For LSP, MCP, tool results
 	cacheMu              sync.RWMutex
 	maxSize              int
 	compressionThreshold int // Compress entries larger than this
@@ -39,7 +46,7 @@ type ContextManager struct {
 func NewContextManager(maxSize int) *ContextManager {
 	return &ContextManager{
 		entries:              make(map[string]*ContextEntry),
-		cache:                make(map[string]*CacheEntry),
+		cache:                make(map[string]*ContextCacheEntry),
 		maxSize:              maxSize,
 		compressionThreshold: 1024, // 1KB
 	}
@@ -161,7 +168,7 @@ func (cm *ContextManager) CacheResult(key string, result interface{}, ttl time.D
 	cm.cacheMu.Lock()
 	defer cm.cacheMu.Unlock()
 
-	cm.cache[key] = &CacheEntry{
+	cm.cache[key] = &ContextCacheEntry{
 		Data:      result,
 		Timestamp: time.Now(),
 		TTL:       ttl,
@@ -487,8 +494,8 @@ func (cm *ContextManager) metadataEqual(a, b map[string]interface{}) bool {
 	return string(aBytes) == string(bBytes)
 }
 
-// CacheEntry represents a cached item
-type CacheEntry struct {
+// ContextContextCacheEntry represents a cached context item
+type ContextContextCacheEntry struct {
 	Data      interface{}
 	Timestamp time.Time
 	TTL       time.Duration

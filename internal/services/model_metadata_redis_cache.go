@@ -85,12 +85,35 @@ func (c *ModelMetadataRedisCache) Clear(ctx context.Context) error {
 	return nil
 }
 
-// Size returns the approximate number of cached items (not implemented for Redis)
+// Size returns the approximate number of cached items using Redis SCAN
 func (c *ModelMetadataRedisCache) Size(ctx context.Context) (int, error) {
-	// Redis doesn't have an easy way to get count by prefix without SCAN
-	// This method is not efficient for large keyspaces
-	c.log.Debug("Size method not implemented for Redis cache")
-	return 0, nil
+	var count int
+	var cursor uint64
+	keysPattern := c.prefix + "*"
+
+	for {
+		keys, newCursor, err := c.redisClient.Client().Scan(ctx, cursor, keysPattern, 100).Result()
+		if err != nil {
+			c.log.WithError(err).Error("Failed to scan Redis keys")
+			return 0, fmt.Errorf("failed to scan Redis keys: %w", err)
+		}
+
+		count += len(keys)
+		cursor = newCursor
+
+		// SCAN is complete when cursor returns to 0
+		if cursor == 0 {
+			break
+		}
+
+		// Safety check to prevent infinite loops
+		if count > 10000 {
+			c.log.Warn("Size estimation stopped at 10000 keys to prevent performance issues")
+			break
+		}
+	}
+
+	return count, nil
 }
 
 // GetBulk retrieves multiple models from cache

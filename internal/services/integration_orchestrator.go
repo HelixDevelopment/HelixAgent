@@ -301,13 +301,49 @@ func (io *IntegrationOrchestrator) executeLSPStep(ctx context.Context, step *Wor
 }
 
 // executeMCPStep executes an MCP-related step
-func (io *IntegrationOrchestrator) executeMCPStep(_ context.Context, _ *WorkflowStep) (any, error) {
+func (io *IntegrationOrchestrator) executeMCPStep(ctx context.Context, step *WorkflowStep) (any, error) {
 	if io.mcpManager == nil {
 		return nil, fmt.Errorf("MCP manager not available")
 	}
 
-	// Implementation would depend on specific MCP operations
-	return nil, fmt.Errorf("MCP steps not implemented")
+	// Extract MCP operation parameters
+	operation, ok := step.Parameters["operation"].(string)
+	if !ok {
+		return nil, fmt.Errorf("MCP operation parameter required")
+	}
+
+	switch operation {
+	case "list_tools":
+		return io.mcpManager.ListTools(), nil
+
+	case "call_tool":
+		toolName, ok := step.Parameters["toolName"].(string)
+		if !ok {
+			return nil, fmt.Errorf("toolName parameter required for call_tool operation")
+		}
+
+		params, ok := step.Parameters["params"].(map[string]interface{})
+		if !ok {
+			params = make(map[string]interface{})
+		}
+
+		return io.mcpManager.CallTool(ctx, toolName, params)
+
+	case "list_servers":
+		servers, err := io.mcpManager.ListMCPServers(ctx)
+		return servers, err
+
+	case "register_server":
+		serverConfig, ok := step.Parameters["serverConfig"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("serverConfig parameter required for register_server operation")
+		}
+
+		return nil, io.mcpManager.RegisterServer(serverConfig)
+
+	default:
+		return nil, fmt.Errorf("unknown MCP operation: %s", operation)
+	}
 }
 
 // executeToolStep executes a tool-related step
@@ -321,9 +357,62 @@ func (io *IntegrationOrchestrator) executeToolStep(ctx context.Context, step *Wo
 }
 
 // executeLLMStep executes an LLM-related step
-func (io *IntegrationOrchestrator) executeLLMStep(_ context.Context, _ *WorkflowStep) (any, error) {
-	// Implementation would integrate with LLM providers
-	return nil, fmt.Errorf("LLM steps not implemented")
+func (io *IntegrationOrchestrator) executeLLMStep(ctx context.Context, step *WorkflowStep) (any, error) {
+	// Extract LLM operation parameters
+	operation, ok := step.Parameters["operation"].(string)
+	if !ok {
+		return nil, fmt.Errorf("LLM operation parameter required")
+	}
+
+	switch operation {
+	case "complete":
+		prompt, ok := step.Parameters["prompt"].(string)
+		if !ok {
+			return nil, fmt.Errorf("prompt parameter required for complete operation")
+		}
+
+		model, _ := step.Parameters["model"].(string)
+		if model == "" {
+			model = "gpt-3.5-turbo" // default
+		}
+
+		// Create LLM request
+		llmReq := &models.LLMRequest{
+			ID:     fmt.Sprintf("workflow-%s-%d", step.ID, time.Now().Unix()),
+			Prompt: prompt,
+			ModelParams: models.ModelParameters{
+				Model: model,
+			},
+			CreatedAt: time.Now(),
+		}
+
+		// Add messages if provided
+		if messages, ok := step.Parameters["messages"].([]interface{}); ok {
+			llmMessages := make([]models.Message, 0, len(messages))
+			for _, msg := range messages {
+				if msgMap, ok := msg.(map[string]interface{}); ok {
+					role, _ := msgMap["role"].(string)
+					content, _ := msgMap["content"].(string)
+					llmMessages = append(llmMessages, models.Message{
+						Role:    role,
+						Content: content,
+					})
+				}
+			}
+			llmReq.Messages = llmMessages
+		}
+
+		// For now, we'll need to get a provider registry or direct provider
+		// This is a simplified implementation
+		return nil, fmt.Errorf("LLM provider integration requires provider registry access")
+
+	case "stream":
+		// Similar to complete but for streaming
+		return nil, fmt.Errorf("LLM streaming not yet implemented in workflow steps")
+
+	default:
+		return nil, fmt.Errorf("unknown LLM operation: %s", operation)
+	}
 }
 
 // executeOperation executes a single operation

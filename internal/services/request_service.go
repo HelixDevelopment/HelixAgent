@@ -396,13 +396,13 @@ func (r *RequestService) GetAllProviderHealth() map[string]*ProviderHealth {
 
 // CircuitBreakerPattern implements circuit breaker for failing providers
 type CircuitBreakerPattern struct {
-	providers map[string]*CircuitBreaker
+	providers map[string]*RequestCircuitBreaker
 	mu        sync.RWMutex
 }
 
-type CircuitBreaker struct {
+type RequestCircuitBreaker struct {
 	Name             string
-	State            CircuitState
+	State            RequestCircuitState
 	FailureCount     int64
 	LastFailTime     time.Time
 	SuccessCount     int64
@@ -412,29 +412,29 @@ type CircuitBreaker struct {
 	mu               sync.RWMutex
 }
 
-type CircuitState int
+type RequestCircuitState int
 
 const (
-	StateClosed CircuitState = iota
-	StateOpen
-	StateHalfOpen
+	RequestStateClosed RequestCircuitState = iota
+	RequestStateOpen
+	RequestStateHalfOpen
 )
 
 func NewCircuitBreakerPattern() *CircuitBreakerPattern {
 	return &CircuitBreakerPattern{
-		providers: make(map[string]*CircuitBreaker),
+		providers: make(map[string]*RequestCircuitBreaker),
 	}
 }
 
-func (c *CircuitBreakerPattern) GetCircuitBreaker(name string) *CircuitBreaker {
+func (c *CircuitBreakerPattern) GetCircuitBreaker(name string) *RequestCircuitBreaker {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	cb, exists := c.providers[name]
 	if !exists {
-		cb = &CircuitBreaker{
+		cb = &RequestCircuitBreaker{
 			Name:             name,
-			State:            StateClosed,
+			State:            RequestStateClosed,
 			FailureThreshold: 5,
 			Timeout:          60 * time.Second,
 			RecoveryTimeout:  30 * time.Second,
@@ -445,36 +445,36 @@ func (c *CircuitBreakerPattern) GetCircuitBreaker(name string) *CircuitBreaker {
 	return cb
 }
 
-func (cb *CircuitBreaker) Call(ctx context.Context, operation func() (*models.LLMResponse, error)) (*models.LLMResponse, error) {
+func (cb *RequestCircuitBreaker) Call(ctx context.Context, operation func() (*models.LLMResponse, error)) (*models.LLMResponse, error) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
 	switch cb.State {
-	case StateOpen:
+	case RequestStateOpen:
 		if time.Since(cb.LastFailTime) > cb.RecoveryTimeout {
-			cb.State = StateHalfOpen
+			cb.State = RequestStateHalfOpen
 		} else {
 			return nil, fmt.Errorf("circuit breaker is open for provider %s", cb.Name)
 		}
-	case StateHalfOpen:
+	case RequestStateHalfOpen:
 		// Allow one request through
 		resp, err := operation()
 		if err != nil {
 			cb.FailureCount++
 			cb.LastFailTime = time.Now()
-			cb.State = StateOpen
+			cb.State = RequestStateOpen
 			return resp, err
 		}
 		cb.SuccessCount++
-		cb.State = StateClosed
+		cb.State = RequestStateClosed
 		return resp, nil
-	case StateClosed:
+	case RequestStateClosed:
 		// Normal operation
 		resp, err := operation()
 		if err != nil {
 			cb.FailureCount++
 			if cb.FailureCount >= cb.FailureThreshold {
-				cb.State = StateOpen
+				cb.State = RequestStateOpen
 				cb.LastFailTime = time.Now()
 			}
 			return resp, err

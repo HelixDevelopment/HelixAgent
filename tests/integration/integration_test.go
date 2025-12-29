@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/superagent/superagent/internal/config"
 	"github.com/superagent/superagent/internal/database"
 	"github.com/superagent/superagent/internal/handlers"
@@ -111,7 +112,7 @@ func TestMCP_LSP_Integration(t *testing.T) {
 	mcpManager := services.NewMCPManager(nil, nil, nil)
 
 	// Create LSP client
-	lspClient := services.NewLSPClient("/tmp", "go")
+	lspClient := services.NewLSPClient(logrus.New())
 
 	// Create tool registry
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
@@ -134,7 +135,10 @@ func TestMCP_LSP_Integration(t *testing.T) {
 	}
 
 	// Test LSP client basic functionality
-	diagnostics := lspClient.GetDiagnostics("/tmp/test.go")
+	diagnostics, err := lspClient.GetDiagnostics(context.Background(), "/tmp/test.go")
+	if err != nil {
+		t.Logf("Error getting diagnostics: %v", err)
+	}
 	if diagnostics == nil {
 		t.Log("No diagnostics available (expected in test env)")
 	}
@@ -143,7 +147,7 @@ func TestMCP_LSP_Integration(t *testing.T) {
 func TestToolRegistry_Integration(t *testing.T) {
 	// Create components
 	mcpManager := services.NewMCPManager(nil, nil, nil)
-	lspClient := services.NewLSPClient("/tmp", "go")
+	lspClient := services.NewLSPClient(logrus.New())
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 
 	// Register custom tool
@@ -233,7 +237,7 @@ func TestContextManager_Integration(t *testing.T) {
 func TestIntegrationOrchestrator_Workflow(t *testing.T) {
 	// Create components
 	mcpManager := services.NewMCPManager(nil, nil, nil)
-	lspClient := services.NewLSPClient("/tmp", "go")
+	lspClient := services.NewLSPClient(logrus.New())
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 	contextManager := services.NewContextManager(100)
 
@@ -335,7 +339,7 @@ func TestSecuritySandbox_Integration(t *testing.T) {
 func TestNewServicesIntegration(t *testing.T) {
 	// Create all components
 	mcpManager := services.NewMCPManager(nil, nil, nil)
-	lspClient := services.NewLSPClient("/tmp", "go")
+	lspClient := services.NewLSPClient(logrus.New())
 	toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
 	contextManager := services.NewContextManager(100)
 	securitySandbox := services.NewSecuritySandbox()

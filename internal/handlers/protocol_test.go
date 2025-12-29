@@ -222,7 +222,7 @@ func TestProtocolHandler_ConfigureProtocols(t *testing.T) {
 	config := map[string]interface{}{
 		"mcp": map[string]interface{}{
 			"enabled": true,
-			"servers": []string{"server1", "server2"},
+			"servers": []interface{}{"server1", "server2"},
 		},
 		"acp": map[string]interface{}{
 			"enabled": true,

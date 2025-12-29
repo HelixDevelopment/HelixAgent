@@ -113,7 +113,11 @@ func TestProviderCapabilities_Validation(t *testing.T) {
 		},
 		{
 			name: "Empty capabilities",
-			cap:  &models.ProviderCapabilities{},
+			cap: &models.ProviderCapabilities{
+				SupportedModels:       []string{},
+				SupportedFeatures:     []string{},
+				SupportedRequestTypes: []string{},
+			},
 			want: true, // Empty capabilities are technically valid
 		},
 	}

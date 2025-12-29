@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,6 +14,7 @@ import (
 type AIDebateConfigLoader struct {
 	configPath string
 	config     *AIDebateConfig
+	mu         sync.RWMutex
 }
 
 // NewAIDebateConfigLoader creates a new AI debate configuration loader
@@ -58,7 +60,9 @@ func (l *AIDebateConfigLoader) Load() (*AIDebateConfig, error) {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
+	l.mu.Lock()
 	l.config = &config
+	l.mu.Unlock()
 	return &config, nil
 }
 
@@ -82,7 +86,9 @@ func (l *AIDebateConfigLoader) LoadFromString(yamlContent string) (*AIDebateConf
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
+	l.mu.Lock()
 	l.config = &config
+	l.mu.Unlock()
 	return &config, nil
 }
 

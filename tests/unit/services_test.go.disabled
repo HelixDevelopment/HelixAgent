@@ -437,6 +437,8 @@ func TestMCPManager_NewMCPManager(t *testing.T) {
 }
 
 func TestMCPManager_RegisterServer(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
 	manager := services.NewMCPManager(nil, nil, logger)
 
 	serverConfig := map[string]interface{}{

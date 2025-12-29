@@ -12,25 +12,25 @@ import (
 
 // HighAvailabilityManager provides high availability features with load balancing and failover
 type HighAvailabilityManager struct {
-	mu             sync.RWMutex
-	instances      map[string]*ServiceInstance
-	loadBalancer   LoadBalancer
+	mu              sync.RWMutex
+	instances       map[string]*ServiceInstance
+	loadBalancer    LoadBalancer
 	failoverManager *FailoverManager
-	healthChecker  *HealthChecker
-	logger         *logrus.Logger
-	stopChan       chan struct{}
+	healthChecker   *HealthChecker
+	logger          *logrus.Logger
+	stopChan        chan struct{}
 }
 
 // ServiceInstance represents a service instance in the HA cluster
 type ServiceInstance struct {
-	ID          string
-	Address     string
-	Port        int
-	Protocol    string
-	Status      InstanceStatus
-	LastHealth  time.Time
-	LoadScore   int // 0-100, higher means more loaded
-	Metadata    map[string]interface{}
+	ID         string
+	Address    string
+	Port       int
+	Protocol   string
+	Status     InstanceStatus
+	LastHealth time.Time
+	LoadScore  int // 0-100, higher means more loaded
+	Metadata   map[string]interface{}
 }
 
 // InstanceStatus represents the status of a service instance
@@ -72,22 +72,22 @@ type FailoverManager struct {
 
 // HealthChecker performs health checks on service instances
 type HealthChecker struct {
-	mu              sync.RWMutex
-	checkInterval   time.Duration
-	timeout         time.Duration
+	mu                 sync.RWMutex
+	checkInterval      time.Duration
+	timeout            time.Duration
 	unhealthyThreshold int
-	healthChecks    map[string]*HealthStatus
-	logger          *logrus.Logger
+	healthChecks       map[string]*HealthStatus
+	logger             *logrus.Logger
 }
 
 // HealthStatus represents the health status of an instance
 type HealthStatus struct {
-	InstanceID     string
-	LastCheck      time.Time
+	InstanceID          string
+	LastCheck           time.Time
 	ConsecutiveFailures int
-	IsHealthy      bool
-	ResponseTime   time.Duration
-	Error          string
+	IsHealthy           bool
+	ResponseTime        time.Duration
+	Error               string
 }
 
 // NewHighAvailabilityManager creates a new HA manager
@@ -454,9 +454,9 @@ func (fm *FailoverManager) checkFailoverStatus() {
 		if active.Status != StatusHealthy {
 			// Active instance is not healthy, should have been handled by failure detection
 			fm.logger.WithFields(logrus.Fields{
-				"protocol": protocol,
+				"protocol":       protocol,
 				"activeInstance": active.ID,
-				"status": active.Status,
+				"status":         active.Status,
 			}).Warn("Active instance is not healthy")
 		}
 	}
@@ -561,14 +561,14 @@ func (hc *HealthChecker) checkInstanceHealth(instanceID string) bool {
 // Circuit Breaker for fault tolerance
 
 type CircuitBreaker struct {
-	mu                sync.Mutex
-	state             CircuitState
-	failureThreshold  int
-	successThreshold  int
-	timeout           time.Duration
-	consecutiveFailures int
+	mu                   sync.Mutex
+	state                CircuitState
+	failureThreshold     int
+	successThreshold     int
+	timeout              time.Duration
+	consecutiveFailures  int
 	consecutiveSuccesses int
-	lastFailure       time.Time
+	lastFailure          time.Time
 }
 
 type CircuitState int
@@ -635,9 +635,9 @@ func (cb *CircuitBreaker) onSuccess() {
 // Service Registry for service discovery
 
 type ServiceRegistry struct {
-	mu        sync.RWMutex
-	services  map[string][]*ServiceEndpoint
-	logger    *logrus.Logger
+	mu       sync.RWMutex
+	services map[string][]*ServiceEndpoint
+	logger   *logrus.Logger
 }
 
 type ServiceEndpoint struct {
@@ -701,9 +701,9 @@ func (sr *ServiceRegistry) DiscoverServices(serviceType string) []*ServiceEndpoi
 
 // WeightedRoundRobinLoadBalancer implements weighted round-robin
 type WeightedRoundRobinLoadBalancer struct {
-	mu       sync.Mutex
-	current  map[string]int
-	weights  map[string]int
+	mu      sync.Mutex
+	current map[string]int
+	weights map[string]int
 }
 
 // RandomLoadBalancer implements random load balancing

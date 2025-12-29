@@ -172,7 +172,7 @@ voting_strategy: "confidence_weighted"
 					MaxResponseLength:  1000,
 				},
 				{
-					Name:    "SaveTestParticipant2",
+					Name:    "SaveTestParticipant5",
 					Role:    "Test Critic",
 					Enabled: true,
 					LLMs: []LLMConfiguration{
@@ -641,7 +641,7 @@ participants:
 }
 
 func TestAIDebateConfigLoader_ConcurrentAccess(t *testing.T) {
-	// Create a valid configuration
+	// Create a valid configuration with at least 2 participants
 	yamlContent := `
 enabled: true
 maximal_repeat_rounds: 3
@@ -651,11 +651,11 @@ max_response_time: 30000
 max_context_length: 32000
 quality_threshold: 0.7
 participants:
-  - name: "TestParticipant"
+  - name: "TestParticipant1"
     role: "Analyst"
     enabled: true
     llms:
-      - name: "Test LLM"
+      - name: "Test LLM 1"
         provider: "claude"
         model: "claude-3-sonnet"
         enabled: true
@@ -666,6 +666,27 @@ participants:
     weight: 1.0
     priority: 1
     debate_style: "analytical"
+    argumentation_style: "logical"
+    persuasion_level: 0.5
+    openness_to_change: 0.5
+    quality_threshold: 0.7
+    min_response_length: 50
+    max_response_length: 1000
+  - name: "TestParticipant2"
+    role: "Critic"
+    enabled: true
+    llms:
+      - name: "Test LLM 2"
+        provider: "deepseek"
+        model: "deepseek-chat"
+        enabled: true
+        timeout: 30000
+        max_tokens: 1000
+        temperature: 0.7
+    response_timeout: 30000
+    weight: 1.0
+    priority: 1
+    debate_style: "critical"
     argumentation_style: "logical"
     persuasion_level: 0.5
     openness_to_change: 0.5
@@ -776,7 +797,111 @@ func TestAIDebateConfigLoader_SaveValidation(t *testing.T) {
 						MaxResponseLength:  1000,
 					},
 					{
-						Name:    "SaveTestParticipant2",
+						Name:    "SaveTestParticipant3",
+						Role:    "Test Critic",
+						Enabled: true,
+						LLMs: []LLMConfiguration{
+							{
+								Name:        "SaveTest LLM3",
+								Provider:    "deepseek",
+								Model:       "deepseek-coder",
+								Enabled:     true,
+								Timeout:     30000,
+								MaxTokens:   1000,
+								Temperature: 0.7,
+							},
+						},
+						ResponseTimeout:    30000,
+						Weight:             1.0,
+						Priority:           2,
+						DebateStyle:        "critical",
+						ArgumentationStyle: "logical",
+						PersuasionLevel:    0.5,
+						OpennessToChange:   0.5,
+						QualityThreshold:   0.7,
+						MinResponseLength:  50,
+						MaxResponseLength:  1000,
+					},
+					{
+						Name:    "SaveTestParticipant6",
+						Role:    "Test Critic",
+						Enabled: true,
+						LLMs: []LLMConfiguration{
+							{
+								Name:        "SaveTest LLM6",
+								Provider:    "deepseek",
+								Model:       "deepseek-coder",
+								Enabled:     true,
+								Timeout:     30000,
+								MaxTokens:   1000,
+								Temperature: 0.7,
+							},
+						},
+						ResponseTimeout:    30000,
+						Weight:             1.0,
+						Priority:           2,
+						DebateStyle:        "critical",
+						ArgumentationStyle: "logical",
+						PersuasionLevel:    0.5,
+						OpennessToChange:   0.5,
+						QualityThreshold:   0.7,
+						MinResponseLength:  50,
+						MaxResponseLength:  1000,
+					},
+					{
+						Name:    "SaveTestParticipant7",
+						Role:    "Test Critic",
+						Enabled: true,
+						LLMs: []LLMConfiguration{
+							{
+								Name:        "SaveTest LLM3",
+								Provider:    "deepseek",
+								Model:       "deepseek-coder",
+								Enabled:     true,
+								Timeout:     30000,
+								MaxTokens:   1000,
+								Temperature: 0.7,
+							},
+						},
+						ResponseTimeout:    30000,
+						Weight:             1.0,
+						Priority:           2,
+						DebateStyle:        "critical",
+						ArgumentationStyle: "logical",
+						PersuasionLevel:    0.5,
+						OpennessToChange:   0.5,
+						QualityThreshold:   0.7,
+						MinResponseLength:  50,
+						MaxResponseLength:  1000,
+					},
+					{
+						Name:    "SaveTestParticipant9",
+						Role:    "Test Critic",
+						Enabled: true,
+						LLMs: []LLMConfiguration{
+							{
+								Name:        "SaveTest LLM9",
+								Provider:    "deepseek",
+								Model:       "deepseek-coder",
+								Enabled:     true,
+								Timeout:     30000,
+								MaxTokens:   1000,
+								Temperature: 0.7,
+							},
+						},
+						ResponseTimeout:    30000,
+						Weight:             1.0,
+						Priority:           2,
+						DebateStyle:        "critical",
+						ArgumentationStyle: "logical",
+						PersuasionLevel:    0.5,
+						OpennessToChange:   0.5,
+						QualityThreshold:   0.7,
+						MinResponseLength:  50,
+						MaxResponseLength:  1000,
+					},
+					{
+						Name:    "SaveTestParticipant10",
 						Role:    "Test Critic",
 						Enabled: true,
 						LLMs: []LLMConfiguration{
@@ -802,64 +927,12 @@ func TestAIDebateConfigLoader_SaveValidation(t *testing.T) {
 						MaxResponseLength:  1000,
 					},
 					{
-						Name:    "SaveTestParticipant2",
+						Name:    "SaveTestParticipant8",
 						Role:    "Test Critic",
 						Enabled: true,
 						LLMs: []LLMConfiguration{
 							{
-								Name:        "SaveTest LLM2",
-								Provider:    "deepseek",
-								Model:       "deepseek-coder",
-								Enabled:     true,
-								Timeout:     30000,
-								MaxTokens:   1000,
-								Temperature: 0.7,
-							},
-						},
-						ResponseTimeout:    30000,
-						Weight:             1.0,
-						Priority:           2,
-						DebateStyle:        "critical",
-						ArgumentationStyle: "logical",
-						PersuasionLevel:    0.5,
-						OpennessToChange:   0.5,
-						QualityThreshold:   0.7,
-						MinResponseLength:  50,
-						MaxResponseLength:  1000,
-					},
-					{
-						Name:    "SaveTestParticipant2",
-						Role:    "Test Critic",
-						Enabled: true,
-						LLMs: []LLMConfiguration{
-							{
-								Name:        "SaveTest LLM2",
-								Provider:    "deepseek",
-								Model:       "deepseek-coder",
-								Enabled:     true,
-								Timeout:     30000,
-								MaxTokens:   1000,
-								Temperature: 0.7,
-							},
-						},
-						ResponseTimeout:    30000,
-						Weight:             1.0,
-						Priority:           2,
-						DebateStyle:        "critical",
-						ArgumentationStyle: "logical",
-						PersuasionLevel:    0.5,
-						OpennessToChange:   0.5,
-						QualityThreshold:   0.7,
-						MinResponseLength:  50,
-						MaxResponseLength:  1000,
-					},
-					{
-						Name:    "SaveTestParticipant2",
-						Role:    "Test Critic",
-						Enabled: true,
-						LLMs: []LLMConfiguration{
-							{
-								Name:        "SaveTest LLM2",
+								Name:        "SaveTest LLM8",
 								Provider:    "deepseek",
 								Model:       "deepseek-coder",
 								Enabled:     true,

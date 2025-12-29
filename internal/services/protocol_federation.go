@@ -23,15 +23,15 @@ type ProtocolDiscovery struct {
 
 // DiscoveredServer represents a discovered protocol server
 type DiscoveredServer struct {
-	ID          string
-	Protocol    string
-	Address     string
-	Port        int
-	Name        string
-	Type        string
+	ID           string
+	Protocol     string
+	Address      string
+	Port         int
+	Name         string
+	Type         string
 	Capabilities map[string]interface{}
-	LastSeen    time.Time
-	Status      ServerStatus
+	LastSeen     time.Time
+	Status       ServerStatus
 }
 
 // ServerStatus represents the status of a discovered server
@@ -204,14 +204,14 @@ func (d *ProtocolDiscovery) GetServerByID(serverID string) (*DiscoveredServer, e
 // RegisterServer manually registers a server
 func (d *ProtocolDiscovery) RegisterServer(protocol, address string, port int, name string) error {
 	server := &DiscoveredServer{
-		ID:       fmt.Sprintf("%s-%s-%d", protocol, address, port),
-		Protocol: protocol,
-		Address:  address,
-		Port:     port,
-		Name:     name,
-		Type:     "manual",
-		Status:   StatusOnline,
-		LastSeen: time.Now(),
+		ID:           fmt.Sprintf("%s-%s-%d", protocol, address, port),
+		Protocol:     protocol,
+		Address:      address,
+		Port:         port,
+		Name:         name,
+		Type:         "manual",
+		Status:       StatusOnline,
+		LastSeen:     time.Now(),
 		Capabilities: make(map[string]interface{}),
 	}
 

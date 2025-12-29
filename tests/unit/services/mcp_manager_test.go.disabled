@@ -18,7 +18,9 @@ func TestMCPManager_XXXBasic(t *testing.T) {
 }
 
 func TestMCPManager_XXXWithConfig(t *testing.T) {
-	manager := services.NewMCPManagerWithConfig(false, 5, 60*time.Second)
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := services.NewMCPManager(nil, nil, logger)
 	assert.NotNil(t, manager)
 }
 

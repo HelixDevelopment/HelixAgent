@@ -4,14 +4,40 @@ This guide demonstrates the full Cognee integration with HelixAgent, showcasing 
 
 ## Quick Start
 
-1. **Start Cognee Services**:
-   ```bash
-   # Start with AI profile (includes Cognee, ChromaDB, Neo4j)
-   docker compose --profile ai up -d
+### Option 1: Automatic Container Startup (Recommended)
 
-   # Or start full environment
-   docker compose --profile full up -d
-   ```
+The HelixAgent automatically starts required containers when it starts:
+
+```bash
+# Start HelixAgent - it will automatically start postgres, redis, cognee, and chromadb
+./bin/superagent
+
+# Or with custom settings
+./bin/superagent -auto-start-docker=true
+```
+
+**What gets started automatically:**
+- **PostgreSQL** (Database)
+- **Redis** (Caching)
+- **Cognee** (Knowledge Graph & AI Memory)
+- **ChromaDB** (Vector Database)
+
+The system checks which containers are already running and only starts missing ones, then waits for them to be healthy before starting the HTTP server.
+
+### Option 2: Manual Container Management
+
+If you prefer to manage containers manually:
+
+```bash
+# Start with AI profile (includes Cognee, ChromaDB, Neo4j)
+docker compose --profile ai up -d
+
+# Or start full environment
+docker compose --profile full up -d
+
+# Then start HelixAgent without auto-startup
+./bin/superagent -auto-start-docker=false
+```
 
 2. **Configure Environment**:
    ```bash

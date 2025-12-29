@@ -238,6 +238,7 @@ services:
       retries: 3
     restart: unless-stopped
     profiles:
+      - default
       - ai
       - full
 
@@ -259,6 +260,7 @@ services:
       - "8001:8000"
     restart: unless-stopped
     profiles:
+      - default
       - ai
       - full
 

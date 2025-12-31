@@ -250,3 +250,202 @@ func BenchmarkMCPClient_ValidateToolArguments(b *testing.B) {
 		_ = client.validateToolArguments(tool, args)
 	}
 }
+
+// MockMCPTransport implements MCPTransport for testing
+type MockMCPTransport struct {
+	connected    bool
+	sendFunc     func(ctx context.Context, message interface{}) error
+	receiveFunc  func(ctx context.Context) (interface{}, error)
+	closeFunc    func() error
+	sendCalls    []interface{}
+	receiveCalls int
+}
+
+func NewMockMCPTransport() *MockMCPTransport {
+	return &MockMCPTransport{
+		connected: true,
+		sendCalls: make([]interface{}, 0),
+	}
+}
+
+func (m *MockMCPTransport) Send(ctx context.Context, message interface{}) error {
+	m.sendCalls = append(m.sendCalls, message)
+	if m.sendFunc != nil {
+		return m.sendFunc(ctx, message)
+	}
+	return nil
+}
+
+func (m *MockMCPTransport) Receive(ctx context.Context) (interface{}, error) {
+	m.receiveCalls++
+	if m.receiveFunc != nil {
+		return m.receiveFunc(ctx)
+	}
+	// Return a mock successful response
+	return map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      float64(1),
+		"result":  map[string]interface{}{},
+	}, nil
+}
+
+func (m *MockMCPTransport) Close() error {
+	m.connected = false
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *MockMCPTransport) IsConnected() bool {
+	return m.connected
+}
+
+// Tests with mock servers
+
+func TestMCPClient_ListServers_WithServers(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	client.mu.Lock()
+	client.servers["server-1"] = &MCPServerConnection{
+		ID:        "server-1",
+		Name:      "Server 1",
+		Connected: true,
+	}
+	client.servers["server-2"] = &MCPServerConnection{
+		ID:        "server-2",
+		Name:      "Server 2",
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	servers := client.ListServers()
+	assert.Len(t, servers, 2)
+}
+
+func TestMCPClient_GetServerInfo_Connected(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	client.mu.Lock()
+	client.servers["test-server"] = &MCPServerConnection{
+		ID:   "test-server",
+		Name: "Test Server",
+		Capabilities: map[string]interface{}{
+			"tools": true,
+		},
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	info, err := client.GetServerInfo("test-server")
+	require.NoError(t, err)
+	assert.NotNil(t, info)
+}
+
+func TestMCPClient_DisconnectServer_Connected(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	mockTransport := NewMockMCPTransport()
+
+	client.mu.Lock()
+	client.servers["test-server"] = &MCPServerConnection{
+		ID:        "test-server",
+		Name:      "Test Server",
+		Transport: mockTransport,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	err := client.DisconnectServer("test-server")
+	require.NoError(t, err)
+
+	// Verify server was removed
+	client.mu.RLock()
+	_, exists := client.servers["test-server"]
+	client.mu.RUnlock()
+	assert.False(t, exists)
+}
+
+func TestMCPClient_ListTools_WithServers(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	mockTransport := NewMockMCPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(1),
+			"result": map[string]interface{}{
+				"tools": []interface{}{
+					map[string]interface{}{
+						"name":        "tool-1",
+						"description": "Tool 1",
+					},
+					map[string]interface{}{
+						"name":        "tool-2",
+						"description": "Tool 2",
+					},
+				},
+			},
+		}, nil
+	}
+
+	client.mu.Lock()
+	client.servers["test-server"] = &MCPServerConnection{
+		ID:        "test-server",
+		Name:      "Test Server",
+		Transport: mockTransport,
+		Tools: []*MCPTool{
+			{Name: "tool-1", Description: "Tool 1"},
+			{Name: "tool-2", Description: "Tool 2"},
+		},
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	tools, err := client.ListTools(ctx)
+	require.NoError(t, err)
+	assert.Len(t, tools, 2)
+}
+
+// Note: CallTool tests with mock transports require complex setup
+// because the actual implementation calls listServerTools which needs transport
+
+func TestMCPClient_HealthCheck_Empty(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	ctx := context.Background()
+	health := client.HealthCheck(ctx)
+	assert.Empty(t, health)
+}
+
+func TestMCPClient_HealthCheck_WithServers(t *testing.T) {
+	log := newMCPClientTestLogger()
+	client := NewMCPClient(log)
+
+	mockTransport := NewMockMCPTransport()
+	mockTransport.connected = true
+
+	client.mu.Lock()
+	client.servers["test-server"] = &MCPServerConnection{
+		ID:        "test-server",
+		Transport: mockTransport,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	health := client.HealthCheck(ctx)
+
+	assert.Len(t, health, 1)
+	assert.Contains(t, health, "test-server")
+	assert.Equal(t, true, health["test-server"])
+}
+
+// Note: MCPServerConnection, MCPTool, MCPResponse, MCPError structure tests
+// are already defined in mcp_manager_test.go

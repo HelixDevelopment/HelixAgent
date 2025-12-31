@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -151,6 +152,163 @@ func TestProtocolFederation_SendFederatedRequest(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, response)
 		assert.Contains(t, err.Error(), "not registered")
+	})
+
+	t.Run("send request with translator", func(t *testing.T) {
+		fed := NewProtocolFederation(log)
+
+		// Register source and target protocols
+		sourceProto := &MockFederatedProtocol{name: "source-proto"}
+		targetProto := &MockFederatedProtocol{
+			name: "target-proto",
+			handler: func(ctx context.Context, request *FederatedRequest) (*FederatedResponse, error) {
+				return &FederatedResponse{
+					ID:      request.ID,
+					Success: true,
+					Data:    request.Data,
+				}, nil
+			},
+		}
+		fed.RegisterProtocol(sourceProto)
+		fed.RegisterProtocol(targetProto)
+
+		// Add a translator from source to target
+		translator := &DataTranslator{
+			SourceProtocol: "source-proto",
+			TargetProtocol: "target-proto",
+			Translations: map[string]TranslationRule{
+				"original_key": {
+					SourcePath: "original_key",
+					TargetPath: "translated_key",
+					Transform: func(v interface{}) (interface{}, error) {
+						return fmt.Sprintf("translated_%v", v), nil
+					},
+				},
+			},
+		}
+		err := fed.AddDataTranslator(translator)
+		require.NoError(t, err)
+
+		request := &FederatedRequest{
+			ID:     "trans-request",
+			Source: "source-proto",
+			Target: "target-proto",
+			Action: "test",
+			Data:   map[string]interface{}{"original_key": "value1"},
+		}
+
+		response, err := fed.SendFederatedRequest(context.Background(), request)
+		require.NoError(t, err)
+		assert.True(t, response.Success)
+	})
+
+	t.Run("send request with response translator", func(t *testing.T) {
+		fed := NewProtocolFederation(log)
+
+		targetProto := &MockFederatedProtocol{
+			name: "target-proto2",
+			handler: func(ctx context.Context, request *FederatedRequest) (*FederatedResponse, error) {
+				return &FederatedResponse{
+					ID:      request.ID,
+					Success: true,
+					Data:    map[string]interface{}{"response_key": "response_value"},
+				}, nil
+			},
+		}
+		fed.RegisterProtocol(targetProto)
+
+		// Add a translator from target to source for response translation
+		fed.mu.Lock()
+		fed.translators["target-proto2-source-proto"] = &DataTranslator{
+			SourceProtocol: "target-proto2",
+			TargetProtocol: "source-proto",
+			Translations: map[string]TranslationRule{
+				"response_key": {
+					SourcePath: "response_key",
+					TargetPath: "translated_response",
+					Transform: func(v interface{}) (interface{}, error) {
+						return fmt.Sprintf("trans_%v", v), nil
+					},
+				},
+			},
+		}
+		fed.mu.Unlock()
+
+		request := &FederatedRequest{
+			ID:     "resp-trans-request",
+			Source: "source-proto",
+			Target: "target-proto2",
+			Action: "test",
+			Data:   map[string]interface{}{"key": "value"},
+		}
+
+		response, err := fed.SendFederatedRequest(context.Background(), request)
+		require.NoError(t, err)
+		assert.True(t, response.Success)
+	})
+
+	t.Run("send request with translation error", func(t *testing.T) {
+		fed := NewProtocolFederation(log)
+
+		targetProto := &MockFederatedProtocol{
+			name: "target-proto3",
+		}
+		fed.RegisterProtocol(targetProto)
+
+		// Add a translator that returns an error
+		fed.mu.Lock()
+		fed.translators["source-proto-target-proto3"] = &DataTranslator{
+			SourceProtocol: "source-proto",
+			TargetProtocol: "target-proto3",
+			Translations: map[string]TranslationRule{
+				"fail_key": {
+					SourcePath: "fail_key",
+					TargetPath: "translated_fail",
+					Transform: func(v interface{}) (interface{}, error) {
+						return nil, fmt.Errorf("translation failed")
+					},
+				},
+			},
+		}
+		fed.mu.Unlock()
+
+		request := &FederatedRequest{
+			ID:     "fail-trans-request",
+			Source: "source-proto",
+			Target: "target-proto3",
+			Action: "test",
+			Data:   map[string]interface{}{"fail_key": "value"},
+		}
+
+		response, err := fed.SendFederatedRequest(context.Background(), request)
+		assert.Error(t, err)
+		assert.Nil(t, response)
+		assert.Contains(t, err.Error(), "failed to translate request")
+	})
+
+	t.Run("send request when handler returns error", func(t *testing.T) {
+		fed := NewProtocolFederation(log)
+
+		errorProto := &MockFederatedProtocol{
+			name: "error-proto",
+			handler: func(ctx context.Context, request *FederatedRequest) (*FederatedResponse, error) {
+				return nil, fmt.Errorf("handler error")
+			},
+		}
+		fed.RegisterProtocol(errorProto)
+
+		request := &FederatedRequest{
+			ID:     "error-request",
+			Source: "source",
+			Target: "error-proto",
+			Action: "test",
+			Data:   map[string]interface{}{},
+		}
+
+		response, err := fed.SendFederatedRequest(context.Background(), request)
+		assert.Error(t, err)
+		assert.Nil(t, response)
+		assert.Contains(t, err.Error(), "handler error")
 	})
 }
 
@@ -487,6 +645,38 @@ func TestJSONTransform(t *testing.T) {
 		result, err := JSONTransform("hello")
 		require.NoError(t, err)
 		assert.Equal(t, "hello", result)
+	})
+
+	t.Run("nil input", func(t *testing.T) {
+		result, err := JSONTransform(nil)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("numeric input", func(t *testing.T) {
+		result, err := JSONTransform(123)
+		require.NoError(t, err)
+		assert.Equal(t, float64(123), result) // JSON unmarshals numbers to float64
+	})
+
+	t.Run("complex nested input", func(t *testing.T) {
+		input := map[string]interface{}{
+			"key1": "value1",
+			"key2": map[string]interface{}{
+				"nested": "value",
+			},
+			"key3": []interface{}{"a", "b", "c"},
+		}
+		result, err := JSONTransform(input)
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("invalid input - channel", func(t *testing.T) {
+		ch := make(chan int)
+		result, err := JSONTransform(ch)
+		assert.Error(t, err)
+		assert.Nil(t, result)
 	})
 }
 
@@ -1041,6 +1231,23 @@ func TestMCPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, response)
 	})
+
+	t.Run("no servers available", func(t *testing.T) {
+		request := &FederatedRequest{
+			ID:            "test-no-servers",
+			Action:        "some-tool",
+			Data:          map[string]interface{}{"param": "value"},
+			CorrelationID: "corr-123",
+		}
+
+		response, err := protocol.HandleFederatedRequest(ctx, request)
+		require.NoError(t, err)
+		assert.NotNil(t, response)
+		assert.False(t, response.Success)
+		assert.Contains(t, response.Error, "no MCP servers available")
+		assert.Equal(t, "test-no-servers", response.ID)
+		// Note: CorrelationID is only set in successful call path, not in the "no servers" error path
+	})
 }
 
 func TestMCPFederatedProtocol_PublishEvent(t *testing.T) {
@@ -1141,6 +1348,68 @@ func TestLSPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
 		response, err := protocol.HandleFederatedRequest(ctx, request)
 		require.NoError(t, err)
 		assert.NotNil(t, response)
+		assert.Contains(t, response.Error, "unsupported LSP action")
+	})
+
+	t.Run("completion missing uri parameter", func(t *testing.T) {
+		request := &FederatedRequest{
+			ID:     "test-request",
+			Action: "completion",
+			Data:   map[string]interface{}{},
+		}
+
+		response, err := protocol.HandleFederatedRequest(ctx, request)
+		require.NoError(t, err)
+		assert.False(t, response.Success)
+		assert.Contains(t, response.Error, "missing uri parameter")
+	})
+
+	t.Run("completion missing line parameter", func(t *testing.T) {
+		request := &FederatedRequest{
+			ID:     "test-request",
+			Action: "completion",
+			Data: map[string]interface{}{
+				"uri": "file:///test.go",
+			},
+		}
+
+		response, err := protocol.HandleFederatedRequest(ctx, request)
+		require.NoError(t, err)
+		assert.False(t, response.Success)
+		assert.Contains(t, response.Error, "missing line parameter")
+	})
+
+	t.Run("completion missing character parameter", func(t *testing.T) {
+		request := &FederatedRequest{
+			ID:     "test-request",
+			Action: "completion",
+			Data: map[string]interface{}{
+				"uri":  "file:///test.go",
+				"line": float64(10),
+			},
+		}
+
+		response, err := protocol.HandleFederatedRequest(ctx, request)
+		require.NoError(t, err)
+		assert.False(t, response.Success)
+		assert.Contains(t, response.Error, "missing character parameter")
+	})
+
+	t.Run("completion with all parameters but no servers", func(t *testing.T) {
+		request := &FederatedRequest{
+			ID:     "test-request",
+			Action: "completion",
+			Data: map[string]interface{}{
+				"uri":       "file:///test.go",
+				"line":      float64(10),
+				"character": float64(5),
+			},
+		}
+
+		response, err := protocol.HandleFederatedRequest(ctx, request)
+		require.NoError(t, err)
+		assert.False(t, response.Success)
+		assert.Contains(t, response.Error, "no LSP servers available")
 	})
 }
 
@@ -1191,4 +1460,107 @@ func BenchmarkProtocolFederation_SetNestedValue(b *testing.B) {
 		data := make(map[string]interface{})
 		federation.setNestedValue(data, "level1.level2.level3", "value")
 	}
+}
+
+func TestMCPFederatedProtocol_HandleFederatedRequest_WithServer(t *testing.T) {
+	log := newFederationTestLogger()
+	client := NewMCPClient(log)
+	protocol := NewMCPFederatedProtocol(client)
+	ctx := context.Background()
+
+	// Create a mock transport
+	mockTransport := NewMockMCPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(1),
+			"result": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": "Tool execution result",
+					},
+				},
+			},
+		}, nil
+	}
+
+	// Register the mock server with the client
+	client.mu.Lock()
+	client.servers["test-server"] = &MCPServerConnection{
+		ID:        "test-server",
+		Name:      "Test Server",
+		Transport: mockTransport,
+		Connected: true,
+		Tools: []*MCPTool{
+			{Name: "test-tool", Description: "Test Tool"},
+		},
+	}
+	client.mu.Unlock()
+
+	// Now test with a registered server
+	request := &FederatedRequest{
+		ID:            "test-with-server",
+		Action:        "test-tool",
+		Data:          map[string]interface{}{"param": "value"},
+		CorrelationID: "corr-456",
+	}
+
+	response, err := protocol.HandleFederatedRequest(ctx, request)
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "test-with-server", response.ID)
+	assert.Equal(t, "corr-456", response.CorrelationID)
+	// Response may succeed or fail depending on mock transport behavior
+}
+
+func TestLSPFederatedProtocol_HandleFederatedRequest_WithServer(t *testing.T) {
+	log := newFederationTestLogger()
+	client := NewLSPClient(log)
+	protocol := NewLSPFederatedProtocol(client)
+	ctx := context.Background()
+
+	// Create a mock transport for LSP
+	mockTransport := NewMockLSPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(1),
+			"result": map[string]interface{}{
+				"isIncomplete": false,
+				"items":        []interface{}{},
+			},
+		}, nil
+	}
+
+	// Register the mock server with the client
+	client.mu.Lock()
+	client.servers["test-lsp-server"] = &LSPServerConnection{
+		ID:        "test-lsp-server",
+		Name:      "Test LSP Server",
+		Transport: mockTransport,
+		Connected: true,
+		Capabilities: &LSPCapabilities{
+			CompletionProvider: &CompletionOptions{},
+		},
+	}
+	client.mu.Unlock()
+
+	// Test completion with a registered server
+	request := &FederatedRequest{
+		ID:     "test-lsp-with-server",
+		Action: "completion",
+		Data: map[string]interface{}{
+			"uri":       "file:///test.go",
+			"line":      float64(10),
+			"character": float64(5),
+		},
+		CorrelationID: "corr-789",
+	}
+
+	response, err := protocol.HandleFederatedRequest(ctx, request)
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "test-lsp-with-server", response.ID)
+	assert.Equal(t, "corr-789", response.CorrelationID)
 }

@@ -480,3 +480,53 @@ func BenchmarkEmbeddingManager_ListEmbeddingProviders(b *testing.B) {
 		_, _ = manager.ListEmbeddingProviders(ctx)
 	}
 }
+
+func TestEmbeddingManager_RefreshAllEmbeddings(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("refresh all embeddings no providers", func(t *testing.T) {
+		err := manager.RefreshAllEmbeddings(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("refresh with cache", func(t *testing.T) {
+		cacheManager := NewEmbeddingManager(nil, NewInMemoryCache(5*time.Minute), log)
+		err := cacheManager.RefreshAllEmbeddings(ctx)
+		assert.NoError(t, err)
+	})
+}
+
+func TestEmbeddingManager_CosineSimilarity_EdgeCases(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	t.Run("different length vectors", func(t *testing.T) {
+		a := []float64{1.0, 2.0, 3.0}
+		b := []float64{1.0, 2.0}
+		result := manager.cosineSimilarity(a, b)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("zero vector", func(t *testing.T) {
+		a := []float64{0.0, 0.0, 0.0}
+		b := []float64{1.0, 2.0, 3.0}
+		result := manager.cosineSimilarity(a, b)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("both zero vectors", func(t *testing.T) {
+		a := []float64{0.0, 0.0, 0.0}
+		b := []float64{0.0, 0.0, 0.0}
+		result := manager.cosineSimilarity(a, b)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("identical vectors", func(t *testing.T) {
+		a := []float64{1.0, 2.0, 3.0}
+		b := []float64{1.0, 2.0, 3.0}
+		result := manager.cosineSimilarity(a, b)
+		assert.InDelta(t, 1.0, result, 0.0001)
+	})
+}

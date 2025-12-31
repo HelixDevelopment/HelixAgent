@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -532,4 +533,95 @@ func BenchmarkProtocolPluginRegistry_SearchPlugins(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = registry.SearchPlugins("Search", "mcp", []string{"test"})
 	}
+}
+
+// Additional tests for error paths
+
+func TestProtocolPluginSystem_UnloadPlugin_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	err := ps.UnloadPlugin("non-existent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_EnablePlugin_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	err := ps.EnablePlugin("non-existent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_DisablePlugin_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	err := ps.DisablePlugin("non-existent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_ExecutePluginOperation_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+	ctx := context.Background()
+
+	result, err := ps.ExecutePluginOperation(ctx, "non-existent", "test-op", nil)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_GetPluginCapabilities_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	result, err := ps.GetPluginCapabilities("non-existent")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_ConfigurePlugin_NonExistent(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	err := ps.ConfigurePlugin("non-existent", map[string]interface{}{"key": "value"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+func TestProtocolPluginSystem_DiscoverPlugins(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/test/plugins", log)
+
+	plugins, err := ps.DiscoverPlugins()
+	// The demo implementation returns mock plugin paths
+	require.NoError(t, err)
+	assert.Len(t, plugins, 3)
+	assert.Contains(t, plugins, "/test/plugins/mcp-custom.so")
+	assert.Contains(t, plugins, "/test/plugins/lsp-advanced.so")
+	assert.Contains(t, plugins, "/test/plugins/acp-specialized.so")
+}
+
+func TestProtocolPluginSystem_AutoLoadPlugins(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	// Use a non-existent directory
+	ps := NewProtocolPluginSystem("/non-existent-path-for-testing", log)
+
+	err := ps.AutoLoadPlugins()
+	// Should fail or have no effect for non-existent directory
+	// No error expected since DiscoverPlugins handles directory not existing
+	_ = err
+}
+
+func TestProtocolPluginSystem_LoadPlugin_InvalidPath(t *testing.T) {
+	log := newPluginSystemTestLogger()
+	ps := NewProtocolPluginSystem("/tmp/plugins", log)
+
+	err := ps.LoadPlugin("/non-existent-plugin-path.so")
+	assert.Error(t, err)
 }

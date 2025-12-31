@@ -476,3 +476,130 @@ func TestMemoryService_EnhanceCodeRequest_NoCode(t *testing.T) {
 	err := ms.EnhanceCodeRequest(context.Background(), req)
 	assert.NoError(t, err) // Should return nil when no code
 }
+
+// Tests for cache hit paths
+
+func TestMemoryService_AddMemory_CacheHit(t *testing.T) {
+	ms := &MemoryService{
+		enabled: true,
+		cache:   make(map[string][]models.MemorySource),
+	}
+	ctx := context.Background()
+
+	// The cache key format is: ContentType:lowercase(first 50 chars or full content if shorter)
+	// Use a short content so the entire content is used as the key
+	testContent := "Test Content"
+	// Generate exact cache key: text:test content (lowercase)
+	cacheKey := "text:test content"
+	ms.cache[cacheKey] = []models.MemorySource{{Content: "cached content"}}
+
+	// Request with content that matches cache key
+	req := &MemoryRequest{
+		Content:     testContent,
+		DatasetName: "test-dataset",
+		ContentType: "text",
+	}
+
+	// This should hit the cache and return nil (no error)
+	err := ms.AddMemory(ctx, req)
+	assert.NoError(t, err)
+}
+
+func TestMemoryService_SearchMemory_CacheHit(t *testing.T) {
+	ms := &MemoryService{
+		enabled: true,
+		cache:   make(map[string][]models.MemorySource),
+	}
+	ctx := context.Background()
+
+	// Pre-populate cache
+	cacheKey := "search:test query"
+	expectedSources := []models.MemorySource{
+		{Content: "cached result 1", DatasetName: "test", RelevanceScore: 0.9},
+		{Content: "cached result 2", DatasetName: "test", RelevanceScore: 0.8},
+	}
+	ms.cache[cacheKey] = expectedSources
+
+	// Search should return cached results
+	req := &SearchRequest{
+		Query:       "test query",
+		DatasetName: "test",
+		Limit:       10,
+	}
+
+	sources, err := ms.SearchMemory(ctx, req)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSources, sources)
+}
+
+func TestMemoryService_SearchMemoryWithInsights_CacheHit(t *testing.T) {
+	ms := &MemoryService{
+		enabled: true,
+		cache:   make(map[string][]models.MemorySource),
+	}
+	ctx := context.Background()
+
+	// Pre-populate cache
+	cacheKey := "insights:test insights query"
+	expectedSources := []models.MemorySource{
+		{Content: "insight 1", DatasetName: "insights", RelevanceScore: 1.0},
+	}
+	ms.cache[cacheKey] = expectedSources
+
+	req := &SearchRequest{
+		Query:       "test insights query",
+		DatasetName: "test",
+		Limit:       10,
+	}
+
+	sources, err := ms.SearchMemoryWithInsights(ctx, req)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSources, sources)
+}
+
+func TestMemoryService_SearchMemoryWithGraphCompletion_CacheHit(t *testing.T) {
+	ms := &MemoryService{
+		enabled: true,
+		cache:   make(map[string][]models.MemorySource),
+	}
+	ctx := context.Background()
+
+	// Pre-populate cache
+	cacheKey := "graph:test graph query"
+	expectedSources := []models.MemorySource{
+		{Content: "graph result", DatasetName: "graph", RelevanceScore: 0.95},
+	}
+	ms.cache[cacheKey] = expectedSources
+
+	req := &SearchRequest{
+		Query:       "test graph query",
+		DatasetName: "test",
+		Limit:       10,
+	}
+
+	sources, err := ms.SearchMemoryWithGraphCompletion(ctx, req)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSources, sources)
+}
+
+func TestMemoryRequest_Fields(t *testing.T) {
+	req := MemoryRequest{
+		Content:     "test content",
+		DatasetName: "my-dataset",
+		ContentType: "text",
+	}
+	assert.Equal(t, "test content", req.Content)
+	assert.Equal(t, "my-dataset", req.DatasetName)
+	assert.Equal(t, "text", req.ContentType)
+}
+
+func TestSearchRequest_Fields(t *testing.T) {
+	req := SearchRequest{
+		Query:       "search term",
+		DatasetName: "my-dataset",
+		Limit:       20,
+	}
+	assert.Equal(t, "search term", req.Query)
+	assert.Equal(t, "my-dataset", req.DatasetName)
+	assert.Equal(t, 20, req.Limit)
+}

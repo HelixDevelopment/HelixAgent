@@ -665,3 +665,228 @@ func BenchmarkMCPClient_ListServers(b *testing.B) {
 		_ = client.ListServers()
 	}
 }
+
+func TestMCPManager_CallTool_WithServer(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+	ctx := context.Background()
+
+	// Create a mock transport that returns tools first, then call result
+	callCount := 0
+	mockTransport := NewMockMCPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		callCount++
+		if callCount == 1 {
+			// First call: listServerTools
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      float64(1),
+				"result": map[string]interface{}{
+					"tools": []interface{}{
+						map[string]interface{}{
+							"name":        "test-tool",
+							"description": "Test Tool",
+							"inputSchema": map[string]interface{}{},
+						},
+					},
+				},
+			}, nil
+		}
+		// Second call: callServerTool
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(2),
+			"result": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": "Success result",
+					},
+				},
+			},
+		}, nil
+	}
+
+	// Register a mock server with the client
+	manager.client.mu.Lock()
+	manager.client.servers["test-server"] = &MCPServerConnection{
+		ID:        "test-server",
+		Name:      "Test Server",
+		Transport: mockTransport,
+		Connected: true,
+		Tools: []*MCPTool{
+			{Name: "test-tool", Description: "Test Tool"},
+		},
+	}
+	manager.client.mu.Unlock()
+
+	// Call the tool
+	result, err := manager.CallTool(ctx, "test-tool", map[string]interface{}{"param": "value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestMCPManager_ValidateMCPRequest_AllErrors(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("non-unified request", func(t *testing.T) {
+		req := map[string]interface{}{
+			"tool": "test-tool",
+		}
+		err := manager.ValidateMCPRequest(ctx, req)
+		assert.NoError(t, err) // Non-unified requests pass validation
+	})
+
+	t.Run("unified request with missing server", func(t *testing.T) {
+		req := UnifiedProtocolRequest{
+			ServerID: "non-existent-server",
+			ToolName: "test-tool",
+		}
+		err := manager.ValidateMCPRequest(ctx, req)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not connected")
+	})
+}
+
+func TestMCPManager_GetMCPStats_AllPaths(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("no servers", func(t *testing.T) {
+		stats, err := manager.GetMCPStats(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, stats)
+	})
+
+	t.Run("with mock server", func(t *testing.T) {
+		mockTransport := NewMockMCPTransport()
+
+		manager.client.mu.Lock()
+		manager.client.servers["stats-server"] = &MCPServerConnection{
+			ID:        "stats-server",
+			Name:      "Stats Server",
+			Transport: mockTransport,
+			Connected: true,
+			Tools: []*MCPTool{
+				{Name: "tool1", Description: "Tool 1"},
+				{Name: "tool2", Description: "Tool 2"},
+			},
+		}
+		manager.client.mu.Unlock()
+
+		stats, err := manager.GetMCPStats(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, stats)
+	})
+}
+
+func TestMCPManager_ListTools_WithServer(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+
+	mockTransport := NewMockMCPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(1),
+			"result": map[string]interface{}{
+				"tools": []interface{}{
+					map[string]interface{}{
+						"name":        "tool-1",
+						"description": "Tool 1",
+					},
+				},
+			},
+		}, nil
+	}
+
+	manager.client.mu.Lock()
+	manager.client.servers["tools-server"] = &MCPServerConnection{
+		ID:        "tools-server",
+		Name:      "Tools Server",
+		Transport: mockTransport,
+		Connected: true,
+		Tools: []*MCPTool{
+			{Name: "tool-1", Description: "Tool 1"},
+		},
+	}
+	manager.client.mu.Unlock()
+
+	tools := manager.ListTools()
+	assert.GreaterOrEqual(t, len(tools), 1)
+}
+
+func TestMCPManager_GetMCPTools_WithServer(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+	ctx := context.Background()
+
+	mockTransport := NewMockMCPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(1),
+			"result": map[string]interface{}{
+				"tools": []interface{}{
+					map[string]interface{}{
+						"name":        "mcp-tool-1",
+						"description": "MCP Tool 1",
+					},
+					map[string]interface{}{
+						"name":        "mcp-tool-2",
+						"description": "MCP Tool 2",
+					},
+				},
+			},
+		}, nil
+	}
+
+	manager.client.mu.Lock()
+	manager.client.servers["mcp-tools-server"] = &MCPServerConnection{
+		ID:        "mcp-tools-server",
+		Name:      "MCP Tools Server",
+		Transport: mockTransport,
+		Connected: true,
+		Tools: []*MCPTool{
+			{Name: "mcp-tool-1", Description: "MCP Tool 1"},
+			{Name: "mcp-tool-2", Description: "MCP Tool 2"},
+		},
+	}
+	manager.client.mu.Unlock()
+
+	tools, err := manager.GetMCPTools(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, tools)
+	// Count total tools across all servers
+	totalTools := 0
+	for _, serverTools := range tools {
+		totalTools += len(serverTools)
+	}
+	assert.GreaterOrEqual(t, totalTools, 2)
+}
+
+func TestMCPManager_RegisterServer_Errors(t *testing.T) {
+	log := newMCPTestLogger()
+	manager := NewMCPManager(nil, nil, log)
+
+	t.Run("missing name", func(t *testing.T) {
+		config := map[string]interface{}{
+			"command": []interface{}{"test-command"},
+		}
+		err := manager.RegisterServer(config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must include 'name'")
+	})
+
+	t.Run("missing command", func(t *testing.T) {
+		config := map[string]interface{}{
+			"name": "Test Server",
+		}
+		err := manager.RegisterServer(config)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must include 'command'")
+	})
+}

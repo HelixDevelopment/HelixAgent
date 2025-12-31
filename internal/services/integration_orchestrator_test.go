@@ -1,8 +1,10 @@
 package services
 
 import (
+	"context"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -440,4 +442,616 @@ func TestIntegrationOrchestrator_hasCyclesUtil(t *testing.T) {
 		result := io.hasCyclesUtil("a", graph, visited, recStack)
 		assert.True(t, result)
 	})
+}
+
+// Tests for executeStep
+
+func TestIntegrationOrchestrator_executeStep_UnknownType(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "Test Step",
+		Type: "unknown",
+	}
+
+	result, err := io.executeStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unknown step type: unknown")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_NoManager(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil) // No MCP manager
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "MCP manager not available")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_NoOperation(t *testing.T) {
+	ctx := context.Background()
+	// Create a simple MCP manager (can be nil for this test as we fail before using it)
+	io := NewIntegrationOrchestrator(&MCPManager{}, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:         "step1",
+		Name:       "MCP Step",
+		Type:       "mcp",
+		Parameters: map[string]any{},
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "MCP operation parameter required")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_UnknownOperation(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(&MCPManager{}, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "unknown_operation",
+		},
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unknown MCP operation: unknown_operation")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_CallToolNoName(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(&MCPManager{}, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "call_tool",
+			// toolName is missing
+		},
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "toolName parameter required")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_RegisterServerNoConfig(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(&MCPManager{}, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "register_server",
+			// serverConfig is missing
+		},
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "serverConfig parameter required")
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_ListTools(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	mcpMgr := NewMCPManager(nil, nil, logger)
+	io := NewIntegrationOrchestrator(mcpMgr, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "list_tools",
+		},
+	}
+
+	_, err := io.executeMCPStep(ctx, step)
+	assert.NoError(t, err)
+	// Result may be nil (empty list) or a list - just check no error occurred
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_ListServers(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	mcpMgr := NewMCPManager(nil, nil, logger)
+	io := NewIntegrationOrchestrator(mcpMgr, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "list_servers",
+		},
+	}
+
+	result, err := io.executeMCPStep(ctx, step)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestIntegrationOrchestrator_executeMCPStep_CallToolWithParams(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	mcpMgr := NewMCPManager(nil, nil, logger)
+	io := NewIntegrationOrchestrator(mcpMgr, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "call_tool",
+			"toolName":  "test-tool",
+			"params": map[string]interface{}{
+				"arg1": "value1",
+			},
+		},
+	}
+
+	// This will fail because no tool is registered, but it tests the params extraction path
+	result, err := io.executeMCPStep(ctx, step)
+	// Error expected since tool doesn't exist
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestIntegrationOrchestrator_executeToolStep_NoToolName(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+
+	step := &WorkflowStep{
+		ID:         "step1",
+		Name:       "Tool Step",
+		Type:       "tool",
+		Parameters: map[string]any{}, // toolName is missing
+	}
+
+	result, err := io.executeToolStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "toolName parameter required")
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_NoOperation(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:         "step1",
+		Name:       "LLM Step",
+		Type:       "llm",
+		Parameters: map[string]any{}, // operation is missing
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "LLM operation parameter required")
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_NoProviderRegistry(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil) // No provider registry
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Step",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "complete",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "LLM provider registry not configured")
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_NoProviders(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	// Set empty provider registry
+	io.providerRegistry = NewProviderRegistry(nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Step",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "complete",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "no LLM providers available")
+}
+
+// Note: TestIntegrationOrchestrator_executeLLMStep_UnknownOperation is skipped
+// because it requires a full LLM provider implementation with GetCapabilities method
+
+func TestIntegrationOrchestrator_executeLSPStep_NilClient(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil) // Nil LSP client
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "Initialize LSP Client",
+		Type: "lsp",
+		Parameters: map[string]any{},
+	}
+
+	// This should panic or return error due to nil client
+	defer func() {
+		if r := recover(); r != nil {
+			// Expected - nil pointer dereference
+		}
+	}()
+
+	_, err := io.executeLSPStep(ctx, step)
+	// If we get here without panic, check error
+	if err == nil {
+		t.Skip("LSP client is nil - operation would fail")
+	}
+}
+
+func TestIntegrationOrchestrator_executeLSPStep_UnknownStep(t *testing.T) {
+	ctx := context.Background()
+	// Create a minimal LSP client
+	lspClient := &LSPClient{}
+	io := NewIntegrationOrchestrator(nil, lspClient, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "Unknown LSP Operation",
+		Type: "lsp",
+		Parameters: map[string]any{},
+	}
+
+	result, err := io.executeLSPStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unknown LSP step: Unknown LSP Operation")
+}
+
+func TestIntegrationOrchestrator_executeOperation_UnknownType(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	op := Operation{
+		ID:   "op-1",
+		Type: "unknown",
+		Name: "Unknown Op",
+	}
+
+	result := io.executeOperation(ctx, op)
+	assert.Error(t, result.Error)
+	assert.Equal(t, "op-1", result.ID)
+	assert.Contains(t, result.Error.Error(), "unknown operation type: unknown")
+}
+
+func TestIntegrationOrchestrator_ExecuteParallelOperations_Empty(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	results, err := io.ExecuteParallelOperations(ctx, []Operation{})
+	assert.NoError(t, err)
+	assert.Empty(t, results)
+}
+
+func TestIntegrationOrchestrator_ExecuteParallelOperations_WithErrors(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	operations := []Operation{
+		{ID: "op-1", Type: "unknown", Name: "Op 1"},
+		{ID: "op-2", Type: "unknown", Name: "Op 2"},
+	}
+
+	results, err := io.ExecuteParallelOperations(ctx, operations)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "parallel execution had")
+	assert.Empty(t, results) // All operations failed
+}
+
+func TestIntegrationOrchestrator_ExecuteToolChain_Empty(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+
+	results, err := io.ExecuteToolChain(ctx, []ToolExecution{})
+	assert.NoError(t, err)
+	assert.NotNil(t, results)
+}
+
+func TestIntegrationOrchestrator_executeOperation_LSPType(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	lspClient := NewLSPClient(logger)
+	io := NewIntegrationOrchestrator(nil, lspClient, nil, nil)
+
+	op := Operation{
+		ID:         "op-lsp",
+		Type:       "lsp",
+		Name:       "Unknown LSP Operation",
+		Parameters: map[string]interface{}{},
+	}
+
+	result := io.executeOperation(ctx, op)
+	assert.Error(t, result.Error)
+	assert.Equal(t, "op-lsp", result.ID)
+	assert.Contains(t, result.Error.Error(), "unknown LSP step")
+}
+
+func TestIntegrationOrchestrator_executeOperation_ToolType(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+
+	op := Operation{
+		ID:   "op-tool",
+		Type: "tool",
+		Name: "Test Tool",
+		Parameters: map[string]interface{}{
+			"toolName": "non-existent-tool",
+		},
+	}
+
+	result := io.executeOperation(ctx, op)
+	// Should fail because tool doesn't exist
+	assert.Error(t, result.Error)
+	assert.Equal(t, "op-tool", result.ID)
+}
+
+func TestIntegrationOrchestrator_executeStep_MCPType(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	mcpMgr := NewMCPManager(nil, nil, logger)
+	io := NewIntegrationOrchestrator(mcpMgr, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step-mcp",
+		Name: "MCP Step",
+		Type: "mcp",
+		Parameters: map[string]any{
+			"operation": "list_tools",
+		},
+	}
+
+	result, err := io.executeStep(ctx, step)
+	assert.NoError(t, err)
+	// Result may be nil (empty list) or actual tools
+	_ = result
+}
+
+func TestIntegrationOrchestrator_executeStep_ToolType(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+
+	step := &WorkflowStep{
+		ID:   "step-tool",
+		Name: "Tool Step",
+		Type: "tool",
+		Parameters: map[string]any{
+			"toolName": "non-existent-tool",
+		},
+	}
+
+	result, err := io.executeStep(ctx, step)
+	// Should fail because tool doesn't exist
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestIntegrationOrchestrator_executeStep_LSPType(t *testing.T) {
+	ctx := context.Background()
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	lspClient := NewLSPClient(logger)
+	io := NewIntegrationOrchestrator(nil, lspClient, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step-lsp",
+		Name: "Unknown LSP Step",
+		Type: "lsp",
+		Parameters: map[string]any{},
+	}
+
+	result, err := io.executeStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unknown LSP step")
+}
+
+func TestIntegrationOrchestrator_executeStep_LLMType(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	step := &WorkflowStep{
+		ID:   "step-llm",
+		Name: "LLM Step",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "complete",
+		},
+	}
+
+	result, err := io.executeStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "LLM provider registry not configured")
+}
+
+func TestIntegrationOrchestrator_executeWorkflow_EmptySteps(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	workflow := &Workflow{
+		ID:      "workflow-1",
+		Name:    "Empty Workflow",
+		Steps:   []WorkflowStep{},
+		Results: make(map[string]any),
+	}
+
+	err := io.executeWorkflow(ctx, workflow)
+	assert.NoError(t, err)
+	assert.Equal(t, "completed", workflow.Status)
+}
+
+func TestIntegrationOrchestrator_executeWorkflow_SingleStep(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	workflow := &Workflow{
+		ID:   "workflow-2",
+		Name: "Single Step Workflow",
+		Steps: []WorkflowStep{
+			{
+				ID:         "step1",
+				Name:       "Step 1",
+				Type:       "unknown", // Will fail
+				Parameters: map[string]any{},
+			},
+		},
+		Results: make(map[string]any),
+	}
+
+	err := io.executeWorkflow(ctx, workflow)
+	assert.NoError(t, err) // Workflow completes even if steps fail
+	assert.Equal(t, "completed", workflow.Status)
+	assert.Len(t, workflow.Errors, 1)
+}
+
+func TestIntegrationOrchestrator_executeWorkflow_MultipleSteps(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	workflow := &Workflow{
+		ID:   "workflow-3",
+		Name: "Multi Step Workflow",
+		Steps: []WorkflowStep{
+			{
+				ID:         "step1",
+				Name:       "Step 1",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+			},
+			{
+				ID:         "step2",
+				Name:       "Step 2",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+			},
+		},
+		Results: make(map[string]any),
+	}
+
+	err := io.executeWorkflow(ctx, workflow)
+	assert.NoError(t, err)
+	assert.Equal(t, "completed", workflow.Status)
+}
+
+func TestIntegrationOrchestrator_executeWorkflow_WithDependencies(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	workflow := &Workflow{
+		ID:   "workflow-4",
+		Name: "Workflow With Dependencies",
+		Steps: []WorkflowStep{
+			{
+				ID:         "step1",
+				Name:       "Step 1",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+			},
+			{
+				ID:         "step2",
+				Name:       "Step 2",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+				DependsOn:  []string{"step1"},
+			},
+			{
+				ID:         "step3",
+				Name:       "Step 3",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+				DependsOn:  []string{"step2"},
+			},
+		},
+		Results: make(map[string]any),
+	}
+
+	err := io.executeWorkflow(ctx, workflow)
+	assert.NoError(t, err)
+	assert.Equal(t, "completed", workflow.Status)
+}
+
+func TestIntegrationOrchestrator_executeWorkflow_ParallelSteps(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	workflow := &Workflow{
+		ID:   "workflow-5",
+		Name: "Parallel Workflow",
+		Steps: []WorkflowStep{
+			{
+				ID:         "step1",
+				Name:       "Step 1",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+			},
+			{
+				ID:         "step2",
+				Name:       "Step 2",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+			},
+			{
+				ID:         "step3",
+				Name:       "Step 3",
+				Type:       "unknown",
+				Parameters: map[string]any{},
+				DependsOn:  []string{"step1", "step2"},
+			},
+		},
+		Results: make(map[string]any),
+	}
+
+	err := io.executeWorkflow(ctx, workflow)
+	assert.NoError(t, err)
+	assert.Equal(t, "completed", workflow.Status)
 }

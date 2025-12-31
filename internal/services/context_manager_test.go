@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -540,4 +541,211 @@ func BenchmarkContextManager_BuildContext(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = cm.BuildContext("code_completion", 1000)
 	}
+}
+
+func TestContextManager_HasConflictingMetadata(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("no entries", func(t *testing.T) {
+		result := cm.hasConflictingMetadata([]*ContextEntry{})
+		assert.False(t, result)
+	})
+
+	t.Run("single entry", func(t *testing.T) {
+		result := cm.hasConflictingMetadata([]*ContextEntry{
+			{ID: "1", Metadata: map[string]interface{}{"key": "value"}},
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("matching metadata", func(t *testing.T) {
+		result := cm.hasConflictingMetadata([]*ContextEntry{
+			{ID: "1", Metadata: map[string]interface{}{"key": "value"}},
+			{ID: "2", Metadata: map[string]interface{}{"key": "value"}},
+		})
+		assert.False(t, result)
+	})
+
+	t.Run("conflicting metadata", func(t *testing.T) {
+		result := cm.hasConflictingMetadata([]*ContextEntry{
+			{ID: "1", Metadata: map[string]interface{}{"key": "value1"}},
+			{ID: "2", Metadata: map[string]interface{}{"key": "value2"}},
+		})
+		assert.True(t, result)
+	})
+}
+
+func TestContextManager_DecompressEntry(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("not compressed", func(t *testing.T) {
+		entry := &ContextEntry{
+			ID:         "1",
+			Content:    "test content",
+			Compressed: false,
+		}
+		err := cm.decompressEntry(entry)
+		assert.NoError(t, err)
+		assert.Equal(t, "test content", entry.Content)
+	})
+
+	t.Run("empty compressed data", func(t *testing.T) {
+		entry := &ContextEntry{
+			ID:             "1",
+			Compressed:     true,
+			CompressedData: nil,
+		}
+		err := cm.decompressEntry(entry)
+		assert.NoError(t, err)
+	})
+}
+
+func TestContextManager_CompressAndDecompress(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("compress and decompress round trip", func(t *testing.T) {
+		originalContent := "This is test content that should be compressed and then decompressed"
+		entry := &ContextEntry{
+			ID:      "1",
+			Content: originalContent,
+		}
+
+		// Compress
+		err := cm.compressEntry(entry)
+		assert.NoError(t, err)
+		assert.True(t, entry.Compressed)
+		assert.NotNil(t, entry.CompressedData)
+		assert.Empty(t, entry.Content)
+
+		// Decompress
+		err = cm.decompressEntry(entry)
+		assert.NoError(t, err)
+		assert.False(t, entry.Compressed)
+		assert.Nil(t, entry.CompressedData)
+		assert.Equal(t, originalContent, entry.Content)
+	})
+}
+
+func TestContextManager_MetadataEqual(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("equal nil", func(t *testing.T) {
+		result := cm.metadataEqual(nil, nil)
+		assert.True(t, result)
+	})
+
+	t.Run("equal empty maps", func(t *testing.T) {
+		result := cm.metadataEqual(map[string]interface{}{}, map[string]interface{}{})
+		assert.True(t, result)
+	})
+
+	t.Run("equal maps", func(t *testing.T) {
+		a := map[string]interface{}{"key1": "value1", "key2": 123}
+		b := map[string]interface{}{"key1": "value1", "key2": 123}
+		result := cm.metadataEqual(a, b)
+		assert.True(t, result)
+	})
+
+	t.Run("different maps", func(t *testing.T) {
+		a := map[string]interface{}{"key1": "value1"}
+		b := map[string]interface{}{"key1": "value2"}
+		result := cm.metadataEqual(a, b)
+		assert.False(t, result)
+	})
+}
+
+func TestContextManager_EvictLowPriorityEntries(t *testing.T) {
+	t.Run("empty entries", func(t *testing.T) {
+		cm := NewContextManager(100)
+		err := cm.evictLowPriorityEntries()
+		assert.NoError(t, err)
+	})
+
+	t.Run("with entries", func(t *testing.T) {
+		cm := NewContextManager(10)
+
+		// Add more entries than capacity
+		for i := 0; i < 15; i++ {
+			_ = cm.AddEntry(&ContextEntry{
+				ID:       fmt.Sprintf("entry-%d", i),
+				Type:     "test",
+				Content:  "test content",
+				Priority: i % 5,
+			})
+		}
+
+		initialCount := len(cm.entries)
+		err := cm.evictLowPriorityEntries()
+		assert.NoError(t, err)
+		// Should have evicted some entries
+		assert.LessOrEqual(t, len(cm.entries), initialCount)
+	})
+}
+
+func TestContextManager_SelectRelevantEntries(t *testing.T) {
+	cm := NewContextManager(100)
+
+	// Create entries with different types
+	testEntries := []*ContextEntry{
+		{
+			ID:       "1",
+			Type:     "lsp",
+			Content:  "LSP content about code completion",
+			Priority: 5,
+		},
+		{
+			ID:       "2",
+			Type:     "mcp",
+			Content:  "MCP tool result",
+			Priority: 3,
+		},
+		{
+			ID:       "3",
+			Type:     "document",
+			Content:  "Documentation content",
+			Priority: 7,
+		},
+	}
+
+	t.Run("select relevant entries", func(t *testing.T) {
+		entries := cm.selectRelevantEntries(testEntries, "code_completion", 1000)
+		assert.NotEmpty(t, entries)
+	})
+
+	t.Run("select with max tokens limit", func(t *testing.T) {
+		entries := cm.selectRelevantEntries(testEntries, "code_completion", 10)
+		// Should return some entries even with small limit
+		assert.NotNil(t, entries)
+	})
+
+	t.Run("empty entries", func(t *testing.T) {
+		entries := cm.selectRelevantEntries([]*ContextEntry{}, "code_completion", 1000)
+		assert.Empty(t, entries)
+	})
+}
+
+func TestContextManager_CalculateRelevanceScore(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("LSP entry for code completion", func(t *testing.T) {
+		entry := &ContextEntry{
+			ID:       "1",
+			Type:     "lsp",
+			Content:  "code completion result",
+			Priority: 5,
+		}
+		score := cm.calculateRelevanceScore(entry, "code_completion")
+		assert.Greater(t, score, 0.0)
+	})
+
+	t.Run("document entry for documentation task", func(t *testing.T) {
+		entry := &ContextEntry{
+			ID:       "1",
+			Type:     "document",
+			Content:  "documentation content",
+			Priority: 5,
+		}
+		score := cm.calculateRelevanceScore(entry, "documentation")
+		assert.Greater(t, score, 0.0)
+	})
 }

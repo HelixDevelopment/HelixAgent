@@ -43,7 +43,7 @@ type HTTP3Config struct {
 }
 
 // NewHTTP3Server creates a new HTTP3 server with HTTP2 fallback.
-func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) *HTTP3Server {
+func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) (*HTTP3Server, error) {
 	if config == nil {
 		config = &HTTP3Config{
 			Address:        ":8080",
@@ -57,7 +57,10 @@ func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) *HTTP3Server {
 	}
 
 	// Create TLS configuration
-	tlsConfig := createTLSConfig(config)
+	tlsConfig, err := createTLSConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create TLS config: %w", err)
+	}
 
 	server := &HTTP3Server{
 		enableHTTP3: config.EnableHTTP3,
@@ -89,7 +92,7 @@ func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) *HTTP3Server {
 		TLSConfig:    tlsConfig,
 	}
 
-	return server
+	return server, nil
 }
 
 // Start starts the HTTP3 server with HTTP2 fallback.
@@ -181,7 +184,7 @@ func (s *HTTP3Server) GetServerInfo() map[string]interface{} {
 }
 
 // createTLSConfig creates a TLS configuration for the server
-func createTLSConfig(config *HTTP3Config) *tls.Config {
+func createTLSConfig(config *HTTP3Config) (*tls.Config, error) {
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		CurvePreferences: []tls.CurveID{
@@ -201,24 +204,31 @@ func createTLSConfig(config *HTTP3Config) *tls.Config {
 	if config.TLSCertFile != "" && config.TLSKeyFile != "" {
 		cert, err := tls.LoadX509KeyPair(config.TLSCertFile, config.TLSKeyFile)
 		if err != nil {
-			fmt.Printf("Warning: Failed to load TLS certificates: %v\n", err)
+			fmt.Printf("Warning: Failed to load TLS certificates: %v, generating self-signed cert\n", err)
 			// Generate self-signed certificate for development
-			cert = generateSelfSignedCert()
+			cert, err = generateSelfSignedCert()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate self-signed certificate: %w", err)
+			}
 		}
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	} else {
 		// Generate self-signed certificate for development
-		tlsConfig.Certificates = []tls.Certificate{generateSelfSignedCert()}
+		cert, err := generateSelfSignedCert()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate self-signed certificate: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 
-	return tlsConfig
+	return tlsConfig, nil
 }
 
 // generateSelfSignedCert generates a self-signed certificate for development
-func generateSelfSignedCert() tls.Certificate {
+func generateSelfSignedCert() (tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		panic(err)
+		return tls.Certificate{}, fmt.Errorf("failed to generate RSA key: %w", err)
 	}
 
 	template := x509.Certificate{
@@ -237,7 +247,7 @@ func generateSelfSignedCert() tls.Certificate {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		panic(err)
+		return tls.Certificate{}, fmt.Errorf("failed to create certificate: %w", err)
 	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
@@ -245,8 +255,8 @@ func generateSelfSignedCert() tls.Certificate {
 
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
-		panic(err)
+		return tls.Certificate{}, fmt.Errorf("failed to create X509 key pair: %w", err)
 	}
 
-	return cert
+	return cert, nil
 }

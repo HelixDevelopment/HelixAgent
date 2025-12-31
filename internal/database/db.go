@@ -2,22 +2,27 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/superagent/superagent/internal/config"
 )
+
+// Row interface for row scanning
+type Row interface {
+	Scan(dest ...any) error
+}
 
 // DB interface for database operations
 type DB interface {
 	Ping() error
 	Exec(query string, args ...any) error
 	Query(query string, args ...any) ([]any, error)
-	QueryRow(query string, args ...any) *sql.Row
+	QueryRow(query string, args ...any) Row
 	Close() error
 	HealthCheck() error
 }
@@ -25,6 +30,16 @@ type DB interface {
 // PostgresDB implements DB using PostgreSQL with pgxpool
 type PostgresDB struct {
 	pool *pgxpool.Pool
+}
+
+// pgxRow wraps pgx.Row to implement the Row interface
+type pgxRow struct {
+	row pgx.Row
+}
+
+// Scan implements the Row interface
+func (r *pgxRow) Scan(dest ...any) error {
+	return r.row.Scan(dest...)
 }
 
 func NewPostgresDB(cfg *config.Config) (*PostgresDB, error) {
@@ -106,10 +121,9 @@ func (p *PostgresDB) Query(query string, args ...any) ([]any, error) {
 	return results, nil
 }
 
-func (p *PostgresDB) QueryRow(query string, args ...any) *sql.Row {
-	// Note: This is a simplified implementation
-	// In a real implementation, you'd need to handle the pgx.Row properly
-	return nil
+func (p *PostgresDB) QueryRow(query string, args ...any) Row {
+	row := p.pool.QueryRow(context.Background(), query, args...)
+	return &pgxRow{row: row}
 }
 
 func (p *PostgresDB) Close() error {

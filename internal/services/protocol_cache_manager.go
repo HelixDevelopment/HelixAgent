@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +13,7 @@ import (
 // ProtocolCacheManager handles caching for MCP, LSP, ACP, and Embedding protocols
 type ProtocolCacheManager struct {
 	repo  *database.ModelMetadataRepository
-	cache CacheInterface
+	cache *ProtocolCache
 	log   *logrus.Logger
 }
 
@@ -28,7 +27,7 @@ type ProtocolCacheEntry struct {
 }
 
 // NewProtocolCacheManager creates a new protocol cache manager
-func NewProtocolCacheManager(repo *database.ModelMetadataRepository, cache CacheInterface, log *logrus.Logger) *ProtocolCacheManager {
+func NewProtocolCacheManager(repo *database.ModelMetadataRepository, cache *ProtocolCache, log *logrus.Logger) *ProtocolCacheManager {
 	return &ProtocolCacheManager{
 		repo:  repo,
 		cache: cache,
@@ -44,24 +43,12 @@ func (p *ProtocolCacheManager) Set(ctx context.Context, protocol, key string, da
 		"ttl":      ttl,
 	}).Debug("Setting protocol cache entry")
 
-	expiresAt := time.Now().Add(ttl)
-
-	entry := ProtocolCacheEntry{
-		Key:       fmt.Sprintf("%s:%s", protocol, key),
-		Data:      data,
-		ExpiresAt: &expiresAt,
-		Protocol:  protocol,
-		Timestamp: time.Now(),
-	}
-
-	// Store in memory cache and persistent cache
 	cacheKey := fmt.Sprintf("protocol_cache_%s_%s", protocol, key)
-	_ = fmt.Sprintf("protocol_cache_%s_%s", protocol, key) // cacheKey used for logging
-	cacheDataJSON, _ := json.Marshal(entry)
-	_ = cacheDataJSON // Avoid unused variable warning
+	tags := []string{protocol, CacheTagResults}
 
-	// This would use the actual cache interface
-	p.log.WithField("cacheKey", cacheKey).Debug("Cached protocol data")
+	if err := p.cache.Set(ctx, cacheKey, data, tags, ttl); err != nil {
+		return fmt.Errorf("failed to set cache entry: %w", err)
+	}
 
 	return nil
 }
@@ -74,12 +61,12 @@ func (p *ProtocolCacheManager) Get(ctx context.Context, protocol, key string) (i
 	}).Debug("Getting protocol cache entry")
 
 	cacheKey := fmt.Sprintf("protocol_cache_%s_%s", protocol, key)
-	_ = cacheKey // cacheKey would be used in real implementation
+	data, found, err := p.cache.Get(ctx, cacheKey)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get cache entry: %w", err)
+	}
 
-	// In a real implementation, this would check cache first
-	// For now, return miss
-
-	return nil, false, fmt.Errorf("cache miss for key %s", key)
+	return data, found, nil
 }
 
 // Delete removes a cache entry
@@ -90,33 +77,51 @@ func (p *ProtocolCacheManager) Delete(ctx context.Context, protocol, key string)
 	}).Debug("Deleting protocol cache entry")
 
 	cacheKey := fmt.Sprintf("protocol_cache_%s_%s", protocol, key)
-
-	// In a real implementation, this would delete from cache
-	p.log.WithField("cacheKey", cacheKey).Debug("Deleted protocol cache entry")
+	if err := p.cache.Delete(ctx, cacheKey); err != nil {
+		return fmt.Errorf("failed to delete cache entry: %w", err)
+	}
 
 	return nil
 }
 
 // CleanupExpired removes expired cache entries
+// Note: ProtocolCache already runs automatic cleanup in background,
+// this method is for manual/on-demand cleanup
 func (p *ProtocolCacheManager) CleanupExpired(ctx context.Context) error {
 	p.log.Info("Cleaning up expired protocol cache entries")
 
-	// In a real implementation, this would remove expired entries from both caches
-	// For now, just log the operation
+	// Clear all protocol entries - the ProtocolCache handles TTL automatically
+	// For a full cleanup, we invalidate by pattern
+	for _, protocol := range []string{CacheTagMCP, CacheTagLSP, CacheTagACP, CacheTagEmbedding} {
+		if err := p.cache.InvalidateByTags(ctx, []string{protocol}); err != nil {
+			p.log.WithError(err).Warnf("Failed to cleanup %s cache entries", protocol)
+		}
+	}
 
 	return nil
 }
 
 // GetCacheStats returns statistics about cache usage
 func (p *ProtocolCacheManager) GetCacheStats(ctx context.Context) (map[string]interface{}, error) {
+	cacheStats := p.cache.GetStats()
+
 	stats := map[string]interface{}{
-		"cacheType":      "protocol",
-		"timestamp":      time.Now(),
-		"entries":        0, // Would count actual cache entries
-		"expiredEntries": 0, // Would count expired entries
+		"cacheType":    "protocol",
+		"timestamp":    time.Now(),
+		"totalEntries": cacheStats.TotalEntries,
+		"totalSize":    cacheStats.TotalSize,
+		"hitRate":      cacheStats.HitRate,
+		"missRate":     cacheStats.MissRate,
+		"totalHits":    cacheStats.TotalHits,
+		"totalMisses":  cacheStats.TotalMisses,
+		"evictions":    cacheStats.Evictions,
 	}
 
-	p.log.WithFields(stats).Info("Protocol cache statistics retrieved")
+	p.log.WithFields(logrus.Fields{
+		"entries": cacheStats.TotalEntries,
+		"hitRate": cacheStats.HitRate,
+	}).Debug("Protocol cache statistics retrieved")
+
 	return stats, nil
 }
 
@@ -127,8 +132,11 @@ func (p *ProtocolCacheManager) InvalidateByPattern(ctx context.Context, protocol
 		"pattern":  pattern,
 	}).Info("Invalidating cache entries by pattern")
 
-	// In a real implementation, this would find and delete matching entries
-	p.log.Info("Cache invalidation completed")
+	// Build the full pattern with protocol prefix
+	fullPattern := fmt.Sprintf("protocol_cache_%s_%s", protocol, pattern)
+	if err := p.cache.InvalidateByPattern(ctx, fullPattern); err != nil {
+		return fmt.Errorf("failed to invalidate cache by pattern: %w", err)
+	}
 
 	return nil
 }
@@ -155,8 +163,17 @@ func (p *ProtocolCacheManager) SetWithInvalidation(ctx context.Context, protocol
 func (p *ProtocolCacheManager) WarmupCache(ctx context.Context) error {
 	p.log.Info("Warming up protocol cache with frequently accessed data")
 
-	// In a real implementation, this would pre-load frequently accessed data into cache
-	// For now, just log the operation
+	// Pre-populate with empty protocol registries for faster first access
+	warmupData := map[string]interface{}{
+		"protocol_cache_mcp_registry":       map[string]interface{}{"initialized": true},
+		"protocol_cache_lsp_registry":       map[string]interface{}{"initialized": true},
+		"protocol_cache_acp_registry":       map[string]interface{}{"initialized": true},
+		"protocol_cache_embedding_registry": map[string]interface{}{"initialized": true},
+	}
+
+	if err := p.cache.Warmup(ctx, warmupData); err != nil {
+		return fmt.Errorf("failed to warmup cache: %w", err)
+	}
 
 	return nil
 }
@@ -165,17 +182,45 @@ func (p *ProtocolCacheManager) WarmupCache(ctx context.Context) error {
 func (p *ProtocolCacheManager) GetProtocolsWithCache(ctx context.Context) (map[string]map[string]interface{}, error) {
 	p.log.Info("Retrieving cache entries grouped by protocol")
 
-	// In a real implementation, this would return all cache entries grouped by protocol
-	// For now, return empty map
-	return make(map[string]map[string]interface{}), nil
+	result := make(map[string]map[string]interface{})
+
+	// Check each protocol for cached data
+	protocols := []string{CacheTagMCP, CacheTagLSP, CacheTagACP, CacheTagEmbedding}
+	for _, protocol := range protocols {
+		registryKey := fmt.Sprintf("protocol_cache_%s_registry", protocol)
+		data, found, err := p.cache.Get(ctx, registryKey)
+		if err != nil {
+			p.log.WithError(err).Warnf("Failed to get %s registry", protocol)
+			continue
+		}
+		if found {
+			if dataMap, ok := data.(map[string]interface{}); ok {
+				result[protocol] = dataMap
+			}
+		}
+	}
+
+	return result, nil
 }
 
 // MonitorCacheHealth monitors cache health and performance
 func (p *ProtocolCacheManager) MonitorCacheHealth(ctx context.Context) error {
 	p.log.Info("Monitoring protocol cache health")
 
-	// In a real implementation, this would check cache metrics
-	// For now, just log the operation
+	stats := p.cache.GetStats()
+
+	// Log health metrics
+	p.log.WithFields(logrus.Fields{
+		"entries":  stats.TotalEntries,
+		"size":     stats.TotalSize,
+		"hitRate":  stats.HitRate,
+		"missRate": stats.MissRate,
+	}).Info("Cache health status")
+
+	// Check for concerning metrics
+	if stats.HitRate < 0.5 && stats.TotalHits > 100 {
+		p.log.Warn("Cache hit rate is below 50% - consider increasing cache size or TTL")
+	}
 
 	return nil
 }

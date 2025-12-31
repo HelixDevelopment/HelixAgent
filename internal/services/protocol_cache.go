@@ -19,6 +19,8 @@ type ProtocolCache struct {
 	maxSize      int
 	ttl          time.Duration
 	log          *logrus.Logger
+	stopCh       chan struct{}
+	stopped      bool
 }
 
 // CacheEntry represents a cached item with metadata
@@ -59,12 +61,27 @@ func NewProtocolCache(maxSize int, ttl time.Duration, logger *logrus.Logger) *Pr
 		maxSize:      maxSize,
 		ttl:          ttl,
 		log:          logger,
+		stopCh:       make(chan struct{}),
+		stopped:      false,
 	}
 
 	// Start cleanup goroutine
 	go cache.cleanupRoutine()
 
 	return cache
+}
+
+// Stop stops the cleanup goroutine gracefully
+func (c *ProtocolCache) Stop() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.stopped {
+		return
+	}
+	c.stopped = true
+	close(c.stopCh)
+	c.log.Info("Protocol cache stopped")
 }
 
 // Get retrieves an item from cache
@@ -268,8 +285,13 @@ func (c *ProtocolCache) cleanupRoutine() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		c.cleanupExpired()
+	for {
+		select {
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			c.cleanupExpired()
+		}
 	}
 }
 

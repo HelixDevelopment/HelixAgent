@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/superagent/superagent/internal/database"
 	"github.com/superagent/superagent/internal/models"
 	"golang.org/x/crypto/argon2"
@@ -70,7 +71,7 @@ func (u *UserService) Register(ctx context.Context, req *RegisterRequest) (*User
 	if err == nil {
 		return nil, fmt.Errorf("username or email already exists")
 	}
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
 
@@ -123,7 +124,7 @@ func (u *UserService) Authenticate(ctx context.Context, username, password strin
 		&user.APIKey, &user.Role, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("invalid username or password")
 		}
 		return nil, fmt.Errorf("failed to authenticate user: %w", err)
@@ -150,7 +151,7 @@ func (u *UserService) AuthenticateByAPIKey(ctx context.Context, apiKey string) (
 		&user.Role, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("invalid API key")
 		}
 		return nil, fmt.Errorf("failed to authenticate API key: %w", err)
@@ -172,7 +173,7 @@ func (u *UserService) GetUserByID(ctx context.Context, userID int) (*User, error
 		&user.Role, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -222,7 +223,7 @@ func (u *UserService) ChangePassword(ctx context.Context, userID int, oldPasswor
 	var passwordHash string
 	err := u.db.QueryRow("SELECT password_hash FROM users WHERE id = $1", userID).Scan(&passwordHash)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("user not found")
 		}
 		return fmt.Errorf("failed to verify password: %w", err)
@@ -375,7 +376,7 @@ func (u *UserService) GetSession(ctx context.Context, token string) (*models.Use
 		&session.ExpiresAt, &session.Context, &session.CreatedAt, &session.LastActivity,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("session not found or expired")
 		}
 		return nil, fmt.Errorf("failed to get session: %w", err)

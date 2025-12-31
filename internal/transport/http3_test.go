@@ -28,8 +28,8 @@ func TestNewHTTP3Server_WithNilConfig(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	server := NewHTTP3Server(router, nil)
-
+	server, err := NewHTTP3Server(router, nil)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 	assert.Equal(t, ":8080", server.addr)
 	assert.True(t, server.enableHTTP3)
@@ -55,8 +55,8 @@ func TestNewHTTP3Server_WithCustomConfig(t *testing.T) {
 		WriteTimeout:   15 * time.Second,
 	}
 
-	server := NewHTTP3Server(router, config)
-
+	server, err := NewHTTP3Server(router, config)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 	assert.Equal(t, ":8443", server.addr)
 	assert.True(t, server.enableHTTP3)
@@ -81,8 +81,8 @@ func TestNewHTTP3Server_HTTP3Disabled(t *testing.T) {
 		EnableHTTP2: true,
 	}
 
-	server := NewHTTP3Server(router, config)
-
+	server, err := NewHTTP3Server(router, config)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 	assert.False(t, server.enableHTTP3)
 	assert.True(t, server.enableHTTP2)
@@ -100,8 +100,8 @@ func TestNewHTTP3Server_HTTP2Disabled(t *testing.T) {
 		EnableHTTP2: false,
 	}
 
-	server := NewHTTP3Server(router, config)
-
+	server, err := NewHTTP3Server(router, config)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 	assert.True(t, server.enableHTTP3)
 	assert.False(t, server.enableHTTP2)
@@ -168,7 +168,8 @@ func TestGetServerInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := NewHTTP3Server(router, tt.config)
+			server, err := NewHTTP3Server(router, tt.config)
+			require.NoError(t, err)
 			info := server.GetServerInfo()
 
 			assert.Equal(t, tt.expectedHTTP3, info["http3_enabled"])
@@ -204,8 +205,8 @@ func TestCreateTLSConfig_WithCertFiles(t *testing.T) {
 		TLSKeyFile:  "testdata/key.pem",
 	}
 
-	tlsConfig := createTLSConfig(config)
-
+	tlsConfig, err := createTLSConfig(config)
+	require.NoError(t, err)
 	require.NotNil(t, tlsConfig)
 	assert.Equal(t, uint16(tls.VersionTLS12), tlsConfig.MinVersion)
 	assert.Len(t, tlsConfig.Certificates, 1)
@@ -217,8 +218,8 @@ func TestCreateTLSConfig_WithCertFiles(t *testing.T) {
 func TestCreateTLSConfig_WithoutCertFiles(t *testing.T) {
 	config := &HTTP3Config{}
 
-	tlsConfig := createTLSConfig(config)
-
+	tlsConfig, err := createTLSConfig(config)
+	require.NoError(t, err)
 	require.NotNil(t, tlsConfig)
 	assert.Equal(t, uint16(tls.VersionTLS12), tlsConfig.MinVersion)
 	assert.Len(t, tlsConfig.Certificates, 1)
@@ -237,11 +238,12 @@ func TestHTTP3Server_Start_NoError(t *testing.T) {
 		EnableHTTP2: false,         // Disable HTTP2 to avoid TLS issues in tests
 	}
 
-	server := NewHTTP3Server(router, config)
+	server, err := NewHTTP3Server(router, config)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 
 	// Start should not return an error (it starts goroutines)
-	err := server.Start()
+	err = server.Start()
 	assert.NoError(t, err)
 
 	// Give goroutines a moment to start
@@ -262,24 +264,21 @@ func TestHTTP3Server_Stop_WithNoServers(t *testing.T) {
 		EnableHTTP2: false,
 	}
 
-	server := NewHTTP3Server(router, config)
+	server, err := NewHTTP3Server(router, config)
+	require.NoError(t, err)
 	require.NotNil(t, server)
 
 	// Stop should work even if server wasn't started
-	err := server.Stop()
+	err = server.Stop()
 	assert.NoError(t, err)
 }
 
-func TestGenerateSelfSignedCert_NoPanic(t *testing.T) {
-	// This test ensures generateSelfSignedCert doesn't panic
-	// It's a bit tricky to test since it panics on errors
-	// but we can at least verify it returns a valid certificate
-	assert.NotPanics(t, func() {
-		cert := generateSelfSignedCert()
-		assert.NotNil(t, cert)
-		assert.NotEmpty(t, cert.Certificate)
-		assert.NotNil(t, cert.PrivateKey)
-	})
+func TestGenerateSelfSignedCert_Success(t *testing.T) {
+	// This test ensures generateSelfSignedCert returns a valid certificate
+	cert, err := generateSelfSignedCert()
+	require.NoError(t, err)
+	assert.NotEmpty(t, cert.Certificate)
+	assert.NotNil(t, cert.PrivateKey)
 }
 
 func TestHTTP3Server_AddressValidation(t *testing.T) {
@@ -306,7 +305,8 @@ func TestHTTP3Server_AddressValidation(t *testing.T) {
 				EnableHTTP2: false,
 			}
 
-			server := NewHTTP3Server(router, config)
+			server, err := NewHTTP3Server(router, config)
+			require.NoError(t, err)
 			assert.NotNil(t, server)
 			assert.Equal(t, tt.address, server.addr)
 		})
@@ -315,8 +315,8 @@ func TestHTTP3Server_AddressValidation(t *testing.T) {
 
 func TestTLSConfig_CipherSuites(t *testing.T) {
 	config := &HTTP3Config{}
-	tlsConfig := createTLSConfig(config)
-
+	tlsConfig, err := createTLSConfig(config)
+	require.NoError(t, err)
 	require.NotNil(t, tlsConfig)
 	assert.NotEmpty(t, tlsConfig.CipherSuites)
 
@@ -334,8 +334,8 @@ func TestTLSConfig_CipherSuites(t *testing.T) {
 
 func TestTLSConfig_CurvePreferences(t *testing.T) {
 	config := &HTTP3Config{}
-	tlsConfig := createTLSConfig(config)
-
+	tlsConfig, err := createTLSConfig(config)
+	require.NoError(t, err)
 	require.NotNil(t, tlsConfig)
 	assert.NotEmpty(t, tlsConfig.CurvePreferences)
 

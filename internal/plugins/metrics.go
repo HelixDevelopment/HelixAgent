@@ -55,25 +55,49 @@ var (
 type MetricsCollector struct {
 	registry *Registry
 	health   *HealthMonitor
+	stopCh   chan struct{}
+	running  bool
 }
 
 func NewMetricsCollector(registry *Registry, health *HealthMonitor) *MetricsCollector {
 	return &MetricsCollector{
 		registry: registry,
 		health:   health,
+		stopCh:   make(chan struct{}),
+		running:  false,
 	}
 }
 
 func (m *MetricsCollector) StartCollection() {
+	if m.running {
+		return
+	}
+	m.running = true
+
 	// Update metrics periodically
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			m.collectMetrics()
+		for {
+			select {
+			case <-m.stopCh:
+				utils.GetLogger().Debug("Metrics collector stopped")
+				return
+			case <-ticker.C:
+				m.collectMetrics()
+			}
 		}
 	}()
+}
+
+// StopCollection stops the metrics collection goroutine
+func (m *MetricsCollector) StopCollection() {
+	if !m.running {
+		return
+	}
+	m.running = false
+	close(m.stopCh)
 }
 
 func (m *MetricsCollector) collectMetrics() {

@@ -205,8 +205,14 @@ func (r *ModelMetadataRepository) GetModelMetadata(ctx context.Context, modelID 
 		return nil, fmt.Errorf("failed to get model metadata: %w", err)
 	}
 
-	json.Unmarshal(tagsJSON, &metadata.Tags)
-	json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata)
+	if err := json.Unmarshal(tagsJSON, &metadata.Tags); err != nil && len(tagsJSON) > 0 {
+		// Non-critical: initialize empty slice if unmarshal fails
+		metadata.Tags = []string{}
+	}
+	if err := json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata); err != nil && len(rawMetadataJSON) > 0 {
+		// Non-critical: initialize empty map if unmarshal fails
+		metadata.RawMetadata = make(map[string]interface{})
+	}
 
 	return metadata, nil
 }
@@ -301,8 +307,12 @@ func (r *ModelMetadataRepository) ListModels(ctx context.Context, providerID str
 			return nil, 0, fmt.Errorf("failed to scan model row: %w", err)
 		}
 
-		json.Unmarshal(tagsJSON, &metadata.Tags)
-		json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata)
+		if err := json.Unmarshal(tagsJSON, &metadata.Tags); err != nil && len(tagsJSON) > 0 {
+			metadata.Tags = []string{}
+		}
+		if err := json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata); err != nil && len(rawMetadataJSON) > 0 {
+			metadata.RawMetadata = make(map[string]interface{})
+		}
 
 		models = append(models, metadata)
 	}
@@ -390,8 +400,12 @@ func (r *ModelMetadataRepository) SearchModels(ctx context.Context, searchTerm s
 			return nil, 0, fmt.Errorf("failed to scan model row: %w", err)
 		}
 
-		json.Unmarshal(tagsJSON, &metadata.Tags)
-		json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata)
+		if err := json.Unmarshal(tagsJSON, &metadata.Tags); err != nil && len(tagsJSON) > 0 {
+			metadata.Tags = []string{}
+		}
+		if err := json.Unmarshal(rawMetadataJSON, &metadata.RawMetadata); err != nil && len(rawMetadataJSON) > 0 {
+			metadata.RawMetadata = make(map[string]interface{})
+		}
 
 		models = append(models, metadata)
 	}
@@ -464,7 +478,9 @@ func (r *ModelMetadataRepository) GetBenchmarks(ctx context.Context, modelID str
 			return nil, fmt.Errorf("failed to scan benchmark row: %w", err)
 		}
 
-		json.Unmarshal(metadataJSON, &benchmark.Metadata)
+		if err := json.Unmarshal(metadataJSON, &benchmark.Metadata); err != nil && len(metadataJSON) > 0 {
+			benchmark.Metadata = make(map[string]interface{})
+		}
 		benchmarks = append(benchmarks, benchmark)
 	}
 
@@ -527,7 +543,9 @@ func (r *ModelMetadataRepository) GetLatestRefreshHistory(ctx context.Context, l
 			return nil, fmt.Errorf("failed to scan refresh history row: %w", err)
 		}
 
-		json.Unmarshal(metadataJSON, &history.Metadata)
+		if err := json.Unmarshal(metadataJSON, &history.Metadata); err != nil && len(metadataJSON) > 0 {
+			history.Metadata = make(map[string]interface{})
+		}
 		histories = append(histories, history)
 	}
 

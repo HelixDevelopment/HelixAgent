@@ -203,11 +203,11 @@ func TestPostgresDBOperations(t *testing.T) {
 		}
 	})
 
-	t.Run("QueryRowReturnsNil", func(t *testing.T) {
-		// QueryRow currently returns nil (simplified implementation)
+	t.Run("QueryRowReturnsRow", func(t *testing.T) {
+		// QueryRow returns a Row interface that can be scanned
 		row := db.QueryRow("SELECT 1")
-		if row != nil {
-			t.Log("QueryRow currently returns nil in simplified implementation")
+		if row == nil {
+			t.Error("QueryRow should return a non-nil Row")
 		}
 	})
 }

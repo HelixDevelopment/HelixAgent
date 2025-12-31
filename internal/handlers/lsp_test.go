@@ -46,9 +46,8 @@ func TestLSPHandler_ExecuteLSPRequest_ValidJSON(t *testing.T) {
 
 	handler := NewLSPHandler(nil, log)
 
-	// Valid JSON should pass binding and return success
-	// (the method is a placeholder that doesn't call the service)
-	body := `{"server_id": "gopls", "tool_name": "completion", "params": {"file": "main.go"}}`
+	// Valid JSON should pass binding - now requires uri for completion
+	body := `{"serverId": "gopls", "toolName": "completion", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
@@ -56,7 +55,7 @@ func TestLSPHandler_ExecuteLSPRequest_ValidJSON(t *testing.T) {
 
 	handler.ExecuteLSPRequest(c)
 
-	// The placeholder implementation returns success
+	// Handler should succeed when all required params are provided
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -152,7 +151,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithFields(t *testing.T) {
 			"serverId": "gopls",
 			"toolName": "completion",
 			"protocolType": "lsp",
-			"arguments": {"line": 10, "column": 5}
+			"arguments": {"uri": "file:///main.go", "line": 10, "character": 5}
 		}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -169,7 +168,8 @@ func TestLSPHandler_ExecuteLSPRequest_WithFields(t *testing.T) {
 	})
 
 	t.Run("request with minimal fields", func(t *testing.T) {
-		body := `{"serverId": "pyright", "toolName": "hover"}`
+		// hover requires uri
+		body := `{"serverId": "pyright", "toolName": "hover", "arguments": {"uri": "file:///test.py"}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
@@ -187,12 +187,15 @@ func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
 
 	handler := NewLSPHandler(nil, log)
 
-	operations := []string{"completion", "hover", "definition", "references", "rename", "formatting"}
+	// Operations that require uri parameter
+	operationsWithUri := []string{"completion", "hover", "definition", "references", "diagnostics"}
+	// Operations that are not supported (should return 400)
+	unsupportedOps := []string{"rename", "formatting"}
 
-	for _, op := range operations {
+	for _, op := range operationsWithUri {
 		t.Run("operation_"+op, func(t *testing.T) {
-			// Use JSON field names (camelCase as per struct tags)
-			body := `{"serverId": "gopls", "toolName": "` + op + `"}`
+			// Use JSON field names (camelCase as per struct tags) with uri
+			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
@@ -206,6 +209,24 @@ func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
 			assert.Contains(t, body_resp, "success")
 		})
 	}
+
+	for _, op := range unsupportedOps {
+		t.Run("operation_"+op+"_unsupported", func(t *testing.T) {
+			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {"uri": "file:///main.go"}}`
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+
+			handler.ExecuteLSPRequest(c)
+
+			// Unsupported operations should return 400
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+
+			body_resp := w.Body.String()
+			assert.Contains(t, body_resp, "unsupported")
+		})
+	}
 }
 
 func TestLSPHandler_ExecuteLSPRequest_WithContext(t *testing.T) {
@@ -214,7 +235,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithContext(t *testing.T) {
 
 	handler := NewLSPHandler(nil, log)
 
-	body := `{"serverId": "gopls", "toolName": "completion"}`
+	body := `{"serverId": "gopls", "toolName": "completion", "arguments": {"uri": "file:///main.go"}}`
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
@@ -226,7 +247,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithContext(t *testing.T) {
 
 	body_resp := w.Body.String()
 	assert.Contains(t, body_resp, "result")
-	assert.Contains(t, body_resp, "LSP operation completed successfully")
+	assert.Contains(t, body_resp, "success")
 }
 
 func TestLSPHandler_ExecuteLSPRequest_ResponseFormat(t *testing.T) {
@@ -235,7 +256,8 @@ func TestLSPHandler_ExecuteLSPRequest_ResponseFormat(t *testing.T) {
 
 	handler := NewLSPHandler(nil, log)
 
-	body := `{"serverId": "test-server", "toolName": "test-operation"}`
+	// Use a supported operation (diagnostics) with uri
+	body := `{"serverId": "test-server", "toolName": "diagnostics", "arguments": {"uri": "file:///test.go"}}`
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
@@ -251,8 +273,8 @@ func TestLSPHandler_ExecuteLSPRequest_ResponseFormat(t *testing.T) {
 
 	assert.True(t, response["success"].(bool))
 	assert.Equal(t, "test-server", response["serverId"])
-	assert.Equal(t, "test-operation", response["operation"])
-	assert.Equal(t, "LSP operation completed successfully", response["result"])
+	assert.Equal(t, "diagnostics", response["operation"])
+	assert.NotNil(t, response["result"])
 }
 
 func TestLSPHandler_SyncLSPServer_MultipleIDs(t *testing.T) {

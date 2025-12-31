@@ -213,3 +213,85 @@ func TestTestConfigFields(t *testing.T) {
 		t.Fatalf("Expected CoverageFile to be 'coverage.out', got %s", cfg.CoverageFile)
 	}
 }
+
+func TestRunAllSuites(t *testing.T) {
+	framework := NewTestBankFramework()
+
+	// Register multiple suites
+	unitSuite := &TestSuite{
+		Name: "Unit Tests",
+		Type: UnitTest,
+		Tests: []TestCase{
+			{
+				Name:    "Echo Unit Test",
+				Command: "echo",
+				Args:    []string{"unit"},
+			},
+		},
+	}
+
+	integrationSuite := &TestSuite{
+		Name: "Integration Tests",
+		Type: IntegrationTest,
+		Tests: []TestCase{
+			{
+				Name:    "Echo Integration Test",
+				Command: "echo",
+				Args:    []string{"integration"},
+			},
+		},
+	}
+
+	framework.RegisterSuite(unitSuite)
+	framework.RegisterSuite(integrationSuite)
+
+	// Run all suites
+	results, err := framework.RunAllSuites()
+	if err != nil {
+		t.Fatalf("Failed to run all suites: %v", err)
+	}
+
+	// Verify results for both suites
+	if len(results) != 2 {
+		t.Fatalf("Expected 2 suite results, got %d", len(results))
+	}
+
+	if unitResults, ok := results[UnitTest]; !ok {
+		t.Fatal("Expected unit test results")
+	} else if len(unitResults) != 1 {
+		t.Fatalf("Expected 1 unit test result, got %d", len(unitResults))
+	} else if !unitResults[0].Passed {
+		t.Fatal("Expected unit test to pass")
+	}
+
+	if integrationResults, ok := results[IntegrationTest]; !ok {
+		t.Fatal("Expected integration test results")
+	} else if len(integrationResults) != 1 {
+		t.Fatalf("Expected 1 integration test result, got %d", len(integrationResults))
+	} else if !integrationResults[0].Passed {
+		t.Fatal("Expected integration test to pass")
+	}
+}
+
+func TestRunAllSuites_Empty(t *testing.T) {
+	framework := NewTestBankFramework()
+
+	// Run without any suites registered
+	results, err := framework.RunAllSuites()
+	if err != nil {
+		t.Fatalf("Failed to run empty suites: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Fatalf("Expected 0 results from empty suites, got %d", len(results))
+	}
+}
+
+func TestRunSuite_NotFound(t *testing.T) {
+	framework := NewTestBankFramework()
+
+	_, err := framework.RunSuite("nonexistent")
+	if err == nil {
+		t.Fatal("Expected error for non-existent suite")
+	}
+}

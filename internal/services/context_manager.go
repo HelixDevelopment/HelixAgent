@@ -213,7 +213,251 @@ func (cm *ContextManager) DetectConflicts() []Conflict {
 		}
 	}
 
+	// Check for cross-source conflicts
+	crossSourceConflicts := cm.detectCrossSourceConflicts()
+	conflicts = append(conflicts, crossSourceConflicts...)
+
+	// Check for temporal conflicts
+	temporalConflicts := cm.detectTemporalConflicts()
+	conflicts = append(conflicts, temporalConflicts...)
+
+	// Check for semantic conflicts
+	semanticConflicts := cm.detectSemanticConflicts()
+	conflicts = append(conflicts, semanticConflicts...)
+
 	return conflicts
+}
+
+// detectCrossSourceConflicts finds conflicts between different sources
+func (cm *ContextManager) detectCrossSourceConflicts() []Conflict {
+	conflicts := []Conflict{}
+
+	// Group entries by type
+	typeMap := make(map[string][]*ContextEntry)
+	for _, entry := range cm.entries {
+		typeMap[entry.Type] = append(typeMap[entry.Type], entry)
+	}
+
+	// For each type, check if entries from different sources conflict
+	for entryType, entries := range typeMap {
+		if len(entries) < 2 {
+			continue
+		}
+
+		// Group by a common subject/topic identifier from metadata
+		subjectMap := make(map[string][]*ContextEntry)
+		for _, entry := range entries {
+			subject := cm.extractSubject(entry)
+			if subject != "" {
+				subjectMap[subject] = append(subjectMap[subject], entry)
+			}
+		}
+
+		// Check each subject group for conflicts
+		for subject, subjectEntries := range subjectMap {
+			if len(subjectEntries) < 2 {
+				continue
+			}
+
+			// Check if entries from different sources have contradicting values
+			sourceValues := make(map[string]map[string]interface{})
+			for _, entry := range subjectEntries {
+				if _, exists := sourceValues[entry.Source]; !exists {
+					sourceValues[entry.Source] = make(map[string]interface{})
+				}
+				for k, v := range entry.Metadata {
+					sourceValues[entry.Source][k] = v
+				}
+			}
+
+			if len(sourceValues) > 1 {
+				// Check for value conflicts across sources
+				if conflict := cm.checkValueConflicts(sourceValues, subject, entryType, subjectEntries); conflict != nil {
+					conflicts = append(conflicts, *conflict)
+				}
+			}
+		}
+	}
+
+	return conflicts
+}
+
+// detectTemporalConflicts finds conflicts due to stale data
+func (cm *ContextManager) detectTemporalConflicts() []Conflict {
+	conflicts := []Conflict{}
+	now := time.Now()
+	staleThreshold := 1 * time.Hour
+
+	// Group entries by subject
+	subjectMap := make(map[string][]*ContextEntry)
+	for _, entry := range cm.entries {
+		subject := cm.extractSubject(entry)
+		if subject != "" {
+			subjectMap[subject] = append(subjectMap[subject], entry)
+		}
+	}
+
+	for subject, entries := range subjectMap {
+		if len(entries) < 2 {
+			continue
+		}
+
+		// Sort by timestamp
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].Timestamp.Before(entries[j].Timestamp)
+		})
+
+		// Check if old entries conflict with newer ones
+		newest := entries[len(entries)-1]
+		for _, older := range entries[:len(entries)-1] {
+			age := now.Sub(older.Timestamp)
+			if age > staleThreshold {
+				// Check if content differs significantly
+				if older.Content != newest.Content && !cm.isContentUpdate(older, newest) {
+					conflicts = append(conflicts, Conflict{
+						Type:     "temporal_conflict",
+						Source:   subject,
+						Entries:  []*ContextEntry{older, newest},
+						Severity: cm.calculateTemporalSeverity(age),
+						Message:  fmt.Sprintf("Stale entry (%s old) may conflict with newer data for subject: %s", age.Round(time.Minute), subject),
+					})
+				}
+			}
+		}
+	}
+
+	return conflicts
+}
+
+// detectSemanticConflicts finds contradictory semantic information
+func (cm *ContextManager) detectSemanticConflicts() []Conflict {
+	conflicts := []Conflict{}
+
+	// Define known semantic fields that should be consistent
+	semanticFields := []string{"status", "state", "enabled", "active", "version", "value"}
+
+	// Group entries by subject
+	subjectMap := make(map[string][]*ContextEntry)
+	for _, entry := range cm.entries {
+		subject := cm.extractSubject(entry)
+		if subject != "" {
+			subjectMap[subject] = append(subjectMap[subject], entry)
+		}
+	}
+
+	for subject, entries := range subjectMap {
+		if len(entries) < 2 {
+			continue
+		}
+
+		// Check each semantic field for conflicts
+		for _, field := range semanticFields {
+			values := make(map[string][]*ContextEntry)
+			for _, entry := range entries {
+				if val, ok := entry.Metadata[field]; ok {
+					valStr := fmt.Sprintf("%v", val)
+					values[valStr] = append(values[valStr], entry)
+				}
+			}
+
+			// If we have multiple different values for the same field, it's a conflict
+			if len(values) > 1 {
+				var conflictingEntries []*ContextEntry
+				var valueList []string
+				for val, entryList := range values {
+					conflictingEntries = append(conflictingEntries, entryList...)
+					valueList = append(valueList, val)
+				}
+
+				conflicts = append(conflicts, Conflict{
+					Type:     "semantic_conflict",
+					Source:   subject,
+					Entries:  conflictingEntries,
+					Severity: "high",
+					Message:  fmt.Sprintf("Conflicting %s values for subject '%s': %v", field, subject, valueList),
+				})
+			}
+		}
+	}
+
+	return conflicts
+}
+
+// extractSubject extracts a common subject identifier from entry metadata
+func (cm *ContextManager) extractSubject(entry *ContextEntry) string {
+	// Try common subject identifiers
+	subjectFields := []string{"subject", "topic", "id", "name", "key", "file", "resource"}
+	for _, field := range subjectFields {
+		if val, ok := entry.Metadata[field]; ok {
+			return fmt.Sprintf("%v", val)
+		}
+	}
+	// Fall back to source if no subject found
+	return entry.Source
+}
+
+// checkValueConflicts checks if different sources have conflicting values
+func (cm *ContextManager) checkValueConflicts(sourceValues map[string]map[string]interface{}, subject, entryType string, entries []*ContextEntry) *Conflict {
+	// Compare values across sources
+	allKeys := make(map[string]bool)
+	for _, values := range sourceValues {
+		for k := range values {
+			allKeys[k] = true
+		}
+	}
+
+	var conflictingKeys []string
+	for key := range allKeys {
+		values := make(map[string]bool)
+		for _, sourceVals := range sourceValues {
+			if val, ok := sourceVals[key]; ok {
+				valStr := fmt.Sprintf("%v", val)
+				values[valStr] = true
+			}
+		}
+		if len(values) > 1 {
+			conflictingKeys = append(conflictingKeys, key)
+		}
+	}
+
+	if len(conflictingKeys) > 0 {
+		return &Conflict{
+			Type:     "cross_source_conflict",
+			Source:   subject,
+			Entries:  entries,
+			Severity: "medium",
+			Message:  fmt.Sprintf("Cross-source conflict for %s entries on subject '%s': conflicting keys: %v", entryType, subject, conflictingKeys),
+		}
+	}
+
+	return nil
+}
+
+// isContentUpdate checks if newer entry is a legitimate update to older entry
+func (cm *ContextManager) isContentUpdate(older, newer *ContextEntry) bool {
+	// Check if newer has higher priority (indicating intentional update)
+	if newer.Priority > older.Priority {
+		return true
+	}
+	// Check if metadata indicates an update
+	if v, ok := newer.Metadata["update_of"]; ok {
+		if updateID, ok := v.(string); ok && updateID == older.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// calculateTemporalSeverity calculates severity based on age of stale entry
+func (cm *ContextManager) calculateTemporalSeverity(age time.Duration) string {
+	switch {
+	case age > 24*time.Hour:
+		return "high"
+	case age > 6*time.Hour:
+		return "medium"
+	default:
+		return "low"
+	}
 }
 
 // Cleanup removes expired entries
@@ -444,8 +688,7 @@ func (cm *ContextManager) isRelevant(entry *ContextEntry, requestType string) bo
 }
 
 func (cm *ContextManager) detectSourceConflicts(source string, entries []*ContextEntry) *Conflict {
-	// Simple conflict detection - check for contradictory information
-	// This is a placeholder for more sophisticated conflict detection
+	// Detect conflicts within entries from the same source
 
 	contentMap := make(map[string][]*ContextEntry)
 	for _, entry := range entries {
@@ -454,17 +697,100 @@ func (cm *ContextManager) detectSourceConflicts(source string, entries []*Contex
 	}
 
 	// If we have multiple entries with same content but different metadata,
-	// it might indicate a conflict
+	// it indicates a metadata conflict within the same source
 	for _, group := range contentMap {
 		if len(group) > 1 {
 			// Check if metadata differs significantly
 			if cm.hasConflictingMetadata(group) {
+				// Identify which metadata keys differ
+				differingKeys := cm.findDifferingMetadataKeys(group)
 				return &Conflict{
 					Type:     "metadata_conflict",
 					Source:   source,
 					Entries:  group,
 					Severity: "medium",
+					Message:  fmt.Sprintf("Entries from source '%s' have identical content but conflicting metadata on keys: %v", source, differingKeys),
 				}
+			}
+		}
+	}
+
+	// Also check for entries with same type but contradicting content
+	typeMap := make(map[string][]*ContextEntry)
+	for _, entry := range entries {
+		typeMap[entry.Type] = append(typeMap[entry.Type], entry)
+	}
+
+	for entryType, typeEntries := range typeMap {
+		if len(typeEntries) > 1 {
+			// Check for content conflicts within same type
+			if conflict := cm.detectContentConflict(source, entryType, typeEntries); conflict != nil {
+				return conflict
+			}
+		}
+	}
+
+	return nil
+}
+
+// findDifferingMetadataKeys identifies which metadata keys differ between entries
+func (cm *ContextManager) findDifferingMetadataKeys(entries []*ContextEntry) []string {
+	if len(entries) < 2 {
+		return nil
+	}
+
+	allKeys := make(map[string]bool)
+	for _, entry := range entries {
+		for k := range entry.Metadata {
+			allKeys[k] = true
+		}
+	}
+
+	var differingKeys []string
+	for key := range allKeys {
+		values := make(map[string]bool)
+		for _, entry := range entries {
+			if val, ok := entry.Metadata[key]; ok {
+				valStr := fmt.Sprintf("%v", val)
+				values[valStr] = true
+			} else {
+				values["<missing>"] = true
+			}
+		}
+		if len(values) > 1 {
+			differingKeys = append(differingKeys, key)
+		}
+	}
+
+	return differingKeys
+}
+
+// detectContentConflict checks for contradicting content within same type entries
+func (cm *ContextManager) detectContentConflict(source, entryType string, entries []*ContextEntry) *Conflict {
+	// Group by subject within the same type
+	subjectContent := make(map[string][]string)
+	subjectEntries := make(map[string][]*ContextEntry)
+
+	for _, entry := range entries {
+		subject := cm.extractSubject(entry)
+		subjectContent[subject] = append(subjectContent[subject], entry.Content)
+		subjectEntries[subject] = append(subjectEntries[subject], entry)
+	}
+
+	// Check if same subject has different content
+	for subject, contents := range subjectContent {
+		uniqueContents := make(map[string]bool)
+		for _, content := range contents {
+			uniqueContents[content] = true
+		}
+
+		if len(uniqueContents) > 1 && len(contents) > 1 {
+			return &Conflict{
+				Type:     "content_conflict",
+				Source:   source,
+				Entries:  subjectEntries[subject],
+				Severity: "high",
+				Message:  fmt.Sprintf("Multiple %s entries for subject '%s' have conflicting content within source '%s'", entryType, subject, source),
 			}
 		}
 	}

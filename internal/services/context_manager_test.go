@@ -909,3 +909,179 @@ func TestContextManager_UpdateEntry_WithCompression(t *testing.T) {
 	assert.True(t, exists)
 	assert.Equal(t, largeContent, retrieved.Content)
 }
+
+func TestContextManager_checkValueConflicts(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("no conflicts", func(t *testing.T) {
+		sourceValues := map[string]map[string]interface{}{
+			"source1": {"key1": "value1"},
+			"source2": {"key2": "value2"},
+		}
+		entries := []*ContextEntry{{ID: "1"}, {ID: "2"}}
+		conflict := cm.checkValueConflicts(sourceValues, "test_subject", "lsp", entries)
+		assert.Nil(t, conflict)
+	})
+
+	t.Run("same key same value", func(t *testing.T) {
+		sourceValues := map[string]map[string]interface{}{
+			"source1": {"key1": "value1"},
+			"source2": {"key1": "value1"},
+		}
+		entries := []*ContextEntry{{ID: "1"}, {ID: "2"}}
+		conflict := cm.checkValueConflicts(sourceValues, "test_subject", "lsp", entries)
+		assert.Nil(t, conflict)
+	})
+
+	t.Run("conflicting values for same key", func(t *testing.T) {
+		sourceValues := map[string]map[string]interface{}{
+			"source1": {"key1": "value1"},
+			"source2": {"key1": "different_value"},
+		}
+		entries := []*ContextEntry{{ID: "1"}, {ID: "2"}}
+		conflict := cm.checkValueConflicts(sourceValues, "test_subject", "lsp", entries)
+		assert.NotNil(t, conflict)
+		assert.Equal(t, "cross_source_conflict", conflict.Type)
+		assert.Contains(t, conflict.Message, "key1")
+	})
+
+	t.Run("multiple conflicting keys", func(t *testing.T) {
+		sourceValues := map[string]map[string]interface{}{
+			"source1": {"key1": "value1", "key2": 100},
+			"source2": {"key1": "value2", "key2": 200},
+		}
+		entries := []*ContextEntry{{ID: "1"}, {ID: "2"}}
+		conflict := cm.checkValueConflicts(sourceValues, "test_subject", "mcp", entries)
+		assert.NotNil(t, conflict)
+		assert.Equal(t, "medium", conflict.Severity)
+	})
+}
+
+func TestContextManager_isContentUpdate(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("higher priority is update", func(t *testing.T) {
+		older := &ContextEntry{ID: "1", Priority: 3}
+		newer := &ContextEntry{ID: "2", Priority: 5}
+		assert.True(t, cm.isContentUpdate(older, newer))
+	})
+
+	t.Run("lower priority is not update", func(t *testing.T) {
+		older := &ContextEntry{ID: "1", Priority: 5}
+		newer := &ContextEntry{ID: "2", Priority: 3}
+		assert.False(t, cm.isContentUpdate(older, newer))
+	})
+
+	t.Run("same priority no metadata is not update", func(t *testing.T) {
+		older := &ContextEntry{ID: "1", Priority: 5}
+		newer := &ContextEntry{ID: "2", Priority: 5}
+		assert.False(t, cm.isContentUpdate(older, newer))
+	})
+
+	t.Run("metadata update_of marks as update", func(t *testing.T) {
+		older := &ContextEntry{ID: "original", Priority: 5}
+		newer := &ContextEntry{
+			ID:       "updated",
+			Priority: 5,
+			Metadata: map[string]interface{}{"update_of": "original"},
+		}
+		assert.True(t, cm.isContentUpdate(older, newer))
+	})
+
+	t.Run("metadata update_of with wrong ID is not update", func(t *testing.T) {
+		older := &ContextEntry{ID: "original", Priority: 5}
+		newer := &ContextEntry{
+			ID:       "updated",
+			Priority: 5,
+			Metadata: map[string]interface{}{"update_of": "different_id"},
+		}
+		assert.False(t, cm.isContentUpdate(older, newer))
+	})
+}
+
+func TestContextManager_calculateTemporalSeverity(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("more than 24 hours is high", func(t *testing.T) {
+		age := 25 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "high", severity)
+	})
+
+	t.Run("more than 6 hours is medium", func(t *testing.T) {
+		age := 12 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "medium", severity)
+	})
+
+	t.Run("less than 6 hours is low", func(t *testing.T) {
+		age := 3 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "low", severity)
+	})
+
+	t.Run("exactly 24 hours is medium", func(t *testing.T) {
+		age := 24 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "medium", severity)
+	})
+
+	t.Run("exactly 6 hours is low", func(t *testing.T) {
+		age := 6 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "low", severity)
+	})
+
+	t.Run("zero hours is low", func(t *testing.T) {
+		age := 0 * time.Hour
+		severity := cm.calculateTemporalSeverity(age)
+		assert.Equal(t, "low", severity)
+	})
+}
+
+func TestContextManager_detectContentConflict(t *testing.T) {
+	cm := NewContextManager(100)
+
+	t.Run("no conflict with single entry", func(t *testing.T) {
+		entries := []*ContextEntry{
+			{ID: "1", Type: "lsp", Content: "content1", Source: "file.go"},
+		}
+		conflict := cm.detectContentConflict("file.go", "lsp", entries)
+		assert.Nil(t, conflict)
+	})
+
+	t.Run("no conflict with same subject same content", func(t *testing.T) {
+		entries := []*ContextEntry{
+			{ID: "1", Type: "lsp", Content: "same content", Source: "file.go"},
+			{ID: "2", Type: "lsp", Content: "same content", Source: "file.go"},
+		}
+		conflict := cm.detectContentConflict("file.go", "lsp", entries)
+		assert.Nil(t, conflict)
+	})
+
+	t.Run("conflict with same subject different content", func(t *testing.T) {
+		entries := []*ContextEntry{
+			{ID: "1", Type: "lsp", Content: "content version 1", Source: "file.go"},
+			{ID: "2", Type: "lsp", Content: "content version 2", Source: "file.go"},
+		}
+		conflict := cm.detectContentConflict("file.go", "lsp", entries)
+		assert.NotNil(t, conflict)
+		assert.Equal(t, "content_conflict", conflict.Type)
+		assert.Equal(t, "high", conflict.Severity)
+	})
+
+	t.Run("no conflict with different subjects", func(t *testing.T) {
+		entries := []*ContextEntry{
+			{ID: "1", Type: "mcp", Content: "content1", Source: "tool1"},
+			{ID: "2", Type: "mcp", Content: "content2", Source: "tool2"},
+		}
+		conflict := cm.detectContentConflict("tools", "mcp", entries)
+		assert.Nil(t, conflict)
+	})
+
+	t.Run("empty entries", func(t *testing.T) {
+		entries := []*ContextEntry{}
+		conflict := cm.detectContentConflict("source", "type", entries)
+		assert.Nil(t, conflict)
+	})
+}

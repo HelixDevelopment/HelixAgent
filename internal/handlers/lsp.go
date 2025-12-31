@@ -43,19 +43,149 @@ func (h *LSPHandler) ExecuteLSPRequest(c *gin.Context) {
 		return
 	}
 
-	// For LSP, the tool name represents the operation (completion, hover, etc.)
-	// This would be expanded in a full implementation
+	// Validate required fields
+	if req.ServerID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "serverId is required"})
+		return
+	}
+
+	if req.ToolName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "toolName (operation) is required"})
+		return
+	}
 
 	h.log.WithFields(logrus.Fields{
 		"serverId":  req.ServerID,
 		"operation": req.ToolName,
-	}).Info("LSP request executed (placeholder)")
+	}).Info("Executing LSP request")
+
+	// Execute the LSP operation based on tool name
+	ctx := c.Request.Context()
+	var result interface{}
+	var err error
+
+	switch req.ToolName {
+	case "completion":
+		// Extract parameters for completion
+		uri, _ := req.Arguments["uri"].(string)
+		line, _ := req.Arguments["line"].(float64)
+		character, _ := req.Arguments["character"].(float64)
+		text, _ := req.Arguments["text"].(string)
+
+		if uri == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "uri is required for completion"})
+			return
+		}
+
+		// Check if LSP service is available
+		if h.lspService == nil {
+			result = map[string]interface{}{"message": "LSP service not configured", "uri": uri}
+		} else {
+			position := services.LSPPosition{Line: int(line), Character: int(character)}
+			result, err = h.lspService.GetCompletion(ctx, req.ServerID, text, uri, position)
+		}
+
+	case "hover":
+		// Extract parameters for hover
+		uri, _ := req.Arguments["uri"].(string)
+		line, _ := req.Arguments["line"].(float64)
+		character, _ := req.Arguments["character"].(float64)
+
+		if uri == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "uri is required for hover"})
+			return
+		}
+
+		if h.lspService == nil {
+			result = map[string]interface{}{"message": "LSP service not configured", "uri": uri}
+		} else {
+			result, err = h.lspService.GetHover(ctx, req.ServerID, uri, int(line), int(character))
+		}
+
+	case "definition":
+		// Extract parameters for definition
+		uri, _ := req.Arguments["uri"].(string)
+		line, _ := req.Arguments["line"].(float64)
+		character, _ := req.Arguments["character"].(float64)
+
+		if uri == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "uri is required for definition"})
+			return
+		}
+
+		if h.lspService == nil {
+			result = map[string]interface{}{"message": "LSP service not configured", "uri": uri}
+		} else {
+			result, err = h.lspService.GetDefinition(ctx, req.ServerID, uri, int(line), int(character))
+		}
+
+	case "references":
+		// Extract parameters for references
+		uri, _ := req.Arguments["uri"].(string)
+		line, _ := req.Arguments["line"].(float64)
+		character, _ := req.Arguments["character"].(float64)
+
+		if uri == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "uri is required for references"})
+			return
+		}
+
+		if h.lspService == nil {
+			result = map[string]interface{}{"message": "LSP service not configured", "uri": uri}
+		} else {
+			result, err = h.lspService.GetReferences(ctx, req.ServerID, uri, int(line), int(character))
+		}
+
+	case "diagnostics":
+		// Get diagnostics for a file
+		uri, _ := req.Arguments["uri"].(string)
+
+		if uri == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "uri is required for diagnostics"})
+			return
+		}
+
+		if h.lspService == nil {
+			result = map[string]interface{}{"message": "LSP service not configured", "uri": uri}
+		} else {
+			result, err = h.lspService.GetDiagnostics(ctx, req.ServerID, uri)
+		}
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":              "unsupported operation",
+			"operation":          req.ToolName,
+			"supportedOperations": []string{"completion", "hover", "definition", "references", "diagnostics"},
+		})
+		return
+	}
+
+	if err != nil {
+		h.log.WithFields(logrus.Fields{
+			"serverId":  req.ServerID,
+			"operation": req.ToolName,
+			"error":     err.Error(),
+		}).Error("LSP operation failed")
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success":   false,
+			"error":     err.Error(),
+			"serverId":  req.ServerID,
+			"operation": req.ToolName,
+		})
+		return
+	}
+
+	h.log.WithFields(logrus.Fields{
+		"serverId":  req.ServerID,
+		"operation": req.ToolName,
+	}).Info("LSP operation completed successfully")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":   true,
 		"serverId":  req.ServerID,
 		"operation": req.ToolName,
-		"result":    "LSP operation completed successfully",
+		"result":    result,
 	})
 }
 

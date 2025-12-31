@@ -140,10 +140,76 @@ func (u *UnifiedProtocolManager) ExecuteRequest(ctx context.Context, req Unified
 		response.Result = acpResp
 
 	case "lsp":
-		// LSP requests need more specific handling
-		// For now, return a placeholder response
+		// Route LSP requests based on tool name
+		var lspResult interface{}
+		var lspErr error
+
+		switch req.ToolName {
+		case "completion":
+			uri, _ := req.Arguments["uri"].(string)
+			line, _ := req.Arguments["line"].(float64)
+			character, _ := req.Arguments["character"].(float64)
+			text, _ := req.Arguments["text"].(string)
+
+			position := LSPPosition{Line: int(line), Character: int(character)}
+			lspResult, lspErr = u.lspManager.GetCompletion(ctx, req.ServerID, text, uri, position)
+
+		case "hover":
+			uri, _ := req.Arguments["uri"].(string)
+			line, _ := req.Arguments["line"].(float64)
+			character, _ := req.Arguments["character"].(float64)
+
+			lspResult, lspErr = u.lspManager.GetHover(ctx, req.ServerID, uri, int(line), int(character))
+
+		case "definition":
+			uri, _ := req.Arguments["uri"].(string)
+			line, _ := req.Arguments["line"].(float64)
+			character, _ := req.Arguments["character"].(float64)
+
+			lspResult, lspErr = u.lspManager.GetDefinition(ctx, req.ServerID, uri, int(line), int(character))
+
+		case "references":
+			uri, _ := req.Arguments["uri"].(string)
+			line, _ := req.Arguments["line"].(float64)
+			character, _ := req.Arguments["character"].(float64)
+
+			lspResult, lspErr = u.lspManager.GetReferences(ctx, req.ServerID, uri, int(line), int(character))
+
+		case "diagnostics":
+			uri, _ := req.Arguments["uri"].(string)
+			lspResult, lspErr = u.lspManager.GetDiagnostics(ctx, req.ServerID, uri)
+
+		case "codeActions":
+			uri, _ := req.Arguments["uri"].(string)
+			line, _ := req.Arguments["line"].(float64)
+			character, _ := req.Arguments["character"].(float64)
+			text, _ := req.Arguments["text"].(string)
+
+			position := LSPPosition{Line: int(line), Character: int(character)}
+			lspResult, lspErr = u.lspManager.GetCodeActions(ctx, req.ServerID, text, uri, position)
+
+		default:
+			// Generic LSP request
+			lspReq := LSPRequest{
+				ServerID: req.ServerID,
+				Method:   req.ToolName,
+				Params:   req.Arguments,
+			}
+			lspResp, err := u.lspManager.ExecuteLSPRequest(ctx, lspReq)
+			if err != nil {
+				lspErr = err
+			} else {
+				lspResult = lspResp
+			}
+		}
+
+		if lspErr != nil {
+			response.Error = lspErr.Error()
+			return response, lspErr
+		}
+
 		response.Success = true
-		response.Result = fmt.Sprintf("LSP request %s executed on server %s", req.ToolName, req.ServerID)
+		response.Result = lspResult
 
 	case "embedding":
 		// Generate embeddings for the input text

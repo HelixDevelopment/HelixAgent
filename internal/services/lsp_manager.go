@@ -286,6 +286,136 @@ func (l *LSPManager) GetCompletion(ctx context.Context, serverID, text, fileURI 
 	return completions, nil
 }
 
+// GetHover gets hover information for a position from an LSP server
+func (l *LSPManager) GetHover(ctx context.Context, serverID, fileURI string, line, character int) (interface{}, error) {
+	l.log.WithFields(logrus.Fields{
+		"serverId":  serverID,
+		"fileUri":   fileURI,
+		"line":      line,
+		"character": character,
+	}).Info("Getting LSP hover information")
+
+	// Validate server exists
+	if _, err := l.GetLSPServer(ctx, serverID); err != nil {
+		return nil, err
+	}
+
+	// Validate file URI
+	if fileURI == "" {
+		return nil, fmt.Errorf("fileURI is required for hover")
+	}
+
+	// Simulate hover response based on position
+	hover := map[string]interface{}{
+		"serverId": serverID,
+		"fileUri":  fileURI,
+		"position": map[string]int{
+			"line":      line,
+			"character": character,
+		},
+		"contents": map[string]interface{}{
+			"kind":  "markdown",
+			"value": fmt.Sprintf("```go\nfunc example() error\n```\n\nDocumentation for symbol at line %d, character %d", line, character),
+		},
+		"range": map[string]interface{}{
+			"start": map[string]int{"line": line, "character": character},
+			"end":   map[string]int{"line": line, "character": character + 10},
+		},
+		"timestamp": time.Now(),
+	}
+
+	return hover, nil
+}
+
+// GetDefinition gets the definition location for a symbol from an LSP server
+func (l *LSPManager) GetDefinition(ctx context.Context, serverID, fileURI string, line, character int) (interface{}, error) {
+	l.log.WithFields(logrus.Fields{
+		"serverId":  serverID,
+		"fileUri":   fileURI,
+		"line":      line,
+		"character": character,
+	}).Info("Getting LSP definition")
+
+	// Validate server exists
+	if _, err := l.GetLSPServer(ctx, serverID); err != nil {
+		return nil, err
+	}
+
+	// Validate file URI
+	if fileURI == "" {
+		return nil, fmt.Errorf("fileURI is required for definition")
+	}
+
+	// Simulate definition response
+	definition := map[string]interface{}{
+		"serverId": serverID,
+		"fileUri":  fileURI,
+		"location": map[string]interface{}{
+			"uri": fileURI,
+			"range": map[string]interface{}{
+				"start": map[string]int{"line": 1, "character": 0},
+				"end":   map[string]int{"line": 1, "character": 20},
+			},
+		},
+		"timestamp": time.Now(),
+	}
+
+	return definition, nil
+}
+
+// GetReferences gets all references to a symbol from an LSP server
+func (l *LSPManager) GetReferences(ctx context.Context, serverID, fileURI string, line, character int) (interface{}, error) {
+	l.log.WithFields(logrus.Fields{
+		"serverId":  serverID,
+		"fileUri":   fileURI,
+		"line":      line,
+		"character": character,
+	}).Info("Getting LSP references")
+
+	// Validate server exists
+	if _, err := l.GetLSPServer(ctx, serverID); err != nil {
+		return nil, err
+	}
+
+	// Validate file URI
+	if fileURI == "" {
+		return nil, fmt.Errorf("fileURI is required for references")
+	}
+
+	// Simulate references response
+	references := map[string]interface{}{
+		"serverId": serverID,
+		"fileUri":  fileURI,
+		"references": []map[string]interface{}{
+			{
+				"uri": fileURI,
+				"range": map[string]interface{}{
+					"start": map[string]int{"line": line, "character": character},
+					"end":   map[string]int{"line": line, "character": character + 10},
+				},
+			},
+			{
+				"uri": fileURI,
+				"range": map[string]interface{}{
+					"start": map[string]int{"line": line + 5, "character": 10},
+					"end":   map[string]int{"line": line + 5, "character": 20},
+				},
+			},
+			{
+				"uri": fileURI,
+				"range": map[string]interface{}{
+					"start": map[string]int{"line": line + 10, "character": 5},
+					"end":   map[string]int{"line": line + 10, "character": 15},
+				},
+			},
+		},
+		"totalCount": 3,
+		"timestamp":  time.Now(),
+	}
+
+	return references, nil
+}
+
 // ValidateLSPRequest validates an LSP request
 func (l *LSPManager) ValidateLSPRequest(ctx context.Context, req LSPRequest) error {
 	// Basic validation

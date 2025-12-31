@@ -1,13 +1,36 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
+
+// systemMetricsCollector handles actual system metrics collection
+type systemMetricsCollector struct {
+	prevCPUStats cpuStats
+	prevNetBytes int64
+	initialized  bool
+}
+
+type cpuStats struct {
+	user   uint64
+	nice   uint64
+	system uint64
+	idle   uint64
+	total  uint64
+}
+
+var metricsCollectorInstance = &systemMetricsCollector{}
 
 // ProtocolMonitor provides performance monitoring and alerting for protocols
 type ProtocolMonitor struct {
@@ -333,17 +356,172 @@ func (m *ProtocolMonitor) metricsCollector() {
 }
 
 func (m *ProtocolMonitor) collectSystemMetrics() {
-	// Collect system-level metrics
-	// This is a placeholder - in a real implementation, you'd collect
-	// actual system metrics like memory usage, CPU, etc.
+	// Collect actual system-level metrics
+	usage := collectRealSystemMetrics()
 
+	m.mu.RLock()
+	protocols := make([]string, 0, len(m.metrics))
 	for protocol := range m.metrics {
-		usage := SystemResourceUsage{
-			MemoryMB:   100.0, // Placeholder
-			CPUPercent: 5.0,   // Placeholder
-		}
+		protocols = append(protocols, protocol)
+	}
+	m.mu.RUnlock()
+
+	for _, protocol := range protocols {
 		m.UpdateResourceUsage(protocol, usage)
 	}
+}
+
+// collectRealSystemMetrics gathers actual system resource usage
+func collectRealSystemMetrics() SystemResourceUsage {
+	usage := SystemResourceUsage{}
+
+	// Collect memory metrics using Go runtime
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	usage.MemoryMB = float64(memStats.Alloc) / (1024 * 1024)
+
+	// Collect CPU percentage
+	usage.CPUPercent = collectCPUPercent()
+
+	// Collect network bytes
+	usage.NetworkBytes = collectNetworkBytes()
+
+	// Collect disk usage
+	usage.DiskUsageMB = collectDiskUsage()
+
+	return usage
+}
+
+// collectCPUPercent reads CPU usage from /proc/stat on Linux
+func collectCPUPercent() float64 {
+	if runtime.GOOS != "linux" {
+		// For non-Linux systems, return a simple estimate based on goroutines
+		return float64(runtime.NumGoroutine()) * 0.1
+	}
+
+	file, err := os.Open("/proc/stat")
+	if err != nil {
+		return 0.0
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "cpu ") {
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				return 0.0
+			}
+
+			user, _ := strconv.ParseUint(fields[1], 10, 64)
+			nice, _ := strconv.ParseUint(fields[2], 10, 64)
+			system, _ := strconv.ParseUint(fields[3], 10, 64)
+			idle, _ := strconv.ParseUint(fields[4], 10, 64)
+			total := user + nice + system + idle
+
+			currentStats := cpuStats{
+				user:   user,
+				nice:   nice,
+				system: system,
+				idle:   idle,
+				total:  total,
+			}
+
+			if !metricsCollectorInstance.initialized {
+				metricsCollectorInstance.prevCPUStats = currentStats
+				metricsCollectorInstance.initialized = true
+				return 0.0
+			}
+
+			// Calculate CPU percentage based on delta
+			totalDelta := currentStats.total - metricsCollectorInstance.prevCPUStats.total
+			idleDelta := currentStats.idle - metricsCollectorInstance.prevCPUStats.idle
+
+			metricsCollectorInstance.prevCPUStats = currentStats
+
+			if totalDelta == 0 {
+				return 0.0
+			}
+
+			cpuPercent := 100.0 * float64(totalDelta-idleDelta) / float64(totalDelta)
+			return cpuPercent
+		}
+	}
+
+	return 0.0
+}
+
+// collectNetworkBytes reads network usage from /proc/net/dev on Linux
+func collectNetworkBytes() int64 {
+	if runtime.GOOS != "linux" {
+		return 0
+	}
+
+	file, err := os.Open("/proc/net/dev")
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
+
+	var totalBytes int64
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		// Skip header lines
+		if lineNum <= 2 {
+			continue
+		}
+
+		line := scanner.Text()
+		// Format: "interface: rx_bytes rx_packets ... tx_bytes tx_packets ..."
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		iface := strings.TrimSpace(parts[0])
+		// Skip loopback interface
+		if iface == "lo" {
+			continue
+		}
+
+		fields := strings.Fields(parts[1])
+		if len(fields) < 9 {
+			continue
+		}
+
+		rxBytes, _ := strconv.ParseInt(fields[0], 10, 64)
+		txBytes, _ := strconv.ParseInt(fields[8], 10, 64)
+		totalBytes += rxBytes + txBytes
+	}
+
+	// Calculate delta from previous collection
+	delta := totalBytes - metricsCollectorInstance.prevNetBytes
+	metricsCollectorInstance.prevNetBytes = totalBytes
+
+	// Return delta (bytes since last collection)
+	if delta < 0 {
+		return totalBytes // Counter wrapped or first collection
+	}
+	return delta
+}
+
+// collectDiskUsage gets disk usage for the root filesystem
+func collectDiskUsage() float64 {
+	var stat syscall.Statfs_t
+	err := syscall.Statfs("/", &stat)
+	if err != nil {
+		return 0.0
+	}
+
+	// Calculate used space in MB
+	totalBytes := stat.Blocks * uint64(stat.Bsize)
+	freeBytes := stat.Bfree * uint64(stat.Bsize)
+	usedBytes := totalBytes - freeBytes
+
+	return float64(usedBytes) / (1024 * 1024)
 }
 
 func (m *ProtocolMonitor) alertChecker() {

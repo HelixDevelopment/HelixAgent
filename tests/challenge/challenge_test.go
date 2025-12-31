@@ -32,6 +32,34 @@ type ChallengeResult struct {
 	Score           int // 0-100
 }
 
+// checkServerAvailability checks if the server is reachable
+func checkServerAvailability(baseURL string) bool {
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	// Try health endpoint first
+	resp, err := client.Get(baseURL + "/health")
+	if err == nil && resp.StatusCode < 500 {
+		resp.Body.Close()
+		return true
+	}
+
+	// Try root endpoint
+	resp, err = client.Get(baseURL)
+	if err == nil {
+		resp.Body.Close()
+		return true
+	}
+
+	return false
+}
+
+// skipIfServerUnavailable skips the test if the server is not reachable
+func skipIfServerUnavailable(t *testing.T, baseURL string) {
+	if !checkServerAvailability(baseURL) {
+		t.Skipf("Skipping challenge test: server not available at %s", baseURL)
+	}
+}
+
 // TestAdvancedLoadScenarios tests complex load scenarios
 func TestAdvancedLoadScenarios(t *testing.T) {
 	if testing.Short() {
@@ -43,6 +71,8 @@ func TestAdvancedLoadScenarios(t *testing.T) {
 		Timeout:     60 * time.Second,
 		Concurrency: 100,
 	}
+
+	skipIfServerUnavailable(t, config.BaseURL)
 
 	t.Run("BurstLoadChallenge", func(t *testing.T) {
 		result := performBurstLoadTest(t, config)
@@ -85,6 +115,8 @@ func TestResilienceScenarios(t *testing.T) {
 		Concurrency: 50,
 	}
 
+	skipIfServerUnavailable(t, config.BaseURL)
+
 	t.Run("CascadingFailureChallenge", func(t *testing.T) {
 		result := performCascadingFailureTest(t, config)
 		reportChallengeResult(t, result)
@@ -116,6 +148,8 @@ func TestComplexQueries(t *testing.T) {
 		Concurrency: 20,
 	}
 
+	skipIfServerUnavailable(t, config.BaseURL)
+
 	t.Run("ComplexPromptChallenge", func(t *testing.T) {
 		result := performComplexPromptTest(t, config)
 		reportChallengeResult(t, result)
@@ -146,6 +180,8 @@ func TestConcurrencyChallenges(t *testing.T) {
 		Timeout:     45 * time.Second,
 		Concurrency: 200,
 	}
+
+	skipIfServerUnavailable(t, config.BaseURL)
 
 	t.Run("HighConcurrencyChallenge", func(t *testing.T) {
 		result := performHighConcurrencyTest(t, config)

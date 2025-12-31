@@ -445,3 +445,96 @@ func TestLSPManager_RefreshAllLSPServers_WithCache(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestLSPManager_GetHover(t *testing.T) {
+	log := newLSPTestLogger()
+	manager := NewLSPManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("valid server and uri", func(t *testing.T) {
+		result, err := manager.GetHover(ctx, "gopls", "file:///test.go", 10, 5)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("non-existent server", func(t *testing.T) {
+		result, err := manager.GetHover(ctx, "non-existent", "file:///test.go", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("empty uri", func(t *testing.T) {
+		result, err := manager.GetHover(ctx, "gopls", "", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("different line and character positions", func(t *testing.T) {
+		result, err := manager.GetHover(ctx, "pylsp", "file:///main.py", 0, 0)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+}
+
+func TestLSPManager_GetDefinition(t *testing.T) {
+	log := newLSPTestLogger()
+	manager := NewLSPManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("valid server and uri", func(t *testing.T) {
+		result, err := manager.GetDefinition(ctx, "gopls", "file:///test.go", 10, 5)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("non-existent server", func(t *testing.T) {
+		result, err := manager.GetDefinition(ctx, "non-existent", "file:///test.go", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("empty uri", func(t *testing.T) {
+		result, err := manager.GetDefinition(ctx, "gopls", "", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("rust-analyzer server", func(t *testing.T) {
+		result, err := manager.GetDefinition(ctx, "rust-analyzer", "file:///lib.rs", 5, 10)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+}
+
+func TestLSPManager_GetReferences(t *testing.T) {
+	log := newLSPTestLogger()
+	manager := NewLSPManager(nil, nil, log)
+	ctx := context.Background()
+
+	t.Run("valid server and uri", func(t *testing.T) {
+		result, err := manager.GetReferences(ctx, "gopls", "file:///test.go", 10, 5)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("non-existent server", func(t *testing.T) {
+		result, err := manager.GetReferences(ctx, "non-existent", "file:///test.go", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("empty uri", func(t *testing.T) {
+		result, err := manager.GetReferences(ctx, "gopls", "", 10, 5)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("ts-language-server", func(t *testing.T) {
+		result, err := manager.GetReferences(ctx, "ts-language-server", "file:///app.ts", 20, 15)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+}

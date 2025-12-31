@@ -500,7 +500,7 @@ func (e *EmbeddingManager) VectorSearch(ctx context.Context, req VectorSearchReq
 			if score >= threshold {
 				results = append(results, VectorSearchResult{
 					ID:       key[11:], // Remove "stored_emb:" prefix
-					Content:  "", // Content would come from database
+					Content:  "",       // Content would come from database
 					Score:    score,
 					Metadata: map[string]interface{}{},
 				})
@@ -540,12 +540,12 @@ func (e *EmbeddingManager) GetEmbeddingStats(ctx context.Context) (map[string]in
 	e.mu.RUnlock()
 
 	stats := map[string]interface{}{
-		"cachedEmbeddings":   cacheSize,
-		"vectorProvider":     e.vectorProvider,
-		"openAIConfigured":   e.openAIKey != "",
-		"supportedModels":    []string{"text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large"},
-		"defaultDimension":   1536,
-		"lastUpdate":         time.Now(),
+		"cachedEmbeddings": cacheSize,
+		"vectorProvider":   e.vectorProvider,
+		"openAIConfigured": e.openAIKey != "",
+		"supportedModels":  []string{"text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large"},
+		"defaultDimension": 1536,
+		"lastUpdate":       time.Now(),
 	}
 
 	e.log.WithFields(stats).Info("Embedding statistics retrieved")

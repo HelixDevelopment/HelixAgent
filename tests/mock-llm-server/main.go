@@ -401,12 +401,12 @@ func handleClaudeMessages(w http.ResponseWriter, r *http.Request) {
 	responseContent := generateMockResponse(lastMessage, req.Model)
 
 	response := map[string]interface{}{
-		"id":           fmt.Sprintf("msg-mock-%d", time.Now().UnixNano()),
-		"type":         "message",
-		"role":         "assistant",
-		"content":      []map[string]string{{"type": "text", "text": responseContent}},
-		"model":        req.Model,
-		"stop_reason":  "end_turn",
+		"id":            fmt.Sprintf("msg-mock-%d", time.Now().UnixNano()),
+		"type":          "message",
+		"role":          "assistant",
+		"content":       []map[string]string{{"type": "text", "text": responseContent}},
+		"model":         req.Model,
+		"stop_reason":   "end_turn",
 		"stop_sequence": nil,
 		"usage": map[string]int{
 			"input_tokens":  len(lastMessage) / 4,
@@ -443,17 +443,17 @@ func handleOllamaGenerate(w http.ResponseWriter, r *http.Request) {
 	responseContent := generateMockResponse(req.Prompt, req.Model)
 
 	response := map[string]interface{}{
-		"model":              req.Model,
-		"created_at":         time.Now().Format(time.RFC3339),
-		"response":           responseContent,
-		"done":               true,
-		"context":            []int{1, 2, 3},
-		"total_duration":     1000000000,
-		"load_duration":      500000000,
-		"prompt_eval_count":  len(req.Prompt) / 4,
+		"model":                req.Model,
+		"created_at":           time.Now().Format(time.RFC3339),
+		"response":             responseContent,
+		"done":                 true,
+		"context":              []int{1, 2, 3},
+		"total_duration":       1000000000,
+		"load_duration":        500000000,
+		"prompt_eval_count":    len(req.Prompt) / 4,
 		"prompt_eval_duration": 200000000,
-		"eval_count":         len(responseContent) / 4,
-		"eval_duration":      300000000,
+		"eval_count":           len(responseContent) / 4,
+		"eval_duration":        300000000,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

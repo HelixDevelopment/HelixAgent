@@ -50,9 +50,9 @@ type UpdateProviderRequest struct {
 
 // ProviderResponse represents a provider response
 type ProviderResponse struct {
-	Success  bool                  `json:"success"`
-	Message  string                `json:"message"`
-	Provider *models.LLMProvider   `json:"provider,omitempty"`
+	Success  bool                `json:"success"`
+	Message  string              `json:"message"`
+	Provider *models.LLMProvider `json:"provider,omitempty"`
 }
 
 // AddProvider handles POST /v1/providers
@@ -164,15 +164,15 @@ func (h *ProviderManagementHandler) GetProvider(c *gin.Context) {
 	capabilities := provider.GetCapabilities()
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":                       providerID,
-		"name":                     providerID,
-		"supported_models":         capabilities.SupportedModels,
-		"supported_features":       capabilities.SupportedFeatures,
-		"supports_streaming":       capabilities.SupportsStreaming,
+		"id":                        providerID,
+		"name":                      providerID,
+		"supported_models":          capabilities.SupportedModels,
+		"supported_features":        capabilities.SupportedFeatures,
+		"supports_streaming":        capabilities.SupportsStreaming,
 		"supports_function_calling": capabilities.SupportsFunctionCalling,
-		"supports_vision":          capabilities.SupportsVision,
-		"limits":                   capabilities.Limits,
-		"metadata":                 capabilities.Metadata,
+		"supports_vision":           capabilities.SupportsVision,
+		"limits":                    capabilities.Limits,
+		"metadata":                  capabilities.Metadata,
 	})
 }
 

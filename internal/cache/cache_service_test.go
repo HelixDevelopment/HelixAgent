@@ -748,3 +748,99 @@ func TestCacheService_ErrorHandling(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, emptyKeyInfo)
 }
+
+func TestRedisClient_NilConfig(t *testing.T) {
+	// Test Redis client with nil config
+	client := NewRedisClient(nil)
+	require.NotNil(t, client)
+
+	// Client should be created but not functional
+	assert.NotNil(t, client.Client())
+
+	// Test Pipeline
+	pipeline := client.Pipeline()
+	assert.NotNil(t, pipeline)
+}
+
+func TestRedisClient_MGet(t *testing.T) {
+	// Test MGet with invalid Redis config
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.redis.host",
+			Port: "6379",
+		},
+	}
+
+	redisClient := NewRedisClient(cfg)
+	require.NotNil(t, redisClient)
+
+	ctx := context.Background()
+
+	// Test MGet should fail when Redis is not running
+	results, err := redisClient.MGet(ctx, "key1", "key2", "key3")
+	require.Error(t, err)
+	_ = results // May be nil or empty depending on error type
+}
+
+func TestRedisClient_Close(t *testing.T) {
+	// Test Close method
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.redis.host",
+			Port: "6379",
+		},
+	}
+
+	redisClient := NewRedisClient(cfg)
+	require.NotNil(t, redisClient)
+
+	// Close should not panic
+	err := redisClient.Close()
+	// Close may or may not return an error depending on Redis client state
+	_ = err
+}
+
+func TestCacheEntry_Struct(t *testing.T) {
+	// Test CacheEntry struct
+	entry := CacheEntry{
+		Key:       "test-key",
+		Value:     "test-value",
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(5 * time.Minute),
+		HitCount:  10,
+	}
+
+	assert.Equal(t, "test-key", entry.Key)
+	assert.Equal(t, "test-value", entry.Value)
+	assert.Equal(t, int64(10), entry.HitCount)
+}
+
+func TestCacheKey_Struct(t *testing.T) {
+	// Test CacheKey struct
+	key := CacheKey{
+		Type:      "llm",
+		ID:        "request-123",
+		Provider:  "openai",
+		UserID:    "user-456",
+		SessionID: "session-789",
+	}
+
+	assert.Equal(t, "llm", key.Type)
+	assert.Equal(t, "request-123", key.ID)
+	assert.Equal(t, "openai", key.Provider)
+	assert.Equal(t, "user-456", key.UserID)
+	assert.Equal(t, "session-789", key.SessionID)
+}
+
+func TestCacheConfig_Struct(t *testing.T) {
+	// Test CacheConfig struct
+	cfg := &CacheConfig{
+		Enabled:    true,
+		DefaultTTL: 1 * time.Hour,
+		Redis:      nil,
+	}
+
+	assert.True(t, cfg.Enabled)
+	assert.Equal(t, 1*time.Hour, cfg.DefaultTTL)
+	assert.Nil(t, cfg.Redis)
+}

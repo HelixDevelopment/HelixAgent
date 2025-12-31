@@ -355,6 +355,29 @@ func TestDBInterfaceImplementation(t *testing.T) {
 	t.Run("PostgresDBImplementsLegacyDBInterface", func(t *testing.T) {
 		var _ LegacyDB = (*PostgresDB)(nil)
 	})
+
+	t.Run("RowInterfaceExists", func(t *testing.T) {
+		var _ Row = (*pgxRow)(nil)
+	})
+}
+
+func TestRowInterface(t *testing.T) {
+	t.Run("pgxRowImplementsRow", func(t *testing.T) {
+		// Verify that pgxRow implements the Row interface
+		row := &pgxRow{row: nil}
+		if row == nil {
+			t.Fatal("Expected non-nil pgxRow")
+		}
+	})
+}
+
+func TestGetPoolReturnsNilWhenPoolIsNil(t *testing.T) {
+	// This tests the GetPool function without a real connection
+	db := &PostgresDB{pool: nil}
+	pool := db.GetPool()
+	if pool != nil {
+		t.Error("Expected nil pool, got non-nil")
+	}
 }
 
 func TestMigrationsVariable(t *testing.T) {

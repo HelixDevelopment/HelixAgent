@@ -247,6 +247,59 @@ func TestProtocolFederation_UnsubscribeFromEvents(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no subscriptions found")
 	})
+
+	t.Run("unsubscribe existing subscription", func(t *testing.T) {
+		// Create a fresh federation for this test
+		fed := NewProtocolFederation(log)
+		proto := &MockFederatedProtocol{name: "test-proto"}
+		fed.RegisterProtocol(proto)
+
+		// Subscribe to get a subscription
+		handlerFn := func(ctx context.Context, event *ProtocolEvent) error {
+			return nil
+		}
+		fed.SubscribeToEvents("test-proto", "my-event", handlerFn)
+
+		// Get the subscription ID from the federation
+		fed.mu.RLock()
+		subs := fed.subscriptions["test-proto"]
+		subID := ""
+		if len(subs) > 0 {
+			subID = subs[0].ID
+		}
+		fed.mu.RUnlock()
+
+		// Now unsubscribe with a valid subscription ID
+		err := fed.UnsubscribeFromEvents("test-proto", subID)
+		require.NoError(t, err)
+
+		// Verify subscription was removed
+		fed.mu.RLock()
+		remainingSubs := fed.subscriptions["test-proto"]
+		fed.mu.RUnlock()
+		assert.Len(t, remainingSubs, 0)
+	})
+
+	t.Run("unsubscribe with non-matching subscription ID", func(t *testing.T) {
+		fed := NewProtocolFederation(log)
+		proto := &MockFederatedProtocol{name: "test-proto-2"}
+		fed.RegisterProtocol(proto)
+
+		handlerFn := func(ctx context.Context, event *ProtocolEvent) error {
+			return nil
+		}
+		fed.SubscribeToEvents("test-proto-2", "event", handlerFn)
+
+		// Unsubscribe with a non-matching ID - should not error but won't remove anything
+		err := fed.UnsubscribeFromEvents("test-proto-2", "non-existent-sub-id")
+		require.NoError(t, err) // No error even if ID doesn't match
+
+		// Subscription should still exist
+		fed.mu.RLock()
+		subs := fed.subscriptions["test-proto-2"]
+		fed.mu.RUnlock()
+		assert.Len(t, subs, 1)
+	})
 }
 
 func TestProtocolFederation_AddDataTranslator(t *testing.T) {

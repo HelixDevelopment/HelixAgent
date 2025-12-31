@@ -151,6 +151,179 @@ func TestDiscoveryACPClient_ConnectAgent_UnsupportedProtocol(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported endpoint protocol")
 }
 
+func TestDiscoveryACPClient_ConnectAgent_DuplicateConnection(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Add a fake agent connection directly to test duplicate check
+	client.mu.Lock()
+	client.agents["test-agent"] = &ACPAgentConnection{
+		ID:        "test-agent",
+		Name:      "Test Agent",
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	err := client.ConnectAgent(ctx, "test-agent", "Test Agent", "http://localhost:8080")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "already connected")
+}
+
+func TestDiscoveryACPClient_DisconnectAgent_NotConnected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	err := client.DisconnectAgent("non-existent-agent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not connected")
+}
+
+func TestDiscoveryACPClient_DisconnectAgent_Connected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Create a mock transport that uses the existing MockACPTransport from acp_client_test.go
+	mockTransport := &MockACPTransport{}
+	mockTransport.connected = true
+
+	// Add a fake agent connection
+	client.mu.Lock()
+	client.agents["test-agent"] = &ACPAgentConnection{
+		ID:        "test-agent",
+		Name:      "Test Agent",
+		Transport: mockTransport,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	err := client.DisconnectAgent("test-agent")
+	require.NoError(t, err)
+
+	// Verify agent was removed
+	client.mu.RLock()
+	_, exists := client.agents["test-agent"]
+	client.mu.RUnlock()
+	assert.False(t, exists)
+}
+
+func TestDiscoveryACPClient_GetAgentStatus_Connected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	now := time.Now()
+	// Add a fake agent connection
+	client.mu.Lock()
+	client.agents["test-agent"] = &ACPAgentConnection{
+		ID:        "test-agent",
+		Name:      "Test Agent",
+		Connected: true,
+		LastUsed:  now,
+		Capabilities: map[string]interface{}{
+			"tools": true,
+		},
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	status, err := client.GetAgentStatus(ctx, "test-agent")
+	require.NoError(t, err)
+	require.NotNil(t, status)
+
+	assert.Equal(t, "test-agent", status["id"])
+	assert.Equal(t, "Test Agent", status["name"])
+	assert.Equal(t, true, status["connected"])
+}
+
+func TestDiscoveryACPClient_BroadcastAction_WithAgents(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Create mock transports that will fail (no real connection)
+	mockTransport1 := &MockACPTransport{connected: false}
+	mockTransport2 := &MockACPTransport{connected: false}
+
+	// Add fake agent connections
+	client.mu.Lock()
+	client.agents["agent-1"] = &ACPAgentConnection{
+		ID:        "agent-1",
+		Name:      "Agent 1",
+		Transport: mockTransport1,
+		Connected: true,
+	}
+	client.agents["agent-2"] = &ACPAgentConnection{
+		ID:        "agent-2",
+		Name:      "Agent 2",
+		Transport: mockTransport2,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	results := client.BroadcastAction(ctx, "test-action", map[string]interface{}{"key": "value"})
+
+	// Results should have 2 entries (one per agent)
+	assert.Len(t, results, 2)
+}
+
+func TestDiscoveryACPClient_ListAgents_WithAgents(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Add fake agent connections
+	client.mu.Lock()
+	client.agents["agent-1"] = &ACPAgentConnection{
+		ID:        "agent-1",
+		Name:      "Agent 1",
+		Connected: true,
+	}
+	client.agents["agent-2"] = &ACPAgentConnection{
+		ID:        "agent-2",
+		Name:      "Agent 2",
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	agents := client.ListAgents()
+	assert.Len(t, agents, 2)
+
+	// Check that agent IDs are present in the returned slice
+	agentIDs := make([]string, len(agents))
+	for i, a := range agents {
+		agentIDs[i] = a.ID
+	}
+	assert.Contains(t, agentIDs, "agent-1")
+	assert.Contains(t, agentIDs, "agent-2")
+}
+
+func TestDiscoveryACPClient_HealthCheck_WithAgents(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Create a mock transport
+	mockTransport := &MockACPTransport{connected: true}
+
+	// Add a fake agent connection
+	client.mu.Lock()
+	client.agents["agent-1"] = &ACPAgentConnection{
+		ID:        "agent-1",
+		Name:      "Agent 1",
+		Transport: mockTransport,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	ctx := context.Background()
+	health := client.HealthCheck(ctx)
+
+	assert.Len(t, health, 1)
+	assert.Contains(t, health, "agent-1")
+	// The health should reflect that the mock transport is "connected"
+	assert.Equal(t, true, health["agent-1"])
+}
+
+// Note: MockACPTransport is already defined in acp_client_test.go
+
 // WebSocketACPTransport tests for protocol_discovery.go
 
 func TestDiscoveryWebSocketACPTransport_IsConnected_NotConnected(t *testing.T) {

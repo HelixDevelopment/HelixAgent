@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockUnifiedProtocolManager mocks the UnifiedProtocolManager for testing
@@ -262,4 +263,112 @@ func TestUnifiedProtocolManager_ConfigureProtocols(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
+}
+
+// TestUnifiedProtocolManager_ExecuteRequest_NoAPIKey tests execution without API key
+func TestUnifiedProtocolManager_ExecuteRequest_NoAPIKey(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	req := UnifiedProtocolRequest{
+		ProtocolType: "mcp",
+		ServerID:     "test-server",
+		ToolName:     "test-tool",
+		Arguments:    map[string]interface{}{},
+	}
+
+	// Context without API key
+	ctx := context.Background()
+
+	response, err := manager.ExecuteRequest(ctx, req)
+
+	assert.Error(t, err)
+	assert.False(t, response.Success)
+	assert.Contains(t, response.Error, "API key required")
+}
+
+// TestUnifiedProtocolManager_ExecuteRequest_RateLimitExceeded tests rate limiting
+func TestUnifiedProtocolManager_ExecuteRequest_RateLimitExceeded(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	// Create API key
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("rate-limit-test", "test", []string{"mcp:*"})
+	require.NoError(t, err)
+
+	// Set very low rate limit
+	manager.rateLimiter = NewRateLimiter(1) // Only 1 request allowed
+
+	req := UnifiedProtocolRequest{
+		ProtocolType: "mcp",
+		ServerID:     "test-server",
+		ToolName:     "test-tool",
+		Arguments:    map[string]interface{}{},
+	}
+
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
+	// First request should succeed (or fail for other reasons)
+	_, _ = manager.ExecuteRequest(ctx, req)
+
+	// Subsequent request should hit rate limit
+	response, err := manager.ExecuteRequest(ctx, req)
+
+	assert.Error(t, err)
+	assert.False(t, response.Success)
+	assert.Contains(t, response.Error, "Rate limit exceeded")
+}
+
+// TestUnifiedProtocolManager_ExecuteRequest_LSP tests LSP request execution
+func TestUnifiedProtocolManager_ExecuteRequest_LSP(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	// Create API key with LSP permissions
+	security := manager.GetSecurity()
+	testKey, err := security.CreateAPIKey("lsp-test", "test", []string{"lsp:*"})
+	require.NoError(t, err)
+
+	req := UnifiedProtocolRequest{
+		ProtocolType: "lsp",
+		ServerID:     "test-server",
+		ToolName:     "completion",
+		Arguments: map[string]interface{}{
+			"fileURI": "file:///test.go",
+			"line":    10,
+			"column":  5,
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
+	// Execute request - may fail due to no actual server, but should hit the LSP branch
+	response, _ := manager.ExecuteRequest(ctx, req)
+
+	// At minimum, protocol should be set
+	assert.Equal(t, "lsp", response.Protocol)
+}
+
+// TestUnifiedProtocolManager_GetSecurity tests security getter
+func TestUnifiedProtocolManager_GetSecurity(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	security := manager.GetSecurity()
+	assert.NotNil(t, security)
+}
+
+// TestUnifiedProtocolManager_GetMonitor tests monitor getter
+func TestUnifiedProtocolManager_GetMonitor(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	monitor := manager.GetMonitor()
+	assert.NotNil(t, monitor)
 }

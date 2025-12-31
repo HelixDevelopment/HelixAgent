@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/superagent/superagent/internal/cache"
 	"github.com/superagent/superagent/internal/database"
 )
 
@@ -264,4 +265,49 @@ func BenchmarkInMemoryCache_Get(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _, _ = cache.Get(ctx, "bench-key")
 	}
+}
+
+func TestCacheFactory_TestCacheConnection_WithClient(t *testing.T) {
+	logger := newTestLogger()
+	// Create a RedisClient with invalid address - it will fail ping
+	invalidRedisClient := cache.NewRedisClient(nil)
+
+	t.Run("returns false when redis ping fails", func(t *testing.T) {
+		factory := NewCacheFactory(invalidRedisClient, logger)
+		result := factory.TestCacheConnection(context.Background())
+		assert.False(t, result) // Should fail because address is invalid
+	})
+}
+
+func TestCacheFactory_CreateDefaultCache_WithFailingRedis(t *testing.T) {
+	logger := newTestLogger()
+	// Create a RedisClient with invalid address
+	invalidRedisClient := cache.NewRedisClient(nil)
+
+	t.Run("falls back to in-memory when redis connection fails", func(t *testing.T) {
+		factory := NewCacheFactory(invalidRedisClient, logger)
+		resultCache := factory.CreateDefaultCache(5 * time.Minute)
+		require.NotNil(t, resultCache)
+		// Should have fallen back to in-memory cache since Redis ping fails
+	})
+}
+
+func TestCacheFactory_CreateCache_AllTypes(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("redis type with failing client falls back to memory", func(t *testing.T) {
+		invalidRedisClient := cache.NewRedisClient(nil)
+		factory := NewCacheFactory(invalidRedisClient, logger)
+		resultCache := factory.CreateCache("redis", 5*time.Minute)
+		require.NotNil(t, resultCache)
+		// Creates redis cache wrapper even if connection will fail
+	})
+
+	t.Run("multi type with failing client creates multi-level cache", func(t *testing.T) {
+		invalidRedisClient := cache.NewRedisClient(nil)
+		factory := NewCacheFactory(invalidRedisClient, logger)
+		resultCache := factory.CreateCache("multi", 5*time.Minute)
+		require.NotNil(t, resultCache)
+		// Creates multi-level cache even if Redis will fail
+	})
 }

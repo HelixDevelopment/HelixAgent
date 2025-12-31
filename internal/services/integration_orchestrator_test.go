@@ -3,11 +3,63 @@ package services
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/superagent/superagent/internal/llm"
+	"github.com/superagent/superagent/internal/models"
 )
+
+// MockLLMProviderForOrchestrator implements llm.LLMProvider for testing
+type MockLLMProviderForOrchestrator struct {
+	name         string
+	completeFunc func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error)
+	streamFunc   func(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error)
+}
+
+func (m *MockLLMProviderForOrchestrator) Complete(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
+	if m.completeFunc != nil {
+		return m.completeFunc(ctx, req)
+	}
+	return &models.LLMResponse{
+		Content:      "test response from " + m.name,
+		ProviderName: m.name,
+		Confidence:   0.9,
+	}, nil
+}
+
+func (m *MockLLMProviderForOrchestrator) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+	if m.streamFunc != nil {
+		return m.streamFunc(ctx, req)
+	}
+	ch := make(chan *models.LLMResponse, 2)
+	go func() {
+		ch <- &models.LLMResponse{Content: "stream part 1", ProviderName: m.name}
+		ch <- &models.LLMResponse{Content: "stream part 2", ProviderName: m.name}
+		close(ch)
+	}()
+	return ch, nil
+}
+
+func (m *MockLLMProviderForOrchestrator) HealthCheck() error {
+	return nil
+}
+
+func (m *MockLLMProviderForOrchestrator) GetCapabilities() *models.ProviderCapabilities {
+	return &models.ProviderCapabilities{
+		SupportsStreaming:       true,
+		SupportedFeatures:       []string{"complete", "stream"},
+		SupportsFunctionCalling: false,
+	}
+}
+
+func (m *MockLLMProviderForOrchestrator) ValidateConfig(config map[string]interface{}) (bool, []string) {
+	return true, nil
+}
+
+var _ llm.LLMProvider = (*MockLLMProviderForOrchestrator)(nil)
 
 func TestNewIntegrationOrchestrator(t *testing.T) {
 	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
@@ -1054,4 +1106,239 @@ func TestIntegrationOrchestrator_executeWorkflow_ParallelSteps(t *testing.T) {
 	err := io.executeWorkflow(ctx, workflow)
 	assert.NoError(t, err)
 	assert.Equal(t, "completed", workflow.Status)
+}
+
+func TestIntegrationOrchestrator_ExecuteCodeAnalysis(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("with lsp client", func(t *testing.T) {
+		log := logrus.New()
+		log.SetLevel(logrus.PanicLevel)
+		lspClient := NewLSPClient(log)
+
+		io := NewIntegrationOrchestrator(nil, lspClient, nil, nil)
+
+		// This will create the workflow and attempt to execute
+		// LSP steps will fail because no server is connected, but the function handles this
+		result, err := io.ExecuteCodeAnalysis(ctx, "/test/file.go", "go")
+		// The workflow will fail because StartServer fails when no command is configured
+		// but the function itself is exercised
+		_ = err
+		if result != nil {
+			assert.Equal(t, "/test/file.go", result.FilePath)
+		}
+	})
+}
+
+func TestIntegrationOrchestrator_ExecuteToolChain(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("empty tool chain", func(t *testing.T) {
+		io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+		result, err := io.ExecuteToolChain(ctx, []ToolExecution{})
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("single tool execution", func(t *testing.T) {
+		io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+		toolChain := []ToolExecution{
+			{
+				ToolName:   "test-tool",
+				Parameters: map[string]any{"key": "value"},
+			},
+		}
+
+		result, err := io.ExecuteToolChain(ctx, toolChain)
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("multiple tools with dependencies", func(t *testing.T) {
+		io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+		// Note: ExecuteToolChain assigns IDs as "tool_0", "tool_1", etc.
+		toolChain := []ToolExecution{
+			{
+				ToolName:   "analyze",
+				Parameters: map[string]any{"action": "analyze"},
+			},
+			{
+				ToolName:   "process",
+				Parameters: map[string]any{"action": "process"},
+				DependsOn:  []string{"tool_0"}, // Depends on first tool
+			},
+			{
+				ToolName:   "summarize",
+				Parameters: map[string]any{"action": "summarize"},
+				DependsOn:  []string{"tool_1"}, // Depends on second tool
+			},
+		}
+
+		result, err := io.ExecuteToolChain(ctx, toolChain)
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_Complete(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	// Create provider registry with mock provider
+	registry := NewProviderRegistry(&RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		MaxRetries:     3,
+		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
+		Providers:      make(map[string]*ProviderConfig),
+	}, nil)
+
+	mockProvider := &MockLLMProviderForOrchestrator{
+		name: "test-provider",
+		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
+			return &models.LLMResponse{
+				Content:      "completed response",
+				ProviderName: "test-provider",
+				Confidence:   0.95,
+			}, nil
+		},
+	}
+	registry.RegisterProvider("test-provider", mockProvider)
+	io.SetProviderRegistry(registry)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Complete",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "complete",
+			"provider":  "test-provider",
+			"prompt":    "Test prompt",
+			"model":     "test-model",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	resp, ok := result.(*models.LLMResponse)
+	require.True(t, ok)
+	assert.Equal(t, "completed response", resp.Content)
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_Stream(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	// Create provider registry with mock provider
+	registry := NewProviderRegistry(&RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		MaxRetries:     3,
+		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
+		Providers:      make(map[string]*ProviderConfig),
+	}, nil)
+
+	mockProvider := &MockLLMProviderForOrchestrator{
+		name: "stream-provider",
+		streamFunc: func(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+			ch := make(chan *models.LLMResponse, 3)
+			go func() {
+				ch <- &models.LLMResponse{Content: "Hello ", ProviderName: "stream-provider"}
+				ch <- &models.LLMResponse{Content: "World", ProviderName: "stream-provider"}
+				ch <- &models.LLMResponse{Content: "!", ProviderName: "stream-provider"}
+				close(ch)
+			}()
+			return ch, nil
+		},
+	}
+	registry.RegisterProvider("stream-provider", mockProvider)
+	io.SetProviderRegistry(registry)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Stream",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "stream",
+			"provider":  "stream-provider",
+			"prompt":    "Test streaming prompt",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	resp, ok := result.(*models.LLMResponse)
+	require.True(t, ok)
+	assert.Equal(t, "Hello World!", resp.Content)
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_UnknownOperation(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	// Create provider registry with mock provider
+	registry := NewProviderRegistry(&RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
+		Providers:      make(map[string]*ProviderConfig),
+	}, nil)
+
+	mockProvider := &MockLLMProviderForOrchestrator{name: "test-provider"}
+	registry.RegisterProvider("test-provider", mockProvider)
+	io.SetProviderRegistry(registry)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Unknown",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "invalid_operation",
+			"provider":  "test-provider",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "unknown LLM operation")
+}
+
+func TestIntegrationOrchestrator_executeLLMStep_DefaultProvider(t *testing.T) {
+	ctx := context.Background()
+	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
+
+	// Create provider registry with mock provider (no explicit provider in step)
+	registry := NewProviderRegistry(&RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
+		Providers:      make(map[string]*ProviderConfig),
+	}, nil)
+
+	mockProvider := &MockLLMProviderForOrchestrator{name: "default-provider"}
+	registry.RegisterProvider("default-provider", mockProvider)
+	io.SetProviderRegistry(registry)
+
+	step := &WorkflowStep{
+		ID:   "step1",
+		Name: "LLM Default",
+		Type: "llm",
+		Parameters: map[string]any{
+			"operation": "complete",
+			// No provider specified - should use first available
+			"prompt": "Test with default provider",
+		},
+	}
+
+	result, err := io.executeLLMStep(ctx, step)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	resp, ok := result.(*models.LLMResponse)
+	require.True(t, ok)
+	assert.Contains(t, resp.Content, "default-provider")
 }

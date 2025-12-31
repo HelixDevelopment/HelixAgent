@@ -1647,30 +1647,86 @@ func TestLSPClient_GetCodeIntelligence_Connected(t *testing.T) {
 	log := newACPTestLogger()
 	client := NewLSPClient(log)
 
-	mockTransport := NewMockLSPTransport()
+	// Track which methods have been called
+	callCount := 0
 
+	mockTransport := NewMockLSPTransport()
+	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
+		callCount++
+		if callCount == 1 {
+			// First call: OpenFile (textDocument/didOpen)
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      float64(1),
+				"result":  nil,
+			}, nil
+		} else if callCount == 2 {
+			// Second call: GetCompletion
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      float64(2),
+				"result": map[string]interface{}{
+					"isIncomplete": false,
+					"items": []interface{}{
+						map[string]interface{}{
+							"label":  "testCompletion",
+							"kind":   float64(1),
+							"detail": "Test completion item",
+						},
+					},
+				},
+			}, nil
+		} else if callCount == 3 {
+			// Third call: GetHover
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      float64(3),
+				"result": map[string]interface{}{
+					"contents": "Hover content",
+					"range": map[string]interface{}{
+						"start": map[string]interface{}{"line": float64(0), "character": float64(0)},
+						"end":   map[string]interface{}{"line": float64(0), "character": float64(10)},
+					},
+				},
+			}, nil
+		}
+		// Fourth call: GetDefinition
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      float64(4),
+			"result": map[string]interface{}{
+				"uri": "file:///test/definition.go",
+				"range": map[string]interface{}{
+					"start": map[string]interface{}{"line": float64(10), "character": float64(5)},
+					"end":   map[string]interface{}{"line": float64(10), "character": float64(15)},
+				},
+			},
+		}, nil
+	}
+
+	// Must use "default-go" as the serverID since that's what GetCodeIntelligence uses
 	client.mu.Lock()
-	client.servers["test-server"] = &LSPServerConnection{
-		ID:        "test-server",
+	client.servers["default-go"] = &LSPServerConnection{
+		ID:        "default-go",
 		Transport: mockTransport,
 		Capabilities: &LSPCapabilities{
-			HoverProvider: true,
+			HoverProvider:      true,
+			DefinitionProvider: true,
+			CompletionProvider: &CompletionOptions{},
 		},
 		Connected: true,
+		Files:     make(map[string]*LSPFileInfo),
 	}
 	client.mu.Unlock()
 
 	ctx := context.Background()
-	result, err := client.GetCodeIntelligence(ctx, "/test/file.go", map[string]interface{}{
-		"serverID": "test-server",
-		"type":     "hover",
-		"line":     10,
-		"column":   5,
-	})
-	// Result depends on implementation - just check it doesn't fail with not connected
-	// The actual implementation might return an error if no matching server is found
-	_ = result
-	_ = err
+	result, err := client.GetCodeIntelligence(ctx, "/test/file.go", nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "/test/file.go", result.FilePath)
+	assert.NotNil(t, result.Completions)
+	assert.NotNil(t, result.Hover)
+	assert.NotNil(t, result.Definitions)
 }
 
 // Tests for ACPClient with mock agents

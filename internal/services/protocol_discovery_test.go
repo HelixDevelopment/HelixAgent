@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -450,4 +452,163 @@ func BenchmarkDiscoveryACPClient_UnmarshalMessage(b *testing.B) {
 		var msg ACPMessage
 		_ = client.unmarshalMessage(data, &msg)
 	}
+}
+
+func TestDiscoveryACPClient_ExecuteAction_NotConnected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+	ctx := context.Background()
+
+	result, err := client.ExecuteAction(ctx, "non-existent-agent", "test-action", map[string]interface{}{})
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "not connected")
+}
+
+func TestDiscoveryACPClient_ExecuteAction_Connected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+	ctx := context.Background()
+
+	// Create a mock transport
+	mockTransport := &MockDiscoveryACPTransport{
+		connected: true,
+		receiveFunc: func(ctx context.Context) (interface{}, error) {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      float64(1),
+				"result": map[string]interface{}{
+					"success": true,
+					"data":    map[string]interface{}{"key": "value"},
+				},
+			}, nil
+		},
+	}
+
+	// Add agent connection
+	client.mu.Lock()
+	client.agents["test-agent"] = &ACPAgentConnection{
+		ID:        "test-agent",
+		Name:      "Test Agent",
+		Transport: mockTransport,
+		Connected: true,
+	}
+	client.mu.Unlock()
+
+	result, err := client.ExecuteAction(ctx, "test-agent", "test-action", map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestDiscoveryACPClient_GetAgentCapabilities_NotConnected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	result, err := client.GetAgentCapabilities("non-existent-agent")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "not connected")
+}
+
+func TestDiscoveryACPClient_GetAgentCapabilities_Connected(t *testing.T) {
+	log := newDiscoveryTestLogger()
+	client := NewACPClient(log)
+
+	// Add agent connection with capabilities
+	client.mu.Lock()
+	client.agents["test-agent"] = &ACPAgentConnection{
+		ID:        "test-agent",
+		Name:      "Test Agent",
+		Connected: true,
+		Capabilities: map[string]interface{}{
+			"execute":   true,
+			"broadcast": true,
+		},
+	}
+	client.mu.Unlock()
+
+	result, err := client.GetAgentCapabilities("test-agent")
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, true, result["execute"])
+}
+
+// MockDiscoveryACPTransport for testing
+type MockDiscoveryACPTransport struct {
+	connected   bool
+	sendFunc    func(ctx context.Context, message interface{}) error
+	receiveFunc func(ctx context.Context) (interface{}, error)
+	closeFunc   func() error
+}
+
+func (m *MockDiscoveryACPTransport) Send(ctx context.Context, message interface{}) error {
+	if m.sendFunc != nil {
+		return m.sendFunc(ctx, message)
+	}
+	return nil
+}
+
+func (m *MockDiscoveryACPTransport) Receive(ctx context.Context) (interface{}, error) {
+	if m.receiveFunc != nil {
+		return m.receiveFunc(ctx)
+	}
+	return map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      float64(1),
+		"result":  map[string]interface{}{},
+	}, nil
+}
+
+func (m *MockDiscoveryACPTransport) Close() error {
+	m.connected = false
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *MockDiscoveryACPTransport) IsConnected() bool {
+	return m.connected
+}
+
+func TestDiscoveryHTTPACPTransport_IsConnected(t *testing.T) {
+	t.Run("not connected returns false immediately", func(t *testing.T) {
+		transport := &HTTPACPTransport{
+			baseURL:   "http://test.example.com",
+			connected: false,
+		}
+		assert.False(t, transport.IsConnected())
+	})
+
+	t.Run("connected with healthy server", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		transport := &HTTPACPTransport{
+			baseURL:    server.URL,
+			httpClient: server.Client(),
+			connected:  true,
+		}
+		assert.True(t, transport.IsConnected())
+	})
+
+	t.Run("connected with unhealthy server", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		transport := &HTTPACPTransport{
+			baseURL:    server.URL,
+			httpClient: server.Client(),
+			connected:  true,
+		}
+		assert.False(t, transport.IsConnected())
+	})
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/superagent/superagent/tests/testutils"
 )
 
 // checkServerAvailable checks if the test server is reachable

@@ -1,0 +1,36 @@
+{
+  "interactiveLogin": false,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "superagent",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "client_credentials",
+          "claims": {
+            "aud": ["superagent-api"],
+            "scope": "read write admin"
+          }
+        },
+        {
+          "requestParam": "grant_type",
+          "match": "refresh_token",
+          "claims": {
+            "aud": ["superagent-api"],
+            "scope": "read write"
+          }
+        },
+        {
+          "requestParam": "grant_type",
+          "match": "authorization_code",
+          "claims": {
+            "aud": ["superagent-api"],
+            "scope": "openid profile email"
+          }
+        }
+      ]
+    }
+  ]
+}

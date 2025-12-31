@@ -1,18 +1,37 @@
 services:
-  # Mock LLM Server for testing (provides OpenAI-compatible API)
+  # Mock LLM Server for testing (provides OpenAI, Claude, and Ollama compatible APIs)
   mock-llm:
     build:
-      context: ./tests/mocks/llm-mock-server
+      context: ./tests/mock-llm-server
       dockerfile: Dockerfile
     container_name: superagent-mock-llm
     ports:
-      - "${MOCK_LLM_PORT:-18081}:8081"
+      - "${MOCK_LLM_PORT:-18081}:8090"
     environment:
-      PORT: 8081
+      PORT: "8090"
     networks:
       - superagent-network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # OAuth Mock Server for testing OAuth flows
+  oauth-mock:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.0
+    container_name: superagent-oauth-mock
+    ports:
+      - "${OAUTH_MOCK_PORT:-18091}:8080"
+    environment:
+      - JSON_CONFIG_PATH=/config/config.json
+    volumes:
+      - ./tests/oauth-mock-config.json:/config/config.json
+    networks:
+      - superagent-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/.well-known/openid-configuration"]
       interval: 10s
       timeout: 5s
       retries: 3

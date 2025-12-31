@@ -3,10 +3,13 @@ package security
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	testingutils "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/ratelimit"
 )
 
 // TestAPIKeySecurity tests that API keys are handled securely
@@ -137,9 +140,157 @@ func TestErrorMessageSecurity(t *testing.T) {
 
 // TestRateLimitSecurity tests rate limiting security aspects
 func TestRateLimitSecurity(t *testing.T) {
-	// This would test rate limiting behavior under attack scenarios
-	// For now, just test basic functionality
-	t.Log("Rate limit security test placeholder - implement when rate limiting is added")
+	// Test 1: Basic rate limiting blocks excessive requests
+	t.Run("BlocksExcessiveRequests", func(t *testing.T) {
+		// Create a strict rate limiter: 5 requests, 1 token per second refill
+		limiter := ratelimit.NewTokenBucket(ratelimit.TokenBucketConfig{
+			Capacity:   5,
+			RefillRate: 1.0,
+		})
+
+		// First 5 requests should succeed
+		for i := 0; i < 5; i++ {
+			if !limiter.Allow() {
+				t.Errorf("Request %d should have been allowed", i+1)
+			}
+		}
+
+		// 6th request should be blocked
+		if limiter.Allow() {
+			t.Error("6th request should have been blocked")
+		}
+	})
+
+	// Test 2: Rate limiting with burst attack simulation
+	t.Run("BurstAttackMitigation", func(t *testing.T) {
+		limiter := ratelimit.NewTokenBucket(ratelimit.TokenBucketConfig{
+			Capacity:   10,
+			RefillRate: 2.0, // 2 tokens per second
+		})
+
+		allowed := 0
+		blocked := 0
+
+		// Simulate burst attack: 100 rapid requests
+		for i := 0; i < 100; i++ {
+			if limiter.Allow() {
+				allowed++
+			} else {
+				blocked++
+			}
+		}
+
+		// Should have allowed exactly 10 (bucket capacity)
+		if allowed != 10 {
+			t.Errorf("Expected 10 allowed requests, got %d", allowed)
+		}
+		if blocked != 90 {
+			t.Errorf("Expected 90 blocked requests, got %d", blocked)
+		}
+	})
+
+	// Test 3: Rate limiter recovery
+	t.Run("RecoveryAfterBlocking", func(t *testing.T) {
+		limiter := ratelimit.NewTokenBucket(ratelimit.TokenBucketConfig{
+			Capacity:   3,
+			RefillRate: 10.0, // Fast refill for testing
+		})
+
+		// Exhaust the bucket
+		for i := 0; i < 3; i++ {
+			limiter.Allow()
+		}
+
+		// Should be blocked now
+		if limiter.Allow() {
+			t.Error("Should be blocked after exhausting bucket")
+		}
+
+		// Wait for refill (at 10 tokens/sec, 0.2 seconds = 2 tokens)
+		time.Sleep(200 * time.Millisecond)
+
+		// Should now have tokens
+		if !limiter.Allow() {
+			t.Error("Should be allowed after waiting for refill")
+		}
+	})
+
+	// Test 4: Sliding window limiter for distributed attack patterns
+	t.Run("SlidingWindowAttackMitigation", func(t *testing.T) {
+		limiter := ratelimit.NewSlidingWindowLimiter(time.Second, 5)
+
+		allowed := 0
+
+		// Simulate distributed attack pattern over time
+		for i := 0; i < 10; i++ {
+			if limiter.Allow() {
+				allowed++
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		// Should allow approximately 5 within the 1-second window
+		if allowed != 5 {
+			t.Errorf("Expected 5 allowed requests, got %d", allowed)
+		}
+	})
+
+	// Test 5: Per-key rate limiting (simulate per-IP limiting)
+	t.Run("PerKeyRateLimiting", func(t *testing.T) {
+		perKeyLimiter := ratelimit.NewPerKeyLimiter(ratelimit.TokenBucketConfig{
+			Capacity:   3,
+			RefillRate: 1.0,
+		})
+
+		// User A makes requests
+		for i := 0; i < 3; i++ {
+			if !perKeyLimiter.Allow("user-a") {
+				t.Errorf("User A request %d should be allowed", i+1)
+			}
+		}
+
+		// User A should now be blocked
+		if perKeyLimiter.Allow("user-a") {
+			t.Error("User A should be blocked after exhausting limit")
+		}
+
+		// User B should still be allowed (independent limit)
+		if !perKeyLimiter.Allow("user-b") {
+			t.Error("User B should be allowed (independent limit)")
+		}
+	})
+
+	// Test 6: Concurrent rate limiting (race condition test)
+	t.Run("ConcurrentRateLimiting", func(t *testing.T) {
+		limiter := ratelimit.NewTokenBucket(ratelimit.TokenBucketConfig{
+			Capacity:   100,
+			RefillRate: 0.0, // No refill for this test
+		})
+
+		var wg sync.WaitGroup
+		allowed := int32(0)
+		numGoroutines := 200
+
+		var mu sync.Mutex
+		for i := 0; i < numGoroutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if limiter.Allow() {
+					mu.Lock()
+					allowed++
+					mu.Unlock()
+				}
+			}()
+		}
+
+		wg.Wait()
+
+		// Should have allowed exactly 100 (bucket capacity)
+		if allowed != 100 {
+			t.Errorf("Expected 100 allowed, got %d (race condition?)", allowed)
+		}
+	})
 }
 
 // TestModelValidationSecurity tests model name validation

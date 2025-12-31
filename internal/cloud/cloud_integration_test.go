@@ -28,6 +28,10 @@ func TestNewAWSBedrockIntegration(t *testing.T) {
 }
 
 func TestAWSBedrockIntegration_ListModels(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+		t.Skip("Skipping AWS Bedrock ListModels test: AWS credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewAWSBedrockIntegration("us-east-1", logger)
 
@@ -36,18 +40,13 @@ func TestAWSBedrockIntegration_ListModels(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, models)
-	assert.Len(t, models, 2)
-
-	// Check first model
-	assert.Equal(t, "amazon.titan-text-express-v1", models[0]["name"])
-	assert.Equal(t, "Amazon Titan Text Express", models[0]["display_name"])
-	assert.Equal(t, "aws", models[0]["provider"])
-
-	// Check second model
-	assert.Equal(t, "anthropic.claude-v2", models[1]["name"])
 }
 
 func TestAWSBedrockIntegration_InvokeModel(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+		t.Skip("Skipping AWS Bedrock InvokeModel test: AWS credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewAWSBedrockIntegration("us-west-2", logger)
 
@@ -58,8 +57,6 @@ func TestAWSBedrockIntegration_InvokeModel(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
-	assert.Contains(t, result, "Mock AWS Bedrock response")
-	assert.Contains(t, result, "amazon.titan-text-express-v1")
 }
 
 func TestAWSBedrockIntegration_GetProviderName(t *testing.T) {
@@ -81,6 +78,10 @@ func TestNewGCPVertexAIIntegration(t *testing.T) {
 }
 
 func TestGCPVertexAIIntegration_ListModels(t *testing.T) {
+	if os.Getenv("GCP_ACCESS_TOKEN") == "" && os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping GCP Vertex AI ListModels test: GCP credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewGCPVertexAIIntegration("my-project", "us-central1", logger)
 
@@ -89,18 +90,13 @@ func TestGCPVertexAIIntegration_ListModels(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, models)
-	assert.Len(t, models, 2)
-
-	// Check first model
-	assert.Equal(t, "text-bison", models[0]["name"])
-	assert.Equal(t, "Text Bison", models[0]["display_name"])
-	assert.Equal(t, "gcp", models[0]["provider"])
-
-	// Check second model
-	assert.Equal(t, "chat-bison", models[1]["name"])
 }
 
 func TestGCPVertexAIIntegration_InvokeModel(t *testing.T) {
+	if os.Getenv("GCP_ACCESS_TOKEN") == "" && os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping GCP Vertex AI InvokeModel test: GCP credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewGCPVertexAIIntegration("test-project", "europe-west1", logger)
 
@@ -111,8 +107,6 @@ func TestGCPVertexAIIntegration_InvokeModel(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
-	assert.Contains(t, result, "Mock GCP Vertex AI response")
-	assert.Contains(t, result, "text-bison")
 }
 
 func TestGCPVertexAIIntegration_GetProviderName(t *testing.T) {
@@ -133,6 +127,10 @@ func TestNewAzureOpenAIIntegration(t *testing.T) {
 }
 
 func TestAzureOpenAIIntegration_ListModels(t *testing.T) {
+	if os.Getenv("AZURE_OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Azure OpenAI ListModels test: Azure credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewAzureOpenAIIntegration("https://test.openai.azure.com", logger)
 
@@ -141,17 +139,13 @@ func TestAzureOpenAIIntegration_ListModels(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, models)
-	assert.Len(t, models, 2)
-
-	// Check models
-	assert.Equal(t, "gpt-4", models[0]["id"])
-	assert.Equal(t, "model", models[0]["object"])
-	assert.Equal(t, "azure", models[0]["owned_by"])
-
-	assert.Equal(t, "gpt-35-turbo", models[1]["id"])
 }
 
 func TestAzureOpenAIIntegration_InvokeModel(t *testing.T) {
+	if os.Getenv("AZURE_OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Azure OpenAI InvokeModel test: Azure credentials not configured")
+	}
+
 	logger := newTestLogger()
 	integration := NewAzureOpenAIIntegration("https://my-resource.openai.azure.com", logger)
 
@@ -162,8 +156,6 @@ func TestAzureOpenAIIntegration_InvokeModel(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
-	assert.Contains(t, result, "Mock Azure OpenAI response")
-	assert.Contains(t, result, "gpt-4")
 }
 
 func TestAzureOpenAIIntegration_GetProviderName(t *testing.T) {
@@ -257,26 +249,32 @@ func TestCloudIntegrationManager_InvokeCloudModel(t *testing.T) {
 	ctx := context.Background()
 	prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
 
-	// Invoke AWS model
-	result, err := manager.InvokeCloudModel(ctx, "aws-bedrock", "amazon.titan-text-express-v1", prompt, nil)
-	require.NoError(t, err)
-	assert.NotEmpty(t, result)
-	assert.Contains(t, result, "Mock AWS Bedrock response")
+	// Test invoking AWS model (skip actual invocation if no credentials)
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		result, err := manager.InvokeCloudModel(ctx, "aws-bedrock", "amazon.titan-text-express-v1", prompt, nil)
+		require.NoError(t, err)
+		assert.NotEmpty(t, result)
+	}
 
-	// Invoke GCP model
-	result, err = manager.InvokeCloudModel(ctx, "gcp-vertex-ai", "text-bison", prompt, nil)
-	require.NoError(t, err)
-	assert.NotEmpty(t, result)
-	assert.Contains(t, result, "Mock GCP Vertex AI response")
+	// Test invoking GCP model (skip actual invocation if no credentials)
+	if os.Getenv("GCP_ACCESS_TOKEN") != "" {
+		result, err := manager.InvokeCloudModel(ctx, "gcp-vertex-ai", "text-bison", prompt, nil)
+		require.NoError(t, err)
+		assert.NotEmpty(t, result)
+	}
 
-	// Invoke non-existent provider
-	result, err = manager.InvokeCloudModel(ctx, "non-existent", "model", prompt, nil)
+	// Invoke non-existent provider (always test this)
+	result, err := manager.InvokeCloudModel(ctx, "non-existent", "model", prompt, nil)
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "not found")
 }
 
 func TestCloudIntegrationManager_InvokeCloudModel_WithConfig(t *testing.T) {
+	if os.Getenv("AZURE_OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Azure OpenAI InvokeCloudModel test: Azure credentials not configured")
+	}
+
 	logger := newTestLogger()
 	manager := NewCloudIntegrationManager(logger)
 
@@ -390,36 +388,80 @@ func TestCloudIntegrationManager_InitializeDefaultProviders(t *testing.T) {
 func TestCloudProviderInterface(t *testing.T) {
 	logger := newTestLogger()
 
-	// Verify all implementations satisfy CloudProvider interface
+	// Verify all implementations satisfy CloudProvider interface at compile time
 	var _ CloudProvider = (*AWSBedrockIntegration)(nil)
 	var _ CloudProvider = (*GCPVertexAIIntegration)(nil)
 	var _ CloudProvider = (*AzureOpenAIIntegration)(nil)
 
-	// Test each implementation
-	providers := []CloudProvider{
-		NewAWSBedrockIntegration("us-east-1", logger),
-		NewGCPVertexAIIntegration("project-id", "us-central1", logger),
-		NewAzureOpenAIIntegration("https://test.openai.azure.com", logger),
-	}
-
-	for _, provider := range providers {
-		ctx := context.Background()
-
-		// ListModels should return non-empty
-		models, err := provider.ListModels(ctx)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, models)
+	// Test each implementation's GetProviderName (no credentials needed)
+	t.Run("AWS Bedrock Interface", func(t *testing.T) {
+		provider := NewAWSBedrockIntegration("us-east-1", logger)
 
 		// GetProviderName should return non-empty
 		name := provider.GetProviderName()
 		assert.NotEmpty(t, name)
+		assert.Equal(t, "aws-bedrock", name)
 
-		// InvokeModel should work
-		prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
-		result, err := provider.InvokeModel(ctx, "test-model", prompt, nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, result)
-	}
+		// All API calls require credentials - verify proper error handling
+		if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+			// ListModels requires credentials
+			_, err := provider.ListModels(context.Background())
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "credentials not configured")
+
+			// InvokeModel requires credentials
+			prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+			_, err = provider.InvokeModel(context.Background(), "test-model", prompt, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "credentials not configured")
+		}
+	})
+
+	t.Run("GCP Vertex AI Interface", func(t *testing.T) {
+		provider := NewGCPVertexAIIntegration("project-id", "us-central1", logger)
+
+		// GetProviderName should return non-empty
+		name := provider.GetProviderName()
+		assert.NotEmpty(t, name)
+		assert.Equal(t, "gcp-vertex-ai", name)
+
+		// All API calls require credentials - verify proper error handling
+		if os.Getenv("GCP_ACCESS_TOKEN") == "" {
+			// ListModels requires credentials
+			_, err := provider.ListModels(context.Background())
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "not configured")
+
+			// InvokeModel requires credentials
+			prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+			_, err = provider.InvokeModel(context.Background(), "test-model", prompt, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "not configured")
+		}
+	})
+
+	t.Run("Azure OpenAI Interface", func(t *testing.T) {
+		provider := NewAzureOpenAIIntegration("https://test.openai.azure.com", logger)
+
+		// GetProviderName should return non-empty
+		name := provider.GetProviderName()
+		assert.NotEmpty(t, name)
+		assert.Equal(t, "azure-openai", name)
+
+		// All API calls require credentials - verify proper error handling
+		if os.Getenv("AZURE_OPENAI_API_KEY") == "" {
+			// ListModels requires credentials
+			_, err := provider.ListModels(context.Background())
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "not configured")
+
+			// InvokeModel requires credentials
+			prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+			_, err = provider.InvokeModel(context.Background(), "test-model", prompt, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "not configured")
+		}
+	})
 }
 
 // Benchmark tests

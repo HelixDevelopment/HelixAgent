@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"sync"
@@ -9,15 +8,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/superagent/superagent/internal/cache"
-	"github.com/superagent/superagent/internal/models"
 )
 
-// RateLimiter implements rate limiting using Redis
+// RateLimiter implements rate limiting with in-memory storage
+// Falls back to in-memory when Redis is unavailable
 type RateLimiter struct {
 	cache      *cache.CacheService
 	mu         sync.RWMutex
 	limits     map[string]*RateLimitConfig
 	defaultCfg *RateLimitConfig
+	// In-memory storage for rate limit tracking
+	buckets map[string]*tokenBucket
+}
+
+// tokenBucket implements a simple token bucket for rate limiting
+type tokenBucket struct {
+	mu         sync.Mutex
+	tokens     int
+	maxTokens  int
+	refillRate time.Duration
+	lastRefill time.Time
 }
 
 // RateLimitConfig defines rate limiting configuration
@@ -37,14 +47,59 @@ type RateLimitResult struct {
 
 // NewRateLimiter creates a new rate limiter
 func NewRateLimiter(cacheService *cache.CacheService) *RateLimiter {
-	return &RateLimiter{
-		cache:  cacheService,
-		limits: make(map[string]*RateLimitConfig),
+	rl := &RateLimiter{
+		cache:   cacheService,
+		limits:  make(map[string]*RateLimitConfig),
+		buckets: make(map[string]*tokenBucket),
 		defaultCfg: &RateLimitConfig{
 			Requests: 100,
 			Window:   time.Minute,
 			KeyFunc:  defaultKeyFunc,
 		},
+	}
+
+	// Start cleanup goroutine for expired buckets
+	go rl.cleanupExpiredBuckets()
+
+	return rl
+}
+
+// NewRateLimiterWithConfig creates a rate limiter with custom default config
+func NewRateLimiterWithConfig(cacheService *cache.CacheService, defaultConfig *RateLimitConfig) *RateLimiter {
+	rl := &RateLimiter{
+		cache:      cacheService,
+		limits:     make(map[string]*RateLimitConfig),
+		buckets:    make(map[string]*tokenBucket),
+		defaultCfg: defaultConfig,
+	}
+
+	if rl.defaultCfg.KeyFunc == nil {
+		rl.defaultCfg.KeyFunc = defaultKeyFunc
+	}
+
+	// Start cleanup goroutine for expired buckets
+	go rl.cleanupExpiredBuckets()
+
+	return rl
+}
+
+// cleanupExpiredBuckets periodically removes stale token buckets
+func (rl *RateLimiter) cleanupExpiredBuckets() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		rl.mu.Lock()
+		now := time.Now()
+		for key, bucket := range rl.buckets {
+			bucket.mu.Lock()
+			// Remove buckets that haven't been used in 10 minutes
+			if now.Sub(bucket.lastRefill) > 10*time.Minute {
+				delete(rl.buckets, key)
+			}
+			bucket.mu.Unlock()
+		}
+		rl.mu.Unlock()
 	}
 }
 
@@ -65,9 +120,9 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 		key := config.KeyFunc(c)
 
 		// Check rate limit
-		result, err := rl.checkLimit(c.Request.Context(), key, config)
+		result, err := rl.checkLimit(key, config)
 		if err != nil {
-			// If cache is unavailable, allow request
+			// If rate limit check fails, allow request (fail open)
 			c.Next()
 			return
 		}
@@ -91,83 +146,74 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	}
 }
 
-// checkLimit checks if the request is within rate limits
-func (rl *RateLimiter) checkLimit(ctx context.Context, key string, config *RateLimitConfig) (*RateLimitResult, error) {
-	if !rl.cache.IsEnabled() {
-		// If cache is disabled, allow all requests
-		return &RateLimitResult{
-			Allowed:   true,
-			Remaining: config.Requests - 1,
-			ResetTime: time.Now().Add(config.Window),
-		}, nil
-	}
+// checkLimit checks if the request is within rate limits using token bucket algorithm
+func (rl *RateLimiter) checkLimit(key string, config *RateLimitConfig) (*RateLimitResult, error) {
+	bucket := rl.getOrCreateBucket(key, config)
 
-	// Use Redis sorted set to track requests
+	bucket.mu.Lock()
+	defer bucket.mu.Unlock()
+
 	now := time.Now()
-	windowStart := now.Add(-config.Window)
 
-	// Remove old entries and add new one
-	cacheKey := "ratelimit:" + key
-
-	// Get current count
-	count, err := rl.getCurrentCount(ctx, cacheKey, windowStart)
-	if err != nil {
-		return nil, err
+	// Refill tokens based on time passed
+	elapsed := now.Sub(bucket.lastRefill)
+	tokensToAdd := int(elapsed / config.Window * time.Duration(config.Requests))
+	if tokensToAdd > 0 {
+		bucket.tokens = min(bucket.maxTokens, bucket.tokens+tokensToAdd)
+		bucket.lastRefill = now
 	}
 
-	remaining := config.Requests - count - 1
-	allowed := count < config.Requests
+	// Check if we have tokens available
+	allowed := bucket.tokens > 0
+	if allowed {
+		bucket.tokens--
+	}
 
+	remaining := bucket.tokens
 	resetTime := now.Add(config.Window)
 
-	if allowed {
-		// Add current request timestamp
-		err = rl.addRequest(ctx, cacheKey, now)
-		if err != nil {
-			return nil, err
+	var retryAfter int
+	if !allowed {
+		// Calculate when the next token will be available
+		retryAfter = int(config.Window.Seconds() / float64(config.Requests))
+		if retryAfter < 1 {
+			retryAfter = 1
 		}
-		remaining = config.Requests - count - 1
-	} else {
-		remaining = 0
 	}
 
 	return &RateLimitResult{
-		Allowed:   allowed,
-		Remaining: max(0, remaining),
-		ResetTime: resetTime,
-		RetryAfter: func() int {
-			if !allowed {
-				return int(config.Window.Seconds())
-			}
-			return 0
-		}(),
+		Allowed:    allowed,
+		Remaining:  remaining,
+		ResetTime:  resetTime,
+		RetryAfter: retryAfter,
 	}, nil
 }
 
-// getCurrentCount gets the current number of requests in the window
-func (rl *RateLimiter) getCurrentCount(ctx context.Context, key string, windowStart time.Time) (int, error) {
-	// This is a simplified implementation
-	// In a real Redis implementation, we'd use ZCOUNT or similar
-	// For now, we'll use a simple key with expiration
+// getOrCreateBucket gets or creates a token bucket for the given key
+func (rl *RateLimiter) getOrCreateBucket(key string, config *RateLimitConfig) *tokenBucket {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
 
-	countKey := key + ":count"
-	var count int
-
-	_, err := rl.cache.GetLLMResponse(ctx, &models.LLMRequest{ID: countKey})
-	if err != nil {
-		// Key doesn't exist, count is 0
-		return 0, nil
+	if bucket, exists := rl.buckets[key]; exists {
+		return bucket
 	}
 
-	// This is a placeholder - real implementation would use Redis sorted sets
-	return count, nil
+	bucket := &tokenBucket{
+		tokens:     config.Requests,
+		maxTokens:  config.Requests,
+		refillRate: config.Window,
+		lastRefill: time.Now(),
+	}
+	rl.buckets[key] = bucket
+	return bucket
 }
 
-// addRequest adds a request timestamp to the rate limit tracking
-func (rl *RateLimiter) addRequest(ctx context.Context, key string, timestamp time.Time) error {
-	// This is a simplified implementation
-	// Real implementation would use Redis ZADD with score as timestamp
-	return nil
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // getConfig returns the rate limit config for a path

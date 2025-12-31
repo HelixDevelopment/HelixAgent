@@ -360,3 +360,232 @@ func TestKeyFuncs(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimiterMiddleware_AllowsWithinLimit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+	limiter := NewRateLimiterWithConfig(cacheService, &RateLimitConfig{
+		Requests: 5,
+		Window:   time.Minute,
+		KeyFunc:  defaultKeyFunc,
+	})
+
+	router := gin.New()
+	router.Use(limiter.Middleware())
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Make 5 requests - all should succeed
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.RemoteAddr = "192.168.1.1:12345"
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Request %d: Expected status 200, got %d", i+1, w.Code)
+		}
+
+		// Check rate limit headers
+		limit := w.Header().Get("X-RateLimit-Limit")
+		if limit != "5" {
+			t.Errorf("Request %d: Expected X-RateLimit-Limit=5, got %s", i+1, limit)
+		}
+	}
+}
+
+func TestRateLimiterMiddleware_BlocksOverLimit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+	limiter := NewRateLimiterWithConfig(cacheService, &RateLimitConfig{
+		Requests: 3,
+		Window:   time.Minute,
+		KeyFunc:  defaultKeyFunc,
+	})
+
+	router := gin.New()
+	router.Use(limiter.Middleware())
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Make 3 requests - all should succeed
+	for i := 0; i < 3; i++ {
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.RemoteAddr = "10.0.0.1:12345"
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Request %d: Expected status 200, got %d", i+1, w.Code)
+		}
+	}
+
+	// 4th request should be rate limited
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "10.0.0.1:12345"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("4th request: Expected status 429, got %d", w.Code)
+	}
+
+	// Check Retry-After header is set
+	retryAfter := w.Header().Get("Retry-After")
+	if retryAfter == "" {
+		t.Error("Expected Retry-After header to be set")
+	}
+}
+
+func TestRateLimiterMiddleware_DifferentKeysIndependent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+	limiter := NewRateLimiterWithConfig(cacheService, &RateLimitConfig{
+		Requests: 2,
+		Window:   time.Minute,
+		KeyFunc:  defaultKeyFunc,
+	})
+
+	router := gin.New()
+	router.Use(limiter.Middleware())
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Use up all requests for IP 1
+	for i := 0; i < 2; i++ {
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.RemoteAddr = "192.168.1.1:12345"
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("IP1 Request %d: Expected status 200, got %d", i+1, w.Code)
+		}
+	}
+
+	// IP 1 should now be rate limited
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.1.1:12345"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("IP1 3rd request: Expected status 429, got %d", w.Code)
+	}
+
+	// But IP 2 should still be allowed
+	req = httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.2.2:12345"
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("IP2 1st request: Expected status 200, got %d", w.Code)
+	}
+}
+
+func TestMinFunction(t *testing.T) {
+	testCases := []struct {
+		name string
+		a    int
+		b    int
+		want int
+	}{
+		{"a_smaller", 5, 10, 5},
+		{"b_smaller", 10, 5, 5},
+		{"equal", 10, 10, 10},
+		{"negative", -10, -5, -10},
+		{"mixed", -5, 10, -5},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := min(tc.a, tc.b)
+			if got != tc.want {
+				t.Errorf("min(%d, %d) = %d, want %d", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewRateLimiterWithConfig(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+
+	customConfig := &RateLimitConfig{
+		Requests: 50,
+		Window:   30 * time.Second,
+		KeyFunc:  ByAPIKey,
+	}
+
+	limiter := NewRateLimiterWithConfig(cacheService, customConfig)
+
+	if limiter == nil {
+		t.Fatal("Expected rate limiter instance, got nil")
+	}
+
+	if limiter.defaultCfg.Requests != 50 {
+		t.Errorf("Expected 50 requests, got %d", limiter.defaultCfg.Requests)
+	}
+
+	if limiter.defaultCfg.Window != 30*time.Second {
+		t.Errorf("Expected 30s window, got %v", limiter.defaultCfg.Window)
+	}
+}
+
+func TestNewRateLimiterWithConfig_NilKeyFunc(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+
+	// Config with nil KeyFunc should get default
+	customConfig := &RateLimitConfig{
+		Requests: 50,
+		Window:   30 * time.Second,
+		KeyFunc:  nil,
+	}
+
+	limiter := NewRateLimiterWithConfig(cacheService, customConfig)
+
+	if limiter.defaultCfg.KeyFunc == nil {
+		t.Error("Expected KeyFunc to be set to default")
+	}
+}

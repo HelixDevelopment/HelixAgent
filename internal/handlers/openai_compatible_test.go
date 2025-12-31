@@ -336,3 +336,184 @@ func TestUnifiedHandler_ConvertToOpenAIChatStreamResponse(t *testing.T) {
 	assert.Equal(t, "assistant", delta["role"])
 	assert.Equal(t, "Streaming test response", delta["content"])
 }
+
+// TestContains tests the contains helper function
+func TestContains(t *testing.T) {
+	tests := []struct {
+		s        string
+		substr   string
+		expected bool
+	}{
+		{"hello world", "hello", true},
+		{"hello world", "world", true},
+		{"hello world", "lo wo", true},
+		{"hello", "hello", true},
+		{"hello", "xyz", false},
+		{"openai/gpt-4", "openai", true},
+		{"anthropic/claude", "anthropic", true},
+		{"google/gemini", "google", true},
+		{"", "", true},
+		{"test", "", true},
+		{"", "test", false},
+		{"abc", "abcd", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.s+"_"+tt.substr, func(t *testing.T) {
+			result := contains(tt.s, tt.substr)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestContainsSubstring tests the containsSubstring helper function
+func TestContainsSubstring(t *testing.T) {
+	tests := []struct {
+		s        string
+		substr   string
+		expected bool
+	}{
+		{"hello world", "lo wo", true},
+		{"hello world", "world", true},
+		{"hello world", "hello", true},
+		{"abc", "abc", true},
+		{"abc", "abcd", false},
+		{"abc", "xyz", false},
+		{"", "", true},
+		{"test", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.s+"_"+tt.substr, func(t *testing.T) {
+			result := containsSubstring(tt.s, tt.substr)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestGenerateID tests the generateID helper function
+func TestGenerateID(t *testing.T) {
+	t.Run("generates 29 character ID", func(t *testing.T) {
+		id := generateID()
+		assert.Len(t, id, 29)
+	})
+
+	t.Run("generates unique IDs", func(t *testing.T) {
+		ids := make(map[string]bool)
+		for i := 0; i < 100; i++ {
+			id := generateID()
+			assert.False(t, ids[id], "Generated duplicate ID")
+			ids[id] = true
+		}
+	})
+
+	t.Run("contains only alphanumeric characters", func(t *testing.T) {
+		id := generateID()
+		for _, char := range id {
+			isAlphanumeric := (char >= 'a' && char <= 'z') ||
+				(char >= 'A' && char <= 'Z') ||
+				(char >= '0' && char <= '9')
+			assert.True(t, isAlphanumeric, "Character %c is not alphanumeric", char)
+		}
+	})
+}
+
+// TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCalls tests conversion with tool calls
+func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCalls(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	openaiReq := &OpenAIChatRequest{
+		Model: "gpt-4",
+		Messages: []OpenAIMessage{
+			{
+				Role:    "assistant",
+				Content: "I will search for you",
+				ToolCalls: []OpenAIToolCall{
+					{
+						ID:   "call_123",
+						Type: "function",
+						Function: OpenAIFunctionCall{
+							Name:      "search",
+							Arguments: `{"query": "weather"}`,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", "test-user")
+	c.Set("session_id", "test-session")
+
+	internalReq := handler.convertOpenAIChatRequest(openaiReq, c)
+
+	assert.NotNil(t, internalReq)
+	assert.Equal(t, 1, len(internalReq.Messages))
+	assert.NotNil(t, internalReq.Messages[0].ToolCalls)
+	assert.Equal(t, "test-user", internalReq.UserID)
+	assert.Equal(t, "test-session", internalReq.SessionID)
+}
+
+// TestUnifiedHandler_ConvertOpenAIChatRequest_WithAllParams tests conversion with all parameters
+func TestUnifiedHandler_ConvertOpenAIChatRequest_WithAllParams(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	openaiReq := &OpenAIChatRequest{
+		Model: "gpt-4",
+		Messages: []OpenAIMessage{
+			{Role: "user", Content: "Test message"},
+		},
+		MaxTokens:        500,
+		Temperature:      0.5,
+		TopP:             0.9,
+		Stop:             []string{"\n", "END"},
+		PresencePenalty:  0.3,
+		FrequencyPenalty: 0.4,
+		LogitBias:        map[string]float64{"123": 0.5},
+		User:             "test-user-id",
+		ForceProvider:    "openai",
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	internalReq := handler.convertOpenAIChatRequest(openaiReq, c)
+
+	assert.NotNil(t, internalReq)
+	assert.Equal(t, "gpt-4", internalReq.ModelParams.Model)
+	assert.Equal(t, 500, internalReq.ModelParams.MaxTokens)
+	assert.Equal(t, 0.5, internalReq.ModelParams.Temperature)
+	assert.Equal(t, 0.9, internalReq.ModelParams.TopP)
+	assert.Equal(t, []string{"\n", "END"}, internalReq.ModelParams.StopSequences)
+
+	providerSpecific := internalReq.ModelParams.ProviderSpecific
+	assert.Equal(t, 0.3, providerSpecific["presence_penalty"])
+	assert.Equal(t, 0.4, providerSpecific["frequency_penalty"])
+	assert.Equal(t, "openai", providerSpecific["force_provider"])
+}
+
+// TestUnifiedHandler_ProcessWithEnsemble_NoRegistry tests ensemble without registry
+func TestUnifiedHandler_ProcessWithEnsemble_NoRegistry(t *testing.T) {
+	handler := &UnifiedHandler{
+		providerRegistry: nil,
+	}
+
+	_, err := handler.processWithEnsemble(nil, nil, nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provider registry not available")
+}
+
+// TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry tests streaming without registry
+func TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry(t *testing.T) {
+	handler := &UnifiedHandler{
+		providerRegistry: nil,
+	}
+
+	_, err := handler.processWithEnsembleStream(nil, nil, nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provider registry not available")
+}

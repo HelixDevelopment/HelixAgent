@@ -255,3 +255,170 @@ func TestProtocolHandler_ConfigureProtocols(t *testing.T) {
 
 	mockManager.AssertExpectations(t)
 }
+
+func TestNewProtocolHandler(t *testing.T) {
+	logger := logrus.New()
+	mockManager := &MockUnifiedProtocolManager{}
+
+	handler := NewProtocolHandler(mockManager, logger)
+
+	assert.NotNil(t, handler)
+	assert.Equal(t, mockManager, handler.protocolService)
+	assert.Equal(t, logger, handler.log)
+}
+
+func TestProtocolHandler_ExecuteProtocolRequest_InvalidJSON(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	// Create HTTP request with invalid JSON
+	httpReq := httptest.NewRequest("POST", "/protocols/execute", bytes.NewBufferString("invalid json"))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.ExecuteProtocolRequest(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestProtocolHandler_ExecuteProtocolRequest_ServiceError(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	req := services.UnifiedProtocolRequest{
+		ProtocolType: "mcp",
+		ServerID:     "test-server",
+		ToolName:     "test-tool",
+	}
+
+	mockManager.On("ExecuteRequest", mock.Anything, req).Return(services.UnifiedProtocolResponse{}, assert.AnError)
+
+	requestBody, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/protocols/execute", bytes.NewBuffer(requestBody))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.ExecuteProtocolRequest(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockManager.AssertExpectations(t)
+}
+
+func TestProtocolHandler_ListProtocolServers_Error(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	mockManager.On("ListServers", mock.Anything).Return(map[string]interface{}{}, assert.AnError)
+
+	httpReq := httptest.NewRequest("GET", "/protocols/servers", nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.ListProtocolServers(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockManager.AssertExpectations(t)
+}
+
+func TestProtocolHandler_GetProtocolMetrics_Error(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	mockManager.On("GetMetrics", mock.Anything).Return(map[string]interface{}{}, assert.AnError)
+
+	httpReq := httptest.NewRequest("GET", "/protocols/metrics", nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.GetProtocolMetrics(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockManager.AssertExpectations(t)
+}
+
+func TestProtocolHandler_RefreshProtocolServers_Error(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	mockManager.On("RefreshAll", mock.Anything).Return(assert.AnError)
+
+	httpReq := httptest.NewRequest("POST", "/protocols/refresh", nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.RefreshProtocolServers(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockManager.AssertExpectations(t)
+}
+
+func TestProtocolHandler_ConfigureProtocols_InvalidJSON(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	httpReq := httptest.NewRequest("POST", "/protocols/configure", bytes.NewBufferString("{invalid"))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.ConfigureProtocols(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestProtocolHandler_ConfigureProtocols_ServiceError(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	mockManager := &MockUnifiedProtocolManager{}
+	handler := NewProtocolHandler(mockManager, logger)
+
+	config := map[string]interface{}{"enabled": true}
+
+	mockManager.On("ConfigureProtocols", mock.Anything, config).Return(assert.AnError)
+
+	requestBody, _ := json.Marshal(config)
+	httpReq := httptest.NewRequest("POST", "/protocols/configure", bytes.NewBuffer(requestBody))
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httpReq
+
+	handler.ConfigureProtocols(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockManager.AssertExpectations(t)
+}

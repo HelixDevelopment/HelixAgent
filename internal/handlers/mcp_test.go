@@ -440,3 +440,218 @@ func TestMCPHandler_MCPToolsCall_WithExposeAllTools(t *testing.T) {
 	assert.Contains(t, body, "resources")
 	// With ExposeAllTools: true but no providers, tools might be empty
 }
+
+// TestMCPHandler_MCPToolsCall_MissingName tests tool call without name
+func TestMCPHandler_MCPToolsCall_MissingName(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	handler := NewMCPHandler(nil, cfg)
+
+	// Create request without tool name
+	requestBody := map[string]interface{}{
+		"arguments": map[string]interface{}{
+			"param1": "value1",
+		},
+	}
+
+	reqBytes, _ := json.Marshal(requestBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/mcp/tools/call", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.MCPToolsCall(c)
+
+	// Should return internal server error since no providers
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestMCPHandler_MCPToolsCall_InvalidToolFormat tests tool call with invalid tool format
+func TestMCPHandler_MCPToolsCall_InvalidToolFormat(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled:              true,
+		UnifiedToolNamespace: false,
+	}
+
+	handler := NewMCPHandler(nil, cfg)
+
+	// Create request with non-namespaced tool
+	requestBody := map[string]interface{}{
+		"name": "simpletool",
+		"arguments": map[string]interface{}{
+			"param1": "value1",
+		},
+	}
+
+	reqBytes, _ := json.Marshal(requestBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/mcp/tools/call", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.MCPToolsCall(c)
+
+	// Should return internal server error since registry is nil
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestMCPHandler_RegisterMCPServer_NilManager tests registration with nil manager
+func TestMCPHandler_RegisterMCPServer_NilManager(t *testing.T) {
+	handler := &MCPHandler{
+		config:     &config.MCPConfig{Enabled: true},
+		mcpManager: nil,
+	}
+
+	serverConfig := map[string]interface{}{
+		"name": "test-server",
+	}
+
+	err := handler.RegisterMCPServer(serverConfig)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "MCP manager not initialized")
+}
+
+// TestMCPHandler_MCPCapabilities_WithProviderRegistry tests capabilities with nil registry
+func TestMCPHandler_MCPCapabilities_WithNilProviderRegistry(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	handler := &MCPHandler{
+		config:           cfg,
+		providerRegistry: nil,
+		mcpManager:       nil,
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/mcp/capabilities", nil)
+
+	handler.MCPCapabilities(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "providers")
+	assert.Contains(t, body, "[]")
+}
+
+// TestFindUnderscoreIndex_EdgeCases tests edge cases for underscore finder
+func TestFindUnderscoreIndex_EdgeCases(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int
+	}{
+		{"provider_tool_name", 8}, // First underscore in middle
+		{"ab_cd_ef", 2},           // First underscore
+		{"__test", 1},             // Second underscore (first is at position 0, so second at position 1 is valid)
+		{"test__name", 4},         // First valid underscore
+		{"x_y", 1},                // Minimum valid case
+		{"_", -1},                 // Only underscore, at end
+		{"__", -1},                // Double underscore, second at end
+		{"a__b", 1},               // First underscore at valid position
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := findUnderscoreIndex(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestMCPHandler_MCPTools_Enabled_EmptyTools tests tools endpoint with empty tools
+func TestMCPHandler_MCPTools_Enabled_EmptyTools(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	handler := NewMCPHandler(nil, cfg)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/mcp/tools", nil)
+
+	handler.MCPTools(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	// Tools should be empty array
+	tools := response["tools"]
+	assert.NotNil(t, tools)
+}
+
+// TestMCPHandler_MCPPrompts_ResponseStructure tests prompts response structure
+func TestMCPHandler_MCPPrompts_ResponseStructure(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	handler := NewMCPHandler(nil, cfg)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/mcp/prompts", nil)
+
+	handler.MCPPrompts(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	prompts := response["prompts"].([]interface{})
+	assert.Len(t, prompts, 2)
+
+	// Check summarize prompt
+	summarize := prompts[0].(map[string]interface{})
+	assert.Equal(t, "summarize", summarize["name"])
+	assert.Contains(t, summarize["description"].(string), "Summarize")
+
+	// Check analyze prompt
+	analyze := prompts[1].(map[string]interface{})
+	assert.Equal(t, "analyze", analyze["name"])
+	assert.Contains(t, analyze["description"].(string), "Analyze")
+}
+
+// TestMCPHandler_MCPResources_ResponseStructure tests resources response structure
+func TestMCPHandler_MCPResources_ResponseStructure(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	handler := NewMCPHandler(nil, cfg)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/mcp/resources", nil)
+
+	handler.MCPResources(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	resources := response["resources"].([]interface{})
+	assert.Len(t, resources, 2)
+
+	// Check providers resource
+	providers := resources[0].(map[string]interface{})
+	assert.Equal(t, "superagent://providers", providers["uri"])
+	assert.Equal(t, "application/json", providers["mimeType"])
+
+	// Check models resource
+	models := resources[1].(map[string]interface{})
+	assert.Equal(t, "superagent://models", models["uri"])
+	assert.Equal(t, "application/json", models["mimeType"])
+}

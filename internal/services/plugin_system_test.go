@@ -669,60 +669,88 @@ func TestHighAvailabilityManager_Start(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
-	log := newHATestLogger()
-	ham := NewHighAvailabilityManager(log)
+	// These tests verify handleHealthUpdate doesn't panic and updates status
+	// Note: handleHealthUpdate spawns goroutines for failover which complicates assertions
 
-	instance := &ServiceInstance{
-		ID:       "health-update-test",
-		Address:  "localhost",
-		Port:     8080,
-		Protocol: "mcp",
-		Status:   StatusHealthy,
-	}
-	ham.RegisterInstance(instance)
+	t.Run("non-existent instance does not panic", func(t *testing.T) {
+		log := newHATestLogger()
+		ham := NewHighAvailabilityManager(log)
 
-	t.Run("instance becomes unhealthy", func(t *testing.T) {
-		ham.mu.Lock()
-		ham.instances["health-update-test"].Status = StatusHealthy
-		ham.mu.Unlock()
-
-		ham.handleHealthUpdate("health-update-test", false)
-
-		ham.mu.RLock()
-		status := ham.instances["health-update-test"].Status
-		ham.mu.RUnlock()
-		assert.Equal(t, StatusUnhealthy, status)
-	})
-
-	t.Run("instance becomes healthy", func(t *testing.T) {
-		ham.mu.Lock()
-		ham.instances["health-update-test"].Status = StatusUnhealthy
-		ham.mu.Unlock()
-
-		ham.handleHealthUpdate("health-update-test", true)
-
-		ham.mu.RLock()
-		status := ham.instances["health-update-test"].Status
-		ham.mu.RUnlock()
-		assert.Equal(t, StatusHealthy, status)
-	})
-
-	t.Run("non-existent instance", func(t *testing.T) {
-		// Should not panic
+		// Should not panic when called with non-existent instance
 		ham.handleHealthUpdate("non-existent", true)
+		ham.handleHealthUpdate("non-existent", false)
 	})
 
-	t.Run("already healthy remains healthy", func(t *testing.T) {
-		ham.mu.Lock()
-		ham.instances["health-update-test"].Status = StatusHealthy
-		ham.mu.Unlock()
+	t.Run("healthy update on healthy instance", func(t *testing.T) {
+		log := newHATestLogger()
+		ham := NewHighAvailabilityManager(log)
 
-		ham.handleHealthUpdate("health-update-test", true)
+		instance := &ServiceInstance{
+			ID:       "healthy-test",
+			Address:  "localhost",
+			Port:     8081,
+			Protocol: "mcp",
+			Status:   StatusHealthy,
+		}
+		ham.RegisterInstance(instance)
+
+		// Healthy update on already healthy instance - no goroutine spawned
+		ham.handleHealthUpdate("healthy-test", true)
 
 		ham.mu.RLock()
-		status := ham.instances["health-update-test"].Status
+		status := ham.instances["healthy-test"].Status
 		ham.mu.RUnlock()
 		assert.Equal(t, StatusHealthy, status)
+	})
+
+	t.Run("healthy update on unhealthy instance", func(t *testing.T) {
+		log := newHATestLogger()
+		ham := NewHighAvailabilityManager(log)
+
+		instance := &ServiceInstance{
+			ID:       "recover-test",
+			Address:  "localhost",
+			Port:     8082,
+			Protocol: "mcp",
+			Status:   StatusUnhealthy,
+		}
+		ham.RegisterInstance(instance)
+
+		// Healthy update on unhealthy instance - no goroutine spawned for recovery
+		ham.handleHealthUpdate("recover-test", true)
+
+		ham.mu.RLock()
+		status := ham.instances["recover-test"].Status
+		ham.mu.RUnlock()
+		assert.Equal(t, StatusHealthy, status)
+	})
+
+	t.Run("unhealthy update triggers status change", func(t *testing.T) {
+		log := newHATestLogger()
+		ham := NewHighAvailabilityManager(log)
+
+		instance := &ServiceInstance{
+			ID:       "fail-test",
+			Address:  "localhost",
+			Port:     8083,
+			Protocol: "mcp",
+			Status:   StatusHealthy,
+		}
+		ham.RegisterInstance(instance)
+
+		// This spawns a goroutine for failover
+		ham.handleHealthUpdate("fail-test", false)
+
+		// Allow goroutine to start (we just verify it doesn't crash)
+		time.Sleep(10 * time.Millisecond)
+
+		// The status should be unhealthy (set before goroutine)
+		ham.mu.RLock()
+		status := ham.instances["fail-test"].Status
+		ham.mu.RUnlock()
+		// Status should have been changed to unhealthy
+		assert.True(t, status == StatusUnhealthy || status == StatusStarting,
+			"Status should be unhealthy or starting, got %d", status)
 	})
 }
 

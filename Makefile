@@ -70,7 +70,27 @@ test-unit:
 	go test -v ./internal/... -short
 
 test-integration:
-	@echo "🧪 Running integration tests..."
+	@echo "🧪 Running integration tests with Docker dependencies..."
+	@./scripts/run-integration-tests.sh --package ./internal/services/...
+
+test-integration-verbose:
+	@echo "🧪 Running integration tests (verbose)..."
+	@./scripts/run-integration-tests.sh --verbose --package ./internal/services/...
+
+test-integration-coverage:
+	@echo "🧪 Running integration tests with coverage..."
+	@./scripts/run-integration-tests.sh --coverage --package ./internal/services/...
+
+test-integration-keep:
+	@echo "🧪 Running integration tests (keep containers)..."
+	@./scripts/run-integration-tests.sh --keep --package ./internal/services/...
+
+test-integration-all:
+	@echo "🧪 Running all tests with Docker dependencies..."
+	@./scripts/run-integration-tests.sh --coverage
+
+test-integration-old:
+	@echo "🧪 Running legacy integration tests..."
 	go test -v ./tests/integration
 
 test-e2e:
@@ -335,7 +355,11 @@ help:
 	@echo "  test-coverage      Run tests with coverage report"
 	@echo "  test-coverage-100  Run tests with 100% coverage requirement"
 	@echo "  test-unit          Run unit tests only"
-	@echo "  test-integration   Run integration tests only"
+	@echo "  test-integration          Run integration tests with Docker deps"
+	@echo "  test-integration-verbose  Run integration tests (verbose)"
+	@echo "  test-integration-coverage Run integration tests with coverage"
+	@echo "  test-integration-keep     Run tests, keep containers running"
+	@echo "  test-integration-all      Run all tests with Docker deps"
 	@echo "  test-e2e           Run end-to-end tests"
 	@echo "  test-security      Run security tests"
 	@echo "  test-stress        Run stress tests"

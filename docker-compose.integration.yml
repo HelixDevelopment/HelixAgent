@@ -1,0 +1,49 @@
+version: '3.8'
+
+# Lightweight Docker Compose for running integration tests
+# Only includes essential services: PostgreSQL and Redis
+
+services:
+  # PostgreSQL Database for Integration Tests
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: superagent-postgres-test
+    environment:
+      POSTGRES_DB: superagent_test_db
+      POSTGRES_USER: superagent_test
+      POSTGRES_PASSWORD: test123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - superagent-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superagent_test -d superagent_test_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # Redis Cache for Integration Tests
+  redis-test:
+    image: redis:7-alpine
+    container_name: superagent-redis-test
+    command: redis-server --requirepass test123 --appendonly no --save ""
+    ports:
+      - "6380:6379"
+    tmpfs:
+      - /data
+    networks:
+      - superagent-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "test123", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+
+networks:
+  superagent-test-network:
+    driver: bridge

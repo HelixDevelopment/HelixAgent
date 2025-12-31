@@ -77,3 +77,56 @@ func TestCheckChromaDBHealth(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "connect")
 }
+
+func TestCheckPostgresHealth(t *testing.T) {
+	// This is a placeholder health check that just waits
+	err := checkPostgresHealth()
+	assert.NoError(t, err)
+}
+
+func TestCheckRedisHealth(t *testing.T) {
+	// This is a placeholder health check that just waits
+	err := checkRedisHealth()
+	assert.NoError(t, err)
+}
+
+func TestShowHelp(t *testing.T) {
+	// This should not panic
+	showHelp()
+}
+
+func TestShowVersion(t *testing.T) {
+	// This should not panic
+	showVersion()
+}
+
+func TestVerifyServicesHealth_PostgresAndRedis(t *testing.T) {
+	logger := logrus.New()
+
+	// Test postgres and redis health checks (they are placeholder implementations)
+	err := verifyServicesHealth([]string{"postgres", "redis"}, logger)
+	assert.NoError(t, err)
+}
+
+func TestVerifyServicesHealth_AllServices(t *testing.T) {
+	logger := logrus.New()
+
+	// Test with services that require running containers
+	// cognee and chromadb will fail since they're not running
+	err := verifyServicesHealth([]string{"postgres", "redis", "cognee", "chromadb"}, logger)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cognee")
+}
+
+func TestGetRunningServices_NoDocker(t *testing.T) {
+	// If docker is available, we test the actual function
+	// If not, we verify the function handles missing docker gracefully
+	services, err := getRunningServices()
+
+	// Either returns services or an error, but should not panic
+	if err != nil {
+		t.Logf("Expected error when docker unavailable: %v", err)
+	} else {
+		assert.NotNil(t, services)
+	}
+}

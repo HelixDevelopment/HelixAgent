@@ -33,22 +33,22 @@ type CogneeService struct {
 // CogneeServiceConfig holds all configuration for the Cognee service
 type CogneeServiceConfig struct {
 	// Core settings
-	Enabled         bool          `json:"enabled"`
-	BaseURL         string        `json:"base_url"`
-	APIKey          string        `json:"api_key"`
-	Timeout         time.Duration `json:"timeout"`
-	AutoContainerize bool         `json:"auto_containerize"`
+	Enabled          bool          `json:"enabled"`
+	BaseURL          string        `json:"base_url"`
+	APIKey           string        `json:"api_key"`
+	Timeout          time.Duration `json:"timeout"`
+	AutoContainerize bool          `json:"auto_containerize"`
 
 	// Memory enhancement settings
-	AutoCognify           bool    `json:"auto_cognify"`
-	EnhancePrompts        bool    `json:"enhance_prompts"`
-	StoreResponses        bool    `json:"store_responses"`
-	MaxContextSize        int     `json:"max_context_size"`
-	RelevanceThreshold    float64 `json:"relevance_threshold"`
-	TemporalAwareness     bool    `json:"temporal_awareness"`
-	EnableFeedbackLoop    bool    `json:"enable_feedback_loop"`
-	EnableGraphReasoning  bool    `json:"enable_graph_reasoning"`
-	EnableCodeIntelligence bool   `json:"enable_code_intelligence"`
+	AutoCognify            bool    `json:"auto_cognify"`
+	EnhancePrompts         bool    `json:"enhance_prompts"`
+	StoreResponses         bool    `json:"store_responses"`
+	MaxContextSize         int     `json:"max_context_size"`
+	RelevanceThreshold     float64 `json:"relevance_threshold"`
+	TemporalAwareness      bool    `json:"temporal_awareness"`
+	EnableFeedbackLoop     bool    `json:"enable_feedback_loop"`
+	EnableGraphReasoning   bool    `json:"enable_graph_reasoning"`
+	EnableCodeIntelligence bool    `json:"enable_code_intelligence"`
 
 	// Search settings
 	DefaultSearchLimit   int      `json:"default_search_limit"`
@@ -140,15 +140,15 @@ type CodeContext struct {
 
 // CogneeSearchResult represents a comprehensive search result
 type CogneeSearchResult struct {
-	Query              string                   `json:"query"`
-	VectorResults      []MemoryEntry            `json:"vector_results"`
-	GraphResults       []map[string]interface{} `json:"graph_results"`
-	InsightsResults    []map[string]interface{} `json:"insights_results"`
-	GraphCompletions   []map[string]interface{} `json:"graph_completions"`
-	CombinedContext    string                   `json:"combined_context"`
-	TotalResults       int                      `json:"total_results"`
-	SearchLatency      time.Duration            `json:"search_latency"`
-	RelevanceScore     float64                  `json:"relevance_score"`
+	Query            string                   `json:"query"`
+	VectorResults    []MemoryEntry            `json:"vector_results"`
+	GraphResults     []map[string]interface{} `json:"graph_results"`
+	InsightsResults  []map[string]interface{} `json:"insights_results"`
+	GraphCompletions []map[string]interface{} `json:"graph_completions"`
+	CombinedContext  string                   `json:"combined_context"`
+	TotalResults     int                      `json:"total_results"`
+	SearchLatency    time.Duration            `json:"search_latency"`
+	RelevanceScore   float64                  `json:"relevance_score"`
 }
 
 // NewCogneeService creates a new comprehensive Cognee service
@@ -158,29 +158,29 @@ func NewCogneeService(cfg *config.Config, logger *logrus.Logger) *CogneeService 
 	}
 
 	serviceConfig := &CogneeServiceConfig{
-		Enabled:               cfg.Cognee.Enabled,
-		BaseURL:               cfg.Cognee.BaseURL,
-		APIKey:                cfg.Cognee.APIKey,
-		Timeout:               cfg.Cognee.Timeout,
-		AutoContainerize:      true,
-		AutoCognify:           cfg.Cognee.AutoCognify,
-		EnhancePrompts:        true,
-		StoreResponses:        true,
-		MaxContextSize:        4096,
-		RelevanceThreshold:    0.7,
-		TemporalAwareness:     true,
-		EnableFeedbackLoop:    true,
-		EnableGraphReasoning:  true,
+		Enabled:                cfg.Cognee.Enabled,
+		BaseURL:                cfg.Cognee.BaseURL,
+		APIKey:                 cfg.Cognee.APIKey,
+		Timeout:                cfg.Cognee.Timeout,
+		AutoContainerize:       true,
+		AutoCognify:            cfg.Cognee.AutoCognify,
+		EnhancePrompts:         true,
+		StoreResponses:         true,
+		MaxContextSize:         4096,
+		RelevanceThreshold:     0.7,
+		TemporalAwareness:      true,
+		EnableFeedbackLoop:     true,
+		EnableGraphReasoning:   true,
 		EnableCodeIntelligence: true,
-		DefaultSearchLimit:    10,
-		DefaultDataset:        "default",
-		SearchTypes:           []string{"VECTOR", "GRAPH", "INSIGHTS"},
-		CombineSearchResults:  true,
-		CacheEnabled:          true,
-		CacheTTL:              30 * time.Minute,
-		MaxConcurrency:        10,
-		BatchSize:             50,
-		AsyncProcessing:       true,
+		DefaultSearchLimit:     10,
+		DefaultDataset:         "default",
+		SearchTypes:            []string{"VECTOR", "GRAPH", "INSIGHTS"},
+		CombineSearchResults:   true,
+		CacheEnabled:           true,
+		CacheTTL:               30 * time.Minute,
+		MaxConcurrency:         10,
+		BatchSize:              50,
+		AsyncProcessing:        true,
 	}
 
 	timeout := serviceConfig.Timeout
@@ -372,10 +372,10 @@ func (s *CogneeService) AddMemory(ctx context.Context, content, dataset, content
 	}
 
 	var result struct {
-		ID         string                 `json:"id"`
-		VectorID   string                 `json:"vector_id"`
-		GraphNodes []string               `json:"graph_nodes"`
-		Status     string                 `json:"status"`
+		ID         string   `json:"id"`
+		VectorID   string   `json:"vector_id"`
+		GraphNodes []string `json:"graph_nodes"`
+		Status     string   `json:"status"`
 	}
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
@@ -1002,11 +1002,11 @@ func (s *CogneeService) ProvideFeedback(ctx context.Context, queryID, query, res
 	// Store feedback in Cognee for learning
 	if approved {
 		reqBody := map[string]interface{}{
-			"query_id":      queryID,
-			"query":         query,
-			"response":      response,
-			"relevance":     relevance,
-			"approved":      approved,
+			"query_id":         queryID,
+			"query":            query,
+			"response":         response,
+			"relevance":        relevance,
+			"approved":         approved,
 			"save_interaction": true,
 		}
 

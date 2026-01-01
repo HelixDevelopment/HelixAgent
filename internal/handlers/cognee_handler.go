@@ -50,11 +50,11 @@ func (h *CogneeAPIHandler) Health(c *gin.Context) {
 		"healthy": healthy,
 		"ready":   ready,
 		"config": gin.H{
-			"enabled":               h.cogneeService.GetConfig().Enabled,
-			"auto_cognify":          h.cogneeService.GetConfig().AutoCognify,
-			"enhance_prompts":       h.cogneeService.GetConfig().EnhancePrompts,
-			"temporal_awareness":    h.cogneeService.GetConfig().TemporalAwareness,
-			"enable_graph_reasoning": h.cogneeService.GetConfig().EnableGraphReasoning,
+			"enabled":                  h.cogneeService.GetConfig().Enabled,
+			"auto_cognify":             h.cogneeService.GetConfig().AutoCognify,
+			"enhance_prompts":          h.cogneeService.GetConfig().EnhancePrompts,
+			"temporal_awareness":       h.cogneeService.GetConfig().TemporalAwareness,
+			"enable_graph_reasoning":   h.cogneeService.GetConfig().EnableGraphReasoning,
 			"enable_code_intelligence": h.cogneeService.GetConfig().EnableCodeIntelligence,
 		},
 	})
@@ -146,15 +146,15 @@ func (h *CogneeAPIHandler) SearchMemory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"query":              result.Query,
-		"vector_results":     result.VectorResults,
-		"graph_results":      result.GraphResults,
-		"insights_results":   result.InsightsResults,
-		"graph_completions":  result.GraphCompletions,
-		"combined_context":   result.CombinedContext,
-		"total_results":      result.TotalResults,
-		"search_latency_ms":  result.SearchLatency.Milliseconds(),
-		"relevance_score":    result.RelevanceScore,
+		"query":             result.Query,
+		"vector_results":    result.VectorResults,
+		"graph_results":     result.GraphResults,
+		"insights_results":  result.InsightsResults,
+		"graph_completions": result.GraphCompletions,
+		"combined_context":  result.CombinedContext,
+		"total_results":     result.TotalResults,
+		"search_latency_ms": result.SearchLatency.Milliseconds(),
+		"relevance_score":   result.RelevanceScore,
 	})
 }
 
@@ -438,22 +438,22 @@ func (h *CogneeAPIHandler) GetConfig(c *gin.Context) {
 	config := h.cogneeService.GetConfig()
 
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":               config.Enabled,
-		"base_url":              config.BaseURL,
-		"auto_cognify":          config.AutoCognify,
-		"enhance_prompts":       config.EnhancePrompts,
-		"store_responses":       config.StoreResponses,
-		"max_context_size":      config.MaxContextSize,
-		"relevance_threshold":   config.RelevanceThreshold,
-		"temporal_awareness":    config.TemporalAwareness,
-		"enable_feedback_loop":  config.EnableFeedbackLoop,
-		"enable_graph_reasoning": config.EnableGraphReasoning,
+		"enabled":                  config.Enabled,
+		"base_url":                 config.BaseURL,
+		"auto_cognify":             config.AutoCognify,
+		"enhance_prompts":          config.EnhancePrompts,
+		"store_responses":          config.StoreResponses,
+		"max_context_size":         config.MaxContextSize,
+		"relevance_threshold":      config.RelevanceThreshold,
+		"temporal_awareness":       config.TemporalAwareness,
+		"enable_feedback_loop":     config.EnableFeedbackLoop,
+		"enable_graph_reasoning":   config.EnableGraphReasoning,
 		"enable_code_intelligence": config.EnableCodeIntelligence,
-		"default_search_limit":  config.DefaultSearchLimit,
-		"default_dataset":       config.DefaultDataset,
-		"search_types":          config.SearchTypes,
-		"cache_enabled":         config.CacheEnabled,
-		"max_concurrency":       config.MaxConcurrency,
+		"default_search_limit":     config.DefaultSearchLimit,
+		"default_dataset":          config.DefaultDataset,
+		"search_types":             config.SearchTypes,
+		"cache_enabled":            config.CacheEnabled,
+		"max_concurrency":          config.MaxConcurrency,
 	})
 }
 

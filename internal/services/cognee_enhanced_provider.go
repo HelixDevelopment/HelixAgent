@@ -26,29 +26,29 @@ type CogneeEnhancedProvider struct {
 // CogneeProviderConfig configures the enhanced provider behavior
 type CogneeProviderConfig struct {
 	// Enhancement behavior
-	EnhanceBeforeRequest  bool `json:"enhance_before_request"`
-	StoreAfterResponse    bool `json:"store_after_response"`
-	AutoCognifyResponses  bool `json:"auto_cognify_responses"`
-	EnableGraphReasoning  bool `json:"enable_graph_reasoning"`
+	EnhanceBeforeRequest   bool `json:"enhance_before_request"`
+	StoreAfterResponse     bool `json:"store_after_response"`
+	AutoCognifyResponses   bool `json:"auto_cognify_responses"`
+	EnableGraphReasoning   bool `json:"enable_graph_reasoning"`
 	EnableCodeIntelligence bool `json:"enable_code_intelligence"`
 
 	// Context settings
-	MaxContextInjection   int     `json:"max_context_injection"`
-	RelevanceThreshold    float64 `json:"relevance_threshold"`
-	ContextPrefix         string  `json:"context_prefix"`
-	ContextSuffix         string  `json:"context_suffix"`
+	MaxContextInjection int     `json:"max_context_injection"`
+	RelevanceThreshold  float64 `json:"relevance_threshold"`
+	ContextPrefix       string  `json:"context_prefix"`
+	ContextSuffix       string  `json:"context_suffix"`
 
 	// Dataset settings
-	DefaultDataset        string   `json:"default_dataset"`
-	UseSessionDataset     bool     `json:"use_session_dataset"`
-	UseUserDataset        bool     `json:"use_user_dataset"`
-	DatasetHierarchy      []string `json:"dataset_hierarchy"` // Order of datasets to search
+	DefaultDataset    string   `json:"default_dataset"`
+	UseSessionDataset bool     `json:"use_session_dataset"`
+	UseUserDataset    bool     `json:"use_user_dataset"`
+	DatasetHierarchy  []string `json:"dataset_hierarchy"` // Order of datasets to search
 
 	// Performance settings
-	AsyncEnhancement      bool          `json:"async_enhancement"`
-	EnhancementTimeout    time.Duration `json:"enhancement_timeout"`
-	CacheEnhancements     bool          `json:"cache_enhancements"`
-	CacheTTL              time.Duration `json:"cache_ttl"`
+	AsyncEnhancement   bool          `json:"async_enhancement"`
+	EnhancementTimeout time.Duration `json:"enhancement_timeout"`
+	CacheEnhancements  bool          `json:"cache_enhancements"`
+	CacheTTL           time.Duration `json:"cache_ttl"`
 
 	// Streaming settings
 	EnhanceStreamingPrompt bool `json:"enhance_streaming_prompt"`

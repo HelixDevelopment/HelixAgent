@@ -324,6 +324,13 @@ func (s *CogneeService) IsReady() bool {
 	return s.isReady
 }
 
+// SetReady sets the ready state (for testing)
+func (s *CogneeService) SetReady(ready bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isReady = ready
+}
+
 // =====================================================
 // MEMORY OPERATIONS
 // =====================================================

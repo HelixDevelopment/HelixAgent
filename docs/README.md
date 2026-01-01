@@ -17,6 +17,7 @@ SuperAgent is an advanced AI-powered multi-provider LLM orchestration platform w
 
 ### 📖 User Guides
 - [User Manual](user/README.md) - Comprehensive user guide
+- [Cognee Integration](COGNEE_INTEGRATION.md) - AI Memory Engine with knowledge graphs
 - [AI Debate Configuration](ai-debate-configuration.md) - Configuring AI debates
 - [Multi-Provider Setup](MULTI_PROVIDER_SETUP.md) - Setting up multiple LLM providers
 - [OpenRouter Integration](OPENROUTER_INTEGRATION.md) - Integrating with OpenRouter
@@ -53,6 +54,7 @@ SuperAgent is an advanced AI-powered multi-provider LLM orchestration platform w
 ## Key Features
 
 - **Multi-Provider Support**: Claude, DeepSeek, Gemini, Qwen, Zai, Ollama, OpenRouter
+- **Cognee Integration**: AI Memory Engine with knowledge graphs, semantic search, and automatic context enhancement
 - **AI Debate System**: Advanced multi-agent debate orchestration
 - **Enterprise Monitoring**: Comprehensive metrics and observability
 - **High Performance**: Optimized for production workloads

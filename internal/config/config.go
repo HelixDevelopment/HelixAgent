@@ -207,11 +207,11 @@ func Load() *Config {
 			Timeout:  getDurationEnv("REDIS_TIMEOUT", 5*time.Second),
 		},
 		Cognee: CogneeConfig{
-			BaseURL:     getEnv("COGNEE_BASE_URL", "http://localhost:8000"),
+			BaseURL:     getEnv("COGNEE_BASE_URL", "http://cognee:8000"),
 			APIKey:      getEnv("COGNEE_API_KEY", ""),
-			AutoCognify: getBoolEnv("COGNEE_AUTO_COGNIFY", false),
+			AutoCognify: getBoolEnv("COGNEE_AUTO_COGNIFY", true),
 			Timeout:     getDurationEnv("COGNEE_TIMEOUT", 30*time.Second),
-			Enabled:     getBoolEnv("COGNEE_ENABLED", false),
+			Enabled:     getBoolEnv("COGNEE_ENABLED", true),
 		},
 		LLM: LLMConfig{
 			DefaultTimeout: getDurationEnv("LLM_TIMEOUT", 60*time.Second),

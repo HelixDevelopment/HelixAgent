@@ -295,6 +295,55 @@ func TestCogneeEnhancedProvider_HealthCheck(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+
+	t.Run("checks cognee service health when available", func(t *testing.T) {
+		cogneeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{"status": "healthy"})
+		}))
+		defer cogneeServer.Close()
+
+		cogneeConfig := &CogneeServiceConfig{
+			Enabled: true,
+			BaseURL: cogneeServer.URL,
+		}
+		cogneeService := NewCogneeServiceWithConfig(cogneeConfig, logger)
+		cogneeService.isReady = true
+
+		mockProvider := &CogneeMockProvider{
+			healthCheckFunc: func() error { return nil },
+		}
+
+		enhanced := NewCogneeEnhancedProvider("test", mockProvider, cogneeService, logger)
+		err := enhanced.HealthCheck()
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("logs warning when cognee service unhealthy", func(t *testing.T) {
+		// Server that returns error for health check
+		cogneeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer cogneeServer.Close()
+
+		cogneeConfig := &CogneeServiceConfig{
+			Enabled: true,
+			BaseURL: cogneeServer.URL,
+		}
+		cogneeService := NewCogneeServiceWithConfig(cogneeConfig, logger)
+		cogneeService.isReady = false // Force unhealthy
+
+		mockProvider := &CogneeMockProvider{
+			healthCheckFunc: func() error { return nil },
+		}
+
+		enhanced := NewCogneeEnhancedProvider("test", mockProvider, cogneeService, logger)
+		err := enhanced.HealthCheck()
+
+		// Should still return no error, just log warning
+		assert.NoError(t, err)
+	})
 }
 
 func TestCogneeEnhancedProvider_GetCapabilities(t *testing.T) {

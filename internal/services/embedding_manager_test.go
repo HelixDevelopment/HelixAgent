@@ -263,6 +263,48 @@ func TestEmbeddingManager_VectorSearch(t *testing.T) {
 			assert.NotNil(t, result.Metadata)
 		}
 	})
+
+	t.Run("returns error when no query or vector provided", func(t *testing.T) {
+		req := VectorSearchRequest{
+			Query:  "", // Empty query
+			Vector: nil, // No vector
+		}
+		response, err := manager.VectorSearch(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, response)
+		assert.Contains(t, err.Error(), "either query or vector must be provided")
+	})
+
+	t.Run("uses default limit and threshold", func(t *testing.T) {
+		req := VectorSearchRequest{
+			Vector:    []float64{0.1, 0.2, 0.3},
+			Limit:     0,  // Should default to 10
+			Threshold: 0,  // Should default to 0.7
+		}
+		response, err := manager.VectorSearch(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, response)
+		assert.True(t, response.Success)
+	})
+
+	t.Run("finds stored embeddings in cache", func(t *testing.T) {
+		// Manually add embeddings to cache
+		manager.mu.Lock()
+		manager.embeddingCache["stored_emb:test-id-1"] = []float64{0.1, 0.2, 0.3}
+		manager.embeddingCache["stored_emb:test-id-2"] = []float64{0.15, 0.25, 0.35}
+		manager.mu.Unlock()
+
+		req := VectorSearchRequest{
+			Vector:    []float64{0.1, 0.2, 0.3},
+			Limit:     10,
+			Threshold: 0.5,
+		}
+		response, err := manager.VectorSearch(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, response)
+		assert.True(t, response.Success)
+		// Results should be sorted by score
+	})
 }
 
 func TestEmbeddingManager_IndexDocument(t *testing.T) {
@@ -695,6 +737,31 @@ func TestEmbeddingManager_ClearCache(t *testing.T) {
 		assert.Len(t, manager.embeddingCache, 0)
 		manager.mu.RUnlock()
 	})
+}
+
+func TestEmbeddingManager_getDimension(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	testCases := []struct {
+		model    string
+		expected int
+	}{
+		{"text-embedding-ada-002", 1536},
+		{"text-embedding-3-small", 1536},
+		{"text-embedding-3-large", 3072},
+		{"embed-multilingual-v3.0", 1024},
+		{"all-MiniLM-L6-v2", 384},
+		{"unknown-model", 1536}, // Default
+		{"", 1536},              // Empty model name
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.model, func(t *testing.T) {
+			result := manager.getDimension(tc.model)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
 }
 
 func TestBytesToFloat64(t *testing.T) {

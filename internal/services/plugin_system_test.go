@@ -3,6 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -358,6 +362,15 @@ func TestFailoverManager_Stop(t *testing.T) {
 	fm.Stop()
 }
 
+func TestDefaultHealthCheckerConfig(t *testing.T) {
+	config := DefaultHealthCheckerConfig()
+
+	require.NotNil(t, config)
+	assert.Equal(t, 30*time.Second, config.CheckInterval)
+	assert.Equal(t, 5*time.Second, config.Timeout)
+	assert.Equal(t, 3, config.UnhealthyThreshold)
+}
+
 func TestNewHealthChecker(t *testing.T) {
 	log := newHATestLogger()
 	hc := NewHealthChecker(log)
@@ -367,6 +380,36 @@ func TestNewHealthChecker(t *testing.T) {
 	assert.Equal(t, 5*time.Second, hc.timeout)
 	assert.Equal(t, 3, hc.unhealthyThreshold)
 	assert.NotNil(t, hc.healthChecks)
+	assert.NotNil(t, hc.instanceRegistry)
+	assert.NotNil(t, hc.httpClient)
+}
+
+func TestNewHealthCheckerWithConfig(t *testing.T) {
+	log := newHATestLogger()
+
+	t.Run("with custom config", func(t *testing.T) {
+		config := &HealthCheckerConfig{
+			CheckInterval:      10 * time.Second,
+			Timeout:            2 * time.Second,
+			UnhealthyThreshold: 5,
+		}
+		hc := NewHealthCheckerWithConfig(log, config)
+
+		require.NotNil(t, hc)
+		assert.Equal(t, 10*time.Second, hc.checkInterval)
+		assert.Equal(t, 2*time.Second, hc.timeout)
+		assert.Equal(t, 5, hc.unhealthyThreshold)
+		assert.NotNil(t, hc.httpClient)
+	})
+
+	t.Run("with nil config uses defaults", func(t *testing.T) {
+		hc := NewHealthCheckerWithConfig(log, nil)
+
+		require.NotNil(t, hc)
+		assert.Equal(t, 30*time.Second, hc.checkInterval)
+		assert.Equal(t, 5*time.Second, hc.timeout)
+		assert.Equal(t, 3, hc.unhealthyThreshold)
+	})
 }
 
 func TestHealthChecker_RegisterInstance(t *testing.T) {
@@ -377,11 +420,56 @@ func TestHealthChecker_RegisterInstance(t *testing.T) {
 
 	hc.mu.RLock()
 	status, exists := hc.healthChecks["hc-inst-1"]
+	instanceInfo, infoExists := hc.instanceRegistry["hc-inst-1"]
 	hc.mu.RUnlock()
 
 	assert.True(t, exists)
 	assert.True(t, status.IsHealthy)
 	assert.Equal(t, "hc-inst-1", status.InstanceID)
+
+	assert.True(t, infoExists)
+	assert.Equal(t, "localhost", instanceInfo.Address)
+	assert.Equal(t, 8080, instanceInfo.Port)
+	assert.Equal(t, "http", instanceInfo.Protocol) // default protocol
+}
+
+func TestHealthChecker_RegisterInstanceWithProtocol(t *testing.T) {
+	log := newHATestLogger()
+	hc := NewHealthChecker(log)
+
+	t.Run("register with http protocol", func(t *testing.T) {
+		hc.RegisterInstanceWithProtocol("http-inst", "localhost", 8080, "http")
+
+		info := hc.GetInstanceInfo("http-inst")
+		require.NotNil(t, info)
+		assert.Equal(t, "localhost", info.Address)
+		assert.Equal(t, 8080, info.Port)
+		assert.Equal(t, "http", info.Protocol)
+	})
+
+	t.Run("register with https protocol", func(t *testing.T) {
+		hc.RegisterInstanceWithProtocol("https-inst", "localhost", 443, "https")
+
+		info := hc.GetInstanceInfo("https-inst")
+		require.NotNil(t, info)
+		assert.Equal(t, "https", info.Protocol)
+	})
+
+	t.Run("register with grpc protocol", func(t *testing.T) {
+		hc.RegisterInstanceWithProtocol("grpc-inst", "localhost", 50051, "grpc")
+
+		info := hc.GetInstanceInfo("grpc-inst")
+		require.NotNil(t, info)
+		assert.Equal(t, "grpc", info.Protocol)
+	})
+
+	t.Run("register with tcp protocol", func(t *testing.T) {
+		hc.RegisterInstanceWithProtocol("tcp-inst", "localhost", 9000, "tcp")
+
+		info := hc.GetInstanceInfo("tcp-inst")
+		require.NotNil(t, info)
+		assert.Equal(t, "tcp", info.Protocol)
+	})
 }
 
 func TestHealthChecker_UnregisterInstance(t *testing.T) {
@@ -392,10 +480,66 @@ func TestHealthChecker_UnregisterInstance(t *testing.T) {
 	hc.UnregisterInstance("hc-unreg")
 
 	hc.mu.RLock()
-	_, exists := hc.healthChecks["hc-unreg"]
+	_, healthExists := hc.healthChecks["hc-unreg"]
+	_, infoExists := hc.instanceRegistry["hc-unreg"]
 	hc.mu.RUnlock()
 
-	assert.False(t, exists)
+	assert.False(t, healthExists)
+	assert.False(t, infoExists)
+}
+
+func TestHealthChecker_GetInstanceInfo(t *testing.T) {
+	log := newHATestLogger()
+	hc := NewHealthChecker(log)
+
+	t.Run("existing instance", func(t *testing.T) {
+		hc.RegisterInstanceWithProtocol("get-info-test", "127.0.0.1", 9090, "tcp")
+
+		info := hc.GetInstanceInfo("get-info-test")
+		require.NotNil(t, info)
+		assert.Equal(t, "127.0.0.1", info.Address)
+		assert.Equal(t, 9090, info.Port)
+		assert.Equal(t, "tcp", info.Protocol)
+	})
+
+	t.Run("non-existent instance", func(t *testing.T) {
+		info := hc.GetInstanceInfo("non-existent")
+		assert.Nil(t, info)
+	})
+}
+
+func TestHealthChecker_GetHealthStatus(t *testing.T) {
+	log := newHATestLogger()
+	hc := NewHealthChecker(log)
+
+	t.Run("existing instance", func(t *testing.T) {
+		hc.RegisterInstance("get-status-test", "localhost", 8080)
+
+		status := hc.GetHealthStatus("get-status-test")
+		require.NotNil(t, status)
+		assert.Equal(t, "get-status-test", status.InstanceID)
+		assert.True(t, status.IsHealthy)
+	})
+
+	t.Run("non-existent instance", func(t *testing.T) {
+		status := hc.GetHealthStatus("non-existent")
+		assert.Nil(t, status)
+	})
+}
+
+func TestHealthChecker_SetHTTPClient(t *testing.T) {
+	log := newHATestLogger()
+	hc := NewHealthChecker(log)
+
+	customClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	hc.SetHTTPClient(customClient)
+
+	hc.mu.RLock()
+	assert.Equal(t, customClient, hc.httpClient)
+	hc.mu.RUnlock()
 }
 
 func TestHealthChecker_Stop(t *testing.T) {
@@ -829,23 +973,398 @@ func TestHealthChecker_PerformHealthChecks(t *testing.T) {
 
 func TestHealthChecker_CheckInstanceHealth(t *testing.T) {
 	log := newHATestLogger()
-	hc := NewHealthChecker(log)
 
-	t.Run("check returns boolean", func(t *testing.T) {
-		// checkInstanceHealth uses random for demo, just verify it returns a boolean
-		healthy := hc.checkInstanceHealth("any-instance")
-		// Should be either true or false
-		assert.IsType(t, true, healthy)
+	t.Run("unregistered instance returns false", func(t *testing.T) {
+		hc := NewHealthChecker(log)
+
+		healthy := hc.checkInstanceHealth("non-existent-instance")
+		assert.False(t, healthy)
 	})
 
-	t.Run("multiple checks produce results", func(t *testing.T) {
-		// Run multiple times to exercise the function
-		results := make([]bool, 10)
-		for i := 0; i < 10; i++ {
-			results[i] = hc.checkInstanceHealth("test-instance")
-		}
-		// Just verify we got results without panicking
-		assert.Len(t, results, 10)
+	t.Run("http health check success", func(t *testing.T) {
+		// Create a test HTTP server that returns 200 OK
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/health", r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}))
+		defer server.Close()
+
+		// Parse server address
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthCheckerWithConfig(log, &HealthCheckerConfig{
+			CheckInterval:      time.Second,
+			Timeout:            5 * time.Second,
+			UnhealthyThreshold: 3,
+		})
+
+		hc.RegisterInstanceWithProtocol("http-test", host, port, "http")
+
+		healthy := hc.checkInstanceHealth("http-test")
+		assert.True(t, healthy)
+
+		// Check that status was updated
+		status := hc.GetHealthStatus("http-test")
+		assert.NotNil(t, status)
+		assert.Empty(t, status.Error)
+		assert.Greater(t, status.ResponseTime, time.Duration(0))
+	})
+
+	t.Run("http health check failure - 500 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("http-fail-test", host, port, "http")
+
+		healthy := hc.checkInstanceHealth("http-fail-test")
+		assert.False(t, healthy)
+
+		status := hc.GetHealthStatus("http-fail-test")
+		assert.Contains(t, status.Error, "unhealthy status code: 500")
+	})
+
+	t.Run("http health check failure - connection refused", func(t *testing.T) {
+		hc := NewHealthCheckerWithConfig(log, &HealthCheckerConfig{
+			CheckInterval:      time.Second,
+			Timeout:            100 * time.Millisecond,
+			UnhealthyThreshold: 3,
+		})
+
+		// Use a port that is unlikely to be listening
+		hc.RegisterInstanceWithProtocol("http-refused", "127.0.0.1", 59999, "http")
+
+		healthy := hc.checkInstanceHealth("http-refused")
+		assert.False(t, healthy)
+
+		status := hc.GetHealthStatus("http-refused")
+		assert.Contains(t, status.Error, "health check request failed")
+	})
+
+	t.Run("https health check", func(t *testing.T) {
+		// Create an HTTPS test server
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		// Use the test server's client which has the proper TLS config
+		hc.SetHTTPClient(server.Client())
+		hc.RegisterInstanceWithProtocol("https-test", host, port, "https")
+
+		healthy := hc.checkInstanceHealth("https-test")
+		assert.True(t, healthy)
+	})
+
+	t.Run("tcp health check success", func(t *testing.T) {
+		// Create a TCP listener
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("tcp-test", host, port, "tcp")
+
+		healthy := hc.checkInstanceHealth("tcp-test")
+		assert.True(t, healthy)
+	})
+
+	t.Run("tcp health check failure", func(t *testing.T) {
+		hc := NewHealthCheckerWithConfig(log, &HealthCheckerConfig{
+			CheckInterval:      time.Second,
+			Timeout:            100 * time.Millisecond,
+			UnhealthyThreshold: 3,
+		})
+
+		// Use a port that is unlikely to be listening
+		hc.RegisterInstanceWithProtocol("tcp-fail", "127.0.0.1", 59998, "tcp")
+
+		healthy := hc.checkInstanceHealth("tcp-fail")
+		assert.False(t, healthy)
+
+		status := hc.GetHealthStatus("tcp-fail")
+		assert.Contains(t, status.Error, "TCP connection failed")
+	})
+
+	t.Run("grpc health check uses tcp", func(t *testing.T) {
+		// Create a TCP listener (gRPC uses TCP)
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("grpc-test", host, port, "grpc")
+
+		healthy := hc.checkInstanceHealth("grpc-test")
+		assert.True(t, healthy)
+	})
+
+	t.Run("unknown protocol falls back to tcp", func(t *testing.T) {
+		// Create a TCP listener
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("unknown-proto", host, port, "custom-protocol")
+
+		healthy := hc.checkInstanceHealth("unknown-proto")
+		assert.True(t, healthy)
+	})
+
+	t.Run("health check updates response time", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("response-time-test", host, port, "tcp")
+
+		hc.checkInstanceHealth("response-time-test")
+
+		status := hc.GetHealthStatus("response-time-test")
+		assert.NotNil(t, status)
+		assert.Greater(t, status.ResponseTime, time.Duration(0))
+	})
+
+	t.Run("health check clears error on success", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.RegisterInstanceWithProtocol("clear-error-test", host, port, "tcp")
+
+		// Set an error manually
+		hc.mu.Lock()
+		hc.healthChecks["clear-error-test"].Error = "previous error"
+		hc.mu.Unlock()
+
+		// Successful health check should clear the error
+		healthy := hc.checkInstanceHealth("clear-error-test")
+		assert.True(t, healthy)
+
+		status := hc.GetHealthStatus("clear-error-test")
+		assert.Empty(t, status.Error)
+	})
+}
+
+func TestHealthChecker_CheckHTTPHealth(t *testing.T) {
+	log := newHATestLogger()
+
+	t.Run("successful 200 response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkHTTPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "http",
+		})
+
+		assert.True(t, healthy)
+		assert.NoError(t, err)
+	})
+
+	t.Run("successful 201 response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkHTTPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "http",
+		})
+
+		assert.True(t, healthy)
+		assert.NoError(t, err)
+	})
+
+	t.Run("unhealthy 404 response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkHTTPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "http",
+		})
+
+		assert.False(t, healthy)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unhealthy status code: 404")
+	})
+
+	t.Run("unhealthy 503 response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkHTTPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "http",
+		})
+
+		assert.False(t, healthy)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unhealthy status code: 503")
+	})
+
+	t.Run("https scheme is used for https protocol", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		host, portStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+		hc.SetHTTPClient(server.Client())
+
+		healthy, err := hc.checkHTTPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "https",
+		})
+
+		assert.True(t, healthy)
+		assert.NoError(t, err)
+	})
+}
+
+func TestHealthChecker_CheckTCPHealth(t *testing.T) {
+	log := newHATestLogger()
+
+	t.Run("successful connection", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkTCPHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "tcp",
+		})
+
+		assert.True(t, healthy)
+		assert.NoError(t, err)
+	})
+
+	t.Run("connection refused", func(t *testing.T) {
+		hc := NewHealthCheckerWithConfig(log, &HealthCheckerConfig{
+			CheckInterval:      time.Second,
+			Timeout:            100 * time.Millisecond,
+			UnhealthyThreshold: 3,
+		})
+
+		healthy, err := hc.checkTCPHealth(&InstanceInfo{
+			Address:  "127.0.0.1",
+			Port:     59997,
+			Protocol: "tcp",
+		})
+
+		assert.False(t, healthy)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "TCP connection failed")
+	})
+}
+
+func TestHealthChecker_CheckGRPCHealth(t *testing.T) {
+	log := newHATestLogger()
+
+	t.Run("grpc health check delegates to tcp", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer listener.Close()
+
+		host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+		var port int
+		fmt.Sscanf(portStr, "%d", &port)
+
+		hc := NewHealthChecker(log)
+
+		healthy, err := hc.checkGRPCHealth(&InstanceInfo{
+			Address:  host,
+			Port:     port,
+			Protocol: "grpc",
+		})
+
+		assert.True(t, healthy)
+		assert.NoError(t, err)
 	})
 }
 

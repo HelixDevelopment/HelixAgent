@@ -19,6 +19,23 @@ type Config struct {
 	Plugins     PluginConfig
 	Performance PerformanceConfig
 	MCP         MCPConfig
+	ACP         ACPConfig
+}
+
+// ACPConfig contains ACP (Agent Client Protocol) configuration
+type ACPConfig struct {
+	Enabled        bool
+	DefaultTimeout time.Duration
+	MaxRetries     int
+	Servers        []ACPServerConfig
+}
+
+// ACPServerConfig represents a pre-configured ACP server
+type ACPServerConfig struct {
+	ID      string
+	Name    string
+	URL     string
+	Enabled bool
 }
 
 type ServerConfig struct {
@@ -294,6 +311,12 @@ func Load() *Config {
 			Enabled:              getBoolEnv("MCP_ENABLED", true),
 			ExposeAllTools:       getBoolEnv("MCP_EXPOSE_ALL_TOOLS", true),
 			UnifiedToolNamespace: getBoolEnv("MCP_UNIFIED_NAMESPACE", true),
+		},
+		ACP: ACPConfig{
+			Enabled:        getBoolEnv("ACP_ENABLED", true),
+			DefaultTimeout: getDurationEnv("ACP_DEFAULT_TIMEOUT", 30*time.Second),
+			MaxRetries:     getIntEnv("ACP_MAX_RETRIES", 3),
+			Servers:        []ACPServerConfig{},
 		},
 	}
 }

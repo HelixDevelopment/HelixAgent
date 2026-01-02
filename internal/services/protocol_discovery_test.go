@@ -22,7 +22,7 @@ func newDiscoveryTestLogger() *logrus.Logger {
 
 func TestDiscoveryACPClient_NextMessageID(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	id1 := client.nextMessageID()
 	id2 := client.nextMessageID()
@@ -36,7 +36,7 @@ func TestDiscoveryACPClient_NextMessageID(t *testing.T) {
 
 func TestDiscoveryACPClient_UnmarshalMessage(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	t.Run("unmarshal marshal error", func(t *testing.T) {
 		// Channels cannot be marshaled to JSON
@@ -83,7 +83,7 @@ func TestDiscoveryACPClient_UnmarshalMessage(t *testing.T) {
 
 func TestDiscoveryACPClient_UnmarshalResult(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	t.Run("unmarshal marshal error", func(t *testing.T) {
 		// Channels cannot be marshaled to JSON
@@ -124,7 +124,7 @@ func TestDiscoveryACPClient_UnmarshalResult(t *testing.T) {
 
 func TestDiscoveryACPClient_ListAgents_Empty(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	agents := client.ListAgents()
 	assert.Empty(t, agents)
@@ -132,7 +132,7 @@ func TestDiscoveryACPClient_ListAgents_Empty(t *testing.T) {
 
 func TestDiscoveryACPClient_HealthCheck_Empty(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	health := client.HealthCheck(ctx)
@@ -141,7 +141,7 @@ func TestDiscoveryACPClient_HealthCheck_Empty(t *testing.T) {
 
 func TestDiscoveryACPClient_GetAgentStatus_NotConnected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	status, err := client.GetAgentStatus(ctx, "non-existent")
@@ -152,7 +152,7 @@ func TestDiscoveryACPClient_GetAgentStatus_NotConnected(t *testing.T) {
 
 func TestDiscoveryACPClient_BroadcastAction_NoAgents(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	results := client.BroadcastAction(ctx, "test-action", nil)
@@ -161,7 +161,7 @@ func TestDiscoveryACPClient_BroadcastAction_NoAgents(t *testing.T) {
 
 func TestDiscoveryACPClient_ConnectAgent_UnsupportedProtocol(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	err := client.ConnectAgent(ctx, "test-agent", "Test Agent", "unknown://localhost")
@@ -171,7 +171,7 @@ func TestDiscoveryACPClient_ConnectAgent_UnsupportedProtocol(t *testing.T) {
 
 func TestDiscoveryACPClient_ConnectAgent_DuplicateConnection(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Add a fake agent connection directly to test duplicate check
 	client.mu.Lock()
@@ -190,7 +190,7 @@ func TestDiscoveryACPClient_ConnectAgent_DuplicateConnection(t *testing.T) {
 
 func TestDiscoveryACPClient_DisconnectAgent_NotConnected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	err := client.DisconnectAgent("non-existent-agent")
 	assert.Error(t, err)
@@ -199,7 +199,7 @@ func TestDiscoveryACPClient_DisconnectAgent_NotConnected(t *testing.T) {
 
 func TestDiscoveryACPClient_DisconnectAgent_Connected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Create a mock transport that uses the existing MockACPTransport from acp_client_test.go
 	mockTransport := &MockACPTransport{}
@@ -227,7 +227,7 @@ func TestDiscoveryACPClient_DisconnectAgent_Connected(t *testing.T) {
 
 func TestDiscoveryACPClient_GetAgentStatus_Connected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	now := time.Now()
 	// Add a fake agent connection
@@ -255,7 +255,7 @@ func TestDiscoveryACPClient_GetAgentStatus_Connected(t *testing.T) {
 
 func TestDiscoveryACPClient_GetAgentStatus_WithWebSocketTransport(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	now := time.Now()
 	wsTransport := &WebSocketACPTransport{
@@ -290,7 +290,7 @@ func TestDiscoveryACPClient_GetAgentStatus_WithWebSocketTransport(t *testing.T) 
 
 func TestDiscoveryACPClient_GetAgentStatus_WithHTTPTransport(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Create a test server for HTTP transport
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +334,7 @@ func TestDiscoveryACPClient_GetAgentStatus_WithHTTPTransport(t *testing.T) {
 
 func TestDiscoveryACPClient_BroadcastAction_WithAgents(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Create mock transports that will fail (no real connection)
 	mockTransport1 := &MockACPTransport{connected: false}
@@ -365,7 +365,7 @@ func TestDiscoveryACPClient_BroadcastAction_WithAgents(t *testing.T) {
 
 func TestDiscoveryACPClient_BroadcastAction_DisconnectedAgent(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport := &MockACPTransport{connected: false}
 
@@ -392,7 +392,7 @@ func TestDiscoveryACPClient_BroadcastAction_DisconnectedAgent(t *testing.T) {
 
 func TestDiscoveryACPClient_BroadcastAction_MixedAgents(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport1 := &MockACPTransport{connected: true}
 	mockTransport2 := &MockACPTransport{connected: false}
@@ -432,7 +432,7 @@ func TestDiscoveryACPClient_BroadcastAction_MixedAgents(t *testing.T) {
 
 func TestDiscoveryACPClient_ListAgents_WithAgents(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Add fake agent connections
 	client.mu.Lock()
@@ -462,7 +462,7 @@ func TestDiscoveryACPClient_ListAgents_WithAgents(t *testing.T) {
 
 func TestDiscoveryACPClient_HealthCheck_WithAgents(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Create a mock transport
 	mockTransport := &MockACPTransport{connected: true}
@@ -589,7 +589,7 @@ func TestDiscoveryACPAgentConnection_Structure(t *testing.T) {
 func BenchmarkDiscoveryACPClient_NextMessageID(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -600,7 +600,7 @@ func BenchmarkDiscoveryACPClient_NextMessageID(b *testing.B) {
 func BenchmarkDiscoveryACPClient_UnmarshalMessage(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	data := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -618,7 +618,7 @@ func BenchmarkDiscoveryACPClient_UnmarshalMessage(b *testing.B) {
 
 func TestDiscoveryACPClient_ExecuteAction_NotConnected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	result, err := client.ExecuteAction(ctx, "non-existent-agent", "test-action", map[string]interface{}{})
@@ -629,7 +629,7 @@ func TestDiscoveryACPClient_ExecuteAction_NotConnected(t *testing.T) {
 
 func TestDiscoveryACPClient_ExecuteAction_Connected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 	ctx := context.Background()
 
 	// Create a mock transport
@@ -664,7 +664,7 @@ func TestDiscoveryACPClient_ExecuteAction_Connected(t *testing.T) {
 
 func TestDiscoveryACPClient_GetAgentCapabilities_NotConnected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	result, err := client.GetAgentCapabilities("non-existent-agent")
 	assert.Error(t, err)
@@ -674,7 +674,7 @@ func TestDiscoveryACPClient_GetAgentCapabilities_NotConnected(t *testing.T) {
 
 func TestDiscoveryACPClient_GetAgentCapabilities_Connected(t *testing.T) {
 	log := newDiscoveryTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	// Add agent connection with capabilities
 	client.mu.Lock()

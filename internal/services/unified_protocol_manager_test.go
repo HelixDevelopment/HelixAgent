@@ -2,6 +2,9 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -100,10 +103,30 @@ func TestUnifiedProtocolManager_ExecuteRequest_MCP(t *testing.T) {
 
 // TestUnifiedProtocolManager_ExecuteRequest_ACP tests ACP request execution
 func TestUnifiedProtocolManager_ExecuteRequest_ACP(t *testing.T) {
+	// Create a mock ACP server
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := ACPProtocolResponse{
+			JSONRPC: "2.0",
+			ID:      1,
+			Result:  map[string]interface{}{"status": "success", "data": "test-result"},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer mockServer.Close()
+
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	// Register a mock ACP server (accessing private field since we're in same package)
+	err := manager.acpManager.RegisterServer(&ACPServer{
+		ID:      "opencode-1",
+		Name:    "Test ACP Server",
+		URL:     mockServer.URL,
+		Enabled: true,
+	})
+	require.NoError(t, err)
 
 	// Create a test API key
 	security := manager.GetSecurity()

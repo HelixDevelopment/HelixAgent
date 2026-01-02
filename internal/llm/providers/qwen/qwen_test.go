@@ -3,9 +3,11 @@ package qwen
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -345,158 +347,589 @@ func TestQwenProvider_Complete_InvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to unmarshal response")
 }
 
-func TestQwenProvider_CompleteStream(t *testing.T) {
-	t.Run("successful streaming", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			response := QwenResponse{
-				ID:      "chatcmpl-stream",
-				Object:  "chat.completion",
+// Helper function to create an SSE streaming mock server
+func createSSEMockServer(t *testing.T, chunks []string, includeFinishReason bool, includeDone bool) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/services/aigc/text-generation/generation", r.URL.Path)
+		assert.Equal(t, "text/event-stream", r.Header.Get("Accept"))
+
+		// Verify streaming is enabled in request
+		var reqBody QwenRequest
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal(body, &reqBody)
+		require.NoError(t, err)
+		assert.True(t, reqBody.Stream)
+
+		// Set SSE headers
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatal("Expected http.Flusher")
+		}
+
+		// Send chunks
+		for i, content := range chunks {
+			var finishReason *string
+			if includeFinishReason && i == len(chunks)-1 {
+				stop := "stop"
+				finishReason = &stop
+			}
+
+			chunk := QwenStreamChunk{
+				ID:      fmt.Sprintf("chatcmpl-stream-%d", i),
+				Object:  "chat.completion.chunk",
 				Created: time.Now().Unix(),
 				Model:   "qwen-turbo",
-				Choices: []QwenChoice{
+				Choices: []QwenStreamChoice{
 					{
 						Index: 0,
-						Message: QwenMessage{
-							Role:    "assistant",
-							Content: "This is a streaming response that will be chunked into pieces",
+						Delta: QwenStreamDelta{
+							Content: content,
 						},
-						FinishReason: "stop",
+						FinishReason: finishReason,
 					},
-				},
-				Usage: QwenUsage{
-					PromptTokens:     10,
-					CompletionTokens: 15,
-					TotalTokens:      25,
 				},
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(response)
-		}))
-		defer server.Close()
+			jsonData, _ := json.Marshal(chunk)
+			fmt.Fprintf(w, "data: %s\n\n", jsonData)
+			flusher.Flush()
+		}
 
-		provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
-		provider.httpClient = server.Client()
+		// Send [DONE] marker if requested
+		if includeDone {
+			fmt.Fprintf(w, "data: [DONE]\n\n")
+			flusher.Flush()
+		}
+	}))
+}
 
-		req := &models.LLMRequest{
-			ID: "test-req-stream",
-			ModelParams: models.ModelParameters{
-				Model: "qwen-turbo",
+func TestQwenProvider_CompleteStream_Success(t *testing.T) {
+	chunks := []string{"Hello", " world", "! How", " are", " you", "?"}
+	server := createSSEMockServer(t, chunks, false, true)
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-stream-req",
+		Prompt: "Say hello",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, responseChan)
+
+	var receivedChunks []*models.LLMResponse
+	for chunk := range responseChan {
+		receivedChunks = append(receivedChunks, chunk)
+	}
+
+	// Should have received all content chunks plus a final response
+	assert.NotEmpty(t, receivedChunks)
+
+	// Collect all content
+	var fullContent string
+	for _, chunk := range receivedChunks {
+		if chunk.Content != "" {
+			fullContent += chunk.Content
+		}
+	}
+	assert.Equal(t, "Hello world! How are you?", fullContent)
+
+	// Last chunk should have "stop" finish reason
+	lastChunk := receivedChunks[len(receivedChunks)-1]
+	assert.Equal(t, "stop", lastChunk.FinishReason)
+}
+
+func TestQwenProvider_CompleteStream_WithFinishReason(t *testing.T) {
+	chunks := []string{"Hello", " there", "!"}
+	server := createSSEMockServer(t, chunks, true, false)
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-finish-reason",
+		Prompt: "Say hello",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var receivedChunks []*models.LLMResponse
+	for chunk := range responseChan {
+		receivedChunks = append(receivedChunks, chunk)
+	}
+
+	assert.NotEmpty(t, receivedChunks)
+	lastChunk := receivedChunks[len(receivedChunks)-1]
+	assert.Equal(t, "stop", lastChunk.FinishReason)
+}
+
+func TestQwenProvider_CompleteStream_ContextCancellation(t *testing.T) {
+	// Create a server that sends chunks slowly
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		for i := 0; i < 100; i++ {
+			chunk := QwenStreamChunk{
+				ID:      fmt.Sprintf("chunk-%d", i),
+				Object:  "chat.completion.chunk",
+				Created: time.Now().Unix(),
+				Model:   "qwen-turbo",
+				Choices: []QwenStreamChoice{
+					{
+						Index: 0,
+						Delta: QwenStreamDelta{
+							Content: fmt.Sprintf("chunk%d ", i),
+						},
+					},
+				},
+			}
+
+			jsonData, _ := json.Marshal(chunk)
+			fmt.Fprintf(w, "data: %s\n\n", jsonData)
+			flusher.Flush()
+			time.Sleep(50 * time.Millisecond)
+		}
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-cancel",
+		Prompt: "Test",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	responseChan, err := provider.CompleteStream(ctx, req)
+	require.NoError(t, err)
+
+	// Read a few chunks then cancel
+	chunkCount := 0
+	for chunk := range responseChan {
+		chunkCount++
+		if chunk.Content != "" && chunkCount >= 3 {
+			cancel()
+			break
+		}
+	}
+
+	// Drain remaining chunks (channel should close due to context cancellation)
+	for range responseChan {
+		// Just drain
+	}
+
+	assert.GreaterOrEqual(t, chunkCount, 3)
+}
+
+func TestQwenProvider_CompleteStream_APIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := QwenError{
+			Error: struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			}{
+				Message: "Rate limit exceeded",
+				Type:    "rate_limit_error",
+				Code:    "429",
 			},
-			Prompt: "Test streaming",
 		}
 
-		responseChan, err := provider.CompleteStream(context.Background(), req)
-		require.NoError(t, err)
-		require.NotNil(t, responseChan)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
 
-		var chunks []*models.LLMResponse
-		for chunk := range responseChan {
-			chunks = append(chunks, chunk)
-		}
-
-		assert.NotEmpty(t, chunks)
-		// Last chunk should have "stop" finish reason
-		lastChunk := chunks[len(chunks)-1]
-		assert.Equal(t, "stop", lastChunk.FinishReason)
+	provider := NewQwenProviderWithRetry("test-api-key", server.URL, "qwen-turbo", RetryConfig{
+		MaxRetries:   0, // No retries
+		InitialDelay: 1 * time.Millisecond,
 	})
+	provider.httpClient = server.Client()
 
-	t.Run("context cancellation during streaming", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			response := QwenResponse{
-				ID:      "chatcmpl-stream-cancel",
-				Object:  "chat.completion",
-				Created: time.Now().Unix(),
-				Model:   "qwen-turbo",
-				Choices: []QwenChoice{
-					{
-						Index: 0,
-						Message: QwenMessage{
-							Role:    "assistant",
-							Content: "This is a very long streaming response that should be interrupted",
-						},
-						FinishReason: "stop",
+	req := &models.LLMRequest{
+		ID:     "test-req-error",
+		Prompt: "Test",
+	}
+
+	// With real streaming, the error is returned from CompleteStream
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, responseChan)
+	assert.Contains(t, err.Error(), "Rate limit exceeded")
+}
+
+func TestQwenProvider_CompleteStream_EmptyChunks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send empty lines and chunks with empty content
+		fmt.Fprintf(w, "\n\n")
+		flusher.Flush()
+
+		chunk1 := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "", // Empty content
 					},
 				},
-				Usage: QwenUsage{TotalTokens: 20},
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(response)
-		}))
-		defer server.Close()
-
-		provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
-		provider.httpClient = server.Client()
-
-		req := &models.LLMRequest{
-			ID:     "test-req-cancel",
-			Prompt: "Test",
+			},
 		}
+		jsonData, _ := json.Marshal(chunk1)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel() // Ensure cancel is always called
-
-		responseChan, err := provider.CompleteStream(ctx, req)
-		require.NoError(t, err)
-
-		// Cancel context after getting first chunk
-		receivedFirst := false
-		for range responseChan {
-			if !receivedFirst {
-				receivedFirst = true
-				cancel()
-			}
-		}
-
-		// Channel should close (due to context cancellation or completion)
-		assert.True(t, true) // If we get here, the channel closed properly
-	})
-
-	t.Run("streaming with API error", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			response := QwenError{
-				Error: struct {
-					Message string `json:"message"`
-					Type    string `json:"type"`
-					Code    string `json:"code"`
-				}{
-					Message: "Rate limit exceeded",
-					Type:    "rate_limit_error",
-					Code:    "429",
+		// Send actual content
+		chunk2 := QwenStreamChunk{
+			ID:      "chunk-2",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello",
+					},
 				},
-			}
+			},
+		}
+		jsonData, _ = json.Marshal(chunk2)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(response)
-		}))
-		defer server.Close()
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
 
-		provider := NewQwenProviderWithRetry("test-api-key", server.URL, "qwen-turbo", RetryConfig{
-			MaxRetries:   0, // No retries
-			InitialDelay: 1 * time.Millisecond,
-		})
-		provider.httpClient = server.Client()
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
 
-		req := &models.LLMRequest{
-			ID:     "test-req-error",
-			Prompt: "Test",
+	req := &models.LLMRequest{
+		ID:     "test-empty-chunks",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var contentChunks int
+	var fullContent string
+	for chunk := range responseChan {
+		if chunk.Content != "" {
+			contentChunks++
+			fullContent += chunk.Content
+		}
+	}
+
+	assert.Equal(t, 1, contentChunks) // Only one chunk with "Hello"
+	assert.Equal(t, "Hello", fullContent)
+}
+
+func TestQwenProvider_CompleteStream_MalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send malformed JSON
+		fmt.Fprintf(w, "data: {invalid json}\n\n")
+		flusher.Flush()
+
+		// Send valid chunk
+		chunk := QwenStreamChunk{
+			ID:      "chunk-valid",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Valid content",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
+
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-malformed",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var fullContent string
+	for chunk := range responseChan {
+		fullContent += chunk.Content
+	}
+
+	// Should skip malformed JSON and process valid content
+	assert.Equal(t, "Valid content", fullContent)
+}
+
+func TestQwenProvider_CompleteStream_EOFWithoutDone(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
+
+		// Close connection without [DONE]
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-eof",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var chunks []*models.LLMResponse
+	for chunk := range responseChan {
+		chunks = append(chunks, chunk)
+	}
+
+	// Should have content chunk and final response
+	assert.NotEmpty(t, chunks)
+	lastChunk := chunks[len(chunks)-1]
+	assert.Equal(t, "stop", lastChunk.FinishReason)
+}
+
+func TestQwenProvider_CompleteStream_NonDataLines(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send various non-data lines
+		fmt.Fprintf(w, ": this is a comment\n")
+		fmt.Fprintf(w, "event: ping\n")
+		fmt.Fprintf(w, "id: 123\n")
+		flusher.Flush()
+
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
+
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-non-data",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var fullContent string
+	for chunk := range responseChan {
+		fullContent += chunk.Content
+	}
+
+	assert.Equal(t, "Hello", fullContent)
+}
+
+func TestQwenProvider_CompleteStream_RetryOnServerError(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 2 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
 		}
 
-		responseChan, err := provider.CompleteStream(context.Background(), req)
-		require.NoError(t, err)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
 
-		// Channel should close without sending any chunks due to error
-		var chunks []*models.LLMResponse
-		for chunk := range responseChan {
-			chunks = append(chunks, chunk)
+		flusher, _ := w.(http.Flusher)
+
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Success after retry",
+					},
+				},
+			},
 		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
 
-		assert.Empty(t, chunks)
+	provider := NewQwenProviderWithRetry("test-api-key", server.URL, "qwen-turbo", RetryConfig{
+		MaxRetries:   3,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     10 * time.Millisecond,
+		Multiplier:   2.0,
 	})
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-retry-stream",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var fullContent string
+	for chunk := range responseChan {
+		fullContent += chunk.Content
+	}
+
+	assert.Equal(t, "Success after retry", fullContent)
+	assert.Equal(t, 2, attempts)
+}
+
+func TestQwenProvider_CompleteStream_ChunkMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		chunk := QwenStreamChunk{
+			ID:      "chatcmpl-metadata-test",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-plus",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello world",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-plus")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-metadata",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var contentChunk *models.LLMResponse
+	for chunk := range responseChan {
+		if chunk.Content != "" {
+			contentChunk = chunk
+		}
+	}
+
+	require.NotNil(t, contentChunk)
+	assert.Equal(t, "chatcmpl-metadata-test", contentChunk.ID)
+	assert.Equal(t, "test-metadata", contentChunk.RequestID)
+	assert.Equal(t, "qwen", contentChunk.ProviderID)
+	assert.Equal(t, "Qwen", contentChunk.ProviderName)
+	assert.Equal(t, "Hello world", contentChunk.Content)
+	assert.Equal(t, 0.85, contentChunk.Confidence)
+	assert.Equal(t, "qwen-plus", contentChunk.Metadata["model"])
+	assert.Equal(t, 0, contentChunk.Metadata["chunk_index"])
 }
 
 func TestQwenProvider_HealthCheck_Success(t *testing.T) {
@@ -1089,4 +1522,716 @@ func TestQwenProvider_WaitWithJitter(t *testing.T) {
 		// Should not wait too much more (10% jitter max)
 		assert.Less(t, elapsed, delay+delay/5+10*time.Millisecond)
 	})
+}
+
+func TestParseSSELine(t *testing.T) {
+	tests := []struct {
+		name         string
+		line         string
+		wantChunk    bool
+		wantDone     bool
+		wantError    bool
+		wantContent  string
+	}{
+		{
+			name:      "empty line",
+			line:      "",
+			wantChunk: false,
+			wantDone:  false,
+		},
+		{
+			name:      "whitespace only",
+			line:      "   \n",
+			wantChunk: false,
+			wantDone:  false,
+		},
+		{
+			name:      "comment line",
+			line:      ": this is a comment",
+			wantChunk: false,
+			wantDone:  false,
+		},
+		{
+			name:      "non-data line",
+			line:      "event: ping",
+			wantChunk: false,
+			wantDone:  false,
+		},
+		{
+			name:     "done marker",
+			line:     "data: [DONE]",
+			wantDone: true,
+		},
+		{
+			name:     "done marker with whitespace",
+			line:     "data:  [DONE]  ",
+			wantDone: true,
+		},
+		{
+			name:      "valid chunk",
+			line:      `data: {"id":"test","choices":[{"delta":{"content":"hello"}}]}`,
+			wantChunk: true,
+			wantContent: "hello",
+		},
+		{
+			name:      "malformed JSON",
+			line:      "data: {invalid json}",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chunk, done, err := parseSSELine([]byte(tt.line))
+
+			if tt.wantError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantDone, done)
+
+			if tt.wantChunk {
+				require.NotNil(t, chunk)
+				if tt.wantContent != "" && len(chunk.Choices) > 0 {
+					assert.Equal(t, tt.wantContent, chunk.Choices[0].Delta.Content)
+				}
+			} else {
+				assert.Nil(t, chunk)
+			}
+		})
+	}
+}
+
+func TestQwenStreamChunk_Struct(t *testing.T) {
+	// Test that the struct can be properly marshaled and unmarshaled
+	stopReason := "stop"
+	original := QwenStreamChunk{
+		ID:      "test-id",
+		Object:  "chat.completion.chunk",
+		Created: 1234567890,
+		Model:   "qwen-turbo",
+		Choices: []QwenStreamChoice{
+			{
+				Index: 0,
+				Delta: QwenStreamDelta{
+					Role:    "assistant",
+					Content: "Hello",
+				},
+				FinishReason: &stopReason,
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(original)
+	require.NoError(t, err)
+
+	var parsed QwenStreamChunk
+	err = json.Unmarshal(jsonData, &parsed)
+	require.NoError(t, err)
+
+	assert.Equal(t, original.ID, parsed.ID)
+	assert.Equal(t, original.Object, parsed.Object)
+	assert.Equal(t, original.Created, parsed.Created)
+	assert.Equal(t, original.Model, parsed.Model)
+	assert.Len(t, parsed.Choices, 1)
+	assert.Equal(t, original.Choices[0].Index, parsed.Choices[0].Index)
+	assert.Equal(t, original.Choices[0].Delta.Role, parsed.Choices[0].Delta.Role)
+	assert.Equal(t, original.Choices[0].Delta.Content, parsed.Choices[0].Delta.Content)
+	require.NotNil(t, parsed.Choices[0].FinishReason)
+	assert.Equal(t, "stop", *parsed.Choices[0].FinishReason)
+}
+
+func TestQwenProvider_MakeStreamingRequest_Headers(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify streaming-specific headers
+		assert.Equal(t, "text/event-stream", r.Header.Get("Accept"))
+		assert.Equal(t, "no-cache", r.Header.Get("Cache-Control"))
+		assert.Equal(t, "keep-alive", r.Header.Get("Connection"))
+		assert.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		// Verify request body has Stream: true
+		var reqBody QwenRequest
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &reqBody)
+		assert.True(t, reqBody.Stream)
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+		Stream:   false, // Will be set to true by makeStreamingRequest
+	}
+
+	body, err := provider.makeStreamingRequest(context.Background(), req)
+	require.NoError(t, err)
+	defer body.Close()
+
+	// Read the response
+	content, err := io.ReadAll(body)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "[DONE]")
+}
+
+func TestQwenProvider_MakeStreamingRequest_ContextCancelled(t *testing.T) {
+	provider := NewQwenProvider("test-api-key", "https://api.example.com", "qwen-turbo")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+	}
+
+	body, err := provider.makeStreamingRequest(ctx, req)
+	assert.Error(t, err)
+	assert.Nil(t, body)
+	assert.Contains(t, err.Error(), "context cancelled")
+}
+
+func TestQwenProvider_MakeStreamingRequest_RetryExhausted(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	provider := NewQwenProviderWithRetry("test-key", server.URL, "qwen-turbo", RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     10 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+	provider.httpClient = server.Client()
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+	}
+
+	body, err := provider.makeStreamingRequest(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, body)
+	// Error can be either from exhausted retries or final status code
+	assert.True(t, strings.Contains(err.Error(), "503") || strings.Contains(err.Error(), "retry"))
+	assert.Equal(t, 3, attempts)
+}
+
+func TestQwenProvider_MakeStreamingRequest_NonJSONError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Plain text error"))
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+	}
+
+	body, err := provider.makeStreamingRequest(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, body)
+	assert.Contains(t, err.Error(), "Qwen API returned status 400")
+}
+
+func TestQwenProvider_CompleteStream_MultipleWords(t *testing.T) {
+	// Test that token counting works correctly for multi-word content
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send a chunk with multiple words
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello world how are you",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-multiword",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var contentChunk *models.LLMResponse
+	for chunk := range responseChan {
+		if chunk.Content != "" {
+			contentChunk = chunk
+		}
+	}
+
+	require.NotNil(t, contentChunk)
+	assert.Equal(t, 5, contentChunk.TokensUsed) // 5 words
+}
+
+func TestQwenProvider_CompleteStream_SingleCharacter(t *testing.T) {
+	// Test that single character content gets token count of 1
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "!", // Single non-word character
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-singlechar",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var contentChunk *models.LLMResponse
+	for chunk := range responseChan {
+		if chunk.Content != "" {
+			contentChunk = chunk
+		}
+	}
+
+	require.NotNil(t, contentChunk)
+	assert.Equal(t, 1, contentChunk.TokensUsed) // Minimum 1 token for non-empty content
+}
+
+func TestQwenProvider_CompleteStream_EmptyChoices(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send chunk with empty choices
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{}, // Empty choices
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+
+		// Send valid chunk
+		chunk2 := QwenStreamChunk{
+			ID:      "chunk-2",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Valid",
+					},
+				},
+			},
+		}
+		jsonData, _ = json.Marshal(chunk2)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-emptychoices",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var fullContent string
+	for chunk := range responseChan {
+		fullContent += chunk.Content
+	}
+
+	assert.Equal(t, "Valid", fullContent)
+}
+
+func TestConvertToQwenRequest(t *testing.T) {
+	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-max")
+
+	t.Run("with prompt only", func(t *testing.T) {
+		req := &models.LLMRequest{
+			Prompt: "System prompt",
+			ModelParams: models.ModelParameters{
+				Temperature: 0.7,
+				MaxTokens:   100,
+				TopP:        0.9,
+			},
+		}
+
+		qwenReq := provider.convertToQwenRequest(req)
+
+		assert.Equal(t, "qwen-max", qwenReq.Model)
+		assert.False(t, qwenReq.Stream)
+		assert.Equal(t, 0.7, qwenReq.Temperature)
+		assert.Equal(t, 100, qwenReq.MaxTokens)
+		assert.Equal(t, 0.9, qwenReq.TopP)
+		assert.Len(t, qwenReq.Messages, 1)
+		assert.Equal(t, "system", qwenReq.Messages[0].Role)
+		assert.Equal(t, "System prompt", qwenReq.Messages[0].Content)
+	})
+
+	t.Run("with messages", func(t *testing.T) {
+		req := &models.LLMRequest{
+			Prompt: "System prompt",
+			Messages: []models.Message{
+				{Role: "user", Content: "Hello"},
+				{Role: "assistant", Content: "Hi"},
+			},
+			ModelParams: models.ModelParameters{
+				StopSequences: []string{"STOP"},
+			},
+		}
+
+		qwenReq := provider.convertToQwenRequest(req)
+
+		assert.Len(t, qwenReq.Messages, 3)
+		assert.Equal(t, []string{"STOP"}, qwenReq.Stop)
+	})
+
+	t.Run("without prompt", func(t *testing.T) {
+		req := &models.LLMRequest{
+			Messages: []models.Message{
+				{Role: "user", Content: "Hello"},
+			},
+		}
+
+		qwenReq := provider.convertToQwenRequest(req)
+
+		assert.Len(t, qwenReq.Messages, 1)
+		assert.Equal(t, "user", qwenReq.Messages[0].Role)
+	})
+}
+
+func TestConvertFromQwenResponse(t *testing.T) {
+	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-turbo")
+
+	t.Run("successful response", func(t *testing.T) {
+		qwenResp := &QwenResponse{
+			ID:      "resp-123",
+			Object:  "chat.completion",
+			Created: time.Now().Unix() - 1,
+			Model:   "qwen-turbo",
+			Choices: []QwenChoice{
+				{
+					Index:        0,
+					Message:      QwenMessage{Role: "assistant", Content: "Hello!"},
+					FinishReason: "stop",
+				},
+			},
+			Usage: QwenUsage{
+				PromptTokens:     10,
+				CompletionTokens: 5,
+				TotalTokens:      15,
+			},
+		}
+
+		resp, err := provider.convertFromQwenResponse(qwenResp, "req-456")
+
+		require.NoError(t, err)
+		assert.Equal(t, "resp-123", resp.ID)
+		assert.Equal(t, "req-456", resp.RequestID)
+		assert.Equal(t, "qwen", resp.ProviderID)
+		assert.Equal(t, "Qwen", resp.ProviderName)
+		assert.Equal(t, "Hello!", resp.Content)
+		assert.Equal(t, 0.85, resp.Confidence)
+		assert.Equal(t, 15, resp.TokensUsed)
+		assert.Equal(t, "stop", resp.FinishReason)
+		assert.Equal(t, "qwen-turbo", resp.Metadata["model"])
+		assert.Equal(t, 10, resp.Metadata["prompt_tokens"])
+		assert.Equal(t, 5, resp.Metadata["completion_tokens"])
+	})
+
+	t.Run("empty choices", func(t *testing.T) {
+		qwenResp := &QwenResponse{
+			ID:      "resp-empty",
+			Choices: []QwenChoice{},
+		}
+
+		resp, err := provider.convertFromQwenResponse(qwenResp, "req-789")
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "no choices returned from Qwen API")
+	})
+}
+
+func TestQwenProvider_ValidateConfig_AllErrors(t *testing.T) {
+	// Create provider and manually clear fields to trigger all validation errors
+	provider := &QwenProvider{
+		apiKey:  "",
+		baseURL: "",
+		model:   "",
+	}
+
+	valid, errs := provider.ValidateConfig(map[string]interface{}{})
+	assert.False(t, valid)
+	assert.Contains(t, errs, "API key is required")
+	assert.Contains(t, errs, "base URL is required")
+	assert.Contains(t, errs, "model is required")
+	assert.Len(t, errs, 3)
+}
+
+func TestQwenProvider_CompleteStream_ReadError(t *testing.T) {
+	// Test that read errors during streaming are handled properly
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		// Send one valid chunk
+		chunk := QwenStreamChunk{
+			ID:      "chunk-1",
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   "qwen-turbo",
+			Choices: []QwenStreamChoice{
+				{
+					Index: 0,
+					Delta: QwenStreamDelta{
+						Content: "Hello",
+					},
+				},
+			},
+		}
+		jsonData, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		flusher.Flush()
+
+		// Simulate abrupt connection close (triggers read error)
+		hj, ok := w.(http.Hijacker)
+		if ok {
+			conn, _, _ := hj.Hijack()
+			if conn != nil {
+				conn.Close()
+			}
+		}
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-read-error",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var chunks []*models.LLMResponse
+	for chunk := range responseChan {
+		chunks = append(chunks, chunk)
+	}
+
+	// Should have at least one chunk (might have content chunk and/or error/final response)
+	assert.NotEmpty(t, chunks)
+}
+
+func TestQwenProvider_MakeStreamingRequest_APIErrorWithJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := QwenError{
+			Error: struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			}{
+				Message: "Invalid request format",
+				Type:    "invalid_request_error",
+				Code:    "400",
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+	}
+
+	body, err := provider.makeStreamingRequest(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, body)
+	assert.Contains(t, err.Error(), "Invalid request format")
+	assert.Contains(t, err.Error(), "invalid_request_error")
+}
+
+func TestQwenProvider_MakeStreamingRequest_NetworkRetry(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 2 {
+			// Simulate network error by hijacking and closing connection
+			hj, ok := w.(http.Hijacker)
+			if ok {
+				conn, _, _ := hj.Hijack()
+				if conn != nil {
+					conn.Close()
+					return
+				}
+			}
+			// Fallback
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	provider := NewQwenProviderWithRetry("test-key", server.URL, "qwen-turbo", RetryConfig{
+		MaxRetries:   3,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     10 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+	provider.httpClient = server.Client()
+
+	req := &QwenRequest{
+		Model:    "qwen-turbo",
+		Messages: []QwenMessage{{Role: "user", Content: "test"}},
+	}
+
+	body, err := provider.makeStreamingRequest(context.Background(), req)
+	// Either succeeds on retry or has an error
+	if err == nil {
+		require.NotNil(t, body)
+		body.Close()
+	}
+	assert.GreaterOrEqual(t, attempts, 1)
+}
+
+func TestQwenProvider_CompleteStream_LongRunning(t *testing.T) {
+	// Test streaming with many chunks to ensure stability
+	numChunks := 50
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		flusher, _ := w.(http.Flusher)
+
+		for i := 0; i < numChunks; i++ {
+			chunk := QwenStreamChunk{
+				ID:      fmt.Sprintf("chunk-%d", i),
+				Object:  "chat.completion.chunk",
+				Created: time.Now().Unix(),
+				Model:   "qwen-turbo",
+				Choices: []QwenStreamChoice{
+					{
+						Index: 0,
+						Delta: QwenStreamDelta{
+							Content: fmt.Sprintf("word%d ", i),
+						},
+					},
+				},
+			}
+			jsonData, _ := json.Marshal(chunk)
+			fmt.Fprintf(w, "data: %s\n\n", jsonData)
+			flusher.Flush()
+		}
+
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewQwenProvider("test-api-key", server.URL, "qwen-turbo")
+	provider.httpClient = server.Client()
+
+	req := &models.LLMRequest{
+		ID:     "test-long",
+		Prompt: "Test",
+	}
+
+	responseChan, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var chunkCount int
+	var words []string
+	for chunk := range responseChan {
+		if chunk.Content != "" {
+			chunkCount++
+			words = append(words, strings.TrimSpace(chunk.Content))
+		}
+	}
+
+	assert.Equal(t, numChunks, chunkCount)
+	assert.Len(t, words, numChunks)
 }

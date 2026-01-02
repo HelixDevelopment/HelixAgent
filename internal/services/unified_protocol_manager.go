@@ -382,6 +382,11 @@ func (u *UnifiedProtocolManager) GetSecurity() *ProtocolSecurity {
 	return u.security
 }
 
+// GetACP returns the ACP manager
+func (u *UnifiedProtocolManager) GetACP() *ACPManager {
+	return u.acpManager
+}
+
 // Private methods
 
 func (u *UnifiedProtocolManager) recordMetrics(protocol string, duration time.Duration, success bool) {

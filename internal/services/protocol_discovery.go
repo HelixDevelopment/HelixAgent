@@ -14,8 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ACPClient implements a real Agent Client Protocol client
-type ACPClient struct {
+// ACPDiscoveryClient implements a real Agent Client Protocol client for discovery
+type ACPDiscoveryClient struct {
 	agents    map[string]*ACPAgentConnection
 	messageID int
 	mu        sync.RWMutex
@@ -99,9 +99,9 @@ type ACPActionResult struct {
 	Error   string      `json:"error,omitempty"`
 }
 
-// NewACPClient creates a new ACP client
-func NewACPClient(logger *logrus.Logger) *ACPClient {
-	return &ACPClient{
+// NewACPDiscoveryClient creates a new ACP discovery client
+func NewACPDiscoveryClient(logger *logrus.Logger) *ACPDiscoveryClient {
+	return &ACPDiscoveryClient{
 		agents:    make(map[string]*ACPAgentConnection),
 		messageID: 1,
 		logger:    logger,
@@ -109,7 +109,7 @@ func NewACPClient(logger *logrus.Logger) *ACPClient {
 }
 
 // ConnectAgent connects to an ACP agent
-func (c *ACPClient) ConnectAgent(ctx context.Context, agentID, name, endpoint string) error {
+func (c *ACPDiscoveryClient) ConnectAgent(ctx context.Context, agentID, name, endpoint string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -158,7 +158,7 @@ func (c *ACPClient) ConnectAgent(ctx context.Context, agentID, name, endpoint st
 }
 
 // DisconnectAgent disconnects from an ACP agent
-func (c *ACPClient) DisconnectAgent(agentID string) error {
+func (c *ACPDiscoveryClient) DisconnectAgent(agentID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -178,7 +178,7 @@ func (c *ACPClient) DisconnectAgent(agentID string) error {
 }
 
 // ExecuteAction executes an action on an ACP agent
-func (c *ACPClient) ExecuteAction(ctx context.Context, agentID, action string, params map[string]interface{}) (*ACPActionResult, error) {
+func (c *ACPDiscoveryClient) ExecuteAction(ctx context.Context, agentID, action string, params map[string]interface{}) (*ACPActionResult, error) {
 	c.mu.RLock()
 	connection, exists := c.agents[agentID]
 	c.mu.RUnlock()
@@ -237,7 +237,7 @@ func (c *ACPClient) ExecuteAction(ctx context.Context, agentID, action string, p
 }
 
 // GetAgentCapabilities returns capabilities for an agent
-func (c *ACPClient) GetAgentCapabilities(agentID string) (map[string]interface{}, error) {
+func (c *ACPDiscoveryClient) GetAgentCapabilities(agentID string) (map[string]interface{}, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -250,7 +250,7 @@ func (c *ACPClient) GetAgentCapabilities(agentID string) (map[string]interface{}
 }
 
 // ListAgents returns all connected ACP agents
-func (c *ACPClient) ListAgents() []*ACPAgentConnection {
+func (c *ACPDiscoveryClient) ListAgents() []*ACPAgentConnection {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -263,7 +263,7 @@ func (c *ACPClient) ListAgents() []*ACPAgentConnection {
 }
 
 // HealthCheck performs health checks on all connected agents
-func (c *ACPClient) HealthCheck(ctx context.Context) map[string]bool {
+func (c *ACPDiscoveryClient) HealthCheck(ctx context.Context) map[string]bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -276,7 +276,7 @@ func (c *ACPClient) HealthCheck(ctx context.Context) map[string]bool {
 }
 
 // GetAgentStatus returns detailed status for an agent
-func (c *ACPClient) GetAgentStatus(ctx context.Context, agentID string) (map[string]interface{}, error) {
+func (c *ACPDiscoveryClient) GetAgentStatus(ctx context.Context, agentID string) (map[string]interface{}, error) {
 	c.mu.RLock()
 	connection, exists := c.agents[agentID]
 	c.mu.RUnlock()
@@ -306,7 +306,7 @@ func (c *ACPClient) GetAgentStatus(ctx context.Context, agentID string) (map[str
 }
 
 // BroadcastAction broadcasts an action to all connected agents
-func (c *ACPClient) BroadcastAction(ctx context.Context, action string, params map[string]interface{}) map[string]*ACPActionResult {
+func (c *ACPDiscoveryClient) BroadcastAction(ctx context.Context, action string, params map[string]interface{}) map[string]*ACPActionResult {
 	c.mu.RLock()
 	agents := make(map[string]*ACPAgentConnection)
 	for k, v := range c.agents {
@@ -341,7 +341,7 @@ func (c *ACPClient) BroadcastAction(ctx context.Context, action string, params m
 
 // Private methods
 
-func (c *ACPClient) createWebSocketTransport(endpoint string) (ACPTransport, error) {
+func (c *ACPDiscoveryClient) createWebSocketTransport(endpoint string) (ACPTransport, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid endpoint URL: %w", err)
@@ -361,7 +361,7 @@ func (c *ACPClient) createWebSocketTransport(endpoint string) (ACPTransport, err
 	}, nil
 }
 
-func (c *ACPClient) createHTTPTransport(endpoint string) (ACPTransport, error) {
+func (c *ACPDiscoveryClient) createHTTPTransport(endpoint string) (ACPTransport, error) {
 	return &HTTPACPTransport{
 		baseURL:    endpoint,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
@@ -369,7 +369,7 @@ func (c *ACPClient) createHTTPTransport(endpoint string) (ACPTransport, error) {
 	}, nil
 }
 
-func (c *ACPClient) initializeAgent(ctx context.Context, connection *ACPAgentConnection) error {
+func (c *ACPDiscoveryClient) initializeAgent(ctx context.Context, connection *ACPAgentConnection) error {
 	initRequest := ACPInitializeRequest{
 		ProtocolVersion: "1.0.0",
 		Capabilities:    map[string]interface{}{},
@@ -414,12 +414,12 @@ func (c *ACPClient) initializeAgent(ctx context.Context, connection *ACPAgentCon
 	return nil
 }
 
-func (c *ACPClient) nextMessageID() int {
+func (c *ACPDiscoveryClient) nextMessageID() int {
 	c.messageID++
 	return c.messageID
 }
 
-func (c *ACPClient) unmarshalMessage(data interface{}, message *ACPMessage) error {
+func (c *ACPDiscoveryClient) unmarshalMessage(data interface{}, message *ACPMessage) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -427,7 +427,7 @@ func (c *ACPClient) unmarshalMessage(data interface{}, message *ACPMessage) erro
 	return json.Unmarshal(jsonData, message)
 }
 
-func (c *ACPClient) unmarshalResult(result interface{}, target interface{}) error {
+func (c *ACPDiscoveryClient) unmarshalResult(result interface{}, target interface{}) error {
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		return err

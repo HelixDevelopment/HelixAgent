@@ -1,6 +1,7 @@
 package qwen
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/superagent/superagent/internal/models"
@@ -90,6 +92,28 @@ type QwenError struct {
 	} `json:"error"`
 }
 
+// QwenStreamChunk represents a streaming chunk from the Qwen API
+type QwenStreamChunk struct {
+	ID      string             `json:"id"`
+	Object  string             `json:"object"`
+	Created int64              `json:"created"`
+	Model   string             `json:"model"`
+	Choices []QwenStreamChoice `json:"choices"`
+}
+
+// QwenStreamChoice represents a choice in a streaming response
+type QwenStreamChoice struct {
+	Index        int             `json:"index"`
+	Delta        QwenStreamDelta `json:"delta"`
+	FinishReason *string         `json:"finish_reason"`
+}
+
+// QwenStreamDelta represents the delta content in a streaming response
+type QwenStreamDelta struct {
+	Role    string `json:"role,omitempty"`
+	Content string `json:"content,omitempty"`
+}
+
 // NewQwenProvider creates a new Qwen provider instance
 func NewQwenProvider(apiKey, baseURL, model string) *QwenProvider {
 	return NewQwenProviderWithRetry(apiKey, baseURL, model, DefaultRetryConfig())
@@ -130,59 +154,183 @@ func (q *QwenProvider) Complete(ctx context.Context, req *models.LLMRequest) (*m
 	return q.convertFromQwenResponse(resp, req.ID)
 }
 
-// CompleteStream implements streaming completion for Qwen
+// CompleteStream implements streaming completion for Qwen using real SSE streaming
 func (q *QwenProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+	startTime := time.Now()
+
+	// Convert internal request to Qwen format with streaming enabled
+	qwenReq := q.convertToQwenRequest(req)
+	qwenReq.Stream = true
+
+	// Make streaming API call
+	body, err := q.makeStreamingRequest(ctx, qwenReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start streaming request: %w", err)
+	}
+
+	// Create response channel
 	responseChan := make(chan *models.LLMResponse, 10)
 
 	go func() {
+		defer body.Close()
 		defer close(responseChan)
 
-		// For now, simulate streaming by getting the complete response and sending it in chunks
-		// In a full implementation, this would use Qwen's actual streaming API
+		reader := bufio.NewReader(body)
+		var chunkIndex int
+		var totalTokens int
 
-		response, err := q.Complete(ctx, req)
-		if err != nil {
-			// For streaming, we just close the channel on error
-			return
-		}
-
-		// Simulate streaming by breaking the response into chunks
-		content := response.Content
-		chunkSize := 50 // characters per chunk
-
-		for i := 0; i < len(content); i += chunkSize {
-			end := i + chunkSize
-			if end > len(content) {
-				end = len(content)
-			}
-
-			chunk := content[i:end]
-
-			streamResponse := &models.LLMResponse{
-				ID:           fmt.Sprintf("%s-chunk-%d", response.ID, i/chunkSize),
-				ProviderID:   response.ProviderID,
-				ProviderName: response.ProviderName,
-				Content:      chunk,
-				Confidence:   response.Confidence,
-				TokensUsed:   response.TokensUsed / (len(content)/chunkSize + 1), // Approximate token distribution
-				ResponseTime: response.ResponseTime / int64(len(content)/chunkSize+1),
-				FinishReason: func() string {
-					if end >= len(content) {
-						return "stop"
-					}
-					return ""
-				}(),
-				CreatedAt: time.Now(),
-			}
-
+		for {
+			// Check for context cancellation
 			select {
-			case responseChan <- streamResponse:
 			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// Read a line from the SSE stream
+			line, err := reader.ReadBytes('\n')
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				// Send error response for read errors
+				errorResp := &models.LLMResponse{
+					ID:           fmt.Sprintf("%s-error-%d", req.ID, chunkIndex),
+					RequestID:    req.ID,
+					ProviderID:   "qwen",
+					ProviderName: "Qwen",
+					Content:      "",
+					Confidence:   0.0,
+					TokensUsed:   totalTokens,
+					ResponseTime: time.Since(startTime).Milliseconds(),
+					FinishReason: "error",
+					Metadata: map[string]interface{}{
+						"error": err.Error(),
+					},
+					CreatedAt: time.Now(),
+				}
+				select {
+				case responseChan <- errorResp:
+				case <-ctx.Done():
+				}
 				return
 			}
 
-			// Small delay to simulate streaming
-			time.Sleep(50 * time.Millisecond)
+			// Parse the SSE line
+			chunk, done, parseErr := parseSSELine(line)
+
+			// Handle [DONE] marker
+			if done {
+				// Send final response indicating stream completion
+				finalResp := &models.LLMResponse{
+					ID:           fmt.Sprintf("%s-final", req.ID),
+					RequestID:    req.ID,
+					ProviderID:   "qwen",
+					ProviderName: "Qwen",
+					Content:      "",
+					Confidence:   0.85,
+					TokensUsed:   totalTokens,
+					ResponseTime: time.Since(startTime).Milliseconds(),
+					FinishReason: "stop",
+					CreatedAt:    time.Now(),
+				}
+				select {
+				case responseChan <- finalResp:
+				case <-ctx.Done():
+				}
+				return
+			}
+
+			// Skip empty lines or non-data lines
+			if chunk == nil {
+				// If there was a parse error, log it but continue
+				if parseErr != nil {
+					// Skip malformed JSON lines silently
+					continue
+				}
+				continue
+			}
+
+			// Extract content from the chunk
+			if len(chunk.Choices) > 0 {
+				delta := chunk.Choices[0].Delta.Content
+				if delta != "" {
+					// Estimate tokens (rough approximation)
+					estimatedTokens := len(strings.Fields(delta))
+					if estimatedTokens == 0 && len(delta) > 0 {
+						estimatedTokens = 1
+					}
+					totalTokens += estimatedTokens
+
+					// Build the response
+					streamResp := &models.LLMResponse{
+						ID:           chunk.ID,
+						RequestID:    req.ID,
+						ProviderID:   "qwen",
+						ProviderName: "Qwen",
+						Content:      delta,
+						Confidence:   0.85,
+						TokensUsed:   estimatedTokens,
+						ResponseTime: time.Since(startTime).Milliseconds(),
+						FinishReason: "",
+						Metadata: map[string]interface{}{
+							"model":       chunk.Model,
+							"chunk_index": chunkIndex,
+						},
+						CreatedAt: time.Now(),
+					}
+
+					select {
+					case responseChan <- streamResp:
+						chunkIndex++
+					case <-ctx.Done():
+						return
+					}
+				}
+
+				// Check if stream is finished based on finish_reason
+				if chunk.Choices[0].FinishReason != nil {
+					finishReason := *chunk.Choices[0].FinishReason
+					if finishReason != "" {
+						// Send final response with the finish reason
+						finalResp := &models.LLMResponse{
+							ID:           fmt.Sprintf("%s-final", chunk.ID),
+							RequestID:    req.ID,
+							ProviderID:   "qwen",
+							ProviderName: "Qwen",
+							Content:      "",
+							Confidence:   0.85,
+							TokensUsed:   totalTokens,
+							ResponseTime: time.Since(startTime).Milliseconds(),
+							FinishReason: finishReason,
+							CreatedAt:    time.Now(),
+						}
+						select {
+						case responseChan <- finalResp:
+						case <-ctx.Done():
+						}
+						return
+					}
+				}
+			}
+		}
+
+		// If we exit the loop without a [DONE] or finish_reason, send a final response
+		finalResp := &models.LLMResponse{
+			ID:           fmt.Sprintf("%s-final", req.ID),
+			RequestID:    req.ID,
+			ProviderID:   "qwen",
+			ProviderName: "Qwen",
+			Content:      "",
+			Confidence:   0.85,
+			TokensUsed:   totalTokens,
+			ResponseTime: time.Since(startTime).Milliseconds(),
+			FinishReason: "stop",
+			CreatedAt:    time.Now(),
+		}
+		select {
+		case responseChan <- finalResp:
+		case <-ctx.Done():
 		}
 	}()
 
@@ -404,6 +552,111 @@ func (q *QwenProvider) makeRequest(ctx context.Context, req *QwenRequest) (*Qwen
 	}
 
 	return nil, fmt.Errorf("all %d retry attempts failed: %w", q.retryConfig.MaxRetries+1, lastErr)
+}
+
+// makeStreamingRequest sends a streaming request to the Qwen API with retry logic
+// It returns an io.ReadCloser for reading SSE events
+func (q *QwenProvider) makeStreamingRequest(ctx context.Context, req *QwenRequest) (io.ReadCloser, error) {
+	// Ensure streaming is enabled
+	req.Stream = true
+
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	var lastErr error
+	delay := q.retryConfig.InitialDelay
+
+	for attempt := 0; attempt <= q.retryConfig.MaxRetries; attempt++ {
+		// Check context before making request
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
+		default:
+		}
+
+		httpReq, err := http.NewRequestWithContext(ctx, "POST", q.baseURL+"/services/aigc/text-generation/generation", bytes.NewBuffer(jsonData))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+		}
+
+		httpReq.Header.Set("Authorization", "Bearer "+q.apiKey)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Accept", "text/event-stream")
+		httpReq.Header.Set("Cache-Control", "no-cache")
+		httpReq.Header.Set("Connection", "keep-alive")
+
+		resp, err := q.httpClient.Do(httpReq)
+		if err != nil {
+			lastErr = fmt.Errorf("HTTP request failed: %w", err)
+			if attempt < q.retryConfig.MaxRetries {
+				q.waitWithJitter(ctx, delay)
+				delay = q.nextDelay(delay)
+				continue
+			}
+			return nil, lastErr
+		}
+
+		// Check for retryable status codes
+		if isRetryableStatus(resp.StatusCode) && attempt < q.retryConfig.MaxRetries {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("HTTP %d: retryable error", resp.StatusCode)
+			q.waitWithJitter(ctx, delay)
+			delay = q.nextDelay(delay)
+			continue
+		}
+
+		// Check for non-OK status codes (non-retryable errors)
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			var qwenErr QwenError
+			if err := json.Unmarshal(body, &qwenErr); err == nil && qwenErr.Error.Message != "" {
+				return nil, fmt.Errorf("Qwen API error: %s (%s)", qwenErr.Error.Message, qwenErr.Error.Type)
+			}
+			return nil, fmt.Errorf("Qwen API returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		// Return the body for streaming
+		return resp.Body, nil
+	}
+
+	return nil, fmt.Errorf("all %d retry attempts failed: %w", q.retryConfig.MaxRetries+1, lastErr)
+}
+
+// parseSSELine parses an SSE data line and returns the QwenStreamChunk
+// Returns nil if the line is not a valid data line or is the [DONE] marker
+func parseSSELine(line []byte) (*QwenStreamChunk, bool, error) {
+	// Trim whitespace
+	line = bytes.TrimSpace(line)
+
+	// Skip empty lines
+	if len(line) == 0 {
+		return nil, false, nil
+	}
+
+	// Check for data prefix
+	if !bytes.HasPrefix(line, []byte("data:")) {
+		return nil, false, nil
+	}
+
+	// Extract the data portion
+	data := bytes.TrimPrefix(line, []byte("data:"))
+	data = bytes.TrimSpace(data)
+
+	// Check for [DONE] marker
+	if bytes.Equal(data, []byte("[DONE]")) {
+		return nil, true, nil
+	}
+
+	// Parse JSON
+	var chunk QwenStreamChunk
+	if err := json.Unmarshal(data, &chunk); err != nil {
+		return nil, false, fmt.Errorf("failed to parse SSE chunk: %w", err)
+	}
+
+	return &chunk, false, nil
 }
 
 // isRetryableStatus returns true for HTTP status codes that warrant a retry

@@ -71,18 +71,18 @@ func (m *MockACPTransport) IsConnected() bool {
 	return m.connected
 }
 
-func TestNewACPClient(t *testing.T) {
+func TestNewACPDiscoveryClient(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	require.NotNil(t, client)
 	assert.NotNil(t, client.agents)
 	assert.Equal(t, 1, client.messageID)
 }
 
-func TestACPClient_ListAgents(t *testing.T) {
+func TestACPDiscoveryClient_ListAgents(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	t.Run("empty agents list", func(t *testing.T) {
 		agents := client.ListAgents()
@@ -90,9 +90,9 @@ func TestACPClient_ListAgents(t *testing.T) {
 	})
 }
 
-func TestACPClient_HealthCheck(t *testing.T) {
+func TestACPDiscoveryClient_HealthCheck(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	t.Run("empty health check", func(t *testing.T) {
 		results := client.HealthCheck(context.Background())
@@ -100,9 +100,9 @@ func TestACPClient_HealthCheck(t *testing.T) {
 	})
 }
 
-func TestACPClient_GetAgentCapabilities_NotConnected(t *testing.T) {
+func TestACPDiscoveryClient_GetAgentCapabilities_NotConnected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	caps, err := client.GetAgentCapabilities("non-existent")
 	assert.Error(t, err)
@@ -110,18 +110,18 @@ func TestACPClient_GetAgentCapabilities_NotConnected(t *testing.T) {
 	assert.Contains(t, err.Error(), "not connected")
 }
 
-func TestACPClient_DisconnectAgent_NotConnected(t *testing.T) {
+func TestACPDiscoveryClient_DisconnectAgent_NotConnected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	err := client.DisconnectAgent("non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not connected")
 }
 
-func TestACPClient_ExecuteAction_NotConnected(t *testing.T) {
+func TestACPDiscoveryClient_ExecuteAction_NotConnected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	result, err := client.ExecuteAction(context.Background(), "non-existent", "test", nil)
 	assert.Error(t, err)
@@ -129,9 +129,9 @@ func TestACPClient_ExecuteAction_NotConnected(t *testing.T) {
 	assert.Contains(t, err.Error(), "not connected")
 }
 
-func TestACPClient_GetAgentStatus_NotFound(t *testing.T) {
+func TestACPDiscoveryClient_GetAgentStatus_NotFound(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	status, err := client.GetAgentStatus(context.Background(), "non-existent")
 	assert.Error(t, err)
@@ -139,17 +139,17 @@ func TestACPClient_GetAgentStatus_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestACPClient_BroadcastAction_Empty(t *testing.T) {
+func TestACPDiscoveryClient_BroadcastAction_Empty(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	results := client.BroadcastAction(context.Background(), "test", nil)
 	assert.Empty(t, results)
 }
 
-func TestACPClient_ConnectAgent_InvalidProtocol(t *testing.T) {
+func TestACPDiscoveryClient_ConnectAgent_InvalidProtocol(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	err := client.ConnectAgent(context.Background(), "agent1", "Test Agent", "invalid://endpoint")
 	assert.Error(t, err)
@@ -336,7 +336,7 @@ func TestWebSocketACPTransport_Receive_NotConnected(t *testing.T) {
 func BenchmarkACPClient_ListAgents(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -347,7 +347,7 @@ func BenchmarkACPClient_ListAgents(b *testing.B) {
 func BenchmarkACPClient_HealthCheck(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	ctx := context.Background()
 
@@ -2059,9 +2059,9 @@ func TestLSPClient_GetCodeIntelligence_Connected(t *testing.T) {
 
 // Tests for ACPClient with mock agents
 
-func TestACPClient_GetAgentCapabilities_Connected(t *testing.T) {
+func TestACPDiscoveryClient_GetAgentCapabilities_Connected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport := NewMockACPTransport()
 
@@ -2084,9 +2084,9 @@ func TestACPClient_GetAgentCapabilities_Connected(t *testing.T) {
 	assert.Equal(t, true, caps["streaming"])
 }
 
-func TestACPClient_ExecuteAction_Connected(t *testing.T) {
+func TestACPDiscoveryClient_ExecuteAction_Connected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport := NewMockACPTransport()
 	mockTransport.receiveFunc = func(ctx context.Context) (interface{}, error) {
@@ -2120,9 +2120,9 @@ func TestACPClient_ExecuteAction_Connected(t *testing.T) {
 	assert.True(t, result.Success)
 }
 
-func TestACPClient_ListAgents_WithAgents(t *testing.T) {
+func TestACPDiscoveryClient_ListAgents_WithAgents(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	client.mu.Lock()
 	client.agents["agent-1"] = &ACPAgentConnection{
@@ -2141,9 +2141,9 @@ func TestACPClient_ListAgents_WithAgents(t *testing.T) {
 	assert.Len(t, agents, 2)
 }
 
-func TestACPClient_HealthCheck_WithAgents(t *testing.T) {
+func TestACPDiscoveryClient_HealthCheck_WithAgents(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport := NewMockACPTransport()
 	mockTransport.connected = true
@@ -2164,9 +2164,9 @@ func TestACPClient_HealthCheck_WithAgents(t *testing.T) {
 	assert.Equal(t, true, results["test-agent"])
 }
 
-func TestACPClient_GetAgentStatus_Connected(t *testing.T) {
+func TestACPDiscoveryClient_GetAgentStatus_Connected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	now := time.Now()
 	client.mu.Lock()
@@ -2191,9 +2191,9 @@ func TestACPClient_GetAgentStatus_Connected(t *testing.T) {
 	assert.Equal(t, true, status["connected"])
 }
 
-func TestACPClient_DisconnectAgent_Connected(t *testing.T) {
+func TestACPDiscoveryClient_DisconnectAgent_Connected(t *testing.T) {
 	log := newACPTestLogger()
-	client := NewACPClient(log)
+	client := NewACPDiscoveryClient(log)
 
 	mockTransport := NewMockACPTransport()
 	mockTransport.connected = true

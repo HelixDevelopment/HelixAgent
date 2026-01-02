@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
+	"net"
+	"net/http"
 	"sync"
 	"time"
 
@@ -70,6 +73,13 @@ type FailoverManager struct {
 	logger            *logrus.Logger
 }
 
+// InstanceInfo holds the address and port information for an instance
+type InstanceInfo struct {
+	Address  string
+	Port     int
+	Protocol string
+}
+
 // HealthChecker performs health checks on service instances
 type HealthChecker struct {
 	mu                 sync.RWMutex
@@ -77,6 +87,8 @@ type HealthChecker struct {
 	timeout            time.Duration
 	unhealthyThreshold int
 	healthChecks       map[string]*HealthStatus
+	instanceRegistry   map[string]*InstanceInfo
+	httpClient         *http.Client
 	logger             *logrus.Logger
 }
 
@@ -464,19 +476,60 @@ func (fm *FailoverManager) checkFailoverStatus() {
 
 // HealthChecker implementation
 
-// NewHealthChecker creates a new health checker
+// HealthCheckerConfig holds configuration for the health checker
+type HealthCheckerConfig struct {
+	CheckInterval      time.Duration
+	Timeout            time.Duration
+	UnhealthyThreshold int
+}
+
+// DefaultHealthCheckerConfig returns the default health checker configuration
+func DefaultHealthCheckerConfig() *HealthCheckerConfig {
+	return &HealthCheckerConfig{
+		CheckInterval:      30 * time.Second,
+		Timeout:            5 * time.Second,
+		UnhealthyThreshold: 3,
+	}
+}
+
+// NewHealthChecker creates a new health checker with default configuration
 func NewHealthChecker(logger *logrus.Logger) *HealthChecker {
+	return NewHealthCheckerWithConfig(logger, DefaultHealthCheckerConfig())
+}
+
+// NewHealthCheckerWithConfig creates a new health checker with custom configuration
+func NewHealthCheckerWithConfig(logger *logrus.Logger, config *HealthCheckerConfig) *HealthChecker {
+	if config == nil {
+		config = DefaultHealthCheckerConfig()
+	}
+
 	return &HealthChecker{
-		checkInterval:      30 * time.Second,
-		timeout:            5 * time.Second,
-		unhealthyThreshold: 3,
+		checkInterval:      config.CheckInterval,
+		timeout:            config.Timeout,
+		unhealthyThreshold: config.UnhealthyThreshold,
 		healthChecks:       make(map[string]*HealthStatus),
-		logger:             logger,
+		instanceRegistry:   make(map[string]*InstanceInfo),
+		httpClient: &http.Client{
+			Timeout: config.Timeout,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: config.Timeout,
+				}).DialContext,
+				TLSHandshakeTimeout:   config.Timeout,
+				ResponseHeaderTimeout: config.Timeout,
+			},
+		},
+		logger: logger,
 	}
 }
 
 // RegisterInstance registers an instance for health checking
 func (hc *HealthChecker) RegisterInstance(instanceID, address string, port int) {
+	hc.RegisterInstanceWithProtocol(instanceID, address, port, "http")
+}
+
+// RegisterInstanceWithProtocol registers an instance for health checking with a specific protocol
+func (hc *HealthChecker) RegisterInstanceWithProtocol(instanceID, address string, port int, protocol string) {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
@@ -485,6 +538,19 @@ func (hc *HealthChecker) RegisterInstance(instanceID, address string, port int) 
 		LastCheck:  time.Now(),
 		IsHealthy:  true, // Assume healthy initially
 	}
+
+	hc.instanceRegistry[instanceID] = &InstanceInfo{
+		Address:  address,
+		Port:     port,
+		Protocol: protocol,
+	}
+
+	hc.logger.WithFields(logrus.Fields{
+		"instanceId": instanceID,
+		"address":    address,
+		"port":       port,
+		"protocol":   protocol,
+	}).Debug("Instance registered for health checking")
 }
 
 // UnregisterInstance removes an instance from health checking
@@ -493,6 +559,9 @@ func (hc *HealthChecker) UnregisterInstance(instanceID string) {
 	defer hc.mu.Unlock()
 
 	delete(hc.healthChecks, instanceID)
+	delete(hc.instanceRegistry, instanceID)
+
+	hc.logger.WithField("instanceId", instanceID).Debug("Instance unregistered from health checking")
 }
 
 // Start begins health checking
@@ -549,13 +618,132 @@ func (hc *HealthChecker) performHealthChecks(healthUpdateFunc func(string, bool)
 }
 
 func (hc *HealthChecker) checkInstanceHealth(instanceID string) bool {
-	// Simplified health check - in real implementation, this would:
-	// 1. Make HTTP request to /health endpoint
-	// 2. Check TCP connectivity
-	// 3. Perform protocol-specific health checks
+	hc.mu.RLock()
+	instanceInfo, exists := hc.instanceRegistry[instanceID]
+	status := hc.healthChecks[instanceID]
+	hc.mu.RUnlock()
 
-	// For demo, randomly succeed/fail
-	return rand.Intn(10) > 1 // 80% success rate
+	if !exists || instanceInfo == nil {
+		hc.logger.WithField("instanceId", instanceID).Warn("Instance not found in registry")
+		return false
+	}
+
+	startTime := time.Now()
+	var healthy bool
+	var checkErr error
+
+	// Perform protocol-specific health check
+	switch instanceInfo.Protocol {
+	case "http", "https":
+		healthy, checkErr = hc.checkHTTPHealth(instanceInfo)
+	case "grpc":
+		healthy, checkErr = hc.checkGRPCHealth(instanceInfo)
+	case "tcp":
+		healthy, checkErr = hc.checkTCPHealth(instanceInfo)
+	default:
+		// For unknown protocols, fall back to TCP connectivity check
+		healthy, checkErr = hc.checkTCPHealth(instanceInfo)
+	}
+
+	responseTime := time.Since(startTime)
+
+	// Update status with response time and error
+	hc.mu.Lock()
+	if status != nil {
+		status.ResponseTime = responseTime
+		if checkErr != nil {
+			status.Error = checkErr.Error()
+		} else {
+			status.Error = ""
+		}
+	}
+	hc.mu.Unlock()
+
+	hc.logger.WithFields(logrus.Fields{
+		"instanceId":   instanceID,
+		"healthy":      healthy,
+		"responseTime": responseTime,
+		"protocol":     instanceInfo.Protocol,
+		"error":        checkErr,
+	}).Debug("Health check completed")
+
+	return healthy
+}
+
+// checkHTTPHealth performs an HTTP health check by calling the /health endpoint
+func (hc *HealthChecker) checkHTTPHealth(info *InstanceInfo) (bool, error) {
+	scheme := "http"
+	if info.Protocol == "https" {
+		scheme = "https"
+	}
+
+	url := fmt.Sprintf("%s://%s:%d/health", scheme, info.Address, info.Port)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := hc.httpClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("health check request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read and discard body to ensure connection can be reused
+	_, _ = io.Copy(io.Discard, resp.Body)
+
+	// Consider 2xx status codes as healthy
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return true, nil
+	}
+
+	return false, fmt.Errorf("unhealthy status code: %d", resp.StatusCode)
+}
+
+// checkGRPCHealth performs a gRPC health check using TCP connectivity
+// Note: Full gRPC health checking would require the grpc-health-probe protocol
+func (hc *HealthChecker) checkGRPCHealth(info *InstanceInfo) (bool, error) {
+	// For gRPC, we perform a TCP connectivity check
+	// A full implementation would use the grpc.health.v1 protocol
+	return hc.checkTCPHealth(info)
+}
+
+// checkTCPHealth performs a TCP connectivity check
+func (hc *HealthChecker) checkTCPHealth(info *InstanceInfo) (bool, error) {
+	address := fmt.Sprintf("%s:%d", info.Address, info.Port)
+
+	conn, err := net.DialTimeout("tcp", address, hc.timeout)
+	if err != nil {
+		return false, fmt.Errorf("TCP connection failed: %w", err)
+	}
+	defer conn.Close()
+
+	return true, nil
+}
+
+// GetInstanceInfo returns the instance information for a given instance ID
+func (hc *HealthChecker) GetInstanceInfo(instanceID string) *InstanceInfo {
+	hc.mu.RLock()
+	defer hc.mu.RUnlock()
+
+	return hc.instanceRegistry[instanceID]
+}
+
+// GetHealthStatus returns the health status for a given instance ID
+func (hc *HealthChecker) GetHealthStatus(instanceID string) *HealthStatus {
+	hc.mu.RLock()
+	defer hc.mu.RUnlock()
+
+	return hc.healthChecks[instanceID]
+}
+
+// SetHTTPClient allows setting a custom HTTP client (useful for testing)
+func (hc *HealthChecker) SetHTTPClient(client *http.Client) {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+
+	hc.httpClient = client
 }
 
 // Circuit Breaker for fault tolerance

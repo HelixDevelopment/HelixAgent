@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -561,15 +562,62 @@ func (e *EnsembleService) confidenceWeightedVoting(responses []*models.LLMRespon
 }
 
 func (e *EnsembleService) majorityVoting(responses []*models.LLMResponse, _ *models.EnsembleConfig) *models.LLMResponse {
-	// Simplified majority voting
 	if len(responses) == 0 {
 		return nil
 	}
 
-	// For now, return first
-	responses[0].Selected = true
-	responses[0].SelectionScore = 1.0
-	return responses[0]
+	if len(responses) == 1 {
+		responses[0].Selected = true
+		responses[0].SelectionScore = 1.0
+		return responses[0]
+	}
+
+	// Implement real majority voting by comparing response content
+	// Group responses by similarity (using exact match for simplicity)
+	contentCounts := make(map[string]int)
+	contentToResponse := make(map[string]*models.LLMResponse)
+
+	for _, resp := range responses {
+		// Normalize content for comparison (trim whitespace)
+		normalizedContent := strings.TrimSpace(resp.Content)
+		contentCounts[normalizedContent]++
+		if _, exists := contentToResponse[normalizedContent]; !exists {
+			contentToResponse[normalizedContent] = resp
+		}
+	}
+
+	// Find the content with the highest count (majority)
+	// Iterate over responses in order to ensure deterministic tie-breaking
+	// (prefer earlier responses when counts are equal)
+	var selectedResponse *models.LLMResponse
+	maxCount := 0
+	seenContents := make(map[string]bool)
+	for _, resp := range responses {
+		normalizedContent := strings.TrimSpace(resp.Content)
+		if seenContents[normalizedContent] {
+			continue // Already considered this content
+		}
+		seenContents[normalizedContent] = true
+		count := contentCounts[normalizedContent]
+		if count > maxCount {
+			maxCount = count
+			selectedResponse = contentToResponse[normalizedContent]
+		}
+	}
+
+	// Select the response with majority content
+	selectedResponse.Selected = true
+	selectedResponse.SelectionScore = float64(maxCount) / float64(len(responses))
+
+	// Add metadata about the voting result
+	if selectedResponse.Metadata == nil {
+		selectedResponse.Metadata = make(map[string]interface{})
+	}
+	selectedResponse.Metadata["voting_method"] = "majority"
+	selectedResponse.Metadata["vote_count"] = maxCount
+	selectedResponse.Metadata["total_responses"] = len(responses)
+
+	return selectedResponse
 }
 
 func (e *EnsembleService) selectBestResponse(responses []*models.LLMResponse) *models.LLMResponse {

@@ -60,11 +60,37 @@ type NetworkDiscovery struct {
 	logger   *logrus.Logger
 }
 
-// DNSDiscovery implements DNS-based service discovery
+// DNSResolver defines the interface for DNS lookups (allows mocking in tests)
+type DNSResolver interface {
+	LookupSRV(ctx context.Context, service, proto, name string) (string, []*net.SRV, error)
+	LookupHost(ctx context.Context, host string) ([]string, error)
+	LookupTXT(ctx context.Context, name string) ([]string, error)
+}
+
+// DefaultDNSResolver uses the standard library net package for DNS lookups
+type DefaultDNSResolver struct{}
+
+// LookupSRV performs a DNS SRV lookup using the standard library
+func (d *DefaultDNSResolver) LookupSRV(ctx context.Context, service, proto, name string) (string, []*net.SRV, error) {
+	return net.DefaultResolver.LookupSRV(ctx, service, proto, name)
+}
+
+// LookupHost performs a DNS host lookup using the standard library
+func (d *DefaultDNSResolver) LookupHost(ctx context.Context, host string) ([]string, error) {
+	return net.DefaultResolver.LookupHost(ctx, host)
+}
+
+// LookupTXT performs a DNS TXT record lookup using the standard library
+func (d *DefaultDNSResolver) LookupTXT(ctx context.Context, name string) ([]string, error) {
+	return net.DefaultResolver.LookupTXT(ctx, name)
+}
+
+// DNSDiscovery implements DNS-based service discovery using DNS-SD (RFC 6763)
 type DNSDiscovery struct {
 	domain   string
 	services map[string]*DiscoveredServer
 	logger   *logrus.Logger
+	resolver DNSResolver
 }
 
 // ConfigurationDiscovery implements configuration-based discovery
@@ -95,6 +121,7 @@ func NewProtocolDiscovery(logger *logrus.Logger) *ProtocolDiscovery {
 		domain:   "local",
 		services: make(map[string]*DiscoveredServer),
 		logger:   logger,
+		resolver: &DefaultDNSResolver{},
 	})
 
 	discovery.AddDiscoveryMethod(&ConfigurationDiscovery{
@@ -427,32 +454,96 @@ func (dns *DNSDiscovery) Name() string {
 	return "dns"
 }
 
-func (dns *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredServer, error) {
-	var servers []*DiscoveredServer
+// SetResolver sets a custom DNS resolver (primarily for testing)
+func (dns *DNSDiscovery) SetResolver(resolver DNSResolver) {
+	dns.resolver = resolver
+}
 
-	// Look for common protocol service names
-	serviceNames := []string{
-		"_mcp._tcp",
-		"_lsp._tcp",
-		"_acp._tcp",
-		"_protocols._tcp",
+// Discover performs DNS-SD service discovery using SRV records (RFC 6763)
+func (dns *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredServer, error) {
+	servers := make([]*DiscoveredServer, 0)
+
+	// Ensure we have a resolver
+	if dns.resolver == nil {
+		dns.resolver = &DefaultDNSResolver{}
 	}
 
-	for _, serviceName := range serviceNames {
-		protocol := strings.TrimSuffix(strings.TrimPrefix(serviceName, "_"), "._tcp")
+	// Protocol service definitions: service name -> protocol identifier
+	serviceDefinitions := []struct {
+		service  string // DNS-SD service name (without leading underscore)
+		proto    string // Protocol (tcp/udp)
+		protocol string // Our internal protocol name
+	}{
+		{service: "mcp", proto: "tcp", protocol: "mcp"},
+		{service: "lsp", proto: "tcp", protocol: "lsp"},
+		{service: "acp", proto: "tcp", protocol: "acp"},
+		{service: "protocols", proto: "tcp", protocol: "protocols"},
+	}
 
-		// In a real implementation, you would use DNS-SD/mDNS discovery
-		// For this demo, we'll simulate finding some services
-		if protocol == "mcp" {
+	for _, svcDef := range serviceDefinitions {
+		discovered, err := dns.discoverService(ctx, svcDef.service, svcDef.proto, svcDef.protocol)
+		if err != nil {
+			// Log the error but continue with other services
+			if dns.logger != nil {
+				dns.logger.WithError(err).WithFields(logrus.Fields{
+					"service":  svcDef.service,
+					"protocol": svcDef.protocol,
+					"domain":   dns.domain,
+				}).Debug("DNS-SD lookup failed for service")
+			}
+			continue
+		}
+		servers = append(servers, discovered...)
+	}
+
+	return servers, nil
+}
+
+// discoverService performs DNS-SD discovery for a specific service type
+func (dns *DNSDiscovery) discoverService(ctx context.Context, service, proto, protocol string) ([]*DiscoveredServer, error) {
+	var servers []*DiscoveredServer
+
+	// Perform SRV lookup: _service._proto.domain
+	// For example: _mcp._tcp.local
+	_, srvRecords, err := dns.resolver.LookupSRV(ctx, service, proto, dns.domain)
+	if err != nil {
+		return nil, fmt.Errorf("SRV lookup failed: %w", err)
+	}
+
+	for _, srv := range srvRecords {
+		// Resolve the target hostname to IP addresses
+		addresses, err := dns.resolveHost(ctx, srv.Target)
+		if err != nil {
+			if dns.logger != nil {
+				dns.logger.WithError(err).WithFields(logrus.Fields{
+					"target": srv.Target,
+					"port":   srv.Port,
+				}).Debug("Failed to resolve SRV target host")
+			}
+			// Use the hostname as-is if resolution fails
+			addresses = []string{strings.TrimSuffix(srv.Target, ".")}
+		}
+
+		// Try to get additional metadata from TXT records
+		metadata := dns.getServiceMetadata(ctx, service, proto, srv.Target)
+
+		for _, addr := range addresses {
+			serverID := fmt.Sprintf("dns-%s-%s-%d", protocol, addr, srv.Port)
+			serverName := metadata["name"]
+			if serverName == "" {
+				serverName = fmt.Sprintf("%s server at %s", strings.ToUpper(protocol), srv.Target)
+			}
+
 			server := &DiscoveredServer{
-				ID:       fmt.Sprintf("dns-mcp-%s", dns.domain),
-				Protocol: "mcp",
-				Address:  "localhost",
-				Port:     3000,
-				Name:     "MCP Server",
-				Type:     "dns",
-				Status:   StatusOnline,
-				LastSeen: time.Now(),
+				ID:           serverID,
+				Protocol:     protocol,
+				Address:      addr,
+				Port:         int(srv.Port),
+				Name:         serverName,
+				Type:         "dns-sd",
+				Status:       StatusUnknown, // Status will be updated by health check
+				LastSeen:     time.Now(),
+				Capabilities: dns.parseCapabilities(metadata),
 			}
 			servers = append(servers, server)
 		}
@@ -461,13 +552,78 @@ func (dns *DNSDiscovery) Discover(ctx context.Context) ([]*DiscoveredServer, err
 	return servers, nil
 }
 
+// resolveHost resolves a hostname to IP addresses
+func (dns *DNSDiscovery) resolveHost(ctx context.Context, host string) ([]string, error) {
+	// Remove trailing dot from FQDN if present
+	host = strings.TrimSuffix(host, ".")
+
+	// Check if it's already an IP address
+	if ip := net.ParseIP(host); ip != nil {
+		return []string{host}, nil
+	}
+
+	return dns.resolver.LookupHost(ctx, host)
+}
+
+// getServiceMetadata retrieves additional service metadata from TXT records
+func (dns *DNSDiscovery) getServiceMetadata(ctx context.Context, service, proto, target string) map[string]string {
+	metadata := make(map[string]string)
+
+	// TXT record name for DNS-SD: target or _service._proto.domain
+	txtName := strings.TrimSuffix(target, ".")
+
+	txtRecords, err := dns.resolver.LookupTXT(ctx, txtName)
+	if err != nil {
+		// TXT records are optional, ignore errors
+		return metadata
+	}
+
+	// Parse TXT records in key=value format (per DNS-SD RFC 6763)
+	for _, txt := range txtRecords {
+		if idx := strings.Index(txt, "="); idx > 0 {
+			key := txt[:idx]
+			value := txt[idx+1:]
+			metadata[key] = value
+		}
+	}
+
+	return metadata
+}
+
+// parseCapabilities converts TXT metadata to capabilities map
+func (dns *DNSDiscovery) parseCapabilities(metadata map[string]string) map[string]interface{} {
+	capabilities := make(map[string]interface{})
+
+	// Known capability keys that should be parsed
+	capabilityKeys := []string{"version", "capabilities", "features", "api"}
+
+	for _, key := range capabilityKeys {
+		if value, ok := metadata[key]; ok {
+			capabilities[key] = value
+		}
+	}
+
+	// Copy any remaining metadata as capabilities
+	for key, value := range metadata {
+		if _, exists := capabilities[key]; !exists && key != "name" {
+			capabilities[key] = value
+		}
+	}
+
+	return capabilities
+}
+
 func (dns *DNSDiscovery) Start(ctx context.Context) error {
-	dns.logger.Info("Starting DNS discovery")
+	if dns.logger != nil {
+		dns.logger.Info("Starting DNS-SD discovery")
+	}
 	return nil
 }
 
 func (dns *DNSDiscovery) Stop() error {
-	dns.logger.Info("Stopping DNS discovery")
+	if dns.logger != nil {
+		dns.logger.Info("Stopping DNS-SD discovery")
+	}
 	return nil
 }
 

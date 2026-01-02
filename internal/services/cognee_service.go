@@ -293,7 +293,13 @@ func (s *CogneeService) EnsureRunning(ctx context.Context) error {
 			return nil
 		}
 		time.Sleep(interval)
-		interval = min(interval*2, 10*time.Second)
+		doubled := interval * 2
+		maxInterval := 10 * time.Second
+		if doubled < maxInterval {
+			interval = doubled
+		} else {
+			interval = maxInterval
+		}
 	}
 
 	return fmt.Errorf("cognee services did not become healthy within %v", maxWait)

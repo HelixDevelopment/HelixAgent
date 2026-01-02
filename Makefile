@@ -1,4 +1,4 @@
-.PHONY: all build test run fmt lint security-scan docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker
+.PHONY: all build test run fmt lint security-scan docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full
 
 # =============================================================================
 # MAIN TARGETS
@@ -310,6 +310,63 @@ docker-monitoring:
 docker-ai:
 	@echo "🤖 Starting AI services..."
 	docker compose --profile ai up -d
+
+# =============================================================================
+# CONTAINER RUNTIME TARGETS (Docker/Podman)
+# =============================================================================
+
+container-detect:
+	@echo "🔍 Detecting container runtime..."
+	@./scripts/container-runtime.sh
+
+container-build:
+	@echo "🔨 Building container image..."
+	@./scripts/container-runtime.sh build
+
+container-start:
+	@echo "🚀 Starting services..."
+	@./scripts/container-runtime.sh start
+
+container-stop:
+	@echo "⏹️ Stopping services..."
+	@./scripts/container-runtime.sh stop
+
+container-logs:
+	@echo "📋 Showing logs..."
+	@./scripts/container-runtime.sh logs
+
+container-status:
+	@echo "📊 Checking status..."
+	@./scripts/container-runtime.sh status
+
+container-test:
+	@echo "🧪 Running container compatibility tests..."
+	@./tests/container/container_runtime_test.sh
+
+# Podman-specific targets
+podman-build:
+	@echo "🦭 Building with Podman..."
+	podman build -t superagent:latest .
+
+podman-run:
+	@echo "🦭 Running with Podman Compose..."
+	podman-compose up -d
+
+podman-stop:
+	@echo "🦭 Stopping Podman services..."
+	podman-compose down
+
+podman-logs:
+	@echo "📋 Showing Podman logs..."
+	podman-compose logs -f
+
+podman-clean:
+	@echo "🧹 Cleaning Podman containers..."
+	podman-compose down -v --remove-orphans
+
+podman-full:
+	@echo "🦭 Starting full Podman environment..."
+	podman-compose --profile full up -d
 
 # =============================================================================
 # INSTALLATION TARGETS

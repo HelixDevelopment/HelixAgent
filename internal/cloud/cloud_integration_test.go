@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"testing"
 
@@ -810,4 +811,385 @@ func TestCloudIntegrationManager_HealthCheckAll(t *testing.T) {
 			assert.Error(t, err)
 		}
 	}
+}
+
+// ========== AWS Signature V4 Tests ==========
+
+func TestHmacSHA256(t *testing.T) {
+	t.Run("basic hmac calculation", func(t *testing.T) {
+		key := []byte("secret")
+		data := "test data"
+		result := hmacSHA256(key, data)
+
+		assert.NotNil(t, result)
+		assert.Len(t, result, 32) // SHA256 produces 32 bytes
+	})
+
+	t.Run("empty data", func(t *testing.T) {
+		key := []byte("secret")
+		data := ""
+		result := hmacSHA256(key, data)
+
+		assert.NotNil(t, result)
+		assert.Len(t, result, 32)
+	})
+
+	t.Run("empty key", func(t *testing.T) {
+		key := []byte("")
+		data := "test"
+		result := hmacSHA256(key, data)
+
+		assert.NotNil(t, result)
+		assert.Len(t, result, 32)
+	})
+
+	t.Run("consistent results", func(t *testing.T) {
+		key := []byte("same-key")
+		data := "same-data"
+		result1 := hmacSHA256(key, data)
+		result2 := hmacSHA256(key, data)
+
+		assert.Equal(t, result1, result2)
+	})
+
+	t.Run("different data produces different hash", func(t *testing.T) {
+		key := []byte("key")
+		result1 := hmacSHA256(key, "data1")
+		result2 := hmacSHA256(key, "data2")
+
+		assert.NotEqual(t, result1, result2)
+	})
+}
+
+func TestAWSBedrockIntegration_signRequest(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("signs request with basic credentials", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		req, _ := http.NewRequest("POST", "https://bedrock-runtime.us-east-1.amazonaws.com/model/test/invoke", nil)
+		req.Header.Set("Content-Type", "application/json")
+
+		err := integration.signRequest(req, []byte(`{"test": "data"}`))
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, req.Header.Get("Authorization"))
+		assert.NotEmpty(t, req.Header.Get("X-Amz-Date"))
+		assert.NotEmpty(t, req.Header.Get("X-Amz-Content-Sha256"))
+
+		// Check authorization header format
+		auth := req.Header.Get("Authorization")
+		assert.Contains(t, auth, "AWS4-HMAC-SHA256")
+		assert.Contains(t, auth, "Credential=")
+		assert.Contains(t, auth, "SignedHeaders=")
+		assert.Contains(t, auth, "Signature=")
+	})
+
+	t.Run("signs request with session token", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-west-2",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+			SessionToken:    "FwoGZXIvYXdzEBYaDLW...",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		req, _ := http.NewRequest("POST", "https://bedrock-runtime.us-west-2.amazonaws.com/model/test/invoke", nil)
+		req.Header.Set("Content-Type", "application/json")
+
+		err := integration.signRequest(req, []byte(`{"prompt": "test"}`))
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, req.Header.Get("X-Amz-Security-Token"))
+		assert.Equal(t, "FwoGZXIvYXdzEBYaDLW...", req.Header.Get("X-Amz-Security-Token"))
+	})
+
+	t.Run("signs request with nil body", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "eu-west-1",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		req, _ := http.NewRequest("GET", "https://bedrock.eu-west-1.amazonaws.com/foundation-models", nil)
+
+		err := integration.signRequest(req, nil)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, req.Header.Get("Authorization"))
+	})
+
+	t.Run("signs request with empty path", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "ap-southeast-1",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		req, _ := http.NewRequest("GET", "https://bedrock.ap-southeast-1.amazonaws.com", nil)
+
+		err := integration.signRequest(req, nil)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, req.Header.Get("Authorization"))
+	})
+
+	t.Run("signs request with query string", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		req, _ := http.NewRequest("GET", "https://bedrock.us-east-1.amazonaws.com/foundation-models?maxResults=10&byProvider=anthropic", nil)
+
+		err := integration.signRequest(req, nil)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, req.Header.Get("Authorization"))
+	})
+}
+
+func TestAWSBedrockIntegration_getSignatureKey(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("generates signature key", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
+			SecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		key := integration.getSignatureKey("20230101", "us-east-1", "bedrock")
+
+		assert.NotNil(t, key)
+		assert.Len(t, key, 32) // SHA256 produces 32 bytes
+	})
+
+	t.Run("different dates produce different keys", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "test",
+			SecretAccessKey: "secret",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		key1 := integration.getSignatureKey("20230101", "us-east-1", "bedrock")
+		key2 := integration.getSignatureKey("20230102", "us-east-1", "bedrock")
+
+		assert.NotEqual(t, key1, key2)
+	})
+
+	t.Run("different regions produce different keys", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "test",
+			SecretAccessKey: "secret",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		key1 := integration.getSignatureKey("20230101", "us-east-1", "bedrock")
+		key2 := integration.getSignatureKey("20230101", "us-west-2", "bedrock")
+
+		assert.NotEqual(t, key1, key2)
+	})
+
+	t.Run("different services produce different keys", func(t *testing.T) {
+		config := AWSBedrockConfig{
+			Region:          "us-east-1",
+			AccessKeyID:     "test",
+			SecretAccessKey: "secret",
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		key1 := integration.getSignatureKey("20230101", "us-east-1", "bedrock")
+		key2 := integration.getSignatureKey("20230101", "us-east-1", "s3")
+
+		assert.NotEqual(t, key1, key2)
+	})
+}
+
+// ========== Additional InvokeCloudModel Tests ==========
+
+func TestCloudIntegrationManager_InvokeCloudModel_Errors(t *testing.T) {
+	logger := newTestLogger()
+	manager := NewCloudIntegrationManager(logger)
+
+	ctx := context.Background()
+	prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+
+	t.Run("no providers registered", func(t *testing.T) {
+		result, err := manager.InvokeCloudModel(ctx, "aws-bedrock", "test-model", prompt, nil)
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("non-existent provider", func(t *testing.T) {
+		manager.RegisterProvider(NewAWSBedrockIntegration("us-east-1", logger))
+		result, err := manager.InvokeCloudModel(ctx, "non-existent-provider", "model", prompt, nil)
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
+// ========== List/Invoke Model Error Path Tests ==========
+
+func TestAWSBedrockIntegration_ListModels_NoCredentials(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		t.Skip("AWS credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewAWSBedrockIntegration("us-east-1", logger)
+
+	ctx := context.Background()
+	models, err := integration.ListModels(ctx)
+
+	assert.Error(t, err)
+	assert.Empty(t, models)
+	assert.Contains(t, err.Error(), "credentials not configured")
+}
+
+func TestAWSBedrockIntegration_InvokeModel_NoCredentials(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		t.Skip("AWS credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewAWSBedrockIntegration("us-east-1", logger)
+
+	ctx := context.Background()
+	prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+	result, err := integration.InvokeModel(ctx, "test-model", prompt, nil)
+
+	assert.Error(t, err)
+	assert.Empty(t, result)
+	assert.Contains(t, err.Error(), "credentials not configured")
+}
+
+func TestGCPVertexAIIntegration_ListModels_NoCredentials(t *testing.T) {
+	if os.Getenv("GCP_ACCESS_TOKEN") != "" || os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		t.Skip("GCP credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewGCPVertexAIIntegration("test-project", "us-central1", logger)
+
+	ctx := context.Background()
+	models, err := integration.ListModels(ctx)
+
+	assert.Error(t, err)
+	assert.Empty(t, models)
+	assert.Contains(t, err.Error(), "not configured")
+}
+
+func TestGCPVertexAIIntegration_InvokeModel_NoCredentials(t *testing.T) {
+	if os.Getenv("GCP_ACCESS_TOKEN") != "" || os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		t.Skip("GCP credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewGCPVertexAIIntegration("test-project", "us-central1", logger)
+
+	ctx := context.Background()
+	prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+	result, err := integration.InvokeModel(ctx, "test-model", prompt, nil)
+
+	assert.Error(t, err)
+	assert.Empty(t, result)
+	assert.Contains(t, err.Error(), "not configured")
+}
+
+func TestAzureOpenAIIntegration_ListModels_NoCredentials(t *testing.T) {
+	if os.Getenv("AZURE_OPENAI_API_KEY") != "" {
+		t.Skip("Azure credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewAzureOpenAIIntegration("https://test.openai.azure.com", logger)
+
+	ctx := context.Background()
+	models, err := integration.ListModels(ctx)
+
+	assert.Error(t, err)
+	assert.Empty(t, models)
+	assert.Contains(t, err.Error(), "not configured")
+}
+
+func TestAzureOpenAIIntegration_InvokeModel_NoCredentials(t *testing.T) {
+	if os.Getenv("AZURE_OPENAI_API_KEY") != "" {
+		t.Skip("Azure credentials are set, skipping no-credentials test")
+	}
+
+	logger := newTestLogger()
+	integration := NewAzureOpenAIIntegration("https://test.openai.azure.com", logger)
+
+	ctx := context.Background()
+	prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+	result, err := integration.InvokeModel(ctx, "test-model", prompt, nil)
+
+	assert.Error(t, err)
+	assert.Empty(t, result)
+	assert.Contains(t, err.Error(), "not configured")
+}
+
+// ========== Additional Tests for extractTextFromResponse Edge Cases ==========
+
+func TestExtractTextFromResponse_EdgeCases(t *testing.T) {
+	t.Run("nested predictions with empty array", func(t *testing.T) {
+		data := map[string]interface{}{
+			"predictions": []interface{}{},
+		}
+		result := extractTextFromResponse(data)
+		assert.Empty(t, result)
+	})
+
+	t.Run("choices with empty array", func(t *testing.T) {
+		data := map[string]interface{}{
+			"choices": []interface{}{},
+		}
+		result := extractTextFromResponse(data)
+		assert.Empty(t, result)
+	})
+
+	t.Run("non-string text field", func(t *testing.T) {
+		data := map[string]interface{}{
+			"text": 123, // not a string
+		}
+		result := extractTextFromResponse(data)
+		assert.Empty(t, result)
+	})
+
+	t.Run("choices with invalid message type", func(t *testing.T) {
+		data := map[string]interface{}{
+			"choices": []interface{}{
+				map[string]interface{}{
+					"message": "not-a-map",
+				},
+			},
+		}
+		result := extractTextFromResponse(data)
+		assert.Empty(t, result)
+	})
+
+	t.Run("predictions with invalid first element", func(t *testing.T) {
+		data := map[string]interface{}{
+			"predictions": []interface{}{
+				123, // not a map or string
+			},
+		}
+		result := extractTextFromResponse(data)
+		assert.Empty(t, result)
+	})
 }

@@ -118,13 +118,52 @@ Environment variables defined in `.env.example`. Key categories:
 
 Configuration files in `/configs`: `development.yaml`, `production.yaml`, `multi-provider.yaml`
 
-## Docker Compose Profiles
+## Container Runtime Support (Docker/Podman)
+
+SuperAgent supports both Docker and Podman as container runtimes. Use the wrapper script for automatic detection:
+
+```bash
+# Source the container runtime script
+source scripts/container-runtime.sh
+
+# Use the wrapper commands
+./scripts/container-runtime.sh build      # Build container image
+./scripts/container-runtime.sh start      # Start services
+./scripts/container-runtime.sh stop       # Stop services
+./scripts/container-runtime.sh logs       # View logs
+./scripts/container-runtime.sh status     # Check service status
+```
+
+### Docker Usage
 
 ```bash
 docker-compose up -d                    # Core services (postgres, redis, cognee, chromadb)
 docker-compose --profile ai up -d       # Add AI services (ollama)
 docker-compose --profile monitoring up -d  # Add monitoring (prometheus, grafana)
 docker-compose --profile full up -d     # Everything
+```
+
+### Podman Usage
+
+```bash
+# Enable Podman socket for Docker compatibility
+systemctl --user enable --now podman.socket
+
+# Use podman-compose (install: pip install podman-compose)
+podman-compose up -d                    # Core services
+podman-compose --profile ai up -d       # Add AI services
+podman-compose --profile full up -d     # Everything
+
+# Or use Podman directly
+podman build -t superagent:latest .
+podman run -d --name superagent -p 8080:8080 superagent:latest
+```
+
+### Container Compatibility Tests
+
+```bash
+# Run container runtime compatibility tests
+./tests/container/container_runtime_test.sh
 ```
 
 ## Adding a New LLM Provider

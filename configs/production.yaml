@@ -136,12 +136,81 @@ ai_debate:
   max_participants: 10
   max_rounds: 5
   consensus_threshold: 0.7
-  
+
   # Cognee integration (enabled for production)
   cognee:
     enabled: true
     api_url: "${COGNEE_API_URL}"
     dataset_name: "superagent_debates"
+
+optimization:
+  # LLM Optimization Framework (enabled for production)
+  enabled: true
+
+  # Semantic cache configuration (GPTCache-inspired)
+  semantic_cache:
+    enabled: true
+    similarity_threshold: 0.85
+    max_entries: 50000
+    ttl: "24h"
+    embedding_model: "text-embedding-3-small"
+    eviction_policy: "lru_with_relevance"
+
+  # Structured output validation (Outlines-inspired)
+  structured_output:
+    enabled: true
+    default_validator: "outlines"
+    strict_mode: true
+    retry_on_failure: true
+    max_retries: 3
+
+  # Enhanced streaming configuration
+  streaming:
+    enabled: true
+    buffer_type: "word"
+    progress_interval: "100ms"
+    rate_limit: 0  # Unlimited in production
+
+  # SGLang RadixAttention (GPU required)
+  sglang:
+    enabled: ${SGLANG_ENABLED:-true}
+    endpoint: "${SGLANG_ENDPOINT:-http://localhost:30000}"
+    timeout: "120s"
+    fallback_on_unavailable: true
+
+  # LlamaIndex document retrieval (Cognee-primary)
+  llamaindex:
+    enabled: ${LLAMAINDEX_ENABLED:-true}
+    endpoint: "${LLAMAINDEX_ENDPOINT:-http://localhost:8012}"
+    timeout: "120s"
+    use_cognee_index: true
+
+  # LangChain task decomposition
+  langchain:
+    enabled: ${LANGCHAIN_ENABLED:-true}
+    endpoint: "${LANGCHAIN_ENDPOINT:-http://localhost:8011}"
+    timeout: "120s"
+    default_chain: "react"
+
+  # Guidance CFG-based constraints
+  guidance:
+    enabled: ${GUIDANCE_ENABLED:-true}
+    endpoint: "${GUIDANCE_ENDPOINT:-http://localhost:8013}"
+    timeout: "120s"
+    cache_programs: true
+
+  # LMQL query language
+  lmql:
+    enabled: ${LMQL_ENABLED:-true}
+    endpoint: "${LMQL_ENDPOINT:-http://localhost:8014}"
+    timeout: "120s"
+    cache_queries: true
+
+  # Graceful degradation settings
+  fallback:
+    on_service_unavailable: "skip"
+    health_check_interval: "30s"
+    retry_unavailable_after: "5m"
 
 plugins:
   # Plugin system (enabled for production)

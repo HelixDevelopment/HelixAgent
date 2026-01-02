@@ -2,12 +2,14 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTestDB(t *testing.T) (*pgxpool.Pool, *ModelMetadataRepository) {
@@ -667,5 +669,367 @@ func TestModelMetadataRepository_NullableFields(t *testing.T) {
 		assert.Nil(t, fetched.MaxTokens)
 		assert.Nil(t, fetched.BenchmarkScore)
 		assert.Nil(t, fetched.PopularityScore)
+	})
+}
+
+// =============================================================================
+// Unit Tests (No Database Required)
+// =============================================================================
+
+// TestNewModelMetadataRepository tests repository creation
+func TestNewModelMetadataRepository(t *testing.T) {
+	t.Run("CreatesRepositoryWithNilPool", func(t *testing.T) {
+		logger := logrus.New()
+		repo := NewModelMetadataRepository(nil, logger)
+		assert.NotNil(t, repo)
+	})
+
+	t.Run("CreatesRepositoryWithNilLogger", func(t *testing.T) {
+		repo := NewModelMetadataRepository(nil, nil)
+		assert.NotNil(t, repo)
+	})
+}
+
+// TestModelMetadata_JSONSerialization tests JSON serialization
+func TestModelMetadata_JSONSerialization(t *testing.T) {
+	t.Run("SerializesFullModelMetadata", func(t *testing.T) {
+		contextWindow := 128000
+		maxTokens := 4096
+		pricingInput := 3.0
+		pricingOutput := 15.0
+		benchmarkScore := 95.5
+		popularityScore := 100
+		reliabilityScore := 0.95
+		modelType := "chat"
+		modelFamily := "claude"
+		version := "20240229"
+		url := "https://models.dev/models/claude-3-sonnet"
+		modelsDevID := "modelsdev-claude-3-sonnet"
+		apiVersion := "v1"
+		now := time.Now()
+
+		metadata := &ModelMetadata{
+			ID:                      "test-id",
+			ModelID:                 "claude-3-sonnet-20240229",
+			ModelName:               "Claude 3 Sonnet",
+			ProviderID:              "anthropic",
+			ProviderName:            "Anthropic",
+			Description:             "Claude 3 Sonnet is a balanced model",
+			ContextWindow:           &contextWindow,
+			MaxTokens:               &maxTokens,
+			PricingInput:            &pricingInput,
+			PricingOutput:           &pricingOutput,
+			PricingCurrency:         "USD",
+			SupportsVision:          true,
+			SupportsFunctionCalling: true,
+			SupportsStreaming:       true,
+			SupportsJSONMode:        true,
+			SupportsImageGeneration: false,
+			SupportsAudio:           false,
+			SupportsCodeGeneration:  true,
+			SupportsReasoning:       true,
+			BenchmarkScore:          &benchmarkScore,
+			PopularityScore:         &popularityScore,
+			ReliabilityScore:        &reliabilityScore,
+			ModelType:               &modelType,
+			ModelFamily:             &modelFamily,
+			Version:                 &version,
+			Tags:                    []string{"vision", "function-calling", "json"},
+			ModelsDevURL:            &url,
+			ModelsDevID:             &modelsDevID,
+			ModelsDevAPIVersion:     &apiVersion,
+			RawMetadata:             map[string]interface{}{"custom_field": "value"},
+			LastRefreshedAt:         now,
+			CreatedAt:               now,
+			UpdatedAt:               now,
+		}
+
+		jsonBytes, err := json.Marshal(metadata)
+		require.NoError(t, err)
+		assert.Contains(t, string(jsonBytes), "claude-3-sonnet-20240229")
+		assert.Contains(t, string(jsonBytes), "anthropic")
+
+		// Deserialize back
+		var decoded ModelMetadata
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, metadata.ModelID, decoded.ModelID)
+		assert.Equal(t, metadata.ProviderID, decoded.ProviderID)
+		assert.Equal(t, *metadata.ContextWindow, *decoded.ContextWindow)
+	})
+
+	t.Run("SerializesMinimalModelMetadata", func(t *testing.T) {
+		metadata := &ModelMetadata{
+			ModelID:      "minimal-model",
+			ModelName:    "Minimal Model",
+			ProviderID:   "test-provider",
+			ProviderName: "Test Provider",
+		}
+
+		jsonBytes, err := json.Marshal(metadata)
+		require.NoError(t, err)
+		assert.Contains(t, string(jsonBytes), "minimal-model")
+
+		var decoded ModelMetadata
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "minimal-model", decoded.ModelID)
+		assert.Nil(t, decoded.ContextWindow)
+		assert.Nil(t, decoded.MaxTokens)
+	})
+}
+
+// TestModelBenchmark_JSONSerialization tests benchmark JSON serialization
+func TestModelBenchmark_JSONSerialization(t *testing.T) {
+	t.Run("SerializesFullBenchmark", func(t *testing.T) {
+		score := 95.0
+		rank := 1
+		normalizedScore := 0.95
+		benchmarkDate := time.Now()
+		benchmarkType := "reasoning"
+
+		benchmark := &ModelBenchmark{
+			ID:              "bench-1",
+			ModelID:         "model-1",
+			BenchmarkName:   "MMLU",
+			BenchmarkType:   &benchmarkType,
+			Score:           &score,
+			Rank:            &rank,
+			NormalizedScore: &normalizedScore,
+			BenchmarkDate:   &benchmarkDate,
+			Metadata:        map[string]interface{}{"details": "test"},
+			CreatedAt:       time.Now(),
+		}
+
+		jsonBytes, err := json.Marshal(benchmark)
+		require.NoError(t, err)
+		assert.Contains(t, string(jsonBytes), "MMLU")
+		assert.Contains(t, string(jsonBytes), "model-1")
+
+		var decoded ModelBenchmark
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "MMLU", decoded.BenchmarkName)
+		assert.Equal(t, 95.0, *decoded.Score)
+	})
+
+	t.Run("SerializesMinimalBenchmark", func(t *testing.T) {
+		benchmark := &ModelBenchmark{
+			ModelID:       "model-1",
+			BenchmarkName: "MMLU",
+		}
+
+		jsonBytes, err := json.Marshal(benchmark)
+		require.NoError(t, err)
+
+		var decoded ModelBenchmark
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "MMLU", decoded.BenchmarkName)
+		assert.Nil(t, decoded.Score)
+	})
+}
+
+// TestModelsRefreshHistory_JSONSerialization tests refresh history JSON serialization
+func TestModelsRefreshHistory_JSONSerialization(t *testing.T) {
+	t.Run("SerializesFullRefreshHistory", func(t *testing.T) {
+		startedAt := time.Now()
+		completedAt := time.Now()
+		duration := 120
+		errorMessage := "test error"
+
+		history := &ModelsRefreshHistory{
+			ID:              "history-1",
+			RefreshType:     "full",
+			Status:          "completed",
+			ModelsRefreshed: 100,
+			ModelsFailed:    5,
+			ErrorMessage:    &errorMessage,
+			StartedAt:       startedAt,
+			CompletedAt:     &completedAt,
+			DurationSeconds: &duration,
+			Metadata:        map[string]interface{}{"provider": "all"},
+		}
+
+		jsonBytes, err := json.Marshal(history)
+		require.NoError(t, err)
+		assert.Contains(t, string(jsonBytes), "full")
+		assert.Contains(t, string(jsonBytes), "completed")
+
+		var decoded ModelsRefreshHistory
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "full", decoded.RefreshType)
+		assert.Equal(t, 100, decoded.ModelsRefreshed)
+	})
+
+	t.Run("SerializesMinimalRefreshHistory", func(t *testing.T) {
+		history := &ModelsRefreshHistory{
+			RefreshType:     "provider",
+			Status:          "running",
+			ModelsRefreshed: 0,
+			ModelsFailed:    0,
+			StartedAt:       time.Now(),
+		}
+
+		jsonBytes, err := json.Marshal(history)
+		require.NoError(t, err)
+
+		var decoded ModelsRefreshHistory
+		err = json.Unmarshal(jsonBytes, &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "provider", decoded.RefreshType)
+		assert.Nil(t, decoded.ErrorMessage)
+	})
+}
+
+// TestModelMetadata_Fields tests individual fields
+func TestModelMetadata_Fields(t *testing.T) {
+	t.Run("TagsAreSlice", func(t *testing.T) {
+		metadata := &ModelMetadata{
+			ModelID: "test",
+			Tags:    []string{"tag1", "tag2", "tag3"},
+		}
+		assert.Len(t, metadata.Tags, 3)
+		assert.Contains(t, metadata.Tags, "tag1")
+	})
+
+	t.Run("RawMetadataIsMap", func(t *testing.T) {
+		metadata := &ModelMetadata{
+			ModelID: "test",
+			RawMetadata: map[string]interface{}{
+				"key1": "value1",
+				"key2": 42,
+				"key3": true,
+			},
+		}
+		assert.Equal(t, "value1", metadata.RawMetadata["key1"])
+		assert.Equal(t, 42, metadata.RawMetadata["key2"])
+		assert.Equal(t, true, metadata.RawMetadata["key3"])
+	})
+
+	t.Run("BooleanFieldsDefault", func(t *testing.T) {
+		metadata := &ModelMetadata{ModelID: "test"}
+		assert.False(t, metadata.SupportsVision)
+		assert.False(t, metadata.SupportsFunctionCalling)
+		assert.False(t, metadata.SupportsStreaming)
+		assert.False(t, metadata.SupportsJSONMode)
+		assert.False(t, metadata.SupportsImageGeneration)
+		assert.False(t, metadata.SupportsAudio)
+		assert.False(t, metadata.SupportsCodeGeneration)
+		assert.False(t, metadata.SupportsReasoning)
+	})
+
+	t.Run("NilPointerFields", func(t *testing.T) {
+		metadata := &ModelMetadata{ModelID: "test"}
+		assert.Nil(t, metadata.ContextWindow)
+		assert.Nil(t, metadata.MaxTokens)
+		assert.Nil(t, metadata.PricingInput)
+		assert.Nil(t, metadata.PricingOutput)
+		assert.Nil(t, metadata.BenchmarkScore)
+		assert.Nil(t, metadata.PopularityScore)
+		assert.Nil(t, metadata.ReliabilityScore)
+		assert.Nil(t, metadata.ModelType)
+		assert.Nil(t, metadata.ModelFamily)
+		assert.Nil(t, metadata.Version)
+		assert.Nil(t, metadata.ModelsDevURL)
+		assert.Nil(t, metadata.ModelsDevID)
+		assert.Nil(t, metadata.ModelsDevAPIVersion)
+	})
+}
+
+// TestModelBenchmark_Fields tests benchmark fields
+func TestModelBenchmark_Fields(t *testing.T) {
+	t.Run("MetadataIsMap", func(t *testing.T) {
+		benchmark := &ModelBenchmark{
+			ModelID:       "test",
+			BenchmarkName: "MMLU",
+			Metadata: map[string]interface{}{
+				"source": "test",
+				"count":  100,
+			},
+		}
+		assert.Equal(t, "test", benchmark.Metadata["source"])
+		assert.Equal(t, 100, benchmark.Metadata["count"])
+	})
+
+	t.Run("NilPointerFields", func(t *testing.T) {
+		benchmark := &ModelBenchmark{ModelID: "test", BenchmarkName: "MMLU"}
+		assert.Nil(t, benchmark.BenchmarkType)
+		assert.Nil(t, benchmark.Score)
+		assert.Nil(t, benchmark.Rank)
+		assert.Nil(t, benchmark.NormalizedScore)
+		assert.Nil(t, benchmark.BenchmarkDate)
+	})
+}
+
+// TestModelsRefreshHistory_Fields tests refresh history fields
+func TestModelsRefreshHistory_Fields(t *testing.T) {
+	t.Run("RequiredFields", func(t *testing.T) {
+		history := &ModelsRefreshHistory{
+			RefreshType:     "full",
+			Status:          "running",
+			ModelsRefreshed: 50,
+			ModelsFailed:    2,
+			StartedAt:       time.Now(),
+		}
+		assert.Equal(t, "full", history.RefreshType)
+		assert.Equal(t, "running", history.Status)
+		assert.Equal(t, 50, history.ModelsRefreshed)
+		assert.Equal(t, 2, history.ModelsFailed)
+		assert.False(t, history.StartedAt.IsZero())
+	})
+
+	t.Run("NilPointerFields", func(t *testing.T) {
+		history := &ModelsRefreshHistory{
+			RefreshType: "test",
+			Status:      "pending",
+			StartedAt:   time.Now(),
+		}
+		assert.Nil(t, history.ErrorMessage)
+		assert.Nil(t, history.CompletedAt)
+		assert.Nil(t, history.DurationSeconds)
+	})
+
+	t.Run("MetadataIsMap", func(t *testing.T) {
+		history := &ModelsRefreshHistory{
+			RefreshType: "test",
+			Status:      "completed",
+			StartedAt:   time.Now(),
+			Metadata: map[string]interface{}{
+				"provider": "anthropic",
+				"models":   100,
+			},
+		}
+		assert.Equal(t, "anthropic", history.Metadata["provider"])
+		assert.Equal(t, 100, history.Metadata["models"])
+	})
+}
+
+// TestCreateTestModelMetadata_Helper tests the helper function
+func TestCreateTestModelMetadata_Helper(t *testing.T) {
+	metadata := createTestModelMetadata()
+
+	t.Run("HasRequiredFields", func(t *testing.T) {
+		assert.NotEmpty(t, metadata.ModelID)
+		assert.NotEmpty(t, metadata.ModelName)
+		assert.NotEmpty(t, metadata.ProviderID)
+		assert.NotEmpty(t, metadata.ProviderName)
+	})
+
+	t.Run("HasOptionalFields", func(t *testing.T) {
+		assert.NotNil(t, metadata.ContextWindow)
+		assert.NotNil(t, metadata.MaxTokens)
+		assert.NotNil(t, metadata.BenchmarkScore)
+	})
+
+	t.Run("HasTags", func(t *testing.T) {
+		assert.NotEmpty(t, metadata.Tags)
+	})
+
+	t.Run("HasBooleanCapabilities", func(t *testing.T) {
+		assert.True(t, metadata.SupportsVision)
+		assert.True(t, metadata.SupportsFunctionCalling)
+		assert.True(t, metadata.SupportsStreaming)
 	})
 }

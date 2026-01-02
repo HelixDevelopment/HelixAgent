@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/superagent/superagent/internal/models"
 	"github.com/superagent/superagent/internal/optimization"
+	"github.com/superagent/superagent/internal/optimization/outlines"
 )
 
 func TestNewOptimizedRequestService(t *testing.T) {
@@ -398,5 +399,110 @@ func TestOptimizedRequestService_ProcessRequestStreamWithOptimization(t *testing
 			chunks = append(chunks, resp.Content)
 		}
 		assert.Greater(t, len(chunks), 0)
+	})
+}
+
+func TestOptimizedRequestService_ProcessRequestWithSchema_NoOptimization(t *testing.T) {
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	reqService := NewRequestService("random", nil, nil)
+
+	// Register a mock provider that returns JSON
+	mockProvider := &MockLLMProviderForRequest{
+		name: "test-provider",
+		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
+			return &models.LLMResponse{
+				Content:      `{"name": "test", "age": 25}`,
+				ProviderName: "test-provider",
+			}, nil
+		},
+	}
+	reqService.RegisterProvider("test-provider", mockProvider)
+
+	config := OptimizedRequestServiceConfig{
+		RequestService: reqService,
+		Logger:         log,
+	}
+
+	service := NewOptimizedRequestService(config)
+
+	t.Run("falls back to regular processing without optimization service", func(t *testing.T) {
+		schema := &outlines.JSONSchema{
+			Type: "object",
+			Properties: map[string]*outlines.JSONSchema{
+				"name": {Type: "string"},
+				"age":  {Type: "integer"},
+			},
+		}
+
+		req := &models.LLMRequest{
+			Prompt: "return a JSON object with name and age",
+		}
+
+		resp, err := service.ProcessRequestWithSchema(context.Background(), req, schema)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Contains(t, resp.Content, "name")
+	})
+}
+
+func TestOptimizedRequestService_ProcessRequestWithSchema_WithOptimization(t *testing.T) {
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	reqService := NewRequestService("random", nil, nil)
+
+	// Register a mock provider that returns JSON
+	mockProvider := &MockLLMProviderForRequest{
+		name: "test-provider",
+		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
+			return &models.LLMResponse{
+				Content:      `{"name": "John", "age": 30}`,
+				ProviderName: "test-provider",
+			}, nil
+		},
+	}
+	reqService.RegisterProvider("test-provider", mockProvider)
+
+	// Create optimization service with structured output enabled
+	optConfig := &optimization.Config{
+		Enabled: true,
+		StructuredOutput: optimization.StructuredOutputConfig{
+			Enabled:    true,
+			StrictMode: false,
+			MaxRetries: 1,
+		},
+	}
+	optService, err := optimization.NewService(optConfig)
+	assert.NoError(t, err)
+
+	config := OptimizedRequestServiceConfig{
+		RequestService:      reqService,
+		OptimizationService: optService,
+		Logger:              log,
+	}
+
+	service := NewOptimizedRequestService(config)
+
+	t.Run("generates structured output with schema", func(t *testing.T) {
+		schema := &outlines.JSONSchema{
+			Type: "object",
+			Properties: map[string]*outlines.JSONSchema{
+				"name": {Type: "string"},
+				"age":  {Type: "integer"},
+			},
+		}
+
+		req := &models.LLMRequest{
+			Prompt: "return a JSON object with name and age",
+		}
+
+		resp, err := service.ProcessRequestWithSchema(context.Background(), req, schema)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Contains(t, resp.Content, "name")
+		// Metadata should contain structured output info
+		assert.NotNil(t, resp.Metadata)
 	})
 }

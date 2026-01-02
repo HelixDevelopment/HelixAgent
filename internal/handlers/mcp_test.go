@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/superagent/superagent/internal/config"
+	"github.com/superagent/superagent/internal/services"
 )
 
 // TestMCPHandler_MCPCapabilities_Disabled tests MCP capabilities when disabled
@@ -654,4 +656,131 @@ func TestMCPHandler_MCPResources_ResponseStructure(t *testing.T) {
 	models := resources[1].(map[string]interface{})
 	assert.Equal(t, "superagent://models", models["uri"])
 	assert.Equal(t, "application/json", models["mimeType"])
+}
+
+// TestMCPHandler_MCPToolsCall_WithProviderRegistry tests tool call with a real provider registry
+func TestMCPHandler_MCPToolsCall_WithProviderRegistry(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled:              true,
+		UnifiedToolNamespace: true,
+	}
+
+	// Create a real provider registry
+	registry := services.NewProviderRegistry(nil, nil)
+
+	handler := &MCPHandler{
+		config:           cfg,
+		providerRegistry: registry,
+		mcpManager:       services.NewMCPManager(nil, nil, logrus.New()),
+		logger:           logrus.New(),
+	}
+
+	// Create a tool call request with provider prefix
+	requestBody := map[string]interface{}{
+		"name": "provider_tool",
+		"arguments": map[string]interface{}{
+			"param": "value",
+		},
+	}
+
+	reqBytes, _ := json.Marshal(requestBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/mcp/tools/call", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.MCPToolsCall(c)
+
+	// With unified namespace enabled and proper tool name format, should return success
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response, "result")
+}
+
+// TestMCPHandler_MCPToolsCall_WithProviderRegistry_NoUnderscore tests tool call without underscore in name
+func TestMCPHandler_MCPToolsCall_WithProviderRegistry_NoUnderscore(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled:              true,
+		UnifiedToolNamespace: true,
+	}
+
+	// Create a real provider registry
+	registry := services.NewProviderRegistry(nil, nil)
+
+	handler := &MCPHandler{
+		config:           cfg,
+		providerRegistry: registry,
+		mcpManager:       services.NewMCPManager(nil, nil, logrus.New()),
+		logger:           logrus.New(),
+	}
+
+	// Create a tool call request without underscore
+	requestBody := map[string]interface{}{
+		"name": "simpletool",
+		"arguments": map[string]interface{}{
+			"param": "value",
+		},
+	}
+
+	reqBytes, _ := json.Marshal(requestBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/mcp/tools/call", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.MCPToolsCall(c)
+
+	// Without underscore, should return bad request for invalid format
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response["error"], "Invalid tool format")
+}
+
+// TestMCPHandler_MCPToolsCall_MissingNameWithRegistry tests tool call without name field
+func TestMCPHandler_MCPToolsCall_MissingNameWithRegistry(t *testing.T) {
+	cfg := &config.MCPConfig{
+		Enabled: true,
+	}
+
+	// Create a real provider registry
+	registry := services.NewProviderRegistry(nil, nil)
+
+	handler := &MCPHandler{
+		config:           cfg,
+		providerRegistry: registry,
+		mcpManager:       services.NewMCPManager(nil, nil, logrus.New()),
+		logger:           logrus.New(),
+	}
+
+	// Create a tool call request without name
+	requestBody := map[string]interface{}{
+		"arguments": map[string]interface{}{
+			"param": "value",
+		},
+	}
+
+	reqBytes, _ := json.Marshal(requestBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/mcp/tools/call", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.MCPToolsCall(c)
+
+	// Should return bad request for missing tool name
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response["error"], "Tool name is required")
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/superagent/superagent/internal/services"
 )
 
 func TestNewLSPHandler(t *testing.T) {
@@ -297,4 +298,215 @@ func TestLSPHandler_SyncLSPServer_MultipleIDs(t *testing.T) {
 			assert.Equal(t, serverID, c.Param("id"))
 		})
 	}
+}
+
+func TestLSPHandler_ExecuteLSPRequest_MissingServerID(t *testing.T) {
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	handler := NewLSPHandler(nil, log)
+
+	body := `{"toolName": "completion", "arguments": {"uri": "file:///main.go"}}`
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ExecuteLSPRequest(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Contains(t, response["error"], "serverId is required")
+}
+
+func TestLSPHandler_ExecuteLSPRequest_MissingToolName(t *testing.T) {
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	handler := NewLSPHandler(nil, log)
+
+	body := `{"serverId": "gopls", "arguments": {"uri": "file:///main.go"}}`
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ExecuteLSPRequest(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Contains(t, response["error"], "toolName")
+}
+
+func TestLSPHandler_ExecuteLSPRequest_MissingUri(t *testing.T) {
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	handler := NewLSPHandler(nil, log)
+
+	// Each operation has its own uri check
+	operations := []string{"completion", "hover", "definition", "references", "diagnostics"}
+
+	for _, op := range operations {
+		t.Run(op, func(t *testing.T) {
+			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {}}`
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+
+			handler.ExecuteLSPRequest(c)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+			assert.Contains(t, response["error"], "uri is required")
+		})
+	}
+}
+
+// TestLSPHandler_WithRealManager tests with a real LSP manager (using demo data)
+func TestLSPHandler_WithRealManager(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+
+	// Create LSP manager with nil dependencies (uses demo data)
+	lspManager := services.NewLSPManager(nil, nil, log)
+	handler := NewLSPHandler(lspManager, log)
+
+	t.Run("ListLSPServers success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/v1/lsp/servers", nil)
+
+		handler.ListLSPServers(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var servers []map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &servers)
+		require.NoError(t, err)
+		assert.NotEmpty(t, servers)
+	})
+
+	t.Run("GetLSPStats success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/v1/lsp/stats", nil)
+
+		handler.GetLSPStats(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var stats map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &stats)
+		require.NoError(t, err)
+		assert.NotNil(t, stats)
+	})
+
+	t.Run("SyncLSPServer success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/servers/gopls/sync", nil)
+		c.Params = gin.Params{{Key: "id", Value: "gopls"}}
+
+		handler.SyncLSPServer(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Equal(t, "LSP server synced successfully", response["message"])
+		assert.Equal(t, "gopls", response["serverId"])
+	})
+
+	t.Run("SyncLSPServers success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/sync", nil)
+
+		handler.SyncLSPServers(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Equal(t, "All LSP servers synced successfully", response["message"])
+	})
+
+	t.Run("ExecuteLSPRequest with real service - completion", func(t *testing.T) {
+		body := `{"serverId": "gopls", "toolName": "completion", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5, "text": "package main"}}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.ExecuteLSPRequest(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.True(t, response["success"].(bool))
+	})
+
+	t.Run("ExecuteLSPRequest with real service - hover", func(t *testing.T) {
+		body := `{"serverId": "gopls", "toolName": "hover", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.ExecuteLSPRequest(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("ExecuteLSPRequest with real service - definition", func(t *testing.T) {
+		body := `{"serverId": "gopls", "toolName": "definition", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.ExecuteLSPRequest(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("ExecuteLSPRequest with real service - references", func(t *testing.T) {
+		body := `{"serverId": "gopls", "toolName": "references", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.ExecuteLSPRequest(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("ExecuteLSPRequest with real service - diagnostics", func(t *testing.T) {
+		body := `{"serverId": "gopls", "toolName": "diagnostics", "arguments": {"uri": "file:///main.go"}}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/lsp/execute", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.ExecuteLSPRequest(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
 }

@@ -391,6 +391,167 @@ services:
       - testing
       - full
 
+  # ============================================================================
+  # LLM Optimization Services
+  # ============================================================================
+
+  # LangChain Service - Task Decomposition and Chain Execution
+  langchain-server:
+    build:
+      context: ./services/langchain
+      dockerfile: Dockerfile
+    container_name: superagent-langchain
+    ports:
+      - "${LANGCHAIN_PORT:-8011}:8001"
+    environment:
+      - SUPERAGENT_URL=http://superagent:8080
+      - LLM_ENDPOINT=http://superagent:8080/v1/chat/completions
+    networks:
+      - superagent-network
+    depends_on:
+      superagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    profiles:
+      - optimization
+      - full
+
+  # LlamaIndex Service - Advanced Document Retrieval
+  llamaindex-server:
+    build:
+      context: ./services/llamaindex
+      dockerfile: Dockerfile
+    container_name: superagent-llamaindex
+    ports:
+      - "${LLAMAINDEX_PORT:-8012}:8002"
+    environment:
+      - SUPERAGENT_URL=http://superagent:8080
+      - COGNEE_URL=http://cognee:8000
+      - EMBEDDING_ENDPOINT=http://superagent:8080/v1/embeddings
+      - LLM_ENDPOINT=http://superagent:8080/v1/chat/completions
+    networks:
+      - superagent-network
+    depends_on:
+      superagent:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    profiles:
+      - optimization
+      - full
+
+  # Guidance Service - CFG-Based Constrained Generation
+  guidance-server:
+    build:
+      context: ./services/guidance
+      dockerfile: Dockerfile
+    container_name: superagent-guidance
+    ports:
+      - "${GUIDANCE_PORT:-8013}:8003"
+    environment:
+      - SUPERAGENT_URL=http://superagent:8080
+      - LLM_ENDPOINT=http://superagent:8080/v1/chat/completions
+    networks:
+      - superagent-network
+    depends_on:
+      superagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    profiles:
+      - optimization
+      - full
+
+  # LMQL Service - Query Language for LLMs
+  lmql-server:
+    build:
+      context: ./services/lmql
+      dockerfile: Dockerfile
+    container_name: superagent-lmql
+    ports:
+      - "${LMQL_PORT:-8014}:8004"
+    environment:
+      - SUPERAGENT_URL=http://superagent:8080
+      - LLM_ENDPOINT=http://superagent:8080/v1/chat/completions
+    networks:
+      - superagent-network
+    depends_on:
+      superagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    profiles:
+      - optimization
+      - full
+
+  # SGLang Service - RadixAttention Prefix Caching (GPU Required)
+  sglang:
+    image: lmsysorg/sglang:latest
+    container_name: superagent-sglang
+    ports:
+      - "${SGLANG_PORT:-30000}:30000"
+    environment:
+      - SGLANG_MODEL=${SGLANG_MODEL:-meta-llama/Llama-2-7b-chat-hf}
+      - SGLANG_PORT=30000
+    volumes:
+      - sglang_cache:/root/.cache
+    networks:
+      - superagent-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    profiles:
+      - optimization-gpu
+      - full-gpu
+
 volumes:
   postgres_data:
     driver: local
@@ -415,6 +576,8 @@ volumes:
   memgraph_data:
     driver: local
   memgraph_logs:
+    driver: local
+  sglang_cache:
     driver: local
 
 networks:

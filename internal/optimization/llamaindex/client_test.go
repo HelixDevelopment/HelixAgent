@@ -360,3 +360,279 @@ func TestClient_Timeout(t *testing.T) {
 	_, err := client.Query(ctx, &QueryRequest{Query: "test"})
 	assert.Error(t, err)
 }
+
+func TestClient_QueryWithStepBack(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/query", r.URL.Path)
+
+		var req QueryRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.NotNil(t, req.QueryTransform)
+		assert.Equal(t, "step_back", *req.QueryTransform)
+		assert.True(t, req.UseCognee)
+		assert.True(t, req.Rerank)
+
+		transformed := "Step-back query: What are the general principles?"
+		resp := &QueryResponse{
+			Answer:           "Detailed answer using step-back prompting",
+			Sources:          []Source{{Content: "Background document", Score: 0.94}},
+			TransformedQuery: &transformed,
+			Confidence:       0.88,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.QueryWithStepBack(context.Background(), "Why did X event happen in Y context?", 5)
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, resp.Answer)
+	assert.NotNil(t, resp.TransformedQuery)
+}
+
+func TestClient_QueryFusion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/query_fusion", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+
+		type fusionReq struct {
+			Query         string `json:"query"`
+			NumVariations int    `json:"num_variations"`
+			TopK          int    `json:"top_k"`
+		}
+
+		var req fusionReq
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.NotEmpty(t, req.Query)
+		assert.Equal(t, 4, req.NumVariations)
+		assert.Equal(t, 10, req.TopK)
+
+		resp := &QueryFusionResponse{
+			Query: req.Query,
+			VariationsUsed: []string{
+				"What is machine learning?",
+				"Define machine learning",
+				"Explain ML concepts",
+				"Machine learning basics",
+			},
+			Results: []Source{
+				{Content: "ML is a subset of AI", Score: 0.96},
+				{Content: "Machine learning uses data", Score: 0.92},
+				{Content: "Deep learning is a type of ML", Score: 0.88},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.QueryFusion(context.Background(), "What is machine learning?", 4, 10)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.VariationsUsed, 4)
+	assert.Len(t, resp.Results, 3)
+}
+
+func TestClient_QueryFusion_Defaults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type fusionReq struct {
+			Query         string `json:"query"`
+			NumVariations int    `json:"num_variations"`
+			TopK          int    `json:"top_k"`
+		}
+
+		var req fusionReq
+		json.NewDecoder(r.Body).Decode(&req)
+		// Check defaults were applied
+		assert.Equal(t, 3, req.NumVariations) // Default
+		assert.Equal(t, 5, req.TopK)          // Default
+
+		resp := &QueryFusionResponse{
+			Query:          req.Query,
+			VariationsUsed: []string{"var1", "var2", "var3"},
+			Results:        []Source{{Content: "Result", Score: 0.9}},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.QueryFusion(context.Background(), "test query", 0, 0)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+func TestClient_HyDEExpand_DefaultHypotheses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req HyDERequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.Equal(t, 3, req.NumHypotheses) // Default value
+
+		resp := &HyDEResponse{
+			OriginalQuery:         req.Query,
+			HypotheticalDocuments: []string{"hyp1", "hyp2", "hyp3"},
+			CombinedEmbedding:     []float64{0.1, 0.2},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.HyDEExpand(context.Background(), &HyDERequest{
+		Query:         "test query",
+		NumHypotheses: 0, // Should use default
+	})
+
+	require.NoError(t, err)
+	assert.Len(t, resp.HypotheticalDocuments, 3)
+}
+
+func TestClient_DecomposeQuery_DefaultSubqueries(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req DecomposeQueryRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.Equal(t, 3, req.MaxSubqueries) // Default value
+
+		resp := &DecomposeQueryResponse{
+			OriginalQuery: req.Query,
+			Subqueries:    []string{"sub1", "sub2", "sub3"},
+			Reasoning:     "Test reasoning",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.DecomposeQuery(context.Background(), &DecomposeQueryRequest{
+		Query:         "complex query",
+		MaxSubqueries: 0, // Should use default
+	})
+
+	require.NoError(t, err)
+	assert.Len(t, resp.Subqueries, 3)
+}
+
+func TestClient_Rerank_DefaultTopK(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req RerankRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.Equal(t, 5, req.TopK) // Default value
+
+		resp := &RerankResponse{
+			RankedDocuments: []RankedDocument{
+				{Content: "Doc1", Score: 0.9, Rank: 1},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.Rerank(context.Background(), &RerankRequest{
+		Query:     "test",
+		Documents: []string{"doc1", "doc2"},
+		TopK:      0, // Should use default
+	})
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, resp.RankedDocuments)
+}
+
+func TestClient_Query_DefaultTopK(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req QueryRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.Equal(t, 5, req.TopK) // Default value
+
+		resp := &QueryResponse{
+			Answer:     "Answer",
+			Sources:    []Source{{Content: "Source", Score: 0.9}},
+			Confidence: 0.8,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	resp, err := client.Query(context.Background(), &QueryRequest{
+		Query: "test",
+		TopK:  0, // Should use default
+	})
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, resp.Answer)
+}
+
+func TestClient_QueryFusion_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "fusion failed"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.QueryFusion(context.Background(), "test", 3, 5)
+	assert.Error(t, err)
+}
+
+func TestClient_HyDEExpand_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "bad request"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.HyDEExpand(context.Background(), &HyDERequest{Query: "test"})
+	assert.Error(t, err)
+}
+
+func TestClient_DecomposeQuery_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.DecomposeQuery(context.Background(), &DecomposeQueryRequest{Query: "test"})
+	assert.Error(t, err)
+}
+
+func TestClient_Rerank_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.Rerank(context.Background(), &RerankRequest{Query: "test", Documents: []string{"doc1"}})
+	assert.Error(t, err)
+}

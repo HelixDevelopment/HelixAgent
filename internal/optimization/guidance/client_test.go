@@ -319,3 +319,134 @@ func TestClient_Timeout(t *testing.T) {
 	_, err := client.SelectOne(ctx, "test", []string{"a", "b"})
 	assert.Error(t, err)
 }
+
+func TestClient_GenerateEmail(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/regex", r.URL.Path)
+
+		var req RegexRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.NotEmpty(t, req.Pattern)
+
+		resp := &RegexResponse{
+			Text:    "john.doe@example.com",
+			Matches: true,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	email, err := client.GenerateEmail(context.Background(), "Generate an email address for John Doe")
+
+	require.NoError(t, err)
+	assert.Equal(t, "john.doe@example.com", email)
+}
+
+func TestClient_GenerateEmail_Invalid(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := &RegexResponse{
+			Text:    "not-an-email",
+			Matches: false,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.GenerateEmail(context.Background(), "Generate something")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not generate valid email")
+}
+
+func TestClient_GenerateEmail_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.GenerateEmail(context.Background(), "Generate an email")
+	assert.Error(t, err)
+}
+
+func TestClient_GeneratePhoneNumber(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/regex", r.URL.Path)
+
+		var req RegexRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		assert.NotEmpty(t, req.Pattern)
+
+		resp := &RegexResponse{
+			Text:        "(555) 123-4567",
+			Matches:     true,
+			MatchGroups: []string{"555", "123", "4567"},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	phone, err := client.GeneratePhoneNumber(context.Background(), "Generate a US phone number")
+
+	require.NoError(t, err)
+	assert.Equal(t, "(555) 123-4567", phone)
+}
+
+func TestClient_GeneratePhoneNumber_Invalid(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := &RegexResponse{
+			Text:    "not-a-phone",
+			Matches: false,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.GeneratePhoneNumber(context.Background(), "Generate something")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not generate valid phone number")
+}
+
+func TestClient_GeneratePhoneNumber_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.GeneratePhoneNumber(context.Background(), "Generate a phone number")
+	assert.Error(t, err)
+}
+
+func TestClient_GenerateWithRegex_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "invalid regex"}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
+
+	_, err := client.GenerateWithRegex(context.Background(), &RegexRequest{
+		Prompt:  "test",
+		Pattern: "[invalid",
+	})
+	assert.Error(t, err)
+}

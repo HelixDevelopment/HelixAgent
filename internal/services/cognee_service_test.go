@@ -321,6 +321,57 @@ func TestCogneeService_EnhanceRequest(t *testing.T) {
 		assert.Equal(t, "Original prompt", enhanced.EnhancedPrompt)
 		assert.Equal(t, "none", enhanced.EnhancementType)
 	})
+
+	t.Run("extracts query from messages when prompt empty", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var reqBody map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&reqBody)
+			// Verify query comes from user message
+			assert.Equal(t, "User question here", reqBody["query"])
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"results": []map[string]interface{}{},
+			})
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:        true,
+			EnhancePrompts: true,
+			BaseURL:        server.URL,
+		}
+		service := NewCogneeServiceWithConfig(cfg, newTestLogger())
+		service.isReady = true
+
+		ctx := context.Background()
+		req := &models.LLMRequest{
+			Prompt: "",
+			Messages: []models.Message{
+				{Role: "system", Content: "You are helpful"},
+				{Role: "user", Content: "User question here"},
+			},
+		}
+		enhanced, err := service.EnhanceRequest(ctx, req)
+		require.NoError(t, err)
+		assert.NotNil(t, enhanced)
+	})
+
+	t.Run("handles disabled service gracefully", func(t *testing.T) {
+		cfg := &CogneeServiceConfig{
+			Enabled:        false, // Service disabled
+			EnhancePrompts: true,
+		}
+		service := NewCogneeServiceWithConfig(cfg, newTestLogger())
+
+		ctx := context.Background()
+		req := &models.LLMRequest{Prompt: "Hello world"}
+		enhanced, err := service.EnhanceRequest(ctx, req)
+
+		require.NoError(t, err)
+		assert.NotNil(t, enhanced)
+		assert.Equal(t, "none", enhanced.EnhancementType)
+		assert.Equal(t, "Hello world", enhanced.EnhancedPrompt)
+	})
 }
 
 func TestCogneeService_ProcessResponse(t *testing.T) {
@@ -893,3 +944,213 @@ func TestCogneeService_calculateRelevanceScore(t *testing.T) {
 	})
 }
 
+func TestCogneeService_GetGraphCompletion(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("returns error when disabled", func(t *testing.T) {
+		config := &CogneeServiceConfig{
+			Enabled:             false,
+			EnableGraphReasoning: false,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		ctx := context.Background()
+		results, err := service.GetGraphCompletion(ctx, "test query", []string{"dataset1"}, 10)
+
+		assert.Error(t, err)
+		assert.Nil(t, results)
+		assert.Contains(t, err.Error(), "not enabled")
+	})
+
+	t.Run("returns error when graph reasoning disabled", func(t *testing.T) {
+		config := &CogneeServiceConfig{
+			Enabled:             true,
+			EnableGraphReasoning: false,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		ctx := context.Background()
+		results, err := service.GetGraphCompletion(ctx, "test query", []string{"dataset1"}, 10)
+
+		assert.Error(t, err)
+		assert.Nil(t, results)
+		assert.Contains(t, err.Error(), "not enabled")
+	})
+
+	t.Run("uses default dataset when empty", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var reqBody map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&reqBody)
+
+			// Verify default dataset is used
+			datasets := reqBody["datasets"].([]interface{})
+			assert.Equal(t, "test-dataset", datasets[0].(string))
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"results": []map[string]interface{}{},
+			})
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:             true,
+			EnableGraphReasoning: true,
+			BaseURL:             server.URL,
+			DefaultDataset:      "test-dataset",
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetGraphCompletion(ctx, "test query", []string{}, 10)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, results)
+	})
+
+	t.Run("returns results successfully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"results": []map[string]interface{}{
+					{"entity": "Entity1", "relation": "REL"},
+					{"entity": "Entity2", "relation": "REL2"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:             true,
+			EnableGraphReasoning: true,
+			BaseURL:             server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetGraphCompletion(ctx, "test query", []string{"dataset1"}, 10)
+
+		assert.NoError(t, err)
+		assert.Len(t, results, 2)
+	})
+
+	t.Run("handles API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:             true,
+			EnableGraphReasoning: true,
+			BaseURL:             server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetGraphCompletion(ctx, "test query", []string{"dataset1"}, 10)
+
+		assert.Error(t, err)
+		assert.Nil(t, results)
+	})
+}
+
+func TestCogneeService_GetCodeContext(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("returns nil when code intelligence disabled", func(t *testing.T) {
+		config := &CogneeServiceConfig{
+			Enabled:                true,
+			EnableCodeIntelligence: false,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		ctx := context.Background()
+		results, err := service.GetCodeContext(ctx, "test query")
+
+		assert.NoError(t, err)
+		assert.Nil(t, results)
+	})
+
+	t.Run("returns code context successfully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"results": []map[string]interface{}{
+					{
+						"file":     "main.go",
+						"content":  "func main() {}",
+						"language": "go",
+					},
+					{
+						"file":     "utils.go",
+						"content":  "func helper() {}",
+						"language": "go",
+					},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:                true,
+			EnableCodeIntelligence: true,
+			BaseURL:                server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetCodeContext(ctx, "test query")
+
+		assert.NoError(t, err)
+		assert.NotNil(t, results)
+		assert.Len(t, results, 2)
+	})
+
+	t.Run("handles API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:                true,
+			EnableCodeIntelligence: true,
+			BaseURL:                server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetCodeContext(ctx, "test query")
+
+		assert.Error(t, err)
+		assert.Nil(t, results)
+	})
+
+	t.Run("handles invalid JSON response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("invalid json"))
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled:                true,
+			EnableCodeIntelligence: true,
+			BaseURL:                server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+		service.isReady = true
+
+		ctx := context.Background()
+		results, err := service.GetCodeContext(ctx, "test query")
+
+		assert.Error(t, err)
+		assert.Nil(t, results)
+	})
+}

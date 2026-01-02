@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -614,5 +616,114 @@ func TestEmbeddingManager_CosineSimilarity_EdgeCases(t *testing.T) {
 		b := []float64{1.0, 2.0, 3.0}
 		result := manager.cosineSimilarity(a, b)
 		assert.InDelta(t, 1.0, result, 0.0001)
+	})
+}
+
+func TestEmbeddingManager_EuclideanDistance(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	t.Run("identical vectors", func(t *testing.T) {
+		a := []float64{1.0, 2.0, 3.0}
+		b := []float64{1.0, 2.0, 3.0}
+		result := manager.EuclideanDistance(a, b)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("different length vectors", func(t *testing.T) {
+		a := []float64{1.0, 2.0, 3.0}
+		b := []float64{1.0, 2.0}
+		result := manager.EuclideanDistance(a, b)
+		assert.Equal(t, math.MaxFloat64, result)
+	})
+
+	t.Run("known distance", func(t *testing.T) {
+		// Distance between (0,0) and (3,4) should be 5
+		a := []float64{0.0, 0.0}
+		b := []float64{3.0, 4.0}
+		result := manager.EuclideanDistance(a, b)
+		assert.InDelta(t, 5.0, result, 0.0001)
+	})
+
+	t.Run("unit distance", func(t *testing.T) {
+		a := []float64{0.0}
+		b := []float64{1.0}
+		result := manager.EuclideanDistance(a, b)
+		assert.InDelta(t, 1.0, result, 0.0001)
+	})
+
+	t.Run("negative values", func(t *testing.T) {
+		a := []float64{-1.0, -2.0}
+		b := []float64{1.0, 2.0}
+		result := manager.EuclideanDistance(a, b)
+		// sqrt((2)^2 + (4)^2) = sqrt(20) ≈ 4.472
+		assert.InDelta(t, math.Sqrt(20.0), result, 0.0001)
+	})
+}
+
+func TestEmbeddingManager_ClearCache(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	t.Run("clears cache successfully", func(t *testing.T) {
+		// Add something to the cache first
+		manager.mu.Lock()
+		manager.embeddingCache["test-key"] = []float64{1.0, 2.0, 3.0}
+		manager.mu.Unlock()
+
+		// Verify cache has data
+		manager.mu.RLock()
+		assert.Len(t, manager.embeddingCache, 1)
+		manager.mu.RUnlock()
+
+		// Clear the cache
+		manager.ClearCache()
+
+		// Verify cache is empty
+		manager.mu.RLock()
+		assert.Len(t, manager.embeddingCache, 0)
+		manager.mu.RUnlock()
+	})
+
+	t.Run("clears empty cache without error", func(t *testing.T) {
+		// Clear already empty cache
+		manager.ClearCache()
+
+		// Should still have empty map
+		manager.mu.RLock()
+		assert.NotNil(t, manager.embeddingCache)
+		assert.Len(t, manager.embeddingCache, 0)
+		manager.mu.RUnlock()
+	})
+}
+
+func TestBytesToFloat64(t *testing.T) {
+	t.Run("converts 8 bytes correctly", func(t *testing.T) {
+		// Float64 encoding of 1.0 in little endian
+		bytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(bytes, math.Float64bits(1.0))
+		result := bytesToFloat64(bytes)
+		assert.InDelta(t, 1.0, result, 0.0001)
+	})
+
+	t.Run("handles less than 8 bytes with padding", func(t *testing.T) {
+		// Pass only 4 bytes - should be padded
+		bytes := []byte{0, 0, 0, 0}
+		result := bytesToFloat64(bytes)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("handles empty bytes", func(t *testing.T) {
+		bytes := []byte{}
+		result := bytesToFloat64(bytes)
+		assert.Equal(t, 0.0, result)
+	})
+
+	t.Run("handles more than 8 bytes", func(t *testing.T) {
+		// Create bytes for 2.5 plus extra bytes
+		bytes := make([]byte, 16)
+		binary.LittleEndian.PutUint64(bytes, math.Float64bits(2.5))
+		result := bytesToFloat64(bytes)
+		assert.InDelta(t, 2.5, result, 0.0001)
 	})
 }

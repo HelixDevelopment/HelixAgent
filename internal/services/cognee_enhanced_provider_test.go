@@ -420,6 +420,205 @@ func TestGetDefaultCogneeProviderConfig(t *testing.T) {
 // Compile-time check that CogneeMockProvider implements llm.LLMProvider
 var _ llm.LLMProvider = (*CogneeMockProvider)(nil)
 
+func TestCogneeEnhancedProvider_enhanceMessages(t *testing.T) {
+	logger := newTestLogger()
+	mockProvider := &CogneeMockProvider{}
+	enhanced := NewCogneeEnhancedProvider("test", mockProvider, nil, logger)
+
+	t.Run("returns original messages when empty", func(t *testing.T) {
+		messages := []models.Message{}
+		context := &EnhancedContext{}
+
+		result := enhanced.enhanceMessages(messages, context)
+
+		assert.Empty(t, result)
+	})
+
+	t.Run("returns original when no relevant memories", func(t *testing.T) {
+		messages := []models.Message{{Role: "user", Content: "Hello"}}
+		context := &EnhancedContext{
+			RelevantMemories: []MemoryEntry{},
+		}
+
+		result := enhanced.enhanceMessages(messages, context)
+
+		assert.Len(t, result, 1)
+		assert.Equal(t, "Hello", result[0].Content)
+	})
+
+	t.Run("adds system message with memories", func(t *testing.T) {
+		messages := []models.Message{{Role: "user", Content: "Hello"}}
+		context := &EnhancedContext{
+			RelevantMemories: []MemoryEntry{
+				{Content: "Memory 1"},
+				{Content: "Memory 2"},
+			},
+		}
+
+		result := enhanced.enhanceMessages(messages, context)
+
+		assert.Len(t, result, 2)
+		assert.Equal(t, "system", result[0].Role)
+		assert.Contains(t, result[0].Content, "Memory 1")
+		assert.Contains(t, result[0].Content, "Memory 2")
+	})
+
+	t.Run("appends to existing system message", func(t *testing.T) {
+		messages := []models.Message{
+			{Role: "system", Content: "You are helpful"},
+			{Role: "user", Content: "Hello"},
+		}
+		context := &EnhancedContext{
+			RelevantMemories: []MemoryEntry{
+				{Content: "Memory 1"},
+			},
+		}
+
+		result := enhanced.enhanceMessages(messages, context)
+
+		assert.Len(t, result, 2)
+		assert.Equal(t, "system", result[0].Role)
+		assert.Contains(t, result[0].Content, "You are helpful")
+		assert.Contains(t, result[0].Content, "Memory 1")
+	})
+
+	t.Run("includes graph insights", func(t *testing.T) {
+		messages := []models.Message{{Role: "user", Content: "Hello"}}
+		context := &EnhancedContext{
+			RelevantMemories: []MemoryEntry{{Content: "Memory"}},
+			GraphInsights: []map[string]interface{}{
+				{"text": "Insight 1"},
+				{"text": "Insight 2"},
+			},
+		}
+
+		result := enhanced.enhanceMessages(messages, context)
+
+		assert.Len(t, result, 2)
+		assert.Contains(t, result[0].Content, "Knowledge Graph Insights")
+		assert.Contains(t, result[0].Content, "Insight 1")
+	})
+}
+
+func TestCogneeEnhancedProvider_storeResponse(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("stores successfully", func(t *testing.T) {
+		cogneeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok"})
+		}))
+		defer cogneeServer.Close()
+
+		cogneeConfig := &CogneeServiceConfig{
+			Enabled:        true,
+			StoreResponses: true, // Must be true for ProcessResponse to call AddMemory
+			BaseURL:        cogneeServer.URL,
+		}
+		cogneeService := NewCogneeServiceWithConfig(cogneeConfig, logger)
+		cogneeService.isReady = true
+
+		mockProvider := &CogneeMockProvider{}
+		providerConfig := &CogneeProviderConfig{
+			StoreAfterResponse: true,
+		}
+		enhanced := NewCogneeEnhancedProviderWithConfig("test", mockProvider, cogneeService, providerConfig, logger)
+
+		ctx := context.Background()
+		req := &models.LLMRequest{Prompt: "Hello"}
+		resp := &models.LLMResponse{Content: "Response"}
+
+		// This runs in background normally, but we can call directly
+		enhanced.storeResponse(ctx, req, resp)
+
+		stats := enhanced.GetStats()
+		assert.Equal(t, int64(1), stats.StoredResponses)
+	})
+
+	t.Run("handles storage error", func(t *testing.T) {
+		cogneeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer cogneeServer.Close()
+
+		cogneeConfig := &CogneeServiceConfig{
+			Enabled:        true,
+			StoreResponses: true, // Must be true for ProcessResponse to call AddMemory
+			BaseURL:        cogneeServer.URL,
+		}
+		cogneeService := NewCogneeServiceWithConfig(cogneeConfig, logger)
+		cogneeService.isReady = true
+
+		mockProvider := &CogneeMockProvider{}
+		providerConfig := &CogneeProviderConfig{
+			StoreAfterResponse: true,
+		}
+		enhanced := NewCogneeEnhancedProviderWithConfig("test", mockProvider, cogneeService, providerConfig, logger)
+
+		ctx := context.Background()
+		req := &models.LLMRequest{Prompt: "Hello"}
+		resp := &models.LLMResponse{Content: "Response"}
+
+		enhanced.storeResponse(ctx, req, resp)
+
+		stats := enhanced.GetStats()
+		assert.Equal(t, int64(1), stats.StorageErrors)
+	})
+}
+
+func TestEnhanceProviderRegistry(t *testing.T) {
+	logger := newTestLogger()
+
+	cogneeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer cogneeServer.Close()
+
+	cogneeConfig := &CogneeServiceConfig{
+		Enabled: true,
+		BaseURL: cogneeServer.URL,
+	}
+	cogneeService := NewCogneeServiceWithConfig(cogneeConfig, logger)
+
+	t.Run("enhances all providers in registry", func(t *testing.T) {
+		registryConfig := &RegistryConfig{
+			DefaultTimeout: 30 * time.Second,
+			MaxRetries:     3,
+		}
+		registry := NewProviderRegistry(registryConfig, nil)
+		registry.RegisterProvider("provider1", &CogneeMockProvider{})
+		registry.RegisterProvider("provider2", &CogneeMockProvider{})
+
+		err := EnhanceProviderRegistry(registry, cogneeService, logger)
+		require.NoError(t, err)
+
+		// Check that providers are enhanced
+		p1, err := registry.GetProvider("provider1")
+		require.NoError(t, err)
+		_, isEnhanced := p1.(*CogneeEnhancedProvider)
+		assert.True(t, isEnhanced)
+	})
+
+	t.Run("skips already enhanced providers", func(t *testing.T) {
+		registryConfig := &RegistryConfig{
+			DefaultTimeout: 30 * time.Second,
+			MaxRetries:     3,
+		}
+		registry := NewProviderRegistry(registryConfig, nil)
+		mockProvider := &CogneeMockProvider{}
+		enhanced := NewCogneeEnhancedProvider("enhanced", mockProvider, cogneeService, logger)
+		registry.RegisterProvider("enhanced", enhanced)
+
+		err := EnhanceProviderRegistry(registry, cogneeService, logger)
+		require.NoError(t, err)
+
+		// Should still work and not double-wrap
+		p, err := registry.GetProvider("enhanced")
+		require.NoError(t, err)
+		assert.NotNil(t, p)
+	})
+}
+
 func TestWrapProvidersWithCognee(t *testing.T) {
 	logger := newTestLogger()
 

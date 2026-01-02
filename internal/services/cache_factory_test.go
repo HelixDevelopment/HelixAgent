@@ -80,6 +80,13 @@ func TestCacheFactory_CreateDefaultCache(t *testing.T) {
 		cache := factory.CreateDefaultCache(5 * time.Minute)
 		require.NotNil(t, cache)
 	})
+
+	t.Run("falls back to in-memory when redis client fails ping", func(t *testing.T) {
+		invalidRedisClient := cache.NewRedisClient(nil)
+		factory := NewCacheFactory(invalidRedisClient, logger)
+		resultCache := factory.CreateDefaultCache(5 * time.Minute)
+		require.NotNil(t, resultCache)
+	})
 }
 
 func TestInMemoryCache(t *testing.T) {

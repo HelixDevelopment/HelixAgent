@@ -269,3 +269,184 @@ func indexOf(slice []string, element string) int {
 	}
 	return -1
 }
+
+// =====================================================
+// CHECKCONFLICTS TESTS
+// =====================================================
+
+func TestDependencyResolver_CheckConflicts(t *testing.T) {
+	t.Run("no conflicts with empty deps", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		err := resolver.checkConflicts("plugin-a", []string{})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("no conflicts with non-existent deps", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		err := resolver.checkConflicts("plugin-a", []string{"non-existent"})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("version constraint parsing with @", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		// Test that version constraint format is recognized
+		// Even if plugin doesn't exist, the parsing logic should execute
+		err := resolver.checkConflicts("plugin-a", []string{"plugin-b@>=1.0.0"})
+
+		// No error because plugin-b doesn't exist in registry
+		assert.NoError(t, err)
+	})
+}
+
+// =====================================================
+// GETPLUGINCAPABILITIES TESTS
+// =====================================================
+
+func TestDependencyResolver_GetPluginCapabilities(t *testing.T) {
+	t.Run("returns nil for non-existent plugin", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		caps := resolver.getPluginCapabilities("non-existent")
+
+		assert.Nil(t, caps)
+	})
+}
+
+// =====================================================
+// HASCICRULARDEPENDENCY TESTS
+// =====================================================
+
+func TestDependencyResolver_HasCircularDependency(t *testing.T) {
+	t.Run("no circular with empty deps", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		result := resolver.hasCircularDependency("plugin-a", []string{})
+
+		assert.False(t, result)
+	})
+
+	t.Run("no circular with simple dependency", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+		resolver.deps["a"] = []string{"b"}
+
+		result := resolver.hasCircularDependency("a", []string{"b"})
+
+		assert.False(t, result)
+	})
+
+	t.Run("detects direct circular", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+		resolver.deps["a"] = []string{"b"}
+		resolver.deps["b"] = []string{"a"}
+
+		result := resolver.hasCircularDependency("a", []string{"b"})
+
+		assert.True(t, result)
+	})
+
+	t.Run("detects indirect circular", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+		resolver.deps["a"] = []string{"b"}
+		resolver.deps["b"] = []string{"c"}
+		resolver.deps["c"] = []string{"a"}
+
+		result := resolver.hasCircularDependency("a", []string{"b"})
+
+		assert.True(t, result)
+	})
+
+	t.Run("detects self-dependency", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+		resolver.deps["a"] = []string{"a"}
+
+		result := resolver.hasCircularDependency("a", []string{"a"})
+
+		assert.True(t, result)
+	})
+}
+
+// =====================================================
+// ADDDEPENDENCY EDGE CASES
+// =====================================================
+
+func TestDependencyResolver_AddDependency_EdgeCases(t *testing.T) {
+	t.Run("add empty dependencies", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		err := resolver.AddDependency("plugin-a", []string{})
+
+		require.NoError(t, err)
+		assert.Empty(t, resolver.deps["plugin-a"])
+	})
+
+	t.Run("add nil dependencies", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		err := resolver.AddDependency("plugin-a", nil)
+
+		require.NoError(t, err)
+	})
+}
+
+// =====================================================
+// RESOLVELOADORDER EDGE CASES
+// =====================================================
+
+func TestDependencyResolver_ResolveLoadOrder_EdgeCases(t *testing.T) {
+	t.Run("empty plugin list", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		order, err := resolver.ResolveLoadOrder([]string{})
+
+		require.NoError(t, err)
+		assert.Empty(t, order)
+	})
+
+	t.Run("single plugin no deps", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		order, err := resolver.ResolveLoadOrder([]string{"single"})
+
+		require.NoError(t, err)
+		assert.Len(t, order, 1)
+		assert.Equal(t, "single", order[0])
+	})
+
+	t.Run("diamond dependency", func(t *testing.T) {
+		registry := NewRegistry()
+		resolver := NewDependencyResolver(registry)
+
+		// Diamond: a -> b,c -> d
+		resolver.deps["a"] = []string{"b", "c"}
+		resolver.deps["b"] = []string{"d"}
+		resolver.deps["c"] = []string{"d"}
+
+		order, err := resolver.ResolveLoadOrder([]string{"a", "b", "c", "d"})
+
+		require.NoError(t, err)
+		assert.Len(t, order, 4)
+		// d should come before b and c, which come before a
+		assert.Contains(t, order, "a")
+		assert.Contains(t, order, "b")
+		assert.Contains(t, order, "c")
+		assert.Contains(t, order, "d")
+	})
+}

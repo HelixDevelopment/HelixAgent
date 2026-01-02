@@ -713,3 +713,183 @@ func BenchmarkCogneeService_SearchMemory(b *testing.B) {
 		_, _ = service.SearchMemory(ctx, "test query", "", 10)
 	}
 }
+
+// =====================================================
+// SETREADY TESTS
+// =====================================================
+
+func TestCogneeService_SetReady(t *testing.T) {
+	cfg := &CogneeServiceConfig{
+		Enabled: true,
+		BaseURL: "http://localhost:8000",
+	}
+	service := NewCogneeServiceWithConfig(cfg, newTestLogger())
+
+	t.Run("set ready to true", func(t *testing.T) {
+		service.SetReady(true)
+		assert.True(t, service.IsReady())
+	})
+
+	t.Run("set ready to false", func(t *testing.T) {
+		service.SetReady(false)
+		assert.False(t, service.IsReady())
+	})
+
+	t.Run("toggle ready state", func(t *testing.T) {
+		service.SetReady(true)
+		assert.True(t, service.IsReady())
+		service.SetReady(false)
+		assert.False(t, service.IsReady())
+		service.SetReady(true)
+		assert.True(t, service.IsReady())
+	})
+}
+
+// =====================================================
+// COMBINESEARCHRESULTS TESTS
+// =====================================================
+
+func TestCogneeService_combineSearchResults(t *testing.T) {
+	cfg := &CogneeServiceConfig{
+		Enabled: true,
+		BaseURL: "http://localhost:8000",
+	}
+	service := NewCogneeServiceWithConfig(cfg, newTestLogger())
+
+	t.Run("combines vector results", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			VectorResults: []MemoryEntry{
+				{Content: "First result"},
+				{Content: "Second result"},
+			},
+		}
+
+		combined := service.combineSearchResults(result)
+		assert.Contains(t, combined, "First result")
+		assert.Contains(t, combined, "Second result")
+	})
+
+	t.Run("combines insights results", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			InsightsResults: []map[string]interface{}{
+				{"text": "Insight one"},
+				{"text": "Insight two"},
+			},
+		}
+
+		combined := service.combineSearchResults(result)
+		assert.Contains(t, combined, "Insight one")
+		assert.Contains(t, combined, "Insight two")
+	})
+
+	t.Run("combines both vector and insights", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			VectorResults: []MemoryEntry{
+				{Content: "Vector content"},
+			},
+			InsightsResults: []map[string]interface{}{
+				{"text": "Insight content"},
+			},
+		}
+
+		combined := service.combineSearchResults(result)
+		assert.Contains(t, combined, "Vector content")
+		assert.Contains(t, combined, "Insight content")
+	})
+
+	t.Run("handles empty results", func(t *testing.T) {
+		result := &CogneeSearchResult{}
+		combined := service.combineSearchResults(result)
+		assert.Empty(t, combined)
+	})
+
+	t.Run("handles insights without text field", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			InsightsResults: []map[string]interface{}{
+				{"other_field": "value"},
+				{"text": "Valid insight"},
+			},
+		}
+
+		combined := service.combineSearchResults(result)
+		assert.Contains(t, combined, "Valid insight")
+		assert.NotContains(t, combined, "value")
+	})
+}
+
+// =====================================================
+// CALCULATERELEVANCESCORE TESTS
+// =====================================================
+
+func TestCogneeService_calculateRelevanceScore(t *testing.T) {
+	cfg := &CogneeServiceConfig{
+		Enabled: true,
+		BaseURL: "http://localhost:8000",
+	}
+	service := NewCogneeServiceWithConfig(cfg, newTestLogger())
+
+	t.Run("calculates average relevance", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			TotalResults: 3,
+			VectorResults: []MemoryEntry{
+				{Relevance: 0.8},
+				{Relevance: 0.9},
+				{Relevance: 1.0},
+			},
+		}
+
+		score := service.calculateRelevanceScore(result)
+		assert.InDelta(t, 0.9, score, 0.001)
+	})
+
+	t.Run("returns zero for empty results", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			TotalResults: 0,
+		}
+
+		score := service.calculateRelevanceScore(result)
+		assert.Equal(t, 0.0, score)
+	})
+
+	t.Run("returns default for no relevance scores", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			TotalResults: 2,
+			VectorResults: []MemoryEntry{
+				{Relevance: 0},
+				{Relevance: 0},
+			},
+		}
+
+		score := service.calculateRelevanceScore(result)
+		assert.Equal(t, 0.5, score) // Default when no valid relevance
+	})
+
+	t.Run("handles mixed relevance values", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			TotalResults: 4,
+			VectorResults: []MemoryEntry{
+				{Relevance: 0.6},
+				{Relevance: 0},   // Should be ignored
+				{Relevance: 0.8},
+				{Relevance: 0},   // Should be ignored
+			},
+		}
+
+		score := service.calculateRelevanceScore(result)
+		// Only 0.6 and 0.8 are counted: (0.6 + 0.8) / 2 = 0.7
+		assert.InDelta(t, 0.7, score, 0.001)
+	})
+
+	t.Run("handles single result", func(t *testing.T) {
+		result := &CogneeSearchResult{
+			TotalResults: 1,
+			VectorResults: []MemoryEntry{
+				{Relevance: 0.95},
+			},
+		}
+
+		score := service.calculateRelevanceScore(result)
+		assert.Equal(t, 0.95, score)
+	})
+}
+

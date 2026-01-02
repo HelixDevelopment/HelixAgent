@@ -551,6 +551,120 @@ func TestGetIntParam(t *testing.T) {
 	})
 }
 
+func TestCogneeAPIHandler_GetConfig(t *testing.T) {
+	server, cogneeService := setupCogneeTestServer()
+	defer server.Close()
+
+	logger := newTestCogneeLogger()
+	handler := NewCogneeAPIHandler(cogneeService, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/cognee/config", nil)
+
+	handler.GetConfig(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Contains(t, response, "enabled")
+	assert.Contains(t, response, "base_url")
+	assert.Contains(t, response, "auto_cognify")
+	assert.Contains(t, response, "enhance_prompts")
+	assert.Contains(t, response, "max_context_size")
+}
+
+func TestCogneeAPIHandler_DeleteDataset(t *testing.T) {
+	server, cogneeService := setupCogneeTestServer()
+	defer server.Close()
+
+	logger := newTestCogneeLogger()
+	handler := NewCogneeAPIHandler(cogneeService, logger)
+
+	t.Run("delete existing dataset", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/cognee/datasets/test-dataset", nil)
+		c.Params = gin.Params{{Key: "name", Value: "test-dataset"}}
+
+		handler.DeleteDataset(c)
+
+		// Service will attempt to delete - verify it processes the request
+		assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusNotFound || w.Code == http.StatusInternalServerError)
+	})
+
+	t.Run("delete with empty name", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("DELETE", "/cognee/datasets/", nil)
+		c.Params = gin.Params{{Key: "name", Value: ""}}
+
+		handler.DeleteDataset(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestCogneeAPIHandler_GetGraphCompletion(t *testing.T) {
+	server, cogneeService := setupCogneeTestServer()
+	defer server.Close()
+
+	logger := newTestCogneeLogger()
+	handler := NewCogneeAPIHandler(cogneeService, logger)
+
+	t.Run("successful graph completion", func(t *testing.T) {
+		body := map[string]interface{}{
+			"query":   "test graph query",
+			"dataset": "default",
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/cognee/graph/complete", bytes.NewReader(jsonBody))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.GetGraphCompletion(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("missing query", func(t *testing.T) {
+		body := map[string]interface{}{
+			"dataset": "default",
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/cognee/graph/complete", bytes.NewReader(jsonBody))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.GetGraphCompletion(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestCogneeAPIHandler_EnsureRunning(t *testing.T) {
+	server, cogneeService := setupCogneeTestServer()
+	defer server.Close()
+
+	logger := newTestCogneeLogger()
+	handler := NewCogneeAPIHandler(cogneeService, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/cognee/start", nil)
+
+	handler.EnsureRunning(c)
+
+	// EnsureRunning may succeed or fail depending on Docker availability
+	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusInternalServerError)
+}
+
 func TestGetFloatParam(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

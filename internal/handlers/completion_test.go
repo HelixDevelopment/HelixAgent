@@ -451,3 +451,382 @@ func TestConvertToInternalRequest_WithToolCalls(t *testing.T) {
 	assert.Equal(t, "I'll help you with that", internalReq.Messages[0].Content)
 	assert.NotNil(t, internalReq.Messages[0].ToolCalls)
 }
+
+// TestCompletionHandler_Models_Direct tests the Models handler directly
+func TestCompletionHandler_Models_Direct(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/v1/models", nil)
+
+	handler.Models(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "list", response["object"])
+	data, ok := response["data"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, data, 3) // deepseek-coder, claude-3-sonnet, gemini-pro
+
+	// Verify first model
+	model0 := data[0].(map[string]interface{})
+	assert.Equal(t, "deepseek-coder", model0["id"])
+	assert.Equal(t, "model", model0["object"])
+	assert.Equal(t, "deepseek", model0["owned_by"])
+
+	// Verify second model
+	model1 := data[1].(map[string]interface{})
+	assert.Equal(t, "claude-3-sonnet-20240229", model1["id"])
+	assert.Equal(t, "anthropic", model1["owned_by"])
+
+	// Verify third model
+	model2 := data[2].(map[string]interface{})
+	assert.Equal(t, "gemini-pro", model2["id"])
+	assert.Equal(t, "google", model2["owned_by"])
+}
+
+// TestCompletionHandler_Complete_InvalidJSON tests Complete with invalid JSON
+func TestCompletionHandler_Complete_InvalidJSON(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/completions", bytes.NewBufferString("invalid json"))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Complete(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+}
+
+// TestCompletionHandler_CompleteStream_InvalidJSON tests CompleteStream with invalid JSON
+func TestCompletionHandler_CompleteStream_InvalidJSON(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/completions/stream", bytes.NewBufferString("invalid json"))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.CompleteStream(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+}
+
+// TestCompletionHandler_Chat_InvalidJSON tests Chat with invalid JSON
+func TestCompletionHandler_Chat_InvalidJSON(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString("invalid json"))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Chat(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+}
+
+// TestCompletionHandler_ChatStream_InvalidJSON tests ChatStream with invalid JSON
+func TestCompletionHandler_ChatStream_InvalidJSON(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions/stream", bytes.NewBufferString("invalid json"))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatStream(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+}
+
+// TestCompletionHandler_Complete_MissingPrompt tests Complete with missing required field
+func TestCompletionHandler_Complete_MissingPrompt(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	reqBody := map[string]interface{}{
+		"model":       "test-model",
+		"temperature": 0.7,
+	}
+	reqBytes, _ := json.Marshal(reqBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/completions", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Complete(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+	assert.Contains(t, response.Error.Message, "Prompt")
+}
+
+// TestCompletionHandler_Chat_MissingPrompt tests Chat with missing required field
+func TestCompletionHandler_Chat_MissingPrompt(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	reqBody := map[string]interface{}{
+		"model": "test-model",
+	}
+	reqBytes, _ := json.Marshal(reqBody)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBuffer(reqBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Chat(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request", response.Error.Type)
+}
+
+// TestCompletionRequest_Struct tests CompletionRequest struct fields
+func TestCompletionRequest_Struct(t *testing.T) {
+	req := CompletionRequest{
+		Prompt:         "test prompt",
+		Model:          "test-model",
+		Temperature:    0.8,
+		MaxTokens:      100,
+		TopP:           0.9,
+		Stop:           []string{"\n"},
+		Stream:         true,
+		MemoryEnhanced: true,
+		RequestType:    "completion",
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		EnsembleConfig: &models.EnsembleConfig{
+			Strategy: "best_of_n",
+		},
+	}
+
+	assert.Equal(t, "test prompt", req.Prompt)
+	assert.Equal(t, "test-model", req.Model)
+	assert.Equal(t, 0.8, req.Temperature)
+	assert.Equal(t, 100, req.MaxTokens)
+	assert.Equal(t, 0.9, req.TopP)
+	assert.Equal(t, []string{"\n"}, req.Stop)
+	assert.True(t, req.Stream)
+	assert.True(t, req.MemoryEnhanced)
+	assert.Equal(t, "completion", req.RequestType)
+	assert.Len(t, req.Messages, 1)
+	assert.NotNil(t, req.EnsembleConfig)
+}
+
+// TestCompletionResponse_Struct tests CompletionResponse struct fields
+func TestCompletionResponse_Struct(t *testing.T) {
+	resp := CompletionResponse{
+		ID:                "test-id",
+		Object:            "text_completion",
+		Created:           1234567890,
+		Model:             "test-model",
+		SystemFingerprint: "test-fingerprint",
+		Choices: []CompletionChoice{
+			{
+				Index:        0,
+				FinishReason: "stop",
+				Message: models.Message{
+					Role:    "assistant",
+					Content: "test content",
+				},
+				LogProbs: &CompletionLogProbs{
+					TextOffset: 0,
+				},
+			},
+		},
+		Usage: &CompletionUsage{
+			PromptTokens:     50,
+			CompletionTokens: 50,
+			TotalTokens:      100,
+		},
+	}
+
+	assert.Equal(t, "test-id", resp.ID)
+	assert.Equal(t, "text_completion", resp.Object)
+	assert.Equal(t, int64(1234567890), resp.Created)
+	assert.Equal(t, "test-model", resp.Model)
+	assert.Equal(t, "test-fingerprint", resp.SystemFingerprint)
+	assert.Len(t, resp.Choices, 1)
+	assert.Equal(t, "stop", resp.Choices[0].FinishReason)
+	assert.NotNil(t, resp.Usage)
+	assert.Equal(t, 100, resp.Usage.TotalTokens)
+}
+
+// TestCompletionChoice_Struct tests CompletionChoice struct fields
+func TestCompletionChoice_Struct(t *testing.T) {
+	choice := CompletionChoice{
+		Index:        0,
+		FinishReason: "stop",
+		Message: models.Message{
+			Role:    "assistant",
+			Content: "test",
+		},
+		LogProbs: &CompletionLogProbs{
+			Token:      map[string]float64{"test": 0.9},
+			TextOffset: 10,
+			TopLogprobs: []CompletionLogProb{
+				{Token: "test", Logprob: -0.1, Bytes: []byte("test"), Offset: 0},
+			},
+		},
+	}
+
+	assert.Equal(t, 0, choice.Index)
+	assert.Equal(t, "stop", choice.FinishReason)
+	assert.Equal(t, "assistant", choice.Message.Role)
+	assert.NotNil(t, choice.LogProbs)
+	assert.Equal(t, 0.9, choice.LogProbs.Token["test"])
+	assert.Len(t, choice.LogProbs.TopLogprobs, 1)
+}
+
+// TestCompletionUsage_Struct tests CompletionUsage struct fields
+func TestCompletionUsage_Struct(t *testing.T) {
+	usage := CompletionUsage{
+		PromptTokens:     50,
+		CompletionTokens: 75,
+		TotalTokens:      125,
+	}
+
+	assert.Equal(t, 50, usage.PromptTokens)
+	assert.Equal(t, 75, usage.CompletionTokens)
+	assert.Equal(t, 125, usage.TotalTokens)
+}
+
+// TestCompletionLogProbs_Struct tests CompletionLogProbs struct fields
+func TestCompletionLogProbs_Struct(t *testing.T) {
+	logProbs := CompletionLogProbs{
+		Token:      map[string]float64{"token1": -0.5, "token2": -1.0},
+		TextOffset: 5,
+		TopLogprobs: []CompletionLogProb{
+			{Token: "token1", Logprob: -0.5, Bytes: []byte("token1"), Offset: 0},
+			{Token: "token2", Logprob: -1.0, Bytes: []byte("token2"), Offset: 6},
+		},
+	}
+
+	assert.Equal(t, -0.5, logProbs.Token["token1"])
+	assert.Equal(t, -1.0, logProbs.Token["token2"])
+	assert.Equal(t, 5, logProbs.TextOffset)
+	assert.Len(t, logProbs.TopLogprobs, 2)
+}
+
+// TestCompletionLogProb_Struct tests CompletionLogProb struct fields
+func TestCompletionLogProb_Struct(t *testing.T) {
+	logProb := CompletionLogProb{
+		Token:   "test_token",
+		Logprob: -0.25,
+		Bytes:   []byte("test_token"),
+		Offset:  10,
+	}
+
+	assert.Equal(t, "test_token", logProb.Token)
+	assert.Equal(t, -0.25, logProb.Logprob)
+	assert.Equal(t, []byte("test_token"), logProb.Bytes)
+	assert.Equal(t, 10, logProb.Offset)
+}
+
+// TestErrorResponse_Struct tests ErrorResponse struct fields
+func TestErrorResponse_Struct(t *testing.T) {
+	errResp := ErrorResponse{}
+	errResp.Error.Message = "Test error message"
+	errResp.Error.Type = "invalid_request"
+	errResp.Error.Code = "400"
+
+	assert.Equal(t, "Test error message", errResp.Error.Message)
+	assert.Equal(t, "invalid_request", errResp.Error.Type)
+	assert.Equal(t, "400", errResp.Error.Code)
+}
+
+// TestCompletionHandler_SendError_Various tests sendError with various error types
+func TestCompletionHandler_SendError_Various(t *testing.T) {
+	handler := &CompletionHandler{}
+
+	tests := []struct {
+		name       string
+		statusCode int
+		errorType  string
+		message    string
+		details    string
+	}{
+		{
+			name:       "bad request",
+			statusCode: http.StatusBadRequest,
+			errorType:  "invalid_request",
+			message:    "Invalid input",
+			details:    "Missing field",
+		},
+		{
+			name:       "internal error",
+			statusCode: http.StatusInternalServerError,
+			errorType:  "internal_error",
+			message:    "Server error",
+			details:    "Database connection failed",
+		},
+		{
+			name:       "unauthorized",
+			statusCode: http.StatusUnauthorized,
+			errorType:  "authentication_error",
+			message:    "Auth failed",
+			details:    "Invalid token",
+		},
+		{
+			name:       "not found",
+			statusCode: http.StatusNotFound,
+			errorType:  "not_found",
+			message:    "Resource missing",
+			details:    "Model not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			handler.sendError(c, tt.statusCode, tt.errorType, tt.message, tt.details)
+
+			assert.Equal(t, tt.statusCode, w.Code)
+
+			var errResp ErrorResponse
+			err := json.Unmarshal(w.Body.Bytes(), &errResp)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.errorType, errResp.Error.Type)
+			assert.Contains(t, errResp.Error.Message, tt.message)
+			assert.Contains(t, errResp.Error.Message, tt.details)
+		})
+	}
+}

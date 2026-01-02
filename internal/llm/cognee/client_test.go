@@ -273,6 +273,42 @@ func TestSearchInsights(t *testing.T) {
 		require.NotNil(t, resp)
 		assert.Len(t, resp.Insights, 1)
 	})
+
+	t.Run("server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.SearchInsights(&InsightsRequest{Query: "test"})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "cognee API error")
+	})
+
+	t.Run("without api key", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Empty(t, r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(InsightsResponse{})
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			apiKey:  "",
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.SearchInsights(&InsightsRequest{Query: "test"})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	})
 }
 
 func TestSearchGraphCompletion(t *testing.T) {
@@ -304,6 +340,42 @@ func TestSearchGraphCompletion(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Len(t, resp.Results, 1)
+	})
+
+	t.Run("server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.SearchGraphCompletion("query", []string{"ds1"}, 5)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "cognee API error")
+	})
+
+	t.Run("without api key", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Empty(t, r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(SearchResponse{})
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			apiKey:  "",
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.SearchGraphCompletion("query", nil, 10)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 	})
 }
 
@@ -342,6 +414,42 @@ func TestProcessCodePipeline(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.True(t, resp.Processed)
+	})
+
+	t.Run("server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.ProcessCodePipeline(&CodePipelineRequest{Code: "invalid"})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "cognee API error")
+	})
+
+	t.Run("without api key", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Empty(t, r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(CodePipelineResponse{Processed: true})
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			apiKey:  "",
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.ProcessCodePipeline(&CodePipelineRequest{Code: "test"})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 	})
 }
 
@@ -431,6 +539,42 @@ func TestListDatasets(t *testing.T) {
 		assert.Equal(t, 2, resp.Total)
 		assert.Len(t, resp.Datasets, 2)
 	})
+
+	t.Run("server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.ListDatasets()
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "cognee API error")
+	})
+
+	t.Run("without api key", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Empty(t, r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(DatasetsResponse{Datasets: []DatasetResponse{}, Total: 0})
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			apiKey:  "",
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.ListDatasets()
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	})
 }
 
 func TestVisualizeGraph(t *testing.T) {
@@ -463,6 +607,42 @@ func TestVisualizeGraph(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Contains(t, resp.Graph, "nodes")
+	})
+
+	t.Run("server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.VisualizeGraph(&VisualizeRequest{DatasetName: "non-existent"})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "cognee API error")
+	})
+
+	t.Run("without api key", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Empty(t, r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(VisualizeResponse{Graph: map[string]interface{}{}})
+		}))
+		defer server.Close()
+
+		client := &Client{
+			baseURL: server.URL,
+			apiKey:  "",
+			client:  &http.Client{Timeout: 5 * time.Second},
+		}
+
+		resp, err := client.VisualizeGraph(&VisualizeRequest{})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 	})
 }
 

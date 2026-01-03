@@ -944,57 +944,82 @@ func NewClaudeProvider(
 // Complete generates a completion for the given request
 func (cp *ClaudeProvider) Complete(ctx context.Context, request *llm.LLMRequest) (*llm.LLMResponse, error) {
     cp.logger.Debugf("ClaudeProvider.Complete called with model: %s", request.Model)
-    
-    // TODO: Implement actual API call to Claude
-    // For now, return a mock response
-    return &llm.LLMResponse{
-        ID:      "claude-" + time.Now().Format("20060102150405"),
-        Model:   cp.model,
-        Choices: []llm.Choice{
-            {
-                Index: 0,
-                Message: llm.Message{
-                    Role:    "assistant",
-                    Content: "This is a mock response from Claude provider",
-                },
-                FinishReason: "stop",
-            },
-        },
-        Usage: llm.Usage{
-            PromptTokens:     10,
-            CompletionTokens: 20,
-            TotalTokens:      30,
-        },
-    }, nil
+
+    // Build API request body
+    reqBody := map[string]interface{}{
+        "model":      cp.model,
+        "max_tokens": request.MaxTokens,
+        "messages":   cp.convertMessages(request.Messages),
+    }
+
+    // Make API call
+    jsonBody, _ := json.Marshal(reqBody)
+    httpReq, _ := http.NewRequestWithContext(ctx, "POST", cp.baseURL+"/v1/messages", bytes.NewBuffer(jsonBody))
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("x-api-key", cp.apiKey)
+    httpReq.Header.Set("anthropic-version", "2023-06-01")
+
+    resp, err := cp.client.Do(httpReq)
+    if err != nil {
+        return nil, fmt.Errorf("API request failed: %w", err)
+    }
+    defer resp.Body.Close()
+
+    // Parse response
+    var apiResp anthropicResponse
+    if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+        return nil, fmt.Errorf("failed to decode response: %w", err)
+    }
+
+    return cp.convertResponse(&apiResp), nil
 }
 
 // StreamComplete generates a streaming completion
 func (cp *ClaudeProvider) StreamComplete(ctx context.Context, request *llm.LLMRequest) (<-chan llm.LLMStreamChunk, error) {
     cp.logger.Debugf("ClaudeProvider.StreamComplete called with model: %s", request.Model)
-    
-    // TODO: Implement actual streaming
-    // For now, return a mock stream
-    chunkChan := make(chan llm.LLMStreamChunk, 1)
-    
+
+    // Build streaming request
+    reqBody := map[string]interface{}{
+        "model":      cp.model,
+        "max_tokens": request.MaxTokens,
+        "messages":   cp.convertMessages(request.Messages),
+        "stream":     true,
+    }
+
+    jsonBody, _ := json.Marshal(reqBody)
+    httpReq, _ := http.NewRequestWithContext(ctx, "POST", cp.baseURL+"/v1/messages", bytes.NewBuffer(jsonBody))
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("x-api-key", cp.apiKey)
+    httpReq.Header.Set("anthropic-version", "2023-06-01")
+    httpReq.Header.Set("Accept", "text/event-stream")
+
+    resp, err := cp.client.Do(httpReq)
+    if err != nil {
+        return nil, fmt.Errorf("stream request failed: %w", err)
+    }
+
+    chunkChan := make(chan llm.LLMStreamChunk, 100)
+
     go func() {
         defer close(chunkChan)
-        
-        chunk := llm.LLMStreamChunk{
-            ID:    "claude-stream-" + time.Now().Format("20060102150405"),
-            Model: cp.model,
-            Choices: []llm.StreamChoice{
-                {
-                    Index: 0,
-                    Delta: llm.MessageDelta{
-                        Content: stringPtr("Mock streaming content"),
-                    },
-                },
-            },
+        defer resp.Body.Close()
+
+        scanner := bufio.NewScanner(resp.Body)
+        for scanner.Scan() {
+            line := scanner.Text()
+            if strings.HasPrefix(line, "data: ") {
+                data := strings.TrimPrefix(line, "data: ")
+                if data == "[DONE]" {
+                    break
+                }
+                chunk := cp.parseStreamChunk(data)
+                if chunk != nil {
+                    chunkChan <- *chunk
+                }
+            }
         }
-        
-        chunkChan <- chunk
     }()
-    
+
     return chunkChan, nil
 }
 
@@ -1035,7 +1060,20 @@ func (cp *ClaudeProvider) Validate() error {
 
 // HealthCheck performs a health check
 func (cp *ClaudeProvider) HealthCheck(ctx context.Context) error {
-    // TODO: Implement actual health check
+    // Make a minimal API request to verify connectivity
+    httpReq, _ := http.NewRequestWithContext(ctx, "GET", cp.baseURL+"/v1/models", nil)
+    httpReq.Header.Set("x-api-key", cp.apiKey)
+    httpReq.Header.Set("anthropic-version", "2023-06-01")
+
+    resp, err := cp.client.Do(httpReq)
+    if err != nil {
+        return fmt.Errorf("health check failed: %w", err)
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode >= 400 {
+        return fmt.Errorf("health check returned status %d", resp.StatusCode)
+    }
     return nil
 }
 
@@ -1112,54 +1150,77 @@ func NewDeepSeekProvider(
 // Complete generates a completion for the given request
 func (dsp *DeepSeekProvider) Complete(ctx context.Context, request *llm.LLMRequest) (*llm.LLMResponse, error) {
     dsp.logger.Debugf("DeepSeekProvider.Complete called with model: %s", request.Model)
-    
-    // TODO: Implement actual API call to DeepSeek
-    return &llm.LLMResponse{
-        ID:      "deepseek-" + time.Now().Format("20060102150405"),
-        Model:   dsp.model,
-        Choices: []llm.Choice{
-            {
-                Index: 0,
-                Message: llm.Message{
-                    Role:    "assistant",
-                    Content: "This is a mock response from DeepSeek provider",
-                },
-                FinishReason: "stop",
-            },
-        },
-        Usage: llm.Usage{
-            PromptTokens:     10,
-            CompletionTokens: 20,
-            TotalTokens:      30,
-        },
-    }, nil
+
+    // DeepSeek uses OpenAI-compatible API format
+    reqBody := map[string]interface{}{
+        "model":      dsp.model,
+        "messages":   dsp.convertMessages(request.Messages),
+        "max_tokens": request.MaxTokens,
+    }
+
+    jsonBody, _ := json.Marshal(reqBody)
+    httpReq, _ := http.NewRequestWithContext(ctx, "POST", dsp.baseURL+"/v1/chat/completions", bytes.NewBuffer(jsonBody))
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("Authorization", "Bearer "+dsp.apiKey)
+
+    resp, err := dsp.client.Do(httpReq)
+    if err != nil {
+        return nil, fmt.Errorf("API request failed: %w", err)
+    }
+    defer resp.Body.Close()
+
+    var apiResp openAIResponse
+    if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+        return nil, fmt.Errorf("failed to decode response: %w", err)
+    }
+
+    return dsp.convertResponse(&apiResp), nil
 }
 
 // StreamComplete generates a streaming completion
 func (dsp *DeepSeekProvider) StreamComplete(ctx context.Context, request *llm.LLMRequest) (<-chan llm.LLMStreamChunk, error) {
     dsp.logger.Debugf("DeepSeekProvider.StreamComplete called with model: %s", request.Model)
-    
-    chunkChan := make(chan llm.LLMStreamChunk, 1)
-    
+
+    reqBody := map[string]interface{}{
+        "model":      dsp.model,
+        "messages":   dsp.convertMessages(request.Messages),
+        "max_tokens": request.MaxTokens,
+        "stream":     true,
+    }
+
+    jsonBody, _ := json.Marshal(reqBody)
+    httpReq, _ := http.NewRequestWithContext(ctx, "POST", dsp.baseURL+"/v1/chat/completions", bytes.NewBuffer(jsonBody))
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("Authorization", "Bearer "+dsp.apiKey)
+    httpReq.Header.Set("Accept", "text/event-stream")
+
+    resp, err := dsp.client.Do(httpReq)
+    if err != nil {
+        return nil, fmt.Errorf("stream request failed: %w", err)
+    }
+
+    chunkChan := make(chan llm.LLMStreamChunk, 100)
+
     go func() {
         defer close(chunkChan)
-        
-        chunk := llm.LLMStreamChunk{
-            ID:    "deepseek-stream-" + time.Now().Format("20060102150405"),
-            Model: dsp.model,
-            Choices: []llm.StreamChoice{
-                {
-                    Index: 0,
-                    Delta: llm.MessageDelta{
-                        Content: stringPtr("Mock streaming content"),
-                    },
-                },
-            },
+        defer resp.Body.Close()
+
+        scanner := bufio.NewScanner(resp.Body)
+        for scanner.Scan() {
+            line := scanner.Text()
+            if strings.HasPrefix(line, "data: ") {
+                data := strings.TrimPrefix(line, "data: ")
+                if data == "[DONE]" {
+                    break
+                }
+                chunk := dsp.parseStreamChunk(data)
+                if chunk != nil {
+                    chunkChan <- *chunk
+                }
+            }
         }
-        
-        chunkChan <- chunk
     }()
-    
+
     return chunkChan, nil
 }
 

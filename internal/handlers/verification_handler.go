@@ -69,13 +69,13 @@ type VerifyModelResponse struct {
 func (h *VerificationHandler) VerifyModel(c *gin.Context) {
 	var req VerifyModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
 	result, err := h.verificationService.VerifyModel(c.Request.Context(), req.ModelID, req.Provider)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *VerificationHandler) VerifyModel(c *gin.Context) {
 		OverallScore:     result.OverallScore,
 		ScoreSuffix:      result.ScoreSuffix,
 		CodeVisible:      result.CodeVisible,
-		Tests:            result.Tests,
+		Tests:            result.TestsMap,
 		VerificationTime: result.VerificationTimeMs,
 		Message:          result.Message,
 	})
@@ -125,7 +125,7 @@ type BatchVerifyResponse struct {
 func (h *VerificationHandler) BatchVerify(c *gin.Context) {
 	var req BatchVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *VerificationHandler) BatchVerify(c *gin.Context) {
 
 	results, err := h.verificationService.BatchVerify(c.Request.Context(), batchReqs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *VerificationHandler) BatchVerify(c *gin.Context) {
 			OverallScore:     r.OverallScore,
 			ScoreSuffix:      r.ScoreSuffix,
 			CodeVisible:      r.CodeVisible,
-			Tests:            r.Tests,
+			Tests:            r.TestsMap,
 			VerificationTime: r.VerificationTimeMs,
 			Message:          r.Message,
 		}
@@ -187,7 +187,7 @@ func (h *VerificationHandler) GetVerificationStatus(c *gin.Context) {
 
 	result, err := h.verificationService.GetVerificationStatus(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -303,7 +303,7 @@ type TestCodeVisibilityResponse struct {
 func (h *VerificationHandler) TestCodeVisibility(c *gin.Context) {
 	var req TestCodeVisibilityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -314,7 +314,7 @@ func (h *VerificationHandler) TestCodeVisibility(c *gin.Context) {
 
 	result, err := h.verificationService.TestCodeVisibility(c.Request.Context(), req.ModelID, req.Provider, language)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -377,7 +377,7 @@ type ReVerifyModelRequest struct {
 func (h *VerificationHandler) ReVerifyModel(c *gin.Context) {
 	var req ReVerifyModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -387,7 +387,7 @@ func (h *VerificationHandler) ReVerifyModel(c *gin.Context) {
 	// Run new verification
 	result, err := h.verificationService.VerifyModel(c.Request.Context(), req.ModelID, req.Provider)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *VerificationHandler) ReVerifyModel(c *gin.Context) {
 		OverallScore:     result.OverallScore,
 		ScoreSuffix:      result.ScoreSuffix,
 		CodeVisible:      result.CodeVisible,
-		Tests:            result.Tests,
+		Tests:            result.TestsMap,
 		VerificationTime: result.VerificationTimeMs,
 		Message:          "Re-verification completed",
 	})
@@ -423,16 +423,16 @@ type VerificationHealthResponse struct {
 // @Success 200 {object} VerificationHealthResponse
 // @Router /api/v1/verifier/health [get]
 func (h *VerificationHandler) GetVerificationHealth(c *gin.Context) {
-	stats := h.verificationService.GetStats()
+	stats, _ := h.verificationService.GetStats(c.Request.Context())
 	healthy := h.registry.GetHealthyProviders()
 
 	c.JSON(http.StatusOK, VerificationHealthResponse{
 		Status:           "healthy",
-		VerifiedModels:   stats.VerifiedModels,
-		PendingModels:    stats.PendingModels,
+		VerifiedModels:   stats.SuccessfulCount,
+		PendingModels:    0,
 		HealthyProviders: len(healthy),
-		TotalProviders:   stats.TotalProviders,
-		LastVerification: stats.LastVerificationAt,
+		TotalProviders:   stats.TotalVerifications,
+		LastVerification: "",
 	})
 }
 

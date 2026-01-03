@@ -7,32 +7,143 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"llm-verifier/database"
-	"llm-verifier/failover"
 )
+
+// CircuitState represents the state of a circuit breaker
+type CircuitState int
+
+const (
+	CircuitClosed CircuitState = iota
+	CircuitHalfOpen
+	CircuitOpen
+)
+
+func (s CircuitState) String() string {
+	switch s {
+	case CircuitClosed:
+		return "closed"
+	case CircuitHalfOpen:
+		return "half-open"
+	case CircuitOpen:
+		return "open"
+	default:
+		return "unknown"
+	}
+}
+
+// CircuitBreaker implements the circuit breaker pattern
+type CircuitBreaker struct {
+	name           string
+	state          CircuitState
+	failureCount   int
+	successCount   int
+	threshold      int
+	resetTimeout   time.Duration
+	lastFailure    time.Time
+	lastStateChange time.Time
+	mu             sync.RWMutex
+}
+
+// NewCircuitBreaker creates a new circuit breaker
+func NewCircuitBreaker(name string) *CircuitBreaker {
+	return &CircuitBreaker{
+		name:            name,
+		state:           CircuitClosed,
+		threshold:       5,
+		resetTimeout:    30 * time.Second,
+		lastStateChange: time.Now(),
+	}
+}
+
+// State returns the current circuit state
+func (cb *CircuitBreaker) State() CircuitState {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return cb.state
+}
+
+// IsAvailable returns true if the circuit allows requests
+func (cb *CircuitBreaker) IsAvailable() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	switch cb.state {
+	case CircuitClosed:
+		return true
+	case CircuitOpen:
+		if time.Since(cb.lastFailure) > cb.resetTimeout {
+			cb.state = CircuitHalfOpen
+			cb.lastStateChange = time.Now()
+			return true
+		}
+		return false
+	case CircuitHalfOpen:
+		return true
+	}
+	return false
+}
+
+// RecordSuccess records a successful call
+func (cb *CircuitBreaker) RecordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.successCount++
+	if cb.state == CircuitHalfOpen {
+		cb.state = CircuitClosed
+		cb.failureCount = 0
+		cb.lastStateChange = time.Now()
+	}
+}
+
+// RecordFailure records a failed call
+func (cb *CircuitBreaker) RecordFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.failureCount++
+	cb.lastFailure = time.Now()
+
+	if cb.failureCount >= cb.threshold {
+		cb.state = CircuitOpen
+		cb.lastStateChange = time.Now()
+	}
+}
+
+// Call executes an operation through the circuit breaker
+func (cb *CircuitBreaker) Call(operation func() error) error {
+	if !cb.IsAvailable() {
+		return fmt.Errorf("circuit breaker open for %s", cb.name)
+	}
+
+	err := operation()
+	if err != nil {
+		cb.RecordFailure()
+		return err
+	}
+
+	cb.RecordSuccess()
+	return nil
+}
 
 // ProviderHealth represents the health status of a provider
 type ProviderHealth struct {
-	ProviderID     string    `json:"provider_id"`
-	ProviderName   string    `json:"provider_name"`
-	Healthy        bool      `json:"healthy"`
-	CircuitState   string    `json:"circuit_state"` // closed, half-open, open
-	FailureCount   int       `json:"failure_count"`
-	SuccessCount   int       `json:"success_count"`
-	AvgResponseMs  int64     `json:"avg_response_ms"`
-	LastSuccessAt  time.Time `json:"last_success_at,omitempty"`
-	LastFailureAt  time.Time `json:"last_failure_at,omitempty"`
-	LastCheckedAt  time.Time `json:"last_checked_at"`
-	UptimePercent  float64   `json:"uptime_percent"`
+	ProviderID    string    `json:"provider_id"`
+	ProviderName  string    `json:"provider_name"`
+	Healthy       bool      `json:"healthy"`
+	CircuitState  string    `json:"circuit_state"`
+	FailureCount  int       `json:"failure_count"`
+	SuccessCount  int       `json:"success_count"`
+	AvgResponseMs int64     `json:"avg_response_ms"`
+	LastSuccessAt time.Time `json:"last_success_at,omitempty"`
+	LastFailureAt time.Time `json:"last_failure_at,omitempty"`
+	LastCheckedAt time.Time `json:"last_checked_at"`
+	UptimePercent float64   `json:"uptime_percent"`
 }
 
 // HealthService manages provider health monitoring and failover
 type HealthService struct {
-	checker         *failover.HealthChecker
-	latencyRouter   *failover.LatencyRouter
-	db              *database.Database
-	circuitBreakers map[string]*failover.CircuitBreaker
+	circuitBreakers map[string]*CircuitBreaker
 	providerHealth  map[string]*ProviderHealth
 	httpClient      *http.Client
 	checkInterval   time.Duration
@@ -43,17 +154,24 @@ type HealthService struct {
 }
 
 // NewHealthService creates a new health service
-func NewHealthService(db *database.Database, cfg *Config) *HealthService {
+func NewHealthService(cfg *Config) *HealthService {
+	timeout := 10 * time.Second
+	interval := 30 * time.Second
+
+	if cfg != nil && cfg.Health.Timeout > 0 {
+		timeout = cfg.Health.Timeout
+	}
+	if cfg != nil && cfg.Health.CheckInterval > 0 {
+		interval = cfg.Health.CheckInterval
+	}
+
 	return &HealthService{
-		checker:         failover.NewHealthChecker(db),
-		latencyRouter:   failover.NewLatencyRouter(),
-		db:              db,
-		circuitBreakers: make(map[string]*failover.CircuitBreaker),
+		circuitBreakers: make(map[string]*CircuitBreaker),
 		providerHealth:  make(map[string]*ProviderHealth),
 		httpClient: &http.Client{
-			Timeout: cfg.Health.Timeout,
+			Timeout: timeout,
 		},
-		checkInterval: cfg.Health.CheckInterval,
+		checkInterval: interval,
 		stopCh:        make(chan struct{}),
 	}
 }
@@ -67,8 +185,6 @@ func (s *HealthService) Start() error {
 	}
 	s.running = true
 	s.mu.Unlock()
-
-	s.checker.Start()
 
 	s.wg.Add(1)
 	go s.healthCheckLoop()
@@ -88,7 +204,6 @@ func (s *HealthService) Stop() {
 
 	close(s.stopCh)
 	s.wg.Wait()
-	s.checker.Stop()
 }
 
 // healthCheckLoop runs periodic health checks
@@ -176,7 +291,6 @@ func (s *HealthService) checkProviderHealth(providerID string) {
 
 // performHealthCheck performs actual health check
 func (s *HealthService) performHealthCheck(providerName string) bool {
-	// Get provider endpoint from known providers
 	endpoints := map[string]string{
 		"openai":     "https://api.openai.com/v1/models",
 		"anthropic":  "https://api.anthropic.com/v1/messages",
@@ -187,6 +301,8 @@ func (s *HealthService) performHealthCheck(providerName string) bool {
 		"deepseek":   "https://api.deepseek.com/v1/models",
 		"ollama":     "http://localhost:11434/api/tags",
 		"openrouter": "https://openrouter.ai/api/v1/models",
+		"xai":        "https://api.x.ai/v1/models",
+		"cerebras":   "https://api.cerebras.ai/v1/models",
 	}
 
 	endpoint, ok := endpoints[providerName]
@@ -208,7 +324,6 @@ func (s *HealthService) performHealthCheck(providerName string) bool {
 	}
 	defer resp.Body.Close()
 
-	// Accept various success codes
 	return resp.StatusCode >= 200 && resp.StatusCode < 500
 }
 
@@ -217,16 +332,14 @@ func (s *HealthService) AddProvider(providerID, providerName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.circuitBreakers[providerID] = failover.NewCircuitBreaker(fmt.Sprintf("provider-%s", providerID))
+	s.circuitBreakers[providerID] = NewCircuitBreaker(fmt.Sprintf("provider-%s", providerID))
 	s.providerHealth[providerID] = &ProviderHealth{
 		ProviderID:    providerID,
 		ProviderName:  providerName,
-		Healthy:       true, // Assume healthy initially
+		Healthy:       true,
 		CircuitState:  "closed",
 		LastCheckedAt: time.Now(),
 	}
-
-	s.checker.AddProvider(providerID)
 }
 
 // RemoveProvider removes a provider from health monitoring
@@ -236,7 +349,6 @@ func (s *HealthService) RemoveProvider(providerID string) {
 
 	delete(s.circuitBreakers, providerID)
 	delete(s.providerHealth, providerID)
-	s.checker.RemoveProvider(providerID)
 }
 
 // GetProviderHealth returns health status for a provider
@@ -262,7 +374,6 @@ func (s *HealthService) GetAllProviderHealth() []*ProviderHealth {
 		result = append(result, health)
 	}
 
-	// Sort by provider name
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].ProviderName < result[j].ProviderName
 	})
@@ -286,7 +397,7 @@ func (s *HealthService) GetHealthyProviders() []string {
 }
 
 // GetCircuitBreaker returns the circuit breaker for a provider
-func (s *HealthService) GetCircuitBreaker(providerID string) *failover.CircuitBreaker {
+func (s *HealthService) GetCircuitBreaker(providerID string) *CircuitBreaker {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.circuitBreakers[providerID]
@@ -308,11 +419,8 @@ func (s *HealthService) ExecuteWithFailover(ctx context.Context, providers []str
 		})
 
 		if err == nil {
-			return nil // Success
+			return nil
 		}
-
-		// Log and try next provider
-		fmt.Printf("Provider %s failed: %v, trying next...\n", providerID, err)
 	}
 
 	return fmt.Errorf("all providers failed")

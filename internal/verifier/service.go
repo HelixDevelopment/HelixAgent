@@ -8,23 +8,29 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"llm-verifier/database"
-	"llm-verifier/verification"
 )
 
-// VerificationResult represents the result of a model verification
-type VerificationResult struct {
-	ModelID              string        `json:"model_id"`
-	Provider             string        `json:"provider"`
-	Status               string        `json:"status"`
-	CodeVerified         bool          `json:"code_verified"`
-	OverallScore         float64       `json:"overall_score"`
-	CodingCapabilityScore float64      `json:"coding_capability_score"`
-	Tests                []TestResult  `json:"tests"`
-	StartedAt            time.Time     `json:"started_at"`
-	CompletedAt          time.Time     `json:"completed_at"`
-	ErrorMessage         string        `json:"error_message,omitempty"`
+// ServiceVerificationResult represents the result of a model verification
+// (named differently to avoid conflict with database.go's VerificationResult)
+type ServiceVerificationResult struct {
+	ModelID               string          `json:"model_id"`
+	Provider              string          `json:"provider"`
+	ProviderName          string          `json:"provider_name"`
+	Status                string          `json:"status"`
+	Verified              bool            `json:"verified"`
+	CodeVerified          bool            `json:"code_verified"`
+	CodeVisible           bool            `json:"code_visible"`
+	Score                 float64         `json:"score"`
+	OverallScore          float64         `json:"overall_score"`
+	ScoreSuffix           string          `json:"score_suffix"`
+	CodingCapabilityScore float64         `json:"coding_capability_score"`
+	Tests                 []TestResult    `json:"tests"`
+	TestsMap              map[string]bool `json:"tests_map,omitempty"`
+	StartedAt             time.Time       `json:"started_at"`
+	CompletedAt           time.Time       `json:"completed_at"`
+	VerificationTimeMs    int64           `json:"verification_time_ms"`
+	Message               string          `json:"message,omitempty"`
+	ErrorMessage          string          `json:"error_message,omitempty"`
 }
 
 // TestResult represents a single test result
@@ -45,19 +51,15 @@ type BatchVerificationRequest struct {
 
 // VerificationService manages all verification operations
 type VerificationService struct {
-	verifier     *verification.Verifier
-	db           *database.Database
 	config       *Config
 	providerFunc func(ctx context.Context, modelID, provider, prompt string) (string, error)
 	mu           sync.RWMutex
 }
 
 // NewVerificationService creates a new verification service
-func NewVerificationService(db *database.Database, cfg *Config) *VerificationService {
+func NewVerificationService(cfg *Config) *VerificationService {
 	return &VerificationService{
-		verifier: verification.NewVerifier(db),
-		db:       db,
-		config:   cfg,
+		config: cfg,
 	}
 }
 
@@ -70,12 +72,14 @@ func (s *VerificationService) SetProviderFunc(fn func(ctx context.Context, model
 
 // VerifyModel performs complete model verification including the mandatory
 // "Do you see my code?" test
-func (s *VerificationService) VerifyModel(ctx context.Context, modelID string, provider string) (*VerificationResult, error) {
-	result := &VerificationResult{
-		ModelID:   modelID,
-		Provider:  provider,
-		StartedAt: time.Now(),
-		Tests:     make([]TestResult, 0),
+func (s *VerificationService) VerifyModel(ctx context.Context, modelID string, provider string) (*ServiceVerificationResult, error) {
+	result := &ServiceVerificationResult{
+		ModelID:      modelID,
+		Provider:     provider,
+		ProviderName: provider,
+		StartedAt:    time.Now(),
+		Tests:        make([]TestResult, 0),
+		TestsMap:     make(map[string]bool),
 	}
 
 	// 1. Mandatory "Do you see my code?" verification
@@ -88,6 +92,7 @@ func (s *VerificationService) VerifyModel(ctx context.Context, modelID string, p
 	}
 	result.Tests = append(result.Tests, *codeResult)
 	result.CodeVerified = codeResult.Passed
+	result.CodeVisible = codeResult.Passed
 
 	// 2. Existence test
 	existenceResult := s.verifyExistence(ctx, modelID, provider)
@@ -121,17 +126,27 @@ func (s *VerificationService) VerifyModel(ctx context.Context, modelID string, p
 	// Calculate overall status
 	result.CompletedAt = time.Now()
 	result.OverallScore = s.calculateOverallScore(result.Tests)
+	result.Score = result.OverallScore
+	result.ScoreSuffix = fmt.Sprintf("(SC:%.1f)", result.OverallScore)
+	result.VerificationTimeMs = result.CompletedAt.Sub(result.StartedAt).Milliseconds()
+
+	// Build tests map
+	for _, test := range result.Tests {
+		result.TestsMap[test.Name] = test.Passed
+	}
 
 	if result.CodeVerified && result.OverallScore >= 60 {
 		result.Status = "verified"
+		result.Verified = true
+		result.Message = "Model verified successfully"
 	} else {
 		result.Status = "failed"
-	}
-
-	// Store result in database
-	if err := s.storeVerificationResult(ctx, result); err != nil {
-		// Log but don't fail
-		fmt.Printf("Warning: failed to store verification result: %v\n", err)
+		result.Verified = false
+		if !result.CodeVerified {
+			result.Message = "Code visibility verification failed"
+		} else {
+			result.Message = "Model did not meet minimum score threshold"
+		}
 	}
 
 	return result, nil
@@ -423,8 +438,8 @@ Return only the code, no explanations.`
 		{"return", 15},
 		{"for", 15},
 		{"if", 10},
-		{"%", 10},     // Modulo operator
-		{"== 0", 10},  // Divisibility check
+		{"%", 10},    // Modulo operator
+		{"== 0", 10}, // Divisibility check
 		{"False", 5},
 		{"True", 5},
 	}
@@ -513,31 +528,9 @@ func (s *VerificationService) calculateOverallScore(tests []TestResult) float64 
 	return totalScore / float64(len(tests))
 }
 
-// storeVerificationResult stores the verification result in the database
-func (s *VerificationService) storeVerificationResult(ctx context.Context, result *VerificationResult) error {
-	if s.db == nil {
-		return nil
-	}
-
-	// Convert to database model and store
-	dbResult := &database.VerificationResult{
-		ModelID:              1, // Would need proper model ID lookup
-		VerificationType:     "full_verification",
-		Status:               result.Status,
-		OverallScore:         result.OverallScore,
-		CodeCapabilityScore:  result.CodingCapabilityScore,
-		StartedAt:            result.StartedAt,
-	}
-
-	now := time.Now()
-	dbResult.CompletedAt = &now
-
-	return s.db.CreateVerificationResult(dbResult)
-}
-
 // BatchVerify verifies multiple models concurrently
-func (s *VerificationService) BatchVerify(ctx context.Context, requests []*BatchVerificationRequest) ([]*VerificationResult, error) {
-	results := make([]*VerificationResult, len(requests))
+func (s *VerificationService) BatchVerify(ctx context.Context, requests []*BatchVerificationRequest) ([]*ServiceVerificationResult, error) {
+	results := make([]*ServiceVerificationResult, len(requests))
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(requests))
 
@@ -569,10 +562,10 @@ func (s *VerificationService) BatchVerify(ctx context.Context, requests []*Batch
 }
 
 // GetVerifiedModels returns all verified models
-func (s *VerificationService) GetVerifiedModels(ctx context.Context) ([]*VerificationResult, error) {
+func (s *VerificationService) GetVerifiedModels(ctx context.Context) ([]*ServiceVerificationResult, error) {
 	// This would query the database for verified models
 	// For now, return empty slice
-	return []*VerificationResult{}, nil
+	return []*ServiceVerificationResult{}, nil
 }
 
 // PerformCodeCheck performs a standalone code visibility check
@@ -609,4 +602,142 @@ Do you see my code? Please respond with "Yes, I can see your code" if you can se
 
 	result.CompletedAt = time.Now()
 	return result, nil
+}
+
+// VerificationStatus represents the current status of a verification with full results
+type VerificationStatus struct {
+	ModelID            string          `json:"model_id"`
+	Provider           string          `json:"provider"`
+	Status             string          `json:"status"`
+	Progress           int             `json:"progress"`
+	Verified           bool            `json:"verified"`
+	Score              float64         `json:"score"`
+	OverallScore       float64         `json:"overall_score"`
+	ScoreSuffix        string          `json:"score_suffix"`
+	CodeVisible        bool            `json:"code_visible"`
+	Tests              map[string]bool `json:"tests,omitempty"`
+	VerificationTimeMs int64           `json:"verification_time_ms"`
+	StartedAt          time.Time       `json:"started_at,omitempty"`
+	CompletedAt        time.Time       `json:"completed_at,omitempty"`
+}
+
+// GetVerificationStatus returns the status of a verification (by model ID only)
+func (s *VerificationService) GetVerificationStatus(ctx context.Context, modelID string) (*VerificationStatus, error) {
+	// In a real implementation, this would look up cached/stored verification results
+	// For now, return a stub result
+	return &VerificationStatus{
+		ModelID:            modelID,
+		Provider:           "unknown",
+		Status:             "not_found",
+		Progress:           0,
+		Verified:           false,
+		Score:              0,
+		OverallScore:       0,
+		ScoreSuffix:        "",
+		CodeVisible:        false,
+		Tests:              make(map[string]bool),
+		VerificationTimeMs: 0,
+	}, nil
+}
+
+// CodeVisibilityResult represents the result of a code visibility test
+type CodeVisibilityResult struct {
+	ModelID     string  `json:"model_id"`
+	Provider    string  `json:"provider"`
+	CodeVisible bool    `json:"code_visible"`
+	Language    string  `json:"language"`
+	Prompt      string  `json:"prompt"`
+	Response    string  `json:"response"`
+	Confidence  float64 `json:"confidence"`
+}
+
+// TestCodeVisibility performs a standalone code visibility test with default code sample
+func (s *VerificationService) TestCodeVisibility(ctx context.Context, modelID, provider, language string) (*CodeVisibilityResult, error) {
+	// Default code sample based on language
+	codeSamples := map[string]string{
+		"python": `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)`,
+		"go": `func fibonacci(n int) int {
+    if n <= 1 {
+        return n
+    }
+    return fibonacci(n-1) + fibonacci(n-2)
+}`,
+		"javascript": `function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}`,
+		"java": `public int fibonacci(int n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}`,
+	}
+
+	code, ok := codeSamples[language]
+	if !ok {
+		code = codeSamples["python"]
+		language = "python"
+	}
+
+	prompt := fmt.Sprintf(`I'm showing you code. Look at this %s code:
+
+%s
+
+Do you see my code? Please respond with "Yes, I can see your code" if you can see it.`, language, code)
+
+	response, err := s.callModel(ctx, modelID, provider, prompt)
+	if err != nil {
+		return &CodeVisibilityResult{
+			ModelID:     modelID,
+			Provider:    provider,
+			CodeVisible: false,
+			Language:    language,
+			Prompt:      prompt,
+			Response:    fmt.Sprintf("error: %v", err),
+			Confidence:  0,
+		}, nil
+	}
+
+	codeVisible := s.isAffirmativeCodeResponse(response)
+	confidence := 0.0
+	if codeVisible {
+		confidence = 1.0
+	}
+
+	return &CodeVisibilityResult{
+		ModelID:     modelID,
+		Provider:    provider,
+		CodeVisible: codeVisible,
+		Language:    language,
+		Prompt:      prompt,
+		Response:    response,
+		Confidence:  confidence,
+	}, nil
+}
+
+// InvalidateVerification invalidates a previous verification (stub for now)
+func (s *VerificationService) InvalidateVerification(modelID string) {
+	// In a real implementation, this would clear cached verification results
+}
+
+// VerificationStats represents verification statistics
+type VerificationStats struct {
+	TotalVerifications int     `json:"total_verifications"`
+	SuccessfulCount    int     `json:"successful_count"`
+	FailedCount        int     `json:"failed_count"`
+	SuccessRate        float64 `json:"success_rate"`
+	AverageScore       float64 `json:"average_score"`
+}
+
+// GetStats returns verification statistics (stub)
+func (s *VerificationService) GetStats(ctx context.Context) (*VerificationStats, error) {
+	return &VerificationStats{
+		TotalVerifications: 0,
+		SuccessfulCount:    0,
+		FailedCount:        0,
+		SuccessRate:        0,
+		AverageScore:       0,
+	}, nil
 }

@@ -1,10 +1,14 @@
 """
 Main client for the SuperAgent Verifier SDK.
+
+Uses urllib for HTTP requests (no external dependencies required).
 """
 
-import requests
+import json
 from typing import List, Optional, Dict, Any
-from urllib.parse import urljoin
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from urllib.parse import urljoin, urlencode
 
 from .models import (
     VerificationRequest,
@@ -53,49 +57,65 @@ class VerifierClient:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
-        self.session = requests.Session()
 
-        if api_key:
-            self.session.headers["Authorization"] = f"Bearer {api_key}"
-        self.session.headers["Content-Type"] = "application/json"
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers for API requests."""
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "superagent-verifier-python/1.0.0",
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
     def _request(
         self,
         method: str,
         path: str,
-        json: Optional[dict] = None,
+        json_data: Optional[dict] = None,
         params: Optional[dict] = None,
     ) -> dict:
         """Make an HTTP request to the API."""
-        url = urljoin(self.base_url, path)
+        url = f"{self.base_url}{path}"
+        if params:
+            url = f"{url}?{urlencode(params)}"
+
+        headers = self._get_headers()
+        body = None
+        if json_data is not None:
+            body = json.dumps(json_data).encode("utf-8")
+
+        request = Request(url, data=body, headers=headers, method=method)
 
         try:
-            response = self.session.request(
-                method=method,
-                url=url,
-                json=json,
-                params=params,
-                timeout=self.timeout,
-            )
-        except requests.Timeout:
-            raise APIError("Request timed out", status_code=408)
-        except requests.RequestException as e:
-            raise APIError(f"Request failed: {str(e)}")
+            with urlopen(request, timeout=self.timeout) as response:
+                response_data = response.read().decode("utf-8")
+                return json.loads(response_data) if response_data else {}
 
-        if response.status_code == 401:
+        except HTTPError as e:
+            self._handle_http_error(e)
+        except URLError as e:
+            raise APIError(f"Request failed: {str(e.reason)}")
+
+    def _handle_http_error(self, error: HTTPError) -> None:
+        """Handle HTTP errors."""
+        try:
+            response_data = json.loads(error.read().decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            response_data = {"error": str(error.reason)}
+
+        message = response_data.get("error", "Unknown error")
+        if isinstance(message, dict):
+            message = message.get("message", "Unknown error")
+
+        if error.code == 401:
             raise AuthenticationError("Authentication failed")
-        elif response.status_code == 404:
-            raise NotFoundError(f"Resource not found: {path}")
-        elif response.status_code == 400:
-            raise ValidationError(response.json().get("error", "Validation error"))
-        elif response.status_code >= 400:
-            raise APIError(
-                response.json().get("error", "API error"),
-                status_code=response.status_code,
-                response=response.json() if response.text else None,
-            )
-
-        return response.json()
+        elif error.code == 404:
+            raise NotFoundError(f"Resource not found")
+        elif error.code == 400:
+            raise ValidationError(message)
+        else:
+            raise APIError(message, status_code=error.code, response=response_data)
 
     # Verification methods
 
@@ -117,7 +137,7 @@ class VerifierClient:
             VerificationResult with verification details
         """
         req = VerificationRequest(model_id=model_id, provider=provider, tests=tests)
-        data = self._request("POST", "/api/v1/verifier/verify", json=req.to_dict())
+        data = self._request("POST", "/api/v1/verifier/verify", json_data=req.to_dict())
         return VerificationResult.from_dict(data)
 
     def batch_verify(
@@ -134,7 +154,7 @@ class VerifierClient:
             BatchVerifyResult with results and summary
         """
         req = BatchVerifyRequest(models=models)
-        data = self._request("POST", "/api/v1/verifier/verify/batch", json=req.to_dict())
+        data = self._request("POST", "/api/v1/verifier/verify/batch", json_data=req.to_dict())
         return BatchVerifyResult.from_dict(data)
 
     def get_verification_status(self, model_id: str) -> VerificationResult:
@@ -171,7 +191,7 @@ class VerifierClient:
             model_id=model_id, provider=provider, language=language
         )
         data = self._request(
-            "POST", "/api/v1/verifier/test/code-visibility", json=req.to_dict()
+            "POST", "/api/v1/verifier/test/code-visibility", json_data=req.to_dict()
         )
         return CodeVisibilityResult.from_dict(data)
 
@@ -195,7 +215,7 @@ class VerifierClient:
         data = self._request(
             "POST",
             "/api/v1/verifier/reverify",
-            json={"model_id": model_id, "provider": provider, "force": force},
+            json_data={"model_id": model_id, "provider": provider, "force": force},
         )
         return VerificationResult.from_dict(data)
 
@@ -225,7 +245,7 @@ class VerifierClient:
             List of ScoreResult objects
         """
         data = self._request(
-            "POST", "/api/v1/verifier/scores/batch", json={"model_ids": model_ids}
+            "POST", "/api/v1/verifier/scores/batch", json_data={"model_ids": model_ids}
         )
         return [ScoreResult.from_dict(s) for s in data["scores"]]
 
@@ -304,7 +324,7 @@ class VerifierClient:
         if not weights.validate():
             raise ValidationError("Weights must sum to 1.0")
         data = self._request(
-            "PUT", "/api/v1/verifier/scores/weights", json=weights.to_dict()
+            "PUT", "/api/v1/verifier/scores/weights", json_data=weights.to_dict()
         )
         return ScoringWeights.from_dict(data["weights"])
 
@@ -319,7 +339,7 @@ class VerifierClient:
             Comparison results including winner
         """
         return self._request(
-            "POST", "/api/v1/verifier/scores/compare", json={"model_ids": model_ids}
+            "POST", "/api/v1/verifier/scores/compare", json_data={"model_ids": model_ids}
         )
 
     def invalidate_cache(self, model_id: Optional[str] = None, all: bool = False):
@@ -333,7 +353,7 @@ class VerifierClient:
         self._request(
             "POST",
             "/api/v1/verifier/scores/cache/invalidate",
-            json={"model_id": model_id, "all": all},
+            json_data={"model_id": model_id, "all": all},
         )
 
     # Health methods
@@ -382,7 +402,7 @@ class VerifierClient:
             Dict with provider_id and avg_response_ms
         """
         return self._request(
-            "POST", "/api/v1/verifier/health/fastest", json={"providers": providers}
+            "POST", "/api/v1/verifier/health/fastest", json_data={"providers": providers}
         )
 
     def is_provider_available(self, provider_id: str) -> bool:
@@ -409,7 +429,7 @@ class VerifierClient:
         self._request(
             "POST",
             "/api/v1/verifier/health/providers",
-            json={"provider_id": provider_id, "provider_name": provider_name},
+            json_data={"provider_id": provider_id, "provider_name": provider_name},
         )
 
     def remove_provider(self, provider_id: str):

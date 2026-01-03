@@ -49,7 +49,7 @@ func (h *HealthHandler) GetProviderHealth(c *gin.Context) {
 
 	health, err := h.healthService.GetProviderHealth(providerID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -203,13 +203,13 @@ type GetFastestProviderResponse struct {
 func (h *HealthHandler) GetFastestProvider(c *gin.Context) {
 	var req GetFastestProviderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
 	providerID, err := h.healthService.GetFastestProvider(req.Providers)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -244,7 +244,7 @@ func (h *HealthHandler) GetCircuitBreakerStatus(c *gin.Context) {
 
 	cb := h.healthService.GetCircuitBreaker(providerID)
 	if cb == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "provider not found"})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "provider not found"})
 		return
 	}
 
@@ -273,7 +273,7 @@ type RecordSuccessRequest struct {
 func (h *HealthHandler) RecordSuccess(c *gin.Context) {
 	var req RecordSuccessRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -303,7 +303,7 @@ type RecordFailureRequest struct {
 func (h *HealthHandler) RecordFailure(c *gin.Context) {
 	var req RecordFailureRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -315,8 +315,8 @@ func (h *HealthHandler) RecordFailure(c *gin.Context) {
 	})
 }
 
-// AddProviderRequest represents an add provider request
-type AddProviderRequest struct {
+// HealthAddProviderRequest represents an add provider request for health monitoring
+type HealthAddProviderRequest struct {
 	ProviderID   string `json:"provider_id" binding:"required"`
 	ProviderName string `json:"provider_name" binding:"required"`
 }
@@ -327,14 +327,14 @@ type AddProviderRequest struct {
 // @Tags health
 // @Accept json
 // @Produce json
-// @Param request body AddProviderRequest true "Provider details"
+// @Param request body HealthAddProviderRequest true "Provider details"
 // @Success 200 {object} map[string]string
-// @Failure 400 {object} ErrorResponse
+// @Failure 400 {object} VerifierErrorResponse
 // @Router /api/v1/verifier/health/providers [post]
 func (h *HealthHandler) AddProvider(c *gin.Context) {
-	var req AddProviderRequest
+	var req HealthAddProviderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -410,7 +410,7 @@ func (h *HealthHandler) GetProviderLatency(c *gin.Context) {
 
 	latency, err := h.healthService.GetProviderLatency(providerID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 

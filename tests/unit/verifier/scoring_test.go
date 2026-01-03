@@ -15,7 +15,7 @@ func TestScoringService_CalculateScore(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -33,7 +33,7 @@ func TestScoringService_BatchCalculateScores(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	modelIDs := []string{"gpt-4", "claude-3", "gemini-pro"}
@@ -54,7 +54,7 @@ func TestScoringService_UpdateWeights(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -116,7 +116,7 @@ func TestScoringService_GetWeights(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	weights := service.GetWeights()
@@ -140,14 +140,14 @@ func TestScoringService_DefaultWeights(t *testing.T) {
 
 	sum := weights.ResponseSpeed + weights.ModelEfficiency +
 		weights.CostEffectiveness + weights.Capability + weights.Recency
-	assert.Equal(t, 1.0, sum)
+	assert.InDelta(t, 1.0, sum, 0.0001)
 }
 
 func TestScoringService_GetModelNameWithScore(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -162,7 +162,7 @@ func TestScoringService_InvalidateCache(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -183,7 +183,7 @@ func TestScoringService_InvalidateAllCache(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -210,7 +210,7 @@ func TestScoringService_ScoreComponents(t *testing.T) {
 	t.Parallel()
 
 	cfg := verifier.DefaultConfig()
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -234,7 +234,7 @@ func TestScoringService_CacheExpiration(t *testing.T) {
 
 	cfg := verifier.DefaultConfig()
 	cfg.Scoring.CacheTTL = 100 * time.Millisecond
-	service, err := verifier.NewScoringService(nil, cfg)
+	service, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
 	ctx := context.Background()

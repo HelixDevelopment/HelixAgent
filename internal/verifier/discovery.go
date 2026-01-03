@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -26,39 +27,39 @@ type ModelDiscoveryService struct {
 
 // DiscoveryConfig represents discovery configuration
 type DiscoveryConfig struct {
-	Enabled              bool          `yaml:"enabled"`
-	DiscoveryInterval    time.Duration `yaml:"discovery_interval"`
-	MaxModelsForEnsemble int           `yaml:"max_models_for_ensemble"`
-	MinScore             float64       `yaml:"min_score"`
-	RequireVerification  bool          `yaml:"require_verification"`
-	RequireCodeVisibility bool         `yaml:"require_code_visibility"`
-	RequireDiversity     bool          `yaml:"require_diversity"`
-	ProviderPriority     []string      `yaml:"provider_priority"`
+	Enabled               bool          `yaml:"enabled"`
+	DiscoveryInterval     time.Duration `yaml:"discovery_interval"`
+	MaxModelsForEnsemble  int           `yaml:"max_models_for_ensemble"`
+	MinScore              float64       `yaml:"min_score"`
+	RequireVerification   bool          `yaml:"require_verification"`
+	RequireCodeVisibility bool          `yaml:"require_code_visibility"`
+	RequireDiversity      bool          `yaml:"require_diversity"`
+	ProviderPriority      []string      `yaml:"provider_priority"`
 }
 
 // DiscoveredModel represents a discovered model
 type DiscoveredModel struct {
-	ModelID        string    `json:"model_id"`
-	ModelName      string    `json:"model_name"`
-	Provider       string    `json:"provider"`
-	ProviderID     string    `json:"provider_id"`
-	DiscoveredAt   time.Time `json:"discovered_at"`
-	Verified       bool      `json:"verified"`
-	VerifiedAt     time.Time `json:"verified_at,omitempty"`
-	CodeVisible    bool      `json:"code_visible"`
-	OverallScore   float64   `json:"overall_score"`
-	ScoreSuffix    string    `json:"score_suffix"`
-	Capabilities   []string  `json:"capabilities,omitempty"`
-	ContextWindow  int       `json:"context_window,omitempty"`
+	ModelID       string    `json:"model_id"`
+	ModelName     string    `json:"model_name"`
+	Provider      string    `json:"provider"`
+	ProviderID    string    `json:"provider_id"`
+	DiscoveredAt  time.Time `json:"discovered_at"`
+	Verified      bool      `json:"verified"`
+	VerifiedAt    time.Time `json:"verified_at,omitempty"`
+	CodeVisible   bool      `json:"code_visible"`
+	OverallScore  float64   `json:"overall_score"`
+	ScoreSuffix   string    `json:"score_suffix"`
+	Capabilities  []string  `json:"capabilities,omitempty"`
+	ContextWindow int       `json:"context_window,omitempty"`
 }
 
 // SelectedModel represents a model selected for AI debate ensemble
 type SelectedModel struct {
 	*DiscoveredModel
-	Rank        int     `json:"rank"`
-	VoteWeight  float64 `json:"vote_weight"`
-	Selected    bool    `json:"selected"`
-	SelectedAt  time.Time `json:"selected_at"`
+	Rank       int       `json:"rank"`
+	VoteWeight float64   `json:"vote_weight"`
+	Selected   bool      `json:"selected"`
+	SelectedAt time.Time `json:"selected_at"`
 }
 
 // ProviderCredentials represents provider API credentials
@@ -507,9 +508,7 @@ func DefaultDiscoveryConfig() *DiscoveryConfig {
 	}
 }
 
-// Helper function
+// containsIgnoreCase checks if s contains substr (case-insensitive)
 func containsIgnoreCase(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) &&
-			(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr)))
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }

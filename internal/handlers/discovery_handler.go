@@ -154,7 +154,7 @@ type TriggerDiscoveryRequest struct {
 func (h *DiscoveryHandler) TriggerDiscovery(c *gin.Context) {
 	var req TriggerDiscoveryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *DiscoveryHandler) GetModelForDebate(c *gin.Context) {
 
 	model, found := h.discoveryService.GetModelForDebate(modelID)
 	if !found {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Model not in ensemble: " + modelID})
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "Model not in ensemble: " + modelID})
 		return
 	}
 

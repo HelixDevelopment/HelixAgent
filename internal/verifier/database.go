@@ -7,16 +7,55 @@ import (
 	"sync"
 	"time"
 
-	"llm-verifier/database"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DatabaseBridge bridges LLMsVerifier SQLite and SuperAgent PostgreSQL
+// VerificationResult represents a verification result
+type VerificationResult struct {
+	ID                     int64     `json:"id"`
+	ModelID                string    `json:"model_id"`
+	ProviderName           string    `json:"provider_name"`
+	VerificationType       string    `json:"verification_type"`
+	Status                 string    `json:"status"`
+	OverallScore           float64   `json:"overall_score"`
+	CodeCapabilityScore    float64   `json:"code_capability_score"`
+	ResponsivenessScore    float64   `json:"responsiveness_score"`
+	ReliabilityScore       float64   `json:"reliability_score"`
+	FeatureRichnessScore   float64   `json:"feature_richness_score"`
+	ValuePropositionScore  float64   `json:"value_proposition_score"`
+	SupportsCodeGeneration bool      `json:"supports_code_generation"`
+	SupportsCodeCompletion bool      `json:"supports_code_completion"`
+	SupportsCodeReview     bool      `json:"supports_code_review"`
+	SupportsStreaming      bool      `json:"supports_streaming"`
+	SupportsReasoning      bool      `json:"supports_reasoning"`
+	AvgLatencyMs           int       `json:"avg_latency_ms"`
+	P95LatencyMs           int       `json:"p95_latency_ms"`
+	ThroughputRPS          float64   `json:"throughput_rps"`
+	VerifiedAt             time.Time `json:"verified_at"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
+}
+
+// VerificationScore represents a model score
+type VerificationScore struct {
+	ID              int64     `json:"id"`
+	ModelID         string    `json:"model_id"`
+	OverallScore    float64   `json:"overall_score"`
+	SpeedScore      float64   `json:"speed_score"`
+	EfficiencyScore float64   `json:"efficiency_score"`
+	CostScore       float64   `json:"cost_score"`
+	CapabilityScore float64   `json:"capability_score"`
+	RecencyScore    float64   `json:"recency_score"`
+	ScoreSuffix     string    `json:"score_suffix"`
+	DataSource      string    `json:"data_source"`
+	CalculatedAt    time.Time `json:"calculated_at"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// DatabaseBridge provides database operations for verifier
 type DatabaseBridge struct {
-	verifierDB   *database.Database
-	superagentDB *pgxpool.Pool
-	mu           sync.RWMutex
+	pool *pgxpool.Pool
+	mu   sync.RWMutex
 }
 
 // PostgresConfig represents PostgreSQL configuration
@@ -30,99 +69,48 @@ type PostgresConfig struct {
 }
 
 // NewDatabaseBridge creates a new database bridge
-func NewDatabaseBridge(verifierDBPath string, pgConfig *PostgresConfig) (*DatabaseBridge, error) {
-	// Initialize LLMsVerifier SQLite database
-	verifierDB, err := database.New(verifierDBPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize verifier database: %w", err)
-	}
-
-	// Build PostgreSQL connection string
+func NewDatabaseBridge(pgConfig *PostgresConfig) (*DatabaseBridge, error) {
 	connStr := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		pgConfig.Host, pgConfig.Port, pgConfig.User,
 		pgConfig.Password, pgConfig.Database, pgConfig.SSLMode,
 	)
 
-	// Connect to SuperAgent PostgreSQL
-	pgPool, err := pgxpool.New(context.Background(), connStr)
+	pool, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
-		verifierDB.Close()
 		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
 
 	return &DatabaseBridge{
-		verifierDB:   verifierDB,
-		superagentDB: pgPool,
+		pool: pool,
 	}, nil
 }
 
-// NewDatabaseBridgeWithPool creates a bridge with an existing PostgreSQL pool
-func NewDatabaseBridgeWithPool(verifierDBPath string, pgPool *pgxpool.Pool) (*DatabaseBridge, error) {
-	verifierDB, err := database.New(verifierDBPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize verifier database: %w", err)
-	}
-
+// NewDatabaseBridgeWithPool creates a bridge with an existing pool
+func NewDatabaseBridgeWithPool(pool *pgxpool.Pool) *DatabaseBridge {
 	return &DatabaseBridge{
-		verifierDB:   verifierDB,
-		superagentDB: pgPool,
-	}, nil
+		pool: pool,
+	}
 }
 
-// Close closes both database connections
+// Close closes the database connection
 func (db *DatabaseBridge) Close() error {
-	var errs []error
-
-	if db.verifierDB != nil {
-		if err := db.verifierDB.Close(); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if db.superagentDB != nil {
-		db.superagentDB.Close()
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("errors closing databases: %v", errs)
+	if db.pool != nil {
+		db.pool.Close()
 	}
 	return nil
 }
 
-// GetVerifierDB returns the LLMsVerifier database
-func (db *DatabaseBridge) GetVerifierDB() *database.Database {
-	return db.verifierDB
+// GetPool returns the underlying connection pool
+func (db *DatabaseBridge) GetPool() *pgxpool.Pool {
+	return db.pool
 }
 
-// GetSuperAgentDB returns the SuperAgent PostgreSQL pool
-func (db *DatabaseBridge) GetSuperAgentDB() *pgxpool.Pool {
-	return db.superagentDB
-}
-
-// SyncVerificationResults syncs verification results from SQLite to PostgreSQL
-func (db *DatabaseBridge) SyncVerificationResults(ctx context.Context) error {
+// SaveVerificationResult saves a verification result
+func (db *DatabaseBridge) SaveVerificationResult(ctx context.Context, result *VerificationResult) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	// Get all verification results from LLMsVerifier
-	results, err := db.verifierDB.GetAllVerificationResults()
-	if err != nil {
-		return fmt.Errorf("failed to get verification results: %w", err)
-	}
-
-	// Insert/update into PostgreSQL
-	for _, result := range results {
-		if err := db.upsertVerificationResult(ctx, result); err != nil {
-			return fmt.Errorf("failed to upsert verification result: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// upsertVerificationResult inserts or updates a verification result in PostgreSQL
-func (db *DatabaseBridge) upsertVerificationResult(ctx context.Context, result *database.VerificationResult) error {
 	query := `
 		INSERT INTO llmsverifier_results (
 			model_id, provider_name, verification_type, status,
@@ -152,9 +140,9 @@ func (db *DatabaseBridge) upsertVerificationResult(ctx context.Context, result *
 			updated_at = NOW()
 	`
 
-	_, err := db.superagentDB.Exec(ctx, query,
-		fmt.Sprintf("%d", result.ModelID),
-		"", // provider_name would need to be fetched
+	_, err := db.pool.Exec(ctx, query,
+		result.ModelID,
+		result.ProviderName,
 		result.VerificationType,
 		result.Status,
 		result.OverallScore,
@@ -171,34 +159,59 @@ func (db *DatabaseBridge) upsertVerificationResult(ctx context.Context, result *
 		result.AvgLatencyMs,
 		result.P95LatencyMs,
 		result.ThroughputRPS,
-		result.StartedAt,
+		result.VerifiedAt,
 	)
 
 	return err
 }
 
-// SyncScores syncs verification scores from SQLite to PostgreSQL
-func (db *DatabaseBridge) SyncScores(ctx context.Context) error {
+// GetVerificationResults retrieves verification results
+func (db *DatabaseBridge) GetVerificationResults(ctx context.Context, limit int) ([]*VerificationResult, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	query := `
+		SELECT id, model_id, provider_name, verification_type, status,
+			overall_score, code_capability_score, responsiveness_score,
+			reliability_score, feature_richness_score, value_proposition_score,
+			supports_code_generation, supports_code_completion, supports_code_review,
+			supports_streaming, supports_reasoning, avg_latency_ms, p95_latency_ms,
+			throughput_rps, verified_at, created_at, updated_at
+		FROM llmsverifier_results
+		ORDER BY verified_at DESC
+		LIMIT $1
+	`
+
+	rows, err := db.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*VerificationResult
+	for rows.Next() {
+		r := &VerificationResult{}
+		if err := rows.Scan(
+			&r.ID, &r.ModelID, &r.ProviderName, &r.VerificationType, &r.Status,
+			&r.OverallScore, &r.CodeCapabilityScore, &r.ResponsivenessScore,
+			&r.ReliabilityScore, &r.FeatureRichnessScore, &r.ValuePropositionScore,
+			&r.SupportsCodeGeneration, &r.SupportsCodeCompletion, &r.SupportsCodeReview,
+			&r.SupportsStreaming, &r.SupportsReasoning, &r.AvgLatencyMs, &r.P95LatencyMs,
+			&r.ThroughputRPS, &r.VerifiedAt, &r.CreatedAt, &r.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+// SaveScore saves a verification score
+func (db *DatabaseBridge) SaveScore(ctx context.Context, score *VerificationScore) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	// Get all scores from LLMsVerifier
-	scores, err := db.verifierDB.GetAllVerificationScores()
-	if err != nil {
-		return fmt.Errorf("failed to get verification scores: %w", err)
-	}
-
-	for _, score := range scores {
-		if err := db.upsertScore(ctx, score); err != nil {
-			return fmt.Errorf("failed to upsert score: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// upsertScore inserts or updates a score in PostgreSQL
-func (db *DatabaseBridge) upsertScore(ctx context.Context, score *database.VerificationScore) error {
 	query := `
 		INSERT INTO llmsverifier_scores (
 			model_id, overall_score, speed_score, efficiency_score,
@@ -217,8 +230,8 @@ func (db *DatabaseBridge) upsertScore(ctx context.Context, score *database.Verif
 			calculated_at = EXCLUDED.calculated_at
 	`
 
-	_, err := db.superagentDB.Exec(ctx, query,
-		fmt.Sprintf("%d", score.ModelID),
+	_, err := db.pool.Exec(ctx, query,
+		score.ModelID,
 		score.OverallScore,
 		score.SpeedScore,
 		score.EfficiencyScore,
@@ -233,22 +246,74 @@ func (db *DatabaseBridge) upsertScore(ctx context.Context, score *database.Verif
 	return err
 }
 
-// SyncProviderHealth syncs provider health from SQLite to PostgreSQL
-func (db *DatabaseBridge) SyncProviderHealth(ctx context.Context, healthData []*ProviderHealth) error {
+// GetScores retrieves scores with minimum threshold
+func (db *DatabaseBridge) GetScores(ctx context.Context, minScore float64, limit int) ([]*VerificationScore, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	query := `
+		SELECT id, model_id, overall_score, speed_score, efficiency_score,
+			cost_score, capability_score, recency_score, score_suffix,
+			data_source, calculated_at, created_at
+		FROM llmsverifier_scores
+		WHERE overall_score >= $1
+		ORDER BY overall_score DESC
+		LIMIT $2
+	`
+
+	rows, err := db.pool.Query(ctx, query, minScore, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var scores []*VerificationScore
+	for rows.Next() {
+		s := &VerificationScore{}
+		if err := rows.Scan(
+			&s.ID, &s.ModelID, &s.OverallScore, &s.SpeedScore, &s.EfficiencyScore,
+			&s.CostScore, &s.CapabilityScore, &s.RecencyScore, &s.ScoreSuffix,
+			&s.DataSource, &s.CalculatedAt, &s.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		scores = append(scores, s)
+	}
+
+	return scores, nil
+}
+
+// GetScoreByModelID retrieves a score by model ID
+func (db *DatabaseBridge) GetScoreByModelID(ctx context.Context, modelID string) (*VerificationScore, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	query := `
+		SELECT id, model_id, overall_score, speed_score, efficiency_score,
+			cost_score, capability_score, recency_score, score_suffix,
+			data_source, calculated_at, created_at
+		FROM llmsverifier_scores
+		WHERE model_id = $1
+	`
+
+	s := &VerificationScore{}
+	err := db.pool.QueryRow(ctx, query, modelID).Scan(
+		&s.ID, &s.ModelID, &s.OverallScore, &s.SpeedScore, &s.EfficiencyScore,
+		&s.CostScore, &s.CapabilityScore, &s.RecencyScore, &s.ScoreSuffix,
+		&s.DataSource, &s.CalculatedAt, &s.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// SaveProviderHealth saves provider health data
+func (db *DatabaseBridge) SaveProviderHealth(ctx context.Context, health *ProviderHealth) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	for _, health := range healthData {
-		if err := db.upsertProviderHealth(ctx, health); err != nil {
-			return fmt.Errorf("failed to upsert provider health: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// upsertProviderHealth inserts or updates provider health in PostgreSQL
-func (db *DatabaseBridge) upsertProviderHealth(ctx context.Context, health *ProviderHealth) error {
 	query := `
 		INSERT INTO llmsverifier_provider_health (
 			provider_id, provider_name, status, circuit_breaker_state,
@@ -281,7 +346,7 @@ func (db *DatabaseBridge) upsertProviderHealth(ctx context.Context, health *Prov
 		lastFailureAt = sql.NullTime{Time: health.LastFailureAt, Valid: true}
 	}
 
-	_, err := db.superagentDB.Exec(ctx, query,
+	_, err := db.pool.Exec(ctx, query,
 		health.ProviderID,
 		health.ProviderName,
 		status,
@@ -298,118 +363,22 @@ func (db *DatabaseBridge) upsertProviderHealth(ctx context.Context, health *Prov
 	return err
 }
 
-// LogEvent logs a verification event to PostgreSQL
+// LogEvent logs a verification event
 func (db *DatabaseBridge) LogEvent(ctx context.Context, eventType, severity, modelID, providerID, message string, metadata map[string]interface{}) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	query := `
 		INSERT INTO llmsverifier_events (
 			event_type, severity, model_id, provider_id, message, metadata
 		) VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err := db.superagentDB.Exec(ctx, query,
+	_, err := db.pool.Exec(ctx, query,
 		eventType, severity, modelID, providerID, message, metadata,
 	)
 
 	return err
-}
-
-// GetVerificationResultsFromPG retrieves verification results from PostgreSQL
-func (db *DatabaseBridge) GetVerificationResultsFromPG(ctx context.Context, limit int) ([]map[string]interface{}, error) {
-	query := `
-		SELECT model_id, provider_name, verification_type, status,
-			overall_score, code_capability_score, supports_code_generation,
-			supports_streaming, avg_latency_ms, verified_at
-		FROM llmsverifier_results
-		ORDER BY verified_at DESC
-		LIMIT $1
-	`
-
-	rows, err := db.superagentDB.Query(ctx, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []map[string]interface{}
-	for rows.Next() {
-		var modelID, providerName, verificationType, status string
-		var overallScore, codeCapabilityScore float64
-		var supportsCodeGen, supportsStreaming bool
-		var avgLatency int
-		var verifiedAt time.Time
-
-		if err := rows.Scan(
-			&modelID, &providerName, &verificationType, &status,
-			&overallScore, &codeCapabilityScore, &supportsCodeGen,
-			&supportsStreaming, &avgLatency, &verifiedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		results = append(results, map[string]interface{}{
-			"model_id":                modelID,
-			"provider_name":           providerName,
-			"verification_type":       verificationType,
-			"status":                  status,
-			"overall_score":           overallScore,
-			"code_capability_score":   codeCapabilityScore,
-			"supports_code_generation": supportsCodeGen,
-			"supports_streaming":      supportsStreaming,
-			"avg_latency_ms":          avgLatency,
-			"verified_at":             verifiedAt,
-		})
-	}
-
-	return results, nil
-}
-
-// GetScoresFromPG retrieves scores from PostgreSQL
-func (db *DatabaseBridge) GetScoresFromPG(ctx context.Context, minScore float64, limit int) ([]map[string]interface{}, error) {
-	query := `
-		SELECT model_id, overall_score, speed_score, efficiency_score,
-			cost_score, capability_score, recency_score, score_suffix,
-			data_source, calculated_at
-		FROM llmsverifier_scores
-		WHERE overall_score >= $1
-		ORDER BY overall_score DESC
-		LIMIT $2
-	`
-
-	rows, err := db.superagentDB.Query(ctx, query, minScore, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []map[string]interface{}
-	for rows.Next() {
-		var modelID, scoreSuffix, dataSource string
-		var overallScore, speedScore, efficiencyScore, costScore, capabilityScore, recencyScore float64
-		var calculatedAt time.Time
-
-		if err := rows.Scan(
-			&modelID, &overallScore, &speedScore, &efficiencyScore,
-			&costScore, &capabilityScore, &recencyScore, &scoreSuffix,
-			&dataSource, &calculatedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		results = append(results, map[string]interface{}{
-			"model_id":         modelID,
-			"overall_score":    overallScore,
-			"speed_score":      speedScore,
-			"efficiency_score": efficiencyScore,
-			"cost_score":       costScore,
-			"capability_score": capabilityScore,
-			"recency_score":    recencyScore,
-			"score_suffix":     scoreSuffix,
-			"data_source":      dataSource,
-			"calculated_at":    calculatedAt,
-		})
-	}
-
-	return results, nil
 }
 
 // RunMigrations runs database migrations for verifier tables
@@ -495,10 +464,69 @@ func (db *DatabaseBridge) RunMigrations(ctx context.Context) error {
 	}
 
 	for _, migration := range migrations {
-		if _, err := db.superagentDB.Exec(ctx, migration); err != nil {
+		if _, err := db.pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("migration failed: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// GetTopModels returns the top scoring models
+func (db *DatabaseBridge) GetTopModels(ctx context.Context, limit int) ([]*VerificationScore, error) {
+	return db.GetScores(ctx, 0, limit)
+}
+
+// GetVerifiedModelsCount returns count of verified models
+func (db *DatabaseBridge) GetVerifiedModelsCount(ctx context.Context) (int, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var count int
+	err := db.pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT model_id) FROM llmsverifier_results WHERE status = 'verified'`,
+	).Scan(&count)
+
+	return count, err
+}
+
+// GetProviderHealthStats returns health statistics by provider
+func (db *DatabaseBridge) GetProviderHealthStats(ctx context.Context) (map[string]map[string]interface{}, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	query := `
+		SELECT provider_name,
+			COUNT(*) as total_models,
+			AVG(overall_score) as avg_score,
+			SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) as verified_count
+		FROM llmsverifier_results
+		GROUP BY provider_name
+	`
+
+	rows, err := db.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := make(map[string]map[string]interface{})
+	for rows.Next() {
+		var providerName string
+		var totalModels int
+		var avgScore float64
+		var verifiedCount int
+
+		if err := rows.Scan(&providerName, &totalModels, &avgScore, &verifiedCount); err != nil {
+			return nil, err
+		}
+
+		stats[providerName] = map[string]interface{}{
+			"total_models":   totalModels,
+			"avg_score":      avgScore,
+			"verified_count": verifiedCount,
+		}
+	}
+
+	return stats, nil
 }

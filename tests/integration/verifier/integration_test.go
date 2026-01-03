@@ -24,15 +24,16 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *verifier.VerificationService, 
 	cfg := verifier.DefaultConfig()
 	cfg.Verification.VerificationTimeout = 5 * time.Second
 
-	verificationService, err := verifier.NewVerificationService(nil, cfg)
+	verificationService := verifier.NewVerificationService(cfg)
+	require.NotNil(t, verificationService)
+
+	scoringService, err := verifier.NewScoringService(cfg)
 	require.NoError(t, err)
 
-	scoringService, err := verifier.NewScoringService(nil, cfg)
-	require.NoError(t, err)
+	healthService := verifier.NewHealthService(cfg)
 
-	healthService := verifier.NewHealthService(nil, cfg)
-
-	registry, err := adapters.NewExtendedProviderRegistry(nil, nil)
+	registryCfg := &adapters.ExtendedRegistryConfig{}
+	registry, err := adapters.NewExtendedProviderRegistry(registryCfg)
 	require.NoError(t, err)
 
 	verificationHandler := handlers.NewVerificationHandler(verificationService, scoringService, healthService, registry)

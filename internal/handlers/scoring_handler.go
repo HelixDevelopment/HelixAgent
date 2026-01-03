@@ -56,7 +56,7 @@ func (h *ScoringHandler) GetModelScore(c *gin.Context) {
 
 	result, err := h.scoringService.CalculateScore(c.Request.Context(), modelID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -102,13 +102,13 @@ type BatchScoreResponse struct {
 func (h *ScoringHandler) BatchCalculateScores(c *gin.Context) {
 	var req BatchScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
 	results, err := h.scoringService.BatchCalculateScores(c.Request.Context(), req.ModelIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -173,7 +173,7 @@ func (h *ScoringHandler) GetTopModels(c *gin.Context) {
 
 	models, err := h.scoringService.GetTopModels(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -240,7 +240,7 @@ func (h *ScoringHandler) GetModelsByScoreRange(c *gin.Context) {
 
 	models, err := h.scoringService.GetModelsByScoreRange(c.Request.Context(), minScore, maxScore, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -329,7 +329,7 @@ type UpdateScoringWeightsRequest struct {
 func (h *ScoringHandler) UpdateScoringWeights(c *gin.Context) {
 	var req UpdateScoringWeightsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -342,7 +342,7 @@ func (h *ScoringHandler) UpdateScoringWeights(c *gin.Context) {
 	}
 
 	if err := h.scoringService.UpdateWeights(weights); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -377,7 +377,7 @@ func (h *ScoringHandler) GetModelNameWithScore(c *gin.Context) {
 
 	name, err := h.scoringService.GetModelNameWithScore(c.Request.Context(), modelID, modelID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -405,7 +405,7 @@ type InvalidateCacheRequest struct {
 func (h *ScoringHandler) InvalidateCache(c *gin.Context) {
 	var req InvalidateCacheRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -425,7 +425,7 @@ func (h *ScoringHandler) InvalidateCache(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Specify model_id or set all=true"})
+	c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: "Specify model_id or set all=true"})
 }
 
 // CompareModelsRequest represents a model comparison request
@@ -454,13 +454,13 @@ type CompareModelsResponse struct {
 func (h *ScoringHandler) CompareModels(c *gin.Context) {
 	var req CompareModelsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 
 	results, err := h.scoringService.BatchCalculateScores(c.Request.Context(), req.ModelIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, VerifierErrorResponse{Error: err.Error()})
 		return
 	}
 

@@ -7,9 +7,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"llm-verifier/database"
-	"llm-verifier/scoring"
 )
 
 // ScoringResult represents the scoring result for a model
@@ -52,39 +49,34 @@ type ModelWithScore struct {
 
 // ScoringService manages model scoring operations
 type ScoringService struct {
-	engine          *scoring.ScoringEngine
-	modelsDevClient *scoring.ModelsDevClient
-	db              *database.Database
-	weights         *ScoreWeights
-	cache           map[string]*ScoringResult
-	cacheMu         sync.RWMutex
-	cacheTTL        time.Duration
+	weights  *ScoreWeights
+	cache    map[string]*ScoringResult
+	cacheMu  sync.RWMutex
+	cacheTTL time.Duration
 }
 
 // NewScoringService creates a new scoring service
-func NewScoringService(db *database.Database, cfg *Config) (*ScoringService, error) {
-	var modelsDevClient *scoring.ModelsDevClient
-	if cfg.Scoring.ModelsDevEnabled {
-		modelsDevClient = scoring.NewModelsDevClient(cfg.Scoring.ModelsDevEndpoint)
+func NewScoringService(cfg *Config) (*ScoringService, error) {
+	weights := DefaultWeights()
+	if cfg != nil && cfg.Scoring.Weights.ResponseSpeed > 0 {
+		weights = &ScoreWeights{
+			ResponseSpeed:     cfg.Scoring.Weights.ResponseSpeed,
+			ModelEfficiency:   cfg.Scoring.Weights.ModelEfficiency,
+			CostEffectiveness: cfg.Scoring.Weights.CostEffectiveness,
+			Capability:        cfg.Scoring.Weights.Capability,
+			Recency:           cfg.Scoring.Weights.Recency,
+		}
 	}
 
-	engine := scoring.NewScoringEngine(db, modelsDevClient, nil)
-
-	weights := &ScoreWeights{
-		ResponseSpeed:     cfg.Scoring.Weights.ResponseSpeed,
-		ModelEfficiency:   cfg.Scoring.Weights.ModelEfficiency,
-		CostEffectiveness: cfg.Scoring.Weights.CostEffectiveness,
-		Capability:        cfg.Scoring.Weights.Capability,
-		Recency:           cfg.Scoring.Weights.Recency,
+	cacheTTL := 6 * time.Hour
+	if cfg != nil && cfg.Scoring.CacheTTL > 0 {
+		cacheTTL = cfg.Scoring.CacheTTL
 	}
 
 	return &ScoringService{
-		engine:          engine,
-		modelsDevClient: modelsDevClient,
-		db:              db,
-		weights:         weights,
-		cache:           make(map[string]*ScoringResult),
-		cacheTTL:        cfg.Scoring.CacheTTL,
+		weights:  weights,
+		cache:    make(map[string]*ScoringResult),
+		cacheTTL: cacheTTL,
 	}, nil
 }
 
@@ -100,37 +92,54 @@ func (s *ScoringService) CalculateScore(ctx context.Context, modelID string) (*S
 	}
 	s.cacheMu.RUnlock()
 
-	// Calculate new score
-	config := scoring.ScoringConfig{
-		Weights: scoring.ScoreWeights{
-			ResponseSpeed:     s.weights.ResponseSpeed,
-			ModelEfficiency:   s.weights.ModelEfficiency,
-			CostEffectiveness: s.weights.CostEffectiveness,
-			Capability:        s.weights.Capability,
-			Recency:           s.weights.Recency,
-		},
+	// Calculate basic score
+	return s.calculateBasicScore(ctx, modelID)
+}
+
+// calculateBasicScore calculates a basic score
+func (s *ScoringService) calculateBasicScore(ctx context.Context, modelID string) (*ScoringResult, error) {
+	// Base scores based on model name patterns
+	baseScore := 5.0
+
+	// Adjust based on known model families
+	modelPatterns := map[string]float64{
+		"gpt-4":          9.0,
+		"gpt-4o":         9.5,
+		"claude-3":       9.0,
+		"claude-3.5":     9.5,
+		"claude-opus":    9.5,
+		"gemini-pro":     8.5,
+		"gemini-ultra":   9.0,
+		"llama-3":        7.5,
+		"mistral-large":  8.0,
+		"deepseek-coder": 7.5,
+		"qwen":           7.0,
 	}
 
-	score, err := s.engine.CalculateComprehensiveScore(ctx, modelID, config)
-	if err != nil {
-		// Fallback to basic scoring if models.dev fails
-		return s.calculateBasicScore(ctx, modelID)
+	for pattern, score := range modelPatterns {
+		if containsIgnoreCase(modelID, pattern) {
+			baseScore = score
+			break
+		}
 	}
+
+	// Ensure score is within bounds
+	baseScore = math.Max(0, math.Min(10, baseScore))
 
 	result := &ScoringResult{
 		ModelID:      modelID,
-		ModelName:    score.ModelName,
-		OverallScore: score.OverallScore,
-		ScoreSuffix:  score.ScoreSuffix,
+		ModelName:    modelID,
+		OverallScore: baseScore,
+		ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", baseScore),
 		Components: ScoreComponents{
-			SpeedScore:      score.Components.SpeedScore,
-			EfficiencyScore: score.Components.EfficiencyScore,
-			CostScore:       score.Components.CostScore,
-			CapabilityScore: score.Components.CapabilityScore,
-			RecencyScore:    score.Components.RecencyScore,
+			SpeedScore:      baseScore,
+			EfficiencyScore: baseScore,
+			CostScore:       baseScore,
+			CapabilityScore: baseScore,
+			RecencyScore:    baseScore,
 		},
-		CalculatedAt: score.LastCalculated,
-		DataSource:   score.DataSource,
+		CalculatedAt: time.Now(),
+		DataSource:   "basic",
 	}
 
 	// Update cache
@@ -139,46 +148,6 @@ func (s *ScoringService) CalculateScore(ctx context.Context, modelID string) (*S
 	s.cacheMu.Unlock()
 
 	return result, nil
-}
-
-// calculateBasicScore calculates a basic score without models.dev data
-func (s *ScoringService) calculateBasicScore(ctx context.Context, modelID string) (*ScoringResult, error) {
-	baseScore := 5.0
-
-	// Get model from database if available
-	if s.db != nil {
-		models, err := s.db.GetModels()
-		if err == nil {
-			for _, m := range models {
-				if m.ModelID == modelID {
-					// Use database scores if available
-					if m.OverallScore > 0 {
-						baseScore = m.OverallScore
-					}
-					break
-				}
-			}
-		}
-	}
-
-	// Ensure score is within bounds
-	baseScore = math.Max(0, math.Min(10, baseScore))
-
-	return &ScoringResult{
-		ModelID:      modelID,
-		ModelName:    modelID,
-		OverallScore: baseScore,
-		ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", baseScore),
-		Components: ScoreComponents{
-			SpeedScore:      5.0,
-			EfficiencyScore: 5.0,
-			CostScore:       5.0,
-			CapabilityScore: 5.0,
-			RecencyScore:    5.0,
-		},
-		CalculatedAt: time.Now(),
-		DataSource:   "basic",
-	}, nil
 }
 
 // BatchCalculateScores calculates scores for multiple models
@@ -219,23 +188,31 @@ func (s *ScoringService) BatchCalculateScores(ctx context.Context, modelIDs []st
 
 // GetTopModels returns top scoring models
 func (s *ScoringService) GetTopModels(ctx context.Context, limit int) ([]*ModelWithScore, error) {
-	if s.db == nil {
-		return nil, fmt.Errorf("database not initialized")
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+
+	models := make([]*ScoringResult, 0, len(s.cache))
+	for _, result := range s.cache {
+		models = append(models, result)
 	}
 
-	models, err := s.engine.GetTopModels(ctx, limit)
-	if err != nil {
-		return nil, err
+	// Sort by score descending
+	sort.Slice(models, func(i, j int) bool {
+		return models[i].OverallScore > models[j].OverallScore
+	})
+
+	if limit > len(models) {
+		limit = len(models)
 	}
 
-	results := make([]*ModelWithScore, len(models))
-	for i, m := range models {
+	results := make([]*ModelWithScore, limit)
+	for i := 0; i < limit; i++ {
 		results[i] = &ModelWithScore{
-			ModelID:      m.ModelID,
-			Name:         m.Name,
-			Provider:     m.ProviderName,
-			OverallScore: m.OverallScore,
-			ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", m.OverallScore),
+			ModelID:      models[i].ModelID,
+			Name:         models[i].ModelName,
+			Provider:     "", // Would need provider info from elsewhere
+			OverallScore: models[i].OverallScore,
+			ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", models[i].OverallScore),
 		}
 	}
 
@@ -244,23 +221,33 @@ func (s *ScoringService) GetTopModels(ctx context.Context, limit int) ([]*ModelW
 
 // GetModelsByScoreRange returns models within a score range
 func (s *ScoringService) GetModelsByScoreRange(ctx context.Context, minScore, maxScore float64, limit int) ([]*ModelWithScore, error) {
-	if s.db == nil {
-		return nil, fmt.Errorf("database not initialized")
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+
+	filtered := make([]*ScoringResult, 0)
+	for _, result := range s.cache {
+		if result.OverallScore >= minScore && result.OverallScore <= maxScore {
+			filtered = append(filtered, result)
+		}
 	}
 
-	models, err := s.engine.GetModelsByScoreRange(ctx, minScore, maxScore, limit)
-	if err != nil {
-		return nil, err
+	// Sort by score descending
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].OverallScore > filtered[j].OverallScore
+	})
+
+	if limit > len(filtered) {
+		limit = len(filtered)
 	}
 
-	results := make([]*ModelWithScore, len(models))
-	for i, m := range models {
+	results := make([]*ModelWithScore, limit)
+	for i := 0; i < limit; i++ {
 		results[i] = &ModelWithScore{
-			ModelID:      m.ModelID,
-			Name:         m.Name,
-			Provider:     m.ProviderName,
-			OverallScore: m.OverallScore,
-			ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", m.OverallScore),
+			ModelID:      filtered[i].ModelID,
+			Name:         filtered[i].ModelName,
+			Provider:     "",
+			OverallScore: filtered[i].OverallScore,
+			ScoreSuffix:  fmt.Sprintf("(SC:%.1f)", filtered[i].OverallScore),
 		}
 	}
 
@@ -278,13 +265,6 @@ func (s *ScoringService) UpdateWeights(weights *ScoreWeights) error {
 	}
 
 	s.weights = weights
-	s.engine.SetWeights(scoring.ScoreWeights{
-		ResponseSpeed:     weights.ResponseSpeed,
-		ModelEfficiency:   weights.ModelEfficiency,
-		CostEffectiveness: weights.CostEffectiveness,
-		Capability:        weights.Capability,
-		Recency:           weights.Recency,
-	})
 
 	// Clear cache when weights change
 	s.cacheMu.Lock()

@@ -7,49 +7,47 @@ import (
 	"sync"
 	"time"
 
-	"llm-verifier/database"
-	"llm-verifier/verification"
+	"github.com/superagent/superagent/internal/verifier"
 )
 
 // ExtendedProviderRegistry extends SuperAgent's provider registry with LLMsVerifier capabilities
 type ExtendedProviderRegistry struct {
-	adapters         *ProviderAdapterRegistry
-	verifier         *verification.Verifier
-	db               *database.Database
-	verifiedModels   map[string]*VerifiedModel
-	providerHealth   map[string]*ProviderHealthStatus
-	mu               sync.RWMutex
-	config           *ExtendedRegistryConfig
-	eventChan        chan *ProviderEvent
-	stopCh           chan struct{}
-	wg               sync.WaitGroup
+	adapters            *ProviderAdapterRegistry
+	verificationService *verifier.VerificationService
+	verifiedModels      map[string]*VerifiedModel
+	providerHealth      map[string]*ProviderHealthStatus
+	mu                  sync.RWMutex
+	config              *ExtendedRegistryConfig
+	eventChan           chan *ProviderEvent
+	stopCh              chan struct{}
+	wg                  sync.WaitGroup
 }
 
 // ExtendedRegistryConfig represents extended registry configuration
 type ExtendedRegistryConfig struct {
-	AutoVerifyNewProviders  bool          `yaml:"auto_verify_new_providers"`
-	VerificationInterval    time.Duration `yaml:"verification_interval"`
-	HealthCheckInterval     time.Duration `yaml:"health_check_interval"`
-	ScoreUpdateInterval     time.Duration `yaml:"score_update_interval"`
-	FailoverEnabled         bool          `yaml:"failover_enabled"`
-	MaxFailoverAttempts     int           `yaml:"max_failover_attempts"`
-	CodeVisibilityTest      bool          `yaml:"code_visibility_test"`
-	MandatoryVerification   bool          `yaml:"mandatory_verification"`
+	AutoVerifyNewProviders bool          `yaml:"auto_verify_new_providers"`
+	VerificationInterval   time.Duration `yaml:"verification_interval"`
+	HealthCheckInterval    time.Duration `yaml:"health_check_interval"`
+	ScoreUpdateInterval    time.Duration `yaml:"score_update_interval"`
+	FailoverEnabled        bool          `yaml:"failover_enabled"`
+	MaxFailoverAttempts    int           `yaml:"max_failover_attempts"`
+	CodeVisibilityTest     bool          `yaml:"code_visibility_test"`
+	MandatoryVerification  bool          `yaml:"mandatory_verification"`
 }
 
 // VerifiedModel represents a verified model with its verification status
 type VerifiedModel struct {
-	ModelID           string    `json:"model_id"`
-	ModelName         string    `json:"model_name"`
-	ProviderID        string    `json:"provider_id"`
-	ProviderName      string    `json:"provider_name"`
-	Verified          bool      `json:"verified"`
-	VerificationScore float64   `json:"verification_score"`
-	LastVerifiedAt    time.Time `json:"last_verified_at"`
+	ModelID           string          `json:"model_id"`
+	ModelName         string          `json:"model_name"`
+	ProviderID        string          `json:"provider_id"`
+	ProviderName      string          `json:"provider_name"`
+	Verified          bool            `json:"verified"`
+	VerificationScore float64         `json:"verification_score"`
+	LastVerifiedAt    time.Time       `json:"last_verified_at"`
 	VerificationTests map[string]bool `json:"verification_tests"`
-	CodeVisible       bool      `json:"code_visible"`
-	OverallScore      float64   `json:"overall_score"`
-	ScoreSuffix       string    `json:"score_suffix"`
+	CodeVisible       bool            `json:"code_visible"`
+	OverallScore      float64         `json:"overall_score"`
+	ScoreSuffix       string          `json:"score_suffix"`
 }
 
 // ProviderHealthStatus represents provider health status
@@ -74,22 +72,21 @@ type ProviderEvent struct {
 }
 
 // NewExtendedProviderRegistry creates a new extended provider registry
-func NewExtendedProviderRegistry(db *database.Database, cfg *ExtendedRegistryConfig) (*ExtendedProviderRegistry, error) {
+func NewExtendedProviderRegistry(cfg *ExtendedRegistryConfig) (*ExtendedProviderRegistry, error) {
 	if cfg == nil {
 		cfg = DefaultExtendedRegistryConfig()
 	}
 
-	verifier := verification.NewVerifier(db, nil)
+	verificationService := verifier.NewVerificationService(nil)
 
 	return &ExtendedProviderRegistry{
-		adapters:       NewProviderAdapterRegistry(),
-		verifier:       verifier,
-		db:             db,
-		verifiedModels: make(map[string]*VerifiedModel),
-		providerHealth: make(map[string]*ProviderHealthStatus),
-		config:         cfg,
-		eventChan:      make(chan *ProviderEvent, 100),
-		stopCh:         make(chan struct{}),
+		adapters:            NewProviderAdapterRegistry(),
+		verificationService: verificationService,
+		verifiedModels:      make(map[string]*VerifiedModel),
+		providerHealth:      make(map[string]*ProviderHealthStatus),
+		config:              cfg,
+		eventChan:           make(chan *ProviderEvent, 100),
+		stopCh:              make(chan struct{}),
 	}, nil
 }
 
@@ -191,13 +188,13 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 		return fmt.Errorf("provider not found: %s", providerID)
 	}
 
-	// Create provider function for verifier
-	providerFunc := func(ctx context.Context, model, provider, prompt string) (string, error) {
+	// Set provider function for verifier
+	r.verificationService.SetProviderFunc(func(ctx context.Context, model, provider, prompt string) (string, error) {
 		return adapter.Complete(ctx, model, prompt, nil)
-	}
+	})
 
 	// Run verification
-	result, err := r.verifier.VerifyModel(ctx, modelID, adapter.GetProviderName(), providerFunc)
+	result, err := r.verificationService.VerifyModel(ctx, modelID, adapter.GetProviderName())
 	if err != nil {
 		return fmt.Errorf("verification failed: %w", err)
 	}
@@ -206,12 +203,17 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 	r.mu.Lock()
 	if model, ok := r.verifiedModels[modelID]; ok {
 		model.Verified = result.Verified
-		model.VerificationScore = result.Score
+		model.VerificationScore = result.OverallScore
 		model.LastVerifiedAt = time.Now()
-		model.VerificationTests = result.Tests
 		model.CodeVisible = result.CodeVisible
 		model.OverallScore = result.OverallScore
 		model.ScoreSuffix = fmt.Sprintf("(SC:%.1f)", result.OverallScore)
+
+		// Build verification tests map
+		model.VerificationTests = make(map[string]bool)
+		for _, test := range result.Tests {
+			model.VerificationTests[test.Name] = test.Passed
+		}
 	}
 	r.mu.Unlock()
 
@@ -219,7 +221,7 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 	if !result.Verified {
 		eventType = "verification_failed"
 	}
-	r.emitEvent(eventType, providerID, modelID, fmt.Sprintf("Score: %.2f, Code visible: %v", result.Score, result.CodeVisible))
+	r.emitEvent(eventType, providerID, modelID, fmt.Sprintf("Score: %.2f, Code visible: %v", result.OverallScore, result.CodeVisible))
 
 	return nil
 }

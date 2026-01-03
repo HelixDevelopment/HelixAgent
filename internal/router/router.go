@@ -402,6 +402,11 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// Cognee endpoints - comprehensive API with all features
 		cogneeAPIHandler.RegisterRoutes(protected)
 
+		// AI Debate endpoints
+		debateService := services.NewDebateServiceWithDeps(logger, providerRegistry, cogneeService)
+		debateHandler := handlers.NewDebateHandler(debateService, nil, logger)
+		debateHandler.RegisterRoutes(protected)
+
 		// LSP endpoints
 		lspGroup := protected.Group("/lsp")
 		{

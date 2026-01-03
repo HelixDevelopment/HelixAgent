@@ -704,6 +704,605 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a debate
+      description: Removes a debate and all associated data
+      operationId: deleteDebate
+      tags:
+        - Debates
+      parameters:
+        - name: debateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debate deleted successfully
+        '404':
+          description: Debate not found
+
+  /v1/debates/{debateId}/status:
+    get:
+      summary: Get debate status
+      description: Returns the current status of a debate
+      operationId: getDebateStatus
+      tags:
+        - Debates
+      parameters:
+        - name: debateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debate status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebateStatus'
+
+  /v1/debates/{debateId}/results:
+    get:
+      summary: Get debate results
+      description: Returns the final results of a completed debate
+      operationId: getDebateResults
+      tags:
+        - Debates
+      parameters:
+        - name: debateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debate results retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebateResult'
+
+  /v1/sessions:
+    post:
+      summary: Create a new session
+      description: Creates a new conversation session
+      operationId: createSession
+      tags:
+        - Sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '201':
+          description: Session created
+    get:
+      summary: List all sessions
+      description: Returns all active sessions
+      operationId: listSessions
+      tags:
+        - Sessions
+      responses:
+        '200':
+          description: Sessions list
+
+  /v1/sessions/{id}:
+    get:
+      summary: Get session details
+      description: Returns details of a specific session
+      operationId: getSession
+      tags:
+        - Sessions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+    delete:
+      summary: Terminate session
+      description: Terminates and removes a session
+      operationId: terminateSession
+      tags:
+        - Sessions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session terminated
+
+  /v1/lsp/servers:
+    get:
+      summary: List LSP servers
+      description: Returns all configured Language Server Protocol servers
+      operationId: listLSPServers
+      tags:
+        - LSP
+      responses:
+        '200':
+          description: LSP servers list
+
+  /v1/lsp/execute:
+    post:
+      summary: Execute LSP request
+      description: Executes a Language Server Protocol request
+      operationId: executeLSPRequest
+      tags:
+        - LSP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method:
+                  type: string
+                params:
+                  type: object
+      responses:
+        '200':
+          description: LSP response
+
+  /v1/lsp/sync:
+    post:
+      summary: Sync LSP servers
+      description: Synchronizes LSP server configurations
+      operationId: syncLSPServers
+      tags:
+        - LSP
+      responses:
+        '200':
+          description: Sync completed
+
+  /v1/lsp/stats:
+    get:
+      summary: Get LSP statistics
+      description: Returns statistics about LSP operations
+      operationId: getLSPStats
+      tags:
+        - LSP
+      responses:
+        '200':
+          description: LSP statistics
+
+  /v1/mcp/capabilities:
+    get:
+      summary: Get MCP capabilities
+      description: Returns Model Context Protocol capabilities
+      operationId: getMCPCapabilities
+      tags:
+        - MCP
+      responses:
+        '200':
+          description: MCP capabilities
+
+  /v1/mcp/tools:
+    get:
+      summary: List MCP tools
+      description: Returns available MCP tools
+      operationId: listMCPTools
+      tags:
+        - MCP
+      responses:
+        '200':
+          description: MCP tools list
+
+  /v1/mcp/tools/call:
+    post:
+      summary: Call MCP tool
+      description: Executes an MCP tool
+      operationId: callMCPTool
+      tags:
+        - MCP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                arguments:
+                  type: object
+      responses:
+        '200':
+          description: Tool execution result
+
+  /v1/mcp/prompts:
+    get:
+      summary: List MCP prompts
+      description: Returns available MCP prompts
+      operationId: listMCPPrompts
+      tags:
+        - MCP
+      responses:
+        '200':
+          description: MCP prompts list
+
+  /v1/mcp/resources:
+    get:
+      summary: List MCP resources
+      description: Returns available MCP resources
+      operationId: listMCPResources
+      tags:
+        - MCP
+      responses:
+        '200':
+          description: MCP resources list
+
+  /v1/protocols/execute:
+    post:
+      summary: Execute protocol request
+      description: Executes a protocol-agnostic request
+      operationId: executeProtocolRequest
+      tags:
+        - Protocols
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Protocol response
+
+  /v1/protocols/servers:
+    get:
+      summary: List protocol servers
+      description: Returns all configured protocol servers
+      operationId: listProtocolServers
+      tags:
+        - Protocols
+      responses:
+        '200':
+          description: Protocol servers list
+
+  /v1/protocols/metrics:
+    get:
+      summary: Get protocol metrics
+      description: Returns metrics for protocol operations
+      operationId: getProtocolMetrics
+      tags:
+        - Protocols
+      responses:
+        '200':
+          description: Protocol metrics
+
+  /v1/protocols/refresh:
+    post:
+      summary: Refresh protocol servers
+      description: Refreshes protocol server connections
+      operationId: refreshProtocolServers
+      tags:
+        - Protocols
+      responses:
+        '200':
+          description: Refresh completed
+
+  /v1/protocols/configure:
+    post:
+      summary: Configure protocols
+      description: Updates protocol configurations
+      operationId: configureProtocols
+      tags:
+        - Protocols
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Configuration updated
+
+  /v1/embeddings/generate:
+    post:
+      summary: Generate embeddings
+      description: Generates vector embeddings for text
+      operationId: generateEmbeddings
+      tags:
+        - Embeddings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: array
+                  items:
+                    type: string
+                model:
+                  type: string
+      responses:
+        '200':
+          description: Embeddings generated
+
+  /v1/embeddings/search:
+    post:
+      summary: Vector search
+      description: Performs similarity search using embeddings
+      operationId: vectorSearch
+      tags:
+        - Embeddings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: Search results
+
+  /v1/embeddings/index:
+    post:
+      summary: Index document
+      description: Indexes a document for vector search
+      operationId: indexDocument
+      tags:
+        - Embeddings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Document indexed
+
+  /v1/embeddings/batch-index:
+    post:
+      summary: Batch index documents
+      description: Indexes multiple documents at once
+      operationId: batchIndexDocuments
+      tags:
+        - Embeddings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Documents indexed
+
+  /v1/embeddings/stats:
+    get:
+      summary: Get embedding statistics
+      description: Returns statistics about embeddings
+      operationId: getEmbeddingStats
+      tags:
+        - Embeddings
+      responses:
+        '200':
+          description: Embedding statistics
+
+  /v1/embeddings/providers:
+    get:
+      summary: List embedding providers
+      description: Returns available embedding providers
+      operationId: listEmbeddingProviders
+      tags:
+        - Embeddings
+      responses:
+        '200':
+          description: Embedding providers list
+
+  /v1/cognee/health:
+    get:
+      summary: Cognee health check
+      description: Returns health status of Cognee service
+      operationId: cogneeHealth
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Cognee is healthy
+
+  /v1/cognee/stats:
+    get:
+      summary: Get Cognee statistics
+      description: Returns Cognee usage statistics
+      operationId: getCogneeStats
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Cognee statistics
+
+  /v1/cognee/config:
+    get:
+      summary: Get Cognee configuration
+      description: Returns current Cognee configuration
+      operationId: getCogneeConfig
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Cognee configuration
+
+  /v1/cognee/start:
+    post:
+      summary: Start Cognee service
+      description: Ensures Cognee service is running
+      operationId: startCognee
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Cognee started
+
+  /v1/cognee/memory:
+    post:
+      summary: Add memory to Cognee
+      description: Adds content to Cognee memory
+      operationId: addCogneeMemory
+      tags:
+        - Cognee
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Memory added
+
+  /v1/cognee/search:
+    post:
+      summary: Search Cognee memory
+      description: Searches Cognee knowledge graph
+      operationId: searchCogneeMemory
+      tags:
+        - Cognee
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+      responses:
+        '200':
+          description: Search results
+
+  /v1/cognee/cognify:
+    post:
+      summary: Cognify content
+      description: Processes content through Cognee's cognification pipeline
+      operationId: cognifyContent
+      tags:
+        - Cognee
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Content cognified
+
+  /v1/cognee/insights:
+    post:
+      summary: Get insights
+      description: Generates insights from Cognee knowledge
+      operationId: getCogneeInsights
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Insights generated
+
+  /v1/cognee/graph/complete:
+    post:
+      summary: Complete graph query
+      description: Performs graph completion query
+      operationId: graphComplete
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Graph completion result
+
+  /v1/cognee/code:
+    post:
+      summary: Process code
+      description: Processes code through Cognee
+      operationId: processCode
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Code processed
+
+  /v1/cognee/feedback:
+    post:
+      summary: Provide feedback
+      description: Provides feedback to improve Cognee
+      operationId: provideFeedback
+      tags:
+        - Cognee
+      responses:
+        '200':
+          description: Feedback received
+
+  /v1/providers/{id}:
+    get:
+      summary: Get provider details
+      description: Returns details of a specific provider
+      operationId: getProvider
+      tags:
+        - Providers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provider details
+    put:
+      summary: Update provider
+      description: Updates provider configuration
+      operationId: updateProvider
+      tags:
+        - Providers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Provider updated
+    delete:
+      summary: Delete provider
+      description: Removes a provider
+      operationId: deleteProvider
+      tags:
+        - Providers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provider deleted
 
 components:
   securitySchemes:

@@ -565,6 +565,198 @@ help:
 	@echo "  help               Show this help message"
 
 # =============================================================================
+# LLMSVERIFIER INTEGRATION TARGETS
+# =============================================================================
+
+verifier-init:
+	@echo "🔍 Initializing LLMsVerifier submodule..."
+	git submodule update --init --recursive LLMsVerifier
+	@echo "✅ LLMsVerifier submodule initialized"
+
+verifier-update:
+	@echo "🔄 Updating LLMsVerifier submodule..."
+	git submodule update --remote LLMsVerifier
+	@echo "✅ LLMsVerifier submodule updated"
+
+verifier-build:
+	@echo "🔨 Building verifier components..."
+	go build -o bin/verifier-cli ./LLMsVerifier/llm-verifier/cmd/...
+	@echo "✅ Verifier CLI built to bin/verifier-cli"
+
+verifier-test:
+	@echo "🧪 Running verifier tests..."
+	go test -v ./internal/verifier/... -cover
+	@echo "✅ Verifier tests completed"
+
+verifier-test-unit:
+	@echo "🧪 Running verifier unit tests..."
+	go test -v ./tests/unit/verifier/... -short
+	@echo "✅ Verifier unit tests completed"
+
+verifier-test-integration:
+	@echo "🧪 Running verifier integration tests..."
+	go test -v ./tests/integration/verifier/... -timeout 300s
+	@echo "✅ Verifier integration tests completed"
+
+verifier-test-e2e:
+	@echo "🧪 Running verifier E2E tests..."
+	go test -v ./tests/e2e/verifier/... -timeout 600s
+	@echo "✅ Verifier E2E tests completed"
+
+verifier-test-security:
+	@echo "🔒 Running verifier security tests..."
+	go test -v ./tests/security/verifier/...
+	@echo "✅ Verifier security tests completed"
+
+verifier-test-stress:
+	@echo "⚡ Running verifier stress tests..."
+	go test -v ./tests/stress/verifier/... -timeout 900s
+	@echo "✅ Verifier stress tests completed"
+
+verifier-test-chaos:
+	@echo "🌀 Running verifier chaos tests..."
+	go test -v ./tests/chaos/verifier/... -timeout 600s
+	@echo "✅ Verifier chaos tests completed"
+
+verifier-test-all:
+	@echo "🧪 Running ALL verifier tests (6 types)..."
+	@echo "1. Unit tests..."
+	go test -v ./tests/unit/verifier/... -short
+	@echo "2. Integration tests..."
+	go test -v ./tests/integration/verifier/... -timeout 300s
+	@echo "3. E2E tests..."
+	go test -v ./tests/e2e/verifier/... -timeout 600s
+	@echo "4. Security tests..."
+	go test -v ./tests/security/verifier/...
+	@echo "5. Stress tests..."
+	go test -v ./tests/stress/verifier/... -timeout 900s
+	@echo "6. Chaos tests..."
+	go test -v ./tests/chaos/verifier/... -timeout 600s
+	@echo "✅ All verifier tests completed"
+
+verifier-test-coverage:
+	@echo "📊 Running verifier tests with coverage..."
+	go test -v -race -coverprofile=verifier-coverage.out ./internal/verifier/... ./tests/unit/verifier/...
+	go tool cover -func=verifier-coverage.out
+	go tool cover -html=verifier-coverage.out -o verifier-coverage.html
+	@echo "📈 Verifier coverage report: verifier-coverage.html"
+
+verifier-test-coverage-100:
+	@echo "📊 Checking verifier 100% test coverage..."
+	@go test -v -race -coverprofile=verifier-coverage.out ./internal/verifier/... ./tests/unit/verifier/...
+	@coverage=$$(go tool cover -func=verifier-coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	if [ $$(echo "$$coverage < 100" | bc -l) -eq 1 ]; then \
+		echo "❌ Verifier coverage is $$coverage%, required 100%"; \
+		exit 1; \
+	else \
+		echo "✅ Verifier coverage is $$coverage%"; \
+	fi
+
+verifier-run:
+	@echo "🚀 Running verifier service..."
+	VERIFIER_ENABLED=true go run ./cmd/superagent/main.go
+
+verifier-health:
+	@echo "💚 Checking verifier health..."
+	curl -s http://localhost:8081/api/v1/verifier/health | jq .
+
+verifier-verify:
+	@echo "🔍 Running model verification..."
+	@if [ -z "$(MODEL)" ]; then \
+		echo "Usage: make verifier-verify MODEL=gpt-4 PROVIDER=openai"; \
+		exit 1; \
+	fi
+	curl -s -X POST http://localhost:8081/api/v1/verifier/verify \
+		-H "Content-Type: application/json" \
+		-d '{"model_id":"$(MODEL)","provider":"$(PROVIDER)"}' | jq .
+
+verifier-score:
+	@echo "📊 Getting model score..."
+	@if [ -z "$(MODEL)" ]; then \
+		echo "Usage: make verifier-score MODEL=gpt-4"; \
+		exit 1; \
+	fi
+	curl -s http://localhost:8081/api/v1/verifier/scores/$(MODEL) | jq .
+
+verifier-providers:
+	@echo "📋 Listing verified providers..."
+	curl -s http://localhost:8081/api/v1/verifier/providers | jq .
+
+verifier-metrics:
+	@echo "📈 Getting verifier metrics..."
+	curl -s http://localhost:8081/metrics/verifier
+
+verifier-db-migrate:
+	@echo "🗄️ Running verifier database migrations..."
+	go run ./cmd/verifier-migrate/main.go
+	@echo "✅ Verifier migrations completed"
+
+verifier-db-sync:
+	@echo "🔄 Syncing verifier database..."
+	go run ./cmd/verifier-sync/main.go
+	@echo "✅ Verifier database synced"
+
+verifier-clean:
+	@echo "🧹 Cleaning verifier artifacts..."
+	rm -f bin/verifier-cli
+	rm -f verifier-coverage.out verifier-coverage.html
+	rm -f ./data/llm-verifier.db
+	@echo "✅ Verifier artifacts cleaned"
+
+verifier-docker-build:
+	@echo "🐳 Building verifier Docker image..."
+	docker build -t superagent-verifier:latest -f Dockerfile.verifier .
+	@echo "✅ Verifier Docker image built"
+
+verifier-docker-run:
+	@echo "🐳 Running verifier in Docker..."
+	docker compose --profile verifier up -d
+	@echo "✅ Verifier services started"
+
+verifier-docker-stop:
+	@echo "🐳 Stopping verifier Docker services..."
+	docker compose --profile verifier down
+	@echo "✅ Verifier services stopped"
+
+verifier-sdk-go:
+	@echo "📦 Building Go SDK for verifier..."
+	cd pkg/sdk/go/verifier && go build ./...
+	@echo "✅ Go SDK built"
+
+verifier-sdk-python:
+	@echo "🐍 Building Python SDK for verifier..."
+	cd pkg/sdk/python/superagent_verifier && pip install -e .
+	@echo "✅ Python SDK installed"
+
+verifier-sdk-js:
+	@echo "📦 Building JavaScript SDK for verifier..."
+	cd pkg/sdk/javascript/superagent-verifier && npm install && npm run build
+	@echo "✅ JavaScript SDK built"
+
+verifier-sdk-all:
+	@echo "📦 Building all verifier SDKs..."
+	$(MAKE) verifier-sdk-go
+	$(MAKE) verifier-sdk-python
+	$(MAKE) verifier-sdk-js
+	@echo "✅ All verifier SDKs built"
+
+verifier-docs:
+	@echo "📚 Generating verifier documentation..."
+	@mkdir -p docs/verifier
+	@echo "Generating API documentation..."
+	@if command -v swag >/dev/null 2>&1; then \
+		swag init -g internal/handlers/verification_handler.go -o docs/verifier/api; \
+	else \
+		echo "⚠️  swag not installed. Install with: go install github.com/swaggo/swag/cmd/swag@latest"; \
+	fi
+	@echo "✅ Verifier documentation generated"
+
+verifier-benchmark:
+	@echo "⚡ Running verifier benchmarks..."
+	go test -bench=. -benchmem ./internal/verifier/...
+	@echo "✅ Verifier benchmarks completed"
+
+# =============================================================================
 # PHONY TARGETS
 # =============================================================================
-.PHONY: all build build-debug build-all run run-dev test test-coverage test-unit test-integration test-bench test-race test-all test-with-infra test-infra-start test-infra-stop test-infra-clean test-infra-logs test-infra-status fmt vet lint security-scan docker-build docker-build-prod docker-run docker-stop docker-logs docker-clean docker-clean-all docker-test docker-dev docker-prod docker-full docker-monitoring docker-ai install-deps install uninstall clean clean-all check-deps update-deps generate docs docs-api setup-dev setup-prod help
+.PHONY: all build build-debug build-all run run-dev test test-coverage test-unit test-integration test-bench test-race test-all test-with-infra test-infra-start test-infra-stop test-infra-clean test-infra-logs test-infra-status fmt vet lint security-scan docker-build docker-build-prod docker-run docker-stop docker-logs docker-clean docker-clean-all docker-test docker-dev docker-prod docker-full docker-monitoring docker-ai install-deps install uninstall clean clean-all check-deps update-deps generate docs docs-api setup-dev setup-prod help verifier-init verifier-update verifier-build verifier-test verifier-test-unit verifier-test-integration verifier-test-e2e verifier-test-security verifier-test-stress verifier-test-chaos verifier-test-all verifier-test-coverage verifier-test-coverage-100 verifier-run verifier-health verifier-verify verifier-score verifier-providers verifier-metrics verifier-db-migrate verifier-db-sync verifier-clean verifier-docker-build verifier-docker-run verifier-docker-stop verifier-sdk-go verifier-sdk-python verifier-sdk-js verifier-sdk-all verifier-docs verifier-benchmark

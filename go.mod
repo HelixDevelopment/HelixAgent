@@ -6,6 +6,8 @@ toolchain go1.24.11
 
 require github.com/gin-gonic/gin v1.11.0
 
+require llm-verifier v0.0.0
+
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -26,6 +28,8 @@ require (
 )
 
 replace github.com/superagent/superagent/pkg/api => ./pkg/api
+
+replace llm-verifier => ./LLMsVerifier/llm-verifier
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

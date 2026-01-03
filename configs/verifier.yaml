@@ -1,0 +1,256 @@
+# LLMsVerifier Configuration
+# This file configures the integrated LLMsVerifier module for SuperAgent
+
+verifier:
+  enabled: true
+
+  # Database configuration
+  database:
+    path: "./data/llm-verifier.db"
+    encryption_enabled: false
+    encryption_key: "${VERIFIER_ENCRYPTION_KEY}"
+
+  # Verification settings
+  verification:
+    # Enable mandatory code visibility check ("Do you see my code?")
+    mandatory_code_check: true
+    code_visibility_prompt: "Do you see my code?"
+    verification_timeout: 60s
+    retry_count: 3
+    retry_delay: 5s
+    # Available tests: existence, responsiveness, latency, streaming,
+    # function_calling, coding_capability, error_detection, code_visibility
+    tests:
+      - existence
+      - responsiveness
+      - latency
+      - streaming
+      - function_calling
+      - coding_capability
+      - error_detection
+      - code_visibility
+
+  # Scoring configuration
+  scoring:
+    # Scoring weights (must sum to 1.0)
+    weights:
+      response_speed: 0.25
+      model_efficiency: 0.20
+      cost_effectiveness: 0.25
+      capability: 0.20
+      recency: 0.10
+    # Enable models.dev integration for comprehensive scoring
+    models_dev_enabled: true
+    models_dev_endpoint: "https://api.models.dev"
+    cache_ttl: 24h
+
+  # Health monitoring
+  health:
+    check_interval: 30s
+    timeout: 10s
+    failure_threshold: 5
+    recovery_threshold: 3
+    circuit_breaker:
+      enabled: true
+      half_open_timeout: 60s
+
+  # API configuration
+  api:
+    enabled: true
+    port: "8081"
+    base_path: "/api/v1/verifier"
+    jwt_secret: "${VERIFIER_JWT_SECRET}"
+    rate_limit:
+      enabled: true
+      requests_per_minute: 100
+
+  # Event notifications
+  events:
+    slack:
+      enabled: false
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+    email:
+      enabled: false
+      smtp_host: "smtp.gmail.com"
+      smtp_port: 587
+    telegram:
+      enabled: false
+      bot_token: "${TELEGRAM_BOT_TOKEN}"
+      chat_id: "${TELEGRAM_CHAT_ID}"
+    websocket:
+      enabled: true
+      path: "/ws/verifier/events"
+
+  # Monitoring configuration
+  monitoring:
+    prometheus:
+      enabled: true
+      path: "/metrics/verifier"
+    grafana:
+      enabled: true
+      dashboard_path: "./dashboards/verifier"
+
+  # Brotli compression
+  brotli:
+    enabled: true
+    http3_support: true
+    compression_level: 6
+
+  # Challenge system
+  challenges:
+    enabled: true
+    provider_discovery: true
+    model_verification: true
+    config_generation: true
+
+  # Scheduling
+  scheduling:
+    re_verification:
+      enabled: true
+      interval: 24h
+    score_recalculation:
+      enabled: true
+      interval: 12h
+
+# Provider-specific configuration
+providers:
+  openai:
+    enabled: true
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+    models:
+      - gpt-4
+      - gpt-4-turbo
+      - gpt-4o
+      - gpt-3.5-turbo
+
+  anthropic:
+    enabled: true
+    api_key: "${ANTHROPIC_API_KEY}"
+    base_url: "https://api.anthropic.com/v1"
+    models:
+      - claude-3-5-sonnet-20241022
+      - claude-3-opus-20240229
+      - claude-3-sonnet-20240229
+      - claude-3-haiku-20240307
+
+  google:
+    enabled: true
+    api_key: "${GOOGLE_API_KEY}"
+    base_url: "https://generativelanguage.googleapis.com/v1"
+    models:
+      - gemini-1.5-pro
+      - gemini-1.5-flash
+      - gemini-pro
+
+  groq:
+    enabled: true
+    api_key: "${GROQ_API_KEY}"
+    base_url: "https://api.groq.com/openai/v1"
+    models:
+      - llama-3.3-70b-versatile
+      - llama-3.1-8b-instant
+      - mixtral-8x7b-32768
+
+  together:
+    enabled: true
+    api_key: "${TOGETHER_API_KEY}"
+    base_url: "https://api.together.xyz/v1"
+    models:
+      - meta-llama/Llama-3-70b-chat-hf
+      - mistralai/Mixtral-8x7B-Instruct-v0.1
+
+  mistral:
+    enabled: true
+    api_key: "${MISTRAL_API_KEY}"
+    base_url: "https://api.mistral.ai/v1"
+    models:
+      - mistral-large-latest
+      - mistral-medium-latest
+      - mistral-small-latest
+
+  deepseek:
+    enabled: true
+    api_key: "${DEEPSEEK_API_KEY}"
+    base_url: "https://api.deepseek.com/v1"
+    models:
+      - deepseek-chat
+      - deepseek-coder
+
+  xai:
+    enabled: false
+    api_key: "${XAI_API_KEY}"
+    base_url: "https://api.x.ai/v1"
+    models:
+      - grok-beta
+
+  cerebras:
+    enabled: false
+    api_key: "${CEREBRAS_API_KEY}"
+    base_url: "https://api.cerebras.ai/v1"
+    models:
+      - llama-3.3-70b
+
+  cloudflare:
+    enabled: false
+    api_key: "${CLOUDFLARE_API_KEY}"
+    account_id: "${CLOUDFLARE_ACCOUNT_ID}"
+    models:
+      - "@cf/meta/llama-2-7b-chat-int8"
+
+  siliconflow:
+    enabled: false
+    api_key: "${SILICONFLOW_API_KEY}"
+    base_url: "https://api.siliconflow.cn/v1"
+    models:
+      - deepseek-ai/DeepSeek-V2.5
+
+  replicate:
+    enabled: false
+    api_key: "${REPLICATE_API_TOKEN}"
+    models:
+      - meta/llama-2-70b-chat
+
+  ollama:
+    enabled: true
+    base_url: "http://localhost:11434"
+    models:
+      - llama3.2
+      - codellama
+      - mistral
+
+  openrouter:
+    enabled: true
+    api_key: "${OPENROUTER_API_KEY}"
+    base_url: "https://openrouter.ai/api/v1"
+    models:
+      - anthropic/claude-3.5-sonnet
+      - openai/gpt-4-turbo
+      - meta-llama/llama-3.1-405b-instruct
+
+# Advanced settings
+advanced:
+  # Connection pooling
+  connection_pool:
+    max_idle_conns: 10
+    max_open_conns: 100
+    conn_max_lifetime: 1h
+
+  # Request settings
+  request:
+    max_concurrent: 50
+    queue_size: 1000
+    default_timeout: 30s
+
+  # Caching
+  cache:
+    enabled: true
+    type: "memory"  # memory, redis
+    max_size: 10000
+    ttl: 1h
+
+  # Logging
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"

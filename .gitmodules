@@ -7,3 +7,6 @@
 [submodule "Toolkit/Toolkit/Chutes"]
 	path = Toolkit/Toolkit/Chutes
 	url = git@github.com:vasic-digital/Chutes-Toolkit.git
+[submodule "LLMsVerifier"]
+	path = LLMsVerifier
+	url = https://github.com/vasic-digital/LLMsVerifier.git

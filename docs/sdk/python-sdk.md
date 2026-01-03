@@ -1,24 +1,21 @@
 # SuperAgent Python SDK
 
-> **Status: Planned**
+> **Status: Available**
 >
-> This Python SDK is planned but not yet implemented. The documentation below
-> describes the intended API design. Implementation is tracked in Phase 6 of
-> the project roadmap.
->
-> For now, you can use the OpenAI-compatible REST API directly - SuperAgent
-> is compatible with the standard OpenAI Python client.
+> The Python SDK is implemented and available at `/sdk/python/`.
+> Install from source or wait for PyPI publication.
 
-A comprehensive Python SDK for interacting with the SuperAgent AI orchestration platform, providing easy access to multi-provider LLM capabilities, AI debates, and advanced features.
+A comprehensive Python SDK for interacting with the SuperAgent AI orchestration platform, providing easy access to multi-provider LLM capabilities and OpenAI-compatible API.
 
-## Installation (Planned)
+## Installation
 
 ```bash
-# Not yet available - SDK is in development
-# pip install superagent-sdk
+# Install from source
+cd sdk/python
+pip install -e .
 
-# For now, use the OpenAI client with SuperAgent's OpenAI-compatible API:
-pip install openai
+# Or when published to PyPI:
+# pip install superagent-sdk
 ```
 
 ## Quick Start

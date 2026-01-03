@@ -1,24 +1,22 @@
 # SuperAgent JavaScript SDK
 
-> **Status: Basic Implementation Available**
+> **Status: Available**
 >
-> A basic web SDK is available at `/sdk/web/superagent.js`. The full npm package
-> described below is planned but not yet published to npm. Implementation is
-> tracked in Phase 6 of the project roadmap.
->
-> For now, you can use the OpenAI-compatible REST API directly - SuperAgent
-> is compatible with the standard OpenAI JavaScript client.
+> The TypeScript/JavaScript SDK is implemented at `/sdk/web/`.
+> Install from source or wait for npm publication.
 
 A comprehensive JavaScript/TypeScript SDK for the SuperAgent AI orchestration platform, providing type-safe access to multi-provider LLM capabilities, AI debates, and advanced features.
 
-## Installation (Planned)
+## Installation
 
 ```bash
-# Full npm package not yet available
-# npm install @superagent/sdk
+# Install from source
+cd sdk/web
+npm install
+npm run build
 
-# For now, use the OpenAI client with SuperAgent's OpenAI-compatible API:
-npm install openai
+# Or when published to npm:
+# npm install superagent-sdk
 ```
 
 ## Quick Start

@@ -30,21 +30,24 @@ type CloudProvider interface {
 
 // AWSBedrockIntegration provides AWS Bedrock AI service integration
 type AWSBedrockIntegration struct {
-	region          string
-	accessKeyID     string
-	secretAccessKey string
-	sessionToken    string
-	httpClient      *http.Client
-	logger          *logrus.Logger
+	region           string
+	accessKeyID      string
+	secretAccessKey  string
+	sessionToken     string
+	endpointOverride string
+	httpClient       *http.Client
+	logger           *logrus.Logger
 }
 
 // AWSBedrockConfig holds configuration for AWS Bedrock
 type AWSBedrockConfig struct {
-	Region          string
-	AccessKeyID     string
-	SecretAccessKey string
-	SessionToken    string
-	Timeout         time.Duration
+	Region           string
+	AccessKeyID      string
+	SecretAccessKey  string
+	SessionToken     string
+	Timeout          time.Duration
+	EndpointOverride string // For testing with mock servers
+	HTTPClient       *http.Client
 }
 
 // NewAWSBedrockIntegration creates a new AWS Bedrock integration
@@ -65,15 +68,21 @@ func NewAWSBedrockIntegrationWithConfig(config AWSBedrockConfig, logger *logrus.
 		timeout = 60 * time.Second
 	}
 
-	return &AWSBedrockIntegration{
-		region:          config.Region,
-		accessKeyID:     config.AccessKeyID,
-		secretAccessKey: config.SecretAccessKey,
-		sessionToken:    config.SessionToken,
-		httpClient: &http.Client{
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
 			Timeout: timeout,
-		},
-		logger: logger,
+		}
+	}
+
+	return &AWSBedrockIntegration{
+		region:           config.Region,
+		accessKeyID:      config.AccessKeyID,
+		secretAccessKey:  config.SecretAccessKey,
+		sessionToken:     config.SessionToken,
+		endpointOverride: config.EndpointOverride,
+		httpClient:       httpClient,
+		logger:           logger,
 	}
 }
 
@@ -83,7 +92,12 @@ func (a *AWSBedrockIntegration) ListModels(ctx context.Context) ([]map[string]in
 		return nil, fmt.Errorf("AWS credentials not configured")
 	}
 
-	endpoint := fmt.Sprintf("https://bedrock.%s.amazonaws.com/foundation-models", a.region)
+	var endpoint string
+	if a.endpointOverride != "" {
+		endpoint = a.endpointOverride + "/foundation-models"
+	} else {
+		endpoint = fmt.Sprintf("https://bedrock.%s.amazonaws.com/foundation-models", a.region)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -139,7 +153,12 @@ func (a *AWSBedrockIntegration) InvokeModel(ctx context.Context, modelId, prompt
 		return "", fmt.Errorf("AWS credentials not configured")
 	}
 
-	endpoint := fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com/model/%s/invoke", a.region, modelId)
+	var endpoint string
+	if a.endpointOverride != "" {
+		endpoint = a.endpointOverride + "/model/" + modelId + "/invoke"
+	} else {
+		endpoint = fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com/model/%s/invoke", a.region, modelId)
+	}
 
 	// Build request body based on model type
 	var requestBody map[string]interface{}
@@ -388,19 +407,22 @@ func (a *AWSBedrockIntegration) GetProviderName() string {
 
 // GCPVertexAIIntegration provides Google Cloud Vertex AI integration
 type GCPVertexAIIntegration struct {
-	projectID   string
-	location    string
-	accessToken string
-	httpClient  *http.Client
-	logger      *logrus.Logger
+	projectID        string
+	location         string
+	accessToken      string
+	endpointOverride string
+	httpClient       *http.Client
+	logger           *logrus.Logger
 }
 
 // GCPVertexAIConfig holds configuration for GCP Vertex AI
 type GCPVertexAIConfig struct {
-	ProjectID   string
-	Location    string
-	AccessToken string
-	Timeout     time.Duration
+	ProjectID        string
+	Location         string
+	AccessToken      string
+	Timeout          time.Duration
+	EndpointOverride string // For testing with mock servers
+	HTTPClient       *http.Client
 }
 
 // NewGCPVertexAIIntegration creates a new GCP Vertex AI integration
@@ -425,14 +447,20 @@ func NewGCPVertexAIIntegrationWithConfig(config GCPVertexAIConfig, logger *logru
 		location = "us-central1"
 	}
 
-	return &GCPVertexAIIntegration{
-		projectID:   config.ProjectID,
-		location:    location,
-		accessToken: config.AccessToken,
-		httpClient: &http.Client{
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
 			Timeout: timeout,
-		},
-		logger: logger,
+		}
+	}
+
+	return &GCPVertexAIIntegration{
+		projectID:        config.ProjectID,
+		location:         location,
+		accessToken:      config.AccessToken,
+		endpointOverride: config.EndpointOverride,
+		httpClient:       httpClient,
+		logger:           logger,
 	}
 }
 
@@ -442,8 +470,13 @@ func (g *GCPVertexAIIntegration) ListModels(ctx context.Context) ([]map[string]i
 		return nil, fmt.Errorf("GCP access token not configured")
 	}
 
-	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models",
-		g.location, g.projectID, g.location)
+	var endpoint string
+	if g.endpointOverride != "" {
+		endpoint = g.endpointOverride + "/v1/projects/" + g.projectID + "/locations/" + g.location + "/publishers/google/models"
+	} else {
+		endpoint = fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models",
+			g.location, g.projectID, g.location)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -497,8 +530,13 @@ func (g *GCPVertexAIIntegration) InvokeModel(ctx context.Context, modelName, pro
 	}
 
 	// Vertex AI endpoint for text generation
-	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict",
-		g.location, g.projectID, g.location, modelName)
+	var endpoint string
+	if g.endpointOverride != "" {
+		endpoint = g.endpointOverride + "/v1/projects/" + g.projectID + "/locations/" + g.location + "/publishers/google/models/" + modelName + ":predict"
+	} else {
+		endpoint = fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict",
+			g.location, g.projectID, g.location, modelName)
+	}
 
 	// Build request body for Vertex AI
 	requestBody := map[string]interface{}{
@@ -588,8 +626,13 @@ func (g *GCPVertexAIIntegration) HealthCheck(ctx context.Context) error {
 	}
 
 	// Try a simple API call
-	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s",
-		g.location, g.projectID, g.location)
+	var endpoint string
+	if g.endpointOverride != "" {
+		endpoint = g.endpointOverride + "/v1/projects/" + g.projectID + "/locations/" + g.location
+	} else {
+		endpoint = fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s",
+			g.location, g.projectID, g.location)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -634,6 +677,7 @@ type AzureOpenAIConfig struct {
 	APIKey     string
 	APIVersion string
 	Timeout    time.Duration
+	HTTPClient *http.Client
 }
 
 // NewAzureOpenAIIntegration creates a new Azure OpenAI integration
@@ -658,14 +702,19 @@ func NewAzureOpenAIIntegrationWithConfig(config AzureOpenAIConfig, logger *logru
 		apiVersion = "2024-02-01"
 	}
 
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
+			Timeout: timeout,
+		}
+	}
+
 	return &AzureOpenAIIntegration{
 		endpoint:   strings.TrimSuffix(config.Endpoint, "/"),
 		apiKey:     config.APIKey,
 		apiVersion: apiVersion,
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
-		logger: logger,
+		httpClient: httpClient,
+		logger:     logger,
 	}
 }
 

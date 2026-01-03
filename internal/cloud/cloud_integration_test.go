@@ -1172,15 +1172,19 @@ func TestAWSBedrockIntegration_ListModels_WithMockServer(t *testing.T) {
 		defer server.Close()
 
 		config := AWSBedrockConfig{
-			Region:          "mock",
-			AccessKeyID:     "test-key",
-			SecretAccessKey: "test-secret",
+			Region:           "us-east-1",
+			AccessKeyID:      "test-key",
+			SecretAccessKey:  "test-secret",
+			EndpointOverride: server.URL,
 		}
 		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
 
-		// Override endpoint (would require modifying the integration for proper testing)
-		// For now, this test validates the test structure is correct
-		assert.NotNil(t, integration)
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		require.NoError(t, err)
+		assert.Len(t, models, 2)
+		assert.Equal(t, "anthropic.claude-v2", models[0]["name"])
 	})
 
 	t.Run("list models API error", func(t *testing.T) {
@@ -1190,8 +1194,218 @@ func TestAWSBedrockIntegration_ListModels_WithMockServer(t *testing.T) {
 		}))
 		defer server.Close()
 
-		// Verify error handling structure is testable
-		assert.NotNil(t, server)
+		config := AWSBedrockConfig{
+			Region:           "us-east-1",
+			AccessKeyID:      "test-key",
+			SecretAccessKey:  "test-secret",
+			EndpointOverride: server.URL,
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		assert.Error(t, err)
+		assert.Empty(t, models)
+		assert.Contains(t, err.Error(), "403")
+	})
+}
+
+func TestAWSBedrockIntegration_InvokeModel_WithMockServer(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("successful titan model invocation", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Contains(t, r.URL.Path, "/model/amazon.titan-text-express-v1/invoke")
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"results": []map[string]string{
+					{"outputText": "This is a test response from Titan"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := AWSBedrockConfig{
+			Region:           "us-east-1",
+			AccessKeyID:      "test-key",
+			SecretAccessKey:  "test-secret",
+			EndpointOverride: server.URL,
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+		result, err := integration.InvokeModel(ctx, "amazon.titan-text-express-v1", prompt, nil)
+
+		require.NoError(t, err)
+		assert.Contains(t, result, "test response from Titan")
+	})
+
+	t.Run("successful anthropic model invocation", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"content": []map[string]string{
+					{"text": "This is a test response from Claude"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := AWSBedrockConfig{
+			Region:           "us-east-1",
+			AccessKeyID:      "test-key",
+			SecretAccessKey:  "test-secret",
+			EndpointOverride: server.URL,
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+		result, err := integration.InvokeModel(ctx, "anthropic.claude-v2", prompt, nil)
+
+		require.NoError(t, err)
+		assert.Contains(t, result, "test response from Claude")
+	})
+
+	t.Run("invoke model API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("Service unavailable"))
+		}))
+		defer server.Close()
+
+		config := AWSBedrockConfig{
+			Region:           "us-east-1",
+			AccessKeyID:      "test-key",
+			SecretAccessKey:  "test-secret",
+			EndpointOverride: server.URL,
+		}
+		integration := NewAWSBedrockIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		result, err := integration.InvokeModel(ctx, "test-model", "test prompt", nil)
+
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		assert.Contains(t, err.Error(), "503")
+	})
+}
+
+func TestGCPVertexAIIntegration_WithMockServer(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("successful list models", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.Path, "/publishers/google/models")
+			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"models": []map[string]string{
+					{"name": "text-bison", "displayName": "Text Bison", "description": "Text generation model"},
+					{"name": "chat-bison", "displayName": "Chat Bison", "description": "Chat model"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := GCPVertexAIConfig{
+			ProjectID:        "test-project",
+			Location:         "us-central1",
+			AccessToken:      "test-token",
+			EndpointOverride: server.URL,
+		}
+		integration := NewGCPVertexAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		require.NoError(t, err)
+		assert.Len(t, models, 2)
+		assert.Equal(t, "text-bison", models[0]["name"])
+	})
+
+	t.Run("successful invoke model", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Contains(t, r.URL.Path, ":predict")
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"predictions": []map[string]string{
+					{"content": "This is a response from Vertex AI"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := GCPVertexAIConfig{
+			ProjectID:        "test-project",
+			Location:         "us-central1",
+			AccessToken:      "test-token",
+			EndpointOverride: server.URL,
+		}
+		integration := NewGCPVertexAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+		result, err := integration.InvokeModel(ctx, "text-bison", prompt, nil)
+
+		require.NoError(t, err)
+		assert.Contains(t, result, "response from Vertex AI")
+	})
+
+	t.Run("list models API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Unauthorized"))
+		}))
+		defer server.Close()
+
+		config := GCPVertexAIConfig{
+			ProjectID:        "test-project",
+			Location:         "us-central1",
+			AccessToken:      "test-token",
+			EndpointOverride: server.URL,
+		}
+		integration := NewGCPVertexAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		assert.Error(t, err)
+		assert.Empty(t, models)
+		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("health check with mock", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		}))
+		defer server.Close()
+
+		config := GCPVertexAIConfig{
+			ProjectID:        "test-project",
+			Location:         "us-central1",
+			AccessToken:      "test-token",
+			EndpointOverride: server.URL,
+		}
+		integration := NewGCPVertexAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		err := integration.HealthCheck(ctx)
+
+		assert.NoError(t, err)
 	})
 }
 
@@ -1228,6 +1442,143 @@ func TestGCPVertexAIIntegration_InvokeModel_RequestFormat(t *testing.T) {
 		assert.Equal(t, 2048, maxTokens)
 		assert.Equal(t, 0.8, topP)
 		assert.Equal(t, 20, topK)
+	})
+}
+
+func TestAzureOpenAIIntegration_WithMockServer(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("successful list models", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.Path, "/openai/deployments")
+			assert.Equal(t, "test-api-key", r.Header.Get("api-key"))
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]string{
+					{"id": "gpt-4-deployment", "model": "gpt-4"},
+					{"id": "gpt-35-deployment", "model": "gpt-35-turbo"},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := AzureOpenAIConfig{
+			Endpoint:   server.URL,
+			APIKey:     "test-api-key",
+			APIVersion: "2024-02-01",
+		}
+		integration := NewAzureOpenAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		require.NoError(t, err)
+		assert.Len(t, models, 2)
+		assert.Equal(t, "gpt-4-deployment", models[0]["id"])
+	})
+
+	t.Run("successful invoke model", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Contains(t, r.URL.Path, "/chat/completions")
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"choices": []map[string]interface{}{
+					{
+						"message": map[string]string{
+							"content": "This is a response from Azure OpenAI",
+						},
+					},
+				},
+			})
+		}))
+		defer server.Close()
+
+		config := AzureOpenAIConfig{
+			Endpoint:   server.URL,
+			APIKey:     "test-api-key",
+			APIVersion: "2024-02-01",
+		}
+		integration := NewAzureOpenAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		prompt := "This is a test prompt that is longer than fifty characters for testing purposes"
+		result, err := integration.InvokeModel(ctx, "gpt-4", prompt, nil)
+
+		require.NoError(t, err)
+		assert.Contains(t, result, "response from Azure OpenAI")
+	})
+
+	t.Run("list models API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Access denied"))
+		}))
+		defer server.Close()
+
+		config := AzureOpenAIConfig{
+			Endpoint:   server.URL,
+			APIKey:     "test-api-key",
+			APIVersion: "2024-02-01",
+		}
+		integration := NewAzureOpenAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		models, err := integration.ListModels(ctx)
+
+		assert.Error(t, err)
+		assert.Empty(t, models)
+		assert.Contains(t, err.Error(), "403")
+	})
+
+	t.Run("invoke model API error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte("Rate limit exceeded"))
+		}))
+		defer server.Close()
+
+		config := AzureOpenAIConfig{
+			Endpoint:   server.URL,
+			APIKey:     "test-api-key",
+			APIVersion: "2024-02-01",
+		}
+		integration := NewAzureOpenAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		result, err := integration.InvokeModel(ctx, "gpt-4", "test prompt", nil)
+
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		assert.Contains(t, err.Error(), "429")
+	})
+
+	t.Run("health check with mock", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]string{},
+			})
+		}))
+		defer server.Close()
+
+		config := AzureOpenAIConfig{
+			Endpoint:   server.URL,
+			APIKey:     "test-api-key",
+			APIVersion: "2024-02-01",
+		}
+		integration := NewAzureOpenAIIntegrationWithConfig(config, logger)
+
+		ctx := context.Background()
+		err := integration.HealthCheck(ctx)
+
+		assert.NoError(t, err)
 	})
 }
 

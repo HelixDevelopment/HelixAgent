@@ -977,3 +977,320 @@ func BenchmarkProviderRegistry_ListProviders(b *testing.B) {
 		_ = registry.ListProviders()
 	}
 }
+
+// Tests for LoadRegistryConfigFromAppConfig
+func TestLoadRegistryConfigFromAppConfig(t *testing.T) {
+	t.Run("returns default config when app config is nil", func(t *testing.T) {
+		cfg := LoadRegistryConfigFromAppConfig(nil)
+
+		require.NotNil(t, cfg)
+		assert.Equal(t, 30*time.Second, cfg.DefaultTimeout)
+		assert.Equal(t, 3, cfg.MaxRetries)
+		assert.NotNil(t, cfg.Providers)
+	})
+}
+
+// Tests for RegisterProviderFromConfig
+func TestProviderRegistry_RegisterProviderFromConfig(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+
+	t.Run("returns error for empty provider name", func(t *testing.T) {
+		providerCfg := ProviderConfig{
+			Name: "",
+			Type: "claude",
+		}
+		err := registry.RegisterProviderFromConfig(providerCfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "provider name is required")
+	})
+
+	t.Run("returns error for unsupported provider type", func(t *testing.T) {
+		providerCfg := ProviderConfig{
+			Name: "test-unsupported",
+			Type: "unsupported-type",
+		}
+		err := registry.RegisterProviderFromConfig(providerCfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported provider type")
+	})
+}
+
+// Tests for UpdateProvider
+func TestProviderRegistry_UpdateProvider(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+
+	t.Run("returns error for non-existent provider", func(t *testing.T) {
+		updateCfg := ProviderConfig{
+			Name:   "non-existent",
+			APIKey: "new-key",
+		}
+		err := registry.UpdateProvider("non-existent", updateCfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("updates existing provider config in registry", func(t *testing.T) {
+		// Register a provider first
+		provider := &MockLLMProviderForRegistry{name: "update-reg-test"}
+		err := registry.RegisterProvider("update-reg-test", provider)
+		require.NoError(t, err)
+
+		// Store initial config in registry's config
+		registry.mu.Lock()
+		registry.config.Providers["update-reg-test"] = &ProviderConfig{
+			Name:    "update-reg-test",
+			Enabled: true,
+			Weight:  1.0,
+			APIKey:  "initial-key",
+		}
+		registry.mu.Unlock()
+
+		// Update the config
+		updateCfg := ProviderConfig{
+			Name:    "update-reg-test",
+			APIKey:  "updated-key",
+			Weight:  2.0,
+			Enabled: true,
+		}
+		err = registry.UpdateProvider("update-reg-test", updateCfg)
+		assert.NoError(t, err)
+
+		// UpdateProvider updates registry.config.Providers, not providerConfigs
+		// Verify by accessing the internal state
+		registry.mu.RLock()
+		storedCfg := registry.config.Providers["update-reg-test"]
+		registry.mu.RUnlock()
+		require.NotNil(t, storedCfg)
+		assert.Equal(t, "updated-key", storedCfg.APIKey)
+		assert.Equal(t, 2.0, storedCfg.Weight)
+	})
+}
+
+// Tests for RemoveProvider with drain
+func TestProviderRegistry_RemoveProvider(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+
+	t.Run("removes existing provider with drain", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "remove-test"}
+		err := registry.RegisterProvider("remove-test", provider)
+		require.NoError(t, err)
+
+		err = registry.RemoveProvider("remove-test", false)
+		assert.NoError(t, err)
+
+		// Provider should no longer exist
+		_, err = registry.GetProvider("remove-test")
+		assert.Error(t, err)
+	})
+
+	t.Run("removes existing provider with force", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "remove-force-test"}
+		err := registry.RegisterProvider("remove-force-test", provider)
+		require.NoError(t, err)
+
+		err = registry.RemoveProvider("remove-force-test", true)
+		assert.NoError(t, err)
+
+		// Provider should no longer exist
+		_, err = registry.GetProvider("remove-force-test")
+		assert.Error(t, err)
+	})
+
+	t.Run("returns error for non-existent provider", func(t *testing.T) {
+		err := registry.RemoveProvider("non-existent-for-remove", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
+// Tests for DrainProviderRequests
+func TestProviderRegistry_DrainProviderRequests(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+	registry.SetDrainTimeout(100 * time.Millisecond)
+
+	t.Run("drains with no active requests", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "drain-test"}
+		err := registry.RegisterProvider("drain-test", provider)
+		require.NoError(t, err)
+
+		// Should complete quickly since no active requests
+		err = registry.RemoveProvider("drain-test", false)
+		assert.NoError(t, err)
+	})
+
+	t.Run("waits for active requests during drain", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "drain-active-test"}
+		err := registry.RegisterProvider("drain-active-test", provider)
+		require.NoError(t, err)
+
+		// Increment active requests
+		registry.IncrementActiveRequests("drain-active-test")
+
+		// Start a goroutine to decrement after a short delay
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			registry.DecrementActiveRequests("drain-active-test")
+		}()
+
+		// Removal should wait for drain
+		start := time.Now()
+		err = registry.RemoveProvider("drain-active-test", false)
+		elapsed := time.Since(start)
+
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, elapsed, 50*time.Millisecond)
+	})
+}
+
+// Tests for ActiveRequestCount
+func TestProviderRegistry_ActiveRequestCount(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+
+	t.Run("returns -1 for non-existent provider", func(t *testing.T) {
+		count := registry.GetActiveRequestCount("non-existent-provider")
+		assert.Equal(t, int64(-1), count)
+	})
+
+	t.Run("increment and decrement work correctly", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "count-test"}
+		_ = registry.RegisterProvider("count-test", provider)
+
+		registry.IncrementActiveRequests("count-test")
+		assert.Equal(t, int64(1), registry.GetActiveRequestCount("count-test"))
+
+		registry.IncrementActiveRequests("count-test")
+		assert.Equal(t, int64(2), registry.GetActiveRequestCount("count-test"))
+
+		registry.DecrementActiveRequests("count-test")
+		assert.Equal(t, int64(1), registry.GetActiveRequestCount("count-test"))
+
+		registry.DecrementActiveRequests("count-test")
+		assert.Equal(t, int64(0), registry.GetActiveRequestCount("count-test"))
+	})
+
+	t.Run("decrement on registered provider", func(t *testing.T) {
+		provider := &MockLLMProviderForRegistry{name: "decrement-test"}
+		_ = registry.RegisterProvider("decrement-test", provider)
+
+		// Increment first, then decrement twice
+		registry.IncrementActiveRequests("decrement-test")
+		registry.DecrementActiveRequests("decrement-test")
+		count := registry.GetActiveRequestCount("decrement-test")
+		assert.Equal(t, int64(0), count)
+	})
+}
+
+// Tests for SetDrainTimeout
+func TestProviderRegistry_SetDrainTimeout(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{
+			Enabled: false,
+		},
+		Providers: make(map[string]*ProviderConfig),
+		Ensemble: &models.EnsembleConfig{
+			Strategy: "confidence_weighted",
+		},
+		Routing: &RoutingConfig{
+			Strategy: "weighted",
+		},
+	}
+	registry := NewProviderRegistry(cfg, nil)
+
+	t.Run("sets drain timeout", func(t *testing.T) {
+		registry.SetDrainTimeout(5 * time.Second)
+		// No direct way to verify, but should not panic
+	})
+
+	t.Run("zero timeout is accepted", func(t *testing.T) {
+		registry.SetDrainTimeout(0)
+		// Should not panic
+	})
+}
+
+// Tests for getFirstModel helper
+func TestGetFirstModel(t *testing.T) {
+	t.Run("returns first model ID from list", func(t *testing.T) {
+		models := []ModelConfig{
+			{ID: "model-1"},
+			{ID: "model-2"},
+		}
+		result := getFirstModel(models)
+		assert.Equal(t, "model-1", result)
+	})
+
+	t.Run("returns empty string for empty list", func(t *testing.T) {
+		result := getFirstModel([]ModelConfig{})
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("returns empty string for nil list", func(t *testing.T) {
+		result := getFirstModel(nil)
+		assert.Equal(t, "", result)
+	})
+}

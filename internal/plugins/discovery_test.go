@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,5 +123,120 @@ func TestDiscovery_LoadPlugin_ValidPath(t *testing.T) {
 		// Will fail because file doesn't exist, but security check passes
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load plugin")
+	})
+}
+
+// =====================================================
+// ADDITIONAL DISCOVERY TESTS FOR COVERAGE
+// =====================================================
+
+func TestDiscovery_WatchForChanges(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	validator := NewSecurityValidator([]string{tmpDir})
+
+	discovery := NewDiscovery(loader, validator, []string{tmpDir})
+
+	t.Run("watch for changes starts watcher", func(t *testing.T) {
+		// This should not panic
+		// WatchForChanges runs in background, so we just verify it starts
+		discovery.WatchForChanges()
+
+		// Give it time to start
+		time.Sleep(100 * time.Millisecond)
+	})
+}
+
+func TestDiscovery_WatchForChanges_InvalidPath(t *testing.T) {
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	validator := NewSecurityValidator([]string{"/tmp"})
+
+	discovery := NewDiscovery(loader, validator, []string{"/nonexistent/path/that/does/not/exist"})
+
+	t.Run("watch for changes with invalid path", func(t *testing.T) {
+		// Should not panic, just log an error
+		discovery.WatchForChanges()
+
+		// Give it time to try
+		time.Sleep(100 * time.Millisecond)
+	})
+}
+
+func TestDiscovery_DiscoverAndLoad_MultipleDirectories(t *testing.T) {
+	tmpDir1 := t.TempDir()
+	tmpDir2 := t.TempDir()
+
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	validator := NewSecurityValidator([]string{tmpDir1, tmpDir2})
+
+	discovery := NewDiscovery(loader, validator, []string{tmpDir1, tmpDir2})
+
+	t.Run("discover in multiple directories", func(t *testing.T) {
+		// Create .so files in both directories
+		err := os.WriteFile(filepath.Join(tmpDir1, "plugin1.so"), []byte("fake"), 0644)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tmpDir2, "plugin2.so"), []byte("fake"), 0644)
+		require.NoError(t, err)
+
+		// Should not error even if plugins fail to load
+		err = discovery.DiscoverAndLoad()
+		assert.NoError(t, err)
+	})
+}
+
+func TestDiscovery_DiscoverInPath_WithSoFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	validator := NewSecurityValidator([]string{tmpDir})
+
+	discovery := NewDiscovery(loader, validator, []string{tmpDir})
+
+	t.Run("discover .so files", func(t *testing.T) {
+		// Create a .so file
+		soFile := filepath.Join(tmpDir, "test.so")
+		err := os.WriteFile(soFile, []byte("fake plugin"), 0644)
+		require.NoError(t, err)
+
+		// Should not error even if loading fails
+		err = discovery.discoverInPath(tmpDir)
+		assert.NoError(t, err)
+	})
+}
+
+func TestDiscovery_OnPluginChange_LoadError(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	// Validator that won't allow the path
+	validator := NewSecurityValidator([]string{"/other/path"})
+
+	discovery := NewDiscovery(loader, validator, []string{tmpDir})
+
+	t.Run("plugin change with security error", func(t *testing.T) {
+		// Should not panic, just log error
+		discovery.onPluginChange(filepath.Join(tmpDir, "bad-plugin.so"))
+	})
+}
+
+func TestDiscovery_OnPluginChange_ValidPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	loader := NewLoader(registry)
+	validator := NewSecurityValidator([]string{tmpDir})
+
+	discovery := NewDiscovery(loader, validator, []string{tmpDir})
+
+	t.Run("plugin change notification for valid path", func(t *testing.T) {
+		// Create an actual file
+		soFile := filepath.Join(tmpDir, "valid-plugin.so")
+		err := os.WriteFile(soFile, []byte("fake"), 0644)
+		require.NoError(t, err)
+
+		// Should not panic
+		discovery.onPluginChange(soFile)
 	})
 }

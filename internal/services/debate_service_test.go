@@ -1522,3 +1522,42 @@ func TestDebateService_ConductRealDebate_ConcurrentProviders(t *testing.T) {
 		assert.Equal(t, 1, provider.getCallCount(), "Provider %s call count", name)
 	}
 }
+
+// =============================================================================
+// Cognee Integration Tests
+// =============================================================================
+
+func TestDebateService_AnalyzeWithCognee_NoCogneeService(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+	ds := NewDebateService(logger)
+
+	// Without cognee service, should return error
+	analysis, err := ds.analyzeWithCognee(context.Background(), "Test content for analysis")
+
+	assert.Error(t, err)
+	assert.Nil(t, analysis)
+	assert.Contains(t, err.Error(), "cognee service not configured")
+}
+
+func TestDebateService_GenerateCogneeInsights_NoCogneeService(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+	ds := NewDebateService(logger)
+
+	config := &DebateConfig{
+		Topic: "Test Topic",
+		Participants: []ParticipantConfig{
+			{ParticipantID: "p1", Name: "Agent1"},
+		},
+	}
+
+	responses := []ParticipantResponse{
+		{ParticipantID: "p1", Content: "Test response content"},
+	}
+
+	// Without cognee service, should return error
+	insights, err := ds.generateCogneeInsights(context.Background(), config, responses)
+
+	assert.Error(t, err)
+	assert.Nil(t, insights)
+	assert.Contains(t, err.Error(), "cognee service not configured")
+}

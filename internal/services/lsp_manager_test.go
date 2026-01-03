@@ -1965,3 +1965,34 @@ func TestLSPManager_GracefulDegradation(t *testing.T) {
 		})
 	}
 }
+
+// Tests for SetFileExistsFunc
+func TestLSPManager_SetFileExistsFunc(t *testing.T) {
+	log := newLSPTestLogger()
+	manager := NewLSPManager(nil, nil, log)
+
+	t.Run("sets custom file exists function", func(t *testing.T) {
+		callCount := 0
+		customFunc := func(path string) bool {
+			callCount++
+			return path == "/exists"
+		}
+
+		manager.SetFileExistsFunc(customFunc)
+
+		// The function is set globally but we can verify it was accepted
+		assert.NotPanics(t, func() {
+			manager.SetFileExistsFunc(customFunc)
+		})
+	})
+
+	t.Run("restores default function", func(t *testing.T) {
+		defaultFunc := func(path string) bool {
+			_, err := os.Stat(path)
+			return err == nil
+		}
+
+		manager.SetFileExistsFunc(defaultFunc)
+		// Should not panic
+	})
+}

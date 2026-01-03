@@ -1,0 +1,1100 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cloud: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/superagent/superagent/internal/cloud/cloud_integration.go (94.3%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package cloud
+
+import (
+        "bytes"
+        "context"
+        "crypto/hmac"
+        "crypto/sha256"
+        "encoding/hex"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "os"
+        "sort"
+        "strings"
+        "time"
+
+        "github.com/sirupsen/logrus"
+)
+
+// CloudProvider represents a cloud AI provider
+type CloudProvider interface {
+        ListModels(ctx context.Context) ([]map[string]interface{}, error)
+        InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error)
+        GetProviderName() string
+        HealthCheck(ctx context.Context) error
+}
+
+// ========== AWS Bedrock Integration ==========
+
+// AWSBedrockIntegration provides AWS Bedrock AI service integration
+type AWSBedrockIntegration struct {
+        region          string
+        accessKeyID     string
+        secretAccessKey string
+        sessionToken    string
+        httpClient      *http.Client
+        logger          *logrus.Logger
+}
+
+// AWSBedrockConfig holds configuration for AWS Bedrock
+type AWSBedrockConfig struct {
+        Region          string
+        AccessKeyID     string
+        SecretAccessKey string
+        SessionToken    string
+        Timeout         time.Duration
+}
+
+// NewAWSBedrockIntegration creates a new AWS Bedrock integration
+func NewAWSBedrockIntegration(region string, logger *logrus.Logger) *AWSBedrockIntegration <span class="cov8" title="1">{
+        return NewAWSBedrockIntegrationWithConfig(AWSBedrockConfig{
+                Region:          region,
+                AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
+                SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+                SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
+                Timeout:         60 * time.Second,
+        }, logger)
+}</span>
+
+// NewAWSBedrockIntegrationWithConfig creates AWS Bedrock integration with explicit config
+func NewAWSBedrockIntegrationWithConfig(config AWSBedrockConfig, logger *logrus.Logger) *AWSBedrockIntegration <span class="cov8" title="1">{
+        timeout := config.Timeout
+        if timeout == 0 </span><span class="cov8" title="1">{
+                timeout = 60 * time.Second
+        }</span>
+
+        <span class="cov8" title="1">return &amp;AWSBedrockIntegration{
+                region:          config.Region,
+                accessKeyID:     config.AccessKeyID,
+                secretAccessKey: config.SecretAccessKey,
+                sessionToken:    config.SessionToken,
+                httpClient: &amp;http.Client{
+                        Timeout: timeout,
+                },
+                logger: logger,
+        }</span>
+}
+
+// ListModels lists available Bedrock models
+func (a *AWSBedrockIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) <span class="cov8" title="1">{
+        if a.accessKeyID == "" || a.secretAccessKey == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("AWS credentials not configured")
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("https://bedrock.%s.amazonaws.com/foundation-models", a.region)
+
+        req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        // Sign the request with AWS Signature V4
+        <span class="cov8" title="1">if err := a.signRequest(req, nil); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to sign request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">resp, err := a.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list models: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("AWS Bedrock API error: %d - %s", resp.StatusCode, string(body))
+        }</span>
+
+        <span class="cov8" title="1">var result struct {
+                ModelSummaries []struct {
+                        ModelID      string `json:"modelId"`
+                        ModelName    string `json:"modelName"`
+                        ProviderName string `json:"providerName"`
+                        ModelArn     string `json:"modelArn"`
+                } `json:"modelSummaries"`
+        }
+
+        if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to decode response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">models := make([]map[string]interface{}, 0, len(result.ModelSummaries))
+        for _, m := range result.ModelSummaries </span><span class="cov8" title="1">{
+                models = append(models, map[string]interface{}{
+                        "name":         m.ModelID,
+                        "display_name": m.ModelName,
+                        "provider":     m.ProviderName,
+                        "arn":          m.ModelArn,
+                })
+        }</span>
+
+        <span class="cov8" title="1">a.logger.WithField("count", len(models)).Info("Listed AWS Bedrock models")
+        return models, nil</span>
+}
+
+// InvokeModel invokes a Bedrock model
+func (a *AWSBedrockIntegration) InvokeModel(ctx context.Context, modelId, prompt string, config map[string]interface{}) (string, error) <span class="cov8" title="1">{
+        if a.accessKeyID == "" || a.secretAccessKey == "" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("AWS credentials not configured")
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com/model/%s/invoke", a.region, modelId)
+
+        // Build request body based on model type
+        var requestBody map[string]interface{}
+
+        // Determine model type and build appropriate request
+        if strings.Contains(modelId, "anthropic") </span><span class="cov8" title="1">{
+                // Anthropic Claude models on Bedrock
+                requestBody = map[string]interface{}{
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens":        getIntConfig(config, "max_tokens", 1024),
+                        "messages": []map[string]string{
+                                {"role": "user", "content": prompt},
+                        },
+                }
+        }</span> else<span class="cov8" title="1"> if strings.Contains(modelId, "amazon.titan") </span><span class="cov8" title="1">{
+                // Amazon Titan models
+                requestBody = map[string]interface{}{
+                        "inputText": prompt,
+                        "textGenerationConfig": map[string]interface{}{
+                                "maxTokenCount": getIntConfig(config, "max_tokens", 1024),
+                                "temperature":   getFloatConfig(config, "temperature", 0.7),
+                                "topP":          getFloatConfig(config, "top_p", 0.9),
+                        },
+                }
+        }</span> else<span class="cov8" title="1"> if strings.Contains(modelId, "meta.llama") </span><span class="cov8" title="1">{
+                // Meta Llama models
+                requestBody = map[string]interface{}{
+                        "prompt":      prompt,
+                        "max_gen_len": getIntConfig(config, "max_tokens", 1024),
+                        "temperature": getFloatConfig(config, "temperature", 0.7),
+                        "top_p":       getFloatConfig(config, "top_p", 0.9),
+                }
+        }</span> else<span class="cov8" title="1"> if strings.Contains(modelId, "cohere") </span><span class="cov8" title="1">{
+                // Cohere models
+                requestBody = map[string]interface{}{
+                        "prompt":      prompt,
+                        "max_tokens":  getIntConfig(config, "max_tokens", 1024),
+                        "temperature": getFloatConfig(config, "temperature", 0.7),
+                }
+        }</span> else<span class="cov8" title="1"> {
+                // Default format (try Anthropic-like)
+                requestBody = map[string]interface{}{
+                        "prompt":     prompt,
+                        "max_tokens": getIntConfig(config, "max_tokens", 1024),
+                }
+        }</span>
+
+        <span class="cov8" title="1">body, err := json.Marshal(requestBody)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to marshal request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("Accept", "application/json")
+
+        // Sign the request with AWS Signature V4
+        if err := a.signRequest(req, body); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to sign request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">startTime := time.Now()
+        resp, err := a.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to invoke model: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+        duration := time.Since(startTime)
+
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("AWS Bedrock API error: %d - %s", resp.StatusCode, string(respBody))
+        }</span>
+
+        // Parse response based on model type
+        <span class="cov8" title="1">var content string
+        if strings.Contains(modelId, "anthropic") </span><span class="cov8" title="1">{
+                var claudeResp struct {
+                        Content []struct {
+                                Text string `json:"text"`
+                        } `json:"content"`
+                }
+                if err := json.Unmarshal(respBody, &amp;claudeResp); err == nil &amp;&amp; len(claudeResp.Content) &gt; 0 </span><span class="cov8" title="1">{
+                        content = claudeResp.Content[0].Text
+                }</span>
+        } else<span class="cov8" title="1"> if strings.Contains(modelId, "amazon.titan") </span><span class="cov8" title="1">{
+                var titanResp struct {
+                        Results []struct {
+                                OutputText string `json:"outputText"`
+                        } `json:"results"`
+                }
+                if err := json.Unmarshal(respBody, &amp;titanResp); err == nil &amp;&amp; len(titanResp.Results) &gt; 0 </span><span class="cov8" title="1">{
+                        content = titanResp.Results[0].OutputText
+                }</span>
+        } else<span class="cov8" title="1"> if strings.Contains(modelId, "meta.llama") </span><span class="cov8" title="1">{
+                var llamaResp struct {
+                        Generation string `json:"generation"`
+                }
+                if err := json.Unmarshal(respBody, &amp;llamaResp); err == nil </span><span class="cov8" title="1">{
+                        content = llamaResp.Generation
+                }</span>
+        } else<span class="cov8" title="1"> if strings.Contains(modelId, "cohere") </span><span class="cov8" title="1">{
+                var cohereResp struct {
+                        Generations []struct {
+                                Text string `json:"text"`
+                        } `json:"generations"`
+                }
+                if err := json.Unmarshal(respBody, &amp;cohereResp); err == nil &amp;&amp; len(cohereResp.Generations) &gt; 0 </span><span class="cov8" title="1">{
+                        content = cohereResp.Generations[0].Text
+                }</span>
+        }
+
+        // Fallback: try to extract any text field
+        <span class="cov8" title="1">if content == "" </span><span class="cov8" title="1">{
+                var generic map[string]interface{}
+                if err := json.Unmarshal(respBody, &amp;generic); err == nil </span><span class="cov8" title="1">{
+                        content = extractTextFromResponse(generic)
+                }</span>
+        }
+
+        <span class="cov8" title="1">if content == "" </span><span class="cov8" title="1">{
+                content = string(respBody)
+        }</span>
+
+        <span class="cov8" title="1">a.logger.WithFields(logrus.Fields{
+                "model":    modelId,
+                "region":   a.region,
+                "duration": duration,
+        }).Info("AWS Bedrock model invoked successfully")
+
+        return content, nil</span>
+}
+
+// signRequest signs an HTTP request with AWS Signature V4
+func (a *AWSBedrockIntegration) signRequest(req *http.Request, body []byte) error <span class="cov8" title="1">{
+        // AWS Signature V4 implementation
+        t := time.Now().UTC()
+        amzDate := t.Format("20060102T150405Z")
+        dateStamp := t.Format("20060102")
+
+        // Set required headers
+        req.Header.Set("Host", req.URL.Host)
+        req.Header.Set("X-Amz-Date", amzDate)
+        if a.sessionToken != "" </span><span class="cov8" title="1">{
+                req.Header.Set("X-Amz-Security-Token", a.sessionToken)
+        }</span>
+
+        // Create canonical request
+        <span class="cov8" title="1">method := req.Method
+        canonicalURI := req.URL.Path
+        if canonicalURI == "" </span><span class="cov8" title="1">{
+                canonicalURI = "/"
+        }</span>
+        <span class="cov8" title="1">canonicalQuerystring := req.URL.RawQuery
+
+        // Canonical headers
+        signedHeaders := []string{"host", "x-amz-date"}
+        if a.sessionToken != "" </span><span class="cov8" title="1">{
+                signedHeaders = append(signedHeaders, "x-amz-security-token")
+        }</span>
+        <span class="cov8" title="1">if req.Header.Get("Content-Type") != "" </span><span class="cov8" title="1">{
+                signedHeaders = append(signedHeaders, "content-type")
+        }</span>
+        <span class="cov8" title="1">sort.Strings(signedHeaders)
+
+        canonicalHeaders := ""
+        for _, h := range signedHeaders </span><span class="cov8" title="1">{
+                canonicalHeaders += strings.ToLower(h) + ":" + strings.TrimSpace(req.Header.Get(h)) + "\n"
+        }</span>
+        <span class="cov8" title="1">signedHeadersStr := strings.Join(signedHeaders, ";")
+
+        // Payload hash
+        var payloadHash string
+        if body != nil </span><span class="cov8" title="1">{
+                hash := sha256.Sum256(body)
+                payloadHash = hex.EncodeToString(hash[:])
+        }</span> else<span class="cov8" title="1"> {
+                hash := sha256.Sum256([]byte(""))
+                payloadHash = hex.EncodeToString(hash[:])
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("X-Amz-Content-Sha256", payloadHash)
+
+        canonicalRequest := method + "\n" + canonicalURI + "\n" + canonicalQuerystring + "\n" +
+                canonicalHeaders + "\n" + signedHeadersStr + "\n" + payloadHash
+
+        // Create string to sign
+        algorithm := "AWS4-HMAC-SHA256"
+        service := "bedrock"
+        credentialScope := dateStamp + "/" + a.region + "/" + service + "/aws4_request"
+
+        canonicalRequestHash := sha256.Sum256([]byte(canonicalRequest))
+        stringToSign := algorithm + "\n" + amzDate + "\n" + credentialScope + "\n" +
+                hex.EncodeToString(canonicalRequestHash[:])
+
+        // Calculate signature
+        signingKey := a.getSignatureKey(dateStamp, a.region, service)
+        signature := hmacSHA256(signingKey, stringToSign)
+        signatureHex := hex.EncodeToString(signature)
+
+        // Add authorization header
+        authHeader := algorithm + " Credential=" + a.accessKeyID + "/" + credentialScope +
+                ", SignedHeaders=" + signedHeadersStr + ", Signature=" + signatureHex
+        req.Header.Set("Authorization", authHeader)
+
+        return nil</span>
+}
+
+func (a *AWSBedrockIntegration) getSignatureKey(dateStamp, region, service string) []byte <span class="cov8" title="1">{
+        kDate := hmacSHA256([]byte("AWS4"+a.secretAccessKey), dateStamp)
+        kRegion := hmacSHA256(kDate, region)
+        kService := hmacSHA256(kRegion, service)
+        kSigning := hmacSHA256(kService, "aws4_request")
+        return kSigning
+}</span>
+
+func hmacSHA256(key []byte, data string) []byte <span class="cov8" title="1">{
+        h := hmac.New(sha256.New, key)
+        h.Write([]byte(data))
+        return h.Sum(nil)
+}</span>
+
+// HealthCheck checks AWS Bedrock connectivity
+func (a *AWSBedrockIntegration) HealthCheck(ctx context.Context) error <span class="cov8" title="1">{
+        if a.accessKeyID == "" || a.secretAccessKey == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("AWS credentials not configured")
+        }</span>
+
+        <span class="cov8" title="1">_, err := a.ListModels(ctx)
+        return err</span>
+}
+
+// GetProviderName returns the provider name
+func (a *AWSBedrockIntegration) GetProviderName() string <span class="cov8" title="1">{
+        return "aws-bedrock"
+}</span>
+
+// ========== GCP Vertex AI Integration ==========
+
+// GCPVertexAIIntegration provides Google Cloud Vertex AI integration
+type GCPVertexAIIntegration struct {
+        projectID   string
+        location    string
+        accessToken string
+        httpClient  *http.Client
+        logger      *logrus.Logger
+}
+
+// GCPVertexAIConfig holds configuration for GCP Vertex AI
+type GCPVertexAIConfig struct {
+        ProjectID   string
+        Location    string
+        AccessToken string
+        Timeout     time.Duration
+}
+
+// NewGCPVertexAIIntegration creates a new GCP Vertex AI integration
+func NewGCPVertexAIIntegration(projectID, location string, logger *logrus.Logger) *GCPVertexAIIntegration <span class="cov8" title="1">{
+        return NewGCPVertexAIIntegrationWithConfig(GCPVertexAIConfig{
+                ProjectID:   projectID,
+                Location:    location,
+                AccessToken: os.Getenv("GOOGLE_ACCESS_TOKEN"),
+                Timeout:     60 * time.Second,
+        }, logger)
+}</span>
+
+// NewGCPVertexAIIntegrationWithConfig creates GCP Vertex AI integration with explicit config
+func NewGCPVertexAIIntegrationWithConfig(config GCPVertexAIConfig, logger *logrus.Logger) *GCPVertexAIIntegration <span class="cov8" title="1">{
+        timeout := config.Timeout
+        if timeout == 0 </span><span class="cov8" title="1">{
+                timeout = 60 * time.Second
+        }</span>
+
+        <span class="cov8" title="1">location := config.Location
+        if location == "" </span><span class="cov8" title="1">{
+                location = "us-central1"
+        }</span>
+
+        <span class="cov8" title="1">return &amp;GCPVertexAIIntegration{
+                projectID:   config.ProjectID,
+                location:    location,
+                accessToken: config.AccessToken,
+                httpClient: &amp;http.Client{
+                        Timeout: timeout,
+                },
+                logger: logger,
+        }</span>
+}
+
+// ListModels lists available Vertex AI models
+func (g *GCPVertexAIIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) <span class="cov8" title="1">{
+        if g.accessToken == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("GCP access token not configured")
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models",
+                g.location, g.projectID, g.location)
+
+        req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Authorization", "Bearer "+g.accessToken)
+        req.Header.Set("Content-Type", "application/json")
+
+        resp, err := g.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to list models: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("GCP Vertex AI API error: %d - %s", resp.StatusCode, string(body))
+        }</span>
+
+        <span class="cov8" title="1">var result struct {
+                Models []struct {
+                        Name        string `json:"name"`
+                        DisplayName string `json:"displayName"`
+                        Description string `json:"description"`
+                } `json:"models"`
+        }
+
+        if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to decode response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">models := make([]map[string]interface{}, 0, len(result.Models))
+        for _, m := range result.Models </span><span class="cov8" title="1">{
+                models = append(models, map[string]interface{}{
+                        "name":         m.Name,
+                        "display_name": m.DisplayName,
+                        "description":  m.Description,
+                        "provider":     "gcp",
+                })
+        }</span>
+
+        <span class="cov8" title="1">g.logger.WithField("count", len(models)).Info("Listed GCP Vertex AI models")
+        return models, nil</span>
+}
+
+// InvokeModel invokes a Vertex AI model
+func (g *GCPVertexAIIntegration) InvokeModel(ctx context.Context, modelName, prompt string, config map[string]interface{}) (string, error) <span class="cov8" title="1">{
+        if g.accessToken == "" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("GCP access token not configured")
+        }</span>
+
+        // Vertex AI endpoint for text generation
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict",
+                g.location, g.projectID, g.location, modelName)
+
+        // Build request body for Vertex AI
+        requestBody := map[string]interface{}{
+                "instances": []map[string]interface{}{
+                        {"prompt": prompt},
+                },
+                "parameters": map[string]interface{}{
+                        "temperature":     getFloatConfig(config, "temperature", 0.7),
+                        "maxOutputTokens": getIntConfig(config, "max_tokens", 1024),
+                        "topP":            getFloatConfig(config, "top_p", 0.9),
+                        "topK":            getIntConfig(config, "top_k", 40),
+                },
+        }
+
+        body, err := json.Marshal(requestBody)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to marshal request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Authorization", "Bearer "+g.accessToken)
+        req.Header.Set("Content-Type", "application/json")
+
+        startTime := time.Now()
+        resp, err := g.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to invoke model: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+        duration := time.Since(startTime)
+
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("GCP Vertex AI API error: %d - %s", resp.StatusCode, string(respBody))
+        }</span>
+
+        // Parse Vertex AI response
+        <span class="cov8" title="1">var vertexResp struct {
+                Predictions []struct {
+                        Content string `json:"content"`
+                } `json:"predictions"`
+        }
+
+        if err := json.Unmarshal(respBody, &amp;vertexResp); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var content string
+        if len(vertexResp.Predictions) &gt; 0 </span><span class="cov8" title="1">{
+                content = vertexResp.Predictions[0].Content
+        }</span>
+
+        // Fallback: extract from generic response
+        <span class="cov8" title="1">if content == "" </span><span class="cov8" title="1">{
+                var generic map[string]interface{}
+                if err := json.Unmarshal(respBody, &amp;generic); err == nil </span><span class="cov8" title="1">{
+                        content = extractTextFromResponse(generic)
+                }</span>
+        }
+
+        <span class="cov8" title="1">if content == "" </span><span class="cov8" title="1">{
+                content = string(respBody)
+        }</span>
+
+        <span class="cov8" title="1">g.logger.WithFields(logrus.Fields{
+                "model":    modelName,
+                "project":  g.projectID,
+                "location": g.location,
+                "duration": duration,
+        }).Info("GCP Vertex AI model invoked successfully")
+
+        return content, nil</span>
+}
+
+// HealthCheck checks GCP Vertex AI connectivity
+func (g *GCPVertexAIIntegration) HealthCheck(ctx context.Context) error <span class="cov8" title="1">{
+        if g.accessToken == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("GCP access token not configured")
+        }</span>
+
+        // Try a simple API call
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s",
+                g.location, g.projectID, g.location)
+
+        req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Authorization", "Bearer "+g.accessToken)
+
+        resp, err := g.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode &gt;= 400 </span><span class="cov8" title="1">{
+                body, _ := io.ReadAll(resp.Body)
+                return fmt.Errorf("health check failed: %d - %s", resp.StatusCode, string(body))
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetProviderName returns the provider name
+func (g *GCPVertexAIIntegration) GetProviderName() string <span class="cov8" title="1">{
+        return "gcp-vertex-ai"
+}</span>
+
+// ========== Azure OpenAI Integration ==========
+
+// AzureOpenAIIntegration provides Azure OpenAI integration
+type AzureOpenAIIntegration struct {
+        endpoint   string
+        apiKey     string
+        apiVersion string
+        httpClient *http.Client
+        logger     *logrus.Logger
+}
+
+// AzureOpenAIConfig holds configuration for Azure OpenAI
+type AzureOpenAIConfig struct {
+        Endpoint   string
+        APIKey     string
+        APIVersion string
+        Timeout    time.Duration
+}
+
+// NewAzureOpenAIIntegration creates a new Azure OpenAI integration
+func NewAzureOpenAIIntegration(endpoint string, logger *logrus.Logger) *AzureOpenAIIntegration <span class="cov8" title="1">{
+        return NewAzureOpenAIIntegrationWithConfig(AzureOpenAIConfig{
+                Endpoint:   endpoint,
+                APIKey:     os.Getenv("AZURE_OPENAI_API_KEY"),
+                APIVersion: os.Getenv("AZURE_OPENAI_API_VERSION"),
+                Timeout:    60 * time.Second,
+        }, logger)
+}</span>
+
+// NewAzureOpenAIIntegrationWithConfig creates Azure OpenAI integration with explicit config
+func NewAzureOpenAIIntegrationWithConfig(config AzureOpenAIConfig, logger *logrus.Logger) *AzureOpenAIIntegration <span class="cov8" title="1">{
+        timeout := config.Timeout
+        if timeout == 0 </span><span class="cov8" title="1">{
+                timeout = 60 * time.Second
+        }</span>
+
+        <span class="cov8" title="1">apiVersion := config.APIVersion
+        if apiVersion == "" </span><span class="cov8" title="1">{
+                apiVersion = "2024-02-01"
+        }</span>
+
+        <span class="cov8" title="1">return &amp;AzureOpenAIIntegration{
+                endpoint:   strings.TrimSuffix(config.Endpoint, "/"),
+                apiKey:     config.APIKey,
+                apiVersion: apiVersion,
+                httpClient: &amp;http.Client{
+                        Timeout: timeout,
+                },
+                logger: logger,
+        }</span>
+}
+
+// ListModels lists available Azure OpenAI models
+func (az *AzureOpenAIIntegration) ListModels(ctx context.Context) ([]map[string]interface{}, error) <span class="cov8" title="1">{
+        if az.apiKey == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("Azure OpenAI API key not configured")
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("%s/openai/deployments?api-version=%s", az.endpoint, az.apiVersion)
+
+        req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("api-key", az.apiKey)
+        req.Header.Set("Content-Type", "application/json")
+
+        resp, err := az.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to list models: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("Azure OpenAI API error: %d - %s", resp.StatusCode, string(body))
+        }</span>
+
+        <span class="cov8" title="1">var result struct {
+                Data []struct {
+                        ID    string `json:"id"`
+                        Model string `json:"model"`
+                } `json:"data"`
+        }
+
+        if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to decode response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">models := make([]map[string]interface{}, 0, len(result.Data))
+        for _, m := range result.Data </span><span class="cov8" title="1">{
+                models = append(models, map[string]interface{}{
+                        "id":       m.ID,
+                        "model":    m.Model,
+                        "object":   "deployment",
+                        "owned_by": "azure",
+                })
+        }</span>
+
+        <span class="cov8" title="1">az.logger.WithField("count", len(models)).Info("Listed Azure OpenAI deployments")
+        return models, nil</span>
+}
+
+// InvokeModel invokes an Azure OpenAI model
+func (az *AzureOpenAIIntegration) InvokeModel(ctx context.Context, deploymentName, prompt string, config map[string]interface{}) (string, error) <span class="cov8" title="1">{
+        if az.apiKey == "" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("Azure OpenAI API key not configured")
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=%s",
+                az.endpoint, deploymentName, az.apiVersion)
+
+        // Build OpenAI-compatible request
+        requestBody := map[string]interface{}{
+                "messages": []map[string]string{
+                        {"role": "user", "content": prompt},
+                },
+                "max_tokens":  getIntConfig(config, "max_tokens", 1024),
+                "temperature": getFloatConfig(config, "temperature", 0.7),
+                "top_p":       getFloatConfig(config, "top_p", 0.9),
+        }
+
+        body, err := json.Marshal(requestBody)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to marshal request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("api-key", az.apiKey)
+        req.Header.Set("Content-Type", "application/json")
+
+        startTime := time.Now()
+        resp, err := az.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to invoke model: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+        duration := time.Since(startTime)
+
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("Azure OpenAI API error: %d - %s", resp.StatusCode, string(respBody))
+        }</span>
+
+        // Parse OpenAI-compatible response
+        <span class="cov8" title="1">var openaiResp struct {
+                Choices []struct {
+                        Message struct {
+                                Content string `json:"content"`
+                        } `json:"message"`
+                } `json:"choices"`
+        }
+
+        if err := json.Unmarshal(respBody, &amp;openaiResp); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var content string
+        if len(openaiResp.Choices) &gt; 0 </span><span class="cov8" title="1">{
+                content = openaiResp.Choices[0].Message.Content
+        }</span>
+
+        <span class="cov8" title="1">if content == "" </span><span class="cov8" title="1">{
+                content = string(respBody)
+        }</span>
+
+        <span class="cov8" title="1">az.logger.WithFields(logrus.Fields{
+                "deployment": deploymentName,
+                "endpoint":   az.endpoint,
+                "duration":   duration,
+        }).Info("Azure OpenAI model invoked successfully")
+
+        return content, nil</span>
+}
+
+// HealthCheck checks Azure OpenAI connectivity
+func (az *AzureOpenAIIntegration) HealthCheck(ctx context.Context) error <span class="cov8" title="1">{
+        if az.apiKey == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("Azure OpenAI API key not configured")
+        }</span>
+
+        <span class="cov8" title="1">_, err := az.ListModels(ctx)
+        return err</span>
+}
+
+// GetProviderName returns the provider name
+func (az *AzureOpenAIIntegration) GetProviderName() string <span class="cov8" title="1">{
+        return "azure-openai"
+}</span>
+
+// ========== Cloud Integration Manager ==========
+
+// CloudIntegrationManager manages multiple cloud provider integrations
+type CloudIntegrationManager struct {
+        providers map[string]CloudProvider
+        logger    *logrus.Logger
+}
+
+// NewCloudIntegrationManager creates a new cloud integration manager
+func NewCloudIntegrationManager(logger *logrus.Logger) *CloudIntegrationManager <span class="cov8" title="1">{
+        return &amp;CloudIntegrationManager{
+                providers: make(map[string]CloudProvider),
+                logger:    logger,
+        }
+}</span>
+
+// RegisterProvider registers a cloud provider
+func (cim *CloudIntegrationManager) RegisterProvider(provider CloudProvider) <span class="cov8" title="1">{
+        cim.providers[provider.GetProviderName()] = provider
+        cim.logger.WithField("provider", provider.GetProviderName()).Info("Cloud provider registered")
+}</span>
+
+// GetProvider returns a cloud provider by name
+func (cim *CloudIntegrationManager) GetProvider(providerName string) (CloudProvider, error) <span class="cov8" title="1">{
+        provider, exists := cim.providers[providerName]
+        if !exists </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("cloud provider %s not found", providerName)
+        }</span>
+        <span class="cov8" title="1">return provider, nil</span>
+}
+
+// ListAllProviders returns all registered providers
+func (cim *CloudIntegrationManager) ListAllProviders() []string <span class="cov8" title="1">{
+        providers := make([]string, 0, len(cim.providers))
+        for name := range cim.providers </span><span class="cov8" title="1">{
+                providers = append(providers, name)
+        }</span>
+        <span class="cov8" title="1">return providers</span>
+}
+
+// InvokeCloudModel invokes a model on a cloud provider
+func (cim *CloudIntegrationManager) InvokeCloudModel(ctx context.Context, providerName, modelName, prompt string, config map[string]interface{}) (string, error) <span class="cov8" title="1">{
+        provider, err := cim.GetProvider(providerName)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">startTime := time.Now()
+        result, err := provider.InvokeModel(ctx, modelName, prompt, config)
+        duration := time.Since(startTime)
+
+        if err != nil </span><span class="cov8" title="1">{
+                cim.logger.WithError(err).WithFields(logrus.Fields{
+                        "provider": providerName,
+                        "model":    modelName,
+                        "duration": duration,
+                }).Error("Cloud model invocation failed")
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">cim.logger.WithFields(logrus.Fields{
+                "provider": providerName,
+                "model":    modelName,
+                "duration": duration,
+        }).Info("Cloud model invoked successfully")
+
+        return result, nil</span>
+}
+
+// HealthCheckAll performs health checks on all registered providers
+func (cim *CloudIntegrationManager) HealthCheckAll(ctx context.Context) map[string]error <span class="cov8" title="1">{
+        results := make(map[string]error)
+        for name, provider := range cim.providers </span><span class="cov8" title="1">{
+                results[name] = provider.HealthCheck(ctx)
+        }</span>
+        <span class="cov8" title="1">return results</span>
+}
+
+// InitializeDefaultProviders initializes default cloud providers from environment
+func (cim *CloudIntegrationManager) InitializeDefaultProviders() error <span class="cov8" title="1">{
+        // AWS Bedrock
+        if region := os.Getenv("AWS_REGION"); region != "" </span><span class="cov8" title="1">{
+                provider := NewAWSBedrockIntegration(region, cim.logger)
+                cim.RegisterProvider(provider)
+                cim.logger.Info("AWS Bedrock provider initialized")
+        }</span>
+
+        // GCP Vertex AI
+        <span class="cov8" title="1">if projectID := os.Getenv("GCP_PROJECT_ID"); projectID != "" </span><span class="cov8" title="1">{
+                location := os.Getenv("GCP_LOCATION")
+                if location == "" </span><span class="cov8" title="1">{
+                        location = "us-central1"
+                }</span>
+                <span class="cov8" title="1">provider := NewGCPVertexAIIntegration(projectID, location, cim.logger)
+                cim.RegisterProvider(provider)
+                cim.logger.Info("GCP Vertex AI provider initialized")</span>
+        }
+
+        // Azure OpenAI
+        <span class="cov8" title="1">if endpoint := os.Getenv("AZURE_OPENAI_ENDPOINT"); endpoint != "" </span><span class="cov8" title="1">{
+                provider := NewAzureOpenAIIntegration(endpoint, cim.logger)
+                cim.RegisterProvider(provider)
+                cim.logger.Info("Azure OpenAI provider initialized")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ========== Helper Functions ==========
+
+func getIntConfig(config map[string]interface{}, key string, defaultVal int) int <span class="cov8" title="1">{
+        if config == nil </span><span class="cov8" title="1">{
+                return defaultVal
+        }</span>
+        <span class="cov8" title="1">if val, ok := config[key]; ok </span><span class="cov8" title="1">{
+                switch v := val.(type) </span>{
+                case int:<span class="cov8" title="1">
+                        return v</span>
+                case int64:<span class="cov8" title="1">
+                        return int(v)</span>
+                case float64:<span class="cov8" title="1">
+                        return int(v)</span>
+                }
+        }
+        <span class="cov8" title="1">return defaultVal</span>
+}
+
+func getFloatConfig(config map[string]interface{}, key string, defaultVal float64) float64 <span class="cov8" title="1">{
+        if config == nil </span><span class="cov8" title="1">{
+                return defaultVal
+        }</span>
+        <span class="cov8" title="1">if val, ok := config[key]; ok </span><span class="cov8" title="1">{
+                switch v := val.(type) </span>{
+                case float64:<span class="cov8" title="1">
+                        return v</span>
+                case float32:<span class="cov8" title="1">
+                        return float64(v)</span>
+                case int:<span class="cov8" title="1">
+                        return float64(v)</span>
+                }
+        }
+        <span class="cov8" title="1">return defaultVal</span>
+}
+
+func extractTextFromResponse(data map[string]interface{}) string <span class="cov8" title="1">{
+        // Try common response field names
+        for _, key := range []string{"text", "content", "output", "generated_text", "response", "result"} </span><span class="cov8" title="1">{
+                if val, ok := data[key]; ok </span><span class="cov8" title="1">{
+                        if str, ok := val.(string); ok </span><span class="cov8" title="1">{
+                                return str
+                        }</span>
+                }
+        }
+
+        // Try nested structures
+        <span class="cov8" title="1">if predictions, ok := data["predictions"].([]interface{}); ok &amp;&amp; len(predictions) &gt; 0 </span><span class="cov8" title="1">{
+                if pred, ok := predictions[0].(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                        return extractTextFromResponse(pred)
+                }</span>
+                <span class="cov8" title="1">if str, ok := predictions[0].(string); ok </span><span class="cov8" title="1">{
+                        return str
+                }</span>
+        }
+
+        <span class="cov8" title="1">if choices, ok := data["choices"].([]interface{}); ok &amp;&amp; len(choices) &gt; 0 </span><span class="cov8" title="1">{
+                if choice, ok := choices[0].(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                        if msg, ok := choice["message"].(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                                if content, ok := msg["content"].(string); ok </span><span class="cov8" title="1">{
+                                        return content
+                                }</span>
+                        }
+                        <span class="cov8" title="1">if text, ok := choice["text"].(string); ok </span><span class="cov8" title="1">{
+                                return text
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return ""</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

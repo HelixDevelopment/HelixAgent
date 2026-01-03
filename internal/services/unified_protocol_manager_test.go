@@ -474,3 +474,62 @@ func TestUnifiedProtocolManager_ExecuteRequest_EmbeddingWrongTextType(t *testing
 	assert.False(t, response.Success)
 	assert.Contains(t, err.Error(), "text argument is required")
 }
+
+// TestUnifiedProtocolManager_RecordMetrics tests the recordMetrics private method through execute
+func TestUnifiedProtocolManager_RecordMetrics_Extended(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	// recordMetrics is private but we can test through ExecuteRequest
+	// which calls recordMetrics internally
+	security := manager.GetSecurity()
+	testKey, _ := security.CreateAPIKey("test-key", "test", []string{"embedding:*"})
+
+	req := UnifiedProtocolRequest{
+		ProtocolType: "embedding",
+		ServerID:     "embedding-server",
+		ToolName:     "generate",
+		Arguments:    map[string]interface{}{"text": "test text"},
+	}
+
+	ctx := context.WithValue(context.Background(), "api_key", testKey.Key)
+
+	// Execute request - this will internally call recordMetrics
+	response, err := manager.ExecuteRequest(ctx, req)
+
+	// Verify response
+	assert.NoError(t, err)
+	assert.True(t, response.Success)
+}
+
+// TestExtractAPIKeyFromContext_Extended tests additional extractAPIKeyFromContext scenarios
+func TestExtractAPIKeyFromContext_Extended(t *testing.T) {
+	t.Run("extracts valid API key from context", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), "api_key", "test-api-key-123")
+		apiKey := extractAPIKeyFromContext(ctx)
+		assert.Equal(t, "test-api-key-123", apiKey)
+	})
+
+	t.Run("returns empty string when no API key in context", func(t *testing.T) {
+		ctx := context.Background()
+		apiKey := extractAPIKeyFromContext(ctx)
+		assert.Equal(t, "", apiKey)
+	})
+
+	t.Run("returns empty string when API key has wrong type", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), "api_key", 12345)
+		apiKey := extractAPIKeyFromContext(ctx)
+		assert.Equal(t, "", apiKey)
+	})
+}
+
+// TestUnifiedProtocolManager_GetACP_Extended tests the GetACP getter
+func TestUnifiedProtocolManager_GetACP_Extended(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+	manager := NewUnifiedProtocolManager(nil, nil, logger)
+
+	acp := manager.GetACP()
+	assert.NotNil(t, acp)
+}

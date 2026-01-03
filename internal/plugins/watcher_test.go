@@ -250,3 +250,117 @@ func TestWatcher_MultiplePaths(t *testing.T) {
 
 	t.Logf("Received %d events from multiple paths", count)
 }
+
+// =====================================================
+// ADDITIONAL WATCHER TESTS FOR COVERAGE
+// =====================================================
+
+func TestWatcher_HandleEvent_RemoveEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	eventReceived := make(chan string, 1)
+
+	onChange := func(path string) {
+		select {
+		case eventReceived <- path:
+		default:
+		}
+	}
+
+	watcher, err := NewWatcher([]string{tmpDir}, onChange)
+	require.NoError(t, err)
+
+	watcher.Start()
+	defer watcher.Stop()
+
+	// Give watcher time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Create a .so file
+	pluginPath := filepath.Join(tmpDir, "remove-test.so")
+	err = os.WriteFile(pluginPath, []byte("plugin"), 0644)
+	require.NoError(t, err)
+
+	// Wait for create event
+	time.Sleep(700 * time.Millisecond)
+
+	// Remove the file
+	err = os.Remove(pluginPath)
+	require.NoError(t, err)
+
+	// Wait for remove event (note: onChange only called for Create/Write)
+	time.Sleep(700 * time.Millisecond)
+}
+
+func TestWatcher_HandleEvent_RenameEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	watcher, err := NewWatcher([]string{tmpDir}, func(path string) {})
+	require.NoError(t, err)
+
+	watcher.Start()
+	defer watcher.Stop()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Create and rename a .so file
+	pluginPath := filepath.Join(tmpDir, "rename-test.so")
+	newPath := filepath.Join(tmpDir, "renamed-test.so")
+
+	err = os.WriteFile(pluginPath, []byte("plugin"), 0644)
+	require.NoError(t, err)
+
+	time.Sleep(700 * time.Millisecond)
+
+	err = os.Rename(pluginPath, newPath)
+	require.NoError(t, err)
+
+	time.Sleep(700 * time.Millisecond)
+}
+
+func TestWatcher_WatchLoop_ClosedChannel(t *testing.T) {
+	tmpDir := t.TempDir()
+	watcher, err := NewWatcher([]string{tmpDir}, nil)
+	require.NoError(t, err)
+
+	watcher.Start()
+
+	// Give it time to start
+	time.Sleep(50 * time.Millisecond)
+
+	// Stop the watcher (closes internal watcher)
+	watcher.Stop()
+
+	// Watcher should exit cleanly
+	time.Sleep(100 * time.Millisecond)
+}
+
+func TestWatcher_WatchLoop_ErrorChannel(t *testing.T) {
+	tmpDir := t.TempDir()
+	watcher, err := NewWatcher([]string{tmpDir}, func(path string) {})
+	require.NoError(t, err)
+
+	watcher.Start()
+
+	// Give watcher time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Close the internal watcher to trigger error channel close
+	watcher.watcher.Close()
+
+	// Wait for watcher to handle the error
+	time.Sleep(100 * time.Millisecond)
+}
+
+func TestWatcher_StartMultipleTimes(t *testing.T) {
+	tmpDir := t.TempDir()
+	watcher, err := NewWatcher([]string{tmpDir}, func(path string) {})
+	require.NoError(t, err)
+
+	// Start multiple times (should be safe)
+	watcher.Start()
+	watcher.Start()
+	watcher.Start()
+
+	time.Sleep(50 * time.Millisecond)
+
+	watcher.Stop()
+}

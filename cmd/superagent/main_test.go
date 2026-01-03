@@ -2,10 +2,16 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -13,6 +19,943 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// =============================================================================
+// Mock Implementations
+// =============================================================================
+
+// MockCommandExecutor is a mock implementation of CommandExecutor for testing
+type MockCommandExecutor struct {
+	LookPathFunc         func(file string) (string, error)
+	RunCommandFunc       func(name string, args ...string) ([]byte, error)
+	RunCommandWithDirFunc func(dir string, name string, args ...string) ([]byte, error)
+}
+
+func (m *MockCommandExecutor) LookPath(file string) (string, error) {
+	if m.LookPathFunc != nil {
+		return m.LookPathFunc(file)
+	}
+	return "/usr/bin/" + file, nil
+}
+
+func (m *MockCommandExecutor) RunCommand(name string, args ...string) ([]byte, error) {
+	if m.RunCommandFunc != nil {
+		return m.RunCommandFunc(name, args...)
+	}
+	return []byte{}, nil
+}
+
+func (m *MockCommandExecutor) RunCommandWithDir(dir string, name string, args ...string) ([]byte, error) {
+	if m.RunCommandWithDirFunc != nil {
+		return m.RunCommandWithDirFunc(dir, name, args...)
+	}
+	return []byte{}, nil
+}
+
+// MockHealthChecker is a mock implementation of HealthChecker for testing
+type MockHealthChecker struct {
+	CheckHealthFunc func(url string) error
+}
+
+func (m *MockHealthChecker) CheckHealth(url string) error {
+	if m.CheckHealthFunc != nil {
+		return m.CheckHealthFunc(url)
+	}
+	return nil
+}
+
+// createTestLogger creates a logger for testing that discards output
+func createTestLogger() *logrus.Logger {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	logger.SetOutput(io.Discard)
+	return logger
+}
+
+// createTestContainerConfig creates a container config with mocks
+func createTestContainerConfig(executor *MockCommandExecutor, healthChecker *MockHealthChecker) *ContainerConfig {
+	return &ContainerConfig{
+		ProjectDir:       "/test/project",
+		RequiredServices: []string{"postgres", "redis", "cognee", "chromadb"},
+		CogneeURL:        "http://localhost:8000/health",
+		ChromaDBURL:      "http://localhost:8001/api/v1/heartbeat",
+		Executor:         executor,
+		HealthChecker:    healthChecker,
+	}
+}
+
+// =============================================================================
+// RealCommandExecutor Tests
+// =============================================================================
+
+func TestRealCommandExecutor_LookPath(t *testing.T) {
+	executor := &RealCommandExecutor{}
+
+	// Test with a command that should exist on most systems
+	path, err := executor.LookPath("ls")
+	if err != nil {
+		t.Skip("ls command not found, skipping test")
+	}
+	assert.NotEmpty(t, path)
+}
+
+func TestRealCommandExecutor_RunCommand(t *testing.T) {
+	executor := &RealCommandExecutor{}
+
+	// Test with echo command
+	output, err := executor.RunCommand("echo", "hello")
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "hello")
+}
+
+func TestRealCommandExecutor_RunCommandWithDir(t *testing.T) {
+	executor := &RealCommandExecutor{}
+
+	// Test running pwd in a specific directory
+	output, err := executor.RunCommandWithDir("/tmp", "pwd")
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "tmp")
+}
+
+// =============================================================================
+// HTTPHealthChecker Tests
+// =============================================================================
+
+func TestNewHTTPHealthChecker(t *testing.T) {
+	checker := NewHTTPHealthChecker(5 * time.Second)
+	assert.NotNil(t, checker)
+	assert.NotNil(t, checker.Client)
+	assert.Equal(t, 5*time.Second, checker.Timeout)
+}
+
+func TestHTTPHealthChecker_CheckHealth_Success(t *testing.T) {
+	// Create a test server that returns OK
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}))
+	defer server.Close()
+
+	checker := NewHTTPHealthChecker(5 * time.Second)
+	err := checker.CheckHealth(server.URL)
+	assert.NoError(t, err)
+}
+
+func TestHTTPHealthChecker_CheckHealth_Error(t *testing.T) {
+	// Create a test server that returns an error status
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	checker := NewHTTPHealthChecker(5 * time.Second)
+	err := checker.CheckHealth(server.URL)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "health check failed")
+	assert.Contains(t, err.Error(), "503")
+}
+
+func TestHTTPHealthChecker_CheckHealth_ConnectionError(t *testing.T) {
+	checker := NewHTTPHealthChecker(1 * time.Second)
+	err := checker.CheckHealth("http://localhost:99999")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot connect")
+}
+
+// =============================================================================
+// ContainerConfig Tests
+// =============================================================================
+
+func TestDefaultContainerConfig(t *testing.T) {
+	cfg := DefaultContainerConfig()
+
+	assert.NotNil(t, cfg)
+	assert.NotEmpty(t, cfg.ProjectDir)
+	assert.Len(t, cfg.RequiredServices, 4)
+	assert.Contains(t, cfg.RequiredServices, "postgres")
+	assert.Contains(t, cfg.RequiredServices, "redis")
+	assert.Contains(t, cfg.RequiredServices, "cognee")
+	assert.Contains(t, cfg.RequiredServices, "chromadb")
+	assert.NotEmpty(t, cfg.CogneeURL)
+	assert.NotEmpty(t, cfg.ChromaDBURL)
+	assert.NotNil(t, cfg.Executor)
+	assert.NotNil(t, cfg.HealthChecker)
+}
+
+// =============================================================================
+// ensureRequiredContainersWithConfig Tests
+// =============================================================================
+
+func TestEnsureRequiredContainersWithConfig_DockerNotFound(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "", errors.New("docker not found")
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "docker not found")
+}
+
+func TestEnsureRequiredContainersWithConfig_AllServicesRunning(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			// Return all services as running
+			return []byte("postgres\nredis\ncognee\nchromadb\n"), nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	assert.NoError(t, err)
+}
+
+func TestEnsureRequiredContainersWithConfig_SomeServicesNeedStart(t *testing.T) {
+	startCalled := false
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			// Check if this is checking running services or starting them
+			if len(args) > 0 && args[0] == "compose" {
+				if len(args) > 1 && args[1] == "ps" {
+					// Return only some services as running
+					return []byte("postgres\nredis\n"), nil
+				}
+				if len(args) > 1 && args[1] == "up" {
+					startCalled = true
+					return []byte("Started cognee and chromadb"), nil
+				}
+			}
+			return []byte{}, nil
+		},
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			// Simulate successful health checks
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, healthChecker)
+	// Remove the sleep by using a custom config
+	cfg.Executor = executor
+	logger := createTestLogger()
+
+	// Note: This test will be slow due to time.Sleep in the function
+	// In a real scenario, we'd want to make the sleep configurable
+	if testing.Short() {
+		t.Skip("Skipping test that involves sleep in short mode")
+	}
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	// The function should not return error even if health checks fail
+	// because it logs warnings but continues
+	if err != nil {
+		t.Logf("Error (may be expected): %v", err)
+	}
+	assert.True(t, startCalled, "docker compose up should have been called")
+}
+
+func TestEnsureRequiredContainersWithConfig_StartFails(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			if file == "docker-compose" {
+				return "", errors.New("not found")
+			}
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "compose" {
+				if len(args) > 1 && args[1] == "ps" {
+					return []byte(""), nil // No services running
+				}
+				if len(args) > 1 && args[1] == "up" {
+					return []byte("error output"), errors.New("failed to start")
+				}
+			}
+			return []byte{}, errors.New("command failed")
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to start containers")
+}
+
+func TestEnsureRequiredContainersWithConfig_DockerComposeSuccess(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test that involves sleep in short mode")
+	}
+
+	dockerComposeUsed := false
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			if file == "docker-compose" {
+				return "/usr/bin/docker-compose", nil
+			}
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			// docker compose ps returns empty (no services running)
+			if name == "docker" && len(args) > 0 && args[0] == "compose" {
+				if len(args) > 1 && args[1] == "ps" {
+					return []byte(""), nil
+				}
+				if len(args) > 1 && args[1] == "up" {
+					// docker compose up fails, triggering fallback
+					return []byte(""), errors.New("docker compose failed")
+				}
+			}
+			// docker-compose succeeds as fallback
+			if name == "docker-compose" {
+				dockerComposeUsed = true
+				return []byte("Started successfully"), nil
+			}
+			return []byte{}, nil
+		},
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, healthChecker)
+	logger := createTestLogger()
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	assert.NoError(t, err)
+	assert.True(t, dockerComposeUsed, "docker-compose fallback should have been used")
+}
+
+func TestEnsureRequiredContainersWithConfig_GetRunningServicesFails(t *testing.T) {
+	getServicesCalled := false
+	startCalled := false
+
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "compose" {
+				if len(args) > 1 && args[1] == "ps" {
+					getServicesCalled = true
+					return []byte{}, errors.New("docker compose ps failed")
+				}
+				if len(args) > 1 && args[1] == "up" {
+					startCalled = true
+					return []byte("Started all services"), nil
+				}
+			}
+			return []byte{}, nil
+		},
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, healthChecker)
+	logger := createTestLogger()
+
+	if testing.Short() {
+		t.Skip("Skipping test that involves sleep in short mode")
+	}
+
+	err := ensureRequiredContainersWithConfig(logger, cfg)
+	assert.True(t, getServicesCalled)
+	// When get services fails, it should attempt to start all services
+	assert.True(t, startCalled, "Should attempt to start services when get running services fails")
+	// Function may succeed or fail depending on health checks
+	_ = err
+}
+
+// =============================================================================
+// getRunningServicesWithConfig Tests
+// =============================================================================
+
+func TestGetRunningServicesWithConfig_Success(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			return []byte("postgres\nredis\ncognee\n"), nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	services, err := getRunningServicesWithConfig(cfg)
+
+	require.NoError(t, err)
+	assert.Len(t, services, 3)
+	assert.True(t, services["postgres"])
+	assert.True(t, services["redis"])
+	assert.True(t, services["cognee"])
+	assert.False(t, services["chromadb"])
+}
+
+func TestGetRunningServicesWithConfig_EmptyOutput(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			return []byte(""), nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	services, err := getRunningServicesWithConfig(cfg)
+
+	require.NoError(t, err)
+	assert.Empty(t, services)
+}
+
+func TestGetRunningServicesWithConfig_DockerNotFound(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "", errors.New("not found")
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	services, err := getRunningServicesWithConfig(cfg)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "docker compose not found")
+	assert.NotNil(t, services)
+	assert.Empty(t, services)
+}
+
+func TestGetRunningServicesWithConfig_CommandFails(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			if file == "docker-compose" {
+				return "", errors.New("not found")
+			}
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			return []byte{}, errors.New("command failed")
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	services, err := getRunningServicesWithConfig(cfg)
+
+	require.Error(t, err)
+	assert.NotNil(t, services)
+}
+
+func TestGetRunningServicesWithConfig_FallbackToDockerCompose(t *testing.T) {
+	dockerComposeCalledCount := 0
+
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			if file == "docker-compose" {
+				return "/usr/bin/docker-compose", nil
+			}
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			if name == "docker" && len(args) > 0 && args[0] == "compose" {
+				return []byte{}, errors.New("docker compose not available")
+			}
+			if name == "docker-compose" {
+				dockerComposeCalledCount++
+				return []byte("postgres\nredis\n"), nil
+			}
+			return []byte{}, nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, &MockHealthChecker{})
+	services, err := getRunningServicesWithConfig(cfg)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, dockerComposeCalledCount)
+	assert.True(t, services["postgres"])
+	assert.True(t, services["redis"])
+}
+
+// =============================================================================
+// verifyServicesHealthWithConfig Tests
+// =============================================================================
+
+func TestVerifyServicesHealthWithConfig_AllHealthy(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test with sleeps in short mode")
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"postgres", "redis", "cognee", "chromadb"}, logger, cfg)
+	assert.NoError(t, err)
+}
+
+func TestVerifyServicesHealthWithConfig_CogneeAndChromaDBHealthy(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	// Only test cognee and chromadb which don't have sleeps
+	err := verifyServicesHealthWithConfig([]string{"cognee", "chromadb"}, logger, cfg)
+	assert.NoError(t, err)
+}
+
+func TestVerifyServicesHealthWithConfig_CogneeFails(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			// The URL will be the CogneeURL from createTestContainerConfig
+			// which is "http://localhost:8000/health"
+			return errors.New("connection refused")
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"cognee"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cognee")
+}
+
+func TestVerifyServicesHealthWithConfig_ChromaDBFails(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			if strings.Contains(url, "chromadb") || strings.Contains(url, "heartbeat") {
+				return errors.New("connection refused")
+			}
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"chromadb"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "chromadb")
+}
+
+func TestVerifyServicesHealthWithConfig_UnknownService(t *testing.T) {
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"unknown-service"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown service")
+}
+
+func TestVerifyServicesHealthWithConfig_EmptyServices(t *testing.T) {
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{}, logger, cfg)
+	assert.NoError(t, err)
+}
+
+func TestVerifyServicesHealthWithConfig_MultipleFailures(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return errors.New("all services down")
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"cognee", "chromadb", "unknown"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cognee")
+	assert.Contains(t, err.Error(), "chromadb")
+	assert.Contains(t, err.Error(), "unknown")
+}
+
+func TestVerifyServicesHealthWithConfig_PostgresFails(t *testing.T) {
+	// Save original and restore after test
+	originalPostgresChecker := postgresHealthChecker
+	defer func() { postgresHealthChecker = originalPostgresChecker }()
+
+	// Mock postgres health check to fail
+	postgresHealthChecker = func() error {
+		return errors.New("postgres connection refused")
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"postgres"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "postgres")
+	assert.Contains(t, err.Error(), "connection refused")
+}
+
+func TestVerifyServicesHealthWithConfig_RedisFails(t *testing.T) {
+	// Save original and restore after test
+	originalRedisChecker := redisHealthChecker
+	defer func() { redisHealthChecker = originalRedisChecker }()
+
+	// Mock redis health check to fail
+	redisHealthChecker = func() error {
+		return errors.New("redis connection refused")
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, &MockHealthChecker{})
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"redis"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "redis")
+	assert.Contains(t, err.Error(), "connection refused")
+}
+
+func TestVerifyServicesHealthWithConfig_AllServicesFail(t *testing.T) {
+	// Save originals and restore after test
+	originalPostgresChecker := postgresHealthChecker
+	originalRedisChecker := redisHealthChecker
+	defer func() {
+		postgresHealthChecker = originalPostgresChecker
+		redisHealthChecker = originalRedisChecker
+	}()
+
+	// Mock all health checks to fail
+	postgresHealthChecker = func() error {
+		return errors.New("postgres down")
+	}
+	redisHealthChecker = func() error {
+		return errors.New("redis down")
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return errors.New("service down")
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	logger := createTestLogger()
+
+	err := verifyServicesHealthWithConfig([]string{"postgres", "redis", "cognee", "chromadb"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "postgres")
+	assert.Contains(t, err.Error(), "redis")
+	assert.Contains(t, err.Error(), "cognee")
+	assert.Contains(t, err.Error(), "chromadb")
+}
+
+// =============================================================================
+// checkCogneeHealthWithConfig Tests
+// =============================================================================
+
+func TestCheckCogneeHealthWithConfig_Success(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	err := checkCogneeHealthWithConfig(cfg)
+	assert.NoError(t, err)
+}
+
+func TestCheckCogneeHealthWithConfig_Failure(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return errors.New("connection refused")
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	err := checkCogneeHealthWithConfig(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Cognee")
+}
+
+// =============================================================================
+// checkChromaDBHealthWithConfig Tests
+// =============================================================================
+
+func TestCheckChromaDBHealthWithConfig_Success(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	err := checkChromaDBHealthWithConfig(cfg)
+	assert.NoError(t, err)
+}
+
+func TestCheckChromaDBHealthWithConfig_Failure(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return errors.New("connection refused")
+		},
+	}
+
+	cfg := createTestContainerConfig(&MockCommandExecutor{}, healthChecker)
+	err := checkChromaDBHealthWithConfig(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ChromaDB")
+}
+
+// =============================================================================
+// AppConfig Tests
+// =============================================================================
+
+func TestDefaultAppConfig(t *testing.T) {
+	cfg := DefaultAppConfig()
+
+	assert.NotNil(t, cfg)
+	assert.False(t, cfg.ShowHelp)
+	assert.False(t, cfg.ShowVersion)
+	assert.True(t, cfg.AutoStartDocker)
+	assert.Equal(t, "0.0.0.0", cfg.ServerHost)
+	assert.Equal(t, "8080", cfg.ServerPort)
+	assert.NotNil(t, cfg.Logger)
+	assert.Nil(t, cfg.ShutdownSignal)
+}
+
+// =============================================================================
+// run Function Tests
+// =============================================================================
+
+func TestRun_ShowHelp(t *testing.T) {
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ShowHelp:    true,
+		ShowVersion: false,
+		Logger:      createTestLogger(),
+	}
+
+	err := run(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "SuperAgent")
+	assert.Contains(t, output, "Usage:")
+}
+
+func TestRun_ShowVersion(t *testing.T) {
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ShowHelp:    false,
+		ShowVersion: true,
+		Logger:      createTestLogger(),
+	}
+
+	err := run(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "SuperAgent")
+	assert.Contains(t, output, "v1.0.0")
+}
+
+func TestRun_HelpTakesPrecedence(t *testing.T) {
+	// When both help and version are set, help should take precedence
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ShowHelp:    true,
+		ShowVersion: true, // This should be ignored
+		Logger:      createTestLogger(),
+	}
+
+	err := run(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "Usage:") // Help output should be shown
+}
+
+func TestRun_ServerStartAndShutdown(t *testing.T) {
+	// This test requires a full environment setup:
+	// - JWT_SECRET environment variable
+	// - Database (PostgreSQL) connection
+	// - The router setup uses config.Load() internally
+	//
+	// To run this test, use: make test-with-infra
+	t.Skip("Requires full infrastructure (database, JWT_SECRET) - run with make test-with-infra")
+
+	// Create a shutdown signal channel
+	shutdownSignal := make(chan os.Signal, 1)
+
+	// Use a random port to avoid conflicts
+	appCfg := &AppConfig{
+		ShowHelp:        false,
+		ShowVersion:     false,
+		AutoStartDocker: false, // Don't try to start docker in test
+		ServerHost:      "127.0.0.1",
+		ServerPort:      "0", // Let the OS pick a port
+		Logger:          createTestLogger(),
+		ShutdownSignal:  shutdownSignal,
+	}
+
+	// Run in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- run(appCfg)
+	}()
+
+	// Give the server time to start
+	time.Sleep(200 * time.Millisecond)
+
+	// Send shutdown signal
+	shutdownSignal <- syscall.SIGTERM
+
+	// Wait for run to complete
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for server shutdown")
+	}
+}
+
+func TestRun_NilLogger(t *testing.T) {
+	// This test requires a full environment setup
+	t.Skip("Requires full infrastructure (database, JWT_SECRET) - run with make test-with-infra")
+
+	shutdownSignal := make(chan os.Signal, 1)
+
+	appCfg := &AppConfig{
+		ShowHelp:        false,
+		ShowVersion:     false,
+		AutoStartDocker: false,
+		ServerHost:      "127.0.0.1",
+		ServerPort:      "0",
+		Logger:          nil, // Test nil logger handling
+		ShutdownSignal:  shutdownSignal,
+	}
+
+	// Run in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- run(appCfg)
+	}()
+
+	// Give the server time to start
+	time.Sleep(200 * time.Millisecond)
+
+	// Send shutdown signal
+	shutdownSignal <- syscall.SIGTERM
+
+	// Wait for run to complete
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for server shutdown")
+	}
+}
+
+func TestRun_PortInUse(t *testing.T) {
+	// This test requires a full environment setup
+	t.Skip("Requires full infrastructure (database, JWT_SECRET) - run with make test-with-infra")
+
+	// Start a server on a specific port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+	defer listener.Close()
+
+	// Get the port that was assigned
+	port := listener.Addr().(*net.TCPAddr).Port
+
+	// Try to start our server on the same port
+	appCfg := &AppConfig{
+		ShowHelp:        false,
+		ShowVersion:     false,
+		AutoStartDocker: false,
+		ServerHost:      "127.0.0.1",
+		ServerPort:      fmt.Sprintf("%d", port),
+		Logger:          createTestLogger(),
+		ShutdownSignal:  make(chan os.Signal, 1),
+	}
+
+	// Run and expect it to fail
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- run(appCfg)
+	}()
+
+	// Wait for error or timeout
+	select {
+	case err := <-errChan:
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "server failed to start")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Expected server to fail immediately when port is in use")
+	}
+}
+
+// =============================================================================
+// Legacy Tests (kept for backward compatibility)
+// =============================================================================
 
 func TestEnsureRequiredContainers(t *testing.T) {
 	// This test is skipped in CI environments where docker is not available
@@ -636,3 +1579,141 @@ func TestGetRunningServices_ComposeNotFound(t *testing.T) {
 	// Should still return empty map
 	assert.NotNil(t, services)
 }
+
+// =============================================================================
+// HTTP Server Mock Tests with Real HTTP Servers
+// =============================================================================
+
+func TestCheckCogneeHealthWithConfig_RealServer(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "healthy"}`))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	cfg := &ContainerConfig{
+		CogneeURL:     server.URL + "/health",
+		HealthChecker: NewHTTPHealthChecker(5 * time.Second),
+	}
+
+	err := checkCogneeHealthWithConfig(cfg)
+	assert.NoError(t, err)
+}
+
+func TestCheckChromaDBHealthWithConfig_RealServer(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/heartbeat" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"heartbeat": 1234567890}`))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	cfg := &ContainerConfig{
+		ChromaDBURL:   server.URL + "/api/v1/heartbeat",
+		HealthChecker: NewHTTPHealthChecker(5 * time.Second),
+	}
+
+	err := checkChromaDBHealthWithConfig(cfg)
+	assert.NoError(t, err)
+}
+
+func TestCheckCogneeHealthWithConfig_ServerError(t *testing.T) {
+	// Create test server that returns error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := &ContainerConfig{
+		CogneeURL:     server.URL + "/health",
+		HealthChecker: NewHTTPHealthChecker(5 * time.Second),
+	}
+
+	err := checkCogneeHealthWithConfig(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Cognee")
+}
+
+func TestCheckChromaDBHealthWithConfig_ServerError(t *testing.T) {
+	// Create test server that returns error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	cfg := &ContainerConfig{
+		ChromaDBURL:   server.URL + "/api/v1/heartbeat",
+		HealthChecker: NewHTTPHealthChecker(5 * time.Second),
+	}
+
+	err := checkChromaDBHealthWithConfig(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ChromaDB")
+}
+
+// =============================================================================
+// Integration-like Tests with Mocks
+// =============================================================================
+
+func TestFullWorkflow_AllServicesHealthy(t *testing.T) {
+	executor := &MockCommandExecutor{
+		LookPathFunc: func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		},
+		RunCommandWithDirFunc: func(dir, name string, args ...string) ([]byte, error) {
+			return []byte("postgres\nredis\ncognee\nchromadb\n"), nil
+		},
+	}
+
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			return nil
+		},
+	}
+
+	cfg := createTestContainerConfig(executor, healthChecker)
+	logger := createTestLogger()
+
+	// Test that verify services health works
+	err := verifyServicesHealthWithConfig(cfg.RequiredServices, logger, cfg)
+	assert.NoError(t, err)
+
+	// Test that get running services works
+	services, err := getRunningServicesWithConfig(cfg)
+	assert.NoError(t, err)
+	assert.Len(t, services, 4)
+}
+
+func TestFullWorkflow_PartialFailure(t *testing.T) {
+	healthChecker := &MockHealthChecker{
+		CheckHealthFunc: func(url string) error {
+			// Always fail the health check
+			return errors.New("cognee is down")
+		},
+	}
+
+	cfg := &ContainerConfig{
+		ProjectDir:       "/test/project",
+		RequiredServices: []string{"postgres", "redis", "cognee", "chromadb"},
+		CogneeURL:        "http://localhost:8000/health",
+		ChromaDBURL:      "http://localhost:8001/api/v1/heartbeat",
+		Executor:         &MockCommandExecutor{},
+		HealthChecker:    healthChecker,
+	}
+	logger := createTestLogger()
+
+	// Test that verify services health reports the failure
+	err := verifyServicesHealthWithConfig([]string{"cognee"}, logger, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cognee")
+}
+

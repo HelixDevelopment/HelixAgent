@@ -2,6 +2,9 @@ package plugins
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -265,4 +268,248 @@ func TestReloader_ReloadDelay(t *testing.T) {
 
 	// Default reload delay should be 5 seconds
 	assert.Equal(t, 5*time.Second, reloader.reloadDelay)
+}
+
+// =====================================================
+// ADDITIONAL RELOAD TESTS FOR COVERAGE
+// =====================================================
+
+func TestReloader_WatchForConfigChanges_ContextCancel(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan struct{})
+	go func() {
+		reloader.WatchForConfigChanges(ctx, tmpDir)
+		close(done)
+	}()
+
+	// Give watcher time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Cancel context
+	cancel()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(2 * time.Second):
+		t.Fatal("WatchForConfigChanges did not exit on context cancel")
+	}
+}
+
+func TestReloader_WatchForConfigChanges_FileEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Register a plugin
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("config-test")
+	plugin.On("Init", mock.Anything).Return(nil)
+	err := registry.Register(plugin)
+	require.NoError(t, err)
+
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	go reloader.WatchForConfigChanges(ctx, tmpDir)
+
+	// Give watcher time to start
+	time.Sleep(200 * time.Millisecond)
+
+	// Create a config file
+	configFile := filepath.Join(tmpDir, "config-test.yaml")
+	err = os.WriteFile(configFile, []byte("name: test\nversion: 1.0.0"), 0644)
+	require.NoError(t, err)
+
+	// Wait for debounce + processing
+	time.Sleep(2500 * time.Millisecond)
+}
+
+func TestReloader_WatchForConfigChanges_NonYamlIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	go reloader.WatchForConfigChanges(ctx, tmpDir)
+
+	// Give watcher time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Create a non-yaml file (should be ignored)
+	txtFile := filepath.Join(tmpDir, "readme.txt")
+	err := os.WriteFile(txtFile, []byte("test"), 0644)
+	require.NoError(t, err)
+
+	// Wait briefly
+	time.Sleep(500 * time.Millisecond)
+}
+
+func TestReloader_WatchForConfigChanges_InvalidPath(t *testing.T) {
+	registry := NewRegistry()
+	configMgr := NewConfigManager("/nonexistent")
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	// Should return early without panicking
+	reloader.WatchForConfigChanges(ctx, "/nonexistent/path")
+}
+
+func TestReloader_ReloadPluginConfig_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Create a config file with valid content
+	configFile := filepath.Join(tmpDir, "success-plugin.json")
+	configContent := `{"name": "success-plugin", "version": "1.0.0"}`
+	err := os.WriteFile(configFile, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Register a plugin
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("success-plugin")
+	plugin.On("Init", mock.Anything).Return(nil)
+	err = registry.Register(plugin)
+	require.NoError(t, err)
+
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx := context.Background()
+	err = reloader.ReloadPluginConfig(ctx, "success-plugin")
+	assert.NoError(t, err)
+
+	// Verify last reload time was set
+	reloadTime, exists := reloader.GetLastReloadTime("success-plugin")
+	assert.True(t, exists)
+	assert.False(t, reloadTime.IsZero())
+}
+
+func TestReloader_ReloadPluginConfig_InitError(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Create a config file
+	configFile := filepath.Join(tmpDir, "init-error.json")
+	configContent := `{"name": "init-error", "version": "1.0.0"}`
+	err := os.WriteFile(configFile, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Register a plugin that fails on Init
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("init-error")
+	plugin.On("Init", mock.Anything).Return(errors.New("init failed"))
+	err = registry.Register(plugin)
+	require.NoError(t, err)
+
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx := context.Background()
+	err = reloader.ReloadPluginConfig(ctx, "init-error")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to apply new configuration")
+}
+
+func TestReloader_WatchForConfigChanges_YmlExtension(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Register a plugin
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("yml-test")
+	plugin.On("Init", mock.Anything).Return(nil)
+	err := registry.Register(plugin)
+	require.NoError(t, err)
+
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	go reloader.WatchForConfigChanges(ctx, tmpDir)
+
+	// Give watcher time to start
+	time.Sleep(200 * time.Millisecond)
+
+	// Create a .yml config file (should be processed)
+	configFile := filepath.Join(tmpDir, "yml-test.yml")
+	err = os.WriteFile(configFile, []byte("name: test\nversion: 1.0.0"), 0644)
+	require.NoError(t, err)
+
+	// Wait for debounce + processing
+	time.Sleep(2500 * time.Millisecond)
+}
+
+func TestReloader_WatchForConfigChanges_FileDeleted(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Register a plugin
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("delete-test")
+	plugin.On("Init", mock.Anything).Return(nil)
+	err := registry.Register(plugin)
+	require.NoError(t, err)
+
+	configMgr := NewConfigManager(tmpDir)
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	loader := NewLoader(registry)
+	lifecycle := NewLifecycleManager(registry, loader, health)
+	reloader := NewReloader(registry, configMgr, lifecycle)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	go reloader.WatchForConfigChanges(ctx, tmpDir)
+
+	// Give watcher time to start
+	time.Sleep(200 * time.Millisecond)
+
+	// Create and then delete a config file
+	configFile := filepath.Join(tmpDir, "delete-test.yaml")
+	err = os.WriteFile(configFile, []byte("name: test"), 0644)
+	require.NoError(t, err)
+
+	// Delete the file before debounce finishes
+	time.Sleep(100 * time.Millisecond)
+	os.Remove(configFile)
+
+	// Wait for debounce to trigger and handle missing file
+	time.Sleep(2500 * time.Millisecond)
 }

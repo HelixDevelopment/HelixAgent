@@ -1140,3 +1140,579 @@ func TestDatabaseConnectionString(t *testing.T) {
 		}
 	})
 }
+
+// =============================================================================
+// Extended MockDB Tests for Better Coverage
+// =============================================================================
+
+// TestMockDBQueryRow tests the QueryRow mock functionality
+func TestMockDBQueryRow(t *testing.T) {
+	t.Run("MockDBQueryRowReturnsRow", func(t *testing.T) {
+		mockRow := &MockRowImpl{Values: []any{"test-id", "test-value"}}
+		db := &MockDB{
+			QueryRowFn: func(query string, args ...any) Row {
+				return mockRow
+			},
+		}
+
+		row := db.QueryRow("SELECT id, value FROM test WHERE id = $1", "test-id")
+		assert.NotNil(t, row)
+
+		var id, value string
+		err := row.Scan(&id, &value)
+		assert.NoError(t, err)
+		assert.Equal(t, "test-id", id)
+		assert.Equal(t, "test-value", value)
+	})
+
+	t.Run("MockDBQueryRowWithError", func(t *testing.T) {
+		mockRow := &MockRowImpl{Err: pgx.ErrNoRows}
+		db := &MockDB{
+			QueryRowFn: func(query string, args ...any) Row {
+				return mockRow
+			},
+		}
+
+		row := db.QueryRow("SELECT * FROM nonexistent")
+		var result string
+		err := row.Scan(&result)
+		assert.Error(t, err)
+		assert.Equal(t, pgx.ErrNoRows, err)
+	})
+
+	t.Run("MockDBQueryRowNilFunction", func(t *testing.T) {
+		db := &MockDB{}
+		row := db.QueryRow("SELECT 1")
+		assert.Nil(t, row)
+	})
+}
+
+// TestMockRowImplEdgeCases tests edge cases for MockRowImpl
+func TestMockRowImplEdgeCases(t *testing.T) {
+	t.Run("ScanWithMoreDestsThanValues", func(t *testing.T) {
+		row := &MockRowImpl{Values: []any{"value1"}}
+		var v1, v2 string
+		err := row.Scan(&v1, &v2)
+		assert.NoError(t, err)
+		assert.Equal(t, "value1", v1)
+		assert.Equal(t, "", v2) // Not set because no value
+	})
+
+	t.Run("ScanWithTypeMismatch", func(t *testing.T) {
+		row := &MockRowImpl{Values: []any{"string-not-int"}}
+		var intResult int
+		err := row.Scan(&intResult)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, intResult) // Not set because type mismatch
+	})
+
+	t.Run("ScanEmptyValues", func(t *testing.T) {
+		row := &MockRowImpl{Values: []any{}}
+		var result string
+		err := row.Scan(&result)
+		assert.NoError(t, err)
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("ScanIntValue", func(t *testing.T) {
+		row := &MockRowImpl{Values: []any{int(42)}}
+		var result int
+		err := row.Scan(&result)
+		assert.NoError(t, err)
+		assert.Equal(t, 42, result)
+	})
+
+	t.Run("ScanBoolValue", func(t *testing.T) {
+		row := &MockRowImpl{Values: []any{true}}
+		var result bool
+		err := row.Scan(&result)
+		assert.NoError(t, err)
+		assert.True(t, result)
+	})
+
+	t.Run("ScanNilValuesSlice", func(t *testing.T) {
+		row := &MockRowImpl{Values: nil}
+		var result string
+		err := row.Scan(&result)
+		assert.NoError(t, err)
+	})
+}
+
+// TestMockDBAllMethods tests all MockDB methods in combination
+func TestMockDBAllMethods(t *testing.T) {
+	t.Run("CombinedOperations", func(t *testing.T) {
+		execCalls := 0
+		queryCalls := 0
+		queryRowCalls := 0
+
+		db := &MockDB{
+			PingFn: func() error { return nil },
+			ExecFn: func(query string, args ...any) error {
+				execCalls++
+				return nil
+			},
+			QueryFn: func(query string, args ...any) ([]any, error) {
+				queryCalls++
+				return []any{[]any{"row1"}, []any{"row2"}}, nil
+			},
+			QueryRowFn: func(query string, args ...any) Row {
+				queryRowCalls++
+				return &MockRowImpl{Values: []any{"value"}}
+			},
+			CloseFn: func() error { return nil },
+			HealthCheckFn: func() error { return nil },
+		}
+
+		// Execute all operations
+		assert.NoError(t, db.Ping())
+		assert.NoError(t, db.Exec("INSERT INTO test VALUES ($1)", "value"))
+		results, err := db.Query("SELECT * FROM test")
+		assert.NoError(t, err)
+		assert.Len(t, results, 2)
+		row := db.QueryRow("SELECT value FROM test")
+		var val string
+		assert.NoError(t, row.Scan(&val))
+		assert.Equal(t, "value", val)
+		assert.NoError(t, db.HealthCheck())
+		assert.NoError(t, db.Close())
+
+		// Verify calls
+		assert.Equal(t, 1, execCalls)
+		assert.Equal(t, 1, queryCalls)
+		assert.Equal(t, 1, queryRowCalls)
+	})
+}
+
+// TestMockDBErrorScenarios tests various error scenarios
+func TestMockDBErrorScenarios(t *testing.T) {
+	t.Run("ExecError", func(t *testing.T) {
+		expectedErr := errors.New("exec failed: constraint violation")
+		db := &MockDB{
+			ExecFn: func(query string, args ...any) error {
+				return expectedErr
+			},
+		}
+		err := db.Exec("INSERT INTO test VALUES ($1)", "duplicate")
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("HealthCheckError", func(t *testing.T) {
+		expectedErr := errors.New("health check failed: timeout")
+		db := &MockDB{
+			HealthCheckFn: func() error {
+				return expectedErr
+			},
+		}
+		err := db.HealthCheck()
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("CloseError", func(t *testing.T) {
+		expectedErr := errors.New("close failed: connection already closed")
+		db := &MockDB{
+			CloseFn: func() error {
+				return expectedErr
+			},
+		}
+		err := db.Close()
+		assert.Equal(t, expectedErr, err)
+	})
+}
+
+// TestQueryArgumentsPassing tests that query arguments are passed correctly
+func TestQueryArgumentsPassing(t *testing.T) {
+	t.Run("ExecWithMultipleArgs", func(t *testing.T) {
+		var capturedQuery string
+		var capturedArgs []any
+
+		db := &MockDB{
+			ExecFn: func(query string, args ...any) error {
+				capturedQuery = query
+				capturedArgs = args
+				return nil
+			},
+		}
+
+		err := db.Exec("INSERT INTO test (a, b, c) VALUES ($1, $2, $3)", "val1", 42, true)
+		assert.NoError(t, err)
+		assert.Equal(t, "INSERT INTO test (a, b, c) VALUES ($1, $2, $3)", capturedQuery)
+		assert.Equal(t, []any{"val1", 42, true}, capturedArgs)
+	})
+
+	t.Run("QueryWithMultipleArgs", func(t *testing.T) {
+		var capturedQuery string
+		var capturedArgs []any
+
+		db := &MockDB{
+			QueryFn: func(query string, args ...any) ([]any, error) {
+				capturedQuery = query
+				capturedArgs = args
+				return []any{}, nil
+			},
+		}
+
+		_, err := db.Query("SELECT * FROM test WHERE a = $1 AND b = $2", "val", 10)
+		assert.NoError(t, err)
+		assert.Equal(t, "SELECT * FROM test WHERE a = $1 AND b = $2", capturedQuery)
+		assert.Equal(t, []any{"val", 10}, capturedArgs)
+	})
+
+	t.Run("QueryRowWithMultipleArgs", func(t *testing.T) {
+		var capturedQuery string
+		var capturedArgs []any
+
+		db := &MockDB{
+			QueryRowFn: func(query string, args ...any) Row {
+				capturedQuery = query
+				capturedArgs = args
+				return &MockRowImpl{Values: []any{"result"}}
+			},
+		}
+
+		row := db.QueryRow("SELECT * FROM test WHERE id = $1 AND active = $2", "id-1", true)
+		assert.NotNil(t, row)
+		assert.Equal(t, "SELECT * FROM test WHERE id = $1 AND active = $2", capturedQuery)
+		assert.Equal(t, []any{"id-1", true}, capturedArgs)
+	})
+}
+
+// TestMigrationsVariableCompleteness tests all migration statements
+func TestMigrationsVariableCompleteness(t *testing.T) {
+	t.Run("HasUUIDExtension", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "uuid-ossp") {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include UUID extension")
+	})
+
+	t.Run("HasUsersTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS users") {
+				found = true
+				assert.Contains(t, m, "username VARCHAR")
+				assert.Contains(t, m, "email VARCHAR")
+				assert.Contains(t, m, "password_hash VARCHAR")
+				assert.Contains(t, m, "api_key VARCHAR")
+				assert.Contains(t, m, "role VARCHAR")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include users table")
+	})
+
+	t.Run("HasUserSessionsTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS user_sessions") {
+				found = true
+				assert.Contains(t, m, "user_id UUID REFERENCES users")
+				assert.Contains(t, m, "session_token VARCHAR")
+				assert.Contains(t, m, "context JSONB")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include user_sessions table")
+	})
+
+	t.Run("HasLLMProvidersTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS llm_providers") {
+				found = true
+				assert.Contains(t, m, "name VARCHAR")
+				assert.Contains(t, m, "type VARCHAR")
+				assert.Contains(t, m, "api_key VARCHAR")
+				assert.Contains(t, m, "base_url VARCHAR")
+				assert.Contains(t, m, "model VARCHAR")
+				assert.Contains(t, m, "weight DECIMAL")
+				assert.Contains(t, m, "enabled BOOLEAN")
+				assert.Contains(t, m, "config JSONB")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include llm_providers table")
+	})
+
+	t.Run("HasLLMRequestsTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS llm_requests") {
+				found = true
+				assert.Contains(t, m, "session_id UUID REFERENCES user_sessions")
+				assert.Contains(t, m, "user_id UUID REFERENCES users")
+				assert.Contains(t, m, "prompt TEXT")
+				assert.Contains(t, m, "messages JSONB")
+				assert.Contains(t, m, "model_params JSONB")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include llm_requests table")
+	})
+
+	t.Run("HasLLMResponsesTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS llm_responses") {
+				found = true
+				assert.Contains(t, m, "request_id UUID REFERENCES llm_requests")
+				assert.Contains(t, m, "provider_id UUID REFERENCES llm_providers")
+				assert.Contains(t, m, "content TEXT")
+				assert.Contains(t, m, "confidence DECIMAL")
+				assert.Contains(t, m, "tokens_used INTEGER")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include llm_responses table")
+	})
+
+	t.Run("HasCogneeMemoriesTable", func(t *testing.T) {
+		found := false
+		for _, m := range migrations {
+			if strings.Contains(m, "CREATE TABLE IF NOT EXISTS cognee_memories") {
+				found = true
+				assert.Contains(t, m, "session_id UUID REFERENCES user_sessions")
+				assert.Contains(t, m, "dataset_name VARCHAR")
+				assert.Contains(t, m, "content_type VARCHAR")
+				assert.Contains(t, m, "content TEXT")
+				break
+			}
+		}
+		assert.True(t, found, "Migrations should include cognee_memories table")
+	})
+
+	t.Run("CountMigrations", func(t *testing.T) {
+		// Migrations should include:
+		// 1 UUID extension + 6 tables + 16 indexes = 23 statements
+		assert.GreaterOrEqual(t, len(migrations), 23, "Should have at least 23 migration statements")
+	})
+}
+
+// TestDBInterfaceMethodSignatures tests method signatures
+func TestDBInterfaceMethodSignatures(t *testing.T) {
+	t.Run("PingReturnsError", func(t *testing.T) {
+		db := &MockDB{PingFn: func() error { return nil }}
+		var result error = db.Ping()
+		assert.Nil(t, result)
+	})
+
+	t.Run("ExecReturnsError", func(t *testing.T) {
+		db := &MockDB{ExecFn: func(q string, a ...any) error { return nil }}
+		var result error = db.Exec("query")
+		assert.Nil(t, result)
+	})
+
+	t.Run("QueryReturnsSliceAndError", func(t *testing.T) {
+		db := &MockDB{QueryFn: func(q string, a ...any) ([]any, error) { return []any{}, nil }}
+		results, err := db.Query("query")
+		assert.NotNil(t, results)
+		assert.Nil(t, err)
+	})
+
+	t.Run("QueryRowReturnsRow", func(t *testing.T) {
+		db := &MockDB{QueryRowFn: func(q string, a ...any) Row { return &MockRowImpl{} }}
+		var result Row = db.QueryRow("query")
+		assert.NotNil(t, result)
+	})
+
+	t.Run("CloseReturnsError", func(t *testing.T) {
+		db := &MockDB{CloseFn: func() error { return nil }}
+		var result error = db.Close()
+		assert.Nil(t, result)
+	})
+
+	t.Run("HealthCheckReturnsError", func(t *testing.T) {
+		db := &MockDB{HealthCheckFn: func() error { return nil }}
+		var result error = db.HealthCheck()
+		assert.Nil(t, result)
+	})
+}
+
+// TestRowInterfaceScan tests the Row interface Scan method
+func TestRowInterfaceScan(t *testing.T) {
+	t.Run("ScanWithFloat64", func(t *testing.T) {
+		// MockRowImpl doesn't handle float64, testing nil handling
+		row := &MockRowImpl{Values: []any{3.14}}
+		var result float64
+		err := row.Scan(&result)
+		assert.NoError(t, err)
+		// Result is 0 because MockRowImpl doesn't handle float64
+	})
+
+	t.Run("ScanMixedTypes", func(t *testing.T) {
+		now := time.Now()
+		row := &MockRowImpl{Values: []any{"text", int(1), int64(2), true, now}}
+		var s string
+		var i int
+		var i64 int64
+		var b bool
+		var t time.Time
+		err := row.Scan(&s, &i, &i64, &b, &t)
+		assert.NoError(t, err)
+		assert.Equal(t, "text", s)
+		assert.Equal(t, 1, i)
+		assert.Equal(t, int64(2), i64)
+		assert.True(t, b)
+		assert.Equal(t, now, t)
+	})
+}
+
+// TestEmptyMigrations tests behavior with empty migrations
+func TestEmptyMigrations(t *testing.T) {
+	t.Run("EmptyMigrationSlice", func(t *testing.T) {
+		// Empty migrations should succeed
+		empty := []string{}
+		assert.Len(t, empty, 0)
+	})
+
+	t.Run("NilMigrationSlice", func(t *testing.T) {
+		var nilMigrations []string
+		assert.Nil(t, nilMigrations)
+		assert.Len(t, nilMigrations, 0)
+	})
+}
+
+// TestGetEnvEdgeCases tests edge cases for getEnv
+func TestGetEnvEdgeCases(t *testing.T) {
+	t.Run("VeryLongValue", func(t *testing.T) {
+		longValue := strings.Repeat("a", 10000)
+		os.Setenv("SUPERAGENT_TEST_LONG", longValue)
+		defer os.Unsetenv("SUPERAGENT_TEST_LONG")
+
+		result := getEnv("SUPERAGENT_TEST_LONG", "default")
+		assert.Equal(t, longValue, result)
+		assert.Len(t, result, 10000)
+	})
+
+	t.Run("UnicodeValue", func(t *testing.T) {
+		os.Setenv("SUPERAGENT_TEST_UNICODE", "值中文日本語한국어")
+		defer os.Unsetenv("SUPERAGENT_TEST_UNICODE")
+
+		result := getEnv("SUPERAGENT_TEST_UNICODE", "default")
+		assert.Equal(t, "值中文日本語한국어", result)
+	})
+
+	t.Run("NewlineInValue", func(t *testing.T) {
+		os.Setenv("SUPERAGENT_TEST_NEWLINE", "line1\nline2")
+		defer os.Unsetenv("SUPERAGENT_TEST_NEWLINE")
+
+		result := getEnv("SUPERAGENT_TEST_NEWLINE", "default")
+		assert.Equal(t, "line1\nline2", result)
+	})
+
+	t.Run("TabInValue", func(t *testing.T) {
+		os.Setenv("SUPERAGENT_TEST_TAB", "val1\tval2")
+		defer os.Unsetenv("SUPERAGENT_TEST_TAB")
+
+		result := getEnv("SUPERAGENT_TEST_TAB", "default")
+		assert.Equal(t, "val1\tval2", result)
+	})
+}
+
+// TestDatabaseConfigPermutations tests various config combinations
+func TestDatabaseConfigPermutations(t *testing.T) {
+	t.Run("AllFieldsProvided", func(t *testing.T) {
+		cfg := &config.Config{
+			Database: config.DatabaseConfig{
+				Host:     "db.example.com",
+				Port:     "5433",
+				User:     "admin",
+				Password: "securepassword",
+				Name:     "production_db",
+				SSLMode:  "require",
+			},
+		}
+
+		// Connection will fail but config parsing should succeed
+		_, err := NewPostgresDB(cfg)
+		if err != nil {
+			// Expected: connection fails to non-existent host
+			assert.Contains(t, err.Error(), "failed")
+		}
+	})
+
+	t.Run("MinimalConfig", func(t *testing.T) {
+		cfg := &config.Config{
+			Database: config.DatabaseConfig{
+				Host:     "localhost",
+				Port:     "5432",
+				User:     "test",
+				Password: "test",
+				Name:     "test",
+			},
+		}
+
+		// Pool creation might succeed, ping will fail
+		db, err := NewPostgresDB(cfg)
+		if err == nil {
+			defer db.Close()
+		}
+	})
+
+	t.Run("NumericPort", func(t *testing.T) {
+		cfg := &config.Config{
+			Database: config.DatabaseConfig{
+				Host:     "localhost",
+				Port:     "5432",
+				User:     "test",
+				Password: "test",
+				Name:     "test",
+			},
+		}
+
+		db, err := NewPostgresDB(cfg)
+		if err == nil {
+			defer db.Close()
+		}
+	})
+}
+
+// TestLegacyDBInterface tests the LegacyDB interface
+func TestLegacyDBInterface(t *testing.T) {
+	t.Run("HasRequiredMethods", func(t *testing.T) {
+		// Verify LegacyDB interface is a subset of DB
+		var db LegacyDB = &MockLegacyDB{}
+		assert.NotNil(t, db)
+	})
+}
+
+// MockLegacyDB implements LegacyDB interface for testing
+type MockLegacyDB struct{}
+
+func (m *MockLegacyDB) Ping() error                              { return nil }
+func (m *MockLegacyDB) Exec(query string, args ...any) error     { return nil }
+func (m *MockLegacyDB) Query(query string, args ...any) ([]any, error) { return nil, nil }
+func (m *MockLegacyDB) Close() error                             { return nil }
+
+func TestMockLegacyDB(t *testing.T) {
+	t.Run("ImplementsLegacyDBInterface", func(t *testing.T) {
+		var _ LegacyDB = (*MockLegacyDB)(nil)
+	})
+
+	t.Run("AllMethodsWork", func(t *testing.T) {
+		db := &MockLegacyDB{}
+		assert.NoError(t, db.Ping())
+		assert.NoError(t, db.Exec("query"))
+		results, err := db.Query("query")
+		assert.NoError(t, err)
+		assert.Nil(t, results)
+		assert.NoError(t, db.Close())
+	})
+}
+
+// TestPgxRowStruct tests the pgxRow struct
+func TestPgxRowStruct(t *testing.T) {
+	t.Run("CreatesWithNilRow", func(t *testing.T) {
+		row := &pgxRow{row: nil}
+		assert.NotNil(t, row)
+		assert.Nil(t, row.row)
+	})
+
+	t.Run("ImplementsRowInterface", func(t *testing.T) {
+		var _ Row = (*pgxRow)(nil)
+	})
+}

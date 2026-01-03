@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/superagent/superagent/internal/config"
@@ -1152,5 +1155,205 @@ func TestCogneeService_GetCodeContext(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, results)
+	})
+}
+
+// Tests for EnsureRunning
+func TestCogneeService_EnsureRunning(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	t.Run("returns nil if already healthy", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		config := &CogneeServiceConfig{
+			Enabled: true,
+			BaseURL: server.URL,
+		}
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		err := service.EnsureRunning(context.Background())
+		assert.NoError(t, err)
+		assert.True(t, service.IsReady())
+	})
+}
+
+// Tests for buildEnhancedPrompt
+func TestCogneeService_BuildEnhancedPrompt(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	config := &CogneeServiceConfig{
+		Enabled:              true,
+		RelevanceThreshold:   0.5,
+		MaxContextSize:       4096,
+		EnableGraphReasoning: true,
+	}
+
+	t.Run("returns original prompt when no results", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   0,
+			RelevanceScore: 0.0,
+		}
+
+		result := service.buildEnhancedPrompt("original prompt", searchResult)
+		assert.Equal(t, "original prompt", result)
+	})
+
+	t.Run("returns original prompt when relevance below threshold", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   5,
+			RelevanceScore: 0.3, // Below 0.5 threshold
+		}
+
+		result := service.buildEnhancedPrompt("original prompt", searchResult)
+		assert.Equal(t, "original prompt", result)
+	})
+
+	t.Run("enhances prompt with vector results", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   2,
+			RelevanceScore: 0.8,
+			VectorResults: []MemoryEntry{
+				{Content: "Memory content 1"},
+				{Content: "Memory content 2"},
+			},
+		}
+
+		result := service.buildEnhancedPrompt("test prompt", searchResult)
+		assert.Contains(t, result, "Relevant Context from Knowledge Base")
+		assert.Contains(t, result, "Memory content 1")
+		assert.Contains(t, result, "Memory content 2")
+		assert.Contains(t, result, "test prompt")
+	})
+
+	t.Run("enhances prompt with graph results", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   1,
+			RelevanceScore: 0.9,
+			GraphResults: []map[string]interface{}{
+				{"text": "Graph insight 1"},
+				{"text": "Graph insight 2"},
+			},
+		}
+
+		result := service.buildEnhancedPrompt("test prompt", searchResult)
+		assert.Contains(t, result, "Knowledge Graph Insights")
+		assert.Contains(t, result, "Graph insight 1")
+		assert.Contains(t, result, "test prompt")
+	})
+
+	t.Run("limits vector results to 5", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		vectorResults := make([]MemoryEntry, 10)
+		for i := 0; i < 10; i++ {
+			vectorResults[i] = MemoryEntry{Content: fmt.Sprintf("Memory %d", i)}
+		}
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   10,
+			RelevanceScore: 0.8,
+			VectorResults:  vectorResults,
+		}
+
+		result := service.buildEnhancedPrompt("test", searchResult)
+		// Should include first 5 but not the rest
+		assert.Contains(t, result, "Memory 0")
+		assert.Contains(t, result, "Memory 4")
+		assert.NotContains(t, result, "Memory 5")
+	})
+
+	t.Run("limits graph results to 3", func(t *testing.T) {
+		service := NewCogneeServiceWithConfig(config, logger)
+
+		graphResults := make([]map[string]interface{}, 5)
+		for i := 0; i < 5; i++ {
+			graphResults[i] = map[string]interface{}{"text": fmt.Sprintf("Insight %d", i)}
+		}
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   5,
+			RelevanceScore: 0.9,
+			GraphResults:   graphResults,
+		}
+
+		result := service.buildEnhancedPrompt("test", searchResult)
+		// Should include first 3 but not the rest
+		assert.Contains(t, result, "Insight 0")
+		assert.Contains(t, result, "Insight 2")
+		assert.NotContains(t, result, "Insight 3")
+	})
+
+	t.Run("truncates to max context size", func(t *testing.T) {
+		smallConfig := &CogneeServiceConfig{
+			Enabled:              true,
+			RelevanceThreshold:   0.5,
+			MaxContextSize:       100, // Very small for testing
+			EnableGraphReasoning: true,
+		}
+		service := NewCogneeServiceWithConfig(smallConfig, logger)
+
+		searchResult := &CogneeSearchResult{
+			TotalResults:   1,
+			RelevanceScore: 0.9,
+			VectorResults: []MemoryEntry{
+				{Content: strings.Repeat("x", 200)},
+			},
+		}
+
+		result := service.buildEnhancedPrompt("test prompt", searchResult)
+		assert.LessOrEqual(t, len(result), 100)
+	})
+}
+
+// Tests for IsReady and SetReady
+func TestCogneeService_ReadyState(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	config := &CogneeServiceConfig{
+		Enabled: true,
+	}
+	service := NewCogneeServiceWithConfig(config, logger)
+
+	t.Run("initially not ready", func(t *testing.T) {
+		assert.False(t, service.IsReady())
+	})
+
+	t.Run("SetReady changes state", func(t *testing.T) {
+		service.SetReady(true)
+		assert.True(t, service.IsReady())
+
+		service.SetReady(false)
+		assert.False(t, service.IsReady())
+	})
+}
+
+// Tests for truncateText helper - Additional edge cases
+func TestTruncateText_EdgeCases(t *testing.T) {
+	t.Run("handles very small max length", func(t *testing.T) {
+		result := truncateText("hello world", 3)
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("handles unicode text", func(t *testing.T) {
+		result := truncateText("test text", 20)
+		assert.Equal(t, "test text", result)
 	})
 }

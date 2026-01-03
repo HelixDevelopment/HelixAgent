@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -516,4 +517,277 @@ func TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "provider registry not available")
+}
+
+// TestUnifiedHandler_Models_WithProviderRegistry tests Models with a real provider registry
+func TestUnifiedHandler_Models_WithProviderRegistry(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := &UnifiedHandler{
+		providerRegistry: registry,
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/v1/models", nil)
+
+	handler.Models(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	body := w.Body.String()
+	assert.Contains(t, body, "object")
+	assert.Contains(t, body, "data")
+}
+
+// TestUnifiedHandler_ChatCompletions_MissingMessages tests ChatCompletions with missing messages
+func TestUnifiedHandler_ChatCompletions_MissingMessages(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4"}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletions(c)
+
+	// Missing messages results in internal server error when no registry
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusInternalServerError)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_ChatCompletionsStream_MissingMessages tests ChatCompletionsStream with missing messages
+func TestUnifiedHandler_ChatCompletionsStream_MissingMessages(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4"}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletionsStream(c)
+
+	// Missing messages results in internal server error when no registry
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusInternalServerError)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_Completions_MissingPrompt tests Completions with missing prompt
+func TestUnifiedHandler_Completions_MissingPrompt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "text-davinci-003"}`
+	c.Request = httptest.NewRequest("POST", "/v1/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Completions(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_ChatCompletions_ValidRequest tests ChatCompletions with valid request but no registry
+func TestUnifiedHandler_ChatCompletions_ValidRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "Hello"}]}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletions(c)
+
+	// Should fail because no provider registry
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_ChatCompletionsStream_ValidRequest tests ChatCompletionsStream with valid request but no registry
+func TestUnifiedHandler_ChatCompletionsStream_ValidRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "Hello"}]}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletionsStream(c)
+
+	// Should fail because no provider registry
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_Completions_ValidRequest tests Completions with valid request but no registry
+func TestUnifiedHandler_Completions_ValidRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := &UnifiedHandler{}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "text-davinci-003", "prompt": "Hello, world!"}`
+	c.Request = httptest.NewRequest("POST", "/v1/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Completions(c)
+
+	// May fail with either bad request or internal error
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusInternalServerError)
+	body := w.Body.String()
+	assert.Contains(t, body, "error")
+}
+
+// TestUnifiedHandler_ConvertOpenAIChatRequest_SystemMessage tests conversion with system message
+func TestUnifiedHandler_ConvertOpenAIChatRequest_SystemMessage(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	openaiReq := &OpenAIChatRequest{
+		Model: "gpt-4",
+		Messages: []OpenAIMessage{
+			{Role: "system", Content: "You are a helpful assistant."},
+			{Role: "user", Content: "Hello"},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	internalReq := handler.convertOpenAIChatRequest(openaiReq, c)
+
+	assert.NotNil(t, internalReq)
+	assert.Equal(t, 2, len(internalReq.Messages))
+	assert.Equal(t, "system", internalReq.Messages[0].Role)
+	assert.Equal(t, "You are a helpful assistant.", internalReq.Messages[0].Content)
+}
+
+// TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCallResponse tests conversion with tool call response
+func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCallResponse(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	openaiReq := &OpenAIChatRequest{
+		Model: "gpt-4",
+		Messages: []OpenAIMessage{
+			{Role: "user", Content: "What's the weather?"},
+			{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{
+				ID:       "call_1",
+				Type:     "function",
+				Function: OpenAIFunctionCall{Name: "get_weather", Arguments: `{"location":"NYC"}`},
+			}}},
+			{Role: "tool", Content: "72F and sunny"},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	internalReq := handler.convertOpenAIChatRequest(openaiReq, c)
+
+	assert.NotNil(t, internalReq)
+	assert.Equal(t, 3, len(internalReq.Messages))
+	assert.Equal(t, "tool", internalReq.Messages[2].Role)
+}
+
+// TestUnifiedHandler_SendOpenAIError_VariousErrors tests various error types
+func TestUnifiedHandler_SendOpenAIError_VariousErrors(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	testCases := []struct {
+		status  int
+		errType string
+		message string
+		details string
+	}{
+		{http.StatusBadRequest, "invalid_request_error", "Bad request", "Missing field"},
+		{http.StatusUnauthorized, "authentication_error", "Unauthorized", "Invalid API key"},
+		{http.StatusForbidden, "permission_error", "Forbidden", "Rate limited"},
+		{http.StatusNotFound, "not_found_error", "Not found", "Model not found"},
+		{http.StatusInternalServerError, "server_error", "Internal error", "Database error"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.errType, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			handler.sendOpenAIError(c, tc.status, tc.errType, tc.message, tc.details)
+
+			assert.Equal(t, tc.status, w.Code)
+			body := w.Body.String()
+			assert.Contains(t, body, tc.errType)
+			assert.Contains(t, body, tc.message)
+		})
+	}
+}
+
+// TestUnifiedHandler_ChatCompletions_WithProviderRegistry tests ChatCompletions with registry but no providers
+func TestUnifiedHandler_ChatCompletions_WithProviderRegistry(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := &UnifiedHandler{
+		providerRegistry: registry,
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "Hello"}]}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletions(c)
+
+	// Should fail because no providers are registered
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestUnifiedHandler_ChatCompletionsStream_WithProviderRegistry tests ChatCompletionsStream with registry but no providers
+func TestUnifiedHandler_ChatCompletionsStream_WithProviderRegistry(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := &UnifiedHandler{
+		providerRegistry: registry,
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "Hello"}]}`
+	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(reqBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.ChatCompletionsStream(c)
+
+	// Should fail because no providers are registered
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }

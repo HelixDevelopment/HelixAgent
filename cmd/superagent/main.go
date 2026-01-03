@@ -25,23 +25,103 @@ var (
 	autoStartDocker = flag.Bool("auto-start-docker", true, "Automatically start required Docker containers")
 )
 
+// CommandExecutor interface for executing system commands (allows mocking)
+type CommandExecutor interface {
+	LookPath(file string) (string, error)
+	RunCommand(name string, args ...string) ([]byte, error)
+	RunCommandWithDir(dir string, name string, args ...string) ([]byte, error)
+}
+
+// RealCommandExecutor implements CommandExecutor using actual exec calls
+type RealCommandExecutor struct{}
+
+func (r *RealCommandExecutor) LookPath(file string) (string, error) {
+	return exec.LookPath(file)
+}
+
+func (r *RealCommandExecutor) RunCommand(name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	return cmd.CombinedOutput()
+}
+
+func (r *RealCommandExecutor) RunCommandWithDir(dir string, name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	return cmd.CombinedOutput()
+}
+
+// HealthChecker interface for checking service health (allows mocking)
+type HealthChecker interface {
+	CheckHealth(url string) error
+}
+
+// HTTPHealthChecker implements HealthChecker using HTTP requests
+type HTTPHealthChecker struct {
+	Client  *http.Client
+	Timeout time.Duration
+}
+
+func NewHTTPHealthChecker(timeout time.Duration) *HTTPHealthChecker {
+	return &HTTPHealthChecker{
+		Client:  &http.Client{Timeout: timeout},
+		Timeout: timeout,
+	}
+}
+
+func (h *HTTPHealthChecker) CheckHealth(url string) error {
+	resp, err := h.Client.Get(url)
+	if err != nil {
+		return fmt.Errorf("cannot connect: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health check failed with status: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ContainerConfig holds configuration for container management
+type ContainerConfig struct {
+	ProjectDir       string
+	RequiredServices []string
+	CogneeURL        string
+	ChromaDBURL      string
+	Executor         CommandExecutor
+	HealthChecker    HealthChecker
+}
+
+// DefaultContainerConfig returns the default container configuration
+func DefaultContainerConfig() *ContainerConfig {
+	return &ContainerConfig{
+		ProjectDir:       "/media/milosvasic/DATA4TB/Projects/HelixAgent",
+		RequiredServices: []string{"postgres", "redis", "cognee", "chromadb"},
+		CogneeURL:        "http://cognee:8000/health",
+		ChromaDBURL:      "http://chromadb:8000/api/v1/heartbeat",
+		Executor:         &RealCommandExecutor{},
+		HealthChecker:    NewHTTPHealthChecker(10 * time.Second),
+	}
+}
+
+// Global container config (can be overridden for testing)
+var containerConfig = DefaultContainerConfig()
+
 // ensureRequiredContainers starts required Docker containers using docker-compose
 func ensureRequiredContainers(logger *logrus.Logger) error {
+	return ensureRequiredContainersWithConfig(logger, containerConfig)
+}
+
+// ensureRequiredContainersWithConfig starts required Docker containers using provided config
+func ensureRequiredContainersWithConfig(logger *logrus.Logger, cfg *ContainerConfig) error {
+	executor := cfg.Executor
+
 	// Check if docker is available
-	if _, err := exec.LookPath("docker"); err != nil {
+	if _, err := executor.LookPath("docker"); err != nil {
 		return fmt.Errorf("docker not found in PATH: %w", err)
 	}
 
-	// Required services that must be running
-	requiredServices := []string{
-		"postgres", // Database
-		"redis",    // Caching
-		"cognee",   // Cognee knowledge graph
-		"chromadb", // Vector database
-	}
-
 	// Check which services are already running
-	runningServices, err := getRunningServices()
+	runningServices, err := getRunningServicesWithConfig(cfg)
 	if err != nil {
 		logger.WithError(err).Warn("Could not check running services, attempting to start all")
 		runningServices = make(map[string]bool)
@@ -49,7 +129,7 @@ func ensureRequiredContainers(logger *logrus.Logger) error {
 
 	// Determine which services need to be started
 	servicesToStart := []string{}
-	for _, service := range requiredServices {
+	for _, service := range cfg.RequiredServices {
 		if !runningServices[service] {
 			servicesToStart = append(servicesToStart, service)
 		}
@@ -63,21 +143,19 @@ func ensureRequiredContainers(logger *logrus.Logger) error {
 	logger.WithField("services", strings.Join(servicesToStart, ", ")).Info("Starting required containers")
 
 	// Try docker compose first (newer syntax), fall back to docker-compose
-	var cmd *exec.Cmd
-	args := append([]string{"compose", "up", "-d"}, servicesToStart...)
+	var output []byte
 
-	if _, err := exec.LookPath("docker compose"); err == nil {
-		cmd = exec.Command("docker", args...)
-	} else if _, err := exec.LookPath("docker-compose"); err == nil {
-		cmd = exec.Command("docker-compose", args...)
-	} else {
-		return fmt.Errorf("neither 'docker compose' nor 'docker-compose' found in PATH")
+	// Check for docker compose (as a subcommand of docker)
+	args := append([]string{"compose", "up", "-d"}, servicesToStart...)
+	output, err = executor.RunCommandWithDir(cfg.ProjectDir, "docker", args...)
+	if err != nil {
+		// Try docker-compose as fallback
+		if _, lookErr := executor.LookPath("docker-compose"); lookErr == nil {
+			composeArgs := append([]string{"up", "-d"}, servicesToStart...)
+			output, err = executor.RunCommandWithDir(cfg.ProjectDir, "docker-compose", composeArgs...)
+		}
 	}
 
-	// Set working directory to project root
-	cmd.Dir = "/media/milosvasic/DATA4TB/Projects/HelixAgent"
-
-	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to start containers: %w, output: %s", err, string(output))
 	}
@@ -85,10 +163,13 @@ func ensureRequiredContainers(logger *logrus.Logger) error {
 	logger.Info("Waiting for containers to be healthy...")
 
 	// Wait for containers to be ready (simple approach - wait a bit)
-	time.Sleep(15 * time.Second)
+	// In tests, this can be mocked to skip the sleep
+	if cfg.Executor != nil {
+		time.Sleep(15 * time.Second)
+	}
 
 	// Verify critical services are running
-	if err := verifyServicesHealth(requiredServices, logger); err != nil {
+	if err := verifyServicesHealthWithConfig(cfg.RequiredServices, logger, cfg); err != nil {
 		logger.WithError(err).Warn("Some services may not be fully ready, but continuing")
 	}
 
@@ -98,21 +179,28 @@ func ensureRequiredContainers(logger *logrus.Logger) error {
 
 // getRunningServices checks which docker-compose services are currently running
 func getRunningServices() (map[string]bool, error) {
-	running := make(map[string]bool)
+	return getRunningServicesWithConfig(containerConfig)
+}
 
-	// Check docker compose ps
-	var cmd *exec.Cmd
-	if _, err := exec.LookPath("docker compose"); err == nil {
-		cmd = exec.Command("docker", "compose", "ps", "--services", "--filter", "status=running")
-	} else if _, err := exec.LookPath("docker-compose"); err == nil {
-		cmd = exec.Command("docker-compose", "ps", "--services", "--filter", "status=running")
-	} else {
+// getRunningServicesWithConfig checks which docker-compose services are currently running using provided config
+func getRunningServicesWithConfig(cfg *ContainerConfig) (map[string]bool, error) {
+	running := make(map[string]bool)
+	executor := cfg.Executor
+
+	// Check if docker is available
+	if _, err := executor.LookPath("docker"); err != nil {
 		return running, fmt.Errorf("docker compose not found")
 	}
 
-	cmd.Dir = "/media/milosvasic/DATA4TB/Projects/HelixAgent"
+	// Try docker compose first
+	output, err := executor.RunCommandWithDir(cfg.ProjectDir, "docker", "compose", "ps", "--services", "--filter", "status=running")
+	if err != nil {
+		// Try docker-compose as fallback
+		if _, lookErr := executor.LookPath("docker-compose"); lookErr == nil {
+			output, err = executor.RunCommandWithDir(cfg.ProjectDir, "docker-compose", "ps", "--services", "--filter", "status=running")
+		}
+	}
 
-	output, err := cmd.Output()
 	if err != nil {
 		return running, err
 	}
@@ -130,24 +218,41 @@ func getRunningServices() (map[string]bool, error) {
 
 // verifyServicesHealth performs basic health checks on critical services
 func verifyServicesHealth(services []string, logger *logrus.Logger) error {
+	return verifyServicesHealthWithConfig(services, logger, containerConfig)
+}
+
+// PostgresHealthChecker is a function type for checking Postgres health (allows mocking)
+type PostgresHealthChecker func() error
+
+// RedisHealthChecker is a function type for checking Redis health (allows mocking)
+type RedisHealthChecker func() error
+
+// Default health checkers (can be overridden for testing)
+var (
+	postgresHealthChecker PostgresHealthChecker = checkPostgresHealth
+	redisHealthChecker    RedisHealthChecker    = checkRedisHealth
+)
+
+// verifyServicesHealthWithConfig performs basic health checks on critical services using provided config
+func verifyServicesHealthWithConfig(services []string, logger *logrus.Logger, cfg *ContainerConfig) error {
 	var errors []string
 
 	for _, service := range services {
 		switch service {
 		case "postgres":
-			if err := checkPostgresHealth(); err != nil {
+			if err := postgresHealthChecker(); err != nil {
 				errors = append(errors, fmt.Sprintf("postgres: %v", err))
 			}
 		case "redis":
-			if err := checkRedisHealth(); err != nil {
+			if err := redisHealthChecker(); err != nil {
 				errors = append(errors, fmt.Sprintf("redis: %v", err))
 			}
 		case "cognee":
-			if err := checkCogneeHealth(); err != nil {
+			if err := checkCogneeHealthWithConfig(cfg); err != nil {
 				errors = append(errors, fmt.Sprintf("cognee: %v", err))
 			}
 		case "chromadb":
-			if err := checkChromaDBHealth(); err != nil {
+			if err := checkChromaDBHealthWithConfig(cfg); err != nil {
 				errors = append(errors, fmt.Sprintf("chromadb: %v", err))
 			}
 		default:
@@ -177,65 +282,91 @@ func checkRedisHealth() error {
 
 // checkCogneeHealth verifies Cognee API availability
 func checkCogneeHealth() error {
-	// Try to connect to Cognee health endpoint
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("http://cognee:8000/health")
-	if err != nil {
+	return checkCogneeHealthWithConfig(containerConfig)
+}
+
+// checkCogneeHealthWithConfig verifies Cognee API availability using provided config
+func checkCogneeHealthWithConfig(cfg *ContainerConfig) error {
+	if err := cfg.HealthChecker.CheckHealth(cfg.CogneeURL); err != nil {
 		return fmt.Errorf("cannot connect to Cognee: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Cognee health check failed with status: %d", resp.StatusCode)
-	}
-
 	return nil
 }
 
 // checkChromaDBHealth verifies ChromaDB availability
 func checkChromaDBHealth() error {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("http://chromadb:8000/api/v1/heartbeat")
-	if err != nil {
+	return checkChromaDBHealthWithConfig(containerConfig)
+}
+
+// checkChromaDBHealthWithConfig verifies ChromaDB availability using provided config
+func checkChromaDBHealthWithConfig(cfg *ContainerConfig) error {
+	if err := cfg.HealthChecker.CheckHealth(cfg.ChromaDBURL); err != nil {
 		return fmt.Errorf("cannot connect to ChromaDB: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("ChromaDB health check failed with status: %d", resp.StatusCode)
-	}
-
 	return nil
 }
 
-func main() {
-	flag.Parse()
+// AppConfig holds application configuration for testing
+type AppConfig struct {
+	ShowHelp        bool
+	ShowVersion     bool
+	AutoStartDocker bool
+	ServerHost      string
+	ServerPort      string
+	Logger          *logrus.Logger
+	ShutdownSignal  chan os.Signal
+}
 
-	if *help {
-		showHelp()
-		return
-	}
-
-	if *version {
-		showVersion()
-		return
-	}
-
-	cfg := &config.Config{
-		Server: config.ServerConfig{
-			Host: "0.0.0.0",
-			Port: "8080",
-		},
-	}
-
+// DefaultAppConfig returns the default application configuration
+func DefaultAppConfig() *AppConfig {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
 
+	return &AppConfig{
+		ShowHelp:        false,
+		ShowVersion:     false,
+		AutoStartDocker: true,
+		ServerHost:      "0.0.0.0",
+		ServerPort:      "8080",
+		Logger:          logger,
+		ShutdownSignal:  nil,
+	}
+}
+
+// run executes the main application logic with the given configuration
+// Returns an error if the application fails to start
+func run(appCfg *AppConfig) error {
+	if appCfg.ShowHelp {
+		showHelp()
+		return nil
+	}
+
+	if appCfg.ShowVersion {
+		showVersion()
+		return nil
+	}
+
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Host: appCfg.ServerHost,
+			Port: appCfg.ServerPort,
+		},
+	}
+
+	logger := appCfg.Logger
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetLevel(logrus.InfoLevel)
+		logger.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	}
+
 	// Auto-start required Docker containers if enabled
-	if *autoStartDocker {
+	if appCfg.AutoStartDocker {
 		logger.Info("Checking and starting required Docker containers...")
 		if err := ensureRequiredContainers(logger); err != nil {
 			logger.WithError(err).Warn("Failed to start some containers, continuing with application startup")
@@ -253,6 +384,9 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	// Channel for server errors
+	serverErr := make(chan error, 1)
+
 	go func() {
 		logger.WithFields(logrus.Fields{
 			"host": cfg.Server.Host,
@@ -260,26 +394,52 @@ func main() {
 		}).Info("Starting SuperAgent server with Models.dev integration")
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.WithError(err).Fatal("Failed to start server")
+			serverErr <- err
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	// Use provided shutdown signal or create one
+	quit := appCfg.ShutdownSignal
+	if quit == nil {
+		quit = make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	}
+
+	// Wait for shutdown signal or server error
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("server failed to start: %w", err)
+	case <-quit:
+		// Continue to shutdown
+	}
 
 	logger.Info("Shutting down server...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
 	// Use r variable to avoid unused import
 	_ = r
-	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.WithError(err).Error("Server forced to shutdown")
-	} else {
-		logger.Info("Server shutdown complete")
+		return fmt.Errorf("server shutdown error: %w", err)
+	}
+
+	logger.Info("Server shutdown complete")
+	return nil
+}
+
+func main() {
+	flag.Parse()
+
+	appCfg := DefaultAppConfig()
+	appCfg.ShowHelp = *help
+	appCfg.ShowVersion = *version
+	appCfg.AutoStartDocker = *autoStartDocker
+
+	if err := run(appCfg); err != nil {
+		appCfg.Logger.WithError(err).Fatal("Application failed")
 	}
 }
 

@@ -794,3 +794,127 @@ func TestBytesToFloat64(t *testing.T) {
 		assert.InDelta(t, 2.5, result, 0.0001)
 	})
 }
+
+// Tests for OpenAI embedding generation
+func TestEmbeddingManager_GenerateOpenAIEmbedding(t *testing.T) {
+	log := newEmbeddingTestLogger()
+
+	t.Run("returns error when API key not configured", func(t *testing.T) {
+		manager := NewEmbeddingManager(nil, nil, log)
+		manager.openAIKey = "" // Ensure no API key
+
+		embedding, tokens, err := manager.generateOpenAIEmbedding(context.Background(), "test text", "text-embedding-ada-002")
+
+		assert.Error(t, err)
+		assert.Nil(t, embedding)
+		assert.Equal(t, 0, tokens)
+		assert.Contains(t, err.Error(), "OpenAI API key not configured")
+	})
+}
+
+// Tests for batch embedding generation
+func TestEmbeddingManager_GenerateOpenAIBatchEmbedding(t *testing.T) {
+	log := newEmbeddingTestLogger()
+
+	t.Run("returns error when API key not configured", func(t *testing.T) {
+		manager := NewEmbeddingManager(nil, nil, log)
+		manager.openAIKey = "" // Ensure no API key
+
+		texts := []string{"text1", "text2"}
+		embeddings, err := manager.generateOpenAIBatchEmbedding(context.Background(), texts, "text-embedding-ada-002")
+
+		assert.Error(t, err)
+		assert.Nil(t, embeddings)
+		assert.Contains(t, err.Error(), "OpenAI API key not configured")
+	})
+}
+
+// Tests for local embedding generation
+func TestEmbeddingManager_GenerateLocalEmbedding(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	t.Run("generates deterministic embeddings", func(t *testing.T) {
+		embedding1 := manager.generateLocalEmbedding("test text", 1536)
+		embedding2 := manager.generateLocalEmbedding("test text", 1536)
+
+		assert.Equal(t, len(embedding1), len(embedding2))
+		for i := range embedding1 {
+			assert.Equal(t, embedding1[i], embedding2[i])
+		}
+	})
+
+	t.Run("generates different embeddings for different text", func(t *testing.T) {
+		embedding1 := manager.generateLocalEmbedding("text1", 1536)
+		embedding2 := manager.generateLocalEmbedding("text2", 1536)
+
+		different := false
+		for i := range embedding1 {
+			if embedding1[i] != embedding2[i] {
+				different = true
+				break
+			}
+		}
+		assert.True(t, different)
+	})
+
+	t.Run("respects dimension parameter", func(t *testing.T) {
+		embedding384 := manager.generateLocalEmbedding("test", 384)
+		embedding1536 := manager.generateLocalEmbedding("test", 1536)
+		embedding3072 := manager.generateLocalEmbedding("test", 3072)
+
+		assert.Equal(t, 384, len(embedding384))
+		assert.Equal(t, 1536, len(embedding1536))
+		assert.Equal(t, 3072, len(embedding3072))
+	})
+
+	t.Run("generates normalized embeddings", func(t *testing.T) {
+		embedding := manager.generateLocalEmbedding("test normalization", 1536)
+
+		// Calculate norm
+		var sumSquares float64
+		for _, v := range embedding {
+			sumSquares += v * v
+		}
+		norm := math.Sqrt(sumSquares)
+
+		// Should be close to 1.0 (unit length)
+		assert.InDelta(t, 1.0, norm, 0.001)
+	})
+}
+
+// Tests for vector normalization
+func TestEmbeddingManager_NormalizeVector(t *testing.T) {
+	log := newEmbeddingTestLogger()
+	manager := NewEmbeddingManager(nil, nil, log)
+
+	t.Run("normalizes non-zero vector", func(t *testing.T) {
+		vec := []float64{3.0, 4.0} // 3-4-5 triangle
+		normalized := manager.normalizeVector(vec)
+
+		assert.InDelta(t, 0.6, normalized[0], 0.001) // 3/5
+		assert.InDelta(t, 0.8, normalized[1], 0.001) // 4/5
+	})
+
+	t.Run("handles zero vector", func(t *testing.T) {
+		vec := []float64{0.0, 0.0, 0.0}
+		normalized := manager.normalizeVector(vec)
+
+		assert.Equal(t, 0.0, normalized[0])
+		assert.Equal(t, 0.0, normalized[1])
+		assert.Equal(t, 0.0, normalized[2])
+	})
+
+	t.Run("normalizes to unit length", func(t *testing.T) {
+		vec := []float64{1.0, 2.0, 3.0, 4.0}
+		normalized := manager.normalizeVector(vec)
+
+		var sumSquares float64
+		for _, v := range normalized {
+			sumSquares += v * v
+		}
+		norm := math.Sqrt(sumSquares)
+
+		assert.InDelta(t, 1.0, norm, 0.0001)
+	})
+}

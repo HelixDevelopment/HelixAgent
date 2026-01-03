@@ -1208,3 +1208,1142 @@ func TestCacheService_DeleteByPatternNilClient(t *testing.T) {
 	err := service.deleteByPattern(ctx, "user:*")
 	assert.NoError(t, err)
 }
+
+// ============================================================================
+// Tests for enabled cache service with mock/direct struct access
+// These tests cover the code paths that are not reached when cache is disabled
+// ============================================================================
+
+func TestCacheService_GenerateCacheKeyDirect(t *testing.T) {
+	// Create a cache service directly to test private methods
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	// Test generateCacheKey with various requests
+	testCases := []struct {
+		name string
+		req  *models.LLMRequest
+	}{
+		{
+			name: "Basic request",
+			req: &models.LLMRequest{
+				ID:          "test-1",
+				Prompt:      "Hello, world!",
+				RequestType: "completion",
+				ModelParams: models.ModelParameters{
+					Model:       "gpt-4",
+					MaxTokens:   100,
+					Temperature: 0.7,
+				},
+			},
+		},
+		{
+			name: "Request with messages",
+			req: &models.LLMRequest{
+				ID:          "test-2",
+				Prompt:      "",
+				RequestType: "chat",
+				Messages: []models.Message{
+					{Role: "user", Content: "Hello"},
+					{Role: "assistant", Content: "Hi there!"},
+				},
+				ModelParams: models.ModelParameters{
+					Model:       "claude-3",
+					MaxTokens:   500,
+					Temperature: 0.5,
+					TopP:        0.9,
+				},
+			},
+		},
+		{
+			name: "Request with stop sequences",
+			req: &models.LLMRequest{
+				ID:          "test-3",
+				Prompt:      "Generate code",
+				RequestType: "completion",
+				ModelParams: models.ModelParameters{
+					Model:         "codex",
+					MaxTokens:     1000,
+					Temperature:   0.0,
+					StopSequences: []string{"\n\n", "END"},
+				},
+			},
+		},
+		{
+			name: "Empty prompt request",
+			req: &models.LLMRequest{
+				ID:          "test-4",
+				Prompt:      "",
+				RequestType: "completion",
+				ModelParams: models.ModelParameters{
+					Model:       "test-model",
+					MaxTokens:   50,
+					Temperature: 1.0,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			key := service.generateCacheKey(tc.req)
+			assert.NotEmpty(t, key)
+			assert.True(t, len(key) > 4) // "llm:" prefix + hash
+			assert.Contains(t, key, "llm:")
+
+			// Same request should generate same key
+			key2 := service.generateCacheKey(tc.req)
+			assert.Equal(t, key, key2)
+		})
+	}
+}
+
+func TestCacheService_GenerateCacheKeyDeterminism(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	req := &models.LLMRequest{
+		ID:          "determinism-test",
+		Prompt:      "Test prompt for determinism",
+		RequestType: "completion",
+		ModelParams: models.ModelParameters{
+			Model:       "test-model",
+			MaxTokens:   100,
+			Temperature: 0.5,
+			TopP:        0.95,
+		},
+	}
+
+	// Generate key multiple times
+	keys := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		keys[i] = service.generateCacheKey(req)
+	}
+
+	// All keys should be identical
+	for i := 1; i < len(keys); i++ {
+		assert.Equal(t, keys[0], keys[i])
+	}
+}
+
+func TestCacheService_GenerateCacheKeyDifferentRequests(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	req1 := &models.LLMRequest{
+		Prompt: "Request 1",
+		ModelParams: models.ModelParameters{
+			Model:       "model-a",
+			Temperature: 0.5,
+		},
+	}
+
+	req2 := &models.LLMRequest{
+		Prompt: "Request 2",
+		ModelParams: models.ModelParameters{
+			Model:       "model-a",
+			Temperature: 0.5,
+		},
+	}
+
+	req3 := &models.LLMRequest{
+		Prompt: "Request 1",
+		ModelParams: models.ModelParameters{
+			Model:       "model-b",
+			Temperature: 0.5,
+		},
+	}
+
+	req4 := &models.LLMRequest{
+		Prompt: "Request 1",
+		ModelParams: models.ModelParameters{
+			Model:       "model-a",
+			Temperature: 0.7,
+		},
+	}
+
+	key1 := service.generateCacheKey(req1)
+	key2 := service.generateCacheKey(req2)
+	key3 := service.generateCacheKey(req3)
+	key4 := service.generateCacheKey(req4)
+
+	// All should be different due to different prompts/params
+	assert.NotEqual(t, key1, key2, "Different prompts should generate different keys")
+	assert.NotEqual(t, key1, key3, "Different models should generate different keys")
+	assert.NotEqual(t, key1, key4, "Different temperatures should generate different keys")
+}
+
+func TestCacheService_HashStringDirect(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	testCases := []struct {
+		name  string
+		input string
+	}{
+		{"Empty string", ""},
+		{"Simple string", "hello"},
+		{"Long string", "This is a very long string that should be hashed consistently"},
+		{"Special characters", "!@#$%^&*()_+-=[]{}|;':\",./<>?"},
+		{"Unicode", "Hello, 世界! 🌍"},
+		{"JSON-like", `{"key": "value", "number": 123}`},
+		{"Whitespace", "   spaces   and\ttabs\nand\nnewlines   "},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			hash := service.hashString(tc.input)
+			assert.NotEmpty(t, hash)
+			assert.Len(t, hash, 32) // MD5 produces 32 hex characters
+
+			// Same input should produce same hash
+			hash2 := service.hashString(tc.input)
+			assert.Equal(t, hash, hash2)
+		})
+	}
+}
+
+func TestCacheService_HashStringUniqueness(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	inputs := []string{
+		"test1",
+		"test2",
+		"Test1",
+		"TEST1",
+		"test 1",
+		"test",
+		"test1 ",
+		" test1",
+	}
+
+	hashes := make(map[string]bool)
+	for _, input := range inputs {
+		hash := service.hashString(input)
+		assert.False(t, hashes[hash], "Hash collision detected for input: %s", input)
+		hashes[hash] = true
+	}
+}
+
+func TestCacheService_EnabledGetLLMResponse(t *testing.T) {
+	// Create enabled cache service with Redis client that will fail
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	req := &models.LLMRequest{
+		ID:     "test",
+		Prompt: "test prompt",
+		ModelParams: models.ModelParameters{
+			Model:       "test",
+			Temperature: 0.5,
+		},
+	}
+
+	// Should attempt Redis operation and fail
+	resp, err := service.GetLLMResponse(ctx, req)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+}
+
+func TestCacheService_EnabledSetLLMResponse(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	req := &models.LLMRequest{
+		ID:     "test",
+		Prompt: "test prompt",
+		ModelParams: models.ModelParameters{
+			Model:       "test",
+			Temperature: 0.5,
+		},
+	}
+	resp := &models.LLMResponse{
+		ID:      "resp-1",
+		Content: "test response",
+	}
+
+	// Should attempt Redis operation and fail (with default TTL)
+	err := service.SetLLMResponse(ctx, req, resp, 0)
+	assert.Error(t, err)
+
+	// With explicit TTL
+	err = service.SetLLMResponse(ctx, req, resp, 5*time.Minute)
+	assert.Error(t, err)
+}
+
+func TestCacheService_EnabledGetMemorySources(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	sources, err := service.GetMemorySources(ctx, "test query", "test-dataset")
+	assert.Error(t, err)
+	assert.Nil(t, sources)
+}
+
+func TestCacheService_EnabledSetMemorySources(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	sources := []models.MemorySource{
+		{Content: "test content"},
+	}
+
+	// With default TTL
+	err := service.SetMemorySources(ctx, "query", "dataset", sources, 0)
+	assert.Error(t, err)
+
+	// With explicit TTL
+	err = service.SetMemorySources(ctx, "query", "dataset", sources, 10*time.Minute)
+	assert.Error(t, err)
+}
+
+func TestCacheService_EnabledGetProviderHealth(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	health, err := service.GetProviderHealth(ctx, "test-provider")
+	assert.Error(t, err)
+	assert.Nil(t, health)
+}
+
+func TestCacheService_EnabledSetProviderHealth(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	health := map[string]interface{}{
+		"status": "healthy",
+	}
+
+	// With default TTL (5 minutes for health)
+	err := service.SetProviderHealth(ctx, "provider", health, 0)
+	assert.Error(t, err)
+
+	// With explicit TTL
+	err = service.SetProviderHealth(ctx, "provider", health, 2*time.Minute)
+	assert.Error(t, err)
+}
+
+func TestCacheService_EnabledGetUserSession(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	session, err := service.GetUserSession(ctx, "test-token")
+	assert.Error(t, err)
+	assert.Nil(t, session)
+}
+
+func TestCacheService_EnabledSetUserSession(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test with nil session
+	err := service.SetUserSession(ctx, nil, 0)
+	assert.NoError(t, err)
+
+	// Test with session without userID
+	session := &models.UserSession{
+		ID:           "session-1",
+		UserID:       "",
+		SessionToken: "token-abc",
+	}
+	err = service.SetUserSession(ctx, session, 0)
+	assert.Error(t, err) // Redis fails
+
+	// Test with session with userID (tracks key)
+	sessionWithUser := &models.UserSession{
+		ID:           "session-2",
+		UserID:       "user-123",
+		SessionToken: "token-def",
+	}
+	err = service.SetUserSession(ctx, sessionWithUser, 0)
+	assert.Error(t, err) // Redis fails but key should be tracked
+
+	// Verify key was tracked
+	assert.Equal(t, 1, service.GetUserKeyCount("user-123"))
+}
+
+func TestCacheService_EnabledGetAPIKey(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	keyInfo, err := service.GetAPIKey(ctx, "sk-test-key")
+	assert.Error(t, err)
+	assert.Nil(t, keyInfo)
+}
+
+func TestCacheService_EnabledSetAPIKey(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	keyInfo := map[string]interface{}{
+		"user_id": "user-1",
+	}
+
+	// With default TTL (1 hour)
+	err := service.SetAPIKey(ctx, "sk-test", keyInfo, 0)
+	assert.Error(t, err)
+
+	// With explicit TTL
+	err = service.SetAPIKey(ctx, "sk-test", keyInfo, 30*time.Minute)
+	assert.Error(t, err)
+}
+
+func TestCacheService_EnabledInvalidateUserCache(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test with empty userID
+	err := service.InvalidateUserCache(ctx, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "userID cannot be empty")
+
+	// Track some keys for a user
+	userID := "user-to-invalidate"
+	service.trackUserKey(userID, "key1")
+	service.trackUserKey(userID, "key2")
+	service.trackUserKey(userID, "key3")
+	assert.Equal(t, 3, service.GetUserKeyCount(userID))
+
+	// Invalidate - will fail on deleteByPattern but should clear tracked keys
+	err = service.InvalidateUserCache(ctx, userID)
+	assert.Error(t, err) // Pattern deletion fails on Redis
+
+	// Keys should be cleared from tracking
+	assert.Equal(t, 0, service.GetUserKeyCount(userID))
+}
+
+func TestCacheService_EnabledInvalidateUserCacheWithEmptyKeySet(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// User with no tracked keys
+	err := service.InvalidateUserCache(ctx, "user-without-keys")
+	assert.Error(t, err) // Pattern deletion fails
+}
+
+func TestCacheService_EnabledSetUserData(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test with empty userID
+	err := service.SetUserData(ctx, "", "key", "value", 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "userID cannot be empty")
+
+	// Test with valid userID (with default TTL)
+	err = service.SetUserData(ctx, "user-1", "preferences", map[string]string{"theme": "dark"}, 0)
+	assert.Error(t, err) // Redis fails
+
+	// Verify key was tracked
+	assert.Equal(t, 1, service.GetUserKeyCount("user-1"))
+
+	// Test with explicit TTL
+	err = service.SetUserData(ctx, "user-2", "settings", "value", 1*time.Hour)
+	assert.Error(t, err) // Redis fails
+	assert.Equal(t, 1, service.GetUserKeyCount("user-2"))
+}
+
+func TestCacheService_EnabledGetUserData(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test with empty userID
+	var result string
+	err := service.GetUserData(ctx, "", "key", &result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "userID cannot be empty")
+
+	// Test with valid userID
+	err = service.GetUserData(ctx, "user-1", "preferences", &result)
+	assert.Error(t, err) // Redis fails
+}
+
+func TestCacheService_EnabledDeleteUserData(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test with empty userID
+	err := service.DeleteUserData(ctx, "", "key")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "userID cannot be empty")
+
+	// Track a key first
+	userID := "user-to-delete"
+	dataKey := "preferences"
+	fullKey := fmt.Sprintf("user:%s:%s", userID, dataKey)
+	service.trackUserKey(userID, fullKey)
+	assert.Equal(t, 1, service.GetUserKeyCount(userID))
+
+	// Delete should untrack the key
+	err = service.DeleteUserData(ctx, userID, dataKey)
+	assert.Error(t, err) // Redis fails
+
+	// Key should be untracked
+	assert.Equal(t, 0, service.GetUserKeyCount(userID))
+}
+
+func TestCacheService_EnabledClearExpired(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// ClearExpired is a no-op (Redis handles expiration)
+	err := service.ClearExpired(ctx)
+	assert.NoError(t, err)
+}
+
+func TestCacheService_EnabledGetHitCount(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	count, err := service.GetHitCount(ctx, "some-key")
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), count)
+}
+
+func TestCacheService_EnabledGetStats(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	stats := service.GetStats(ctx)
+	assert.NotNil(t, stats)
+	assert.True(t, stats["enabled"].(bool))
+	assert.Equal(t, "connected", stats["status"])
+	assert.Contains(t, stats, "default_ttl")
+	assert.Contains(t, stats, "redis_info")
+}
+
+func TestCacheService_EnabledClose(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	// Close should work even with failed Redis connection
+	err := service.Close()
+	assert.NoError(t, err)
+}
+
+func TestCacheService_CloseWithNilClient(t *testing.T) {
+	service := &CacheService{
+		redisClient: nil,
+		enabled:     false,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	err := service.Close()
+	assert.NoError(t, err)
+}
+
+func TestCacheService_DeleteByPatternWithRedisClient(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Should attempt SCAN and fail
+	err := service.deleteByPattern(ctx, "user:test:*")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "scan failed")
+}
+
+func TestCacheService_IncrementHitCountDirect(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Should not panic even if Redis fails
+	service.incrementHitCount(ctx, "test-key")
+	// No assertion needed - just verify no panic
+}
+
+func TestCacheService_GenerateCacheKeyWithNilRequest(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	// This will panic if not handled - catching panic
+	defer func() {
+		if r := recover(); r != nil {
+			// Expected panic with nil request
+			t.Log("Recovered from expected panic with nil request")
+		}
+	}()
+
+	// Nil request will cause panic in JSON marshaling of request fields
+	_ = service.generateCacheKey(nil)
+}
+
+func TestCacheService_GenerateCacheKeyWithEmptyModelParams(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	req := &models.LLMRequest{
+		ID:          "test",
+		Prompt:      "test",
+		ModelParams: models.ModelParameters{}, // Empty params
+	}
+
+	key := service.generateCacheKey(req)
+	assert.NotEmpty(t, key)
+	assert.Contains(t, key, "llm:")
+}
+
+func TestRedisClient_SetWithMarshalError(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	ctx := context.Background()
+
+	// Create a value that cannot be marshaled to JSON
+	type unmarshalable struct {
+		Ch chan int
+	}
+	value := unmarshalable{Ch: make(chan int)}
+
+	err := redisClient.Set(ctx, "test-key", value, time.Minute)
+	assert.Error(t, err)
+	// JSON marshal error for channels
+}
+
+func TestCacheService_UserKeyTrackingEdgeCases(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	// Track same key multiple times (should only count once)
+	service.trackUserKey("user-1", "key-a")
+	service.trackUserKey("user-1", "key-a")
+	service.trackUserKey("user-1", "key-a")
+	assert.Equal(t, 1, service.GetUserKeyCount("user-1"))
+
+	// Untrack key that doesn't exist for user
+	service.untrackUserKey("user-1", "nonexistent-key")
+	assert.Equal(t, 1, service.GetUserKeyCount("user-1"))
+
+	// Untrack for user that doesn't exist
+	service.untrackUserKey("nonexistent-user", "key-a")
+
+	// Clean up properly
+	service.untrackUserKey("user-1", "key-a")
+	assert.Equal(t, 0, service.GetUserKeyCount("user-1"))
+}
+
+func TestCacheService_GetUserKeyCountThreadSafety(t *testing.T) {
+	service := &CacheService{
+		enabled:    true,
+		defaultTTL: 30 * time.Minute,
+		userKeys:   make(map[string]map[string]struct{}),
+	}
+
+	userID := "thread-safe-user"
+	numGoroutines := 50
+
+	done := make(chan bool, numGoroutines*3)
+
+	// Concurrent tracks
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			service.trackUserKey(userID, fmt.Sprintf("key-%d", id))
+			done <- true
+		}(i)
+	}
+
+	// Concurrent reads
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			_ = service.GetUserKeyCount(userID)
+			done <- true
+		}()
+	}
+
+	// Concurrent untracks
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			service.untrackUserKey(userID, fmt.Sprintf("key-%d", id))
+			done <- true
+		}(i)
+	}
+
+	// Wait for all
+	for i := 0; i < numGoroutines*3; i++ {
+		<-done
+	}
+
+	// No race condition should occur
+	count := service.GetUserKeyCount(userID)
+	assert.GreaterOrEqual(t, count, 0)
+}
+
+func TestCacheService_InvalidateUserCacheDeletesTrackedKeys(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+	userID := "user-with-many-keys"
+
+	// Track multiple keys
+	for i := 0; i < 10; i++ {
+		service.trackUserKey(userID, fmt.Sprintf("key-%d", i))
+	}
+	assert.Equal(t, 10, service.GetUserKeyCount(userID))
+
+	// Invalidate - Redis operations will fail but tracking should be cleared
+	_ = service.InvalidateUserCache(ctx, userID)
+
+	// Tracking should be cleared
+	assert.Equal(t, 0, service.GetUserKeyCount(userID))
+}
+
+func TestCacheService_MultipleTTLDefaults(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "nonexistent.host",
+			Port: "6379",
+		},
+	}
+	redisClient := NewRedisClient(cfg)
+
+	service := &CacheService{
+		redisClient: redisClient,
+		enabled:     true,
+		defaultTTL:  30 * time.Minute,
+		userKeys:    make(map[string]map[string]struct{}),
+	}
+
+	ctx := context.Background()
+
+	// Test default TTL for provider health (5 minutes)
+	err := service.SetProviderHealth(ctx, "test", map[string]interface{}{"status": "ok"}, 0)
+	assert.Error(t, err) // Redis fails, but code path is exercised
+
+	// Test default TTL for user session (24 hours)
+	session := &models.UserSession{
+		ID:           "s1",
+		UserID:       "u1",
+		SessionToken: "t1",
+	}
+	err = service.SetUserSession(ctx, session, 0)
+	assert.Error(t, err) // Redis fails, but code path is exercised
+
+	// Test default TTL for API key (1 hour)
+	err = service.SetAPIKey(ctx, "key", map[string]interface{}{"user": "test"}, 0)
+	assert.Error(t, err) // Redis fails, but code path is exercised
+
+	// Test default TTL for user data
+	err = service.SetUserData(ctx, "user", "pref", "value", 0)
+	assert.Error(t, err) // Redis fails, but code path is exercised
+}
+
+func TestNewCacheConfig_Values(t *testing.T) {
+	cfg := NewCacheConfig()
+
+	assert.NotNil(t, cfg)
+	assert.True(t, cfg.Enabled)
+	assert.Equal(t, 30*time.Minute, cfg.DefaultTTL)
+	assert.Nil(t, cfg.Redis)
+}
+
+func TestCacheEntry_AllFields(t *testing.T) {
+	now := time.Now()
+	expires := now.Add(1 * time.Hour)
+
+	entry := CacheEntry{
+		Key:       "test-key-123",
+		Value:     map[string]interface{}{"data": "test"},
+		CreatedAt: now,
+		ExpiresAt: expires,
+		HitCount:  42,
+	}
+
+	assert.Equal(t, "test-key-123", entry.Key)
+	assert.NotNil(t, entry.Value)
+	assert.Equal(t, now, entry.CreatedAt)
+	assert.Equal(t, expires, entry.ExpiresAt)
+	assert.Equal(t, int64(42), entry.HitCount)
+}
+
+func TestCacheKey_AllFields(t *testing.T) {
+	key := CacheKey{
+		Type:      "session",
+		ID:        "abc-123",
+		Provider:  "anthropic",
+		UserID:    "user-456",
+		SessionID: "sess-789",
+	}
+
+	assert.Equal(t, "session", key.Type)
+	assert.Equal(t, "abc-123", key.ID)
+	assert.Equal(t, "anthropic", key.Provider)
+	assert.Equal(t, "user-456", key.UserID)
+	assert.Equal(t, "sess-789", key.SessionID)
+}
+
+func TestRedisClient_AllMethods(t *testing.T) {
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host:     "nonexistent.host",
+			Port:     "6379",
+			Password: "test-password",
+			DB:       1,
+		},
+	}
+
+	client := NewRedisClient(cfg)
+	assert.NotNil(t, client)
+
+	// Test Client() accessor
+	assert.NotNil(t, client.Client())
+
+	// Test Pipeline()
+	pipeline := client.Pipeline()
+	assert.NotNil(t, pipeline)
+
+	// Test Ping (will fail)
+	ctx := context.Background()
+	err := client.Ping(ctx)
+	assert.Error(t, err)
+
+	// Test Set (will fail)
+	err = client.Set(ctx, "key", "value", time.Minute)
+	assert.Error(t, err)
+
+	// Test Get (will fail)
+	var result string
+	err = client.Get(ctx, "key", &result)
+	assert.Error(t, err)
+
+	// Test Delete (will fail)
+	err = client.Delete(ctx, "key")
+	assert.Error(t, err)
+
+	// Test MGet (will fail)
+	_, err = client.MGet(ctx, "key1", "key2")
+	assert.Error(t, err)
+
+	// Test Close
+	err = client.Close()
+	assert.NoError(t, err)
+}

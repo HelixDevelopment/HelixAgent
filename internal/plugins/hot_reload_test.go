@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/superagent/superagent/internal/models"
 )
@@ -463,3 +464,410 @@ func (m *mockPluginForHotReload) CompleteStream(ctx context.Context, req *models
 	return nil, nil
 }
 func (m *mockPluginForHotReload) SetSecurityContext(ctx *PluginSecurityContext) error { return nil }
+
+// =====================================================
+// ADDITIONAL HOT RELOAD TESTS FOR COVERAGE
+// =====================================================
+
+func TestHotReloadManager_Start_WithRealWatcher(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	// Create a manager with a real watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Skipf("Could not create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(tmpDir)
+	if err != nil {
+		t.Skipf("Could not add path to watcher: %v", err)
+	}
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		watcher:     watcher,
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	// Start should return nil
+	err = manager.Start(ctx)
+	assert.NoError(t, err)
+
+	// Wait for context to timeout
+	<-ctx.Done()
+}
+
+func TestHotReloadManager_Stop_WithRealWatcher(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Skipf("Could not create watcher: %v", err)
+	}
+
+	err = watcher.Add(tmpDir)
+	if err != nil {
+		watcher.Close()
+		t.Skipf("Could not add path to watcher: %v", err)
+	}
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		watcher:     watcher,
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	// Stop should close watcher and channel
+	err = manager.Stop()
+	assert.NoError(t, err)
+
+	// Verify stopChan is closed
+	select {
+	case <-manager.stopChan:
+		// Success
+	default:
+		t.Fatal("stopChan should be closed")
+	}
+}
+
+func TestHotReloadManager_LoadExistingPlugins(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	t.Run("empty directory", func(t *testing.T) {
+		err := manager.loadExistingPlugins()
+		assert.NoError(t, err)
+	})
+
+	t.Run("directory with non-plugin files", func(t *testing.T) {
+		// Create a text file
+		err := os.WriteFile(filepath.Join(tmpDir, "readme.txt"), []byte("test"), 0644)
+		assert.NoError(t, err)
+
+		err = manager.loadExistingPlugins()
+		assert.NoError(t, err)
+	})
+
+	t.Run("directory with so file", func(t *testing.T) {
+		// Create a .so file (will fail to load but covers the path)
+		soFile := filepath.Join(tmpDir, "test.so")
+		err := os.WriteFile(soFile, []byte("fake plugin"), 0644)
+		assert.NoError(t, err)
+
+		err = manager.loadExistingPlugins()
+		// No error returned even if loading fails
+		assert.NoError(t, err)
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		manager2 := &HotReloadManager{
+			registry:    registry,
+			loader:      NewLoader(registry),
+			pluginPaths: []string{"/non/existent/path"},
+			pluginMap:   make(map[string]string),
+			enabled:     true,
+			stopChan:    make(chan struct{}),
+		}
+		// Should not error, just skip the directory
+		err := manager2.loadExistingPlugins()
+		assert.NoError(t, err)
+	})
+}
+
+func TestHotReloadManager_HandleFileEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	t.Run("create event loads new plugin", func(t *testing.T) {
+		// Create a .so file
+		soFile := filepath.Join(tmpDir, "newplugin.so")
+		err := os.WriteFile(soFile, []byte("fake"), 0644)
+		assert.NoError(t, err)
+
+		event := fsnotify.Event{
+			Name: soFile,
+			Op:   fsnotify.Create,
+		}
+		// Should not panic, will fail to load but exercises code path
+		manager.handleFileEvent(event)
+	})
+
+	t.Run("write event reloads existing plugin", func(t *testing.T) {
+		// Add plugin to map first
+		soFile := filepath.Join(tmpDir, "existing.so")
+		err := os.WriteFile(soFile, []byte("fake"), 0644)
+		assert.NoError(t, err)
+
+		manager.pluginMap["existing"] = soFile
+
+		event := fsnotify.Event{
+			Name: soFile,
+			Op:   fsnotify.Write,
+		}
+		// Should not panic
+		manager.handleFileEvent(event)
+	})
+
+	t.Run("remove event unloads plugin", func(t *testing.T) {
+		// Register a mock plugin
+		mockPlugin := &mockPluginForHotReload{name: "removeme", version: "1.0.0"}
+		registry.Register(mockPlugin)
+		manager.pluginMap["removeme"] = filepath.Join(tmpDir, "removeme.so")
+
+		event := fsnotify.Event{
+			Name: filepath.Join(tmpDir, "removeme.so"),
+			Op:   fsnotify.Remove,
+		}
+		manager.handleFileEvent(event)
+
+		// Plugin should be unloaded
+		_, exists := manager.pluginMap["removeme"]
+		assert.False(t, exists)
+	})
+
+	t.Run("rename event unloads plugin", func(t *testing.T) {
+		mockPlugin := &mockPluginForHotReload{name: "renameme", version: "1.0.0"}
+		registry.Register(mockPlugin)
+		manager.pluginMap["renameme"] = filepath.Join(tmpDir, "renameme.so")
+
+		event := fsnotify.Event{
+			Name: filepath.Join(tmpDir, "renameme.so"),
+			Op:   fsnotify.Rename,
+		}
+		manager.handleFileEvent(event)
+
+		_, exists := manager.pluginMap["renameme"]
+		assert.False(t, exists)
+	})
+}
+
+func TestHotReloadManager_WatchLoop_ContextCancel(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Skipf("Could not create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(tmpDir)
+	if err != nil {
+		t.Skipf("Could not add path: %v", err)
+	}
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		watcher:     watcher,
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan struct{})
+	go func() {
+		manager.watchLoop(ctx)
+		close(done)
+	}()
+
+	// Cancel context
+	cancel()
+
+	select {
+	case <-done:
+		// Success - watchLoop exited
+	case <-time.After(1 * time.Second):
+		t.Fatal("watchLoop did not exit on context cancel")
+	}
+}
+
+func TestHotReloadManager_WatchLoop_StopChannel(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Skipf("Could not create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(tmpDir)
+	if err != nil {
+		t.Skipf("Could not add path: %v", err)
+	}
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		watcher:     watcher,
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	ctx := context.Background()
+
+	done := make(chan struct{})
+	go func() {
+		manager.watchLoop(ctx)
+		close(done)
+	}()
+
+	// Close stopChan
+	close(manager.stopChan)
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(1 * time.Second):
+		t.Fatal("watchLoop did not exit on stopChan close")
+	}
+}
+
+func TestHotReloadManager_WatchLoop_FileEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Skipf("Could not create watcher: %v", err)
+	}
+
+	err = watcher.Add(tmpDir)
+	if err != nil {
+		watcher.Close()
+		t.Skipf("Could not add path: %v", err)
+	}
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		watcher:     watcher,
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	go manager.watchLoop(ctx)
+
+	// Create a .so file to trigger event
+	soFile := filepath.Join(tmpDir, "watchtest.so")
+	err = os.WriteFile(soFile, []byte("fake"), 0644)
+	assert.NoError(t, err)
+
+	// Wait for debounce + processing
+	time.Sleep(700 * time.Millisecond)
+
+	// Cleanup
+	close(manager.stopChan)
+	watcher.Close()
+}
+
+func TestHotReloadManager_ReloadPlugin_WithPlugin(t *testing.T) {
+	tmpDir := t.TempDir()
+	registry := NewRegistry()
+
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		pluginPaths: []string{tmpDir},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	// Register a mock plugin
+	mockPlugin := &mockPluginForHotReload{name: "reloadtest", version: "1.0.0"}
+	registry.Register(mockPlugin)
+
+	// Create a fake .so file
+	soFile := filepath.Join(tmpDir, "reloadtest.so")
+	err := os.WriteFile(soFile, []byte("fake"), 0644)
+	assert.NoError(t, err)
+
+	manager.pluginMap["reloadtest"] = soFile
+
+	// ReloadPlugin will fail because it's not a real plugin, but covers the code path
+	err = manager.ReloadPlugin("reloadtest")
+	assert.Error(t, err) // Expected to fail on load
+}
+
+func TestHotReloadManager_GetPluginInfo_NotRegistered(t *testing.T) {
+	registry := NewRegistry()
+	manager := &HotReloadManager{
+		registry:    registry,
+		loader:      NewLoader(registry),
+		pluginPaths: []string{},
+		pluginMap:   make(map[string]string),
+		enabled:     true,
+		stopChan:    make(chan struct{}),
+	}
+
+	// Add to plugin map but don't register in registry
+	manager.pluginMap["orphan"] = "/path/to/orphan.so"
+
+	info, err := manager.GetPluginInfo("orphan")
+	assert.Error(t, err)
+	assert.Nil(t, info)
+	assert.Contains(t, err.Error(), "not registered")
+}
+
+func TestNewHotReloadManager_WithExistingPluginDir(t *testing.T) {
+	// Create ./plugins directory
+	err := os.MkdirAll("./plugins", 0755)
+	if err != nil {
+		t.Skipf("Could not create plugins directory: %v", err)
+	}
+	defer os.RemoveAll("./plugins")
+
+	registry := NewRegistry()
+	manager, err := NewHotReloadManager(nil, registry)
+
+	if err == nil {
+		assert.NotNil(t, manager)
+		assert.NotNil(t, manager.watcher)
+		assert.True(t, manager.enabled)
+		manager.watcher.Close()
+	}
+}

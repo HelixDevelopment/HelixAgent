@@ -401,3 +401,302 @@ func TestProviderManagementHandler_UpdateProvider_EmptyRequest(t *testing.T) {
 	// Should return 404 because provider doesn't exist, not 400
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+// TestProviderManagementHandler_AddProvider_DuplicateProvider tests adding duplicate provider
+func TestProviderManagementHandler_AddProvider_DuplicateProvider(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	// First, register a provider using RegisterProviderFromConfig
+	err := registry.RegisterProviderFromConfig(services.ProviderConfig{
+		Name:    "existing-provider",
+		Type:    "deepseek",
+		APIKey:  "test-key",
+		BaseURL: "https://api.example.com",
+		Enabled: true,
+		Models: []services.ModelConfig{{
+			ID:      "test-model",
+			Name:    "test-model",
+			Enabled: true,
+			Weight:  1.0,
+		}},
+	})
+	// Note: This may fail if the provider type doesn't match a registered factory
+	// but we can still test the duplicate check logic
+
+	// Now try to add a provider with the same name
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := AddProviderRequest{
+		Name:    "existing-provider",
+		Type:    "deepseek",
+		APIKey:  "new-key",
+		BaseURL: "https://api.new.com",
+		Model:   "new-model",
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+	c.Request = httptest.NewRequest("POST", "/v1/providers", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.AddProvider(c)
+
+	// If the first provider was registered, this should be a conflict
+	// If not, it should be successful or an internal error
+	if err == nil {
+		assert.Equal(t, http.StatusConflict, w.Code)
+	}
+}
+
+// TestProviderManagementHandler_AddProvider_DefaultWeight tests default weight setting
+func TestProviderManagementHandler_AddProvider_DefaultWeight(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Request without weight specified (should default to 1.0)
+	reqBody := AddProviderRequest{
+		Name:    "test-provider-no-weight",
+		Type:    "deepseek",
+		APIKey:  "test-key",
+		BaseURL: "https://api.example.com",
+		Model:   "test-model",
+		Enabled: true,
+		// Weight is not set, should default to 1.0
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+	c.Request = httptest.NewRequest("POST", "/v1/providers", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.AddProvider(c)
+
+	// The request should be processed (may succeed or fail depending on provider factory)
+	// But it should not fail due to weight validation
+	assert.NotEqual(t, http.StatusBadRequest, w.Code)
+}
+
+// TestProviderManagementHandler_UpdateProvider_WithModel tests update with model change
+func TestProviderManagementHandler_UpdateProvider_WithModel(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "test-provider"}}
+
+	enabled := true
+	reqBody := UpdateProviderRequest{
+		Name:    "updated-name",
+		APIKey:  "new-api-key",
+		BaseURL: "https://new-api.example.com",
+		Model:   "new-model",
+		Weight:  2.5,
+		Enabled: &enabled,
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+	c.Request = httptest.NewRequest("PUT", "/v1/providers/test-provider", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.UpdateProvider(c)
+
+	// Should return 404 because provider doesn't exist
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestProviderManagementHandler_UpdateProvider_EnabledNil tests update with nil enabled
+func TestProviderManagementHandler_UpdateProvider_EnabledNil(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "test-provider"}}
+
+	reqBody := UpdateProviderRequest{
+		APIKey: "new-api-key",
+		// Enabled is nil
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+	c.Request = httptest.NewRequest("PUT", "/v1/providers/test-provider", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.UpdateProvider(c)
+
+	// Should return 404 because provider doesn't exist
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestProviderManagementHandler_DeleteProvider_WithForce tests delete with force parameter
+func TestProviderManagementHandler_DeleteProvider_WithForce(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
+	c.Request = httptest.NewRequest("DELETE", "/v1/providers/non-existent?force=true", nil)
+
+	handler.DeleteProvider(c)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestProviderManagementHandler_DeleteProvider_ForceParamVariations tests different force param values
+func TestProviderManagementHandler_DeleteProvider_ForceParamVariations(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	forceValues := []string{"false", "TRUE", "True", "1", "yes"}
+
+	for _, forceVal := range forceValues {
+		t.Run("force="+forceVal, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
+			c.Request = httptest.NewRequest("DELETE", "/v1/providers/non-existent?force="+forceVal, nil)
+
+			handler.DeleteProvider(c)
+
+			// Provider doesn't exist, so should be 404
+			assert.Equal(t, http.StatusNotFound, w.Code)
+		})
+	}
+}
+
+// TestProviderManagementHandler_AddProvider_AllProviderTypes tests adding all valid provider types
+func TestProviderManagementHandler_AddProvider_AllProviderTypes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+
+	providerTypes := []string{"deepseek", "claude", "gemini", "qwen", "zai", "ollama", "openrouter"}
+
+	for i, providerType := range providerTypes {
+		t.Run(providerType, func(t *testing.T) {
+			registry := services.NewProviderRegistry(nil, nil)
+			handler := NewProviderManagementHandler(registry, logger)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			reqBody := AddProviderRequest{
+				Name:    "test-provider-" + providerType + "-" + string(rune('0'+i)),
+				Type:    providerType,
+				APIKey:  "test-key-" + providerType,
+				BaseURL: "https://api." + providerType + ".com",
+				Model:   providerType + "-model",
+				Weight:  1.0,
+				Enabled: true,
+				Config: map[string]interface{}{
+					"temperature": 0.7,
+				},
+			}
+			jsonBody, _ := json.Marshal(reqBody)
+			c.Request = httptest.NewRequest("POST", "/v1/providers", bytes.NewReader(jsonBody))
+			c.Request.Header.Set("Content-Type", "application/json")
+
+			handler.AddProvider(c)
+
+			// Should not fail due to invalid type
+			assert.NotEqual(t, http.StatusBadRequest, w.Code, "Provider type %s should be valid", providerType)
+		})
+	}
+}
+
+// TestProviderManagementHandler_UpdateProvider_EmptyBody tests update with empty body
+func TestProviderManagementHandler_UpdateProvider_EmptyBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "test-provider"}}
+	c.Request = httptest.NewRequest("PUT", "/v1/providers/test-provider", nil)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.UpdateProvider(c)
+
+	// Empty body should fail binding with 400
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestProviderManagementHandler_GetProvider_VariousIDs tests various provider ID formats
+func TestProviderManagementHandler_GetProvider_VariousIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	testIDs := []string{
+		"simple-id",
+		"id-with-numbers-123",
+		"ID_WITH_UNDERSCORES",
+		"uuid-like-1234-5678-abcd",
+		"very-long-provider-id-that-might-exist-in-production",
+	}
+
+	for _, id := range testIDs {
+		t.Run(id, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = gin.Params{{Key: "id", Value: id}}
+			c.Request = httptest.NewRequest("GET", "/v1/providers/"+id, nil)
+
+			handler.GetProvider(c)
+
+			// All should return 404 since no providers are registered
+			assert.Equal(t, http.StatusNotFound, w.Code)
+		})
+	}
+}
+
+// TestProviderManagementHandler_AddProvider_WithConfig tests adding provider with config
+func TestProviderManagementHandler_AddProvider_WithConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := newTestProviderLogger()
+	registry := services.NewProviderRegistry(nil, nil)
+	handler := NewProviderManagementHandler(registry, logger)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	reqBody := AddProviderRequest{
+		Name:    "test-provider-with-config",
+		Type:    "deepseek",
+		APIKey:  "test-key",
+		BaseURL: "https://api.example.com",
+		Model:   "test-model",
+		Weight:  1.5,
+		Enabled: true,
+		Config: map[string]interface{}{
+			"temperature":   0.7,
+			"max_tokens":    2048,
+			"top_p":         0.9,
+			"custom_option": "value",
+		},
+	}
+	jsonBody, _ := json.Marshal(reqBody)
+	c.Request = httptest.NewRequest("POST", "/v1/providers", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.AddProvider(c)
+
+	// Should process the request (may succeed or fail based on provider factory)
+	// But config should not cause issues
+	assert.True(t, w.Code == http.StatusCreated || w.Code == http.StatusInternalServerError)
+}

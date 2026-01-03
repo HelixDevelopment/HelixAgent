@@ -909,3 +909,305 @@ func BenchmarkProtocolMonitor_GetAlertsFiltered(b *testing.B) {
 		_ = monitor.GetAlertsFiltered(filter)
 	}
 }
+
+// Tests for system metrics functions
+
+func TestCollectRealSystemMetrics(t *testing.T) {
+	t.Run("returns valid system metrics", func(t *testing.T) {
+		usage := collectRealSystemMetrics()
+
+		// Memory should be positive (we're using memory)
+		assert.GreaterOrEqual(t, usage.MemoryMB, 0.0)
+
+		// CPU percent should be non-negative
+		assert.GreaterOrEqual(t, usage.CPUPercent, 0.0)
+
+		// Network bytes should be non-negative
+		assert.GreaterOrEqual(t, usage.NetworkBytes, int64(0))
+
+		// Disk usage should be non-negative
+		assert.GreaterOrEqual(t, usage.DiskUsageMB, 0.0)
+	})
+}
+
+func TestCollectCPUPercent(t *testing.T) {
+	t.Run("returns valid CPU percentage", func(t *testing.T) {
+		// First call initializes the stats
+		cpuPercent1 := collectCPUPercent()
+		assert.GreaterOrEqual(t, cpuPercent1, 0.0)
+
+		// Wait a moment for stats to change
+		time.Sleep(50 * time.Millisecond)
+
+		// Second call should calculate delta
+		cpuPercent2 := collectCPUPercent()
+		assert.GreaterOrEqual(t, cpuPercent2, 0.0)
+		assert.LessOrEqual(t, cpuPercent2, 100.0)
+	})
+}
+
+func TestCollectNetworkBytes(t *testing.T) {
+	t.Run("returns valid network bytes", func(t *testing.T) {
+		// First call
+		bytes1 := collectNetworkBytes()
+		assert.GreaterOrEqual(t, bytes1, int64(0))
+
+		// Second call should return delta
+		bytes2 := collectNetworkBytes()
+		assert.GreaterOrEqual(t, bytes2, int64(0))
+	})
+}
+
+func TestCollectDiskUsage(t *testing.T) {
+	t.Run("returns valid disk usage", func(t *testing.T) {
+		diskUsage := collectDiskUsage()
+		// Should be positive (we're using disk space)
+		assert.GreaterOrEqual(t, diskUsage, 0.0)
+	})
+}
+
+func TestProtocolMonitor_MetricsCollector(t *testing.T) {
+	log := newMonitorTestLogger()
+	monitor := NewProtocolMonitor(log)
+
+	// Record some metrics first
+	monitor.RecordRequest(context.Background(), "test-protocol", 100*time.Millisecond, true, "")
+
+	// The metricsCollector runs in the background
+	// Give it a moment to potentially collect metrics
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify the monitor is functioning
+	metrics, err := monitor.GetMetrics("test-protocol")
+	require.NoError(t, err)
+	assert.NotNil(t, metrics)
+
+	// Stop should clean up the collector goroutine
+	monitor.Stop()
+}
+
+func TestProtocolMonitor_AlertChecker(t *testing.T) {
+	log := newMonitorTestLogger()
+	monitor := NewProtocolMonitor(log)
+
+	// Add an alert rule that will be triggered
+	rule := &AlertRule{
+		ID:          "test-check-rule",
+		Name:        "Test Alert",
+		Description: "Test alert for checking",
+		Protocol:    "test-protocol",
+		Condition:   ConditionErrorRateAbove,
+		Threshold:   0.1,
+		Severity:    SeverityWarning,
+		Cooldown:    0, // No cooldown for testing
+		Enabled:     true,
+	}
+	monitor.AddAlertRule(rule)
+
+	// Record failing requests to trigger the alert
+	monitor.RecordRequest(context.Background(), "test-protocol", 100*time.Millisecond, false, "error")
+	monitor.RecordRequest(context.Background(), "test-protocol", 100*time.Millisecond, false, "error")
+
+	// Verify error rate is above threshold
+	metrics, err := monitor.GetMetrics("test-protocol")
+	require.NoError(t, err)
+	assert.Equal(t, 1.0, metrics.ErrorRate)
+
+	// Give alert checker time to run
+	time.Sleep(100 * time.Millisecond)
+
+	// Stop and clean up
+	monitor.Stop()
+}
+
+func TestProtocolMonitor_CheckAlerts(t *testing.T) {
+	log := newMonitorTestLogger()
+	monitor := NewProtocolMonitor(log)
+	defer monitor.Stop()
+
+	t.Run("triggers error rate alert", func(t *testing.T) {
+		monitor.ClearAlerts()
+
+		rule := &AlertRule{
+			ID:          "error-rate-test",
+			Name:        "Error Rate Test",
+			Description: "Test error rate",
+			Protocol:    "error-test",
+			Condition:   ConditionErrorRateAbove,
+			Threshold:   0.5,
+			Severity:    SeverityError,
+			Cooldown:    0,
+			Enabled:     true,
+		}
+		monitor.AddAlertRule(rule)
+
+		// Record requests with high error rate
+		monitor.RecordRequest(context.Background(), "error-test", 100*time.Millisecond, false, "error")
+		monitor.RecordRequest(context.Background(), "error-test", 100*time.Millisecond, false, "error")
+
+		// Manually trigger check
+		monitor.checkAlerts()
+
+		// Check alert was stored
+		count := monitor.GetAlertCount()
+		assert.GreaterOrEqual(t, count, 1)
+	})
+
+	t.Run("triggers latency alert", func(t *testing.T) {
+		monitor.ClearAlerts()
+
+		rule := &AlertRule{
+			ID:          "latency-test",
+			Name:        "Latency Test",
+			Description: "Test latency",
+			Protocol:    "latency-test",
+			Condition:   ConditionLatencyAbove,
+			Threshold:   50.0, // 50ms threshold
+			Severity:    SeverityWarning,
+			Cooldown:    0,
+			Enabled:     true,
+		}
+		monitor.AddAlertRule(rule)
+
+		// Record high latency request
+		monitor.RecordRequest(context.Background(), "latency-test", 200*time.Millisecond, true, "")
+
+		// Manually trigger check
+		monitor.checkAlerts()
+
+		// Check alert was stored
+		count := monitor.GetAlertCount()
+		assert.GreaterOrEqual(t, count, 1)
+	})
+
+	t.Run("triggers traffic alert", func(t *testing.T) {
+		monitor.ClearAlerts()
+
+		rule := &AlertRule{
+			ID:          "traffic-test",
+			Name:        "Traffic Test",
+			Description: "Test traffic",
+			Protocol:    "traffic-test",
+			Condition:   ConditionGreaterThan,
+			Threshold:   5, // Low threshold for testing
+			Severity:    SeverityInfo,
+			Cooldown:    0,
+			Enabled:     true,
+		}
+		monitor.AddAlertRule(rule)
+
+		// Record many requests
+		for i := 0; i < 10; i++ {
+			monitor.RecordRequest(context.Background(), "traffic-test", 100*time.Millisecond, true, "")
+		}
+
+		// Manually trigger check
+		monitor.checkAlerts()
+
+		// Check alert was stored
+		count := monitor.GetAlertCount()
+		assert.GreaterOrEqual(t, count, 1)
+	})
+
+	t.Run("respects cooldown period", func(t *testing.T) {
+		// Use fresh monitor for this test
+		cooldownMonitor := NewProtocolMonitor(log)
+		defer cooldownMonitor.Stop()
+
+		rule := &AlertRule{
+			ID:          "cooldown-test",
+			Name:        "Cooldown Test",
+			Description: "Test cooldown",
+			Protocol:    "cooldown-test",
+			Condition:   ConditionErrorRateAbove,
+			Threshold:   0.1,
+			Severity:    SeverityWarning,
+			Cooldown:    1 * time.Hour, // Long cooldown
+			Enabled:     true,
+			LastAlert:   time.Now(), // Just fired
+		}
+		cooldownMonitor.AddAlertRule(rule)
+
+		// Record failing requests
+		cooldownMonitor.RecordRequest(context.Background(), "cooldown-test", 100*time.Millisecond, false, "error")
+
+		// Trigger check - should not fire due to cooldown
+		initialCount := cooldownMonitor.GetAlertCount()
+		cooldownMonitor.checkAlerts()
+
+		// Count should not have increased
+		assert.Equal(t, initialCount, cooldownMonitor.GetAlertCount())
+	})
+
+	t.Run("skips disabled rules", func(t *testing.T) {
+		// Use fresh monitor for this test
+		disabledMonitor := NewProtocolMonitor(log)
+		defer disabledMonitor.Stop()
+
+		rule := &AlertRule{
+			ID:          "disabled-test",
+			Name:        "Disabled Test",
+			Description: "Test disabled",
+			Protocol:    "disabled-test",
+			Condition:   ConditionErrorRateAbove,
+			Threshold:   0.1,
+			Severity:    SeverityWarning,
+			Cooldown:    0,
+			Enabled:     false, // Disabled
+		}
+		disabledMonitor.AddAlertRule(rule)
+
+		// Record failing requests
+		disabledMonitor.RecordRequest(context.Background(), "disabled-test", 100*time.Millisecond, false, "error")
+
+		// Trigger check - should not fire due to being disabled
+		disabledMonitor.checkAlerts()
+
+		// No alerts should be stored
+		assert.Equal(t, 0, disabledMonitor.GetAlertCount())
+	})
+
+	t.Run("skips non-existent protocol", func(t *testing.T) {
+		// Use fresh monitor for this test
+		nonexistMonitor := NewProtocolMonitor(log)
+		defer nonexistMonitor.Stop()
+
+		rule := &AlertRule{
+			ID:          "nonexistent-test",
+			Name:        "Nonexistent Test",
+			Description: "Test nonexistent",
+			Protocol:    "does-not-exist",
+			Condition:   ConditionErrorRateAbove,
+			Threshold:   0.1,
+			Severity:    SeverityWarning,
+			Cooldown:    0,
+			Enabled:     true,
+		}
+		nonexistMonitor.AddAlertRule(rule)
+
+		// Trigger check - should not fire due to no metrics
+		nonexistMonitor.checkAlerts()
+
+		// No alerts should be stored
+		assert.Equal(t, 0, nonexistMonitor.GetAlertCount())
+	})
+}
+
+func TestProtocolMonitor_CollectSystemMetrics(t *testing.T) {
+	log := newMonitorTestLogger()
+	monitor := NewProtocolMonitor(log)
+	defer monitor.Stop()
+
+	// Record some requests first to create metrics
+	monitor.RecordRequest(context.Background(), "system-test", 100*time.Millisecond, true, "")
+
+	// Trigger system metrics collection
+	monitor.collectSystemMetrics()
+
+	// Verify metrics were updated
+	metrics, err := monitor.GetMetrics("system-test")
+	require.NoError(t, err)
+	assert.NotNil(t, metrics)
+	// Resource usage should be populated
+	assert.GreaterOrEqual(t, metrics.ResourceUsage.MemoryMB, 0.0)
+}

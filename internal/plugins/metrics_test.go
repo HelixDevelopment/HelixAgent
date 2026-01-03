@@ -177,3 +177,101 @@ func TestMetricsVariables(t *testing.T) {
 	assert.NotNil(t, PluginLoadErrors)
 	assert.NotNil(t, PluginActiveCount)
 }
+
+// =====================================================
+// ADDITIONAL METRICS TESTS FOR COVERAGE
+// =====================================================
+
+func TestMetricsCollector_StopTwice(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	collector := NewMetricsCollector(registry, health)
+
+	collector.StartCollection()
+	time.Sleep(10 * time.Millisecond)
+
+	// Stop twice should be safe
+	collector.StopCollection()
+	collector.StopCollection()
+
+	assert.False(t, collector.running)
+}
+
+func TestMetricsCollector_RecordMultipleRequests(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	collector := NewMetricsCollector(registry, health)
+
+	// Record multiple requests with different methods and durations
+	for i := 0; i < 10; i++ {
+		collector.RecordRequest("plugin-a", "Complete", time.Duration(i*100)*time.Millisecond)
+		collector.RecordRequest("plugin-b", "CompleteStream", time.Duration(i*200)*time.Millisecond)
+	}
+
+	// No assertions needed - just ensure no panic
+}
+
+func TestMetricsCollector_RecordLoadError_Multiple(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	collector := NewMetricsCollector(registry, health)
+
+	// Record multiple load errors
+	for i := 0; i < 5; i++ {
+		collector.RecordLoadError("plugin-" + string(rune('a'+i)))
+	}
+}
+
+func TestMetricsCollector_CollectMetrics_NoPlugins(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	collector := NewMetricsCollector(registry, health)
+
+	// Collect metrics with empty registry
+	collector.collectMetrics()
+}
+
+func TestMetricsCollector_CollectMetrics_MissingHealth(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+	collector := NewMetricsCollector(registry, health)
+
+	// Register plugin but don't set health status
+	plugin := new(MockLLMPlugin)
+	plugin.On("Name").Return("no-health-plugin")
+	registry.Register(plugin)
+
+	// Collect metrics - should handle missing health gracefully
+	collector.collectMetrics()
+}
+
+func TestMetricsCollector_PeriodicCollection_ShortInterval(t *testing.T) {
+	registry := NewRegistry()
+	health := NewHealthMonitor(registry, 30*time.Second, 5*time.Second)
+
+	// Register several plugins
+	for i := 0; i < 3; i++ {
+		plugin := new(MockLLMPlugin)
+		name := "periodic-plugin-" + string(rune('a'+i))
+		plugin.On("Name").Return(name)
+		plugin.On("HealthCheck", mock.Anything).Return(nil).Maybe()
+		registry.Register(plugin)
+
+		// Set health status
+		health.mu.Lock()
+		health.healthStatus[name] = PluginHealth{
+			Name:        name,
+			Status:      "healthy",
+			CircuitOpen: false,
+		}
+		health.mu.Unlock()
+	}
+
+	collector := NewMetricsCollector(registry, health)
+	collector.StartCollection()
+
+	// Let it run for a few collection cycles
+	time.Sleep(100 * time.Millisecond)
+
+	collector.StopCollection()
+}

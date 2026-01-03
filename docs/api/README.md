@@ -1,8 +1,17 @@
-# SuperAgent API Documentation
+# SuperAgent Debate API Documentation
+
+> **Status: Planned Features**
+>
+> This document describes the AI Debate API endpoints that are being developed.
+> The debate services exist internally (`internal/services/debate_*.go`) but are
+> **not yet exposed as HTTP endpoints**.
+>
+> For currently available API endpoints, see [api-documentation.md](./api-documentation.md)
+> which documents the OpenAI-compatible endpoints that are fully implemented.
 
 ## Overview
 
-The SuperAgent API provides comprehensive endpoints for AI-powered debates with multi-provider support, Cognee AI enhancement, and advanced monitoring capabilities.
+The SuperAgent Debate API will provide comprehensive endpoints for AI-powered debates with multi-provider support, Cognee AI enhancement, and advanced monitoring capabilities.
 
 ## Base URL
 

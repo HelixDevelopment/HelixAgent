@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	llm "github.com/superagent/superagent/internal/llm"
 	models "github.com/superagent/superagent/internal/models"
+	"github.com/superagent/superagent/internal/services"
 	pb "github.com/superagent/superagent/pkg/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -731,6 +732,428 @@ func (s *LLMFacadeServer) recordFailure(latencyMs int64) {
 	s.metrics.TotalLatencyMs += latencyMs
 }
 
+// LLMProviderServer implements the gRPC LLMProvider service for provider plugins
+type LLMProviderServer struct {
+	pb.UnimplementedLLMProviderServer
+
+	// Provider registry for accessing LLM providers
+	registry *services.ProviderRegistry
+
+	// Metrics tracking
+	metrics   *ServerMetrics
+	metricsMu sync.RWMutex
+
+	startTime time.Time
+}
+
+// NewLLMProviderServer creates a new LLMProvider gRPC server instance
+func NewLLMProviderServer(registry *services.ProviderRegistry) *LLMProviderServer {
+	return &LLMProviderServer{
+		registry:  registry,
+		metrics:   &ServerMetrics{},
+		startTime: time.Now(),
+	}
+}
+
+// Complete implements standard completion request for LLMProvider service
+func (s *LLMProviderServer) Complete(ctx context.Context, req *pb.CompletionRequest) (*pb.CompletionResponse, error) {
+	start := time.Now()
+	s.recordProviderRequest()
+
+	// Build model parameters from request
+	modelParams := models.ModelParameters{
+		Model:            "default",
+		Temperature:      0.7,
+		MaxTokens:        1000,
+		TopP:             1.0,
+		StopSequences:    []string{},
+		ProviderSpecific: map[string]any{},
+	}
+
+	internal := &models.LLMRequest{
+		ID:             uuid.New().String(),
+		SessionID:      req.SessionId,
+		UserID:         "",
+		Prompt:         req.Prompt,
+		MemoryEnhanced: req.MemoryEnhanced,
+		Memory:         map[string]string{},
+		ModelParams:    modelParams,
+		EnsembleConfig: nil,
+		Status:         "pending",
+		CreatedAt:      time.Now(),
+	}
+
+	// Use provider registry if available, otherwise use ensemble
+	var responses []*models.LLMResponse
+	var selected *models.LLMResponse
+	var err error
+
+	if s.registry != nil {
+		ensembleService := s.registry.GetEnsembleService()
+		if ensembleService != nil {
+			result, execErr := ensembleService.RunEnsemble(ctx, internal)
+			if execErr != nil {
+				err = execErr
+			} else if result != nil {
+				responses = result.Responses
+				selected = result.Selected
+			}
+		} else {
+			responses, selected, err = llm.RunEnsemble(internal)
+		}
+	} else {
+		responses, selected, err = llm.RunEnsemble(internal)
+	}
+
+	latency := time.Since(start).Milliseconds()
+
+	if err != nil {
+		s.recordProviderFailure(latency)
+		return &pb.CompletionResponse{Content: "", Confidence: 0}, err
+	}
+
+	s.recordProviderSuccess(latency)
+
+	out := &pb.CompletionResponse{}
+	if len(responses) > 0 && responses[0] != nil {
+		out.Content = responses[0].Content
+		out.Confidence = responses[0].Confidence
+		out.ProviderName = responses[0].ProviderName
+	}
+	if selected != nil {
+		out.Content = selected.Content
+		out.Confidence = selected.Confidence
+		out.ProviderName = selected.ProviderName
+	}
+
+	return out, nil
+}
+
+// CompleteStream implements streaming completion for LLMProvider service
+func (s *LLMProviderServer) CompleteStream(req *pb.CompletionRequest, stream grpc.ServerStreamingServer[pb.CompletionResponse]) error {
+	s.recordProviderRequest()
+
+	modelParams := models.ModelParameters{
+		Model:            "default",
+		Temperature:      0.7,
+		MaxTokens:        1000,
+		TopP:             1.0,
+		StopSequences:    []string{},
+		ProviderSpecific: map[string]any{},
+	}
+
+	internal := &models.LLMRequest{
+		ID:             uuid.New().String(),
+		SessionID:      req.SessionId,
+		Prompt:         req.Prompt,
+		MemoryEnhanced: req.MemoryEnhanced,
+		Memory:         map[string]string{},
+		ModelParams:    modelParams,
+		Status:         "pending",
+		CreatedAt:      time.Now(),
+	}
+
+	// Use provider registry if available
+	var responses []*models.LLMResponse
+	var selected *models.LLMResponse
+	var err error
+
+	if s.registry != nil {
+		ensembleService := s.registry.GetEnsembleService()
+		if ensembleService != nil {
+			result, execErr := ensembleService.RunEnsemble(context.Background(), internal)
+			if execErr != nil {
+				err = execErr
+			} else if result != nil {
+				responses = result.Responses
+				selected = result.Selected
+			}
+		} else {
+			responses, selected, err = llm.RunEnsemble(internal)
+		}
+	} else {
+		responses, selected, err = llm.RunEnsemble(internal)
+	}
+
+	if err != nil {
+		s.recordProviderFailure(0)
+		return err
+	}
+
+	s.recordProviderSuccess(0)
+
+	content := ""
+	providerName := "ensemble"
+	var confidence float64 = 0.85
+	if selected != nil {
+		content = selected.Content
+		confidence = selected.Confidence
+		providerName = selected.ProviderName
+	} else if len(responses) > 0 && responses[0] != nil {
+		content = responses[0].Content
+		confidence = responses[0].Confidence
+		providerName = responses[0].ProviderName
+	}
+
+	// Stream the response in chunks
+	chunkSize := 50
+	for i := 0; i < len(content); i += chunkSize {
+		end := i + chunkSize
+		if end > len(content) {
+			end = len(content)
+		}
+
+		chunk := &pb.CompletionResponse{
+			Content:      content[i:end],
+			Confidence:   confidence,
+			ProviderName: providerName,
+		}
+
+		if err := stream.Send(chunk); err != nil {
+			return err
+		}
+
+		// Small delay to simulate streaming
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return nil
+}
+
+// HealthCheck returns the health status of the provider service
+func (s *LLMProviderServer) HealthCheck(ctx context.Context, req *pb.HealthRequest) (*pb.HealthResponse, error) {
+	overallStatus := "healthy"
+	var components []*pb.ComponentHealth
+
+	// Check provider registry health if available
+	if s.registry != nil {
+		healthResults := s.registry.HealthCheck()
+		healthyCount := 0
+		totalCount := len(healthResults)
+
+		for providerName, err := range healthResults {
+			providerStatus := "healthy"
+			message := fmt.Sprintf("Provider %s is operational", providerName)
+			if err != nil {
+				providerStatus = "unhealthy"
+				message = fmt.Sprintf("Provider %s error: %v", providerName, err)
+			} else {
+				healthyCount++
+			}
+
+			if req.Detailed {
+				components = append(components, &pb.ComponentHealth{
+					Name:    fmt.Sprintf("provider:%s", providerName),
+					Status:  providerStatus,
+					Message: message,
+				})
+			}
+		}
+
+		// Determine overall status based on provider health
+		if totalCount == 0 {
+			overallStatus = "degraded"
+		} else if healthyCount == 0 {
+			overallStatus = "unhealthy"
+		} else if healthyCount < totalCount {
+			overallStatus = "degraded"
+		}
+	} else {
+		overallStatus = "degraded"
+		if req.Detailed {
+			components = append(components, &pb.ComponentHealth{
+				Name:    "registry",
+				Status:  "unavailable",
+				Message: "Provider registry not initialized",
+			})
+		}
+	}
+
+	// Add server component status
+	if req.Detailed {
+		components = append(components, &pb.ComponentHealth{
+			Name:    "server",
+			Status:  "healthy",
+			Message: "gRPC LLMProvider server is running",
+			Details: map[string]string{
+				"uptime": fmt.Sprintf("%.0fs", time.Since(s.startTime).Seconds()),
+			},
+		})
+	}
+
+	return &pb.HealthResponse{
+		Status:     overallStatus,
+		Components: components,
+		Timestamp:  timestamppb.Now(),
+		Version:    "1.0.0",
+	}, nil
+}
+
+// GetCapabilities returns the capabilities of the provider service
+func (s *LLMProviderServer) GetCapabilities(ctx context.Context, req *pb.CapabilitiesRequest) (*pb.CapabilitiesResponse, error) {
+	// Aggregate capabilities from all registered providers
+	supportedModels := []string{}
+	supportedFeatures := []string{"chat", "completion"}
+	supportsStreaming := true
+	supportsFunctionCalling := false
+	supportsVision := false
+
+	if s.registry != nil {
+		providerNames := s.registry.ListProviders()
+		for _, name := range providerNames {
+			provider, err := s.registry.GetProvider(name)
+			if err != nil {
+				continue
+			}
+
+			caps := provider.GetCapabilities()
+			if caps != nil {
+				// Merge supported models
+				supportedModels = append(supportedModels, caps.SupportedModels...)
+
+				// Merge features
+				for _, feature := range caps.SupportedFeatures {
+					if !contains(supportedFeatures, feature) {
+						supportedFeatures = append(supportedFeatures, feature)
+					}
+				}
+
+				// Check capability flags
+				if caps.SupportsStreaming {
+					supportsStreaming = true
+				}
+				if caps.SupportsFunctionCalling {
+					supportsFunctionCalling = true
+				}
+				if caps.SupportsVision {
+					supportsVision = true
+				}
+			}
+		}
+	}
+
+	// Add default features
+	if !contains(supportedFeatures, "streaming") {
+		supportedFeatures = append(supportedFeatures, "streaming")
+	}
+
+	return &pb.CapabilitiesResponse{
+		SupportedModels:         supportedModels,
+		SupportedFeatures:       supportedFeatures,
+		SupportedRequestTypes:   []string{"completion", "chat", "streaming"},
+		SupportsStreaming:       supportsStreaming,
+		SupportsFunctionCalling: supportsFunctionCalling,
+		SupportsVision:          supportsVision,
+		Limits: &pb.ModelLimits{
+			MaxTokens:             4096,
+			MaxInputLength:        100000,
+			MaxOutputLength:       4096,
+			MaxConcurrentRequests: 100,
+		},
+	}, nil
+}
+
+// ValidateConfig validates provider configuration
+func (s *LLMProviderServer) ValidateConfig(ctx context.Context, req *pb.ValidateConfigRequest) (*pb.ValidateConfigResponse, error) {
+	var errors []string
+	var warnings []string
+
+	if req.Config == nil {
+		return &pb.ValidateConfigResponse{
+			Valid:    false,
+			Errors:   []string{"configuration is required"},
+			Warnings: []string{},
+		}, nil
+	}
+
+	// Convert protobuf struct to map
+	configMap := req.Config.AsMap()
+
+	// Validate required fields
+	if _, ok := configMap["type"]; !ok {
+		errors = append(errors, "provider type is required")
+	}
+
+	// Check API key if provider type requires it
+	if providerType, ok := configMap["type"].(string); ok {
+		switch providerType {
+		case "claude", "deepseek", "gemini", "qwen", "openrouter":
+			if _, hasKey := configMap["api_key"]; !hasKey {
+				warnings = append(warnings, fmt.Sprintf("API key not provided for %s provider", providerType))
+			}
+		case "ollama":
+			// Ollama doesn't require API key
+			if _, hasURL := configMap["base_url"]; !hasURL {
+				warnings = append(warnings, "base_url not provided for Ollama, will use default")
+			}
+		}
+	}
+
+	// Validate model configuration
+	if model, ok := configMap["model"].(string); ok && model == "" {
+		warnings = append(warnings, "model not specified, will use provider default")
+	}
+
+	// Validate timeout
+	if timeout, ok := configMap["timeout"].(float64); ok {
+		if timeout <= 0 {
+			errors = append(errors, "timeout must be positive")
+		} else if timeout > 300 {
+			warnings = append(warnings, "timeout exceeds 5 minutes, may cause issues")
+		}
+	}
+
+	// Validate with actual provider if registry is available
+	if s.registry != nil {
+		if providerName, ok := configMap["name"].(string); ok && providerName != "" {
+			provider, err := s.registry.GetProvider(providerName)
+			if err == nil && provider != nil {
+				valid, providerErrors := provider.ValidateConfig(configMap)
+				if !valid {
+					errors = append(errors, providerErrors...)
+				}
+			}
+		}
+	}
+
+	return &pb.ValidateConfigResponse{
+		Valid:    len(errors) == 0,
+		Errors:   errors,
+		Warnings: warnings,
+	}, nil
+}
+
+// Helper methods for LLMProviderServer metrics
+func (s *LLMProviderServer) recordProviderRequest() {
+	s.metricsMu.Lock()
+	defer s.metricsMu.Unlock()
+	s.metrics.TotalRequests++
+}
+
+func (s *LLMProviderServer) recordProviderSuccess(latencyMs int64) {
+	s.metricsMu.Lock()
+	defer s.metricsMu.Unlock()
+	s.metrics.SuccessfulRequests++
+	s.metrics.TotalLatencyMs += latencyMs
+}
+
+func (s *LLMProviderServer) recordProviderFailure(latencyMs int64) {
+	s.metricsMu.Lock()
+	defer s.metricsMu.Unlock()
+	s.metrics.FailedRequests++
+	s.metrics.TotalLatencyMs += latencyMs
+}
+
+// contains checks if a string slice contains a value
+func contains(slice []string, value string) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
@@ -738,11 +1161,21 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	llmServer := NewLLMFacadeServer()
 
+	// Initialize provider registry with default configuration
+	registryConfig := services.LoadRegistryConfigFromAppConfig(nil)
+	providerRegistry := services.NewProviderRegistry(registryConfig, nil)
+
+	// Create and register LLMFacade server
+	llmServer := NewLLMFacadeServer()
 	pb.RegisterLLMFacadeServer(grpcServer, llmServer)
 
+	// Create and register LLMProvider server
+	providerServer := NewLLMProviderServer(providerRegistry)
+	pb.RegisterLLMProviderServer(grpcServer, providerServer)
+
 	log.Println("SuperAgent gRPC server listening on :50051")
+	log.Println("Registered services: LLMFacade, LLMProvider")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}

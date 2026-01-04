@@ -693,5 +693,5 @@ Stay updated with API changes: https://docs.superagent.ai/changelog
 
 ---
 
-*Last Updated: 2024-12-27*
+*Last Updated: January 2026*
 *API Version: 1.0.0*

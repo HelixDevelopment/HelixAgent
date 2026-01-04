@@ -1,5 +1,9 @@
 # SuperAgent Video Course Content
 
+> **Note**: This document has been superseded by the comprehensive course materials in `/docs/courses/`. Please refer to:
+> - **Course Outline**: `/docs/courses/COURSE_OUTLINE.md` - Complete 11-module training program
+> - **Presentation Slides**: `/docs/courses/slides/` - Detailed slide decks for each module
+
 ## Course Overview
 
 **Title**: "Mastering AI Debates with SuperAgent"

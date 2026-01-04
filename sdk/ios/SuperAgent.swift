@@ -137,6 +137,181 @@ public class SuperAgentClient {
         return ChatCompletionResponse(from: response)
     }
 
+    // MARK: - Streaming Chat Completions
+
+    /// Create a streaming chat completion
+    /// - Parameters:
+    ///   - model: The model to use (e.g., "superagent-ensemble")
+    ///   - messages: List of chat messages
+    ///   - temperature: Sampling temperature (0.0 to 2.0)
+    ///   - maxTokens: Maximum tokens to generate
+    ///   - topP: Top-p sampling parameter
+    ///   - stop: Stop sequences
+    /// - Returns: AsyncThrowingStream of ChatCompletionChunk objects
+    public func chatCompletionStream(
+        model: String,
+        messages: [ChatMessage],
+        temperature: Double = 0.7,
+        maxTokens: Int = 1000,
+        topP: Double = 1.0,
+        stop: [String]? = nil
+    ) -> AsyncThrowingStream<ChatCompletionChunk, Error> {
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    try await self.performStreamingRequest(
+                        model: model,
+                        messages: messages,
+                        temperature: temperature,
+                        maxTokens: maxTokens,
+                        topP: topP,
+                        stop: stop,
+                        ensembleConfig: nil,
+                        continuation: continuation
+                    )
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Create a streaming chat completion with ensemble configuration
+    public func chatCompletionStreamWithEnsemble(
+        model: String,
+        messages: [ChatMessage],
+        ensembleConfig: EnsembleConfig,
+        temperature: Double = 0.7,
+        maxTokens: Int = 1000
+    ) -> AsyncThrowingStream<ChatCompletionChunk, Error> {
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    try await self.performStreamingRequest(
+                        model: model,
+                        messages: messages,
+                        temperature: temperature,
+                        maxTokens: maxTokens,
+                        topP: 1.0,
+                        stop: nil,
+                        ensembleConfig: ensembleConfig,
+                        continuation: continuation
+                    )
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func performStreamingRequest(
+        model: String,
+        messages: [ChatMessage],
+        temperature: Double,
+        maxTokens: Int,
+        topP: Double,
+        stop: [String]?,
+        ensembleConfig: EnsembleConfig?,
+        continuation: AsyncThrowingStream<ChatCompletionChunk, Error>.Continuation
+    ) async throws {
+        let url = baseURL.appendingPathComponent("/v1/chat/completions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+
+        if let apiKey = apiKey {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body: [String: Any] = [
+            "model": model,
+            "messages": messages.map { $0.toDictionary() },
+            "temperature": temperature,
+            "max_tokens": maxTokens,
+            "top_p": topP,
+            "stream": true
+        ]
+
+        if let stop = stop {
+            body["stop"] = stop
+        }
+
+        if let ensembleConfig = ensembleConfig {
+            body["ensemble_config"] = ensembleConfig.toDictionary()
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (bytes, response) = try await session.bytes(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SuperAgentError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw SuperAgentError.httpError(httpResponse.statusCode, "Stream request failed")
+        }
+
+        var buffer = ""
+
+        for try await byte in bytes {
+            buffer.append(Character(UnicodeScalar(byte)))
+
+            // Process complete SSE messages (data: {...}\n\n)
+            while let range = buffer.range(of: "\n\n") {
+                let message = String(buffer[..<range.lowerBound])
+                buffer = String(buffer[range.upperBound...])
+
+                // Parse SSE lines
+                for line in message.components(separatedBy: "\n") {
+                    let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+                    if trimmedLine.hasPrefix("data:") {
+                        let dataContent = String(trimmedLine.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+
+                        // Check for stream end
+                        if dataContent == "[DONE]" {
+                            continuation.finish()
+                            return
+                        }
+
+                        // Parse JSON chunk
+                        if let jsonData = dataContent.data(using: .utf8) {
+                            do {
+                                if let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                                    let chunk = ChatCompletionChunk(from: json)
+                                    continuation.yield(chunk)
+                                }
+                            } catch {
+                                // Log parsing error but continue processing
+                                print("SSE parsing warning: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process any remaining buffer content
+        if !buffer.isEmpty {
+            for line in buffer.components(separatedBy: "\n") {
+                let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+                if trimmedLine.hasPrefix("data:") {
+                    let dataContent = String(trimmedLine.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                    if dataContent != "[DONE]", let jsonData = dataContent.data(using: .utf8) {
+                        if let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                            let chunk = ChatCompletionChunk(from: json)
+                            continuation.yield(chunk)
+                        }
+                    }
+                }
+            }
+        }
+
+        continuation.finish()
+    }
+
     // MARK: - AI Debate API
 
     /// Create a new debate
@@ -429,6 +604,8 @@ public enum SuperAgentError: Error {
     case httpError(Int, String)
     case debateFailed(String)
     case timeout
+    case streamDisconnected(String)
+    case streamParsingError(String)
 }
 
 // MARK: - Utility Classes
@@ -728,6 +905,124 @@ public struct ChatCompletionResponse {
     /// Get the content of the first choice
     public var content: String {
         choices.first?.message.content ?? ""
+    }
+}
+
+// MARK: - Streaming Chat Completion Data Structures
+
+/// Delta content for streaming responses
+public struct ChatDelta {
+    public let role: String?
+    public let content: String?
+
+    public init(from dict: [String: Any]) {
+        self.role = dict["role"] as? String
+        self.content = dict["content"] as? String
+    }
+}
+
+/// Streaming choice for chat completion chunks
+public struct ChatChunkChoice {
+    public let index: Int
+    public let delta: ChatDelta
+    public let finishReason: String?
+
+    public init(from dict: [String: Any]) {
+        self.index = dict["index"] as? Int ?? 0
+        let deltaDict = dict["delta"] as? [String: Any] ?? [:]
+        self.delta = ChatDelta(from: deltaDict)
+        self.finishReason = dict["finish_reason"] as? String
+    }
+}
+
+/// Chat completion chunk for streaming responses
+public struct ChatCompletionChunk {
+    public let id: String
+    public let object: String
+    public let created: Int
+    public let model: String
+    public let choices: [ChatChunkChoice]
+
+    public init(from dict: [String: Any]) {
+        self.id = dict["id"] as? String ?? ""
+        self.object = dict["object"] as? String ?? "chat.completion.chunk"
+        self.created = dict["created"] as? Int ?? Int(Date().timeIntervalSince1970)
+        self.model = dict["model"] as? String ?? ""
+        let choicesArray = dict["choices"] as? [[String: Any]] ?? []
+        self.choices = choicesArray.map { ChatChunkChoice(from: $0) }
+    }
+
+    /// Get the delta content of the first choice
+    public var deltaContent: String? {
+        choices.first?.delta.content
+    }
+
+    /// Check if this is the final chunk
+    public var isFinished: Bool {
+        choices.first?.finishReason != nil
+    }
+}
+
+/// Stream accumulator to collect chunks into a complete response
+public class StreamAccumulator {
+    private var chunks: [ChatCompletionChunk] = []
+    private var accumulatedContent: String = ""
+    private var id: String = ""
+    private var model: String = ""
+    private var created: Int = 0
+
+    public init() {}
+
+    /// Add a chunk to the accumulator
+    public func addChunk(_ chunk: ChatCompletionChunk) {
+        chunks.append(chunk)
+        if id.isEmpty { id = chunk.id }
+        if model.isEmpty { model = chunk.model }
+        if created == 0 { created = chunk.created }
+        if let content = chunk.deltaContent {
+            accumulatedContent += content
+        }
+    }
+
+    /// Get the accumulated content so far
+    public var content: String {
+        return accumulatedContent
+    }
+
+    /// Get the final complete message
+    public func buildMessage() -> ChatMessage {
+        return ChatMessage(role: "assistant", content: accumulatedContent)
+    }
+
+    /// Get a complete response from accumulated chunks
+    public func buildResponse() -> ChatCompletionResponse {
+        let choice: [String: Any] = [
+            "index": 0,
+            "message": [
+                "role": "assistant",
+                "content": accumulatedContent
+            ],
+            "finish_reason": chunks.last?.choices.first?.finishReason ?? "stop"
+        ]
+
+        let dict: [String: Any] = [
+            "id": id,
+            "object": "chat.completion",
+            "created": created,
+            "model": model,
+            "choices": [choice]
+        ]
+
+        return ChatCompletionResponse(from: dict)
+    }
+
+    /// Reset the accumulator
+    public func reset() {
+        chunks.removeAll()
+        accumulatedContent = ""
+        id = ""
+        model = ""
+        created = 0
     }
 }
 

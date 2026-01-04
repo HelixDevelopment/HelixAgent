@@ -246,12 +246,12 @@
                         <pre><code class="language-yaml">providers:
   claude:
     api_key: ${CLAUDE_API_KEY}
-    model: claude-3-opus-20240229
-  
+    model: claude-sonnet-4-20250514
+
   gemini:
     api_key: ${GEMINI_API_KEY}
-    model: gemini-pro
-  
+    model: gemini-2.5-pro
+
   deepseek:
     api_key: ${DEEPSEEK_API_KEY}
     model: deepseek-chat
@@ -411,12 +411,12 @@ ai_debate:
                     <h3 class="provider-name">Claude</h3>
                     <p class="provider-description">Anthropic's Claude with advanced reasoning and safety features</p>
                     <div class="provider-models">
-                        <span class="model-tag">claude-3-opus</span>
-                        <span class="model-tag">claude-3-sonnet</span>
-                        <span class="model-tag">claude-3-haiku</span>
+                        <span class="model-tag">claude-opus-4</span>
+                        <span class="model-tag">claude-sonnet-4</span>
+                        <span class="model-tag">claude-3.5-haiku</span>
                     </div>
                 </div>
-                
+
                 <div class="provider-card">
                     <div class="provider-logo">
                         <img src="/assets/images/providers/gemini.svg" alt="Gemini">
@@ -424,9 +424,9 @@ ai_debate:
                     <h3 class="provider-name">Gemini</h3>
                     <p class="provider-description">Google's Gemini with multimodal capabilities</p>
                     <div class="provider-models">
-                        <span class="model-tag">gemini-pro</span>
-                        <span class="model-tag">gemini-ultra</span>
-                        <span class="model-tag">gemini-flash</span>
+                        <span class="model-tag">gemini-2.5-pro</span>
+                        <span class="model-tag">gemini-2.5-flash</span>
+                        <span class="model-tag">gemini-2.0</span>
                     </div>
                 </div>
                 
@@ -569,6 +569,38 @@ ai_debate:
                         </svg>
                     </a>
                 </div>
+
+                <div class="doc-card">
+                    <div class="doc-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="doc-title">LLM Optimization</h3>
+                    <p class="doc-description">Semantic caching, structured output, enhanced streaming, and document retrieval.</p>
+                    <a href="/docs/optimization" class="doc-link">
+                        Optimize Performance
+                        <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="doc-card">
+                    <div class="doc-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="doc-title">Protocol Integration</h3>
+                    <p class="doc-description">MCP, LSP, and ACP protocol support for advanced tool orchestration.</p>
+                    <a href="/docs/protocols" class="doc-link">
+                        Learn Protocols
+                        <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
             </div>
         </div>
     </section>
@@ -627,16 +659,17 @@ ai_debate:
                         <li><a href="/docs/api">API Reference</a></li>
                         <li><a href="/docs/deployment">Deployment</a></li>
                         <li><a href="/docs/ai-debate">AI Debate</a></li>
+                        <li><a href="/docs/optimization">LLM Optimization</a></li>
                     </ul>
                 </div>
-                
+
                 <div class="footer-section">
                     <h4 class="footer-heading">Resources</h4>
                     <ul class="footer-links">
                         <li><a href="https://github.com/superagent/superagent">GitHub</a></li>
                         <li><a href="/docs/tutorial">Tutorials</a></li>
                         <li><a href="/docs/architecture">Architecture</a></li>
-                        <li><a href="/blog">Blog</a></li>
+                        <li><a href="/docs/protocols">Protocol Integration</a></li>
                     </ul>
                 </div>
                 
@@ -653,7 +686,7 @@ ai_debate:
             
             <div class="footer-bottom">
                 <div class="footer-legal">
-                    <p>&copy; 2025 SuperAgent. All rights reserved.</p>
+                    <p>&copy; 2026 SuperAgent. All rights reserved.</p>
                     <div class="footer-legal-links">
                         <a href="/privacy">Privacy Policy</a>
                         <a href="/terms">Terms of Service</a>

@@ -56,12 +56,9 @@ curl http://localhost:8080/v1/providers
 
 # Check provider health with circuit breaker status
 curl http://localhost:8080/v1/providers/claude/health
-```
-# Check if SuperAgent is running
-curl http://localhost:8080/health
 
-# Expected response:
-# {"status":"healthy"}
+# Expected response for /v1/health:
+# {"status":"healthy","providers":{"claude":{"status":"healthy"},...}}
 ```
 
 ---

@@ -850,5 +850,5 @@ spec:
 
 ---
 
-*Last Updated: 2024-12-27*
+*Last Updated: January 2026*
 *Version: 1.0.0*

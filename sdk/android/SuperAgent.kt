@@ -1,12 +1,18 @@
 package com.superagent.protocol
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.json.JSONArray
+import java.io.BufferedReader
 import java.io.IOException
+import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 
 /**
@@ -187,6 +193,236 @@ class SuperAgentClient(
 
         val response = makeRequest("/v1/chat/completions", "POST", body)
         return ChatCompletionResponse.fromJson(response)
+    }
+
+    // ==================== Streaming Chat Completions API ====================
+
+    /**
+     * Create a streaming chat completion
+     * @param model The model to use (e.g., "superagent-ensemble")
+     * @param messages List of chat messages
+     * @param temperature Sampling temperature (0.0 to 2.0)
+     * @param maxTokens Maximum tokens to generate
+     * @param topP Top-p sampling parameter
+     * @param stop Stop sequences
+     * @return Flow of ChatCompletionChunk objects
+     */
+    fun chatCompletionStream(
+        model: String,
+        messages: List<ChatMessage>,
+        temperature: Double = 0.7,
+        maxTokens: Int = 1000,
+        topP: Double = 1.0,
+        stop: List<String>? = null
+    ): Flow<ChatCompletionChunk> = callbackFlow {
+        val messagesArray = JSONArray()
+        messages.forEach { msg ->
+            messagesArray.put(JSONObject().apply {
+                put("role", msg.role)
+                put("content", msg.content)
+                msg.name?.let { put("name", it) }
+            })
+        }
+
+        val body = JSONObject().apply {
+            put("model", model)
+            put("messages", messagesArray)
+            put("temperature", temperature)
+            put("max_tokens", maxTokens)
+            put("top_p", topP)
+            put("stream", true)
+            stop?.let {
+                val stopArray = JSONArray()
+                it.forEach { s -> stopArray.put(s) }
+                put("stop", stopArray)
+            }
+        }
+
+        val requestBody = body.toString().toRequestBody(jsonMediaType)
+        val request = Request.Builder()
+            .url("$baseUrl/v1/chat/completions")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .apply { apiKey?.let { addHeader("Authorization", "Bearer $it") } }
+            .post(requestBody)
+            .build()
+
+        // Use a separate client with longer timeout for streaming
+        val streamingClient = client.newBuilder()
+            .readTimeout(5, TimeUnit.MINUTES)
+            .build()
+
+        val call = streamingClient.newCall(request)
+
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                close(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    close(SuperAgentException(response.code, response.message))
+                    return
+                }
+
+                val responseBody = response.body
+                if (responseBody == null) {
+                    close(SuperAgentException(500, "Empty response body"))
+                    return
+                }
+
+                try {
+                    val reader = BufferedReader(InputStreamReader(responseBody.byteStream()))
+                    var buffer = StringBuilder()
+
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        val currentLine = line ?: continue
+
+                        // Handle SSE format
+                        if (currentLine.startsWith("data:")) {
+                            val dataContent = currentLine.substring(5).trim()
+
+                            // Check for stream end
+                            if (dataContent == "[DONE]") {
+                                break
+                            }
+
+                            // Parse JSON chunk
+                            if (dataContent.isNotEmpty()) {
+                                try {
+                                    val json = JSONObject(dataContent)
+                                    val chunk = ChatCompletionChunk.fromJson(json)
+                                    trySend(chunk)
+                                } catch (e: Exception) {
+                                    // Log parsing error but continue processing
+                                    println("SSE parsing warning: ${e.message}")
+                                }
+                            }
+                        } else if (currentLine.isEmpty()) {
+                            // Empty line marks end of SSE event, reset buffer
+                            buffer = StringBuilder()
+                        } else {
+                            // Accumulate partial data
+                            buffer.append(currentLine)
+                        }
+                    }
+
+                    reader.close()
+                    close()
+                } catch (e: Exception) {
+                    close(e)
+                } finally {
+                    response.close()
+                }
+            }
+        })
+
+        awaitClose {
+            call.cancel()
+        }
+    }
+
+    /**
+     * Create a streaming chat completion with ensemble configuration
+     */
+    fun chatCompletionStreamWithEnsemble(
+        model: String,
+        messages: List<ChatMessage>,
+        ensembleConfig: EnsembleConfig,
+        temperature: Double = 0.7,
+        maxTokens: Int = 1000
+    ): Flow<ChatCompletionChunk> = callbackFlow {
+        val messagesArray = JSONArray()
+        messages.forEach { msg ->
+            messagesArray.put(JSONObject().apply {
+                put("role", msg.role)
+                put("content", msg.content)
+                msg.name?.let { put("name", it) }
+            })
+        }
+
+        val body = JSONObject().apply {
+            put("model", model)
+            put("messages", messagesArray)
+            put("temperature", temperature)
+            put("max_tokens", maxTokens)
+            put("stream", true)
+            put("ensemble_config", ensembleConfig.toJson())
+        }
+
+        val requestBody = body.toString().toRequestBody(jsonMediaType)
+        val request = Request.Builder()
+            .url("$baseUrl/v1/chat/completions")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .apply { apiKey?.let { addHeader("Authorization", "Bearer $it") } }
+            .post(requestBody)
+            .build()
+
+        // Use a separate client with longer timeout for streaming
+        val streamingClient = client.newBuilder()
+            .readTimeout(5, TimeUnit.MINUTES)
+            .build()
+
+        val call = streamingClient.newCall(request)
+
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                close(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    close(SuperAgentException(response.code, response.message))
+                    return
+                }
+
+                val responseBody = response.body
+                if (responseBody == null) {
+                    close(SuperAgentException(500, "Empty response body"))
+                    return
+                }
+
+                try {
+                    val reader = BufferedReader(InputStreamReader(responseBody.byteStream()))
+
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        val currentLine = line ?: continue
+
+                        if (currentLine.startsWith("data:")) {
+                            val dataContent = currentLine.substring(5).trim()
+
+                            if (dataContent == "[DONE]") {
+                                break
+                            }
+
+                            if (dataContent.isNotEmpty()) {
+                                try {
+                                    val json = JSONObject(dataContent)
+                                    val chunk = ChatCompletionChunk.fromJson(json)
+                                    trySend(chunk)
+                                } catch (e: Exception) {
+                                    println("SSE parsing warning: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+
+                    reader.close()
+                    close()
+                } catch (e: Exception) {
+                    close(e)
+                } finally {
+                    response.close()
+                }
+            }
+        })
+
+        awaitClose {
+            call.cancel()
+        }
     }
 
     // ==================== AI Debate API ====================
@@ -749,6 +985,150 @@ data class ChatCompletionResponse(
                 usage = usage
             )
         }
+    }
+}
+
+// Streaming Chat Completion Types
+
+/**
+ * Delta content for streaming responses
+ */
+data class ChatDelta(
+    val role: String? = null,
+    val content: String? = null
+) {
+    companion object {
+        fun fromJson(json: JSONObject): ChatDelta = ChatDelta(
+            role = json.optString("role").takeIf { it.isNotEmpty() },
+            content = json.optString("content").takeIf { it.isNotEmpty() }
+        )
+    }
+}
+
+/**
+ * Streaming choice for chat completion chunks
+ */
+data class ChatChunkChoice(
+    val index: Int,
+    val delta: ChatDelta,
+    val finishReason: String? = null
+) {
+    companion object {
+        fun fromJson(json: JSONObject): ChatChunkChoice = ChatChunkChoice(
+            index = json.optInt("index", 0),
+            delta = ChatDelta.fromJson(json.optJSONObject("delta") ?: JSONObject()),
+            finishReason = json.optString("finish_reason").takeIf { it.isNotEmpty() && it != "null" }
+        )
+    }
+}
+
+/**
+ * Chat completion chunk for streaming responses
+ */
+data class ChatCompletionChunk(
+    val id: String,
+    val model: String,
+    val created: Long,
+    val choices: List<ChatChunkChoice>
+) {
+    /**
+     * Get the delta content of the first choice
+     */
+    val deltaContent: String?
+        get() = choices.firstOrNull()?.delta?.content
+
+    /**
+     * Check if this is the final chunk
+     */
+    val isFinished: Boolean
+        get() = choices.firstOrNull()?.finishReason != null
+
+    companion object {
+        fun fromJson(json: JSONObject): ChatCompletionChunk {
+            val choicesArray = json.optJSONArray("choices") ?: JSONArray()
+            val choices = mutableListOf<ChatChunkChoice>()
+            for (i in 0 until choicesArray.length()) {
+                choices.add(ChatChunkChoice.fromJson(choicesArray.getJSONObject(i)))
+            }
+
+            return ChatCompletionChunk(
+                id = json.optString("id", ""),
+                model = json.optString("model", ""),
+                created = json.optLong("created", System.currentTimeMillis() / 1000),
+                choices = choices
+            )
+        }
+    }
+}
+
+/**
+ * Stream accumulator to collect chunks into a complete response
+ */
+class StreamAccumulator {
+    private val chunks = mutableListOf<ChatCompletionChunk>()
+    private val accumulatedContent = StringBuilder()
+    private var id: String = ""
+    private var model: String = ""
+    private var created: Long = 0
+
+    /**
+     * Add a chunk to the accumulator
+     */
+    fun addChunk(chunk: ChatCompletionChunk) {
+        chunks.add(chunk)
+        if (id.isEmpty()) id = chunk.id
+        if (model.isEmpty()) model = chunk.model
+        if (created == 0L) created = chunk.created
+        chunk.deltaContent?.let { accumulatedContent.append(it) }
+    }
+
+    /**
+     * Get the accumulated content so far
+     */
+    val content: String
+        get() = accumulatedContent.toString()
+
+    /**
+     * Get the final complete message
+     */
+    fun buildMessage(): ChatMessage = ChatMessage(
+        role = "assistant",
+        content = accumulatedContent.toString()
+    )
+
+    /**
+     * Get a complete response from accumulated chunks
+     */
+    fun buildResponse(): ChatCompletionResponse {
+        val finishReason = chunks.lastOrNull()?.choices?.firstOrNull()?.finishReason ?: "stop"
+
+        return ChatCompletionResponse(
+            id = id,
+            model = model,
+            created = created,
+            choices = listOf(
+                ChatChoice(
+                    index = 0,
+                    message = ChatMessage(
+                        role = "assistant",
+                        content = accumulatedContent.toString()
+                    ),
+                    finishReason = finishReason
+                )
+            ),
+            usage = null
+        )
+    }
+
+    /**
+     * Reset the accumulator
+     */
+    fun reset() {
+        chunks.clear()
+        accumulatedContent.clear()
+        id = ""
+        model = ""
+        created = 0
     }
 }
 

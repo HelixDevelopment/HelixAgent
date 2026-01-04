@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	pb "github.com/superagent/superagent/pkg/api"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestGrpcServer_Complete(t *testing.T) {
-	server := &grpcServer{}
+	server := NewLLMFacadeServer()
 	ctx := context.Background()
 
 	t.Run("basic completion request", func(t *testing.T) {
@@ -71,7 +72,7 @@ func TestGrpcServer_Complete(t *testing.T) {
 }
 
 func TestGrpcServer_Complete_RequestConversion(t *testing.T) {
-	server := &grpcServer{}
+	server := NewLLMFacadeServer()
 	ctx := context.Background()
 
 	t.Run("verifies request is properly converted", func(t *testing.T) {
@@ -90,7 +91,7 @@ func TestGrpcServer_Complete_RequestConversion(t *testing.T) {
 }
 
 func TestGrpcServer_Complete_ResponseFields(t *testing.T) {
-	server := &grpcServer{}
+	server := NewLLMFacadeServer()
 	ctx := context.Background()
 
 	req := &pb.CompletionRequest{
@@ -110,19 +111,214 @@ func TestGrpcServer_Complete_ResponseFields(t *testing.T) {
 }
 
 func TestGrpcServerStruct(t *testing.T) {
-	// Verify grpcServer struct can be instantiated
-	server := &grpcServer{}
+	// Verify LLMFacadeServer struct can be instantiated
+	server := NewLLMFacadeServer()
+	require.NotNil(t, server)
+}
+
+// LLMProviderServer Tests
+func TestLLMProviderServer_Complete(t *testing.T) {
+	server := NewLLMProviderServer(nil)
+	ctx := context.Background()
+
+	t.Run("basic completion request without registry", func(t *testing.T) {
+		req := &pb.CompletionRequest{
+			SessionId:      "test-provider-session-123",
+			Prompt:         "What is the capital of Germany?",
+			MemoryEnhanced: false,
+		}
+
+		// Without registry, will fall back to llm.RunEnsemble
+		resp, err := server.Complete(ctx, req)
+
+		// Should return response even if error occurs
+		if err != nil {
+			assert.NotNil(t, resp)
+			assert.Equal(t, "", resp.Content)
+		} else {
+			assert.NotNil(t, resp)
+		}
+	})
+}
+
+func TestLLMProviderServer_HealthCheck(t *testing.T) {
+	server := NewLLMProviderServer(nil)
+	ctx := context.Background()
+
+	t.Run("health check without registry", func(t *testing.T) {
+		req := &pb.HealthRequest{
+			Detailed: true,
+		}
+
+		resp, err := server.HealthCheck(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, "degraded", resp.Status) // No registry means degraded
+		assert.NotNil(t, resp.Timestamp)
+	})
+
+	t.Run("health check detailed response", func(t *testing.T) {
+		req := &pb.HealthRequest{
+			Detailed: true,
+		}
+
+		resp, err := server.HealthCheck(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.True(t, len(resp.Components) > 0, "Expected components in detailed health check")
+	})
+}
+
+func TestLLMProviderServer_GetCapabilities(t *testing.T) {
+	server := NewLLMProviderServer(nil)
+	ctx := context.Background()
+
+	t.Run("get capabilities without registry", func(t *testing.T) {
+		req := &pb.CapabilitiesRequest{}
+
+		resp, err := server.GetCapabilities(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.True(t, resp.SupportsStreaming)
+		assert.NotNil(t, resp.Limits)
+		assert.True(t, len(resp.SupportedFeatures) > 0)
+		assert.Contains(t, resp.SupportedRequestTypes, "completion")
+		assert.Contains(t, resp.SupportedRequestTypes, "chat")
+		assert.Contains(t, resp.SupportedRequestTypes, "streaming")
+	})
+
+	t.Run("verify model limits", func(t *testing.T) {
+		req := &pb.CapabilitiesRequest{}
+
+		resp, err := server.GetCapabilities(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp.Limits)
+		assert.Equal(t, int32(4096), resp.Limits.MaxTokens)
+		assert.Equal(t, int32(100000), resp.Limits.MaxInputLength)
+		assert.Equal(t, int32(4096), resp.Limits.MaxOutputLength)
+		assert.Equal(t, int32(100), resp.Limits.MaxConcurrentRequests)
+	})
+}
+
+func TestLLMProviderServer_ValidateConfig(t *testing.T) {
+	server := NewLLMProviderServer(nil)
+	ctx := context.Background()
+
+	t.Run("validate nil config", func(t *testing.T) {
+		req := &pb.ValidateConfigRequest{
+			Config: nil,
+		}
+
+		resp, err := server.ValidateConfig(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.False(t, resp.Valid)
+		assert.Contains(t, resp.Errors, "configuration is required")
+	})
+
+	t.Run("validate config without type", func(t *testing.T) {
+		configStruct, _ := structpb.NewStruct(map[string]interface{}{
+			"name": "test-provider",
+		})
+		req := &pb.ValidateConfigRequest{
+			Config: configStruct,
+		}
+
+		resp, err := server.ValidateConfig(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.False(t, resp.Valid)
+		assert.Contains(t, resp.Errors, "provider type is required")
+	})
+
+	t.Run("validate config with warnings for missing api key", func(t *testing.T) {
+		configStruct, _ := structpb.NewStruct(map[string]interface{}{
+			"name": "test-provider",
+			"type": "claude",
+		})
+		req := &pb.ValidateConfigRequest{
+			Config: configStruct,
+		}
+
+		resp, err := server.ValidateConfig(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.True(t, resp.Valid) // Valid but with warnings
+		assert.True(t, len(resp.Warnings) > 0)
+	})
+
+	t.Run("validate ollama config without base_url", func(t *testing.T) {
+		configStruct, _ := structpb.NewStruct(map[string]interface{}{
+			"name": "local-ollama",
+			"type": "ollama",
+		})
+		req := &pb.ValidateConfigRequest{
+			Config: configStruct,
+		}
+
+		resp, err := server.ValidateConfig(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.True(t, resp.Valid) // Valid but with warning about base_url
+	})
+
+	t.Run("validate config with invalid timeout", func(t *testing.T) {
+		configStruct, _ := structpb.NewStruct(map[string]interface{}{
+			"name":    "test-provider",
+			"type":    "deepseek",
+			"timeout": float64(-5),
+		})
+		req := &pb.ValidateConfigRequest{
+			Config: configStruct,
+		}
+
+		resp, err := server.ValidateConfig(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.False(t, resp.Valid)
+		assert.Contains(t, resp.Errors, "timeout must be positive")
+	})
+}
+
+func TestLLMProviderServerStruct(t *testing.T) {
+	// Verify LLMProviderServer struct can be instantiated
+	server := NewLLMProviderServer(nil)
 	require.NotNil(t, server)
 }
 
 // Benchmark tests
 func BenchmarkGrpcServer_Complete(b *testing.B) {
-	server := &grpcServer{}
+	server := NewLLMFacadeServer()
 	ctx := context.Background()
 
 	req := &pb.CompletionRequest{
 		SessionId:      "benchmark-session",
 		Prompt:         "Benchmark test prompt",
+		MemoryEnhanced: false,
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = server.Complete(ctx, req)
+	}
+}
+
+func BenchmarkLLMProviderServer_Complete(b *testing.B) {
+	server := NewLLMProviderServer(nil)
+	ctx := context.Background()
+
+	req := &pb.CompletionRequest{
+		SessionId:      "benchmark-provider-session",
+		Prompt:         "Benchmark provider test prompt",
 		MemoryEnhanced: false,
 	}
 

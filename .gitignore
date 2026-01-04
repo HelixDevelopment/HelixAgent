@@ -1,3 +1,5 @@
+.env
+
 # Go basics
 bin/
 vendor/

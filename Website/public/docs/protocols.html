@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protocol Integration - SuperAgent Documentation</title>
+    <meta name="description" content="Learn how to integrate MCP, LSP, and ACP protocols with SuperAgent for enhanced AI capabilities and tool orchestration.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://superagent.ai/docs/protocols">
+    <meta property="og:title" content="Protocol Integration - SuperAgent Documentation">
+    <meta property="og:description" content="MCP, LSP, and ACP protocol integration guide for SuperAgent.">
+    <meta property="og:image" content="https://superagent.ai/assets/images/og-image.svg">
+    <meta property="og:site_name" content="SuperAgent">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://superagent.ai/docs/protocols">
+    <meta property="twitter:title" content="Protocol Integration - SuperAgent Documentation">
+    <meta property="twitter:description" content="MCP, LSP, and ACP protocol integration guide for SuperAgent.">
+    <meta property="twitter:image" content="https://superagent.ai/assets/images/og-image.svg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/logo.svg">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Additional SEO Meta Tags -->
+    <meta name="keywords" content="MCP protocol, LSP integration, ACP protocol, Model Context Protocol, Language Server Protocol, AI tool orchestration">
+    <meta name="author" content="SuperAgent Team">
+    <meta name="robots" content="index, follow">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://superagent.ai/docs/protocols">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/components.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">
+                    <img src="/assets/images/logo.svg" alt="SuperAgent" class="nav-logo">
+                    <span class="nav-title">SuperAgent</span>
+                </a>
+            </div>
+
+            <div class="nav-menu" id="nav-menu">
+                <a href="/#features" class="nav-link">Features</a>
+                <a href="/#providers" class="nav-link">Providers</a>
+                <a href="/docs" class="nav-link active">Documentation</a>
+                <a href="/#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/superagent/superagent" class="nav-link">GitHub</a>
+            </div>
+
+            <div class="nav-actions">
+                <a href="/docs" class="btn btn-outline">Get Started</a>
+                <a href="https://github.com/superagent/superagent" class="btn btn-primary">Star on GitHub</a>
+            </div>
+
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Protocol Hero -->
+    <section class="hero hero-small">
+        <div class="hero-container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge-text">MCP / LSP / ACP</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="gradient-text">Protocol Integration</span>
+                </h1>
+                <p class="hero-description">
+                    Extend SuperAgent with Model Context Protocol (MCP), Language Server Protocol (LSP), and Agent Communication Protocol (ACP).
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Overview Section -->
+    <section class="documentation">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Supported Protocols</h2>
+                <p class="section-description">
+                    SuperAgent supports three major protocols for enhanced AI capabilities
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Model Context Protocol (MCP)</h3>
+                    <p class="feature-description">
+                        Connect LLMs to external tools, data sources, and services. MCP enables AI models to access real-time data, execute code, and interact with external systems.
+                    </p>
+                    <ul class="feature-list">
+                        <li>Tool execution and function calling</li>
+                        <li>Resource access (files, databases)</li>
+                        <li>Prompt templates and management</li>
+                        <li>Server discovery and health monitoring</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <line x1="10" y1="9" x2="8" y2="9"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Language Server Protocol (LSP)</h3>
+                    <p class="feature-description">
+                        Integrate code intelligence into AI workflows. LSP provides language-aware features for code analysis and development assistance.
+                    </p>
+                    <ul class="feature-list">
+                        <li>Code completion and suggestions</li>
+                        <li>Diagnostics and error detection</li>
+                        <li>Symbol search and navigation</li>
+                        <li>Refactoring assistance</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Agent Communication Protocol (ACP)</h3>
+                    <p class="feature-description">
+                        Enable multi-agent collaboration and communication. ACP facilitates agent-to-agent messaging and task coordination.
+                    </p>
+                    <ul class="feature-list">
+                        <li>Agent discovery and registration</li>
+                        <li>Inter-agent messaging</li>
+                        <li>Task delegation and coordination</li>
+                        <li>Shared context management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MCP Configuration Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">MCP Configuration</h2>
+                <p class="section-description">
+                    Configure Model Context Protocol servers and tools
+                </p>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">Configuration File</h3>
+                <p>Add MCP configuration to your <code>config.yaml</code>:</p>
+                <div class="code-block">
+                    <pre><code class="language-yaml">mcp:
+  enabled: true
+  servers:
+    - name: filesystem
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+
+    - name: postgres
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-postgres"]
+      env:
+        POSTGRES_CONNECTION_STRING: "${DATABASE_URL}"
+
+    - name: github
+      type: http
+      url: http://localhost:8090
+      headers:
+        Authorization: "Bearer ${GITHUB_TOKEN}"</code></pre>
+                </div>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">API Endpoints</h3>
+                <div class="table-responsive">
+                    <table class="api-table">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Method</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/v1/mcp/capabilities</code></td>
+                                <td>GET</td>
+                                <td>Get MCP server capabilities</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/mcp/tools</code></td>
+                                <td>GET</td>
+                                <td>List available tools</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/mcp/tools/call</code></td>
+                                <td>POST</td>
+                                <td>Execute a tool</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/mcp/prompts</code></td>
+                                <td>GET</td>
+                                <td>List prompt templates</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/mcp/resources</code></td>
+                                <td>GET</td>
+                                <td>List available resources</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">Tool Execution Example</h3>
+                <div class="code-block">
+                    <pre><code class="language-bash">curl -X POST http://localhost:8080/v1/mcp/tools/call \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "tool": "read_file",
+    "arguments": {
+      "path": "/data/example.txt"
+    }
+  }'</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LSP Configuration Section -->
+    <section class="documentation">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">LSP Configuration</h2>
+                <p class="section-description">
+                    Configure Language Server Protocol for code intelligence
+                </p>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">Configuration File</h3>
+                <p>Add LSP configuration to your <code>config.yaml</code>:</p>
+                <div class="code-block">
+                    <pre><code class="language-yaml">lsp:
+  enabled: true
+  servers:
+    - name: gopls
+      language: go
+      command: gopls
+      args: ["serve"]
+
+    - name: typescript
+      language: typescript
+      command: typescript-language-server
+      args: ["--stdio"]
+
+    - name: python
+      language: python
+      command: pylsp
+
+  cache_ttl: 5m
+  refresh_interval: 1h</code></pre>
+                </div>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">API Endpoints</h3>
+                <div class="table-responsive">
+                    <table class="api-table">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Method</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/v1/lsp/servers</code></td>
+                                <td>GET</td>
+                                <td>List LSP servers</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/lsp/execute</code></td>
+                                <td>POST</td>
+                                <td>Execute LSP request</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/lsp/sync</code></td>
+                                <td>POST</td>
+                                <td>Sync LSP servers</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/lsp/stats</code></td>
+                                <td>GET</td>
+                                <td>Get LSP statistics</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Protocol Manager Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Unified Protocol Manager</h2>
+                <p class="section-description">
+                    Manage all protocols through a single interface
+                </p>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">API Endpoints</h3>
+                <div class="table-responsive">
+                    <table class="api-table">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Method</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/v1/protocols/execute</code></td>
+                                <td>POST</td>
+                                <td>Execute any protocol request</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/protocols/servers</code></td>
+                                <td>GET</td>
+                                <td>List all protocol servers</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/protocols/metrics</code></td>
+                                <td>GET</td>
+                                <td>Get protocol metrics</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/protocols/refresh</code></td>
+                                <td>POST</td>
+                                <td>Refresh protocol servers</td>
+                            </tr>
+                            <tr>
+                                <td><code>/v1/protocols/configure</code></td>
+                                <td>POST</td>
+                                <td>Update protocol configuration</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="doc-card">
+                <h3 class="doc-title">Unified Request Example</h3>
+                <div class="code-block">
+                    <pre><code class="language-bash"># Execute a tool through the unified protocol manager
+curl -X POST http://localhost:8080/v1/protocols/execute \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "protocol": "mcp",
+    "method": "tools/call",
+    "params": {
+      "name": "read_file",
+      "arguments": {
+        "path": "/data/config.json"
+      }
+    }
+  }'</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Integrate Protocols?</h2>
+                <p class="cta-description">
+                    Start extending SuperAgent with MCP, LSP, and ACP today.
+                </p>
+                <div class="cta-actions">
+                    <a href="/docs" class="btn btn-primary btn-large">
+                        View Documentation
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                    </a>
+                    <a href="https://github.com/superagent/superagent" class="btn btn-outline btn-large">
+                        View on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <img src="/assets/images/logo.svg" alt="SuperAgent" class="footer-logo">
+                        <span class="footer-title">SuperAgent</span>
+                    </div>
+                    <p class="footer-description">
+                        AI-powered multi-provider LLM orchestration platform with enterprise-grade capabilities.
+                    </p>
+                </div>
+
+                <div class="footer-section">
+                    <h4 class="footer-heading">Documentation</h4>
+                    <ul class="footer-links">
+                        <li><a href="/docs">Quick Start</a></li>
+                        <li><a href="/docs/api">API Reference</a></li>
+                        <li><a href="/docs/deployment">Deployment</a></li>
+                        <li><a href="/docs/ai-debate">AI Debate</a></li>
+                        <li><a href="/docs/optimization">LLM Optimization</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4 class="footer-heading">Resources</h4>
+                    <ul class="footer-links">
+                        <li><a href="https://github.com/superagent/superagent">GitHub</a></li>
+                        <li><a href="/docs/protocols">Protocol Integration</a></li>
+                        <li><a href="/docs/faq">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4 class="footer-heading">Support</h4>
+                    <ul class="footer-links">
+                        <li><a href="/contact">Contact</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-legal">
+                    <p>&copy; 2026 SuperAgent. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="/scripts/main.js"></script>
+</body>
+</html>

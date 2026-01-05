@@ -55,3 +55,18 @@ logs/
 *_actual.json
 *_actual.yaml
 challenges/codebase/mock_server/mock_server
+
+# Main Challenge outputs with API keys
+opencode.json
+!opencode.json.example
+debate_group.json
+providers_verified.json
+models_scored.json
+system_verification.json
+
+# SuperAgent runtime
+superagent.pid
+superagent.log
+
+# Downloaded configurations with keys
+/home/*/Downloads/opencode-*.json

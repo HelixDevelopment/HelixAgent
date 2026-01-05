@@ -1,7 +1,182 @@
 {
-  "version": "1.0",
-  "description": "SuperAgent Challenges Registry",
+  "version": "2.0",
+  "description": "SuperAgent Challenges Registry - Including Main Challenge",
   "challenges": [
+    {
+      "id": "main",
+      "name": "Main SuperAgent Challenge",
+      "description": "Comprehensive challenge: Verify 30+ providers, benchmark 900+ LLMs, form AI debate group with 5 primary + 2 fallbacks each, verify system as single LLM, generate OpenCode config",
+      "category": "master",
+      "dependencies": [],
+      "estimated_duration": "30-60 minutes",
+      "binary_only": true,
+      "script": "../scripts/main_challenge.sh",
+      "inputs": [
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true,
+          "description": "All LLM provider API keys"
+        },
+        {
+          "name": "llmsverifier_binary",
+          "source": "../LLMsVerifier/llm-verifier/llm-verifier",
+          "required": true,
+          "description": "LLMsVerifier production binary"
+        },
+        {
+          "name": "superagent_binary",
+          "source": "../superagent",
+          "required": true,
+          "description": "SuperAgent production binary"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "providers_verified.json",
+          "type": "json",
+          "description": "All verified providers with status"
+        },
+        {
+          "name": "models_scored.json",
+          "type": "json",
+          "description": "All benchmarked and scored LLMs"
+        },
+        {
+          "name": "debate_group.json",
+          "type": "json",
+          "description": "AI debate group with 5 primary + 10 fallback members"
+        },
+        {
+          "name": "system_verification.json",
+          "type": "json",
+          "description": "System verification results as single LLM"
+        },
+        {
+          "name": "opencode.json",
+          "type": "json",
+          "description": "Production OpenCode configuration with all features"
+        },
+        {
+          "name": "opencode.json.example",
+          "type": "json",
+          "description": "Redacted OpenCode configuration for git versioning"
+        },
+        {
+          "name": "master_summary.md",
+          "type": "markdown",
+          "description": "Comprehensive challenge summary report"
+        }
+      ],
+      "assertions": [
+        {
+          "type": "min_count",
+          "target": "providers_verified",
+          "value": 5,
+          "message": "At least 5 providers must be verified"
+        },
+        {
+          "type": "min_count",
+          "target": "models_scored",
+          "value": 15,
+          "message": "At least 15 models must be scored"
+        },
+        {
+          "type": "exact_count",
+          "target": "debate_group.primary_members",
+          "value": 5,
+          "message": "Must have exactly 5 primary debate members"
+        },
+        {
+          "type": "exact_count",
+          "target": "debate_group.fallbacks_per_primary",
+          "value": 2,
+          "message": "Must have exactly 2 fallbacks per primary member"
+        },
+        {
+          "type": "min_score",
+          "target": "debate_group.average_score",
+          "value": 7.0,
+          "message": "Average debate group score must be at least 7.0"
+        },
+        {
+          "type": "system_verified",
+          "target": "system_verification",
+          "value": true,
+          "message": "System must pass verification as single LLM"
+        },
+        {
+          "type": "file_exists",
+          "target": "/home/milosvasic/Downloads/opencode-super-agent.json",
+          "message": "OpenCode config must be copied to Downloads"
+        },
+        {
+          "type": "no_sensitive_data_in_git",
+          "target": "opencode.json.example",
+          "message": "Redacted config must not contain API keys"
+        }
+      ],
+      "metrics": [
+        "providers_total",
+        "providers_verified",
+        "providers_failed",
+        "models_total",
+        "models_verified",
+        "top_15_average_score",
+        "debate_group_average_score",
+        "system_verification_score",
+        "total_duration_seconds"
+      ],
+      "phases": [
+        {
+          "id": "infrastructure",
+          "name": "Infrastructure Setup",
+          "description": "Start Docker/Podman services"
+        },
+        {
+          "id": "provider_verification",
+          "name": "Provider Verification",
+          "description": "Verify all 30+ providers using LLMsVerifier binary"
+        },
+        {
+          "id": "model_benchmark",
+          "name": "Model Benchmarking",
+          "description": "Test and benchmark 900+ LLMs"
+        },
+        {
+          "id": "debate_formation",
+          "name": "Debate Group Formation",
+          "description": "Select top 15+ LLMs, form 5 primary + 2 fallbacks"
+        },
+        {
+          "id": "system_verification",
+          "name": "System Verification",
+          "description": "Verify SuperAgent as single LLM using LLMsVerifier"
+        },
+        {
+          "id": "config_generation",
+          "name": "Configuration Generation",
+          "description": "Generate OpenCode config with MCP, ACP, LSP, Embeddings"
+        },
+        {
+          "id": "final_report",
+          "name": "Final Report",
+          "description": "Generate master summary and copy to Downloads"
+        }
+      ],
+      "configuration": {
+        "debate_group_size": 5,
+        "fallbacks_per_member": 2,
+        "minimum_model_score": 7.0,
+        "top_models_count": 15,
+        "features": {
+          "mcp_enabled": true,
+          "acp_enabled": true,
+          "lsp_enabled": true,
+          "embeddings_enabled": true
+        }
+      }
+    },
     {
       "id": "provider_verification",
       "name": "Provider Verification",

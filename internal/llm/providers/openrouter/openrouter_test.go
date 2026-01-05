@@ -313,8 +313,10 @@ func TestSimpleOpenRouterProvider_CompleteStream(t *testing.T) {
 		// Send a single chunk and the done message
 		w.Write([]byte("data: {\"id\":\"stream-1\",\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"))
 		flusher.Flush()
+		time.Sleep(50 * time.Millisecond) // Give client time to process
 		w.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
+		time.Sleep(50 * time.Millisecond) // Keep connection open briefly
 	}))
 	defer server.Close()
 

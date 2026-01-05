@@ -44,7 +44,125 @@ run-dev:
 
 test:
 	@echo "🧪 Running tests..."
-	go test -v ./...
+	@# Check if infrastructure is available
+	@if nc -z localhost $${POSTGRES_PORT:-15432} 2>/dev/null && nc -z localhost $${REDIS_PORT:-16379} 2>/dev/null; then \
+		echo "✅ Infrastructure available - running full tests"; \
+		DB_HOST=localhost DB_PORT=$${POSTGRES_PORT:-15432} DB_USER=superagent DB_PASSWORD=superagent123 DB_NAME=superagent_db \
+		DATABASE_URL="postgres://superagent:superagent123@localhost:$${POSTGRES_PORT:-15432}/superagent_db?sslmode=disable" \
+		REDIS_HOST=localhost REDIS_PORT=$${REDIS_PORT:-16379} REDIS_PASSWORD=superagent123 \
+		go test -v ./...; \
+	else \
+		echo "⚠️  Infrastructure not available - running unit tests only"; \
+		echo "   Run 'make test-infra-start' first for full test suite"; \
+		echo ""; \
+		go test -v -short ./...; \
+	fi
+
+# Auto-start infrastructure if not running (supports Docker and Podman)
+ensure-test-infra:
+	@echo "🔍 Checking test infrastructure..."
+	@INFRA_NEEDED=false; \
+	if ! nc -z localhost $${POSTGRES_PORT:-15432} 2>/dev/null; then \
+		INFRA_NEEDED=true; \
+	fi; \
+	if ! nc -z localhost $${REDIS_PORT:-16379} 2>/dev/null; then \
+		INFRA_NEEDED=true; \
+	fi; \
+	if [ "$$INFRA_NEEDED" = "true" ]; then \
+		echo "🐳 Starting test infrastructure..."; \
+		$(MAKE) test-infra-auto-start || { \
+			echo ""; \
+			echo "⚠️  WARNING: Could not start test infrastructure."; \
+			echo "   Tests requiring PostgreSQL/Redis will be skipped."; \
+			echo ""; \
+			echo "   To fix Podman rootless issue, run as root:"; \
+			echo "     echo 'milosvasic:100000:65536' >> /etc/subuid"; \
+			echo "     echo 'milosvasic:100000:65536' >> /etc/subgid"; \
+			echo "   Then run: podman system migrate"; \
+			echo ""; \
+			exit 0; \
+		}; \
+	fi
+	@echo "✅ Test infrastructure check complete"
+
+# Auto-start with Docker/Podman detection (supports compose and direct container run)
+test-infra-auto-start:
+	@echo "🔍 Detecting container runtime..."
+	@if command -v docker &> /dev/null && docker info &> /dev/null 2>&1; then \
+		echo "🐳 Using Docker..."; \
+		docker compose -f docker-compose.test.yml up -d postgres redis 2>/dev/null || \
+		docker-compose -f docker-compose.test.yml up -d postgres redis 2>/dev/null || \
+		$(MAKE) test-infra-direct-start; \
+	elif command -v podman &> /dev/null; then \
+		echo "🦭 Using Podman..."; \
+		if command -v podman-compose &> /dev/null; then \
+			podman-compose -f docker-compose.test.yml up -d postgres redis; \
+		else \
+			echo "📦 Starting containers directly with Podman..."; \
+			$(MAKE) test-infra-direct-start; \
+		fi; \
+	else \
+		echo "❌ No container runtime found. Install Docker or Podman."; \
+		exit 1; \
+	fi
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 5
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		nc -z localhost $${POSTGRES_PORT:-15432} 2>/dev/null && break; \
+		echo "  Waiting for PostgreSQL... ($$i/10)"; \
+		sleep 2; \
+	done
+	@for i in 1 2 3 4 5; do \
+		nc -z localhost $${REDIS_PORT:-16379} 2>/dev/null && break; \
+		echo "  Waiting for Redis... ($$i/5)"; \
+		sleep 1; \
+	done
+	@echo "✅ Test infrastructure started"
+
+# Direct container start (fallback when compose is not available)
+# Uses fully qualified image names for Podman compatibility
+# Uses --userns=host for Podman to bypass subuid issues
+test-infra-direct-start:
+	@echo "📦 Starting containers directly..."
+	@# Detect runtime and set options
+	@RUNTIME="$$(command -v docker 2>/dev/null || command -v podman 2>/dev/null)"; \
+	if [ -z "$$RUNTIME" ]; then echo "❌ No container runtime found"; exit 1; fi; \
+	echo "Using: $$RUNTIME"; \
+	# Set Podman-specific options \
+	EXTRA_OPTS=""; \
+	if echo "$$RUNTIME" | grep -q podman; then \
+		EXTRA_OPTS="--userns=host"; \
+		echo "Using Podman with --userns=host mode"; \
+	fi; \
+	# Create network if not exists \
+	$$RUNTIME network create superagent-test-net 2>/dev/null || true; \
+	# Stop and remove existing containers \
+	$$RUNTIME rm -f superagent-test-postgres superagent-test-redis 2>/dev/null || true; \
+	# Start PostgreSQL (using fully qualified name for Podman) \
+	echo "🐘 Starting PostgreSQL..."; \
+	$$RUNTIME run -d --name superagent-test-postgres $$EXTRA_OPTS \
+		--network superagent-test-net \
+		-p $${POSTGRES_PORT:-15432}:5432 \
+		-e POSTGRES_DB=superagent_db \
+		-e POSTGRES_USER=superagent \
+		-e POSTGRES_PASSWORD=superagent123 \
+		docker.io/library/postgres:15-alpine || exit 1; \
+	# Start Redis (using fully qualified name for Podman) \
+	echo "🔴 Starting Redis..."; \
+	$$RUNTIME run -d --name superagent-test-redis $$EXTRA_OPTS \
+		--network superagent-test-net \
+		-p $${REDIS_PORT:-16379}:6379 \
+		docker.io/library/redis:7-alpine redis-server --requirepass superagent123 --appendonly yes || exit 1; \
+	echo "✅ Containers started"
+
+# Stop direct containers
+test-infra-direct-stop:
+	@RUNTIME="$$(command -v docker 2>/dev/null || command -v podman 2>/dev/null)"; \
+	if [ -n "$$RUNTIME" ]; then \
+		$$RUNTIME rm -f superagent-test-postgres superagent-test-redis 2>/dev/null || true; \
+		$$RUNTIME network rm superagent-test-net 2>/dev/null || true; \
+		echo "✅ Test containers stopped"; \
+	fi
 
 test-coverage:
 	@echo "📊 Running tests with coverage..."

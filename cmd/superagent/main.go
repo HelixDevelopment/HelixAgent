@@ -643,8 +643,17 @@ type OpenCodeConfig struct {
 
 // ProviderDef represents a provider definition in OpenCode config
 type ProviderDef struct {
-	Name    string                 `json:"name"`
-	Options map[string]interface{} `json:"options"`
+	NPM     string                    `json:"npm,omitempty"`
+	Name    string                    `json:"name"`
+	Options map[string]interface{}    `json:"options"`
+	Models  map[string]ModelDef       `json:"models,omitempty"`
+}
+
+// ModelDef represents a model definition with its capabilities
+type ModelDef struct {
+	Name        string `json:"name"`
+	Attachments bool   `json:"attachments,omitempty"`
+	Reasoning   bool   `json:"reasoning,omitempty"`
 }
 
 // AgentDef represents agent configuration
@@ -697,22 +706,30 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)
 
 	// Build the OpenCode configuration
-	// Use "openai" provider type since SuperAgent exposes OpenAI-compatible API
-	// The custom baseURL points to SuperAgent's /v1 endpoint
+	// Use custom "superagent" provider with explicit model definition
+	// This prevents OpenCode from showing models from other providers
 	config := OpenCodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		Provider: map[string]ProviderDef{
-			"openai": {
+			"superagent": {
+				NPM:  "@ai-sdk/openai-compatible",
 				Name: "SuperAgent AI Debate Ensemble",
 				Options: map[string]interface{}{
 					"apiKey":  apiKey,
 					"baseURL": baseURL,
 				},
+				Models: map[string]ModelDef{
+					"superagent-debate": {
+						Name:        "SuperAgent Debate Ensemble",
+						Attachments: true,
+						Reasoning:   true,
+					},
+				},
 			},
 		},
 		Agent: &AgentDef{
 			Model: &ModelRef{
-				Provider: "openai",
+				Provider: "superagent",
 				Model:    "superagent-debate",
 			},
 		},

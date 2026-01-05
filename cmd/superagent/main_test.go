@@ -1027,13 +1027,19 @@ func TestCheckChromaDBHealth(t *testing.T) {
 }
 
 func TestCheckPostgresHealth(t *testing.T) {
-	// This is a placeholder health check that just waits
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	// Requires running PostgreSQL
 	err := checkPostgresHealth()
 	assert.NoError(t, err)
 }
 
 func TestCheckRedisHealth(t *testing.T) {
-	// This is a placeholder health check that just waits
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	// Requires running Redis
 	err := checkRedisHealth()
 	assert.NoError(t, err)
 }
@@ -1049,9 +1055,12 @@ func TestShowVersion(t *testing.T) {
 }
 
 func TestVerifyServicesHealth_PostgresAndRedis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	logger := logrus.New()
 
-	// Test postgres and redis health checks (they are placeholder implementations)
+	// Test postgres and redis health checks - requires running services
 	err := verifyServicesHealth([]string{"postgres", "redis"}, logger)
 	assert.NoError(t, err)
 }
@@ -1138,21 +1147,33 @@ func TestVerifyServicesHealth_SingleService(t *testing.T) {
 	logger.SetLevel(logrus.ErrorLevel)
 
 	t.Run("Postgres", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		err := verifyServicesHealth([]string{"postgres"}, logger)
-		assert.NoError(t, err) // placeholder always returns nil
+		assert.NoError(t, err) // requires running postgres
 	})
 
 	t.Run("Redis", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		err := verifyServicesHealth([]string{"redis"}, logger)
-		assert.NoError(t, err) // placeholder always returns nil
+		assert.NoError(t, err) // requires running redis
 	})
 
 	t.Run("Cognee", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		err := verifyServicesHealth([]string{"cognee"}, logger)
 		assert.Error(t, err) // will fail without running container
 	})
 
 	t.Run("ChromaDB", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		err := verifyServicesHealth([]string{"chromadb"}, logger)
 		assert.Error(t, err) // will fail without running container
 	})
@@ -1214,18 +1235,27 @@ func TestGetRunningServices_EmptyResult(t *testing.T) {
 // TestCheckHealthFunctions tests the health check functions
 func TestCheckHealthFunctions(t *testing.T) {
 	t.Run("PostgresHealth_Placeholder", func(t *testing.T) {
-		// This should complete quickly (just sleeps 2s)
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
+		// Requires running PostgreSQL
 		err := checkPostgresHealth()
 		assert.NoError(t, err)
 	})
 
 	t.Run("RedisHealth_Placeholder", func(t *testing.T) {
-		// This should complete quickly (just sleeps 1s)
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
+		// Requires running Redis
 		err := checkRedisHealth()
 		assert.NoError(t, err)
 	})
 
 	t.Run("CogneeHealth_NoServer", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		// Without Cognee running, should fail with connection error
 		err := checkCogneeHealth()
 		require.Error(t, err)
@@ -1234,6 +1264,9 @@ func TestCheckHealthFunctions(t *testing.T) {
 	})
 
 	t.Run("ChromaDBHealth_NoServer", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping integration test in short mode")
+		}
 		// Without ChromaDB running, should fail with connection error
 		err := checkChromaDBHealth()
 		require.Error(t, err)
@@ -1430,6 +1463,10 @@ func TestGetRunningServices_WithDocker(t *testing.T) {
 
 // TestVerifyServicesHealth_CombinedServices tests various service combinations
 func TestVerifyServicesHealth_CombinedServices(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	logger.SetOutput(io.Discard)
@@ -1442,12 +1479,12 @@ func TestVerifyServicesHealth_CombinedServices(t *testing.T) {
 		{
 			name:        "Only postgres",
 			services:    []string{"postgres"},
-			expectError: false, // placeholder always succeeds
+			expectError: false, // requires running postgres
 		},
 		{
 			name:        "Only redis",
 			services:    []string{"redis"},
-			expectError: false, // placeholder always succeeds
+			expectError: false, // requires running redis
 		},
 		{
 			name:        "Postgres and redis",
@@ -1665,6 +1702,10 @@ func TestCheckChromaDBHealthWithConfig_ServerError(t *testing.T) {
 // =============================================================================
 
 func TestFullWorkflow_AllServicesHealthy(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	executor := &MockCommandExecutor{
 		LookPathFunc: func(file string) (string, error) {
 			return "/usr/bin/" + file, nil

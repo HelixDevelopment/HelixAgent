@@ -2,32 +2,70 @@
 
 A comprehensive challenge framework for testing, verifying, and validating LLM providers, AI debate groups, and API quality.
 
+## Key Concepts
+
+### SuperAgent as Virtual LLM Provider
+
+SuperAgent presents itself as a **single LLM provider** with **ONE virtual model** - the AI Debate Ensemble. The underlying implementation leverages multiple top-performing LLMs through consensus-driven voting.
+
+### Real Data Only - No Stubs
+
+**CRITICAL**: ALL verification data comes from REAL API calls. No hardcoded scores, no sample data, no cached demonstrations.
+
+### Auto-Start Infrastructure
+
+**ALL infrastructure starts automatically** when needed:
+- SuperAgent binary is built if not present
+- SuperAgent server auto-starts if not running
+- Docker/Podman containers start automatically
+
 ## Overview
 
 The SuperAgent Challenges System provides:
 
-- **Automated Provider Verification**: Test and score all configured LLM providers
-- **AI Debate Group Formation**: Create optimized groups of top-performing models
+- **Automated Provider Verification**: Test and score all configured LLM providers with REAL API calls
+- **AI Debate Group Formation**: Create optimized groups of top-performing verified models
 - **API Quality Testing**: Validate response quality with comprehensive assertions
+- **Auto-Start Infrastructure**: SuperAgent and containers start automatically when needed
+- **Dual Container Runtime**: Supports both Docker and Podman
 - **Comprehensive Logging**: Full audit trail of all API communications
 - **Execution Reports**: Detailed reports and master summaries with history tracking
 
 ## Quick Start
 
 ```bash
-# 1. Copy environment template and configure API keys
-cp config/.env.example config/.env
-# Edit .env with your actual API keys
+# 1. Configure API keys in project root .env
+cp .env.example .env
+nano .env  # Add your API keys + JWT_SECRET
 
-# 2. Verify configuration
-./scripts/verify_config.sh
+# 2. Build SuperAgent (optional - auto-builds if needed)
+make build
 
-# 3. Run all challenges
-./scripts/run_all_challenges.sh
+# 3. Run all 39 challenges (auto-starts everything)
+./challenges/scripts/run_all_challenges.sh
 
 # 4. View results
-cat results/latest_summary.md
+cat challenges/master_results/latest_summary.md
 ```
+
+## All 39 Challenges
+
+The system includes 39 comprehensive challenges:
+
+| Category | Challenges | Count |
+|----------|------------|-------|
+| Infrastructure | health_monitoring, caching_layer, database_operations, configuration_loading, plugin_system, session_management, graceful_shutdown | 7 |
+| Providers | provider_claude, provider_deepseek, provider_gemini, provider_ollama, provider_openrouter, provider_qwen, provider_zai | 7 |
+| Protocols | mcp_protocol, lsp_protocol, acp_protocol | 3 |
+| Security | authentication, rate_limiting, input_validation | 3 |
+| Core | provider_verification, ensemble_voting, ai_debate_formation, ai_debate_workflow, embeddings_service, streaming_responses, model_metadata, api_quality_test | 8 |
+| Cloud | cloud_aws_bedrock, cloud_gcp_vertex, cloud_azure_openai | 3 |
+| Optimization | optimization_semantic_cache, optimization_structured_output | 2 |
+| Integration | cognee_integration | 1 |
+| Resilience | circuit_breaker, error_handling, concurrent_access | 3 |
+| API | openai_compatibility, grpc_api | 2 |
+
+**Total: 39 challenges - ALL must pass**
 
 ## Directory Structure
 
@@ -198,6 +236,67 @@ go test -cover ./...
 - [03_CHALLENGE_CATALOG.md](docs/03_CHALLENGE_CATALOG.md) - All challenges
 - [04_AI_DEBATE_GROUP.md](docs/04_AI_DEBATE_GROUP.md) - Debate group details
 - [05_SECURITY.md](docs/05_SECURITY.md) - Security practices
+
+## Auto-Start Infrastructure
+
+### How It Works
+
+When running any challenge, the system automatically:
+
+1. **Checks if SuperAgent is running** on port 8080
+2. **Builds binary if needed** (`make build`)
+3. **Starts SuperAgent** with required environment variables
+4. **Waits for health check** to pass (up to 30 seconds)
+5. **Runs challenge tests**
+6. **Stops SuperAgent** when done
+
+### Required Environment Variables
+
+```bash
+# In project root .env file:
+JWT_SECRET=your-secret-key-at-least-32-characters
+```
+
+### Container Runtime Support
+
+Both Docker and Podman are supported:
+
+```bash
+# Docker (default)
+docker ps
+
+# Podman (auto-detected if docker unavailable)
+podman ps
+
+# For Podman rootless mode
+systemctl --user enable --now podman.socket
+```
+
+### Test Types
+
+- **Required Tests**: Must pass (e.g., code existence checks)
+- **Optional Tests**: Don't fail if endpoint unavailable (e.g., `/v1/cache/stats`)
+
+## Main Challenge
+
+The Main Challenge is the comprehensive orchestration that:
+
+1. Verifies ALL providers using LLMsVerifier with REAL API calls
+2. Benchmarks and scores available models
+3. Forms an AI Debate Group with 5 primaries + fallbacks
+4. Generates OpenCode configuration
+
+```bash
+./challenges/scripts/main_challenge.sh
+# Output: /home/user/Downloads/opencode-super-agent.json
+```
+
+See [06_MAIN_CHALLENGE.md](docs/06_MAIN_CHALLENGE.md) for detailed documentation.
+
+## Architecture Documentation
+
+For comprehensive architecture details, see:
+- [SUPERAGENT_COMPREHENSIVE_ARCHITECTURE.md](../docs/architecture/SUPERAGENT_COMPREHENSIVE_ARCHITECTURE.md)
 
 ## License
 

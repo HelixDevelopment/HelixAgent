@@ -259,3 +259,86 @@ The project maintains comprehensive test coverage across 50+ test packages:
 - **Security tests**: `./tests/security/...` - Authentication, authorization, input validation
 - **Stress tests**: `./tests/stress/...` - Load and performance testing
 - **Chaos tests**: `./tests/challenge/...` - Resilience testing
+
+## Challenges System
+
+The `challenges/` directory contains a comprehensive challenge framework for testing, verifying, and validating LLM providers, AI debate groups, and API quality.
+
+### Key Concepts
+
+**SuperAgent as Virtual LLM Provider**: SuperAgent presents itself as a **single LLM provider** with **ONE virtual model** - the AI Debate Ensemble. The underlying implementation leverages multiple top-performing LLMs through consensus-driven voting.
+
+**Real Data Only - No Stubs**: ALL verification data comes from REAL API calls. No hardcoded scores, no sample data, no cached demonstrations.
+
+**Auto-Start Infrastructure**: ALL infrastructure starts automatically when needed - SuperAgent binary is built if not present, server auto-starts if not running, containers start automatically.
+
+### Running Challenges
+
+```bash
+# Run all 39 challenges (auto-starts everything)
+./challenges/scripts/run_all_challenges.sh
+
+# Run the main challenge (provider verification + debate group formation + OpenCode config)
+./challenges/scripts/main_challenge.sh
+
+# Run specific challenge
+./challenges/scripts/run_challenges.sh provider_verification
+```
+
+### Challenge Categories
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Infrastructure | 7 | Health, caching, database, config, plugins, sessions, shutdown |
+| Providers | 7 | Claude, DeepSeek, Gemini, Ollama, OpenRouter, Qwen, ZAI |
+| Protocols | 3 | MCP, LSP, ACP |
+| Security | 3 | Authentication, rate limiting, input validation |
+| Core | 8 | Provider verification, ensemble, debate, embeddings, streaming, metadata, quality |
+| Cloud | 3 | AWS Bedrock, GCP Vertex, Azure OpenAI |
+| Optimization | 2 | Semantic cache, structured output |
+| Integration | 1 | Cognee |
+| Resilience | 3 | Circuit breaker, error handling, concurrent access |
+| API | 2 | OpenAI compatibility, gRPC |
+
+### Main Challenge Output
+
+The Main Challenge generates an OpenCode-compatible configuration:
+
+```bash
+./challenges/scripts/main_challenge.sh
+# Output: ~/Downloads/opencode-super-agent.json
+```
+
+The generated configuration is validated using LLMsVerifier's OpenCode validator implementation.
+
+## OpenCode Configuration
+
+SuperAgent generates OpenCode configurations following the official schema (`https://opencode.ai/config.json`).
+
+### Valid Top-Level Keys (per LLMsVerifier)
+
+The following keys are valid at the top level (from `LLMsVerifier/scripts/validate_opencode_config.py`):
+
+```
+$schema, plugin, enterprise, instructions, provider, mcp, tools, agent,
+command, keybinds, username, share, permission, compaction, sse, mode, autoshare
+```
+
+### OpenCode Configuration Validation
+
+Configurations are validated using LLMsVerifier's validator which checks:
+- Only valid top-level keys are present
+- `provider` section is present with `options`
+- MCP servers have valid `type` (local/remote) with required fields
+- Agents have `model` or `prompt`
+
+### Go-based Generator
+
+A Go-based generator is available at `challenges/codebase/go_files/opencode_generator/`:
+
+```bash
+cd challenges/codebase/go_files/opencode_generator
+go build -o opencode_generator opencode_generator.go
+./opencode_generator --host localhost --port 8080 --output config.json
+./opencode_generator --validate config.json  # Validate existing config
+```

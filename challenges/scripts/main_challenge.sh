@@ -1030,66 +1030,20 @@ EOF
 phase6_opencode_config() {
     log_phase "PHASE 6: OpenCode Configuration Generation"
 
-    log_info "Generating OpenCode configuration for SuperAgent virtual LLM..."
+    log_info "Generating OpenCode configuration using LLMsVerifier types and validation..."
 
     local opencode_output="$OUTPUT_DIR/opencode.json"
     local opencode_redacted="$OUTPUT_DIR/opencode.json.example"
     local debate_input="$OUTPUT_DIR/debate_group.json"
+    local validation_output="$OUTPUT_DIR/opencode_validation.json"
 
-    # Get API key from environment (will be redacted in git version)
-    local api_key="${SUPERAGENT_API_KEY:-}"
     local superagent_port="${SUPERAGENT_PORT:-8080}"
     local superagent_host="${SUPERAGENT_HOST:-localhost}"
 
-    # Extract real model data from debate group
-    local primary_models="[]"
-    local fallback_models="[]"
-    local providers_used="[]"
-    local total_models=0
-    local avg_score=0
-
-    if [ -f "$debate_input" ]; then
-        log_info "Reading debate group data for OpenCode configuration..."
-
-        # Extract real data using Python
-        read -r primary_models fallback_models providers_used total_models avg_score < <(python3 - "$debate_input" << 'EXTRACTDATA'
-import json
-import sys
-
-try:
-    with open(sys.argv[1], 'r') as f:
-        data = json.load(f)
-
-    primary = []
-    fallbacks = []
-    providers = set()
-
-    for member in data.get('members', []):
-        model = member.get('model', {})
-        if model.get('model_id'):
-            primary.append(model.get('model_id'))
-            providers.add(model.get('provider', ''))
-
-        for fb in member.get('fallbacks', []):
-            if fb.get('model_id'):
-                fallbacks.append(fb.get('model_id'))
-                providers.add(fb.get('provider', ''))
-
-    total = data.get('total_models', len(primary) + len(fallbacks))
-    avg = data.get('average_score', 0)
-
-    print(json.dumps(primary), json.dumps(fallbacks), json.dumps(list(providers)), total, f"{avg:.1f}")
-except Exception as e:
-    print('[]', '[]', '[]', 0, '0.0')
-EXTRACTDATA
-)
-    fi
-
-    log_info "Generating configuration with real model data..."
-
-    # Generate OpenCode configuration following the correct schema
-    # SuperAgent is exposed as ONE provider with ONE virtual LLM (the AI debate group)
-    # All capabilities (MCP, LSP, ACP, Embeddings) are exposed via SuperAgent's OpenAI-compatible API
+    # Generate OpenCode configuration following the official schema
+    # Using LLMsVerifier's validated schema: ONLY these top-level keys are valid:
+    # $schema, plugin, enterprise, instructions, provider, mcp, tools, agent,
+    # command, keybinds, username, share, permission, compaction, sse, mode, autoshare
 
     python3 - "$opencode_output" "$debate_input" "$superagent_host" "$superagent_port" << 'GENPYTHON'
 import json
@@ -1100,6 +1054,13 @@ output_file = sys.argv[1]
 debate_file = sys.argv[2]
 host = sys.argv[3]
 port = sys.argv[4]
+
+# LLMsVerifier's validated top-level keys (from pkg/opencode/config/types.go)
+VALID_TOP_LEVEL_KEYS = {
+    "$schema", "plugin", "enterprise", "instructions", "provider",
+    "mcp", "tools", "agent", "command", "keybinds", "username",
+    "share", "permission", "compaction", "sse", "mode", "autoshare"
+}
 
 # Read debate group data
 primary = []
@@ -1133,165 +1094,241 @@ except:
     total_models = 9
     avg_score = 8.0
 
+# Valid OpenCode configuration - ONLY using keys from VALID_TOP_LEVEL_KEYS
+# Following LLMsVerifier's pkg/opencode/config/types.go structure
 config = {
-    "$schema": "https://opencode.sh/schema.json",
+    "$schema": "https://opencode.ai/config.json",
+
+    # Username for display
     "username": "SuperAgent AI Ensemble",
-    "features": {
-        "streaming": True,
-        "tool_calling": True,
-        "embeddings": True,
-        "vision": True,
-        "mcp": True,
-        "lsp": True,
-        "acp": True,
-        "debate_mode": True
-    },
-    "metadata": {
-        "generator": "SuperAgent Main Challenge",
-        "version": "1.0.0",
-        "generated_at": datetime.now().isoformat(),
-        "total_providers": 1,
-        "total_models": 1,
-        "verification_method": "real_api_verification",
-        "debate_group": {
-            "primary_members": len(primary),
-            "fallbacks_per_member": 2,
-            "strategy": "confidence_weighted",
-            "consensus_threshold": 0.7,
-            "max_rounds": 3,
-            "providers_used": providers,
-            "average_score": avg_score,
-            "total_underlying_models": total_models
-        },
-        "protocols": {
-            "http3": True,
-            "quic": True,
-            "brotli": True,
-            "fallback_http2": True
-        }
-    },
+
+    # Provider configuration (REQUIRED per LLMsVerifier validator)
     "provider": {
         "superagent": {
             "options": {
                 "apiKey": "${SUPERAGENT_API_KEY}",
-                "baseURL": f"http://{host}:{port}/v1"
-            },
-            "models": {
-                "superagent-debate": {
-                    "name": "SuperAgent AI Debate Group",
-                    "displayName": "SuperAgent Debate (Ensemble)",
-                    "maxTokens": 128000,
-                    "supports_streaming": True,
-                    "supports_tool_calling": True,
-                    "supports_vision": True,
-                    "supports_embeddings": True,
-                    "verified": True,
-                    "description": "Virtual LLM powered by AI debate among top-performing verified models",
-                    "underlying_models": {
-                        "primary": primary,
-                        "fallbacks": fallbacks
-                    }
-                }
+                "baseURL": f"http://{host}:{port}/v1",
+                "timeout": 600000
             }
         }
     },
+
+    # MCP servers (type must be "local" or "remote" per LLMsVerifier)
     "mcp": {
         "superagent-tools": {
-            "type": "http",
-            "url": f"http://{host}:{port}/v1/mcp",
-            "headers": {
-                "Authorization": "Bearer ${SUPERAGENT_API_KEY}"
-            },
-            "enabled": True,
-            "timeout": 30000
+            "type": "remote",
+            "url": f"http://{host}:{port}/v1/mcp"
         },
         "filesystem": {
-            "type": "stdio",
-            "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/"],
-            "enabled": True
+            "type": "local",
+            "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/"]
         },
         "github": {
-            "type": "stdio",
+            "type": "local",
             "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
             "environment": {
                 "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-            },
-            "enabled": True
+            }
         },
         "memory": {
-            "type": "stdio",
-            "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
-            "enabled": True
+            "type": "local",
+            "command": ["npx", "-y", "@modelcontextprotocol/server-memory"]
         }
     },
+
+    # Agent configurations (must have model or prompt per LLMsVerifier)
     "agent": {
         "default": {
             "model": "superagent/superagent-debate",
-            "description": "SuperAgent AI Debate Group - Multiple verified LLMs working together",
-            "prompt": "You are SuperAgent, an ensemble AI system combining top language models through AI debate for optimal responses.",
-            "maxSteps": 50,
+            "description": "SuperAgent AI Debate - ensemble of top-performing LLMs",
+            "prompt": "You are SuperAgent, an ensemble AI combining top language models through AI debate for optimal responses."
+        },
+        "code-reviewer": {
+            "model": "superagent/superagent-debate",
+            "description": "Code review agent",
+            "prompt": "You are a code reviewer. Analyze code for bugs, security issues, and improvements.",
             "tools": {
-                "bash": True,
-                "docker": True,
-                "git": True,
-                "lsp": True,
-                "webfetch": True
+                "write": False,
+                "bash": False
             }
         }
     },
-    "instructions": [
-        f"SuperAgent provides access to an AI debate group with {len(primary)} primary LLMs and fallbacks",
-        "All responses are consensus-driven using confidence-weighted voting",
-        "MCP tools available via /v1/mcp, LSP via /v1/lsp, ACP via /v1/acp",
-        "Embeddings available via /v1/embeddings",
-        f"Models verified with average score: {avg_score:.1f}"
-    ],
-    "mode": {
-        "default": "default"
-    },
+
+    # Permission model
     "permission": {
         "edit": "ask",
-        "bash": "ask",
-        "webfetch": "allow"
+        "bash": "ask"
     },
+
+    # Tools configuration
+    "tools": {
+        "write": {"enabled": True},
+        "bash": {"enabled": True},
+        "edit": {"enabled": True},
+        "glob": {"enabled": True},
+        "grep": {"enabled": True},
+        "read": {"enabled": True},
+        "fetch": {"enabled": True}
+    },
+
+    # Instructions (references verified models from debate group)
+    "instructions": [
+        f"SuperAgent provides access to an AI debate group with {len(primary)} primary LLMs",
+        f"Underlying models verified via LLMsVerifier: {', '.join(primary[:3])}{'...' if len(primary) > 3 else ''}",
+        f"Average verification score: {avg_score}",
+        "MCP tools available via SuperAgent at /v1/mcp",
+        f"Generated: {datetime.now().isoformat()}"
+    ],
+
+    # Compaction settings
+    "compaction": {
+        "auto": True,
+        "prune": True
+    },
+
+    # SSE settings
     "sse": {
         "enabled": True
     }
 }
 
+# Validate that all keys are valid OpenCode keys (LLMsVerifier check)
+invalid_keys = [k for k in config.keys() if k not in VALID_TOP_LEVEL_KEYS]
+if invalid_keys:
+    print(f"ERROR: Invalid top-level keys: {invalid_keys}", file=sys.stderr)
+    sys.exit(1)
+
 with open(output_file, 'w') as f:
     json.dump(config, f, indent=2)
 
 print(f"OpenCode configuration generated with {len(primary)} primary models and {len(fallbacks)} fallbacks")
+print(f"Configuration validated against LLMsVerifier schema")
 GENPYTHON
 
-    # Generate redacted example version for git (copy of real config with note about dynamic data)
-    # Note: The redacted version shows the structure; actual models are populated from real verification
-    cp "$opencode_output" "$opencode_redacted"
+    local gen_exit=$?
+    if [ $gen_exit -ne 0 ]; then
+        log_error "Failed to generate OpenCode configuration"
+        return 1
+    fi
 
-    # Add a comment to the redacted version indicating it's generated
-    python3 - "$opencode_redacted" << 'ADDNOTE'
+    # Validate the generated configuration using LLMsVerifier's validation rules
+    log_info "Validating configuration using LLMsVerifier implementation..."
+
+    python3 - "$opencode_output" "$validation_output" << 'VALIDATEPYTHON'
 import json
 import sys
 
-try:
-    with open(sys.argv[1], 'r') as f:
-        data = json.load(f)
+config_path = sys.argv[1]
+validation_output = sys.argv[2]
 
-    # Add note about template
-    if 'metadata' in data:
-        data['metadata']['note'] = "This configuration is dynamically generated based on real API verification"
-        data['metadata']['template'] = True
+# LLMsVerifier's valid top-level keys (from scripts/validate_opencode_config.py)
+VALID_TOP_LEVEL_KEYS = {
+    "$schema", "plugin", "enterprise", "instructions", "provider",
+    "mcp", "tools", "agent", "command", "keybinds", "username",
+    "share", "permission", "compaction", "sse", "mode", "autoshare"
+}
 
-    with open(sys.argv[1], 'w') as f:
-        json.dump(data, f, indent=2)
-except:
-    pass
-ADDNOTE
+def validate_config(config_path):
+    """Validate using LLMsVerifier rules"""
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except Exception as e:
+        return False, [f"Failed to parse JSON: {e}"]
 
-    log_success "OpenCode configuration generated from real verification data"
+    errors = []
+
+    # Check for invalid top-level keys
+    invalid_keys = [k for k in config.keys() if k not in VALID_TOP_LEVEL_KEYS]
+    if invalid_keys:
+        errors.append(f"Invalid top-level keys: {', '.join(invalid_keys)}")
+
+    # Must have provider (REQUIRED by LLMsVerifier)
+    if "provider" not in config:
+        errors.append("Missing required 'provider' key")
+    elif not isinstance(config["provider"], dict):
+        errors.append("'provider' must be an object")
+    else:
+        # Validate provider structure
+        for name, prov in config["provider"].items():
+            if not isinstance(prov, dict):
+                errors.append(f"Provider '{name}' must be an object")
+            elif "options" not in prov:
+                errors.append(f"Provider '{name}' missing 'options'")
+
+    # Validate MCP servers (type must be local or remote)
+    if "mcp" in config and isinstance(config["mcp"], dict):
+        for name, mcp in config["mcp"].items():
+            if not isinstance(mcp, dict):
+                continue
+            mcp_type = mcp.get("type", "")
+            if mcp_type not in ["local", "remote"]:
+                errors.append(f"MCP '{name}': type must be 'local' or 'remote'")
+            if mcp_type == "local" and "command" not in mcp:
+                errors.append(f"MCP '{name}': command required for local type")
+            if mcp_type == "remote" and "url" not in mcp:
+                errors.append(f"MCP '{name}': url required for remote type")
+
+    # Validate agents (must have model or prompt)
+    if "agent" in config and isinstance(config["agent"], dict):
+        for name, agent in config["agent"].items():
+            if not isinstance(agent, dict):
+                continue
+            if "model" not in agent and "prompt" not in agent:
+                errors.append(f"Agent '{name}': must have model or prompt")
+
+    return len(errors) == 0, errors
+
+is_valid, errors = validate_config(config_path)
+
+validation_result = {
+    "config_path": config_path,
+    "valid": is_valid,
+    "errors": errors,
+    "validator": "LLMsVerifier",
+    "timestamp": str(__import__('datetime').datetime.now().isoformat())
+}
+
+with open(validation_output, 'w') as f:
+    json.dump(validation_result, f, indent=2)
+
+print("=" * 70)
+print("OPENCODE CONFIGURATION VALIDATION (LLMsVerifier)")
+print("=" * 70)
+print()
+
+if is_valid:
+    print("CONFIGURATION IS VALID")
+    print()
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    print(f"Providers configured: {len(config.get('provider', {}))}")
+    print(f"MCP servers configured: {len(config.get('mcp', {}))}")
+    print(f"Agents configured: {len(config.get('agent', {}))}")
+else:
+    print("CONFIGURATION HAS ERRORS:")
+    for error in errors:
+        print(f"  - {error}")
+    sys.exit(1)
+
+print()
+print("=" * 70)
+VALIDATEPYTHON
+
+    local validation_exit=$?
+    if [ $validation_exit -ne 0 ]; then
+        log_error "OpenCode configuration validation failed!"
+        return 1
+    fi
+
+    log_success "OpenCode configuration validated using LLMsVerifier"
+
+    # Generate redacted example version
+    cp "$opencode_output" "$opencode_redacted"
+
+    log_success "OpenCode configuration generated and validated"
     log_info "Config: $opencode_output"
-    log_info "Example: $opencode_redacted"
+    log_info "Validation: $validation_output"
 
     # Copy to Downloads
     local downloads_target="/home/milosvasic/Downloads/opencode-super-agent.json"

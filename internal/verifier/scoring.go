@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -312,4 +313,206 @@ func DefaultWeights() *ScoreWeights {
 		Capability:        0.20,
 		Recency:           0.10,
 	}
+}
+
+// calculateSpeedScore calculates speed score based on model characteristics
+func (s *ScoringService) calculateSpeedScore(modelID string) float64 {
+	// Fast models known for speed
+	fastModels := map[string]float64{
+		"groq":      9.0,
+		"gpt-3.5":   8.0,
+		"claude-3-haiku": 8.5,
+		"gemini-flash": 8.5,
+	}
+
+	// Standard speed models
+	standardModels := map[string]float64{
+		"gpt-4":     7.5,
+		"claude-3":  7.5,
+		"gemini":    7.0,
+	}
+
+	for pattern, score := range fastModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64())
+		}
+	}
+
+	for pattern, score := range standardModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	// Default score for unknown models
+	return 5.0 + rand.Float64()*2
+}
+
+// calculateEfficiencyScore calculates efficiency score based on model characteristics
+func (s *ScoringService) calculateEfficiencyScore(modelID string) float64 {
+	// Efficient models
+	efficientModels := map[string]float64{
+		"gpt-4o":    9.0,
+		"claude-3.5": 9.0,
+		"gemini-pro": 8.0,
+		"llama":     7.5,
+	}
+
+	for pattern, score := range efficientModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	// Default efficiency
+	return 5.0 + rand.Float64()*3
+}
+
+// calculateCostScore calculates cost score (higher = cheaper)
+func (s *ScoringService) calculateCostScore(modelID string) float64 {
+	// Free/cheap models
+	cheapModels := map[string]float64{
+		"llama":     9.0,
+		"ollama":    10.0,
+		"gpt-3.5":   8.0,
+		"claude-3-haiku": 8.0,
+	}
+
+	// Expensive models
+	expensiveModels := map[string]float64{
+		"gpt-4":     5.0,
+		"claude-3-opus": 4.0,
+		"gemini-ultra": 4.5,
+	}
+
+	for pattern, score := range cheapModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	for pattern, score := range expensiveModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Max(0, score+rand.Float64()*1.5)
+		}
+	}
+
+	// Default cost score
+	return 5.0 + rand.Float64()*2
+}
+
+// calculateCapabilityScore calculates capability score based on model characteristics
+func (s *ScoringService) calculateCapabilityScore(modelID string) float64 {
+	// High capability models
+	highCapModels := map[string]float64{
+		"gpt-4":         9.5,
+		"gpt-4o":        9.5,
+		"claude-3-opus": 9.5,
+		"claude-3.5":    9.0,
+		"gemini-ultra":  9.0,
+	}
+
+	// Medium capability models
+	medCapModels := map[string]float64{
+		"gpt-3.5":       7.0,
+		"claude-3-sonnet": 8.0,
+		"gemini-pro":    8.0,
+		"llama-3":       7.5,
+	}
+
+	for pattern, score := range highCapModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	for pattern, score := range medCapModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	// Default capability
+	return 5.0 + rand.Float64()*2
+}
+
+// calculateRecencyScore calculates recency score based on model release date
+func (s *ScoringService) calculateRecencyScore(modelID string) float64 {
+	// Recent models
+	recentModels := map[string]float64{
+		"gpt-4o":        9.5,
+		"gpt-4-turbo":   9.0,
+		"claude-3.5":    9.0,
+		"gemini-1.5":    9.0,
+	}
+
+	// Older models
+	olderModels := map[string]float64{
+		"gpt-3.5":       6.0,
+		"gpt-4":         7.5,
+		"claude-3":      8.0,
+		"text-davinci":  4.0,
+	}
+
+	for pattern, score := range recentModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	for pattern, score := range olderModels {
+		if containsIgnoreCase(modelID, pattern) {
+			return math.Min(10, score+rand.Float64()*0.5)
+		}
+	}
+
+	// Default recency
+	return 5.0 + rand.Float64()*2
+}
+
+// GetModelScore retrieves a cached score or calculates a new one
+func (s *ScoringService) GetModelScore(ctx context.Context, modelID string) (*ScoringResult, error) {
+	s.cacheMu.RLock()
+	result, ok := s.cache[modelID]
+	s.cacheMu.RUnlock()
+
+	if ok {
+		return result, nil
+	}
+
+	// Calculate if not in cache
+	return s.CalculateScore(ctx, modelID)
+}
+
+// ClearCache clears all cached scores (alias for InvalidateAllCache)
+func (s *ScoringService) ClearCache() {
+	s.InvalidateAllCache()
+}
+
+// GetAllScores returns all cached scoring results
+func (s *ScoringService) GetAllScores() []*ScoringResult {
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+
+	results := make([]*ScoringResult, 0, len(s.cache))
+	for _, result := range s.cache {
+		results = append(results, result)
+	}
+	return results
+}
+
+// CacheSize returns the number of items in the cache
+func (s *ScoringService) CacheSize() int {
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+	return len(s.cache)
+}
+
+// computeWeightedScore calculates a weighted score from components
+func (s *ScoringService) computeWeightedScore(components ScoreComponents) float64 {
+	return components.SpeedScore*s.weights.ResponseSpeed +
+		components.EfficiencyScore*s.weights.ModelEfficiency +
+		components.CostScore*s.weights.CostEffectiveness +
+		components.CapabilityScore*s.weights.Capability +
+		components.RecencyScore*s.weights.Recency
 }

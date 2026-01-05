@@ -46,11 +46,12 @@ func NewClient(config *ClientConfig) *Client {
 
 // QueryRequest represents a document query request.
 type QueryRequest struct {
-	Query          string  `json:"query"`
-	TopK           int     `json:"top_k,omitempty"`
-	UseCognee      bool    `json:"use_cognee,omitempty"`
-	Rerank         bool    `json:"rerank,omitempty"`
-	QueryTransform *string `json:"query_transform,omitempty"`
+	Query          string                 `json:"query"`
+	TopK           int                    `json:"top_k,omitempty"`
+	UseCognee      bool                   `json:"use_cognee,omitempty"`
+	Rerank         bool                   `json:"rerank,omitempty"`
+	QueryTransform *string                `json:"query_transform,omitempty"`
+	Filters        map[string]interface{} `json:"filters,omitempty"`
 }
 
 // Source represents a document source.

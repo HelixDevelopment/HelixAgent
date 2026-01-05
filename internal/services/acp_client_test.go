@@ -528,6 +528,142 @@ func TestLSPClient_GetDiagnostics(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
+func TestLSPClient_HandlePublishDiagnostics(t *testing.T) {
+	log := newACPTestLogger()
+	client := NewLSPClient(log)
+
+	t.Run("StoresDiagnostics", func(t *testing.T) {
+		params := &ACPPublishDiagnosticsParams{
+			URI: "file:///test/file.go",
+			Diagnostics: []*ACPDiagnostic{
+				{
+					Range: Range{
+						Start: Position{Line: 10, Character: 5},
+						End:   Position{Line: 10, Character: 15},
+					},
+					Severity: 1,
+					Code:     "E001",
+					Source:   "golangci-lint",
+					Message:  "unused variable 'x'",
+				},
+				{
+					Range: Range{
+						Start: Position{Line: 20, Character: 0},
+						End:   Position{Line: 20, Character: 10},
+					},
+					Severity: 2,
+					Code:     "W001",
+					Source:   "golangci-lint",
+					Message:  "deprecated function",
+				},
+			},
+		}
+
+		client.HandlePublishDiagnostics(params)
+
+		ctx := context.Background()
+		result, err := client.GetDiagnostics(ctx, "/test/file.go")
+		assert.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "unused variable 'x'", result[0].Message)
+		assert.Equal(t, 1, result[0].Severity)
+		assert.Equal(t, "E001", result[0].Code)
+	})
+
+	t.Run("NilParams", func(t *testing.T) {
+		client.HandlePublishDiagnostics(nil)
+		// Should not panic
+	})
+}
+
+func TestLSPClient_ClearDiagnostics(t *testing.T) {
+	log := newACPTestLogger()
+	client := NewLSPClient(log)
+	ctx := context.Background()
+
+	// Add diagnostics
+	params := &ACPPublishDiagnosticsParams{
+		URI: "file:///test/file.go",
+		Diagnostics: []*ACPDiagnostic{
+			{Message: "test error"},
+		},
+	}
+	client.HandlePublishDiagnostics(params)
+
+	// Verify they exist
+	result, err := client.GetDiagnostics(ctx, "/test/file.go")
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+
+	// Clear diagnostics
+	client.ClearDiagnostics("file:///test/file.go")
+
+	// Verify they're gone
+	result, err = client.GetDiagnostics(ctx, "/test/file.go")
+	assert.NoError(t, err)
+	assert.Len(t, result, 0)
+}
+
+func TestLSPClient_ClearAllDiagnostics(t *testing.T) {
+	log := newACPTestLogger()
+	client := NewLSPClient(log)
+	ctx := context.Background()
+
+	// Add diagnostics for multiple files
+	params1 := &ACPPublishDiagnosticsParams{
+		URI:         "file:///test/file1.go",
+		Diagnostics: []*ACPDiagnostic{{Message: "error 1"}},
+	}
+	params2 := &ACPPublishDiagnosticsParams{
+		URI:         "file:///test/file2.go",
+		Diagnostics: []*ACPDiagnostic{{Message: "error 2"}},
+	}
+	client.HandlePublishDiagnostics(params1)
+	client.HandlePublishDiagnostics(params2)
+
+	// Verify they exist
+	result1, _ := client.GetDiagnostics(ctx, "/test/file1.go")
+	result2, _ := client.GetDiagnostics(ctx, "/test/file2.go")
+	assert.Len(t, result1, 1)
+	assert.Len(t, result2, 1)
+
+	// Clear all diagnostics
+	client.ClearAllDiagnostics()
+
+	// Verify they're all gone
+	result1, _ = client.GetDiagnostics(ctx, "/test/file1.go")
+	result2, _ = client.GetDiagnostics(ctx, "/test/file2.go")
+	assert.Len(t, result1, 0)
+	assert.Len(t, result2, 0)
+}
+
+func TestACPDiagnostic_Structure(t *testing.T) {
+	diag := &ACPDiagnostic{
+		Range: Range{
+			Start: Position{Line: 1, Character: 0},
+			End:   Position{Line: 1, Character: 10},
+		},
+		Severity: 1,
+		Code:     "E001",
+		Source:   "linter",
+		Message:  "error message",
+		RelatedInformation: []ACPRelatedDiagnosticInfo{
+			{
+				Location: Location{URI: "file:///related.go"},
+				Message:  "related info",
+			},
+		},
+	}
+
+	assert.Equal(t, 1, diag.Range.Start.Line)
+	assert.Equal(t, 1, diag.Severity)
+	assert.Equal(t, "E001", diag.Code)
+	assert.Equal(t, "linter", diag.Source)
+	assert.Equal(t, "error message", diag.Message)
+	assert.Len(t, diag.RelatedInformation, 1)
+	assert.Equal(t, "related info", diag.RelatedInformation[0].Message)
+}
+
 func TestLSPClient_GetCodeIntelligence_NotConnected(t *testing.T) {
 	log := newACPTestLogger()
 	client := NewLSPClient(log)

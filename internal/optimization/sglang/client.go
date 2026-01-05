@@ -277,6 +277,18 @@ func (c *Client) DeleteSession(ctx context.Context, sessionID string) error {
 	return nil
 }
 
+// ListSessions returns all active sessions.
+func (c *Client) ListSessions(ctx context.Context) []*Session {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	sessions := make([]*Session, 0, len(c.sessions))
+	for _, session := range c.sessions {
+		sessions = append(sessions, session)
+	}
+	return sessions
+}
+
 // WarmPrefix pre-warms the prefix cache with common prefixes.
 func (c *Client) WarmPrefix(ctx context.Context, prefix string) (*PrefixCacheResponse, error) {
 	// SGLang automatically handles prefix caching, so we just make a completion

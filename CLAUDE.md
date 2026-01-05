@@ -77,10 +77,11 @@ make install-deps     # Install dev dependencies (golangci-lint, gosec)
   - `mcp_client.go` - Model Context Protocol client
   - `lsp_manager.go` - Language Server Protocol manager
   - `plugin_system.go` - Hot-reloadable plugin architecture
-- `handlers/` - HTTP handlers & API endpoints (OpenAI-compatible, MCP, LSP, Cognee)
+- `handlers/` - HTTP handlers & API endpoints (OpenAI-compatible, MCP, LSP, Cognee, AI Debate)
 - `middleware/` - Auth, rate limiting, CORS, validation
 - `cache/` - Caching layer (Redis, in-memory)
 - `database/` - PostgreSQL connections and repositories
+  - `protocol_repository.go` - MCP/LSP/ACP server configs, protocol cache, and metrics
 - `models/` - Data models, enums, and protocol types
 - `plugins/` - Hot-reloadable plugin system with discovery, health, metrics
 - `modelsdev/` - Models.dev API client for model metadata
@@ -96,6 +97,8 @@ make install-deps     # Install dev dependencies (golangci-lint, gosec)
 - **Provider Registry**: Unified interface for multiple LLM providers with credential management
 - **Ensemble Strategy**: Confidence-weighted voting, majority vote, parallel execution
 - **AI Debate System**: Multi-round debate between providers for consensus (see `internal/services/debate_*.go`)
+  - API: POST `/v1/debates`, GET `/v1/debates`, GET `/v1/debates/:id`, DELETE `/v1/debates/:id`
+  - Supports async execution with status polling via `/v1/debates/:id/status`
 - **Plugin System**: Hot-reloadable plugins with dependency resolution
 - **Circuit Breaker**: Fault tolerance for provider failures with health monitoring
 - **Protocol Managers**: Unified MCP/LSP/ACP protocol handling

@@ -11,9 +11,21 @@ import (
 	"github.com/superagent/superagent/internal/modelsdev"
 )
 
+// ModelMetadataRepositoryInterface defines the interface for model metadata persistence
+type ModelMetadataRepositoryInterface interface {
+	GetModelMetadata(ctx context.Context, modelID string) (*database.ModelMetadata, error)
+	ListModels(ctx context.Context, providerID, modelType string, limit, offset int) ([]*database.ModelMetadata, int, error)
+	SearchModels(ctx context.Context, query string, limit, offset int) ([]*database.ModelMetadata, int, error)
+	CreateModelMetadata(ctx context.Context, metadata *database.ModelMetadata) error
+	CreateRefreshHistory(ctx context.Context, history *database.ModelsRefreshHistory) error
+	GetLatestRefreshHistory(ctx context.Context, limit int) ([]*database.ModelsRefreshHistory, error)
+	UpdateProviderSyncInfo(ctx context.Context, providerID string, totalModels, syncedModels int) error
+	CreateBenchmark(ctx context.Context, benchmark *database.ModelBenchmark) error
+}
+
 type ModelMetadataService struct {
 	modelsdevClient *modelsdev.Client
-	repository      *database.ModelMetadataRepository
+	repository      ModelMetadataRepositoryInterface
 	cache           CacheInterface
 	config          *ModelMetadataConfig
 	log             *logrus.Logger
@@ -54,7 +66,7 @@ type CacheInterface interface {
 
 func NewModelMetadataService(
 	client *modelsdev.Client,
-	repo *database.ModelMetadataRepository,
+	repo ModelMetadataRepositoryInterface,
 	cache CacheInterface,
 	config *ModelMetadataConfig,
 	log *logrus.Logger,

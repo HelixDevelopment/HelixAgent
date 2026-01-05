@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newFederationTestLogger() *logrus.Logger {
+func newHATestLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 	return log
@@ -49,7 +49,7 @@ func (m *MockFederatedProtocol) GetCapabilities() map[string]interface{} {
 }
 
 func TestNewProtocolFederation(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	require.NotNil(t, federation)
@@ -60,7 +60,7 @@ func TestNewProtocolFederation(t *testing.T) {
 }
 
 func TestProtocolFederation_RegisterProtocol(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("register new protocol", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestProtocolFederation_RegisterProtocol(t *testing.T) {
 }
 
 func TestProtocolFederation_UnregisterProtocol(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("unregister existing protocol", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestProtocolFederation_UnregisterProtocol(t *testing.T) {
 }
 
 func TestProtocolFederation_SendFederatedRequest(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	protocol := &MockFederatedProtocol{
@@ -313,7 +313,7 @@ func TestProtocolFederation_SendFederatedRequest(t *testing.T) {
 }
 
 func TestProtocolFederation_GetRegisteredProtocols(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("empty federation", func(t *testing.T) {
@@ -335,7 +335,7 @@ func TestProtocolFederation_GetRegisteredProtocols(t *testing.T) {
 }
 
 func TestProtocolFederation_GetProtocolCapabilities(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	protocol := &MockFederatedProtocol{
@@ -362,7 +362,7 @@ func TestProtocolFederation_GetProtocolCapabilities(t *testing.T) {
 }
 
 func TestProtocolFederation_SubscribeToEvents(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	protocol := &MockFederatedProtocol{name: "subscriber-protocol"}
@@ -389,7 +389,7 @@ func TestProtocolFederation_SubscribeToEvents(t *testing.T) {
 }
 
 func TestProtocolFederation_UnsubscribeFromEvents(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	protocol := &MockFederatedProtocol{name: "unsub-protocol"}
@@ -461,7 +461,7 @@ func TestProtocolFederation_UnsubscribeFromEvents(t *testing.T) {
 }
 
 func TestProtocolFederation_AddDataTranslator(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	translator := &DataTranslator{
@@ -481,7 +481,7 @@ func TestProtocolFederation_AddDataTranslator(t *testing.T) {
 }
 
 func TestProtocolFederation_BroadcastRequest(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	// Register multiple protocols
@@ -507,7 +507,7 @@ func TestProtocolFederation_BroadcastRequest(t *testing.T) {
 }
 
 func TestProtocolFederation_PublishEvent(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	event := &ProtocolEvent{
@@ -523,7 +523,7 @@ func TestProtocolFederation_PublishEvent(t *testing.T) {
 }
 
 func TestNewEventBus(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	eventBus := NewEventBus(log)
 
 	require.NotNil(t, eventBus)
@@ -531,7 +531,7 @@ func TestNewEventBus(t *testing.T) {
 }
 
 func TestEventBus_Subscribe(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	eventBus := NewEventBus(log)
 
 	handler := func(ctx context.Context, event *ProtocolEvent) error {
@@ -546,7 +546,7 @@ func TestEventBus_Subscribe(t *testing.T) {
 }
 
 func TestEventBus_Publish(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	eventBus := NewEventBus(log)
 
 	t.Run("publish with no subscribers", func(t *testing.T) {
@@ -831,7 +831,7 @@ func BenchmarkEventBus_Publish(b *testing.B) {
 // Tests for helper functions
 
 func TestProtocolFederation_GetNestedValue(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("simple key", func(t *testing.T) {
@@ -894,7 +894,7 @@ func TestProtocolFederation_GetNestedValue(t *testing.T) {
 }
 
 func TestProtocolFederation_SetNestedValue(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("simple key", func(t *testing.T) {
@@ -949,7 +949,7 @@ func TestProtocolFederation_SetNestedValue(t *testing.T) {
 }
 
 func TestEventBus_Unsubscribe(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	eventBus := NewEventBus(log)
 
 	t.Run("unsubscribe from empty list", func(t *testing.T) {
@@ -982,7 +982,7 @@ func TestEventBus_Unsubscribe(t *testing.T) {
 }
 
 func TestProtocolFederation_TranslateRequest(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("translate with translator", func(t *testing.T) {
@@ -1069,7 +1069,7 @@ func TestProtocolFederation_TranslateRequest(t *testing.T) {
 }
 
 func TestProtocolFederation_TranslateResponse(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	federation := NewProtocolFederation(log)
 
 	t.Run("translate with translator", func(t *testing.T) {
@@ -1157,7 +1157,7 @@ func TestProtocolFederation_TranslateResponse(t *testing.T) {
 // Tests for MCPFederatedProtocol
 
 func TestNewMCPFederatedProtocol(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 
 	t.Run("create with nil client", func(t *testing.T) {
 		protocol := NewMCPFederatedProtocol(nil)
@@ -1174,7 +1174,7 @@ func TestNewMCPFederatedProtocol(t *testing.T) {
 }
 
 func TestMCPFederatedProtocol_GetCapabilities(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewMCPClient(log)
 	protocol := NewMCPFederatedProtocol(client)
 
@@ -1187,7 +1187,7 @@ func TestMCPFederatedProtocol_GetCapabilities(t *testing.T) {
 }
 
 func TestMCPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewMCPClient(log)
 	protocol := NewMCPFederatedProtocol(client)
 	ctx := context.Background()
@@ -1251,7 +1251,7 @@ func TestMCPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
 }
 
 func TestMCPFederatedProtocol_PublishEvent(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewMCPClient(log)
 	protocol := NewMCPFederatedProtocol(client)
 	ctx := context.Background()
@@ -1269,7 +1269,7 @@ func TestMCPFederatedProtocol_PublishEvent(t *testing.T) {
 // Tests for LSPFederatedProtocol
 
 func TestNewLSPFederatedProtocol(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 
 	t.Run("create with nil client", func(t *testing.T) {
 		protocol := NewLSPFederatedProtocol(nil)
@@ -1286,7 +1286,7 @@ func TestNewLSPFederatedProtocol(t *testing.T) {
 }
 
 func TestLSPFederatedProtocol_GetCapabilities(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewLSPClient(log)
 	protocol := NewLSPFederatedProtocol(client)
 
@@ -1299,7 +1299,7 @@ func TestLSPFederatedProtocol_GetCapabilities(t *testing.T) {
 }
 
 func TestLSPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewLSPClient(log)
 	protocol := NewLSPFederatedProtocol(client)
 	ctx := context.Background()
@@ -1414,7 +1414,7 @@ func TestLSPFederatedProtocol_HandleFederatedRequest(t *testing.T) {
 }
 
 func TestLSPFederatedProtocol_PublishEvent(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewLSPClient(log)
 	protocol := NewLSPFederatedProtocol(client)
 	ctx := context.Background()
@@ -1463,7 +1463,7 @@ func BenchmarkProtocolFederation_SetNestedValue(b *testing.B) {
 }
 
 func TestMCPFederatedProtocol_HandleFederatedRequest_WithServer(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewMCPClient(log)
 	protocol := NewMCPFederatedProtocol(client)
 	ctx := context.Background()
@@ -1515,7 +1515,7 @@ func TestMCPFederatedProtocol_HandleFederatedRequest_WithServer(t *testing.T) {
 }
 
 func TestLSPFederatedProtocol_HandleFederatedRequest_WithServer(t *testing.T) {
-	log := newFederationTestLogger()
+	log := newHATestLogger()
 	client := NewLSPClient(log)
 	protocol := NewLSPFederatedProtocol(client)
 	ctx := context.Background()

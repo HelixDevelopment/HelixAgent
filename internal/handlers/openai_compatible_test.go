@@ -19,6 +19,11 @@ import (
 	"github.com/superagent/superagent/internal/services"
 )
 
+// stringPtr returns a pointer to the given string
+func stringPtr(s string) *string {
+	return &s
+}
+
 // TestUnifiedHandler_Models tests models endpoint
 func TestUnifiedHandler_Models(t *testing.T) {
 	handler := &UnifiedHandler{}
@@ -1046,7 +1051,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_AllRoles(t *testing.T) {
 			{Role: "user", Content: "User message"},
 			{Role: "assistant", Content: "Assistant response"},
 			{Role: "tool", Content: "Tool result", ToolCallID: "call_123"},
-			{Role: "function", Content: "Function result", Name: "test_function"},
+			{Role: "function", Content: "Function result", Name: stringPtr("test_function")},
 		},
 	}
 

@@ -15,14 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newHATestLogger() *logrus.Logger {
+func newPluginSystemTestLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 	return log
 }
 
 func TestNewHighAvailabilityManager(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	require.NotNil(t, ham)
@@ -34,7 +34,7 @@ func TestNewHighAvailabilityManager(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_RegisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	t.Run("register new instance", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestHighAvailabilityManager_RegisterInstance(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_UnregisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	instance := &ServiceInstance{
@@ -100,7 +100,7 @@ func TestHighAvailabilityManager_UnregisterInstance(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_GetInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	t.Run("no healthy instances", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestHighAvailabilityManager_GetInstance(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_UpdateInstanceLoad(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	instance := &ServiceInstance{
@@ -160,7 +160,7 @@ func TestHighAvailabilityManager_UpdateInstanceLoad(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_GetInstancesByProtocol(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	ham.RegisterInstance(&ServiceInstance{ID: "mcp-1", Protocol: "mcp"})
@@ -178,7 +178,7 @@ func TestHighAvailabilityManager_GetInstancesByProtocol(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_Stop(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	// Should not panic
@@ -279,7 +279,7 @@ func TestRandomLoadBalancer(t *testing.T) {
 }
 
 func TestNewFailoverManager(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	require.NotNil(t, fm)
@@ -289,7 +289,7 @@ func TestNewFailoverManager(t *testing.T) {
 }
 
 func TestFailoverManager_RegisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	instance := &ServiceInstance{
@@ -307,7 +307,7 @@ func TestFailoverManager_RegisterInstance(t *testing.T) {
 }
 
 func TestFailoverManager_UnregisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	instance := &ServiceInstance{
@@ -325,7 +325,7 @@ func TestFailoverManager_UnregisterInstance(t *testing.T) {
 }
 
 func TestFailoverManager_HandleInstanceFailure(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	primary := &ServiceInstance{
@@ -355,7 +355,7 @@ func TestFailoverManager_HandleInstanceFailure(t *testing.T) {
 }
 
 func TestFailoverManager_Stop(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	// Should not panic
@@ -372,7 +372,7 @@ func TestDefaultHealthCheckerConfig(t *testing.T) {
 }
 
 func TestNewHealthChecker(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	require.NotNil(t, hc)
@@ -385,7 +385,7 @@ func TestNewHealthChecker(t *testing.T) {
 }
 
 func TestNewHealthCheckerWithConfig(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 
 	t.Run("with custom config", func(t *testing.T) {
 		config := &HealthCheckerConfig{
@@ -413,7 +413,7 @@ func TestNewHealthCheckerWithConfig(t *testing.T) {
 }
 
 func TestHealthChecker_RegisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	hc.RegisterInstance("hc-inst-1", "localhost", 8080)
@@ -434,7 +434,7 @@ func TestHealthChecker_RegisterInstance(t *testing.T) {
 }
 
 func TestHealthChecker_RegisterInstanceWithProtocol(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	t.Run("register with http protocol", func(t *testing.T) {
@@ -473,7 +473,7 @@ func TestHealthChecker_RegisterInstanceWithProtocol(t *testing.T) {
 }
 
 func TestHealthChecker_UnregisterInstance(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	hc.RegisterInstance("hc-unreg", "localhost", 8080)
@@ -489,7 +489,7 @@ func TestHealthChecker_UnregisterInstance(t *testing.T) {
 }
 
 func TestHealthChecker_GetInstanceInfo(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	t.Run("existing instance", func(t *testing.T) {
@@ -509,7 +509,7 @@ func TestHealthChecker_GetInstanceInfo(t *testing.T) {
 }
 
 func TestHealthChecker_GetHealthStatus(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	t.Run("existing instance", func(t *testing.T) {
@@ -528,7 +528,7 @@ func TestHealthChecker_GetHealthStatus(t *testing.T) {
 }
 
 func TestHealthChecker_SetHTTPClient(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	customClient := &http.Client{
@@ -543,7 +543,7 @@ func TestHealthChecker_SetHTTPClient(t *testing.T) {
 }
 
 func TestHealthChecker_Stop(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	// Should not panic
@@ -680,7 +680,7 @@ func TestCircuitState_String(t *testing.T) {
 }
 
 func TestNewServiceRegistry(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
 	require.NotNil(t, sr)
@@ -688,7 +688,7 @@ func TestNewServiceRegistry(t *testing.T) {
 }
 
 func TestServiceRegistry_RegisterService(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
 	endpoint := &ServiceEndpoint{
@@ -706,7 +706,7 @@ func TestServiceRegistry_RegisterService(t *testing.T) {
 }
 
 func TestServiceRegistry_UnregisterService(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
 	endpoint := &ServiceEndpoint{ID: "endpoint-unreg", Address: "localhost", Port: 8080}
@@ -719,7 +719,7 @@ func TestServiceRegistry_UnregisterService(t *testing.T) {
 }
 
 func TestServiceRegistry_DiscoverServices(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
 	sr.RegisterService("api", &ServiceEndpoint{ID: "ep-1", Address: "localhost", Port: 8080})
@@ -800,7 +800,7 @@ func TestServiceEndpoint_Structure(t *testing.T) {
 }
 
 func TestHighAvailabilityManager_Start(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	ham := NewHighAvailabilityManager(log)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -817,7 +817,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 	// Note: handleHealthUpdate spawns goroutines for failover which complicates assertions
 
 	t.Run("non-existent instance does not panic", func(t *testing.T) {
-		log := newHATestLogger()
+		log := newPluginSystemTestLogger()
 		ham := NewHighAvailabilityManager(log)
 
 		// Should not panic when called with non-existent instance
@@ -826,7 +826,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 	})
 
 	t.Run("healthy update on healthy instance", func(t *testing.T) {
-		log := newHATestLogger()
+		log := newPluginSystemTestLogger()
 		ham := NewHighAvailabilityManager(log)
 
 		instance := &ServiceInstance{
@@ -848,7 +848,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 	})
 
 	t.Run("healthy update on unhealthy instance", func(t *testing.T) {
-		log := newHATestLogger()
+		log := newPluginSystemTestLogger()
 		ham := NewHighAvailabilityManager(log)
 
 		instance := &ServiceInstance{
@@ -870,7 +870,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 	})
 
 	t.Run("unhealthy update triggers status change", func(t *testing.T) {
-		log := newHATestLogger()
+		log := newPluginSystemTestLogger()
 		ham := NewHighAvailabilityManager(log)
 
 		instance := &ServiceInstance{
@@ -899,7 +899,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 }
 
 func TestFailoverManager_CheckFailoverStatus(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	fm := NewFailoverManager(log)
 
 	// Register some instances
@@ -947,7 +947,7 @@ func TestFailoverManager_CheckFailoverStatus(t *testing.T) {
 }
 
 func TestHealthChecker_PerformHealthChecks(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
 	// Register an instance
@@ -972,7 +972,7 @@ func TestHealthChecker_PerformHealthChecks(t *testing.T) {
 }
 
 func TestHealthChecker_CheckInstanceHealth(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 
 	t.Run("unregistered instance returns false", func(t *testing.T) {
 		hc := NewHealthChecker(log)
@@ -1184,7 +1184,7 @@ func TestHealthChecker_CheckInstanceHealth(t *testing.T) {
 }
 
 func TestHealthChecker_CheckHTTPHealth(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 
 	t.Run("successful 200 response", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1301,7 +1301,7 @@ func TestHealthChecker_CheckHTTPHealth(t *testing.T) {
 }
 
 func TestHealthChecker_CheckTCPHealth(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 
 	t.Run("successful connection", func(t *testing.T) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -1344,7 +1344,7 @@ func TestHealthChecker_CheckTCPHealth(t *testing.T) {
 }
 
 func TestHealthChecker_CheckGRPCHealth(t *testing.T) {
-	log := newHATestLogger()
+	log := newPluginSystemTestLogger()
 
 	t.Run("grpc health check delegates to tcp", func(t *testing.T) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")

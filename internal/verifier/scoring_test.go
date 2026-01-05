@@ -529,10 +529,8 @@ func TestScoringService_ClearCache(t *testing.T) {
 	// Clear cache
 	svc.ClearCache()
 
-	// Verify cache is empty
-	svc.mu.RLock()
-	cacheLen := len(svc.cache)
-	svc.mu.RUnlock()
+	// Verify cache is empty using CacheSize method
+	cacheLen := svc.CacheSize()
 
 	if cacheLen != 0 {
 		t.Errorf("expected empty cache, got %d entries", cacheLen)
@@ -602,7 +600,7 @@ func TestScoreWeights_AllPositive(t *testing.T) {
 func TestScoringService_CalculateScore_WithCustomWeights(t *testing.T) {
 	cfg := &Config{
 		Scoring: ScoringConfig{
-			Weights: &ScoreWeights{
+			Weights: ScoringWeightsConfig{
 				ResponseSpeed:     0.5,
 				ModelEfficiency:   0.2,
 				CostEffectiveness: 0.1,

@@ -86,6 +86,7 @@ type OpenAIMessage struct {
 	Name         *string             `json:"name,omitempty"`
 	FunctionCall *OpenAIFunctionCall `json:"function_call,omitempty"`
 	ToolCalls    []OpenAIToolCall    `json:"tool_calls,omitempty"`
+	ToolCallID   string              `json:"tool_call_id,omitempty"`
 }
 
 // OpenAIFunctionCall represents function call in OpenAI format

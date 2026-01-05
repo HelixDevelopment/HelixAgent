@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newPluginSystemTestLogger() *logrus.Logger {
+func newProtocolPluginTestLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 	return log
 }
 
 func TestNewProtocolPluginSystem(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	require.NotNil(t, ps)
@@ -28,7 +28,7 @@ func TestNewProtocolPluginSystem(t *testing.T) {
 }
 
 func TestNewProtocolPluginRegistry(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	require.NotNil(t, registry)
@@ -37,7 +37,7 @@ func TestNewProtocolPluginRegistry(t *testing.T) {
 }
 
 func TestProtocolPluginRegistry_RegisterPlugin(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	t.Run("register new plugin", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestProtocolPluginRegistry_RegisterPlugin(t *testing.T) {
 }
 
 func TestProtocolPluginRegistry_GetPlugin(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	// Register a plugin first
@@ -101,7 +101,7 @@ func TestProtocolPluginRegistry_GetPlugin(t *testing.T) {
 }
 
 func TestProtocolPluginRegistry_SearchPlugins(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	// Register several plugins
@@ -156,7 +156,7 @@ func TestProtocolPluginRegistry_SearchPlugins(t *testing.T) {
 }
 
 func TestProtocolPluginRegistry_UpdatePluginStats(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	plugin := &RegistryProtocolPlugin{
@@ -197,7 +197,7 @@ func TestProtocolPluginRegistry_UpdatePluginStats(t *testing.T) {
 }
 
 func TestProtocolPluginRegistry_ListPopularPlugins(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	registry := NewProtocolPluginRegistry(log)
 
 	// Register plugins with different download counts
@@ -221,7 +221,7 @@ func TestProtocolPluginRegistry_ListPopularPlugins(t *testing.T) {
 }
 
 func TestNewProtocolTemplateManager(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	require.NotNil(t, tm)
@@ -230,7 +230,7 @@ func TestNewProtocolTemplateManager(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_AddTemplate(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	t.Run("add new template", func(t *testing.T) {
@@ -266,7 +266,7 @@ func TestProtocolTemplateManager_AddTemplate(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_GetTemplate(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	// Add a template first
@@ -293,7 +293,7 @@ func TestProtocolTemplateManager_GetTemplate(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_GetPlugin(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	t.Run("get non-existent plugin", func(t *testing.T) {
@@ -305,7 +305,7 @@ func TestProtocolPluginSystem_GetPlugin(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_ListPlugins(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	t.Run("empty list", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestProtocolPluginSystem_ListPlugins(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_ListTemplates(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	t.Run("empty list", func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestProtocolTemplateManager_ListTemplates(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_ListTemplatesByProtocol(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	// Add templates with different protocols
@@ -378,7 +378,7 @@ func TestProtocolTemplateManager_ListTemplatesByProtocol(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_GeneratePluginFromTemplate(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	// Add a template
@@ -419,7 +419,7 @@ func TestProtocolTemplateManager_GeneratePluginFromTemplate(t *testing.T) {
 }
 
 func TestProtocolTemplateManager_InitializeDefaultTemplates(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tm := NewProtocolTemplateManager(log)
 
 	err := tm.InitializeDefaultTemplates()
@@ -540,7 +540,7 @@ func BenchmarkProtocolPluginRegistry_SearchPlugins(b *testing.B) {
 // Additional tests for error paths
 
 func TestProtocolPluginSystem_UnloadPlugin_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	err := ps.UnloadPlugin("non-existent")
@@ -549,7 +549,7 @@ func TestProtocolPluginSystem_UnloadPlugin_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_EnablePlugin_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	err := ps.EnablePlugin("non-existent")
@@ -558,7 +558,7 @@ func TestProtocolPluginSystem_EnablePlugin_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_DisablePlugin_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	err := ps.DisablePlugin("non-existent")
@@ -567,7 +567,7 @@ func TestProtocolPluginSystem_DisablePlugin_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_ExecutePluginOperation_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 	ctx := context.Background()
 
@@ -578,7 +578,7 @@ func TestProtocolPluginSystem_ExecutePluginOperation_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_GetPluginCapabilities_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	result, err := ps.GetPluginCapabilities("non-existent")
@@ -588,7 +588,7 @@ func TestProtocolPluginSystem_GetPluginCapabilities_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_ConfigurePlugin_NonExistent(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	err := ps.ConfigurePlugin("non-existent", map[string]interface{}{"key": "value"})
@@ -597,7 +597,7 @@ func TestProtocolPluginSystem_ConfigurePlugin_NonExistent(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_DiscoverPlugins(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 
 	t.Run("empty plugin directory path", func(t *testing.T) {
 		ps := NewProtocolPluginSystem("", log)
@@ -698,7 +698,7 @@ func TestProtocolPluginSystem_DiscoverPlugins(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_AutoLoadPlugins(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 
 	t.Run("non-existent directory does not error", func(t *testing.T) {
 		ps := NewProtocolPluginSystem("/non-existent-path-for-testing", log)
@@ -734,7 +734,7 @@ func TestProtocolPluginSystem_AutoLoadPlugins(t *testing.T) {
 }
 
 func TestProtocolPluginSystem_LoadPlugin_InvalidPath(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	ps := NewProtocolPluginSystem("/tmp/plugins", log)
 
 	err := ps.LoadPlugin("/non-existent-plugin-path.so")
@@ -744,7 +744,7 @@ func TestProtocolPluginSystem_LoadPlugin_InvalidPath(t *testing.T) {
 // Additional DiscoverPlugins edge case tests
 
 func TestProtocolPluginSystem_DiscoverPlugins_SymlinksAndSpecialFiles(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 
 	t.Run("handles multiple .so files with special names", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -797,7 +797,7 @@ func TestProtocolPluginSystem_DiscoverPlugins_SymlinksAndSpecialFiles(t *testing
 }
 
 func TestProtocolPluginSystem_DiscoverPlugins_ReturnsFullPaths(t *testing.T) {
-	log := newPluginSystemTestLogger()
+	log := newProtocolPluginTestLogger()
 	tmpDir := t.TempDir()
 
 	soFile := filepath.Join(tmpDir, "test-plugin.so")

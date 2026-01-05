@@ -16,7 +16,7 @@ import (
 
 // Test helper functions
 
-func newTestLogger() *logrus.Logger {
+func newModelMetadataTestLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 	return log
@@ -526,7 +526,7 @@ func TestModelMetadataService_GetModel_CacheHit(t *testing.T) {
 	service := &ModelMetadataService{
 		cache:  cache,
 		config: getDefaultModelMetadataConfig(),
-		log:    newTestLogger(),
+		log:    newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -549,7 +549,7 @@ func TestModelMetadataService_GetModel_CacheMiss(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -576,7 +576,7 @@ func TestModelMetadataService_GetModel_CacheError(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -599,7 +599,7 @@ func TestModelMetadataService_GetModel_NotFound(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -628,7 +628,7 @@ func TestModelMetadataService_ListModels(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -653,7 +653,7 @@ func TestModelMetadataService_ListModels_Pagination(t *testing.T) {
 		cache:      NewMockCache(),
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -673,7 +673,7 @@ func TestModelMetadataService_ListModels_Error(t *testing.T) {
 		cache:      NewMockCache(),
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -703,7 +703,7 @@ func TestModelMetadataService_SearchModels(t *testing.T) {
 		cache:      NewMockCache(),
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -725,7 +725,7 @@ func TestModelMetadataService_SearchModels_NoResults(t *testing.T) {
 		cache:      NewMockCache(),
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -751,7 +751,7 @@ func TestModelMetadataService_GetRefreshHistory(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -771,7 +771,7 @@ func TestModelMetadataService_GetRefreshHistory_Error(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -798,7 +798,7 @@ func TestModelMetadataService_GetProviderModels(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -819,7 +819,7 @@ func TestModelMetadataService_CompareModels(t *testing.T) {
 	service := &ModelMetadataService{
 		cache:  cache,
 		config: getDefaultModelMetadataConfig(),
-		log:    newTestLogger(),
+		log:    newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -844,7 +844,7 @@ func TestModelMetadataService_CompareModels_SomeNotFound(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -867,7 +867,7 @@ func TestModelMetadataService_CompareModels_NoneFound(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -894,7 +894,7 @@ func TestModelMetadataService_GetModelsByCapability(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -988,7 +988,7 @@ func TestModelMetadataService_GetModelsByCapability_AllTypes(t *testing.T) {
 			service := &ModelMetadataService{
 				repository: repo,
 				config:     getDefaultModelMetadataConfig(),
-				log:        newTestLogger(),
+				log:        newModelMetadataTestLogger(),
 			}
 
 			ctx := context.Background()
@@ -1004,7 +1004,7 @@ func TestModelMetadataService_GetModelsByCapability_AllTypes(t *testing.T) {
 
 func TestModelMetadataService_ConvertModelInfoToMetadata(t *testing.T) {
 	service := &ModelMetadataService{
-		log: newTestLogger(),
+		log: newModelMetadataTestLogger(),
 	}
 
 	inputPrice := 0.01
@@ -1073,7 +1073,7 @@ func TestModelMetadataService_ConvertModelInfoToMetadata(t *testing.T) {
 
 func TestModelMetadataService_ConvertModelInfoToMetadata_NilPricing(t *testing.T) {
 	service := &ModelMetadataService{
-		log: newTestLogger(),
+		log: newModelMetadataTestLogger(),
 	}
 
 	info := modelsdev.ModelInfo{
@@ -1093,7 +1093,7 @@ func TestModelMetadataService_ConvertModelInfoToMetadata_NilPricing(t *testing.T
 
 func TestModelMetadataService_ConvertModelInfoToMetadata_EmptyFamilyVersion(t *testing.T) {
 	service := &ModelMetadataService{
-		log: newTestLogger(),
+		log: newModelMetadataTestLogger(),
 	}
 
 	info := modelsdev.ModelInfo{
@@ -1111,7 +1111,7 @@ func TestModelMetadataService_ConvertModelInfoToMetadata_EmptyFamilyVersion(t *t
 
 // Benchmark tests
 
-func BenchmarkInMemoryCache_Get(b *testing.B) {
+func BenchmarkModelMetadataCache_Get(b *testing.B) {
 	cache := NewInMemoryCache(1 * time.Hour)
 	ctx := context.Background()
 
@@ -1125,7 +1125,7 @@ func BenchmarkInMemoryCache_Get(b *testing.B) {
 	}
 }
 
-func BenchmarkInMemoryCache_Set(b *testing.B) {
+func BenchmarkModelMetadataCache_Set(b *testing.B) {
 	cache := NewInMemoryCache(1 * time.Hour)
 	ctx := context.Background()
 
@@ -1184,7 +1184,7 @@ func TestModelMetadataService_ListModels_TableDriven(t *testing.T) {
 				cache:      NewMockCache(),
 				repository: repo,
 				config:     getDefaultModelMetadataConfig(),
-				log:        newTestLogger(),
+				log:        newModelMetadataTestLogger(),
 			}
 
 			ctx := context.Background()
@@ -1213,7 +1213,7 @@ func TestModelMetadataService_GetModel_SetCacheError(t *testing.T) {
 		cache:      cache,
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -1238,7 +1238,7 @@ func TestModelMetadataService_StoreBenchmarks(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -1262,7 +1262,7 @@ func TestModelMetadataService_StoreBenchmarks_Error(t *testing.T) {
 	service := &ModelMetadataService{
 		repository: repo,
 		config:     getDefaultModelMetadataConfig(),
-		log:        newTestLogger(),
+		log:        newModelMetadataTestLogger(),
 	}
 
 	ctx := context.Background()

@@ -19,9 +19,33 @@ import (
 type LSPClient struct {
 	servers      map[string]*LSPServerConnection
 	capabilities map[string]*LSPCapabilities
+	diagnostics  map[string][]*ACPDiagnostic // URI -> diagnostics
 	messageID    int
 	mu           sync.RWMutex
 	logger       *logrus.Logger
+}
+
+// ACPDiagnostic represents a diagnostic from the LSP/ACP server (extends LSPDiagnostic)
+type ACPDiagnostic struct {
+	Range              Range                        `json:"range"`
+	Severity           int                          `json:"severity,omitempty"`
+	Code               string                       `json:"code,omitempty"`
+	Source             string                       `json:"source,omitempty"`
+	Message            string                       `json:"message"`
+	RelatedInformation []ACPRelatedDiagnosticInfo   `json:"relatedInformation,omitempty"`
+}
+
+// ACPRelatedDiagnosticInfo represents related diagnostic information
+type ACPRelatedDiagnosticInfo struct {
+	Location Location `json:"location"`
+	Message  string   `json:"message"`
+}
+
+// ACPPublishDiagnosticsParams represents the params of textDocument/publishDiagnostics
+type ACPPublishDiagnosticsParams struct {
+	URI         string           `json:"uri"`
+	Version     int              `json:"version,omitempty"`
+	Diagnostics []*ACPDiagnostic `json:"diagnostics"`
 }
 
 // LSPServerConnection represents a live connection to an LSP server
@@ -230,6 +254,7 @@ func NewLSPClient(logger *logrus.Logger) *LSPClient {
 	return &LSPClient{
 		servers:      make(map[string]*LSPServerConnection),
 		capabilities: make(map[string]*LSPCapabilities),
+		diagnostics:  make(map[string][]*ACPDiagnostic),
 		messageID:    1,
 		logger:       logger,
 	}
@@ -648,9 +673,72 @@ func (c *LSPClient) StartServer(ctx context.Context) error {
 
 // GetDiagnostics provides diagnostics for a file
 func (c *LSPClient) GetDiagnostics(ctx context.Context, filePath string) ([]*models.Diagnostic, error) {
-	// For this implementation, we'll return empty diagnostics
-	// In a real implementation, this would query the LSP server for diagnostics
-	return []*models.Diagnostic{}, nil
+	uri := fmt.Sprintf("file://%s", filePath)
+
+	c.mu.RLock()
+	lspDiags, exists := c.diagnostics[uri]
+	c.mu.RUnlock()
+
+	if !exists || len(lspDiags) == 0 {
+		return []*models.Diagnostic{}, nil
+	}
+
+	// Convert ACP diagnostics to models.Diagnostic
+	result := make([]*models.Diagnostic, len(lspDiags))
+	for i, d := range lspDiags {
+		result[i] = &models.Diagnostic{
+			Range: models.Range{
+				Start: models.Position{Line: d.Range.Start.Line, Character: d.Range.Start.Character},
+				End:   models.Position{Line: d.Range.End.Line, Character: d.Range.End.Character},
+			},
+			Severity: d.Severity,
+			Code:     d.Code,
+			Source:   d.Source,
+			Message:  d.Message,
+			RelatedInformation: func() []models.DiagnosticRelatedInformation {
+				ri := make([]models.DiagnosticRelatedInformation, len(d.RelatedInformation))
+				for j, r := range d.RelatedInformation {
+					ri[j] = models.DiagnosticRelatedInformation{
+						Location: models.Location{URI: r.Location.URI},
+						Message:  r.Message,
+					}
+				}
+				return ri
+			}(),
+		}
+	}
+
+	return result, nil
+}
+
+// HandlePublishDiagnostics handles incoming textDocument/publishDiagnostics notifications
+func (c *LSPClient) HandlePublishDiagnostics(params *ACPPublishDiagnosticsParams) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if params == nil {
+		return
+	}
+
+	c.diagnostics[params.URI] = params.Diagnostics
+	c.logger.WithFields(logrus.Fields{
+		"uri":   params.URI,
+		"count": len(params.Diagnostics),
+	}).Debug("Received diagnostics from LSP server")
+}
+
+// ClearDiagnostics clears diagnostics for a specific file
+func (c *LSPClient) ClearDiagnostics(uri string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.diagnostics, uri)
+}
+
+// ClearAllDiagnostics clears all stored diagnostics
+func (c *LSPClient) ClearAllDiagnostics() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.diagnostics = make(map[string][]*ACPDiagnostic)
 }
 
 // GetCodeIntelligence provides code intelligence for a file

@@ -326,12 +326,20 @@ func (p *GeminiProvider) convertRequest(req *models.LLMRequest) GeminiRequest {
 		})
 	}
 
+	// Cap max_tokens to Gemini's limit (8192 for most models)
+	maxTokens := req.ModelParams.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 4096 // Default
+	} else if maxTokens > 8192 {
+		maxTokens = 8192 // Safe max for Gemini models
+	}
+
 	return GeminiRequest{
 		Contents: contents,
 		GenerationConfig: GeminiGenerationConfig{
 			Temperature:     req.ModelParams.Temperature,
 			TopP:            req.ModelParams.TopP,
-			MaxOutputTokens: req.ModelParams.MaxTokens,
+			MaxOutputTokens: maxTokens,
 			StopSequences:   req.ModelParams.StopSequences,
 		},
 		SafetySettings: []GeminiSafetySetting{

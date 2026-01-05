@@ -288,11 +288,19 @@ func (p *DeepSeekProvider) convertRequest(req *models.LLMRequest) DeepSeekReques
 		})
 	}
 
+	// Cap max_tokens to DeepSeek's limit (8192)
+	maxTokens := req.ModelParams.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 4096 // Default
+	} else if maxTokens > 8192 {
+		maxTokens = 8192 // DeepSeek's max limit
+	}
+
 	return DeepSeekRequest{
 		Model:       p.model,
 		Messages:    messages,
 		Temperature: req.ModelParams.Temperature,
-		MaxTokens:   req.ModelParams.MaxTokens,
+		MaxTokens:   maxTokens,
 		TopP:        req.ModelParams.TopP,
 		Stream:      false,
 		Stop:        req.ModelParams.StopSequences,

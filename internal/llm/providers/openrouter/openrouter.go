@@ -85,11 +85,19 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 		Temperature float64          `json:"temperature,omitempty"`
 	}
 
+	// Cap max_tokens to reasonable limit (varies by model, using 16384 as safe max)
+	maxTokens := req.ModelParams.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 4096 // Default
+	} else if maxTokens > 16384 {
+		maxTokens = 16384 // Safe max for most OpenRouter models
+	}
+
 	orReq := OpenRouterRequest{
 		Model:       req.ModelParams.Model,
 		Messages:    req.Messages,
 		Prompt:      req.Prompt,
-		MaxTokens:   req.ModelParams.MaxTokens,
+		MaxTokens:   maxTokens,
 		Temperature: req.ModelParams.Temperature,
 	}
 
@@ -257,11 +265,19 @@ func (p *SimpleOpenRouterProvider) CompleteStream(ctx context.Context, req *mode
 		Stream      bool             `json:"stream"`
 	}
 
+	// Cap max_tokens to reasonable limit
+	maxTokens := req.ModelParams.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 4096
+	} else if maxTokens > 16384 {
+		maxTokens = 16384
+	}
+
 	orReq := OpenRouterStreamRequest{
 		Model:       req.ModelParams.Model,
 		Messages:    req.Messages,
 		Prompt:      req.Prompt,
-		MaxTokens:   req.ModelParams.MaxTokens,
+		MaxTokens:   maxTokens,
 		Temperature: req.ModelParams.Temperature,
 		Stream:      true,
 	}

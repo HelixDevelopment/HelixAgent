@@ -670,18 +670,61 @@ phase6_opencode_config() {
     # All capabilities (MCP, LSP, ACP, Embeddings) are exposed via SuperAgent's OpenAI-compatible API
     cat > "$opencode_output" << EOF
 {
+  "\$schema": "https://opencode.sh/schema.json",
+  "username": "SuperAgent AI Ensemble",
+  "features": {
+    "streaming": true,
+    "tool_calling": true,
+    "embeddings": true,
+    "vision": true,
+    "mcp": true,
+    "lsp": true,
+    "acp": true,
+    "debate_mode": true
+  },
+  "metadata": {
+    "generator": "SuperAgent Main Challenge",
+    "version": "1.0.0",
+    "generated_at": "$(date -Iseconds)",
+    "total_providers": 1,
+    "total_models": 1,
+    "debate_group": {
+      "primary_members": 5,
+      "fallbacks_per_member": 2,
+      "strategy": "confidence_weighted",
+      "consensus_threshold": 0.7,
+      "max_rounds": 3,
+      "providers_used": ["anthropic", "openai", "google", "deepseek", "qwen", "mistral", "openrouter", "cerebras", "fireworks"]
+    },
+    "protocols": {
+      "http3": true,
+      "quic": true,
+      "brotli": true,
+      "fallback_http2": true
+    }
+  },
   "provider": {
     "superagent": {
-      "model": "superagent-debate",
       "options": {
-        "baseURL": "http://${superagent_host}:${superagent_port}/v1",
-        "apiKey": "${api_key:-\${SUPERAGENT_API_KEY}}",
-        "headers": {
-          "X-SuperAgent-Version": "1.0.0",
-          "X-Debate-Strategy": "confidence_weighted"
-        },
-        "timeout": 120000,
-        "maxRetries": 3
+        "apiKey": "\${SUPERAGENT_API_KEY}",
+        "baseURL": "http://${superagent_host}:${superagent_port}/v1"
+      },
+      "models": {
+        "superagent-debate": {
+          "name": "SuperAgent AI Debate Group",
+          "displayName": "SuperAgent Debate (Ensemble)",
+          "maxTokens": 128000,
+          "supports_streaming": true,
+          "supports_tool_calling": true,
+          "supports_vision": true,
+          "supports_embeddings": true,
+          "verified": true,
+          "description": "Virtual LLM powered by AI debate among top-performing models",
+          "underlying_models": {
+            "primary": ["claude-3-opus", "gemini-pro", "claude-3-haiku", "llama-3-70b", "deepseek-coder"],
+            "fallbacks": ["gpt-4-turbo", "claude-3-sonnet", "deepseek-chat", "gpt-4", "qwen-max", "mistral-large", "gemini-1.5-pro", "gpt-3.5-turbo", "cerebras-gpt", "llama-3-70b-fireworks"]
+          }
+        }
       }
     }
   },
@@ -690,76 +733,53 @@ phase6_opencode_config() {
       "type": "http",
       "url": "http://${superagent_host}:${superagent_port}/v1/mcp",
       "headers": {
-        "Authorization": "Bearer ${api_key:-\${SUPERAGENT_API_KEY}}"
+        "Authorization": "Bearer \${SUPERAGENT_API_KEY}"
       },
       "enabled": true,
       "timeout": 30000
     },
-    "superagent-filesystem": {
+    "filesystem": {
       "type": "stdio",
-      "command": ["npx", "-y", "@anthropic-ai/mcp-filesystem", "/"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/"],
       "enabled": true
     },
-    "superagent-github": {
+    "github": {
       "type": "stdio",
-      "command": ["npx", "-y", "@anthropic-ai/mcp-github"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
       "environment": {
         "GITHUB_TOKEN": "\${GITHUB_TOKEN}"
       },
       "enabled": true
     },
-    "superagent-memory": {
+    "memory": {
       "type": "stdio",
       "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
       "enabled": true
     }
   },
   "agent": {
-    "superagent": {
-      "model": "superagent:superagent-debate",
-      "description": "SuperAgent AI Debate Group - Multiple LLMs working together for optimal responses",
-      "prompt": "You are SuperAgent, an ensemble AI system that combines the strengths of multiple top-performing language models through an AI debate mechanism. You provide the most accurate and well-reasoned responses by leveraging collective intelligence.",
+    "default": {
+      "model": "superagent/superagent-debate",
+      "description": "SuperAgent AI Debate Group - Multiple LLMs working together",
+      "prompt": "You are SuperAgent, an ensemble AI system combining top language models through AI debate for optimal responses.",
+      "maxSteps": 50,
       "tools": {
-        "Read": true,
-        "Write": true,
-        "Edit": true,
-        "Bash": true,
-        "Glob": true,
-        "Grep": true,
-        "WebFetch": true,
-        "WebSearch": true
-      },
-      "maxSteps": 50
+        "bash": true,
+        "docker": true,
+        "git": true,
+        "lsp": true,
+        "webfetch": true
+      }
     }
   },
   "instructions": [
     "SuperAgent provides access to an AI debate group with 5 primary LLMs and 2 fallbacks each",
     "All responses are consensus-driven using confidence-weighted voting",
-    "MCP tools are available via /v1/mcp endpoint",
-    "LSP integration available via /v1/lsp endpoint",
-    "ACP integration available via /v1/acp endpoint",
-    "Embeddings available via /v1/embeddings endpoint"
+    "MCP tools available via /v1/mcp, LSP via /v1/lsp, ACP via /v1/acp",
+    "Embeddings available via /v1/embeddings"
   ],
-  "tools": {
-    "superagent-debate": {
-      "endpoint": "http://${superagent_host}:${superagent_port}/v1/debates",
-      "description": "Create and manage AI debates for complex reasoning tasks"
-    },
-    "superagent-ensemble": {
-      "endpoint": "http://${superagent_host}:${superagent_port}/v1/ensemble/completions",
-      "description": "Direct ensemble completions with multiple LLMs"
-    },
-    "superagent-embeddings": {
-      "endpoint": "http://${superagent_host}:${superagent_port}/v1/embeddings",
-      "description": "Generate embeddings via SuperAgent"
-    },
-    "superagent-cognee": {
-      "endpoint": "http://${superagent_host}:${superagent_port}/v1/cognee",
-      "description": "Knowledge graph and RAG capabilities"
-    }
-  },
   "mode": {
-    "default": "superagent"
+    "default": "default"
   },
   "permission": {
     "edit": "ask",
@@ -768,53 +788,67 @@ phase6_opencode_config() {
   },
   "sse": {
     "enabled": true
-  },
-  "_metadata": {
-    "generator": "SuperAgent Main Challenge",
-    "version": "1.0.0",
-    "generated_at": "$(date -Iseconds)",
-    "superagent": {
-      "debate_group": {
-        "primary_members": 5,
-        "fallbacks_per_member": 2,
-        "strategy": "confidence_weighted",
-        "consensus_threshold": 0.7,
-        "max_rounds": 3
-      },
-      "capabilities": {
-        "mcp": true,
-        "lsp": true,
-        "acp": true,
-        "embeddings": true,
-        "streaming": true,
-        "function_calling": true
-      },
-      "protocols": {
-        "http3": true,
-        "quic": true,
-        "brotli": true,
-        "fallback_http2": true
-      }
-    }
   }
 }
 EOF
 
-    # Generate redacted version for git (no API keys)
+    # Generate redacted version for git (same structure, env vars as placeholders)
     cat > "$opencode_redacted" << 'REDACTED_EOF'
 {
+  "$schema": "https://opencode.sh/schema.json",
+  "username": "SuperAgent AI Ensemble",
+  "features": {
+    "streaming": true,
+    "tool_calling": true,
+    "embeddings": true,
+    "vision": true,
+    "mcp": true,
+    "lsp": true,
+    "acp": true,
+    "debate_mode": true
+  },
+  "metadata": {
+    "generator": "SuperAgent Main Challenge",
+    "version": "1.0.0",
+    "total_providers": 1,
+    "total_models": 1,
+    "debate_group": {
+      "primary_members": 5,
+      "fallbacks_per_member": 2,
+      "strategy": "confidence_weighted",
+      "consensus_threshold": 0.7,
+      "max_rounds": 3,
+      "providers_used": ["anthropic", "openai", "google", "deepseek", "qwen", "mistral", "openrouter", "cerebras", "fireworks"]
+    },
+    "protocols": {
+      "http3": true,
+      "quic": true,
+      "brotli": true,
+      "fallback_http2": true
+    }
+  },
   "provider": {
     "superagent": {
-      "model": "superagent-debate",
       "options": {
-        "baseURL": "http://localhost:8080/v1",
         "apiKey": "${SUPERAGENT_API_KEY}",
-        "headers": {
-          "X-SuperAgent-Version": "1.0.0",
-          "X-Debate-Strategy": "confidence_weighted"
-        },
-        "timeout": 120000,
-        "maxRetries": 3
+        "baseURL": "http://localhost:8080/v1"
+      },
+      "models": {
+        "superagent-debate": {
+          "name": "SuperAgent AI Debate Group",
+          "displayName": "SuperAgent Debate (Ensemble)",
+          "maxTokens": 128000,
+          "supports_streaming": true,
+          "supports_tool_calling": true,
+          "supports_vision": true,
+          "supports_embeddings": true,
+          "verified": true,
+          "description": "Virtual LLM powered by AI debate among top-performing models",
+          "underlying_models": {
+            "primary": ["claude-3-opus", "gemini-pro", "claude-3-haiku", "llama-3-70b", "deepseek-coder"],
+            "fallbacks": ["gpt-4-turbo", "claude-3-sonnet", "deepseek-chat", "gpt-4", "qwen-max", "mistral-large", "gemini-1.5-pro", "gpt-3.5-turbo", "cerebras-gpt", "llama-3-70b-fireworks"]
+          }
+        }
       }
     }
   },
@@ -828,71 +862,48 @@ EOF
       "enabled": true,
       "timeout": 30000
     },
-    "superagent-filesystem": {
+    "filesystem": {
       "type": "stdio",
-      "command": ["npx", "-y", "@anthropic-ai/mcp-filesystem", "/"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/"],
       "enabled": true
     },
-    "superagent-github": {
+    "github": {
       "type": "stdio",
-      "command": ["npx", "-y", "@anthropic-ai/mcp-github"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
       "environment": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       },
       "enabled": true
     },
-    "superagent-memory": {
+    "memory": {
       "type": "stdio",
       "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
       "enabled": true
     }
   },
   "agent": {
-    "superagent": {
-      "model": "superagent:superagent-debate",
-      "description": "SuperAgent AI Debate Group - Multiple LLMs working together for optimal responses",
-      "prompt": "You are SuperAgent, an ensemble AI system that combines the strengths of multiple top-performing language models through an AI debate mechanism. You provide the most accurate and well-reasoned responses by leveraging collective intelligence.",
+    "default": {
+      "model": "superagent/superagent-debate",
+      "description": "SuperAgent AI Debate Group - Multiple LLMs working together",
+      "prompt": "You are SuperAgent, an ensemble AI system combining top language models through AI debate for optimal responses.",
+      "maxSteps": 50,
       "tools": {
-        "Read": true,
-        "Write": true,
-        "Edit": true,
-        "Bash": true,
-        "Glob": true,
-        "Grep": true,
-        "WebFetch": true,
-        "WebSearch": true
-      },
-      "maxSteps": 50
+        "bash": true,
+        "docker": true,
+        "git": true,
+        "lsp": true,
+        "webfetch": true
+      }
     }
   },
   "instructions": [
     "SuperAgent provides access to an AI debate group with 5 primary LLMs and 2 fallbacks each",
     "All responses are consensus-driven using confidence-weighted voting",
-    "MCP tools are available via /v1/mcp endpoint",
-    "LSP integration available via /v1/lsp endpoint",
-    "ACP integration available via /v1/acp endpoint",
-    "Embeddings available via /v1/embeddings endpoint"
+    "MCP tools available via /v1/mcp, LSP via /v1/lsp, ACP via /v1/acp",
+    "Embeddings available via /v1/embeddings"
   ],
-  "tools": {
-    "superagent-debate": {
-      "endpoint": "http://localhost:8080/v1/debates",
-      "description": "Create and manage AI debates for complex reasoning tasks"
-    },
-    "superagent-ensemble": {
-      "endpoint": "http://localhost:8080/v1/ensemble/completions",
-      "description": "Direct ensemble completions with multiple LLMs"
-    },
-    "superagent-embeddings": {
-      "endpoint": "http://localhost:8080/v1/embeddings",
-      "description": "Generate embeddings via SuperAgent"
-    },
-    "superagent-cognee": {
-      "endpoint": "http://localhost:8080/v1/cognee",
-      "description": "Knowledge graph and RAG capabilities"
-    }
-  },
   "mode": {
-    "default": "superagent"
+    "default": "default"
   },
   "permission": {
     "edit": "ask",
@@ -901,33 +912,6 @@ EOF
   },
   "sse": {
     "enabled": true
-  },
-  "_metadata": {
-    "generator": "SuperAgent Main Challenge",
-    "version": "1.0.0",
-    "superagent": {
-      "debate_group": {
-        "primary_members": 5,
-        "fallbacks_per_member": 2,
-        "strategy": "confidence_weighted",
-        "consensus_threshold": 0.7,
-        "max_rounds": 3
-      },
-      "capabilities": {
-        "mcp": true,
-        "lsp": true,
-        "acp": true,
-        "embeddings": true,
-        "streaming": true,
-        "function_calling": true
-      },
-      "protocols": {
-        "http3": true,
-        "quic": true,
-        "brotli": true,
-        "fallback_http2": true
-      }
-    }
   }
 }
 REDACTED_EOF

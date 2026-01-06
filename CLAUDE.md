@@ -151,6 +151,65 @@ Environment variables defined in `.env.example`. Key categories:
 
 Configuration files in `/configs`: `development.yaml`, `production.yaml`, `multi-provider.yaml`
 
+## Cognee Authentication (IMPORTANT)
+
+Cognee 0.5.0+ requires authentication. SuperAgent handles this automatically.
+
+### Default Credentials
+```
+Email:    superagent@localhost.com
+Password: SuperAgent123
+```
+
+These are configured in `.env`:
+```bash
+COGNEE_AUTH_EMAIL=superagent@localhost.com
+COGNEE_AUTH_PASSWORD=SuperAgent123
+```
+
+### Changing Credentials
+
+**Option 1: Update .env file**
+```bash
+# Edit .env and change:
+COGNEE_AUTH_EMAIL=your-email@example.com
+COGNEE_AUTH_PASSWORD=YourSecurePassword123
+
+# Restart SuperAgent - new user will be auto-registered
+```
+
+**Option 2: Create additional users via API**
+```bash
+# Register a new user
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "newuser@example.com", "password": "SecurePass123"}'
+
+# Login to get access token
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=newuser@example.com&password=SecurePass123"
+```
+
+**Option 3: Change password for existing user**
+```bash
+# First login to get token
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=superagent@localhost.com&password=SuperAgent123" | jq -r '.access_token')
+
+# Then use the forgot-password flow or update via API
+curl -X POST http://localhost:8000/api/v1/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email": "superagent@localhost.com"}'
+```
+
+### Credential Security Notes
+- Default credentials are for development only
+- For production, change credentials immediately after deployment
+- Cognee tokens expire after 1 hour by default
+- SuperAgent auto-refreshes tokens as needed
+
 ## Container Runtime Support (Docker/Podman)
 
 SuperAgent supports both Docker and Podman as container runtimes. Use the wrapper script for automatic detection:

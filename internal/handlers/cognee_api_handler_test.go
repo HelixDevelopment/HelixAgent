@@ -29,9 +29,19 @@ func setupCogneeTestServer() (*httptest.Server, *services.CogneeService) {
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
-		case r.URL.Path == "/health":
+		// Root endpoint for fast health check (IsHealthy uses this now)
+		case r.URL.Path == "/" || r.URL.Path == "/health":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok"})
+			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Hello, World, I am alive!"})
+
+		// Auth endpoints for automatic authentication
+		case r.URL.Path == "/api/v1/auth/register" && r.Method == "POST":
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "test-user-id", "email": "test@test.com"})
+
+		case r.URL.Path == "/api/v1/auth/login" && r.Method == "POST":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{"access_token": "test-token", "token_type": "bearer"})
 
 		case r.URL.Path == "/api/v1/add" && r.Method == "POST":
 			w.WriteHeader(http.StatusOK)
@@ -103,6 +113,8 @@ func setupCogneeTestServer() (*httptest.Server, *services.CogneeService) {
 	config := &services.CogneeServiceConfig{
 		Enabled:                true,
 		BaseURL:                server.URL,
+		AuthEmail:              "test@test.com",
+		AuthPassword:           "testpassword",
 		AutoCognify:            true,
 		EnhancePrompts:         true,
 		StoreResponses:         true,

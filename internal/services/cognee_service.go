@@ -273,6 +273,11 @@ func (s *CogneeService) EnsureRunning(ctx context.Context) error {
 		s.mu.Lock()
 		s.isReady = true
 		s.mu.Unlock()
+
+		// Ensure default dataset exists
+		if err := s.EnsureDefaultDataset(ctx); err != nil {
+			s.logger.WithError(err).Warn("Failed to ensure default dataset, searches may fail")
+		}
 		return nil
 	}
 
@@ -361,6 +366,11 @@ waitForHealth:
 			s.isReady = true
 			s.mu.Unlock()
 			s.logger.Info("Cognee services started successfully")
+
+			// Ensure default dataset exists after startup
+			if err := s.EnsureDefaultDataset(ctx); err != nil {
+				s.logger.WithError(err).Warn("Failed to ensure default dataset, searches may fail")
+			}
 			return nil
 		}
 		time.Sleep(interval)
@@ -1165,6 +1175,49 @@ func (s *CogneeService) GetCodeContext(ctx context.Context, query string) ([]Cod
 // =====================================================
 // DATASET MANAGEMENT
 // =====================================================
+
+// EnsureDefaultDataset creates the default dataset if it doesn't exist
+// This prevents "No datasets found" errors during search operations
+func (s *CogneeService) EnsureDefaultDataset(ctx context.Context) error {
+	datasetName := s.config.DefaultDataset
+	if datasetName == "" {
+		datasetName = "default"
+	}
+
+	// Check if dataset exists
+	datasets, err := s.ListDatasets(ctx)
+	if err != nil {
+		s.logger.WithError(err).Debug("Failed to list datasets, attempting to create default")
+		// Continue to create - might be first time
+	} else {
+		// Check if default dataset exists
+		for _, ds := range datasets {
+			if name, ok := ds["name"].(string); ok && name == datasetName {
+				s.logger.WithField("dataset", datasetName).Debug("Default dataset already exists")
+				return nil
+			}
+		}
+	}
+
+	// Create default dataset
+	s.logger.WithField("dataset", datasetName).Info("Creating default dataset for Cognee")
+	err = s.CreateDataset(ctx, datasetName, "Default dataset for SuperAgent Cognee integration", map[string]interface{}{
+		"created_by": "superagent",
+		"auto_created": true,
+		"created_at": time.Now().Format(time.RFC3339),
+	})
+	if err != nil {
+		// Check if it's a "already exists" type error
+		if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "409") {
+			s.logger.WithField("dataset", datasetName).Debug("Default dataset already exists (concurrent creation)")
+			return nil
+		}
+		return fmt.Errorf("failed to create default dataset: %w", err)
+	}
+
+	s.logger.WithField("dataset", datasetName).Info("Default dataset created successfully")
+	return nil
+}
 
 // CreateDataset creates a new dataset
 func (s *CogneeService) CreateDataset(ctx context.Context, name, description string, metadata map[string]interface{}) error {

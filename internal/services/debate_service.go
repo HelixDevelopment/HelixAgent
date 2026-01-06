@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/superagent/superagent/internal/database"
 	"github.com/superagent/superagent/internal/llm"
 	"github.com/superagent/superagent/internal/models"
 )
@@ -20,7 +21,16 @@ type DebateService struct {
 	logger           *logrus.Logger
 	providerRegistry *ProviderRegistry
 	cogneeService    *CogneeService
+	logRepository    DebateLogRepository // Optional: for persistent logging
 }
+
+// DebateLogRepository interface for logging debate activities
+type DebateLogRepository interface {
+	Insert(ctx context.Context, entry *database.DebateLogEntry) error
+}
+
+// DebateLogEntry is an alias to database.DebateLogEntry for convenience
+type DebateLogEntry = database.DebateLogEntry
 
 // NewDebateService creates a new debate service
 func NewDebateService(logger *logrus.Logger) *DebateService {
@@ -52,12 +62,60 @@ func (ds *DebateService) SetCogneeService(service *CogneeService) {
 	ds.cogneeService = service
 }
 
+// SetLogRepository sets the log repository for persistent logging
+func (ds *DebateService) SetLogRepository(repo DebateLogRepository) {
+	ds.logRepository = repo
+}
+
+// logDebateEntry logs a debate entry to the repository if configured
+func (ds *DebateService) logDebateEntry(ctx context.Context, entry *DebateLogEntry) {
+	if ds.logRepository == nil {
+		return
+	}
+
+	if err := ds.logRepository.Insert(ctx, entry); err != nil {
+		ds.logger.WithError(err).WithFields(logrus.Fields{
+			"participant": entry.ParticipantIdentifier,
+			"action":      entry.Action,
+		}).Warn("Failed to log debate entry to repository")
+	}
+}
+
 // roundResult holds the results from a single debate round
 type roundResult struct {
 	Round     int
 	Responses []ParticipantResponse
 	StartTime time.Time
 	EndTime   time.Time
+}
+
+// formatParticipantIdentifier creates a readable identifier like "DeepSeek-1" or "Gemini-2"
+func formatParticipantIdentifier(provider, participantID string, instanceNum int) string {
+	// Capitalize first letter of provider
+	providerName := strings.Title(strings.ToLower(provider))
+	if instanceNum > 0 {
+		return fmt.Sprintf("%s-%d", providerName, instanceNum)
+	}
+	// Try to extract number from participantID
+	parts := strings.Split(participantID, "-")
+	for _, part := range parts {
+		if num, err := fmt.Sscanf(part, "%d", new(int)); err == nil && num > 0 {
+			return fmt.Sprintf("%s-%s", providerName, part)
+		}
+	}
+	return fmt.Sprintf("%s-%s", providerName, participantID)
+}
+
+// extractInstanceNumber extracts instance number from participant ID like "single-provider-instance-3"
+func extractInstanceNumber(participantID string) int {
+	parts := strings.Split(participantID, "-")
+	for i := len(parts) - 1; i >= 0; i-- {
+		var num int
+		if _, err := fmt.Sscanf(parts[i], "%d", &num); err == nil {
+			return num
+		}
+	}
+	return 0
 }
 
 // ConductDebate conducts a debate with the given configuration
@@ -246,9 +304,32 @@ func (ds *DebateService) getParticipantResponse(
 ) (ParticipantResponse, error) {
 	startTime := time.Now()
 
+	// Create readable participant identifier like "DeepSeek-1" or "Claude-2"
+	instanceNum := extractInstanceNumber(participant.ParticipantID)
+	participantIdentifier := formatParticipantIdentifier(participant.LLMProvider, participant.ParticipantID, instanceNum)
+
+	// Log participant identification
+	ds.logger.WithFields(logrus.Fields{
+		"participant":      participantIdentifier,
+		"participant_id":   participant.ParticipantID,
+		"participant_name": participant.Name,
+		"role":             participant.Role,
+		"provider":         participant.LLMProvider,
+		"model":            participant.LLMModel,
+		"round":            round,
+		"debate_id":        config.DebateID,
+	}).Info("Debate participant starting response")
+
 	// Get the provider
 	provider, err := ds.providerRegistry.GetProvider(participant.LLMProvider)
 	if err != nil {
+		ds.logger.WithFields(logrus.Fields{
+			"participant":      participantIdentifier,
+			"participant_id":   participant.ParticipantID,
+			"participant_name": participant.Name,
+			"provider":         participant.LLMProvider,
+			"error":            err.Error(),
+		}).Error("Debate participant provider not found")
 		return ParticipantResponse{}, fmt.Errorf("provider not found: %w", err)
 	}
 
@@ -280,13 +361,39 @@ func (ds *DebateService) getParticipantResponse(
 	// Make the actual LLM call
 	llmResponse, err := provider.Complete(ctx, llmRequest)
 	if err != nil {
-		return ParticipantResponse{}, fmt.Errorf("LLM call failed: %w", err)
+		ds.logger.WithFields(logrus.Fields{
+			"participant":      participantIdentifier,
+			"participant_id":   participant.ParticipantID,
+			"participant_name": participant.Name,
+			"role":             participant.Role,
+			"provider":         participant.LLMProvider,
+			"round":            round,
+			"debate_id":        config.DebateID,
+			"error":            err.Error(),
+		}).Error("Debate participant LLM call failed")
+		return ParticipantResponse{}, fmt.Errorf("[%s] LLM call failed: %w", participantIdentifier, err)
 	}
 
 	responseTime := time.Since(startTime)
 
 	// Calculate quality score for this response
 	qualityScore := ds.calculateResponseQuality(llmResponse)
+
+	// Log successful response with participant identification
+	ds.logger.WithFields(logrus.Fields{
+		"participant":      participantIdentifier,
+		"participant_id":   participant.ParticipantID,
+		"participant_name": participant.Name,
+		"role":             participant.Role,
+		"provider":         participant.LLMProvider,
+		"model":            participant.LLMModel,
+		"round":            round,
+		"debate_id":        config.DebateID,
+		"response_time_ms": responseTime.Milliseconds(),
+		"quality_score":    qualityScore,
+		"tokens_used":      llmResponse.TokensUsed,
+		"content_length":   len(llmResponse.Content),
+	}).Infof("[%s] Debate participant response completed", participantIdentifier)
 
 	// Build participant response
 	response := ParticipantResponse{
@@ -1200,3 +1307,568 @@ type LLMProviderInterface interface {
 
 // Ensure llm.LLMProvider satisfies our interface
 var _ LLMProviderInterface = (llm.LLMProvider)(nil)
+
+// SingleProviderConfig holds configuration for single-provider multi-instance mode
+type SingleProviderConfig struct {
+	ProviderName      string   `json:"provider_name"`
+	AvailableModels   []string `json:"available_models"`
+	NumParticipants   int      `json:"num_participants"`
+	UseModelDiversity bool     `json:"use_model_diversity"`
+	UseTempDiversity  bool     `json:"use_temp_diversity"`
+}
+
+// DebateMode represents different modes of debate operation
+type DebateMode string
+
+const (
+	DebateModeMultiProvider  DebateMode = "multi_provider"  // Normal mode with multiple providers
+	DeabateModeMultiModel    DebateMode = "multi_model"     // Single provider with multiple models
+	DebateModeSingleInstance DebateMode = "single_instance" // Single provider, single model, multiple instances
+)
+
+// SingleProviderDebateResult holds results specific to single-provider debate
+type SingleProviderDebateResult struct {
+	Mode                DebateMode             `json:"mode"`
+	ProviderUsed        string                 `json:"provider_used"`
+	ModelsUsed          []string               `json:"models_used"`
+	InstanceCount       int                    `json:"instance_count"`
+	DiversityStrategy   string                 `json:"diversity_strategy"`
+	EffectiveDiversity  float64                `json:"effective_diversity"`
+}
+
+// IsSingleProviderMode detects if the debate should run in single-provider mode
+func (ds *DebateService) IsSingleProviderMode(config *DebateConfig) (bool, *SingleProviderConfig) {
+	if ds.providerRegistry == nil {
+		return false, nil
+	}
+
+	// Get unique providers from participants
+	uniqueProviders := make(map[string]bool)
+	for _, p := range config.Participants {
+		uniqueProviders[p.LLMProvider] = true
+	}
+
+	// If multiple unique providers configured, check if they're available
+	availableProviders := make([]string, 0)
+	for providerName := range uniqueProviders {
+		if _, err := ds.providerRegistry.GetProvider(providerName); err == nil {
+			availableProviders = append(availableProviders, providerName)
+		}
+	}
+
+	// If we have multiple available providers, use normal multi-provider mode
+	if len(availableProviders) > 1 {
+		return false, nil
+	}
+
+	// If we have exactly one available provider, use single-provider mode
+	if len(availableProviders) == 1 {
+		providerName := availableProviders[0]
+		models := ds.GetAvailableModelsForProvider(providerName)
+
+		return true, &SingleProviderConfig{
+			ProviderName:      providerName,
+			AvailableModels:   models,
+			NumParticipants:   len(config.Participants),
+			UseModelDiversity: len(models) > 1,
+			UseTempDiversity:  true,
+		}
+	}
+
+	// No providers available
+	return false, nil
+}
+
+// GetAvailableModelsForProvider returns available models for a provider
+func (ds *DebateService) GetAvailableModelsForProvider(providerName string) []string {
+	// Default model lists for known providers
+	knownModels := map[string][]string{
+		"deepseek": {"deepseek-chat", "deepseek-coder", "deepseek-reasoner"},
+		"claude":   {"claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"},
+		"openai":   {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"},
+		"gemini":   {"gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash"},
+		"mistral":  {"mistral-large-latest", "mistral-medium", "mistral-small"},
+		"qwen":     {"qwen-turbo", "qwen-plus", "qwen-max"},
+		"groq":     {"llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"},
+		"ollama":   {"llama3.2", "llama3.1", "mistral", "codellama", "gemma2"},
+	}
+
+	if models, ok := knownModels[providerName]; ok {
+		return models
+	}
+
+	// If we have provider capabilities, use those
+	if ds.providerRegistry != nil {
+		if provider, err := ds.providerRegistry.GetProvider(providerName); err == nil {
+			caps := provider.GetCapabilities()
+			if caps != nil && len(caps.SupportedModels) > 0 {
+				return caps.SupportedModels
+			}
+		}
+	}
+
+	return []string{"default"}
+}
+
+// CreateSingleProviderParticipants creates virtual participants for single-provider mode
+func (ds *DebateService) CreateSingleProviderParticipants(
+	spc *SingleProviderConfig,
+	originalTopic string,
+) []ParticipantConfig {
+	participants := make([]ParticipantConfig, spc.NumParticipants)
+
+	// Define diverse roles with distinct perspectives
+	roles := []struct {
+		name        string
+		role        string
+		perspective string
+		tempOffset  float64
+	}{
+		{"Analytical Thinker", "analyst", "Focus on data, evidence, and logical reasoning. Be precise and thorough.", 0.0},
+		{"Creative Explorer", "proposer", "Think outside the box, propose innovative ideas and unconventional solutions.", 0.3},
+		{"Critical Examiner", "critic", "Challenge assumptions, identify weaknesses, and play devil's advocate.", -0.1},
+		{"Practical Advisor", "mediator", "Focus on real-world applicability, compromises, and actionable outcomes.", 0.1},
+		{"Systems Thinker", "debater", "Consider broader implications, interconnections, and long-term effects.", 0.2},
+		{"Ethical Observer", "debater", "Evaluate moral implications, fairness, and societal impact.", 0.15},
+		{"Technical Expert", "analyst", "Dive deep into technical details, specifications, and implementation.", -0.05},
+		{"Strategic Planner", "opponent", "Consider strategic advantages, risks, and competitive dynamics.", 0.1},
+	}
+
+	// Assign models (cycle through available models if we have model diversity)
+	numModels := len(spc.AvailableModels)
+	if numModels == 0 {
+		spc.AvailableModels = []string{"default"}
+		numModels = 1
+	}
+
+	for i := 0; i < spc.NumParticipants; i++ {
+		roleIdx := i % len(roles)
+		roleInfo := roles[roleIdx]
+
+		// Select model (cycle through available models)
+		model := spc.AvailableModels[i%numModels]
+
+		// Calculate temperature diversity
+		baseTemp := 0.7
+		temp := baseTemp + roleInfo.tempOffset
+		if temp < 0.1 {
+			temp = 0.1
+		}
+		if temp > 1.0 {
+			temp = 1.0
+		}
+
+		participants[i] = ParticipantConfig{
+			ParticipantID: fmt.Sprintf("single-provider-instance-%d", i+1),
+			Name:          fmt.Sprintf("%s (Instance %d)", roleInfo.name, i+1),
+			Role:          roleInfo.role,
+			LLMProvider:   spc.ProviderName,
+			LLMModel:      model,
+			SystemPrompt:  ds.buildSingleProviderSystemPrompt(roleInfo.name, roleInfo.perspective, i+1, spc.NumParticipants),
+			Temperature:   temp,
+			Priority:      i + 1,
+		}
+	}
+
+	return participants
+}
+
+// buildSingleProviderSystemPrompt creates a unique system prompt for single-provider instances
+func (ds *DebateService) buildSingleProviderSystemPrompt(name, perspective string, instance, total int) string {
+	return fmt.Sprintf(
+		"You are %s, participant %d of %d in an AI debate panel using the same underlying model but with distinct perspectives.\n\n"+
+			"YOUR UNIQUE PERSPECTIVE: %s\n\n"+
+			"IMPORTANT GUIDELINES:\n"+
+			"- You MUST maintain your unique viewpoint throughout the debate\n"+
+			"- Your perspective should be clearly different from other participants\n"+
+			"- Acknowledge valid points from others while contributing your distinct analysis\n"+
+			"- Do not simply agree with everything - bring your unique expertise\n"+
+			"- Be specific and provide concrete examples from your perspective\n"+
+			"- If others make points similar to yours, expand on them with new insights\n\n"+
+			"Remember: The value of this debate comes from diverse viewpoints. Your unique perspective is essential.",
+		name, instance, total, perspective,
+	)
+}
+
+// ConductSingleProviderDebate conducts a debate using a single provider with multiple instances
+func (ds *DebateService) ConductSingleProviderDebate(
+	ctx context.Context,
+	config *DebateConfig,
+	spc *SingleProviderConfig,
+) (*DebateResult, error) {
+	startTime := time.Now()
+	sessionID := fmt.Sprintf("single-provider-%s-%s", config.DebateID, uuid.New().String()[:8])
+
+	ds.logger.WithFields(logrus.Fields{
+		"debate_id":     config.DebateID,
+		"provider":      spc.ProviderName,
+		"models":        spc.AvailableModels,
+		"participants":  spc.NumParticipants,
+		"model_diversity": spc.UseModelDiversity,
+	}).Info("Starting single-provider multi-instance debate")
+
+	// Create virtual participants with diverse perspectives
+	config.Participants = ds.CreateSingleProviderParticipants(spc, config.Topic)
+
+	// Conduct the debate using the standard method
+	allResponses := make([]ParticipantResponse, 0)
+	roundResults := make([]roundResult, 0, config.MaxRounds)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, config.Timeout)
+	defer cancel()
+
+	previousResponses := make([]ParticipantResponse, 0)
+	for round := 1; round <= config.MaxRounds; round++ {
+		ds.logger.Infof("Single-provider debate round %d of %d", round, config.MaxRounds)
+
+		roundStart := time.Now()
+		responses, err := ds.executeSingleProviderRound(timeoutCtx, config, spc, round, previousResponses)
+		if err != nil {
+			ds.logger.WithError(err).Errorf("Round %d failed", round)
+			if len(responses) == 0 {
+				break
+			}
+		}
+
+		roundResults = append(roundResults, roundResult{
+			Round:     round,
+			Responses: responses,
+			StartTime: roundStart,
+			EndTime:   time.Now(),
+		})
+
+		allResponses = append(allResponses, responses...)
+		previousResponses = responses
+
+		// Check for early consensus
+		if ds.checkEarlyConsensus(responses) {
+			ds.logger.Infof("Early consensus reached at round %d", round)
+			break
+		}
+
+		select {
+		case <-timeoutCtx.Done():
+			ds.logger.Warn("Single-provider debate timeout reached")
+			break
+		default:
+			continue
+		}
+	}
+
+	endTime := time.Now()
+
+	// Analyze results
+	consensus := ds.analyzeConsensus(allResponses, config.Topic)
+	qualityScore := ds.calculateQualityScore(allResponses)
+	finalScore := ds.calculateFinalScore(allResponses, consensus)
+	bestResponse := ds.findBestResponse(allResponses)
+
+	// Calculate effective diversity
+	effectiveDiversity := ds.calculateEffectiveDiversity(allResponses)
+
+	result := &DebateResult{
+		DebateID:        config.DebateID,
+		SessionID:       sessionID,
+		Topic:           config.Topic,
+		StartTime:       startTime,
+		EndTime:         endTime,
+		Duration:        endTime.Sub(startTime),
+		TotalRounds:     config.MaxRounds,
+		RoundsConducted: len(roundResults),
+		AllResponses:    allResponses,
+		Participants:    ds.getLatestParticipantResponses(allResponses, config.Participants),
+		BestResponse:    bestResponse,
+		Consensus:       consensus,
+		QualityScore:    qualityScore,
+		FinalScore:      finalScore,
+		Success:         len(allResponses) > 0,
+		Metadata: map[string]interface{}{
+			"mode":                "single_provider",
+			"provider":            spc.ProviderName,
+			"models_used":         ds.getModelsUsed(allResponses),
+			"instance_count":      spc.NumParticipants,
+			"model_diversity":     spc.UseModelDiversity,
+			"temp_diversity":      spc.UseTempDiversity,
+			"effective_diversity": effectiveDiversity,
+			"total_responses":     len(allResponses),
+		},
+	}
+
+	return result, nil
+}
+
+// executeSingleProviderRound executes a debate round in single-provider mode
+func (ds *DebateService) executeSingleProviderRound(
+	ctx context.Context,
+	config *DebateConfig,
+	spc *SingleProviderConfig,
+	round int,
+	previousResponses []ParticipantResponse,
+) ([]ParticipantResponse, error) {
+	responses := make([]ParticipantResponse, 0, len(config.Participants))
+	responseChan := make(chan ParticipantResponse, len(config.Participants))
+	errorChan := make(chan error, len(config.Participants))
+
+	// Get the single provider
+	provider, err := ds.providerRegistry.GetProvider(spc.ProviderName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider %s: %w", spc.ProviderName, err)
+	}
+
+	var wg sync.WaitGroup
+	for _, participant := range config.Participants {
+		wg.Add(1)
+		go func(p ParticipantConfig) {
+			defer wg.Done()
+
+			resp, err := ds.getSingleProviderParticipantResponse(ctx, config, p, provider, round, previousResponses)
+			if err != nil {
+				errorChan <- fmt.Errorf("participant %s failed: %w", p.Name, err)
+				return
+			}
+			responseChan <- resp
+		}(participant)
+	}
+
+	go func() {
+		wg.Wait()
+		close(responseChan)
+		close(errorChan)
+	}()
+
+	for resp := range responseChan {
+		responses = append(responses, resp)
+	}
+
+	var errs []error
+	for err := range errorChan {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 && len(responses) == 0 {
+		return responses, fmt.Errorf("all single-provider instances failed: %v", errs)
+	}
+
+	return responses, nil
+}
+
+// getSingleProviderParticipantResponse gets a response from a single-provider participant
+func (ds *DebateService) getSingleProviderParticipantResponse(
+	ctx context.Context,
+	config *DebateConfig,
+	participant ParticipantConfig,
+	provider llm.LLMProvider,
+	round int,
+	previousResponses []ParticipantResponse,
+) (ParticipantResponse, error) {
+	startTime := time.Now()
+
+	// Create readable participant identifier like "DeepSeek-1" or "DeepSeek-2"
+	instanceNum := extractInstanceNumber(participant.ParticipantID)
+	participantIdentifier := formatParticipantIdentifier(participant.LLMProvider, participant.ParticipantID, instanceNum)
+
+	// Log participant identification
+	ds.logger.WithFields(logrus.Fields{
+		"participant":      participantIdentifier,
+		"participant_id":   participant.ParticipantID,
+		"participant_name": participant.Name,
+		"role":             participant.Role,
+		"provider":         participant.LLMProvider,
+		"model":            participant.LLMModel,
+		"round":            round,
+		"debate_id":        config.DebateID,
+	}).Infof("[%s] Single-provider participant starting response", participantIdentifier)
+
+	// Log start to repository
+	ds.logDebateEntry(ctx, &DebateLogEntry{
+		DebateID:              config.DebateID,
+		ParticipantID:         participant.ParticipantID,
+		ParticipantIdentifier: participantIdentifier,
+		ParticipantName:       participant.Name,
+		Role:                  participant.Role,
+		Provider:              participant.LLMProvider,
+		Model:                 participant.LLMModel,
+		Round:                 round,
+		Action:                "start",
+	})
+
+	// Build the prompt
+	prompt := ds.buildDebatePrompt(config.Topic, participant, round, previousResponses)
+
+	// Use the participant's custom system prompt if available
+	systemPrompt := participant.SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = ds.buildSystemPrompt(participant)
+	}
+
+	// Calculate temperature (use participant's if set, otherwise use diversity)
+	temp := participant.Temperature
+	if temp == 0 {
+		temp = 0.7
+	}
+
+	llmRequest := &models.LLMRequest{
+		ID:        uuid.New().String(),
+		SessionID: config.DebateID,
+		Prompt:    prompt,
+		Messages: []models.Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: prompt},
+		},
+		ModelParams: models.ModelParameters{
+			Model:       participant.LLMModel,
+			Temperature: temp,
+			MaxTokens:   1024,
+		},
+	}
+
+	llmResponse, err := provider.Complete(ctx, llmRequest)
+	if err != nil {
+		ds.logger.WithFields(logrus.Fields{
+			"participant":      participantIdentifier,
+			"participant_id":   participant.ParticipantID,
+			"participant_name": participant.Name,
+			"role":             participant.Role,
+			"round":            round,
+			"debate_id":        config.DebateID,
+			"error":            err.Error(),
+		}).Errorf("[%s] Single-provider participant response failed", participantIdentifier)
+
+		// Log error to repository
+		ds.logDebateEntry(ctx, &DebateLogEntry{
+			DebateID:              config.DebateID,
+			ParticipantID:         participant.ParticipantID,
+			ParticipantIdentifier: participantIdentifier,
+			ParticipantName:       participant.Name,
+			Role:                  participant.Role,
+			Provider:              participant.LLMProvider,
+			Model:                 participant.LLMModel,
+			Round:                 round,
+			Action:                "error",
+			ErrorMessage:          err.Error(),
+		})
+
+		return ParticipantResponse{}, fmt.Errorf("[%s] LLM call failed: %w", participantIdentifier, err)
+	}
+
+	responseTime := time.Since(startTime)
+	qualityScore := ds.calculateResponseQuality(llmResponse)
+
+	// Log successful response with participant identification
+	ds.logger.WithFields(logrus.Fields{
+		"participant":      participantIdentifier,
+		"participant_id":   participant.ParticipantID,
+		"participant_name": participant.Name,
+		"role":             participant.Role,
+		"provider":         participant.LLMProvider,
+		"model":            participant.LLMModel,
+		"round":            round,
+		"debate_id":        config.DebateID,
+		"response_time_ms": responseTime.Milliseconds(),
+		"quality_score":    qualityScore,
+		"tokens_used":      llmResponse.TokensUsed,
+		"content_length":   len(llmResponse.Content),
+	}).Infof("[%s] Single-provider participant response completed", participantIdentifier)
+
+	// Log completion to repository
+	ds.logDebateEntry(ctx, &DebateLogEntry{
+		DebateID:              config.DebateID,
+		ParticipantID:         participant.ParticipantID,
+		ParticipantIdentifier: participantIdentifier,
+		ParticipantName:       participant.Name,
+		Role:                  participant.Role,
+		Provider:              participant.LLMProvider,
+		Model:                 participant.LLMModel,
+		Round:                 round,
+		Action:                "complete",
+		ResponseTimeMs:        responseTime.Milliseconds(),
+		QualityScore:          qualityScore,
+		TokensUsed:            llmResponse.TokensUsed,
+		ContentLength:         len(llmResponse.Content),
+	})
+
+	return ParticipantResponse{
+		ParticipantID:   participant.ParticipantID,
+		ParticipantName: participant.Name,
+		Role:            participant.Role,
+		Round:           round,
+		RoundNumber:     round,
+		Response:        llmResponse.Content,
+		Content:         llmResponse.Content,
+		Confidence:      llmResponse.Confidence,
+		QualityScore:    qualityScore,
+		ResponseTime:    responseTime,
+		LLMProvider:     participant.LLMProvider,
+		LLMModel:        participant.LLMModel,
+		LLMName:         participant.LLMModel,
+		Timestamp:       startTime,
+		Metadata: map[string]any{
+			"tokens_used":       llmResponse.TokensUsed,
+			"finish_reason":     llmResponse.FinishReason,
+			"single_provider":   true,
+			"temperature_used":  temp,
+			"system_prompt_len": len(systemPrompt),
+		},
+	}, nil
+}
+
+// calculateEffectiveDiversity calculates how diverse the responses actually are
+func (ds *DebateService) calculateEffectiveDiversity(responses []ParticipantResponse) float64 {
+	if len(responses) < 2 {
+		return 0.0
+	}
+
+	// Calculate average pairwise dissimilarity
+	totalDissimilarity := 0.0
+	comparisons := 0
+
+	for i := 0; i < len(responses); i++ {
+		for j := i + 1; j < len(responses); j++ {
+			similarity := ds.calculateTextSimilarity(responses[i].Content, responses[j].Content)
+			totalDissimilarity += (1.0 - similarity) // Convert similarity to dissimilarity
+			comparisons++
+		}
+	}
+
+	if comparisons == 0 {
+		return 0.0
+	}
+
+	return totalDissimilarity / float64(comparisons)
+}
+
+// getModelsUsed returns unique models used in responses
+func (ds *DebateService) getModelsUsed(responses []ParticipantResponse) []string {
+	models := make(map[string]bool)
+	for _, r := range responses {
+		models[r.LLMModel] = true
+	}
+
+	result := make([]string, 0, len(models))
+	for m := range models {
+		result = append(result, m)
+	}
+	return result
+}
+
+// AutoConductDebate automatically selects the best debate mode based on available providers
+func (ds *DebateService) AutoConductDebate(
+	ctx context.Context,
+	config *DebateConfig,
+) (*DebateResult, error) {
+	// Check if we should use single-provider mode
+	isSingle, spc := ds.IsSingleProviderMode(config)
+
+	if isSingle && spc != nil {
+		ds.logger.WithFields(logrus.Fields{
+			"provider":    spc.ProviderName,
+			"num_models":  len(spc.AvailableModels),
+			"participants": spc.NumParticipants,
+		}).Info("Detected single-provider mode, using multi-instance debate")
+
+		return ds.ConductSingleProviderDebate(ctx, config, spc)
+	}
+
+	// Use standard multi-provider debate
+	return ds.ConductDebate(ctx, config)
+}

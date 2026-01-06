@@ -107,7 +107,7 @@ func TestNewProviderRegistry(t *testing.T) {
 			},
 		}
 
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 		require.NotNil(t, registry)
 		assert.Equal(t, 60*time.Second, registry.config.DefaultTimeout)
@@ -133,7 +133,7 @@ func TestProviderRegistry_RegisterProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("register new provider", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "test-provider"}
@@ -181,7 +181,7 @@ func TestProviderRegistry_UnregisterProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("unregister existing provider", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "unregister-provider"}
@@ -215,7 +215,7 @@ func TestProviderRegistry_GetProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("get existing provider", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "get-provider"}
@@ -248,7 +248,8 @@ func TestProviderRegistry_ListProviders(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	// Use constructor without auto-discovery for predictable test behavior
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("empty registry", func(t *testing.T) {
 		providers := registry.ListProviders()
@@ -280,7 +281,7 @@ func TestProviderRegistry_ConfigureProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("configure non-existent provider fails", func(t *testing.T) {
 		providerCfg := &ProviderConfig{
@@ -323,7 +324,7 @@ func TestProviderRegistry_GetProviderConfig(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("get config for existing provider", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "config-provider"}
@@ -357,14 +358,17 @@ func TestProviderRegistry_HealthCheck(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
 
 	t.Run("empty registry health check", func(t *testing.T) {
+		// Use constructor without auto-discovery for predictable test behavior
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		results := registry.HealthCheck()
 		assert.Empty(t, results)
 	})
 
 	t.Run("healthy providers", func(t *testing.T) {
+		// Use constructor without auto-discovery for predictable test behavior
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		_ = registry.RegisterProvider("healthy-provider", &MockLLMProviderForRegistry{
 			name:           "healthy-provider",
 			healthCheckErr: nil,
@@ -376,12 +380,15 @@ func TestProviderRegistry_HealthCheck(t *testing.T) {
 	})
 
 	t.Run("unhealthy provider", func(t *testing.T) {
+		// Use constructor without auto-discovery for predictable test behavior
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		_ = registry.RegisterProvider("unhealthy-provider", &MockLLMProviderForRegistry{
 			name:           "unhealthy-provider",
 			healthCheckErr: errors.New("health check failed"),
 		})
 
 		results := registry.HealthCheck()
+		assert.Len(t, results, 1)
 		assert.Error(t, results["unhealthy-provider"])
 	})
 }
@@ -642,7 +649,7 @@ func TestProviderRegistry_ConfigureProvider_StoresConfig(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("stores and retrieves configuration", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "config-storage-provider"}
@@ -772,7 +779,7 @@ func TestProviderRegistry_RemoveProvider_RequestTracking(t *testing.T) {
 	}
 
 	t.Run("force removes provider with active requests", func(t *testing.T) {
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		provider := &MockLLMProviderForRegistry{name: "force-remove-provider"}
 		_ = registry.RegisterProvider("force-remove-provider", provider)
 
@@ -790,7 +797,7 @@ func TestProviderRegistry_RemoveProvider_RequestTracking(t *testing.T) {
 	})
 
 	t.Run("removes provider with no active requests", func(t *testing.T) {
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		provider := &MockLLMProviderForRegistry{name: "no-requests-provider"}
 		_ = registry.RegisterProvider("no-requests-provider", provider)
 
@@ -804,7 +811,7 @@ func TestProviderRegistry_RemoveProvider_RequestTracking(t *testing.T) {
 	})
 
 	t.Run("fails to remove non-existent provider", func(t *testing.T) {
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 		err := registry.RemoveProvider("non-existent-provider", false)
 		assert.Error(t, err)
@@ -827,7 +834,7 @@ func TestProviderRegistry_ActiveRequestTracking(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("increment and decrement active requests", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "tracking-provider"}
@@ -889,7 +896,7 @@ func TestProviderRegistry_DrainTimeout(t *testing.T) {
 	}
 
 	t.Run("set and use custom drain timeout", func(t *testing.T) {
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		provider := &MockLLMProviderForRegistry{name: "drain-test-provider"}
 		_ = registry.RegisterProvider("drain-test-provider", provider)
 
@@ -911,7 +918,7 @@ func TestProviderRegistry_DrainTimeout(t *testing.T) {
 	})
 
 	t.Run("drain timeout fails when requests dont complete", func(t *testing.T) {
-		registry := NewProviderRegistry(cfg, nil)
+		registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 		provider := &MockLLMProviderForRegistry{name: "drain-fail-provider"}
 		_ = registry.RegisterProvider("drain-fail-provider", provider)
 
@@ -943,7 +950,7 @@ func BenchmarkProviderRegistry_GetProvider(b *testing.B) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 	_ = registry.RegisterProvider("bench-provider", &MockLLMProviderForRegistry{name: "bench-provider"})
 
 	b.ResetTimer()
@@ -966,7 +973,7 @@ func BenchmarkProviderRegistry_ListProviders(b *testing.B) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 	for i := 0; i < 10; i++ {
 		name := "bench-provider-" + string(rune(i))
 		_ = registry.RegisterProvider(name, &MockLLMProviderForRegistry{name: name})
@@ -1005,7 +1012,7 @@ func TestProviderRegistry_RegisterProviderFromConfig(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("returns error for empty provider name", func(t *testing.T) {
 		providerCfg := ProviderConfig{
@@ -1043,7 +1050,7 @@ func TestProviderRegistry_UpdateProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("returns error for non-existent provider", func(t *testing.T) {
 		updateCfg := ProviderConfig{
@@ -1107,7 +1114,7 @@ func TestProviderRegistry_RemoveProvider(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("removes existing provider with drain", func(t *testing.T) {
 		provider := &MockLLMProviderForRegistry{name: "remove-test"}
@@ -1157,7 +1164,7 @@ func TestProviderRegistry_DrainProviderRequests(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 	registry.SetDrainTimeout(100 * time.Millisecond)
 
 	t.Run("drains with no active requests", func(t *testing.T) {
@@ -1209,7 +1216,7 @@ func TestProviderRegistry_ActiveRequestCount(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("returns -1 for non-existent provider", func(t *testing.T) {
 		count := registry.GetActiveRequestCount("non-existent-provider")
@@ -1260,7 +1267,7 @@ func TestProviderRegistry_SetDrainTimeout(t *testing.T) {
 			Strategy: "weighted",
 		},
 	}
-	registry := NewProviderRegistry(cfg, nil)
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	t.Run("sets drain timeout", func(t *testing.T) {
 		registry.SetDrainTimeout(5 * time.Second)

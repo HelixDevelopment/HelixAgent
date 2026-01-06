@@ -165,6 +165,16 @@ func (cbp *circuitBreakerProvider) ValidateConfig(config map[string]interface{})
 }
 
 func NewProviderRegistry(cfg *RegistryConfig, memory *MemoryService) *ProviderRegistry {
+	return newProviderRegistry(cfg, memory, true) // Enable auto-discovery by default
+}
+
+// NewProviderRegistryWithoutAutoDiscovery creates a provider registry without auto-discovery
+// This is useful for testing where you want to control exactly which providers are registered
+func NewProviderRegistryWithoutAutoDiscovery(cfg *RegistryConfig, memory *MemoryService) *ProviderRegistry {
+	return newProviderRegistry(cfg, memory, false)
+}
+
+func newProviderRegistry(cfg *RegistryConfig, memory *MemoryService, enableAutoDiscovery bool) *ProviderRegistry {
 	if cfg == nil {
 		cfg = getDefaultRegistryConfig()
 	}
@@ -182,7 +192,7 @@ func NewProviderRegistry(cfg *RegistryConfig, memory *MemoryService) *ProviderRe
 		config:          cfg,
 		memory:          memory,
 		drainTimeout:    30 * time.Second, // Default 30 second drain timeout
-		autoDiscovery:   true,             // Enable auto-discovery by default
+		autoDiscovery:   enableAutoDiscovery,
 	}
 
 	// Initialize ensemble service
@@ -204,7 +214,9 @@ func NewProviderRegistry(cfg *RegistryConfig, memory *MemoryService) *ProviderRe
 
 	// Auto-discover additional providers from environment variables
 	// This supplements config file providers with any additional API keys found
-	registry.initAutoDiscovery(logger)
+	if enableAutoDiscovery {
+		registry.initAutoDiscovery(logger)
+	}
 
 	return registry
 }

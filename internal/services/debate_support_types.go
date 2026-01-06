@@ -96,4 +96,8 @@ type ParticipantConfig struct {
 	MaxRounds     int           `json:"max_rounds"`
 	Timeout       time.Duration `json:"timeout"`
 	Weight        float64       `json:"weight"`
+	// Single-provider multi-instance support
+	Temperature   float64       `json:"temperature,omitempty"`  // Custom temperature for diversity
+	SystemPrompt  string        `json:"system_prompt,omitempty"` // Custom system prompt for unique perspective
+	Priority      int           `json:"priority,omitempty"`      // Participant priority in debate order
 }

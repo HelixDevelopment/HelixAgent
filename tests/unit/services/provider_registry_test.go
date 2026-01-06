@@ -109,7 +109,7 @@ func TestProviderRegistry_NewProviderRegistry(t *testing.T) {
 		Providers: make(map[string]*services.ProviderConfig),
 	}
 
-	registry = services.NewProviderRegistry(config, nil)
+	registry = services.NewProviderRegistryWithoutAutoDiscovery(config, nil)
 	assert.NotNil(t, registry)
 }
 
@@ -199,7 +199,7 @@ func TestProviderRegistry_ListProviders(t *testing.T) {
 		Providers:      make(map[string]*services.ProviderConfig), // Empty providers
 	}
 
-	registry := services.NewProviderRegistry(config, nil)
+	registry := services.NewProviderRegistryWithoutAutoDiscovery(config, nil)
 
 	// Initially should be empty (no API keys set in test environment)
 	providers := registry.ListProviders()
@@ -233,7 +233,7 @@ func TestProviderRegistry_HealthCheck(t *testing.T) {
 		Providers:      make(map[string]*services.ProviderConfig), // Empty providers
 	}
 
-	registry := services.NewProviderRegistry(config, nil)
+	registry := services.NewProviderRegistryWithoutAutoDiscovery(config, nil)
 
 	// Register healthy provider
 	healthyProvider := &mockLLMProvider{
@@ -358,7 +358,7 @@ func TestProviderRegistry_DefaultProviders(t *testing.T) {
 		},
 	}
 
-	registry := services.NewProviderRegistry(config, nil)
+	registry := services.NewProviderRegistryWithoutAutoDiscovery(config, nil)
 
 	// Check that providers are registered
 	// Note: In test environment, actual providers won't be created due to missing API keys

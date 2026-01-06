@@ -27,8 +27,8 @@ import (
 // gracefully, preventing system failures and ensuring continuous operation.
 // =============================================================================
 
-// TestCogneeDatasetManagement tests dataset creation and management
-func TestCogneeDatasetManagement(t *testing.T) {
+// TestCogneeDatasetManagementResilience tests dataset creation and management resilience
+func TestCogneeDatasetManagementResilience(t *testing.T) {
 	t.Run("EnsureDefaultDataset creates dataset if not exists", func(t *testing.T) {
 		// Create mock server that simulates Cognee API
 		datasetsCreated := make(map[string]bool)

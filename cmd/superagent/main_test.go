@@ -1758,3 +1758,820 @@ func TestFullWorkflow_PartialFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "cognee")
 }
 
+// =============================================================================
+// OpenCode Configuration Validation Tests
+// =============================================================================
+
+// TestValidOpenCodeTopLevelKeys verifies all expected keys are present
+func TestValidOpenCodeTopLevelKeys(t *testing.T) {
+	expectedKeys := []string{
+		"$schema", "plugin", "enterprise", "instructions", "provider",
+		"mcp", "tools", "agent", "command", "keybinds", "username",
+		"share", "permission", "compaction", "sse", "mode", "autoshare",
+	}
+
+	for _, key := range expectedKeys {
+		assert.True(t, ValidOpenCodeTopLevelKeys[key], "Expected key %q to be valid", key)
+	}
+
+	// Verify the total count
+	assert.Equal(t, len(expectedKeys), len(ValidOpenCodeTopLevelKeys))
+}
+
+// TestValidOpenCodeTopLevelKeys_InvalidKeys verifies invalid keys are rejected
+func TestValidOpenCodeTopLevelKeys_InvalidKeys(t *testing.T) {
+	invalidKeys := []string{
+		"foo", "bar", "invalid", "config", "settings",
+		"providers", "agents", "mcps", "schemas",
+	}
+
+	for _, key := range invalidKeys {
+		assert.False(t, ValidOpenCodeTopLevelKeys[key], "Key %q should not be valid", key)
+	}
+}
+
+// TestValidateOpenCodeConfig_ValidMinimal tests a minimal valid config
+func TestValidateOpenCodeConfig_ValidMinimal(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"superagent": {
+				"options": {
+					"apiKey": "sk-test123",
+					"baseURL": "http://localhost:8080/v1"
+				}
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid)
+	assert.Empty(t, result.Errors)
+	assert.NotNil(t, result.Stats)
+	assert.Equal(t, 1, result.Stats.Providers)
+}
+
+// TestValidateOpenCodeConfig_ValidFull tests a full valid config
+func TestValidateOpenCodeConfig_ValidFull(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"superagent": {
+				"options": {
+					"apiKey": "sk-test123",
+					"baseURL": "http://localhost:8080/v1"
+				},
+				"models": {
+					"superagent-debate": {
+						"name": "SuperAgent Debate",
+						"attachments": true
+					}
+				}
+			}
+		},
+		"agent": {
+			"model": {
+				"provider": "superagent",
+				"model": "superagent-debate"
+			}
+		},
+		"mcp": {
+			"filesystem": {
+				"type": "local",
+				"command": ["npx", "-y", "@modelcontextprotocol/server-filesystem"]
+			},
+			"remote-api": {
+				"type": "remote",
+				"url": "http://localhost:8080/mcp"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid)
+	assert.Empty(t, result.Errors)
+	assert.NotNil(t, result.Stats)
+	assert.Equal(t, 1, result.Stats.Providers)
+	assert.Equal(t, 2, result.Stats.MCPServers)
+	assert.Equal(t, 1, result.Stats.Agents)
+}
+
+// TestValidateOpenCodeConfig_InvalidJSON tests invalid JSON handling
+func TestValidateOpenCodeConfig_InvalidJSON(t *testing.T) {
+	config := `{invalid json}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	assert.NotEmpty(t, result.Errors)
+	assert.Contains(t, result.Errors[0].Message, "invalid JSON")
+}
+
+// TestValidateOpenCodeConfig_InvalidTopLevelKeys tests rejection of invalid keys
+func TestValidateOpenCodeConfig_InvalidTopLevelKeys(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"invalid_key": "should fail",
+		"another_bad": true
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	assert.NotEmpty(t, result.Errors)
+
+	// Find the invalid keys error
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Message, "invalid top-level keys") {
+			found = true
+			assert.Contains(t, err.Message, "invalid_key")
+			assert.Contains(t, err.Message, "another_bad")
+		}
+	}
+	assert.True(t, found, "Should have error about invalid top-level keys")
+}
+
+// TestValidateOpenCodeConfig_MissingProvider tests missing provider error
+func TestValidateOpenCodeConfig_MissingProvider(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"agent": {
+			"model": {"provider": "test", "model": "test"}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if err.Field == "provider" {
+			found = true
+			assert.Contains(t, err.Message, "at least one provider must be configured")
+		}
+	}
+	assert.True(t, found, "Should have error about missing provider")
+}
+
+// TestValidateOpenCodeConfig_ProviderMissingOptions tests provider without options
+func TestValidateOpenCodeConfig_ProviderMissingOptions(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {
+				"name": "Test Provider"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Field, "provider.test.options") {
+			found = true
+			assert.Contains(t, err.Message, "provider must have options configured")
+		}
+	}
+	assert.True(t, found, "Should have error about missing options")
+}
+
+// TestValidateOpenCodeConfig_MCPInvalidType tests MCP server with invalid type
+func TestValidateOpenCodeConfig_MCPInvalidType(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"mcp": {
+			"bad-server": {
+				"type": "invalid"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Field, "mcp.bad-server.type") {
+			found = true
+			assert.Contains(t, err.Message, "'local' or 'remote'")
+		}
+	}
+	assert.True(t, found, "Should have error about invalid MCP type")
+}
+
+// TestValidateOpenCodeConfig_MCPLocalMissingCommand tests local MCP without command
+func TestValidateOpenCodeConfig_MCPLocalMissingCommand(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"mcp": {
+			"local-server": {
+				"type": "local"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Field, "mcp.local-server.command") {
+			found = true
+			assert.Contains(t, err.Message, "command is required")
+		}
+	}
+	assert.True(t, found, "Should have error about missing command")
+}
+
+// TestValidateOpenCodeConfig_MCPRemoteMissingURL tests remote MCP without URL
+func TestValidateOpenCodeConfig_MCPRemoteMissingURL(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"mcp": {
+			"remote-server": {
+				"type": "remote"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Field, "mcp.remote-server.url") {
+			found = true
+			assert.Contains(t, err.Message, "url is required")
+		}
+	}
+	assert.True(t, found, "Should have error about missing URL")
+}
+
+// TestValidateOpenCodeConfig_AgentMissingModelAndPrompt tests agent without model/prompt
+func TestValidateOpenCodeConfig_AgentMissingModelAndPrompt(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"agent": {
+			"bad-agent": {
+				"description": "Agent without model or prompt"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	found := false
+	for _, err := range result.Errors {
+		if strings.Contains(err.Field, "agent.bad-agent") {
+			found = true
+			assert.Contains(t, err.Message, "model or prompt")
+		}
+	}
+	assert.True(t, found, "Should have error about missing model/prompt")
+}
+
+// TestValidateOpenCodeConfig_AgentWithPromptOnly tests agent with only prompt
+func TestValidateOpenCodeConfig_AgentWithPromptOnly(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"agent": {
+			"prompt-agent": {
+				"prompt": "You are a helpful assistant"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid)
+	assert.Empty(t, result.Errors)
+}
+
+// TestValidateOpenCodeConfig_MissingSchemaWarning tests warning for missing $schema
+func TestValidateOpenCodeConfig_MissingSchemaWarning(t *testing.T) {
+	config := `{
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid) // Still valid, just has warning
+	assert.NotEmpty(t, result.Warnings)
+	assert.Contains(t, result.Warnings[0], "$schema")
+}
+
+// TestValidateOpenCodeConfig_MultipleErrors tests aggregation of multiple errors
+func TestValidateOpenCodeConfig_MultipleErrors(t *testing.T) {
+	config := `{
+		"invalid_key": true,
+		"provider": {
+			"test1": {},
+			"test2": {"name": "no options"}
+		},
+		"mcp": {
+			"bad1": {"type": "invalid"},
+			"bad2": {"type": "local"}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	// Should have multiple errors
+	assert.GreaterOrEqual(t, len(result.Errors), 4)
+}
+
+// TestValidateOpenCodeConfig_CommandsCount tests command counting
+func TestValidateOpenCodeConfig_CommandsCount(t *testing.T) {
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		},
+		"command": {
+			"commit": {"template": "commit changes"},
+			"review": {"template": "review code"},
+			"test": {"template": "run tests"}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid)
+	assert.Equal(t, 3, result.Stats.Commands)
+}
+
+// TestValidateOpenCodeConfig_EmptyConfig tests empty config
+func TestValidateOpenCodeConfig_EmptyConfig(t *testing.T) {
+	config := `{}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.False(t, result.Valid)
+	// Should error on missing provider
+	found := false
+	for _, err := range result.Errors {
+		if err.Field == "provider" {
+			found = true
+		}
+	}
+	assert.True(t, found, "Should have error about missing provider")
+}
+
+// TestValidateOpenCodeConfig_SingleAgentWithModel tests single agent format
+func TestValidateOpenCodeConfig_SingleAgentWithModel(t *testing.T) {
+	// This is the format used by our generator
+	config := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"superagent": {
+				"options": {
+					"apiKey": "sk-test",
+					"baseURL": "http://localhost:8080/v1"
+				}
+			}
+		},
+		"agent": {
+			"model": {
+				"provider": "superagent",
+				"model": "superagent-debate"
+			}
+		}
+	}`
+
+	result := validateOpenCodeConfig([]byte(config))
+
+	assert.True(t, result.Valid)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, 1, result.Stats.Agents)
+}
+
+// =============================================================================
+// OpenCode CLI Command Tests
+// =============================================================================
+
+// TestHandleValidateOpenCode_ValidFile tests validation of a valid config file
+func TestHandleValidateOpenCode_ValidFile(t *testing.T) {
+	// Create a temporary valid config file
+	tmpFile, err := os.CreateTemp("", "opencode-valid-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	validConfig := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		}
+	}`
+	_, err = tmpFile.WriteString(validConfig)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ValidateOpenCode: tmpFile.Name(),
+		Logger:           createTestLogger(),
+	}
+
+	err = handleValidateOpenCode(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "CONFIGURATION IS VALID")
+	assert.Contains(t, output, "Providers: 1")
+}
+
+// TestHandleValidateOpenCode_InvalidFile tests validation of an invalid config file
+func TestHandleValidateOpenCode_InvalidFile(t *testing.T) {
+	// Create a temporary invalid config file
+	tmpFile, err := os.CreateTemp("", "opencode-invalid-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	invalidConfig := `{
+		"invalid_key": true,
+		"provider": {}
+	}`
+	_, err = tmpFile.WriteString(invalidConfig)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ValidateOpenCode: tmpFile.Name(),
+		Logger:           createTestLogger(),
+	}
+
+	err = handleValidateOpenCode(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "validation failed")
+	assert.Contains(t, output, "CONFIGURATION HAS ERRORS")
+}
+
+// TestHandleValidateOpenCode_FileNotFound tests validation with non-existent file
+func TestHandleValidateOpenCode_FileNotFound(t *testing.T) {
+	appCfg := &AppConfig{
+		ValidateOpenCode: "/nonexistent/path/config.json",
+		Logger:           createTestLogger(),
+	}
+
+	err := handleValidateOpenCode(appCfg)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read config file")
+}
+
+// TestHandleValidateOpenCode_NilLogger tests validation with nil logger
+func TestHandleValidateOpenCode_NilLogger(t *testing.T) {
+	// Create a temporary valid config file
+	tmpFile, err := os.CreateTemp("", "opencode-nillogger-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	validConfig := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		}
+	}`
+	_, err = tmpFile.WriteString(validConfig)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ValidateOpenCode: tmpFile.Name(),
+		Logger:           nil, // nil logger
+	}
+
+	err = handleValidateOpenCode(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	assert.NoError(t, err)
+}
+
+// TestHandleValidateOpenCode_JSONSyntaxError tests validation with malformed JSON
+func TestHandleValidateOpenCode_JSONSyntaxError(t *testing.T) {
+	// Create a temporary file with invalid JSON
+	tmpFile, err := os.CreateTemp("", "opencode-badjson-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	_, err = tmpFile.WriteString(`{not valid json}`)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ValidateOpenCode: tmpFile.Name(),
+		Logger:           createTestLogger(),
+	}
+
+	err = handleValidateOpenCode(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Error(t, err)
+	assert.Contains(t, output, "CONFIGURATION HAS ERRORS")
+	assert.Contains(t, output, "invalid JSON")
+}
+
+// =============================================================================
+// OpenCode Validation Result Types Tests
+// =============================================================================
+
+// TestOpenCodeValidationResult_Structure tests the validation result structure
+func TestOpenCodeValidationResult_Structure(t *testing.T) {
+	result := &OpenCodeValidationResult{
+		Valid: true,
+		Errors: []OpenCodeValidationError{
+			{Field: "test", Message: "test error"},
+		},
+		Warnings: []string{"test warning"},
+		Stats: &OpenCodeValidationStats{
+			Providers:  1,
+			MCPServers: 2,
+			Agents:     3,
+			Commands:   4,
+		},
+	}
+
+	assert.True(t, result.Valid)
+	assert.Len(t, result.Errors, 1)
+	assert.Equal(t, "test", result.Errors[0].Field)
+	assert.Equal(t, "test error", result.Errors[0].Message)
+	assert.Len(t, result.Warnings, 1)
+	assert.Equal(t, "test warning", result.Warnings[0])
+	assert.Equal(t, 1, result.Stats.Providers)
+	assert.Equal(t, 2, result.Stats.MCPServers)
+	assert.Equal(t, 3, result.Stats.Agents)
+	assert.Equal(t, 4, result.Stats.Commands)
+}
+
+// TestOpenCodeValidationError_Structure tests the validation error structure
+func TestOpenCodeValidationError_Structure(t *testing.T) {
+	err := OpenCodeValidationError{
+		Field:   "provider.test.options",
+		Message: "options is required",
+	}
+
+	assert.Equal(t, "provider.test.options", err.Field)
+	assert.Equal(t, "options is required", err.Message)
+}
+
+// TestOpenCodeValidationStats_Structure tests the validation stats structure
+func TestOpenCodeValidationStats_Structure(t *testing.T) {
+	stats := OpenCodeValidationStats{
+		Providers:  5,
+		MCPServers: 10,
+		Agents:     15,
+		Commands:   20,
+	}
+
+	assert.Equal(t, 5, stats.Providers)
+	assert.Equal(t, 10, stats.MCPServers)
+	assert.Equal(t, 15, stats.Agents)
+	assert.Equal(t, 20, stats.Commands)
+}
+
+// =============================================================================
+// OpenCode Run Integration Tests
+// =============================================================================
+
+// TestRun_ValidateOpenCode tests the run function with validation
+func TestRun_ValidateOpenCode(t *testing.T) {
+	// Create a temporary valid config file
+	tmpFile, err := os.CreateTemp("", "opencode-run-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	validConfig := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		}
+	}`
+	_, err = tmpFile.WriteString(validConfig)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ValidateOpenCode: tmpFile.Name(),
+		Logger:           createTestLogger(),
+	}
+
+	err = run(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "CONFIGURATION IS VALID")
+}
+
+// TestRun_ValidateOpenCode_BeforeHelp tests that validation runs before help
+func TestRun_ValidateOpenCode_BeforeHelp(t *testing.T) {
+	// Create a temporary valid config file
+	tmpFile, err := os.CreateTemp("", "opencode-priority-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+
+	validConfig := `{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": {
+			"test": {"options": {"apiKey": "test"}}
+		}
+	}`
+	_, err = tmpFile.WriteString(validConfig)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	appCfg := &AppConfig{
+		ShowHelp:         true,         // Help is requested
+		ValidateOpenCode: tmpFile.Name(), // But validation takes precedence
+		Logger:           createTestLogger(),
+	}
+
+	// Help takes precedence in run()
+	err = run(appCfg)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, err)
+	// Help should be shown because it's checked first
+	assert.Contains(t, output, "Usage:")
+}
+
+// =============================================================================
+// OpenCode Flag Tests
+// =============================================================================
+
+// TestValidateOpenCodeFlag tests the validateOpenCode flag
+func TestValidateOpenCodeFlag(t *testing.T) {
+	assert.NotNil(t, validateOpenCode)
+	assert.IsType(t, (*string)(nil), validateOpenCode)
+}
+
+// TestAppConfig_ValidateOpenCode tests AppConfig with ValidateOpenCode field
+func TestAppConfig_ValidateOpenCode(t *testing.T) {
+	cfg := &AppConfig{
+		ValidateOpenCode: "/path/to/config.json",
+	}
+
+	assert.Equal(t, "/path/to/config.json", cfg.ValidateOpenCode)
+}
+
+// =============================================================================
+// OpenCode Help Output Tests
+// =============================================================================
+
+// TestShowHelp_ContainsValidateOpenCode tests that help includes validation flag
+func TestShowHelp_ContainsValidateOpenCode(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	showHelp()
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "-validate-opencode-config")
+	assert.Contains(t, output, "Validate")
+}
+
+// =============================================================================
+// OpenCode Real File Tests
+// =============================================================================
+
+// TestValidateOpenCodeConfig_RealDownloadsConfig tests with the real generated config
+func TestValidateOpenCodeConfig_RealDownloadsConfig(t *testing.T) {
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("Could not get home directory")
+	}
+
+	configPath := homeDir + "/Downloads/opencode-super-agent.json"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Skip("Downloads config file does not exist: " + configPath)
+	}
+
+	data, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	result := validateOpenCodeConfig(data)
+
+	assert.True(t, result.Valid, "Real downloads config should be valid")
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, 1, result.Stats.Providers)
+}
+
+// TestValidateOpenCodeConfig_RealOpenCodeConfig tests with user's opencode.json
+func TestValidateOpenCodeConfig_RealOpenCodeConfig(t *testing.T) {
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("Could not get home directory")
+	}
+
+	configPath := homeDir + "/.config/opencode/opencode.json"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Skip("User opencode config file does not exist: " + configPath)
+	}
+
+	data, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	result := validateOpenCodeConfig(data)
+
+	assert.True(t, result.Valid, "User opencode config should be valid")
+	assert.Empty(t, result.Errors)
+}
+

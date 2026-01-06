@@ -31,9 +31,32 @@ var (
 	autoStartDocker      = flag.Bool("auto-start-docker", true, "Automatically start required Docker containers")
 	generateAPIKey       = flag.Bool("generate-api-key", false, "Generate a new SuperAgent API key and output it")
 	generateOpenCode     = flag.Bool("generate-opencode-config", false, "Generate OpenCode configuration JSON")
+	validateOpenCode     = flag.String("validate-opencode-config", "", "Path to OpenCode config file to validate")
 	openCodeOutput       = flag.String("opencode-output", "", "Output path for OpenCode config (default: stdout)")
 	apiKeyEnvFile        = flag.String("api-key-env-file", "", "Path to .env file to write the generated API key")
 )
+
+// ValidOpenCodeTopLevelKeys contains the valid top-level keys per OpenCode.ai official schema
+// Source: https://opencode.ai/config.json (validated by LLMsVerifier)
+var ValidOpenCodeTopLevelKeys = map[string]bool{
+	"$schema":      true,
+	"plugin":       true,
+	"enterprise":   true,
+	"instructions": true,
+	"provider":     true,
+	"mcp":          true,
+	"tools":        true,
+	"agent":        true,
+	"command":      true,
+	"keybinds":     true,
+	"username":     true,
+	"share":        true,
+	"permission":   true,
+	"compaction":   true,
+	"sse":          true,
+	"mode":         true,
+	"autoshare":    true,
+}
 
 // CommandExecutor interface for executing system commands (allows mocking)
 type CommandExecutor interface {
@@ -384,6 +407,7 @@ type AppConfig struct {
 	AutoStartDocker      bool
 	GenerateAPIKey       bool
 	GenerateOpenCode     bool
+	ValidateOpenCode     string
 	OpenCodeOutput       string
 	APIKeyEnvFile        string
 	ServerHost           string
@@ -427,6 +451,11 @@ func run(appCfg *AppConfig) error {
 	// Handle API key generation command
 	if appCfg.GenerateAPIKey {
 		return handleGenerateAPIKey(appCfg)
+	}
+
+	// Handle OpenCode config validation command
+	if appCfg.ValidateOpenCode != "" {
+		return handleValidateOpenCode(appCfg)
 	}
 
 	// Handle OpenCode config generation command
@@ -528,6 +557,7 @@ func main() {
 	appCfg.AutoStartDocker = *autoStartDocker
 	appCfg.GenerateAPIKey = *generateAPIKey
 	appCfg.GenerateOpenCode = *generateOpenCode
+	appCfg.ValidateOpenCode = *validateOpenCode
 	appCfg.OpenCodeOutput = *openCodeOutput
 	appCfg.APIKeyEnvFile = *apiKeyEnvFile
 
@@ -754,6 +784,234 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	return nil
 }
 
+// OpenCodeValidationError represents a validation error in OpenCode config
+type OpenCodeValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// OpenCodeValidationResult holds the complete validation results
+type OpenCodeValidationResult struct {
+	Valid    bool                      `json:"valid"`
+	Errors   []OpenCodeValidationError `json:"errors"`
+	Warnings []string                  `json:"warnings"`
+	Stats    *OpenCodeValidationStats  `json:"stats,omitempty"`
+}
+
+// OpenCodeValidationStats contains statistics about the validated config
+type OpenCodeValidationStats struct {
+	Providers int `json:"providers"`
+	MCPServers int `json:"mcp_servers"`
+	Agents    int `json:"agents"`
+	Commands  int `json:"commands"`
+}
+
+// handleValidateOpenCode handles the --validate-opencode-config command
+func handleValidateOpenCode(appCfg *AppConfig) error {
+	logger := appCfg.Logger
+	if logger == nil {
+		logger = logrus.New()
+	}
+
+	filePath := appCfg.ValidateOpenCode
+
+	// Read the config file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Perform validation
+	result := validateOpenCodeConfig(data)
+
+	// Output header
+	fmt.Println("======================================================================")
+	fmt.Println("SUPERAGENT OPENCODE CONFIGURATION VALIDATION")
+	fmt.Println("Using LLMsVerifier schema compliance rules")
+	fmt.Println("======================================================================")
+	fmt.Println()
+	fmt.Printf("File: %s\n", filePath)
+	fmt.Println()
+
+	if result.Valid {
+		fmt.Println("✅ CONFIGURATION IS VALID")
+		fmt.Println()
+		if result.Stats != nil {
+			fmt.Printf("Configuration contains:\n")
+			fmt.Printf("  - Providers: %d\n", result.Stats.Providers)
+			fmt.Printf("  - MCP servers: %d\n", result.Stats.MCPServers)
+			fmt.Printf("  - Agents: %d\n", result.Stats.Agents)
+			fmt.Printf("  - Commands: %d\n", result.Stats.Commands)
+		}
+	} else {
+		fmt.Println("❌ CONFIGURATION HAS ERRORS:")
+		fmt.Println()
+		for _, e := range result.Errors {
+			if e.Field != "" {
+				fmt.Printf("  - [%s] %s\n", e.Field, e.Message)
+			} else {
+				fmt.Printf("  - %s\n", e.Message)
+			}
+		}
+	}
+
+	if len(result.Warnings) > 0 {
+		fmt.Println()
+		fmt.Println("⚠️  WARNINGS:")
+		for _, w := range result.Warnings {
+			fmt.Printf("  - %s\n", w)
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("======================================================================")
+
+	if !result.Valid {
+		return fmt.Errorf("validation failed with %d errors", len(result.Errors))
+	}
+
+	return nil
+}
+
+// validateOpenCodeConfig performs comprehensive validation of an OpenCode config
+func validateOpenCodeConfig(data []byte) *OpenCodeValidationResult {
+	result := &OpenCodeValidationResult{
+		Valid:    true,
+		Errors:   []OpenCodeValidationError{},
+		Warnings: []string{},
+		Stats:    &OpenCodeValidationStats{},
+	}
+
+	// Parse as generic map to check top-level keys
+	var rawConfig map[string]interface{}
+	if err := json.Unmarshal(data, &rawConfig); err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, OpenCodeValidationError{
+			Field:   "",
+			Message: fmt.Sprintf("invalid JSON: %v", err),
+		})
+		return result
+	}
+
+	// Check for invalid top-level keys (per LLMsVerifier schema)
+	var invalidKeys []string
+	for key := range rawConfig {
+		if !ValidOpenCodeTopLevelKeys[key] {
+			invalidKeys = append(invalidKeys, key)
+		}
+	}
+	if len(invalidKeys) > 0 {
+		result.Valid = false
+		result.Errors = append(result.Errors, OpenCodeValidationError{
+			Field:   "",
+			Message: fmt.Sprintf("invalid top-level keys: %v (valid keys: $schema, plugin, enterprise, instructions, provider, mcp, tools, agent, command, keybinds, username, share, permission, compaction, sse, mode, autoshare)", invalidKeys),
+		})
+	}
+
+	// Parse and validate providers
+	if providers, ok := rawConfig["provider"].(map[string]interface{}); ok {
+		result.Stats.Providers = len(providers)
+		for name, providerData := range providers {
+			if provider, ok := providerData.(map[string]interface{}); ok {
+				// Provider must have options
+				if _, hasOptions := provider["options"]; !hasOptions {
+					result.Valid = false
+					result.Errors = append(result.Errors, OpenCodeValidationError{
+						Field:   fmt.Sprintf("provider.%s.options", name),
+						Message: "provider must have options configured",
+					})
+				}
+			}
+		}
+	} else if rawConfig["provider"] == nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, OpenCodeValidationError{
+			Field:   "provider",
+			Message: "at least one provider must be configured",
+		})
+	}
+
+	// Parse and validate MCP servers
+	if mcpServers, ok := rawConfig["mcp"].(map[string]interface{}); ok {
+		result.Stats.MCPServers = len(mcpServers)
+		for name, serverData := range mcpServers {
+			if server, ok := serverData.(map[string]interface{}); ok {
+				serverType, hasType := server["type"].(string)
+				if !hasType {
+					result.Valid = false
+					result.Errors = append(result.Errors, OpenCodeValidationError{
+						Field:   fmt.Sprintf("mcp.%s.type", name),
+						Message: "type is required for MCP servers",
+					})
+					continue
+				}
+				if serverType != "local" && serverType != "remote" {
+					result.Valid = false
+					result.Errors = append(result.Errors, OpenCodeValidationError{
+						Field:   fmt.Sprintf("mcp.%s.type", name),
+						Message: "type must be 'local' or 'remote'",
+					})
+				}
+				if serverType == "local" {
+					if _, hasCommand := server["command"]; !hasCommand {
+						result.Valid = false
+						result.Errors = append(result.Errors, OpenCodeValidationError{
+							Field:   fmt.Sprintf("mcp.%s.command", name),
+							Message: "command is required for local MCP servers",
+						})
+					}
+				}
+				if serverType == "remote" {
+					if _, hasURL := server["url"]; !hasURL {
+						result.Valid = false
+						result.Errors = append(result.Errors, OpenCodeValidationError{
+							Field:   fmt.Sprintf("mcp.%s.url", name),
+							Message: "url is required for remote MCP servers",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Parse and validate agents
+	if agents, ok := rawConfig["agent"].(map[string]interface{}); ok {
+		// Check if this is a single agent object with "model" directly
+		if _, hasModel := agents["model"]; hasModel {
+			result.Stats.Agents = 1
+			// Single agent config - validate it has model or prompt
+			// This is valid - it has model
+		} else {
+			result.Stats.Agents = len(agents)
+			for name, agentData := range agents {
+				if agent, ok := agentData.(map[string]interface{}); ok {
+					_, hasModel := agent["model"]
+					_, hasPrompt := agent["prompt"]
+					if !hasModel && !hasPrompt {
+						result.Valid = false
+						result.Errors = append(result.Errors, OpenCodeValidationError{
+							Field:   fmt.Sprintf("agent.%s", name),
+							Message: "agent must have either model or prompt configured",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Parse commands
+	if commands, ok := rawConfig["command"].(map[string]interface{}); ok {
+		result.Stats.Commands = len(commands)
+	}
+
+	// Add warnings for missing recommended fields
+	if _, hasSchema := rawConfig["$schema"]; !hasSchema {
+		result.Warnings = append(result.Warnings, "$schema field is recommended for validation")
+	}
+
+	return result
+}
+
 func showHelp() {
 	fmt.Printf(`SuperAgent - Advanced LLM Gateway with Cognee Integration
 
@@ -769,6 +1027,8 @@ Options:
         Generate a new SuperAgent API key and output it to stdout
   -generate-opencode-config
         Generate OpenCode configuration JSON (uses SUPERAGENT_API_KEY env or generates new)
+  -validate-opencode-config string
+        Validate an existing OpenCode configuration file (uses LLMsVerifier schema rules)
   -opencode-output string
         Output path for OpenCode config (default: stdout)
   -api-key-env-file string
@@ -803,6 +1063,12 @@ API Key & Configuration Commands:
 
   # Generate OpenCode config and save to file, with API key to .env
   superagent -generate-opencode-config -opencode-output opencode.json -api-key-env-file .env
+
+  # Validate an existing OpenCode configuration file
+  superagent -validate-opencode-config ~/.config/opencode/opencode.json
+
+  # Validate a generated config
+  superagent -validate-opencode-config ~/Downloads/opencode-super-agent.json
 
 Examples:
   superagent

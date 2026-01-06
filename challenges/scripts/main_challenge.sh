@@ -1176,18 +1176,25 @@ phase6_opencode_config() {
     local opencode_output="$OUTPUT_DIR/opencode.json"
     local opencode_redacted="$OUTPUT_DIR/opencode.json.example"
     local validation_output="$OUTPUT_DIR/opencode_validation.json"
-    local superagent_binary="$PROJECT_ROOT/bin/superagent"
+    local superagent_binary="$PROJECT_ROOT/superagent"
 
-    # Check if SuperAgent binary exists
+    # Check if SuperAgent binary exists (try common locations)
     if [ ! -x "$superagent_binary" ]; then
-        log_warning "SuperAgent binary not found at $superagent_binary, attempting build..."
-        run_cmd "cd $PROJECT_ROOT && make build"
+        superagent_binary="$PROJECT_ROOT/bin/superagent"
+    fi
+
+    if [ ! -x "$superagent_binary" ]; then
+        log_warning "SuperAgent binary not found, attempting build..."
+        run_cmd "cd $PROJECT_ROOT && go build -o superagent ./cmd/superagent/"
+        superagent_binary="$PROJECT_ROOT/superagent"
     fi
 
     if [ ! -x "$superagent_binary" ]; then
         log_error "Failed to find or build SuperAgent binary"
         return 1
     fi
+
+    log_info "Using SuperAgent binary: $superagent_binary"
 
     # Step 1: Generate API key if not set in environment
     if [ -z "$SUPERAGENT_API_KEY" ]; then
@@ -1221,135 +1228,33 @@ phase6_opencode_config() {
 
     log_success "OpenCode configuration generated: $opencode_output"
 
-    # Step 3: Validate the generated configuration using LLMsVerifier's validation rules
-    log_info "Validating configuration using LLMsVerifier implementation..."
+    # Step 3: Validate the generated configuration using SuperAgent binary
+    # NOTE: Uses 100% binary-based validation - NO 3rd party scripts!
+    log_info "Validating configuration using SuperAgent binary (LLMsVerifier rules)..."
 
-    python3 - "$opencode_output" "$validation_output" << 'VALIDATEPYTHON'
-import json
-import sys
+    "$superagent_binary" -validate-opencode-config "$opencode_output" 2>&1 | tee -a "$MAIN_LOG"
+    local validation_exit=${PIPESTATUS[0]}
 
-config_path = sys.argv[1]
-validation_output = sys.argv[2]
-
-# LLMsVerifier's valid top-level keys (from scripts/validate_opencode_config.py)
-VALID_TOP_LEVEL_KEYS = {
-    "$schema", "plugin", "enterprise", "instructions", "provider",
-    "mcp", "tools", "agent", "command", "keybinds", "username",
-    "share", "permission", "compaction", "sse", "mode", "autoshare"
-}
-
-def validate_config(config_path):
-    """Validate using LLMsVerifier rules"""
-    try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-    except Exception as e:
-        return False, [f"Failed to parse JSON: {e}"]
-
-    errors = []
-
-    # Check for invalid top-level keys
-    invalid_keys = [k for k in config.keys() if k not in VALID_TOP_LEVEL_KEYS]
-    if invalid_keys:
-        errors.append(f"Invalid top-level keys: {', '.join(invalid_keys)}")
-
-    # Must have provider (REQUIRED by LLMsVerifier)
-    if "provider" not in config:
-        errors.append("Missing required 'provider' key")
-    elif not isinstance(config["provider"], dict):
-        errors.append("'provider' must be an object")
-    else:
-        # Validate provider structure
-        for name, prov in config["provider"].items():
-            if not isinstance(prov, dict):
-                errors.append(f"Provider '{name}' must be an object")
-            elif "options" not in prov:
-                errors.append(f"Provider '{name}' missing 'options'")
-
-    # Validate MCP servers (type must be local or remote)
-    if "mcp" in config and isinstance(config["mcp"], dict):
-        for name, mcp in config["mcp"].items():
-            if not isinstance(mcp, dict):
-                continue
-            mcp_type = mcp.get("type", "")
-            if mcp_type not in ["local", "remote"]:
-                errors.append(f"MCP '{name}': type must be 'local' or 'remote'")
-            if mcp_type == "local" and "command" not in mcp:
-                errors.append(f"MCP '{name}': command required for local type")
-            if mcp_type == "remote" and "url" not in mcp:
-                errors.append(f"MCP '{name}': url required for remote type")
-
-    # Validate agents (must have model or prompt)
-    if "agent" in config and isinstance(config["agent"], dict):
-        for name, agent in config["agent"].items():
-            if not isinstance(agent, dict):
-                continue
-            if "model" not in agent and "prompt" not in agent:
-                errors.append(f"Agent '{name}': must have model or prompt")
-
-    return len(errors) == 0, errors
-
-is_valid, errors = validate_config(config_path)
-
-validation_result = {
-    "config_path": config_path,
-    "valid": is_valid,
-    "errors": errors,
-    "validator": "LLMsVerifier",
-    "timestamp": str(__import__('datetime').datetime.now().isoformat())
-}
-
-with open(validation_output, 'w') as f:
-    json.dump(validation_result, f, indent=2)
-
-print("=" * 70)
-print("OPENCODE CONFIGURATION VALIDATION (LLMsVerifier)")
-print("=" * 70)
-print()
-
-if is_valid:
-    print("CONFIGURATION IS VALID")
-    print()
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    print(f"Providers configured: {len(config.get('provider', {}))}")
-    print(f"MCP servers configured: {len(config.get('mcp', {}))}")
-    print(f"Agents configured: {len(config.get('agent', {}))}")
-else:
-    print("CONFIGURATION HAS ERRORS:")
-    for error in errors:
-        print(f"  - {error}")
-    sys.exit(1)
-
-print()
-print("=" * 70)
-VALIDATEPYTHON
-
-    local validation_exit=$?
     if [ $validation_exit -ne 0 ]; then
         log_error "OpenCode configuration validation failed!"
         return 1
     fi
 
-    log_success "OpenCode configuration validated using LLMsVerifier"
+    # Generate validation result JSON for downstream use
+    cat > "$validation_output" << VALIDJSON
+{
+  "config_path": "$opencode_output",
+  "valid": true,
+  "errors": [],
+  "validator": "superagent-binary",
+  "timestamp": "$(date -Iseconds)"
+}
+VALIDJSON
 
-    # Generate redacted example version (mask the API key)
-    python3 - "$opencode_output" "$opencode_redacted" << 'REDACTPYTHON'
-import json
-import sys
+    log_success "OpenCode configuration validated using SuperAgent binary"
 
-with open(sys.argv[1], 'r') as f:
-    config = json.load(f)
-
-# Mask API key in example version
-if "provider" in config:
-    for provider in config["provider"].values():
-        if "options" in provider and "apiKey" in provider["options"]:
-            provider["options"]["apiKey"] = "YOUR_SUPERAGENT_API_KEY_HERE"
-
-with open(sys.argv[2], 'w') as f:
-    json.dump(config, f, indent=2)
-REDACTPYTHON
+    # Generate redacted example version (mask the API key) - NO Python, uses sed
+    sed 's/"apiKey": "sk-[a-f0-9]*"/"apiKey": "YOUR_SUPERAGENT_API_KEY_HERE"/g' "$opencode_output" > "$opencode_redacted"
 
     log_success "OpenCode configuration generated and validated"
     log_info "Config: $opencode_output"

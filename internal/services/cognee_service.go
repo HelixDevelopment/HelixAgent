@@ -1375,8 +1375,13 @@ func (s *CogneeService) GetConfig() *CogneeServiceConfig {
 // HELPER FUNCTIONS
 // =====================================================
 
-// doRequest performs an HTTP request to Cognee
+// doRequest performs an HTTP request to Cognee with automatic token refresh on 401
 func (s *CogneeService) doRequest(ctx context.Context, method, url string, body []byte) ([]byte, error) {
+	return s.doRequestWithRetry(ctx, method, url, body, true)
+}
+
+// doRequestWithRetry performs an HTTP request with optional retry on 401
+func (s *CogneeService) doRequestWithRetry(ctx context.Context, method, url string, body []byte, allowRetry bool) ([]byte, error) {
 	// Ensure we're authenticated before making API requests
 	if err := s.EnsureAuthenticated(ctx); err != nil {
 		s.logger.WithError(err).Warn("Failed to authenticate with Cognee, continuing anyway")
@@ -1406,11 +1411,37 @@ func (s *CogneeService) doRequest(ctx context.Context, method, url string, body 
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	// Handle 401 Unauthorized - token may have expired
+	if resp.StatusCode == http.StatusUnauthorized && allowRetry {
+		s.logger.Info("Received 401 from Cognee, refreshing authentication token")
+
+		// Clear the expired token
+		s.clearAuthToken()
+
+		// Re-authenticate
+		if err := s.authenticate(ctx); err != nil {
+			s.logger.WithError(err).Error("Failed to re-authenticate with Cognee")
+			return nil, fmt.Errorf("cognee API error: %d - %s (re-auth failed: %v)", resp.StatusCode, string(respBody), err)
+		}
+
+		s.logger.Info("Successfully re-authenticated with Cognee, retrying request")
+
+		// Retry the request once with new token
+		return s.doRequestWithRetry(ctx, method, url, body, false)
+	}
+
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("cognee API error: %d - %s", resp.StatusCode, string(respBody))
 	}
 
 	return respBody, nil
+}
+
+// clearAuthToken clears the cached auth token to force re-authentication
+func (s *CogneeService) clearAuthToken() {
+	s.mu.Lock()
+	s.authToken = ""
+	s.mu.Unlock()
 }
 
 // combineSearchResults combines multiple search results into a single context string

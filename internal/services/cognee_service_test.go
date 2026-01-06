@@ -1675,3 +1675,372 @@ func TestCogneeSearchTypes_ResultHandling(t *testing.T) {
 		assert.Len(t, result.InsightsResults, 1)
 	})
 }
+
+// =====================================================
+// TOKEN REFRESH AND 401 HANDLING TESTS
+// =====================================================
+
+func TestCogneeService_ClearAuthToken(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("clears existing token", func(t *testing.T) {
+		cfg := &CogneeServiceConfig{
+			Enabled: true,
+			BaseURL: "http://localhost:8000",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Set a token
+		service.mu.Lock()
+		service.authToken = "test-token-123"
+		service.mu.Unlock()
+
+		// Verify token is set
+		service.mu.RLock()
+		assert.NotEmpty(t, service.authToken)
+		service.mu.RUnlock()
+
+		// Clear the token
+		service.clearAuthToken()
+
+		// Verify token is cleared
+		service.mu.RLock()
+		assert.Empty(t, service.authToken)
+		service.mu.RUnlock()
+	})
+
+	t.Run("safe to call when token is empty", func(t *testing.T) {
+		cfg := &CogneeServiceConfig{
+			Enabled: true,
+			BaseURL: "http://localhost:8000",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Token should be empty initially
+		service.mu.RLock()
+		assert.Empty(t, service.authToken)
+		service.mu.RUnlock()
+
+		// Clear should not panic
+		service.clearAuthToken()
+
+		// Token should still be empty
+		service.mu.RLock()
+		assert.Empty(t, service.authToken)
+		service.mu.RUnlock()
+	})
+}
+
+func TestCogneeService_DoRequestWithRetry_401Handling(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("retries on 401 and succeeds after re-auth", func(t *testing.T) {
+		requestCount := 0
+		authCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Handle login endpoint
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				authCount++
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": fmt.Sprintf("new-token-%d", authCount),
+					"token_type":   "bearer",
+				})
+				return
+			}
+
+			// Handle API endpoint
+			requestCount++
+			authHeader := r.Header.Get("Authorization")
+
+			// First request fails with 401 (simulating expired token)
+			if requestCount == 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"detail":"Unauthorized"}`))
+				return
+			}
+
+			// Second request succeeds (after token refresh)
+			if strings.Contains(authHeader, "new-token") {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+				return
+			}
+
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Set an "expired" token
+		service.mu.Lock()
+		service.authToken = "expired-token"
+		service.mu.Unlock()
+
+		ctx := context.Background()
+		result, err := service.doRequest(ctx, "GET", server.URL+"/api/v1/test", nil)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 2, requestCount, "Should have made 2 requests (1 failed + 1 retry)")
+		assert.Equal(t, 1, authCount, "Should have re-authenticated once")
+	})
+
+	t.Run("fails after retry if still 401", func(t *testing.T) {
+		authCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Handle login endpoint
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				authCount++
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "new-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+
+			// Always return 401 (simulating invalid credentials)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"detail":"Unauthorized"}`))
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		ctx := context.Background()
+		result, err := service.doRequest(ctx, "GET", server.URL+"/api/v1/test", nil)
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("does not retry on other 4xx errors", func(t *testing.T) {
+		requestCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "test-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+
+			requestCount++
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"detail":"Bad Request"}`))
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		ctx := context.Background()
+		result, err := service.doRequest(ctx, "GET", server.URL+"/api/v1/test", nil)
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Equal(t, 1, requestCount, "Should only make 1 request (no retry on 400)")
+		assert.Contains(t, err.Error(), "400")
+	})
+
+	t.Run("success without retry when token is valid", func(t *testing.T) {
+		requestCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "valid-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+
+			requestCount++
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Set a valid token
+		service.mu.Lock()
+		service.authToken = "valid-token"
+		service.mu.Unlock()
+
+		ctx := context.Background()
+		result, err := service.doRequest(ctx, "GET", server.URL+"/api/v1/test", nil)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 1, requestCount, "Should only make 1 request")
+	})
+}
+
+func TestCogneeService_EnsureAuthenticated(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("skips auth if token exists", func(t *testing.T) {
+		authCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				authCount++
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "new-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Set an existing token
+		service.mu.Lock()
+		service.authToken = "existing-token"
+		service.mu.Unlock()
+
+		ctx := context.Background()
+		err := service.EnsureAuthenticated(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, authCount, "Should not call auth endpoint when token exists")
+	})
+
+	t.Run("authenticates if no token", func(t *testing.T) {
+		authCount := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				authCount++
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "new-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:      true,
+			BaseURL:      server.URL,
+			AuthEmail:    "test@test.com",
+			AuthPassword: "password",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		ctx := context.Background()
+		err := service.EnsureAuthenticated(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, authCount, "Should call auth endpoint when no token")
+
+		// Verify token was set
+		service.mu.RLock()
+		assert.Equal(t, "new-token", service.authToken)
+		service.mu.RUnlock()
+	})
+}
+
+func TestCogneeService_TokenRefreshIntegration(t *testing.T) {
+	logger := newTestLogger()
+
+	t.Run("full flow: request -> 401 -> refresh -> retry -> success", func(t *testing.T) {
+		events := []string{}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/auth/login") {
+				events = append(events, "auth")
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{
+					"access_token": "fresh-token",
+					"token_type":   "bearer",
+				})
+				return
+			}
+
+			if strings.Contains(r.URL.Path, "/api/v1/add") {
+				authHeader := r.Header.Get("Authorization")
+				if authHeader == "Bearer expired-token" {
+					events = append(events, "request-expired")
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte(`{"detail":"Unauthorized"}`))
+					return
+				}
+				if authHeader == "Bearer fresh-token" {
+					events = append(events, "request-fresh")
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"id":      "mem-123",
+						"content": "test",
+					})
+					return
+				}
+			}
+		}))
+		defer server.Close()
+
+		cfg := &CogneeServiceConfig{
+			Enabled:        true,
+			BaseURL:        server.URL,
+			AuthEmail:      "test@test.com",
+			AuthPassword:   "password",
+			DefaultDataset: "test",
+		}
+		service := NewCogneeServiceWithConfig(cfg, logger)
+
+		// Set an expired token
+		service.mu.Lock()
+		service.authToken = "expired-token"
+		service.mu.Unlock()
+
+		ctx := context.Background()
+		_, err := service.AddMemory(ctx, "test content", "", "text", nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"request-expired", "auth", "request-fresh"}, events,
+			"Should follow flow: request with expired token -> auth -> request with fresh token")
+	})
+}

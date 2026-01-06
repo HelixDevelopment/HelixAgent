@@ -5,6 +5,8 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -353,6 +355,12 @@ func makeVerifyRequest(provider VerifyProviderConfig, apiKey string, prompt stri
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	// Return error for 4xx/5xx HTTP status codes (authentication failures, etc.)
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
 
 	var chatResp VerifyChatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {

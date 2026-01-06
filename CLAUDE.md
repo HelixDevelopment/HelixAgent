@@ -147,7 +147,22 @@ Environment variables defined in `.env.example`. Key categories:
 - Database: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
 - Redis: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
 - LLM providers: `CLAUDE_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, etc.
-- Ollama: `OLLAMA_ENABLED`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
+- Cognee: `COGNEE_AUTH_EMAIL`, `COGNEE_AUTH_PASSWORD` (form-encoded OAuth2 auth)
+
+### Primary LLM Provider: Gemini
+
+**Gemini is the verified highest-scoring LLM provider** (Score: 8.5 by LLMsVerifier):
+
+| Provider | Model | Score |
+|----------|-------|-------|
+| **Gemini** | gemini-1.5-flash | **8.5** |
+| DeepSeek | deepseek-coder | 8.1 |
+| DeepSeek | deepseek-chat | 8.0 |
+| Llama 3 | 70B | 7.7 |
+
+Cognee uses Gemini for all AI operations (embeddings, graph reasoning, knowledge extraction).
+
+**Ollama is DEPRECATED** - Use Gemini instead. Ollama is kept for legacy compatibility only.
 
 Configuration files in `/configs`: `development.yaml`, `production.yaml`, `multi-provider.yaml`
 
@@ -157,15 +172,17 @@ Cognee 0.5.0+ requires authentication. SuperAgent handles this automatically.
 
 ### Default Credentials
 ```
-Email:    superagent@localhost.com
-Password: SuperAgent123
+Email:    admin@superagent.ai
+Password: SuperAgentPass123
 ```
 
 These are configured in `.env`:
 ```bash
-COGNEE_AUTH_EMAIL=superagent@localhost.com
-COGNEE_AUTH_PASSWORD=SuperAgent123
+COGNEE_AUTH_EMAIL=admin@superagent.ai
+COGNEE_AUTH_PASSWORD=SuperAgentPass123
 ```
+
+**IMPORTANT**: Cognee uses form-encoded OAuth2-style login (NOT JSON). The SuperAgent CogneeService handles this automatically.
 
 ### Changing Credentials
 

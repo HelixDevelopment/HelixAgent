@@ -42,7 +42,10 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Ollama for local LLM testing (free, no API keys needed)
+  # DEPRECATED: Ollama for local LLM testing
+  # NOTE: Gemini is now the primary LLM provider (verified highest score: 8.5 by LLMsVerifier)
+  # Ollama is kept for backward compatibility but should not be used in production.
+  # To use Gemini (recommended): Set GEMINI_API_KEY in .env
   ollama:
     image: ollama/ollama:latest
     container_name: superagent-ollama
@@ -61,7 +64,7 @@ services:
       retries: 3
     restart: unless-stopped
     profiles:
-      - ai
+      - legacy  # Changed from 'ai' to 'legacy' - use Gemini instead
       - full
 
   # SuperAgent Application
@@ -205,6 +208,11 @@ services:
 
   # Cognee Knowledge Graph Service - Full-featured AI Memory Engine
   # Provides: Memory, Knowledge Graphs, Vector Search, Temporal Awareness, Code Intelligence
+  #
+  # LLM PROVIDER: Gemini (gemini-1.5-flash)
+  # - Verified as strongest LLM by LLMsVerifier benchmarking (Score: 8.5)
+  # - Used for all Cognee operations: embeddings, graph reasoning, knowledge extraction
+  # - Requires GEMINI_API_KEY in .env
   cognee:
     image: cognee/cognee:main
     container_name: superagent-cognee

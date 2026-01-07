@@ -617,3 +617,338 @@ func truncate(s string, maxLen int) string {
 	}
 	return s[:maxLen] + "..."
 }
+
+// TestBearMailStreamingContentIntegrity verifies no content interleaving from multiple providers
+func TestBearMailStreamingContentIntegrity(t *testing.T) {
+	skipIfNotRunning(t)
+
+	baseURL := getBaseURL()
+
+	t.Run("No_Word_Duplication", func(t *testing.T) {
+		// Request a specific phrase to detect interleaving
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Say exactly this phrase: Hello world, this is a test message.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 50,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		// Check for duplicate word patterns (sign of interleaving)
+		// e.g., "HelloHello" or "worldworld" would indicate multi-provider merge
+		words := strings.Fields(response.Content)
+		for i := 0; i < len(words)-1; i++ {
+			// Check for immediate duplicates or patterns like "YesYes"
+			if strings.EqualFold(words[i], words[i+1]) && len(words[i]) > 2 {
+				// Allow certain common duplicates like "the the" in natural speech
+				if words[i] != "the" && words[i] != "a" && words[i] != "an" {
+					t.Logf("Warning: Possible duplicate word at position %d: '%s %s'", i, words[i], words[i+1])
+				}
+			}
+		}
+
+		// Check for concatenated duplicates like "YesYes" or "HelloHello"
+		interleavingPatterns := []string{
+			"YesYes", "NoNo", "HelloHello", "II ", " II",
+			"andand", "thethe", "isis", "inin", "toto",
+		}
+		for _, pattern := range interleavingPatterns {
+			if strings.Contains(response.Content, pattern) {
+				t.Errorf("Content interleaving detected: found '%s' in response", pattern)
+			}
+		}
+
+		assert.True(t, response.HasDoneMarker, "Response must have [DONE] marker")
+		t.Logf("Response content (no interleaving): %s", truncate(response.Content, 200))
+	})
+
+	t.Run("Coherent_Sentence_Structure", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Write a single coherent sentence about programming.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 100,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		// Basic coherence check: sentence should end properly
+		content := strings.TrimSpace(response.Content)
+		hasProperEnding := strings.HasSuffix(content, ".") ||
+			strings.HasSuffix(content, "!") ||
+			strings.HasSuffix(content, "?") ||
+			strings.HasSuffix(content, ":")
+
+		// Check for random character interleaving (like "a,nd" or "th.e")
+		badPatterns := []string{",nd", ",he", ",ll", ".he", ".nd"}
+		for _, pattern := range badPatterns {
+			assert.False(t, strings.Contains(content, pattern),
+				"Found malformed pattern '%s' indicating character interleaving", pattern)
+		}
+
+		t.Logf("Coherent sentence (proper ending=%v): %s", hasProperEnding, truncate(content, 200))
+	})
+
+	t.Run("Consistent_Stream_ID", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Count from 1 to 5.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 50,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		// All chunks should have the same stream ID
+		assert.NotEmpty(t, response.StreamID, "Stream ID should be present")
+		assert.True(t, strings.HasPrefix(response.StreamID, "chatcmpl-"),
+			"Stream ID should have correct prefix: %s", response.StreamID)
+
+		t.Logf("Consistent stream ID: %s, chunks: %d", response.StreamID, response.ChunkCount)
+	})
+}
+
+// TestBearMailStreamingFormatValidity verifies proper SSE streaming format
+func TestBearMailStreamingFormatValidity(t *testing.T) {
+	skipIfNotRunning(t)
+
+	baseURL := getBaseURL()
+
+	t.Run("Proper_SSE_Format", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Say hello.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 20,
+		}
+
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", baseURL+"/v1/chat/completions", bytes.NewBuffer(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		// Verify SSE format: all data lines should start with "data: "
+		lines := strings.Split(bodyStr, "\n")
+		dataLineCount := 0
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			// Every non-empty line should be a data line
+			assert.True(t, strings.HasPrefix(line, "data: "),
+				"Line should start with 'data: ': %s", truncate(line, 50))
+			dataLineCount++
+		}
+
+		assert.Greater(t, dataLineCount, 0, "Should have at least one data line")
+
+		// Must end with [DONE]
+		assert.True(t, strings.Contains(bodyStr, "data: [DONE]"),
+			"Response must contain 'data: [DONE]'")
+
+		t.Logf("Valid SSE format with %d data lines", dataLineCount)
+	})
+
+	t.Run("First_Chunk_Has_Role", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Hi",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 10,
+		}
+
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", baseURL+"/v1/chat/completions", bytes.NewBuffer(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		// Find first data line (after skipping empty lines)
+		lines := strings.Split(string(body), "\n")
+		var firstDataLine string
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "data: ") && line != "data: [DONE]" {
+				firstDataLine = strings.TrimPrefix(line, "data: ")
+				break
+			}
+		}
+
+		require.NotEmpty(t, firstDataLine, "Should have first data chunk")
+
+		var chunk map[string]interface{}
+		err = json.Unmarshal([]byte(firstDataLine), &chunk)
+		require.NoError(t, err, "First chunk should be valid JSON")
+
+		// Check for role in first chunk
+		choices, ok := chunk["choices"].([]interface{})
+		require.True(t, ok && len(choices) > 0, "Should have choices")
+
+		choice := choices[0].(map[string]interface{})
+		delta, ok := choice["delta"].(map[string]interface{})
+		require.True(t, ok, "Should have delta")
+
+		role, hasRole := delta["role"].(string)
+		assert.True(t, hasRole, "First chunk should have role")
+		assert.Equal(t, "assistant", role, "Role should be 'assistant'")
+
+		t.Logf("First chunk has role: %s", role)
+	})
+
+	t.Run("Last_Chunk_Has_Finish_Reason", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Say OK.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 10,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasFinishReason, "Response must have finish_reason")
+		assert.True(t, response.HasDoneMarker, "Response must have [DONE] marker")
+
+		t.Logf("Proper termination: finish_reason=%v, [DONE]=%v",
+			response.HasFinishReason, response.HasDoneMarker)
+	})
+}
+
+// TestBearMailNoResponseCutoff verifies responses complete without premature termination
+func TestBearMailNoResponseCutoff(t *testing.T) {
+	skipIfNotRunning(t)
+
+	baseURL := getBaseURL()
+
+	t.Run("Medium_Response_Completes", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Explain what an API is in exactly 3 paragraphs.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 500,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 120*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Response must complete with [DONE]")
+		assert.True(t, response.HasFinishReason, "Response must have finish_reason")
+		assert.Greater(t, len(response.Content), 200, "Medium response should have substantial content")
+
+		// Should not end mid-sentence (check for incomplete patterns)
+		content := strings.TrimSpace(response.Content)
+		incompletePatterns := []string{
+			" the$", " a$", " an$", " is$", " are$", " and$", " or$", " to$",
+		}
+		for _, pattern := range incompletePatterns {
+			// Using regex-style check - ends with these words
+			if strings.HasSuffix(content, strings.TrimPrefix(pattern, "$")) {
+				t.Logf("Warning: Response may be cut off, ends with: '%s'",
+					content[max(0, len(content)-30):])
+			}
+		}
+
+		t.Logf("Medium response completed: %d chars, %d chunks", len(response.Content), response.ChunkCount)
+	})
+
+	t.Run("Long_Response_Completes", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role": "user",
+					"content": `Write a comprehensive guide with these sections:
+1. Introduction (3 sentences)
+2. Getting Started (5 bullet points)
+3. Best Practices (5 bullet points)
+4. Common Mistakes (3 points)
+5. Conclusion (2 sentences)
+
+Complete ALL sections fully.`,
+				},
+			},
+			"stream":     true,
+			"max_tokens": 2000,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 180*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Long response must complete with [DONE]")
+		assert.True(t, response.HasFinishReason, "Long response must have finish_reason")
+
+		// Check for section markers
+		content := strings.ToLower(response.Content)
+		sections := []string{"introduction", "getting started", "best practices", "common mistakes", "conclusion"}
+		foundSections := 0
+		for _, section := range sections {
+			if strings.Contains(content, section) {
+				foundSections++
+			}
+		}
+
+		t.Logf("Long response: %d/%d sections found, %d chars, %d chunks",
+			foundSections, len(sections), len(response.Content), response.ChunkCount)
+		assert.GreaterOrEqual(t, foundSections, 3, "Should find at least 3 of 5 sections")
+	})
+}

@@ -293,43 +293,46 @@ func (e *EnsembleService) RunEnsembleStream(ctx context.Context, req *models.LLM
 		return nil, err
 	}
 
-	// Merge streams from all providers
-	// The cancel is deferred to cleanup, NOT called when stream ends
+	// STREAMING FIX: Use SINGLE provider stream to avoid content interleaving
+	// Multi-provider debate only works for non-streaming where we can vote on complete responses
+	// For streaming, we pick the first successful provider and use its stream exclusively
+	selectedStream := streamChans[0]
+	selectedProvider := providerNames[0]
+
+	// Close any additional streams we won't use (cleanup)
+	// Note: These channels will be closed by their providers when context is cancelled
+	if len(streamChans) > 1 {
+		// Just drain the unused streams in background to prevent goroutine leaks
+		for i := 1; i < len(streamChans); i++ {
+			go func(ch <-chan *models.LLMResponse) {
+				for range ch {
+					// Drain unused stream
+				}
+			}(streamChans[i])
+		}
+	}
+
+	// Forward responses from the selected single provider
 	go func() {
 		defer close(outputChan)
-		// DO NOT call cancel() here - let the consumer control when to stop
-		// This prevents premature stream termination
 
-		var wg sync.WaitGroup
+		for resp := range selectedStream {
+			resp.ProviderID = selectedProvider
+			resp.ProviderName = selectedProvider
 
-		for i, streamChan := range streamChans {
-			wg.Add(1)
-			go func(idx int, ch <-chan *models.LLMResponse, providerName string) {
-				defer wg.Done()
+			// Add metadata to track which provider was used
+			if resp.Metadata == nil {
+				resp.Metadata = make(map[string]interface{})
+			}
+			resp.Metadata["streaming_provider"] = selectedProvider
+			resp.Metadata["available_providers"] = len(streamChans)
 
-				for resp := range ch {
-					resp.ProviderID = providerName
-					resp.ProviderName = providerName
-
-					// Add metadata to track which provider contributed
-					if resp.Metadata == nil {
-						resp.Metadata = make(map[string]interface{})
-					}
-					resp.Metadata["debate_participant"] = providerName
-					resp.Metadata["participant_index"] = idx
-					resp.Metadata["is_fallback_provider"] = idx >= len(filteredProviders)
-
-					select {
-					case outputChan <- resp:
-					case <-timeoutCtx.Done():
-						return
-					}
-				}
-			}(i, streamChan, providerNames[i])
+			select {
+			case outputChan <- resp:
+			case <-timeoutCtx.Done():
+				return
+			}
 		}
-
-		// Wait for all provider streams to complete
-		wg.Wait()
 	}()
 
 	// Return a wrapper that will cancel when closed or timed out

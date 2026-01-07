@@ -70,6 +70,25 @@ func ensureBearMailExists(t *testing.T) {
 	t.Logf("Successfully cloned Bear-Mail to %s", bearMailPath)
 }
 
+// bearMailGetBaseURL returns the SuperAgent base URL for testing
+func bearMailGetBaseURL() string {
+	if url := os.Getenv("SUPERAGENT_URL"); url != "" {
+		return url
+	}
+	return "http://localhost:8080"
+}
+
+// bearMailSkipIfNotRunning skips the test if SuperAgent is not running
+func bearMailSkipIfNotRunning(t *testing.T) {
+	t.Helper()
+	baseURL := bearMailGetBaseURL()
+	resp, err := http.Get(baseURL + "/health")
+	if err != nil || resp.StatusCode != 200 {
+		t.Skipf("SuperAgent not running at %s, skipping integration test", baseURL)
+	}
+	resp.Body.Close()
+}
+
 // TestBearMailOpenCodeConversation simulates the exact OpenCode conversation
 // against the Bear-Mail project to verify:
 // 1. Responses are complete (not cut off)
@@ -77,9 +96,9 @@ func ensureBearMailExists(t *testing.T) {
 // 3. Multi-provider debate works correctly
 // 4. No premature termination
 func TestBearMailOpenCodeConversation(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	// Ensure Bear-Mail project exists (clone if needed)
 	ensureBearMailExists(t)
@@ -226,9 +245,9 @@ If there's already an AGENTS.md, improve it if it's located in /run/media/milosv
 
 // TestBearMailContentQuality verifies the AI doesn't hallucinate project structure
 func TestBearMailContentQuality(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	// Ensure Bear-Mail project exists (clone if needed)
 	ensureBearMailExists(t)
@@ -294,9 +313,9 @@ func TestBearMailContentQuality(t *testing.T) {
 
 // TestBearMailResponseCompleteness ensures no premature cutoffs
 func TestBearMailResponseCompleteness(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	// Ensure Bear-Mail project exists (clone if needed)
 	ensureBearMailExists(t)
@@ -406,9 +425,9 @@ Make sure to complete ALL sections. Do not stop mid-section.`,
 
 // TestBearMailMultiProviderParticipation verifies all providers contribute
 func TestBearMailMultiProviderParticipation(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	// Ensure Bear-Mail project exists (clone if needed)
 	ensureBearMailExists(t)
@@ -620,9 +639,9 @@ func truncate(s string, maxLen int) string {
 
 // TestBearMailStreamingContentIntegrity verifies no content interleaving from multiple providers
 func TestBearMailStreamingContentIntegrity(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	t.Run("No_Word_Duplication", func(t *testing.T) {
 		// Request a specific phrase to detect interleaving
@@ -729,9 +748,9 @@ func TestBearMailStreamingContentIntegrity(t *testing.T) {
 
 // TestBearMailStreamingFormatValidity verifies proper SSE streaming format
 func TestBearMailStreamingFormatValidity(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	t.Run("Proper_SSE_Format", func(t *testing.T) {
 		reqBody := map[string]interface{}{
@@ -869,11 +888,201 @@ func TestBearMailStreamingFormatValidity(t *testing.T) {
 	})
 }
 
+// TestOpenCodeToolCallFormat verifies responses contain properly formatted tool calls
+// that OpenCode clients can parse and execute
+func TestOpenCodeToolCallFormat(t *testing.T) {
+	bearMailSkipIfNotRunning(t)
+
+	baseURL := bearMailGetBaseURL()
+
+	t.Run("Bash_Command_Format", func(t *testing.T) {
+		// Request that should generate bash commands
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Create a simple test.txt file with the content 'hello world' using bash. Show the exact command.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 200,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		// Response should be complete
+		assert.True(t, response.HasDoneMarker, "Response must complete")
+		assert.True(t, response.HasFinishReason, "Response must have finish_reason")
+
+		// Log the response for debugging
+		t.Logf("Response for bash command request: %s", truncate(response.Content, 500))
+
+		// Response should mention common bash patterns
+		content := strings.ToLower(response.Content)
+		hasBashIndicator := strings.Contains(content, "echo") ||
+			strings.Contains(content, "cat") ||
+			strings.Contains(content, ">") ||
+			strings.Contains(content, "bash")
+
+		assert.True(t, hasBashIndicator, "Response should contain bash command indicators")
+	})
+
+	t.Run("Write_To_File_Request", func(t *testing.T) {
+		// Request that should generate file write commands
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Write a Python hello world script to hello.py. Show the complete file content.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 300,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Response must complete")
+
+		// Response should contain Python code
+		content := response.Content
+		hasPythonCode := strings.Contains(content, "print") ||
+			strings.Contains(content, "def ") ||
+			strings.Contains(content, "hello") ||
+			strings.Contains(content, "python")
+
+		t.Logf("Response for file write request: %s", truncate(content, 400))
+		assert.True(t, hasPythonCode, "Response should contain Python code")
+	})
+
+	t.Run("Response_No_Incomplete_Tags", func(t *testing.T) {
+		// Verify responses don't have incomplete/broken XML-like tags
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "List 3 files in a typical project directory.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 200,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		// Check for incomplete tags (sign of cutoff)
+		incompletePatterns := []string{
+			"<bash", // Missing closing >
+			"<write", // Missing closing >
+			"</bas", // Incomplete closing tag
+			"</writ", // Incomplete closing tag
+		}
+
+		for _, pattern := range incompletePatterns {
+			if strings.HasSuffix(response.Content, pattern) {
+				t.Errorf("Response ends with incomplete tag: '%s'", pattern)
+			}
+		}
+
+		t.Logf("Response (no incomplete tags): %s", truncate(response.Content, 300))
+	})
+}
+
+// TestResponseContentValidity verifies responses are valid and coherent
+func TestResponseContentValidity(t *testing.T) {
+	bearMailSkipIfNotRunning(t)
+
+	baseURL := bearMailGetBaseURL()
+
+	t.Run("No_Empty_Response", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "What is 2 + 2?",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 50,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Response must complete")
+		assert.NotEmpty(t, response.Content, "Response must not be empty")
+		assert.Greater(t, len(response.Content), 1, "Response should have meaningful content")
+
+		t.Logf("Non-empty response: %s", response.Content)
+	})
+
+	t.Run("Response_Has_Expected_Content", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "Say ONLY the word 'success' and nothing else.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 20,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Response must complete")
+
+		// Should contain "success" (case insensitive)
+		content := strings.ToLower(response.Content)
+		assert.True(t, strings.Contains(content, "success"),
+			"Response should contain 'success', got: %s", response.Content)
+
+		t.Logf("Expected content response: %s", response.Content)
+	})
+
+	t.Run("Response_Follows_Instructions", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"model": "superagent-ensemble",
+			"messages": []map[string]string{
+				{
+					"role":    "user",
+					"content": "List exactly 3 programming languages, numbered 1-3.",
+				},
+			},
+			"stream":     true,
+			"max_tokens": 100,
+		}
+
+		response, err := sendStreamingRequest(t, baseURL, reqBody, 60*time.Second)
+		require.NoError(t, err, "Request should not fail")
+
+		assert.True(t, response.HasDoneMarker, "Response must complete")
+
+		// Check for numbered list
+		content := response.Content
+		hasNumbers := (strings.Contains(content, "1") || strings.Contains(content, "1.")) &&
+			(strings.Contains(content, "2") || strings.Contains(content, "2.")) &&
+			(strings.Contains(content, "3") || strings.Contains(content, "3."))
+
+		t.Logf("Numbered list response: %s", truncate(content, 300))
+		assert.True(t, hasNumbers, "Response should have numbered items 1-3")
+	})
+}
+
 // TestBearMailNoResponseCutoff verifies responses complete without premature termination
 func TestBearMailNoResponseCutoff(t *testing.T) {
-	skipIfNotRunning(t)
+	bearMailSkipIfNotRunning(t)
 
-	baseURL := getBaseURL()
+	baseURL := bearMailGetBaseURL()
 
 	t.Run("Medium_Response_Completes", func(t *testing.T) {
 		reqBody := map[string]interface{}{

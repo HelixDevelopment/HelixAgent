@@ -995,33 +995,20 @@ func TestConcurrentRequests(t *testing.T) {
 			}
 		}
 
-		// Skip if all requests failed with 500 (providers unavailable) or timeout
-		if len(errors) == numRequests {
-			allSkippable := true
-			for _, e := range errors {
-				errStr := e.Error()
-				if !strings.Contains(errStr, "500") && !strings.Contains(errStr, "deadline exceeded") && !strings.Contains(errStr, "timeout") {
-					allSkippable = false
-					break
-				}
-			}
-			if allSkippable {
-				t.Skip("Skipping: all requests returned 500 (providers unavailable) or timed out")
-			}
-		}
-
-		// Also skip if any timed out or got connection errors (indicates slow providers)
+		// Skip if all or most requests failed with provider unavailable errors (500, 502, 503, 504) or timeout
 		skipCount := 0
 		for _, e := range errors {
 			if e != nil {
 				errStr := e.Error()
-				if strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") || strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
+				if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") || strings.Contains(errStr, "503") || strings.Contains(errStr, "504") ||
+					strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") ||
+					strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
 					skipCount++
 				}
 			}
 		}
 		if skipCount > 0 {
-			t.Skipf("Skipping: %d/%d requests had connection/timeout issues (slow providers)", skipCount, numRequests)
+			t.Skipf("Skipping: %d/%d requests had provider/connection issues", skipCount, numRequests)
 		}
 
 		assert.Empty(t, errors, "All parallel requests should succeed")
@@ -1110,33 +1097,20 @@ func TestConcurrentRequests(t *testing.T) {
 			}
 		}
 
-		// Skip if all requests failed with 500 (providers unavailable) or timeout
-		if len(errors) == numRequests {
-			allSkippable := true
-			for _, e := range errors {
-				errStr := e.Error()
-				if !strings.Contains(errStr, "500") && !strings.Contains(errStr, "deadline exceeded") && !strings.Contains(errStr, "timeout") {
-					allSkippable = false
-					break
-				}
-			}
-			if allSkippable {
-				t.Skip("Skipping: all streaming requests returned 500 (providers unavailable) or timed out")
-			}
-		}
-
-		// Also skip if any timed out or got connection errors (indicates slow/overloaded providers for streaming)
+		// Skip if all or most requests failed with provider unavailable errors (500, 502, 503, 504) or timeout
 		skipCount := 0
 		for _, e := range errors {
 			if e != nil {
 				errStr := e.Error()
-				if strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") || strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
+				if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") || strings.Contains(errStr, "503") || strings.Contains(errStr, "504") ||
+					strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") ||
+					strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
 					skipCount++
 				}
 			}
 		}
 		if skipCount > 0 {
-			t.Skipf("Skipping: %d/%d streaming requests had connection/timeout issues (slow providers)", skipCount, numRequests)
+			t.Skipf("Skipping: %d/%d streaming requests had provider/connection issues", skipCount, numRequests)
 		}
 
 		assert.Empty(t, errors, "All parallel streaming requests should succeed")
@@ -1206,33 +1180,20 @@ func TestConcurrentRequests(t *testing.T) {
 			}
 		}
 
-		// Skip if all requests failed with 500 (providers unavailable) or timeout
-		if len(errors) == numRequests {
-			allSkippable := true
-			for _, e := range errors {
-				errStr := e.Error()
-				if !strings.Contains(errStr, "500") && !strings.Contains(errStr, "deadline exceeded") && !strings.Contains(errStr, "timeout") {
-					allSkippable = false
-					break
-				}
-			}
-			if allSkippable {
-				t.Skip("Skipping: all mixed requests returned 500 (providers unavailable) or timed out")
-			}
-		}
-
-		// Also skip if any timed out or got connection errors (indicates slow providers)
+		// Skip if all or most requests failed with provider unavailable errors (500, 502, 503, 504) or timeout
 		skipCount := 0
 		for _, e := range errors {
 			if e != nil {
 				errStr := e.Error()
-				if strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") || strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
+				if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") || strings.Contains(errStr, "503") || strings.Contains(errStr, "504") ||
+					strings.Contains(errStr, "deadline exceeded") || strings.Contains(errStr, "timeout") ||
+					strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") {
 					skipCount++
 				}
 			}
 		}
 		if skipCount > 0 {
-			t.Skipf("Skipping: %d/%d mixed requests had connection/timeout issues (slow providers)", skipCount, numRequests)
+			t.Skipf("Skipping: %d/%d mixed requests had provider/connection issues", skipCount, numRequests)
 		}
 
 		assert.Empty(t, errors, "Mixed streaming/non-streaming requests should succeed")

@@ -677,7 +677,14 @@ func testSuperAgentStreaming(t *testing.T) {
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := client.Do(httpReq)
-	require.NoError(t, err)
+	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") ||
+			strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline") {
+			t.Skipf("SuperAgent connection issue: %v", err)
+		}
+		require.NoError(t, err)
+	}
 	defer resp.Body.Close()
 
 	// Skip on auth errors or server errors

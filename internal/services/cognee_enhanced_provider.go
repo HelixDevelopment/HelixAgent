@@ -183,11 +183,10 @@ func (p *CogneeEnhancedProvider) CompleteStream(ctx context.Context, req *models
 	p.stats.TotalRequests++
 	p.stats.mu.Unlock()
 
-	// Enhance the request for streaming
+	// For streaming, skip Cognee enhancement to avoid blocking the stream startup
+	// This prevents connection resets and timeouts that occur when Cognee searches take too long
+	// The request will be enhanced on subsequent non-streaming requests if needed
 	enhancedReq := req
-	if p.config.EnhanceStreamingPrompt && p.cogneeService != nil && p.cogneeService.IsReady() {
-		enhancedReq = p.enhanceRequest(ctx, req)
-	}
 
 	// Get the stream from the underlying provider
 	stream, err := p.provider.CompleteStream(ctx, enhancedReq)

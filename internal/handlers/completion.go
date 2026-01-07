@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -128,8 +129,12 @@ func (h *CompletionHandler) CompleteStream(c *gin.Context) {
 	// Convert to internal request format
 	internalReq := h.convertToInternalRequest(&req, c)
 
+	// Create a cancellable context for the stream
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	// Process streaming request
-	streamChan, err := h.requestService.ProcessRequestStream(c.Request.Context(), internalReq)
+	streamChan, err := h.requestService.ProcessRequestStream(ctx, internalReq)
 	if err != nil {
 		h.sendCategorizedError(c, err)
 		return
@@ -140,23 +145,63 @@ func (h *CompletionHandler) CompleteStream(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
 
-	// Stream responses
-	for response := range streamChan {
-		// Convert to streaming format
-		streamResp := h.convertToStreamingResponse(response)
-
-		// Send as Server-Sent Events
-		data, _ := json.Marshal(streamResp)
-		c.Writer.Write([]byte("data: "))
-		c.Writer.Write(data)
-		c.Writer.Write([]byte("\n\n"))
-		c.Writer.Flush()
+	// Get flusher for proper SSE streaming
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		h.sendError(c, http.StatusInternalServerError, "internal_error", "Streaming not supported", "")
+		return
 	}
 
-	// Send final event
+	// Track client disconnection
+	clientGone := c.Writer.CloseNotify()
+
+StreamLoop:
+	for {
+		select {
+		case <-clientGone:
+			// Client disconnected, stop streaming
+			cancel()
+			return
+		case <-ctx.Done():
+			// Context cancelled, exit gracefully
+			break StreamLoop
+		case response, ok := <-streamChan:
+			if !ok {
+				// Channel closed, stream complete
+				break StreamLoop
+			}
+
+			// Convert to streaming format
+			streamResp := h.convertToStreamingResponse(response)
+
+			// Send as Server-Sent Events
+			data, err := json.Marshal(streamResp)
+			if err != nil {
+				continue // Skip malformed response
+			}
+
+			// Write data with error handling
+			if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write(data); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+
+	// Always send final event to properly close the stream
 	c.Writer.Write([]byte("data: [DONE]\n\n"))
-	c.Writer.Flush()
+	flusher.Flush()
 }
 
 // Chat handles chat-style completion requests
@@ -201,8 +246,12 @@ func (h *CompletionHandler) ChatStream(c *gin.Context) {
 	internalReq := h.convertToInternalRequest(&req, c)
 	internalReq.RequestType = "chat"
 
+	// Create a cancellable context for the stream
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	// Process streaming request
-	streamChan, err := h.requestService.ProcessRequestStream(c.Request.Context(), internalReq)
+	streamChan, err := h.requestService.ProcessRequestStream(ctx, internalReq)
 	if err != nil {
 		h.sendError(c, http.StatusInternalServerError, "internal_error", "Failed to process streaming chat request", err.Error())
 		return
@@ -213,23 +262,63 @@ func (h *CompletionHandler) ChatStream(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
 
-	// Stream responses
-	for response := range streamChan {
-		// Convert to streaming chat format
-		streamResp := h.convertToChatStreamingResponse(response)
-
-		// Send as Server-Sent Events
-		data, _ := json.Marshal(streamResp)
-		c.Writer.Write([]byte("data: "))
-		c.Writer.Write(data)
-		c.Writer.Write([]byte("\n\n"))
-		c.Writer.Flush()
+	// Get flusher for proper SSE streaming
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		h.sendError(c, http.StatusInternalServerError, "internal_error", "Streaming not supported", "")
+		return
 	}
 
-	// Send final event
+	// Track client disconnection
+	clientGone := c.Writer.CloseNotify()
+
+StreamLoop:
+	for {
+		select {
+		case <-clientGone:
+			// Client disconnected, stop streaming
+			cancel()
+			return
+		case <-ctx.Done():
+			// Context cancelled, exit gracefully
+			break StreamLoop
+		case response, ok := <-streamChan:
+			if !ok {
+				// Channel closed, stream complete
+				break StreamLoop
+			}
+
+			// Convert to streaming chat format
+			streamResp := h.convertToChatStreamingResponse(response)
+
+			// Send as Server-Sent Events
+			data, err := json.Marshal(streamResp)
+			if err != nil {
+				continue // Skip malformed response
+			}
+
+			// Write data with error handling
+			if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write(data); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+
+	// Always send final event to properly close the stream
 	c.Writer.Write([]byte("data: [DONE]\n\n"))
-	c.Writer.Flush()
+	flusher.Flush()
 }
 
 // Models handles model listing requests

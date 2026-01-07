@@ -199,8 +199,13 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	// Convert to internal request format
 	internalReq := h.convertOpenAIChatRequest(req, c)
 
+	// Create a cancellable context with timeout for the stream
+	// Maximum 120 seconds to prevent endless loops (OpenCode fix)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
 	// Process with ensemble streaming
-	streamChan, err := h.processWithEnsembleStream(c.Request.Context(), internalReq, req)
+	streamChan, err := h.processWithEnsembleStream(ctx, internalReq, req)
 	if err != nil {
 		h.sendCategorizedError(c, err)
 		return
@@ -220,19 +225,128 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		return
 	}
 
-	for response := range streamChan {
-		// Convert to streaming format
-		streamResp := h.convertToOpenAIChatStreamResponse(response, req)
+	// Track streaming state for OpenCode/Crush/HelixCode compatibility
+	chunksSent := 0
+	isFirstChunk := true
+	sentFinalChunk := false // Track if we've already sent a finish_reason chunk
+	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()) // Consistent ID across all chunks
 
-		// Send as Server-Sent Events
-		data, _ := json.Marshal(streamResp)
+	// Client disconnect detection - safely get CloseNotify channel
+	// Note: In test environments, httptest.ResponseRecorder doesn't support CloseNotify
+	// but gin's wrapper implements it, causing a panic when delegating. Use recover.
+	var clientGone <-chan bool
+	dummyChan := make(chan bool)
+	clientGone = dummyChan
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// CloseNotify not supported (test environment), use dummy channel
+			}
+		}()
+		if cn, ok := c.Writer.(http.CloseNotifier); ok {
+			clientGone = cn.CloseNotify()
+		}
+	}()
+
+	// Idle timeout ticker - if no data for 30 seconds, exit
+	idleTimeout := time.NewTicker(30 * time.Second)
+	defer idleTimeout.Stop()
+
+	// Send first chunk with role (required by OpenCode)
+	firstChunkResp := &models.LLMResponse{ID: streamID, CreatedAt: time.Now()}
+	firstChunk := h.convertToOpenAIChatStreamResponse(firstChunkResp, req, true, streamID)
+	if firstData, err := json.Marshal(firstChunk); err == nil {
 		c.Writer.Write([]byte("data: "))
-		c.Writer.Write(data)
+		c.Writer.Write(firstData)
+		c.Writer.Write([]byte("\n\n"))
+		flusher.Flush()
+	}
+	isFirstChunk = false
+
+StreamLoop:
+	for {
+		select {
+		case <-clientGone:
+			// Client disconnected, stop streaming
+			cancel()
+			return
+		case <-ctx.Done():
+			// Context cancelled or timed out, exit gracefully
+			break StreamLoop
+		case <-idleTimeout.C:
+			// No data received for 30 seconds, break to send DONE
+			break StreamLoop
+		case response, ok := <-streamChan:
+			if !ok {
+				// Channel closed, stream complete
+				break StreamLoop
+			}
+
+			// Reset idle timeout on data received
+			idleTimeout.Reset(30 * time.Second)
+
+			// Skip empty content chunks (Issue #2840 fix for OpenCode)
+			if response.Content == "" && response.FinishReason == "" {
+				continue
+			}
+
+			// Track if this response already has finish_reason
+			if response.FinishReason != "" {
+				sentFinalChunk = true
+			}
+
+			// Convert to streaming format with consistent streamID
+			streamResp := h.convertToOpenAIChatStreamResponse(response, req, isFirstChunk, streamID)
+
+			// Send as Server-Sent Events
+			data, err := json.Marshal(streamResp)
+			if err != nil {
+				continue // Skip malformed response
+			}
+
+			// Write data with error handling
+			if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write(data); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+				cancel()
+				return
+			}
+			flusher.Flush()
+			chunksSent++
+		}
+	}
+
+	// Only send final chunk if we haven't already sent one with finish_reason
+	if !sentFinalChunk {
+		finalChunk := map[string]any{
+			"id":                 streamID, // Same ID as all other chunks
+			"object":             "chat.completion.chunk",
+			"created":            time.Now().Unix(),
+			"model":              "superagent-ensemble",
+			"system_fingerprint": "fp_superagent_v1",
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"delta":         map[string]any{},
+					"logprobs":      nil,
+					"finish_reason": "stop",
+				},
+			},
+		}
+		finalData, _ := json.Marshal(finalChunk)
+		c.Writer.Write([]byte("data: "))
+		c.Writer.Write(finalData)
 		c.Writer.Write([]byte("\n\n"))
 		flusher.Flush()
 	}
 
-	// Send final event
+	// Always send [DONE] to properly close the stream
 	c.Writer.Write([]byte("data: [DONE]\n\n"))
 	flusher.Flush()
 }
@@ -252,8 +366,13 @@ func (h *UnifiedHandler) ChatCompletionsStream(c *gin.Context) {
 	// Convert to internal request format
 	internalReq := h.convertOpenAIChatRequest(&req, c)
 
+	// Create a cancellable context with timeout for the stream
+	// Maximum 120 seconds to prevent endless loops (OpenCode fix)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
 	// Process with ensemble streaming
-	streamChan, err := h.processWithEnsembleStream(c.Request.Context(), internalReq, &req)
+	streamChan, err := h.processWithEnsembleStream(ctx, internalReq, &req)
 	if err != nil {
 		h.sendCategorizedError(c, err)
 		return
@@ -264,23 +383,137 @@ func (h *UnifiedHandler) ChatCompletionsStream(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
 
-	// Stream responses
-	for response := range streamChan {
-		// Convert to streaming format
-		streamResp := h.convertToOpenAIChatStreamResponse(response, &req)
-
-		// Send as Server-Sent Events
-		data, _ := json.Marshal(streamResp)
-		c.Writer.Write([]byte("data: "))
-		c.Writer.Write(data)
-		c.Writer.Write([]byte("\n\n"))
-		c.Writer.Flush()
+	// Get flusher for proper SSE streaming
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		h.sendOpenAIError(c, http.StatusInternalServerError, "internal_error", "Streaming not supported", "")
+		return
 	}
 
-	// Send final event
+	// Track streaming state for OpenCode/Crush/HelixCode compatibility
+	isFirstChunk := true
+	sentFinalChunk := false // Track if we've already sent a finish_reason chunk
+	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()) // Consistent ID across all chunks
+
+	// Client disconnect detection - safely get CloseNotify channel
+	// Note: In test environments, httptest.ResponseRecorder doesn't support CloseNotify
+	// but gin's wrapper implements it, causing a panic when delegating. Use recover.
+	var clientGone <-chan bool
+	dummyChan := make(chan bool)
+	clientGone = dummyChan
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// CloseNotify not supported (test environment), use dummy channel
+			}
+		}()
+		if cn, ok := c.Writer.(http.CloseNotifier); ok {
+			clientGone = cn.CloseNotify()
+		}
+	}()
+
+	// Idle timeout ticker - if no data for 30 seconds, exit
+	idleTimeout := time.NewTicker(30 * time.Second)
+	defer idleTimeout.Stop()
+
+	// Send first chunk with role (required by OpenCode)
+	firstChunkResp := &models.LLMResponse{ID: streamID, CreatedAt: time.Now()}
+	firstChunk := h.convertToOpenAIChatStreamResponse(firstChunkResp, &req, true, streamID)
+	if firstData, err := json.Marshal(firstChunk); err == nil {
+		c.Writer.Write([]byte("data: "))
+		c.Writer.Write(firstData)
+		c.Writer.Write([]byte("\n\n"))
+		flusher.Flush()
+	}
+	isFirstChunk = false
+
+StreamLoop:
+	for {
+		select {
+		case <-clientGone:
+			// Client disconnected, stop streaming
+			cancel()
+			return
+		case <-ctx.Done():
+			// Context cancelled or timed out, exit gracefully
+			break StreamLoop
+		case <-idleTimeout.C:
+			// No data received for 30 seconds, break to send DONE
+			break StreamLoop
+		case response, ok := <-streamChan:
+			if !ok {
+				// Channel closed, stream complete
+				break StreamLoop
+			}
+
+			// Reset idle timeout on data received
+			idleTimeout.Reset(30 * time.Second)
+
+			// Skip empty content chunks (Issue #2840 fix for OpenCode)
+			if response.Content == "" && response.FinishReason == "" {
+				continue
+			}
+
+			// Track if this response already has finish_reason
+			if response.FinishReason != "" {
+				sentFinalChunk = true
+			}
+
+			// Convert to streaming format with consistent streamID
+			streamResp := h.convertToOpenAIChatStreamResponse(response, &req, isFirstChunk, streamID)
+
+			// Send as Server-Sent Events
+			data, err := json.Marshal(streamResp)
+			if err != nil {
+				continue // Skip malformed response
+			}
+
+			// Write data with error handling
+			if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write(data); err != nil {
+				cancel()
+				return
+			}
+			if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+
+	// Only send final chunk if we haven't already sent one with finish_reason
+	if !sentFinalChunk {
+		finalChunk := map[string]any{
+			"id":                 streamID, // Same ID as all other chunks
+			"object":             "chat.completion.chunk",
+			"created":            time.Now().Unix(),
+			"model":              "superagent-ensemble",
+			"system_fingerprint": "fp_superagent_v1",
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"delta":         map[string]any{},
+					"logprobs":      nil,
+					"finish_reason": "stop",
+				},
+			},
+		}
+		finalData, _ := json.Marshal(finalChunk)
+		c.Writer.Write([]byte("data: "))
+		c.Writer.Write(finalData)
+		c.Writer.Write([]byte("\n\n"))
+		flusher.Flush()
+	}
+
+	// Always send [DONE] to properly close the stream
 	c.Writer.Write([]byte("data: [DONE]\n\n"))
-	c.Writer.Flush()
+	flusher.Flush()
 }
 
 // Completions handles legacy text completions
@@ -524,21 +757,54 @@ func (h *UnifiedHandler) convertToOpenAIChatResponse(result *services.EnsembleRe
 	}
 }
 
-func (h *UnifiedHandler) convertToOpenAIChatStreamResponse(resp *models.LLMResponse, req *OpenAIChatRequest) map[string]any {
+// convertToOpenAIChatStreamResponse converts an LLM response to OpenAI streaming format
+// isFirstChunk: true for the first chunk (includes role), false for subsequent chunks
+// streamID: consistent ID across all chunks in the stream
+func (h *UnifiedHandler) convertToOpenAIChatStreamResponse(resp *models.LLMResponse, req *OpenAIChatRequest, isFirstChunk bool, streamID string) map[string]any {
+	// Build delta based on chunk type
+	// Per OpenAI spec: role only in first chunk, content in subsequent chunks
+	delta := map[string]any{}
+
+	if isFirstChunk {
+		// First chunk: include role, empty content
+		delta["role"] = "assistant"
+		delta["content"] = ""
+	} else if resp.FinishReason != "" {
+		// Final chunk: empty delta (finish_reason indicates completion)
+		// Do NOT include content or role
+	} else {
+		// Content chunk: only include content (no role)
+		delta["content"] = resp.Content
+	}
+
+	// Build choice with proper finish_reason
+	// Critical for OpenCode/Crush/HelixCode compatibility
+	choice := map[string]any{
+		"index":    0,
+		"delta":    delta,
+		"logprobs": nil, // Required field per OpenAI spec
+	}
+
+	// finish_reason: null for intermediate, "stop" for final
+	if resp.FinishReason != "" {
+		choice["finish_reason"] = resp.FinishReason
+	} else {
+		choice["finish_reason"] = nil
+	}
+
+	// Use consistent stream ID across all chunks
+	id := streamID
+	if id == "" {
+		id = resp.ID
+	}
+
 	return map[string]any{
-		"id":      resp.ID,
-		"object":  "chat.completion.chunk",
-		"created": resp.CreatedAt.Unix(),
-		"model":   "superagent-ensemble", // Always show ensemble model
-		"choices": []map[string]any{
-			{
-				"index": 0,
-				"delta": map[string]any{
-					"role":    "assistant",
-					"content": resp.Content,
-				},
-			},
-		},
+		"id":                 id,
+		"object":             "chat.completion.chunk",
+		"created":            resp.CreatedAt.Unix(),
+		"model":              "superagent-ensemble",
+		"system_fingerprint": "fp_superagent_v1",
+		"choices":            []map[string]any{choice},
 	}
 }
 

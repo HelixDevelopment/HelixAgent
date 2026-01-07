@@ -210,11 +210,17 @@ func CategorizeError(err error, provider string) *LLMServiceError {
 		return NewTimeoutError(provider, err)
 	}
 
-	// Check for network errors
+	// Check for network errors (including EOF, connection reset, etc.)
 	if strings.Contains(errStr, "connection refused") ||
 		strings.Contains(errStr, "no such host") ||
 		strings.Contains(errStr, "network is unreachable") ||
-		strings.Contains(errStr, "dial tcp") {
+		strings.Contains(errStr, "dial tcp") ||
+		strings.Contains(errStr, "eof") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "i/o timeout") ||
+		strings.Contains(errStr, "no route to host") ||
+		strings.Contains(errStr, "connection timed out") {
 		return NewNetworkError(provider, err)
 	}
 

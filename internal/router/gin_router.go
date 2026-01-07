@@ -93,7 +93,7 @@ func (r *GinRouter) Start(addr string) error {
 		Addr:         addr,
 		Handler:      r.engine,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 300 * time.Second, // 5 minutes for SSE streaming support
 		IdleTimeout:  120 * time.Second,
 	}
 
@@ -125,7 +125,7 @@ func (r *GinRouter) StartTLS(addr, certFile, keyFile string) error {
 		Addr:         addr,
 		Handler:      r.engine,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 300 * time.Second, // 5 minutes for SSE streaming support
 		IdleTimeout:  120 * time.Second,
 	}
 

@@ -499,7 +499,8 @@ func run(appCfg *AppConfig) error {
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
 		Handler:      r,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 300 * time.Second, // 5 minutes for SSE streaming support
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Channel for server errors

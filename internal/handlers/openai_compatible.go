@@ -769,9 +769,13 @@ func (h *UnifiedHandler) convertToOpenAIChatStreamResponse(resp *models.LLMRespo
 		// First chunk: include role, empty content
 		delta["role"] = "assistant"
 		delta["content"] = ""
-	} else if resp.FinishReason != "" {
-		// Final chunk: empty delta (finish_reason indicates completion)
-		// Do NOT include content or role
+	} else if resp.FinishReason != "" && resp.Content == "" {
+		// Final chunk with NO content: empty delta (finish_reason indicates completion)
+		// IMPORTANT: Only empty delta if there's no content to send
+	} else if resp.FinishReason != "" && resp.Content != "" {
+		// Final chunk WITH content: include both content AND finish_reason
+		// CRITICAL FIX: Don't lose content when finish_reason is present!
+		delta["content"] = resp.Content
 	} else {
 		// Content chunk: only include content (no role)
 		delta["content"] = resp.Content

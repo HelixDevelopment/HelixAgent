@@ -189,12 +189,13 @@ func TestOpenCode_DocumentationRequest(t *testing.T) {
 
 	resp, err := sendOpenCodeRequest(request)
 	if err != nil {
-		// Handle network errors (timeout, EOF, connection reset) gracefully
-		t.Skipf("OpenCode documentation request failed (network issue, server may be overloaded): %v", err)
+		// NEVER SKIP - network errors should be handled by fallback mechanism
+		t.Fatalf("OpenCode documentation request failed - FALLBACK SHOULD HAVE SUCCEEDED: %v", err)
 	}
 
 	if resp.Error != nil {
-		t.Skipf("API returned error (may indicate service unavailable): %s", resp.Error.Message)
+		// API errors are expected for invalid requests, but not for valid ones
+		t.Fatalf("API returned error - FALLBACK PROVIDERS SHOULD HAVE HANDLED THIS: %s", resp.Error.Message)
 	}
 
 	if len(resp.Choices) == 0 {
@@ -306,12 +307,18 @@ func TestOpenCode_ConcurrentRequests(t *testing.T) {
 
 	t.Logf("Concurrent test: %d/%d succeeded in %v total", successCount, len(requests), totalDuration)
 
-	// Allow partial success when server is under load (network timeouts, EOF)
-	// At least 1 request should succeed to verify the API is functional
+	// NEVER SKIP - fallback mechanism MUST ensure success
+	// At least 80% success rate required with fallback
+	minRequired := (len(requests) * 80) / 100
+	if minRequired < 1 {
+		minRequired = 1
+	}
 	if successCount == 0 {
-		t.Skipf("No requests succeeded (server may be overloaded or unavailable)")
+		t.Fatalf("NO requests succeeded - FALLBACK MECHANISM FAILED COMPLETELY")
+	} else if successCount < minRequired {
+		t.Errorf("Only %d/%d requests succeeded - FALLBACK MECHANISM INSUFFICIENT (need at least %d)", successCount, len(requests), minRequired)
 	} else if successCount < len(requests) {
-		t.Logf("Note: %d/%d requests had network issues (acceptable under load)", len(requests)-successCount, len(requests))
+		t.Logf("Note: %d/%d requests had issues (fallback handled %d)", len(requests)-successCount, len(requests), successCount)
 	}
 }
 
@@ -349,11 +356,14 @@ func TestOpenCode_NoEndlessLoop(t *testing.T) {
 		elapsed := time.Since(start)
 
 		if resp.Error != nil {
-			t.Skipf("API error (may indicate service unavailable): %s", resp.Error.Message)
+			// NEVER SKIP - analyze error and report fallback failure
+			t.Errorf("API error - FALLBACK SHOULD HAVE HANDLED: %s", resp.Error.Message)
+			return
 		}
 
 		if len(resp.Choices) == 0 {
-			t.Skip("No choices returned (may indicate service unavailable)")
+			t.Errorf("No choices returned - FALLBACK MECHANISM SHOULD ENSURE RESPONSE")
+			return
 		}
 
 		content := resp.Choices[0].Message.Content
@@ -366,10 +376,11 @@ func TestOpenCode_NoEndlessLoop(t *testing.T) {
 		t.Logf("Completed in %v with %d chars", elapsed, len(content))
 
 	case err := <-errChan:
-		t.Skipf("Request failed (network issue): %v", err)
+		// NEVER SKIP - network errors should be handled by fallback
+		t.Errorf("Request failed - FALLBACK MECHANISM SHOULD HAVE HANDLED: %v", err)
 
 	case <-time.After(timeout):
-		t.Skipf("Request timed out after %v (server may be overloaded)", timeout)
+		t.Errorf("Request timed out after %v - POSSIBLE ENDLESS LOOP OR FALLBACK FAILURE", timeout)
 	}
 }
 
@@ -423,21 +434,26 @@ func TestOpenCode_SequentialRequests(t *testing.T) {
 			elapsed := time.Since(start)
 
 			if err != nil {
-				// Handle network errors gracefully - server may be overloaded
-				t.Skipf("Request failed (network issue, server may be overloaded): %v", err)
+				// NEVER SKIP - fallback should handle network errors
+				t.Errorf("Request failed - FALLBACK SHOULD HANDLE: %v", err)
+				return
 			}
 
 			if resp.Error != nil {
-				t.Skipf("API error (may indicate service unavailable): %s", resp.Error.Message)
+				// NEVER SKIP - analyze error for fallback failure
+				t.Errorf("API error - FALLBACK PROVIDERS SHOULD HAVE HANDLED: %s", resp.Error.Message)
+				return
 			}
 
 			if len(resp.Choices) == 0 {
-				t.Skip("No choices returned (may indicate service unavailable)")
+				t.Errorf("No choices returned - FALLBACK MECHANISM FAILURE")
+				return
 			}
 
 			content := resp.Choices[0].Message.Content
 			if content == "" {
-				t.Skip("Empty response content (may indicate service unavailable)")
+				t.Errorf("Empty response content - INCOMPLETE RESPONSE FROM FALLBACK")
+				return
 			}
 
 			t.Logf("Completed in %v with %d chars", elapsed, len(content))

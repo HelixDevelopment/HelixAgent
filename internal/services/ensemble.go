@@ -194,43 +194,161 @@ func (e *EnsembleService) RunEnsembleStream(ctx context.Context, req *models.LLM
 
 	// Create context with timeout - use longer timeout for streaming
 	streamTimeout := e.timeout * 2 // Double timeout for streaming operations
-	if streamTimeout < 60*time.Second {
-		streamTimeout = 60 * time.Second // Minimum 60 seconds for streaming
+	if streamTimeout < 120*time.Second {
+		streamTimeout = 120 * time.Second // Minimum 120 seconds for streaming
 	}
 	timeoutCtx, cancel := context.WithTimeout(ctx, streamTimeout)
 
-	// For streaming, we'll use the first available provider for now
-	// In a more sophisticated implementation, we could merge streams
+	// MULTI-PROVIDER STREAMING WITH FALLBACK: Use all available providers for true AI debate
+	// Each provider contributes chunks that are merged and sent to the client
+	// Fallback: If primary providers fail, automatically try remaining providers
+	outputChan := make(chan *models.LLMResponse, 100) // Buffered for multi-provider
+
+	// Track provider failures for diagnostics
+	type providerError struct {
+		name string
+		err  error
+	}
+	failedProviders := make([]providerError, 0)
+	var failedMu sync.Mutex
+
+	// Start streams from ALL available providers concurrently
+	activeStreams := 0
+	streamChans := make([]<-chan *models.LLMResponse, 0, len(filteredProviders))
+	providerNames := make([]string, 0, len(filteredProviders))
+	failedProviderNames := make([]string, 0)
+
+	// PHASE 1: Try all filtered providers first
 	for name, provider := range filteredProviders {
 		streamChan, err := provider.CompleteStream(timeoutCtx, req)
 		if err != nil {
+			// Categorize the error
+			categorizedErr := CategorizeError(err, name)
+			failedMu.Lock()
+			failedProviders = append(failedProviders, providerError{name: name, err: categorizedErr})
+			failedProviderNames = append(failedProviderNames, name)
+			failedMu.Unlock()
 			continue
 		}
-
-		// Wrap responses with provider info
-		// IMPORTANT: Cancel context only when stream is fully consumed
-		wrappedChan := make(chan *models.LLMResponse)
-		go func(providerName string) {
-			defer close(wrappedChan)
-			defer cancel() // Cancel context when stream is done
-
-			for resp := range streamChan {
-				resp.ProviderID = providerName
-				resp.ProviderName = providerName
-				select {
-				case wrappedChan <- resp:
-				case <-timeoutCtx.Done():
-					return
-				}
-			}
-		}(name)
-
-		return wrappedChan, nil
+		streamChans = append(streamChans, streamChan)
+		providerNames = append(providerNames, name)
+		activeStreams++
 	}
 
-	// Cancel if no providers could stream
-	cancel()
-	return nil, fmt.Errorf("no providers available for streaming")
+	// PHASE 2: FALLBACK - If primary providers failed, try ALL remaining providers
+	if activeStreams == 0 && len(failedProviders) > 0 {
+		// All filtered providers failed - try ALL providers as fallback
+		for name, provider := range providers {
+			// Skip already-tried providers
+			alreadyTried := false
+			for _, failed := range failedProviderNames {
+				if name == failed {
+					alreadyTried = true
+					break
+				}
+			}
+			if alreadyTried {
+				continue
+			}
+
+			streamChan, err := provider.CompleteStream(timeoutCtx, req)
+			if err != nil {
+				categorizedErr := CategorizeError(err, name)
+				failedMu.Lock()
+				failedProviders = append(failedProviders, providerError{name: name, err: categorizedErr})
+				failedMu.Unlock()
+				continue
+			}
+			streamChans = append(streamChans, streamChan)
+			providerNames = append(providerNames, name)
+			activeStreams++
+		}
+	}
+
+	// If STILL no active streams, return detailed error
+	if activeStreams == 0 {
+		cancel()
+		// Build detailed error with categorized failures
+		failedMu.Lock()
+		errors := make([]error, len(failedProviders))
+		networkErrors := 0
+		providerErrors := 0
+		for i, pErr := range failedProviders {
+			errors[i] = pErr.err
+			if llmErr, ok := pErr.err.(*LLMServiceError); ok {
+				if llmErr.Type == ErrorTypeNetwork {
+					networkErrors++
+				} else {
+					providerErrors++
+				}
+			}
+		}
+		failedMu.Unlock()
+
+		// Return categorized error
+		err := NewAllProvidersFailedError(len(failedProviders), len(providers), errors)
+		err.Details["network_errors"] = networkErrors
+		err.Details["provider_errors"] = providerErrors
+		err.Details["attempted_fallback"] = len(failedProviders) > len(filteredProviders)
+		return nil, err
+	}
+
+	// Merge streams from all providers
+	// The cancel is deferred to cleanup, NOT called when stream ends
+	go func() {
+		defer close(outputChan)
+		// DO NOT call cancel() here - let the consumer control when to stop
+		// This prevents premature stream termination
+
+		var wg sync.WaitGroup
+
+		for i, streamChan := range streamChans {
+			wg.Add(1)
+			go func(idx int, ch <-chan *models.LLMResponse, providerName string) {
+				defer wg.Done()
+
+				for resp := range ch {
+					resp.ProviderID = providerName
+					resp.ProviderName = providerName
+
+					// Add metadata to track which provider contributed
+					if resp.Metadata == nil {
+						resp.Metadata = make(map[string]interface{})
+					}
+					resp.Metadata["debate_participant"] = providerName
+					resp.Metadata["participant_index"] = idx
+					resp.Metadata["is_fallback_provider"] = idx >= len(filteredProviders)
+
+					select {
+					case outputChan <- resp:
+					case <-timeoutCtx.Done():
+						return
+					}
+				}
+			}(i, streamChan, providerNames[i])
+		}
+
+		// Wait for all provider streams to complete
+		wg.Wait()
+	}()
+
+	// Return a wrapper that will cancel when closed or timed out
+	// The cancel is controlled by the HTTP handler, not the stream completion
+	wrappedChan := make(chan *models.LLMResponse)
+	go func() {
+		defer close(wrappedChan)
+		defer cancel() // Cancel only when wrapper is done (consumer finished)
+
+		for resp := range outputChan {
+			select {
+			case wrappedChan <- resp:
+			case <-ctx.Done(): // Use original context, not timeoutCtx
+				return
+			}
+		}
+	}()
+
+	return wrappedChan, nil
 }
 
 func (e *EnsembleService) filterProviders(providers map[string]LLMProvider, req *models.LLMRequest) map[string]LLMProvider {

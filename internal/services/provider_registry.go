@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/llm/providers/claude"
@@ -350,13 +351,13 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 		))
 	}
 
-	// Register Claude provider (only if API key is configured)
+	// Register Claude provider (using OAuth if enabled and available, otherwise API key)
 	claudeConfig := cfg.Providers["claude"]
 	if claudeConfig == nil {
 		claudeConfig = &ProviderConfig{
 			Name:    "claude",
 			Type:    "claude",
-			Enabled: false, // Disabled by default - requires API key
+			Enabled: false, // Disabled by default - requires API key or OAuth
 			Models: []ModelConfig{{
 				ID:      "claude-3-sonnet-20240229",
 				Name:    "Claude 3 Sonnet",
@@ -365,12 +366,32 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 			}},
 		}
 	}
-	if claudeConfig.Enabled && claudeConfig.APIKey != "" {
-		r.RegisterProvider(claudeConfig.Name, claude.NewClaudeProvider(
-			claudeConfig.APIKey,
-			claudeConfig.BaseURL,
-			claudeConfig.Models[0].ID,
-		))
+	// Try OAuth first if enabled
+	if claudeConfig.Enabled || oauth_credentials.IsClaudeOAuthEnabled() {
+		if oauth_credentials.IsClaudeOAuthEnabled() {
+			credReader := oauth_credentials.GetGlobalReader()
+			if credReader.HasValidClaudeCredentials() {
+				claudeProvider, err := claude.NewClaudeProviderWithOAuth(
+					claudeConfig.BaseURL,
+					claudeConfig.Models[0].ID,
+				)
+				if err == nil {
+					r.RegisterProvider(claudeConfig.Name, claudeProvider)
+					logrus.Info("Registered Claude provider with OAuth credentials from Claude Code CLI")
+				} else {
+					logrus.Warnf("Failed to create Claude OAuth provider: %v, falling back to API key", err)
+				}
+			}
+		}
+		// Fall back to API key if OAuth not available
+		if _, err := r.GetProvider(claudeConfig.Name); err != nil && claudeConfig.APIKey != "" {
+			r.RegisterProvider(claudeConfig.Name, claude.NewClaudeProvider(
+				claudeConfig.APIKey,
+				claudeConfig.BaseURL,
+				claudeConfig.Models[0].ID,
+			))
+			logrus.Info("Registered Claude provider with API key")
+		}
 	}
 
 	// Register Gemini provider (only if API key is configured)
@@ -396,13 +417,13 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 		))
 	}
 
-	// Register Qwen provider (only if API key is configured)
+	// Register Qwen provider (using OAuth if enabled and available, otherwise API key)
 	qwenConfig := cfg.Providers["qwen"]
 	if qwenConfig == nil {
 		qwenConfig = &ProviderConfig{
 			Name:    "qwen",
 			Type:    "qwen",
-			Enabled: false, // Disabled by default - requires API key
+			Enabled: false, // Disabled by default - requires API key or OAuth
 			Models: []ModelConfig{{
 				ID:      "qwen-turbo",
 				Name:    "Qwen Turbo",
@@ -411,12 +432,32 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 			}},
 		}
 	}
-	if qwenConfig.Enabled && qwenConfig.APIKey != "" {
-		r.RegisterProvider(qwenConfig.Name, qwen.NewQwenProvider(
-			qwenConfig.APIKey,
-			qwenConfig.BaseURL,
-			qwenConfig.Models[0].ID,
-		))
+	// Try OAuth first if enabled
+	if qwenConfig.Enabled || oauth_credentials.IsQwenOAuthEnabled() {
+		if oauth_credentials.IsQwenOAuthEnabled() {
+			credReader := oauth_credentials.GetGlobalReader()
+			if credReader.HasValidQwenCredentials() {
+				qwenProvider, err := qwen.NewQwenProviderWithOAuth(
+					qwenConfig.BaseURL,
+					qwenConfig.Models[0].ID,
+				)
+				if err == nil {
+					r.RegisterProvider(qwenConfig.Name, qwenProvider)
+					logrus.Info("Registered Qwen provider with OAuth credentials from Qwen Code CLI")
+				} else {
+					logrus.Warnf("Failed to create Qwen OAuth provider: %v, falling back to API key", err)
+				}
+			}
+		}
+		// Fall back to API key if OAuth not available
+		if _, err := r.GetProvider(qwenConfig.Name); err != nil && qwenConfig.APIKey != "" {
+			r.RegisterProvider(qwenConfig.Name, qwen.NewQwenProvider(
+				qwenConfig.APIKey,
+				qwenConfig.BaseURL,
+				qwenConfig.Models[0].ID,
+			))
+			logrus.Info("Registered Qwen provider with API key")
+		}
 	}
 
 	// Register OpenRouter provider (only if API key is configured)

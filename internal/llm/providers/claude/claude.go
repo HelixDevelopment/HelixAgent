@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/models"
 )
 
@@ -19,12 +20,22 @@ const (
 	ClaudeModel  = "claude-3-sonnet-20240229"
 )
 
+// AuthType represents the type of authentication used
+type AuthType string
+
+const (
+	AuthTypeAPIKey AuthType = "api_key"
+	AuthTypeOAuth  AuthType = "oauth"
+)
+
 type ClaudeProvider struct {
-	apiKey      string
-	baseURL     string
-	model       string
-	httpClient  *http.Client
-	retryConfig RetryConfig
+	apiKey           string
+	baseURL          string
+	model            string
+	httpClient       *http.Client
+	retryConfig      RetryConfig
+	authType         AuthType
+	oauthCredReader  *oauth_credentials.OAuthCredentialReader
 }
 
 // RetryConfig defines retry behavior for API calls
@@ -116,6 +127,80 @@ func NewClaudeProviderWithRetry(apiKey, baseURL, model string, retryConfig Retry
 			Timeout: 60 * time.Second,
 		},
 		retryConfig: retryConfig,
+		authType:    AuthTypeAPIKey,
+	}
+}
+
+// NewClaudeProviderWithOAuth creates a new Claude provider using OAuth credentials from Claude Code CLI
+func NewClaudeProviderWithOAuth(baseURL, model string) (*ClaudeProvider, error) {
+	return NewClaudeProviderWithOAuthAndRetry(baseURL, model, DefaultRetryConfig())
+}
+
+// NewClaudeProviderWithOAuthAndRetry creates a new Claude provider using OAuth credentials with custom retry config
+func NewClaudeProviderWithOAuthAndRetry(baseURL, model string, retryConfig RetryConfig) (*ClaudeProvider, error) {
+	if baseURL == "" {
+		baseURL = ClaudeAPIURL
+	}
+	if model == "" {
+		model = ClaudeModel
+	}
+
+	credReader := oauth_credentials.GetGlobalReader()
+
+	// Verify credentials are available
+	if !credReader.HasValidClaudeCredentials() {
+		return nil, fmt.Errorf("no valid Claude OAuth credentials available: ensure you are logged in via Claude Code CLI")
+	}
+
+	return &ClaudeProvider{
+		apiKey:          "", // Will use OAuth token instead
+		baseURL:         baseURL,
+		model:           model,
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+		retryConfig:     retryConfig,
+		authType:        AuthTypeOAuth,
+		oauthCredReader: credReader,
+	}, nil
+}
+
+// NewClaudeProviderAuto creates a Claude provider, automatically choosing OAuth if enabled and available
+func NewClaudeProviderAuto(apiKey, baseURL, model string) (*ClaudeProvider, error) {
+	// Check if OAuth is enabled and credentials are available
+	if oauth_credentials.IsClaudeOAuthEnabled() {
+		credReader := oauth_credentials.GetGlobalReader()
+		if credReader.HasValidClaudeCredentials() {
+			return NewClaudeProviderWithOAuth(baseURL, model)
+		}
+	}
+
+	// Fall back to API key authentication
+	if apiKey == "" {
+		return nil, fmt.Errorf("no API key provided and OAuth credentials not available")
+	}
+	return NewClaudeProvider(apiKey, baseURL, model), nil
+}
+
+// GetAuthType returns the authentication type being used
+func (p *ClaudeProvider) GetAuthType() AuthType {
+	return p.authType
+}
+
+// getAuthHeader returns the appropriate authorization header based on auth type
+func (p *ClaudeProvider) getAuthHeader() (string, string, error) {
+	switch p.authType {
+	case AuthTypeOAuth:
+		if p.oauthCredReader == nil {
+			return "", "", fmt.Errorf("OAuth credential reader not initialized")
+		}
+		token, err := p.oauthCredReader.GetClaudeAccessToken()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get OAuth token: %w", err)
+		}
+		return "Authorization", "Bearer " + token, nil
+	default:
+		return "x-api-key", p.apiKey, nil
 	}
 }
 
@@ -404,7 +489,14 @@ func (p *ClaudeProvider) makeAPICallWithAuthRetry(ctx context.Context, req Claud
 
 		// Set headers
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("x-api-key", p.apiKey)
+
+		// Set authentication header based on auth type
+		authHeaderName, authHeaderValue, authErr := p.getAuthHeader()
+		if authErr != nil {
+			return nil, fmt.Errorf("failed to get auth header: %w", authErr)
+		}
+		httpReq.Header.Set(authHeaderName, authHeaderValue)
+
 		httpReq.Header.Set("anthropic-version", "2023-06-01")
 		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
 
@@ -533,8 +625,18 @@ func (p *ClaudeProvider) GetCapabilities() *models.ProviderCapabilities {
 func (p *ClaudeProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	var errors []string
 
-	if p.apiKey == "" {
-		errors = append(errors, "API key is required")
+	// For OAuth auth, we don't need API key - check OAuth credentials instead
+	if p.authType == AuthTypeOAuth {
+		if p.oauthCredReader == nil {
+			errors = append(errors, "OAuth credential reader is required")
+		} else if !p.oauthCredReader.HasValidClaudeCredentials() {
+			errors = append(errors, "valid OAuth credentials are required")
+		}
+	} else {
+		// API key auth
+		if p.apiKey == "" {
+			errors = append(errors, "API key is required")
+		}
 	}
 
 	if p.baseURL == "" {
@@ -559,7 +661,12 @@ func (p *ClaudeProvider) HealthCheck() error {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
 
-	req.Header.Set("x-api-key", p.apiKey)
+	// Set authentication header based on auth type
+	authHeaderName, authHeaderValue, authErr := p.getAuthHeader()
+	if authErr != nil {
+		return fmt.Errorf("failed to get auth header: %w", authErr)
+	}
+	req.Header.Set(authHeaderName, authHeaderValue)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
 	resp, err := p.httpClient.Do(req)

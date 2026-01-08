@@ -12,7 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/models"
+)
+
+// AuthType represents the type of authentication used
+type AuthType string
+
+const (
+	AuthTypeAPIKey AuthType = "api_key"
+	AuthTypeOAuth  AuthType = "oauth"
 )
 
 // RetryConfig defines retry behavior for API calls
@@ -35,11 +44,13 @@ func DefaultRetryConfig() RetryConfig {
 
 // QwenProvider implements the LLMProvider interface for Alibaba Cloud Qwen
 type QwenProvider struct {
-	apiKey      string
-	baseURL     string
-	model       string
-	httpClient  *http.Client
-	retryConfig RetryConfig
+	apiKey          string
+	baseURL         string
+	model           string
+	httpClient      *http.Client
+	retryConfig     RetryConfig
+	authType        AuthType
+	oauthCredReader *oauth_credentials.OAuthCredentialReader
 }
 
 // QwenRequest represents a request to the Qwen API
@@ -136,6 +147,81 @@ func NewQwenProviderWithRetry(apiKey, baseURL, model string, retryConfig RetryCo
 			Timeout: 60 * time.Second,
 		},
 		retryConfig: retryConfig,
+		authType:    AuthTypeAPIKey,
+	}
+}
+
+// NewQwenProviderWithOAuth creates a new Qwen provider using OAuth credentials from Qwen Code CLI
+func NewQwenProviderWithOAuth(baseURL, model string) (*QwenProvider, error) {
+	return NewQwenProviderWithOAuthAndRetry(baseURL, model, DefaultRetryConfig())
+}
+
+// NewQwenProviderWithOAuthAndRetry creates a new Qwen provider using OAuth credentials with custom retry config
+func NewQwenProviderWithOAuthAndRetry(baseURL, model string, retryConfig RetryConfig) (*QwenProvider, error) {
+	if baseURL == "" {
+		// For OAuth, use the Qwen chat API endpoint instead of DashScope
+		baseURL = "https://chat.qwen.ai/api/v1"
+	}
+	if model == "" {
+		model = "qwen-turbo"
+	}
+
+	credReader := oauth_credentials.GetGlobalReader()
+
+	// Verify credentials are available
+	if !credReader.HasValidQwenCredentials() {
+		return nil, fmt.Errorf("no valid Qwen OAuth credentials available: ensure you are logged in via Qwen Code CLI")
+	}
+
+	return &QwenProvider{
+		apiKey:          "", // Will use OAuth token instead
+		baseURL:         baseURL,
+		model:           model,
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+		retryConfig:     retryConfig,
+		authType:        AuthTypeOAuth,
+		oauthCredReader: credReader,
+	}, nil
+}
+
+// NewQwenProviderAuto creates a Qwen provider, automatically choosing OAuth if enabled and available
+func NewQwenProviderAuto(apiKey, baseURL, model string) (*QwenProvider, error) {
+	// Check if OAuth is enabled and credentials are available
+	if oauth_credentials.IsQwenOAuthEnabled() {
+		credReader := oauth_credentials.GetGlobalReader()
+		if credReader.HasValidQwenCredentials() {
+			return NewQwenProviderWithOAuth(baseURL, model)
+		}
+	}
+
+	// Fall back to API key authentication
+	if apiKey == "" {
+		return nil, fmt.Errorf("no API key provided and OAuth credentials not available")
+	}
+	return NewQwenProvider(apiKey, baseURL, model), nil
+}
+
+// GetAuthType returns the authentication type being used
+func (q *QwenProvider) GetAuthType() AuthType {
+	return q.authType
+}
+
+// getAuthHeader returns the appropriate authorization header based on auth type
+func (q *QwenProvider) getAuthHeader() (string, error) {
+	switch q.authType {
+	case AuthTypeOAuth:
+		if q.oauthCredReader == nil {
+			return "", fmt.Errorf("OAuth credential reader not initialized")
+		}
+		token, err := q.oauthCredReader.GetQwenAccessToken()
+		if err != nil {
+			return "", fmt.Errorf("failed to get OAuth token: %w", err)
+		}
+		return "Bearer " + token, nil
+	default:
+		return "Bearer " + q.apiKey, nil
 	}
 }
 
@@ -348,7 +434,12 @@ func (q *QwenProvider) HealthCheck() error {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+q.apiKey)
+	// Set authentication header
+	authHeader, authErr := q.getAuthHeader()
+	if authErr != nil {
+		return fmt.Errorf("failed to get auth header: %w", authErr)
+	}
+	req.Header.Set("Authorization", authHeader)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := q.httpClient.Do(req)
@@ -409,8 +500,18 @@ func (q *QwenProvider) GetCapabilities() *models.ProviderCapabilities {
 func (q *QwenProvider) ValidateConfig(config map[string]interface{}) (bool, []string) {
 	var errors []string
 
-	if q.apiKey == "" {
-		errors = append(errors, "API key is required")
+	// For OAuth auth, we don't need API key - check OAuth credentials instead
+	if q.authType == AuthTypeOAuth {
+		if q.oauthCredReader == nil {
+			errors = append(errors, "OAuth credential reader is required")
+		} else if !q.oauthCredReader.HasValidQwenCredentials() {
+			errors = append(errors, "valid OAuth credentials are required")
+		}
+	} else {
+		// API key auth
+		if q.apiKey == "" {
+			errors = append(errors, "API key is required")
+		}
 	}
 
 	if q.baseURL == "" {
@@ -511,7 +612,12 @@ func (q *QwenProvider) makeRequestWithAuthRetry(ctx context.Context, req *QwenRe
 			return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 		}
 
-		httpReq.Header.Set("Authorization", "Bearer "+q.apiKey)
+		// Set authentication header
+		authHeader, authErr := q.getAuthHeader()
+		if authErr != nil {
+			return nil, fmt.Errorf("failed to get auth header: %w", authErr)
+		}
+		httpReq.Header.Set("Authorization", authHeader)
 		httpReq.Header.Set("Content-Type", "application/json")
 
 		resp, err := q.httpClient.Do(httpReq)
@@ -597,7 +703,12 @@ func (q *QwenProvider) makeStreamingRequest(ctx context.Context, req *QwenReques
 			return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 		}
 
-		httpReq.Header.Set("Authorization", "Bearer "+q.apiKey)
+		// Set authentication header
+		authHeader, authErr := q.getAuthHeader()
+		if authErr != nil {
+			return nil, fmt.Errorf("failed to get auth header: %w", authErr)
+		}
+		httpReq.Header.Set("Authorization", authHeader)
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Accept", "text/event-stream")
 		httpReq.Header.Set("Cache-Control", "no-cache")

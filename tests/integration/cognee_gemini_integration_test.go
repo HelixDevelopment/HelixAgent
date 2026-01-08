@@ -26,7 +26,7 @@ const (
 	// CogneeBaseURL is the Cognee service URL
 	CogneeBaseURL = "http://localhost:8000"
 	// HelixAgentBaseURL is the HelixAgent service URL
-	HelixAgentBaseURL = "http://localhost:8080"
+	HelixAgentBaseURL = "http://localhost:7061"
 	// TestEmail is the test user email for Cognee authentication
 	TestEmail = "admin@helixagent.ai"
 	// TestPassword is the test user password for Cognee authentication

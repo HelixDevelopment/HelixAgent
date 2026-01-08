@@ -31,7 +31,7 @@ go build -o helixagent cmd/helixagent/main_multi_provider.go
 
 ```bash
 # Check if server is running
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Expected response:
 # {"status":"ok","timestamp":1703123456,"version":"1.0.0"}
@@ -42,7 +42,7 @@ curl http://localhost:8080/health
 ### Register a New User
 
 ```bash
-curl -X POST http://localhost:8080/v1/auth/register \
+curl -X POST http://localhost:7061/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -55,7 +55,7 @@ curl -X POST http://localhost:8080/v1/auth/register \
 
 ```bash
 # Login and save token to environment variable
-TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:7061/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -70,7 +70,7 @@ echo "Token: $TOKEN"
 ```bash
 # Make authenticated request
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/v1/models
+  http://localhost:7061/v1/models
 ```
 
 ## Chat Completion Examples
@@ -78,7 +78,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### Basic Chat Completion
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -101,7 +101,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ### Streaming Chat Completion
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions/stream \
+curl -X POST http://localhost:7061/v1/chat/completions/stream \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -121,7 +121,7 @@ curl -X POST http://localhost:8080/v1/chat/completions/stream \
 ### Chat with Specific Provider
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -142,7 +142,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ### Advanced Ensemble Configuration
 
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble/completions \
+curl -X POST http://localhost:7061/v1/ensemble/completions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -165,7 +165,7 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
 ### Ensemble with Memory Enhancement
 
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble/completions \
+curl -X POST http://localhost:7061/v1/ensemble/completions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -200,11 +200,11 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
 
 ```bash
 # Public endpoint (basic info)
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Protected endpoint (detailed info)
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/v1/providers
+  http://localhost:7061/v1/providers
 ```
 
 ### Check Provider Health
@@ -212,18 +212,18 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```bash
 # Check specific provider health
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/v1/providers/deepseek/health
+  http://localhost:7061/v1/providers/deepseek/health
 
 # Check all providers (admin only)
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
-  http://localhost:8080/v1/admin/health/all
+  http://localhost:7061/v1/admin/health/all
 ```
 
 ### Get Provider Capabilities
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/v1/providers | jq '.providers[] | select(.name == "deepseek")'
+  http://localhost:7061/v1/providers | jq '.providers[] | select(.name == "deepseek")'
 ```
 
 ## Monitoring Examples
@@ -232,33 +232,33 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # Basic health check
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Enhanced health check with provider status
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 ```
 
 ### Get Prometheus Metrics
 
 ```bash
 # Get raw metrics
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 
 # Filter specific metrics
-curl http://localhost:8080/metrics | grep helixagent_requests_total
+curl http://localhost:7061/metrics | grep helixagent_requests_total
 
 # Get metrics with timestamp
-curl "http://localhost:8080/metrics?timestamp=$(date +%s)"
+curl "http://localhost:7061/metrics?timestamp=$(date +%s)"
 ```
 
 ### Monitor Request Statistics
 
 ```bash
 # Count total requests
-curl http://localhost:8080/metrics | grep 'helixagent_requests_total{' | awk '{print $2}'
+curl http://localhost:7061/metrics | grep 'helixagent_requests_total{' | awk '{print $2}'
 
 # Get average response time
-curl http://localhost:8080/metrics | grep 'helixagent_request_duration_seconds_sum' | awk '{print $2}'
+curl http://localhost:7061/metrics | grep 'helixagent_request_duration_seconds_sum' | awk '{print $2}'
 ```
 
 ## Integration Examples
@@ -270,7 +270,7 @@ import requests
 import json
 
 class HelixAgentClient:
-    def __init__(self, base_url="http://localhost:8080", token=None):
+    def __init__(self, base_url="http://localhost:7061", token=None):
         self.base_url = base_url
         self.token = token
         self.session = requests.Session()
@@ -336,7 +336,7 @@ for chunk in client.stream_chat_completion([
 const axios = require('axios');
 
 class HelixAgentClient {
-  constructor(baseURL = 'http://localhost:8080', token = null) {
+  constructor(baseURL = 'http://localhost:7061', token = null) {
     this.client = axios.create({
       baseURL,
       headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -383,7 +383,7 @@ class HelixAgentClient {
 
 // Usage example
 async function main() {
-  const client = new HelixAgentClient('http://localhost:8080', 'your-token');
+  const client = new HelixAgentClient('http://localhost:7061', 'your-token');
   
   // Single completion
   const response = await client.chatCompletion([
@@ -551,7 +551,7 @@ func (c *HelixAgentClient) StreamChatCompletion(ctx context.Context, req ChatCom
 
 // Usage example
 func main() {
-	client := NewHelixAgentClient("http://localhost:8080", "your-token")
+	client := NewHelixAgentClient("http://localhost:7061", "your-token")
 	
 	// Single completion
 	req := ChatCompletionRequest{
@@ -593,10 +593,10 @@ func main() {
 1. **Authentication Failed**
    ```bash
    # Check if token is valid
-   curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/auth/me
+   curl -H "Authorization: Bearer $TOKEN" http://localhost:7061/v1/auth/me
    
    # If 401, get new token
-   TOKEN=$(curl -s -X POST http://localhost:8080/v1/auth/login \
+   TOKEN=$(curl -s -X POST http://localhost:7061/v1/auth/login \
      -H "Content-Type: application/json" \
      -d '{"username": "testuser", "password": "TestPass123!"}' | jq -r '.token')
    ```
@@ -604,18 +604,18 @@ func main() {
 2. **Provider Not Responding**
    ```bash
    # Check provider health
-   curl http://localhost:8080/v1/health | jq '.providers'
+   curl http://localhost:7061/v1/health | jq '.providers'
    
    # Check specific provider
    curl -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8080/v1/providers/deepseek/health
+     http://localhost:7061/v1/providers/deepseek/health
    ```
 
 3. **Rate Limit Exceeded**
    ```bash
    # Check rate limit headers
    curl -I -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8080/v1/chat/completions
+     http://localhost:7061/v1/chat/completions
    
    # Implement exponential backoff in your client
    ```
@@ -634,16 +634,16 @@ func main() {
 2. **Monitor Metrics**
    ```bash
    # Watch request metrics
-   watch -n 5 'curl -s http://localhost:8080/metrics | grep helixagent_requests_total'
+   watch -n 5 'curl -s http://localhost:7061/metrics | grep helixagent_requests_total'
    
    # Monitor provider responses
-   watch -n 5 'curl -s http://localhost:8080/metrics | grep helixagent_provider_responses_total'
+   watch -n 5 'curl -s http://localhost:7061/metrics | grep helixagent_provider_responses_total'
    ```
 
 3. **Test Individual Providers**
    ```bash
    # Test DeepSeek directly
-   curl -X POST http://localhost:8080/v1/chat/completions \
+   curl -X POST http://localhost:7061/v1/chat/completions \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{

@@ -231,7 +231,7 @@ Default scoring weights:
 
 Customize with:
 ```bash
-curl -X PUT http://localhost:8080/api/v1/verifier/scores/weights \
+curl -X PUT http://localhost:7061/api/v1/verifier/scores/weights \
   -H "Content-Type: application/json" \
   -d '{"response_speed": 0.4, "capability": 0.6}'
 ```
@@ -244,7 +244,7 @@ curl -X PUT http://localhost:8080/api/v1/verifier/scores/weights \
 
 Automate with cron:
 ```bash
-0 6 * * * curl -X POST http://localhost:8080/api/v1/verifier/batch-verify -d '...'
+0 6 * * * curl -X POST http://localhost:7061/api/v1/verifier/batch-verify -d '...'
 ```
 
 ---
@@ -271,7 +271,7 @@ Typical hit rates:
 
 Monitor with:
 ```bash
-curl http://localhost:8080/metrics | grep cache_hit
+curl http://localhost:7061/metrics | grep cache_hit
 ```
 
 ### How do I improve response latency?
@@ -358,7 +358,7 @@ Yes, just change the base URL:
 from openai import OpenAI
 client = OpenAI(
     api_key="your-key",
-    base_url="http://localhost:8080/v1"
+    base_url="http://localhost:7061/v1"
 )
 ```
 
@@ -367,7 +367,7 @@ client = OpenAI(
 import OpenAI from 'openai';
 const client = new OpenAI({
   apiKey: 'your-key',
-  baseURL: 'http://localhost:8080/v1',
+  baseURL: 'http://localhost:7061/v1',
 });
 ```
 
@@ -399,10 +399,10 @@ Common causes:
 Debug:
 ```bash
 # Test without auth (if enabled)
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Test with auth
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/models
+curl -H "Authorization: Bearer $TOKEN" http://localhost:7061/v1/models
 ```
 
 ### Why are ensemble requests slow?

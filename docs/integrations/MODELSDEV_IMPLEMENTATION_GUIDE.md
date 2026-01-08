@@ -136,37 +136,37 @@ All major config files support Models.dev settings:
 ### **Basic Model Discovery**
 ```bash
 # List all models
-curl "http://localhost:8080/v1/models/metadata"
+curl "http://localhost:7061/v1/models/metadata"
 
 # Filter by provider
-curl "http://localhost:8080/v1/models/metadata?provider=openai"
+curl "http://localhost:7061/v1/models/metadata?provider=openai"
 
 # Filter by capability
-curl "http://localhost:8080/v1/models/metadata/capability/vision"
+curl "http://localhost:7061/v1/models/metadata/capability/vision"
 
 # Search models
-curl "http://localhost:8080/v1/models/metadata?search=gpt"
+curl "http://localhost:7061/v1/models/metadata?search=gpt"
 
 # Compare models
-curl "http://localhost:8080/v1/models/metadata/compare?ids=gpt-4,claude-3"
+curl "http://localhost:7061/v1/models/metadata/compare?ids=gpt-4,claude-3"
 ```
 
 ### **Admin Operations**
 ```bash
 # Trigger manual refresh
-curl -X POST "http://localhost:8080/admin/models/metadata/refresh"
+curl -X POST "http://localhost:7061/admin/models/metadata/refresh"
 
 # Get refresh history
-curl "http://localhost:8080/admin/models/metadata/refresh/status"
+curl "http://localhost:7061/admin/models/metadata/refresh/status"
 
 # Health check
-curl "http://localhost:8080/admin/models/health"
+curl "http://localhost:7061/admin/models/health"
 ```
 
 ### **Admin Dashboard**
 Access the web interface at:
 ```
-http://localhost:8080/admin/dashboard
+http://localhost:7061/admin/dashboard
 ```
 
 Features:

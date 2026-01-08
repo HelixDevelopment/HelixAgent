@@ -45,7 +45,7 @@ docker pull helixagent/helixagent:latest
 # Run with basic configuration
 docker run -d \
   --name helixagent \
-  -p 8080:8080 \
+  -p 8080:7061 \
   -e HELIXAGENT_API_KEY=your-api-key \
   helixagent/helixagent:latest
 ```
@@ -156,7 +156,7 @@ import requests
 
 # Create a simple debate
 response = requests.post(
-    "http://localhost:8080/v1/debates",
+    "http://localhost:7061/v1/debates",
     headers={"Authorization": "Bearer your-api-key"},
     json={
         "debateId": "basic-debate-001",
@@ -198,7 +198,7 @@ print(f"Debate created: {debate['debateId']}")
 ```python
 # Create an advanced debate with Cognee enhancement
 response = requests.post(
-    "http://localhost:8080/v1/debates",
+    "http://localhost:7061/v1/debates",
     headers={"Authorization": "Bearer your-api-key"},
     json={
         "debateId": "advanced-debate-001",
@@ -257,7 +257,7 @@ print(f"Advanced debate created: {debate['debateId']}")
 ```python
 # Create a debate using multiple providers
 response = requests.post(
-    "http://localhost:8080/v1/debates",
+    "http://localhost:7061/v1/debates",
     headers={"Authorization": "Bearer your-api-key"},
     json={
         "debateId": "multi-provider-001",
@@ -324,7 +324,7 @@ print(f"Multi-provider debate created: {debate['debateId']}")
 ```python
 # Monitor consensus building
 response = requests.get(
-    "http://localhost:8080/v1/debates/climate-debate-001/results",
+    "http://localhost:7061/v1/debates/climate-debate-001/results",
     headers={"Authorization": "Bearer your-api-key"}
 )
 
@@ -349,7 +349,7 @@ import time
 def monitor_debate(debate_id):
     while True:
         response = requests.get(
-            f"http://localhost:8080/v1/debates/{debate_id}/status",
+            f"http://localhost:7061/v1/debates/{debate_id}/status",
             headers={"Authorization": "Bearer your-api-key"}
         )
         
@@ -373,7 +373,7 @@ monitor_debate("climate-debate-001")
 ```python
 # Get performance metrics
 response = requests.get(
-    "http://localhost:8080/v1/metrics?timeRange=24h",
+    "http://localhost:7061/v1/metrics?timeRange=24h",
     headers={"Authorization": "Bearer your-api-key"}
 )
 
@@ -420,7 +420,7 @@ debate_config = {
 # The debate will automatically include Cognee insights
 # Access insights in the final results
 results_response = requests.get(
-    f"http://localhost:8080/v1/debates/{debate_config['debateId']}/results",
+    f"http://localhost:7061/v1/debates/{debate_config['debateId']}/results",
     headers={"Authorization": "Bearer your-api-key"}
 )
 
@@ -441,7 +441,7 @@ if 'cogneeInsights' in results:
 ```python
 # Get debate history
 response = requests.get(
-    "http://localhost:8080/v1/history?limit=10&startTime=2024-01-01T00:00:00Z",
+    "http://localhost:7061/v1/history?limit=10&startTime=2024-01-01T00:00:00Z",
     headers={"Authorization": "Bearer your-api-key"}
 )
 
@@ -457,7 +457,7 @@ for debate in history['debates']:
 ```python
 # Check provider health
 response = requests.get(
-    "http://localhost:8080/v1/providers",
+    "http://localhost:7061/v1/providers",
     headers={"Authorization": "Bearer your-api-key"}
 )
 
@@ -481,7 +481,7 @@ def track_debate_metrics(debate_id):
     # Monitor debate progress
     while True:
         response = requests.get(
-            f"http://localhost:8080/v1/debates/{debate_id}/status",
+            f"http://localhost:7061/v1/debates/{debate_id}/status",
             headers={"Authorization": "Bearer your-api-key"}
         )
         
@@ -497,7 +497,7 @@ def track_debate_metrics(debate_id):
     
     # Get final metrics
     results_response = requests.get(
-        f"http://localhost:8080/v1/debates/{debate_id}/results",
+        f"http://localhost:7061/v1/debates/{debate_id}/results",
         headers={"Authorization": "Bearer your-api-key"}
     )
     
@@ -592,7 +592,7 @@ def safe_debate_operation(operation, max_retries=3):
 def create_debate_safe(config):
     return safe_debate_operation(
         lambda: requests.post(
-            "http://localhost:8080/v1/debates",
+            "http://localhost:7061/v1/debates",
             headers={"Authorization": "Bearer your-api-key"},
             json=config
         ).json()
@@ -752,7 +752,7 @@ def comprehensive_health_check():
     
     # Check providers
     providers_response = requests.get(
-        "http://localhost:8080/v1/providers",
+        "http://localhost:7061/v1/providers",
         headers={"Authorization": "Bearer your-api-key"}
     )
     
@@ -764,7 +764,7 @@ def comprehensive_health_check():
     
     # Check system metrics
     metrics_response = requests.get(
-        "http://localhost:8080/v1/metrics",
+        "http://localhost:7061/v1/metrics",
         headers={"Authorization": "Bearer your-api-key"}
     )
     
@@ -774,7 +774,7 @@ def comprehensive_health_check():
     # Check database (if configured)
     try:
         response = requests.get(
-            "http://localhost:8080/v1/health",
+            "http://localhost:7061/v1/health",
             headers={"Authorization": "Bearer your-api-key"}
         )
         health_status['system'] = response.json()

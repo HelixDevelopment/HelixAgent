@@ -27,7 +27,7 @@ kubectl apply -f deploy/kubernetes/
 kubectl get pods -n helixagent
 
 # Port forward for local access
-kubectl port-forward svc/helixagent-api 8080:8080 -n helixagent
+kubectl port-forward svc/helixagent-api 8080:7061 -n helixagent
 ```
 
 ## 🏗 Production Deployment
@@ -185,7 +185,7 @@ global:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['helixagent:8080']
+      - targets: ['helixagent:7061']
     metrics_path: '/metrics'
     scrape_interval: 5s
 ```
@@ -311,10 +311,10 @@ az container create \
 ### Health Checks
 ```bash
 # Comprehensive health check
-curl http://localhost:8080/v1/health | jq '.'
+curl http://localhost:7061/v1/health | jq '.'
 
 # Provider-specific health
-curl http://localhost:8080/v1/providers/health
+curl http://localhost:7061/v1/providers/health
 ```
 
 ### Updates & Rollbacks
@@ -373,7 +373,7 @@ docker-compose logs postgres | tail -100
 docker stats --no-stream
 
 # Check response times
-curl -w "@{time_total}\n" -o /dev/null -s http://localhost:8080/health
+curl -w "@{time_total}\n" -o /dev/null -s http://localhost:7061/health
 
 # Profile application
 docker-compose exec helixagent ./helixagent -cpuprofile=cpu.prof -memprofile=mem.prof

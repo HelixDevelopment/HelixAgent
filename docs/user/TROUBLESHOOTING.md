@@ -86,12 +86,12 @@ docker compose up -d
 
 ### Port Already in Use
 
-**Error**: `listen tcp :8080: bind: address already in use`
+**Error**: `listen tcp :7061: bind: address already in use`
 
 **Solution**:
 ```bash
 # Find process using port
-lsof -i :8080
+lsof -i :7061
 # Or
 netstat -tlnp | grep 8080
 
@@ -417,7 +417,7 @@ cache:
 **Diagnosis**:
 ```bash
 # Check provider latency
-curl -w "@curl-timing.txt" -o /dev/null http://localhost:8080/v1/chat/completions -d '...'
+curl -w "@curl-timing.txt" -o /dev/null http://localhost:7061/v1/chat/completions -d '...'
 
 # Check system resources
 docker stats
@@ -443,7 +443,7 @@ docker-compose exec postgres psql -U helixagent -c "SELECT * FROM pg_stat_statem
 docker stats --no-stream helixagent
 
 # Check Go runtime stats
-curl http://localhost:8080/debug/pprof/heap > heap.prof
+curl http://localhost:7061/debug/pprof/heap > heap.prof
 go tool pprof heap.prof
 ```
 
@@ -465,7 +465,7 @@ GOGC=50 ./bin/helixagent
 **Diagnosis**:
 ```bash
 # Profile CPU
-curl http://localhost:8080/debug/pprof/profile?seconds=30 > cpu.prof
+curl http://localhost:7061/debug/pprof/profile?seconds=30 > cpu.prof
 go tool pprof cpu.prof
 ```
 
@@ -514,7 +514,7 @@ echo $JWT_SECRET
 # All services must use same JWT_SECRET
 
 # Regenerate token
-curl -X POST http://localhost:8080/auth/login \
+curl -X POST http://localhost:7061/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"password"}'
 ```
@@ -526,7 +526,7 @@ curl -X POST http://localhost:8080/auth/login \
 **Solution**:
 ```bash
 # Get new token
-curl -X POST http://localhost:8080/auth/refresh \
+curl -X POST http://localhost:7061/auth/refresh \
   -H "Authorization: Bearer $OLD_TOKEN"
 ```
 
@@ -569,7 +569,7 @@ cors:
 **Solution**:
 ```bash
 # Check provider health
-curl http://localhost:8080/api/v1/verifier/health/providers
+curl http://localhost:7061/api/v1/verifier/health/providers
 
 # Verify API keys are set
 env | grep API_KEY
@@ -629,7 +629,7 @@ streaming:
 **Diagnosis**:
 ```bash
 # Test with verbose curl
-curl -v -N -X POST http://localhost:8080/v1/chat/completions \
+curl -v -N -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -d '{"model":"gpt-4","messages":[{"role":"user","content":"hi"}],"stream":true}'
@@ -747,10 +747,10 @@ docker-compose up -d
 
 ```bash
 # System health check
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Provider status
-curl http://localhost:8080/api/v1/verifier/health/providers
+curl http://localhost:7061/api/v1/verifier/health/providers
 
 # Database connection
 docker-compose exec postgres pg_isready

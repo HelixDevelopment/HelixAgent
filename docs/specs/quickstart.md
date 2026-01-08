@@ -78,14 +78,14 @@ make dev
 go run cmd/helixagent/main.go
 ```
 
-The API will be available at `http://localhost:8080`
+The API will be available at `http://localhost:7061`
 
 ## Basic Usage
 
 ### 1. Health Check
 
 ```bash
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 ```
 
 Response:
@@ -112,13 +112,13 @@ Response:
 ### 2. List Available Providers
 
 ```bash
-curl -H "X-API-Key: your_api_key" http://localhost:8080/v1/providers
+curl -H "X-API-Key: your_api_key" http://localhost:7061/v1/providers
 ```
 
 ### 3. Simple Text Completion
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -133,7 +133,7 @@ curl -X POST http://localhost:8080/v1/completions \
 ### 4. Memory-Enhanced Completion
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -148,7 +148,7 @@ curl -X POST http://localhost:8080/v1/completions \
 ### 5. Ensemble Request
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -170,7 +170,7 @@ curl -X POST http://localhost:8080/v1/completions \
 
 Create a session:
 ```bash
-curl -X POST http://localhost:8080/v1/sessions \
+curl -X POST http://localhost:7061/v1/sessions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -181,7 +181,7 @@ curl -X POST http://localhost:8080/v1/sessions \
 
 Start a chat:
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -207,7 +207,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 Add new providers via the API:
 
 ```bash
-curl -X POST http://localhost:8080/v1/providers \
+curl -X POST http://localhost:7061/v1/providers \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your_api_key" \
   -d '{
@@ -411,17 +411,17 @@ docker-compose logs -f postgres
 
 ```bash
 # Detailed health check
-curl "http://localhost:8080/v1/health?detailed=true&components=database,cognee,providers"
+curl "http://localhost:7061/v1/health?detailed=true&components=database,cognee,providers"
 
 # Check specific provider
 curl -H "X-API-Key: your_api_key" \
-  http://localhost:8080/v1/providers/deepseek-primary
+  http://localhost:7061/v1/providers/deepseek-primary
 ```
 
 ## API Documentation
 
-- Interactive API docs: `http://localhost:8080/docs`
-- OpenAPI spec: `http://localhost:8080/v1/openapi.json`
+- Interactive API docs: `http://localhost:7061/docs`
+- OpenAPI spec: `http://localhost:7061/v1/openapi.json`
 - gRPC documentation: See `/contracts/llm-facade.proto`
 
 ## Support

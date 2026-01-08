@@ -199,7 +199,7 @@ func TestDNSDiscovery_Discover_MultipleServices(t *testing.T) {
 	mockResolver.AddHostRecord("lsp-server.local", "192.168.1.101")
 
 	// Add ACP service
-	mockResolver.AddSRVRecord("acp", "tcp", "local", "acp-server.local.", 8080, 10, 100)
+	mockResolver.AddSRVRecord("acp", "tcp", "local", "acp-server.local.", 7061, 10, 100)
 	mockResolver.AddHostRecord("acp-server.local", "192.168.1.102")
 
 	dns := &DNSDiscovery{

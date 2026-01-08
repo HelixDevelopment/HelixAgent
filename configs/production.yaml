@@ -2,7 +2,7 @@
 # This configuration is optimized for production environments
 
 server:
-  port: 8080
+  port: 7061
   host: "0.0.0.0"
   environment: "production"
   log_level: "info"

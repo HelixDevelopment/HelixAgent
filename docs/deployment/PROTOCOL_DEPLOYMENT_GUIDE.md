@@ -113,7 +113,7 @@ acp:
   enabled: true
   servers:
     - name: "opencode-agent"
-      url: "ws://localhost:8080/agent"
+      url: "ws://localhost:7061/agent"
       capabilities: ["code_execution", "file_operations"]
 
 embeddings:
@@ -154,18 +154,18 @@ go run cmd/helixagent/main.go --seed
 ### Authentication
 ```bash
 # Get API key (admin key created during initialization)
-curl http://localhost:8080/v1/security/keys
+curl http://localhost:7061/v1/security/keys
 
 # Use API key in requests
 curl -H "Authorization: Bearer sk-admin-key" \
-     http://localhost:8080/v1/protocols/servers
+     http://localhost:7061/v1/protocols/servers
 ```
 
 ### Protocol Operations
 
 #### Execute MCP Tool
 ```bash
-curl -X POST http://localhost:8080/v1/protocols/execute \
+curl -X POST http://localhost:7061/v1/protocols/execute \
   -H "Authorization: Bearer sk-admin-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -180,7 +180,7 @@ curl -X POST http://localhost:8080/v1/protocols/execute \
 
 #### Generate Embeddings
 ```bash
-curl -X POST http://localhost:8080/v1/embeddings/generate \
+curl -X POST http://localhost:7061/v1/embeddings/generate \
   -H "Authorization: Bearer sk-admin-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,7 +190,7 @@ curl -X POST http://localhost:8080/v1/embeddings/generate \
 
 #### Get Monitoring Metrics
 ```bash
-curl http://localhost:8080/v1/monitoring/metrics \
+curl http://localhost:7061/v1/monitoring/metrics \
   -H "Authorization: Bearer sk-admin-key"
 ```
 
@@ -225,7 +225,7 @@ services:
   helixagent:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:7061"
     environment:
       - DATABASE_URL=postgres://user:password@postgres/helixagent?sslmode=disable
       - REDIS_URL=redis://redis:6379
@@ -369,7 +369,7 @@ spec:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ['localhost:7061']
     metrics_path: '/v1/monitoring/metrics'
 ```
 
@@ -411,16 +411,16 @@ groups:
 ### API Key Management
 ```bash
 # Create a new API key
-curl -X POST http://localhost:8080/v1/security/keys \
+curl -X POST http://localhost:7061/v1/security/keys \
   -H "Authorization: Bearer sk-admin-key" \
   -d '{"name":"client-app","permissions":["mcp:read","embedding:execute"]}'
 
 # List API keys
-curl http://localhost:8080/v1/security/keys \
+curl http://localhost:7061/v1/security/keys \
   -H "Authorization: Bearer sk-admin-key"
 
 # Revoke API key
-curl -X POST http://localhost:8080/v1/security/revoke \
+curl -X POST http://localhost:7061/v1/security/revoke \
   -H "Authorization: Bearer sk-admin-key" \
   -d '{"key":"sk-revoke-this-key"}'
 ```
@@ -500,7 +500,7 @@ resources:
 
 #### Connection Refused
 ```
-Error: dial tcp [::1]:8080: connect: connection refused
+Error: dial tcp [::1]:7061: connect: connection refused
 ```
 **Solution**: Check if the service is running and ports are open.
 
@@ -535,11 +535,11 @@ tail -f logs/helixagent.log
 ### Health Checks
 ```bash
 # Overall health
-curl http://localhost:8080/v1/monitoring/health
+curl http://localhost:7061/v1/monitoring/health
 
 # Protocol-specific health
-curl http://localhost:8080/v1/mcp/health
-curl http://localhost:8080/v1/lsp/health
+curl http://localhost:7061/v1/mcp/health
+curl http://localhost:7061/v1/lsp/health
 ```
 
 ## Scaling Considerations

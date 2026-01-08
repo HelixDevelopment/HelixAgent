@@ -42,7 +42,7 @@ type Usage struct {
 }
 
 func testStandaloneChatCompletion(model, prompt string) {
-	baseURL := "http://localhost:8080/v1"
+	baseURL := "http://localhost:7061/v1"
 	apiKey := "test-key"
 
 	request := OpenAIRequest{
@@ -84,7 +84,7 @@ func testStandaloneChatCompletion(model, prompt string) {
 }
 
 func mainTest() {
-	baseURL := "http://localhost:8080/v1"
+	baseURL := "http://localhost:7061/v1"
 
 	// Test models endpoint
 	fmt.Println("Testing /v1/models endpoint...")

@@ -107,8 +107,8 @@ docker-compose -f docker-compose.dev.yml up -d
 go run ./cmd/helixagent/main_multi_provider.go
 
 # Test API endpoints
-curl http://localhost:8080/health
-curl http://localhost:8080/v1/models
+curl http://localhost:7061/health
+curl http://localhost:7061/v1/models
 ```
 
 ### Production Deployment

@@ -154,7 +154,7 @@ func TestACPClient_ExecuteHTTP_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	resp, err := client.ExecuteHTTP(ctx, "http://localhost:8080", req)
+	resp, err := client.ExecuteHTTP(ctx, "http://localhost:7061", req)
 
 	assert.Error(t, err)
 	assert.Nil(t, resp)
@@ -419,7 +419,7 @@ func TestNewACPManagerWithConfig(t *testing.T) {
 			{
 				ID:      "server-1",
 				Name:    "Test Server",
-				URL:     "http://localhost:8080",
+				URL:     "http://localhost:7061",
 				Enabled: true,
 			},
 		},
@@ -494,7 +494,7 @@ func TestACPManager_UnregisterServer(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Test", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Test", URL: "http://localhost:7061", Enabled: true},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -531,7 +531,7 @@ func TestACPManager_ListACPServers_WithServers(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Server 1", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Server 1", URL: "http://localhost:7061", Enabled: true},
 			{ID: "server-2", Name: "Server 2", URL: "http://localhost:8081", Enabled: false},
 		},
 	}
@@ -547,7 +547,7 @@ func TestACPManager_GetACPServer_Found(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Test Server", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Test Server", URL: "http://localhost:7061", Enabled: true},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -671,7 +671,7 @@ func TestACPManager_ExecuteACPAction_ServerDisabled(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "disabled-server", Name: "Disabled", URL: "http://localhost:8080", Enabled: false},
+			{ID: "disabled-server", Name: "Disabled", URL: "http://localhost:7061", Enabled: false},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -751,7 +751,7 @@ func TestACPManager_ValidateACPRequest_Valid(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Test", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Test", URL: "http://localhost:7061", Enabled: true},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -785,7 +785,7 @@ func TestACPManager_ValidateACPRequest_MissingAction(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Test", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Test", URL: "http://localhost:7061", Enabled: true},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -820,7 +820,7 @@ func TestACPManager_ValidateACPRequest_DisabledServer(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "disabled-server", Name: "Disabled", URL: "http://localhost:8080", Enabled: false},
+			{ID: "disabled-server", Name: "Disabled", URL: "http://localhost:7061", Enabled: false},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -942,7 +942,7 @@ func TestACPManager_GetACPStats_WithServers(t *testing.T) {
 	log := newACPManagerTestLogger()
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Server 1", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Server 1", URL: "http://localhost:7061", Enabled: true},
 			{ID: "server-2", Name: "Server 2", URL: "http://localhost:8081", Enabled: false},
 		},
 	}
@@ -983,10 +983,10 @@ func TestACPManager_isWebSocketURL(t *testing.T) {
 		url      string
 		expected bool
 	}{
-		{"ws://localhost:8080", true},
-		{"wss://localhost:8080", true},
-		{"http://localhost:8080", false},
-		{"https://localhost:8080", false},
+		{"ws://localhost:7061", true},
+		{"wss://localhost:7061", true},
+		{"http://localhost:7061", false},
+		{"https://localhost:7061", false},
 		{"invalid-url", false},
 		{"://bad-scheme", false},
 	}
@@ -1007,10 +1007,10 @@ func TestACPManager_getHTTPURL(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"ws://localhost:8080/path", "http://localhost:8080/path"},
-		{"wss://localhost:8080/path", "https://localhost:8080/path"},
-		{"http://localhost:8080/path", "http://localhost:8080/path"},
-		{"https://localhost:8080/path", "https://localhost:8080/path"},
+		{"ws://localhost:7061/path", "http://localhost:7061/path"},
+		{"wss://localhost:7061/path", "https://localhost:7061/path"},
+		{"http://localhost:7061/path", "http://localhost:7061/path"},
+		{"https://localhost:7061/path", "https://localhost:7061/path"},
 		{"://invalid", "://invalid"},
 	}
 
@@ -1029,7 +1029,7 @@ func TestACPServer_Structure(t *testing.T) {
 	server := ACPServer{
 		ID:      "test-server",
 		Name:    "Test Server",
-		URL:     "ws://localhost:8080/agent",
+		URL:     "ws://localhost:7061/agent",
 		Enabled: true,
 		Version: "1.0.0",
 		Capabilities: []ACPCapability{
@@ -1202,7 +1202,7 @@ func BenchmarkACPManager_ListACPServers(b *testing.B) {
 
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Server 1", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Server 1", URL: "http://localhost:7061", Enabled: true},
 			{ID: "server-2", Name: "Server 2", URL: "http://localhost:8081", Enabled: true},
 			{ID: "server-3", Name: "Server 3", URL: "http://localhost:8082", Enabled: false},
 		},
@@ -1222,7 +1222,7 @@ func BenchmarkACPManager_GetACPServer(b *testing.B) {
 
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Server 1", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Server 1", URL: "http://localhost:7061", Enabled: true},
 		},
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
@@ -1240,7 +1240,7 @@ func BenchmarkACPManager_GetACPStats(b *testing.B) {
 
 	cfg := &config.ACPConfig{
 		Servers: []config.ACPServerConfig{
-			{ID: "server-1", Name: "Server 1", URL: "http://localhost:8080", Enabled: true},
+			{ID: "server-1", Name: "Server 1", URL: "http://localhost:7061", Enabled: true},
 			{ID: "server-2", Name: "Server 2", URL: "http://localhost:8081", Enabled: true},
 		},
 	}

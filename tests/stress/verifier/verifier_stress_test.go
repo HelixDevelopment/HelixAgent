@@ -54,7 +54,7 @@ func TestVerifierStress(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 50,
 		Duration:    30 * time.Second,
 		RequestRate: 100,
@@ -115,7 +115,7 @@ func TestVerifierConcurrency(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 100,
 		Duration:    10 * time.Second,
 		Timeout:     30 * time.Second,
@@ -226,7 +226,7 @@ func TestVerifierBurstLoad(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 200,
 		Timeout:     30 * time.Second,
 	}
@@ -284,7 +284,7 @@ func TestVerifierMemoryStress(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 50,
 		Duration:    15 * time.Second,
 		Timeout:     30 * time.Second,
@@ -346,7 +346,7 @@ func TestVerifierBatchStress(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 20,
 		Timeout:     60 * time.Second,
 	}

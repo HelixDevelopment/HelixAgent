@@ -41,7 +41,7 @@ func TestVerifierChaos(t *testing.T) {
 	}
 
 	config := ChaosTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     30 * time.Second,
 		Concurrency: 50,
 		Duration:    20 * time.Second,
@@ -437,7 +437,7 @@ func TestVerifierCircuitBreaker(t *testing.T) {
 	}
 
 	config := ChaosTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 
@@ -479,7 +479,7 @@ func TestVerifierResourceExhaustion(t *testing.T) {
 	}
 
 	config := ChaosTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     30 * time.Second,
 		Concurrency: 100,
 	}

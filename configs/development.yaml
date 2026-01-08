@@ -2,7 +2,7 @@
 # This configuration is optimized for development environments
 
 server:
-  port: 8080
+  port: 7061
   host: "0.0.0.0"
   environment: "development"
   log_level: "debug"
@@ -139,9 +139,9 @@ security:
   cors:
     allowed_origins:
       - "http://localhost:3000"
-      - "http://localhost:8080"
+      - "http://localhost:7061"
       - "http://127.0.0.1:3000"
-      - "http://127.0.0.1:8080"
+      - "http://127.0.0.1:7061"
     allowed_methods:
       - "GET"
       - "POST"

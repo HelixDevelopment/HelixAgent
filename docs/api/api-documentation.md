@@ -7,7 +7,7 @@ HelixAgent provides a unified OpenAI-compatible API that aggregates responses fr
 ## Base URL
 
 ```
-Development: http://localhost:8080
+Development: http://localhost:7061
 Production: https://api.yourdomain.com
 ```
 
@@ -17,7 +17,7 @@ HelixAgent uses JWT-based authentication for secure access:
 
 ```bash
 # Get JWT token
-curl -X POST http://localhost:8080/auth/login \
+curl -X POST http://localhost:7061/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "your-username",
@@ -26,7 +26,7 @@ curl -X POST http://localhost:8080/auth/login \
 
 # Use token in requests
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  http://localhost:8080/v1/models
+  http://localhost:7061/v1/models
 ```
 
 ## API Endpoint Summary
@@ -1158,10 +1158,10 @@ HelixAgent provides a complete OpenAPI 3.0 specification for automated API docum
 **Local Development:**
 ```bash
 # Download the OpenAPI spec
-curl -o helixagent-openapi.yaml http://localhost:8080/openapi.yaml
+curl -o helixagent-openapi.yaml http://localhost:7061/openapi.yaml
 
 # Or view in browser
-open http://localhost:8080/swagger-ui/
+open http://localhost:7061/swagger-ui/
 ```
 
 **Production:**
@@ -1195,7 +1195,7 @@ oapi-codegen -package helixagent helixagent-openapi.yaml > client.gen.go
 import { HelixAgentClient } from './client';
 
 const client = new HelixAgentClient({
-  BASE: 'http://localhost:8080',
+  BASE: 'http://localhost:7061',
   TOKEN: 'your-jwt-token'
 });
 
@@ -1217,7 +1217,7 @@ console.log(response.choices[0].message.content);
 from helixagent_client import HelixAgentClient
 
 client = HelixAgentClient(
-    base_url="http://localhost:8080",
+    base_url="http://localhost:7061",
     token="your-jwt-token"
 )
 
@@ -1244,7 +1244,7 @@ import (
 )
 
 func main() {
-    client := helixagent.NewClient("http://localhost:8080")
+    client := helixagent.NewClient("http://localhost:7061")
     client.SetToken("your-jwt-token")
     
     req := helixagent.ChatCompletionRequest{

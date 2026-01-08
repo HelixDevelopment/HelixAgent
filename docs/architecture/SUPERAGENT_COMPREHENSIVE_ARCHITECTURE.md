@@ -225,7 +225,7 @@ The Main Challenge generates an OpenCode-compatible configuration:
     "helixagent": {
       "options": {
         "apiKey": "${HELIXAGENT_API_KEY}",
-        "baseURL": "http://localhost:8080/v1"
+        "baseURL": "http://localhost:7061/v1"
       },
       "models": {
         "helixagent-debate": {
@@ -243,7 +243,7 @@ The Main Challenge generates an OpenCode-compatible configuration:
   "mcp": {
     "helixagent-tools": {
       "type": "http",
-      "url": "http://localhost:8080/v1/mcp"
+      "url": "http://localhost:7061/v1/mcp"
     },
     "filesystem": { "type": "stdio", "command": ["npx", "..."] },
     "github": { "type": "stdio", "command": ["npx", "..."] },

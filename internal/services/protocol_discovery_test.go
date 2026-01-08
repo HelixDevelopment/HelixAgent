@@ -183,7 +183,7 @@ func TestDiscoveryACPClient_ConnectAgent_DuplicateConnection(t *testing.T) {
 	client.mu.Unlock()
 
 	ctx := context.Background()
-	err := client.ConnectAgent(ctx, "test-agent", "Test Agent", "http://localhost:8080")
+	err := client.ConnectAgent(ctx, "test-agent", "Test Agent", "http://localhost:7061")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already connected")
 }

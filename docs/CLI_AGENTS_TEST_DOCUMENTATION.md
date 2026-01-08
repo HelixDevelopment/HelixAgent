@@ -215,7 +215,7 @@ selectedStream := streamChans[0]
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HELIXAGENT_URL` | `http://localhost:8080` | HelixAgent base URL |
+| `HELIXAGENT_URL` | `http://localhost:7061` | HelixAgent base URL |
 | `BEAR_MAIL_PATH` | `/Projects/Bear-Mail` | Bear-Mail test project |
 | `HELIX_CODE_PATH` | `/Projects/HelixCode` | HelixCode project |
 

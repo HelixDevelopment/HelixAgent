@@ -136,8 +136,8 @@ gcloud run deploy helixagent --source .
 ```
 
 ### **Access Points**
-- **API**: http://localhost:8080
-- **Health Check**: http://localhost:8080/health
+- **API**: http://localhost:7061
+- **Health Check**: http://localhost:7061/health
 - **Monitoring**: http://localhost:9090 (Prometheus)
 - **Dashboards**: http://localhost:3000 (Grafana)
 

@@ -852,19 +852,19 @@ go doc -all ./... | wc -l
 #### 6.3.1 Link Checker
 ```bash
 # Check all links:
-linkchecker http://localhost:8080
+linkchecker http://localhost:7061
 ```
 
 #### 6.3.2 Accessibility Check
 ```bash
 # Run accessibility audit:
-lighthouse http://localhost:8080 --only-categories=accessibility
+lighthouse http://localhost:7061 --only-categories=accessibility
 ```
 
 #### 6.3.3 Performance Check
 ```bash
 # Run performance audit:
-lighthouse http://localhost:8080 --only-categories=performance
+lighthouse http://localhost:7061 --only-categories=performance
 ```
 
 ### 6.4 Final Checklist

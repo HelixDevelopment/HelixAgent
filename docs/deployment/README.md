@@ -84,7 +84,7 @@ services:
   helixagent:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:7061"
     environment:
       - PORT=8080
       - DB_HOST=postgres
@@ -302,7 +302,7 @@ journalctl -u helixagent -f
 ```nginx
 # /etc/nginx/sites-available/helixagent
 upstream helixagent_backend {
-    server 127.0.0.1:8080;
+    server 127.0.0.1:7061;
     server 127.0.0.1:8081;
     server 127.0.0.1:8082;
 }
@@ -380,7 +380,7 @@ rule_files:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ['localhost:7061']
     metrics_path: '/metrics'
     scrape_interval: 5s
 
@@ -544,7 +544,7 @@ sudo tail -f /var/log/redis/redis-server.log
 #### 3. High Memory Usage
 ```bash
 # Check Go memory stats
-curl http://localhost:8080/metrics | grep go_memstats
+curl http://localhost:7061/metrics | grep go_memstats
 
 # Adjust GOGC if needed
 export GOGC=50  # Lower GC threshold
@@ -553,22 +553,22 @@ export GOGC=50  # Lower GC threshold
 #### 4. Slow Response Times
 ```bash
 # Check provider health and circuit breaker status
-curl http://localhost:8080/v1/providers/claude/health
+curl http://localhost:7061/v1/providers/claude/health
 
 # Monitor circuit breakers in metrics
-curl http://localhost:8080/metrics | grep circuit_breaker
+curl http://localhost:7061/metrics | grep circuit_breaker
 
 # Check provider response times
-curl http://localhost:8080/metrics | grep llm_response_time
+curl http://localhost:7061/metrics | grep llm_response_time
 ```
 
 #### 5. Circuit Breaker Issues
 ```bash
 # Check circuit breaker states
-curl http://localhost:8080/metrics | grep circuit_breaker_state
+curl http://localhost:7061/metrics | grep circuit_breaker_state
 
 # Reset circuit breaker manually (development only)
-curl -X POST http://localhost:8080/v1/admin/providers/claude/reset-circuit-breaker
+curl -X POST http://localhost:7061/v1/admin/providers/claude/reset-circuit-breaker
 ```
 
 ### Log Analysis
@@ -580,7 +580,7 @@ journalctl -u helixagent -f
 journalctl -u helixagent | grep ERROR
 
 # Performance monitoring
-curl http://localhost:8080/metrics | grep llm_response_time
+curl http://localhost:7061/metrics | grep llm_response_time
 ```
 
 ## Performance Tuning
@@ -625,7 +625,7 @@ sudo cp new-helixagent /opt/helixagent/helixagent
 sudo systemctl start helixagent
 
 # Verify health
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Rollback if needed
 sudo systemctl stop helixagent
@@ -645,7 +645,7 @@ psql -U helixagent -d helixagent_db -f migration.sql
 ### Health Checks
 ```bash
 # Application health
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # Database health
 pg_isready -U helixagent -d helixagent_db

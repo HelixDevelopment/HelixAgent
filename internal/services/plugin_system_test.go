@@ -41,7 +41,7 @@ func TestHighAvailabilityManager_RegisterInstance(t *testing.T) {
 		instance := &ServiceInstance{
 			ID:       "instance-1",
 			Address:  "localhost",
-			Port:     8080,
+			Port:     7061,
 			Protocol: "mcp",
 		}
 
@@ -77,7 +77,7 @@ func TestHighAvailabilityManager_UnregisterInstance(t *testing.T) {
 	instance := &ServiceInstance{
 		ID:       "unregister-test",
 		Address:  "localhost",
-		Port:     8080,
+		Port:     7061,
 		Protocol: "mcp",
 	}
 	ham.RegisterInstance(instance)
@@ -114,7 +114,7 @@ func TestHighAvailabilityManager_GetInstance(t *testing.T) {
 		instance := &ServiceInstance{
 			ID:        "healthy-1",
 			Address:   "localhost",
-			Port:      8080,
+			Port:      7061,
 			Protocol:  "lsp",
 			Status:    StatusHealthy,
 			LoadScore: 10,
@@ -137,7 +137,7 @@ func TestHighAvailabilityManager_UpdateInstanceLoad(t *testing.T) {
 	instance := &ServiceInstance{
 		ID:        "load-test",
 		Address:   "localhost",
-		Port:      8080,
+		Port:      7061,
 		Protocol:  "mcp",
 		LoadScore: 50,
 	}
@@ -416,7 +416,7 @@ func TestHealthChecker_RegisterInstance(t *testing.T) {
 	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
-	hc.RegisterInstance("hc-inst-1", "localhost", 8080)
+	hc.RegisterInstance("hc-inst-1", "localhost", 7061)
 
 	hc.mu.RLock()
 	status, exists := hc.healthChecks["hc-inst-1"]
@@ -429,7 +429,7 @@ func TestHealthChecker_RegisterInstance(t *testing.T) {
 
 	assert.True(t, infoExists)
 	assert.Equal(t, "localhost", instanceInfo.Address)
-	assert.Equal(t, 8080, instanceInfo.Port)
+	assert.Equal(t, 7061, instanceInfo.Port)
 	assert.Equal(t, "http", instanceInfo.Protocol) // default protocol
 }
 
@@ -438,12 +438,12 @@ func TestHealthChecker_RegisterInstanceWithProtocol(t *testing.T) {
 	hc := NewHealthChecker(log)
 
 	t.Run("register with http protocol", func(t *testing.T) {
-		hc.RegisterInstanceWithProtocol("http-inst", "localhost", 8080, "http")
+		hc.RegisterInstanceWithProtocol("http-inst", "localhost", 7061, "http")
 
 		info := hc.GetInstanceInfo("http-inst")
 		require.NotNil(t, info)
 		assert.Equal(t, "localhost", info.Address)
-		assert.Equal(t, 8080, info.Port)
+		assert.Equal(t, 7061, info.Port)
 		assert.Equal(t, "http", info.Protocol)
 	})
 
@@ -476,7 +476,7 @@ func TestHealthChecker_UnregisterInstance(t *testing.T) {
 	log := newPluginSystemTestLogger()
 	hc := NewHealthChecker(log)
 
-	hc.RegisterInstance("hc-unreg", "localhost", 8080)
+	hc.RegisterInstance("hc-unreg", "localhost", 7061)
 	hc.UnregisterInstance("hc-unreg")
 
 	hc.mu.RLock()
@@ -513,7 +513,7 @@ func TestHealthChecker_GetHealthStatus(t *testing.T) {
 	hc := NewHealthChecker(log)
 
 	t.Run("existing instance", func(t *testing.T) {
-		hc.RegisterInstance("get-status-test", "localhost", 8080)
+		hc.RegisterInstance("get-status-test", "localhost", 7061)
 
 		status := hc.GetHealthStatus("get-status-test")
 		require.NotNil(t, status)
@@ -694,7 +694,7 @@ func TestServiceRegistry_RegisterService(t *testing.T) {
 	endpoint := &ServiceEndpoint{
 		ID:       "endpoint-1",
 		Address:  "localhost",
-		Port:     8080,
+		Port:     7061,
 		Protocol: "http",
 	}
 
@@ -709,7 +709,7 @@ func TestServiceRegistry_UnregisterService(t *testing.T) {
 	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
-	endpoint := &ServiceEndpoint{ID: "endpoint-unreg", Address: "localhost", Port: 8080}
+	endpoint := &ServiceEndpoint{ID: "endpoint-unreg", Address: "localhost", Port: 7061}
 	sr.RegisterService("api", endpoint)
 
 	sr.UnregisterService("api", "endpoint-unreg")
@@ -722,7 +722,7 @@ func TestServiceRegistry_DiscoverServices(t *testing.T) {
 	log := newPluginSystemTestLogger()
 	sr := NewServiceRegistry(log)
 
-	sr.RegisterService("api", &ServiceEndpoint{ID: "ep-1", Address: "localhost", Port: 8080})
+	sr.RegisterService("api", &ServiceEndpoint{ID: "ep-1", Address: "localhost", Port: 7061})
 	sr.RegisterService("api", &ServiceEndpoint{ID: "ep-2", Address: "localhost", Port: 8081})
 	sr.RegisterService("db", &ServiceEndpoint{ID: "ep-3", Address: "localhost", Port: 5432})
 
@@ -741,7 +741,7 @@ func TestServiceInstance_Structure(t *testing.T) {
 	instance := &ServiceInstance{
 		ID:         "inst-123",
 		Address:    "192.168.1.100",
-		Port:       8080,
+		Port:       7061,
 		Protocol:   "mcp",
 		Status:     StatusHealthy,
 		LastHealth: now,
@@ -751,7 +751,7 @@ func TestServiceInstance_Structure(t *testing.T) {
 
 	assert.Equal(t, "inst-123", instance.ID)
 	assert.Equal(t, "192.168.1.100", instance.Address)
-	assert.Equal(t, 8080, instance.Port)
+	assert.Equal(t, 7061, instance.Port)
 	assert.Equal(t, StatusHealthy, instance.Status)
 	assert.Equal(t, 25, instance.LoadScore)
 }

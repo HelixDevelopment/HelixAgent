@@ -191,7 +191,7 @@ type PerformanceConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port:           getEnv("PORT", "8080"),
+			Port:           getEnv("PORT", "7061"),
 			APIKey:         getEnv("HELIXAGENT_API_KEY", ""), // SECURITY: Must be set via environment variable
 			JWTSecret:      getEnv("JWT_SECRET", ""),         // SECURITY: Must be set via environment variable
 			ReadTimeout:    getDurationEnv("READ_TIMEOUT", 30*time.Second),

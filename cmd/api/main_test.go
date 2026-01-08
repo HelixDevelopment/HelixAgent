@@ -670,7 +670,7 @@ func TestHandleGenerateFromTemplate(t *testing.T) {
 
 	t.Run("existing template", func(t *testing.T) {
 		body := map[string]interface{}{
-			"config": map[string]interface{}{"server_url": "http://localhost:8080"},
+			"config": map[string]interface{}{"server_url": "http://localhost:7061"},
 		}
 		jsonBody, _ := json.Marshal(body)
 

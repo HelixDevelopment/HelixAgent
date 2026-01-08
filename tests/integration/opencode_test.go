@@ -33,7 +33,7 @@ func TestOpenCodeBinaryValidation(t *testing.T) {
 				"test": map[string]interface{}{
 					"options": map[string]interface{}{
 						"apiKey":  "sk-test123",
-						"baseURL": "http://localhost:8080/v1",
+						"baseURL": "http://localhost:7061/v1",
 					},
 				},
 			},
@@ -209,7 +209,7 @@ func TestOpenCodeValidationScenarios(t *testing.T) {
 				"mcp": map[string]interface{}{
 					"remote": map[string]interface{}{
 						"type": "remote",
-						"url":  "http://localhost:8080/mcp",
+						"url":  "http://localhost:7061/mcp",
 					},
 				},
 			},
@@ -453,8 +453,8 @@ func TestOpenCodeWithRunningServer(t *testing.T) {
 	}
 
 	// Check if server is running
-	if !isServerRunning("http://localhost:8080/health") {
-		t.Skip("HelixAgent server not running on localhost:8080")
+	if !isServerRunning("http://localhost:7061/health") {
+		t.Skip("HelixAgent server not running on localhost:7061")
 	}
 
 	binaryPath := findHelixAgentBinary(t)
@@ -491,7 +491,7 @@ func TestOpenCodeWithRunningServer(t *testing.T) {
 			provMap := prov.(map[string]interface{})
 			options := provMap["options"].(map[string]interface{})
 			baseURL := options["baseURL"].(string)
-			assert.True(t, strings.Contains(baseURL, "localhost:8080") || strings.Contains(baseURL, "127.0.0.1:8080"),
+			assert.True(t, strings.Contains(baseURL, "localhost:7061") || strings.Contains(baseURL, "127.0.0.1:7061"),
 				"Generated config should point to running server")
 		}
 	})

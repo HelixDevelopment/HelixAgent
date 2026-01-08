@@ -14,9 +14,9 @@ import (
 // ========================================
 
 func TestNewConfigGenerator(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
-	assert.Equal(t, "http://localhost:8080/v1", gen.baseURL)
+	assert.Equal(t, "http://localhost:7061/v1", gen.baseURL)
 	assert.Equal(t, "test-key", gen.apiKey)
 	assert.Equal(t, "helixagent-debate", gen.model)
 	assert.Equal(t, 120, gen.timeout)
@@ -24,19 +24,19 @@ func TestNewConfigGenerator(t *testing.T) {
 }
 
 func TestConfigGenerator_SetTimeout(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "model")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "model")
 	gen.SetTimeout(300)
 	assert.Equal(t, 300, gen.timeout)
 }
 
 func TestConfigGenerator_SetMaxTokens(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "model")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "model")
 	gen.SetMaxTokens(4096)
 	assert.Equal(t, 4096, gen.maxTokens)
 }
 
 func TestConfigGenerator_Validate_Success(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	err := gen.validate()
 	assert.NoError(t, err)
 }
@@ -49,7 +49,7 @@ func TestConfigGenerator_Validate_EmptyBaseURL(t *testing.T) {
 }
 
 func TestConfigGenerator_Validate_EmptyModel(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "")
 	err := gen.validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "model is required")
@@ -67,7 +67,7 @@ func TestConfigGenerator_Validate_InvalidURL(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateOpenCodeConfig(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetTimeout(180)
 
 	config, err := gen.GenerateOpenCodeConfig()
@@ -78,13 +78,13 @@ func TestConfigGenerator_GenerateOpenCodeConfig(t *testing.T) {
 
 	provider := config.Provider["helixagent"]
 	assert.Equal(t, "@ai-sdk/openai-compatible", provider.NPM)
-	assert.Equal(t, "http://localhost:8080/v1", provider.Options.BaseURL)
+	assert.Equal(t, "http://localhost:7061/v1", provider.Options.BaseURL)
 	assert.Equal(t, "test-key", provider.Options.APIKey)
 	assert.Equal(t, 180000, provider.Options.Timeout) // Converted to ms
 }
 
 func TestConfigGenerator_GenerateOpenCodeConfig_JSON(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeOpenCode)
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestConfigGenerator_GenerateOpenCodeConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateCrushConfig(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetMaxTokens(4096)
 
 	config, err := gen.GenerateCrushConfig()
@@ -118,7 +118,7 @@ func TestConfigGenerator_GenerateCrushConfig(t *testing.T) {
 
 	provider := config.Providers["helixagent"]
 	assert.Equal(t, "openai-compat", provider.Type)
-	assert.Equal(t, "http://localhost:8080/v1", provider.BaseURL)
+	assert.Equal(t, "http://localhost:7061/v1", provider.BaseURL)
 	assert.Equal(t, "test-key", provider.APIKey)
 	assert.Len(t, provider.Models, 1)
 	assert.Equal(t, "helixagent-debate", provider.Models[0].ID)
@@ -126,7 +126,7 @@ func TestConfigGenerator_GenerateCrushConfig(t *testing.T) {
 }
 
 func TestConfigGenerator_GenerateCrushConfig_JSON(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeCrush)
 	require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestConfigGenerator_GenerateCrushConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateHelixCodeConfig(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetTimeout(300).SetMaxTokens(16384)
 
 	config, err := gen.GenerateHelixCodeConfig()
@@ -162,7 +162,7 @@ func TestConfigGenerator_GenerateHelixCodeConfig(t *testing.T) {
 
 	provider := config.Providers["helixagent"]
 	assert.Equal(t, "openai-compatible", provider.Type)
-	assert.Equal(t, "http://localhost:8080/v1", provider.BaseURL)
+	assert.Equal(t, "http://localhost:7061/v1", provider.BaseURL)
 	assert.Equal(t, "test-key", provider.APIKey)
 	assert.Equal(t, "helixagent-debate", provider.Model)
 	assert.Equal(t, 16384, provider.MaxTokens)
@@ -173,7 +173,7 @@ func TestConfigGenerator_GenerateHelixCodeConfig(t *testing.T) {
 }
 
 func TestConfigGenerator_GenerateHelixCodeConfig_JSON(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeHelixCode)
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestConfigGenerator_GenerateHelixCodeConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateConfig_AllTypes(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	tests := []struct {
 		agentType AgentType
@@ -241,7 +241,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_Valid(t *testing.T) {
 			"helixagent": {
 				NPM: "@ai-sdk/openai-compatible",
 				Options: OpenCodeProviderOptions{
-					BaseURL: "http://localhost:8080/v1",
+					BaseURL: "http://localhost:7061/v1",
 					APIKey:  "test-key",
 					Timeout: 120000,
 				},
@@ -291,7 +291,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_InvalidMCPType(t *testing.T) {
 		Provider: map[string]OpenCodeProvider{
 			"test": {
 				Options: OpenCodeProviderOptions{
-					BaseURL: "http://localhost:8080",
+					BaseURL: "http://localhost:7061",
 				},
 			},
 		},
@@ -319,7 +319,7 @@ func TestConfigValidator_ValidateCrushConfig_Valid(t *testing.T) {
 		Providers: map[string]CrushProvider{
 			"helixagent": {
 				Type:    "openai-compat",
-				BaseURL: "http://localhost:8080/v1",
+				BaseURL: "http://localhost:7061/v1",
 				APIKey:  "test-key",
 				Models: []CrushModel{
 					{ID: "helixagent-debate"},
@@ -378,9 +378,9 @@ func TestConfigValidator_ValidateCrushConfig_MCPValidation(t *testing.T) {
 	}{
 		{"stdio_valid", "stdio", "npx", "", true},
 		{"stdio_missing_command", "stdio", "", "", false},
-		{"http_valid", "http", "", "http://localhost:8080", true},
+		{"http_valid", "http", "", "http://localhost:7061", true},
 		{"http_missing_url", "http", "", "", false},
-		{"sse_valid", "sse", "", "http://localhost:8080/sse", true},
+		{"sse_valid", "sse", "", "http://localhost:7061/sse", true},
 		{"sse_missing_url", "sse", "", "", false},
 		{"invalid_type", "invalid", "", "", false},
 	}
@@ -421,7 +421,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_Valid(t *testing.T) {
 		Providers: map[string]HelixCodeProvider{
 			"helixagent": {
 				Type:    "openai-compatible",
-				BaseURL: "http://localhost:8080/v1",
+				BaseURL: "http://localhost:7061/v1",
 				Model:   "helixagent-debate",
 				Timeout: 120,
 			},
@@ -459,7 +459,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_MissingModel(t *testing.T) {
 	config := &HelixCodeConfig{
 		Providers: map[string]HelixCodeProvider{
 			"test": {
-				BaseURL: "http://localhost:8080",
+				BaseURL: "http://localhost:7061",
 				// Missing Model
 			},
 		},
@@ -476,7 +476,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_InvalidDefaultProvider(t *testi
 	config := &HelixCodeConfig{
 		Providers: map[string]HelixCodeProvider{
 			"test": {
-				BaseURL: "http://localhost:8080",
+				BaseURL: "http://localhost:7061",
 				Model:   "model",
 			},
 		},
@@ -503,7 +503,7 @@ func TestConfigValidator_ValidateJSON_OpenCode(t *testing.T) {
 			"helixagent": {
 				"npm": "@ai-sdk/openai-compatible",
 				"options": {
-					"baseURL": "http://localhost:8080/v1",
+					"baseURL": "http://localhost:7061/v1",
 					"apiKey": "test-key"
 				}
 			}
@@ -523,7 +523,7 @@ func TestConfigValidator_ValidateJSON_Crush(t *testing.T) {
 		"providers": {
 			"helixagent": {
 				"type": "openai-compat",
-				"base_url": "http://localhost:8080/v1",
+				"base_url": "http://localhost:7061/v1",
 				"models": [{"id": "helixagent-debate"}]
 			}
 		}
@@ -541,7 +541,7 @@ func TestConfigValidator_ValidateJSON_HelixCode(t *testing.T) {
 		"providers": {
 			"helixagent": {
 				"type": "openai-compatible",
-				"base_url": "http://localhost:8080/v1",
+				"base_url": "http://localhost:7061/v1",
 				"model": "helixagent-debate"
 			}
 		}
@@ -598,7 +598,7 @@ func TestValidationResult_String_Invalid(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateAndValidate_AllAgents(t *testing.T) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	v := NewConfigValidator()
 
 	agents := []AgentType{AgentTypeOpenCode, AgentTypeCrush, AgentTypeHelixCode}
@@ -622,7 +622,7 @@ func TestConfigGenerator_GenerateAndValidate_AllAgents(t *testing.T) {
 // ========================================
 
 func BenchmarkConfigGenerator_GenerateOpenCodeConfig(b *testing.B) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -631,7 +631,7 @@ func BenchmarkConfigGenerator_GenerateOpenCodeConfig(b *testing.B) {
 }
 
 func BenchmarkConfigGenerator_GenerateCrushConfig(b *testing.B) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -640,7 +640,7 @@ func BenchmarkConfigGenerator_GenerateCrushConfig(b *testing.B) {
 }
 
 func BenchmarkConfigGenerator_GenerateHelixCodeConfig(b *testing.B) {
-	gen := NewConfigGenerator("http://localhost:8080/v1", "test-key", "helixagent-debate")
+	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -654,7 +654,7 @@ func BenchmarkConfigValidator_ValidateOpenCodeConfig(b *testing.B) {
 		Provider: map[string]OpenCodeProvider{
 			"helixagent": {
 				Options: OpenCodeProviderOptions{
-					BaseURL: "http://localhost:8080/v1",
+					BaseURL: "http://localhost:7061/v1",
 				},
 			},
 		},

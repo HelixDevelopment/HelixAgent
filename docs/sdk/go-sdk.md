@@ -701,7 +701,7 @@ type DebateConfig struct {
 func TestChatCompletion(t *testing.T) {
     client := helixagent.NewClient(&helixagent.Config{
         APIKey: "test-key",
-        BaseURL: "http://localhost:8080", // Use test server
+        BaseURL: "http://localhost:7061", // Use test server
     })
 
     resp, err := client.Chat.Completions.Create(context.Background(), &helixagent.ChatCompletionRequest{

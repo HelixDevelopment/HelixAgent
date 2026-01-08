@@ -31,7 +31,7 @@ func TestNewHTTP3Server_WithNilConfig(t *testing.T) {
 	server, err := NewHTTP3Server(router, nil)
 	require.NoError(t, err)
 	require.NotNil(t, server)
-	assert.Equal(t, ":8080", server.addr)
+	assert.Equal(t, ":7061", server.addr)
 	assert.True(t, server.enableHTTP3)
 	assert.True(t, server.enableHTTP2)
 	assert.NotNil(t, server.httpServer)
@@ -76,7 +76,7 @@ func TestNewHTTP3Server_HTTP3Disabled(t *testing.T) {
 	router := gin.New()
 
 	config := &HTTP3Config{
-		Address:     ":8080",
+		Address:     ":7061",
 		EnableHTTP3: false,
 		EnableHTTP2: true,
 	}
@@ -95,7 +95,7 @@ func TestNewHTTP3Server_HTTP2Disabled(t *testing.T) {
 	router := gin.New()
 
 	config := &HTTP3Config{
-		Address:     ":8080",
+		Address:     ":7061",
 		EnableHTTP3: true,
 		EnableHTTP2: false,
 	}
@@ -134,13 +134,13 @@ func TestGetServerInfo(t *testing.T) {
 		{
 			name: "HTTP3 only",
 			config: &HTTP3Config{
-				Address:     ":8080",
+				Address:     ":7061",
 				EnableHTTP3: true,
 				EnableHTTP2: false,
 			},
 			expectedHTTP3: true,
 			expectedHTTP2: false,
-			expectedAddr:  ":8080",
+			expectedAddr:  ":7061",
 		},
 		{
 			name: "HTTP2 only",
@@ -259,7 +259,7 @@ func TestHTTP3Server_Stop_WithNoServers(t *testing.T) {
 	router := gin.New()
 
 	config := &HTTP3Config{
-		Address:     ":8080",
+		Address:     ":7061",
 		EnableHTTP3: false,
 		EnableHTTP2: false,
 	}
@@ -290,10 +290,10 @@ func TestHTTP3Server_AddressValidation(t *testing.T) {
 		address string
 		valid   bool
 	}{
-		{"Valid address with port", ":8080", true},
-		{"Valid address with host and port", "localhost:8080", true},
-		{"Valid address with IP and port", "127.0.0.1:8080", true},
-		{"Empty address", "", true},                 // Defaults to :8080
+		{"Valid address with port", ":7061", true},
+		{"Valid address with host and port", "localhost:7061", true},
+		{"Valid address with IP and port", "127.0.0.1:7061", true},
+		{"Empty address", "", true},                 // Defaults to :7061
 		{"Address without port", "localhost", true}, // Might fail at runtime
 	}
 

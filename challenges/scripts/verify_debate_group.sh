@@ -19,7 +19,7 @@ CHALLENGES_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$CHALLENGES_DIR")"
 
 # Configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8080}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
 TIMEOUT_SECONDS=30
 VERBOSE=false
 JSON_OUTPUT=false
@@ -105,7 +105,7 @@ Options:
   -h, --help       Show this help message
 
 Environment Variables:
-  HELIXAGENT_URL   HelixAgent server URL (default: http://localhost:8080)
+  HELIXAGENT_URL   HelixAgent server URL (default: http://localhost:7061)
 
 Examples:
   $0                    # Run verification with default settings

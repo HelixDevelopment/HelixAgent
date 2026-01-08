@@ -49,7 +49,7 @@ func cliAgentGetBaseURL() string {
 	if url := os.Getenv("HELIXAGENT_URL"); url != "" {
 		return url
 	}
-	return "http://localhost:8080"
+	return "http://localhost:7061"
 }
 
 // cliAgentSkipIfNotRunning skips the test if HelixAgent is not running

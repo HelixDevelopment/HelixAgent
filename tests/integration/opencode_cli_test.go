@@ -1214,7 +1214,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 					Name: "Test Provider",
 					Options: map[string]interface{}{
 						"apiKey":  "sk-test",
-						"baseURL": "http://localhost:8080/v1",
+						"baseURL": "http://localhost:7061/v1",
 					},
 				},
 			},
@@ -1239,7 +1239,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 					Name: "HelixAgent AI Debate Ensemble",
 					Options: map[string]interface{}{
 						"apiKey":  "sk-test123",
-						"baseURL": "http://localhost:8080/v1",
+						"baseURL": "http://localhost:7061/v1",
 					},
 				},
 			},
@@ -1270,7 +1270,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 				"openai": map[string]interface{}{
 					"name": "Test",
 					"options": map[string]interface{}{
-						"baseURL": "http://localhost:8080/v1",
+						"baseURL": "http://localhost:7061/v1",
 						// Missing apiKey
 					},
 				},

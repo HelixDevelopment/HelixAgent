@@ -429,7 +429,7 @@ func DefaultAppConfig() *AppConfig {
 		ShowVersion:     false,
 		AutoStartDocker: true,
 		ServerHost:      "0.0.0.0",
-		ServerPort:      "8080",
+		ServerPort:      "7061",
 		Logger:          logger,
 		ShutdownSignal:  nil,
 	}
@@ -470,7 +470,7 @@ func run(appCfg *AppConfig) error {
 	if appCfg.ServerHost != "" && appCfg.ServerHost != "0.0.0.0" {
 		cfg.Server.Host = appCfg.ServerHost
 	}
-	if appCfg.ServerPort != "" && appCfg.ServerPort != "8080" {
+	if appCfg.ServerPort != "" && appCfg.ServerPort != "7061" {
 		cfg.Server.Port = appCfg.ServerPort
 	}
 
@@ -731,7 +731,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "7061"
 	}
 
 	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)

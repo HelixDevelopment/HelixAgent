@@ -392,7 +392,7 @@ func main() {
 	)
 
 	flag.StringVar(&host, "host", "localhost", "HelixAgent host")
-	flag.IntVar(&port, "port", 8080, "HelixAgent port")
+	flag.IntVar(&port, "port", 7061, "HelixAgent port")
 	flag.StringVar(&outputPath, "output", "", "Output path for generated config")
 	flag.StringVar(&validate, "validate", "", "Path to config file to validate")
 	flag.Parse()

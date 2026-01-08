@@ -254,7 +254,7 @@ protocols:
     servers:
       - id: opencode-agent
         name: OpenCode Agent
-        url: ws://localhost:8080/agent
+        url: ws://localhost:7061/agent
         enabled: true
         version: "1.0.0"
 ```
@@ -451,7 +451,7 @@ Response:
 import requests
 
 class HelixAgentClient:
-    def __init__(self, base_url="http://localhost:8080"):
+    def __init__(self, base_url="http://localhost:7061"):
         self.base_url = base_url
 
     def execute_mcp_tool(self, server_id, tool_name, args):

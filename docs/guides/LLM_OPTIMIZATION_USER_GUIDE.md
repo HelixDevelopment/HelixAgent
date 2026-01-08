@@ -100,7 +100,7 @@ curl http://localhost:30000/health # SGLang (if GPU available)
 
 ```bash
 # Standard request with all optimizations enabled (default)
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "default",
@@ -141,12 +141,12 @@ Semantic caching avoids redundant LLM calls by finding similar previous queries.
 
 ```bash
 # First request - calls LLM, caches result
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -d '{"messages": [{"role": "user", "content": "What is Python?"}]}'
 # Response time: ~2000ms
 
 # Similar request - returns cached result
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -d '{"messages": [{"role": "user", "content": "Explain Python programming language"}]}'
 # Response time: ~50ms (cache hit!)
 ```
@@ -168,17 +168,17 @@ optimization:
 
 ```bash
 # Skip cache for this request
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "X-Skip-Cache: true" \
   -d '{"messages": [...]}'
 
 # Force cache refresh
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "X-Cache-Refresh: true" \
   -d '{"messages": [...]}'
 
 # Get cache stats
-curl http://localhost:8080/v1/cache/stats
+curl http://localhost:7061/v1/cache/stats
 ```
 
 ### Expected Savings
@@ -199,7 +199,7 @@ Guarantee your LLM outputs valid JSON, match regex patterns, or conform to schem
 ### JSON Output with Schema
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{"role": "user", "content": "Generate a user profile"}],
@@ -238,7 +238,7 @@ Response is guaranteed to be valid JSON matching the schema:
 
 ```bash
 # Generate a phone number in specific format
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -d '{
     "messages": [{"role": "user", "content": "Generate a US phone number"}],
     "response_format": {
@@ -252,7 +252,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 ```bash
 # Force selection from specific options
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -d '{
     "messages": [{"role": "user", "content": "What is the best programming language?"}],
     "response_format": {
@@ -273,7 +273,7 @@ Get better streaming experience with word/sentence buffering and progress tracki
 Receives complete words instead of character fragments:
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "X-Stream-Buffer: word" \
   -d '{
     "messages": [{"role": "user", "content": "Write a poem"}],
@@ -286,7 +286,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 Receives complete sentences:
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "X-Stream-Buffer: sentence" \
   -d '{
     "messages": [{"role": "user", "content": "Explain quantum computing"}],
@@ -299,7 +299,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 Include progress information in stream:
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "X-Stream-Progress: true" \
   -d '{
     "messages": [{"role": "user", "content": "Write a long story"}],
@@ -503,7 +503,7 @@ semantic_cache:
 
 ```bash
 # Get cache statistics
-curl http://localhost:8080/v1/cache/stats
+curl http://localhost:7061/v1/cache/stats
 
 # Expected output:
 {
@@ -603,7 +603,7 @@ docker-compose restart langchain-server
 2. **Check embedding quality:**
    ```bash
    # View cache entries
-   curl http://localhost:8080/v1/cache/entries?limit=10
+   curl http://localhost:7061/v1/cache/entries?limit=10
    ```
 
 3. **Increase cache size:**
@@ -625,7 +625,7 @@ docker-compose restart langchain-server
 2. **Check schema validity:**
    ```bash
    # Validate schema
-   curl -X POST http://localhost:8080/v1/schema/validate \
+   curl -X POST http://localhost:7061/v1/schema/validate \
      -d '{"schema": {...}}'
    ```
 
@@ -689,7 +689,7 @@ sglang:
 
 ```bash
 # Prometheus metrics available at:
-curl http://localhost:8080/metrics | grep optimization
+curl http://localhost:7061/metrics | grep optimization
 
 # Key metrics:
 # optimization_cache_hit_total

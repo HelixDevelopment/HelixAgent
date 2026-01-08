@@ -589,7 +589,7 @@ docs:
 
 docs-api:
 	@echo "📚 Generating API documentation..."
-	@echo "API documentation available at: http://localhost:8080/docs"
+	@echo "API documentation available at: http://localhost:7061/docs"
 
 docs-build:
 	@echo "📚 Building comprehensive documentation..."

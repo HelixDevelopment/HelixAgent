@@ -32,17 +32,17 @@ go build -o helixagent-multi ./cmd/helixagent/main_multi_provider.go
 
 ### 3. Use with AI CLI Tools
 
-The server runs on `http://localhost:8080` and exposes OpenAI-compatible endpoints at `/v1`:
+The server runs on `http://localhost:7061` and exposes OpenAI-compatible endpoints at `/v1`:
 
 ```bash
 # Test with OpenCode
-opencode --api-key test-key --base-url http://localhost:8080/v1 --model helixagent-ensemble "Write a Go function"
+opencode --api-key test-key --base-url http://localhost:7061/v1 --model helixagent-ensemble "Write a Go function"
 
 # Test with Crush
-crush --api-key test-key --base-url http://localhost:8080/v1 --model helixagent-ensemble "Explain microservices"
+crush --api-key test-key --base-url http://localhost:7061/v1 --model helixagent-ensemble "Explain microservices"
 
 # Any OpenAI-compatible tool
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer test-key" \
   -d '{"model":"helixagent-ensemble","messages":[{"role":"user","content":"Hello"}]}'

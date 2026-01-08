@@ -365,7 +365,7 @@ func TestHealthConfig_Fields(t *testing.T) {
 func TestAPIConfig_Fields(t *testing.T) {
 	cfg := APIConfig{
 		Enabled:   true,
-		Port:      "8080",
+		Port:      "7061",
 		BasePath:  "/api",
 		JWTSecret: "secret",
 		RateLimit: RateLimitConfig{
@@ -377,7 +377,7 @@ func TestAPIConfig_Fields(t *testing.T) {
 	if !cfg.Enabled {
 		t.Error("Enabled mismatch")
 	}
-	if cfg.Port != "8080" {
+	if cfg.Port != "7061" {
 		t.Error("Port mismatch")
 	}
 	if cfg.RateLimit.RequestsPerMinute != 60 {

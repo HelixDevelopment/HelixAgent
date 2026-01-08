@@ -34,10 +34,10 @@ func TestNewOllamaProvider(t *testing.T) {
 		},
 		{
 			name:    "custom values",
-			baseURL: "http://custom:8080",
+			baseURL: "http://custom:7061",
 			model:   "custom-model",
 			expected: &OllamaProvider{
-				baseURL: "http://custom:8080",
+				baseURL: "http://custom:7061",
 				model:   "custom-model",
 				httpClient: &http.Client{
 					Timeout: 120 * time.Second,

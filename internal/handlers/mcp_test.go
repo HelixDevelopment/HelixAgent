@@ -367,7 +367,7 @@ func TestMCPHandler_RegisterMCPServer(t *testing.T) {
 		"name": "test-server",
 		"type": "test",
 		"config": map[string]interface{}{
-			"url": "http://localhost:8080",
+			"url": "http://localhost:7061",
 		},
 	}
 

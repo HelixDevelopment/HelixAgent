@@ -30,7 +30,7 @@ done
 
 # 2. Health Endpoint Verification
 echo "2. Verifying health endpoints..."
-HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7061/health)
 if [[ "$HEALTH_RESPONSE" == "200" ]]; then
     echo "✅ Health endpoint responding correctly"
 else
@@ -58,7 +58,7 @@ fi
 
 # 5. Basic Functionality Test
 echo "5. Testing basic debate functionality..."
-TEST_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/debate/advanced \
+TEST_RESPONSE=$(curl -s -X POST http://localhost:7061/api/v1/debate/advanced \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer test-key" \
   -d '{"topic": "Post-deployment test", "context": "Testing system functionality", "strategy": "consensus_building", "participants": 2}' \
@@ -99,7 +99,7 @@ echo "Load Average: $(uptime | awk -F'load average:' '{print $2}')" >> "$BASELIN
 # Application metrics
 echo "" >> "$BASELINE_FILE"
 echo "=== Application Metrics ===" >> "$BASELINE_FILE"
-curl -s http://localhost:8080/metrics | grep -E "(debate_total|consensus_rate|response_time_avg)" >> "$BASELINE_FILE"
+curl -s http://localhost:7061/metrics | grep -E "(debate_total|consensus_rate|response_time_avg)" >> "$BASELINE_FILE"
 
 # Database metrics
 echo "" >> "$BASELINE_FILE"
@@ -129,7 +129,7 @@ echo "Starting with light load and gradually increasing..."
 # Phase 1: Light Load (10 concurrent debates)
 echo "Phase 1: Light Load Testing (10 concurrent debates)"
 for i in {1..10}; do
-    curl -X POST http://localhost:8080/api/v1/debate/advanced \
+    curl -X POST http://localhost:7061/api/v1/debate/advanced \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer test-key-$i" \
       -d "{\"topic\": \"Load Test $i\", \"context\": \"Testing light load\", \"strategy\": \"consensus_building\", \"participants\": 3}" &
@@ -140,12 +140,12 @@ echo "Phase 1 completed"
 # Monitor system during test
 sleep 30
 echo "System metrics during light load:"
-curl -s http://localhost:8080/metrics | grep -E "(cpu_usage|memory_usage|active_debates)"
+curl -s http://localhost:7061/metrics | grep -E "(cpu_usage|memory_usage|active_debates)"
 
 # Phase 2: Medium Load (50 concurrent debates)
 echo "Phase 2: Medium Load Testing (50 concurrent debates)"
 for i in {1..50}; do
-    curl -X POST http://localhost:8080/api/v1/debate/advanced \
+    curl -X POST http://localhost:7061/api/v1/debate/advanced \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer medium-key-$i" \
       -d "{\"topic\": \"Medium Load Test $i\", \"context\": \"Testing medium load\", \"strategy\": \"consensus_building\", \"participants\": 3}" &
@@ -155,7 +155,7 @@ echo "Phase 2 completed"
 
 # Check system health
 echo "System health after medium load:"
-curl -s http://localhost:8080/health
+curl -s http://localhost:7061/health
 
 echo "Gradual load testing completed successfully"
 ```
@@ -395,7 +395,7 @@ sudo systemctl restart helixagent-advanced
 watch -n 5 'ps aux | grep helixagent | head -5'
 
 # Check for goroutine leaks
-curl -s http://localhost:8080/debug/pprof/goroutine?debug=1 | head -20
+curl -s http://localhost:7061/debug/pprof/goroutine?debug=1 | head -20
 
 # Restart service if necessary
 sudo systemctl restart helixagent-advanced

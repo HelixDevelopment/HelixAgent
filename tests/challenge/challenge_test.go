@@ -67,7 +67,7 @@ func TestAdvancedLoadScenarios(t *testing.T) {
 	}
 
 	config := ChallengeTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     60 * time.Second,
 		Concurrency: 100,
 	}
@@ -110,7 +110,7 @@ func TestResilienceScenarios(t *testing.T) {
 	}
 
 	config := ChallengeTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     60 * time.Second,
 		Concurrency: 50,
 	}
@@ -143,7 +143,7 @@ func TestComplexQueries(t *testing.T) {
 	}
 
 	config := ChallengeTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     30 * time.Second,
 		Concurrency: 20,
 	}
@@ -176,7 +176,7 @@ func TestConcurrencyChallenges(t *testing.T) {
 	}
 
 	config := ChallengeTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Timeout:     45 * time.Second,
 		Concurrency: 200,
 	}

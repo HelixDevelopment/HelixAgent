@@ -57,7 +57,7 @@ git push origin main  # Deploy
 ```bash
 cd Website
 npm run serve  # Start local server
-# Visit http://localhost:8080
+# Visit http://localhost:7061
 ```
 
 ### Monitor Deployment

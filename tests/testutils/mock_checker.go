@@ -27,7 +27,7 @@ func GetMockConfig() MockConfig {
 		MockLLMEnabled: os.Getenv("MOCK_LLM_ENABLED") == "true" || os.Getenv("CI") == "true",
 		PostgresURL:    getEnvOrDefault("DATABASE_URL", "postgres://helixagent:helixagent123@localhost:15432/helixagent_db?sslmode=disable"),
 		RedisURL:       getEnvOrDefault("REDIS_URL", "redis://:helixagent123@localhost:16379"),
-		ServerURL:      getEnvOrDefault("SERVER_URL", "http://localhost:8080"),
+		ServerURL:      getEnvOrDefault("SERVER_URL", "http://localhost:7061"),
 	}
 }
 
@@ -116,7 +116,7 @@ func GetMockAPIKey() string {
 
 // GetServerURL returns the server URL for testing
 func GetServerURL() string {
-	return getEnvOrDefault("SERVER_URL", "http://localhost:8080")
+	return getEnvOrDefault("SERVER_URL", "http://localhost:7061")
 }
 
 // GetDatabaseURL returns the database URL for testing

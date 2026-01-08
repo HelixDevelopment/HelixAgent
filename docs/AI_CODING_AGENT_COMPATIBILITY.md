@@ -69,7 +69,7 @@ import "dev.helix.agent/internal/config"
 
 // Create generator
 gen := config.NewConfigGenerator(
-    "http://localhost:8080/v1",
+    "http://localhost:7061/v1",
     "your-api-key",
     "helixagent-ensemble",
 )
@@ -112,7 +112,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
     "helixagent": {
       "npm": "@ai-sdk/openai-compatible",
       "options": {
-        "baseURL": "http://localhost:8080/v1",
+        "baseURL": "http://localhost:7061/v1",
         "apiKey": "your-api-key",
         "timeout": 120000
       }
@@ -129,7 +129,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
   "providers": {
     "helixagent": {
       "type": "openai-compat",
-      "base_url": "http://localhost:8080/v1",
+      "base_url": "http://localhost:7061/v1",
       "api_key": "your-api-key",
       "models": [{
         "id": "helixagent-ensemble",
@@ -149,7 +149,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
   "providers": {
     "helixagent": {
       "type": "openai-compatible",
-      "base_url": "http://localhost:8080/v1",
+      "base_url": "http://localhost:7061/v1",
       "api_key": "your-api-key",
       "model": "helixagent-ensemble",
       "max_tokens": 8192,
@@ -173,7 +173,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
   "mcp": {
     "helixagent-mcp": {
       "type": "remote",
-      "url": "http://localhost:8080/mcp",
+      "url": "http://localhost:7061/mcp",
       "headers": {
         "Authorization": "Bearer your-api-key"
       }
@@ -189,7 +189,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
   "mcp": {
     "helixagent-mcp": {
       "type": "http",
-      "url": "http://localhost:8080/mcp",
+      "url": "http://localhost:7061/mcp",
       "timeout": 30,
       "headers": {
         "Authorization": "Bearer your-api-key"
@@ -236,7 +236,7 @@ result, err := validator.ValidateJSON(config.AgentTypeOpenCode, jsonData)
 ### Manual Test
 
 ```bash
-curl -s http://localhost:8080/v1/chat/completions \
+curl -s http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "helixagent-ensemble", "messages": [{"role": "user", "content": "Say hi"}], "stream": true}'
 ```

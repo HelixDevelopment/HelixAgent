@@ -346,7 +346,7 @@ podman-compose --profile full up -d     # Everything
 
 # Or use Podman directly
 podman build -t helixagent:latest .
-podman run -d --name helixagent -p 8080:8080 helixagent:latest
+podman run -d --name helixagent -p 8080:7061 helixagent:latest
 ```
 
 ### Container Compatibility Tests

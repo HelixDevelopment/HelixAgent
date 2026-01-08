@@ -576,19 +576,19 @@ podman-compose up -d
 #### Check Server Health
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 #### Check Metrics
 
 ```bash
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 ```
 
 #### Check Provider Status
 
 ```bash
-curl http://localhost:8080/api/v1/providers
+curl http://localhost:7061/api/v1/providers
 ```
 
 #### Check Cognee Health
@@ -673,7 +673,7 @@ curl https://api.anthropic.com/v1/messages \
 **Solution:**
 ```bash
 # Find process using the port
-lsof -i :8080
+lsof -i :7061
 
 # Kill the process or use a different port
 PORT=8081 helixagent
@@ -760,7 +760,7 @@ make docker-clean-all
 
 ## Additional Resources
 
-- **API Documentation:** `http://localhost:8080/docs` (when running)
+- **API Documentation:** `http://localhost:7061/docs` (when running)
 - **Prometheus Metrics:** `http://localhost:9090` (when monitoring enabled)
 - **Grafana Dashboard:** `http://localhost:3000` (when monitoring enabled)
 - **Cognee API:** `http://localhost:8000` (when Cognee enabled)

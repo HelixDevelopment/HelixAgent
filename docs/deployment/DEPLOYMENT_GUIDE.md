@@ -27,7 +27,7 @@ cp .env.example .env
 docker-compose --profile full up -d
 
 # Verify deployment
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 ### Environment Configuration
@@ -204,13 +204,13 @@ kustomize build k8s/production | kubectl apply -f -
 
 ```bash
 # Basic health check
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Detailed health with provider status
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # Provider-specific health
-curl http://localhost:8080/v1/providers/ollama/health
+curl http://localhost:7061/v1/providers/ollama/health
 ```
 
 ### Database Health
@@ -329,7 +329,7 @@ kubectl get secrets -n helixagent-production -o yaml > secrets-backup.yaml
 4. **Slow Response Times**
    ```bash
    # Check provider health
-   curl http://localhost:8080/v1/providers
+   curl http://localhost:7061/v1/providers
 
    # View metrics
    curl http://localhost:9090/metrics | grep response_time

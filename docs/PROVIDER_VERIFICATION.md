@@ -217,7 +217,7 @@ GEMINI_API_KEY=xxx
 OPENROUTER_API_KEY=sk-xxx
 
 # HelixAgent Server
-HELIXAGENT_URL=http://localhost:8080
+HELIXAGENT_URL=http://localhost:7061
 ```
 
 ### Circuit Breaker Settings

@@ -75,7 +75,7 @@ docker-compose logs -f helixagent
 
 ```bash
 # Check if HelixAgent is running
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Expected response:
 # {"status":"healthy"}
@@ -86,7 +86,7 @@ curl http://localhost:8080/health
 ### Test Claude
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Hello, can you tell me about yourself in one sentence?",
@@ -99,7 +99,7 @@ curl -X POST http://localhost:8080/v1/completions \
 ### Test DeepSeek
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Hello, can you tell me about yourself in one sentence?",
@@ -112,7 +112,7 @@ curl -X POST http://localhost:8080/v1/completions \
 ### Test Gemini
 
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Hello, can you tell me about yourself in one sentence?",
@@ -127,7 +127,7 @@ curl -X POST http://localhost:8080/v1/completions \
 HelixAgent's magic happens with ensemble voting - it routes your request to multiple providers and returns the best response:
 
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble/completions \
+curl -X POST http://localhost:7061/v1/ensemble/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Explain quantum computing in simple terms",
@@ -179,7 +179,7 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
 ## Step 7: Try Chat Completions
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "claude-3-sonnet-20240229",
@@ -202,23 +202,23 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 ```bash
 # List all available providers
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Check provider health
-curl http://localhost:8080/v1/providers/claude/health
+curl http://localhost:7061/v1/providers/claude/health
 
 # Get available models
-curl http://localhost:8080/v1/models
+curl http://localhost:7061/v1/models
 ```
 
 ## Step 9: Monitor System Performance
 
 ```bash
 # Check enhanced health with provider status
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # View Prometheus metrics
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 ```
 
 ## Step 10: Clean Up

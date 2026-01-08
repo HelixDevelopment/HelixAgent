@@ -315,7 +315,7 @@ func TestHelixAgent_ProviderIntegration(t *testing.T) {
 
 	helixagentURL := os.Getenv("HELIXAGENT_URL")
 	if helixagentURL == "" {
-		helixagentURL = "http://localhost:8080"
+		helixagentURL = "http://localhost:7061"
 	}
 
 	apiKey := os.Getenv("HELIXAGENT_API_KEY")

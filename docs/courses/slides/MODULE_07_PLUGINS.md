@@ -407,7 +407,7 @@ func (p *MyPlugin) handleAction(c *gin.Context) {
 ```go
 func TestPlugin_Initialize(t *testing.T) {
     cfg := &Config{
-        APIEndpoint: "http://localhost:8080",
+        APIEndpoint: "http://localhost:7061",
         Timeout:     30 * time.Second,
         Enabled:     true,
     }

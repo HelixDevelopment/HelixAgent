@@ -331,7 +331,7 @@ result, err := debateService.ConductDebate(
 **REST API for Debates:**
 
 ```bash
-curl -X POST http://localhost:8080/v1/debate \
+curl -X POST http://localhost:7061/v1/debate \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "Should companies adopt multi-cloud?",
@@ -452,7 +452,7 @@ if err != nil {
 - Quality scores distribution
 
 ```bash
-curl http://localhost:8080/v1/debate/metrics
+curl http://localhost:7061/v1/debate/metrics
 ```
 
 ---

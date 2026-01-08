@@ -17,7 +17,7 @@ import (
 )
 
 // TestE2EUserWorkflow tests complete user workflows
-// Note: These tests require a running HelixAgent server on localhost:8080
+// Note: These tests require a running HelixAgent server on localhost:7061
 // To run these tests:
 // 1. Start the server: make run-dev
 // 2. Run E2E tests: make test-e2e
@@ -27,7 +27,7 @@ func TestE2EUserWorkflow(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 60 * time.Second}
 
 	// Check if server is running
@@ -210,7 +210,7 @@ func TestE2EErrorHandling(t *testing.T) {
 		t.Skip("Skipping E2E error handling test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	// Check if server is running
@@ -273,7 +273,7 @@ func TestE2EPerformance(t *testing.T) {
 		t.Skip("Skipping E2E performance test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	t.Run("ConcurrentRequests", func(t *testing.T) {

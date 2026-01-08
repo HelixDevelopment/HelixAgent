@@ -345,7 +345,7 @@ func TestOpenCodeAPIIntegration(t *testing.T) {
 	// Skip if no server is running
 	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+		serverURL = "http://localhost:7061"
 	}
 
 	// Check if server is available - use longer timeout for ensemble operations

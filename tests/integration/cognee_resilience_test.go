@@ -449,7 +449,7 @@ func TestCogneeAuthenticationResilience(t *testing.T) {
 func TestCogneeLiveIntegrationResilience(t *testing.T) {
 	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+		serverURL = "http://localhost:7061"
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}

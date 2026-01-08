@@ -74,10 +74,10 @@ services:
       dockerfile: Dockerfile
     container_name: helixagent-app
     ports:
-      - "${PORT:-8080}:8080"
+      - "${PORT:-7061}:7061"
     environment:
       # Server Configuration
-      PORT: ${PORT:-8080}
+      PORT: ${PORT:-7061}
       HELIXAGENT_API_KEY: ${HELIXAGENT_API_KEY:-development-key}
       GIN_MODE: ${GIN_MODE:-release}
 
@@ -154,7 +154,7 @@ services:
     networks:
       - helixagent-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -429,8 +429,8 @@ services:
     ports:
       - "${LANGCHAIN_PORT:-8011}:8001"
     environment:
-      - HELIXAGENT_URL=http://helixagent:8080
-      - LLM_ENDPOINT=http://helixagent:8080/v1/chat/completions
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
     networks:
       - helixagent-network
     depends_on:
@@ -461,10 +461,10 @@ services:
     ports:
       - "${LLAMAINDEX_PORT:-8012}:8002"
     environment:
-      - HELIXAGENT_URL=http://helixagent:8080
+      - HELIXAGENT_URL=http://helixagent:7061
       - COGNEE_URL=http://cognee:8000
-      - EMBEDDING_ENDPOINT=http://helixagent:8080/v1/embeddings
-      - LLM_ENDPOINT=http://helixagent:8080/v1/chat/completions
+      - EMBEDDING_ENDPOINT=http://helixagent:7061/v1/embeddings
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
     networks:
       - helixagent-network
     depends_on:
@@ -497,8 +497,8 @@ services:
     ports:
       - "${GUIDANCE_PORT:-8013}:8003"
     environment:
-      - HELIXAGENT_URL=http://helixagent:8080
-      - LLM_ENDPOINT=http://helixagent:8080/v1/chat/completions
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
     networks:
       - helixagent-network
     depends_on:
@@ -529,8 +529,8 @@ services:
     ports:
       - "${LMQL_PORT:-8014}:8004"
     environment:
-      - HELIXAGENT_URL=http://helixagent:8080
-      - LLM_ENDPOINT=http://helixagent:8080/v1/chat/completions
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
     networks:
       - helixagent-network
     depends_on:

@@ -332,49 +332,49 @@ make build
 make run-dev
 
 # 4. Verify endpoints
-curl http://localhost:8080/api/v1/models?limit=10
-curl http://localhost:8080/api/v1/models/refresh/status
+curl http://localhost:7061/api/v1/models?limit=10
+curl http://localhost:7061/api/v1/models/refresh/status
 ```
 
 ## 📚 Usage Examples
 
 ### List All Models
 ```bash
-curl http://localhost:8080/api/v1/models?page=1&limit=20
+curl http://localhost:7061/api/v1/models?page=1&limit=20
 ```
 
 ### Get Model Details
 ```bash
-curl http://localhost:8080/api/v1/models/claude-3-sonnet-20240229
+curl http://localhost:7061/api/v1/models/claude-3-sonnet-20240229
 ```
 
 ### Compare Models
 ```bash
-curl "http://localhost:8080/api/v1/models/compare?ids=claude-3-sonnet-20240229&ids=gpt-4"
+curl "http://localhost:7061/api/v1/models/compare?ids=claude-3-sonnet-20240229&ids=gpt-4"
 ```
 
 ### Get Models by Capability
 ```bash
-curl http://localhost:8080/api/v1/models/capability/vision
+curl http://localhost:7061/api/v1/models/capability/vision
 ```
 
 ### Search Models
 ```bash
-curl http://localhost:8080/api/v1/models?search=code
+curl http://localhost:7061/api/v1/models?search=code
 ```
 
 ### Trigger Refresh
 ```bash
 # Full refresh
-curl -X POST http://localhost:8080/api/v1/models/refresh
+curl -X POST http://localhost:7061/api/v1/models/refresh
 
 # Provider-specific refresh
-curl -X POST "http://localhost:8080/api/v1/models/refresh?provider=anthropic"
+curl -X POST "http://localhost:7061/api/v1/models/refresh?provider=anthropic"
 ```
 
 ### Get Refresh Status
 ```bash
-curl http://localhost:8080/api/v1/models/refresh/status?limit=5
+curl http://localhost:7061/api/v1/models/refresh/status?limit=5
 ```
 
 ## 🎓 Database Queries (For Direct Access)
@@ -419,7 +419,7 @@ ORDER BY b.score DESC;
 ### Models Not Refreshing
 ```bash
 # Check refresh status
-curl http://localhost:8080/api/v1/models/refresh/status
+curl http://localhost:7061/api/v1/models/refresh/status
 
 # Check logs for errors
 tail -f logs/helixagent.log | grep -i refresh
@@ -440,7 +440,7 @@ curl -H "Authorization: Bearer $MODELSDEV_API_KEY" https://api.models.dev/v1/pro
 ### Cache Issues
 ```bash
 # Check cache hit ratio (if metrics enabled)
-curl http://localhost:8080/metrics | grep cache
+curl http://localhost:7061/metrics | grep cache
 
 # Clear cache if needed (requires restart)
 # Or implement cache clear endpoint

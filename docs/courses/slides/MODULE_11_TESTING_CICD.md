@@ -254,7 +254,7 @@ func TestE2E_CompletionFlow(t *testing.T) {
 
     // Make real API call
     resp, err := http.Post(
-        "http://localhost:8080/v1/completion",
+        "http://localhost:7061/v1/completion",
         "application/json",
         bytes.NewReader([]byte(`{
             "prompt": "Hello, world!",

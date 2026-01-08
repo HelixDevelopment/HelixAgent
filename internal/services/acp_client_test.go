@@ -277,7 +277,7 @@ func TestWebSocketACPTransport_IsConnected(t *testing.T) {
 
 func TestHTTPACPTransport_Close(t *testing.T) {
 	transport := &HTTPACPTransport{
-		baseURL:   "http://localhost:8080",
+		baseURL:   "http://localhost:7061",
 		connected: true,
 	}
 
@@ -288,7 +288,7 @@ func TestHTTPACPTransport_Close(t *testing.T) {
 
 func TestHTTPACPTransport_Send_NotConnected(t *testing.T) {
 	transport := &HTTPACPTransport{
-		baseURL:   "http://localhost:8080",
+		baseURL:   "http://localhost:7061",
 		connected: false,
 	}
 
@@ -299,7 +299,7 @@ func TestHTTPACPTransport_Send_NotConnected(t *testing.T) {
 
 func TestHTTPACPTransport_Receive(t *testing.T) {
 	transport := &HTTPACPTransport{
-		baseURL:   "http://localhost:8080",
+		baseURL:   "http://localhost:7061",
 		connected: true,
 	}
 

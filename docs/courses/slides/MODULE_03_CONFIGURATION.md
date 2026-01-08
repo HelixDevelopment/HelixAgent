@@ -488,7 +488,7 @@ make validate-config
 ./bin/helixagent --config configs/production.yaml --dry-run
 
 # Verify provider connections
-curl http://localhost:8080/v1/providers/health
+curl http://localhost:7061/v1/providers/health
 ```
 
 ---

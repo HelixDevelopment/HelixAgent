@@ -290,7 +290,7 @@ func TestKeyFuncs(t *testing.T) {
 		{
 			name: "defaultKeyFunc with IP",
 			setup: func(c *gin.Context) {
-				c.Request.RemoteAddr = "192.168.1.1:8080"
+				c.Request.RemoteAddr = "192.168.1.1:7061"
 			},
 			expected: "ip:192.168.1.1",
 		},

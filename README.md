@@ -233,7 +233,7 @@ All containers include comprehensive health checks:
 
 #### Basic Completion
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -246,7 +246,7 @@ curl -X POST http://localhost:8080/v1/completions \
 
 #### Ensemble Request
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble/completions \
+curl -X POST http://localhost:7061/v1/ensemble/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -262,7 +262,7 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
 
 #### Streaming Request
 ```bash
-curl -X POST http://localhost:8080/v1/completions/stream \
+curl -X POST http://localhost:7061/v1/completions/stream \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -449,10 +449,10 @@ responseTime := prometheus.NewHistogramVec(
 #### Provider Authentication
 ```bash
 # Check provider configuration
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Test provider health
-curl http://localhost:8080/v1/providers/ollama/health
+curl http://localhost:7061/v1/providers/ollama/health
 
 # View logs
 docker-compose logs helixagent
@@ -470,7 +470,7 @@ docker-compose exec helixagent ./helixagent check-db
 #### Performance Issues
 ```bash
 # Monitor response times
-curl -w "@{time_total}\n" -o /dev/null -s http://localhost:8080/health
+curl -w "@{time_total}\n" -o /dev/null -s http://localhost:7061/health
 
 # Check resource usage
 docker stats helixagent
@@ -495,7 +495,7 @@ export REQUEST_LOGGING=true
 
 ### Documentation
 - **[Full Documentation](./docs/README.md)**: Complete documentation index
-- **API Reference**: http://localhost:8080/docs
+- **API Reference**: http://localhost:7061/docs
 - **[Architecture Guide](./docs/architecture/architecture.md)**: System architecture
 - **[Deployment Guide](./docs/deployment/DEPLOYMENT_GUIDE.md)**: Production deployment
 - **[Quick Start](./docs/guides/quick-start-guide.md)**: Getting started guide

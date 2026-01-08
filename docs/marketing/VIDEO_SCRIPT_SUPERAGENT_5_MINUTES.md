@@ -119,7 +119,7 @@ providers:
 
 **VISUAL**: Type and execute:
 ```bash
-curl -X POST http://localhost:8080/api/v1/completion \
+curl -X POST http://localhost:7061/api/v1/completion \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Analyze the sentiment of this customer review",

@@ -46,7 +46,7 @@ type HTTP3Config struct {
 func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) (*HTTP3Server, error) {
 	if config == nil {
 		config = &HTTP3Config{
-			Address:        ":8080",
+			Address:        ":7061",
 			EnableHTTP3:    true,
 			EnableHTTP2:    true,
 			MaxConnections: 1000,

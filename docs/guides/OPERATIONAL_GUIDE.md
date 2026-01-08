@@ -77,13 +77,13 @@ check_application_health() {
     fi
     
     # Check health endpoint
-    HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+    HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7061/health)
     if [[ "$HEALTH_RESPONSE" != "200" ]]; then
         log_and_alert "ERROR" "Health endpoint returned: $HEALTH_RESPONSE"
     fi
     
     # Check metrics endpoint
-    METRICS_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/metrics)
+    METRICS_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7061/metrics)
     if [[ "$METRICS_RESPONSE" != "200" ]]; then
         log_and_alert "ERROR" "Metrics endpoint returned: $METRICS_RESPONSE"
     fi
@@ -159,7 +159,7 @@ main "$@"
 ```bash
 # Quick health check
 systemctl status helixagent-advanced
-curl -f http://localhost:8080/health
+curl -f http://localhost:7061/health
 
 # Detailed system check
 htop  # or top
@@ -221,10 +221,10 @@ collect_metrics() {
     local load_avg=$(uptime | awk -F'load average:' '{print $2}' | cut -d, -f1 | xargs)
     
     # Application metrics
-    local debate_count=$(curl -s http://localhost:8080/metrics | grep "debate_total" | awk '{print $2}')
-    local consensus_rate=$(curl -s http://localhost:8080/metrics | grep "debate_consensus_rate" | awk '{print $2}')
-    local avg_response_time=$(curl -s http://localhost:8080/metrics | grep "debate_response_time_avg" | awk '{print $2}')
-    local error_rate=$(curl -s http://localhost:8080/metrics | grep "debate_error_rate" | awk '{print $2}')
+    local debate_count=$(curl -s http://localhost:7061/metrics | grep "debate_total" | awk '{print $2}')
+    local consensus_rate=$(curl -s http://localhost:7061/metrics | grep "debate_consensus_rate" | awk '{print $2}')
+    local avg_response_time=$(curl -s http://localhost:7061/metrics | grep "debate_response_time_avg" | awk '{print $2}')
+    local error_rate=$(curl -s http://localhost:7061/metrics | grep "debate_error_rate" | awk '{print $2}')
     
     # Create JSON metrics
     cat > "$METRICS_FILE" << EOF

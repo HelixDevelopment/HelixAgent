@@ -21,7 +21,7 @@ import (
 
 const (
 	cogneeBaseURL      = "http://localhost:8000"
-	helixagentBaseURL  = "http://localhost:8080"
+	helixagentBaseURL  = "http://localhost:7061"
 	cogneeStartTimeout = 60 * time.Second
 )
 

@@ -81,7 +81,7 @@ providers:
 **1. Enable Streaming:**
 ```bash
 # Use streaming for real-time responses
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Explain quantum computing",
@@ -163,7 +163,7 @@ CREATE INDEX idx_completions_user_id ON completions(user_id);
 **1. Monitor Token Usage:**
 ```bash
 # Check token usage statistics
-curl http://localhost:8080/metrics | grep token_usage
+curl http://localhost:7061/metrics | grep token_usage
 ```
 
 **2. Implement Token Budgets:**
@@ -333,7 +333,7 @@ export HELIXAGENT_API_KEY=$(cat new_api_key.txt)
 services:
   helixagent:
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -516,9 +516,9 @@ services:
 # Nginx configuration
 upstream helixagent {
     least_conn;
-    server helixagent1:8080;
-    server helixagent2:8080;
-    server helixagent3:8080;
+    server helixagent1:7061;
+    server helixagent2:7061;
+    server helixagent3:7061;
 }
 
 server {

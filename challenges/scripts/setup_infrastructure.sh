@@ -159,7 +159,7 @@ start_helixagent() {
 
     sleep 3
 
-    if curl -s http://localhost:8080/health | grep -q healthy; then
+    if curl -s http://localhost:7061/health | grep -q healthy; then
         print_success "HelixAgent is running"
     else
         print_error "HelixAgent failed to start"

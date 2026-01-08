@@ -174,7 +174,7 @@ log_success "  System Started Successfully!"
 log_success "=========================================="
 log_info ""
 log_info "Services available at:"
-log_info "  HelixAgent API:     http://localhost:8080"
+log_info "  HelixAgent API:     http://localhost:7061"
 log_info "  PostgreSQL:         localhost:5432"
 log_info "  Redis:              localhost:6379"
 

@@ -28,7 +28,7 @@ done
 
 # ✅ Health Endpoint Verification
 echo "✅ Verifying health endpoints..."
-HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7061/health)
 if [[ "$HEALTH_RESPONSE" == "200" ]]; then
     echo "  ✅ Health endpoint responding correctly (HTTP 200)"
 else
@@ -38,7 +38,7 @@ fi
 
 # ✅ Core Functionality Test
 echo "✅ Testing core debate functionality..."
-TEST_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/debate/advanced \
+TEST_RESPONSE=$(curl -s -X POST http://localhost:7061/api/v1/debate/advanced \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer final-test-key" \
   -d '{"topic": "Final Deployment Test", "context": "Testing system before production", "strategy": "consensus_building", "participants": 3}' \
@@ -70,7 +70,7 @@ echo "  Load Average: $(uptime | awk -F'load average:' '{print $2}')"
 
 # Check application metrics
 echo "📈 Application Metrics:"
-curl -s http://localhost:8080/metrics | grep -E "(debate_total|consensus_rate|response_time_avg)" | while read line; do
+curl -s http://localhost:7061/metrics | grep -E "(debate_total|consensus_rate|response_time_avg)" | while read line; do
     echo "  $line"
 done
 
@@ -95,7 +95,7 @@ fi
 
 # Check authentication system
 echo "✅ Testing authentication system..."
-AUTH_TEST=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/auth/test \
+AUTH_TEST=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7061/api/v1/auth/test \
   -H "Authorization: Bearer invalid-token")
 if [[ "$AUTH_TEST" == "401" ]]; then
     echo "  ✅ Authentication system properly rejecting invalid tokens"
@@ -197,7 +197,7 @@ echo "🔗 FINAL COMPLETE INTEGRATION TEST"
 
 # Test complete workflow
 echo "✅ Testing complete debate workflow..."
-DEBATE_ID=$(curl -s -X POST http://localhost:8080/api/v1/debate/advanced \
+DEBATE_ID=$(curl -s -X POST http://localhost:7061/api/v1/debate/advanced \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer final-integration-test" \
   -d '{
@@ -215,7 +215,7 @@ if [[ -n "$DEBATE_ID" ]]; then
     sleep 10
     
     # Check debate status
-    STATUS_RESPONSE=$(curl -s http://localhost:8080/api/v1/debate/$DEBATE_ID/status \
+    STATUS_RESPONSE=$(curl -s http://localhost:7061/api/v1/debate/$DEBATE_ID/status \
       -H "Authorization: Bearer final-integration-test")
     
     echo "  ✅ Debate status: $(echo $STATUS_RESPONSE | jq -r '.status' 2>/dev/null)"
@@ -249,7 +249,7 @@ echo "  Current Load Average: $(uptime | awk -F'load average:' '{print $2}')"
 
 # Application metrics
 echo "Application Metrics:"
-curl -s http://localhost:8080/metrics | grep -E "(debate_total|consensus_rate|response_time_avg|error_rate)" | while read line; do
+curl -s http://localhost:7061/metrics | grep -E "(debate_total|consensus_rate|response_time_avg|error_rate)" | while read line; do
     echo "  $line"
 done
 

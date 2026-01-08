@@ -26,7 +26,7 @@ nano .env
 make docker-full
 
 # Verify deployment
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 ### What's Included
@@ -96,13 +96,13 @@ services:
     env_file:
       - .env.prod
     ports:
-      - "8080:8080"
+      - "8080:7061"
     depends_on:
       - postgres
       - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -426,9 +426,9 @@ podman-compose up -d
 ```nginx
 upstream helixagent_backend {
     least_conn;
-    server helixagent-1:8080;
-    server helixagent-2:8080;
-    server helixagent-3:8080;
+    server helixagent-1:7061;
+    server helixagent-2:7061;
+    server helixagent-3:7061;
 }
 
 server {
@@ -523,7 +523,7 @@ rule_files:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['helixagent:8080']
+      - targets: ['helixagent:7061']
     scrape_interval: 5s
     metrics_path: '/metrics'
 
@@ -679,7 +679,7 @@ helixagent:
 docker-compose exec redis redis-cli ping
 
 # Monitor API response times
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8080/health
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:7061/health
 ```
 
 ## Performance Tuning
@@ -734,7 +734,7 @@ docker-compose pull
 docker-compose up -d --no-deps helixagent
 
 # Verify health
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 ### Zero-Downtime Deployment

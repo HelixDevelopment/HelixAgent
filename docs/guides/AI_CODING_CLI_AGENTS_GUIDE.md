@@ -12280,7 +12280,7 @@ scrape_configs:
     
   - job_name: 'docker-containers'
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets: ['cadvisor:7061']
     
   - job_name: 'node-exporter'
     static_configs:

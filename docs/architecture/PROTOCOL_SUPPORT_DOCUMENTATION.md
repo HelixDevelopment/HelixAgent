@@ -288,7 +288,7 @@ Response:
   {
     "id": "opencode-1",
     "name": "OpenCode Agent",
-    "url": "ws://localhost:8080/agent",
+    "url": "ws://localhost:7061/agent",
     "enabled": true,
     "version": "1.0.0"
   }
@@ -401,7 +401,7 @@ import requests
 import json
 
 class HelixAgentClient:
-    def __init__(self, base_url="http://localhost:8080"):
+    def __init__(self, base_url="http://localhost:7061"):
         self.base_url = base_url
 
     def execute_protocol_request(self, protocol_type, server_id, tool_name, arguments):
@@ -454,7 +454,7 @@ print("Metrics:", json.dumps(metrics, indent=2))
 
 ```javascript
 class HelixAgentClient {
-    constructor(baseURL = 'http://localhost:8080') {
+    constructor(baseURL = 'http://localhost:7061') {
         this.baseURL = baseURL;
     }
 
@@ -569,7 +569,7 @@ func (c *HelixAgentClient) ExecuteProtocolRequest(req ProtocolRequest) (*Protoco
 }
 
 func main() {
-    client := NewHelixAgentClient("http://localhost:8080")
+    client := NewHelixAgentClient("http://localhost:7061")
 
     // Execute MCP tool
     req := ProtocolRequest{
@@ -614,7 +614,7 @@ LSP_DEFAULT_LANGUAGE=go
 LSP_SERVER_TIMEOUT=10s
 
 # ACP Configuration
-ACP_DEFAULT_URL=ws://localhost:8080/agent
+ACP_DEFAULT_URL=ws://localhost:7061/agent
 ACP_CONNECTION_TIMEOUT=30s
 ACP_HEARTBEAT_INTERVAL=30s
 
@@ -651,7 +651,7 @@ protocols:
     servers:
       - id: opencode-agent
         name: OpenCode Agent
-        url: ws://localhost:8080/agent
+        url: ws://localhost:7061/agent
         enabled: true
   embeddings:
     enabled: true
@@ -794,10 +794,10 @@ Regular health checks ensure protocol servers are operational:
 
 ```bash
 # Check all protocols
-curl http://localhost:8080/v1/protocols/health
+curl http://localhost:7061/v1/protocols/health
 
 # Check specific protocol
-curl http://localhost:8080/v1/mcp/health
+curl http://localhost:7061/v1/mcp/health
 ```
 
 ## Contributing

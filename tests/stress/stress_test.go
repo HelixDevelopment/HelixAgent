@@ -53,7 +53,7 @@ func TestHTTPStress(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 50,
 		Duration:    30 * time.Second,
 		RequestRate: 100, // 100 req/sec
@@ -108,7 +108,7 @@ func TestMemoryStress(t *testing.T) {
 	}
 
 	config := StressTestConfig{
-		BaseURL:     "http://localhost:8080",
+		BaseURL:     "http://localhost:7061",
 		Concurrency: 100,
 		Duration:    60 * time.Second,
 		RequestRate: 200, // 200 req/sec
@@ -160,7 +160,7 @@ func TestConnectionStress(t *testing.T) {
 		t.Skip("Skipping connection stress test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	// Skip if server is not available
 	if !checkServerAvailable(baseURL, 5*time.Second) {
 		t.Skip("Skipping stress test - server not available at " + baseURL)
@@ -212,7 +212,7 @@ func TestConnectionStress(t *testing.T) {
 	})
 
 	t.Run("ConnectionReuse", func(t *testing.T) {
-		baseURL := "http://localhost:8080"
+		baseURL := "http://localhost:7061"
 		iterations := 100
 
 		client := &http.Client{
@@ -251,7 +251,7 @@ func TestLoadGradual(t *testing.T) {
 	}
 
 	// Skip if server is not available
-	if !checkServerAvailable("http://localhost:8080", 5*time.Second) {
+	if !checkServerAvailable("http://localhost:7061", 5*time.Second) {
 		t.Skip("Skipping stress test - server not available")
 	}
 
@@ -270,7 +270,7 @@ func TestLoadGradual(t *testing.T) {
 
 	for _, stage := range stages {
 		config := StressTestConfig{
-			BaseURL:     "http://localhost:8080",
+			BaseURL:     "http://localhost:7061",
 			Concurrency: stage.concurrency,
 			Duration:    stage.duration,
 			RequestRate: stage.concurrency * 2, // 2x concurrent connections

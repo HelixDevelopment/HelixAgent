@@ -76,7 +76,7 @@
    ```bash
    cd Website
    npm run serve
-   # Visit http://localhost:8080
+   # Visit http://localhost:7061
    ```
 
 ## CUSTOM DOMAIN SETUP (Optional)

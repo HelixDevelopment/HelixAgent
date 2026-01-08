@@ -831,13 +831,13 @@ services:
       - helixagent_logs:/var/log/helixagent/advanced
       - helixagent_data:/var/lib/helixagent/advanced
     ports:
-      - "8080:8080"
+      - "8080:7061"
       - "8443:8443"
     networks:
       - helixagent-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -893,16 +893,16 @@ data:
 
 ```bash
 # Basic health check
-curl -f http://localhost:8080/health
+curl -f http://localhost:7061/health
 
 # Detailed health check
-curl -f http://localhost:8080/health/detailed
+curl -f http://localhost:7061/health/detailed
 
 # Readiness check
-curl -f http://localhost:8080/ready
+curl -f http://localhost:7061/ready
 
 # Metrics endpoint
-curl -f http://localhost:8080/metrics
+curl -f http://localhost:7061/metrics
 ```
 
 ### 2. Monitoring Setup
@@ -920,7 +920,7 @@ global:
 scrape_configs:
   - job_name: 'helixagent-advanced'
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ['localhost:7061']
     metrics_path: '/metrics'
     scrape_interval: 10s
     
@@ -993,10 +993,10 @@ sudo systemctl status helixagent-advanced
 sudo journalctl -u helixagent-advanced -f
 
 # Test health endpoint
-curl -f http://localhost:8080/health
+curl -f http://localhost:7061/health
 
 # Test advanced debate endpoint
-curl -X POST http://localhost:8080/api/v1/debate/advanced \
+curl -X POST http://localhost:7061/api/v1/debate/advanced \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -1015,11 +1015,11 @@ curl -X POST http://localhost:8080/api/v1/debate/advanced \
 sudo apt install apache2-utils
 
 # Test basic load
-ab -n 1000 -c 10 http://localhost:8080/health
+ab -n 1000 -c 10 http://localhost:7061/health
 
 # Test debate endpoint load
 ab -n 100 -c 5 -T 'application/json' -H 'Authorization: Bearer YOUR_API_KEY' \
-  -p test-debate.json http://localhost:8080/api/v1/debate/advanced
+  -p test-debate.json http://localhost:7061/api/v1/debate/advanced
 ```
 
 ## 🚨 Troubleshooting
@@ -1055,7 +1055,7 @@ iostat -x 1
 free -h
 
 # Check application metrics
-curl http://localhost:8080/metrics | grep -E "(cpu|memory|goroutine)"
+curl http://localhost:7061/metrics | grep -E "(cpu|memory|goroutine)"
 ```
 
 ## 📚 Additional Resources

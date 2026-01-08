@@ -25,7 +25,7 @@ cp .env.example .env
 docker-compose up -d
 
 # Check health
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 ## Option 2: Local Development
@@ -55,7 +55,7 @@ make build
 ### Chat Completion
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4",
@@ -68,7 +68,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ### Ensemble Chat (Multiple Providers)
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "helixagent-ensemble",
@@ -86,7 +86,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 ```bash
 # Start a debate
-curl -X POST http://localhost:8080/v1/debates \
+curl -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "Is AI beneficial for society?",
@@ -188,15 +188,15 @@ HelixAgent includes LLMsVerifier for model verification and scoring:
 
 ```bash
 # Verify a model
-curl -X POST http://localhost:8080/api/v1/verifier/verify \
+curl -X POST http://localhost:7061/api/v1/verifier/verify \
   -H "Content-Type: application/json" \
   -d '{"model_id": "gpt-4", "provider": "openai"}'
 
 # Get model score
-curl http://localhost:8080/api/v1/verifier/scores/gpt-4
+curl http://localhost:7061/api/v1/verifier/scores/gpt-4
 
 # Check code visibility
-curl -X POST http://localhost:8080/api/v1/verifier/code-visibility \
+curl -X POST http://localhost:7061/api/v1/verifier/code-visibility \
   -H "Content-Type: application/json" \
   -d '{
     "code": "def hello(): print(\"world\")",

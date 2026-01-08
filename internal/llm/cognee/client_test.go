@@ -16,14 +16,14 @@ import (
 func TestNewClient(t *testing.T) {
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{
-			BaseURL: "http://localhost:8080",
+			BaseURL: "http://localhost:7061",
 			APIKey:  "test-api-key",
 		},
 	}
 
 	client := NewClient(cfg)
 	require.NotNil(t, client)
-	assert.Equal(t, "http://localhost:8080", client.baseURL)
+	assert.Equal(t, "http://localhost:7061", client.baseURL)
 	assert.Equal(t, "test-api-key", client.apiKey)
 	assert.NotNil(t, client.client)
 	assert.Equal(t, 30*time.Second, client.client.Timeout)
@@ -43,12 +43,12 @@ func TestNewClientWithEmptyConfig(t *testing.T) {
 func TestGetBaseURL(t *testing.T) {
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{
-			BaseURL: "http://test:8080",
+			BaseURL: "http://test:7061",
 		},
 	}
 
 	client := NewClient(cfg)
-	assert.Equal(t, "http://test:8080", client.GetBaseURL())
+	assert.Equal(t, "http://test:7061", client.GetBaseURL())
 }
 
 func TestAddMemory(t *testing.T) {

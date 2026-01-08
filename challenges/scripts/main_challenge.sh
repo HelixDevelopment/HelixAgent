@@ -1122,7 +1122,7 @@ phase5_system_verification() {
   "timestamp": "$(date -Iseconds)",
   "system": "HelixAgent",
   "version": "1.0.0",
-  "endpoint": "http://localhost:8080/v1",
+  "endpoint": "http://localhost:7061/v1",
   "verified": true,
   "tests": {
     "chat_completion": {"passed": true, "response_time_ms": 1200},
@@ -1142,7 +1142,7 @@ EOF
 
 **Generated**: $(date '+%Y-%m-%d %H:%M:%S')
 **System**: HelixAgent with AI Debate Group
-**Endpoint**: http://localhost:8080/v1
+**Endpoint**: http://localhost:7061/v1
 
 ## Verification Summary
 
@@ -1376,7 +1376,7 @@ SHOWGROUP
 
 ## OpenCode Configuration
 
-- **Endpoint**: http://localhost:8080/v1
+- **Endpoint**: http://localhost:7061/v1
 - **Model**: helixagent/helixagent-debate
 - **MCP Servers**: filesystem, github, memory, helixagent-tools
 - **Verification**: All underlying models verified via real API calls

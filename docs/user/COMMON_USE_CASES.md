@@ -5,7 +5,7 @@
 Use multiple LLM providers to get the best response:
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "helixagent-ensemble",
@@ -32,7 +32,7 @@ Have AI models debate a topic to explore all perspectives:
 
 ```bash
 # Start debate
-curl -X POST http://localhost:8080/v1/debates \
+curl -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "Should autonomous vehicles be fully legalized?",
@@ -45,7 +45,7 @@ curl -X POST http://localhost:8080/v1/debates \
   }'
 
 # Get debate results
-curl http://localhost:8080/v1/debates/{debate_id}/results
+curl http://localhost:7061/v1/debates/{debate_id}/results
 ```
 
 **Results include:**
@@ -60,7 +60,7 @@ Verify a model works correctly before using it:
 
 ```bash
 # Full verification
-curl -X POST http://localhost:8080/api/v1/verifier/verify \
+curl -X POST http://localhost:7061/api/v1/verifier/verify \
   -H "Content-Type: application/json" \
   -d '{
     "model_id": "gpt-4",
@@ -69,7 +69,7 @@ curl -X POST http://localhost:8080/api/v1/verifier/verify \
   }'
 
 # Code visibility test only
-curl -X POST http://localhost:8080/api/v1/verifier/code-visibility \
+curl -X POST http://localhost:7061/api/v1/verifier/code-visibility \
   -H "Content-Type: application/json" \
   -d '{
     "code": "def calculate_sum(a, b): return a + b",
@@ -85,10 +85,10 @@ Find the best model for your use case:
 
 ```bash
 # Get top 5 models
-curl "http://localhost:8080/api/v1/verifier/scores/top?limit=5"
+curl "http://localhost:7061/api/v1/verifier/scores/top?limit=5"
 
 # Compare specific models
-curl -X POST http://localhost:8080/api/v1/verifier/scores/compare \
+curl -X POST http://localhost:7061/api/v1/verifier/scores/compare \
   -H "Content-Type: application/json" \
   -d '{
     "model_ids": ["gpt-4", "claude-3-opus", "gemini-pro"]
@@ -101,16 +101,16 @@ Check provider status before routing traffic:
 
 ```bash
 # All providers health
-curl http://localhost:8080/api/v1/verifier/health/providers
+curl http://localhost:7061/api/v1/verifier/health/providers
 
 # Specific provider
-curl http://localhost:8080/api/v1/verifier/health/providers/openai
+curl http://localhost:7061/api/v1/verifier/health/providers/openai
 
 # Get healthy providers only
-curl http://localhost:8080/api/v1/verifier/health/providers/healthy
+curl http://localhost:7061/api/v1/verifier/health/providers/healthy
 
 # Get fastest available provider
-curl -X POST http://localhost:8080/api/v1/verifier/health/fastest \
+curl -X POST http://localhost:7061/api/v1/verifier/health/fastest \
   -H "Content-Type: application/json" \
   -d '{"providers": ["openai", "anthropic", "google"]}'
 ```
@@ -120,7 +120,7 @@ curl -X POST http://localhost:8080/api/v1/verifier/health/fastest \
 Get responses as they're generated:
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -N \
   -d '{
@@ -136,7 +136,7 @@ Process multiple requests efficiently:
 
 ```bash
 # Batch model verification
-curl -X POST http://localhost:8080/api/v1/verifier/batch-verify \
+curl -X POST http://localhost:7061/api/v1/verifier/batch-verify \
   -H "Content-Type: application/json" \
   -d '{
     "models": [
@@ -147,7 +147,7 @@ curl -X POST http://localhost:8080/api/v1/verifier/batch-verify \
   }'
 
 # Batch scoring
-curl -X POST http://localhost:8080/api/v1/verifier/scores/batch \
+curl -X POST http://localhost:7061/api/v1/verifier/scores/batch \
   -H "Content-Type: application/json" \
   -d '{"model_ids": ["gpt-4", "claude-3-opus", "gemini-pro"]}'
 ```
@@ -158,10 +158,10 @@ Adjust scoring to prioritize what matters to you:
 
 ```bash
 # View current weights
-curl http://localhost:8080/api/v1/verifier/scores/weights
+curl http://localhost:7061/api/v1/verifier/scores/weights
 
 # Update weights (must sum to 1.0)
-curl -X PUT http://localhost:8080/api/v1/verifier/scores/weights \
+curl -X PUT http://localhost:7061/api/v1/verifier/scores/weights \
   -H "Content-Type: application/json" \
   -d '{
     "response_speed": 0.30,
@@ -198,7 +198,7 @@ from helixagent import HelixAgent
 
 client = HelixAgent(
     api_key="your-key",
-    base_url="http://localhost:8080"
+    base_url="http://localhost:7061"
 )
 
 # Ensemble chat
@@ -230,7 +230,7 @@ print(f"Consensus: {results.consensus}")
 ```go
 client := helixagent.NewClient(&helixagent.Config{
     APIKey:  "your-key",
-    BaseURL: "http://localhost:8080",
+    BaseURL: "http://localhost:7061",
 })
 
 // Ensemble chat

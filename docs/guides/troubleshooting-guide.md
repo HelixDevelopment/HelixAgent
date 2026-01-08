@@ -3,7 +3,7 @@
 ## 🚨 Quick Diagnosis
 
 ### First Steps
-1. **Check if HelixAgent is running**: `curl http://localhost:8080/health`
+1. **Check if HelixAgent is running**: `curl http://localhost:7061/health`
 2. **Check logs**: `docker-compose logs helixagent` or `tail -f logs/helixagent.log`
 3. **Verify configuration**: `make validate-config`
 
@@ -23,7 +23,7 @@
 **Port Conflict:**
 ```bash
 # Check what's using port 8080
-sudo lsof -i :8080
+sudo lsof -i :7061
 
 # Kill the process or change HelixAgent port
 export PORT=8081
@@ -69,7 +69,7 @@ make config-report
 **Authentication Issues:**
 ```bash
 # Test authentication endpoint
-curl -X POST http://localhost:8080/v1/auth/login \
+curl -X POST http://localhost:7061/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password"}'
 
@@ -83,7 +83,7 @@ openssl rand -base64 32
 **Endpoint Not Found:**
 ```bash
 # List all available endpoints
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # Check router configuration
 make show-routes
@@ -118,10 +118,10 @@ grep -i panic logs/helixagent.log
 **Provider Not Available:**
 ```bash
 # List available providers
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Check provider health
-curl http://localhost:8080/v1/providers/claude/health
+curl http://localhost:7061/v1/providers/claude/health
 
 # Verify API keys in .env
 cat .env | grep API_KEY
@@ -246,7 +246,7 @@ export GC_PERCENT=100
 
 # Enable memory profiling
 export ENABLE_PPROF=true
-# Then access: http://localhost:8080/debug/pprof/heap
+# Then access: http://localhost:7061/debug/pprof/heap
 ```
 
 **Performance Bottlenecks:**
@@ -256,10 +256,10 @@ export ENABLE_TRACING=true
 export TRACING_SAMPLE_RATE=0.1
 
 # Check response times
-curl -w "\\nTime: %{time_total}s\\n" http://localhost:8080/health
+curl -w "\\nTime: %{time_total}s\\n" http://localhost:7061/health
 
 # Monitor with Prometheus
-curl http://localhost:8080/metrics | grep helixagent
+curl http://localhost:7061/metrics | grep helixagent
 ```
 
 **Cache Issues:**
@@ -271,7 +271,7 @@ docker-compose exec redis redis-cli ping
 make clear-cache
 
 # Monitor cache hit rate
-curl http://localhost:8080/metrics | grep cache
+curl http://localhost:7061/metrics | grep cache
 ```
 
 ### 6. **Authentication & Security Issues**
@@ -293,7 +293,7 @@ echo "JWT_SECRET length: ${#JWT_SECRET}"
 echo "YOUR_JWT_TOKEN" | cut -d '.' -f 2 | base64 -d | jq
 
 # Generate new tokens
-curl -X POST http://localhost:8080/v1/auth/refresh \
+curl -X POST http://localhost:7061/v1/auth/refresh \
   -H "Authorization: Bearer YOUR_REFRESH_TOKEN"
 ```
 
@@ -304,7 +304,7 @@ export RATE_LIMIT_REQUESTS_PER_MINUTE=120
 export RATE_LIMIT_BURST_SIZE=20
 
 # Check current rate limits
-curl -I http://localhost:8080/v1/chat/completions
+curl -I http://localhost:7061/v1/chat/completions
 
 # Implement client-side retry with exponential backoff
 ```
@@ -316,7 +316,7 @@ export CORS_ALLOWED_ORIGINS="http://localhost:3000,https://yourdomain.com"
 export CORS_ALLOWED_METHODS="GET,POST,PUT,DELETE,OPTIONS"
 
 # Test CORS headers
-curl -I -X OPTIONS http://localhost:8080/v1/chat/completions
+curl -I -X OPTIONS http://localhost:7061/v1/chat/completions
 ```
 
 ### 7. **Deployment Issues**
@@ -436,13 +436,13 @@ make performance-report
 
 ```bash
 # View Prometheus metrics
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 
 # View health endpoint
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # View detailed health
-curl http://localhost:8080/v1/health/detailed
+curl http://localhost:7061/v1/health/detailed
 ```
 
 ### Grafana Dashboards
@@ -474,9 +474,9 @@ export ENABLE_PPROF=true
 make restart
 
 # Access debug endpoints
-# Profiling: http://localhost:8080/debug/pprof/
-# Metrics: http://localhost:8080/debug/vars
-# Config: http://localhost:8080/debug/config
+# Profiling: http://localhost:7061/debug/pprof/
+# Metrics: http://localhost:7061/debug/vars
+# Config: http://localhost:7061/debug/config
 ```
 
 ### Network Diagnostics
@@ -633,7 +633,7 @@ make monthly-optimize
 ## 📋 Troubleshooting Checklist
 
 ### Quick Checklist
-- [ ] HelixAgent running? `curl http://localhost:8080/health`
+- [ ] HelixAgent running? `curl http://localhost:7061/health`
 - [ ] Database connected? `docker-compose ps postgres`
 - [ ] API keys valid? `make test-providers`
 - [ ] Enough resources? `docker stats` or `kubectl top pods`

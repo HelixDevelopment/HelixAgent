@@ -499,12 +499,12 @@ func TestMCPClient_CallTool(t *testing.T) {
 // Test HTTPTransport
 func TestHTTPTransport_Structure(t *testing.T) {
 	transport := &HTTPTransport{
-		baseURL:   "http://localhost:8080",
+		baseURL:   "http://localhost:7061",
 		headers:   map[string]string{"Authorization": "Bearer token"},
 		connected: true,
 	}
 
-	assert.Equal(t, "http://localhost:8080", transport.baseURL)
+	assert.Equal(t, "http://localhost:7061", transport.baseURL)
 	assert.Equal(t, "Bearer token", transport.headers["Authorization"])
 	assert.True(t, transport.connected)
 }

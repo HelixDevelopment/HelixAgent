@@ -70,7 +70,7 @@ const client = new HelixAgent({
 // Custom configuration
 const client = new HelixAgent({
   apiKey: 'your-api-key',
-  baseURL: 'http://localhost:8080',
+  baseURL: 'http://localhost:7061',
   timeout: 30000,
   maxRetries: 3
 });

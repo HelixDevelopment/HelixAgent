@@ -127,11 +127,11 @@ Authorization: Bearer <your-jwt-token>
 ```bash
 # Get knowledge graph data
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     "http://localhost:8080/v1/cognee/visualize?dataset=default&format=json"
+     "http://localhost:7061/v1/cognee/visualize?dataset=default&format=json"
 
 # List datasets
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     "http://localhost:8080/v1/cognee/datasets"
+     "http://localhost:7061/v1/cognee/datasets"
 ```
 
 ## Architecture Benefits

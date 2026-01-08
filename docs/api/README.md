@@ -17,7 +17,7 @@ The HelixAgent Debate API will provide comprehensive endpoints for AI-powered de
 
 ```
 Production: https://api.helixagent.ai/v1
-Development: http://localhost:8080/v1
+Development: http://localhost:7061/v1
 ```
 
 ## Authentication

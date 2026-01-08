@@ -22,7 +22,7 @@ func TestVerifierE2EWorkflow(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 60 * time.Second}
 
 	// Check if server is running
@@ -255,7 +255,7 @@ func TestVerifierIntegrationWithChat(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 60 * time.Second}
 
 	// Check if server is running
@@ -304,7 +304,7 @@ func TestVerifierEndpointDiscovery(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	baseURL := "http://localhost:8080"
+	baseURL := "http://localhost:7061"
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	// Check if server is running

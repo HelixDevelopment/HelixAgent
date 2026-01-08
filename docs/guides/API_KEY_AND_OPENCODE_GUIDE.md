@@ -85,7 +85,7 @@ The generated configuration follows the LLMsVerifier-validated schema:
       "name": "HelixAgent AI Debate Ensemble",
       "options": {
         "apiKey": "sk-...",
-        "baseURL": "http://localhost:8080/v1",
+        "baseURL": "http://localhost:7061/v1",
         "timeout": 600000
       }
     }

@@ -62,7 +62,7 @@ nano .env  # Add your API keys
 docker-compose up -d
 
 # Verify installation
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 ```
 
 ### Docker Profiles
@@ -378,10 +378,10 @@ providers:
 
 ```bash
 # List all configured providers
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # List available models
-curl http://localhost:8080/v1/models
+curl http://localhost:7061/v1/models
 ```
 
 ---
@@ -391,7 +391,7 @@ curl http://localhost:8080/v1/models
 ### Basic Request
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-key" \
   -d '{
@@ -458,7 +458,7 @@ Ensemble mode aggregates responses from multiple LLM providers to produce higher
 ### Basic Ensemble Request
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "helixagent-ensemble",
@@ -554,7 +554,7 @@ The AI Debate system enables multi-round debates between LLM models to explore d
 ### Starting a Debate
 
 ```bash
-curl -X POST http://localhost:8080/v1/debates \
+curl -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "Is renewable energy more cost-effective than fossil fuels?",
@@ -586,13 +586,13 @@ curl -X POST http://localhost:8080/v1/debates \
 ### Checking Debate Status
 
 ```bash
-curl http://localhost:8080/v1/debates/{debate_id}
+curl http://localhost:7061/v1/debates/{debate_id}
 ```
 
 ### Getting Debate Results
 
 ```bash
-curl http://localhost:8080/v1/debates/{debate_id}/results
+curl http://localhost:7061/v1/debates/{debate_id}/results
 ```
 
 ### Results Format
@@ -659,7 +659,7 @@ LLMsVerifier integration allows you to test and score models before production u
 ### Full Model Verification
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/verifier/verify \
+curl -X POST http://localhost:7061/api/v1/verifier/verify \
   -H "Content-Type: application/json" \
   -d '{
     "model_id": "gpt-4",
@@ -683,7 +683,7 @@ curl -X POST http://localhost:8080/api/v1/verifier/verify \
 Test if a model can understand specific code:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/verifier/code-visibility \
+curl -X POST http://localhost:7061/api/v1/verifier/code-visibility \
   -H "Content-Type: application/json" \
   -d '{
     "code": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)",
@@ -697,13 +697,13 @@ curl -X POST http://localhost:8080/api/v1/verifier/code-visibility \
 
 ```bash
 # Get model score
-curl http://localhost:8080/api/v1/verifier/scores/gpt-4
+curl http://localhost:7061/api/v1/verifier/scores/gpt-4
 
 # Get top models
-curl "http://localhost:8080/api/v1/verifier/scores/top?limit=5"
+curl "http://localhost:7061/api/v1/verifier/scores/top?limit=5"
 
 # Compare models
-curl -X POST http://localhost:8080/api/v1/verifier/scores/compare \
+curl -X POST http://localhost:7061/api/v1/verifier/scores/compare \
   -H "Content-Type: application/json" \
   -d '{"model_ids": ["gpt-4", "claude-3-opus", "gemini-pro"]}'
 ```
@@ -711,7 +711,7 @@ curl -X POST http://localhost:8080/api/v1/verifier/scores/compare \
 ### Custom Scoring Weights
 
 ```bash
-curl -X PUT http://localhost:8080/api/v1/verifier/scores/weights \
+curl -X PUT http://localhost:7061/api/v1/verifier/scores/weights \
   -H "Content-Type: application/json" \
   -d '{
     "response_speed": 0.30,
@@ -726,13 +726,13 @@ curl -X PUT http://localhost:8080/api/v1/verifier/scores/weights \
 
 ```bash
 # All providers
-curl http://localhost:8080/api/v1/verifier/health/providers
+curl http://localhost:7061/api/v1/verifier/health/providers
 
 # Healthy providers only
-curl http://localhost:8080/api/v1/verifier/health/providers/healthy
+curl http://localhost:7061/api/v1/verifier/health/providers/healthy
 
 # Fastest provider
-curl -X POST http://localhost:8080/api/v1/verifier/health/fastest \
+curl -X POST http://localhost:7061/api/v1/verifier/health/fastest \
   -H "Content-Type: application/json" \
   -d '{"providers": ["openai", "anthropic", "google"]}'
 ```
@@ -746,7 +746,7 @@ HelixAgent supports Server-Sent Events (SSE) for real-time response streaming.
 ### Basic Streaming Request
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -N \
@@ -828,7 +828,7 @@ from helixagent import HelixAgent
 # Initialize client
 client = HelixAgent(
     api_key="your-api-key",
-    base_url="http://localhost:8080"  # Optional
+    base_url="http://localhost:7061"  # Optional
 )
 
 # Chat completion
@@ -873,7 +873,7 @@ import "dev.helix.agent-go"
 // Initialize client
 client := helixagent.NewClient(&helixagent.Config{
     APIKey:  "your-api-key",
-    BaseURL: "http://localhost:8080",
+    BaseURL: "http://localhost:7061",
 })
 
 // Chat completion
@@ -911,7 +911,7 @@ import { HelixAgent } from 'helixagent-js';
 // Initialize client
 const client = new HelixAgent({
   apiKey: 'your-api-key',
-  baseUrl: 'http://localhost:8080',
+  baseUrl: 'http://localhost:7061',
 });
 
 // Chat completion
@@ -980,7 +980,7 @@ HelixAgent integrates with Cognee for knowledge graph and RAG capabilities:
 
 ```bash
 # Add document to knowledge graph
-curl -X POST http://localhost:8080/api/v1/cognee/documents \
+curl -X POST http://localhost:7061/api/v1/cognee/documents \
   -H "Content-Type: application/json" \
   -d '{
     "content": "Your document content here...",
@@ -988,7 +988,7 @@ curl -X POST http://localhost:8080/api/v1/cognee/documents \
   }'
 
 # Query knowledge graph
-curl -X POST http://localhost:8080/api/v1/cognee/query \
+curl -X POST http://localhost:7061/api/v1/cognee/query \
   -H "Content-Type: application/json" \
   -d '{"query": "What is the architecture of HelixAgent?"}'
 ```
@@ -999,19 +999,19 @@ HelixAgent supports hot-reloadable plugins:
 
 ```bash
 # List plugins
-curl http://localhost:8080/api/v1/plugins
+curl http://localhost:7061/api/v1/plugins
 
 # Enable plugin
-curl -X POST http://localhost:8080/api/v1/plugins/my-plugin/enable
+curl -X POST http://localhost:7061/api/v1/plugins/my-plugin/enable
 
 # Plugin health
-curl http://localhost:8080/api/v1/plugins/my-plugin/health
+curl http://localhost:7061/api/v1/plugins/my-plugin/health
 ```
 
 ### MCP (Model Context Protocol)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/mcp \
+curl -X POST http://localhost:7061/api/v1/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "method": "resources/list",
@@ -1022,7 +1022,7 @@ curl -X POST http://localhost:8080/api/v1/mcp \
 ### LSP (Language Server Protocol)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/lsp \
+curl -X POST http://localhost:7061/api/v1/lsp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -1083,7 +1083,7 @@ http_client:
 
 ```bash
 # Batch verification
-curl -X POST http://localhost:8080/api/v1/verifier/batch-verify \
+curl -X POST http://localhost:7061/api/v1/verifier/batch-verify \
   -H "Content-Type: application/json" \
   -d '{
     "models": [
@@ -1111,20 +1111,20 @@ retry:
 
 ```bash
 # Application health
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Detailed health
-curl http://localhost:8080/health/detailed
+curl http://localhost:7061/health/detailed
 
 # Provider health
-curl http://localhost:8080/api/v1/verifier/health/providers
+curl http://localhost:7061/api/v1/verifier/health/providers
 ```
 
 ### Prometheus Metrics
 
 ```bash
 # Metrics endpoint
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 ```
 
 Available metrics:
@@ -1206,7 +1206,7 @@ logging:
 1. Enable caching in configuration
 2. Reduce `min_providers` for ensemble
 3. Use faster models (e.g., gpt-3.5-turbo instead of gpt-4)
-4. Check provider latency: `curl http://localhost:8080/api/v1/verifier/health/providers`
+4. Check provider latency: `curl http://localhost:7061/api/v1/verifier/health/providers`
 
 #### Memory Issues
 

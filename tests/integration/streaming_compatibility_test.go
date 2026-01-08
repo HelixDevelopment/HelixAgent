@@ -40,7 +40,7 @@ func getBaseURL() string {
 	if url := os.Getenv("HELIXAGENT_URL"); url != "" {
 		return url
 	}
-	return "http://localhost:8080"
+	return "http://localhost:7061"
 }
 
 // skipIfNotRunning skips the test if HelixAgent is not running
@@ -347,7 +347,7 @@ func TestStreamingFormat_HelixCodeCompatibility(t *testing.T) {
 // TestConfigGenerator_AllAgents tests that config generator produces valid configs for all agents
 func TestConfigGenerator_AllAgents(t *testing.T) {
 	gen := config.NewConfigGenerator(
-		"http://localhost:8080/v1",
+		"http://localhost:7061/v1",
 		"test-api-key",
 		"helixagent-ensemble",
 	)

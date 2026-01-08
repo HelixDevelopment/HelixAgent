@@ -187,7 +187,7 @@ func TestProtocolDiscovery_GetServersByProtocol(t *testing.T) {
 			"mcp-1": {ID: "mcp-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
 			"mcp-2": {ID: "mcp-2", Protocol: "mcp", Address: "127.0.0.2", Port: 3001},
 			"lsp-1": {ID: "lsp-1", Protocol: "lsp", Address: "127.0.0.1", Port: 6006},
-			"acp-1": {ID: "acp-1", Protocol: "acp", Address: "127.0.0.1", Port: 8080},
+			"acp-1": {ID: "acp-1", Protocol: "acp", Address: "127.0.0.1", Port: 7061},
 		},
 		logger: log,
 	}

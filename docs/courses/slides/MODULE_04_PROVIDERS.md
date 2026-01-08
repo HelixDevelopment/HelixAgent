@@ -354,7 +354,7 @@ func (p *ClaudeProvider) HealthCheck(ctx context.Context) error {
 
 ```bash
 # Check all providers
-curl http://localhost:8080/v1/providers/health
+curl http://localhost:7061/v1/providers/health
 
 # Response
 {

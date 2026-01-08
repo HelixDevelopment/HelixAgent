@@ -187,17 +187,17 @@ COGNEE_LLM_MODEL=gpt-4o-mini
 
 ```bash
 # Add memory
-curl -X POST http://localhost:8080/api/v1/cognee/memory \
+curl -X POST http://localhost:7061/api/v1/cognee/memory \
   -H "Content-Type: application/json" \
   -d '{"content": "HelixAgent uses ensemble learning to combine multiple LLM responses."}'
 
 # Search memory
-curl -X POST http://localhost:8080/api/v1/cognee/search \
+curl -X POST http://localhost:7061/api/v1/cognee/search \
   -H "Content-Type: application/json" \
   -d '{"query": "ensemble learning", "limit": 5}'
 
 # Any LLM request is automatically enhanced
-curl -X POST http://localhost:8080/api/v1/llm/complete \
+curl -X POST http://localhost:7061/api/v1/llm/complete \
   -H "Content-Type: application/json" \
   -d '{"prompt": "How does HelixAgent work?", "model": "claude"}'
 # Response is informed by stored knowledge about ensemble learning

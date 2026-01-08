@@ -1798,7 +1798,7 @@ func TestValidateOpenCodeConfig_ValidMinimal(t *testing.T) {
 			"helixagent": {
 				"options": {
 					"apiKey": "sk-test123",
-					"baseURL": "http://localhost:8080/v1"
+					"baseURL": "http://localhost:7061/v1"
 				}
 			}
 		}
@@ -1820,7 +1820,7 @@ func TestValidateOpenCodeConfig_ValidFull(t *testing.T) {
 			"helixagent": {
 				"options": {
 					"apiKey": "sk-test123",
-					"baseURL": "http://localhost:8080/v1"
+					"baseURL": "http://localhost:7061/v1"
 				},
 				"models": {
 					"helixagent-debate": {
@@ -1843,7 +1843,7 @@ func TestValidateOpenCodeConfig_ValidFull(t *testing.T) {
 			},
 			"remote-api": {
 				"type": "remote",
-				"url": "http://localhost:8080/mcp"
+				"url": "http://localhost:7061/mcp"
 			}
 		}
 	}`
@@ -2153,7 +2153,7 @@ func TestValidateOpenCodeConfig_SingleAgentWithModel(t *testing.T) {
 			"helixagent": {
 				"options": {
 					"apiKey": "sk-test",
-					"baseURL": "http://localhost:8080/v1"
+					"baseURL": "http://localhost:7061/v1"
 				}
 			}
 		},

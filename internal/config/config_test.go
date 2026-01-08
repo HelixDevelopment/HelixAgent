@@ -39,8 +39,8 @@ func TestLoad(t *testing.T) {
 		cfg := Load()
 
 		// Test ServerConfig defaults
-		if cfg.Server.Port != "8080" {
-			t.Errorf("Expected Server.Port '8080', got %s", cfg.Server.Port)
+		if cfg.Server.Port != "7061" {
+			t.Errorf("Expected Server.Port '7061', got %s", cfg.Server.Port)
 		}
 		// APIKey and JWTSecret now require environment variables (no hardcoded defaults for security)
 		if cfg.Server.APIKey != "" {

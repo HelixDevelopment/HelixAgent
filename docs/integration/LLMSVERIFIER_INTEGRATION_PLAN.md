@@ -2354,7 +2354,7 @@ services:
   helixagent:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:7061"
     environment:
       - VERIFIER_ENABLED=true
       - VERIFIER_DB_PATH=/data/llm-verifier.db
@@ -2368,7 +2368,7 @@ services:
     build:
       context: ./LLMsVerifier
     ports:
-      - "8081:8080"
+      - "8081:7061"
     environment:
       - DATABASE_PATH=/data/llm-verifier.db
 

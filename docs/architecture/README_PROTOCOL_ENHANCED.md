@@ -59,7 +59,7 @@ go run demo.go
 ### Unified Protocol API
 ```bash
 # Execute any protocol through unified API
-curl -X POST http://localhost:8080/v1/protocols/execute \
+curl -X POST http://localhost:7061/v1/protocols/execute \
   -H "Authorization: Bearer sk-your-api-key" \
   -d '{
     "protocolType": "mcp",
@@ -295,7 +295,7 @@ acp:
   enabled: true
   servers:
     - name: "ai-assistant"
-      url: "ws://localhost:8080/agent"
+      url: "ws://localhost:7061/agent"
       reconnect: true
 
 embeddings:
@@ -313,7 +313,7 @@ embeddings:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ['localhost:7061']
     metrics_path: '/v1/monitoring/metrics'
     scrape_interval: 15s
 ```

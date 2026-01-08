@@ -359,7 +359,7 @@ services:
       - frontend
       - backend
     ports:
-      - "8080:8080"  # Only expose API port
+      - "8080:7061"  # Only expose API port
 
   postgres:
     networks:

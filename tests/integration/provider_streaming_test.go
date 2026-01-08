@@ -242,7 +242,7 @@ func TestHelixAgentEnsembleStreaming(t *testing.T) {
 	loadEnvFile(t)
 
 	// Check if HelixAgent is running
-	resp, err := http.Get("http://localhost:8080/health")
+	resp, err := http.Get("http://localhost:7061/health")
 	if err != nil {
 		t.Skip("Skipping HelixAgent test: server not running")
 		return
@@ -261,7 +261,7 @@ func TestHelixAgentEnsembleNonStreaming(t *testing.T) {
 	loadEnvFile(t)
 
 	// Check if HelixAgent is running
-	resp, err := http.Get("http://localhost:8080/health")
+	resp, err := http.Get("http://localhost:7061/health")
 	if err != nil {
 		t.Skip("Skipping HelixAgent test: server not running")
 		return
@@ -666,7 +666,7 @@ func testHelixAgentStreaming(t *testing.T) {
 	jsonData, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	httpReq, err := http.NewRequest("POST", "http://localhost:8080/v1/chat/completions", bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequest("POST", "http://localhost:7061/v1/chat/completions", bytes.NewBuffer(jsonData))
 	require.NoError(t, err)
 
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -757,7 +757,7 @@ func testHelixAgentNonStreaming(t *testing.T) {
 	jsonData, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	httpReq, err := http.NewRequest("POST", "http://localhost:8080/v1/chat/completions", bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequest("POST", "http://localhost:7061/v1/chat/completions", bytes.NewBuffer(jsonData))
 	require.NoError(t, err)
 
 	httpReq.Header.Set("Content-Type", "application/json")

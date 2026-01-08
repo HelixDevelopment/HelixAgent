@@ -314,7 +314,7 @@ config = {
             "npm": "@ai-sdk/openai-compatible",
             "name": "HelixAgent AI Debate",
             "options": {
-                "baseURL": "http://localhost:8080/v1",
+                "baseURL": "http://localhost:7061/v1",
                 "apiKey": api_key
             },
             "models": {

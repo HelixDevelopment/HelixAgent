@@ -195,7 +195,7 @@ cd Website
 npm run build
 npm run serve
 
-# Visit http://localhost:8080 and check browser console for analytics
+# Visit http://localhost:7061 and check browser console for analytics
 ```
 
 ## Support

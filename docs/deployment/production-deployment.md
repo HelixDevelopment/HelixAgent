@@ -102,7 +102,7 @@ rule_files:
 scrape_configs:
   - job_name: 'helixagent'
     static_configs:
-      - targets: ['helixagent:8080']
+      - targets: ['helixagent:7061']
     metrics_path: '/metrics'
     scrape_interval: 5s
     basic_auth:
@@ -330,8 +330,8 @@ docker exec helixagent ls -la /app/plugins/
 ### 2. Performance Tuning
 ```bash
 # Go performance profiling
-curl "http://localhost:8080/debug/pprof/profile" > cpu.prof
-curl "http://localhost:8080/debug/pprof/heap" > heap.prof
+curl "http://localhost:7061/debug/pprof/profile" > cpu.prof
+curl "http://localhost:7061/debug/pprof/heap" > heap.prof
 
 # Database performance analysis
 SELECT query, calls, total_time, mean_time 

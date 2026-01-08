@@ -231,7 +231,7 @@ func TestAllEnsembleProvidersHaveCogneeCapabilities(t *testing.T) {
 func TestCogneeLiveIntegration(t *testing.T) {
 	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+		serverURL = "http://localhost:7061"
 	}
 
 	// Use longer timeout for ensemble operations

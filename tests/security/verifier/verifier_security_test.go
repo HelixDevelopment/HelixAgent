@@ -46,7 +46,7 @@ func TestVerifierInputValidation(t *testing.T) {
 	}
 
 	config := SecurityTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 
@@ -232,7 +232,7 @@ func TestVerifierAuthentication(t *testing.T) {
 	}
 
 	config := SecurityTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 
@@ -303,7 +303,7 @@ func TestVerifierRateLimiting(t *testing.T) {
 	}
 
 	config := SecurityTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 
@@ -345,7 +345,7 @@ func TestVerifierSecurityHeaders(t *testing.T) {
 	}
 
 	config := SecurityTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 
@@ -416,7 +416,7 @@ func TestVerifierDataLeakage(t *testing.T) {
 	}
 
 	config := SecurityTestConfig{
-		BaseURL: "http://localhost:8080",
+		BaseURL: "http://localhost:7061",
 		Timeout: 30 * time.Second,
 	}
 

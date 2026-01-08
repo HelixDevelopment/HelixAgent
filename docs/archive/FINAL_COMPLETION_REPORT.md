@@ -115,13 +115,13 @@ const result = await client.mcpCallTool('server1', 'calculate', { expression: '2
 
 ```swift
 // iOS SDK Example
-let client = HelixAgentClient(baseURL: "http://localhost:8080")
+let client = HelixAgentClient(baseURL: "http://localhost:7061")
 let result = try await client.mcpCallTool(serverId: "server1", toolName: "calculate", parameters: ["expr": "2+2"])
 ```
 
 ```kotlin
 // Android SDK Example
-val client = HelixAgentClient("http://localhost:8080", "api-key")
+val client = HelixAgentClient("http://localhost:7061", "api-key")
 val result = client.mcpCallTool("server1", "calculate", JSONObject().put("expr", "2+2"))
 ```
 
@@ -142,8 +142,8 @@ helixagent-cli plugins:marketplace "mcp"
 cd cmd/api && go run main.go
 
 # 2. Test API endpoints
-curl http://localhost:8080/api/v1/health
-curl http://localhost:8080/api/v1/analytics/metrics
+curl http://localhost:7061/api/v1/health
+curl http://localhost:7061/api/v1/analytics/metrics
 
 # 3. Use CLI tool
 npm install -g helixagent-cli

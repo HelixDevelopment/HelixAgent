@@ -49,13 +49,13 @@ make docker-ai
 ### Step 4: Verify Installation
 ```bash
 # Check that services are healthy
-curl http://localhost:8080/v1/health
+curl http://localhost:7061/v1/health
 
 # List available providers (should show your configured providers)
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Check provider health with circuit breaker status
-curl http://localhost:8080/v1/providers/claude/health
+curl http://localhost:7061/v1/providers/claude/health
 
 # Expected response for /v1/health:
 # {"status":"healthy","providers":{"claude":{"status":"healthy"},...}}
@@ -97,7 +97,7 @@ go run ./cmd/helixagent/main.go
 
 ### Test 1: Simple Completion
 ```bash
-curl -X POST http://localhost:8080/v1/completions \
+curl -X POST http://localhost:7061/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Hello, what is HelixAgent?",
@@ -108,7 +108,7 @@ curl -X POST http://localhost:8080/v1/completions \
 
 ### Test 2: Chat Completion
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "claude-3-sonnet-20240229",
@@ -127,7 +127,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 ### Test 3: Ensemble Magic (Multiple Providers)
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble/completions \
+curl -X POST http://localhost:7061/v1/ensemble/completions \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Explain quantum computing in simple terms",
@@ -140,7 +140,7 @@ curl -X POST http://localhost:8080/v1/ensemble/completions \
 
 ### Test 4: Streaming Responses
 ```bash
-curl -X POST http://localhost:8080/v1/completions/stream \
+curl -X POST http://localhost:7061/v1/completions/stream \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Write a short story about a robot learning emotions",
@@ -156,22 +156,22 @@ curl -X POST http://localhost:8080/v1/completions/stream \
 
 ### Check Available Providers
 ```bash
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 ```
 
 ### Check Provider Health
 ```bash
-curl http://localhost:8080/v1/providers/claude/health
+curl http://localhost:7061/v1/providers/claude/health
 ```
 
 ### View Available Models
 ```bash
-curl http://localhost:8080/v1/models
+curl http://localhost:7061/v1/models
 ```
 
 ### Monitor System Metrics
 ```bash
-curl http://localhost:8080/metrics
+curl http://localhost:7061/metrics
 ```
 
 ---
@@ -181,7 +181,7 @@ curl http://localhost:8080/metrics
 ### 1. **Add Authentication**
 ```bash
 # Get an API key
-curl -X POST http://localhost:8080/v1/auth/register \
+curl -X POST http://localhost:7061/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -189,7 +189,7 @@ curl -X POST http://localhost:8080/v1/auth/register \
   }'
 
 # Login to get JWT token
-curl -X POST http://localhost:8080/v1/auth/login \
+curl -X POST http://localhost:7061/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -200,7 +200,7 @@ curl -X POST http://localhost:8080/v1/auth/login \
 ### 2. **Use Your API Key**
 ```bash
 # Use the JWT token in Authorization header
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
@@ -266,7 +266,7 @@ You've successfully:
 
 1. **Check logs**: `docker-compose logs helixagent`
 2. **Verify configuration**: `cat .env`
-3. **Test connectivity**: `curl http://localhost:8080/health`
+3. **Test connectivity**: `curl http://localhost:7061/health`
 4. **Review documentation**: All docs are in `/docs/` directory
 
 ---

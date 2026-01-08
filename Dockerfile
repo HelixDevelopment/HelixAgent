@@ -65,11 +65,11 @@ LABEL org.opencontainers.image.title="HelixAgent" \
       org.opencontainers.image.licenses="MIT"
 
 # Expose port
-EXPOSE 8080
+EXPOSE 7061
 
 # Health check with better reliability
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f -s http://localhost:8080/health > /dev/null || exit 1
+    CMD curl -f -s http://localhost:7061/health > /dev/null || exit 1
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]

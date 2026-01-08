@@ -359,7 +359,7 @@ ensemble:
 **Making Ensemble Requests:**
 
 ```bash
-curl -X POST http://localhost:8080/v1/ensemble \
+curl -X POST http://localhost:7061/v1/ensemble \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Explain quantum computing",

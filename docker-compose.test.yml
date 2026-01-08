@@ -23,7 +23,7 @@ services:
     image: ghcr.io/navikt/mock-oauth2-server:2.1.0
     container_name: helixagent-oauth-mock
     ports:
-      - "${OAUTH_MOCK_PORT:-18091}:8080"
+      - "${OAUTH_MOCK_PORT:-18091}:7061"
     environment:
       - JSON_CONFIG_PATH=/config/config.json
     volumes:
@@ -31,7 +31,7 @@ services:
     networks:
       - helixagent-network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/.well-known/openid-configuration"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7061/.well-known/openid-configuration"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -104,7 +104,7 @@ services:
       dockerfile: Dockerfile
     container_name: helixagent-app
     ports:
-      - "8080:8080"
+      - "8080:7061"
     environment:
       # Server Configuration
       PORT: 8080
@@ -180,7 +180,7 @@ services:
     networks:
       - helixagent-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
       interval: 30s
       timeout: 10s
       retries: 3

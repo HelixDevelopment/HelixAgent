@@ -297,13 +297,13 @@ source scripts/container-runtime.sh
 
 ```bash
 # Check API is responding
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Check providers status
-curl http://localhost:8080/v1/providers
+curl http://localhost:7061/v1/providers
 
 # Check protocol servers
-curl http://localhost:8080/v1/protocols/servers
+curl http://localhost:7061/v1/protocols/servers
 
 # Expected: JSON responses with status information
 ```
@@ -390,10 +390,10 @@ Time: 30 minutes
 docker-compose ps
 
 # API responding?
-curl http://localhost:8080/health
+curl http://localhost:7061/health
 
 # Can make API calls?
-curl -X POST http://localhost:8080/v1/completion \
+curl -X POST http://localhost:7061/v1/completion \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Hello, world!"}'
 ```

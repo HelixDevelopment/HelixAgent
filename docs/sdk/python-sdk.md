@@ -54,7 +54,7 @@ client = HelixAgent(token="your-jwt-token")
 # Custom base URL
 client = HelixAgent(
     api_key="your-api-key",
-    base_url="http://localhost:8080"
+    base_url="http://localhost:7061"
 )
 ```
 
@@ -339,7 +339,7 @@ from helixagent.client import HelixAgentClient
 
 # Custom session with proxy
 session = requests.Session()
-session.proxies = {"https": "https://proxy.company.com:8080"}
+session.proxies = {"https": "https://proxy.company.com:7061"}
 
 client = HelixAgentClient(
     api_key="your-api-key",

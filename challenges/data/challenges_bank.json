@@ -12,45 +12,169 @@
       "binary_only": true,
       "script": "../scripts/main_challenge.sh",
       "inputs": [
-        {"name": "api_keys", "source": ".env", "required": true, "description": "All LLM provider API keys"},
-        {"name": "llmsverifier_binary", "source": "../LLMsVerifier/llm-verifier/llm-verifier", "required": true, "description": "LLMsVerifier production binary"},
-        {"name": "helixagent_binary", "source": "../helixagent", "required": true, "description": "HelixAgent production binary"}
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true,
+          "description": "All LLM provider API keys"
+        },
+        {
+          "name": "llmsverifier_binary",
+          "source": "../LLMsVerifier/llm-verifier/llm-verifier",
+          "required": true,
+          "description": "LLMsVerifier production binary"
+        },
+        {
+          "name": "helixagent_binary",
+          "source": "../helixagent",
+          "required": true,
+          "description": "HelixAgent production binary"
+        }
       ],
       "outputs": [
-        {"name": "providers_verified.json", "type": "json", "description": "All verified providers with status"},
-        {"name": "models_scored.json", "type": "json", "description": "All benchmarked and scored LLMs"},
-        {"name": "debate_group.json", "type": "json", "description": "AI debate group with 5 primary + 10 fallback members"},
-        {"name": "system_verification.json", "type": "json", "description": "System verification results as single LLM"},
-        {"name": "opencode.json", "type": "json", "description": "Production OpenCode configuration with all features"},
-        {"name": "opencode.json.example", "type": "json", "description": "Redacted OpenCode configuration for git versioning"},
-        {"name": "master_summary.md", "type": "markdown", "description": "Comprehensive challenge summary report"}
+        {
+          "name": "providers_verified.json",
+          "type": "json",
+          "description": "All verified providers with status"
+        },
+        {
+          "name": "models_scored.json",
+          "type": "json",
+          "description": "All benchmarked and scored LLMs"
+        },
+        {
+          "name": "debate_group.json",
+          "type": "json",
+          "description": "AI debate group with 5 primary + 10 fallback members"
+        },
+        {
+          "name": "system_verification.json",
+          "type": "json",
+          "description": "System verification results as single LLM"
+        },
+        {
+          "name": "opencode.json",
+          "type": "json",
+          "description": "Production OpenCode configuration with all features"
+        },
+        {
+          "name": "opencode.json.example",
+          "type": "json",
+          "description": "Redacted OpenCode configuration for git versioning"
+        },
+        {
+          "name": "master_summary.md",
+          "type": "markdown",
+          "description": "Comprehensive challenge summary report"
+        }
       ],
       "assertions": [
-        {"type": "min_count", "target": "providers_verified", "value": 5, "message": "At least 5 providers must be verified"},
-        {"type": "min_count", "target": "models_scored", "value": 15, "message": "At least 15 models must be scored"},
-        {"type": "exact_count", "target": "debate_group.primary_members", "value": 5, "message": "Must have exactly 5 primary debate members"},
-        {"type": "exact_count", "target": "debate_group.fallbacks_per_primary", "value": 2, "message": "Must have exactly 2 fallbacks per primary member"},
-        {"type": "min_score", "target": "debate_group.average_score", "value": 7.0, "message": "Average debate group score must be at least 7.0"},
-        {"type": "system_verified", "target": "system_verification", "value": true, "message": "System must pass verification as single LLM"},
-        {"type": "file_exists", "target": "/home/milosvasic/Downloads/opencode-helix-agent.json", "message": "OpenCode config must be copied to Downloads"},
-        {"type": "no_sensitive_data_in_git", "target": "opencode.json.example", "message": "Redacted config must not contain API keys"}
+        {
+          "type": "min_count",
+          "target": "providers_verified",
+          "value": 5,
+          "message": "At least 5 providers must be verified"
+        },
+        {
+          "type": "min_count",
+          "target": "models_scored",
+          "value": 15,
+          "message": "At least 15 models must be scored"
+        },
+        {
+          "type": "exact_count",
+          "target": "debate_group.primary_members",
+          "value": 5,
+          "message": "Must have exactly 5 primary debate members"
+        },
+        {
+          "type": "exact_count",
+          "target": "debate_group.fallbacks_per_primary",
+          "value": 2,
+          "message": "Must have exactly 2 fallbacks per primary member"
+        },
+        {
+          "type": "min_score",
+          "target": "debate_group.average_score",
+          "value": 7.0,
+          "message": "Average debate group score must be at least 7.0"
+        },
+        {
+          "type": "system_verified",
+          "target": "system_verification",
+          "value": true,
+          "message": "System must pass verification as single LLM"
+        },
+        {
+          "type": "file_exists",
+          "target": "/home/milosvasic/Downloads/opencode-helix-agent.json",
+          "message": "OpenCode config must be copied to Downloads"
+        },
+        {
+          "type": "no_sensitive_data_in_git",
+          "target": "opencode.json.example",
+          "message": "Redacted config must not contain API keys"
+        }
       ],
-      "metrics": ["providers_total", "providers_verified", "providers_failed", "models_total", "models_verified", "top_15_average_score", "debate_group_average_score", "system_verification_score", "total_duration_seconds"],
+      "metrics": [
+        "providers_total",
+        "providers_verified",
+        "providers_failed",
+        "models_total",
+        "models_verified",
+        "top_15_average_score",
+        "debate_group_average_score",
+        "system_verification_score",
+        "total_duration_seconds"
+      ],
       "phases": [
-        {"id": "infrastructure", "name": "Infrastructure Setup", "description": "Start Docker/Podman services"},
-        {"id": "provider_verification", "name": "Provider Verification", "description": "Verify all 30+ providers using LLMsVerifier binary"},
-        {"id": "model_benchmark", "name": "Model Benchmarking", "description": "Test and benchmark 900+ LLMs"},
-        {"id": "debate_formation", "name": "Debate Group Formation", "description": "Select top 15+ LLMs, form 5 primary + 2 fallbacks"},
-        {"id": "system_verification", "name": "System Verification", "description": "Verify HelixAgent as single LLM using LLMsVerifier"},
-        {"id": "config_generation", "name": "Configuration Generation", "description": "Generate OpenCode config with MCP, ACP, LSP, Embeddings"},
-        {"id": "final_report", "name": "Final Report", "description": "Generate master summary and copy to Downloads"}
+        {
+          "id": "infrastructure",
+          "name": "Infrastructure Setup",
+          "description": "Start Docker/Podman services"
+        },
+        {
+          "id": "provider_verification",
+          "name": "Provider Verification",
+          "description": "Verify all 30+ providers using LLMsVerifier binary"
+        },
+        {
+          "id": "model_benchmark",
+          "name": "Model Benchmarking",
+          "description": "Test and benchmark 900+ LLMs"
+        },
+        {
+          "id": "debate_formation",
+          "name": "Debate Group Formation",
+          "description": "Select top 15+ LLMs, form 5 primary + 2 fallbacks"
+        },
+        {
+          "id": "system_verification",
+          "name": "System Verification",
+          "description": "Verify HelixAgent as single LLM using LLMsVerifier"
+        },
+        {
+          "id": "config_generation",
+          "name": "Configuration Generation",
+          "description": "Generate OpenCode config with MCP, ACP, LSP, Embeddings"
+        },
+        {
+          "id": "final_report",
+          "name": "Final Report",
+          "description": "Generate master summary and copy to Downloads"
+        }
       ],
       "configuration": {
         "debate_group_size": 5,
         "fallbacks_per_member": 2,
         "minimum_model_score": 7.0,
         "top_models_count": 15,
-        "features": {"mcp_enabled": true, "acp_enabled": true, "lsp_enabled": true, "embeddings_enabled": true}
+        "features": {
+          "mcp_enabled": true,
+          "acp_enabled": true,
+          "lsp_enabled": true,
+          "embeddings_enabled": true
+        }
       }
     },
     {
@@ -58,46 +182,168 @@
       "name": "OpenCode Integration Challenge",
       "description": "Validate HelixAgent's integration with OpenCode CLI including API connectivity, codebase awareness, and 25 CLI request tests with assertions",
       "category": "validation",
-      "dependencies": ["main"],
+      "dependencies": [
+        "main"
+      ],
       "binary_only": true,
       "script": "../scripts/opencode_challenge.sh",
       "estimated_duration": "5-10 minutes",
       "inputs": [
-        {"name": "main_challenge_results", "source": "main", "required": true, "description": "OpenCode config from main challenge"},
-        {"name": "api_keys", "source": ".env", "required": true, "description": "HelixAgent API key"}
+        {
+          "name": "main_challenge_results",
+          "source": "main",
+          "required": true,
+          "description": "OpenCode config from main challenge"
+        },
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true,
+          "description": "HelixAgent API key"
+        }
       ],
       "outputs": [
-        {"name": "cli_test_results.txt", "type": "text", "description": "Detailed CLI test results with assertions"},
-        {"name": "cli_test_results.json", "type": "json", "description": "JSON format CLI test results"},
-        {"name": "api_test_results.json", "type": "json", "description": "API connectivity test results"},
-        {"name": "opencode_result.json", "type": "json", "description": "OpenCode execution results"},
-        {"name": "challenge_summary.json", "type": "json", "description": "Overall challenge summary"},
-        {"name": "opencode_challenge_report.md", "type": "markdown", "description": "Human-readable challenge report"}
+        {
+          "name": "cli_test_results.txt",
+          "type": "text",
+          "description": "Detailed CLI test results with assertions"
+        },
+        {
+          "name": "cli_test_results.json",
+          "type": "json",
+          "description": "JSON format CLI test results"
+        },
+        {
+          "name": "api_test_results.json",
+          "type": "json",
+          "description": "API connectivity test results"
+        },
+        {
+          "name": "opencode_result.json",
+          "type": "json",
+          "description": "OpenCode execution results"
+        },
+        {
+          "name": "challenge_summary.json",
+          "type": "json",
+          "description": "Overall challenge summary"
+        },
+        {
+          "name": "opencode_challenge_report.md",
+          "type": "markdown",
+          "description": "Human-readable challenge report"
+        }
       ],
       "assertions": [
-        {"type": "endpoint_works", "target": "/v1/models", "message": "Models endpoint must work"},
-        {"type": "endpoint_works", "target": "/v1/chat/completions", "message": "Chat completions endpoint must work"},
-        {"type": "contains", "target": "models_response", "value": "helixagent-debate", "message": "helixagent-debate model must be present"},
-        {"type": "min_count", "target": "cli_tests_passed", "value": 20, "message": "At least 20 CLI tests must pass"},
-        {"type": "contains_any", "target": "codebase_response", "value": ["Go", "Golang", "go"], "message": "Codebase must be detected"},
-        {"type": "no_mock_responses", "target": "all_responses", "message": "No mock or placeholder responses allowed"}
+        {
+          "type": "endpoint_works",
+          "target": "/v1/models",
+          "message": "Models endpoint must work"
+        },
+        {
+          "type": "endpoint_works",
+          "target": "/v1/chat/completions",
+          "message": "Chat completions endpoint must work"
+        },
+        {
+          "type": "contains",
+          "target": "models_response",
+          "value": "helixagent-debate",
+          "message": "helixagent-debate model must be present"
+        },
+        {
+          "type": "min_count",
+          "target": "cli_tests_passed",
+          "value": 20,
+          "message": "At least 20 CLI tests must pass"
+        },
+        {
+          "type": "contains_any",
+          "target": "codebase_response",
+          "value": [
+            "Go",
+            "Golang",
+            "go"
+          ],
+          "message": "Codebase must be detected"
+        },
+        {
+          "type": "no_mock_responses",
+          "target": "all_responses",
+          "message": "No mock or placeholder responses allowed"
+        }
       ],
-      "metrics": ["api_endpoints_tested", "cli_tests_total", "cli_tests_passed", "cli_tests_failed", "cli_pass_rate", "total_duration_seconds"],
+      "metrics": [
+        "api_endpoints_tested",
+        "cli_tests_total",
+        "cli_tests_passed",
+        "cli_tests_failed",
+        "cli_pass_rate",
+        "total_duration_seconds"
+      ],
       "phases": [
-        {"id": "prerequisites", "name": "Prerequisites Check", "description": "Verify OpenCode CLI, Main challenge, HelixAgent running"},
-        {"id": "api_test", "name": "API Connectivity Test", "description": "Test /v1/models and /v1/chat/completions endpoints"},
-        {"id": "opencode_execution", "name": "OpenCode CLI Execution", "description": "Run OpenCode with codebase awareness test"},
-        {"id": "error_analysis", "name": "Error Analysis", "description": "Analyze errors and generate recommendations"},
-        {"id": "cli_testing", "name": "CLI Request Testing", "description": "Execute 25 requests with assertions, write to .txt file"},
-        {"id": "summary", "name": "Results Summary", "description": "Generate final report and summary"}
+        {
+          "id": "prerequisites",
+          "name": "Prerequisites Check",
+          "description": "Verify OpenCode CLI, Main challenge, HelixAgent running"
+        },
+        {
+          "id": "api_test",
+          "name": "API Connectivity Test",
+          "description": "Test /v1/models and /v1/chat/completions endpoints"
+        },
+        {
+          "id": "opencode_execution",
+          "name": "OpenCode CLI Execution",
+          "description": "Run OpenCode with codebase awareness test"
+        },
+        {
+          "id": "error_analysis",
+          "name": "Error Analysis",
+          "description": "Analyze errors and generate recommendations"
+        },
+        {
+          "id": "cli_testing",
+          "name": "CLI Request Testing",
+          "description": "Execute 25 requests with assertions, write to .txt file"
+        },
+        {
+          "id": "summary",
+          "name": "Results Summary",
+          "description": "Generate final report and summary"
+        }
       ],
       "test_categories": [
-        {"name": "math", "count": 5, "description": "Mathematical calculations and operations"},
-        {"name": "code_generation", "count": 10, "description": "Code writing in Go, Python, TypeScript, SQL, Bash, JSON"},
-        {"name": "factual", "count": 2, "description": "Factual knowledge questions"},
-        {"name": "explanation", "count": 4, "description": "Concept explanations (REST, Docker, Git, Kubernetes)"},
-        {"name": "knowledge", "count": 3, "description": "Technical knowledge (algorithms, complexity, SOLID)"},
-        {"name": "codebase", "count": 1, "description": "Project-specific codebase awareness"}
+        {
+          "name": "math",
+          "count": 5,
+          "description": "Mathematical calculations and operations"
+        },
+        {
+          "name": "code_generation",
+          "count": 10,
+          "description": "Code writing in Go, Python, TypeScript, SQL, Bash, JSON"
+        },
+        {
+          "name": "factual",
+          "count": 2,
+          "description": "Factual knowledge questions"
+        },
+        {
+          "name": "explanation",
+          "count": 4,
+          "description": "Concept explanations (REST, Docker, Git, Kubernetes)"
+        },
+        {
+          "name": "knowledge",
+          "count": 3,
+          "description": "Technical knowledge (algorithms, complexity, SOLID)"
+        },
+        {
+          "name": "codebase",
+          "count": 1,
+          "description": "Project-specific codebase awareness"
+        }
       ]
     },
     {
@@ -110,49 +356,136 @@
       "script": "../scripts/provider_verification.sh",
       "estimated_duration": "2-5 minutes",
       "inputs": [
-        {"name": "api_keys", "source": ".env", "required": true},
-        {"name": "provider_configs", "source": "config/providers.yaml", "required": false}
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "provider_configs",
+          "source": "config/providers.yaml",
+          "required": false
+        }
       ],
       "outputs": [
-        {"name": "providers_verified.json", "type": "json", "description": "List of verified providers with status"},
-        {"name": "models_scored.json", "type": "json", "description": "Scored model list with rankings"},
-        {"name": "verification_report.md", "type": "markdown", "description": "Human-readable verification report"}
+        {
+          "name": "providers_verified.json",
+          "type": "json",
+          "description": "List of verified providers with status"
+        },
+        {
+          "name": "models_scored.json",
+          "type": "json",
+          "description": "Scored model list with rankings"
+        },
+        {
+          "name": "verification_report.md",
+          "type": "markdown",
+          "description": "Human-readable verification report"
+        }
       ],
       "assertions": [
-        {"type": "min_count", "target": "providers_verified", "value": 1, "message": "At least 1 provider must be verified"},
-        {"type": "all_valid", "target": "api_keys", "message": "All provided API keys must be valid"}
+        {
+          "type": "min_count",
+          "target": "providers_verified",
+          "value": 1,
+          "message": "At least 1 provider must be verified"
+        },
+        {
+          "type": "all_valid",
+          "target": "api_keys",
+          "message": "All provided API keys must be valid"
+        }
       ],
-      "metrics": ["provider_count_verified", "provider_count_failed", "model_count_total", "avg_response_time_ms", "capability_coverage_percent"]
+      "metrics": [
+        "provider_count_verified",
+        "provider_count_failed",
+        "model_count_total",
+        "avg_response_time_ms",
+        "capability_coverage_percent"
+      ]
     },
     {
       "id": "ai_debate_formation",
       "name": "AI Debate Group Formation",
       "description": "Form an optimal AI debate group from top-scoring models with fallback assignments",
       "category": "core",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/ai_debate_formation.sh",
       "estimated_duration": "3-8 minutes",
       "inputs": [
-        {"name": "models_scored.json", "source": "provider_verification", "required": true},
-        {"name": "group_config", "source": ".env", "required": true}
+        {
+          "name": "models_scored.json",
+          "source": "provider_verification",
+          "required": true
+        },
+        {
+          "name": "group_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "debate_group.json", "type": "json", "description": "Complete debate group configuration"},
-        {"name": "member_assignments.json", "type": "json", "description": "Primary and fallback member assignments"},
-        {"name": "formation_report.md", "type": "markdown", "description": "Formation process details and decisions"}
+        {
+          "name": "debate_group.json",
+          "type": "json",
+          "description": "Complete debate group configuration"
+        },
+        {
+          "name": "member_assignments.json",
+          "type": "json",
+          "description": "Primary and fallback member assignments"
+        },
+        {
+          "name": "formation_report.md",
+          "type": "markdown",
+          "description": "Formation process details and decisions"
+        }
       ],
       "assertions": [
-        {"type": "exact_count", "target": "primary_members", "value": 5, "message": "Must have exactly 5 primary members"},
-        {"type": "exact_count", "target": "fallbacks_per_primary", "value": 2, "message": "Must have exactly 2 fallbacks per primary"},
-        {"type": "no_duplicates", "target": "all_models", "message": "No model can appear more than once"},
-        {"type": "min_score", "target": "average_group_score", "value": 7.0, "message": "Average group score must be at least 7.0"}
+        {
+          "type": "exact_count",
+          "target": "primary_members",
+          "value": 5,
+          "message": "Must have exactly 5 primary members"
+        },
+        {
+          "type": "exact_count",
+          "target": "fallbacks_per_primary",
+          "value": 2,
+          "message": "Must have exactly 2 fallbacks per primary"
+        },
+        {
+          "type": "no_duplicates",
+          "target": "all_models",
+          "message": "No model can appear more than once"
+        },
+        {
+          "type": "min_score",
+          "target": "average_group_score",
+          "value": 7.0,
+          "message": "Average group score must be at least 7.0"
+        }
       ],
-      "metrics": ["total_models_selected", "average_primary_score", "average_fallback_score", "provider_diversity_index", "capability_coverage_percent"],
+      "metrics": [
+        "total_models_selected",
+        "average_primary_score",
+        "average_fallback_score",
+        "provider_diversity_index",
+        "capability_coverage_percent"
+      ],
       "configuration": {
         "debate_group_size": 5,
         "fallbacks_per_member": 2,
-        "selection_criteria": {"verification_score": 0.4, "capability_coverage": 0.3, "response_speed": 0.2, "provider_diversity": 0.1}
+        "selection_criteria": {
+          "verification_score": 0.4,
+          "capability_coverage": 0.3,
+          "response_speed": 0.2,
+          "provider_diversity": 0.1
+        }
       }
     },
     {
@@ -160,47 +493,144 @@
       "name": "API Quality Testing",
       "description": "Validate response quality of the AI debate group via OpenAI-compatible API",
       "category": "validation",
-      "dependencies": ["ai_debate_formation"],
+      "dependencies": [
+        "ai_debate_formation"
+      ],
       "binary_only": true,
       "script": "../scripts/api_quality_test.sh",
       "estimated_duration": "5-15 minutes",
       "inputs": [
-        {"name": "debate_group.json", "source": "ai_debate_formation", "required": true},
-        {"name": "test_prompts", "source": "data/test_prompts.json", "required": true}
+        {
+          "name": "debate_group.json",
+          "source": "ai_debate_formation",
+          "required": true
+        },
+        {
+          "name": "test_prompts",
+          "source": "data/test_prompts.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "test_results.json", "type": "json", "description": "Detailed test results with pass/fail status"},
-        {"name": "assertion_report.json", "type": "json", "description": "Individual assertion outcomes"},
-        {"name": "api_quality_report.md", "type": "markdown", "description": "Human-readable quality report"}
+        {
+          "name": "test_results.json",
+          "type": "json",
+          "description": "Detailed test results with pass/fail status"
+        },
+        {
+          "name": "assertion_report.json",
+          "type": "json",
+          "description": "Individual assertion outcomes"
+        },
+        {
+          "name": "api_quality_report.md",
+          "type": "markdown",
+          "description": "Human-readable quality report"
+        }
       ],
       "assertions": [
-        {"type": "all_pass", "target": "tests", "message": "All tests must pass"},
-        {"type": "no_mock_responses", "target": "responses", "message": "No mock or placeholder responses allowed"},
-        {"type": "min_score", "target": "average_quality_score", "value": 0.8, "message": "Average quality score must be at least 0.8"},
-        {"type": "max_latency", "target": "response_time", "value": 30000, "message": "Each request must complete within 30 seconds"}
+        {
+          "type": "all_pass",
+          "target": "tests",
+          "message": "All tests must pass"
+        },
+        {
+          "type": "no_mock_responses",
+          "target": "responses",
+          "message": "No mock or placeholder responses allowed"
+        },
+        {
+          "type": "min_score",
+          "target": "average_quality_score",
+          "value": 0.8,
+          "message": "Average quality score must be at least 0.8"
+        },
+        {
+          "type": "max_latency",
+          "target": "response_time",
+          "value": 30000,
+          "message": "Each request must complete within 30 seconds"
+        }
       ],
-      "metrics": ["tests_passed", "tests_failed", "average_quality_score", "average_response_time_ms", "mock_detections", "assertion_pass_rate"],
+      "metrics": [
+        "tests_passed",
+        "tests_failed",
+        "average_quality_score",
+        "average_response_time_ms",
+        "mock_detections",
+        "assertion_pass_rate"
+      ],
       "test_categories": [
         {
           "name": "code_generation",
           "tests": [
-            {"id": "simple_function", "prompt": "Write a Go function to calculate factorial", "assertions": ["contains:func", "not_empty", "min_length:50"]},
-            {"id": "algorithm", "prompt": "Implement binary search in Python", "assertions": ["contains:def", "contains:return", "code_valid"]},
-            {"id": "class_design", "prompt": "Create a TypeScript class for user management", "assertions": ["contains:class", "contains:constructor"]}
+            {
+              "id": "simple_function",
+              "prompt": "Write a Go function to calculate factorial",
+              "assertions": [
+                "contains:func",
+                "not_empty",
+                "min_length:50"
+              ]
+            },
+            {
+              "id": "algorithm",
+              "prompt": "Implement binary search in Python",
+              "assertions": [
+                "contains:def",
+                "contains:return",
+                "code_valid"
+              ]
+            },
+            {
+              "id": "class_design",
+              "prompt": "Create a TypeScript class for user management",
+              "assertions": [
+                "contains:class",
+                "contains:constructor"
+              ]
+            }
           ]
         },
         {
           "name": "code_review",
           "tests": [
-            {"id": "bug_detection", "prompt": "Review this Go code for bugs: `func divide(a,b int) int { return a/b }`", "assertions": ["contains_any:zero,division", "quality_score:0.7"]},
-            {"id": "security_review", "prompt": "Find security issues in: `db.Query(\"SELECT * FROM users WHERE id = \" + userInput)`", "assertions": ["contains_any:injection,sanitize,parameterized"]}
+            {
+              "id": "bug_detection",
+              "prompt": "Review this Go code for bugs: `func divide(a,b int) int { return a/b }`",
+              "assertions": [
+                "contains_any:zero,division",
+                "quality_score:0.7"
+              ]
+            },
+            {
+              "id": "security_review",
+              "prompt": "Find security issues in: `db.Query(\"SELECT * FROM users WHERE id = \" + userInput)`",
+              "assertions": [
+                "contains_any:injection,sanitize,parameterized"
+              ]
+            }
           ]
         },
         {
           "name": "reasoning",
           "tests": [
-            {"id": "math_problem", "prompt": "A farmer has 17 sheep. All but 9 run away. How many sheep are left?", "assertions": ["contains:9", "reasoning_present"]},
-            {"id": "logic_puzzle", "prompt": "If all A are B, and all B are C, are all A also C? Explain your reasoning.", "assertions": ["contains_any:yes,true", "reasoning_present"]}
+            {
+              "id": "math_problem",
+              "prompt": "A farmer has 17 sheep. All but 9 run away. How many sheep are left?",
+              "assertions": [
+                "contains:9",
+                "reasoning_present"
+              ]
+            },
+            {
+              "id": "logic_puzzle",
+              "prompt": "If all A are B, and all B are C, are all A also C? Explain your reasoning.",
+              "assertions": [
+                "contains_any:yes,true",
+                "reasoning_present"
+              ]
+            }
           ]
         }
       ]
@@ -210,31 +640,92 @@
       "name": "Ensemble Voting Strategies",
       "description": "Test all ensemble voting strategies: confidence-weighted, majority, quality-weighted, parallel execution",
       "category": "core",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/ensemble_voting.sh",
       "estimated_duration": "5-10 minutes",
       "inputs": [
-        {"name": "api_keys", "source": ".env", "required": true},
-        {"name": "test_prompts", "source": "data/ensemble_test_prompts.json", "required": true}
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "test_prompts",
+          "source": "data/ensemble_test_prompts.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "voting_results.json", "type": "json", "description": "Results from all voting strategies"},
-        {"name": "strategy_comparison.json", "type": "json", "description": "Comparison of strategy performance"},
-        {"name": "ensemble_report.md", "type": "markdown", "description": "Ensemble voting analysis report"}
+        {
+          "name": "voting_results.json",
+          "type": "json",
+          "description": "Results from all voting strategies"
+        },
+        {
+          "name": "strategy_comparison.json",
+          "type": "json",
+          "description": "Comparison of strategy performance"
+        },
+        {
+          "name": "ensemble_report.md",
+          "type": "markdown",
+          "description": "Ensemble voting analysis report"
+        }
       ],
       "assertions": [
-        {"type": "strategy_tested", "target": "confidence_weighted", "message": "Confidence-weighted voting must be tested"},
-        {"type": "strategy_tested", "target": "majority_vote", "message": "Majority voting must be tested"},
-        {"type": "strategy_tested", "target": "quality_weighted", "message": "Quality-weighted voting must be tested"},
-        {"type": "min_providers", "target": "parallel_execution", "value": 3, "message": "At least 3 providers must respond in parallel"},
-        {"type": "consensus_reached", "target": "all_tests", "message": "All tests must reach consensus"}
+        {
+          "type": "strategy_tested",
+          "target": "confidence_weighted",
+          "message": "Confidence-weighted voting must be tested"
+        },
+        {
+          "type": "strategy_tested",
+          "target": "majority_vote",
+          "message": "Majority voting must be tested"
+        },
+        {
+          "type": "strategy_tested",
+          "target": "quality_weighted",
+          "message": "Quality-weighted voting must be tested"
+        },
+        {
+          "type": "min_providers",
+          "target": "parallel_execution",
+          "value": 3,
+          "message": "At least 3 providers must respond in parallel"
+        },
+        {
+          "type": "consensus_reached",
+          "target": "all_tests",
+          "message": "All tests must reach consensus"
+        }
       ],
-      "metrics": ["strategies_tested", "consensus_rate", "average_confidence", "parallel_response_time_ms", "provider_agreement_rate"],
+      "metrics": [
+        "strategies_tested",
+        "consensus_rate",
+        "average_confidence",
+        "parallel_response_time_ms",
+        "provider_agreement_rate"
+      ],
       "test_scenarios": [
-        {"id": "factual_consensus", "prompt": "What is 2 + 2?", "expected_consensus": true},
-        {"id": "code_consensus", "prompt": "Write a hello world in Python", "expected_consensus": true},
-        {"id": "opinion_divergence", "prompt": "What is the best programming language?", "expected_consensus": false}
+        {
+          "id": "factual_consensus",
+          "prompt": "What is 2 + 2?",
+          "expected_consensus": true
+        },
+        {
+          "id": "code_consensus",
+          "prompt": "Write a hello world in Python",
+          "expected_consensus": true
+        },
+        {
+          "id": "opinion_divergence",
+          "prompt": "What is the best programming language?",
+          "expected_consensus": false
+        }
       ]
     },
     {
@@ -242,32 +733,99 @@
       "name": "AI Debate Full Workflow",
       "description": "Test complete AI debate workflow: creation, rounds, moderation, scoring, consensus",
       "category": "core",
-      "dependencies": ["ai_debate_formation"],
+      "dependencies": [
+        "ai_debate_formation"
+      ],
       "binary_only": true,
       "script": "../scripts/ai_debate_workflow.sh",
       "estimated_duration": "10-20 minutes",
       "inputs": [
-        {"name": "debate_group.json", "source": "ai_debate_formation", "required": true},
-        {"name": "debate_topics", "source": "data/debate_topics.json", "required": true}
+        {
+          "name": "debate_group.json",
+          "source": "ai_debate_formation",
+          "required": true
+        },
+        {
+          "name": "debate_topics",
+          "source": "data/debate_topics.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "debate_results.json", "type": "json", "description": "Complete debate results"},
-        {"name": "round_transcripts.json", "type": "json", "description": "All debate round transcripts"},
-        {"name": "scoring_report.json", "type": "json", "description": "Debate scoring breakdown"},
-        {"name": "debate_report.md", "type": "markdown", "description": "Human-readable debate report"}
+        {
+          "name": "debate_results.json",
+          "type": "json",
+          "description": "Complete debate results"
+        },
+        {
+          "name": "round_transcripts.json",
+          "type": "json",
+          "description": "All debate round transcripts"
+        },
+        {
+          "name": "scoring_report.json",
+          "type": "json",
+          "description": "Debate scoring breakdown"
+        },
+        {
+          "name": "debate_report.md",
+          "type": "markdown",
+          "description": "Human-readable debate report"
+        }
       ],
       "assertions": [
-        {"type": "debate_created", "target": "debate_id", "message": "Debate must be created successfully"},
-        {"type": "min_rounds", "target": "rounds", "value": 2, "message": "At least 2 debate rounds must complete"},
-        {"type": "all_participants", "target": "participants", "value": 5, "message": "All 5 debate members must participate"},
-        {"type": "consensus_reached", "target": "final_result", "message": "Debate must reach final consensus"},
-        {"type": "moderation_applied", "target": "moderation", "message": "Moderation must be applied to all rounds"}
+        {
+          "type": "debate_created",
+          "target": "debate_id",
+          "message": "Debate must be created successfully"
+        },
+        {
+          "type": "min_rounds",
+          "target": "rounds",
+          "value": 2,
+          "message": "At least 2 debate rounds must complete"
+        },
+        {
+          "type": "all_participants",
+          "target": "participants",
+          "value": 5,
+          "message": "All 5 debate members must participate"
+        },
+        {
+          "type": "consensus_reached",
+          "target": "final_result",
+          "message": "Debate must reach final consensus"
+        },
+        {
+          "type": "moderation_applied",
+          "target": "moderation",
+          "message": "Moderation must be applied to all rounds"
+        }
       ],
-      "metrics": ["debates_completed", "average_rounds", "consensus_rate", "participant_engagement", "moderation_interventions", "average_debate_duration_seconds"],
+      "metrics": [
+        "debates_completed",
+        "average_rounds",
+        "consensus_rate",
+        "participant_engagement",
+        "moderation_interventions",
+        "average_debate_duration_seconds"
+      ],
       "debate_topics": [
-        {"id": "technical", "topic": "Should microservices always be preferred over monoliths?", "max_rounds": 3},
-        {"id": "code_review", "topic": "Review and debate the best approach for error handling in Go", "max_rounds": 2},
-        {"id": "architecture", "topic": "Debate the pros and cons of event-driven architecture", "max_rounds": 3}
+        {
+          "id": "technical",
+          "topic": "Should microservices always be preferred over monoliths?",
+          "max_rounds": 3
+        },
+        {
+          "id": "code_review",
+          "topic": "Review and debate the best approach for error handling in Go",
+          "max_rounds": 2
+        },
+        {
+          "id": "architecture",
+          "topic": "Debate the pros and cons of event-driven architecture",
+          "max_rounds": 3
+        }
       ]
     },
     {
@@ -280,22 +838,68 @@
       "script": "../scripts/mcp_protocol.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "mcp_config", "source": "config/mcp_servers.yaml", "required": true}
+        {
+          "name": "mcp_config",
+          "source": "config/mcp_servers.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "mcp_servers.json", "type": "json", "description": "Discovered MCP servers"},
-        {"name": "mcp_tools.json", "type": "json", "description": "Available MCP tools"},
-        {"name": "mcp_resources.json", "type": "json", "description": "Available MCP resources"},
-        {"name": "mcp_report.md", "type": "markdown", "description": "MCP integration report"}
+        {
+          "name": "mcp_servers.json",
+          "type": "json",
+          "description": "Discovered MCP servers"
+        },
+        {
+          "name": "mcp_tools.json",
+          "type": "json",
+          "description": "Available MCP tools"
+        },
+        {
+          "name": "mcp_resources.json",
+          "type": "json",
+          "description": "Available MCP resources"
+        },
+        {
+          "name": "mcp_report.md",
+          "type": "markdown",
+          "description": "MCP integration report"
+        }
       ],
       "assertions": [
-        {"type": "server_discovered", "target": "filesystem", "message": "Filesystem MCP server must be discovered"},
-        {"type": "server_discovered", "target": "github", "message": "GitHub MCP server must be discovered"},
-        {"type": "server_discovered", "target": "memory", "message": "Memory MCP server must be discovered"},
-        {"type": "tools_available", "target": "tools", "value": 1, "message": "At least 1 tool must be available"},
-        {"type": "resources_accessible", "target": "resources", "message": "Resources must be accessible"}
+        {
+          "type": "server_discovered",
+          "target": "filesystem",
+          "message": "Filesystem MCP server must be discovered"
+        },
+        {
+          "type": "server_discovered",
+          "target": "github",
+          "message": "GitHub MCP server must be discovered"
+        },
+        {
+          "type": "server_discovered",
+          "target": "memory",
+          "message": "Memory MCP server must be discovered"
+        },
+        {
+          "type": "tools_available",
+          "target": "tools",
+          "value": 1,
+          "message": "At least 1 tool must be available"
+        },
+        {
+          "type": "resources_accessible",
+          "target": "resources",
+          "message": "Resources must be accessible"
+        }
       ],
-      "metrics": ["servers_discovered", "tools_available", "resources_accessible", "avg_tool_latency_ms"]
+      "metrics": [
+        "servers_discovered",
+        "tools_available",
+        "resources_accessible",
+        "avg_tool_latency_ms"
+      ]
     },
     {
       "id": "lsp_protocol",
@@ -307,27 +911,100 @@
       "script": "../scripts/lsp_protocol.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "lsp_config", "source": "config/lsp_servers.yaml", "required": true},
-        {"name": "test_files", "source": "data/lsp_test_files/", "required": true}
+        {
+          "name": "lsp_config",
+          "source": "config/lsp_servers.yaml",
+          "required": true
+        },
+        {
+          "name": "test_files",
+          "source": "data/lsp_test_files/",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "lsp_servers.json", "type": "json", "description": "Active LSP servers"},
-        {"name": "lsp_diagnostics.json", "type": "json", "description": "Diagnostic results"},
-        {"name": "lsp_completions.json", "type": "json", "description": "Completion results"},
-        {"name": "lsp_report.md", "type": "markdown", "description": "LSP integration report"}
+        {
+          "name": "lsp_servers.json",
+          "type": "json",
+          "description": "Active LSP servers"
+        },
+        {
+          "name": "lsp_diagnostics.json",
+          "type": "json",
+          "description": "Diagnostic results"
+        },
+        {
+          "name": "lsp_completions.json",
+          "type": "json",
+          "description": "Completion results"
+        },
+        {
+          "name": "lsp_report.md",
+          "type": "markdown",
+          "description": "LSP integration report"
+        }
       ],
       "assertions": [
-        {"type": "server_running", "target": "gopls", "message": "gopls must be running"},
-        {"type": "server_running", "target": "typescript-language-server", "message": "TypeScript LSP must be running"},
-        {"type": "server_running", "target": "pylsp", "message": "Python LSP must be running"},
-        {"type": "diagnostics_returned", "target": "diagnostics", "message": "Diagnostics must be returned"},
-        {"type": "completions_returned", "target": "completions", "message": "Completions must be returned"}
+        {
+          "type": "server_running",
+          "target": "gopls",
+          "message": "gopls must be running"
+        },
+        {
+          "type": "server_running",
+          "target": "typescript-language-server",
+          "message": "TypeScript LSP must be running"
+        },
+        {
+          "type": "server_running",
+          "target": "pylsp",
+          "message": "Python LSP must be running"
+        },
+        {
+          "type": "diagnostics_returned",
+          "target": "diagnostics",
+          "message": "Diagnostics must be returned"
+        },
+        {
+          "type": "completions_returned",
+          "target": "completions",
+          "message": "Completions must be returned"
+        }
       ],
-      "metrics": ["servers_running", "diagnostics_count", "completions_count", "avg_response_time_ms"],
+      "metrics": [
+        "servers_running",
+        "diagnostics_count",
+        "completions_count",
+        "avg_response_time_ms"
+      ],
       "test_files": [
-        {"language": "go", "file": "test.go", "tests": ["hover", "completion", "diagnostics"]},
-        {"language": "typescript", "file": "test.ts", "tests": ["hover", "completion", "diagnostics"]},
-        {"language": "python", "file": "test.py", "tests": ["hover", "completion", "diagnostics"]}
+        {
+          "language": "go",
+          "file": "test.go",
+          "tests": [
+            "hover",
+            "completion",
+            "diagnostics"
+          ]
+        },
+        {
+          "language": "typescript",
+          "file": "test.ts",
+          "tests": [
+            "hover",
+            "completion",
+            "diagnostics"
+          ]
+        },
+        {
+          "language": "python",
+          "file": "test.py",
+          "tests": [
+            "hover",
+            "completion",
+            "diagnostics"
+          ]
+        }
       ]
     },
     {
@@ -340,45 +1017,122 @@
       "script": "../scripts/acp_protocol.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "acp_config", "source": "config/acp_servers.yaml", "required": true}
+        {
+          "name": "acp_config",
+          "source": "config/acp_servers.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "acp_servers.json", "type": "json", "description": "ACP server status"},
-        {"name": "acp_actions.json", "type": "json", "description": "Available actions"},
-        {"name": "acp_report.md", "type": "markdown", "description": "ACP integration report"}
+        {
+          "name": "acp_servers.json",
+          "type": "json",
+          "description": "ACP server status"
+        },
+        {
+          "name": "acp_actions.json",
+          "type": "json",
+          "description": "Available actions"
+        },
+        {
+          "name": "acp_report.md",
+          "type": "markdown",
+          "description": "ACP integration report"
+        }
       ],
       "assertions": [
-        {"type": "http_transport", "target": "http", "message": "HTTP transport must work"},
-        {"type": "websocket_transport", "target": "websocket", "message": "WebSocket transport must work"},
-        {"type": "action_executed", "target": "test_action", "message": "Test action must execute successfully"}
+        {
+          "type": "http_transport",
+          "target": "http",
+          "message": "HTTP transport must work"
+        },
+        {
+          "type": "websocket_transport",
+          "target": "websocket",
+          "message": "WebSocket transport must work"
+        },
+        {
+          "type": "action_executed",
+          "target": "test_action",
+          "message": "Test action must execute successfully"
+        }
       ],
-      "metrics": ["servers_connected", "actions_available", "http_latency_ms", "websocket_latency_ms"]
+      "metrics": [
+        "servers_connected",
+        "actions_available",
+        "http_latency_ms",
+        "websocket_latency_ms"
+      ]
     },
     {
       "id": "embeddings_service",
       "name": "Embeddings Service",
       "description": "Test embeddings generation, similarity search, and vector operations",
       "category": "core",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/embeddings_service.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "api_keys", "source": ".env", "required": true},
-        {"name": "test_texts", "source": "data/embedding_test_texts.json", "required": true}
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "test_texts",
+          "source": "data/embedding_test_texts.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "embeddings_results.json", "type": "json", "description": "Generated embeddings"},
-        {"name": "similarity_results.json", "type": "json", "description": "Similarity search results"},
-        {"name": "embeddings_report.md", "type": "markdown", "description": "Embeddings service report"}
+        {
+          "name": "embeddings_results.json",
+          "type": "json",
+          "description": "Generated embeddings"
+        },
+        {
+          "name": "similarity_results.json",
+          "type": "json",
+          "description": "Similarity search results"
+        },
+        {
+          "name": "embeddings_report.md",
+          "type": "markdown",
+          "description": "Embeddings service report"
+        }
       ],
       "assertions": [
-        {"type": "embeddings_generated", "target": "embeddings", "message": "Embeddings must be generated"},
-        {"type": "vector_dimension", "target": "dimension", "value": 1536, "message": "Vectors must have correct dimension"},
-        {"type": "similarity_works", "target": "similarity", "message": "Similarity search must return results"},
-        {"type": "batch_supported", "target": "batch", "message": "Batch embedding must work"}
+        {
+          "type": "embeddings_generated",
+          "target": "embeddings",
+          "message": "Embeddings must be generated"
+        },
+        {
+          "type": "vector_dimension",
+          "target": "dimension",
+          "value": 1536,
+          "message": "Vectors must have correct dimension"
+        },
+        {
+          "type": "similarity_works",
+          "target": "similarity",
+          "message": "Similarity search must return results"
+        },
+        {
+          "type": "batch_supported",
+          "target": "batch",
+          "message": "Batch embedding must work"
+        }
       ],
-      "metrics": ["embeddings_generated", "avg_generation_time_ms", "similarity_accuracy", "batch_throughput"]
+      "metrics": [
+        "embeddings_generated",
+        "avg_generation_time_ms",
+        "similarity_accuracy",
+        "batch_throughput"
+      ]
     },
     {
       "id": "caching_layer",
@@ -390,21 +1144,63 @@
       "script": "../scripts/caching_layer.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "redis_config", "source": ".env", "required": true}
+        {
+          "name": "redis_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "cache_results.json", "type": "json", "description": "Cache operation results"},
-        {"name": "cache_metrics.json", "type": "json", "description": "Cache performance metrics"},
-        {"name": "cache_report.md", "type": "markdown", "description": "Caching layer report"}
+        {
+          "name": "cache_results.json",
+          "type": "json",
+          "description": "Cache operation results"
+        },
+        {
+          "name": "cache_metrics.json",
+          "type": "json",
+          "description": "Cache performance metrics"
+        },
+        {
+          "name": "cache_report.md",
+          "type": "markdown",
+          "description": "Caching layer report"
+        }
       ],
       "assertions": [
-        {"type": "redis_connected", "target": "redis", "message": "Redis must be connected"},
-        {"type": "cache_hit", "target": "cache", "message": "Cache hits must work"},
-        {"type": "cache_miss", "target": "cache", "message": "Cache misses must work"},
-        {"type": "ttl_enforced", "target": "ttl", "message": "TTL must be enforced"},
-        {"type": "fallback_works", "target": "in_memory", "message": "In-memory fallback must work when Redis unavailable"}
+        {
+          "type": "redis_connected",
+          "target": "redis",
+          "message": "Redis must be connected"
+        },
+        {
+          "type": "cache_hit",
+          "target": "cache",
+          "message": "Cache hits must work"
+        },
+        {
+          "type": "cache_miss",
+          "target": "cache",
+          "message": "Cache misses must work"
+        },
+        {
+          "type": "ttl_enforced",
+          "target": "ttl",
+          "message": "TTL must be enforced"
+        },
+        {
+          "type": "fallback_works",
+          "target": "in_memory",
+          "message": "In-memory fallback must work when Redis unavailable"
+        }
       ],
-      "metrics": ["cache_hit_rate", "cache_miss_rate", "avg_get_latency_ms", "avg_set_latency_ms", "memory_usage_bytes"]
+      "metrics": [
+        "cache_hit_rate",
+        "cache_miss_rate",
+        "avg_get_latency_ms",
+        "avg_set_latency_ms",
+        "memory_usage_bytes"
+      ]
     },
     {
       "id": "authentication",
@@ -416,70 +1212,185 @@
       "script": "../scripts/authentication.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "jwt_config", "source": ".env", "required": true},
-        {"name": "test_users", "source": "data/test_users.json", "required": true}
+        {
+          "name": "jwt_config",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "test_users",
+          "source": "data/test_users.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "auth_results.json", "type": "json", "description": "Authentication test results"},
-        {"name": "auth_report.md", "type": "markdown", "description": "Authentication report"}
+        {
+          "name": "auth_results.json",
+          "type": "json",
+          "description": "Authentication test results"
+        },
+        {
+          "name": "auth_report.md",
+          "type": "markdown",
+          "description": "Authentication report"
+        }
       ],
       "assertions": [
-        {"type": "token_generated", "target": "jwt", "message": "JWT tokens must be generated"},
-        {"type": "token_validated", "target": "jwt", "message": "JWT tokens must be validated"},
-        {"type": "expiry_enforced", "target": "expiry", "message": "Token expiry must be enforced"},
-        {"type": "roles_enforced", "target": "rbac", "message": "Role-based access must be enforced"},
-        {"type": "unauthorized_rejected", "target": "unauthorized", "message": "Unauthorized requests must be rejected"}
+        {
+          "type": "token_generated",
+          "target": "jwt",
+          "message": "JWT tokens must be generated"
+        },
+        {
+          "type": "token_validated",
+          "target": "jwt",
+          "message": "JWT tokens must be validated"
+        },
+        {
+          "type": "expiry_enforced",
+          "target": "expiry",
+          "message": "Token expiry must be enforced"
+        },
+        {
+          "type": "roles_enforced",
+          "target": "rbac",
+          "message": "Role-based access must be enforced"
+        },
+        {
+          "type": "unauthorized_rejected",
+          "target": "unauthorized",
+          "message": "Unauthorized requests must be rejected"
+        }
       ],
-      "metrics": ["tokens_generated", "tokens_validated", "tokens_rejected", "avg_validation_time_ms"]
+      "metrics": [
+        "tokens_generated",
+        "tokens_validated",
+        "tokens_rejected",
+        "avg_validation_time_ms"
+      ]
     },
     {
       "id": "rate_limiting",
       "name": "Rate Limiting",
       "description": "Test token bucket rate limiting, Redis-backed limiting, burst handling",
       "category": "security",
-      "dependencies": ["caching_layer"],
+      "dependencies": [
+        "caching_layer"
+      ],
       "binary_only": true,
       "script": "../scripts/rate_limiting.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "rate_config", "source": ".env", "required": true}
+        {
+          "name": "rate_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "rate_limit_results.json", "type": "json", "description": "Rate limit test results"},
-        {"name": "rate_limit_report.md", "type": "markdown", "description": "Rate limiting report"}
+        {
+          "name": "rate_limit_results.json",
+          "type": "json",
+          "description": "Rate limit test results"
+        },
+        {
+          "name": "rate_limit_report.md",
+          "type": "markdown",
+          "description": "Rate limiting report"
+        }
       ],
       "assertions": [
-        {"type": "limit_enforced", "target": "rate_limit", "message": "Rate limits must be enforced"},
-        {"type": "burst_allowed", "target": "burst", "message": "Burst requests must be allowed within limits"},
-        {"type": "exceeded_rejected", "target": "exceeded", "message": "Exceeded requests must be rejected with 429"},
-        {"type": "bucket_refill", "target": "refill", "message": "Token bucket must refill over time"}
+        {
+          "type": "limit_enforced",
+          "target": "rate_limit",
+          "message": "Rate limits must be enforced"
+        },
+        {
+          "type": "burst_allowed",
+          "target": "burst",
+          "message": "Burst requests must be allowed within limits"
+        },
+        {
+          "type": "exceeded_rejected",
+          "target": "exceeded",
+          "message": "Exceeded requests must be rejected with 429"
+        },
+        {
+          "type": "bucket_refill",
+          "target": "refill",
+          "message": "Token bucket must refill over time"
+        }
       ],
-      "metrics": ["requests_allowed", "requests_rejected", "burst_capacity", "refill_rate"]
+      "metrics": [
+        "requests_allowed",
+        "requests_rejected",
+        "burst_capacity",
+        "refill_rate"
+      ]
     },
     {
       "id": "circuit_breaker",
       "name": "Circuit Breaker",
       "description": "Test circuit breaker state transitions: Closed, Open, Half-Open, failure tracking, recovery",
       "category": "resilience",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/circuit_breaker.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "circuit_config", "source": "config/circuit_breaker.yaml", "required": true}
+        {
+          "name": "circuit_config",
+          "source": "config/circuit_breaker.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "circuit_results.json", "type": "json", "description": "Circuit breaker test results"},
-        {"name": "state_transitions.json", "type": "json", "description": "State transition log"},
-        {"name": "circuit_report.md", "type": "markdown", "description": "Circuit breaker report"}
+        {
+          "name": "circuit_results.json",
+          "type": "json",
+          "description": "Circuit breaker test results"
+        },
+        {
+          "name": "state_transitions.json",
+          "type": "json",
+          "description": "State transition log"
+        },
+        {
+          "name": "circuit_report.md",
+          "type": "markdown",
+          "description": "Circuit breaker report"
+        }
       ],
       "assertions": [
-        {"type": "state_closed", "target": "initial_state", "message": "Initial state must be Closed"},
-        {"type": "state_open", "target": "after_failures", "message": "State must transition to Open after failures"},
-        {"type": "state_half_open", "target": "after_timeout", "message": "State must transition to Half-Open after timeout"},
-        {"type": "recovery_works", "target": "recovery", "message": "Circuit must recover to Closed on success"}
+        {
+          "type": "state_closed",
+          "target": "initial_state",
+          "message": "Initial state must be Closed"
+        },
+        {
+          "type": "state_open",
+          "target": "after_failures",
+          "message": "State must transition to Open after failures"
+        },
+        {
+          "type": "state_half_open",
+          "target": "after_timeout",
+          "message": "State must transition to Half-Open after timeout"
+        },
+        {
+          "type": "recovery_works",
+          "target": "recovery",
+          "message": "Circuit must recover to Closed on success"
+        }
       ],
-      "metrics": ["state_transitions", "failures_tracked", "recovery_time_ms", "requests_blocked"]
+      "metrics": [
+        "state_transitions",
+        "failures_tracked",
+        "recovery_time_ms",
+        "requests_blocked"
+      ]
     },
     {
       "id": "plugin_system",
@@ -491,46 +1402,126 @@
       "script": "../scripts/plugin_system.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "plugin_dir", "source": "plugins/", "required": true},
-        {"name": "test_plugins", "source": "data/test_plugins/", "required": true}
+        {
+          "name": "plugin_dir",
+          "source": "plugins/",
+          "required": true
+        },
+        {
+          "name": "test_plugins",
+          "source": "data/test_plugins/",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "plugin_results.json", "type": "json", "description": "Plugin system test results"},
-        {"name": "plugin_report.md", "type": "markdown", "description": "Plugin system report"}
+        {
+          "name": "plugin_results.json",
+          "type": "json",
+          "description": "Plugin system test results"
+        },
+        {
+          "name": "plugin_report.md",
+          "type": "markdown",
+          "description": "Plugin system report"
+        }
       ],
       "assertions": [
-        {"type": "plugin_loaded", "target": "test_plugin", "message": "Test plugin must load successfully"},
-        {"type": "hot_reload_works", "target": "hot_reload", "message": "Hot reload must work without restart"},
-        {"type": "dependencies_resolved", "target": "dependencies", "message": "Plugin dependencies must be resolved"},
-        {"type": "sandbox_enforced", "target": "sandbox", "message": "Security sandbox must be enforced"},
-        {"type": "metrics_collected", "target": "metrics", "message": "Plugin metrics must be collected"}
+        {
+          "type": "plugin_loaded",
+          "target": "test_plugin",
+          "message": "Test plugin must load successfully"
+        },
+        {
+          "type": "hot_reload_works",
+          "target": "hot_reload",
+          "message": "Hot reload must work without restart"
+        },
+        {
+          "type": "dependencies_resolved",
+          "target": "dependencies",
+          "message": "Plugin dependencies must be resolved"
+        },
+        {
+          "type": "sandbox_enforced",
+          "target": "sandbox",
+          "message": "Security sandbox must be enforced"
+        },
+        {
+          "type": "metrics_collected",
+          "target": "metrics",
+          "message": "Plugin metrics must be collected"
+        }
       ],
-      "metrics": ["plugins_loaded", "hot_reloads", "dependency_resolutions", "sandbox_violations_blocked"]
+      "metrics": [
+        "plugins_loaded",
+        "hot_reloads",
+        "dependency_resolutions",
+        "sandbox_violations_blocked"
+      ]
     },
     {
       "id": "streaming_responses",
       "name": "Streaming Responses",
       "description": "Test SSE streaming, chunked responses, rate limiting, progress tracking",
       "category": "core",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/streaming_responses.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "api_keys", "source": ".env", "required": true},
-        {"name": "test_prompts", "source": "data/streaming_test_prompts.json", "required": true}
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "test_prompts",
+          "source": "data/streaming_test_prompts.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "streaming_results.json", "type": "json", "description": "Streaming test results"},
-        {"name": "streaming_report.md", "type": "markdown", "description": "Streaming report"}
+        {
+          "name": "streaming_results.json",
+          "type": "json",
+          "description": "Streaming test results"
+        },
+        {
+          "name": "streaming_report.md",
+          "type": "markdown",
+          "description": "Streaming report"
+        }
       ],
       "assertions": [
-        {"type": "sse_works", "target": "sse", "message": "SSE streaming must work"},
-        {"type": "chunks_received", "target": "chunks", "message": "Chunks must be received progressively"},
-        {"type": "rate_limited", "target": "rate", "message": "Streaming rate must be controllable"},
-        {"type": "complete_response", "target": "completion", "message": "Complete response must be received"}
+        {
+          "type": "sse_works",
+          "target": "sse",
+          "message": "SSE streaming must work"
+        },
+        {
+          "type": "chunks_received",
+          "target": "chunks",
+          "message": "Chunks must be received progressively"
+        },
+        {
+          "type": "rate_limited",
+          "target": "rate",
+          "message": "Streaming rate must be controllable"
+        },
+        {
+          "type": "complete_response",
+          "target": "completion",
+          "message": "Complete response must be received"
+        }
       ],
-      "metrics": ["streams_completed", "avg_chunks_per_response", "avg_chunk_latency_ms", "total_tokens_streamed"]
+      "metrics": [
+        "streams_completed",
+        "avg_chunks_per_response",
+        "avg_chunk_latency_ms",
+        "total_tokens_streamed"
+      ]
     },
     {
       "id": "cognee_integration",
@@ -542,23 +1533,73 @@
       "script": "../scripts/cognee_integration.sh",
       "estimated_duration": "5-10 minutes",
       "inputs": [
-        {"name": "cognee_config", "source": ".env", "required": true},
-        {"name": "test_documents", "source": "data/cognee_test_docs/", "required": true}
+        {
+          "name": "cognee_config",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "test_documents",
+          "source": "data/cognee_test_docs/",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "cognee_results.json", "type": "json", "description": "Cognee integration results"},
-        {"name": "memory_results.json", "type": "json", "description": "Memory operation results"},
-        {"name": "search_results.json", "type": "json", "description": "Search results"},
-        {"name": "cognee_report.md", "type": "markdown", "description": "Cognee integration report"}
+        {
+          "name": "cognee_results.json",
+          "type": "json",
+          "description": "Cognee integration results"
+        },
+        {
+          "name": "memory_results.json",
+          "type": "json",
+          "description": "Memory operation results"
+        },
+        {
+          "name": "search_results.json",
+          "type": "json",
+          "description": "Search results"
+        },
+        {
+          "name": "cognee_report.md",
+          "type": "markdown",
+          "description": "Cognee integration report"
+        }
       ],
       "assertions": [
-        {"type": "cognee_connected", "target": "connection", "message": "Cognee service must be connected"},
-        {"type": "memory_stored", "target": "memory", "message": "Memory must be stored successfully"},
-        {"type": "search_works", "target": "search", "message": "Search must return relevant results"},
-        {"type": "insights_generated", "target": "insights", "message": "Insights must be generated"},
-        {"type": "rag_works", "target": "rag", "message": "RAG retrieval must work"}
+        {
+          "type": "cognee_connected",
+          "target": "connection",
+          "message": "Cognee service must be connected"
+        },
+        {
+          "type": "memory_stored",
+          "target": "memory",
+          "message": "Memory must be stored successfully"
+        },
+        {
+          "type": "search_works",
+          "target": "search",
+          "message": "Search must return relevant results"
+        },
+        {
+          "type": "insights_generated",
+          "target": "insights",
+          "message": "Insights must be generated"
+        },
+        {
+          "type": "rag_works",
+          "target": "rag",
+          "message": "RAG retrieval must work"
+        }
       ],
-      "metrics": ["memories_stored", "searches_performed", "insights_generated", "rag_accuracy", "avg_search_latency_ms"]
+      "metrics": [
+        "memories_stored",
+        "searches_performed",
+        "insights_generated",
+        "rag_accuracy",
+        "avg_search_latency_ms"
+      ]
     },
     {
       "id": "health_monitoring",
@@ -570,67 +1611,170 @@
       "script": "../scripts/health_monitoring.sh",
       "estimated_duration": "2-3 minutes",
       "inputs": [
-        {"name": "health_config", "source": "config/health.yaml", "required": true}
+        {
+          "name": "health_config",
+          "source": "config/health.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "health_results.json", "type": "json", "description": "Health check results"},
-        {"name": "health_report.md", "type": "markdown", "description": "Health monitoring report"}
+        {
+          "name": "health_results.json",
+          "type": "json",
+          "description": "Health check results"
+        },
+        {
+          "name": "health_report.md",
+          "type": "markdown",
+          "description": "Health monitoring report"
+        }
       ],
       "assertions": [
-        {"type": "health_endpoint", "target": "/health", "message": "Health endpoint must respond"},
-        {"type": "ready_endpoint", "target": "/ready", "message": "Ready endpoint must respond"},
-        {"type": "live_endpoint", "target": "/live", "message": "Live endpoint must respond"},
-        {"type": "dependencies_checked", "target": "dependencies", "message": "All dependencies must be checked"}
+        {
+          "type": "health_endpoint",
+          "target": "/health",
+          "message": "Health endpoint must respond"
+        },
+        {
+          "type": "ready_endpoint",
+          "target": "/ready",
+          "message": "Ready endpoint must respond"
+        },
+        {
+          "type": "live_endpoint",
+          "target": "/live",
+          "message": "Live endpoint must respond"
+        },
+        {
+          "type": "dependencies_checked",
+          "target": "dependencies",
+          "message": "All dependencies must be checked"
+        }
       ],
-      "metrics": ["health_checks_passed", "health_checks_failed", "avg_check_latency_ms", "uptime_percent"]
+      "metrics": [
+        "health_checks_passed",
+        "health_checks_failed",
+        "avg_check_latency_ms",
+        "uptime_percent"
+      ]
     },
     {
       "id": "session_management",
       "name": "Session Management",
       "description": "Test session creation, state tracking, cleanup, concurrent access",
       "category": "infrastructure",
-      "dependencies": ["caching_layer", "authentication"],
+      "dependencies": [
+        "caching_layer",
+        "authentication"
+      ],
       "binary_only": true,
       "script": "../scripts/session_management.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "session_config", "source": ".env", "required": true}
+        {
+          "name": "session_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "session_results.json", "type": "json", "description": "Session test results"},
-        {"name": "session_report.md", "type": "markdown", "description": "Session management report"}
+        {
+          "name": "session_results.json",
+          "type": "json",
+          "description": "Session test results"
+        },
+        {
+          "name": "session_report.md",
+          "type": "markdown",
+          "description": "Session management report"
+        }
       ],
       "assertions": [
-        {"type": "session_created", "target": "creation", "message": "Sessions must be created"},
-        {"type": "session_retrieved", "target": "retrieval", "message": "Sessions must be retrievable"},
-        {"type": "session_expired", "target": "expiry", "message": "Sessions must expire correctly"},
-        {"type": "concurrent_access", "target": "concurrent", "message": "Concurrent access must be handled"}
+        {
+          "type": "session_created",
+          "target": "creation",
+          "message": "Sessions must be created"
+        },
+        {
+          "type": "session_retrieved",
+          "target": "retrieval",
+          "message": "Sessions must be retrievable"
+        },
+        {
+          "type": "session_expired",
+          "target": "expiry",
+          "message": "Sessions must expire correctly"
+        },
+        {
+          "type": "concurrent_access",
+          "target": "concurrent",
+          "message": "Concurrent access must be handled"
+        }
       ],
-      "metrics": ["sessions_created", "sessions_active", "sessions_expired", "concurrent_sessions_max"]
+      "metrics": [
+        "sessions_created",
+        "sessions_active",
+        "sessions_expired",
+        "concurrent_sessions_max"
+      ]
     },
     {
       "id": "model_metadata",
       "name": "Model Metadata Service",
       "description": "Test model metadata retrieval, caching, updates from models.dev",
       "category": "core",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/model_metadata.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "metadata_config", "source": ".env", "required": true}
+        {
+          "name": "metadata_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "metadata_results.json", "type": "json", "description": "Metadata test results"},
-        {"name": "metadata_report.md", "type": "markdown", "description": "Model metadata report"}
+        {
+          "name": "metadata_results.json",
+          "type": "json",
+          "description": "Metadata test results"
+        },
+        {
+          "name": "metadata_report.md",
+          "type": "markdown",
+          "description": "Model metadata report"
+        }
       ],
       "assertions": [
-        {"type": "metadata_retrieved", "target": "metadata", "message": "Model metadata must be retrieved"},
-        {"type": "metadata_cached", "target": "cache", "message": "Metadata must be cached"},
-        {"type": "capabilities_listed", "target": "capabilities", "message": "Model capabilities must be listed"},
-        {"type": "pricing_available", "target": "pricing", "message": "Model pricing must be available"}
+        {
+          "type": "metadata_retrieved",
+          "target": "metadata",
+          "message": "Model metadata must be retrieved"
+        },
+        {
+          "type": "metadata_cached",
+          "target": "cache",
+          "message": "Metadata must be cached"
+        },
+        {
+          "type": "capabilities_listed",
+          "target": "capabilities",
+          "message": "Model capabilities must be listed"
+        },
+        {
+          "type": "pricing_available",
+          "target": "pricing",
+          "message": "Model pricing must be available"
+        }
       ],
-      "metrics": ["models_discovered", "metadata_cache_hits", "avg_retrieval_time_ms"]
+      "metrics": [
+        "models_discovered",
+        "metadata_cache_hits",
+        "avg_retrieval_time_ms"
+      ]
     },
     {
       "id": "cloud_aws_bedrock",
@@ -642,18 +1786,46 @@
       "script": "../scripts/cloud_aws_bedrock.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "aws_credentials", "source": ".env", "required": true}
+        {
+          "name": "aws_credentials",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "bedrock_results.json", "type": "json", "description": "Bedrock test results"},
-        {"name": "bedrock_report.md", "type": "markdown", "description": "AWS Bedrock report"}
+        {
+          "name": "bedrock_results.json",
+          "type": "json",
+          "description": "Bedrock test results"
+        },
+        {
+          "name": "bedrock_report.md",
+          "type": "markdown",
+          "description": "AWS Bedrock report"
+        }
       ],
       "assertions": [
-        {"type": "auth_works", "target": "sigv4", "message": "AWS Signature V4 auth must work"},
-        {"type": "models_listed", "target": "models", "message": "Bedrock models must be listed"},
-        {"type": "invocation_works", "target": "invoke", "message": "Model invocation must work"}
+        {
+          "type": "auth_works",
+          "target": "sigv4",
+          "message": "AWS Signature V4 auth must work"
+        },
+        {
+          "type": "models_listed",
+          "target": "models",
+          "message": "Bedrock models must be listed"
+        },
+        {
+          "type": "invocation_works",
+          "target": "invoke",
+          "message": "Model invocation must work"
+        }
       ],
-      "metrics": ["models_available", "invocations_successful", "avg_latency_ms"]
+      "metrics": [
+        "models_available",
+        "invocations_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "cloud_gcp_vertex",
@@ -665,18 +1837,46 @@
       "script": "../scripts/cloud_gcp_vertex.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "gcp_credentials", "source": ".env", "required": true}
+        {
+          "name": "gcp_credentials",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "vertex_results.json", "type": "json", "description": "Vertex AI test results"},
-        {"name": "vertex_report.md", "type": "markdown", "description": "GCP Vertex AI report"}
+        {
+          "name": "vertex_results.json",
+          "type": "json",
+          "description": "Vertex AI test results"
+        },
+        {
+          "name": "vertex_report.md",
+          "type": "markdown",
+          "description": "GCP Vertex AI report"
+        }
       ],
       "assertions": [
-        {"type": "auth_works", "target": "oauth2", "message": "OAuth2 auth must work"},
-        {"type": "models_listed", "target": "models", "message": "Vertex AI models must be listed"},
-        {"type": "prediction_works", "target": "predict", "message": "Model prediction must work"}
+        {
+          "type": "auth_works",
+          "target": "oauth2",
+          "message": "OAuth2 auth must work"
+        },
+        {
+          "type": "models_listed",
+          "target": "models",
+          "message": "Vertex AI models must be listed"
+        },
+        {
+          "type": "prediction_works",
+          "target": "predict",
+          "message": "Model prediction must work"
+        }
       ],
-      "metrics": ["models_available", "predictions_successful", "avg_latency_ms"]
+      "metrics": [
+        "models_available",
+        "predictions_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "cloud_azure_openai",
@@ -688,68 +1888,175 @@
       "script": "../scripts/cloud_azure_openai.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "azure_credentials", "source": ".env", "required": true}
+        {
+          "name": "azure_credentials",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "azure_results.json", "type": "json", "description": "Azure OpenAI test results"},
-        {"name": "azure_report.md", "type": "markdown", "description": "Azure OpenAI report"}
+        {
+          "name": "azure_results.json",
+          "type": "json",
+          "description": "Azure OpenAI test results"
+        },
+        {
+          "name": "azure_report.md",
+          "type": "markdown",
+          "description": "Azure OpenAI report"
+        }
       ],
       "assertions": [
-        {"type": "auth_works", "target": "api_key", "message": "Azure API key auth must work"},
-        {"type": "deployments_listed", "target": "deployments", "message": "Azure deployments must be listed"},
-        {"type": "completion_works", "target": "completion", "message": "Chat completion must work"}
+        {
+          "type": "auth_works",
+          "target": "api_key",
+          "message": "Azure API key auth must work"
+        },
+        {
+          "type": "deployments_listed",
+          "target": "deployments",
+          "message": "Azure deployments must be listed"
+        },
+        {
+          "type": "completion_works",
+          "target": "completion",
+          "message": "Chat completion must work"
+        }
       ],
-      "metrics": ["deployments_available", "completions_successful", "avg_latency_ms"]
+      "metrics": [
+        "deployments_available",
+        "completions_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "optimization_semantic_cache",
       "name": "Semantic Caching (GPTCache)",
       "description": "Test semantic caching: vector similarity, LRU eviction, TTL management",
       "category": "optimization",
-      "dependencies": ["embeddings_service"],
+      "dependencies": [
+        "embeddings_service"
+      ],
       "binary_only": true,
       "script": "../scripts/optimization_semantic_cache.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "cache_config", "source": "config/gptcache.yaml", "required": true},
-        {"name": "test_queries", "source": "data/semantic_cache_queries.json", "required": true}
+        {
+          "name": "cache_config",
+          "source": "config/gptcache.yaml",
+          "required": true
+        },
+        {
+          "name": "test_queries",
+          "source": "data/semantic_cache_queries.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "semantic_cache_results.json", "type": "json", "description": "Semantic cache test results"},
-        {"name": "semantic_cache_report.md", "type": "markdown", "description": "Semantic cache report"}
+        {
+          "name": "semantic_cache_results.json",
+          "type": "json",
+          "description": "Semantic cache test results"
+        },
+        {
+          "name": "semantic_cache_report.md",
+          "type": "markdown",
+          "description": "Semantic cache report"
+        }
       ],
       "assertions": [
-        {"type": "cache_hit_similar", "target": "similarity", "message": "Similar queries must hit cache"},
-        {"type": "cache_miss_different", "target": "different", "message": "Different queries must miss cache"},
-        {"type": "lru_eviction", "target": "eviction", "message": "LRU eviction must work"},
-        {"type": "ttl_enforced", "target": "ttl", "message": "TTL must be enforced"}
+        {
+          "type": "cache_hit_similar",
+          "target": "similarity",
+          "message": "Similar queries must hit cache"
+        },
+        {
+          "type": "cache_miss_different",
+          "target": "different",
+          "message": "Different queries must miss cache"
+        },
+        {
+          "type": "lru_eviction",
+          "target": "eviction",
+          "message": "LRU eviction must work"
+        },
+        {
+          "type": "ttl_enforced",
+          "target": "ttl",
+          "message": "TTL must be enforced"
+        }
       ],
-      "metrics": ["cache_hits", "cache_misses", "similarity_threshold", "evictions", "avg_lookup_time_ms"]
+      "metrics": [
+        "cache_hits",
+        "cache_misses",
+        "similarity_threshold",
+        "evictions",
+        "avg_lookup_time_ms"
+      ]
     },
     {
       "id": "optimization_structured_output",
       "name": "Structured Output (Outlines)",
       "description": "Test structured output: JSON schema validation, regex patterns, choice constraints",
       "category": "optimization",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/optimization_structured_output.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "outlines_config", "source": "config/outlines.yaml", "required": true},
-        {"name": "test_schemas", "source": "data/output_schemas.json", "required": true}
+        {
+          "name": "outlines_config",
+          "source": "config/outlines.yaml",
+          "required": true
+        },
+        {
+          "name": "test_schemas",
+          "source": "data/output_schemas.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "structured_output_results.json", "type": "json", "description": "Structured output test results"},
-        {"name": "structured_output_report.md", "type": "markdown", "description": "Structured output report"}
+        {
+          "name": "structured_output_results.json",
+          "type": "json",
+          "description": "Structured output test results"
+        },
+        {
+          "name": "structured_output_report.md",
+          "type": "markdown",
+          "description": "Structured output report"
+        }
       ],
       "assertions": [
-        {"type": "json_valid", "target": "json_output", "message": "JSON output must be valid"},
-        {"type": "schema_compliant", "target": "schema", "message": "Output must comply with schema"},
-        {"type": "regex_matches", "target": "regex", "message": "Output must match regex patterns"},
-        {"type": "choices_respected", "target": "choices", "message": "Choice constraints must be respected"}
+        {
+          "type": "json_valid",
+          "target": "json_output",
+          "message": "JSON output must be valid"
+        },
+        {
+          "type": "schema_compliant",
+          "target": "schema",
+          "message": "Output must comply with schema"
+        },
+        {
+          "type": "regex_matches",
+          "target": "regex",
+          "message": "Output must match regex patterns"
+        },
+        {
+          "type": "choices_respected",
+          "target": "choices",
+          "message": "Choice constraints must be respected"
+        }
       ],
-      "metrics": ["schemas_tested", "validations_passed", "regex_matches", "choice_compliance_rate"]
+      "metrics": [
+        "schemas_tested",
+        "validations_passed",
+        "regex_matches",
+        "choice_compliance_rate"
+      ]
     },
     {
       "id": "grpc_api",
@@ -761,45 +2068,121 @@
       "script": "../scripts/grpc_api.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "grpc_config", "source": ".env", "required": true}
+        {
+          "name": "grpc_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "grpc_results.json", "type": "json", "description": "gRPC test results"},
-        {"name": "grpc_report.md", "type": "markdown", "description": "gRPC API report"}
+        {
+          "name": "grpc_results.json",
+          "type": "json",
+          "description": "gRPC test results"
+        },
+        {
+          "name": "grpc_report.md",
+          "type": "markdown",
+          "description": "gRPC API report"
+        }
       ],
       "assertions": [
-        {"type": "service_running", "target": "grpc", "message": "gRPC service must be running"},
-        {"type": "unary_works", "target": "unary", "message": "Unary calls must work"},
-        {"type": "streaming_works", "target": "streaming", "message": "Streaming calls must work"},
-        {"type": "reflection_works", "target": "reflection", "message": "Service reflection must work"}
+        {
+          "type": "service_running",
+          "target": "grpc",
+          "message": "gRPC service must be running"
+        },
+        {
+          "type": "unary_works",
+          "target": "unary",
+          "message": "Unary calls must work"
+        },
+        {
+          "type": "streaming_works",
+          "target": "streaming",
+          "message": "Streaming calls must work"
+        },
+        {
+          "type": "reflection_works",
+          "target": "reflection",
+          "message": "Service reflection must work"
+        }
       ],
-      "metrics": ["unary_calls", "streaming_calls", "avg_latency_ms", "errors"]
+      "metrics": [
+        "unary_calls",
+        "streaming_calls",
+        "avg_latency_ms",
+        "errors"
+      ]
     },
     {
       "id": "openai_compatibility",
       "name": "OpenAI API Compatibility",
       "description": "Test full OpenAI API compatibility: chat completions, models, embeddings",
       "category": "api",
-      "dependencies": ["provider_verification"],
+      "dependencies": [
+        "provider_verification"
+      ],
       "binary_only": true,
       "script": "../scripts/openai_compatibility.sh",
       "estimated_duration": "5-10 minutes",
       "inputs": [
-        {"name": "api_config", "source": ".env", "required": true},
-        {"name": "openai_test_suite", "source": "data/openai_test_suite.json", "required": true}
+        {
+          "name": "api_config",
+          "source": ".env",
+          "required": true
+        },
+        {
+          "name": "openai_test_suite",
+          "source": "data/openai_test_suite.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "openai_compat_results.json", "type": "json", "description": "OpenAI compatibility results"},
-        {"name": "openai_compat_report.md", "type": "markdown", "description": "OpenAI compatibility report"}
+        {
+          "name": "openai_compat_results.json",
+          "type": "json",
+          "description": "OpenAI compatibility results"
+        },
+        {
+          "name": "openai_compat_report.md",
+          "type": "markdown",
+          "description": "OpenAI compatibility report"
+        }
       ],
       "assertions": [
-        {"type": "endpoint_works", "target": "/v1/chat/completions", "message": "Chat completions endpoint must work"},
-        {"type": "endpoint_works", "target": "/v1/models", "message": "Models endpoint must work"},
-        {"type": "endpoint_works", "target": "/v1/embeddings", "message": "Embeddings endpoint must work"},
-        {"type": "streaming_works", "target": "stream", "message": "Streaming must work"},
-        {"type": "format_compatible", "target": "response_format", "message": "Response format must be OpenAI-compatible"}
+        {
+          "type": "endpoint_works",
+          "target": "/v1/chat/completions",
+          "message": "Chat completions endpoint must work"
+        },
+        {
+          "type": "endpoint_works",
+          "target": "/v1/models",
+          "message": "Models endpoint must work"
+        },
+        {
+          "type": "endpoint_works",
+          "target": "/v1/embeddings",
+          "message": "Embeddings endpoint must work"
+        },
+        {
+          "type": "streaming_works",
+          "target": "stream",
+          "message": "Streaming must work"
+        },
+        {
+          "type": "format_compatible",
+          "target": "response_format",
+          "message": "Response format must be OpenAI-compatible"
+        }
       ],
-      "metrics": ["endpoints_tested", "compatibility_score", "format_violations", "avg_response_time_ms"]
+      "metrics": [
+        "endpoints_tested",
+        "compatibility_score",
+        "format_violations",
+        "avg_response_time_ms"
+      ]
     },
     {
       "id": "database_operations",
@@ -811,19 +2194,52 @@
       "script": "../scripts/database_operations.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "db_config", "source": ".env", "required": true}
+        {
+          "name": "db_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "db_results.json", "type": "json", "description": "Database test results"},
-        {"name": "db_report.md", "type": "markdown", "description": "Database operations report"}
+        {
+          "name": "db_results.json",
+          "type": "json",
+          "description": "Database test results"
+        },
+        {
+          "name": "db_report.md",
+          "type": "markdown",
+          "description": "Database operations report"
+        }
       ],
       "assertions": [
-        {"type": "connection_works", "target": "connection", "message": "Database connection must work"},
-        {"type": "crud_works", "target": "crud", "message": "CRUD operations must work"},
-        {"type": "transactions_work", "target": "transactions", "message": "Transactions must work"},
-        {"type": "pool_works", "target": "pool", "message": "Connection pooling must work"}
+        {
+          "type": "connection_works",
+          "target": "connection",
+          "message": "Database connection must work"
+        },
+        {
+          "type": "crud_works",
+          "target": "crud",
+          "message": "CRUD operations must work"
+        },
+        {
+          "type": "transactions_work",
+          "target": "transactions",
+          "message": "Transactions must work"
+        },
+        {
+          "type": "pool_works",
+          "target": "pool",
+          "message": "Connection pooling must work"
+        }
       ],
-      "metrics": ["queries_executed", "transactions_committed", "pool_connections", "avg_query_time_ms"]
+      "metrics": [
+        "queries_executed",
+        "transactions_committed",
+        "pool_connections",
+        "avg_query_time_ms"
+      ]
     },
     {
       "id": "provider_claude",
@@ -835,19 +2251,52 @@
       "script": "../scripts/provider_claude.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "claude_api_key", "source": ".env", "required": true}
+        {
+          "name": "claude_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "claude_results.json", "type": "json", "description": "Claude provider test results"},
-        {"name": "claude_report.md", "type": "markdown", "description": "Claude provider report"}
+        {
+          "name": "claude_results.json",
+          "type": "json",
+          "description": "Claude provider test results"
+        },
+        {
+          "name": "claude_report.md",
+          "type": "markdown",
+          "description": "Claude provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "Claude API must respond"},
-        {"type": "streaming_works", "target": "streaming", "message": "Streaming must work"},
-        {"type": "retry_works", "target": "retry", "message": "Retry logic must work"},
-        {"type": "models_available", "target": "models", "message": "Claude models must be available"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "Claude API must respond"
+        },
+        {
+          "type": "streaming_works",
+          "target": "streaming",
+          "message": "Streaming must work"
+        },
+        {
+          "type": "retry_works",
+          "target": "retry",
+          "message": "Retry logic must work"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "Claude models must be available"
+        }
       ],
-      "metrics": ["requests_successful", "streams_completed", "retries_attempted", "avg_latency_ms"]
+      "metrics": [
+        "requests_successful",
+        "streams_completed",
+        "retries_attempted",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_deepseek",
@@ -859,17 +2308,40 @@
       "script": "../scripts/provider_deepseek.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "deepseek_api_key", "source": ".env", "required": true}
+        {
+          "name": "deepseek_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "deepseek_results.json", "type": "json", "description": "DeepSeek provider test results"},
-        {"name": "deepseek_report.md", "type": "markdown", "description": "DeepSeek provider report"}
+        {
+          "name": "deepseek_results.json",
+          "type": "json",
+          "description": "DeepSeek provider test results"
+        },
+        {
+          "name": "deepseek_report.md",
+          "type": "markdown",
+          "description": "DeepSeek provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "DeepSeek API must respond"},
-        {"type": "models_available", "target": "models", "message": "DeepSeek models must be available"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "DeepSeek API must respond"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "DeepSeek models must be available"
+        }
       ],
-      "metrics": ["requests_successful", "avg_latency_ms"]
+      "metrics": [
+        "requests_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_gemini",
@@ -881,18 +2353,46 @@
       "script": "../scripts/provider_gemini.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "gemini_api_key", "source": ".env", "required": true}
+        {
+          "name": "gemini_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "gemini_results.json", "type": "json", "description": "Gemini provider test results"},
-        {"name": "gemini_report.md", "type": "markdown", "description": "Gemini provider report"}
+        {
+          "name": "gemini_results.json",
+          "type": "json",
+          "description": "Gemini provider test results"
+        },
+        {
+          "name": "gemini_report.md",
+          "type": "markdown",
+          "description": "Gemini provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "Gemini API must respond"},
-        {"type": "safety_works", "target": "safety", "message": "Safety settings must work"},
-        {"type": "models_available", "target": "models", "message": "Gemini models must be available"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "Gemini API must respond"
+        },
+        {
+          "type": "safety_works",
+          "target": "safety",
+          "message": "Safety settings must work"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "Gemini models must be available"
+        }
       ],
-      "metrics": ["requests_successful", "safety_triggers", "avg_latency_ms"]
+      "metrics": [
+        "requests_successful",
+        "safety_triggers",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_ollama",
@@ -904,18 +2404,46 @@
       "script": "../scripts/provider_ollama.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "ollama_config", "source": ".env", "required": true}
+        {
+          "name": "ollama_config",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "ollama_results.json", "type": "json", "description": "Ollama provider test results"},
-        {"name": "ollama_report.md", "type": "markdown", "description": "Ollama provider report"}
+        {
+          "name": "ollama_results.json",
+          "type": "json",
+          "description": "Ollama provider test results"
+        },
+        {
+          "name": "ollama_report.md",
+          "type": "markdown",
+          "description": "Ollama provider report"
+        }
       ],
       "assertions": [
-        {"type": "connection_works", "target": "connection", "message": "Ollama connection must work"},
-        {"type": "models_available", "target": "models", "message": "Ollama models must be available"},
-        {"type": "streaming_works", "target": "streaming", "message": "Streaming must work"}
+        {
+          "type": "connection_works",
+          "target": "connection",
+          "message": "Ollama connection must work"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "Ollama models must be available"
+        },
+        {
+          "type": "streaming_works",
+          "target": "streaming",
+          "message": "Streaming must work"
+        }
       ],
-      "metrics": ["models_loaded", "requests_successful", "avg_latency_ms"]
+      "metrics": [
+        "models_loaded",
+        "requests_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_openrouter",
@@ -927,18 +2455,46 @@
       "script": "../scripts/provider_openrouter.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "openrouter_api_key", "source": ".env", "required": true}
+        {
+          "name": "openrouter_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "openrouter_results.json", "type": "json", "description": "OpenRouter provider test results"},
-        {"name": "openrouter_report.md", "type": "markdown", "description": "OpenRouter provider report"}
+        {
+          "name": "openrouter_results.json",
+          "type": "json",
+          "description": "OpenRouter provider test results"
+        },
+        {
+          "name": "openrouter_report.md",
+          "type": "markdown",
+          "description": "OpenRouter provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "OpenRouter API must respond"},
-        {"type": "routing_works", "target": "routing", "message": "Model routing must work"},
-        {"type": "models_discovered", "target": "discovery", "message": "Models must be discovered"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "OpenRouter API must respond"
+        },
+        {
+          "type": "routing_works",
+          "target": "routing",
+          "message": "Model routing must work"
+        },
+        {
+          "type": "models_discovered",
+          "target": "discovery",
+          "message": "Models must be discovered"
+        }
       ],
-      "metrics": ["models_discovered", "requests_routed", "avg_latency_ms"]
+      "metrics": [
+        "models_discovered",
+        "requests_routed",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_qwen",
@@ -950,17 +2506,40 @@
       "script": "../scripts/provider_qwen.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "qwen_api_key", "source": ".env", "required": true}
+        {
+          "name": "qwen_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "qwen_results.json", "type": "json", "description": "Qwen provider test results"},
-        {"name": "qwen_report.md", "type": "markdown", "description": "Qwen provider report"}
+        {
+          "name": "qwen_results.json",
+          "type": "json",
+          "description": "Qwen provider test results"
+        },
+        {
+          "name": "qwen_report.md",
+          "type": "markdown",
+          "description": "Qwen provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "Qwen API must respond"},
-        {"type": "models_available", "target": "models", "message": "Qwen models must be available"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "Qwen API must respond"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "Qwen models must be available"
+        }
       ],
-      "metrics": ["requests_successful", "avg_latency_ms"]
+      "metrics": [
+        "requests_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "provider_zai",
@@ -972,17 +2551,40 @@
       "script": "../scripts/provider_zai.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "zai_api_key", "source": ".env", "required": true}
+        {
+          "name": "zai_api_key",
+          "source": ".env",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "zai_results.json", "type": "json", "description": "ZAI provider test results"},
-        {"name": "zai_report.md", "type": "markdown", "description": "ZAI provider report"}
+        {
+          "name": "zai_results.json",
+          "type": "json",
+          "description": "ZAI provider test results"
+        },
+        {
+          "name": "zai_report.md",
+          "type": "markdown",
+          "description": "ZAI provider report"
+        }
       ],
       "assertions": [
-        {"type": "api_works", "target": "api", "message": "ZAI API must respond"},
-        {"type": "models_available", "target": "models", "message": "ZAI models must be available"}
+        {
+          "type": "api_works",
+          "target": "api",
+          "message": "ZAI API must respond"
+        },
+        {
+          "type": "models_available",
+          "target": "models",
+          "message": "ZAI models must be available"
+        }
       ],
-      "metrics": ["requests_successful", "avg_latency_ms"]
+      "metrics": [
+        "requests_successful",
+        "avg_latency_ms"
+      ]
     },
     {
       "id": "input_validation",
@@ -994,19 +2596,52 @@
       "script": "../scripts/input_validation.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "test_payloads", "source": "data/validation_test_payloads.json", "required": true}
+        {
+          "name": "test_payloads",
+          "source": "data/validation_test_payloads.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "validation_results.json", "type": "json", "description": "Validation test results"},
-        {"name": "validation_report.md", "type": "markdown", "description": "Input validation report"}
+        {
+          "name": "validation_results.json",
+          "type": "json",
+          "description": "Validation test results"
+        },
+        {
+          "name": "validation_report.md",
+          "type": "markdown",
+          "description": "Input validation report"
+        }
       ],
       "assertions": [
-        {"type": "valid_accepted", "target": "valid", "message": "Valid inputs must be accepted"},
-        {"type": "invalid_rejected", "target": "invalid", "message": "Invalid inputs must be rejected"},
-        {"type": "injection_blocked", "target": "injection", "message": "Injection attempts must be blocked"},
-        {"type": "type_checked", "target": "types", "message": "Type checking must work"}
+        {
+          "type": "valid_accepted",
+          "target": "valid",
+          "message": "Valid inputs must be accepted"
+        },
+        {
+          "type": "invalid_rejected",
+          "target": "invalid",
+          "message": "Invalid inputs must be rejected"
+        },
+        {
+          "type": "injection_blocked",
+          "target": "injection",
+          "message": "Injection attempts must be blocked"
+        },
+        {
+          "type": "type_checked",
+          "target": "types",
+          "message": "Type checking must work"
+        }
       ],
-      "metrics": ["valid_accepted", "invalid_rejected", "injection_blocked", "type_errors"]
+      "metrics": [
+        "valid_accepted",
+        "invalid_rejected",
+        "injection_blocked",
+        "type_errors"
+      ]
     },
     {
       "id": "error_handling",
@@ -1018,19 +2653,52 @@
       "script": "../scripts/error_handling.sh",
       "estimated_duration": "2-4 minutes",
       "inputs": [
-        {"name": "error_scenarios", "source": "data/error_scenarios.json", "required": true}
+        {
+          "name": "error_scenarios",
+          "source": "data/error_scenarios.json",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "error_results.json", "type": "json", "description": "Error handling test results"},
-        {"name": "error_report.md", "type": "markdown", "description": "Error handling report"}
+        {
+          "name": "error_results.json",
+          "type": "json",
+          "description": "Error handling test results"
+        },
+        {
+          "name": "error_report.md",
+          "type": "markdown",
+          "description": "Error handling report"
+        }
       ],
       "assertions": [
-        {"type": "graceful_degradation", "target": "degradation", "message": "System must degrade gracefully"},
-        {"type": "error_messages_clear", "target": "messages", "message": "Error messages must be clear"},
-        {"type": "recovery_works", "target": "recovery", "message": "System must recover from errors"},
-        {"type": "no_stack_traces", "target": "security", "message": "Stack traces must not be exposed"}
+        {
+          "type": "graceful_degradation",
+          "target": "degradation",
+          "message": "System must degrade gracefully"
+        },
+        {
+          "type": "error_messages_clear",
+          "target": "messages",
+          "message": "Error messages must be clear"
+        },
+        {
+          "type": "recovery_works",
+          "target": "recovery",
+          "message": "System must recover from errors"
+        },
+        {
+          "type": "no_stack_traces",
+          "target": "security",
+          "message": "Stack traces must not be exposed"
+        }
       ],
-      "metrics": ["errors_handled", "recoveries", "degradation_events", "stack_trace_leaks"]
+      "metrics": [
+        "errors_handled",
+        "recoveries",
+        "degradation_events",
+        "stack_trace_leaks"
+      ]
     },
     {
       "id": "concurrent_access",
@@ -1042,19 +2710,52 @@
       "script": "../scripts/concurrent_access.sh",
       "estimated_duration": "3-5 minutes",
       "inputs": [
-        {"name": "concurrency_config", "source": "config/concurrency.yaml", "required": true}
+        {
+          "name": "concurrency_config",
+          "source": "config/concurrency.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "concurrency_results.json", "type": "json", "description": "Concurrency test results"},
-        {"name": "concurrency_report.md", "type": "markdown", "description": "Concurrent access report"}
+        {
+          "name": "concurrency_results.json",
+          "type": "json",
+          "description": "Concurrency test results"
+        },
+        {
+          "name": "concurrency_report.md",
+          "type": "markdown",
+          "description": "Concurrent access report"
+        }
       ],
       "assertions": [
-        {"type": "no_race_conditions", "target": "races", "message": "No race conditions must occur"},
-        {"type": "thread_safe", "target": "thread_safety", "message": "Operations must be thread-safe"},
-        {"type": "no_deadlocks", "target": "deadlocks", "message": "No deadlocks must occur"},
-        {"type": "resources_released", "target": "resources", "message": "Resources must be released properly"}
+        {
+          "type": "no_race_conditions",
+          "target": "races",
+          "message": "No race conditions must occur"
+        },
+        {
+          "type": "thread_safe",
+          "target": "thread_safety",
+          "message": "Operations must be thread-safe"
+        },
+        {
+          "type": "no_deadlocks",
+          "target": "deadlocks",
+          "message": "No deadlocks must occur"
+        },
+        {
+          "type": "resources_released",
+          "target": "resources",
+          "message": "Resources must be released properly"
+        }
       ],
-      "metrics": ["concurrent_requests", "race_conditions_detected", "deadlocks_detected", "resource_leaks"]
+      "metrics": [
+        "concurrent_requests",
+        "race_conditions_detected",
+        "deadlocks_detected",
+        "resource_leaks"
+      ]
     },
     {
       "id": "graceful_shutdown",
@@ -1066,19 +2767,51 @@
       "script": "../scripts/graceful_shutdown.sh",
       "estimated_duration": "2-3 minutes",
       "inputs": [
-        {"name": "shutdown_config", "source": "config/shutdown.yaml", "required": true}
+        {
+          "name": "shutdown_config",
+          "source": "config/shutdown.yaml",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "shutdown_results.json", "type": "json", "description": "Shutdown test results"},
-        {"name": "shutdown_report.md", "type": "markdown", "description": "Graceful shutdown report"}
+        {
+          "name": "shutdown_results.json",
+          "type": "json",
+          "description": "Shutdown test results"
+        },
+        {
+          "name": "shutdown_report.md",
+          "type": "markdown",
+          "description": "Graceful shutdown report"
+        }
       ],
       "assertions": [
-        {"type": "sigterm_handled", "target": "sigterm", "message": "SIGTERM must be handled"},
-        {"type": "sigint_handled", "target": "sigint", "message": "SIGINT must be handled"},
-        {"type": "in_flight_completed", "target": "in_flight", "message": "In-flight requests must complete"},
-        {"type": "cleanup_done", "target": "cleanup", "message": "Cleanup must be performed"}
+        {
+          "type": "sigterm_handled",
+          "target": "sigterm",
+          "message": "SIGTERM must be handled"
+        },
+        {
+          "type": "sigint_handled",
+          "target": "sigint",
+          "message": "SIGINT must be handled"
+        },
+        {
+          "type": "in_flight_completed",
+          "target": "in_flight",
+          "message": "In-flight requests must complete"
+        },
+        {
+          "type": "cleanup_done",
+          "target": "cleanup",
+          "message": "Cleanup must be performed"
+        }
       ],
-      "metrics": ["shutdown_time_ms", "in_flight_completed", "cleanup_operations"]
+      "metrics": [
+        "shutdown_time_ms",
+        "in_flight_completed",
+        "cleanup_operations"
+      ]
     },
     {
       "id": "configuration_loading",
@@ -1090,166 +2823,728 @@
       "script": "../scripts/configuration_loading.sh",
       "estimated_duration": "1-2 minutes",
       "inputs": [
-        {"name": "config_files", "source": "configs/", "required": true}
+        {
+          "name": "config_files",
+          "source": "configs/",
+          "required": true
+        }
       ],
       "outputs": [
-        {"name": "config_results.json", "type": "json", "description": "Configuration test results"},
-        {"name": "config_report.md", "type": "markdown", "description": "Configuration loading report"}
+        {
+          "name": "config_results.json",
+          "type": "json",
+          "description": "Configuration test results"
+        },
+        {
+          "name": "config_report.md",
+          "type": "markdown",
+          "description": "Configuration loading report"
+        }
       ],
       "assertions": [
-        {"type": "yaml_loaded", "target": "yaml", "message": "YAML configs must load"},
-        {"type": "json_loaded", "target": "json", "message": "JSON configs must load"},
-        {"type": "env_overrides", "target": "env", "message": "Env var overrides must work"},
-        {"type": "validation_works", "target": "validation", "message": "Config validation must work"}
+        {
+          "type": "yaml_loaded",
+          "target": "yaml",
+          "message": "YAML configs must load"
+        },
+        {
+          "type": "json_loaded",
+          "target": "json",
+          "message": "JSON configs must load"
+        },
+        {
+          "type": "env_overrides",
+          "target": "env",
+          "message": "Env var overrides must work"
+        },
+        {
+          "type": "validation_works",
+          "target": "validation",
+          "message": "Config validation must work"
+        }
       ],
-      "metrics": ["configs_loaded", "overrides_applied", "validation_errors"]
+      "metrics": [
+        "configs_loaded",
+        "overrides_applied",
+        "validation_errors"
+      ]
+    },
+    {
+      "id": "oauth_credentials",
+      "name": "OAuth Credentials Challenge",
+      "description": "Verifies OAuth credential integration for Claude Code and Qwen Code CLI agents",
+      "category": "core",
+      "dependencies": [],
+      "estimated_duration": "2-5 minutes",
+      "binary_only": false,
+      "script": "../scripts/oauth_credentials_challenge.sh",
+      "inputs": [
+        {
+          "name": "claude_credentials",
+          "source": "~/.claude/.credentials.json",
+          "required": false,
+          "description": "Claude Code CLI OAuth credentials"
+        },
+        {
+          "name": "qwen_credentials",
+          "source": "~/.qwen/oauth_creds.json",
+          "required": false,
+          "description": "Qwen Code CLI OAuth credentials"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "oauth_challenge_results.json",
+          "type": "json",
+          "description": "OAuth credential verification results"
+        }
+      ],
+      "metrics": [
+        "claude_oauth_valid",
+        "qwen_oauth_valid",
+        "unit_tests_passed",
+        "integration_tests_passed"
+      ],
+      "assertions": [
+        {
+          "type": "env_var_check",
+          "target": "CLAUDE_CODE_USE_OUATH_CREDENTIALS",
+          "message": "Claude OAuth env var must be set"
+        },
+        {
+          "type": "env_var_check",
+          "target": "QWEN_CODE_USE_OUATH_CREDENTIALS",
+          "message": "Qwen OAuth env var must be set"
+        },
+        {
+          "type": "credential_valid",
+          "target": "claude",
+          "message": "Claude OAuth credentials must be valid if available"
+        },
+        {
+          "type": "credential_valid",
+          "target": "qwen",
+          "message": "Qwen OAuth credentials must be valid if available"
+        }
+      ]
     }
   ],
   "assertion_types": {
-    "not_empty": {"description": "Response must not be empty", "params": []},
-    "not_mock": {"description": "Response must not be a mock or placeholder", "params": [], "patterns": ["lorem ipsum", "placeholder", "mock response", "TODO", "not implemented"]},
-    "contains": {"description": "Response must contain specified text", "params": ["value"]},
-    "contains_any": {"description": "Response must contain any of the specified values", "params": ["values"]},
-    "min_length": {"description": "Response must have minimum character count", "params": ["value"]},
-    "quality_score": {"description": "Response quality must meet threshold", "params": ["min_value"]},
-    "reasoning_present": {"description": "Response must show reasoning steps", "params": [], "indicators": ["because", "therefore", "since", "thus", "step", "first", "then"]},
-    "code_valid": {"description": "Response must contain valid code syntax", "params": []},
-    "min_count": {"description": "Collection must have minimum count", "params": ["value"]},
-    "exact_count": {"description": "Collection must have exact count", "params": ["value"]},
-    "max_latency": {"description": "Operation must complete within time limit (ms)", "params": ["value"]},
-    "all_valid": {"description": "All items must be valid", "params": []},
-    "no_duplicates": {"description": "No duplicate items allowed", "params": []},
-    "all_pass": {"description": "All items must pass", "params": []},
-    "no_mock_responses": {"description": "No mock or fake responses allowed", "params": []},
-    "min_score": {"description": "Score must meet minimum threshold", "params": ["value"]},
-    "strategy_tested": {"description": "Voting strategy must be tested", "params": []},
-    "min_providers": {"description": "Minimum providers must respond", "params": ["value"]},
-    "consensus_reached": {"description": "Consensus must be reached", "params": []},
-    "debate_created": {"description": "Debate must be created", "params": []},
-    "min_rounds": {"description": "Minimum rounds must complete", "params": ["value"]},
-    "all_participants": {"description": "All participants must participate", "params": ["value"]},
-    "moderation_applied": {"description": "Moderation must be applied", "params": []},
-    "server_discovered": {"description": "Server must be discovered", "params": []},
-    "server_running": {"description": "Server must be running", "params": []},
-    "tools_available": {"description": "Tools must be available", "params": ["value"]},
-    "resources_accessible": {"description": "Resources must be accessible", "params": []},
-    "diagnostics_returned": {"description": "Diagnostics must be returned", "params": []},
-    "completions_returned": {"description": "Completions must be returned", "params": []},
-    "http_transport": {"description": "HTTP transport must work", "params": []},
-    "websocket_transport": {"description": "WebSocket transport must work", "params": []},
-    "action_executed": {"description": "Action must execute", "params": []},
-    "embeddings_generated": {"description": "Embeddings must be generated", "params": []},
-    "vector_dimension": {"description": "Vector dimension must match", "params": ["value"]},
-    "similarity_works": {"description": "Similarity search must work", "params": []},
-    "batch_supported": {"description": "Batch operations must work", "params": []},
-    "redis_connected": {"description": "Redis must be connected", "params": []},
-    "cache_hit": {"description": "Cache hits must work", "params": []},
-    "cache_miss": {"description": "Cache misses must work", "params": []},
-    "ttl_enforced": {"description": "TTL must be enforced", "params": []},
-    "fallback_works": {"description": "Fallback must work", "params": []},
-    "token_generated": {"description": "Token must be generated", "params": []},
-    "token_validated": {"description": "Token must be validated", "params": []},
-    "expiry_enforced": {"description": "Expiry must be enforced", "params": []},
-    "roles_enforced": {"description": "Roles must be enforced", "params": []},
-    "unauthorized_rejected": {"description": "Unauthorized must be rejected", "params": []},
-    "limit_enforced": {"description": "Rate limit must be enforced", "params": []},
-    "burst_allowed": {"description": "Burst must be allowed", "params": []},
-    "exceeded_rejected": {"description": "Exceeded requests must be rejected", "params": []},
-    "bucket_refill": {"description": "Token bucket must refill", "params": []},
-    "state_closed": {"description": "State must be closed", "params": []},
-    "state_open": {"description": "State must be open", "params": []},
-    "state_half_open": {"description": "State must be half-open", "params": []},
-    "recovery_works": {"description": "Recovery must work", "params": []},
-    "plugin_loaded": {"description": "Plugin must be loaded", "params": []},
-    "hot_reload_works": {"description": "Hot reload must work", "params": []},
-    "dependencies_resolved": {"description": "Dependencies must be resolved", "params": []},
-    "sandbox_enforced": {"description": "Sandbox must be enforced", "params": []},
-    "metrics_collected": {"description": "Metrics must be collected", "params": []},
-    "sse_works": {"description": "SSE must work", "params": []},
-    "chunks_received": {"description": "Chunks must be received", "params": []},
-    "rate_limited": {"description": "Rate limiting must work", "params": []},
-    "complete_response": {"description": "Complete response must be received", "params": []},
-    "cognee_connected": {"description": "Cognee must be connected", "params": []},
-    "memory_stored": {"description": "Memory must be stored", "params": []},
-    "search_works": {"description": "Search must work", "params": []},
-    "insights_generated": {"description": "Insights must be generated", "params": []},
-    "rag_works": {"description": "RAG must work", "params": []},
-    "health_endpoint": {"description": "Health endpoint must respond", "params": []},
-    "ready_endpoint": {"description": "Ready endpoint must respond", "params": []},
-    "live_endpoint": {"description": "Live endpoint must respond", "params": []},
-    "dependencies_checked": {"description": "Dependencies must be checked", "params": []},
-    "session_created": {"description": "Session must be created", "params": []},
-    "session_retrieved": {"description": "Session must be retrieved", "params": []},
-    "session_expired": {"description": "Session must expire", "params": []},
-    "concurrent_access": {"description": "Concurrent access must work", "params": []},
-    "metadata_retrieved": {"description": "Metadata must be retrieved", "params": []},
-    "metadata_cached": {"description": "Metadata must be cached", "params": []},
-    "capabilities_listed": {"description": "Capabilities must be listed", "params": []},
-    "pricing_available": {"description": "Pricing must be available", "params": []},
-    "auth_works": {"description": "Authentication must work", "params": []},
-    "models_listed": {"description": "Models must be listed", "params": []},
-    "invocation_works": {"description": "Invocation must work", "params": []},
-    "prediction_works": {"description": "Prediction must work", "params": []},
-    "deployments_listed": {"description": "Deployments must be listed", "params": []},
-    "completion_works": {"description": "Completion must work", "params": []},
-    "cache_hit_similar": {"description": "Similar queries must hit cache", "params": []},
-    "cache_miss_different": {"description": "Different queries must miss cache", "params": []},
-    "lru_eviction": {"description": "LRU eviction must work", "params": []},
-    "json_valid": {"description": "JSON must be valid", "params": []},
-    "schema_compliant": {"description": "Output must comply with schema", "params": []},
-    "regex_matches": {"description": "Output must match regex", "params": []},
-    "choices_respected": {"description": "Choices must be respected", "params": []},
-    "service_running": {"description": "Service must be running", "params": []},
-    "unary_works": {"description": "Unary calls must work", "params": []},
-    "streaming_works": {"description": "Streaming must work", "params": []},
-    "reflection_works": {"description": "Reflection must work", "params": []},
-    "endpoint_works": {"description": "Endpoint must work", "params": []},
-    "format_compatible": {"description": "Format must be compatible", "params": []},
-    "connection_works": {"description": "Connection must work", "params": []},
-    "crud_works": {"description": "CRUD must work", "params": []},
-    "transactions_work": {"description": "Transactions must work", "params": []},
-    "pool_works": {"description": "Connection pool must work", "params": []},
-    "api_works": {"description": "API must work", "params": []},
-    "retry_works": {"description": "Retry logic must work", "params": []},
-    "models_available": {"description": "Models must be available", "params": []},
-    "safety_works": {"description": "Safety settings must work", "params": []},
-    "routing_works": {"description": "Routing must work", "params": []},
-    "models_discovered": {"description": "Models must be discovered", "params": []},
-    "valid_accepted": {"description": "Valid inputs must be accepted", "params": []},
-    "invalid_rejected": {"description": "Invalid inputs must be rejected", "params": []},
-    "injection_blocked": {"description": "Injection must be blocked", "params": []},
-    "type_checked": {"description": "Types must be checked", "params": []},
-    "graceful_degradation": {"description": "Degradation must be graceful", "params": []},
-    "error_messages_clear": {"description": "Error messages must be clear", "params": []},
-    "no_stack_traces": {"description": "Stack traces must not be exposed", "params": []},
-    "no_race_conditions": {"description": "No race conditions", "params": []},
-    "thread_safe": {"description": "Operations must be thread-safe", "params": []},
-    "no_deadlocks": {"description": "No deadlocks", "params": []},
-    "resources_released": {"description": "Resources must be released", "params": []},
-    "sigterm_handled": {"description": "SIGTERM must be handled", "params": []},
-    "sigint_handled": {"description": "SIGINT must be handled", "params": []},
-    "in_flight_completed": {"description": "In-flight requests must complete", "params": []},
-    "cleanup_done": {"description": "Cleanup must be done", "params": []},
-    "yaml_loaded": {"description": "YAML must load", "params": []},
-    "json_loaded": {"description": "JSON must load", "params": []},
-    "env_overrides": {"description": "Env overrides must work", "params": []},
-    "validation_works": {"description": "Validation must work", "params": []},
-    "system_verified": {"description": "System must be verified", "params": []},
-    "file_exists": {"description": "File must exist", "params": []},
-    "no_sensitive_data_in_git": {"description": "No sensitive data in git", "params": []}
+    "not_empty": {
+      "description": "Response must not be empty",
+      "params": []
+    },
+    "not_mock": {
+      "description": "Response must not be a mock or placeholder",
+      "params": [],
+      "patterns": [
+        "lorem ipsum",
+        "placeholder",
+        "mock response",
+        "TODO",
+        "not implemented"
+      ]
+    },
+    "contains": {
+      "description": "Response must contain specified text",
+      "params": [
+        "value"
+      ]
+    },
+    "contains_any": {
+      "description": "Response must contain any of the specified values",
+      "params": [
+        "values"
+      ]
+    },
+    "min_length": {
+      "description": "Response must have minimum character count",
+      "params": [
+        "value"
+      ]
+    },
+    "quality_score": {
+      "description": "Response quality must meet threshold",
+      "params": [
+        "min_value"
+      ]
+    },
+    "reasoning_present": {
+      "description": "Response must show reasoning steps",
+      "params": [],
+      "indicators": [
+        "because",
+        "therefore",
+        "since",
+        "thus",
+        "step",
+        "first",
+        "then"
+      ]
+    },
+    "code_valid": {
+      "description": "Response must contain valid code syntax",
+      "params": []
+    },
+    "min_count": {
+      "description": "Collection must have minimum count",
+      "params": [
+        "value"
+      ]
+    },
+    "exact_count": {
+      "description": "Collection must have exact count",
+      "params": [
+        "value"
+      ]
+    },
+    "max_latency": {
+      "description": "Operation must complete within time limit (ms)",
+      "params": [
+        "value"
+      ]
+    },
+    "all_valid": {
+      "description": "All items must be valid",
+      "params": []
+    },
+    "no_duplicates": {
+      "description": "No duplicate items allowed",
+      "params": []
+    },
+    "all_pass": {
+      "description": "All items must pass",
+      "params": []
+    },
+    "no_mock_responses": {
+      "description": "No mock or fake responses allowed",
+      "params": []
+    },
+    "min_score": {
+      "description": "Score must meet minimum threshold",
+      "params": [
+        "value"
+      ]
+    },
+    "strategy_tested": {
+      "description": "Voting strategy must be tested",
+      "params": []
+    },
+    "min_providers": {
+      "description": "Minimum providers must respond",
+      "params": [
+        "value"
+      ]
+    },
+    "consensus_reached": {
+      "description": "Consensus must be reached",
+      "params": []
+    },
+    "debate_created": {
+      "description": "Debate must be created",
+      "params": []
+    },
+    "min_rounds": {
+      "description": "Minimum rounds must complete",
+      "params": [
+        "value"
+      ]
+    },
+    "all_participants": {
+      "description": "All participants must participate",
+      "params": [
+        "value"
+      ]
+    },
+    "moderation_applied": {
+      "description": "Moderation must be applied",
+      "params": []
+    },
+    "server_discovered": {
+      "description": "Server must be discovered",
+      "params": []
+    },
+    "server_running": {
+      "description": "Server must be running",
+      "params": []
+    },
+    "tools_available": {
+      "description": "Tools must be available",
+      "params": [
+        "value"
+      ]
+    },
+    "resources_accessible": {
+      "description": "Resources must be accessible",
+      "params": []
+    },
+    "diagnostics_returned": {
+      "description": "Diagnostics must be returned",
+      "params": []
+    },
+    "completions_returned": {
+      "description": "Completions must be returned",
+      "params": []
+    },
+    "http_transport": {
+      "description": "HTTP transport must work",
+      "params": []
+    },
+    "websocket_transport": {
+      "description": "WebSocket transport must work",
+      "params": []
+    },
+    "action_executed": {
+      "description": "Action must execute",
+      "params": []
+    },
+    "embeddings_generated": {
+      "description": "Embeddings must be generated",
+      "params": []
+    },
+    "vector_dimension": {
+      "description": "Vector dimension must match",
+      "params": [
+        "value"
+      ]
+    },
+    "similarity_works": {
+      "description": "Similarity search must work",
+      "params": []
+    },
+    "batch_supported": {
+      "description": "Batch operations must work",
+      "params": []
+    },
+    "redis_connected": {
+      "description": "Redis must be connected",
+      "params": []
+    },
+    "cache_hit": {
+      "description": "Cache hits must work",
+      "params": []
+    },
+    "cache_miss": {
+      "description": "Cache misses must work",
+      "params": []
+    },
+    "ttl_enforced": {
+      "description": "TTL must be enforced",
+      "params": []
+    },
+    "fallback_works": {
+      "description": "Fallback must work",
+      "params": []
+    },
+    "token_generated": {
+      "description": "Token must be generated",
+      "params": []
+    },
+    "token_validated": {
+      "description": "Token must be validated",
+      "params": []
+    },
+    "expiry_enforced": {
+      "description": "Expiry must be enforced",
+      "params": []
+    },
+    "roles_enforced": {
+      "description": "Roles must be enforced",
+      "params": []
+    },
+    "unauthorized_rejected": {
+      "description": "Unauthorized must be rejected",
+      "params": []
+    },
+    "limit_enforced": {
+      "description": "Rate limit must be enforced",
+      "params": []
+    },
+    "burst_allowed": {
+      "description": "Burst must be allowed",
+      "params": []
+    },
+    "exceeded_rejected": {
+      "description": "Exceeded requests must be rejected",
+      "params": []
+    },
+    "bucket_refill": {
+      "description": "Token bucket must refill",
+      "params": []
+    },
+    "state_closed": {
+      "description": "State must be closed",
+      "params": []
+    },
+    "state_open": {
+      "description": "State must be open",
+      "params": []
+    },
+    "state_half_open": {
+      "description": "State must be half-open",
+      "params": []
+    },
+    "recovery_works": {
+      "description": "Recovery must work",
+      "params": []
+    },
+    "plugin_loaded": {
+      "description": "Plugin must be loaded",
+      "params": []
+    },
+    "hot_reload_works": {
+      "description": "Hot reload must work",
+      "params": []
+    },
+    "dependencies_resolved": {
+      "description": "Dependencies must be resolved",
+      "params": []
+    },
+    "sandbox_enforced": {
+      "description": "Sandbox must be enforced",
+      "params": []
+    },
+    "metrics_collected": {
+      "description": "Metrics must be collected",
+      "params": []
+    },
+    "sse_works": {
+      "description": "SSE must work",
+      "params": []
+    },
+    "chunks_received": {
+      "description": "Chunks must be received",
+      "params": []
+    },
+    "rate_limited": {
+      "description": "Rate limiting must work",
+      "params": []
+    },
+    "complete_response": {
+      "description": "Complete response must be received",
+      "params": []
+    },
+    "cognee_connected": {
+      "description": "Cognee must be connected",
+      "params": []
+    },
+    "memory_stored": {
+      "description": "Memory must be stored",
+      "params": []
+    },
+    "search_works": {
+      "description": "Search must work",
+      "params": []
+    },
+    "insights_generated": {
+      "description": "Insights must be generated",
+      "params": []
+    },
+    "rag_works": {
+      "description": "RAG must work",
+      "params": []
+    },
+    "health_endpoint": {
+      "description": "Health endpoint must respond",
+      "params": []
+    },
+    "ready_endpoint": {
+      "description": "Ready endpoint must respond",
+      "params": []
+    },
+    "live_endpoint": {
+      "description": "Live endpoint must respond",
+      "params": []
+    },
+    "dependencies_checked": {
+      "description": "Dependencies must be checked",
+      "params": []
+    },
+    "session_created": {
+      "description": "Session must be created",
+      "params": []
+    },
+    "session_retrieved": {
+      "description": "Session must be retrieved",
+      "params": []
+    },
+    "session_expired": {
+      "description": "Session must expire",
+      "params": []
+    },
+    "concurrent_access": {
+      "description": "Concurrent access must work",
+      "params": []
+    },
+    "metadata_retrieved": {
+      "description": "Metadata must be retrieved",
+      "params": []
+    },
+    "metadata_cached": {
+      "description": "Metadata must be cached",
+      "params": []
+    },
+    "capabilities_listed": {
+      "description": "Capabilities must be listed",
+      "params": []
+    },
+    "pricing_available": {
+      "description": "Pricing must be available",
+      "params": []
+    },
+    "auth_works": {
+      "description": "Authentication must work",
+      "params": []
+    },
+    "models_listed": {
+      "description": "Models must be listed",
+      "params": []
+    },
+    "invocation_works": {
+      "description": "Invocation must work",
+      "params": []
+    },
+    "prediction_works": {
+      "description": "Prediction must work",
+      "params": []
+    },
+    "deployments_listed": {
+      "description": "Deployments must be listed",
+      "params": []
+    },
+    "completion_works": {
+      "description": "Completion must work",
+      "params": []
+    },
+    "cache_hit_similar": {
+      "description": "Similar queries must hit cache",
+      "params": []
+    },
+    "cache_miss_different": {
+      "description": "Different queries must miss cache",
+      "params": []
+    },
+    "lru_eviction": {
+      "description": "LRU eviction must work",
+      "params": []
+    },
+    "json_valid": {
+      "description": "JSON must be valid",
+      "params": []
+    },
+    "schema_compliant": {
+      "description": "Output must comply with schema",
+      "params": []
+    },
+    "regex_matches": {
+      "description": "Output must match regex",
+      "params": []
+    },
+    "choices_respected": {
+      "description": "Choices must be respected",
+      "params": []
+    },
+    "service_running": {
+      "description": "Service must be running",
+      "params": []
+    },
+    "unary_works": {
+      "description": "Unary calls must work",
+      "params": []
+    },
+    "streaming_works": {
+      "description": "Streaming must work",
+      "params": []
+    },
+    "reflection_works": {
+      "description": "Reflection must work",
+      "params": []
+    },
+    "endpoint_works": {
+      "description": "Endpoint must work",
+      "params": []
+    },
+    "format_compatible": {
+      "description": "Format must be compatible",
+      "params": []
+    },
+    "connection_works": {
+      "description": "Connection must work",
+      "params": []
+    },
+    "crud_works": {
+      "description": "CRUD must work",
+      "params": []
+    },
+    "transactions_work": {
+      "description": "Transactions must work",
+      "params": []
+    },
+    "pool_works": {
+      "description": "Connection pool must work",
+      "params": []
+    },
+    "api_works": {
+      "description": "API must work",
+      "params": []
+    },
+    "retry_works": {
+      "description": "Retry logic must work",
+      "params": []
+    },
+    "models_available": {
+      "description": "Models must be available",
+      "params": []
+    },
+    "safety_works": {
+      "description": "Safety settings must work",
+      "params": []
+    },
+    "routing_works": {
+      "description": "Routing must work",
+      "params": []
+    },
+    "models_discovered": {
+      "description": "Models must be discovered",
+      "params": []
+    },
+    "valid_accepted": {
+      "description": "Valid inputs must be accepted",
+      "params": []
+    },
+    "invalid_rejected": {
+      "description": "Invalid inputs must be rejected",
+      "params": []
+    },
+    "injection_blocked": {
+      "description": "Injection must be blocked",
+      "params": []
+    },
+    "type_checked": {
+      "description": "Types must be checked",
+      "params": []
+    },
+    "graceful_degradation": {
+      "description": "Degradation must be graceful",
+      "params": []
+    },
+    "error_messages_clear": {
+      "description": "Error messages must be clear",
+      "params": []
+    },
+    "no_stack_traces": {
+      "description": "Stack traces must not be exposed",
+      "params": []
+    },
+    "no_race_conditions": {
+      "description": "No race conditions",
+      "params": []
+    },
+    "thread_safe": {
+      "description": "Operations must be thread-safe",
+      "params": []
+    },
+    "no_deadlocks": {
+      "description": "No deadlocks",
+      "params": []
+    },
+    "resources_released": {
+      "description": "Resources must be released",
+      "params": []
+    },
+    "sigterm_handled": {
+      "description": "SIGTERM must be handled",
+      "params": []
+    },
+    "sigint_handled": {
+      "description": "SIGINT must be handled",
+      "params": []
+    },
+    "in_flight_completed": {
+      "description": "In-flight requests must complete",
+      "params": []
+    },
+    "cleanup_done": {
+      "description": "Cleanup must be done",
+      "params": []
+    },
+    "yaml_loaded": {
+      "description": "YAML must load",
+      "params": []
+    },
+    "json_loaded": {
+      "description": "JSON must load",
+      "params": []
+    },
+    "env_overrides": {
+      "description": "Env overrides must work",
+      "params": []
+    },
+    "validation_works": {
+      "description": "Validation must work",
+      "params": []
+    },
+    "system_verified": {
+      "description": "System must be verified",
+      "params": []
+    },
+    "file_exists": {
+      "description": "File must exist",
+      "params": []
+    },
+    "no_sensitive_data_in_git": {
+      "description": "No sensitive data in git",
+      "params": []
+    }
   },
   "categories": {
-    "master": {"description": "Master challenges that run all sub-challenges", "color": "purple"},
-    "core": {"description": "Core functionality challenges", "color": "blue"},
-    "provider": {"description": "LLM provider-specific challenges", "color": "green"},
-    "protocol": {"description": "Protocol integration challenges (MCP, LSP, ACP)", "color": "orange"},
-    "cloud": {"description": "Cloud integration challenges (AWS, GCP, Azure)", "color": "cyan"},
-    "optimization": {"description": "LLM optimization tool challenges", "color": "yellow"},
-    "security": {"description": "Security and authentication challenges", "color": "red"},
-    "resilience": {"description": "Resilience and fault tolerance challenges", "color": "pink"},
-    "infrastructure": {"description": "Infrastructure and operations challenges", "color": "gray"},
-    "integration": {"description": "Third-party integration challenges", "color": "teal"},
-    "api": {"description": "API compatibility challenges", "color": "indigo"},
-    "validation": {"description": "Validation and quality challenges", "color": "lime"}
+    "master": {
+      "description": "Master challenges that run all sub-challenges",
+      "color": "purple"
+    },
+    "core": {
+      "description": "Core functionality challenges",
+      "color": "blue"
+    },
+    "provider": {
+      "description": "LLM provider-specific challenges",
+      "color": "green"
+    },
+    "protocol": {
+      "description": "Protocol integration challenges (MCP, LSP, ACP)",
+      "color": "orange"
+    },
+    "cloud": {
+      "description": "Cloud integration challenges (AWS, GCP, Azure)",
+      "color": "cyan"
+    },
+    "optimization": {
+      "description": "LLM optimization tool challenges",
+      "color": "yellow"
+    },
+    "security": {
+      "description": "Security and authentication challenges",
+      "color": "red"
+    },
+    "resilience": {
+      "description": "Resilience and fault tolerance challenges",
+      "color": "pink"
+    },
+    "infrastructure": {
+      "description": "Infrastructure and operations challenges",
+      "color": "gray"
+    },
+    "integration": {
+      "description": "Third-party integration challenges",
+      "color": "teal"
+    },
+    "api": {
+      "description": "API compatibility challenges",
+      "color": "indigo"
+    },
+    "validation": {
+      "description": "Validation and quality challenges",
+      "color": "lime"
+    }
   }
 }

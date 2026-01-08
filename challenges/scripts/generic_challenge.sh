@@ -688,6 +688,23 @@ run_validation_tests() {
                 ASSERTIONS_FAILED=$((ASSERTIONS_FAILED + 1))
             fi
             ;;
+        oauth_credentials)
+            log_info "Running OAuth Credentials challenge - delegating to oauth_credentials_challenge.sh"
+            if [[ -x "$SCRIPT_DIR/oauth_credentials_challenge.sh" ]]; then
+                "$SCRIPT_DIR/oauth_credentials_challenge.sh"
+                local exit_code=$?
+                if [[ $exit_code -eq 0 ]]; then
+                    ASSERTIONS_PASSED=$((ASSERTIONS_PASSED + 1))
+                    record_assertion "oauth_credentials_challenge" "passed" "true" "OAuth Credentials challenge passed"
+                else
+                    ASSERTIONS_FAILED=$((ASSERTIONS_FAILED + 1))
+                    record_assertion "oauth_credentials_challenge" "failed" "false" "OAuth Credentials challenge failed"
+                fi
+            else
+                log_error "oauth_credentials_challenge.sh not found"
+                ASSERTIONS_FAILED=$((ASSERTIONS_FAILED + 1))
+            fi
+            ;;
         *)
             # Verify validation code exists
             if [[ -f "$PROJECT_ROOT/internal/middleware/validation.go" ]]; then

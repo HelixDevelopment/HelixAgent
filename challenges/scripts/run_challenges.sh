@@ -44,10 +44,10 @@ HelixAgent Challenges Runner
 
 Usage: $0 <challenge_name> [options]
 
-Available Challenges (40 total):
+Available Challenges (41 total):
   Core: provider_verification, ai_debate_formation, api_quality_test,
         ensemble_voting, ai_debate_workflow, embeddings_service,
-        streaming_responses, model_metadata
+        streaming_responses, model_metadata, oauth_credentials
 
   Providers: provider_claude, provider_deepseek, provider_gemini,
              provider_ollama, provider_openrouter, provider_qwen, provider_zai
@@ -312,7 +312,7 @@ main() {
         health_monitoring|caching_layer|database_operations|plugin_system|\
         session_management|configuration_loading|optimization_semantic_cache|\
         optimization_structured_output|cognee_integration|openai_compatibility|grpc_api|\
-        opencode)
+        opencode|oauth_credentials)
             ;;
         *)
             print_error "Unknown challenge: $CHALLENGE_NAME"

@@ -585,7 +585,7 @@ func TestGinRouterStart(t *testing.T) {
 
 		assert.NotNil(t, server)
 		assert.Equal(t, 30*time.Second, server.ReadTimeout)
-		assert.Equal(t, 30*time.Second, server.WriteTimeout)
+		assert.Equal(t, 300*time.Second, server.WriteTimeout) // 5 minutes for SSE streaming support
 		assert.Equal(t, 120*time.Second, server.IdleTimeout)
 
 		// Cleanup

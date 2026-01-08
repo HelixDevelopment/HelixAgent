@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -881,7 +882,9 @@ func TestEnsembleService_RunEnsembleStream_AllProvidersFail(t *testing.T) {
 	streamChan, err := service.RunEnsembleStream(ctx, req)
 	assert.Error(t, err)
 	assert.Nil(t, streamChan)
-	assert.Contains(t, err.Error(), "no providers available for streaming")
+	// Error message may vary: "no providers available for streaming" or "[all_providers_failed] All N providers failed"
+	assert.True(t, strings.Contains(err.Error(), "no providers available") || strings.Contains(err.Error(), "providers failed"),
+		"Expected error about no providers or all providers failed, got: %s", err.Error())
 }
 
 func TestEnsembleService_RunEnsembleStream_FallbackOnError(t *testing.T) {

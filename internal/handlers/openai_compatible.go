@@ -540,10 +540,12 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			c.Writer.Write(finishData)
 			c.Writer.Write([]byte("\n\n"))
 			flusher.Flush()
+			logrus.Info("Tool results: sent finish_reason:stop chunk")
 		}
 
 		c.Writer.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
+		logrus.Info("Tool results: sent [DONE] - stream complete")
 		return
 	}
 
@@ -868,6 +870,7 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		// Send [DONE] and return - stream is complete
 		c.Writer.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
+		logrus.Info("Debate dialogue: sent [DONE] - stream complete")
 		return
 	}
 

@@ -4193,3 +4193,249 @@ func TestDebateVsDirectProcessing(t *testing.T) {
 		assert.Equal(t, tc.expectedResult, result, "Turn %d: %s", i+1, tc.description)
 	}
 }
+
+// TestExpandFollowUpResponse tests the detection and expansion of short follow-up responses
+// like "yes 1", "1", "ok" that reference options from previous assistant messages.
+// CRITICAL: This ensures AI Debate understands "yes 1." means "execute option 1 from previous response".
+func TestExpandFollowUpResponse(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	tests := []struct {
+		name               string
+		userMessage        string
+		messages           []OpenAIMessage
+		shouldExpand       bool
+		expectedContains   []string // Strings that should be in the expanded response
+		expectedNotContain []string // Strings that should NOT be in the expanded response
+	}{
+		{
+			name:        "yes_1_with_numbered_options",
+			userMessage: "yes 1.",
+			messages: []OpenAIMessage{
+				{Role: "user", Content: "Do you see my codebase?"},
+				{Role: "assistant", Content: `I can see your codebase. Here's an analysis...
+
+Would you like me to:
+1. Create an AGENTS.md documenting the project's architecture?
+2. Run a specific audit (e.g., dependency check, test coverage)?
+3. Refactor a specific file?`},
+				{Role: "user", Content: "yes 1."},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"The user is responding to options",
+				"Create an AGENTS.md",
+				"selected option 1",
+				"ACTION REQUIRED",
+			},
+			expectedNotContain: []string{},
+		},
+		{
+			name:        "just_number_1",
+			userMessage: "1",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: `Options:
+1. First option
+2. Second option`},
+				{Role: "user", Content: "1"},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"selected option 1",
+				"First option",
+			},
+			expectedNotContain: []string{},
+		},
+		{
+			name:        "ok_with_number",
+			userMessage: "ok 2",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: `Would you like to:
+1. Run tests
+2. Deploy to production
+3. Review code`},
+				{Role: "user", Content: "ok 2"},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"selected option 2",
+				"Deploy to production",
+			},
+			expectedNotContain: []string{},
+		},
+		{
+			name:        "long_message_not_followup",
+			userMessage: "This is a detailed question about how to implement a new feature in my application",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: "Previous response with 1. options 2. listed"},
+				{Role: "user", Content: "This is a detailed question about how to implement a new feature in my application"},
+			},
+			shouldExpand:     false,
+			expectedContains: []string{},
+		},
+		{
+			name:        "yes_without_options_in_history",
+			userMessage: "yes",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: "I analyzed your code and found some issues."},
+				{Role: "user", Content: "yes"},
+			},
+			shouldExpand:     false, // No numbered options in assistant history, no expansion
+			expectedContains: []string{},
+		},
+		{
+			name:        "please_proceed",
+			userMessage: "please proceed",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: `Ready to execute:
+1. Step one
+2. Step two`},
+				{Role: "user", Content: "please proceed"},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"responding to options",
+			},
+		},
+		{
+			name:        "go_with_number_3",
+			userMessage: "go 3",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: `Choose:
+1. Option A
+2. Option B
+3. Option C`},
+				{Role: "user", Content: "go 3"},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"selected option 3",
+				"Option C",
+			},
+		},
+		{
+			name:        "no_previous_messages",
+			userMessage: "yes 1",
+			messages: []OpenAIMessage{
+				{Role: "user", Content: "yes 1"},
+			},
+			shouldExpand:     false,
+			expectedContains: []string{},
+		},
+		{
+			name:        "option_with_parenthesis",
+			userMessage: "2",
+			messages: []OpenAIMessage{
+				{Role: "assistant", Content: `Available actions:
+1) Create file
+2) Delete file
+3) Rename file`},
+				{Role: "user", Content: "2"},
+			},
+			shouldExpand: true,
+			expectedContains: []string{
+				"selected option 2",
+				"Delete file",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := handler.expandFollowUpResponse(tc.userMessage, tc.messages)
+
+			if tc.shouldExpand {
+				assert.NotEmpty(t, result, "Expected expansion for %s but got empty string", tc.name)
+
+				for _, expected := range tc.expectedContains {
+					assert.Contains(t, result, expected,
+						"Expected expanded response to contain '%s' for test '%s'", expected, tc.name)
+				}
+
+				for _, notExpected := range tc.expectedNotContain {
+					assert.NotContains(t, result, notExpected,
+						"Expected expanded response to NOT contain '%s' for test '%s'", notExpected, tc.name)
+				}
+			} else {
+				assert.Empty(t, result, "Expected no expansion for %s but got: %s", tc.name, result)
+			}
+		})
+	}
+}
+
+// TestFollowUpResponseConversationFlow tests the full conversation flow scenario
+// where user first asks a question, gets options, and then selects one.
+func TestFollowUpResponseConversationFlow(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	// Simulate the exact conversation from the user's issue
+	conversationHistory := []OpenAIMessage{
+		{Role: "user", Content: "Do you see my codebase?"},
+		{Role: "assistant", Content: `Here's a detailed analysis of your Bear-Mail project structure...
+
+Would you like me to:
+1. Create an AGENTS.md documenting the project's architecture?
+2. Run a specific audit (e.g., dependency check, test coverage)?
+3. Refactor a specific file (e.g., extract shared logic from web-app/src/pages/)?`},
+		{Role: "user", Content: "yes 1."},
+	}
+
+	// Test that "yes 1." is properly expanded
+	result := handler.expandFollowUpResponse("yes 1.", conversationHistory)
+
+	// Verify the expansion includes key context
+	assert.NotEmpty(t, result, "Should expand 'yes 1.' with context")
+	assert.Contains(t, result, "Create an AGENTS.md", "Should identify option 1 text")
+	assert.Contains(t, result, "selected option 1", "Should indicate option 1 was selected")
+	assert.Contains(t, result, "ACTION REQUIRED", "Should include action directive")
+	assert.Contains(t, result, "Execute", "Should instruct to execute, not discuss")
+}
+
+// TestFollowUpResponseEdgeCases tests edge cases for follow-up detection
+func TestFollowUpResponseEdgeCases(t *testing.T) {
+	handler := &UnifiedHandler{}
+
+	tests := []struct {
+		name         string
+		userMessage  string
+		shouldDetect bool // Whether this should be detected as a follow-up
+	}{
+		{"yes_lowercase", "yes", true},
+		{"yes_uppercase", "YES", true},
+		{"yes_mixed", "Yes", true},
+		{"ok_lowercase", "ok", true},
+		{"okay_full", "okay", true},
+		{"number_only", "1", true},
+		{"number_with_period", "1.", true},
+		{"yes_comma_number", "yes, 1", true},
+		{"sure_number", "sure 3", true},
+		{"proceed", "proceed", true},
+		{"go_ahead", "go", true},
+		{"yep", "yep", true},
+		{"yeah", "yeah", true},
+		{"y_single", "y", true},
+		{"please", "please", true},
+		{"do_it", "do 1", true},
+		{"long_question", "Can you explain how the authentication system works in detail?", false},
+		{"medium_question", "What does the auth module do?", false},
+		{"specific_request", "Create a new file called test.go with a hello world function", false},
+	}
+
+	// Create a simple message history with options
+	messagesWithOptions := []OpenAIMessage{
+		{Role: "assistant", Content: "Options:\n1. First\n2. Second"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			messages := append(messagesWithOptions, OpenAIMessage{Role: "user", Content: tc.userMessage})
+			result := handler.expandFollowUpResponse(tc.userMessage, messages)
+
+			if tc.shouldDetect {
+				assert.NotEmpty(t, result, "Expected '%s' to be detected as follow-up", tc.userMessage)
+			} else {
+				assert.Empty(t, result, "Expected '%s' to NOT be detected as follow-up", tc.userMessage)
+			}
+		})
+	}
+}

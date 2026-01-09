@@ -555,12 +555,27 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	// Stream AI Debate dialogue introduction before the actual response
 	if h.showDebateDialogue && h.dialogueFormatter != nil && h.debateTeamConfig != nil {
 		// Extract topic from the last user message
+		// CRITICAL: Detect short follow-up responses (like "yes 1", "1", "ok") and expand them
+		// with context from the previous assistant message that offered options
 		topic := "User Query"
+		var lastUserMessage string
 		for i := len(req.Messages) - 1; i >= 0; i-- {
 			if req.Messages[i].Role == "user" {
-				topic = req.Messages[i].Content
+				lastUserMessage = req.Messages[i].Content
 				break
 			}
+		}
+
+		// Check if this is a short follow-up response that needs context expansion
+		expandedTopic := h.expandFollowUpResponse(lastUserMessage, req.Messages)
+		if expandedTopic != "" {
+			topic = expandedTopic
+			logrus.WithFields(logrus.Fields{
+				"original":  lastUserMessage,
+				"expanded":  topic[:min(100, len(topic))] + "...",
+			}).Info("Expanded follow-up response with conversation context")
+		} else {
+			topic = lastUserMessage
 		}
 
 		// Generate and stream debate dialogue introduction
@@ -1522,6 +1537,166 @@ func containsSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// expandFollowUpResponse detects short follow-up responses (like "yes 1", "1", "ok", "yes")
+// and expands them with context from the previous assistant message that offered options.
+// This ensures AI Debate understands "yes 1." means "execute option 1 from your previous response".
+//
+// CRITICAL: This function uses Cognee-stored conversation history via the messages array.
+// The conversation context from Cognee is automatically included in req.Messages by the client.
+func (h *UnifiedHandler) expandFollowUpResponse(userMessage string, messages []OpenAIMessage) string {
+	// Normalize user message
+	normalized := strings.TrimSpace(strings.ToLower(userMessage))
+
+	// Check if this looks like a short follow-up response
+	// Patterns: "yes 1", "1", "1.", "yes", "ok", "ok 1", "sure 1", "do 1", "yes, 1", "option 1", etc.
+	isShortFollowUp := false
+	selectedOption := 0
+
+	// Very short message (under 20 chars) that contains a number or affirmative
+	// Must be VERY short to avoid false positives on questions like "What does the auth module do?"
+	if len(normalized) < 20 {
+		// Check for affirmative patterns - use word boundaries to avoid false matches
+		// "do" alone is affirmative, but "do?" as part of a question is not
+		affirmatives := []string{"yes", "ok", "okay", "sure", "please", "go", "proceed", "yep", "yeah", "y", "1", "2", "3", "4", "5"}
+		for _, aff := range affirmatives {
+			// Check for exact match or word at start/end
+			if normalized == aff ||
+				strings.HasPrefix(normalized, aff+" ") ||
+				strings.HasPrefix(normalized, aff+",") ||
+				strings.HasPrefix(normalized, aff+".") ||
+				strings.HasSuffix(normalized, " "+aff) ||
+				strings.HasSuffix(normalized, ","+aff) {
+				isShortFollowUp = true
+				break
+			}
+		}
+
+		// Also check for "do" specifically but only as standalone word
+		if !isShortFollowUp && (normalized == "do" || strings.HasPrefix(normalized, "do ")) {
+			isShortFollowUp = true
+		}
+
+		// Extract option number if present
+		for i := 1; i <= 9; i++ {
+			numStr := fmt.Sprintf("%d", i)
+			if strings.Contains(normalized, numStr) {
+				selectedOption = i
+				break
+			}
+		}
+	}
+
+	if !isShortFollowUp {
+		return "" // Not a follow-up, use original message
+	}
+
+	// Find the most recent assistant message that contains numbered options
+	var previousAssistantMessage string
+	var previousContext string
+
+	for i := len(messages) - 1; i >= 0; i-- {
+		msg := messages[i]
+		if msg.Role == "assistant" && msg.Content != "" {
+			// Check if this message contains numbered options
+			// Support both "1." and "1)" formats
+			hasOptions := (strings.Contains(msg.Content, "1.") || strings.Contains(msg.Content, "1)")) &&
+				(strings.Contains(msg.Content, "2.") || strings.Contains(msg.Content, "2)") ||
+					strings.Contains(msg.Content, "Would you like"))
+
+			if hasOptions {
+				previousAssistantMessage = msg.Content
+				break
+			}
+
+			// Also capture recent assistant context even without numbered options
+			if previousContext == "" {
+				previousContext = msg.Content
+			}
+		}
+	}
+
+	// If we found a message with options, expand the user's response
+	if previousAssistantMessage != "" {
+		// Try to extract the specific option the user selected
+		var selectedOptionText string
+		if selectedOption > 0 {
+			// Parse the options from the previous message
+			// Look for patterns like "1. Create an AGENTS.md" or "1) Create an AGENTS.md"
+			lines := strings.Split(previousAssistantMessage, "\n")
+			optionPrefix := fmt.Sprintf("%d.", selectedOption)
+			optionPrefixAlt := fmt.Sprintf("%d)", selectedOption)
+
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmed, optionPrefix) || strings.HasPrefix(trimmed, optionPrefixAlt) {
+					selectedOptionText = strings.TrimPrefix(trimmed, optionPrefix)
+					selectedOptionText = strings.TrimPrefix(selectedOptionText, optionPrefixAlt)
+					selectedOptionText = strings.TrimSpace(selectedOptionText)
+					break
+				}
+			}
+		}
+
+		// Build expanded context
+		var expanded strings.Builder
+		expanded.WriteString("The user is responding to options I previously offered.\n\n")
+		expanded.WriteString("PREVIOUS CONTEXT (what I offered):\n")
+
+		// Include relevant part of previous message (last 500 chars or from "Would you like")
+		relevantPart := previousAssistantMessage
+		if idx := strings.LastIndex(previousAssistantMessage, "Would you like"); idx != -1 {
+			relevantPart = previousAssistantMessage[idx:]
+		} else if len(previousAssistantMessage) > 500 {
+			relevantPart = "..." + previousAssistantMessage[len(previousAssistantMessage)-500:]
+		}
+		expanded.WriteString(relevantPart)
+		expanded.WriteString("\n\n")
+
+		expanded.WriteString("USER'S RESPONSE: ")
+		expanded.WriteString(userMessage)
+		expanded.WriteString("\n\n")
+
+		if selectedOptionText != "" {
+			expanded.WriteString("INTERPRETATION: The user selected option ")
+			expanded.WriteString(fmt.Sprintf("%d", selectedOption))
+			expanded.WriteString(": ")
+			expanded.WriteString(selectedOptionText)
+			expanded.WriteString("\n\n")
+			expanded.WriteString("ACTION REQUIRED: Execute the selected option. Do NOT start a new discussion about the option - PERFORM the action.")
+		} else {
+			expanded.WriteString("INTERPRETATION: The user is confirming/agreeing with the previous suggestions.\n")
+			expanded.WriteString("ACTION REQUIRED: Execute the most appropriate action based on context.")
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"original_message": userMessage,
+			"selected_option":  selectedOption,
+			"option_text":      selectedOptionText,
+		}).Info("Detected follow-up response, expanding with context from conversation history")
+
+		return expanded.String()
+	}
+
+	// If we have any previous context but no numbered options, still provide context
+	if previousContext != "" && len(previousContext) > 100 {
+		var expanded strings.Builder
+		expanded.WriteString("The user is providing a follow-up to the previous response.\n\n")
+		expanded.WriteString("PREVIOUS CONTEXT (summary):\n")
+		if len(previousContext) > 300 {
+			expanded.WriteString("...")
+			expanded.WriteString(previousContext[len(previousContext)-300:])
+		} else {
+			expanded.WriteString(previousContext)
+		}
+		expanded.WriteString("\n\n")
+		expanded.WriteString("USER'S FOLLOW-UP: ")
+		expanded.WriteString(userMessage)
+		return expanded.String()
+	}
+
+	return "" // No context to expand with
 }
 
 // generateID generates a random ID for OpenAI compatibility

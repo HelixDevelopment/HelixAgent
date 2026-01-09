@@ -75,11 +75,15 @@ func (h *UnifiedHandler) SetDebateTeamConfig(teamConfig *services.DebateTeamConf
 }
 
 // isToolResultProcessingTurn determines if the current request is specifically for processing
-// tool results (continuation of tool execution) vs a new user request that happens to have
-// tool results in its conversation history.
+// tool results (continuation of tool execution) vs a new user request.
 //
-// IMPORTANT: This function enables AI Debate for NEW user requests even if the conversation
-// contains previous tool results. Only return true if we're in an active tool processing turn.
+// CRITICAL: This function prevents infinite loops by distinguishing:
+//   - Tool results from CURRENT turn → Process directly (return true)
+//   - NEW user message → AI Debate (return false)
+//
+// The key insight: When the client sends back tool results, those results should
+// be synthesized into a final response WITHOUT triggering a new debate cycle.
+// Only genuinely NEW user messages should start a new debate.
 func (h *UnifiedHandler) isToolResultProcessingTurn(messages []OpenAIMessage) bool {
 	if len(messages) == 0 {
 		return false
@@ -89,7 +93,6 @@ func (h *UnifiedHandler) isToolResultProcessingTurn(messages []OpenAIMessage) bo
 	var lastNonSystemIdx int = -1
 	var lastUserIdx int = -1
 	var lastToolIdx int = -1
-	var lastAssistantWithToolCallsIdx int = -1
 
 	for i, msg := range messages {
 		if msg.Role == "system" {
@@ -102,10 +105,6 @@ func (h *UnifiedHandler) isToolResultProcessingTurn(messages []OpenAIMessage) bo
 			lastUserIdx = i
 		case "tool":
 			lastToolIdx = i
-		case "assistant":
-			if len(msg.ToolCalls) > 0 {
-				lastAssistantWithToolCallsIdx = i
-			}
 		}
 	}
 
@@ -114,8 +113,7 @@ func (h *UnifiedHandler) isToolResultProcessingTurn(messages []OpenAIMessage) bo
 		return false
 	}
 
-	// If the last message is from the user, this is a NEW user request
-	// Even if there are tool results earlier in the conversation, trigger debate
+	// If the last message is from the user, this is a NEW user request → Use AI Debate
 	if lastUserIdx == lastNonSystemIdx {
 		logrus.WithFields(logrus.Fields{
 			"last_user_idx":    lastUserIdx,
@@ -125,18 +123,15 @@ func (h *UnifiedHandler) isToolResultProcessingTurn(messages []OpenAIMessage) bo
 		return false
 	}
 
-	// Check if this is an active tool processing turn:
-	// Pattern: ... -> assistant (with tool_calls) -> tool (result) -> [current request]
-	// In this case, the last message is a tool result that needs processing
+	// If the last message is a TOOL result, this is tool processing → Direct synthesis
+	// This PREVENTS infinite loops: debate generates tool_calls → tools execute →
+	// results come back → synthesize response (NO new debate)
 	if lastToolIdx == lastNonSystemIdx {
-		// The conversation ends with a tool result - this IS a tool processing turn
-		// BUT we still want to use debate for analyzing the results
 		logrus.WithFields(logrus.Fields{
-			"last_tool_idx":            lastToolIdx,
-			"assistant_with_tools_idx": lastAssistantWithToolCallsIdx,
-		}).Debug("Tool result detected - will still use AI Debate for analysis")
-		// Changed: Return false to ALWAYS use debate, even for tool results
-		return false
+			"last_tool_idx":    lastToolIdx,
+			"last_non_sys_idx": lastNonSystemIdx,
+		}).Debug("Tool result processing turn - will synthesize without new debate")
+		return true // Process directly, don't start new debate
 	}
 
 	return false
@@ -323,19 +318,56 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	// Check if this is a tool result processing turn vs a new user request
-	// KEY INSIGHT: If the LAST user message is NEW (after any tool results), we should use debate
-	// Only skip debate if we're specifically in a tool-result-processing turn
+	// CRITICAL: Tool results must be processed directly to prevent infinite loops
+	// Only NEW user messages should trigger a fresh AI Debate cycle
 	isToolResultTurn := h.isToolResultProcessingTurn(req.Messages)
 
 	if isToolResultTurn {
-		// Process tool results with AI Debate ensemble (not just single LLM)
-		// This ensures tool results are analyzed by the full debate team
-		logrus.Info("Processing tool results through AI Debate ensemble")
-		// Fall through to ensemble processing - don't skip debate for tool results
+		// Process tool results directly - synthesize into final response
+		// This prevents: debate → tool_calls → results → debate → tool_calls... (infinite loop)
+		logrus.Info("Processing tool results - synthesizing without new debate")
+		toolResultResponse, err := h.processToolResultsWithLLM(c.Request.Context(), &req)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to process tool results with LLM")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": gin.H{
+					"message": "Failed to process tool results",
+					"type":    "server_error",
+					"code":    "TOOL_RESULT_PROCESSING_FAILED",
+				},
+			})
+			return
+		}
+
+		// Return as OpenAI-compatible response
+		response := OpenAIChatResponse{
+			ID:                "chatcmpl-tool-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			Object:            "chat.completion",
+			Created:           time.Now().Unix(),
+			Model:             "helixagent-ensemble",
+			SystemFingerprint: "fp_helixagent_v1",
+			Choices: []OpenAIChoice{
+				{
+					Index: 0,
+					Message: OpenAIMessage{
+						Role:    "assistant",
+						Content: toolResultResponse,
+					},
+					FinishReason: "stop",
+				},
+			},
+			Usage: &OpenAIUsage{
+				PromptTokens:     len(toolResultResponse) / 4,
+				CompletionTokens: len(toolResultResponse) / 4,
+				TotalTokens:      len(toolResultResponse) / 2,
+			},
+		}
+		c.JSON(http.StatusOK, response)
+		return
 	}
 
-	// All requests go through AI Debate ensemble - this is the core design principle
-	// Tool results are now analyzed by the debate team, not a single LLM
+	// NEW user request → Full AI Debate ensemble
+	logrus.Info("New user request - initiating AI Debate")
 
 	// Convert to internal request format
 	internalReq := h.convertOpenAIChatRequest(&req, c)
@@ -423,15 +455,100 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	}
 	isFirstChunk = false
 
-	// Check if this request contains tool results for context logging
-	// IMPORTANT: We NO LONGER skip debate for tool results - ALL requests use AI Debate
+	// Check if this is a tool result processing turn vs a new user request
+	// CRITICAL: Tool results must be processed directly to prevent infinite loops
 	isToolResultTurn := h.isToolResultProcessingTurn(req.Messages)
+
 	if isToolResultTurn {
-		logrus.Info("Streaming request contains tool results - processing through AI Debate ensemble")
+		// Process tool results directly - synthesize into final response
+		// This prevents: debate → tool_calls → results → debate → tool_calls... (infinite loop)
+		logrus.Info("Streaming tool results - synthesizing without new debate")
+		toolResultResponse, err := h.processToolResultsWithLLM(ctx, req)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to process tool results with LLM, using fallback response")
+			fallbackResponse := h.generateFallbackToolResultsResponse(req)
+			if fallbackResponse != "" {
+				toolResultResponse = fallbackResponse
+				err = nil
+			} else {
+				errContent := fmt.Sprintf("I encountered an issue processing the tool results: %v", err)
+				errChunk := map[string]any{
+					"id":                 streamID,
+					"object":             "chat.completion.chunk",
+					"created":            time.Now().Unix(),
+					"model":              "helixagent-ensemble",
+					"system_fingerprint": "fp_helixagent_v1",
+					"choices": []map[string]any{
+						{
+							"index":         0,
+							"delta":         map[string]any{"content": errContent},
+							"logprobs":      nil,
+							"finish_reason": nil,
+						},
+					},
+				}
+				if errData, err := json.Marshal(errChunk); err == nil {
+					c.Writer.Write([]byte("data: "))
+					c.Writer.Write(errData)
+					c.Writer.Write([]byte("\n\n"))
+					flusher.Flush()
+				}
+			}
+		}
+		if err == nil && toolResultResponse != "" {
+			responseChunk := map[string]any{
+				"id":                 streamID,
+				"object":             "chat.completion.chunk",
+				"created":            time.Now().Unix(),
+				"model":              "helixagent-ensemble",
+				"system_fingerprint": "fp_helixagent_v1",
+				"choices": []map[string]any{
+					{
+						"index":         0,
+						"delta":         map[string]any{"content": toolResultResponse},
+						"logprobs":      nil,
+						"finish_reason": nil,
+					},
+				},
+			}
+			if respData, err := json.Marshal(responseChunk); err == nil {
+				c.Writer.Write([]byte("data: "))
+				c.Writer.Write(respData)
+				c.Writer.Write([]byte("\n\n"))
+				flusher.Flush()
+			}
+		}
+
+		// Send finish chunk and end
+		finishChunk := map[string]any{
+			"id":                 streamID,
+			"object":             "chat.completion.chunk",
+			"created":            time.Now().Unix(),
+			"model":              "helixagent-ensemble",
+			"system_fingerprint": "fp_helixagent_v1",
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"delta":         map[string]any{},
+					"logprobs":      nil,
+					"finish_reason": "stop",
+				},
+			},
+		}
+		if finishData, err := json.Marshal(finishChunk); err == nil {
+			c.Writer.Write([]byte("data: "))
+			c.Writer.Write(finishData)
+			c.Writer.Write([]byte("\n\n"))
+			flusher.Flush()
+		}
+
+		c.Writer.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+		return
 	}
 
-	// All streaming requests go through AI Debate - this is the core design principle
-	// Tool results are analyzed by the full debate team, not bypassed
+	// NEW user request → Full AI Debate ensemble
+	logrus.Info("New streaming request - initiating AI Debate")
 
 	// Stream AI Debate dialogue introduction before the actual response
 	if h.showDebateDialogue && h.dialogueFormatter != nil && h.debateTeamConfig != nil {

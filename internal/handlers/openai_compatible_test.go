@@ -4038,7 +4038,9 @@ func TestEmptyToolResultHandling(t *testing.T) {
 }
 
 // TestIsToolResultProcessingTurn tests the logic for determining when to use AI Debate
-// IMPORTANT: This test ensures ALL requests go through AI Debate, including tool results
+// CRITICAL: This test ensures correct behavior to prevent infinite loops:
+//   - New user requests → AI Debate (return false)
+//   - Tool results → Direct processing (return true)
 func TestIsToolResultProcessingTurn(t *testing.T) {
 	handler := &UnifiedHandler{}
 
@@ -4052,7 +4054,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 			name:           "empty_messages",
 			messages:       []OpenAIMessage{},
 			expectedResult: false,
-			description:    "Empty messages should NOT be a tool result turn",
+			description:    "Empty messages → not tool result turn",
 		},
 		{
 			name: "single_user_message",
@@ -4060,7 +4062,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 				{Role: "user", Content: "Hello, help me with my code"},
 			},
 			expectedResult: false,
-			description:    "Single user message should NOT be tool result turn - USE DEBATE",
+			description:    "Single user message → USE DEBATE (new request)",
 		},
 		{
 			name: "new_user_message_after_tool_results",
@@ -4071,17 +4073,17 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 				{Role: "user", Content: "Now create an AGENTS.md file"},
 			},
 			expectedResult: false,
-			description:    "NEW user message after tool results should NOT be tool result turn - USE DEBATE",
+			description:    "NEW user message after tool results → USE DEBATE (new request)",
 		},
 		{
-			name: "tool_results_without_new_user_message",
+			name: "tool_results_as_last_message",
 			messages: []OpenAIMessage{
 				{Role: "user", Content: "List my files"},
 				{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1", Function: OpenAIFunctionCall{Name: "glob"}}}},
 				{Role: "tool", Content: "file1.go\nfile2.go", ToolCallID: "call_1"},
 			},
-			expectedResult: false,
-			description:    "Tool results as last message should still USE DEBATE (changed behavior)",
+			expectedResult: true,
+			description:    "Tool result as last message → DIRECT PROCESSING (prevents infinite loop)",
 		},
 		{
 			name: "multiple_tool_results_then_user",
@@ -4094,7 +4096,19 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 				{Role: "user", Content: "Great, now fix them"},
 			},
 			expectedResult: false,
-			description:    "Multiple tool results followed by user message should USE DEBATE",
+			description:    "User message after tool results → USE DEBATE (new request)",
+		},
+		{
+			name: "multiple_tool_results_no_user_after",
+			messages: []OpenAIMessage{
+				{Role: "system", Content: "You are a helpful assistant"},
+				{Role: "user", Content: "Search for errors"},
+				{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1"}, {ID: "call_2"}}},
+				{Role: "tool", Content: "Result 1", ToolCallID: "call_1"},
+				{Role: "tool", Content: "Result 2", ToolCallID: "call_2"},
+			},
+			expectedResult: true,
+			description:    "Multiple tool results as last messages → DIRECT PROCESSING",
 		},
 		{
 			name: "system_only",
@@ -4102,10 +4116,10 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 				{Role: "system", Content: "You are a helpful assistant"},
 			},
 			expectedResult: false,
-			description:    "System-only messages should NOT be tool result turn",
+			description:    "System-only messages → not tool result turn",
 		},
 		{
-			name: "conversation_with_history",
+			name: "conversation_with_new_user_question",
 			messages: []OpenAIMessage{
 				{Role: "system", Content: "You are a helpful assistant"},
 				{Role: "user", Content: "First question"},
@@ -4117,7 +4131,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 				{Role: "user", Content: "Third question - totally new topic"},
 			},
 			expectedResult: false,
-			description:    "New user question in long conversation should USE DEBATE",
+			description:    "New user question in long conversation → USE DEBATE",
 		},
 	}
 
@@ -4129,37 +4143,53 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 	}
 }
 
-// TestAllRequestsUseDebate verifies that the core design principle is maintained:
-// ALL requests should go through AI Debate, not just initial queries
-func TestAllRequestsUseDebate(t *testing.T) {
+// TestDebateVsDirectProcessing verifies the correct routing:
+//   - New user requests → AI Debate
+//   - Tool result turns → Direct processing (prevents infinite loops)
+func TestDebateVsDirectProcessing(t *testing.T) {
 	handler := &UnifiedHandler{}
 
-	// Scenario: User asks initial question, gets tool calls, results come back,
-	// then user asks a follow-up question
-	conversationFlow := [][]OpenAIMessage{
-		// Turn 1: Initial user request
+	// Scenario: User asks initial question, debate runs, tool calls generated,
+	// client executes tools and sends results back
+	conversationFlow := []struct {
+		messages       []OpenAIMessage
+		expectedResult bool
+		description    string
+	}{
+		// Turn 1: Initial user request → AI Debate
 		{
-			{Role: "user", Content: "Do you see my codebase?"},
+			messages: []OpenAIMessage{
+				{Role: "user", Content: "Do you see my codebase?"},
+			},
+			expectedResult: false,
+			description:    "Initial user request → AI Debate",
 		},
-		// Turn 2: After assistant response with tool calls, tool results come back
+		// Turn 2: Tool results come back → Direct processing (NOT debate!)
 		{
-			{Role: "user", Content: "Do you see my codebase?"},
-			{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1", Function: OpenAIFunctionCall{Name: "glob"}}}},
-			{Role: "tool", Content: "src/main.go\nsrc/utils.go", ToolCallID: "call_1"},
+			messages: []OpenAIMessage{
+				{Role: "user", Content: "Do you see my codebase?"},
+				{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1", Function: OpenAIFunctionCall{Name: "glob"}}}},
+				{Role: "tool", Content: "src/main.go\nsrc/utils.go", ToolCallID: "call_1"},
+			},
+			expectedResult: true,
+			description:    "Tool results → Direct processing (prevents infinite loop)",
 		},
-		// Turn 3: New user request (should trigger debate!)
+		// Turn 3: New user request after conversation → AI Debate
 		{
-			{Role: "user", Content: "Do you see my codebase?"},
-			{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1"}}},
-			{Role: "tool", Content: "src/main.go", ToolCallID: "call_1"},
-			{Role: "assistant", Content: "Yes, I can see your codebase..."},
-			{Role: "user", Content: "Please create an AGENTS.md file"},
+			messages: []OpenAIMessage{
+				{Role: "user", Content: "Do you see my codebase?"},
+				{Role: "assistant", Content: "", ToolCalls: []OpenAIToolCall{{ID: "call_1"}}},
+				{Role: "tool", Content: "src/main.go", ToolCallID: "call_1"},
+				{Role: "assistant", Content: "Yes, I can see your codebase..."},
+				{Role: "user", Content: "Please create an AGENTS.md file"},
+			},
+			expectedResult: false,
+			description:    "New user request after completed turn → AI Debate",
 		},
 	}
 
-	for i, messages := range conversationFlow {
-		result := handler.isToolResultProcessingTurn(messages)
-		// ALL turns should return false, meaning "use debate"
-		assert.False(t, result, "Turn %d should use AI Debate (isToolResultProcessingTurn=false)", i+1)
+	for i, tc := range conversationFlow {
+		result := handler.isToolResultProcessingTurn(tc.messages)
+		assert.Equal(t, tc.expectedResult, result, "Turn %d: %s", i+1, tc.description)
 	}
 }

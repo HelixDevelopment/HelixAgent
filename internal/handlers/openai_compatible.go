@@ -810,6 +810,65 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 				return
 			}
 		}
+
+		// CRITICAL FIX: If we showed debate dialogue but no tool_calls were generated,
+		// we've already streamed all content. Close the stream properly!
+		// Without this, the code falls through to StreamLoop and waits forever.
+		logrus.Info("Debate dialogue complete, no tool calls - finalizing stream")
+
+		// Send response footer
+		footer := h.generateResponseFooter()
+		if footer != "" {
+			footerChunk := map[string]any{
+				"id":                 streamID,
+				"object":             "chat.completion.chunk",
+				"created":            time.Now().Unix(),
+				"model":              "helixagent-ensemble",
+				"system_fingerprint": "fp_helixagent_v1",
+				"choices": []map[string]any{
+					{
+						"index":         0,
+						"delta":         map[string]any{"content": footer},
+						"logprobs":      nil,
+						"finish_reason": nil,
+					},
+				},
+			}
+			if footerData, err := json.Marshal(footerChunk); err == nil {
+				c.Writer.Write([]byte("data: "))
+				c.Writer.Write(footerData)
+				c.Writer.Write([]byte("\n\n"))
+				flusher.Flush()
+			}
+		}
+
+		// Send final chunk with finish_reason: stop
+		finalChunk := map[string]any{
+			"id":                 streamID,
+			"object":             "chat.completion.chunk",
+			"created":            time.Now().Unix(),
+			"model":              "helixagent-ensemble",
+			"system_fingerprint": "fp_helixagent_v1",
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"delta":         map[string]any{},
+					"logprobs":      nil,
+					"finish_reason": "stop",
+				},
+			},
+		}
+		if finalData, err := json.Marshal(finalChunk); err == nil {
+			c.Writer.Write([]byte("data: "))
+			c.Writer.Write(finalData)
+			c.Writer.Write([]byte("\n\n"))
+			flusher.Flush()
+		}
+
+		// Send [DONE] and return - stream is complete
+		c.Writer.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+		return
 	}
 
 StreamLoop:

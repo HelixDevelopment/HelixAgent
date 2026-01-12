@@ -640,7 +640,7 @@ The `challenges/` directory contains a comprehensive challenge framework for tes
 # Run new everyday use-case challenges
 ./challenges/scripts/protocol_challenge.sh        # MCP/ACP/LSP/Embeddings/Vision
 ./challenges/scripts/curl_api_challenge.sh        # Comprehensive curl API testing
-./challenges/scripts/cli_agents_challenge.sh      # OpenCode/Crush/HelixCode integration
+./challenges/scripts/cli_agents_challenge.sh      # OpenCode/Crush/HelixCode/Kiro integration
 ./challenges/scripts/content_generation_challenge.sh  # Content generation & web search
 ```
 
@@ -658,12 +658,23 @@ The `challenges/` directory contains a comprehensive challenge framework for tes
 | Integration | 1 | Cognee |
 | Resilience | 3 | Circuit breaker, error handling, concurrent access |
 | API | 2 | OpenAI compatibility, gRPC |
-| Everyday Use | 4 | Protocol support, curl API, CLI agents, content generation |
+| Everyday Use | 4 | Protocol support, curl API, CLI agents (OpenCode/Crush/HelixCode/Kiro), content generation |
 | Tool Validation | 1 | Tool call argument validation (required fields, snake_case naming) |
 
-### Tool Call Validation
+### Tool Call Validation (21 Tools)
 
-HelixAgent validates all tool call arguments to ensure compatibility with AI coding assistants (OpenCode, Claude Code, Qwen Code). The system enforces:
+HelixAgent validates all tool call arguments to ensure compatibility with AI coding assistants (OpenCode, Claude Code, Qwen Code, Kiro). The system supports **21 tools** across 6 categories:
+
+**Tool Categories:**
+| Category | Tools | Count |
+|----------|-------|-------|
+| Core | Bash, Task, Test, Lint | 4 |
+| Filesystem | Read, Write, Edit, Glob, Grep, TreeView, FileInfo | 7 |
+| Version Control | Git, Diff | 2 |
+| Code Intelligence | Symbols, References, Definition | 3 |
+| Workflow | PR, Issue, Workflow | 3 |
+| Web | WebFetch, WebSearch | 2 |
+| **Total** | | **21** |
 
 **Required Fields per Tool:**
 | Tool | Required Fields | Notes |
@@ -677,6 +688,18 @@ HelixAgent validates all tool call arguments to ensure compatibility with AI cod
 | WebFetch | `url`, `prompt` | |
 | WebSearch | `query` | |
 | Task | `prompt`, `description`, `subagent_type` | |
+| Git | `operation`, `description` | Operations: status, log, diff, commit, branch |
+| Diff | `description` | Show file differences |
+| Test | `description` | Run project tests |
+| Lint | `description` | Run linter checks |
+| TreeView | `description` | Show directory tree |
+| FileInfo | `file_path`, `description` | Get file metadata |
+| Symbols | `description` | List code symbols |
+| References | `symbol`, `description` | Find symbol references |
+| Definition | `symbol`, `description` | Go to definition |
+| PR | `action`, `description` | Actions: list, create, merge, review |
+| Issue | `action`, `description` | Actions: list, create, close, comment |
+| Workflow | `action`, `description` | Actions: status, trigger, list, logs |
 
 **Parameter Naming Convention:**
 - ALL parameters use **snake_case** (e.g., `file_path`, `old_string`, `new_string`)
@@ -684,14 +707,16 @@ HelixAgent validates all tool call arguments to ensure compatibility with AI cod
 - This ensures compatibility with external tool schemas
 
 **Key Files:**
-- `internal/handlers/openai_compatible.go:3163-3344` - `generateBashDescription()` function
-- `internal/handlers/openai_compatible.go:2874-3000` - `extractActionsFromSynthesis()` function
-- `tests/unit/services/tool_execution_test.go` - Tool call validation tests
-- `internal/handlers/openai_compatible_test.go:4564-4790` - Comprehensive handler tests
+- `internal/tools/schema.go` - Tool schema registry (21 tools)
+- `internal/tools/handler.go` - Tool handlers implementation
+- `internal/tools/schema_test.go` - Comprehensive unit tests
+- `internal/handlers/openai_compatible.go` - `generateActionToolCalls()` and `extractToolArguments()`
+- `tests/integration/tool_call_api_validation_test.go` - Integration tests
 
-**Run Tool Validation Challenge:**
+**Run Tool Validation Challenges:**
 ```bash
 ./challenges/scripts/tool_call_validation_challenge.sh
+./challenges/scripts/all_tools_validation_challenge.sh  # NEW: Validates all 21 tools
 ```
 
 ### Main Challenge Output

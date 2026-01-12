@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
@@ -4785,6 +4786,169 @@ func TestToolCallParameterNaming(t *testing.T) {
 				assert.True(t, isValid || !strings.Contains(key, "_"),
 					"Key '%s' should be a valid snake_case parameter", key)
 			}
+		})
+	}
+}
+
+// TestExtractToolArgumentsRequiredFields tests that extractToolArguments returns all required fields
+func TestExtractToolArgumentsRequiredFields(t *testing.T) {
+	testCases := []struct {
+		name           string
+		toolName       string
+		context        string
+		requiredFields []string
+	}{
+		{
+			name:           "Bash tool requires command and description",
+			toolName:       "bash",
+			context:        "run the tests",
+			requiredFields: []string{"command", "description"},
+		},
+		{
+			name:           "Shell tool requires command and description",
+			toolName:       "shell",
+			context:        "execute build",
+			requiredFields: []string{"command", "description"},
+		},
+		{
+			name:           "Glob tool requires pattern",
+			toolName:       "glob",
+			context:        "find files",
+			requiredFields: []string{"pattern"},
+		},
+		{
+			name:           "Grep tool requires pattern",
+			toolName:       "grep",
+			context:        "search for TODO",
+			requiredFields: []string{"pattern"},
+		},
+		{
+			name:           "Read tool requires file_path",
+			toolName:       "read",
+			context:        "read the file",
+			requiredFields: []string{"file_path"},
+		},
+		{
+			name:           "Write tool requires file_path and content",
+			toolName:       "write",
+			context:        "create a file",
+			requiredFields: []string{"file_path", "content"},
+		},
+		{
+			name:           "Edit tool requires file_path, old_string, new_string",
+			toolName:       "edit",
+			context:        "modify the file",
+			requiredFields: []string{"file_path", "old_string", "new_string"},
+		},
+		{
+			name:           "WebFetch tool requires url and prompt",
+			toolName:       "webfetch",
+			context:        "fetch the page",
+			requiredFields: []string{"url", "prompt"},
+		},
+		{
+			name:           "WebSearch tool requires query",
+			toolName:       "websearch",
+			context:        "search the web",
+			requiredFields: []string{"query"},
+		},
+		{
+			name:           "Task tool requires prompt, description, subagent_type",
+			toolName:       "task",
+			context:        "run a task",
+			requiredFields: []string{"prompt", "description", "subagent_type"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := extractToolArguments(tc.toolName, tc.context)
+
+			// Parse the JSON
+			var argsMap map[string]interface{}
+			err := json.Unmarshal([]byte(args), &argsMap)
+			require.NoError(t, err, "Arguments should be valid JSON: %s", args)
+
+			// Check all required fields are present
+			for _, field := range tc.requiredFields {
+				_, exists := argsMap[field]
+				assert.True(t, exists, "Missing required field '%s' for tool '%s'. Got: %s", field, tc.toolName, args)
+			}
+
+			// For Bash/shell, ensure command and description are not empty
+			if tc.toolName == "bash" || tc.toolName == "shell" {
+				cmd, _ := argsMap["command"].(string)
+				desc, _ := argsMap["description"].(string)
+				assert.NotEmpty(t, cmd, "Bash command should not be empty")
+				assert.NotEmpty(t, desc, "Bash description should not be empty")
+			}
+		})
+	}
+}
+
+// TestSanitizeDisplayContent tests that system-level tags are properly stripped from content
+func TestSanitizeDisplayContent(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Empty string returns empty",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "Plain text unchanged",
+			input:    "Hello world",
+			expected: "Hello world",
+		},
+		{
+			name:     "Removes system-reminder tags",
+			input:    "User question<system-reminder>This should be hidden</system-reminder>more text",
+			expected: "User questionmore text",
+		},
+		{
+			name:     "Removes multiline system-reminder",
+			input:    "Start\n<system-reminder>\nHidden content\nMore hidden\n</system-reminder>\nEnd",
+			expected: "Start\n\nEnd",
+		},
+		{
+			name:     "Removes command-name tags",
+			input:    "Input<command-name>/some-command</command-name>output",
+			expected: "Inputoutput",
+		},
+		{
+			name:     "Removes context tags",
+			input:    "Before<context>Internal context data</context>After",
+			expected: "BeforeAfter",
+		},
+		{
+			name:     "Removes multiple different tags",
+			input:    "Hello<system-reminder>hidden1</system-reminder>world<command-name>/cmd</command-name>!",
+			expected: "Helloworld!",
+		},
+		{
+			name:     "Cleans up excessive newlines",
+			input:    "Line1\n\n\n\n\nLine2",
+			expected: "Line1\n\nLine2",
+		},
+		{
+			name:     "Trims whitespace",
+			input:    "  \n  Text with spaces  \n  ",
+			expected: "Text with spaces",
+		},
+		{
+			name:     "Complex real-world example",
+			input:    "Create a test file<system-reminder>\nWarning: the file exists but is shorter than the provided offset\n</system-reminder>\nfor the project",
+			expected: "Create a test file\nfor the project",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := sanitizeDisplayContent(tc.input)
+			assert.Equal(t, tc.expected, result, "Sanitized content should match expected")
 		})
 	}
 }

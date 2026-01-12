@@ -578,6 +578,10 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			topic = lastUserMessage
 		}
 
+		// CRITICAL: Sanitize the topic to remove system-level content like <system-reminder>
+		// These are internal tags that should never be displayed to users
+		topic = sanitizeDisplayContent(topic)
+
 		// Generate and stream debate dialogue introduction
 		dialogueIntro := h.generateDebateDialogueIntroduction(topic)
 		if dialogueIntro != "" {
@@ -2363,7 +2367,405 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 		}
 	}
 
-	// Case 7: Analysis of synthesis - if synthesis mentions specific tools, try to call them
+	// Case 7: Git operations - use Git tool
+	if containsAny(topicLower, []string{"git status", "git log", "git diff", "git commit", "git branch", "git checkout", "version control", "commit history", "commits", "branches"}) {
+		operation := "status"
+		if containsAny(topicLower, []string{"log", "history", "commits"}) {
+			operation = "log"
+		} else if containsAny(topicLower, []string{"diff", "changes", "difference"}) {
+			operation = "diff"
+		} else if containsAny(topicLower, []string{"branch", "branches"}) {
+			operation = "branch"
+		} else if containsAny(topicLower, []string{"commit"}) {
+			operation = "commit"
+		}
+		desc := fmt.Sprintf("Git %s operation", operation)
+		if tool, ok := availableTools["Git"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"operation": "%s", "description": "%s"}`, operation, desc),
+				},
+			})
+		} else if tool, ok := availableTools["git"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"operation": "%s", "description": "%s"}`, operation, desc),
+				},
+			})
+		}
+	}
+
+	// Case 8: Run tests - use Test tool
+	if containsAny(topicLower, []string{"run test", "execute test", "test coverage", "run the tests", "unit test", "integration test", "pytest", "jest", "go test", "npm test"}) {
+		testPath := "./..."
+		coverage := containsAny(topicLower, []string{"coverage"})
+		verbose := true
+		if tool, ok := availableTools["Test"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"test_path": "%s", "coverage": %t, "verbose": %t, "description": "Run tests"}`, testPath, coverage, verbose),
+				},
+			})
+		} else if tool, ok := availableTools["test"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"test_path": "%s", "coverage": %t, "verbose": %t, "description": "Run tests"}`, testPath, coverage, verbose),
+				},
+			})
+		}
+	}
+
+	// Case 9: Lint code - use Lint tool
+	if containsAny(topicLower, []string{"lint", "code quality", "style check", "golangci", "eslint", "pylint", "check style"}) {
+		if tool, ok := availableTools["Lint"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"fix": false, "description": "Run linter checks"}`,
+				},
+			})
+		} else if tool, ok := availableTools["lint"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"fix": false, "description": "Run linter checks"}`,
+				},
+			})
+		}
+	}
+
+	// Case 10: Show diff - use Diff tool
+	if containsAny(topicLower, []string{"show diff", "what changed", "show changes", "compare", "difference between"}) {
+		if tool, ok := availableTools["Diff"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"staged": false, "description": "Show file differences"}`,
+				},
+			})
+		} else if tool, ok := availableTools["diff"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"staged": false, "description": "Show file differences"}`,
+				},
+			})
+		}
+	}
+
+	// Case 11: Directory tree - use TreeView tool
+	if containsAny(topicLower, []string{"directory tree", "folder structure", "file tree", "tree view", "show tree", "project tree"}) {
+		if tool, ok := availableTools["TreeView"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"path": ".", "max_depth": 3, "description": "Show directory tree"}`,
+				},
+			})
+		} else if tool, ok := availableTools["treeview"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"path": ".", "max_depth": 3, "description": "Show directory tree"}`,
+				},
+			})
+		} else if tool, ok := availableTools["tree"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"path": ".", "max_depth": 3, "description": "Show directory tree"}`,
+				},
+			})
+		}
+	}
+
+	// Case 12: File info - use FileInfo tool
+	if containsAny(topicLower, []string{"file info", "file size", "file permissions", "file metadata", "file stats"}) {
+		filePath := extractFilePath(topic)
+		if filePath == "" {
+			filePath = "."
+		}
+		if tool, ok := availableTools["FileInfo"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"file_path": "%s", "description": "Get file information"}`, escapeJSONString(filePath)),
+				},
+			})
+		} else if tool, ok := availableTools["fileinfo"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"file_path": "%s", "description": "Get file information"}`, escapeJSONString(filePath)),
+				},
+			})
+		}
+	}
+
+	// Case 13: Code symbols - use Symbols tool
+	if containsAny(topicLower, []string{"symbols", "functions in", "classes in", "methods in", "list functions", "list classes", "code outline"}) {
+		if tool, ok := availableTools["Symbols"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"description": "List code symbols"}`,
+				},
+			})
+		} else if tool, ok := availableTools["symbols"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: `{"description": "List code symbols"}`,
+				},
+			})
+		}
+	}
+
+	// Case 14: Find references - use References tool
+	if containsAny(topicLower, []string{"find references", "where is used", "usages of", "references to", "who calls", "callers of"}) {
+		symbol := extractSymbolName(topic)
+		if symbol != "" {
+			if tool, ok := availableTools["References"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find references to %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			} else if tool, ok := availableTools["references"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find references to %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			} else if tool, ok := availableTools["refs"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find references to %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			}
+		}
+	}
+
+	// Case 15: Go to definition - use Definition tool
+	if containsAny(topicLower, []string{"go to definition", "definition of", "where is defined", "jump to", "navigate to"}) {
+		symbol := extractSymbolName(topic)
+		if symbol != "" {
+			if tool, ok := availableTools["Definition"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find definition of %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			} else if tool, ok := availableTools["definition"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find definition of %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			} else if tool, ok := availableTools["goto"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"symbol": "%s", "description": "Find definition of %s"}`, escapeJSONString(symbol), escapeJSONString(symbol)),
+					},
+				})
+			}
+		}
+	}
+
+	// Case 16: Pull requests - use PR tool
+	if containsAny(topicLower, []string{"pull request", "pr ", "create pr", "list pr", "merge pr", "pull requests"}) {
+		action := "list"
+		if containsAny(topicLower, []string{"create", "open", "new"}) {
+			action = "create"
+		} else if containsAny(topicLower, []string{"merge"}) {
+			action = "merge"
+		} else if containsAny(topicLower, []string{"review"}) {
+			action = "review"
+		}
+		if tool, ok := availableTools["PR"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "%s pull request"}`, action, action),
+				},
+			})
+		} else if tool, ok := availableTools["pr"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "%s pull request"}`, action, action),
+				},
+			})
+		} else if tool, ok := availableTools["pullrequest"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "%s pull request"}`, action, action),
+				},
+			})
+		}
+	}
+
+	// Case 17: Issues - use Issue tool
+	if containsAny(topicLower, []string{"issue", "bug report", "create issue", "list issues", "close issue"}) {
+		action := "list"
+		if containsAny(topicLower, []string{"create", "open", "new", "report"}) {
+			action = "create"
+		} else if containsAny(topicLower, []string{"close", "resolve"}) {
+			action = "close"
+		} else if containsAny(topicLower, []string{"comment"}) {
+			action = "comment"
+		}
+		if tool, ok := availableTools["Issue"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "%s issue"}`, action, action),
+				},
+			})
+		} else if tool, ok := availableTools["issue"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "%s issue"}`, action, action),
+				},
+			})
+		}
+	}
+
+	// Case 18: CI/CD Workflows - use Workflow tool
+	if containsAny(topicLower, []string{"workflow", "ci/cd", "pipeline", "github action", "ci status", "build status"}) {
+		action := "status"
+		if containsAny(topicLower, []string{"trigger", "run", "start"}) {
+			action = "trigger"
+		} else if containsAny(topicLower, []string{"list"}) {
+			action = "list"
+		} else if containsAny(topicLower, []string{"log", "output"}) {
+			action = "logs"
+		}
+		if tool, ok := availableTools["Workflow"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "CI/CD workflow %s"}`, action, action),
+				},
+			})
+		} else if tool, ok := availableTools["workflow"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "CI/CD workflow %s"}`, action, action),
+				},
+			})
+		} else if tool, ok := availableTools["ci"]; ok {
+			toolCalls = append(toolCalls, StreamingToolCall{
+				Index: len(toolCalls),
+				ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+				Type:  "function",
+				Function: OpenAIFunctionCall{
+					Name:      tool.Function.Name,
+					Arguments: fmt.Sprintf(`{"action": "%s", "description": "CI/CD workflow %s"}`, action, action),
+				},
+			})
+		}
+	}
+
+	// Case 19: Analysis of synthesis - if synthesis mentions specific tools, try to call them
 	// This handles cases where the debate concluded that a specific tool should be used
 	for toolName, tool := range availableTools {
 		toolNameLower := strings.ToLower(toolName)
@@ -2559,6 +2961,32 @@ func escapeJSONString(s string) string {
 	return s
 }
 
+// sanitizeDisplayContent removes system-level tags that should not be displayed to users
+// This includes <system-reminder>, <command-name>, and similar tags that are for internal use
+func sanitizeDisplayContent(content string) string {
+	if content == "" {
+		return content
+	}
+
+	// Remove <system-reminder>...</system-reminder> tags and their content
+	systemReminderPattern := regexp.MustCompile(`(?s)<system-reminder>.*?</system-reminder>`)
+	content = systemReminderPattern.ReplaceAllString(content, "")
+
+	// Remove <command-name>...</command-name> tags and their content
+	commandNamePattern := regexp.MustCompile(`(?s)<command-name>.*?</command-name>`)
+	content = commandNamePattern.ReplaceAllString(content, "")
+
+	// Remove <context>...</context> tags and their content (internal context)
+	contextPattern := regexp.MustCompile(`(?s)<context>.*?</context>`)
+	content = contextPattern.ReplaceAllString(content, "")
+
+	// Clean up excessive whitespace left behind
+	content = regexp.MustCompile(`\n{3,}`).ReplaceAllString(content, "\n\n")
+	content = strings.TrimSpace(content)
+
+	return content
+}
+
 // extractSearchTerm extracts the search term from a query
 func extractSearchTerm(topic string) string {
 	// Simple extraction - look for patterns like "search for X" or "find X"
@@ -2580,6 +3008,43 @@ func extractSearchTerm(topic string) string {
 				return strings.TrimSpace(remaining[:endIdx])
 			}
 			return strings.TrimSpace(remaining)
+		}
+	}
+	return ""
+}
+
+// extractSymbolName extracts a symbol (function/class/variable) name from a query
+func extractSymbolName(topic string) string {
+	// Look for symbol patterns
+	patterns := []string{
+		"definition of ",
+		"references to ",
+		"references of ",
+		"usages of ",
+		"callers of ",
+		"who calls ",
+		"where is ",
+		"find ",
+		"symbol ",
+		"function ",
+		"method ",
+		"class ",
+		"variable ",
+	}
+	topicLower := strings.ToLower(topic)
+	for _, pattern := range patterns {
+		idx := strings.Index(topicLower, pattern)
+		if idx != -1 {
+			remaining := topic[idx+len(pattern):]
+			// Take until whitespace, punctuation, or end
+			words := strings.Fields(remaining)
+			if len(words) > 0 {
+				// Clean up the symbol name - remove quotes and special chars
+				symbol := strings.Trim(words[0], "\"'`,.:;!?(){}[]")
+				if symbol != "" {
+					return symbol
+				}
+			}
 		}
 	}
 	return ""
@@ -2856,17 +3321,205 @@ func cleanSynthesisForFile(synthesis string) string {
 func extractToolArguments(toolName string, context string) string {
 	toolNameLower := strings.ToLower(toolName)
 	switch toolNameLower {
-	case "glob", "Glob":
+	case "glob":
 		// Default glob pattern
 		return `{"pattern": "**/*"}`
-	case "grep", "Grep":
+	case "grep":
 		// Try to extract a search pattern from context
-		return `{"pattern": ".*"}`
-	case "read", "Read":
-		return `{"file_path": "README.md"}`
+		pattern := extractSearchPatternFromContext(context)
+		if pattern == "" {
+			pattern = ".*"
+		}
+		return fmt.Sprintf(`{"pattern": "%s"}`, escapeJSONString(pattern))
+	case "read":
+		path := extractFilePathFromContext(context)
+		if path == "" {
+			path = "README.md"
+		}
+		return fmt.Sprintf(`{"file_path": "%s"}`, escapeJSONString(path))
+	case "write":
+		path := extractFilePathFromContext(context)
+		if path == "" {
+			path = "output.md"
+		}
+		content := extractContentForFile(context, path)
+		return fmt.Sprintf(`{"file_path": "%s", "content": "%s"}`, escapeJSONString(path), escapeJSONString(content))
+	case "edit":
+		path := extractFilePathFromContext(context)
+		if path == "" {
+			path = "file.txt"
+		}
+		return fmt.Sprintf(`{"file_path": "%s", "old_string": "", "new_string": ""}`, escapeJSONString(path))
+	case "bash", "shell":
+		// CRITICAL: Bash tool REQUIRES both command AND description fields
+		cmd := extractCommandFromContext(context)
+		if cmd == "" {
+			cmd = "echo 'Ready to execute'"
+		}
+		desc := generateBashDescription(cmd)
+		return fmt.Sprintf(`{"command": "%s", "description": "%s"}`, escapeJSONString(cmd), escapeJSONString(desc))
 	case "ls":
 		return `{"path": "."}`
+	case "webfetch":
+		return `{"url": "https://example.com", "prompt": "Summarize the page content"}`
+	case "websearch":
+		return `{"query": "search term"}`
+	case "task":
+		return `{"prompt": "Task description", "description": "Task summary", "subagent_type": "general-purpose"}`
+	// ============================================
+	// NEW TOOLS - Version Control
+	// ============================================
+	case "git":
+		operation := "status"
+		description := "Check git status"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "commit") {
+			operation = "commit"
+			description = "Create git commit"
+		} else if strings.Contains(contextLower, "push") {
+			operation = "push"
+			description = "Push changes to remote"
+		} else if strings.Contains(contextLower, "pull") {
+			operation = "pull"
+			description = "Pull changes from remote"
+		} else if strings.Contains(contextLower, "branch") {
+			operation = "branch"
+			description = "Manage branches"
+		} else if strings.Contains(contextLower, "checkout") {
+			operation = "checkout"
+			description = "Checkout branch or file"
+		} else if strings.Contains(contextLower, "merge") {
+			operation = "merge"
+			description = "Merge branches"
+		} else if strings.Contains(contextLower, "diff") {
+			operation = "diff"
+			description = "Show differences"
+		} else if strings.Contains(contextLower, "log") {
+			operation = "log"
+			description = "Show commit history"
+		} else if strings.Contains(contextLower, "stash") {
+			operation = "stash"
+			description = "Stash changes"
+		}
+		return fmt.Sprintf(`{"operation": "%s", "description": "%s"}`, operation, escapeJSONString(description))
+	case "diff":
+		mode := "working"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "staged") {
+			mode = "staged"
+		} else if strings.Contains(contextLower, "branch") {
+			mode = "branch"
+		}
+		return fmt.Sprintf(`{"mode": "%s", "description": "Show git diff"}`, mode)
+	// ============================================
+	// NEW TOOLS - Testing & Linting
+	// ============================================
+	case "test":
+		testPath := "./..."
+		coverage := false
+		description := "Run tests"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "coverage") {
+			coverage = true
+			description = "Run tests with coverage"
+		}
+		if strings.Contains(contextLower, "unit") {
+			testPath = "./internal/..."
+			description = "Run unit tests"
+		} else if strings.Contains(contextLower, "integration") {
+			testPath = "./tests/integration/..."
+			description = "Run integration tests"
+		}
+		return fmt.Sprintf(`{"test_path": "%s", "coverage": %t, "verbose": true, "description": "%s"}`, testPath, coverage, escapeJSONString(description))
+	case "lint":
+		autoFix := false
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "fix") {
+			autoFix = true
+		}
+		return fmt.Sprintf(`{"path": "./...", "linter": "auto", "auto_fix": %t, "description": "Run code linting"}`, autoFix)
+	// ============================================
+	// NEW TOOLS - File Intelligence
+	// ============================================
+	case "treeview", "tree":
+		return `{"path": ".", "max_depth": 3, "show_hidden": false, "description": "Display directory tree"}`
+	case "fileinfo":
+		path := extractFilePathFromContext(context)
+		if path == "" {
+			path = "README.md"
+		}
+		return fmt.Sprintf(`{"file_path": "%s", "include_stats": true, "include_git": false, "description": "Get file information"}`, escapeJSONString(path))
+	// ============================================
+	// NEW TOOLS - Code Intelligence
+	// ============================================
+	case "symbols":
+		path := extractFilePathFromContext(context)
+		if path == "" {
+			path = "."
+		}
+		return fmt.Sprintf(`{"file_path": "%s", "recursive": false, "description": "Extract code symbols"}`, escapeJSONString(path))
+	case "references", "refs":
+		symbol := extractSearchPatternFromContext(context)
+		if symbol == "" {
+			symbol = "main"
+		}
+		return fmt.Sprintf(`{"symbol": "%s", "include_declaration": true, "description": "Find symbol references"}`, escapeJSONString(symbol))
+	case "definition", "goto":
+		symbol := extractSearchPatternFromContext(context)
+		if symbol == "" {
+			symbol = "main"
+		}
+		return fmt.Sprintf(`{"symbol": "%s", "description": "Find symbol definition"}`, escapeJSONString(symbol))
+	// ============================================
+	// NEW TOOLS - Workflow
+	// ============================================
+	case "pr", "pullrequest":
+		action := "list"
+		description := "List pull requests"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "create") {
+			action = "create"
+			description = "Create pull request"
+		} else if strings.Contains(contextLower, "merge") {
+			action = "merge"
+			description = "Merge pull request"
+		} else if strings.Contains(contextLower, "view") {
+			action = "view"
+			description = "View pull request"
+		}
+		return fmt.Sprintf(`{"action": "%s", "description": "%s"}`, action, escapeJSONString(description))
+	case "issue":
+		action := "list"
+		description := "List issues"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "create") {
+			action = "create"
+			description = "Create issue"
+		} else if strings.Contains(contextLower, "close") {
+			action = "close"
+			description = "Close issue"
+		} else if strings.Contains(contextLower, "view") {
+			action = "view"
+			description = "View issue"
+		}
+		return fmt.Sprintf(`{"action": "%s", "description": "%s"}`, action, escapeJSONString(description))
+	case "workflow", "ci":
+		action := "list"
+		description := "List workflows"
+		contextLower := strings.ToLower(context)
+		if strings.Contains(contextLower, "run") {
+			action = "run"
+			description = "Run workflow"
+		} else if strings.Contains(contextLower, "view") {
+			action = "view"
+			description = "View workflow run"
+		} else if strings.Contains(contextLower, "cancel") {
+			action = "cancel"
+			description = "Cancel workflow run"
+		}
+		return fmt.Sprintf(`{"action": "%s", "description": "%s"}`, action, escapeJSONString(description))
 	default:
+		// For unknown tools, return empty object - the caller should handle appropriately
 		return "{}"
 	}
 }

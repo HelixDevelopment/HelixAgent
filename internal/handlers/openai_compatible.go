@@ -2303,6 +2303,7 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 	if containsAny(topicLower, []string{"run ", "execute ", "command "}) {
 		command := extractCommand(topic)
 		if command != "" {
+			desc := generateBashDescription(command)
 			if tool, ok := availableTools["shell"]; ok {
 				toolCalls = append(toolCalls, StreamingToolCall{
 					Index: len(toolCalls),
@@ -2310,7 +2311,7 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 					Type:  "function",
 					Function: OpenAIFunctionCall{
 						Name:      tool.Function.Name,
-						Arguments: fmt.Sprintf(`{"command": "%s"}`, escapeJSONString(command)),
+						Arguments: fmt.Sprintf(`{"command": "%s", "description": "%s"}`, escapeJSONString(command), escapeJSONString(desc)),
 					},
 				})
 			} else if tool, ok := availableTools["Bash"]; ok {
@@ -2320,7 +2321,7 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 					Type:  "function",
 					Function: OpenAIFunctionCall{
 						Name:      tool.Function.Name,
-						Arguments: fmt.Sprintf(`{"command": "%s"}`, escapeJSONString(command)),
+						Arguments: fmt.Sprintf(`{"command": "%s", "description": "%s"}`, escapeJSONString(command), escapeJSONString(desc)),
 					},
 				})
 			}
@@ -2936,7 +2937,9 @@ func extractActionsFromSynthesis(synthesis string, availableTools map[string]Ope
 				if cmd == "" {
 					cmd = "echo 'Ready to execute'"
 				}
-				return fmt.Sprintf(`{"command": "%s"}`, escapeJSONString(cmd))
+				// Generate a description based on the command
+				desc := generateBashDescription(cmd)
+				return fmt.Sprintf(`{"command": "%s", "description": "%s"}`, escapeJSONString(cmd), escapeJSONString(desc))
 			},
 		},
 		// Edit patterns
@@ -3155,6 +3158,189 @@ func extractCommandFromContext(context string) string {
 	}
 
 	return ""
+}
+
+// generateBashDescription generates a human-readable description for a bash command
+// This is REQUIRED by the Bash tool schema
+// IMPORTANT: Order matters! More specific patterns MUST be checked BEFORE general patterns
+func generateBashDescription(cmd string) string {
+	cmdLower := strings.ToLower(cmd)
+
+	// Coverage commands - MUST check before "test" since coverage commands often contain "test"
+	if strings.Contains(cmdLower, "coverprofile") || strings.Contains(cmdLower, "coverage") {
+		return "Generate test coverage report"
+	}
+
+	// Git commands - MUST check before "test" since git commands may contain "test" in commit messages
+	if strings.Contains(cmdLower, "git ") || strings.HasPrefix(cmdLower, "git") {
+		if strings.Contains(cmdLower, "status") {
+			return "Check git status"
+		}
+		if strings.Contains(cmdLower, "commit") {
+			return "Create git commit"
+		}
+		if strings.Contains(cmdLower, "push") {
+			return "Push changes to remote"
+		}
+		if strings.Contains(cmdLower, "pull") {
+			return "Pull changes from remote"
+		}
+		if strings.Contains(cmdLower, "clone") {
+			return "Clone git repository"
+		}
+		if strings.Contains(cmdLower, "checkout") {
+			return "Switch git branch"
+		}
+		if strings.Contains(cmdLower, "branch") {
+			return "Manage git branches"
+		}
+		if strings.Contains(cmdLower, "merge") {
+			return "Merge git branches"
+		}
+		if strings.Contains(cmdLower, "rebase") {
+			return "Rebase git commits"
+		}
+		if strings.Contains(cmdLower, "diff") {
+			return "Show git diff"
+		}
+		if strings.Contains(cmdLower, "log") {
+			return "Show git log"
+		}
+		if strings.Contains(cmdLower, "add") {
+			return "Stage files for commit"
+		}
+		return "Execute git command"
+	}
+
+	// Lint commands - check before build since some lint commands contain "build"
+	if strings.Contains(cmdLower, "lint") || strings.Contains(cmdLower, "golangci") {
+		return "Run linter"
+	}
+
+	// Build commands
+	if strings.Contains(cmdLower, "build") || strings.Contains(cmdLower, "compile") {
+		if strings.Contains(cmdLower, "go build") {
+			return "Build Go project"
+		}
+		if strings.Contains(cmdLower, "npm") {
+			return "Build npm project"
+		}
+		if strings.Contains(cmdLower, "make") {
+			return "Build project using make"
+		}
+		if strings.Contains(cmdLower, "docker") {
+			return "Build Docker image"
+		}
+		return "Build project"
+	}
+
+	// Test commands - after coverage and git since those may contain "test"
+	if strings.Contains(cmdLower, "test") {
+		if strings.Contains(cmdLower, "go test") {
+			return "Run Go tests"
+		}
+		if strings.Contains(cmdLower, "npm test") {
+			return "Run npm tests"
+		}
+		if strings.Contains(cmdLower, "pytest") {
+			return "Run Python tests"
+		}
+		if strings.Contains(cmdLower, "jest") {
+			return "Run Jest tests"
+		}
+		if strings.Contains(cmdLower, "mocha") {
+			return "Run Mocha tests"
+		}
+		return "Run tests"
+	}
+
+	// Docker commands
+	if strings.Contains(cmdLower, "docker") {
+		if strings.Contains(cmdLower, "compose") {
+			return "Execute docker-compose command"
+		}
+		if strings.Contains(cmdLower, "run") {
+			return "Run Docker container"
+		}
+		if strings.Contains(cmdLower, "stop") {
+			return "Stop Docker container"
+		}
+		if strings.Contains(cmdLower, "ps") {
+			return "List Docker containers"
+		}
+		return "Execute Docker command"
+	}
+
+	// Package manager commands
+	if strings.Contains(cmdLower, "npm") || strings.Contains(cmdLower, "yarn") || strings.Contains(cmdLower, "pnpm") {
+		if strings.Contains(cmdLower, "install") {
+			return "Install npm dependencies"
+		}
+		if strings.Contains(cmdLower, "run") {
+			return "Run npm script"
+		}
+		return "Execute npm command"
+	}
+
+	if strings.Contains(cmdLower, "pip") {
+		if strings.Contains(cmdLower, "install") {
+			return "Install Python packages"
+		}
+		return "Execute pip command"
+	}
+
+	if strings.Contains(cmdLower, "go mod") || strings.Contains(cmdLower, "go get") {
+		return "Manage Go modules"
+	}
+
+	// Make commands
+	if strings.HasPrefix(cmdLower, "make") {
+		return "Execute make target"
+	}
+
+	// Echo commands
+	if strings.HasPrefix(cmdLower, "echo") {
+		return "Print message"
+	}
+
+	// List commands
+	if strings.HasPrefix(cmdLower, "ls") {
+		return "List directory contents"
+	}
+
+	// Directory commands
+	if strings.HasPrefix(cmdLower, "cd") {
+		return "Change directory"
+	}
+
+	if strings.HasPrefix(cmdLower, "mkdir") {
+		return "Create directory"
+	}
+
+	if strings.HasPrefix(cmdLower, "rm") {
+		return "Remove files or directories"
+	}
+
+	if strings.HasPrefix(cmdLower, "cp") {
+		return "Copy files"
+	}
+
+	if strings.HasPrefix(cmdLower, "mv") {
+		return "Move or rename files"
+	}
+
+	// Curl/wget commands
+	if strings.HasPrefix(cmdLower, "curl") || strings.HasPrefix(cmdLower, "wget") {
+		return "Make HTTP request"
+	}
+
+	// Default: use first part of command as description
+	parts := strings.Fields(cmd)
+	if len(parts) > 0 {
+		return fmt.Sprintf("Execute %s command", parts[0])
+	}
+
+	return "Execute shell command"
 }
 
 // extractContentForFile generates appropriate content for a file based on its name and context

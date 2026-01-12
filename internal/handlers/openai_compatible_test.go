@@ -4439,3 +4439,124 @@ func TestFollowUpResponseEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// TestBashToolCallsIncludeDescription ensures all Bash tool calls include the required description parameter
+// This test was added after a bug where Bash tool calls were missing the description field,
+// causing "Invalid input: expected string, received undefined" errors in CLI tools
+func TestBashToolCallsIncludeDescription(t *testing.T) {
+	// Test the generateBashDescription function directly
+	tests := []struct {
+		command     string
+		expected    string
+		shouldMatch bool
+	}{
+		{"go test -v ./...", "Run Go tests", true},
+		{"npm test", "Run npm tests", true},
+		{"pytest -v", "Run Python tests", true},
+		{"go build ./...", "Build Go project", true},
+		{"npm run build", "Build npm project", true},
+		{"make build", "Build project using make", true},
+		{"go test -coverprofile=coverage.out ./...", "Generate test coverage report", true},
+		{"git status", "Check git status", true},
+		{"git commit -m 'test'", "Create git commit", true},
+		{"git push origin main", "Push changes to remote", true},
+		{"echo hello", "Print message", true},
+		{"ls -la", "List directory contents", true},
+		{"docker compose up", "Execute docker-compose command", true},
+		{"npm run lint", "Run linter", true},
+		{"unknown-command arg1 arg2", "Execute unknown-command command", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.command, func(t *testing.T) {
+			result := generateBashDescription(tc.command)
+
+			if tc.shouldMatch {
+				assert.Equal(t, tc.expected, result, "Description for '%s' should be '%s'", tc.command, tc.expected)
+			}
+
+			// Critical: Description should NEVER be empty
+			assert.NotEmpty(t, result, "Bash description should never be empty for command: %s", tc.command)
+		})
+	}
+}
+
+// TestBashToolCallArgumentsStructure ensures Bash tool call arguments include all required fields
+func TestBashToolCallArgumentsStructure(t *testing.T) {
+	handler := &UnifiedHandler{}
+	ctx := context.Background()
+
+	// Create Bash tool
+	tools := []OpenAITool{
+		{
+			Type: "function",
+			Function: OpenAIToolFunction{
+				Name:        "Bash",
+				Description: "Execute a shell command",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"command": map[string]interface{}{
+							"type":        "string",
+							"description": "The command to execute",
+						},
+						"description": map[string]interface{}{
+							"type":        "string",
+							"description": "Description of what the command does",
+						},
+					},
+					"required": []string{"command", "description"},
+				},
+			},
+		},
+	}
+
+	// Test topics that should trigger Bash tool calls
+	testCases := []struct {
+		name      string
+		topic     string
+		synthesis string
+	}{
+		{
+			name:      "run_tests",
+			topic:     "Run the tests for this project",
+			synthesis: "I will run the tests using the test command.",
+		},
+		{
+			name:      "execute_command",
+			topic:     "Execute npm install",
+			synthesis: "I will execute the npm install command.",
+		},
+		{
+			name:      "run_build",
+			topic:     "Run the build command",
+			synthesis: "I will run the build command for this project.",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, tools, nil)
+
+			// Find Bash tool call
+			for _, toolCall := range result {
+				if toolCall.Function.Name == "Bash" {
+					// Parse the arguments JSON
+					var args map[string]interface{}
+					err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+					assert.NoError(t, err, "Arguments should be valid JSON")
+
+					// CRITICAL: Check that description field exists and is not empty
+					desc, exists := args["description"]
+					assert.True(t, exists, "Bash tool call must include 'description' field")
+					assert.NotEmpty(t, desc, "Bash tool call 'description' must not be empty")
+
+					// Check that command field exists
+					cmd, exists := args["command"]
+					assert.True(t, exists, "Bash tool call must include 'command' field")
+					assert.NotEmpty(t, cmd, "Bash tool call 'command' must not be empty")
+				}
+			}
+		})
+	}
+}

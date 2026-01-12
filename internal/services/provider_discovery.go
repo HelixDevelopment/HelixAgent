@@ -102,7 +102,7 @@ var providerMappings = []ProviderMapping{
 
 	// Tier 3: Fast inference providers
 	{EnvVar: "GROQ_API_KEY", ProviderType: "groq", ProviderName: "groq", BaseURL: "https://api.groq.com/openai/v1", DefaultModel: "llama-3.1-70b-versatile", Priority: 5},
-	{EnvVar: "CEREBRAS_API_KEY", ProviderType: "cerebras", ProviderName: "cerebras", BaseURL: "https://api.cerebras.ai/v1", DefaultModel: "llama3.1-70b", Priority: 5},
+	{EnvVar: "CEREBRAS_API_KEY", ProviderType: "cerebras", ProviderName: "cerebras", BaseURL: "https://api.cerebras.ai/v1", DefaultModel: "llama-3.3-70b", Priority: 5},
 	{EnvVar: "SAMBANOVA_API_KEY", ProviderType: "sambanova", ProviderName: "sambanova", BaseURL: "https://api.sambanova.ai/v1", DefaultModel: "Meta-Llama-3.1-70B-Instruct", Priority: 5},
 
 	// Tier 4: Alternative providers

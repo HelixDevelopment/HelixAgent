@@ -83,7 +83,7 @@ var LLMsVerifierModels = struct {
 	Gemini:   "gemini-2.0-flash",
 	Mistral:  "mistral-large-latest",
 	Groq:     "llama-3.1-70b-versatile",
-	Cerebras: "llama3.1-70b",
+	Cerebras: "llama-3.3-70b",
 }
 
 // VerifiedLLM represents a verified LLM from LLMsVerifier

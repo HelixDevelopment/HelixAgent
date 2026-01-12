@@ -77,11 +77,10 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 		defer cancel()
 	}
 
-	// Convert to OpenRouter format
+	// Convert to OpenRouter format (no prompt field - convert to system message for compatibility)
 	type OpenRouterRequest struct {
 		Model       string           `json:"model"`
 		Messages    []models.Message `json:"messages"`
-		Prompt      string           `json:"prompt,omitempty"`
 		MaxTokens   int              `json:"max_tokens,omitempty"`
 		Temperature float64          `json:"temperature,omitempty"`
 	}
@@ -94,10 +93,19 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 		maxTokens = 16384 // Safe max for most OpenRouter models
 	}
 
+	// Convert prompt to system message if provided (some providers don't support prompt field)
+	messages := req.Messages
+	if req.Prompt != "" {
+		systemMsg := models.Message{
+			Role:    "system",
+			Content: req.Prompt,
+		}
+		messages = append([]models.Message{systemMsg}, messages...)
+	}
+
 	orReq := OpenRouterRequest{
 		Model:       req.ModelParams.Model,
-		Messages:    req.Messages,
-		Prompt:      req.Prompt,
+		Messages:    messages,
 		MaxTokens:   maxTokens,
 		Temperature: req.ModelParams.Temperature,
 	}
@@ -168,9 +176,9 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 				TotalTokens      int `json:"total_tokens"`
 			} `json:"usage,omitempty"`
 			Error *struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    int    `json:"code,omitempty"`
+				Message string      `json:"message"`
+				Type    string      `json:"type"`
+				Code    interface{} `json:"code,omitempty"` // Dynamically handles int or string
 			} `json:"error,omitempty"`
 		}
 
@@ -262,11 +270,10 @@ func (p *SimpleOpenRouterProvider) nextDelay(currentDelay time.Duration) time.Du
 func (p *SimpleOpenRouterProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 	ch := make(chan *models.LLMResponse, 100)
 
-	// Create streaming request
+	// Create streaming request (no prompt field - convert to system message for compatibility)
 	type OpenRouterStreamRequest struct {
 		Model       string           `json:"model"`
 		Messages    []models.Message `json:"messages"`
-		Prompt      string           `json:"prompt,omitempty"`
 		MaxTokens   int              `json:"max_tokens,omitempty"`
 		Temperature float64          `json:"temperature,omitempty"`
 		Stream      bool             `json:"stream"`
@@ -280,10 +287,19 @@ func (p *SimpleOpenRouterProvider) CompleteStream(ctx context.Context, req *mode
 		maxTokens = 16384
 	}
 
+	// Convert prompt to system message if provided (some providers don't support prompt field)
+	messages := req.Messages
+	if req.Prompt != "" {
+		systemMsg := models.Message{
+			Role:    "system",
+			Content: req.Prompt,
+		}
+		messages = append([]models.Message{systemMsg}, messages...)
+	}
+
 	orReq := OpenRouterStreamRequest{
 		Model:       req.ModelParams.Model,
-		Messages:    req.Messages,
-		Prompt:      req.Prompt,
+		Messages:    messages,
 		MaxTokens:   maxTokens,
 		Temperature: req.ModelParams.Temperature,
 		Stream:      true,

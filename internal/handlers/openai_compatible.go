@@ -2447,7 +2447,7 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 					Type:  "function",
 					Function: OpenAIFunctionCall{
 						Name:      tool.Function.Name,
-						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'"}`,
+						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'", "description": "Generate test coverage report"}`,
 					},
 				})
 			} else if tool, ok := availableTools["bash"]; ok {
@@ -2457,7 +2457,7 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 					Type:  "function",
 					Function: OpenAIFunctionCall{
 						Name:      tool.Function.Name,
-						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'"}`,
+						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'", "description": "Generate test coverage report"}`,
 					},
 				})
 			}

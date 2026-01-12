@@ -161,7 +161,7 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 
 		// Parse response
 		var orResp struct {
-			ID      string `json:"id"`
+			ID      interface{} `json:"id"` // Can be string or number depending on provider
 			Choices []struct {
 				Message struct {
 					Role    string `json:"role"`
@@ -197,9 +197,15 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 			return nil, fmt.Errorf("no choices in OpenRouter response")
 		}
 
+		// Convert ID to string (some providers return number, others string)
+		responseID := ""
+		if orResp.ID != nil {
+			responseID = fmt.Sprintf("%v", orResp.ID)
+		}
+
 		choice := orResp.Choices[0]
 		response := &models.LLMResponse{
-			ID:           orResp.ID,
+			ID:           responseID,
 			RequestID:    req.ID,
 			ProviderID:   "openrouter",
 			ProviderName: "OpenRouter",

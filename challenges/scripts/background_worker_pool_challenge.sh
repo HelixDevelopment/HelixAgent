@@ -128,10 +128,10 @@ main() {
         exit 0
     fi
 
-    test_worker_status && ((passed++)) || ((failed++))
-    test_concurrent_tasks && ((passed++)) || ((failed++))
-    test_worker_statistics && ((passed++)) || ((failed++))
-    test_task_distribution && ((passed++)) || ((failed++))
+    test_worker_status && ((++passed)) || ((++failed))
+    test_concurrent_tasks && ((++passed)) || ((++failed))
+    test_worker_statistics && ((++passed)) || ((++failed))
+    test_task_distribution && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

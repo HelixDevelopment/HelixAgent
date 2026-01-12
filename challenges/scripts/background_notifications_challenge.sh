@@ -181,12 +181,12 @@ main() {
     fi
 
     local webhook_id=""
-    webhook_id=$(test_register_webhook) && ((passed++)) || ((failed++))
-    test_list_webhooks && ((passed++)) || ((failed++))
-    test_polling && ((passed++)) || ((failed++))
-    test_sse_endpoint && ((passed++)) || ((failed++))
-    test_notification_config && ((passed++)) || ((failed++))
-    test_delete_webhook "$webhook_id" && ((passed++)) || ((failed++))
+    webhook_id=$(test_register_webhook) && ((++passed)) || ((++failed))
+    test_list_webhooks && ((++passed)) || ((++failed))
+    test_polling && ((++passed)) || ((++failed))
+    test_sse_endpoint && ((++passed)) || ((++failed))
+    test_notification_config && ((++passed)) || ((++failed))
+    test_delete_webhook "$webhook_id" && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

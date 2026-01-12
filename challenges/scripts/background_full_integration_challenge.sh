@@ -267,13 +267,13 @@ main() {
     local passed=0
     local failed=0
 
-    test_code_compilation && ((passed++)) || ((failed++))
-    test_unit_tests && ((passed++)) || ((failed++))
-    test_full_workflow && ((passed++)) || ((failed++))
-    test_queue_statistics && ((passed++)) || ((failed++))
-    test_concurrent_handling && ((passed++)) || ((failed++))
-    test_webhook_lifecycle && ((passed++)) || ((failed++))
-    test_package_structure && ((passed++)) || ((failed++))
+    test_code_compilation && ((++passed)) || ((++failed))
+    test_unit_tests && ((++passed)) || ((++failed))
+    test_full_workflow && ((++passed)) || ((++failed))
+    test_queue_statistics && ((++passed)) || ((++failed))
+    test_concurrent_handling && ((++passed)) || ((++failed))
+    test_webhook_lifecycle && ((++passed)) || ((++failed))
+    test_package_structure && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

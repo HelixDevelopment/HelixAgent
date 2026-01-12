@@ -141,13 +141,13 @@ main() {
     # Change to project root
     cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
-    test_cli_unit_tests && ((passed++)) || ((failed++))
-    test_progress_bar_rendering && ((passed++)) || ((failed++))
-    test_status_table_rendering && ((passed++)) || ((failed++))
-    test_resource_gauge_rendering && ((passed++)) || ((failed++))
-    test_cli_detection && ((passed++)) || ((failed++))
-    test_ansi_colors && ((passed++)) || ((failed++))
-    test_box_drawing && ((passed++)) || ((failed++))
+    test_cli_unit_tests && ((++passed)) || ((++failed))
+    test_progress_bar_rendering && ((++passed)) || ((++failed))
+    test_status_table_rendering && ((++passed)) || ((++failed))
+    test_resource_gauge_rendering && ((++passed)) || ((++failed))
+    test_cli_detection && ((++passed)) || ((++failed))
+    test_ansi_colors && ((++passed)) || ((++failed))
+    test_box_drawing && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

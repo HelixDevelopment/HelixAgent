@@ -147,10 +147,10 @@ main() {
     fi
 
     local task_id=""
-    task_id=$(test_create_endless_task) && ((passed++)) || ((failed++))
-    test_monitor_endless_task "$task_id" && ((passed++)) || ((failed++))
-    test_cancel_endless_task "$task_id" && ((passed++)) || ((failed++))
-    test_pausable_endless_task && ((passed++)) || ((failed++))
+    task_id=$(test_create_endless_task) && ((++passed)) || ((++failed))
+    test_monitor_endless_task "$task_id" && ((++passed)) || ((++failed))
+    test_cancel_endless_task "$task_id" && ((++passed)) || ((++failed))
+    test_pausable_endless_task && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

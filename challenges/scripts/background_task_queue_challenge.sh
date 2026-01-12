@@ -252,54 +252,54 @@ main() {
     # Run tests
     local task_id
     if task_id=$(test_create_task); then
-        ((passed++))
+        ((++passed))
     else
-        ((failed++))
+        ((++failed))
         task_id=""
     fi
 
     if [[ -n "$task_id" ]]; then
         if test_get_task_status "$task_id"; then
-            ((passed++))
+            ((++passed))
         else
-            ((failed++))
+            ((++failed))
         fi
     else
-        ((skipped++))
+        ((++skipped))
     fi
 
     if test_priority_ordering; then
-        ((passed++))
+        ((++passed))
     else
-        ((failed++))
+        ((++failed))
     fi
 
     if test_list_tasks; then
-        ((passed++))
+        ((++passed))
     else
-        ((failed++))
+        ((++failed))
     fi
 
     if [[ -n "$task_id" ]]; then
         if test_cancel_task "$task_id"; then
-            ((passed++))
+            ((++passed))
         else
-            ((failed++))
+            ((++failed))
         fi
     else
-        ((skipped++))
+        ((++skipped))
     fi
 
     if test_queue_stats; then
-        ((passed++))
+        ((++passed))
     else
-        ((failed++))
+        ((++failed))
     fi
 
     if test_task_with_deadline; then
-        ((passed++))
+        ((++passed))
     else
-        ((failed++))
+        ((++failed))
     fi
 
     # Summary

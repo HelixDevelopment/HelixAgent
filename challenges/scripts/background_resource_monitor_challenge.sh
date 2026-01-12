@@ -139,10 +139,10 @@ main() {
         exit 0
     fi
 
-    test_system_resources && ((passed++)) || ((failed++))
-    test_task_resources && ((passed++)) || ((failed++))
-    test_resource_requirements && ((passed++)) || ((failed++))
-    test_task_analysis && ((passed++)) || ((failed++))
+    test_system_resources && ((++passed)) || ((++failed))
+    test_task_resources && ((++passed)) || ((++failed))
+    test_resource_requirements && ((++passed)) || ((++failed))
+    test_task_analysis && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

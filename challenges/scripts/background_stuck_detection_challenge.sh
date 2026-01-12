@@ -148,10 +148,10 @@ main() {
         exit 0
     fi
 
-    test_stuck_threshold && ((passed++)) || ((failed++))
-    test_stuck_analysis && ((passed++)) || ((failed++))
-    test_heartbeat_status && ((passed++)) || ((failed++))
-    test_endless_task && ((passed++)) || ((failed++))
+    test_stuck_threshold && ((++passed)) || ((++failed))
+    test_stuck_analysis && ((++passed)) || ((++failed))
+    test_heartbeat_status && ((++passed)) || ((++failed))
+    test_endless_task && ((++passed)) || ((++failed))
 
     log_info "=========================================="
     log_info "Challenge: $CHALLENGE_NAME"

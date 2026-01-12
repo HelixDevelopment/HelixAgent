@@ -2394,6 +2394,134 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 		}
 	}
 
+	// Case 8: CRITICAL - User confirmation to proceed with previously discussed actions
+	// Handles phrases like "do it", "let's do it", "proceed", "go ahead", "do it all now"
+	// When user confirms, parse synthesis to extract and execute proposed actions
+	// EXPANDED based on OpenCode, Aider, and other CLI agent patterns
+	confirmationPhrases := []string{
+		// Direct confirmations
+		"do it", "let's do it", "lets do it", "do it all", "do all this",
+		"do it now", "do all now", "do it all now", "now do it",
+		// Affirmative responses
+		"yes", "yes do it", "yes please", "yeah", "yep", "yup", "sure", "ok", "okay",
+		"ok do it", "okay do it", "alright", "alright do it", "right do it",
+		// Proceed/Continue
+		"proceed", "continue", "go", "go ahead", "go for it", "carry on",
+		"move forward", "move on", "keep going", "let's go", "lets go",
+		// Execute/Run
+		"execute", "run", "run it", "execute it", "run this", "execute this",
+		"run all", "execute all", "run everything", "execute everything",
+		// Action words
+		"start", "begin", "launch", "initiate", "kick off", "fire away",
+		"make it happen", "get it done", "get started", "just do it",
+		// Confirmation words
+		"confirm", "confirmed", "i confirm", "approved", "approve", "accept",
+		"allow", "permit", "grant", "authorize", "authorise", "agree", "agreed",
+		// Implementation words
+		"implement", "apply", "deploy", "install", "setup", "set up",
+		"create", "create it", "build", "build it", "generate", "generate it",
+		"make", "make it", "produce", "write", "write it", "code it",
+		// Aider-style responses
+		"all", "skip", "y", "a", "n",
+		// Additional natural language
+		"sounds good", "perfect", "great", "excellent", "do what you said",
+		"as you suggested", "follow the plan", "execute the plan",
+		"i want that", "i want this", "that's what i want", "exactly",
+		"please do", "please proceed", "do as planned", "as discussed",
+	}
+	isConfirmation := containsAny(topicLower, confirmationPhrases)
+
+	if isConfirmation && len(toolCalls) == 0 {
+		logrus.WithField("topic", topic).Info("Detected user confirmation - parsing synthesis for actions")
+
+		// Parse synthesis for actionable items and generate tool calls
+		toolCalls = append(toolCalls, extractActionsFromSynthesis(synthesis, availableTools)...)
+
+		// If synthesis mentions test coverage/testing, run tests
+		if containsAny(synthesisLower, []string{"test coverage", "coverage report", "run test", "execute test", "pytest", "jest", "go test"}) {
+			if tool, ok := availableTools["Bash"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'"}`,
+					},
+				})
+			} else if tool, ok := availableTools["bash"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'"}`,
+					},
+				})
+			}
+		}
+
+		// If synthesis mentions documentation, generate docs
+		if containsAny(synthesisLower, []string{"documentation", "document", "readme", "docstring", "jsdoc"}) {
+			if tool, ok := availableTools["Write"]; ok {
+				content := extractDocumentationContent(synthesis)
+				if content != "" {
+					toolCalls = append(toolCalls, StreamingToolCall{
+						Index: len(toolCalls),
+						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+						Type:  "function",
+						Function: OpenAIFunctionCall{
+							Name:      tool.Function.Name,
+							Arguments: fmt.Sprintf(`{"filePath": "TESTING_PLAN.md", "content": "%s"}`, escapeJSONString(content)),
+						},
+					})
+				}
+			}
+		}
+
+		// If synthesis mentions scanning/analyzing codebase
+		if containsAny(synthesisLower, []string{"scan", "analyze", "inventory", "identify"}) {
+			if tool, ok := availableTools["Glob"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: `{"pattern": "**/*.{py,js,ts,go,java,kt}"}`,
+					},
+				})
+			} else if tool, ok := availableTools["glob"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: `{"pattern": "**/*.{py,js,ts,go,java,kt}"}`,
+					},
+				})
+			}
+		}
+
+		// If no specific tool calls extracted, at least do a codebase scan as a starting action
+		if len(toolCalls) == 0 {
+			logrus.Info("User confirmed action but no specific tools extracted - starting with codebase analysis")
+			if tool, ok := availableTools["Glob"]; ok {
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: `{"pattern": "**/*"}`,
+					},
+				})
+			}
+		}
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"topic":           topic[:min(50, len(topic))],
 		"tool_count":      len(toolCalls),
@@ -2740,6 +2868,501 @@ func extractToolArguments(toolName string, context string) string {
 	default:
 		return "{}"
 	}
+}
+
+// extractActionsFromSynthesis parses the debate synthesis to extract actionable tool calls
+// CRITICAL: This enables tool execution after user confirms debate consensus
+func extractActionsFromSynthesis(synthesis string, availableTools map[string]OpenAITool) []StreamingToolCall {
+	var toolCalls []StreamingToolCall
+	synthesisLower := strings.ToLower(synthesis)
+
+	// Pattern matchers for common actions mentioned in synthesis
+	actionPatterns := []struct {
+		keywords  []string
+		toolName  string
+		argsFunc  func(string) string
+	}{
+		// File reading patterns
+		{
+			keywords: []string{"read the file", "examine the file", "look at the file", "inspect the file", "analyze the file", "check the file"},
+			toolName: "Read",
+			argsFunc: func(s string) string {
+				path := extractFilePathFromContext(s)
+				if path == "" {
+					path = "README.md"
+				}
+				return fmt.Sprintf(`{"filePath": "%s"}`, escapeJSONString(path))
+			},
+		},
+		// File writing patterns
+		{
+			keywords: []string{"create a file", "write a file", "generate a file", "create the file", "write the", "generate the"},
+			toolName: "Write",
+			argsFunc: func(s string) string {
+				path := extractFilePathFromContext(s)
+				if path == "" {
+					path = "output.md"
+				}
+				content := extractContentForFile(s, path)
+				return fmt.Sprintf(`{"filePath": "%s", "content": "%s"}`, escapeJSONString(path), escapeJSONString(content))
+			},
+		},
+		// File search patterns
+		{
+			keywords: []string{"search for", "find files", "look for files", "scan the codebase", "analyze the codebase", "explore the project"},
+			toolName: "Glob",
+			argsFunc: func(s string) string {
+				return `{"pattern": "**/*"}`
+			},
+		},
+		// Content search patterns
+		{
+			keywords: []string{"search for the pattern", "find instances of", "grep for", "search in files", "look for occurrences"},
+			toolName: "Grep",
+			argsFunc: func(s string) string {
+				pattern := extractSearchPatternFromContext(s)
+				if pattern == "" {
+					pattern = ".*"
+				}
+				return fmt.Sprintf(`{"pattern": "%s"}`, escapeJSONString(pattern))
+			},
+		},
+		// Command execution patterns
+		{
+			keywords: []string{"run the command", "execute the command", "run tests", "execute tests", "build the project", "compile"},
+			toolName: "Bash",
+			argsFunc: func(s string) string {
+				cmd := extractCommandFromContext(s)
+				if cmd == "" {
+					cmd = "echo 'Ready to execute'"
+				}
+				return fmt.Sprintf(`{"command": "%s"}`, escapeJSONString(cmd))
+			},
+		},
+		// Edit patterns
+		{
+			keywords: []string{"modify the file", "edit the file", "update the file", "change the file", "refactor"},
+			toolName: "Edit",
+			argsFunc: func(s string) string {
+				path := extractFilePathFromContext(s)
+				if path == "" {
+					path = "file.txt"
+				}
+				return fmt.Sprintf(`{"filePath": "%s", "oldString": "", "newString": ""}`, escapeJSONString(path))
+			},
+		},
+	}
+
+	// Check each action pattern and generate tool calls
+	for _, ap := range actionPatterns {
+		for _, kw := range ap.keywords {
+			if strings.Contains(synthesisLower, kw) {
+				// Find the tool (case-insensitive)
+				var tool OpenAITool
+				var found bool
+				for name, t := range availableTools {
+					if strings.EqualFold(name, ap.toolName) {
+						tool = t
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+
+				// Check if we haven't already added this tool
+				alreadyAdded := false
+				for _, tc := range toolCalls {
+					if strings.EqualFold(tc.Function.Name, ap.toolName) {
+						alreadyAdded = true
+						break
+					}
+				}
+				if alreadyAdded {
+					continue
+				}
+
+				// Generate the tool call
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: ap.argsFunc(synthesis),
+					},
+				})
+				break // Found a match for this pattern set
+			}
+		}
+	}
+
+	// Also check for specific file mentions like "create AGENTS.md" or "generate README.md"
+	fileCreationPatterns := []string{
+		"create agents.md", "generate agents.md", "write agents.md",
+		"create readme.md", "generate readme.md", "write readme.md",
+		"create testing_plan.md", "generate testing_plan.md",
+		"create changelog.md", "generate changelog.md",
+	}
+
+	for _, pattern := range fileCreationPatterns {
+		if strings.Contains(synthesisLower, pattern) {
+			// Extract filename from pattern
+			parts := strings.Fields(pattern)
+			if len(parts) >= 2 {
+				fileName := parts[len(parts)-1]
+
+				// Check if Write tool available
+				var tool OpenAITool
+				for name, t := range availableTools {
+					if strings.EqualFold(name, "Write") {
+						tool = t
+						break
+					}
+				}
+				if tool.Function.Name == "" {
+					continue
+				}
+
+				// Check not already added
+				alreadyAdded := false
+				for _, tc := range toolCalls {
+					if strings.Contains(strings.ToLower(tc.Function.Arguments), fileName) {
+						alreadyAdded = true
+						break
+					}
+				}
+				if alreadyAdded {
+					continue
+				}
+
+				content := extractContentForFile(synthesis, fileName)
+				toolCalls = append(toolCalls, StreamingToolCall{
+					Index: len(toolCalls),
+					ID:    fmt.Sprintf("call_%s", generateToolCallID()),
+					Type:  "function",
+					Function: OpenAIFunctionCall{
+						Name:      tool.Function.Name,
+						Arguments: fmt.Sprintf(`{"filePath": "./%s", "content": "%s"}`, fileName, escapeJSONString(content)),
+					},
+				})
+			}
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"synthesis_len":  len(synthesis),
+		"tool_calls":     len(toolCalls),
+		"available_tools": len(availableTools),
+	}).Debug("Extracted actions from synthesis")
+
+	return toolCalls
+}
+
+// extractFilePathFromContext extracts a file path from context text
+func extractFilePathFromContext(context string) string {
+	// Look for quoted paths first
+	patterns := []string{`"([^"]+\.[a-zA-Z0-9]+)"`, `'([^']+\.[a-zA-Z0-9]+)'`}
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(context)
+		if len(matches) > 1 {
+			return matches[1]
+		}
+	}
+
+	// Look for common file extensions
+	words := strings.Fields(context)
+	for _, word := range words {
+		word = strings.Trim(word, "\"'`,.:;!?()[]")
+		if strings.Contains(word, ".") {
+			ext := strings.ToLower(filepath.Ext(word))
+			validExts := []string{".go", ".py", ".js", ".ts", ".md", ".txt", ".json", ".yaml", ".yml", ".sh", ".java", ".kt", ".rs"}
+			for _, validExt := range validExts {
+				if ext == validExt {
+					return word
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractSearchPatternFromContext extracts a search pattern from context
+func extractSearchPatternFromContext(context string) string {
+	// Look for quoted patterns
+	patterns := []string{`"([^"]+)"`, `'([^']+)'`}
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(context)
+		if len(matches) > 1 && len(matches[1]) > 2 {
+			return matches[1]
+		}
+	}
+
+	// Look for pattern-like text after keywords
+	keywords := []string{"for ", "pattern ", "term ", "string "}
+	contextLower := strings.ToLower(context)
+	for _, kw := range keywords {
+		if idx := strings.Index(contextLower, kw); idx != -1 {
+			remaining := context[idx+len(kw):]
+			words := strings.Fields(remaining)
+			if len(words) > 0 {
+				return strings.Trim(words[0], "\"'`,.:;!?")
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractCommandFromContext extracts a command from context text
+func extractCommandFromContext(context string) string {
+	contextLower := strings.ToLower(context)
+
+	// Check for specific test commands
+	if strings.Contains(contextLower, "run test") || strings.Contains(contextLower, "execute test") {
+		if strings.Contains(contextLower, "go") {
+			return "go test -v ./..."
+		}
+		if strings.Contains(contextLower, "npm") || strings.Contains(contextLower, "node") || strings.Contains(contextLower, "javascript") {
+			return "npm test"
+		}
+		if strings.Contains(contextLower, "python") || strings.Contains(contextLower, "pytest") {
+			return "pytest -v"
+		}
+		return "make test || go test -v ./... || npm test || pytest -v"
+	}
+
+	// Check for build commands
+	if strings.Contains(contextLower, "build") || strings.Contains(contextLower, "compile") {
+		if strings.Contains(contextLower, "go") {
+			return "go build ./..."
+		}
+		if strings.Contains(contextLower, "npm") || strings.Contains(contextLower, "node") {
+			return "npm run build"
+		}
+		return "make build || go build ./... || npm run build"
+	}
+
+	// Look for commands in backticks
+	re := regexp.MustCompile("`([^`]+)`")
+	matches := re.FindStringSubmatch(context)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+
+	return ""
+}
+
+// extractContentForFile generates appropriate content for a file based on its name and context
+func extractContentForFile(context string, fileName string) string {
+	fileNameLower := strings.ToLower(fileName)
+
+	if strings.Contains(fileNameLower, "agents.md") {
+		return generateAgentsContent(context)
+	}
+	if strings.Contains(fileNameLower, "readme.md") {
+		return generateReadmeContent(context)
+	}
+	if strings.Contains(fileNameLower, "testing_plan.md") || strings.Contains(fileNameLower, "test_plan.md") {
+		return generateTestingPlanContent(context)
+	}
+	if strings.Contains(fileNameLower, "changelog.md") {
+		return generateChangelogContent(context)
+	}
+
+	// Default: extract any code blocks or structured content from context
+	if idx := strings.Index(context, "```"); idx != -1 {
+		afterStart := context[idx+3:]
+		if nlIdx := strings.Index(afterStart, "\n"); nlIdx != -1 {
+			afterStart = afterStart[nlIdx+1:]
+		}
+		if endIdx := strings.Index(afterStart, "```"); endIdx != -1 {
+			return strings.TrimSpace(afterStart[:endIdx])
+		}
+	}
+
+	return fmt.Sprintf("# %s\n\nGenerated content based on analysis.\n\n%s",
+		strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+		cleanSynthesisForFile(context))
+}
+
+// generateAgentsContent generates AGENTS.md content
+func generateAgentsContent(context string) string {
+	return `# AGENTS.md
+
+This file provides guidance to AI coding agents working with this codebase.
+
+## Project Overview
+
+This project contains code that AI agents should understand before making modifications.
+
+## Key Guidelines
+
+- Follow existing code patterns and conventions
+- Maintain consistent formatting and style
+- Write clear, concise code with appropriate comments
+- Update tests when modifying functionality
+- Run tests before committing changes
+
+## Important Files
+
+See the project structure for key entry points and configuration files.
+
+## Testing Requirements
+
+- All new code should have corresponding tests
+- Run the test suite before submitting changes
+- Ensure code coverage remains high
+
+## Code Style
+
+- Follow the existing code style in the project
+- Use meaningful variable and function names
+- Keep functions focused and modular
+`
+}
+
+// generateReadmeContent generates README.md content
+func generateReadmeContent(context string) string {
+	return `# Project README
+
+## Overview
+
+This project...
+
+## Installation
+
+` + "```bash\n# Installation steps\n```" + `
+
+## Usage
+
+` + "```bash\n# Usage examples\n```" + `
+
+## Contributing
+
+See CONTRIBUTING.md for guidelines.
+
+## License
+
+See LICENSE file.
+`
+}
+
+// generateTestingPlanContent generates testing plan content
+func generateTestingPlanContent(context string) string {
+	return `# Testing Plan
+
+## Overview
+
+This document outlines the testing strategy for the project.
+
+## Test Categories
+
+### Unit Tests
+- Test individual functions and methods
+- Mock external dependencies
+- Aim for high code coverage
+
+### Integration Tests
+- Test component interactions
+- Verify API endpoints
+- Database operations
+
+### End-to-End Tests
+- Full workflow testing
+- User scenario validation
+
+## Running Tests
+
+` + "```bash\n# Run all tests\nmake test\n\n# Run with coverage\nmake test-coverage\n```" + `
+
+## Coverage Goals
+
+- Minimum 80% code coverage
+- 100% coverage on critical paths
+
+## Test Schedule
+
+- Unit tests: On every commit
+- Integration tests: On pull requests
+- E2E tests: Before releases
+`
+}
+
+// generateChangelogContent generates changelog content
+func generateChangelogContent(context string) string {
+	return `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+### Added
+- New features
+
+### Changed
+- Updates to existing features
+
+### Fixed
+- Bug fixes
+
+### Removed
+- Removed features
+
+## [1.0.0] - YYYY-MM-DD
+
+### Added
+- Initial release
+`
+}
+
+// extractDocumentationContent extracts or generates documentation content from synthesis
+func extractDocumentationContent(synthesis string) string {
+	// First try to find content between code blocks
+	if idx := strings.Index(synthesis, "```"); idx != -1 {
+		afterStart := synthesis[idx+3:]
+		// Skip language identifier
+		if nlIdx := strings.Index(afterStart, "\n"); nlIdx != -1 {
+			afterStart = afterStart[nlIdx+1:]
+		}
+		if endIdx := strings.Index(afterStart, "```"); endIdx != -1 {
+			return strings.TrimSpace(afterStart[:endIdx])
+		}
+	}
+
+	// Look for documentation-specific patterns
+	docPatterns := []string{
+		"documentation should include",
+		"document should contain",
+		"readme should have",
+		"the following documentation",
+	}
+
+	synthesisLower := strings.ToLower(synthesis)
+	for _, pattern := range docPatterns {
+		if idx := strings.Index(synthesisLower, pattern); idx != -1 {
+			// Get content after the pattern
+			remaining := synthesis[idx+len(pattern):]
+			// Find end (next section or paragraph break)
+			endIdx := strings.Index(remaining, "\n\n")
+			if endIdx != -1 {
+				return strings.TrimSpace(remaining[:endIdx])
+			}
+			return strings.TrimSpace(remaining)
+		}
+	}
+
+	// Generate a default documentation structure based on synthesis
+	cleaned := cleanSynthesisForFile(synthesis)
+	if cleaned != "" {
+		return fmt.Sprintf("# Documentation\n\n%s", cleaned)
+	}
+
+	return ""
 }
 
 // processToolResultsWithLLM processes tool results by making a direct LLM call

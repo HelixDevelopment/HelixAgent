@@ -77,7 +77,9 @@ make install-deps     # Install dev dependencies (golangci-lint, gosec)
   - `mcp_client.go` - Model Context Protocol client
   - `lsp_manager.go` - Language Server Protocol manager
   - `plugin_system.go` - Hot-reloadable plugin architecture
-- `handlers/` - HTTP handlers & API endpoints (OpenAI-compatible, MCP, LSP, Cognee, AI Debate)
+- `handlers/` - HTTP handlers & API endpoints (OpenAI-compatible, MCP, LSP, Cognee, AI Debate, Background Tasks)
+- `background/` - Background command execution engine (task queue, worker pool, resource monitor, stuck detector)
+- `notifications/` - Real-time notifications (SSE, WebSocket, Webhooks, Polling, CLI rendering)
 - `middleware/` - Auth, rate limiting, CORS, validation
 - `cache/` - Caching layer (Redis, in-memory)
 - `database/` - PostgreSQL connections and repositories
@@ -92,6 +94,9 @@ make install-deps     # Install dev dependencies (golangci-lint, gosec)
 - `PluginRegistry` / `PluginLoader` - Plugin system
 - `CacheInterface` - Caching abstraction
 - `CloudProvider` - Cloud integration
+- `TaskExecutor` / `TaskQueue` - Background task execution
+- `ResourceMonitor` / `StuckDetector` - Task monitoring
+- `NotificationHub` - Real-time event distribution
 
 ### Architectural Patterns
 - **Provider Registry**: Unified interface for multiple LLM providers with credential management
@@ -232,6 +237,7 @@ HelixAgent provides theatrical dialogue presentation for AI debate ensemble resp
 - **Cognee Integration**: Knowledge graph and RAG capabilities
 - **Middleware Chain**: Auth, rate limiting, validation pipeline
 - **LLM Optimization**: Semantic caching, structured output, enhanced streaming (see below)
+- **Background Execution**: Parallel task execution with adaptive worker pool (see below)
 
 ### Protocol Support and Capabilities
 
@@ -310,6 +316,84 @@ docker-compose --profile optimization-gpu up -d # With GPU support (SGLang)
 **Configuration**: See `configs/production.yaml` under `optimization:` section.
 
 **Documentation**: See `docs/optimization/` and `docs/guides/LLM_OPTIMIZATION_USER_GUIDE.md`.
+
+### Background Command Execution System (`internal/background/`)
+
+HelixAgent provides a comprehensive background command execution system for parallel task execution triggered by Tooling and AI Debate Team:
+
+**Core Components:**
+| Package | Purpose |
+|---------|---------|
+| `internal/background/interfaces.go` | Core interfaces (TaskExecutor, TaskQueue, ResourceMonitor) |
+| `internal/background/task_queue.go` | PostgreSQL-backed priority queue |
+| `internal/background/worker_pool.go` | Adaptive worker pool with CPU/memory scaling |
+| `internal/background/resource_monitor.go` | Per-process resource tracking (gopsutil) |
+| `internal/background/stuck_detector.go` | Stuck detection algorithms |
+| `internal/background/metrics.go` | Prometheus metrics |
+
+**Notification System:**
+| Package | Purpose |
+|---------|---------|
+| `internal/notifications/hub.go` | Central event distribution |
+| `internal/notifications/sse_manager.go` | Server-Sent Events streaming |
+| `internal/notifications/websocket_server.go` | WebSocket real-time updates |
+| `internal/notifications/webhook_dispatcher.go` | Webhook delivery with retry |
+| `internal/notifications/polling_store.go` | Polling event buffer |
+
+**CLI Rendering** (`internal/notifications/cli/`):
+| File | Purpose |
+|------|---------|
+| `types.go` | Progress bar, status table, resource gauge types |
+| `renderer.go` | CLI rendering with ANSI colors and Unicode |
+| `detection.go` | Client detection (OpenCode, Crush, HelixCode, Kilo Code) |
+
+**API Endpoints:**
+```
+POST   /v1/tasks                 # Create background task
+GET    /v1/tasks                 # List tasks
+GET    /v1/tasks/:id/status      # Get task status
+GET    /v1/tasks/:id/logs        # Get task logs
+GET    /v1/tasks/:id/resources   # Get resource snapshots
+GET    /v1/tasks/:id/events      # SSE event stream
+GET    /v1/tasks/:id/analyze     # Stuck detection analysis
+POST   /v1/tasks/:id/pause       # Pause task
+POST   /v1/tasks/:id/resume      # Resume task
+POST   /v1/tasks/:id/cancel      # Cancel task
+GET    /v1/tasks/queue/stats     # Queue statistics
+POST   /v1/webhooks              # Register webhook
+GET    /v1/ws/tasks/:id          # WebSocket connection
+```
+
+**Task States:**
+```
+pending → queued → running → completed/failed/stuck/cancelled/dead_letter
+                          ↓
+                       paused → running (resume)
+```
+
+**Task Priority:** critical > high > normal > low > background
+
+**Key Features:**
+- Adaptive worker scaling based on CPU/memory availability
+- Per-process resource monitoring (CPU, memory, I/O, network, FDs)
+- Stuck detection (heartbeat timeout, CPU freeze, memory leak, I/O starvation)
+- Endless process support with `"endless": true` config
+- All notification methods: SSE, WebSocket, Webhooks, Polling
+- CLI progress rendering for AI coding agents
+
+**Challenges:**
+```bash
+./challenges/scripts/background_task_queue_challenge.sh
+./challenges/scripts/background_worker_pool_challenge.sh
+./challenges/scripts/background_resource_monitor_challenge.sh
+./challenges/scripts/background_stuck_detection_challenge.sh
+./challenges/scripts/background_notifications_challenge.sh
+./challenges/scripts/background_endless_process_challenge.sh
+./challenges/scripts/background_cli_rendering_challenge.sh
+./challenges/scripts/background_full_integration_challenge.sh
+```
+
+**Documentation**: See `docs/background-execution/README.md` for full API reference and configuration.
 
 ## Technology Stack
 

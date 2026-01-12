@@ -345,7 +345,7 @@ HelixAgent provides a comprehensive background command execution system for para
 |------|---------|
 | `types.go` | Progress bar, status table, resource gauge types |
 | `renderer.go` | CLI rendering with ANSI colors and Unicode |
-| `detection.go` | Client detection (OpenCode, Crush, HelixCode, Kilo Code) |
+| `detection.go` | Client detection (18 CLI agents including OpenCode, ClaudeCode, KiloCode, etc.) |
 
 **API Endpoints:**
 ```
@@ -394,6 +394,88 @@ pending → queued → running → completed/failed/stuck/cancelled/dead_letter
 ```
 
 **Documentation**: See `docs/background-execution/README.md` for full API reference and configuration.
+
+## CLI Agent Registry (18 Agents)
+
+HelixAgent includes a comprehensive CLI agent registry supporting 18 different AI coding agents. Each agent has unique characteristics, tool support, and protocol compatibility.
+
+### Supported CLI Agents
+
+| Agent | Language | Config | API Pattern | Key Features |
+|-------|----------|--------|-------------|--------------|
+| **OpenCode** | Go | JSON | OpenAI | MCP support, code completion |
+| **Crush** | TypeScript | JSON | OpenAI | Terminal integration, streaming |
+| **HelixCode** | Go | JSON | OpenAI | Distributed AI, ensemble, ACP |
+| **Kiro** | Python | YAML | OpenAI | 3-phase methodology, steering files |
+| **Aider** | Python | TOML | Multi | Git integration, auto-commits, voice |
+| **ClaudeCode** | TypeScript | JSON | Anthropic | Codebase understanding, MCP |
+| **Cline** | TypeScript | Proto | OpenAI | VS Code, browser, autonomous |
+| **CodenameGoose** | Rust | YAML | Multi | Profile system, ripgrep |
+| **DeepSeekCLI** | TypeScript | ENV | DeepSeek/Ollama | Local model support |
+| **Forge** | Rust | YAML | Multi | Workflow orchestration, multi-agent |
+| **GeminiCLI** | TypeScript | JSON | Google | GCP integration, Docker |
+| **GPTEngineer** | Python | YAML | OpenAI | Project scaffolding, full generation |
+| **KiloCode** | TypeScript | JSON | Multi (50+) | All 21 tools, VS Code, JetBrains |
+| **MistralCode** | TypeScript | JSON | Mistral | Code generation, explanation |
+| **OllamaCode** | TypeScript | JSON | Ollama | Local models, privacy-focused |
+| **Plandex** | Go | JSON | OpenAI | Plan-based development |
+| **QwenCode** | TypeScript | JSON | Qwen | Alibaba AI, localization |
+| **AmazonQ** | Rust | JSON | AWS | MCP servers, AWS integration |
+
+### Agent API Endpoints
+
+```
+GET    /v1/agents                       # List all 18 agents
+GET    /v1/agents/:name                 # Get specific agent details
+GET    /v1/agents/protocol/:protocol    # Filter by protocol (OpenAI, Anthropic, MCP, etc.)
+GET    /v1/agents/tool/:tool            # Filter by tool support (Bash, Read, Git, etc.)
+```
+
+### Tool Support by Agent
+
+| Tool Category | Agents Supporting | Tools |
+|---------------|-------------------|-------|
+| **Core** (all) | 18 agents | Bash, Read, Write |
+| **Filesystem** | 17 agents | Edit, Glob, Grep |
+| **Version Control** | 14 agents | Git, Diff |
+| **Testing** | 6 agents | Test, Lint |
+| **Code Intelligence** | 2 agents | Symbols, References, Definition |
+| **Workflow** | 2 agents | PR, Issue, Workflow |
+| **All 21 Tools** | KiloCode | Full toolset |
+
+### Protocol Support
+
+| Protocol | Agents | Description |
+|----------|--------|-------------|
+| **OpenAI** | 10 | Standard OpenAI-compatible API |
+| **Anthropic** | 5 | Claude API pattern |
+| **MCP** | 6 | Model Context Protocol |
+| **AWS** | 2 | Amazon Bedrock/Q |
+| **Ollama** | 2 | Local model inference |
+| **Multi-provider** | 6 | Support multiple backends |
+
+### Key Files
+
+- `internal/agents/registry.go` - Agent registry definitions
+- `internal/agents/registry_test.go` - Comprehensive unit tests
+- `internal/handlers/agent_handler.go` - API handlers
+- `tests/integration/cli_agents_integration_test.go` - Integration tests
+- `challenges/scripts/cli_agents_challenge.sh` - Challenge validation
+
+### Usage Example
+
+```go
+import "dev.helix.agent/internal/agents"
+
+// Get specific agent
+agent, found := agents.GetAgent("ClaudeCode")
+
+// Get all agents supporting MCP
+mcpAgents := agents.GetAgentsByProtocol("MCP")
+
+// Get all agents supporting Git tool
+gitAgents := agents.GetAgentsByTool("Git")
+```
 
 ## Technology Stack
 
@@ -640,7 +722,7 @@ The `challenges/` directory contains a comprehensive challenge framework for tes
 # Run new everyday use-case challenges
 ./challenges/scripts/protocol_challenge.sh        # MCP/ACP/LSP/Embeddings/Vision
 ./challenges/scripts/curl_api_challenge.sh        # Comprehensive curl API testing
-./challenges/scripts/cli_agents_challenge.sh      # OpenCode/Crush/HelixCode/Kiro integration
+./challenges/scripts/cli_agents_challenge.sh      # All 18 CLI agents integration (OpenCode, ClaudeCode, KiloCode, AmazonQ, etc.)
 ./challenges/scripts/content_generation_challenge.sh  # Content generation & web search
 ```
 
@@ -658,7 +740,7 @@ The `challenges/` directory contains a comprehensive challenge framework for tes
 | Integration | 1 | Cognee |
 | Resilience | 3 | Circuit breaker, error handling, concurrent access |
 | API | 2 | OpenAI compatibility, gRPC |
-| Everyday Use | 4 | Protocol support, curl API, CLI agents (OpenCode/Crush/HelixCode/Kiro), content generation |
+| Everyday Use | 4 | Protocol support, curl API, CLI agents (18 agents), content generation |
 | Tool Validation | 1 | Tool call argument validation (required fields, snake_case naming) |
 
 ### Tool Call Validation (21 Tools)

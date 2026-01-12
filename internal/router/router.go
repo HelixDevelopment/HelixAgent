@@ -456,6 +456,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			sessionGroup.GET("", sessionHandler.ListSessions)
 		}
 
+		// CLI Agent registry endpoints
+		agentHandler := handlers.NewAgentHandler()
+		agentGroup := protected.Group("/agents")
+		{
+			agentGroup.GET("", agentHandler.ListAgents)
+			agentGroup.GET("/:name", agentHandler.GetAgent)
+			agentGroup.GET("/protocol/:protocol", agentHandler.ListAgentsByProtocol)
+			agentGroup.GET("/tool/:tool", agentHandler.ListAgentsByTool)
+		}
+
 		// Cognee endpoints - comprehensive API with all features
 		cogneeAPIHandler.RegisterRoutes(protected)
 

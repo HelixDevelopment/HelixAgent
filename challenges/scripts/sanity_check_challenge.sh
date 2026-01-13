@@ -143,7 +143,7 @@ if [ -f "$UNIFIED_GEN" ]; then
     "$UNIFIED_GEN" --host "$HOST" --port "$PORT" --output-dir "$CLI_CONFIG_DIR" > "$RESULTS_DIR/results/cli_generator.log" 2>&1
 
     for agent in opencode crush kilocode helixcode; do
-        config_file="$CLI_CONFIG_DIR/${agent}-helix-agent.json"
+        config_file="$CLI_CONFIG_DIR/${agent}-helixagent.json"
         if [ -f "$config_file" ]; then
             echo -e "  ${GREEN}[PASS]${NC} Generated $agent configuration"
             PASSED_CHECKS=$((PASSED_CHECKS + 1))

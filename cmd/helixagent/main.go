@@ -903,10 +903,10 @@ func writeAPIKeyToEnvFile(filePath, apiKey string) error {
 
 // OpenCodeConfig represents the OpenCode configuration structure
 type OpenCodeConfig struct {
-	Schema   string                    `json:"$schema"`
-	Provider map[string]ProviderDef    `json:"provider"`
-	MCP      map[string]MCPServerDef   `json:"mcp,omitempty"`
-	Agent    *AgentDef                 `json:"agent,omitempty"`
+	Schema   string                      `json:"$schema"`
+	Provider map[string]ProviderDef      `json:"provider"`
+	MCP      map[string]MCPServerDef     `json:"mcp,omitempty"`
+	Agent    map[string]AgentConfigDef   `json:"agent,omitempty"`
 }
 
 // ProviderDef represents a provider definition in OpenCode config
@@ -938,16 +938,28 @@ type ModelDef struct {
 
 // MCPServerDef represents an MCP server definition
 type MCPServerDef struct {
-	Type      string `json:"type"`
-	URL       string `json:"url,omitempty"`
-	Transport string `json:"transport,omitempty"`
-	Command   string `json:"command,omitempty"`
-	Args      []string `json:"args,omitempty"`
+	Type        string            `json:"type"`
+	URL         string            `json:"url,omitempty"`
+	Transport   string            `json:"transport,omitempty"`
+	Command     []string          `json:"command,omitempty"`
+	Enabled     *bool             `json:"enabled,omitempty"`
+	Timeout     *int              `json:"timeout,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	Environment map[string]string `json:"env,omitempty"`
 }
 
-// AgentDef represents agent configuration
+// AgentDef represents a single agent configuration (for backward compat)
 type AgentDef struct {
-	Model *ModelRef `json:"model"`
+	Model *ModelRef `json:"model,omitempty"`
+}
+
+// AgentConfigDef represents a full agent configuration
+type AgentConfigDef struct {
+	Model       string          `json:"model,omitempty"`
+	Temperature *float64        `json:"temperature,omitempty"`
+	Prompt      string          `json:"prompt,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Tools       map[string]bool `json:"tools,omitempty"`
 }
 
 // ModelRef represents a model reference in OpenCode config
@@ -994,6 +1006,12 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 
 	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)
 
+	// Get home directory for local MCP servers
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		homeDir = "/home/user"
+	}
+
 	// Build the OpenCode configuration
 	// Use custom "helixagent" provider with explicit model definition
 	// This prevents OpenCode from showing models from other providers
@@ -1028,43 +1046,106 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				},
 			},
 		},
-		// MCP servers for all HelixAgent protocols
+		// MCP servers - 6 HelixAgent + 6 standard = 12 total
 		MCP: map[string]MCPServerDef{
+			// HelixAgent native protocol endpoints (6)
 			"helixagent-mcp": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/mcp", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-acp": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/acp", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-lsp": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/lsp", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-embeddings": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/embeddings", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-vision": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/vision", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-cognee": {
 				Type:      "remote",
 				URL:       fmt.Sprintf("http://%s:%s/v1/cognee", host, port),
 				Transport: "sse",
+				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+			},
+			// Standard MCP servers (6)
+			"filesystem": {
+				Type:    "local",
+				Command: []string{"npx", "-y", "@modelcontextprotocol/server-filesystem", homeDir},
+			},
+			"github": {
+				Type:        "local",
+				Command:     []string{"npx", "-y", "@modelcontextprotocol/server-github"},
+				Environment: map[string]string{"GITHUB_TOKEN": os.Getenv("GITHUB_TOKEN")},
+			},
+			"memory": {
+				Type:    "local",
+				Command: []string{"npx", "-y", "@modelcontextprotocol/server-memory"},
+			},
+			"fetch": {
+				Type:    "local",
+				Command: []string{"npx", "-y", "mcp-fetch"},
+			},
+			"puppeteer": {
+				Type:    "local",
+				Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"},
+			},
+			"sqlite": {
+				Type:    "local",
+				Command: []string{"npx", "-y", "mcp-server-sqlite", homeDir + "/.local/share/opencode/opencode.db"},
 			},
 		},
-		Agent: &AgentDef{
-			Model: &ModelRef{
-				Provider: "helixagent",
-				Model:    "helixagent-debate",
+		// Agent configurations - 5 specialized agents
+		Agent: map[string]AgentConfigDef{
+			"default": {
+				Model:       "helixagent/helixagent-debate",
+				Prompt:      "You are HelixAgent, an AI ensemble that combines the intelligence of multiple top-performing LLMs through debate and consensus. You have full access to MCP, ACP, LSP protocols, embeddings, vision/OCR, and all generative capabilities.",
+				Description: "HelixAgent AI Debate Ensemble - 15 verified LLMs with protocol support and fallback chain",
+				Tools: map[string]bool{
+					"read": true, "write": true, "bash": true, "glob": true, "grep": true,
+					"webfetch": true, "edit": true, "mcp": true, "embeddings": true, "vision": true,
+				},
+			},
+			"code-reviewer": {
+				Model:       "helixagent/helixagent-debate",
+				Prompt:      "You are a code reviewer with access to LSP protocol for code intelligence. Analyze code for bugs, security issues, and improvements.",
+				Description: "Code review agent with LSP support",
+				Tools:       map[string]bool{"read": true, "write": false, "bash": false, "lsp": true},
+			},
+			"embeddings-agent": {
+				Model:       "helixagent/helixagent-debate",
+				Prompt:      "You are an embeddings specialist. Generate and work with vector embeddings for semantic search and similarity.",
+				Description: "Embeddings specialist agent",
+				Tools:       map[string]bool{"read": true, "embeddings": true},
+			},
+			"vision-agent": {
+				Model:       "helixagent/helixagent-debate",
+				Prompt:      "You are a vision specialist. Analyze images, perform OCR, and understand visual content.",
+				Description: "Vision and OCR specialist agent",
+				Tools:       map[string]bool{"read": true, "vision": true, "ocr": true},
+			},
+			"zen-agent": {
+				Model:       "zen/opencode-grok-code",
+				Prompt:      "You are an OpenCode Zen agent using free models (Big Pickle, Grok Code Fast, GLM 4.7, GPT 5 Nano). You are specialized in fast code assistance.",
+				Description: "OpenCode Zen free models agent - fast code assistance",
+				Tools:       map[string]bool{"read": true, "write": true, "bash": true, "glob": true, "grep": true},
 			},
 		},
 	}

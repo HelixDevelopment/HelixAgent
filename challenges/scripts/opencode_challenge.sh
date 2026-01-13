@@ -288,63 +288,30 @@ validate_opencode_config() {
     if [ ! -f "$OPENCODE_CONFIG" ]; then
         log_warning "OpenCode config not found, generating..."
 
-        # Generate using HelixAgent binary
+        # Generate using HelixAgent binary - includes all 12 MCP servers and 5 agents
         set -a && source "$PROJECT_ROOT/.env" && set +a
         "$HELIXAGENT_BINARY" -generate-opencode-config -opencode-output "$OPENCODE_CONFIG"
-
-        # Update with correct provider structure
-        python3 - "$OPENCODE_CONFIG" << 'UPDATECONFIG'
-import json
-import sys
-import os
-
-config_path = sys.argv[1]
-
-with open(config_path, 'r') as f:
-    config = json.load(f)
-
-# Get API key from environment
-api_key = os.environ.get('HELIXAGENT_API_KEY', '')
-
-# Update to use openai-compatible provider
-config = {
-    "$schema": "https://opencode.ai/config.json",
-    "provider": {
-        "helixagent": {
-            "npm": "@ai-sdk/openai-compatible",
-            "name": "HelixAgent AI Debate",
-            "options": {
-                "baseURL": "http://localhost:7061/v1",
-                "apiKey": api_key
-            },
-            "models": {
-                "helixagent-debate": {
-                    "name": "HelixAgent Debate Ensemble",
-                    "attachments": True,
-                    "reasoning": True
-                }
-            }
-        }
-    },
-    "agent": {
-        "model": {
-            "provider": "helixagent",
-            "model": "helixagent-debate"
-        }
-    }
-}
-
-with open(config_path, 'w') as f:
-    json.dump(config, f, indent=2)
-
-print("OpenCode config updated successfully")
-UPDATECONFIG
     fi
 
-    # Validate the config
+    # Validate the config structure
     if [ -f "$OPENCODE_CONFIG" ]; then
         if python3 -c "import json; json.load(open('$OPENCODE_CONFIG'))" 2>/dev/null; then
+            # Count MCP servers and agents
+            local mcp_count=$(python3 -c "import json; c=json.load(open('$OPENCODE_CONFIG')); print(len(c.get('mcp', {})))" 2>/dev/null || echo "0")
+            local agent_count=$(python3 -c "import json; c=json.load(open('$OPENCODE_CONFIG')); print(len(c.get('agent', {})))" 2>/dev/null || echo "0")
+
             log_success "OpenCode configuration is valid JSON"
+            log_info "MCP servers: $mcp_count, Agents: $agent_count"
+
+            # Validate expected counts (12 MCP servers, 5 agents)
+            if [ "$mcp_count" -ge 12 ] && [ "$agent_count" -ge 5 ]; then
+                log_success "Configuration is complete: $mcp_count MCP servers, $agent_count agents"
+            else
+                log_warning "Configuration may be incomplete (expected 12 MCP, 5 agents)"
+                log_info "Regenerating complete configuration..."
+                "$HELIXAGENT_BINARY" -generate-opencode-config -opencode-output "$OPENCODE_CONFIG"
+            fi
+
             cp "$OPENCODE_CONFIG" "$OUTPUT_DIR/opencode_config_used.json"
             return 0
         else

@@ -8,6 +8,7 @@ require github.com/gin-gonic/gin v1.11.0
 
 require (
 	dev.helix.agent/pkg/api v0.0.0-00010101000000-000000000000
+	github.com/andybalholm/brotli v1.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
@@ -31,7 +32,6 @@ replace dev.helix.agent/pkg/api => ./pkg/api
 replace llm-verifier => ./LLMsVerifier/llm-verifier
 
 require (
-	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect

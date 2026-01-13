@@ -165,7 +165,7 @@ func GenerateHelixAgentConfig(host string, port int, debateMembers []DebateGroup
 
 	enabled := true
 	temperature := 0.7
-	timeout := 120
+	timeout := 60000 // 60 seconds in milliseconds - required for MCP SSE connections
 
 	// Build fallback list from debate members sorted by score
 	var fallbacks []string

@@ -928,3 +928,28 @@ The OpenCode configuration exposes comprehensive protocol support:
 - `mcp`, `acp`, `lsp`: true
 
 **Fallback Mechanism**: All protocol requests automatically fall back to the next highest-scoring LLM if the primary fails, using LLMsVerifier scores for prioritization.
+
+### CLI Agent SSE Configuration
+
+When configuring CLI agents (OpenCode, Crush, HelixCode, Kilo Code) to connect to HelixAgent's SSE endpoints, use these settings:
+
+```json
+{
+  "mcp": {
+    "helixagent-mcp": {
+      "type": "remote",
+      "enabled": true,
+      "timeout": 60000,
+      "url": "http://localhost:7061/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+**Critical Notes:**
+- **Timeout**: Use `60000` (60 seconds). Default timeouts of 120ms will cause connection failures.
+- **Immediate Response**: HelixAgent sends the `endpoint` event immediately upon SSE connection.
+- **Heartbeat**: Server sends heartbeat every 30 seconds to maintain connection.

@@ -195,7 +195,7 @@ func (h *ProtocolSSEHandler) handleSSEConnection(
 	getTools func() []MCPTool,
 	getCapabilities func() *MCPCapabilities,
 ) {
-	// Set SSE headers
+	// Set SSE headers IMMEDIATELY - this is critical for fast response
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -210,7 +210,13 @@ func (h *ProtocolSSEHandler) handleSSEConnection(
 		return
 	}
 
-	// Create client channel
+	// CRITICAL: Send initial endpoint event IMMEDIATELY before any other operations
+	// This is required for OpenCode/Crush/HelixCode which have strict timeout (120ms)
+	endpointEvent := fmt.Sprintf("event: endpoint\ndata: /v1/%s\n\n", protocol)
+	c.Writer.Write([]byte(endpointEvent))
+	flusher.Flush()
+
+	// Create client channel and ID AFTER the initial response
 	clientChan := make(chan []byte, 100)
 	clientID := uuid.New().String()
 
@@ -235,11 +241,6 @@ func (h *ProtocolSSEHandler) handleSSEConnection(
 		close(clientChan)
 		h.logger.WithField("client_id", clientID).Info("SSE client disconnected")
 	}()
-
-	// Send initial endpoint event (MCP spec requirement)
-	endpointEvent := fmt.Sprintf("event: endpoint\ndata: /v1/%s\n\n", protocol)
-	c.Writer.Write([]byte(endpointEvent))
-	flusher.Flush()
 
 	// Start heartbeat
 	heartbeat := time.NewTicker(30 * time.Second)

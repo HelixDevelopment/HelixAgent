@@ -262,6 +262,30 @@ data: /v1/mcp
 : heartbeat
 ```
 
+**Critical Implementation Details:**
+
+1. **Immediate Response**: The `endpoint` event is sent IMMEDIATELY upon connection, before any client registration. This is critical for CLI agents with short timeouts (OpenCode uses 120ms by default).
+
+2. **Timeout Configuration**: When configuring remote MCP servers in CLI agent configurations (like OpenCode's `opencode.json`), use a timeout of at least 60000ms (60 seconds) for HelixAgent SSE endpoints:
+
+```json
+{
+  "mcp": {
+    "helixagent-mcp": {
+      "type": "remote",
+      "enabled": true,
+      "timeout": 60000,
+      "url": "http://localhost:7061/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+3. **Heartbeat**: The server sends heartbeat comments (`: heartbeat\n\n`) every 30 seconds to keep the connection alive.
+
 ### JSON-RPC Messages (POST)
 
 Send JSON-RPC 2.0 messages to interact with the protocol:

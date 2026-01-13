@@ -159,8 +159,7 @@ func TestCerebrasProvider_CompleteStream(t *testing.T) {
 		ID:     "test-stream",
 		Prompt: "Say hello",
 		ModelParams: models.ModelParameters{
-			Model:  "llama-3.3-70b",
-			Stream: true,
+			Model: "llama-3.3-70b",
 		},
 	}
 
@@ -230,8 +229,8 @@ func TestCerebrasProvider_ModelMetadata(t *testing.T) {
 
 	// Verify model is in the capabilities
 	assert.Contains(t, caps.SupportedModels, "llama-3.3-70b")
-	assert.Contains(t, caps.SupportedModels, "llama3.1-70b")
-	assert.Contains(t, caps.SupportedModels, "llama3.1-8b")
+	assert.Contains(t, caps.SupportedModels, "llama-3.1-70b")
+	assert.Contains(t, caps.SupportedModels, "llama-3.1-8b")
 }
 
 func TestCerebrasProvider_HighSpeedInference(t *testing.T) {

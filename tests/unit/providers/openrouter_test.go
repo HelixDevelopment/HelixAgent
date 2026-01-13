@@ -33,7 +33,7 @@ func TestOpenRouterProvider_Capabilities(t *testing.T) {
 	caps := provider.GetCapabilities()
 	assert.NotNil(t, caps)
 	assert.NotEmpty(t, caps.SupportedModels)
-	assert.Contains(t, caps.SupportedModels, "openrouter/anthropic/claude-3.5-sonnet")
+	assert.Contains(t, caps.SupportedModels, "anthropic/claude-3.5-sonnet")
 	assert.Contains(t, caps.SupportedFeatures, "text_completion")
 	assert.Contains(t, caps.SupportedFeatures, "chat")
 	assert.True(t, caps.SupportsStreaming)

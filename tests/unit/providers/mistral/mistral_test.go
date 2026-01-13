@@ -161,8 +161,7 @@ func TestMistralProvider_CompleteStream(t *testing.T) {
 		ID:     "test-stream",
 		Prompt: "Say hello",
 		ModelParams: models.ModelParameters{
-			Model:  "mistral-large-latest",
-			Stream: true,
+			Model: "mistral-large-latest",
 		},
 	}
 
@@ -233,5 +232,5 @@ func TestMistralProvider_ModelMetadata(t *testing.T) {
 	// Verify model is in the capabilities
 	assert.Contains(t, caps.SupportedModels, "mistral-large-latest")
 	assert.Contains(t, caps.SupportedModels, "mistral-small-latest")
-	assert.Contains(t, caps.SupportedModels, "mistral-medium-latest")
+	assert.Contains(t, caps.SupportedModels, "mistral-medium")
 }

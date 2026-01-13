@@ -230,6 +230,241 @@ Response:
 }
 ```
 
+## Protocol SSE Endpoints (CLI Agent Integration)
+
+HelixAgent provides Server-Sent Events (SSE) endpoints for CLI agent integration, supporting OpenCode, Crush, HelixCode, and Kilo Code. These endpoints implement the MCP (Model Context Protocol) specification over HTTP with SSE transport.
+
+### Supported Protocols
+
+| Protocol | SSE Endpoint | Description |
+|----------|-------------|-------------|
+| MCP | `GET/POST /v1/mcp` | Model Context Protocol |
+| ACP | `GET/POST /v1/acp` | Agent Communication Protocol |
+| LSP | `GET/POST /v1/lsp` | Language Server Protocol |
+| Embeddings | `GET/POST /v1/embeddings` | Vector embeddings |
+| Vision | `GET/POST /v1/vision` | Image analysis and OCR |
+| Cognee | `GET/POST /v1/cognee` | Knowledge graph and RAG |
+
+### SSE Connection (GET)
+
+Connect to receive real-time events:
+
+```bash
+GET /v1/mcp
+Accept: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+
+# Server responds with endpoint event and heartbeats
+event: endpoint
+data: /v1/mcp
+
+: heartbeat
+```
+
+### JSON-RPC Messages (POST)
+
+Send JSON-RPC 2.0 messages to interact with the protocol:
+
+#### Initialize Connection
+```bash
+POST /v1/mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "opencode",
+      "version": "1.0.0"
+    }
+  }
+}
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "helixagent-mcp",
+      "version": "1.0.0"
+    },
+    "capabilities": {
+      "tools": {"listChanged": true},
+      "prompts": {"listChanged": true},
+      "resources": {"subscribe": true, "listChanged": true}
+    }
+  }
+}
+```
+
+#### List Available Tools
+```bash
+POST /v1/mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list"
+}
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "mcp_list_providers",
+        "description": "List all available LLM providers",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "mcp_get_capabilities",
+        "description": "Get MCP server capabilities",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ]
+  }
+}
+```
+
+#### Execute Tool
+```bash
+POST /v1/mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "mcp_get_capabilities",
+    "arguments": {}
+  }
+}
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"tools\":{\"listChanged\":true},...}"
+      }
+    ]
+  }
+}
+```
+
+#### Ping
+```bash
+POST /v1/mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "ping"
+}
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {}
+}
+```
+
+### Protocol-Specific Tools
+
+#### MCP Tools
+| Tool | Description |
+|------|-------------|
+| `mcp_list_providers` | List all available LLM providers |
+| `mcp_get_capabilities` | Get MCP server capabilities |
+| `mcp_execute_tool` | Execute a tool on a specific provider |
+
+#### ACP Tools
+| Tool | Description |
+|------|-------------|
+| `acp_send_message` | Send a message to an agent |
+| `acp_list_agents` | List available agents |
+
+#### LSP Tools
+| Tool | Description |
+|------|-------------|
+| `lsp_get_diagnostics` | Get diagnostics for a file |
+| `lsp_go_to_definition` | Go to symbol definition |
+| `lsp_find_references` | Find all references to a symbol |
+| `lsp_list_servers` | List available LSP servers |
+
+#### Embeddings Tools
+| Tool | Description |
+|------|-------------|
+| `embeddings_generate` | Generate embeddings for text |
+| `embeddings_search` | Search for similar content |
+
+#### Vision Tools
+| Tool | Description |
+|------|-------------|
+| `vision_analyze_image` | Analyze an image |
+| `vision_ocr` | Extract text from an image |
+
+#### Cognee Tools
+| Tool | Description |
+|------|-------------|
+| `cognee_add` | Add content to knowledge graph |
+| `cognee_search` | Search the knowledge graph |
+| `cognee_visualize` | Visualize the knowledge graph |
+
+### CLI Agent Integration Example (OpenCode)
+
+```javascript
+// OpenCode MCP client integration
+const response = await fetch('http://localhost:7061/v1/mcp', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        roots: { listChanged: true },
+        sampling: {}
+      },
+      clientInfo: {
+        name: 'opencode',
+        version: '1.0.0'
+      }
+    }
+  })
+});
+
+const result = await response.json();
+console.log('Server:', result.result.serverInfo.name);
+// Output: Server: helixagent-mcp
+```
+
 ### LSP Protocol Endpoints
 
 #### List LSP Servers

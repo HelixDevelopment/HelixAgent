@@ -566,6 +566,17 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			}
 		}
 
+		// Debug logging for topic extraction
+		truncatedMsg := lastUserMessage
+		if len(truncatedMsg) > 100 {
+			truncatedMsg = truncatedMsg[:100]
+		}
+		logrus.WithFields(logrus.Fields{
+			"message_count":     len(req.Messages),
+			"last_user_message": truncatedMsg,
+			"has_content":       lastUserMessage != "",
+		}).Debug("Topic extraction from messages")
+
 		// Check if this is a short follow-up response that needs context expansion
 		expandedTopic := h.expandFollowUpResponse(lastUserMessage, req.Messages)
 		if expandedTopic != "" {
@@ -580,7 +591,35 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 
 		// CRITICAL: Sanitize the topic to remove system-level content like <system-reminder>
 		// These are internal tags that should never be displayed to users
+		preSanitizeTopic := topic
 		topic = sanitizeDisplayContent(topic)
+
+		// Debug logging for sanitization
+		if topic != preSanitizeTopic {
+			logrus.WithFields(logrus.Fields{
+				"pre_sanitize_length":  len(preSanitizeTopic),
+				"post_sanitize_length": len(topic),
+				"topic_empty":          topic == "",
+			}).Debug("Topic was modified by sanitization")
+		}
+
+		// FALLBACK: If topic is still empty, try to extract from the raw messages array
+		// This handles cases where the Content field might be in a different format
+		if topic == "" {
+			logrus.Warn("Topic is empty after extraction, attempting fallback from messages")
+			for i := len(req.Messages) - 1; i >= 0; i-- {
+				if req.Messages[i].Role == "user" && req.Messages[i].Content != "" {
+					topic = req.Messages[i].Content
+					logrus.WithField("fallback_topic", topic[:min(50, len(topic))]).Info("Recovered topic from messages")
+					break
+				}
+			}
+			// If still empty, use a default
+			if topic == "" {
+				topic = "User request"
+				logrus.Warn("Using default topic 'User request'")
+			}
+		}
 
 		// Generate and stream debate dialogue introduction
 		dialogueIntro := h.generateDebateDialogueIntroduction(topic)
@@ -2810,144 +2849,28 @@ func (h *UnifiedHandler) generateActionToolCalls(ctx context.Context, topic stri
 		}
 	}
 
-	// Case 8: CRITICAL - User confirmation to proceed with previously discussed actions
-	// Handles phrases like "do it", "let's do it", "proceed", "go ahead", "do it all now"
-	// When user confirms, parse synthesis to extract and execute proposed actions
-	// EXPANDED based on OpenCode, Aider, and other CLI agent patterns
-	confirmationPhrases := []string{
-		// Direct confirmations
-		"do it", "let's do it", "lets do it", "do it all", "do all this",
-		"do it now", "do all now", "do it all now", "now do it",
-		// Affirmative responses
-		"yes", "yes do it", "yes please", "yeah", "yep", "yup", "sure", "ok", "okay",
-		"ok do it", "okay do it", "alright", "alright do it", "right do it",
-		// Proceed/Continue
-		"proceed", "continue", "go", "go ahead", "go for it", "carry on",
-		"move forward", "move on", "keep going", "let's go", "lets go",
-		// Execute/Run
-		"execute", "run", "run it", "execute it", "run this", "execute this",
-		"run all", "execute all", "run everything", "execute everything",
-		// Action words
-		"start", "begin", "launch", "initiate", "kick off", "fire away",
-		"make it happen", "get it done", "get started", "just do it",
-		// Confirmation words
-		"confirm", "confirmed", "i confirm", "approved", "approve", "accept",
-		"allow", "permit", "grant", "authorize", "authorise", "agree", "agreed",
-		// Implementation words
-		"implement", "apply", "deploy", "install", "setup", "set up",
-		"create", "create it", "build", "build it", "generate", "generate it",
-		"make", "make it", "produce", "write", "write it", "code it",
-		// Aider-style responses
-		"all", "skip", "y", "a", "n",
-		// Additional natural language
-		"sounds good", "perfect", "great", "excellent", "do what you said",
-		"as you suggested", "follow the plan", "execute the plan",
-		"i want that", "i want this", "that's what i want", "exactly",
-		"please do", "please proceed", "do as planned", "as discussed",
-	}
-	isConfirmation := containsAny(topicLower, confirmationPhrases)
-
-	if isConfirmation && len(toolCalls) == 0 {
-		logrus.WithField("topic", topic).Info("Detected user confirmation - using LLM-based tool call generation")
-
-		// CRITICAL: Use LLM-based tool call generation first!
-		// This allows the LLM to intelligently decide which tools to call based on the full context
+	// ALWAYS use LLM-based tool call generation when tools are available
+	// NO hardcoded patterns - let the LLM intelligently decide what tools to call
+	// based on the full conversation context, synthesis, and user intent
+	if len(toolCalls) == 0 && len(tools) > 0 {
+		truncatedTopic := topic
+		if len(truncatedTopic) > 50 {
+			truncatedTopic = truncatedTopic[:50]
+		}
+		logrus.WithFields(logrus.Fields{
+			"topic":         truncatedTopic,
+			"topic_empty":   topic == "",
+			"message_count": len(messages),
+		}).Info("Using LLM-based tool call generation")
 		llmToolCalls := h.generateLLMBasedToolCalls(ctx, messages, tools, synthesis)
 		if len(llmToolCalls) > 0 {
-			logrus.WithField("tool_count", len(llmToolCalls)).Info("LLM generated tool calls on confirmation")
 			toolCalls = append(toolCalls, llmToolCalls...)
-		}
-
-		// If LLM didn't generate tool calls, fall back to pattern matching
-		if len(toolCalls) == 0 {
-			logrus.Info("LLM didn't generate tool calls, falling back to pattern matching")
-
-			// Parse synthesis for actionable items and generate tool calls
-			toolCalls = append(toolCalls, extractActionsFromSynthesis(synthesis, availableTools)...)
-
-			// If synthesis mentions test coverage/testing, run tests
-			if containsAny(synthesisLower, []string{"test coverage", "coverage report", "run test", "execute test", "pytest", "jest", "go test"}) {
-				if tool, ok := availableTools["Bash"]; ok {
-					toolCalls = append(toolCalls, StreamingToolCall{
-						Index: len(toolCalls),
-						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-						Type:  "function",
-						Function: OpenAIFunctionCall{
-							Name:      tool.Function.Name,
-							Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'", "description": "Generate test coverage report"}`,
-						},
-					})
-				} else if tool, ok := availableTools["bash"]; ok {
-					toolCalls = append(toolCalls, StreamingToolCall{
-						Index: len(toolCalls),
-						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-						Type:  "function",
-						Function: OpenAIFunctionCall{
-							Name:      tool.Function.Name,
-							Arguments: `{"command": "go test -coverprofile=coverage.out ./... 2>&1 || npm test --coverage 2>&1 || pytest --cov 2>&1 || echo 'Running available tests...'", "description": "Generate test coverage report"}`,
-						},
-					})
-				}
-			}
-
-			// If synthesis mentions documentation, generate docs
-			if containsAny(synthesisLower, []string{"documentation", "document", "readme", "docstring", "jsdoc"}) {
-				if tool, ok := availableTools["Write"]; ok {
-					content := extractDocumentationContent(synthesis)
-					if content != "" {
-						toolCalls = append(toolCalls, StreamingToolCall{
-							Index: len(toolCalls),
-							ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-							Type:  "function",
-							Function: OpenAIFunctionCall{
-								Name:      tool.Function.Name,
-								Arguments: fmt.Sprintf(`{"file_path": "TESTING_PLAN.md", "content": "%s"}`, escapeJSONString(content)),
-							},
-						})
-					}
-				}
-			}
-
-			// If synthesis mentions scanning/analyzing codebase
-			if containsAny(synthesisLower, []string{"scan", "analyze", "inventory", "identify"}) {
-				if tool, ok := availableTools["Glob"]; ok {
-					toolCalls = append(toolCalls, StreamingToolCall{
-						Index: len(toolCalls),
-						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-						Type:  "function",
-						Function: OpenAIFunctionCall{
-							Name:      tool.Function.Name,
-							Arguments: `{"pattern": "**/*.{py,js,ts,go,java,kt}"}`,
-						},
-					})
-				} else if tool, ok := availableTools["glob"]; ok {
-					toolCalls = append(toolCalls, StreamingToolCall{
-						Index: len(toolCalls),
-						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-						Type:  "function",
-						Function: OpenAIFunctionCall{
-							Name:      tool.Function.Name,
-							Arguments: `{"pattern": "**/*.{py,js,ts,go,java,kt}"}`,
-						},
-					})
-				}
-			}
-
-			// If no specific tool calls extracted, at least do a codebase scan as a starting action
-			if len(toolCalls) == 0 {
-				logrus.Info("User confirmed action but no specific tools extracted - starting with codebase analysis")
-				if tool, ok := availableTools["Glob"]; ok {
-					toolCalls = append(toolCalls, StreamingToolCall{
-						Index: len(toolCalls),
-						ID:    fmt.Sprintf("call_%s", generateToolCallID()),
-						Type:  "function",
-						Function: OpenAIFunctionCall{
-							Name:      tool.Function.Name,
-							Arguments: `{"pattern": "**/*"}`,
-						},
-					})
-				}
-			}
+			logrus.WithField("tool_count", len(llmToolCalls)).Info("LLM generated tool calls")
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"topic_empty":     topic == "",
+				"synthesis_empty": synthesis == "",
+			}).Debug("LLM-based tool generation returned empty")
 		}
 	}
 

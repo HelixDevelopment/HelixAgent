@@ -3260,6 +3260,97 @@
           "message": "TaskWaiter interface and WaitForCompletion must exist"
         }
       ]
+    },
+    {
+      "id": "mcp_sse_connectivity",
+      "name": "MCP SSE Connectivity Challenge",
+      "description": "Validates MCP/ACP/LSP/Embeddings/Vision/Cognee SSE endpoints for CLI agent integration (OpenCode, Crush, HelixCode, Kilo Code)",
+      "category": "protocol",
+      "dependencies": [],
+      "script": "../scripts/mcp_sse_connectivity_challenge.sh",
+      "estimated_duration": "2-5 minutes",
+      "inputs": [
+        {
+          "name": "api_keys",
+          "source": ".env",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "mcp_sse_report.json",
+          "type": "json",
+          "description": "MCP SSE connectivity test results"
+        }
+      ],
+      "assertions": [
+        {
+          "name": "mcp_sse_endpoint",
+          "type": "http_status",
+          "target": "200",
+          "message": "MCP SSE endpoint must respond with 200"
+        },
+        {
+          "name": "acp_sse_endpoint",
+          "type": "http_status",
+          "target": "200",
+          "message": "ACP SSE endpoint must respond with 200"
+        },
+        {
+          "name": "lsp_sse_endpoint",
+          "type": "http_status",
+          "target": "200",
+          "message": "LSP SSE endpoint must respond with 200"
+        },
+        {
+          "name": "vision_sse_endpoint",
+          "type": "http_status",
+          "target": "200",
+          "message": "Vision SSE endpoint must respond with 200"
+        },
+        {
+          "name": "cognee_sse_endpoint",
+          "type": "http_status",
+          "target": "200",
+          "message": "Cognee SSE endpoint must respond with 200"
+        },
+        {
+          "name": "mcp_initialize",
+          "type": "jsonrpc_response",
+          "message": "MCP initialize must return valid JSON-RPC response"
+        },
+        {
+          "name": "mcp_tools_list",
+          "type": "not_empty",
+          "message": "MCP tools/list must return tools array"
+        },
+        {
+          "name": "mcp_tools_call",
+          "type": "not_empty",
+          "message": "MCP tools/call must execute tools"
+        },
+        {
+          "name": "concurrent_protocols",
+          "type": "concurrent_success",
+          "target": "6",
+          "message": "All 6 protocols must respond concurrently"
+        },
+        {
+          "name": "cli_agent_flow",
+          "type": "not_empty",
+          "message": "CLI agent initialization flow must work"
+        }
+      ],
+      "metrics": [
+        "mcp_sse_status",
+        "acp_sse_status",
+        "lsp_sse_status",
+        "embeddings_sse_status",
+        "vision_sse_status",
+        "cognee_sse_status",
+        "concurrent_success",
+        "protocols_initialized"
+      ]
     }
   ],
   "assertion_types": {

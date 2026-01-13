@@ -152,6 +152,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	protocolManager := services.NewUnifiedProtocolManager(modelMetadataRepo, sharedCache, logger)
 	protocolHandler := handlers.NewProtocolHandler(protocolManager, logger)
 
+	// Initialize Protocol SSE handler for MCP/ACP/LSP/Embeddings/Vision/Cognee
+	protocolSSEHandler := handlers.NewProtocolSSEHandler(
+		mcpHandler,
+		lspHandler,
+		embeddingHandler,
+		cogneeAPIHandler,
+		logger,
+	)
+
 	// Initialize auth middleware
 	// In standalone mode, make auth optional with more skip paths
 	var auth *middleware.AuthMiddleware
@@ -535,6 +544,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			embeddingGroup.GET("/stats", embeddingHandler.GetEmbeddingStats)
 			embeddingGroup.GET("/providers", embeddingHandler.ListEmbeddingProviders)
 		}
+
+		// Register Protocol SSE endpoints for MCP/ACP/LSP/Embeddings/Vision/Cognee
+		// These endpoints handle SSE connections for CLI agent protocols (OpenCode, Crush, HelixCode)
+		protocolSSEHandler.RegisterSSERoutes(protected)
 
 		// Admin endpoints
 		admin := protected.Group("/admin")

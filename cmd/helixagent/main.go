@@ -937,15 +937,16 @@ type ModelDef struct {
 }
 
 // MCPServerDef represents an MCP server definition
+// Per OpenCode schema: local servers use "command" + "environment", remote servers use "url" + "headers"
+// Valid fields: type (required), enabled, timeout, command (local), environment (local), url (remote), headers (remote), oauth (remote)
 type MCPServerDef struct {
 	Type        string            `json:"type"`
 	URL         string            `json:"url,omitempty"`
-	Transport   string            `json:"transport,omitempty"`
 	Command     []string          `json:"command,omitempty"`
 	Enabled     *bool             `json:"enabled,omitempty"`
 	Timeout     *int              `json:"timeout,omitempty"`
 	Headers     map[string]string `json:"headers,omitempty"`
-	Environment map[string]string `json:"env,omitempty"`
+	Environment map[string]string `json:"environment,omitempty"`
 }
 
 // AgentDef represents a single agent configuration (for backward compat)
@@ -1050,40 +1051,34 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		MCP: map[string]MCPServerDef{
 			// HelixAgent native protocol endpoints (6)
 			"helixagent-mcp": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/mcp", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/mcp", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-acp": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/acp", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/acp", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-lsp": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/lsp", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/lsp", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-embeddings": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/embeddings", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/embeddings", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-vision": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/vision", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/vision", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			"helixagent-cognee": {
-				Type:      "remote",
-				URL:       fmt.Sprintf("http://%s:%s/v1/cognee", host, port),
-				Transport: "sse",
-				Headers:   map[string]string{"Authorization": "Bearer " + apiKey},
+				Type:    "remote",
+				URL:     fmt.Sprintf("http://%s:%s/v1/cognee", host, port),
+				Headers: map[string]string{"Authorization": "Bearer " + apiKey},
 			},
 			// Standard MCP servers (6)
 			"filesystem": {

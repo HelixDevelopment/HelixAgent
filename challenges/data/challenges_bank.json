@@ -3539,6 +3539,25 @@
         "validation"
       ],
       "expected_duration_seconds": 120
+    },
+    {
+      "id": "cli_schema_validation",
+      "name": "CLI Schema Validation Challenge",
+      "description": "Validates that HelixAgent generates valid configurations for ALL supported CLI agents (OpenCode, Claude Code, Kilo Code, etc). Ensures no invalid fields like 'transport' or 'env' are present in MCP server configurations.",
+      "category": "infrastructure",
+      "script": "challenges/scripts/cli_schema_validation_challenge.sh",
+      "enabled": true,
+      "priority": 50,
+      "dependencies": [],
+      "tags": [
+        "opencode",
+        "cli",
+        "schema",
+        "validation",
+        "mcp",
+        "configuration"
+      ],
+      "expected_duration_seconds": 60
     }
   ],
   "assertion_types": {

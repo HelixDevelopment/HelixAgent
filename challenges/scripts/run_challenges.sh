@@ -71,7 +71,7 @@ Available Challenges (41 total):
 
   API: openai_compatibility, grpc_api
 
-  Validation: opencode
+  Validation: opencode, cli_schema_validation
 
   Master: main
 
@@ -315,7 +315,7 @@ main() {
         health_monitoring|caching_layer|database_operations|plugin_system|\
         session_management|configuration_loading|optimization_semantic_cache|\
         optimization_structured_output|cognee_integration|openai_compatibility|grpc_api|\
-        opencode|oauth_credentials|\
+        opencode|oauth_credentials|cli_schema_validation|\
         protocol_challenge|curl_api_challenge|cli_agents_challenge|content_generation_challenge)
             ;;
         *)

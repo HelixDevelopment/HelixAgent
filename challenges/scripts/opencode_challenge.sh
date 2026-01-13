@@ -303,6 +303,78 @@ validate_opencode_config() {
             log_success "OpenCode configuration is valid JSON"
             log_info "MCP servers: $mcp_count, Agents: $agent_count"
 
+            # CRITICAL: Validate schema - check for invalid fields that OpenCode will reject
+            log_info "Validating MCP server schema compliance..."
+            local schema_errors=$(python3 -c "
+import json
+import sys
+
+INVALID_FIELDS = ['transport', 'env']  # These are NOT in OpenCode schema
+VALID_LOCAL_FIELDS = {'type', 'command', 'environment', 'enabled', 'timeout'}
+VALID_REMOTE_FIELDS = {'type', 'url', 'headers', 'oauth', 'enabled', 'timeout'}
+
+config = json.load(open('$OPENCODE_CONFIG'))
+mcp = config.get('mcp', {})
+errors = []
+
+for name, server in mcp.items():
+    # Check for invalid fields
+    for field in INVALID_FIELDS:
+        if field in server:
+            errors.append(f'{name}: contains invalid field \"{field}\" - NOT in OpenCode schema!')
+
+    # Validate field types
+    server_type = server.get('type', '')
+    if server_type == 'local':
+        valid_fields = VALID_LOCAL_FIELDS
+        if 'command' not in server:
+            errors.append(f'{name}: local server missing required \"command\" field')
+    elif server_type == 'remote':
+        valid_fields = VALID_REMOTE_FIELDS
+        if 'url' not in server:
+            errors.append(f'{name}: remote server missing required \"url\" field')
+    else:
+        errors.append(f'{name}: invalid type \"{server_type}\" - must be \"local\" or \"remote\"')
+        continue
+
+    # Check for extra invalid fields
+    for field in server.keys():
+        if field not in valid_fields:
+            errors.append(f'{name}: invalid field \"{field}\" for {server_type} server')
+
+if errors:
+    for e in errors:
+        print(f'ERROR: {e}', file=sys.stderr)
+    sys.exit(1)
+print('Schema validation passed')
+" 2>&1)
+
+            if [ $? -ne 0 ]; then
+                log_error "MCP server schema validation failed:"
+                echo "$schema_errors" | while read line; do
+                    log_error "  $line"
+                done
+                log_error "Configuration will be REJECTED by OpenCode!"
+                log_info "Regenerating compliant configuration..."
+                "$HELIXAGENT_BINARY" -generate-opencode-config -opencode-output "$OPENCODE_CONFIG"
+                # Re-validate after regeneration
+                if python3 -c "
+import json
+config = json.load(open('$OPENCODE_CONFIG'))
+mcp = config.get('mcp', {})
+for name, server in mcp.items():
+    if 'transport' in server or 'env' in server:
+        exit(1)
+" 2>/dev/null; then
+                    log_success "Regenerated configuration passes schema validation"
+                else
+                    log_error "Regenerated configuration still has schema errors - generator needs fixing!"
+                    return 1
+                fi
+            else
+                log_success "MCP server schema validation passed"
+            fi
+
             # Validate expected counts (12 MCP servers, 5 agents)
             if [ "$mcp_count" -ge 12 ] && [ "$agent_count" -ge 5 ]; then
                 log_success "Configuration is complete: $mcp_count MCP servers, $agent_count agents"
@@ -310,6 +382,21 @@ validate_opencode_config() {
                 log_warning "Configuration may be incomplete (expected 12 MCP, 5 agents)"
                 log_info "Regenerating complete configuration..."
                 "$HELIXAGENT_BINARY" -generate-opencode-config -opencode-output "$OPENCODE_CONFIG"
+            fi
+
+            # Validate with OpenCode binary if available
+            if command -v opencode &>/dev/null; then
+                log_info "Validating with OpenCode binary..."
+                local opencode_check=$(timeout 5 opencode --version 2>&1 || true)
+                if echo "$opencode_check" | grep -q "Configuration is invalid"; then
+                    log_error "OpenCode binary rejected configuration:"
+                    echo "$opencode_check" | grep -A5 "Configuration is invalid" | while read line; do
+                        log_error "  $line"
+                    done
+                    return 1
+                else
+                    log_success "OpenCode binary accepted configuration"
+                fi
             fi
 
             cp "$OPENCODE_CONFIG" "$OUTPUT_DIR/opencode_config_used.json"

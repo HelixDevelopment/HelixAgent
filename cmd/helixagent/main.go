@@ -903,9 +903,10 @@ func writeAPIKeyToEnvFile(filePath, apiKey string) error {
 
 // OpenCodeConfig represents the OpenCode configuration structure
 type OpenCodeConfig struct {
-	Schema   string                  `json:"$schema"`
-	Provider map[string]ProviderDef  `json:"provider"`
-	Agent    *AgentDef               `json:"agent,omitempty"`
+	Schema   string                    `json:"$schema"`
+	Provider map[string]ProviderDef    `json:"provider"`
+	MCP      map[string]MCPServerDef   `json:"mcp,omitempty"`
+	Agent    *AgentDef                 `json:"agent,omitempty"`
 }
 
 // ProviderDef represents a provider definition in OpenCode config
@@ -918,9 +919,30 @@ type ProviderDef struct {
 
 // ModelDef represents a model definition with its capabilities
 type ModelDef struct {
-	Name        string `json:"name"`
-	Attachments bool   `json:"attachments,omitempty"`
-	Reasoning   bool   `json:"reasoning,omitempty"`
+	Name         string `json:"name"`
+	Attachments  bool   `json:"attachments,omitempty"`
+	Reasoning    bool   `json:"reasoning,omitempty"`
+	MaxTokens    int    `json:"maxTokens,omitempty"`
+	Vision       bool   `json:"vision,omitempty"`
+	ImageInput   bool   `json:"imageInput,omitempty"`
+	ImageOutput  bool   `json:"imageOutput,omitempty"`
+	OCR          bool   `json:"ocr,omitempty"`
+	PDF          bool   `json:"pdf,omitempty"`
+	Streaming    bool   `json:"streaming,omitempty"`
+	FunctionCalls bool  `json:"functionCalls,omitempty"`
+	ToolUse      bool   `json:"toolUse,omitempty"`
+	Embeddings   bool   `json:"embeddings,omitempty"`
+	FileUpload   bool   `json:"fileUpload,omitempty"`
+	NoFileLimit  bool   `json:"noFileLimit,omitempty"`
+}
+
+// MCPServerDef represents an MCP server definition
+type MCPServerDef struct {
+	Type      string `json:"type"`
+	URL       string `json:"url,omitempty"`
+	Transport string `json:"transport,omitempty"`
+	Command   string `json:"command,omitempty"`
+	Args      []string `json:"args,omitempty"`
 }
 
 // AgentDef represents agent configuration
@@ -987,11 +1009,56 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				},
 				Models: map[string]ModelDef{
 					"helixagent-debate": {
-						Name:        "HelixAgent Debate Ensemble",
-						Attachments: true,
-						Reasoning:   true,
+						Name:          "HelixAgent Debate Ensemble",
+						Attachments:   true,
+						Reasoning:     true,
+						MaxTokens:     128000,
+						Vision:        true,
+						ImageInput:    true,
+						ImageOutput:   true,
+						OCR:           true,
+						PDF:           true,
+						Streaming:     true,
+						FunctionCalls: true,
+						ToolUse:       true,
+						Embeddings:    true,
+						FileUpload:    true,
+						NoFileLimit:   true,
 					},
 				},
+			},
+		},
+		// MCP servers for all HelixAgent protocols
+		MCP: map[string]MCPServerDef{
+			"helixagent-mcp": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/mcp", host, port),
+				Transport: "sse",
+			},
+			"helixagent-acp": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/acp", host, port),
+				Transport: "sse",
+			},
+			"helixagent-lsp": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/lsp", host, port),
+				Transport: "sse",
+			},
+			"helixagent-embeddings": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/embeddings", host, port),
+				Transport: "sse",
+			},
+			"helixagent-vision": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/vision", host, port),
+				Transport: "sse",
+			},
+			"helixagent-cognee": {
+				Type:      "remote",
+				URL:       fmt.Sprintf("http://%s:%s/v1/cognee", host, port),
+				Transport: "sse",
 			},
 		},
 		Agent: &AgentDef{

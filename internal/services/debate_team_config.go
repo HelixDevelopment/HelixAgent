@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
 
 	"github.com/sirupsen/logrus"
 	"dev.helix.agent/internal/llm"
+	"dev.helix.agent/internal/llm/providers/cerebras"
+	"dev.helix.agent/internal/llm/providers/mistral"
 	"dev.helix.agent/internal/verifier"
 )
 
@@ -341,6 +344,10 @@ func (dtc *DebateTeamConfig) collectVerifiedLLMs(ctx context.Context) {
 	// Collect OAuth2 Qwen models (trust CLI credentials even if API verification fails)
 	dtc.collectQwenModels()
 
+	// Collect reliable API-key providers (Cerebras, Mistral) - MUST be before free models
+	// These are proven working providers that should be prioritized as fallbacks
+	dtc.collectReliableAPIProviders()
+
 	// Collect OpenRouter Zen free models (:free suffix)
 	dtc.collectOpenRouterFreeModels()
 
@@ -499,6 +506,76 @@ func (dtc *DebateTeamConfig) collectQwenModels() {
 	}
 
 	dtc.logger.WithField("models", len(qwenModels)).Info("Added Qwen OAuth2 models")
+}
+
+// collectReliableAPIProviders collects Cerebras and Mistral providers that have proven API access
+// These providers are critical for fallback when OAuth providers fail
+// IMPORTANT: These MUST be included as fallbacks for OAuth primaries
+func (dtc *DebateTeamConfig) collectReliableAPIProviders() {
+	// Cerebras - ultra-fast inference, proven working
+	if apiKey := os.Getenv("CEREBRAS_API_KEY"); apiKey != "" {
+		provider := cerebras.NewCerebrasProvider(apiKey, "https://api.cerebras.ai/v1/chat/completions", LLMsVerifierModels.Cerebras)
+		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+			ProviderName: "cerebras",
+			ModelName:    LLMsVerifierModels.Cerebras,
+			Score:        8.9, // High score - fast and reliable
+			Provider:     provider,
+			IsOAuth:      false,
+			Verified:     true,
+		})
+		dtc.logger.Info("Added Cerebras as reliable API fallback provider")
+	} else {
+		dtc.logger.Warn("CEREBRAS_API_KEY not set - Cerebras will not be available as fallback")
+	}
+
+	// Mistral - high quality, proven working
+	if apiKey := os.Getenv("MISTRAL_API_KEY"); apiKey != "" {
+		provider := mistral.NewMistralProvider(apiKey, "https://api.mistral.ai/v1/chat/completions", LLMsVerifierModels.Mistral)
+		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+			ProviderName: "mistral",
+			ModelName:    LLMsVerifierModels.Mistral,
+			Score:        8.7, // High score - quality and reliable
+			Provider:     provider,
+			IsOAuth:      false,
+			Verified:     true,
+		})
+		dtc.logger.Info("Added Mistral as reliable API fallback provider")
+	} else {
+		dtc.logger.Warn("MISTRAL_API_KEY not set - Mistral will not be available as fallback")
+	}
+
+	// DeepSeek - excellent for code, proven working
+	if apiKey := os.Getenv("DEEPSEEK_API_KEY"); apiKey != "" {
+		// DeepSeek uses OpenAI-compatible format, get provider from registry or create
+		provider := dtc.getRegisteredProvider("deepseek")
+		if provider != nil {
+			dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+				ProviderName: "deepseek",
+				ModelName:    LLMsVerifierModels.DeepSeek,
+				Score:        8.8, // High score - excellent for code
+				Provider:     provider,
+				IsOAuth:      false,
+				Verified:     true,
+			})
+			dtc.logger.Info("Added DeepSeek as reliable API fallback provider")
+		}
+	}
+
+	// Gemini - Google's model, proven working
+	if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
+		provider := dtc.getRegisteredProvider("gemini")
+		if provider != nil {
+			dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+				ProviderName: "gemini",
+				ModelName:    LLMsVerifierModels.Gemini,
+				Score:        8.6, // High score - good all-rounder
+				Provider:     provider,
+				IsOAuth:      false,
+				Verified:     true,
+			})
+			dtc.logger.Info("Added Gemini as reliable API fallback provider")
+		}
+	}
 }
 
 // collectLLMsVerifierProviders collects providers verified by LLMsVerifier

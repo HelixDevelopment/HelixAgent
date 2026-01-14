@@ -516,6 +516,25 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			c.JSON(http.StatusOK, debateTeamConfig.GetTeamSummary())
 		})
 
+		// Initialize monitoring services
+		oauthTokenMonitor := services.NewOAuthTokenMonitor(logger, services.DefaultOAuthTokenMonitorConfig())
+		providerHealthMonitor := services.NewProviderHealthMonitor(providerRegistry, logger, services.DefaultProviderHealthMonitorConfig())
+		fallbackChainValidator := services.NewFallbackChainValidator(logger, debateTeamConfig)
+
+		// Start monitoring services in background
+		go oauthTokenMonitor.Start(context.Background())
+		go providerHealthMonitor.Start(context.Background())
+
+		// Validate fallback chain on startup
+		if result := fallbackChainValidator.Validate(); !result.Valid {
+			logger.WithField("issues", len(result.Issues)).Warn("Fallback chain validation found issues")
+		}
+
+		// Register monitoring handler routes
+		monitoringHandler := handlers.NewMonitoringHandler(nil, oauthTokenMonitor, providerHealthMonitor, fallbackChainValidator)
+		monitoringHandler.RegisterRoutes(protected)
+		logger.Info("Monitoring endpoints registered at /v1/monitoring/*")
+
 		// LSP endpoints
 		lspGroup := protected.Group("/lsp")
 		{

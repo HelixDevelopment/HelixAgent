@@ -756,6 +756,75 @@ help:
 	@echo "  help               Show this help message"
 
 # =============================================================================
+# CI/CD VALIDATION TARGETS (Prevention Measures)
+# =============================================================================
+
+ci-validate-fallback:
+	@echo "🔍 CI/CD: Validating reliable fallback mechanism..."
+	@./challenges/scripts/reliable_fallback_challenge.sh || { echo "❌ Fallback validation failed!"; exit 1; }
+	@echo "✅ Fallback mechanism validated"
+
+ci-validate-monitoring:
+	@echo "🔍 CI/CD: Validating monitoring systems..."
+	@go test -v -run "TestCircuitBreakerMonitor|TestOAuthTokenMonitor|TestProviderHealthMonitor|TestFallbackChainValidator" ./internal/services/... || { echo "❌ Monitoring validation failed!"; exit 1; }
+	@echo "✅ Monitoring systems validated"
+
+ci-validate-all:
+	@echo "🔍 CI/CD: Running all validation checks..."
+	@$(MAKE) ci-validate-fallback
+	@$(MAKE) ci-validate-monitoring
+	@echo "✅ All CI/CD validations passed"
+
+ci-pre-commit:
+	@echo "🔍 Pre-commit validation..."
+	@$(MAKE) fmt
+	@$(MAKE) vet
+	@$(MAKE) ci-validate-fallback
+	@go test -run "TestReliableAPIProvidersCollection|TestFallbackChainIncludesWorkingProviders" ./internal/services/...
+	@echo "✅ Pre-commit validation passed"
+
+ci-pre-push:
+	@echo "🔍 Pre-push validation..."
+	@$(MAKE) ci-pre-commit
+	@$(MAKE) test-unit
+	@$(MAKE) ci-validate-monitoring
+	@echo "✅ Pre-push validation passed"
+
+# Monitoring endpoints
+monitoring-status:
+	@echo "📊 Checking monitoring status..."
+	@curl -s http://localhost:7061/v1/monitoring/status | jq .
+
+monitoring-circuit-breakers:
+	@echo "📊 Checking circuit breakers..."
+	@curl -s http://localhost:7061/v1/monitoring/circuit-breakers | jq .
+
+monitoring-oauth-tokens:
+	@echo "📊 Checking OAuth tokens..."
+	@curl -s http://localhost:7061/v1/monitoring/oauth-tokens | jq .
+
+monitoring-provider-health:
+	@echo "📊 Checking provider health..."
+	@curl -s http://localhost:7061/v1/monitoring/provider-health | jq .
+
+monitoring-fallback-chain:
+	@echo "📊 Checking fallback chain..."
+	@curl -s http://localhost:7061/v1/monitoring/fallback-chain | jq .
+
+monitoring-reset-circuits:
+	@echo "🔄 Resetting all circuit breakers..."
+	@curl -s -X POST http://localhost:7061/v1/monitoring/circuit-breakers/reset-all | jq .
+	@echo "✅ Circuit breakers reset"
+
+monitoring-validate-fallback:
+	@echo "🔍 Validating fallback chain..."
+	@curl -s -X POST http://localhost:7061/v1/monitoring/fallback-chain/validate | jq .
+
+monitoring-force-health-check:
+	@echo "🔍 Forcing provider health check..."
+	@curl -s -X POST http://localhost:7061/v1/monitoring/provider-health/check | jq .
+
+# =============================================================================
 # LLMSVERIFIER INTEGRATION TARGETS
 # =============================================================================
 

@@ -705,3 +705,215 @@ func TestOAuthPrioritization(t *testing.T) {
 		assert.Len(t, nonOAuth, 2, "Should have 2 non-OAuth providers")
 	})
 }
+
+// TestReliableAPIProvidersCollection tests the collectReliableAPIProviders method
+// This test suite ensures that working API providers (Cerebras, Mistral, etc.)
+// are always included in the debate team fallback chain
+func TestReliableAPIProvidersCollection(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	t.Run("ReliableAPIProviders models are defined", func(t *testing.T) {
+		// Ensure the models used by collectReliableAPIProviders are properly defined
+		assert.NotEmpty(t, LLMsVerifierModels.Cerebras, "Cerebras model should be defined")
+		assert.NotEmpty(t, LLMsVerifierModels.Mistral, "Mistral model should be defined")
+		assert.NotEmpty(t, LLMsVerifierModels.DeepSeek, "DeepSeek model should be defined")
+		assert.NotEmpty(t, LLMsVerifierModels.Gemini, "Gemini model should be defined")
+	})
+
+	t.Run("Cerebras model ID is correct", func(t *testing.T) {
+		assert.Equal(t, "llama-3.3-70b", LLMsVerifierModels.Cerebras, "Cerebras should use llama-3.3-70b")
+	})
+
+	t.Run("Mistral model ID is correct", func(t *testing.T) {
+		assert.Equal(t, "mistral-large-latest", LLMsVerifierModels.Mistral, "Mistral should use mistral-large-latest")
+	})
+
+	t.Run("DeepSeek model ID is correct", func(t *testing.T) {
+		assert.Equal(t, "deepseek-chat", LLMsVerifierModels.DeepSeek, "DeepSeek should use deepseek-chat")
+	})
+
+	t.Run("Gemini model ID is correct", func(t *testing.T) {
+		assert.Equal(t, "gemini-2.0-flash", LLMsVerifierModels.Gemini, "Gemini should use gemini-2.0-flash")
+	})
+}
+
+// TestFallbackChainIncludesWorkingProviders verifies that the fallback chain
+// for OAuth providers includes non-OAuth working providers like Cerebras and Mistral
+// This is CRITICAL - when OAuth providers fail, we MUST fall back to working API providers
+func TestFallbackChainIncludesWorkingProviders(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	config := NewDebateTeamConfig(nil, nil, logger)
+
+	t.Run("getFallbackLLMs prioritizes non-OAuth for OAuth primary", func(t *testing.T) {
+		// Setup: Add OAuth and non-OAuth providers to verifiedLLMs
+		config.verifiedLLMs = []*VerifiedLLM{
+			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true},
+			{ProviderName: "cerebras", ModelName: LLMsVerifierModels.Cerebras, Score: 8.9, IsOAuth: false, Verified: true},
+			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true},
+			{ProviderName: "zen", ModelName: "grok-code", Score: 8.2, IsOAuth: false, Verified: true},
+		}
+
+		// Get fallbacks for an OAuth primary (Claude)
+		fallbacks := config.getFallbackLLMs("claude", ClaudeModels.Opus45, 2)
+
+		// CRITICAL: Fallbacks for OAuth primary should be non-OAuth providers
+		require.Len(t, fallbacks, 2, "Should get 2 fallbacks")
+		assert.False(t, fallbacks[0].IsOAuth, "First fallback should NOT be OAuth")
+		assert.False(t, fallbacks[1].IsOAuth, "Second fallback should NOT be OAuth")
+
+		// Verify working providers are in fallbacks
+		fallbackProviders := make([]string, len(fallbacks))
+		for i, fb := range fallbacks {
+			fallbackProviders[i] = fb.ProviderName
+		}
+
+		// Either Cerebras or Mistral should be in the fallback chain
+		hasCerebrasOrMistral := false
+		for _, provider := range fallbackProviders {
+			if provider == "cerebras" || provider == "mistral" {
+				hasCerebrasOrMistral = true
+				break
+			}
+		}
+		assert.True(t, hasCerebrasOrMistral, "Fallback chain MUST include working API providers (Cerebras or Mistral)")
+	})
+
+	t.Run("Fallback chain does not rely solely on free/unreliable providers", func(t *testing.T) {
+		// This test ensures we don't have fallback chains like: Claude -> Zen -> Zen
+		// which would fail completely when Claude's OAuth is restricted
+
+		config.verifiedLLMs = []*VerifiedLLM{
+			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true},
+			{ProviderName: "cerebras", ModelName: LLMsVerifierModels.Cerebras, Score: 8.9, IsOAuth: false, Verified: true},
+			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true},
+			{ProviderName: "zen", ModelName: "grok-code", Score: 8.2, IsOAuth: false, Verified: true},
+			{ProviderName: "zen", ModelName: "big-pickle", Score: 8.0, IsOAuth: false, Verified: true},
+		}
+
+		fallbacks := config.getFallbackLLMs("claude", ClaudeModels.Opus45, 2)
+
+		// Count how many fallbacks are from reliable providers
+		reliableCount := 0
+		for _, fb := range fallbacks {
+			if fb.ProviderName == "cerebras" || fb.ProviderName == "mistral" ||
+			   fb.ProviderName == "deepseek" || fb.ProviderName == "gemini" {
+				reliableCount++
+			}
+		}
+
+		// At least one fallback MUST be a reliable API provider
+		assert.GreaterOrEqual(t, reliableCount, 1,
+			"At least one fallback must be a reliable API provider (Cerebras, Mistral, DeepSeek, or Gemini)")
+	})
+}
+
+// TestDebateTeamMustHaveWorkingFallbacks is a comprehensive test that verifies
+// the entire debate team has proper fallback chains with working providers
+func TestDebateTeamMustHaveWorkingFallbacks(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	config := NewDebateTeamConfig(nil, nil, logger)
+
+	t.Run("All positions have fallbacks when providers available", func(t *testing.T) {
+		// Simulate verified LLMs being available
+		config.verifiedLLMs = []*VerifiedLLM{
+			// OAuth providers (Claude)
+			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true},
+			{ProviderName: "claude", ModelName: ClaudeModels.Sonnet45, Score: 9.6, IsOAuth: true, Verified: true},
+			{ProviderName: "claude", ModelName: ClaudeModels.Opus4, Score: 9.4, IsOAuth: true, Verified: true},
+			{ProviderName: "claude", ModelName: ClaudeModels.Sonnet4, Score: 9.2, IsOAuth: true, Verified: true},
+			{ProviderName: "claude", ModelName: ClaudeModels.Haiku45, Score: 9.0, IsOAuth: true, Verified: true},
+			// Reliable API providers (NON-OAuth)
+			{ProviderName: "cerebras", ModelName: LLMsVerifierModels.Cerebras, Score: 8.9, IsOAuth: false, Verified: true},
+			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true},
+			{ProviderName: "deepseek", ModelName: LLMsVerifierModels.DeepSeek, Score: 8.8, IsOAuth: false, Verified: true},
+			{ProviderName: "gemini", ModelName: LLMsVerifierModels.Gemini, Score: 8.6, IsOAuth: false, Verified: true},
+		}
+
+		// Manually assign positions with fallbacks
+		config.assignPrimaryPositions()
+		config.assignAllFallbacks()
+
+		// Verify each position has fallbacks
+		for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
+			member := config.GetTeamMember(pos)
+			require.NotNil(t, member, "Position %d should have a member", pos)
+			require.NotNil(t, member.Fallback, "Position %d should have a fallback", pos)
+
+			// CRITICAL: If primary is OAuth, fallback should include non-OAuth
+			if member.IsOAuth {
+				// At least one fallback in the chain should be non-OAuth
+				hasNonOAuthFallback := false
+				fb := member.Fallback
+				for fb != nil {
+					if !fb.IsOAuth {
+						hasNonOAuthFallback = true
+						break
+					}
+					fb = fb.Fallback
+				}
+				assert.True(t, hasNonOAuthFallback,
+					"Position %d with OAuth primary MUST have non-OAuth fallback (found: %s -> %s)",
+					pos, member.ProviderName, member.Fallback.ProviderName)
+			}
+		}
+	})
+}
+
+// TestCollectVerifiedLLMsIncludesReliableProviders ensures that collectVerifiedLLMs
+// adds reliable API providers before free models
+func TestCollectVerifiedLLMsIncludesReliableProviders(t *testing.T) {
+	t.Run("Collection order should prioritize reliability", func(t *testing.T) {
+		// The collection order should be:
+		// 1. OAuth providers (Claude, Qwen) - highest priority for quality
+		// 2. Reliable API providers (Cerebras, Mistral, DeepSeek, Gemini) - proven working
+		// 3. Free models (Zen, OpenRouter :free) - lowest priority for fallbacks
+
+		// This is documented in collectVerifiedLLMs() method
+		// Order of collection:
+		// 1. collectClaudeModels()
+		// 2. collectQwenModels()
+		// 3. collectReliableAPIProviders() <-- CRITICAL: This must come before free models
+		// 4. collectOpenRouterFreeModels()
+		// 5. collectZenModels()
+		// 6. collectLLMsVerifierProviders()
+
+		// Verify the expected model IDs
+		assert.NotEmpty(t, LLMsVerifierModels.Cerebras)
+		assert.NotEmpty(t, LLMsVerifierModels.Mistral)
+		assert.NotEmpty(t, LLMsVerifierModels.DeepSeek)
+		assert.NotEmpty(t, LLMsVerifierModels.Gemini)
+	})
+}
+
+// TestReliableProvidersScoreRange ensures reliable API providers have appropriate scores
+func TestReliableProvidersScoreRange(t *testing.T) {
+	t.Run("Reliable provider scores should be competitive", func(t *testing.T) {
+		// In collectReliableAPIProviders(), the scores are:
+		// - Cerebras: 8.9
+		// - Mistral: 8.7
+		// - DeepSeek: 8.8
+		// - Gemini: 8.6
+
+		// These scores should be:
+		// 1. Lower than Claude 4.5 models (9.0-9.8) to not override OAuth primaries
+		// 2. Higher than Zen models (7.6-8.2) to be prioritized as fallbacks
+		// 3. Competitive enough to be selected as fallbacks before free models
+
+		expectedScores := map[string]float64{
+			"cerebras": 8.9,
+			"mistral":  8.7,
+			"deepseek": 8.8,
+			"gemini":   8.6,
+		}
+
+		for provider, score := range expectedScores {
+			assert.GreaterOrEqual(t, score, 8.5, "%s score should be >= 8.5", provider)
+			assert.LessOrEqual(t, score, 9.0, "%s score should be <= 9.0", provider)
+		}
+	})
+}

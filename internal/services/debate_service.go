@@ -271,12 +271,74 @@ func (ds *DebateService) executeRound(
 		go func(p ParticipantConfig) {
 			defer wg.Done()
 
+			// Try primary provider first
 			resp, err := ds.getParticipantResponse(ctx, config, p, round, previousResponses)
-			if err != nil {
-				errorChan <- fmt.Errorf("participant %s failed: %w", p.Name, err)
+			if err == nil {
+				responseChan <- resp
 				return
 			}
-			responseChan <- resp
+
+			// Primary failed - log and try fallbacks
+			ds.logger.WithFields(logrus.Fields{
+				"participant":   p.Name,
+				"role":          p.Role,
+				"primary":       p.LLMProvider,
+				"primary_model": p.LLMModel,
+				"error":         err.Error(),
+				"fallbacks":     len(p.Fallbacks),
+			}).Warn("Primary LLM failed, attempting fallback chain")
+
+			// Try each fallback in order
+			for i, fallback := range p.Fallbacks {
+				fallbackParticipant := p // Copy original config
+				fallbackParticipant.LLMProvider = fallback.Provider
+				fallbackParticipant.LLMModel = fallback.Model
+				fallbackParticipant.Name = fmt.Sprintf("%s (fallback-%d: %s)", p.Role, i+1, fallback.Provider)
+
+				ds.logger.WithFields(logrus.Fields{
+					"participant":       p.Name,
+					"role":              p.Role,
+					"fallback_index":    i + 1,
+					"fallback_provider": fallback.Provider,
+					"fallback_model":    fallback.Model,
+				}).Info("Trying fallback LLM")
+
+				resp, err = ds.getParticipantResponse(ctx, config, fallbackParticipant, round, previousResponses)
+				if err == nil {
+					// Fallback succeeded!
+					resp.Metadata["fallback_used"] = true
+					resp.Metadata["fallback_index"] = i + 1
+					resp.Metadata["original_provider"] = p.LLMProvider
+					resp.Metadata["original_model"] = p.LLMModel
+
+					// CRITICAL: Add visible highlighting in response content for user awareness
+					fallbackNotice := fmt.Sprintf(
+						"[FALLBACK ACTIVATED: Primary %s/%s unavailable, response from %s/%s]\n\n",
+						p.LLMProvider, p.LLMModel, fallback.Provider, fallback.Model,
+					)
+					resp.Response = fallbackNotice + resp.Response
+					resp.Content = fallbackNotice + resp.Content
+
+					ds.logger.WithFields(logrus.Fields{
+						"participant":       p.Name,
+						"role":              p.Role,
+						"fallback_provider": fallback.Provider,
+						"fallback_model":    fallback.Model,
+					}).Info("Fallback LLM succeeded!")
+					responseChan <- resp
+					return
+				}
+
+				ds.logger.WithFields(logrus.Fields{
+					"participant":       p.Name,
+					"fallback_index":    i + 1,
+					"fallback_provider": fallback.Provider,
+					"error":             err.Error(),
+				}).Warn("Fallback LLM also failed, trying next")
+			}
+
+			// All fallbacks exhausted
+			errorChan <- fmt.Errorf("participant %s failed: primary and all %d fallbacks exhausted: %w", p.Name, len(p.Fallbacks), err)
 		}(participant)
 	}
 
@@ -386,6 +448,22 @@ func (ds *DebateService) getParticipantResponse(
 	}
 
 	responseTime := time.Since(startTime)
+
+	// CRITICAL: Check for empty response content - this triggers fallback
+	if strings.TrimSpace(llmResponse.Content) == "" {
+		ds.logger.WithFields(logrus.Fields{
+			"participant":      participantIdentifier,
+			"participant_id":   participant.ParticipantID,
+			"participant_name": participant.Name,
+			"role":             participant.Role,
+			"provider":         participant.LLMProvider,
+			"model":            participant.LLMModel,
+			"round":            round,
+			"debate_id":        config.DebateID,
+			"response_time_ms": responseTime.Milliseconds(),
+		}).Warn("Debate participant returned EMPTY response - triggering fallback")
+		return ParticipantResponse{}, fmt.Errorf("[%s] empty response from LLM - fallback required", participantIdentifier)
+	}
 
 	// Calculate quality score for this response
 	qualityScore := ds.calculateResponseQuality(llmResponse)

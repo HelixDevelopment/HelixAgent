@@ -100,4 +100,12 @@ type ParticipantConfig struct {
 	Temperature   float64       `json:"temperature,omitempty"`  // Custom temperature for diversity
 	SystemPrompt  string        `json:"system_prompt,omitempty"` // Custom system prompt for unique perspective
 	Priority      int           `json:"priority,omitempty"`      // Participant priority in debate order
+	// Fallback chain - when primary LLM fails or returns empty, try these in order
+	Fallbacks     []FallbackConfig `json:"fallbacks,omitempty"`
+}
+
+// FallbackConfig defines a fallback provider for when the primary fails
+type FallbackConfig struct {
+	Provider string `json:"provider"` // Provider name (e.g., "mistral", "zen")
+	Model    string `json:"model"`    // Model name (e.g., "mistral-large-latest", "grok-code")
 }

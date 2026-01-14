@@ -1624,3 +1624,509 @@ func TestDebateService_GenerateCogneeInsights_NoCogneeService(t *testing.T) {
 	assert.Nil(t, insights)
 	assert.Contains(t, err.Error(), "cognee service not configured")
 }
+
+// =============================================================================
+// Fallback Chain Tests - CRITICAL: These tests ensure fallback mechanism works
+// =============================================================================
+
+// TestDebateService_FallbackChain_EmptyResponse tests that empty responses trigger fallback
+func TestDebateService_FallbackChain_EmptyResponse(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// Primary provider returns empty response
+	primaryProvider := newDebateMockProvider("primary", &models.LLMResponse{
+		Content:      "", // EMPTY - should trigger fallback
+		Confidence:   0.0,
+		TokensUsed:   0,
+		FinishReason: "stop",
+	})
+
+	// Fallback provider returns valid response
+	fallbackProvider := newDebateMockProvider("fallback", &models.LLMResponse{
+		Content:      "This is a valid response from the fallback provider. It contains meaningful content for the debate.",
+		Confidence:   0.85,
+		TokensUsed:   50,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary":  primaryProvider,
+		"fallback": fallbackProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "fallback-test-1",
+		Topic:     "Test Fallback Mechanism",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				Fallbacks: []FallbackConfig{
+					{Provider: "fallback", Model: "fallback-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Verify fallback was used
+	assert.Len(t, result.AllResponses, 1)
+	response := result.AllResponses[0]
+	assert.Contains(t, response.Content, "valid response from the fallback")
+
+	// CRITICAL: Verify fallback notice is highlighted in response content
+	assert.Contains(t, response.Content, "[FALLBACK ACTIVATED:", "Response should contain fallback notice")
+	assert.Contains(t, response.Content, "Primary primary/test-model unavailable", "Should show original provider")
+	assert.Contains(t, response.Content, "response from fallback/fallback-model", "Should show fallback provider")
+
+	// Verify metadata shows fallback was used
+	if fallbackUsed, ok := response.Metadata["fallback_used"]; ok {
+		assert.True(t, fallbackUsed.(bool), "Fallback should be marked as used")
+	}
+
+	// Primary should have been called once (empty response)
+	assert.Equal(t, 1, primaryProvider.getCallCount(), "Primary provider should be called once")
+	// Fallback should have been called once
+	assert.Equal(t, 1, fallbackProvider.getCallCount(), "Fallback provider should be called once")
+}
+
+// TestDebateService_FallbackChain_WhitespaceOnlyResponse tests whitespace-only responses
+func TestDebateService_FallbackChain_WhitespaceOnlyResponse(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// Primary returns only whitespace
+	primaryProvider := newDebateMockProvider("primary", &models.LLMResponse{
+		Content:      "   \n\t  \n  ", // Only whitespace - should trigger fallback
+		Confidence:   0.0,
+		TokensUsed:   0,
+		FinishReason: "stop",
+	})
+
+	// Fallback provider returns valid response
+	fallbackProvider := newDebateMockProvider("fallback", &models.LLMResponse{
+		Content:      "Valid content from fallback after whitespace-only primary response.",
+		Confidence:   0.85,
+		TokensUsed:   50,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary":  primaryProvider,
+		"fallback": fallbackProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "whitespace-fallback-test",
+		Topic:     "Test Whitespace Fallback",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				Fallbacks: []FallbackConfig{
+					{Provider: "fallback", Model: "fallback-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Len(t, result.AllResponses, 1)
+	response := result.AllResponses[0]
+	assert.Contains(t, response.Content, "Valid content from fallback")
+}
+
+// TestDebateService_FallbackChain_PrimaryError tests error from primary triggers fallback
+func TestDebateService_FallbackChain_PrimaryError(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// Primary provider returns an error
+	primaryProvider := &debateMockLLMProvider{
+		name: "primary",
+		err:  errors.New("rate limit exceeded"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"test-model"},
+		},
+	}
+
+	// Fallback provider works
+	fallbackProvider := newDebateMockProvider("fallback", &models.LLMResponse{
+		Content:      "Response from fallback after primary error.",
+		Confidence:   0.80,
+		TokensUsed:   40,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary":  primaryProvider,
+		"fallback": fallbackProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "error-fallback-test",
+		Topic:     "Test Error Fallback",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				Fallbacks: []FallbackConfig{
+					{Provider: "fallback", Model: "fallback-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Len(t, result.AllResponses, 1)
+	response := result.AllResponses[0]
+	assert.Contains(t, response.Content, "Response from fallback")
+}
+
+// TestDebateService_FallbackChain_MultipleFallbacks tests fallback chain with multiple options
+func TestDebateService_FallbackChain_MultipleFallbacks(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// Primary fails
+	primaryProvider := &debateMockLLMProvider{
+		name: "primary",
+		err:  errors.New("connection timeout"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"test-model"},
+		},
+	}
+
+	// First fallback also fails
+	fallback1Provider := &debateMockLLMProvider{
+		name: "fallback1",
+		err:  errors.New("service unavailable"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"fallback1-model"},
+		},
+	}
+
+	// Second fallback succeeds
+	fallback2Provider := newDebateMockProvider("fallback2", &models.LLMResponse{
+		Content:      "Response from second fallback after two failures.",
+		Confidence:   0.75,
+		TokensUsed:   35,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary":   primaryProvider,
+		"fallback1": fallback1Provider,
+		"fallback2": fallback2Provider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "multi-fallback-test",
+		Topic:     "Test Multiple Fallbacks",
+		MaxRounds: 1,
+		Timeout:   15 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				Fallbacks: []FallbackConfig{
+					{Provider: "fallback1", Model: "fallback1-model"},
+					{Provider: "fallback2", Model: "fallback2-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Len(t, result.AllResponses, 1)
+	response := result.AllResponses[0]
+	assert.Contains(t, response.Content, "second fallback")
+
+	// Verify fallback metadata
+	if fallbackIndex, ok := response.Metadata["fallback_index"]; ok {
+		assert.Equal(t, 2, fallbackIndex.(int), "Should be second fallback")
+	}
+
+	// Verify all providers were tried
+	assert.Equal(t, 1, primaryProvider.getCallCount(), "Primary should be called once")
+	assert.Equal(t, 1, fallback1Provider.getCallCount(), "Fallback1 should be called once")
+	assert.Equal(t, 1, fallback2Provider.getCallCount(), "Fallback2 should be called once")
+}
+
+// TestDebateService_FallbackChain_AllFallbacksFail tests when all fallbacks fail
+func TestDebateService_FallbackChain_AllFallbacksFail(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// All providers fail
+	primaryProvider := &debateMockLLMProvider{
+		name: "primary",
+		err:  errors.New("primary failed"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"test-model"},
+		},
+	}
+
+	fallbackProvider := &debateMockLLMProvider{
+		name: "fallback",
+		err:  errors.New("fallback also failed"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"fallback-model"},
+		},
+	}
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary":  primaryProvider,
+		"fallback": fallbackProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "all-fail-test",
+		Topic:     "Test All Fallbacks Fail",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				Fallbacks: []FallbackConfig{
+					{Provider: "fallback", Model: "fallback-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	// When all fallbacks fail, debate returns result with Success=false (graceful degradation)
+	require.NoError(t, err) // No error returned, but result indicates failure
+	require.NotNil(t, result)
+	assert.False(t, result.Success, "Debate should report failure when all providers fail")
+	assert.Len(t, result.AllResponses, 0, "No responses should be collected when all providers fail")
+
+	// Verify all providers were tried
+	assert.Equal(t, 1, primaryProvider.getCallCount(), "Primary should be called once")
+	assert.Equal(t, 1, fallbackProvider.getCallCount(), "Fallback should be called once")
+}
+
+// TestDebateService_FallbackChain_NoFallbacksConfigured tests behavior without fallbacks
+func TestDebateService_FallbackChain_NoFallbacksConfigured(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// Primary returns empty, no fallbacks configured
+	primaryProvider := newDebateMockProvider("primary", &models.LLMResponse{
+		Content:      "", // Empty response
+		Confidence:   0.0,
+		TokensUsed:   0,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"primary": primaryProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "no-fallback-test",
+		Topic:     "Test No Fallbacks",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "primary",
+				LLMModel:      "test-model",
+				// No Fallbacks configured
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	// Without fallbacks and empty primary response, debate returns Success=false (graceful degradation)
+	require.NoError(t, err) // No error returned, but result indicates failure
+	require.NotNil(t, result)
+	assert.False(t, result.Success, "Debate should report failure when primary fails without fallbacks")
+	assert.Len(t, result.AllResponses, 0, "No responses should be collected when primary fails and no fallbacks")
+}
+
+// TestDebateService_FallbackChain_MultipleParticipants tests fallback with multiple participants
+func TestDebateService_FallbackChain_MultipleParticipants(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	// First participant's primary works
+	provider1 := newDebateMockProvider("provider1", &models.LLMResponse{
+		Content:      "Valid response from first participant.",
+		Confidence:   0.90,
+		TokensUsed:   30,
+		FinishReason: "stop",
+	})
+
+	// Second participant's primary fails, fallback works
+	provider2Primary := &debateMockLLMProvider{
+		name: "provider2",
+		err:  errors.New("provider2 temporarily unavailable"),
+		capabilities: &models.ProviderCapabilities{
+			SupportedModels: []string{"test-model"},
+		},
+	}
+
+	provider2Fallback := newDebateMockProvider("provider2fallback", &models.LLMResponse{
+		Content:      "Response from second participant's fallback.",
+		Confidence:   0.85,
+		TokensUsed:   40,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"provider1":         provider1,
+		"provider2":         provider2Primary,
+		"provider2fallback": provider2Fallback,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "multi-participant-fallback-test",
+		Topic:     "Test Multiple Participants with Fallback",
+		MaxRounds: 1,
+		Timeout:   15 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "Agent 1",
+				Role:          "proposer",
+				LLMProvider:   "provider1",
+				LLMModel:      "model1",
+			},
+			{
+				ParticipantID: "participant-2",
+				Name:          "Agent 2",
+				Role:          "opponent",
+				LLMProvider:   "provider2",
+				LLMModel:      "model2",
+				Fallbacks: []FallbackConfig{
+					{Provider: "provider2fallback", Model: "fallback-model"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Both participants should have responded
+	assert.Len(t, result.AllResponses, 2)
+}
+
+// TestDebateService_FallbackChain_FallbackMetadata tests that fallback metadata is properly set
+func TestDebateService_FallbackChain_FallbackMetadata(t *testing.T) {
+	logger := newDebateSvcTestLogger()
+
+	primaryProvider := newDebateMockProvider("deepseek", &models.LLMResponse{
+		Content:      "", // Empty - triggers fallback
+		Confidence:   0.0,
+		TokensUsed:   0,
+		FinishReason: "stop",
+	})
+
+	fallbackProvider := newDebateMockProvider("mistral", &models.LLMResponse{
+		Content:      "Fallback response with proper metadata tracking.",
+		Confidence:   0.88,
+		TokensUsed:   45,
+		FinishReason: "stop",
+	})
+
+	registry := createTestProviderRegistry(map[string]*debateMockLLMProvider{
+		"deepseek": primaryProvider,
+		"mistral":  fallbackProvider,
+	})
+
+	ds := NewDebateServiceWithDeps(logger, registry, nil)
+
+	config := &DebateConfig{
+		DebateID:  "metadata-test",
+		Topic:     "Test Fallback Metadata",
+		MaxRounds: 1,
+		Timeout:   10 * time.Second,
+		Participants: []ParticipantConfig{
+			{
+				ParticipantID: "participant-1",
+				Name:          "The Mediator",
+				Role:          "mediator",
+				LLMProvider:   "deepseek",
+				LLMModel:      "deepseek-chat",
+				Fallbacks: []FallbackConfig{
+					{Provider: "mistral", Model: "mistral-large"},
+				},
+			},
+		},
+		EnableCognee: false,
+	}
+
+	result, err := ds.ConductDebate(context.Background(), config)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Len(t, result.AllResponses, 1)
+	response := result.AllResponses[0]
+
+	// Verify fallback metadata
+	assert.True(t, response.Metadata["fallback_used"].(bool), "fallback_used should be true")
+	assert.Equal(t, 1, response.Metadata["fallback_index"].(int), "fallback_index should be 1")
+	assert.Equal(t, "deepseek", response.Metadata["original_provider"].(string), "original_provider should be deepseek")
+	assert.Equal(t, "deepseek-chat", response.Metadata["original_model"].(string), "original_model should be deepseek-chat")
+
+	// Verify fallback notice is in the response content for user visibility
+	assert.Contains(t, response.Content, "[FALLBACK ACTIVATED:", "Response should highlight fallback usage")
+	assert.Contains(t, response.Content, "deepseek/deepseek-chat unavailable", "Should show original provider/model")
+	assert.Contains(t, response.Content, "mistral/mistral-large", "Should show fallback provider/model")
+}

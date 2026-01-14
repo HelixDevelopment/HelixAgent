@@ -214,6 +214,10 @@ All containers include comprehensive health checks:
 
 ## 📚 API Documentation
 
+**Full API Reference**: [docs/api/API_REFERENCE.md](docs/api/API_REFERENCE.md) - Complete REST API documentation with examples
+
+**Capability Detection**: [LLMsVerifier/docs/CAPABILITY_DETECTION.md](LLMsVerifier/docs/CAPABILITY_DETECTION.md) - Dynamic capability detection for 18+ CLI agents
+
 ### Endpoints
 
 #### Core API

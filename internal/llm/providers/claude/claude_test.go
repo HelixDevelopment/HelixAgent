@@ -2,6 +2,7 @@ package claude
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -740,5 +741,260 @@ func TestClaudeProvider_CompleteStream_ContextCancellation(t *testing.T) {
 		}
 		// May or may not have responses depending on timing
 		assert.NotNil(t, responses)
+	}
+}
+
+// ==============================================================================
+// TOOL_CHOICE FORMAT TESTS - Critical fix for Claude API compatibility
+// ==============================================================================
+// These tests ensure tool_choice is sent in the correct object format
+// Claude API requires {"type": "auto"} not just "auto" string
+
+func TestClaudeProvider_ToolChoice_StringAutoConvertsToObject(t *testing.T) {
+	// This test verifies the critical fix: string "auto" must be converted to {"type": "auto"}
+	var capturedToolChoice interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse the request body to capture tool_choice
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+			capturedToolChoice = reqBody["tool_choice"]
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"model":"claude-3","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`))
+	}))
+	defer server.Close()
+
+	provider := NewClaudeProvider("test-key", server.URL, "claude-3-sonnet")
+	req := &models.LLMRequest{
+		ID: "test-tool-choice",
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		Tools: []models.Tool{
+			{
+				Type: "function",
+				Function: models.ToolFunction{
+					Name:        "test_tool",
+					Description: "A test tool",
+				},
+			},
+		},
+		ToolChoice: "auto", // String format - MUST be converted to object
+	}
+
+	_, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+
+	// CRITICAL: tool_choice must be an object {"type": "auto"}, not string "auto"
+	require.NotNil(t, capturedToolChoice, "tool_choice should be set")
+
+	tcMap, ok := capturedToolChoice.(map[string]interface{})
+	require.True(t, ok, "tool_choice must be an object, got: %T", capturedToolChoice)
+	assert.Equal(t, "auto", tcMap["type"], "tool_choice.type should be 'auto'")
+}
+
+func TestClaudeProvider_ToolChoice_StringAnyConvertsToObject(t *testing.T) {
+	var capturedToolChoice interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+			capturedToolChoice = reqBody["tool_choice"]
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"model":"claude-3","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`))
+	}))
+	defer server.Close()
+
+	provider := NewClaudeProvider("test-key", server.URL, "claude-3-sonnet")
+	req := &models.LLMRequest{
+		ID: "test-tool-choice-any",
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		Tools: []models.Tool{
+			{
+				Type: "function",
+				Function: models.ToolFunction{
+					Name:        "test_tool",
+					Description: "A test tool",
+				},
+			},
+		},
+		ToolChoice: "any", // String format - MUST be converted to object
+	}
+
+	_, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+
+	require.NotNil(t, capturedToolChoice)
+	tcMap, ok := capturedToolChoice.(map[string]interface{})
+	require.True(t, ok, "tool_choice must be an object, got: %T", capturedToolChoice)
+	assert.Equal(t, "any", tcMap["type"], "tool_choice.type should be 'any'")
+}
+
+func TestClaudeProvider_ToolChoice_ObjectPassedThrough(t *testing.T) {
+	var capturedToolChoice interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+			capturedToolChoice = reqBody["tool_choice"]
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"model":"claude-3","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`))
+	}))
+	defer server.Close()
+
+	provider := NewClaudeProvider("test-key", server.URL, "claude-3-sonnet")
+	req := &models.LLMRequest{
+		ID: "test-tool-choice-object",
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		Tools: []models.Tool{
+			{
+				Type: "function",
+				Function: models.ToolFunction{
+					Name:        "specific_tool",
+					Description: "A specific tool",
+				},
+			},
+		},
+		// Already in object format - should pass through unchanged
+		ToolChoice: map[string]interface{}{
+			"type": "tool",
+			"name": "specific_tool",
+		},
+	}
+
+	_, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+
+	require.NotNil(t, capturedToolChoice)
+	tcMap, ok := capturedToolChoice.(map[string]interface{})
+	require.True(t, ok, "tool_choice must be an object")
+	assert.Equal(t, "tool", tcMap["type"])
+	assert.Equal(t, "specific_tool", tcMap["name"])
+}
+
+func TestClaudeProvider_ToolChoice_NilWhenNoTools(t *testing.T) {
+	var capturedToolChoice interface{}
+	var hasToolChoice bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+			capturedToolChoice, hasToolChoice = reqBody["tool_choice"]
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"model":"claude-3","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`))
+	}))
+	defer server.Close()
+
+	provider := NewClaudeProvider("test-key", server.URL, "claude-3-sonnet")
+	req := &models.LLMRequest{
+		ID: "test-no-tools",
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		// No tools, so ToolChoice should not be set
+		ToolChoice: "auto",
+	}
+
+	_, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+
+	// tool_choice should not be present when there are no tools
+	assert.False(t, hasToolChoice, "tool_choice should not be set when no tools")
+	assert.Nil(t, capturedToolChoice)
+}
+
+func TestClaudeProvider_ToolChoice_AllFormats(t *testing.T) {
+	// Comprehensive test for all tool_choice formats
+	testCases := []struct {
+		name           string
+		toolChoice     interface{}
+		expectedType   string
+		expectedFormat string // "object" or "string"
+	}{
+		{
+			name:           "String auto",
+			toolChoice:     "auto",
+			expectedType:   "auto",
+			expectedFormat: "object",
+		},
+		{
+			name:           "String any",
+			toolChoice:     "any",
+			expectedType:   "any",
+			expectedFormat: "object",
+		},
+		{
+			name:           "Object auto",
+			toolChoice:     map[string]interface{}{"type": "auto"},
+			expectedType:   "auto",
+			expectedFormat: "object",
+		},
+		{
+			name:           "Object tool with name",
+			toolChoice:     map[string]interface{}{"type": "tool", "name": "my_tool"},
+			expectedType:   "tool",
+			expectedFormat: "object",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var capturedToolChoice interface{}
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var reqBody map[string]interface{}
+				if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+					capturedToolChoice = reqBody["tool_choice"]
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"model":"claude-3","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`))
+			}))
+			defer server.Close()
+
+			provider := NewClaudeProvider("test-key", server.URL, "claude-3-sonnet")
+			req := &models.LLMRequest{
+				ID: "test-format-" + tc.name,
+				Messages: []models.Message{
+					{Role: "user", Content: "Hello"},
+				},
+				Tools: []models.Tool{
+					{
+						Type: "function",
+						Function: models.ToolFunction{
+							Name:        "my_tool",
+							Description: "Test tool",
+						},
+					},
+				},
+				ToolChoice: tc.toolChoice,
+			}
+
+			_, err := provider.Complete(context.Background(), req)
+			require.NoError(t, err)
+
+			// ALL formats should result in an object being sent
+			require.NotNil(t, capturedToolChoice, "tool_choice should be set for %s", tc.name)
+			tcMap, ok := capturedToolChoice.(map[string]interface{})
+			require.True(t, ok, "tool_choice must ALWAYS be an object for Claude API, got: %T for %s", capturedToolChoice, tc.name)
+			assert.Equal(t, tc.expectedType, tcMap["type"], "tool_choice.type mismatch for %s", tc.name)
+		})
 	}
 }

@@ -431,8 +431,19 @@ func (p *ClaudeProvider) convertRequest(req *models.LLMRequest) ClaudeRequest {
 			}
 		}
 		// Set tool_choice based on request
+		// CRITICAL: Claude API requires tool_choice to be an object {"type": "auto"}, not a string
 		if req.ToolChoice != nil {
-			claudeReq.ToolChoice = req.ToolChoice
+			switch tc := req.ToolChoice.(type) {
+			case string:
+				// Convert string "auto" or "any" to object format
+				if tc == "auto" || tc == "any" {
+					claudeReq.ToolChoice = map[string]interface{}{"type": tc}
+				} else {
+					claudeReq.ToolChoice = req.ToolChoice
+				}
+			default:
+				claudeReq.ToolChoice = req.ToolChoice
+			}
 		}
 	}
 

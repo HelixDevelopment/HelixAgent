@@ -131,7 +131,7 @@ func TestLoadBurstTraffic(t *testing.T) {
 		t.Skip("Skipping load test in short mode")
 	}
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -217,7 +217,7 @@ func TestLoadGracefulDegradation(t *testing.T) {
 		t.Skip("Skipping load test in short mode")
 	}
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -279,7 +279,7 @@ func TestLoadGracefulDegradation(t *testing.T) {
 
 // runLoadTest executes a load test with given configuration
 func runLoadTest(t *testing.T, config LoadTestConfig) LoadTestResult {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), config.Duration+10*time.Second)
 	defer cancel()
 

@@ -48,7 +48,7 @@ func TestE2E_FullMessageLifecycle(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 
@@ -129,7 +129,7 @@ func TestE2E_DLQProcessingFlow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 
@@ -201,7 +201,7 @@ func TestE2E_ReplayWorkflow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 
@@ -270,7 +270,7 @@ func TestE2E_HighThroughput(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 120*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 
@@ -331,7 +331,7 @@ func TestE2E_ErrorRecovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 
@@ -380,7 +380,7 @@ func TestE2E_GracefulDegradation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(testCtx, 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	require.NoError(t, broker.Connect(ctx))
 	defer broker.Close(ctx)
 

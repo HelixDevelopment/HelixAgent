@@ -29,7 +29,7 @@ func TestIntegration_MessagingHub_FullFlow(t *testing.T) {
 	defer cancel()
 
 	// Create in-memory broker for integration testing
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -96,7 +96,7 @@ func TestIntegration_MessagingHub_BatchPublish(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -140,7 +140,7 @@ func TestIntegration_MessagingHub_MultipleSubscribers(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -188,7 +188,7 @@ func TestIntegration_MessagingHub_TopicIsolation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -237,7 +237,7 @@ func TestIntegration_DLQProcessor_RetryFlow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -306,7 +306,7 @@ func TestIntegration_ReplayHandler_BasicReplay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -351,7 +351,7 @@ func TestIntegration_ReplayHandler_ConcurrentReplays(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -404,7 +404,7 @@ func TestIntegration_HealthCheck(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 
@@ -426,7 +426,7 @@ func TestIntegration_Metrics(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	defer broker.Close(ctx)
@@ -462,7 +462,7 @@ func TestIntegration_GracefulShutdown(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 

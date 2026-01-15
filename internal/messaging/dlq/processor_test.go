@@ -15,7 +15,7 @@ import (
 )
 
 func TestNewProcessor(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 
@@ -39,14 +39,12 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestProcessor_RegisterHandler(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 	processor := NewProcessor(broker, config, logger)
 
-	called := false
 	handler := func(ctx context.Context, msg *DeadLetterMessage) error {
-		called = true
 		return nil
 	}
 
@@ -60,7 +58,7 @@ func TestProcessor_RegisterHandler(t *testing.T) {
 }
 
 func TestProcessor_StartStop(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
@@ -92,7 +90,7 @@ func TestProcessor_StartStop(t *testing.T) {
 }
 
 func TestProcessor_CalculateRetryDelay(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	config.RetryDelay = 1 * time.Second
 	config.RetryBackoffMultiplier = 2.0
@@ -123,7 +121,7 @@ func TestProcessor_CalculateRetryDelay(t *testing.T) {
 }
 
 func TestProcessor_GetMetrics(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 
@@ -144,7 +142,7 @@ func TestProcessor_GetMetrics(t *testing.T) {
 }
 
 func TestProcessor_ProcessMessage_MaxRetries(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
@@ -190,7 +188,7 @@ func TestProcessor_ProcessMessage_MaxRetries(t *testing.T) {
 }
 
 func TestProcessor_ProcessMessage_InvalidFormat(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
@@ -217,7 +215,7 @@ func TestProcessor_ProcessMessage_InvalidFormat(t *testing.T) {
 }
 
 func TestProcessor_ReprocessMessage(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 
@@ -229,7 +227,7 @@ func TestProcessor_ReprocessMessage(t *testing.T) {
 }
 
 func TestProcessor_DiscardMessage(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 
@@ -301,7 +299,7 @@ func TestDLQStatus_Values(t *testing.T) {
 }
 
 func TestProcessor_DefaultRetryHandler(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
@@ -342,7 +340,7 @@ func TestProcessor_DefaultRetryHandler(t *testing.T) {
 }
 
 func TestProcessor_DefaultRetryHandler_NoTopic(t *testing.T) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	config := DefaultConfig()
 	logger := zap.NewNop()
 

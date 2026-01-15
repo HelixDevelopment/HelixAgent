@@ -15,7 +15,7 @@ import (
 
 // BenchmarkInMemoryPublish benchmarks message publishing throughput
 func BenchmarkInMemoryPublish(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -44,7 +44,7 @@ func BenchmarkInMemoryPublish(b *testing.B) {
 
 // BenchmarkInMemoryBatchPublish benchmarks batch message publishing
 func BenchmarkInMemoryBatchPublish(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -78,7 +78,7 @@ func BenchmarkInMemoryBatchPublish(b *testing.B) {
 
 // BenchmarkInMemoryPubSub benchmarks full publish-subscribe cycle
 func BenchmarkInMemoryPubSub(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -148,7 +148,7 @@ func BenchmarkMessageSerialization(b *testing.B) {
 
 // BenchmarkConcurrentPublishers benchmarks concurrent message publishing
 func BenchmarkConcurrentPublishers(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -191,7 +191,7 @@ func BenchmarkConcurrentPublishers(b *testing.B) {
 
 // BenchmarkMessageThroughput measures messages per second
 func BenchmarkMessageThroughput(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -240,7 +240,7 @@ func BenchmarkMessageThroughput(b *testing.B) {
 
 // BenchmarkLatency measures message delivery latency
 func BenchmarkLatency(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -298,7 +298,7 @@ func BenchmarkLatency(b *testing.B) {
 
 // BenchmarkLargePayload benchmarks handling of large messages
 func BenchmarkLargePayload(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {
@@ -335,7 +335,7 @@ func BenchmarkLargePayload(b *testing.B) {
 
 // BenchmarkTopicRouting benchmarks message routing to multiple topics
 func BenchmarkTopicRouting(b *testing.B) {
-	broker := inmemory.NewBroker()
+	broker := inmemory.NewBroker(nil)
 	ctx := context.Background()
 
 	if err := broker.Connect(ctx); err != nil {

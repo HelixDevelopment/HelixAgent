@@ -1,0 +1,437 @@
+---
+# RabbitMQ Kubernetes Deployment for HelixAgent Messaging
+# Requires: cert-manager for TLS, sealed-secrets for credential management
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: helixagent-messaging
+  labels:
+    app.kubernetes.io/name: helixagent-messaging
+    app.kubernetes.io/component: messaging
+---
+# RabbitMQ ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: helixagent-messaging
+data:
+  rabbitmq.conf: |
+    # Networking
+    listeners.tcp.default = 5672
+    management.tcp.port = 15672
+
+    # Clustering
+    cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+    cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+    cluster_formation.k8s.address_type = hostname
+    cluster_formation.node_cleanup.interval = 30
+    cluster_formation.node_cleanup.only_log_warning = true
+    cluster_partition_handling = autoheal
+
+    # Memory and Disk
+    vm_memory_high_watermark.relative = 0.7
+    disk_free_limit.absolute = 2GB
+
+    # Queue settings
+    queue_master_locator = min-masters
+
+    # Management
+    management.load_definitions = /etc/rabbitmq/definitions.json
+
+    # Prometheus metrics
+    prometheus.return_per_object_metrics = true
+  definitions.json: |
+    {
+      "queues": [
+        {
+          "name": "helixagent.tasks.background",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "helixagent.dlx",
+            "x-dead-letter-routing-key": "dlq.tasks",
+            "x-message-ttl": 86400000,
+            "x-max-priority": 10
+          }
+        },
+        {
+          "name": "helixagent.tasks.llm",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "helixagent.dlx",
+            "x-dead-letter-routing-key": "dlq.llm",
+            "x-message-ttl": 300000,
+            "x-max-priority": 10
+          }
+        },
+        {
+          "name": "helixagent.tasks.debate",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "helixagent.dlx",
+            "x-dead-letter-routing-key": "dlq.debate",
+            "x-message-ttl": 600000,
+            "x-max-priority": 10
+          }
+        },
+        {
+          "name": "helixagent.tasks.verification",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "helixagent.dlx",
+            "x-dead-letter-routing-key": "dlq.verification",
+            "x-message-ttl": 300000
+          }
+        },
+        {
+          "name": "helixagent.tasks.notifications",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-dead-letter-exchange": "helixagent.dlx",
+            "x-dead-letter-routing-key": "dlq.notifications",
+            "x-message-ttl": 60000
+          }
+        },
+        {
+          "name": "helixagent.dlq",
+          "vhost": "helixagent",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {
+            "x-message-ttl": 2592000000
+          }
+        }
+      ],
+      "exchanges": [
+        {
+          "name": "helixagent.tasks",
+          "vhost": "helixagent",
+          "type": "topic",
+          "durable": true,
+          "auto_delete": false
+        },
+        {
+          "name": "helixagent.events",
+          "vhost": "helixagent",
+          "type": "topic",
+          "durable": true,
+          "auto_delete": false
+        },
+        {
+          "name": "helixagent.notifications",
+          "vhost": "helixagent",
+          "type": "fanout",
+          "durable": true,
+          "auto_delete": false
+        },
+        {
+          "name": "helixagent.dlx",
+          "vhost": "helixagent",
+          "type": "direct",
+          "durable": true,
+          "auto_delete": false
+        }
+      ],
+      "bindings": [
+        {
+          "source": "helixagent.tasks",
+          "vhost": "helixagent",
+          "destination": "helixagent.tasks.background",
+          "destination_type": "queue",
+          "routing_key": "background.#"
+        },
+        {
+          "source": "helixagent.tasks",
+          "vhost": "helixagent",
+          "destination": "helixagent.tasks.llm",
+          "destination_type": "queue",
+          "routing_key": "llm.#"
+        },
+        {
+          "source": "helixagent.tasks",
+          "vhost": "helixagent",
+          "destination": "helixagent.tasks.debate",
+          "destination_type": "queue",
+          "routing_key": "debate.#"
+        },
+        {
+          "source": "helixagent.tasks",
+          "vhost": "helixagent",
+          "destination": "helixagent.tasks.verification",
+          "destination_type": "queue",
+          "routing_key": "verification.#"
+        },
+        {
+          "source": "helixagent.dlx",
+          "vhost": "helixagent",
+          "destination": "helixagent.dlq",
+          "destination_type": "queue",
+          "routing_key": "dlq.#"
+        }
+      ],
+      "vhosts": [
+        {"name": "helixagent"}
+      ],
+      "permissions": [
+        {
+          "user": "helixagent",
+          "vhost": "helixagent",
+          "configure": ".*",
+          "write": ".*",
+          "read": ".*"
+        }
+      ],
+      "policies": [
+        {
+          "name": "ha-all",
+          "vhost": "helixagent",
+          "pattern": ".*",
+          "definition": {
+            "ha-mode": "all",
+            "ha-sync-mode": "automatic"
+          }
+        }
+      ]
+    }
+---
+# RabbitMQ Secret (use sealed-secrets in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-credentials
+  namespace: helixagent-messaging
+type: Opaque
+stringData:
+  username: helixagent
+  password: REPLACE_WITH_SECURE_PASSWORD
+  erlang-cookie: REPLACE_WITH_SECURE_COOKIE
+---
+# RabbitMQ StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+  labels:
+    app: rabbitmq
+spec:
+  serviceName: rabbitmq-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "15692"
+    spec:
+      serviceAccountName: rabbitmq
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.12-management
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+            - name: prometheus
+              containerPort: 15692
+            - name: epmd
+              containerPort: 4369
+            - name: cluster
+              containerPort: 25672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            - name: RABBITMQ_ERLANG_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: erlang-cookie
+            - name: RABBITMQ_USE_LONGNAME
+              value: "true"
+            - name: K8S_SERVICE_NAME
+              value: "rabbitmq-headless"
+            - name: RABBITMQ_NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: config
+              mountPath: /etc/rabbitmq/rabbitmq.conf
+              subPath: rabbitmq.conf
+            - name: config
+              mountPath: /etc/rabbitmq/definitions.json
+              subPath: definitions.json
+            - name: data
+              mountPath: /var/lib/rabbitmq
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          livenessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - -q
+                - ping
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - -q
+                - check_running
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: rabbitmq-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+---
+# RabbitMQ Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless
+  namespace: helixagent-messaging
+spec:
+  clusterIP: None
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+    - name: epmd
+      port: 4369
+    - name: cluster
+      port: 25672
+---
+# RabbitMQ Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+  labels:
+    app: rabbitmq
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+    - name: prometheus
+      port: 15692
+      targetPort: 15692
+---
+# RabbitMQ ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+---
+# RabbitMQ Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+# RabbitMQ RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+subjects:
+  - kind: ServiceAccount
+    name: rabbitmq
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rabbitmq
+---
+# RabbitMQ PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rabbitmq
+---
+# Prometheus ServiceMonitor for RabbitMQ
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rabbitmq
+  namespace: helixagent-messaging
+  labels:
+    app: rabbitmq
+spec:
+  selector:
+    matchLabels:
+      app: rabbitmq
+  endpoints:
+    - port: prometheus
+      interval: 30s
+      path: /metrics

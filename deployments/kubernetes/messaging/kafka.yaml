@@ -1,0 +1,423 @@
+---
+# Apache Kafka Kubernetes Deployment for HelixAgent Messaging
+# Uses Strimzi Kafka Operator for production-grade deployment
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: helixagent-kafka
+  namespace: helixagent-messaging
+  labels:
+    app.kubernetes.io/name: helixagent-kafka
+    app.kubernetes.io/component: messaging
+spec:
+  kafka:
+    version: 3.5.1
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: external
+        port: 9094
+        type: loadbalancer
+        tls: true
+        authentication:
+          type: tls
+    config:
+      # Replication settings
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+
+      # Topic settings
+      auto.create.topics.enable: false
+      delete.topic.enable: true
+      num.partitions: 12
+
+      # Retention settings
+      log.retention.hours: 168
+      log.retention.bytes: 10737418240
+      log.segment.bytes: 1073741824
+
+      # Performance settings
+      compression.type: lz4
+      message.max.bytes: 10485760
+      num.io.threads: 8
+      num.network.threads: 3
+      socket.send.buffer.bytes: 102400
+      socket.receive.buffer.bytes: 102400
+      socket.request.max.bytes: 104857600
+
+      # Consumer group settings
+      group.initial.rebalance.delay.ms: 0
+
+    storage:
+      type: persistent-claim
+      size: 100Gi
+      class: standard
+      deleteClaim: false
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 8Gi
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics
+          key: kafka-metrics-config.yml
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: strimzi.io/name
+                      operator: In
+                      values:
+                        - helixagent-kafka-kafka
+                topologyKey: kubernetes.io/hostname
+        tolerations:
+          - key: "dedicated"
+            operator: "Equal"
+            value: "kafka"
+            effect: "NoSchedule"
+
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      class: standard
+      deleteClaim: false
+    resources:
+      requests:
+        cpu: "250m"
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics
+          key: zookeeper-metrics-config.yml
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: strimzi.io/name
+                      operator: In
+                      values:
+                        - helixagent-kafka-zookeeper
+                topologyKey: kubernetes.io/hostname
+
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: 256Mi
+        limits:
+          cpu: "500m"
+          memory: 512Mi
+    userOperator:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: 256Mi
+        limits:
+          cpu: "500m"
+          memory: 512Mi
+
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: 128Mi
+      limits:
+        cpu: "500m"
+        memory: 256Mi
+---
+# Kafka Metrics ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-metrics
+  namespace: helixagent-messaging
+data:
+  kafka-metrics-config.yml: |
+    lowercaseOutputName: true
+    rules:
+    - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+      name: kafka_server_$1_$2
+      type: GAUGE
+      labels:
+        clientId: "$3"
+        topic: "$4"
+        partition: "$5"
+    - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+      name: kafka_server_$1_$2
+      type: GAUGE
+      labels:
+        clientId: "$3"
+        broker: "$4:$5"
+    - pattern: kafka.server<type=(.+), name=(.+)><>Value
+      name: kafka_server_$1_$2
+      type: GAUGE
+    - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
+      name: kafka_$1_$2_$3
+      type: GAUGE
+  zookeeper-metrics-config.yml: |
+    lowercaseOutputName: true
+    rules:
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+)><>(\\w+)"
+      name: "zookeeper_$2"
+      type: GAUGE
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+)><>(\\w+)"
+      name: "zookeeper_$3"
+      type: GAUGE
+      labels:
+        replicaId: "$2"
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+)><>(Packets\\w+)"
+      name: "zookeeper_$4"
+      type: COUNTER
+      labels:
+        replicaId: "$2"
+        memberType: "$3"
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+)><>(\\w+)"
+      name: "zookeeper_$4"
+      type: GAUGE
+      labels:
+        replicaId: "$2"
+        memberType: "$3"
+---
+# Kafka Topics for HelixAgent
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-llm-responses
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.llm.responses
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+    compression.type: lz4
+    max.message.bytes: 10485760
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-debate-rounds
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.debate.rounds
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+    compression.type: lz4
+    max.message.bytes: 10485760
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-verification-results
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.verification.results
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: compact,delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-provider-health
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.provider.health
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 86400000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-audit
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.audit
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-metrics
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.metrics
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 86400000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-events-errors
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.events.errors
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-stream-tokens
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.stream.tokens
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 3600000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-dlq-tasks
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.dlq.tasks
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: helixagent-dlq-events
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  topicName: helixagent.dlq.events
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+    compression.type: lz4
+---
+# Kafka User for HelixAgent
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: helixagent
+  namespace: helixagent-messaging
+  labels:
+    strimzi.io/cluster: helixagent-kafka
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: helixagent.*
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Create
+          - Describe
+      - resource:
+          type: group
+          name: helixagent-*
+          patternType: prefix
+        operations:
+          - Read
+          - Describe
+---
+# Prometheus PodMonitor for Kafka
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka
+  namespace: helixagent-messaging
+  labels:
+    app: kafka
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/kind: Kafka
+  podMetricsEndpoints:
+    - port: tcp-prometheus
+      interval: 30s
+      path: /metrics

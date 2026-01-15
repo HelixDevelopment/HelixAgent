@@ -1,0 +1,180 @@
+{
+  "topics": {
+    "llmsverifier": {
+      "events.verification": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.provider": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.model": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.team": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.system": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      }
+    },
+    "helixagent": {
+      "events.llm.responses": {
+        "partitions": 6,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4",
+          "max.message.bytes": 10485760
+        }
+      },
+      "events.debate.rounds": {
+        "partitions": 6,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 604800000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4",
+          "max.message.bytes": 10485760
+        }
+      },
+      "events.verification.results": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 2592000000,
+          "cleanup.policy": "compact,delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.provider.health": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 86400000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.audit": {
+        "partitions": 6,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 7776000000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.metrics": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 86400000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "events.errors": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 2592000000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "stream.tokens": {
+        "partitions": 12,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 3600000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "stream.sse": {
+        "partitions": 6,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 3600000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "stream.websocket": {
+        "partitions": 6,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 3600000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "dlq.tasks": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 2592000000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      },
+      "dlq.events": {
+        "partitions": 3,
+        "replication_factor": 1,
+        "config": {
+          "retention.ms": 2592000000,
+          "cleanup.policy": "delete",
+          "compression.type": "lz4"
+        }
+      }
+    }
+  },
+  "consumer_groups": {
+    "helixagent-workers": {
+      "description": "Main worker pool for task processing"
+    },
+    "helixagent-notifications": {
+      "description": "Notification delivery workers"
+    },
+    "helixagent-analytics": {
+      "description": "Analytics event processing"
+    },
+    "helixagent-audit": {
+      "description": "Audit log processing"
+    },
+    "helixagent-dlq-processor": {
+      "description": "Dead letter queue processing"
+    }
+  }
+}

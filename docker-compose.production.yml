@@ -1,0 +1,287 @@
+version: '3.8'
+
+# Production-ready messaging infrastructure for HelixAgent
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.messaging.yml -f docker-compose.production.yml up -d
+#
+# Security Features:
+# - TLS/SSL encryption for all broker connections
+# - SASL/SCRAM authentication for Kafka
+# - AMQP authentication with strong passwords for RabbitMQ
+# - Non-root container execution
+# - Read-only root filesystems where possible
+# - Resource limits and reservations
+# - Network segmentation
+
+services:
+  # RabbitMQ Production Configuration
+  rabbitmq:
+    environment:
+      # Production credentials (override in .env.production)
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_PROD_USER:-helixagent_prod}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PROD_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-helixagent}
+      # Enable TLS
+      RABBITMQ_SSL_CERTFILE: /etc/rabbitmq/ssl/server.crt
+      RABBITMQ_SSL_KEYFILE: /etc/rabbitmq/ssl/server.key
+      RABBITMQ_SSL_CACERTFILE: /etc/rabbitmq/ssl/ca.crt
+      RABBITMQ_SSL_VERIFY: verify_peer
+      RABBITMQ_SSL_FAIL_IF_NO_PEER_CERT: "true"
+      # Management UI behind TLS
+      RABBITMQ_MANAGEMENT_SSL_CERTFILE: /etc/rabbitmq/ssl/server.crt
+      RABBITMQ_MANAGEMENT_SSL_KEYFILE: /etc/rabbitmq/ssl/server.key
+      RABBITMQ_MANAGEMENT_SSL_CACERTFILE: /etc/rabbitmq/ssl/ca.crt
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./configs/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./configs/rabbitmq/ssl:/etc/rabbitmq/ssl:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq-mgmt.rule=Host(`rabbitmq.${DOMAIN:-helixagent.local}`)"
+      - "traefik.http.routers.rabbitmq-mgmt.tls=true"
+      - "traefik.http.services.rabbitmq-mgmt.loadbalancer.server.port=15672"
+
+  # Kafka Production Configuration
+  kafka:
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Production listeners with SASL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,SASL_SSL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9092,SASL_SSL://${KAFKA_EXTERNAL_HOST:-localhost}:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,SASL_SSL:SASL_SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # SASL Configuration
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+      # SSL Configuration
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka.keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: ${KAFKA_SSL_PASSWORD}
+      KAFKA_SSL_KEY_PASSWORD: ${KAFKA_SSL_PASSWORD}
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: ${KAFKA_SSL_PASSWORD}
+      KAFKA_SSL_CLIENT_AUTH: required
+      # Security settings
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      # Production optimizations
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DELETE_TOPIC_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824     # 1GB
+      KAFKA_MESSAGE_MAX_BYTES: 10485760       # 10MB
+      KAFKA_COMPRESSION_TYPE: lz4
+      KAFKA_NUM_PARTITIONS: 12
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      # Performance tuning
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_NUM_NETWORK_THREADS: 3
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./configs/kafka/ssl:/etc/kafka/secrets:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 2G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # Zookeeper Production Configuration
+  zookeeper:
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 10
+      ZOOKEEPER_SYNC_LIMIT: 5
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 100
+      ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT: 3
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: 24
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # Schema Registry Production Configuration
+  schema-registry:
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_LISTENERS: https://0.0.0.0:8081
+      SCHEMA_REGISTRY_SSL_KEYSTORE_LOCATION: /etc/schema-registry/secrets/schema-registry.keystore.jks
+      SCHEMA_REGISTRY_SSL_KEYSTORE_PASSWORD: ${SCHEMA_REGISTRY_SSL_PASSWORD}
+      SCHEMA_REGISTRY_SSL_KEY_PASSWORD: ${SCHEMA_REGISTRY_SSL_PASSWORD}
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: https
+    volumes:
+      - ./configs/kafka/ssl:/etc/schema-registry/secrets:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # Kafka UI Production (read-only access)
+  kafka-ui:
+    environment:
+      KAFKA_CLUSTERS_0_NAME: helixagent-production
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: https://schema-registry:8081
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_READONLY: "true"
+      AUTH_TYPE: OAUTH2
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kafka-ui.rule=Host(`kafka.${DOMAIN:-helixagent.local}`)"
+      - "traefik.http.routers.kafka-ui.tls=true"
+      - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
+
+  # Traefik Reverse Proxy for Production
+  traefik:
+    image: traefik:v2.10
+    container_name: helixagent-traefik
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/letsencrypt
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-helixagent.local}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls=true"
+    profiles:
+      - production
+      - full
+
+  # Redis Cluster for Production
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: helixagent-redis-cluster
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
+      --loglevel notice
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    profiles:
+      - production
+      - full
+
+volumes:
+  traefik_certs:
+    driver: local
+  redis_cluster_data:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

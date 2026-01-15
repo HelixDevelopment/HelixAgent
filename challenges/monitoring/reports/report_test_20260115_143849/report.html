@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HelixAgent Challenge Monitoring Report</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #eee;
+            --accent-color: #0f3460;
+            --success-color: #00b894;
+            --warning-color: #fdcb6e;
+            --danger-color: #e74c3c;
+            --info-color: #74b9ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1, h2, h3 { margin-bottom: 15px; }
+        h1 { text-align: center; color: var(--info-color); font-size: 2.5em; margin-bottom: 30px; }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .card h2 { color: var(--info-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .stat-box {
+            background: var(--accent-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-box .value { font-size: 2.5em; font-weight: bold; }
+        .stat-box .label { font-size: 0.9em; opacity: 0.8; }
+        .stat-box.success .value { color: var(--success-color); }
+        .stat-box.warning .value { color: var(--warning-color); }
+        .stat-box.danger .value { color: var(--danger-color); }
+        .stat-box.info .value { color: var(--info-color); }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .status-badge.success { background: var(--success-color); color: #000; }
+        .status-badge.warning { background: var(--warning-color); color: #000; }
+        .status-badge.danger { background: var(--danger-color); color: #fff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--accent-color);
+        }
+        th { background: var(--accent-color); color: var(--info-color); }
+        .error-row { color: var(--danger-color); }
+        .warning-row { color: var(--warning-color); }
+        .fix-row { color: var(--success-color); }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .alert-success { background: rgba(0, 184, 148, 0.2); border-left: 4px solid var(--success-color); }
+        .alert-warning { background: rgba(253, 203, 110, 0.2); border-left: 4px solid var(--warning-color); }
+        .alert-danger { background: rgba(231, 76, 60, 0.2); border-left: 4px solid var(--danger-color); }
+        .leak-item { padding: 10px; margin: 5px 0; background: var(--accent-color); border-radius: 4px; }
+        code { background: var(--accent-color); padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+        .meta { font-size: 0.85em; opacity: 0.7; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; }
+        .timestamp { color: var(--info-color); }
+        footer { text-align: center; margin-top: 40px; opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 HelixAgent Challenge Monitoring Report</h1>
+        <div class="card">
+            <div class="section-header">
+                <h2>📊 Session Overview</h2>
+                <span class="status-badge danger">FAIL</span>
+            </div>
+            <div class="grid" style="margin-top: 20px;">
+                <div class="stat-box info">
+                    <div class="value">report_test_20260115_143849</div>
+                    <div class="label">Session ID</div>
+                </div>
+                <div class="stat-box info">
+                    <div class="value">10s</div>
+                    <div class="label">Duration</div>
+                </div>
+                <div class="stat-box info">
+                    <div class="value">0</div>
+                    <div class="label">Exit Code</div>
+                </div>
+            </div>
+            <p class="meta" style="margin-top: 15px;">
+                <strong>Start:</strong> <span class="timestamp">2026-01-15T14:38:49+03:00</span> |
+                <strong>End:</strong> <span class="timestamp">2026-01-15T14:38:49+03:00</span>
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>📈 Issue Summary</h2>
+            <div class="grid">
+                <div class="stat-box danger">
+                    <div class="value">1</div>
+                    <div class="label">Errors</div>
+                </div>
+                <div class="stat-box warning">
+                    <div class="value">1</div>
+                    <div class="label">Warnings</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="value">1</div>
+                    <div class="label">Fixes Applied</div>
+                </div>
+                <div class="stat-box info">
+                    <div class="value">3</div>
+                    <div class="label">Total Issues</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🧠 Memory Analysis</h2>
+            
+        </div>
+        <div class="card">
+            <h2>❌ Errors (1)</h2>
+            <table>
+                <thead><tr><th>Error Details</th></tr></thead>
+                <tbody><tr><td class="error-row">[2026-01-15 14:38:49.449] Test error message</td></tr></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h2>⚠️ Warnings (1)</h2>
+            <table>
+                <thead><tr><th>Warning Details</th></tr></thead>
+                <tbody><tr><td class="warning-row">[2026-01-15 14:38:49.448] Test warning message</td></tr></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h2>✅ Fixes Applied (1)</h2>
+            <table>
+                <thead><tr><th>Fix Details</th></tr></thead>
+                <tbody><tr><td class="fix-row">[2026-01-15 14:38:49.450] Test fix applied</td></tr></tbody>
+            </table>
+        </div>
+        <footer>
+            <p>Generated by HelixAgent Challenge Monitoring System v1.0.0</p>
+            <p>Report generated at: <span id="gen-time"></span></p>
+            <script>document.getElementById('gen-time').textContent = new Date().toISOString();</script>
+        </footer>
+    </div>
+</body>
+</html>

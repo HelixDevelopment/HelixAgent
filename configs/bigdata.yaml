@@ -1,0 +1,409 @@
+# Big Data Configuration for HelixAgent
+# This file configures Apache Flink, MinIO, Iceberg, Qdrant, and Spark integration
+
+bigdata:
+  # Enable/disable Big Data features
+  enabled: true
+
+  # Auto-start services on system boot
+  auto_start: true
+
+  # Profile to use: minimal, messaging, bigdata, analytics, full
+  profile: full
+
+# ===========================================
+# MinIO Object Storage Configuration
+# ===========================================
+minio:
+  # Connection settings
+  endpoint: ${MINIO_ENDPOINT:-localhost:9000}
+  access_key: ${MINIO_ROOT_USER:-minioadmin}
+  secret_key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+  use_ssl: ${MINIO_USE_SSL:-false}
+  region: ${MINIO_REGION:-us-east-1}
+
+  # Connection options
+  connect_timeout: 30s
+  request_timeout: 60s
+  max_retries: 3
+
+  # Bucket configuration
+  buckets:
+    events:
+      name: helixagent-events
+      retention_days: 90
+    checkpoints:
+      name: helixagent-checkpoints
+      retention_days: 30
+    iceberg:
+      name: helixagent-iceberg
+      retention_days: -1  # unlimited
+    models:
+      name: helixagent-models
+      retention_days: -1
+    audit:
+      name: helixagent-audit
+      retention_days: 365
+    flink:
+      name: helixagent-flink
+      retention_days: 30
+    spark:
+      name: helixagent-spark
+      retention_days: 30
+
+  # Upload settings
+  part_size: 16777216  # 16MB
+  concurrent_uploads: 4
+
+# ===========================================
+# Apache Flink Configuration
+# ===========================================
+flink:
+  # Cluster settings
+  jobmanager:
+    host: ${FLINK_JOBMANAGER_HOST:-localhost}
+    port: ${FLINK_JOBMANAGER_PORT:-6123}
+    web_port: ${FLINK_UI_PORT:-8082}
+    memory: 1600m
+
+  taskmanager:
+    slots: ${FLINK_TASK_SLOTS:-4}
+    memory: 2048m
+    replicas: ${FLINK_TASKMANAGER_REPLICAS:-2}
+
+  # REST API settings
+  rest_url: http://${FLINK_JOBMANAGER_HOST:-localhost}:${FLINK_UI_PORT:-8082}
+  request_timeout: 30s
+
+  # Checkpoint settings
+  checkpoint:
+    enabled: true
+    interval: 60s
+    mode: exactly_once  # exactly_once, at_least_once
+    timeout: 600s
+    min_pause: 500ms
+    directory: s3://helixagent-checkpoints/flink
+
+  # Savepoint settings
+  savepoint:
+    directory: s3://helixagent-checkpoints/savepoints
+
+  # State backend
+  state_backend: rocksdb  # hashmap, rocksdb
+  incremental_checkpoints: true
+
+  # Restart strategy
+  restart:
+    strategy: fixed-delay  # none, fixed-delay, failure-rate, exponential-delay
+    attempts: 3
+    delay: 10s
+
+  # Kafka integration
+  kafka:
+    bootstrap_servers: ${KAFKA_BROKER:-localhost:9092}
+    group_id: flink-${KAFKA_GROUP_ID:-helixagent-group}
+    consumer_timeout: 30s
+
+  # Jobs configuration
+  jobs:
+    debate_orchestrator:
+      enabled: true
+      parallelism: 4
+      source_topic: helixagent.events.debate.rounds
+      sink_topic: helixagent.events.debate.completed
+
+    token_aggregator:
+      enabled: true
+      parallelism: 8
+      source_topic: helixagent.stream.tokens
+      window_size: 5s
+
+    metrics_processor:
+      enabled: true
+      parallelism: 2
+      source_topic: helixagent.events.metrics
+      sink_prometheus: true
+
+    anomaly_detector:
+      enabled: true
+      parallelism: 2
+      source_topic: helixagent.events.provider.health
+      alert_threshold: 0.9
+
+    session_manager:
+      enabled: true
+      parallelism: 4
+      state_ttl: 24h
+
+# ===========================================
+# Apache Iceberg Configuration
+# ===========================================
+iceberg:
+  # Catalog settings
+  catalog:
+    type: rest  # rest, hive, glue, jdbc
+    uri: http://${ICEBERG_REST_HOST:-localhost}:${ICEBERG_REST_PORT:-8181}
+    warehouse: s3://helixagent-iceberg/warehouse
+
+  # S3 settings (for MinIO)
+  s3:
+    endpoint: http://${MINIO_ENDPOINT:-localhost:9000}
+    access_key: ${MINIO_ROOT_USER:-minioadmin}
+    secret_key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    path_style_access: true
+
+  # Table defaults
+  defaults:
+    write_format: parquet
+    compression: zstd
+    target_file_size: 134217728  # 128MB
+    partition_spec: days(created_at)
+
+  # Tables configuration
+  tables:
+    debates:
+      namespace: helixagent
+      name: debates
+      partition_by: days(created_at)
+      sort_by: debate_id
+
+    agent_memory:
+      namespace: helixagent
+      name: agent_memory
+      partition_by:
+        - days(created_at)
+        - agent_id
+
+    provider_analytics:
+      namespace: helixagent
+      name: provider_analytics
+      partition_by:
+        - hours(hour)
+        - provider_id
+
+    audit_log:
+      namespace: helixagent
+      name: audit_log
+      partition_by: days(timestamp)
+      retention_days: 365
+
+  # Maintenance
+  maintenance:
+    expire_snapshots:
+      enabled: true
+      older_than_days: 7
+    delete_orphan_files:
+      enabled: true
+      older_than_days: 3
+    rewrite_data_files:
+      enabled: true
+      target_size: 134217728
+    rewrite_manifests:
+      enabled: true
+
+# ===========================================
+# Apache Spark Configuration
+# ===========================================
+spark:
+  # Cluster settings
+  master: spark://${SPARK_MASTER_HOST:-localhost}:${SPARK_MASTER_PORT:-7077}
+  app_name: HelixAgent-Spark
+
+  # Resource settings
+  driver:
+    memory: ${SPARK_DRIVER_MEMORY:-2g}
+    cores: 2
+
+  executor:
+    memory: ${SPARK_EXECUTOR_MEMORY:-2g}
+    cores: ${SPARK_WORKER_CORES:-2}
+    instances: ${SPARK_WORKER_REPLICAS:-2}
+
+  # History server
+  history:
+    enabled: true
+    port: ${SPARK_HISTORY_PORT:-18080}
+    log_directory: s3a://helixagent-spark/history
+
+  # Iceberg integration
+  iceberg:
+    catalog_name: helixagent
+    catalog_type: rest
+    catalog_uri: http://${ICEBERG_REST_HOST:-localhost}:${ICEBERG_REST_PORT:-8181}
+
+  # S3 (MinIO) integration
+  s3:
+    endpoint: http://${MINIO_ENDPOINT:-localhost:9000}
+    access_key: ${MINIO_ROOT_USER:-minioadmin}
+    secret_key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    path_style_access: true
+
+  # Jobs configuration
+  jobs:
+    debate_analytics:
+      schedule: "0 * * * *"  # Every hour
+      timeout: 30m
+
+    provider_performance:
+      schedule: "0 */6 * * *"  # Every 6 hours
+      timeout: 1h
+
+    user_behavior:
+      schedule: "0 0 * * *"  # Daily at midnight
+      timeout: 2h
+
+    cost_optimization:
+      schedule: "0 0 * * 0"  # Weekly on Sunday
+      timeout: 4h
+
+# ===========================================
+# Qdrant Vector Database Configuration
+# ===========================================
+qdrant:
+  # Connection settings
+  host: ${QDRANT_HOST:-localhost}
+  http_port: ${QDRANT_HTTP_PORT:-6333}
+  grpc_port: ${QDRANT_GRPC_PORT:-6334}
+  api_key: ${QDRANT_API_KEY:-}  # Optional API key
+
+  # Connection options
+  timeout: 30s
+  max_retries: 3
+  retry_delay: 1s
+
+  # Collection configuration
+  collections:
+    debate_contexts:
+      vector_size: 1536
+      distance: Cosine
+      on_disk_payload: false
+      indexing_threshold: 20000
+      quantization: null
+
+    agent_memory:
+      vector_size: 1536
+      distance: Cosine
+      on_disk_payload: false
+      indexing_threshold: 20000
+
+    tool_descriptions:
+      vector_size: 768
+      distance: Cosine
+      on_disk_payload: false
+
+    document_chunks:
+      vector_size: 1536
+      distance: Cosine
+      on_disk_payload: true
+      indexing_threshold: 20000
+
+    user_preferences:
+      vector_size: 768
+      distance: Cosine
+      on_disk_payload: false
+
+  # Search settings
+  search:
+    default_limit: 10
+    score_threshold: 0.7
+    with_payload: true
+    with_vectors: false
+
+  # RAG pipeline settings
+  rag:
+    chunk_size: 512
+    chunk_overlap: 50
+    top_k: 5
+    rerank_enabled: true
+    rerank_top_k: 3
+
+# ===========================================
+# Apache Superset Configuration
+# ===========================================
+superset:
+  # Connection settings
+  host: ${SUPERSET_HOST:-localhost}
+  port: ${SUPERSET_PORT:-8088}
+
+  # Admin credentials (for initialization)
+  admin:
+    username: ${SUPERSET_ADMIN_USER:-admin}
+    password: ${SUPERSET_ADMIN_PASSWORD:-admin123}
+    email: ${SUPERSET_ADMIN_EMAIL:-admin@helixagent.ai}
+
+  # Database connections to create
+  databases:
+    - name: HelixAgent PostgreSQL
+      connection_string: postgresql://${DB_USER:-helixagent}:${DB_PASSWORD:-helixagent123}@postgres:5432/${DB_NAME:-helixagent_db}
+      allow_run_async: true
+      allow_ctas: true
+      allow_cvas: true
+      expose_in_sqllab: true
+
+  # Default dashboards to import
+  dashboards:
+    - debate_performance
+    - provider_health
+    - user_analytics
+    - system_performance
+
+# ===========================================
+# Event Sink Configuration
+# ===========================================
+event_sink:
+  # Kafka topics to archive to MinIO
+  archive:
+    enabled: true
+    topics:
+      - helixagent.events.audit
+      - helixagent.events.debate.rounds
+      - helixagent.events.llm.responses
+    format: parquet
+    batch_size: 10000
+    batch_interval: 5m
+
+  # Kafka topics to stream to Iceberg
+  lakehouse:
+    enabled: true
+    topics:
+      - helixagent.events.debate.rounds
+      - helixagent.events.metrics
+    table_mapping:
+      helixagent.events.debate.rounds: helixagent.debates
+      helixagent.events.metrics: helixagent.provider_analytics
+
+  # Kafka topics for vector indexing
+  vector_index:
+    enabled: true
+    topics:
+      - helixagent.events.debate.rounds
+    collection: debate_contexts
+    embedding_provider: openai  # openai, cohere, local
+
+# ===========================================
+# Health Check Configuration
+# ===========================================
+health:
+  # Check intervals
+  interval: 30s
+
+  # Services to check
+  services:
+    minio:
+      enabled: true
+      endpoint: http://${MINIO_ENDPOINT:-localhost:9000}/minio/health/live
+    flink:
+      enabled: true
+      endpoint: http://${FLINK_JOBMANAGER_HOST:-localhost}:${FLINK_UI_PORT:-8082}/overview
+    iceberg:
+      enabled: true
+      endpoint: http://${ICEBERG_REST_HOST:-localhost}:${ICEBERG_REST_PORT:-8181}/v1/config
+    qdrant:
+      enabled: true
+      endpoint: http://${QDRANT_HOST:-localhost}:${QDRANT_HTTP_PORT:-6333}/health
+    spark:
+      enabled: true
+      endpoint: http://${SPARK_MASTER_HOST:-localhost}:4040
+    superset:
+      enabled: true
+      endpoint: http://${SUPERSET_HOST:-localhost}:${SUPERSET_PORT:-8088}/health

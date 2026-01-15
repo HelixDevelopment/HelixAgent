@@ -1,0 +1,476 @@
+version: '3.8'
+
+# Big Data infrastructure for HelixAgent
+# Includes: Apache Flink, MinIO, Apache Iceberg, Qdrant, Apache Spark
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.messaging.yml -f docker-compose.bigdata.yml up -d
+
+services:
+  # ===========================================
+  # OBJECT STORAGE LAYER - MinIO
+  # ===========================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: helixagent-minio
+    hostname: minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"         # S3 API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Console UI
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: helixagent-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - helixagent-network
+    entrypoint: /bin/sh -c
+    command: |
+      "
+      echo 'Configuring MinIO...'
+
+      # Configure alias
+      mc alias set helixagent http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123}
+
+      # Create buckets
+      mc mb --ignore-existing helixagent/helixagent-events
+      mc mb --ignore-existing helixagent/helixagent-checkpoints
+      mc mb --ignore-existing helixagent/helixagent-iceberg
+      mc mb --ignore-existing helixagent/helixagent-models
+      mc mb --ignore-existing helixagent/helixagent-audit
+      mc mb --ignore-existing helixagent/helixagent-flink
+      mc mb --ignore-existing helixagent/helixagent-spark
+
+      # Set lifecycle policies
+      mc ilm rule add --expire-days 90 helixagent/helixagent-events || true
+      mc ilm rule add --expire-days 365 helixagent/helixagent-audit || true
+      mc ilm rule add --expire-days 30 helixagent/helixagent-checkpoints || true
+
+      # Set public read for specific buckets (if needed)
+      mc anonymous set download helixagent/helixagent-models || true
+
+      echo 'MinIO configuration complete!'
+      mc ls helixagent/
+      "
+    profiles:
+      - bigdata
+      - full
+
+  # ===========================================
+  # STREAM PROCESSING LAYER - Apache Flink
+  # ===========================================
+
+  flink-jobmanager:
+    image: flink:1.19-java17
+    container_name: helixagent-flink-jobmanager
+    hostname: flink-jobmanager
+    ports:
+      - "${FLINK_UI_PORT:-8082}:8081"       # Flink Web UI
+      - "${FLINK_RPC_PORT:-6123}:6123"      # RPC
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.rpc.port: 6123
+        jobmanager.memory.process.size: 1600m
+        jobmanager.execution.failover-strategy: region
+        state.backend: rocksdb
+        state.backend.incremental: true
+        state.checkpoints.dir: s3://helixagent-checkpoints/flink
+        state.savepoints.dir: s3://helixagent-checkpoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.path-style-access: true
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+        execution.checkpointing.interval: 60000
+        execution.checkpointing.mode: EXACTLY_ONCE
+        execution.checkpointing.min-pause: 500
+        execution.checkpointing.timeout: 600000
+        restart-strategy: fixed-delay
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 10s
+        metrics.reporters: prometheus
+        metrics.reporter.prometheus.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prometheus.port: 9249
+    volumes:
+      - flink_jobmanager_data:/opt/flink/data
+      - ./flink-jobs:/opt/flink/usrlib
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+    profiles:
+      - bigdata
+      - full
+
+  flink-taskmanager:
+    image: flink:1.19-java17
+    container_name: helixagent-flink-taskmanager
+    hostname: flink-taskmanager
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      TASK_MANAGER_NUMBER_OF_TASK_SLOTS: ${FLINK_TASK_SLOTS:-4}
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: ${FLINK_TASK_SLOTS:-4}
+        taskmanager.memory.process.size: 2048m
+        taskmanager.memory.managed.fraction: 0.4
+        state.backend: rocksdb
+        s3.endpoint: http://minio:9000
+        s3.path-style-access: true
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+        metrics.reporters: prometheus
+        metrics.reporter.prometheus.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prometheus.port: 9249
+    volumes:
+      - flink_taskmanager_data:/opt/flink/data
+      - ./flink-jobs:/opt/flink/usrlib
+    networks:
+      - helixagent-network
+    deploy:
+      replicas: ${FLINK_TASKMANAGER_REPLICAS:-2}
+      resources:
+        limits:
+          memory: 2560M
+        reservations:
+          memory: 2048M
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  # Flink History Server (optional, for completed job history)
+  flink-historyserver:
+    image: flink:1.19-java17
+    container_name: helixagent-flink-historyserver
+    hostname: flink-historyserver
+    ports:
+      - "${FLINK_HISTORY_PORT:-8083}:8082"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.archive.fs.dir: s3://helixagent-flink/completed-jobs
+        historyserver.web.address: 0.0.0.0
+        historyserver.web.port: 8082
+        historyserver.archive.fs.dir: s3://helixagent-flink/completed-jobs
+        historyserver.archive.fs.refresh-interval: 10000
+        s3.endpoint: http://minio:9000
+        s3.path-style-access: true
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    command: historyserver
+    volumes:
+      - flink_history_data:/opt/flink/data
+    networks:
+      - helixagent-network
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - bigdata-ui
+      - full
+
+  # ===========================================
+  # DATA LAKEHOUSE LAYER - Apache Iceberg
+  # ===========================================
+
+  # Iceberg REST Catalog
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: helixagent-iceberg-rest
+    hostname: iceberg-rest
+    ports:
+      - "${ICEBERG_REST_PORT:-8181}:8181"
+    environment:
+      CATALOG_WAREHOUSE: s3://helixagent-iceberg/warehouse
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      AWS_REGION: us-east-1
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/v1/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  # ===========================================
+  # BATCH PROCESSING LAYER - Apache Spark
+  # ===========================================
+
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: helixagent-spark-master
+    hostname: spark-master
+    ports:
+      - "${SPARK_MASTER_PORT:-7077}:7077"   # Master port
+      - "${SPARK_MASTER_UI_PORT:-4040}:8080" # Master UI
+    environment:
+      SPARK_MODE: master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    volumes:
+      - spark_master_data:/bitnami/spark
+      - ./spark-jobs:/opt/spark/work-dir
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: helixagent-spark-worker
+    hostname: spark-worker
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-2}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-2g}
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    volumes:
+      - spark_worker_data:/bitnami/spark
+      - ./spark-jobs:/opt/spark/work-dir
+    networks:
+      - helixagent-network
+    deploy:
+      replicas: ${SPARK_WORKER_REPLICAS:-2}
+      resources:
+        limits:
+          memory: 2560M
+        reservations:
+          memory: 2048M
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  # Spark History Server
+  spark-history:
+    image: bitnami/spark:3.5
+    container_name: helixagent-spark-history
+    hostname: spark-history
+    ports:
+      - "${SPARK_HISTORY_PORT:-18080}:18080"
+    environment:
+      SPARK_MODE: master
+      SPARK_HISTORY_OPTS: >-
+        -Dspark.history.fs.logDirectory=s3a://helixagent-spark/history
+        -Dspark.hadoop.fs.s3a.endpoint=http://minio:9000
+        -Dspark.hadoop.fs.s3a.access.key=${MINIO_ROOT_USER:-minioadmin}
+        -Dspark.hadoop.fs.s3a.secret.key=${MINIO_ROOT_PASSWORD:-minioadmin123}
+        -Dspark.hadoop.fs.s3a.path.style.access=true
+    command: /opt/bitnami/spark/sbin/start-history-server.sh
+    volumes:
+      - spark_history_data:/bitnami/spark
+    networks:
+      - helixagent-network
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - bigdata-ui
+      - full
+
+  # ===========================================
+  # VECTOR DATABASE LAYER - Qdrant
+  # ===========================================
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: helixagent-qdrant
+    hostname: qdrant
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"   # REST API
+      - "${QDRANT_GRPC_PORT:-6334}:6334"   # gRPC API
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__TELEMETRY_DISABLED: "true"
+      QDRANT__LOG_LEVEL: INFO
+      QDRANT__STORAGE__STORAGE_PATH: /qdrant/storage
+      QDRANT__STORAGE__SNAPSHOTS_PATH: /qdrant/snapshots
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    profiles:
+      - bigdata
+      - full
+
+  # Qdrant collection initialization
+  qdrant-init:
+    image: curlimages/curl:latest
+    container_name: helixagent-qdrant-init
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    networks:
+      - helixagent-network
+    entrypoint: /bin/sh -c
+    command: |
+      "
+      echo 'Creating Qdrant collections...'
+
+      # debate_contexts collection (1536 dims for OpenAI embeddings)
+      curl -X PUT http://qdrant:6333/collections/debate_contexts \
+        -H 'Content-Type: application/json' \
+        -d '{
+          \"vectors\": {
+            \"size\": 1536,
+            \"distance\": \"Cosine\"
+          },
+          \"optimizers_config\": {
+            \"indexing_threshold\": 20000
+          },
+          \"replication_factor\": 1
+        }' || true
+
+      # agent_memory collection
+      curl -X PUT http://qdrant:6333/collections/agent_memory \
+        -H 'Content-Type: application/json' \
+        -d '{
+          \"vectors\": {
+            \"size\": 1536,
+            \"distance\": \"Cosine\"
+          },
+          \"optimizers_config\": {
+            \"indexing_threshold\": 20000
+          }
+        }' || true
+
+      # tool_descriptions collection (768 dims for smaller models)
+      curl -X PUT http://qdrant:6333/collections/tool_descriptions \
+        -H 'Content-Type: application/json' \
+        -d '{
+          \"vectors\": {
+            \"size\": 768,
+            \"distance\": \"Cosine\"
+          }
+        }' || true
+
+      # document_chunks collection (RAG)
+      curl -X PUT http://qdrant:6333/collections/document_chunks \
+        -H 'Content-Type: application/json' \
+        -d '{
+          \"vectors\": {
+            \"size\": 1536,
+            \"distance\": \"Cosine\"
+          },
+          \"optimizers_config\": {
+            \"indexing_threshold\": 20000
+          },
+          \"on_disk_payload\": true
+        }' || true
+
+      # user_preferences collection
+      curl -X PUT http://qdrant:6333/collections/user_preferences \
+        -H 'Content-Type: application/json' \
+        -d '{
+          \"vectors\": {
+            \"size\": 768,
+            \"distance\": \"Cosine\"
+          }
+        }' || true
+
+      echo ''
+      echo 'Qdrant collections created!'
+      curl -s http://qdrant:6333/collections | head -100
+      "
+    profiles:
+      - bigdata
+      - full
+
+volumes:
+  minio_data:
+    driver: local
+  flink_jobmanager_data:
+    driver: local
+  flink_taskmanager_data:
+    driver: local
+  flink_history_data:
+    driver: local
+  spark_master_data:
+    driver: local
+  spark_worker_data:
+    driver: local
+  spark_history_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  qdrant_snapshots:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

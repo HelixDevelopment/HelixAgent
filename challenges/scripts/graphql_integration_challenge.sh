@@ -1,286 +1,277 @@
 #!/bin/bash
-# graphql_integration_challenge.sh - GraphQL Integration Challenge
-# Tests GraphQL API implementation for HelixAgent
 
-set -e
+# GraphQL Integration Challenge Script
+# Tests GraphQL schema, resolvers, handler, and TOON integration
+
+# Don't exit on error - we want to run all tests
+set +e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-source "$SCRIPT_DIR/common.sh"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-CHALLENGE_NAME="GraphQL Integration Challenge"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Test counters
 PASSED=0
 FAILED=0
 TOTAL=0
 
-log_test() {
-    local test_name="$1"
-    local status="$2"
+# Increment test counter
+increment_test() {
     TOTAL=$((TOTAL + 1))
-    if [ "$status" = "PASS" ]; then
-        PASSED=$((PASSED + 1))
-        echo -e "  \e[32m✓\e[0m $test_name"
-    else
-        FAILED=$((FAILED + 1))
-        echo -e "  \e[31m✗\e[0m $test_name"
+}
+
+# Mark test as passed
+pass_test() {
+    local test_name="$1"
+    PASSED=$((PASSED + 1))
+    echo -e "${GREEN}✓ PASS:${NC} $test_name"
+}
+
+# Mark test as failed
+fail_test() {
+    local test_name="$1"
+    local error_msg="$2"
+    FAILED=$((FAILED + 1))
+    echo -e "${RED}✗ FAIL:${NC} $test_name"
+    if [ -n "$error_msg" ]; then
+        echo -e "  ${RED}Error:${NC} $error_msg"
     fi
 }
 
-echo "=============================================="
-echo "  $CHALLENGE_NAME"
-echo "=============================================="
-echo ""
+# Print section header
+print_section() {
+    echo -e "\n${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  $1${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+}
 
-cd "$PROJECT_ROOT"
+# Test that a file exists
+test_file_exists() {
+    local file="$1"
+    local test_name="$2"
+    increment_test
+    if [ -f "$file" ]; then
+        pass_test "$test_name"
+        return 0
+    else
+        fail_test "$test_name" "File not found: $file"
+        return 1
+    fi
+}
 
-# Test 1: GraphQL package structure
-echo "[1] GraphQL Package Structure"
-if [ -f "internal/graphql/schema.go" ]; then
-    log_test "schema.go exists" "PASS"
-else
-    log_test "schema.go exists" "FAIL"
-fi
+# Test that a directory exists
+test_dir_exists() {
+    local dir="$1"
+    local test_name="$2"
+    increment_test
+    if [ -d "$dir" ]; then
+        pass_test "$test_name"
+        return 0
+    else
+        fail_test "$test_name" "Directory not found: $dir"
+        return 1
+    fi
+}
 
-if [ -f "internal/graphql/schema_test.go" ]; then
-    log_test "schema_test.go exists" "PASS"
-else
-    log_test "schema_test.go exists" "FAIL"
-fi
+# Test Go code compiles
+test_go_build() {
+    local package="$1"
+    local test_name="$2"
+    increment_test
+    if go build -o /dev/null "$package" 2>/dev/null; then
+        pass_test "$test_name"
+        return 0
+    else
+        fail_test "$test_name" "Build failed for package: $package"
+        return 1
+    fi
+}
 
-if [ -d "internal/graphql/types" ]; then
-    log_test "types directory exists" "PASS"
-else
-    log_test "types directory exists" "FAIL"
-fi
+# Test Go tests pass
+test_go_tests() {
+    local package="$1"
+    local test_name="$2"
+    increment_test
+    if go test -v "$package" >/dev/null 2>&1; then
+        pass_test "$test_name"
+        return 0
+    else
+        fail_test "$test_name" "Tests failed for package: $package"
+        return 1
+    fi
+}
 
-if [ -f "internal/graphql/types/types.go" ]; then
-    log_test "types/types.go exists" "PASS"
-else
-    log_test "types/types.go exists" "FAIL"
-fi
+# Test file contains pattern
+test_file_contains() {
+    local file="$1"
+    local pattern="$2"
+    local test_name="$3"
+    increment_test
+    if grep -q "$pattern" "$file" 2>/dev/null; then
+        pass_test "$test_name"
+        return 0
+    else
+        fail_test "$test_name" "Pattern '$pattern' not found in $file"
+        return 1
+    fi
+}
 
-# Test 2: Schema types defined
-echo ""
-echo "[2] Schema Types"
-if grep -q "QueryType" internal/graphql/schema.go 2>/dev/null; then
-    log_test "QueryType defined" "PASS"
-else
-    log_test "QueryType defined" "FAIL"
-fi
+# Main challenge execution
+main() {
+    echo -e "${YELLOW}"
+    echo "╔════════════════════════════════════════════════════════════════╗"
+    echo "║       HelixAgent GraphQL Integration Challenge                 ║"
+    echo "║                                                                ║"
+    echo "║   Testing GraphQL schema, resolvers, handler, TOON            ║"
+    echo "╚════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
 
-if grep -q "MutationType" internal/graphql/schema.go 2>/dev/null; then
-    log_test "MutationType defined" "PASS"
-else
-    log_test "MutationType defined" "FAIL"
-fi
+    cd "$PROJECT_ROOT"
 
-if grep -q "providerType" internal/graphql/schema.go 2>/dev/null; then
-    log_test "providerType defined" "PASS"
-else
-    log_test "providerType defined" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 1: GraphQL Schema Tests
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 1: GraphQL Schema Structure"
 
-if grep -q "debateType" internal/graphql/schema.go 2>/dev/null; then
-    log_test "debateType defined" "PASS"
-else
-    log_test "debateType defined" "FAIL"
-fi
+    test_file_exists "internal/graphql/schema.go" "GraphQL schema file exists"
+    test_file_exists "internal/graphql/schema_test.go" "GraphQL schema tests exist"
+    test_dir_exists "internal/graphql/types" "GraphQL types directory exists"
+    test_file_exists "internal/graphql/types/types.go" "GraphQL types definition exists"
 
-if grep -q "taskType" internal/graphql/schema.go 2>/dev/null; then
-    log_test "taskType defined" "PASS"
-else
-    log_test "taskType defined" "FAIL"
-fi
+    # Check schema defines required types
+    test_file_contains "internal/graphql/schema.go" "QueryType" "Schema defines QueryType"
+    test_file_contains "internal/graphql/schema.go" "MutationType" "Schema defines MutationType"
+    test_file_contains "internal/graphql/schema.go" "providerType" "Schema defines Provider type"
+    test_file_contains "internal/graphql/schema.go" "debateType" "Schema defines Debate type"
+    test_file_contains "internal/graphql/schema.go" "taskType" "Schema defines Task type"
 
-# Test 3: Query fields
-echo ""
-echo "[3] Query Fields"
-if grep -q '"providers"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "providers query field" "PASS"
-else
-    log_test "providers query field" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 2: GraphQL Resolvers Tests
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 2: GraphQL Resolvers"
 
-if grep -q '"debates"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "debates query field" "PASS"
-else
-    log_test "debates query field" "FAIL"
-fi
+    test_dir_exists "internal/graphql/resolvers" "Resolvers directory exists"
+    test_file_exists "internal/graphql/resolvers/resolvers.go" "Resolvers implementation exists"
+    test_file_exists "internal/graphql/resolvers/resolvers_test.go" "Resolvers tests exist"
 
-if grep -q '"tasks"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "tasks query field" "PASS"
-else
-    log_test "tasks query field" "FAIL"
-fi
+    # Check resolver functions
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveProviders" "ResolveProviders function defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveDebates" "ResolveDebates function defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveTasks" "ResolveTasks function defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveVerificationResults" "ResolveVerificationResults function defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveCreateDebate" "ResolveCreateDebate mutation defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolveCreateTask" "ResolveCreateTask mutation defined"
 
-if grep -q '"verificationResults"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "verificationResults query field" "PASS"
-else
-    log_test "verificationResults query field" "FAIL"
-fi
+    # Check resolver context
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ResolverContext" "ResolverContext struct defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "ServiceRegistry" "ServiceRegistry interface defined"
+    test_file_contains "internal/graphql/resolvers/resolvers.go" "SetGlobalContext" "SetGlobalContext function defined"
 
-if grep -q '"providerScores"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "providerScores query field" "PASS"
-else
-    log_test "providerScores query field" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 3: GraphQL Handler Tests
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 3: GraphQL HTTP Handler"
 
-# Test 4: Mutation fields
-echo ""
-echo "[4] Mutation Fields"
-if grep -q '"createDebate"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "createDebate mutation" "PASS"
-else
-    log_test "createDebate mutation" "FAIL"
-fi
+    test_file_exists "internal/handlers/graphql_handler.go" "GraphQL handler exists"
+    test_file_exists "internal/handlers/graphql_handler_test.go" "GraphQL handler tests exist"
 
-if grep -q '"submitDebateResponse"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "submitDebateResponse mutation" "PASS"
-else
-    log_test "submitDebateResponse mutation" "FAIL"
-fi
+    # Check handler features
+    test_file_contains "internal/handlers/graphql_handler.go" "GraphQLHandler" "GraphQLHandler struct defined"
+    test_file_contains "internal/handlers/graphql_handler.go" "Handle(" "Handle method defined"
+    test_file_contains "internal/handlers/graphql_handler.go" "HandleIntrospection" "Introspection handler defined"
+    test_file_contains "internal/handlers/graphql_handler.go" "HandlePlayground" "Playground handler defined"
+    test_file_contains "internal/handlers/graphql_handler.go" "HandleBatch" "Batch handler defined"
+    test_file_contains "internal/handlers/graphql_handler.go" "RegisterRoutes" "RegisterRoutes method defined"
 
-if grep -q '"createTask"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "createTask mutation" "PASS"
-else
-    log_test "createTask mutation" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 4: TOON Integration Tests
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 4: TOON Transport Layer"
 
-if grep -q '"cancelTask"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "cancelTask mutation" "PASS"
-else
-    log_test "cancelTask mutation" "FAIL"
-fi
+    test_dir_exists "internal/toon" "TOON directory exists"
+    test_file_exists "internal/toon/encoder.go" "TOON encoder exists"
+    test_file_exists "internal/toon/transport.go" "TOON transport exists"
+    test_file_exists "internal/toon/encoder_test.go" "TOON encoder tests exist"
+    test_file_exists "internal/toon/transport_test.go" "TOON transport tests exist"
 
-if grep -q '"refreshProvider"' internal/graphql/schema.go 2>/dev/null; then
-    log_test "refreshProvider mutation" "PASS"
-else
-    log_test "refreshProvider mutation" "FAIL"
-fi
+    # Check TOON features
+    test_file_contains "internal/toon/encoder.go" "CompressionLevel" "CompressionLevel type defined"
+    test_file_contains "internal/toon/encoder.go" "Encoder" "Encoder struct defined"
+    test_file_contains "internal/toon/encoder.go" "Decoder" "Decoder struct defined"
+    test_file_contains "internal/toon/encoder.go" "DefaultKeyMapping" "DefaultKeyMapping function defined"
+    test_file_contains "internal/toon/transport.go" "Transport" "Transport struct defined"
+    test_file_contains "internal/toon/transport.go" "Middleware" "Middleware struct defined"
 
-# Test 5: Input types
-echo ""
-echo "[5] Input Types"
-if grep -q "providerFilterInput" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ProviderFilter input type" "PASS"
-else
-    log_test "ProviderFilter input type" "FAIL"
-fi
+    # Check GraphQL-TOON integration
+    test_file_contains "internal/handlers/graphql_handler.go" "toonEncoder" "GraphQL handler has TOON encoder"
+    test_file_contains "internal/handlers/graphql_handler.go" "application/toon+json" "TOON content type supported"
 
-if grep -q "createDebateInput" internal/graphql/schema.go 2>/dev/null; then
-    log_test "CreateDebateInput type" "PASS"
-else
-    log_test "CreateDebateInput type" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 5: GraphQL Types Tests
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 5: GraphQL Types"
 
-if grep -q "createTaskInput" internal/graphql/schema.go 2>/dev/null; then
-    log_test "CreateTaskInput type" "PASS"
-else
-    log_test "CreateTaskInput type" "FAIL"
-fi
+    # Check type definitions
+    test_file_contains "internal/graphql/types/types.go" "type Provider struct" "Provider type defined"
+    test_file_contains "internal/graphql/types/types.go" "type Model struct" "Model type defined"
+    test_file_contains "internal/graphql/types/types.go" "type Debate struct" "Debate type defined"
+    test_file_contains "internal/graphql/types/types.go" "type DebateRound struct" "DebateRound type defined"
+    test_file_contains "internal/graphql/types/types.go" "type Task struct" "Task type defined"
+    test_file_contains "internal/graphql/types/types.go" "type VerificationResults struct" "VerificationResults type defined"
+    test_file_contains "internal/graphql/types/types.go" "type ProviderScore struct" "ProviderScore type defined"
 
-# Test 6: Resolvers
-echo ""
-echo "[6] Resolvers"
-if grep -q "ResolveProviders" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ResolveProviders resolver" "PASS"
-else
-    log_test "ResolveProviders resolver" "FAIL"
-fi
+    # Check input types
+    test_file_contains "internal/graphql/types/types.go" "type ProviderFilter struct" "ProviderFilter input defined"
+    test_file_contains "internal/graphql/types/types.go" "type CreateDebateInput struct" "CreateDebateInput defined"
+    test_file_contains "internal/graphql/types/types.go" "type CreateTaskInput struct" "CreateTaskInput defined"
 
-if grep -q "ResolveDebates" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ResolveDebates resolver" "PASS"
-else
-    log_test "ResolveDebates resolver" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 6: Go Test Execution
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 6: Test Execution"
 
-if grep -q "ResolveTasks" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ResolveTasks resolver" "PASS"
-else
-    log_test "ResolveTasks resolver" "FAIL"
-fi
+    test_go_tests "./internal/graphql/..." "GraphQL package tests pass"
+    test_go_tests "./internal/graphql/resolvers/..." "GraphQL resolvers tests pass"
+    test_go_tests "./internal/toon/..." "TOON package tests pass"
+    test_go_tests "./internal/handlers/..." "Handlers tests pass"
 
-if grep -q "ResolveCreateDebate" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ResolveCreateDebate resolver" "PASS"
-else
-    log_test "ResolveCreateDebate resolver" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # SECTION 7: Build Verification
+    # ══════════════════════════════════════════════════════════════════
+    print_section "Section 7: Build Verification"
 
-# Test 7: Schema initialization
-echo ""
-echo "[7] Schema Initialization"
-if grep -q "InitSchema" internal/graphql/schema.go 2>/dev/null; then
-    log_test "InitSchema function" "PASS"
-else
-    log_test "InitSchema function" "FAIL"
-fi
+    test_go_build "./internal/graphql/..." "GraphQL packages build successfully"
+    test_go_build "./internal/toon/..." "TOON packages build successfully"
+    test_go_build "./internal/handlers/..." "Handlers package builds successfully"
 
-if grep -q "ExecuteQuery" internal/graphql/schema.go 2>/dev/null; then
-    log_test "ExecuteQuery function" "PASS"
-else
-    log_test "ExecuteQuery function" "FAIL"
-fi
+    # ══════════════════════════════════════════════════════════════════
+    # FINAL RESULTS
+    # ══════════════════════════════════════════════════════════════════
+    echo -e "\n${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  CHALLENGE RESULTS${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
 
-# Test 8: Types package
-echo ""
-echo "[8] Types Package"
-if grep -q "type Provider struct" internal/graphql/types/types.go 2>/dev/null; then
-    log_test "Provider struct" "PASS"
-else
-    log_test "Provider struct" "FAIL"
-fi
+    echo -e "  Total Tests:  ${TOTAL}"
+    echo -e "  ${GREEN}Passed:       ${PASSED}${NC}"
+    echo -e "  ${RED}Failed:       ${FAILED}${NC}"
 
-if grep -q "type Model struct" internal/graphql/types/types.go 2>/dev/null; then
-    log_test "Model struct" "PASS"
-else
-    log_test "Model struct" "FAIL"
-fi
+    if [ $FAILED -eq 0 ]; then
+        echo -e "\n${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║        ALL GRAPHQL INTEGRATION TESTS PASSED!                   ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}\n"
+        exit 0
+    else
+        echo -e "\n${RED}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║        SOME TESTS FAILED - SEE OUTPUT ABOVE                    ║${NC}"
+        echo -e "${RED}╚════════════════════════════════════════════════════════════════╝${NC}\n"
+        exit 1
+    fi
+}
 
-if grep -q "type Debate struct" internal/graphql/types/types.go 2>/dev/null; then
-    log_test "Debate struct" "PASS"
-else
-    log_test "Debate struct" "FAIL"
-fi
-
-if grep -q "type Task struct" internal/graphql/types/types.go 2>/dev/null; then
-    log_test "Task struct" "PASS"
-else
-    log_test "Task struct" "FAIL"
-fi
-
-if grep -q "type VerificationResults struct" internal/graphql/types/types.go 2>/dev/null; then
-    log_test "VerificationResults struct" "PASS"
-else
-    log_test "VerificationResults struct" "FAIL"
-fi
-
-# Test 9: Unit tests
-echo ""
-echo "[9] Unit Tests"
-if go test -v ./internal/graphql/... -count=1 2>&1 | grep -q "PASS"; then
-    log_test "GraphQL unit tests pass" "PASS"
-else
-    log_test "GraphQL unit tests pass" "FAIL"
-fi
-
-# Test 10: graphql-go dependency
-echo ""
-echo "[10] Dependencies"
-if grep -q "graphql-go/graphql" go.mod 2>/dev/null; then
-    log_test "graphql-go in go.mod" "PASS"
-else
-    log_test "graphql-go in go.mod" "FAIL"
-fi
-
-echo ""
-echo "=============================================="
-echo "  Results: $PASSED/$TOTAL tests passed"
-echo "=============================================="
-
-if [ $FAILED -gt 0 ]; then
-    echo -e "\e[31m$FAILED test(s) failed\e[0m"
-    exit 1
-else
-    echo -e "\e[32mAll tests passed!\e[0m"
-    exit 0
-fi
+main "$@"

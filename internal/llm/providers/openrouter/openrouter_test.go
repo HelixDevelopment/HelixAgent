@@ -567,3 +567,877 @@ func TestSimpleOpenRouterProvider_Complete_ContextTimeout(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
+
+// Test isRetryableStatus function
+func TestIsRetryableStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		expected   bool
+	}{
+		{"429 Too Many Requests", http.StatusTooManyRequests, true},
+		{"500 Internal Server Error", http.StatusInternalServerError, true},
+		{"502 Bad Gateway", http.StatusBadGateway, true},
+		{"503 Service Unavailable", http.StatusServiceUnavailable, true},
+		{"504 Gateway Timeout", http.StatusGatewayTimeout, true},
+		{"200 OK", http.StatusOK, false},
+		{"400 Bad Request", http.StatusBadRequest, false},
+		{"401 Unauthorized", http.StatusUnauthorized, false},
+		{"403 Forbidden", http.StatusForbidden, false},
+		{"404 Not Found", http.StatusNotFound, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isRetryableStatus(tt.statusCode)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Test isAuthRetryableStatus function
+func TestIsAuthRetryableStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		expected   bool
+	}{
+		{"401 Unauthorized", http.StatusUnauthorized, true},
+		{"200 OK", http.StatusOK, false},
+		{"403 Forbidden", http.StatusForbidden, false},
+		{"429 Too Many Requests", http.StatusTooManyRequests, false},
+		{"500 Internal Server Error", http.StatusInternalServerError, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isAuthRetryableStatus(tt.statusCode)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Test Complete with retry on server error
+func TestSimpleOpenRouterProvider_Complete_RetryOnServerError(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		response := map[string]interface{}{
+			"id": "chatcmpl-retry",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "Success after retry",
+					},
+				},
+			},
+			"created": 1677858242,
+			"model":   "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithRetry("test-key", server.URL, RetryConfig{
+		MaxRetries:   5,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID: "test-retry",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "Success after retry", resp.Content)
+	assert.Equal(t, 3, attempts)
+}
+
+// Test Complete with all retries exhausted (network error path)
+func TestSimpleOpenRouterProvider_Complete_RetryExhausted(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		// Return 503 with an error body (so decode succeeds but API error is returned)
+		response := map[string]interface{}{
+			"error": map[string]interface{}{
+				"message": "Service unavailable",
+				"type":    "server_error",
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithRetry("test-key", server.URL, RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     50 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID: "test-exhaust",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	// After retries exhausted, the final 503 response is decoded and returns API error
+	assert.Contains(t, err.Error(), "Service unavailable")
+	assert.Equal(t, 3, attempts) // Initial + 2 retries
+}
+
+// Test Complete with network failure during retry
+func TestSimpleOpenRouterProvider_Complete_RetryNetworkFailure(t *testing.T) {
+	// Use an invalid address to simulate network failure
+	provider := NewSimpleOpenRouterProviderWithRetry("test-key", "http://localhost:1", RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     50 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+	provider.client = &http.Client{Timeout: 50 * time.Millisecond}
+
+	req := &models.LLMRequest{
+		ID: "test-net-fail",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	// Network failures return "OpenRouter API request failed" error after retries exhausted
+	assert.Contains(t, err.Error(), "OpenRouter API request failed")
+}
+
+// Test Complete with rate limiting (429)
+func TestSimpleOpenRouterProvider_Complete_RateLimited429(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		response := map[string]interface{}{
+			"id": "chatcmpl-rate",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "OK after rate limit",
+					},
+				},
+			},
+			"created": 1677858242,
+			"model":   "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithRetry("test-key", server.URL, RetryConfig{
+		MaxRetries:   3,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID: "test-rate",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "OK after rate limit", resp.Content)
+	assert.Equal(t, 2, attempts)
+}
+
+// Test Complete with nil context (should use default)
+func TestSimpleOpenRouterProvider_Complete_NilContext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := map[string]interface{}{
+			"id": "chatcmpl-nil-ctx",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "Response with nil context",
+					},
+				},
+			},
+			"created": 1677858242,
+			"model":   "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-nil-ctx",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	// Pass nil context - the function should handle this
+	resp, err := provider.Complete(nil, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "Response with nil context", resp.Content)
+}
+
+// Test Complete with max tokens capping
+func TestSimpleOpenRouterProvider_Complete_MaxTokensCapping(t *testing.T) {
+	tests := []struct {
+		name             string
+		inputMaxTokens   int
+		expectedMaxTokens int
+	}{
+		{"zero defaults to 4096", 0, 4096},
+		{"negative defaults to 4096", -100, 4096},
+		{"normal value unchanged", 1000, 1000},
+		{"exceeds limit capped to 16384", 50000, 16384},
+		{"at limit unchanged", 16384, 16384},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var reqBody struct {
+					MaxTokens int `json:"max_tokens"`
+				}
+				body, _ := io.ReadAll(r.Body)
+				json.Unmarshal(body, &reqBody)
+
+				assert.Equal(t, tt.expectedMaxTokens, reqBody.MaxTokens)
+
+				response := map[string]interface{}{
+					"id": "chatcmpl-tokens",
+					"choices": []map[string]interface{}{
+						{
+							"message": map[string]interface{}{
+								"role":    "assistant",
+								"content": "OK",
+							},
+						},
+					},
+					"model": "test-model",
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(response)
+			}))
+			defer server.Close()
+
+			provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+			req := &models.LLMRequest{
+				ID: "test-tokens",
+				ModelParams: models.ModelParameters{
+					Model:     "test-model",
+					MaxTokens: tt.inputMaxTokens,
+				},
+				Prompt: "Test",
+			}
+
+			resp, err := provider.Complete(context.Background(), req)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+		})
+	}
+}
+
+// Test Complete with tools
+func TestSimpleOpenRouterProvider_Complete_WithTools(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody struct {
+			Tools []struct {
+				Type     string `json:"type"`
+				Function struct {
+					Name        string                 `json:"name"`
+					Description string                 `json:"description"`
+					Parameters  map[string]interface{} `json:"parameters"`
+				} `json:"function"`
+			} `json:"tools"`
+			ToolChoice interface{} `json:"tool_choice"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &reqBody)
+
+		// Verify tools are passed correctly
+		assert.Len(t, reqBody.Tools, 1)
+		assert.Equal(t, "function", reqBody.Tools[0].Type)
+		assert.Equal(t, "get_weather", reqBody.Tools[0].Function.Name)
+		assert.Equal(t, "Get the weather for a location", reqBody.Tools[0].Function.Description)
+		assert.Equal(t, "auto", reqBody.ToolChoice)
+
+		response := map[string]interface{}{
+			"id": "chatcmpl-tools",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "",
+						"tool_calls": []map[string]interface{}{
+							{
+								"id":   "call_123",
+								"type": "function",
+								"function": map[string]interface{}{
+									"name":      "get_weather",
+									"arguments": `{"location":"New York"}`,
+								},
+							},
+						},
+					},
+					"finish_reason": "tool_calls",
+				},
+			},
+			"model": "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-tools",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "What's the weather in New York?",
+		Tools: []models.Tool{
+			{
+				Type: "function",
+				Function: models.ToolFunction{
+					Name:        "get_weather",
+					Description: "Get the weather for a location",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"location": map[string]interface{}{
+								"type":        "string",
+								"description": "The city name",
+							},
+						},
+					},
+				},
+			},
+		},
+		ToolChoice: "auto",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "tool_calls", resp.FinishReason)
+	require.Len(t, resp.ToolCalls, 1)
+	assert.Equal(t, "call_123", resp.ToolCalls[0].ID)
+	assert.Equal(t, "function", resp.ToolCalls[0].Type)
+	assert.Equal(t, "get_weather", resp.ToolCalls[0].Function.Name)
+	assert.Equal(t, `{"location":"New York"}`, resp.ToolCalls[0].Function.Arguments)
+}
+
+// Test Complete with tools - non-function tool type is skipped
+func TestSimpleOpenRouterProvider_Complete_WithNonFunctionTools(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody struct {
+			Tools []interface{} `json:"tools"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &reqBody)
+
+		// Non-function tools should not be included
+		assert.Len(t, reqBody.Tools, 0)
+
+		response := map[string]interface{}{
+			"id": "chatcmpl-nonfunction",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "OK",
+					},
+				},
+			},
+			"model": "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-nonfunc",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+		Tools: []models.Tool{
+			{
+				Type: "other_type", // Not a function type
+				Function: models.ToolFunction{
+					Name: "some_tool",
+				},
+			},
+		},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+// Test Complete with numeric ID in response
+func TestSimpleOpenRouterProvider_Complete_NumericIDInResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := map[string]interface{}{
+			"id": 12345, // Numeric ID
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "OK",
+					},
+				},
+			},
+			"model": "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-numid",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "12345", resp.ID) // Should be converted to string
+}
+
+// Test Complete with finish_reason in response
+func TestSimpleOpenRouterProvider_Complete_WithFinishReason(t *testing.T) {
+	tests := []struct {
+		name           string
+		finishReason   string
+		expectedReason string
+	}{
+		{"stop", "stop", "stop"},
+		{"length", "length", "length"},
+		{"tool_calls", "tool_calls", "tool_calls"},
+		{"empty defaults to stop", "", "stop"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				response := map[string]interface{}{
+					"id": "chatcmpl-finish",
+					"choices": []map[string]interface{}{
+						{
+							"message": map[string]interface{}{
+								"role":    "assistant",
+								"content": "OK",
+							},
+							"finish_reason": tt.finishReason,
+						},
+					},
+					"model": "test-model",
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(response)
+			}))
+			defer server.Close()
+
+			provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+			req := &models.LLMRequest{
+				ID: "test-finish",
+				ModelParams: models.ModelParameters{
+					Model: "test-model",
+				},
+				Prompt: "Test",
+			}
+
+			resp, err := provider.Complete(context.Background(), req)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, tt.expectedReason, resp.FinishReason)
+		})
+	}
+}
+
+// Test CompleteStream with HTTP error
+func TestSimpleOpenRouterProvider_CompleteStream_HTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error": "Invalid API key"}`))
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("invalid-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-stream-error",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	ch, err := provider.CompleteStream(context.Background(), req)
+	assert.Error(t, err)
+	assert.Nil(t, ch)
+	assert.Contains(t, err.Error(), "HTTP 401")
+}
+
+// Test CompleteStream with context cancellation
+func TestSimpleOpenRouterProvider_CompleteStream_ContextCancelled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		// Send some data
+		w.Write([]byte("data: {\"id\":\"1\",\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"))
+		flusher.Flush()
+
+		// Wait for context cancellation
+		time.Sleep(500 * time.Millisecond)
+
+		w.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-cancel",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := provider.CompleteStream(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+
+	// Get first response
+	select {
+	case resp := <-ch:
+		assert.NotNil(t, resp)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for first response")
+	}
+
+	// Cancel context
+	cancel()
+
+	// Channel should close eventually
+	select {
+	case _, ok := <-ch:
+		if ok {
+			// Drain any remaining responses
+			for range ch {
+			}
+		}
+	case <-time.After(2 * time.Second):
+		// Channel might already be closed
+	}
+}
+
+// Test CompleteStream with max tokens capping
+func TestSimpleOpenRouterProvider_CompleteStream_MaxTokensCapping(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody struct {
+			MaxTokens int `json:"max_tokens"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &reqBody)
+
+		// Verify max tokens capped to 16384
+		assert.Equal(t, 16384, reqBody.MaxTokens)
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("data: [DONE]\n\n"))
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-stream-tokens",
+		ModelParams: models.ModelParameters{
+			Model:     "test-model",
+			MaxTokens: 100000, // Should be capped
+		},
+		Prompt: "Test",
+	}
+
+	ch, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+
+	// Drain channel
+	for range ch {
+	}
+}
+
+// Test HealthCheck with mock server
+func TestSimpleOpenRouterProvider_HealthCheck_WithServer(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		wantErr    bool
+		errMsg     string
+	}{
+		{"success", http.StatusOK, false, ""},
+		{"unauthorized", http.StatusUnauthorized, true, "invalid or expired"},
+		{"internal error", http.StatusInternalServerError, true, "status 500"},
+		{"service unavailable", http.StatusServiceUnavailable, true, "status 503"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "GET", r.Method)
+				assert.Equal(t, "/models", r.URL.Path)
+				assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+				w.WriteHeader(tt.statusCode)
+			}))
+			defer server.Close()
+
+			provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+			err := provider.HealthCheck()
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test HealthCheck with network error
+func TestSimpleOpenRouterProvider_HealthCheck_NetworkError(t *testing.T) {
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", "http://localhost:1")
+	provider.client = &http.Client{Timeout: 100 * time.Millisecond}
+
+	err := provider.HealthCheck()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "health check failed")
+}
+
+// Test waitWithJitter
+func TestSimpleOpenRouterProvider_WaitWithJitter(t *testing.T) {
+	provider := NewSimpleOpenRouterProvider("test-key")
+
+	// Test normal wait
+	start := time.Now()
+	provider.waitWithJitter(context.Background(), 50*time.Millisecond)
+	elapsed := time.Since(start)
+
+	// Should wait at least the delay (50ms) but not more than delay + 10% jitter + margin
+	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(50))
+	assert.Less(t, elapsed.Milliseconds(), int64(70)) // 50ms + 10% jitter + margin
+}
+
+// Test waitWithJitter with cancelled context
+func TestSimpleOpenRouterProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	provider := NewSimpleOpenRouterProvider("test-key")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	start := time.Now()
+	provider.waitWithJitter(ctx, 1*time.Second) // Should return immediately
+	elapsed := time.Since(start)
+
+	// Should return almost immediately
+	assert.Less(t, elapsed.Milliseconds(), int64(50))
+}
+
+// Test nextDelay
+func TestSimpleOpenRouterProvider_NextDelay(t *testing.T) {
+	provider := NewSimpleOpenRouterProviderWithRetry("test-key", "", RetryConfig{
+		MaxRetries:   3,
+		InitialDelay: 100 * time.Millisecond,
+		MaxDelay:     1 * time.Second,
+		Multiplier:   2.0,
+	})
+
+	// First delay: 100ms * 2 = 200ms
+	next := provider.nextDelay(100 * time.Millisecond)
+	assert.Equal(t, 200*time.Millisecond, next)
+
+	// Second delay: 200ms * 2 = 400ms
+	next = provider.nextDelay(200 * time.Millisecond)
+	assert.Equal(t, 400*time.Millisecond, next)
+
+	// Third delay: 800ms * 2 = 1600ms, capped to MaxDelay (1s)
+	next = provider.nextDelay(800 * time.Millisecond)
+	assert.Equal(t, 1*time.Second, next)
+}
+
+// Test DefaultRetryConfig
+func TestDefaultRetryConfig(t *testing.T) {
+	config := DefaultRetryConfig()
+
+	assert.Equal(t, 3, config.MaxRetries)
+	assert.Equal(t, 1*time.Second, config.InitialDelay)
+	assert.Equal(t, 30*time.Second, config.MaxDelay)
+	assert.Equal(t, 2.0, config.Multiplier)
+}
+
+// Test Complete with context cancelled before request
+func TestSimpleOpenRouterProvider_Complete_ContextCancelledBeforeRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("should not reach server")
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-cancel",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	resp, err := provider.Complete(ctx, req)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "context cancelled")
+}
+
+// Test Complete with nil usage in response
+func TestSimpleOpenRouterProvider_Complete_NilUsage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := map[string]interface{}{
+			"id": "chatcmpl-nil-usage",
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "OK",
+					},
+				},
+			},
+			"model": "test-model",
+			// No usage field
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-nil-usage",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 0, resp.TokensUsed) // Should be 0 when usage is nil
+}
+
+// Test Complete with nil ID in response
+func TestSimpleOpenRouterProvider_Complete_NilID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := map[string]interface{}{
+			// No id field
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "OK",
+					},
+				},
+			},
+			"model": "test-model",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", server.URL)
+
+	req := &models.LLMRequest{
+		ID: "test-nil-id",
+		ModelParams: models.ModelParameters{
+			Model: "test-model",
+		},
+		Prompt: "Test",
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "", resp.ID) // Should be empty when id is nil
+}

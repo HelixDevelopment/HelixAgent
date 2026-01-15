@@ -4,7 +4,7 @@ package graphql
 import (
 	"github.com/graphql-go/graphql"
 
-	"dev.helix.agent/internal/graphql/types"
+	"dev.helix.agent/internal/graphql/resolvers"
 )
 
 // Schema is the GraphQL schema for HelixAgent.
@@ -355,85 +355,46 @@ var MutationType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// Placeholder resolvers - these will be implemented in the resolvers package
+// Resolver functions - delegating to the resolvers package implementations
 
 // ResolveProviders resolves the providers query.
-var ResolveProviders graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return []types.Provider{}, nil
-}
+var ResolveProviders graphql.FieldResolveFn = resolvers.ResolveProviders
 
 // ResolveProvider resolves the provider query.
-var ResolveProvider graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveProvider graphql.FieldResolveFn = resolvers.ResolveProvider
 
 // ResolveDebates resolves the debates query.
-var ResolveDebates graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return []types.Debate{}, nil
-}
+var ResolveDebates graphql.FieldResolveFn = resolvers.ResolveDebates
 
 // ResolveDebate resolves the debate query.
-var ResolveDebate graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveDebate graphql.FieldResolveFn = resolvers.ResolveDebate
 
 // ResolveTasks resolves the tasks query.
-var ResolveTasks graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return []types.Task{}, nil
-}
+var ResolveTasks graphql.FieldResolveFn = resolvers.ResolveTasks
 
 // ResolveTask resolves the task query.
-var ResolveTask graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveTask graphql.FieldResolveFn = resolvers.ResolveTask
 
 // ResolveVerificationResults resolves the verificationResults query.
-var ResolveVerificationResults graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return &types.VerificationResults{}, nil
-}
+var ResolveVerificationResults graphql.FieldResolveFn = resolvers.ResolveVerificationResults
 
 // ResolveProviderScores resolves the providerScores query.
-var ResolveProviderScores graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return []types.ProviderScore{}, nil
-}
+var ResolveProviderScores graphql.FieldResolveFn = resolvers.ResolveProviderScores
 
 // ResolveCreateDebate resolves the createDebate mutation.
-var ResolveCreateDebate graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveCreateDebate graphql.FieldResolveFn = resolvers.ResolveCreateDebate
 
 // ResolveSubmitDebateResponse resolves the submitDebateResponse mutation.
-var ResolveSubmitDebateResponse graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveSubmitDebateResponse graphql.FieldResolveFn = resolvers.ResolveSubmitDebateResponse
 
 // ResolveCreateTask resolves the createTask mutation.
-var ResolveCreateTask graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveCreateTask graphql.FieldResolveFn = resolvers.ResolveCreateTask
 
 // ResolveCancelTask resolves the cancelTask mutation.
-var ResolveCancelTask graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveCancelTask graphql.FieldResolveFn = resolvers.ResolveCancelTask
 
 // ResolveRefreshProvider resolves the refreshProvider mutation.
-var ResolveRefreshProvider graphql.FieldResolveFn = func(p graphql.ResolveParams) (interface{}, error) {
-	// TODO: Implement
-	return nil, nil
-}
+var ResolveRefreshProvider graphql.FieldResolveFn = resolvers.ResolveRefreshProvider
 
 // InitSchema initializes the GraphQL schema.
 func InitSchema() error {

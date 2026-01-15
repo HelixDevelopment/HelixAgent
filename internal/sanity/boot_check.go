@@ -188,7 +188,7 @@ func (bc *BootChecker) checkHelixAgentHealth(ctx context.Context) {
 // checkPostgresConnection checks PostgreSQL connectivity
 func (bc *BootChecker) checkPostgresConnection(ctx context.Context) {
 	start := time.Now()
-	addr := fmt.Sprintf("%s:%d", bc.config.PostgresHost, bc.config.PostgresPort)
+	addr := net.JoinHostPort(bc.config.PostgresHost, fmt.Sprintf("%d", bc.config.PostgresPort))
 
 	result := CheckResult{
 		Name:      "PostgreSQL Connection",
@@ -215,7 +215,7 @@ func (bc *BootChecker) checkPostgresConnection(ctx context.Context) {
 // checkRedisConnection checks Redis connectivity
 func (bc *BootChecker) checkRedisConnection(ctx context.Context) {
 	start := time.Now()
-	addr := fmt.Sprintf("%s:%d", bc.config.RedisHost, bc.config.RedisPort)
+	addr := net.JoinHostPort(bc.config.RedisHost, fmt.Sprintf("%d", bc.config.RedisPort))
 
 	result := CheckResult{
 		Name:      "Redis Connection",

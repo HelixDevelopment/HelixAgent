@@ -711,7 +711,7 @@ func (hc *HealthChecker) checkGRPCHealth(info *InstanceInfo) (bool, error) {
 
 // checkTCPHealth performs a TCP connectivity check
 func (hc *HealthChecker) checkTCPHealth(info *InstanceInfo) (bool, error) {
-	address := fmt.Sprintf("%s:%d", info.Address, info.Port)
+	address := net.JoinHostPort(info.Address, fmt.Sprintf("%d", info.Port))
 
 	conn, err := net.DialTimeout("tcp", address, hc.timeout)
 	if err != nil {

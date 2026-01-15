@@ -323,7 +323,7 @@ func (d *ProtocolDiscovery) checkServerHealth(ctx context.Context, server *Disco
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	address := fmt.Sprintf("%s:%d", server.Address, server.Port)
+	address := net.JoinHostPort(server.Address, fmt.Sprintf("%d", server.Port))
 
 	switch server.Protocol {
 	case "mcp":

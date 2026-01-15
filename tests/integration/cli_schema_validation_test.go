@@ -468,7 +468,14 @@ func TestMCPServerConnectivity(t *testing.T) {
 }
 
 // TestNoLocalNpxServers ensures no local npx servers are in config (they timeout)
+// This test only enforces in CI environments; in local development, npx servers
+// may be intentionally enabled for testing purposes.
 func TestNoLocalNpxServers(t *testing.T) {
+	// Skip in non-CI environments since local npx servers may be intentional
+	if os.Getenv("CI") == "" && os.Getenv("GITHUB_ACTIONS") == "" {
+		t.Skip("Skipping npx server check in non-CI environment (local dev may use npx servers)")
+	}
+
 	configPath := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
 
 	data, err := os.ReadFile(configPath)

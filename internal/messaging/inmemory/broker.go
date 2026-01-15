@@ -20,6 +20,7 @@ type Broker struct {
 	stopCh      chan struct{}
 	config      *Config
 	subscribers map[string][]subscriberEntry
+	notifyCh    map[string]chan struct{} // Per-topic notification channels
 }
 
 // subscriberEntry holds a subscriber and its options.
@@ -63,6 +64,7 @@ func NewBroker(config *Config) *Broker {
 		metrics:     messaging.NewBrokerMetrics(),
 		config:      config,
 		subscribers: make(map[string][]subscriberEntry),
+		notifyCh:    make(map[string]chan struct{}),
 		stopCh:      make(chan struct{}),
 	}
 }
@@ -92,10 +94,11 @@ func (b *Broker) Close(ctx context.Context) error {
 	b.connected = false
 	b.metrics.RecordDisconnection()
 
-	// Clear all queues and topics
+	// Clear all queues, topics, and notification channels
 	b.queues = make(map[string]*Queue)
 	b.topics = make(map[string]*Topic)
 	b.subscribers = make(map[string][]subscriberEntry)
+	b.notifyCh = make(map[string]chan struct{})
 
 	return nil
 }
@@ -138,22 +141,33 @@ func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.M
 	msg := message.Clone()
 	msg.Timestamp = time.Now().UTC()
 
-	// Try to deliver to queue first
+	// Try to deliver to queue first (for subscriptions with consumeLoop)
 	if queue, ok := b.queues[topic]; ok {
 		if err := queue.Enqueue(msg); err != nil {
 			b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), false)
 			return err
 		}
+		// Signal waiting consumers that a message is available
+		if ch, exists := b.notifyCh[topic]; exists {
+			select {
+			case ch <- struct{}{}:
+			default: // Non-blocking - channel may be full or no receivers
+			}
+		}
 		b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), true)
 		return nil
 	}
 
-	// Try to deliver to topic
+	// Try to deliver to topic (direct pub/sub without queue)
 	if topicObj, ok := b.topics[topic]; ok {
 		if err := topicObj.Publish(msg); err != nil {
 			b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), false)
 			return err
 		}
+		// Notify subscribers for topic-based delivery
+		b.notifySubscribers(ctx, topic, msg)
+		b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), true)
+		return nil
 	}
 
 	// Create queue/topic on demand
@@ -207,6 +221,11 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 		b.queues[topic] = NewQueue(topic, b.config.DefaultQueueCapacity)
 	}
 
+	// Create notification channel if it doesn't exist
+	if _, ok := b.notifyCh[topic]; !ok {
+		b.notifyCh[topic] = make(chan struct{}, 100) // Buffered to avoid blocking publishers
+	}
+
 	b.metrics.RecordSubscription()
 
 	sub := &Subscription{
@@ -224,35 +243,44 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 
 // consumeLoop continuously consumes messages from a queue.
 func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriberEntry, sub *Subscription) {
+	// Get the notification channel for this topic
+	b.mu.RLock()
+	notifyCh := b.notifyCh[topic]
+	b.mu.RUnlock()
+
 	for {
+		if !sub.IsActive() {
+			return
+		}
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-b.stopCh:
 			return
-		default:
-			if !sub.IsActive() {
-				return
-			}
+		case <-notifyCh:
+			// Message available notification received
+		case <-time.After(10 * time.Millisecond):
+			// Fallback timeout for polling
+		}
 
-			b.mu.RLock()
-			queue, ok := b.queues[topic]
-			b.mu.RUnlock()
+		if !sub.IsActive() {
+			return
+		}
 
-			if !ok {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
+		b.mu.RLock()
+		queue, ok := b.queues[topic]
+		b.mu.RUnlock()
 
+		if !ok {
+			continue
+		}
+
+		// Process all available messages
+		for {
 			msg, err := queue.Dequeue()
-			if err != nil {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-
-			if msg == nil {
-				time.Sleep(100 * time.Millisecond)
-				continue
+			if err != nil || msg == nil {
+				break
 			}
 
 			// Apply filter if set

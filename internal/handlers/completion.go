@@ -11,11 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
+	"dev.helix.agent/internal/skills"
 )
 
 // CompletionHandler handles LLM completion requests
 type CompletionHandler struct {
-	requestService *services.RequestService
+	requestService    *services.RequestService
+	skillsIntegration *skills.Integration
 }
 
 // CompletionRequest represents the API request for completion
@@ -35,13 +37,14 @@ type CompletionRequest struct {
 
 // CompletionResponse represents the API response for completion
 type CompletionResponse struct {
-	ID                string             `json:"id"`
-	Object            string             `json:"object"`
-	Created           int64              `json:"created"`
-	Model             string             `json:"model"`
-	Choices           []CompletionChoice `json:"choices"`
-	Usage             *CompletionUsage   `json:"usage,omitempty"`
-	SystemFingerprint string             `json:"system_fingerprint"`
+	ID                string                    `json:"id"`
+	Object            string                    `json:"object"`
+	Created           int64                     `json:"created"`
+	Model             string                    `json:"model"`
+	Choices           []CompletionChoice        `json:"choices"`
+	Usage             *CompletionUsage          `json:"usage,omitempty"`
+	SystemFingerprint string                    `json:"system_fingerprint"`
+	SkillsUsed        *skills.SkillsUsedMetadata `json:"skills_used,omitempty"`
 }
 
 // CompletionChoice represents a choice in the completion response
@@ -89,6 +92,19 @@ func NewCompletionHandler(requestService *services.RequestService) *CompletionHa
 	}
 }
 
+// NewCompletionHandlerWithSkills creates a completion handler with Skills integration
+func NewCompletionHandlerWithSkills(requestService *services.RequestService, skillsIntegration *skills.Integration) *CompletionHandler {
+	return &CompletionHandler{
+		requestService:    requestService,
+		skillsIntegration: skillsIntegration,
+	}
+}
+
+// SetSkillsIntegration sets the Skills integration for the handler
+func (h *CompletionHandler) SetSkillsIntegration(integration *skills.Integration) {
+	h.skillsIntegration = integration
+}
+
 // Complete handles non-streaming completion requests
 func (h *CompletionHandler) Complete(c *gin.Context) {
 	// Parse request
@@ -101,15 +117,36 @@ func (h *CompletionHandler) Complete(c *gin.Context) {
 	// Convert to internal request format
 	internalReq := h.convertToInternalRequest(&req, c)
 
+	// Process Skills matching if integration is available
+	var skillsCtx *skills.RequestContext
+	if h.skillsIntegration != nil {
+		var err error
+		skillsCtx, err = h.skillsIntegration.ProcessRequest(c.Request.Context(), internalReq.ID, req.Prompt)
+		if err == nil && skillsCtx != nil && len(skillsCtx.Instructions) > 0 {
+			// Enhance prompt with skill instructions
+			internalReq.Prompt = h.skillsIntegration.EnhancePromptWithSkills(internalReq.Prompt, skillsCtx)
+		}
+	}
+
 	// Process request
 	response, err := h.requestService.ProcessRequest(c.Request.Context(), internalReq)
 	if err != nil {
+		// Complete Skills tracking with error
+		if h.skillsIntegration != nil && skillsCtx != nil {
+			h.skillsIntegration.CompleteRequest(internalReq.ID, false, err.Error())
+		}
 		h.sendCategorizedError(c, err)
 		return
 	}
 
-	// Convert to API response format
-	apiResp := h.convertToAPIResponse(response)
+	// Complete Skills tracking and get usage
+	var skillsUsages []skills.SkillUsage
+	if h.skillsIntegration != nil && skillsCtx != nil {
+		skillsUsages = h.skillsIntegration.CompleteRequest(internalReq.ID, true, "")
+	}
+
+	// Convert to API response format with Skills metadata
+	apiResp := h.convertToAPIResponseWithSkills(response, skillsUsages)
 
 	c.JSON(http.StatusOK, apiResp)
 }
@@ -217,15 +254,50 @@ func (h *CompletionHandler) Chat(c *gin.Context) {
 	internalReq := h.convertToInternalRequest(&req, c)
 	internalReq.RequestType = "chat"
 
+	// Get user input for Skills matching (from messages or prompt)
+	userInput := req.Prompt
+	if len(req.Messages) > 0 {
+		// Use the last user message for skill matching
+		for i := len(req.Messages) - 1; i >= 0; i-- {
+			if req.Messages[i].Role == "user" {
+				userInput = req.Messages[i].Content
+				break
+			}
+		}
+	}
+
+	// Process Skills matching if integration is available
+	var skillsCtx *skills.RequestContext
+	if h.skillsIntegration != nil {
+		var err error
+		skillsCtx, err = h.skillsIntegration.ProcessRequest(c.Request.Context(), internalReq.ID, userInput)
+		if err == nil && skillsCtx != nil && len(skillsCtx.Instructions) > 0 {
+			// Enhance prompt with skill instructions
+			if internalReq.Prompt != "" {
+				internalReq.Prompt = h.skillsIntegration.EnhancePromptWithSkills(internalReq.Prompt, skillsCtx)
+			}
+		}
+	}
+
 	// Process request
 	response, err := h.requestService.ProcessRequest(c.Request.Context(), internalReq)
 	if err != nil {
+		// Complete Skills tracking with error
+		if h.skillsIntegration != nil && skillsCtx != nil {
+			h.skillsIntegration.CompleteRequest(internalReq.ID, false, err.Error())
+		}
 		h.sendError(c, http.StatusInternalServerError, "internal_error", "Failed to process chat request", err.Error())
 		return
 	}
 
-	// Convert to chat API response format
-	apiResp := h.convertToChatResponse(response)
+	// Complete Skills tracking and get usage
+	var skillsUsages []skills.SkillUsage
+	if h.skillsIntegration != nil && skillsCtx != nil {
+		skillsUsages = h.skillsIntegration.CompleteRequest(internalReq.ID, true, "")
+	}
+
+	// Convert to chat API response format with Skills metadata
+	apiResp := h.convertToChatResponseWithSkills(response, skillsUsages)
 
 	c.JSON(http.StatusOK, apiResp)
 }
@@ -477,6 +549,15 @@ func (h *CompletionHandler) convertToAPIResponse(resp *models.LLMResponse) *Comp
 	}
 }
 
+// convertToAPIResponseWithSkills converts response with Skills usage metadata
+func (h *CompletionHandler) convertToAPIResponseWithSkills(resp *models.LLMResponse, usages []skills.SkillUsage) *CompletionResponse {
+	apiResp := h.convertToAPIResponse(resp)
+	if h.skillsIntegration != nil && len(usages) > 0 {
+		apiResp.SkillsUsed = h.skillsIntegration.BuildSkillsUsedSection(usages)
+	}
+	return apiResp
+}
+
 func (h *CompletionHandler) convertToStreamingResponse(resp *models.LLMResponse) map[string]any {
 	return map[string]any{
 		"id":      resp.ID,
@@ -517,6 +598,18 @@ func (h *CompletionHandler) convertToChatResponse(resp *models.LLMResponse) map[
 			"total_tokens":      resp.TokensUsed,
 		},
 	}
+}
+
+// convertToChatResponseWithSkills converts chat response with Skills usage metadata
+func (h *CompletionHandler) convertToChatResponseWithSkills(resp *models.LLMResponse, usages []skills.SkillUsage) map[string]any {
+	apiResp := h.convertToChatResponse(resp)
+	if h.skillsIntegration != nil && len(usages) > 0 {
+		skillsMetadata := h.skillsIntegration.BuildSkillsUsedSection(usages)
+		if skillsMetadata != nil {
+			apiResp["skills_used"] = skillsMetadata
+		}
+	}
+	return apiResp
 }
 
 func (h *CompletionHandler) convertToChatStreamingResponse(resp *models.LLMResponse) map[string]any {

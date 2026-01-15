@@ -11,13 +11,15 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/services"
+	"dev.helix.agent/internal/skills"
 )
 
 // DebateHandler handles debate API endpoints
 type DebateHandler struct {
-	debateService  *services.DebateService
-	advancedDebate *services.AdvancedDebateService
-	logger         *logrus.Logger
+	debateService     *services.DebateService
+	advancedDebate    *services.AdvancedDebateService
+	skillsIntegration *skills.Integration
+	logger            *logrus.Logger
 
 	// In-memory storage for active debates (in production, use database)
 	activeDebates map[string]*debateState
@@ -25,16 +27,18 @@ type DebateHandler struct {
 }
 
 type debateState struct {
-	Config                    *services.DebateConfig      `json:"config"`
-	ValidationConfig          *services.ValidationConfig  `json:"validation_config,omitempty"`
-	EnableMultiPassValidation bool                        `json:"enable_multi_pass_validation"`
-	Status                    string                      `json:"status"`
-	CurrentPhase              string                      `json:"current_phase,omitempty"`
-	Result                    *services.DebateResult      `json:"result,omitempty"`
-	MultiPassResult           *services.MultiPassResult   `json:"multi_pass_result,omitempty"`
-	Error                     string                      `json:"error,omitempty"`
-	StartTime                 time.Time                   `json:"start_time"`
-	EndTime                   *time.Time                  `json:"end_time,omitempty"`
+	Config                    *services.DebateConfig       `json:"config"`
+	ValidationConfig          *services.ValidationConfig   `json:"validation_config,omitempty"`
+	EnableMultiPassValidation bool                         `json:"enable_multi_pass_validation"`
+	Status                    string                       `json:"status"`
+	CurrentPhase              string                       `json:"current_phase,omitempty"`
+	Result                    *services.DebateResult       `json:"result,omitempty"`
+	MultiPassResult           *services.MultiPassResult    `json:"multi_pass_result,omitempty"`
+	Error                     string                       `json:"error,omitempty"`
+	StartTime                 time.Time                    `json:"start_time"`
+	EndTime                   *time.Time                   `json:"end_time,omitempty"`
+	SkillsUsed                *skills.SkillsUsedMetadata   `json:"skills_used,omitempty"`
+	skillsContext             *skills.RequestContext       // Internal, not JSON-serialized
 }
 
 // NewDebateHandler creates a new debate handler
@@ -45,6 +49,22 @@ func NewDebateHandler(debateService *services.DebateService, advancedDebate *ser
 		logger:         logger,
 		activeDebates:  make(map[string]*debateState),
 	}
+}
+
+// NewDebateHandlerWithSkills creates a debate handler with Skills integration
+func NewDebateHandlerWithSkills(debateService *services.DebateService, advancedDebate *services.AdvancedDebateService, skillsIntegration *skills.Integration, logger *logrus.Logger) *DebateHandler {
+	return &DebateHandler{
+		debateService:     debateService,
+		advancedDebate:    advancedDebate,
+		skillsIntegration: skillsIntegration,
+		logger:            logger,
+		activeDebates:     make(map[string]*debateState),
+	}
+}
+
+// SetSkillsIntegration sets the Skills integration for the handler
+func (h *DebateHandler) SetSkillsIntegration(integration *skills.Integration) {
+	h.skillsIntegration = integration
 }
 
 // CreateDebateRequest represents the request to create a debate
@@ -199,6 +219,16 @@ func (h *DebateHandler) CreateDebate(c *gin.Context) {
 		}
 	}
 
+	// Process Skills matching if integration is available
+	var skillsCtx *skills.RequestContext
+	if h.skillsIntegration != nil {
+		var err error
+		skillsCtx, err = h.skillsIntegration.ProcessRequest(c.Request.Context(), debateID, req.Topic)
+		if err != nil {
+			h.logger.WithError(err).Warn("Failed to process Skills for debate")
+		}
+	}
+
 	// Store debate state
 	h.mu.Lock()
 	h.activeDebates[debateID] = &debateState{
@@ -207,6 +237,7 @@ func (h *DebateHandler) CreateDebate(c *gin.Context) {
 		EnableMultiPassValidation: req.EnableMultiPassValidation,
 		Status:                    "pending",
 		StartTime:                 time.Now(),
+		skillsContext:             skillsCtx,
 	}
 	h.mu.Unlock()
 
@@ -271,6 +302,19 @@ func (h *DebateHandler) runDebate(debateID string, config *services.DebateConfig
 	if state, exists := h.activeDebates[debateID]; exists {
 		now := time.Now()
 		state.EndTime = &now
+
+		// Complete Skills tracking and get usage metadata
+		if h.skillsIntegration != nil && state.skillsContext != nil {
+			success := err == nil
+			errorMsg := ""
+			if err != nil {
+				errorMsg = err.Error()
+			}
+			usages := h.skillsIntegration.CompleteRequest(debateID, success, errorMsg)
+			if len(usages) > 0 {
+				state.SkillsUsed = h.skillsIntegration.BuildSkillsUsedSection(usages)
+			}
+		}
 
 		if err != nil {
 			state.Status = "failed"
@@ -345,6 +389,11 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 
 	if state.Result != nil {
 		response["result"] = state.Result
+	}
+
+	// Include Skills usage metadata if available
+	if state.SkillsUsed != nil {
+		response["skills_used"] = state.SkillsUsed
 	}
 
 	if state.MultiPassResult != nil {

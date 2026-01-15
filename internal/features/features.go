@@ -504,3 +504,46 @@ func (f Feature) String() string {
 func ParseFeature(s string) Feature {
 	return Feature(strings.ToLower(s))
 }
+
+// ListFeatures returns all registered feature names
+func (r *Registry) ListFeatures() []Feature {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	features := make([]Feature, 0, len(r.features))
+	for f := range r.features {
+		features = append(features, f)
+	}
+	return features
+}
+
+// GetFeatureInfo returns the complete FeatureInfo for a feature
+func (r *Registry) GetFeatureInfo(name Feature) *FeatureInfo {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if info, ok := r.features[name]; ok {
+		// Return a copy to prevent modification
+		infoCopy := *info
+		return &infoCopy
+	}
+	return nil
+}
+
+// Header returns the HTTP header name for a FeatureInfo
+func (f *FeatureInfo) Header() string {
+	return f.HeaderName
+}
+
+// QueryParamName returns the query parameter name for a FeatureInfo
+func (f *FeatureInfo) QueryParamName() string {
+	return f.QueryParam
+}
+
+// Dependencies returns the required features for a FeatureInfo
+func (f *FeatureInfo) Dependencies() []Feature {
+	return f.RequiresFeatures
+}
+
+// Conflicts returns the conflicting features for a FeatureInfo
+func (f *FeatureInfo) Conflicts() []Feature {
+	return f.ConflictsWith
+}

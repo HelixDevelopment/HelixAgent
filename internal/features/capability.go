@@ -659,6 +659,17 @@ func isBasicFeature(feature Feature) bool {
 	return basicFeatures[feature]
 }
 
+// ListAgentCapabilities returns all registered agent capabilities
+// This is a convenience function for the router endpoints
+func ListAgentCapabilities() []*AgentCapability {
+	return GetCapabilityRegistry().GetAllCapabilities()
+}
+
+// Description returns a description for the AgentCapability
+func (c *AgentCapability) Description() string {
+	return c.Notes
+}
+
 // FullFeatureAgents returns agents that support all advanced features
 func (r *CapabilityRegistry) FullFeatureAgents() []string {
 	r.mu.RLock()

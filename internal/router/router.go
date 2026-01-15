@@ -12,6 +12,7 @@ import (
 	"dev.helix.agent/internal/cache"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/database"
+	"dev.helix.agent/internal/features"
 	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/middleware"
 	"dev.helix.agent/internal/models"
@@ -26,6 +27,22 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+
+	// Feature flags middleware - detects agent capabilities and applies feature settings
+	// This middleware enables/disables features like GraphQL, TOON, Brotli, HTTP/3
+	// based on User-Agent detection and request headers/query params
+	featureConfig := features.DefaultFeatureConfig()
+	// Keep GraphQL OFF by default for OpenAI-compatible endpoints (backward compatibility)
+	// Users can enable via X-Feature-GraphQL header or ?graphql=true query param
+	featureConfig.OpenAIEndpointGraphQL = false
+	featureMiddleware := features.Middleware(&features.MiddlewareConfig{
+		Config:               featureConfig,
+		Logger:               logrus.New(),
+		EnableAgentDetection: true,
+		StrictMode:           false, // Lenient mode for backward compatibility
+		TrackUsage:           true,
+	})
+	r.Use(featureMiddleware)
 
 	// Initialize database with fallback to in-memory mode
 	var db *database.PostgresDB
@@ -226,6 +243,86 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// Metrics endpoint - Prometheus metrics for monitoring
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Feature flags status endpoint - shows enabled features and usage stats
+	r.GET("/v1/features", func(c *gin.Context) {
+		fc := features.GetFeatureContextFromGin(c)
+		tracker := features.GetUsageTracker()
+		stats := tracker.GetStats()
+
+		// Build feature stats map
+		featureStats := make(map[string]gin.H)
+		for _, stat := range stats {
+			featureStats[string(stat.Feature)] = gin.H{
+				"enabled_count":  stat.EnabledCount,
+				"disabled_count": stat.DisabledCount,
+				"total_requests": stat.TotalRequests,
+			}
+		}
+
+		c.JSON(200, gin.H{
+			"enabled_features":  fc.GetEnabledFeatures(),
+			"disabled_features": fc.GetDisabledFeatures(),
+			"agent_detected":    fc.AgentName,
+			"transport":         fc.GetTransportProtocol(),
+			"compression":       fc.GetCompressionMethod(),
+			"streaming":         fc.GetStreamingMethod(),
+			"source":            string(fc.Source),
+			"usage_stats":       featureStats,
+		})
+	})
+
+	// Feature flags configuration endpoint - shows all available features and defaults
+	r.GET("/v1/features/available", func(c *gin.Context) {
+		registry := features.GetRegistry()
+		allFeatures := registry.ListFeatures()
+
+		featureList := make([]gin.H, 0, len(allFeatures))
+		for _, f := range allFeatures {
+			info := registry.GetFeatureInfo(f)
+			if info != nil {
+				featureList = append(featureList, gin.H{
+					"name":         string(f),
+					"description":  info.Description,
+					"category":     string(info.Category),
+					"default":      info.DefaultValue,
+					"header":       info.HeaderName,
+					"query_param":  info.QueryParam,
+					"dependencies": info.RequiresFeatures,
+					"conflicts":    info.ConflictsWith,
+				})
+			}
+		}
+
+		c.JSON(200, gin.H{
+			"features": featureList,
+			"count":    len(featureList),
+		})
+	})
+
+	// Agent capabilities endpoint - shows what features each CLI agent supports
+	r.GET("/v1/features/agents", func(c *gin.Context) {
+		agentCaps := features.ListAgentCapabilities()
+
+		agents := make([]gin.H, 0, len(agentCaps))
+		for _, cap := range agentCaps {
+			supportedFeatures := make([]string, 0, len(cap.SupportedFeatures))
+			for _, f := range cap.SupportedFeatures {
+				supportedFeatures = append(supportedFeatures, string(f))
+			}
+			agents = append(agents, gin.H{
+				"name":               cap.AgentName,
+				"supported_features": supportedFeatures,
+				"transport":          cap.TransportProtocol,
+				"description":        cap.Notes,
+			})
+		}
+
+		c.JSON(200, gin.H{
+			"agents": agents,
+			"count":  len(agents),
+		})
+	})
 
 	// Authentication endpoints (skip in standalone mode if auth is nil)
 	if auth != nil {

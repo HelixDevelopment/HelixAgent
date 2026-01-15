@@ -2,502 +2,432 @@ package rabbitmq
 
 import (
 	"context"
-	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
-
 	"dev.helix.agent/internal/messaging"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"go.uber.org/zap"
 )
 
-// Broker is a RabbitMQ message broker implementation.
+// Broker implements the messaging.MessageBroker interface for RabbitMQ
 type Broker struct {
-	config      *Config
-	conn        *amqp.Connection
-	pubChannel  *amqp.Channel
-	confirms    chan amqp.Confirmation
-	metrics     *messaging.BrokerMetrics
-	connected   bool
-	reconnecting bool
-	mu          sync.RWMutex
-	stopCh      chan struct{}
-	closeCh     chan *amqp.Error
-	subscribers map[string]*Subscription
-	topology    *TopologyConfig
+	config       *Config
+	logger       *zap.Logger
+	conn         *Connection
+	pubChannel   *amqp.Channel
+	mu           sync.RWMutex
+	subscriptions map[string]*rabbitSubscription
+	exchanges    map[string]bool
+	queues       map[string]bool
+	metrics      *messaging.BrokerMetrics
+	closed       atomic.Bool
+	subCounter   atomic.Int64
 }
 
-// NewBroker creates a new RabbitMQ broker.
-func NewBroker(config *Config) *Broker {
+// rabbitSubscription holds subscription state
+type rabbitSubscription struct {
+	id        string
+	topic     string
+	queue     string
+	handler   messaging.MessageHandler
+	channel   *amqp.Channel
+	consumer  string
+	cancelCh  chan struct{}
+	active    atomic.Bool
+}
+
+// Subscription interface implementation
+func (s *rabbitSubscription) Unsubscribe() error {
+	if !s.active.Swap(false) {
+		return nil // Already unsubscribed
+	}
+
+	close(s.cancelCh)
+
+	if s.channel != nil {
+		if err := s.channel.Cancel(s.consumer, false); err != nil {
+			return fmt.Errorf("failed to cancel consumer: %w", err)
+		}
+		return s.channel.Close()
+	}
+	return nil
+}
+
+func (s *rabbitSubscription) IsActive() bool {
+	return s.active.Load()
+}
+
+func (s *rabbitSubscription) Topic() string {
+	return s.topic
+}
+
+func (s *rabbitSubscription) ID() string {
+	return s.id
+}
+
+// NewBroker creates a new RabbitMQ broker
+func NewBroker(config *Config, logger *zap.Logger) *Broker {
 	if config == nil {
 		config = DefaultConfig()
 	}
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+
 	return &Broker{
-		config:      config,
-		metrics:     messaging.NewBrokerMetrics(),
-		subscribers: make(map[string]*Subscription),
-		stopCh:      make(chan struct{}),
-		topology:    DefaultTopologyConfig(),
+		config:        config,
+		logger:        logger,
+		subscriptions: make(map[string]*rabbitSubscription),
+		exchanges:     make(map[string]bool),
+		queues:        make(map[string]bool),
+		metrics:       messaging.NewBrokerMetrics(),
 	}
 }
 
-// Connect establishes a connection to RabbitMQ.
+// Connect establishes connection to RabbitMQ
 func (b *Broker) Connect(ctx context.Context) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.connected {
+	if b.conn != nil && b.conn.IsConnected() {
 		return nil
 	}
+
+	// Create connection
+	b.conn = NewConnection(b.config, b.logger)
+
+	// Set up reconnection callback to restore channels
+	b.conn.OnReconnect(func() {
+		b.restoreChannels()
+	})
 
 	b.metrics.RecordConnectionAttempt()
 
-	if err := b.config.Validate(); err != nil {
+	if err := b.conn.Connect(ctx); err != nil {
 		b.metrics.RecordConnectionFailure()
 		return err
 	}
 
-	// Create AMQP config
-	amqpConfig := amqp.Config{
-		Heartbeat: b.config.Heartbeat,
-		Locale:    "en_US",
-	}
-
-	if b.config.ChannelMax > 0 {
-		amqpConfig.ChannelMax = uint16(b.config.ChannelMax)
-	}
-	if b.config.FrameSize > 0 {
-		amqpConfig.FrameSize = b.config.FrameSize
-	}
-
-	// Configure TLS if enabled
-	if b.config.TLS {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: b.config.TLSInsecure,
-		}
-		amqpConfig.TLSClientConfig = tlsConfig
-	}
-
-	// Connect with timeout
-	connCh := make(chan *amqp.Connection, 1)
-	errCh := make(chan error, 1)
-
-	go func() {
-		conn, err := amqp.DialConfig(b.config.URL(), amqpConfig)
-		if err != nil {
-			errCh <- err
-			return
-		}
-		connCh <- conn
-	}()
-
-	select {
-	case conn := <-connCh:
-		b.conn = conn
-	case err := <-errCh:
-		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionError("failed to connect to RabbitMQ", err)
-	case <-ctx.Done():
-		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionTimeoutError(ctx.Err())
-	case <-time.After(b.config.ConnectTimeout):
-		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionTimeoutError(nil)
-	}
+	b.metrics.RecordConnectionSuccess()
 
 	// Create publisher channel
-	pubChannel, err := b.conn.Channel()
+	ch, err := b.conn.Channel()
 	if err != nil {
-		b.conn.Close()
-		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionError("failed to create publisher channel", err)
+		return fmt.Errorf("failed to create publisher channel: %w", err)
 	}
-	b.pubChannel = pubChannel
+	b.pubChannel = ch
 
 	// Enable publisher confirms if configured
-	if b.config.PublisherConfirm {
+	if b.config.PublishConfirm {
 		if err := b.pubChannel.Confirm(false); err != nil {
-			b.conn.Close()
-			b.metrics.RecordConnectionFailure()
-			return messaging.ConnectionError("failed to enable publisher confirms", err)
+			b.logger.Warn("Failed to enable publisher confirms", zap.Error(err))
 		}
-		b.confirms = b.pubChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
 	}
 
-	// Set up QoS
-	if err := b.pubChannel.Qos(
-		b.config.PrefetchCount,
-		b.config.PrefetchSize,
-		b.config.GlobalQos,
+	// Set up default DLQ if enabled
+	if b.config.EnableDLQ {
+		if err := b.setupDLQ(ctx); err != nil {
+			b.logger.Warn("Failed to set up DLQ", zap.Error(err))
+		}
+	}
+
+	return nil
+}
+
+// setupDLQ creates the dead letter queue infrastructure
+func (b *Broker) setupDLQ(ctx context.Context) error {
+	// Declare DLQ exchange
+	if err := b.pubChannel.ExchangeDeclare(
+		b.config.DLQExchange,
+		"topic",
+		true,  // durable
+		false, // auto-delete
+		false, // internal
+		false, // no-wait
+		nil,
 	); err != nil {
-		b.conn.Close()
-		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionError("failed to set QoS", err)
+		return fmt.Errorf("failed to declare DLQ exchange: %w", err)
 	}
 
-	// Set up topology
-	if err := b.setupTopology(); err != nil {
-		b.conn.Close()
-		b.metrics.RecordConnectionFailure()
-		return err
+	// Declare DLQ
+	queueArgs := amqp.Table{
+		"x-message-ttl": b.config.DLQMessageTTL,
+		"x-max-length":  b.config.DLQMaxLength,
 	}
 
-	// Set up connection close notification
-	b.closeCh = make(chan *amqp.Error, 1)
-	b.conn.NotifyClose(b.closeCh)
-
-	b.connected = true
-	b.metrics.RecordConnectionSuccess()
-
-	// Start reconnection handler
-	go b.handleReconnection()
-
-	return nil
-}
-
-// setupTopology creates exchanges, queues, and bindings.
-func (b *Broker) setupTopology() error {
-	// Create exchanges
-	for _, ex := range b.topology.Exchanges {
-		if err := b.pubChannel.ExchangeDeclare(
-			ex.Name,
-			ex.Type.String(),
-			ex.Durable,
-			ex.AutoDelete,
-			ex.Internal,
-			ex.NoWait,
-			ex.Args,
-		); err != nil {
-			return messaging.TopicError(ex.Name, err)
-		}
+	_, err := b.pubChannel.QueueDeclare(
+		"helixagent.dlq",
+		true,  // durable
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		queueArgs,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare DLQ: %w", err)
 	}
 
-	// Create queues
-	for _, q := range b.topology.Queues {
-		args := q.ToArgs()
-		if _, err := b.pubChannel.QueueDeclare(
-			q.Name,
-			q.Durable,
-			q.AutoDelete,
-			q.Exclusive,
-			q.NoWait,
-			args,
-		); err != nil {
-			return messaging.QueueError(q.Name, err)
-		}
-		b.metrics.RecordQueueDeclared()
-	}
-
-	// Create bindings
-	for _, bind := range b.topology.Bindings {
-		if err := b.pubChannel.QueueBind(
-			bind.Queue,
-			bind.RoutingKey,
-			bind.Exchange,
-			bind.NoWait,
-			bind.Args,
-		); err != nil {
-			return messaging.QueueError(bind.Queue, err)
-		}
+	// Bind DLQ to exchange
+	if err := b.pubChannel.QueueBind(
+		"helixagent.dlq",
+		"#", // all routing keys
+		b.config.DLQExchange,
+		false,
+		nil,
+	); err != nil {
+		return fmt.Errorf("failed to bind DLQ: %w", err)
 	}
 
 	return nil
 }
 
-// handleReconnection handles automatic reconnection.
-func (b *Broker) handleReconnection() {
-	for {
-		select {
-		case <-b.stopCh:
-			return
-		case amqpErr, ok := <-b.closeCh:
-			if !ok {
-				return
-			}
-
-			b.mu.Lock()
-			b.connected = false
-			b.reconnecting = true
-			b.mu.Unlock()
-
-			if amqpErr != nil {
-				b.metrics.RecordConnectionFailure()
-			}
-
-			// Attempt reconnection
-			attempts := 0
-			for {
-				select {
-				case <-b.stopCh:
-					return
-				case <-time.After(b.config.ReconnectInterval):
-					b.metrics.RecordReconnectionAttempt()
-					attempts++
-
-					if b.config.MaxReconnectAttempts > 0 && attempts > b.config.MaxReconnectAttempts {
-						return
-					}
-
-					ctx, cancel := context.WithTimeout(context.Background(), b.config.ConnectTimeout)
-					err := b.reconnect(ctx)
-					cancel()
-
-					if err == nil {
-						b.mu.Lock()
-						b.connected = true
-						b.reconnecting = false
-						b.mu.Unlock()
-
-						// Re-subscribe existing subscriptions
-						b.resubscribe()
-						goto reconnected
-					}
-				}
-			}
-		reconnected:
-		}
-	}
-}
-
-// reconnect attempts to reconnect to RabbitMQ.
-func (b *Broker) reconnect(ctx context.Context) error {
+// restoreChannels recreates channels after reconnection
+func (b *Broker) restoreChannels() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// Create AMQP config
-	amqpConfig := amqp.Config{
-		Heartbeat: b.config.Heartbeat,
-		Locale:    "en_US",
-	}
-
-	if b.config.TLS {
-		amqpConfig.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: b.config.TLSInsecure,
-		}
-	}
-
-	conn, err := amqp.DialConfig(b.config.URL(), amqpConfig)
+	// Recreate publisher channel
+	ch, err := b.conn.Channel()
 	if err != nil {
-		return err
+		b.logger.Error("Failed to recreate publisher channel", zap.Error(err))
+		return
 	}
-	b.conn = conn
+	b.pubChannel = ch
 
-	pubChannel, err := b.conn.Channel()
-	if err != nil {
-		b.conn.Close()
-		return err
-	}
-	b.pubChannel = pubChannel
-
-	if b.config.PublisherConfirm {
+	if b.config.PublishConfirm {
 		if err := b.pubChannel.Confirm(false); err != nil {
-			b.conn.Close()
-			return err
+			b.logger.Warn("Failed to enable publisher confirms", zap.Error(err))
 		}
-		b.confirms = b.pubChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
 	}
 
-	if err := b.pubChannel.Qos(
-		b.config.PrefetchCount,
-		b.config.PrefetchSize,
-		b.config.GlobalQos,
-	); err != nil {
-		b.conn.Close()
-		return err
-	}
-
-	// Re-setup topology
-	if err := b.setupTopology(); err != nil {
-		b.conn.Close()
-		return err
-	}
-
-	// Set up new close notification
-	b.closeCh = make(chan *amqp.Error, 1)
-	b.conn.NotifyClose(b.closeCh)
-
-	b.metrics.RecordConnectionSuccess()
-	return nil
-}
-
-// resubscribe re-subscribes all existing subscriptions.
-func (b *Broker) resubscribe() {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	for _, sub := range b.subscribers {
-		if sub.active {
-			go func(s *Subscription) {
-				ctx := context.Background()
-				if err := s.restart(ctx); err != nil {
-					b.metrics.RecordError()
-				}
-			}(sub)
+	// Restore subscriptions
+	for _, sub := range b.subscriptions {
+		if sub.active.Load() {
+			go b.restoreSubscription(sub)
 		}
 	}
 }
 
-// Close closes the connection to RabbitMQ.
+// restoreSubscription recreates a subscription after reconnection
+func (b *Broker) restoreSubscription(sub *rabbitSubscription) {
+	ctx := context.Background()
+
+	ch, err := b.conn.Channel()
+	if err != nil {
+		b.logger.Error("Failed to recreate subscription channel",
+			zap.String("topic", sub.topic),
+			zap.Error(err))
+		return
+	}
+
+	// Set QoS
+	if err := ch.Qos(b.config.PrefetchCount, b.config.PrefetchSize, false); err != nil {
+		b.logger.Warn("Failed to set QoS", zap.Error(err))
+	}
+
+	// Re-declare queue
+	_, err = ch.QueueDeclare(
+		sub.queue,
+		b.config.DefaultQueueDurable,
+		b.config.DefaultQueueAutoDelete,
+		b.config.DefaultQueueExclusive,
+		false,
+		nil,
+	)
+	if err != nil {
+		b.logger.Error("Failed to re-declare queue",
+			zap.String("queue", sub.queue),
+			zap.Error(err))
+		return
+	}
+
+	// Start consuming
+	deliveries, err := ch.Consume(
+		sub.queue,
+		sub.consumer,
+		b.config.AutoAck,
+		b.config.Exclusive,
+		b.config.NoLocal,
+		b.config.NoWait,
+		nil,
+	)
+	if err != nil {
+		b.logger.Error("Failed to start consuming",
+			zap.String("queue", sub.queue),
+			zap.Error(err))
+		return
+	}
+
+	sub.channel = ch
+	go b.consumeMessages(ctx, sub, deliveries)
+
+	b.logger.Info("Subscription restored",
+		zap.String("topic", sub.topic),
+		zap.String("queue", sub.queue))
+}
+
+// Close closes the broker connection
 func (b *Broker) Close(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected && b.conn == nil {
+	if b.closed.Swap(true) {
 		return nil
 	}
 
-	close(b.stopCh)
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	// Cancel all subscriptions
-	for _, sub := range b.subscribers {
-		sub.cancel()
+	for _, sub := range b.subscriptions {
+		sub.active.Store(false)
+		close(sub.cancelCh)
+		if sub.channel != nil {
+			sub.channel.Close()
+		}
 	}
-	b.subscribers = make(map[string]*Subscription)
 
-	// Close channels and connection
-	var errs messaging.MultiError
+	// Close publisher channel
 	if b.pubChannel != nil {
-		if err := b.pubChannel.Close(); err != nil {
-			errs.Add(err)
-		}
+		b.pubChannel.Close()
 	}
+
+	// Close connection
 	if b.conn != nil {
-		if err := b.conn.Close(); err != nil {
-			errs.Add(err)
-		}
-	}
-
-	b.connected = false
-	b.metrics.RecordDisconnection()
-
-	return errs.ErrorOrNil()
-}
-
-// HealthCheck checks if the broker is healthy.
-func (b *Broker) HealthCheck(ctx context.Context) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	if !b.connected {
-		return messaging.ErrNotConnected
-	}
-
-	if b.conn == nil || b.conn.IsClosed() {
-		return messaging.ErrConnectionClosed
+		b.metrics.RecordDisconnection()
+		return b.conn.Close()
 	}
 
 	return nil
 }
 
-// IsConnected returns true if connected to RabbitMQ.
+// HealthCheck performs a health check
+func (b *Broker) HealthCheck(ctx context.Context) error {
+	if !b.IsConnected() {
+		return fmt.Errorf("not connected to RabbitMQ")
+	}
+
+	// Try to create a temporary channel as a health check
+	ch, err := b.conn.Channel()
+	if err != nil {
+		return fmt.Errorf("health check failed: %w", err)
+	}
+	ch.Close()
+
+	return nil
+}
+
+// IsConnected returns true if connected
 func (b *Broker) IsConnected() bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return b.connected && !b.reconnecting
+	return b.conn != nil && b.conn.IsConnected()
 }
 
-// Publish publishes a message to a queue or exchange.
+// Publish publishes a message to a topic
 func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.Message, opts ...messaging.PublishOption) error {
+	startTime := time.Now()
+	
 	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return messaging.ErrNotConnected
-	}
-	pubChannel := b.pubChannel
-	confirms := b.confirms
+	ch := b.pubChannel
 	b.mu.RUnlock()
 
+	if ch == nil {
+		b.metrics.RecordPublish(0, time.Since(startTime), false)
+		return fmt.Errorf("publisher channel not available")
+	}
+
+	// Apply options
 	options := messaging.ApplyPublishOptions(opts...)
-	start := time.Now()
 
-	// Build AMQP publishing
-	pub := amqp.Publishing{
-		ContentType:     options.ContentType,
-		ContentEncoding: options.ContentEncoding,
-		DeliveryMode:    uint8(message.DeliveryMode),
-		Priority:        uint8(message.Priority),
-		MessageId:       message.ID,
-		Timestamp:       message.Timestamp,
-		Type:            message.Type,
-		Body:            message.Payload,
-		Headers:         make(amqp.Table),
-	}
-
-	// Set headers
-	for k, v := range message.Headers {
-		pub.Headers[k] = v
-	}
-	if message.TraceID != "" {
-		pub.Headers["trace_id"] = message.TraceID
-	}
-	if message.CorrelationID != "" {
-		pub.CorrelationId = message.CorrelationID
-	}
-	if message.ReplyTo != "" {
-		pub.ReplyTo = message.ReplyTo
-	}
-	if !message.Expiration.IsZero() {
-		ttl := time.Until(message.Expiration)
-		if ttl > 0 {
-			pub.Expiration = string(rune(ttl.Milliseconds()))
-		}
-	}
-
-	// Determine exchange and routing key
-	exchange := options.Exchange
-	routingKey := options.RoutingKey
-	if routingKey == "" {
-		routingKey = topic
-	}
-
-	// Publish with context
-	pubCtx := ctx
-	if options.Timeout > 0 {
-		var cancel context.CancelFunc
-		pubCtx, cancel = context.WithTimeout(ctx, options.Timeout)
-		defer cancel()
-	}
-
-	err := pubChannel.PublishWithContext(
-		pubCtx,
-		exchange,
-		routingKey,
-		options.Mandatory,
-		options.Immediate,
-		pub,
-	)
+	// Serialize message
+	body, err := json.Marshal(message)
 	if err != nil {
-		b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), false)
-		return messaging.PublishError(topic, err)
+		b.metrics.RecordSerializationError()
+		return fmt.Errorf("failed to serialize message: %w", err)
 	}
 
-	// Wait for confirmation if enabled
-	if b.config.PublisherConfirm && options.Confirm && confirms != nil {
+	// Build AMQP message
+	publishing := amqp.Publishing{
+		ContentType:  "application/json",
+		Body:         body,
+		DeliveryMode: amqp.Persistent,
+		Timestamp:    message.Timestamp,
+		MessageId:    message.ID,
+		Type:         message.Type,
+		Headers:      amqp.Table{},
+	}
+
+	// Add headers
+	for k, v := range message.Headers {
+		publishing.Headers[k] = v
+	}
+
+	// Add priority if set
+	if message.Priority > 0 {
+		publishing.Priority = uint8(message.Priority)
+	}
+
+	// Add trace ID
+	if message.TraceID != "" {
+		publishing.Headers["trace-id"] = message.TraceID
+	}
+
+	// Ensure exchange exists
+	exchange := topic
+	if options.Exchange != "" {
+		exchange = options.Exchange
+	}
+
+	if err := b.ensureExchange(exchange); err != nil {
+		b.metrics.RecordPublish(0, time.Since(startTime), false)
+		return err
+	}
+
+	// Determine routing key
+	routingKey := topic
+	if options.RoutingKey != "" {
+		routingKey = options.RoutingKey
+	}
+
+	// Publish with confirm if enabled
+	if b.config.PublishConfirm {
+		confirm := make(chan amqp.Confirmation, 1)
+		b.pubChannel.NotifyPublish(confirm)
+
+		if err := ch.PublishWithContext(ctx, exchange, routingKey,
+			b.config.MandatoryPublish, b.config.ImmediatePublish, publishing); err != nil {
+			b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), false)
+			return fmt.Errorf("failed to publish message: %w", err)
+		}
+
 		select {
-		case confirm, ok := <-confirms:
-			if !ok {
-				b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), false)
-				return messaging.NewBrokerError(messaging.ErrCodePublishFailed, "confirm channel closed", nil)
-			}
-			if !confirm.Ack {
-				b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), false)
-				return messaging.NewBrokerError(messaging.ErrCodePublishRejected, "message nacked by broker", nil)
+		case c := <-confirm:
+			if !c.Ack {
+				b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), false)
+				return fmt.Errorf("message was not confirmed")
 			}
 			b.metrics.RecordPublishConfirmation()
-		case <-time.After(b.config.PublisherConfirmTimeout):
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(b.config.PublishTimeout):
 			b.metrics.RecordPublishTimeout()
-			return messaging.PublishTimeoutError(topic)
-		case <-pubCtx.Done():
-			b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), false)
-			return pubCtx.Err()
+			return fmt.Errorf("publish confirmation timeout")
+		}
+	} else {
+		if err := ch.PublishWithContext(ctx, exchange, routingKey,
+			b.config.MandatoryPublish, b.config.ImmediatePublish, publishing); err != nil {
+			b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), false)
+			return fmt.Errorf("failed to publish message: %w", err)
 		}
 	}
 
-	b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), true)
+	b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), true)
 	return nil
 }
 
-// PublishBatch publishes multiple messages.
+// PublishBatch publishes multiple messages
 func (b *Broker) PublishBatch(ctx context.Context, topic string, messages []*messaging.Message, opts ...messaging.PublishOption) error {
 	for _, msg := range messages {
 		if err := b.Publish(ctx, topic, msg, opts...); err != nil {
@@ -507,46 +437,79 @@ func (b *Broker) PublishBatch(ctx context.Context, topic string, messages []*mes
 	return nil
 }
 
-// Subscribe creates a subscription to a queue.
+// Subscribe subscribes to a topic
 func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.MessageHandler, opts ...messaging.SubscribeOption) (messaging.Subscription, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if !b.connected {
-		return nil, messaging.ErrNotConnected
-	}
-
+	// Apply options
 	options := messaging.ApplySubscribeOptions(opts...)
 
-	// Create a new channel for this subscription
+	// Create channel for this subscription
 	ch, err := b.conn.Channel()
 	if err != nil {
-		return nil, messaging.SubscribeError(topic, err)
+		b.metrics.RecordError()
+		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 
 	// Set QoS
-	if err := ch.Qos(options.Prefetch, options.PrefetchSize, false); err != nil {
+	prefetch := b.config.PrefetchCount
+	if options.Prefetch > 0 {
+		prefetch = options.Prefetch
+	}
+	if err := ch.Qos(prefetch, b.config.PrefetchSize, false); err != nil {
 		ch.Close()
-		return nil, messaging.SubscribeError(topic, err)
+		return nil, fmt.Errorf("failed to set QoS: %w", err)
 	}
 
-	// Declare queue if it doesn't exist
-	if _, err := ch.QueueDeclare(
-		topic,
+	// Ensure exchange exists
+	if err := b.ensureExchange(topic); err != nil {
+		ch.Close()
+		return nil, err
+	}
+
+	// Declare queue
+	queueName := topic
+	queueArgs := amqp.Table{}
+	if b.config.EnableDLQ {
+		queueArgs["x-dead-letter-exchange"] = b.config.DLQExchange
+		queueArgs["x-dead-letter-routing-key"] = b.config.DLQRoutingKey
+	}
+
+	q, err := ch.QueueDeclare(
+		queueName,
 		b.config.DefaultQueueDurable,
 		b.config.DefaultQueueAutoDelete,
-		b.config.DefaultQueueExclusive,
-		false,
-		nil,
-	); err != nil {
+		options.Exclusive,
+		options.NoWait,
+		queueArgs,
+	)
+	if err != nil {
 		ch.Close()
-		return nil, messaging.SubscribeError(topic, err)
+		b.metrics.RecordError()
+		return nil, fmt.Errorf("failed to declare queue: %w", err)
+	}
+
+	b.metrics.RecordQueueDeclared()
+
+	// Bind queue to exchange
+	routingKey := "#" // Subscribe to all messages on this topic
+	if err := ch.QueueBind(q.Name, routingKey, topic, false, nil); err != nil {
+		ch.Close()
+		return nil, fmt.Errorf("failed to bind queue: %w", err)
+	}
+
+	// Generate consumer tag and subscription ID
+	subID := fmt.Sprintf("sub-%d", b.subCounter.Add(1))
+	consumerTag := options.ConsumerTag
+	if consumerTag == "" {
+		consumerTag = fmt.Sprintf("helixagent-%s-%d", topic, time.Now().UnixNano())
 	}
 
 	// Start consuming
 	deliveries, err := ch.Consume(
-		topic,
-		options.ConsumerTag,
+		q.Name,
+		consumerTag,
 		options.AutoAck,
 		options.Exclusive,
 		options.NoLocal,
@@ -555,57 +518,123 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 	)
 	if err != nil {
 		ch.Close()
-		return nil, messaging.SubscribeError(topic, err)
+		b.metrics.RecordError()
+		return nil, fmt.Errorf("failed to start consuming: %w", err)
 	}
 
-	sub := &Subscription{
-		id:         generateSubscriptionID(),
-		topic:      topic,
-		broker:     b,
-		channel:    ch,
-		deliveries: deliveries,
-		handler:    handler,
-		options:    options,
-		active:     true,
-		stopCh:     make(chan struct{}),
+	// Create subscription
+	sub := &rabbitSubscription{
+		id:       subID,
+		topic:    topic,
+		queue:    q.Name,
+		handler:  handler,
+		channel:  ch,
+		consumer: consumerTag,
+		cancelCh: make(chan struct{}),
 	}
+	sub.active.Store(true)
 
-	b.subscribers[sub.id] = sub
+	b.subscriptions[topic] = sub
 	b.metrics.RecordSubscription()
 
-	// Start consuming in background
-	go sub.consume(ctx)
+	// Start message consumer
+	go b.consumeMessages(ctx, sub, deliveries)
+
+	b.logger.Info("Subscribed to topic",
+		zap.String("topic", topic),
+		zap.String("queue", q.Name),
+		zap.String("consumer", consumerTag))
 
 	return sub, nil
 }
 
-// BrokerType returns the broker type.
+// consumeMessages handles incoming messages
+func (b *Broker) consumeMessages(ctx context.Context, sub *rabbitSubscription, deliveries <-chan amqp.Delivery) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sub.cancelCh:
+			return
+		case d, ok := <-deliveries:
+			if !ok {
+				return
+			}
+
+			startTime := time.Now()
+
+			// Parse message
+			var msg messaging.Message
+			if err := json.Unmarshal(d.Body, &msg); err != nil {
+				b.logger.Error("Failed to parse message",
+					zap.Error(err),
+					zap.ByteString("body", d.Body))
+				if !b.config.AutoAck {
+					d.Nack(false, false) // Don't requeue invalid messages
+				}
+				b.metrics.RecordFailed()
+				b.metrics.RecordSerializationError()
+				continue
+			}
+
+			// Call handler
+			b.metrics.RecordReceive(int64(len(d.Body)), time.Since(startTime))
+
+			if err := sub.handler(ctx, &msg); err != nil {
+				b.logger.Error("Handler error",
+					zap.String("topic", sub.topic),
+					zap.String("messageId", msg.ID),
+					zap.Error(err))
+				if !b.config.AutoAck {
+					d.Nack(false, true) // Requeue on handler error
+				}
+				b.metrics.RecordFailed()
+				b.metrics.RecordNack()
+				continue
+			}
+
+			// Acknowledge message
+			if !b.config.AutoAck {
+				if err := d.Ack(false); err != nil {
+					b.logger.Error("Failed to acknowledge message",
+						zap.String("messageId", msg.ID),
+						zap.Error(err))
+				}
+				b.metrics.RecordAck()
+			}
+			b.metrics.RecordProcessed()
+		}
+	}
+}
+
+// ensureExchange ensures an exchange exists
+func (b *Broker) ensureExchange(name string) error {
+	if b.exchanges[name] {
+		return nil
+	}
+
+	if err := b.pubChannel.ExchangeDeclare(
+		name,
+		b.config.DefaultExchangeType,
+		b.config.DefaultExchangeDurable,
+		false, // auto-delete
+		false, // internal
+		false, // no-wait
+		nil,
+	); err != nil {
+		return fmt.Errorf("failed to declare exchange %s: %w", name, err)
+	}
+
+	b.exchanges[name] = true
+	return nil
+}
+
+// BrokerType returns the broker type
 func (b *Broker) BrokerType() messaging.BrokerType {
 	return messaging.BrokerTypeRabbitMQ
 }
 
-// GetMetrics returns broker metrics.
+// GetMetrics returns broker metrics
 func (b *Broker) GetMetrics() *messaging.BrokerMetrics {
 	return b.metrics
-}
-
-// SetTopology sets a custom topology configuration.
-func (b *Broker) SetTopology(topology *TopologyConfig) {
-	b.topology = topology
-}
-
-// generateSubscriptionID generates a unique subscription ID.
-func generateSubscriptionID() string {
-	return "sub-" + time.Now().UTC().Format("20060102150405") + "-" + randomString(8)
-}
-
-// randomString generates a random alphanumeric string.
-func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-		time.Sleep(time.Nanosecond)
-	}
-	return string(b)
 }

@@ -1,699 +1,580 @@
-// Package kafka provides an Apache Kafka message broker implementation.
 package kafka
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
-	"github.com/segmentio/kafka-go/sasl/plain"
-	"github.com/segmentio/kafka-go/sasl/scram"
-
 	"dev.helix.agent/internal/messaging"
+	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
-// Broker is a Kafka message broker implementation.
+// Broker implements the messaging.MessageBroker interface for Kafka
 type Broker struct {
-	config      *Config
-	writer      *kafka.Writer
-	readers     map[string]*kafka.Reader
-	dialer      *kafka.Dialer
-	metrics     *messaging.BrokerMetrics
-	connected   bool
-	mu          sync.RWMutex
-	stopCh      chan struct{}
-	subscribers map[string]*Subscription
+	config        *Config
+	logger        *zap.Logger
+	writers       map[string]*kafka.Writer
+	readers       map[string]*kafkaSubscription
+	mu            sync.RWMutex
+	metrics       *messaging.BrokerMetrics
+	closed        atomic.Bool
+	connected     atomic.Bool
+	subCounter    atomic.Int64
 }
 
-// NewBroker creates a new Kafka broker.
-func NewBroker(config *Config) *Broker {
+// kafkaSubscription holds subscription state
+type kafkaSubscription struct {
+	id       string
+	topic    string
+	groupID  string
+	handler  messaging.MessageHandler
+	reader   *kafka.Reader
+	cancelFn context.CancelFunc
+	active   atomic.Bool
+}
+
+// Subscription interface implementation
+func (s *kafkaSubscription) Unsubscribe() error {
+	if !s.active.Swap(false) {
+		return nil
+	}
+
+	if s.cancelFn != nil {
+		s.cancelFn()
+	}
+
+	if s.reader != nil {
+		return s.reader.Close()
+	}
+	return nil
+}
+
+func (s *kafkaSubscription) IsActive() bool {
+	return s.active.Load()
+}
+
+func (s *kafkaSubscription) Topic() string {
+	return s.topic
+}
+
+func (s *kafkaSubscription) ID() string {
+	return s.id
+}
+
+// NewBroker creates a new Kafka broker
+func NewBroker(config *Config, logger *zap.Logger) *Broker {
 	if config == nil {
 		config = DefaultConfig()
 	}
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+
 	return &Broker{
-		config:      config,
-		readers:     make(map[string]*kafka.Reader),
-		metrics:     messaging.NewBrokerMetrics(),
-		subscribers: make(map[string]*Subscription),
-		stopCh:      make(chan struct{}),
+		config:  config,
+		logger:  logger,
+		writers: make(map[string]*kafka.Writer),
+		readers: make(map[string]*kafkaSubscription),
+		metrics: messaging.NewBrokerMetrics(),
 	}
 }
 
-// Connect establishes a connection to Kafka.
+// Connect establishes connection to Kafka
 func (b *Broker) Connect(ctx context.Context) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.connected {
+	if b.connected.Load() {
 		return nil
 	}
 
 	b.metrics.RecordConnectionAttempt()
 
-	if err := b.config.Validate(); err != nil {
-		b.metrics.RecordConnectionFailure()
-		return err
-	}
-
-	// Create dialer with TLS and SASL if configured
-	dialer := &kafka.Dialer{
-		Timeout:   b.config.DialTimeout,
-		DualStack: true,
-		ClientID:  b.config.ClientID,
-	}
-
-	// Configure TLS
-	if b.config.TLS {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: b.config.TLSInsecure,
-		}
-		dialer.TLS = tlsConfig
-	}
-
-	// Configure SASL
-	if b.config.SASLEnabled {
-		mechanism, err := b.getSASLMechanism()
-		if err != nil {
-			b.metrics.RecordConnectionFailure()
-			return err
-		}
-		dialer.SASLMechanism = mechanism
-	}
-
-	b.dialer = dialer
-
-	// Test connection by getting metadata
-	conn, err := dialer.DialContext(ctx, "tcp", b.config.Brokers[0])
+	// Test connection by getting cluster metadata
+	conn, err := kafka.DialContext(ctx, "tcp", b.config.Brokers[0])
 	if err != nil {
 		b.metrics.RecordConnectionFailure()
-		return messaging.ConnectionError("failed to connect to Kafka", err)
+		return fmt.Errorf("failed to connect to Kafka: %w", err)
 	}
-	conn.Close()
+	defer conn.Close()
 
-	// Create writer
-	b.writer = &kafka.Writer{
-		Addr:         kafka.TCP(b.config.Brokers...),
-		Balancer:     &kafka.LeastBytes{},
-		BatchSize:    b.config.BatchSize,
-		BatchBytes:   b.config.BatchBytes,
-		BatchTimeout: b.config.BatchTimeout,
-		ReadTimeout:  b.config.ReadTimeout,
-		WriteTimeout: b.config.WriteTimeout,
-		RequiredAcks: kafka.RequiredAcks(b.config.RequiredAcks),
-		MaxAttempts:  b.config.MaxAttempts,
-		Compression:  b.getCompression(),
-		Transport: &kafka.Transport{
-			TLS:  dialer.TLS,
-			SASL: dialer.SASLMechanism,
-		},
+	// Get controller to verify connection
+	_, err = conn.Controller()
+	if err != nil {
+		b.metrics.RecordConnectionFailure()
+		return fmt.Errorf("failed to get Kafka controller: %w", err)
 	}
 
-	b.connected = true
+	b.connected.Store(true)
 	b.metrics.RecordConnectionSuccess()
+	
+	b.logger.Info("Connected to Kafka",
+		zap.Strings("brokers", b.config.Brokers))
 
 	return nil
 }
 
-// getSASLMechanism returns the SASL mechanism based on configuration.
-func (b *Broker) getSASLMechanism() (sasl.Mechanism, error) {
-	switch b.config.SASLMechanism {
-	case "PLAIN":
-		return plain.Mechanism{
-			Username: b.config.SASLUsername,
-			Password: b.config.SASLPassword,
-		}, nil
-	case "SCRAM-SHA-256":
-		return scram.Mechanism(scram.SHA256, b.config.SASLUsername, b.config.SASLPassword)
-	case "SCRAM-SHA-512":
-		return scram.Mechanism(scram.SHA512, b.config.SASLUsername, b.config.SASLPassword)
-	default:
-		return nil, messaging.ConfigError("unsupported SASL mechanism: " + b.config.SASLMechanism)
-	}
-}
-
-// getCompression returns the compression codec.
-func (b *Broker) getCompression() kafka.Compression {
-	switch b.config.Compression {
-	case CompressionGzip:
-		return kafka.Gzip
-	case CompressionSnappy:
-		return kafka.Snappy
-	case CompressionLZ4:
-		return kafka.Lz4
-	case CompressionZstd:
-		return kafka.Zstd
-	default:
-		return 0 // No compression
-	}
-}
-
-// Close closes the connection to Kafka.
+// Close closes the broker
 func (b *Broker) Close(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if b.closed.Swap(true) {
 		return nil
 	}
 
-	close(b.stopCh)
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
-	var errs messaging.MultiError
+	var errs []error
 
-	// Close all subscriptions
-	for _, sub := range b.subscribers {
-		sub.cancel()
-	}
-	b.subscribers = make(map[string]*Subscription)
-
-	// Close writer
-	if b.writer != nil {
-		if err := b.writer.Close(); err != nil {
-			errs.Add(err)
+	// Close all writers
+	for topic, writer := range b.writers {
+		if err := writer.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close writer for %s: %w", topic, err))
 		}
 	}
 
 	// Close all readers
-	for _, reader := range b.readers {
-		if err := reader.Close(); err != nil {
-			errs.Add(err)
+	for topic, sub := range b.readers {
+		sub.active.Store(false)
+		if sub.cancelFn != nil {
+			sub.cancelFn()
+		}
+		if err := sub.reader.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close reader for %s: %w", topic, err))
 		}
 	}
-	b.readers = make(map[string]*kafka.Reader)
 
-	b.connected = false
+	b.connected.Store(false)
 	b.metrics.RecordDisconnection()
 
-	return errs.ErrorOrNil()
+	if len(errs) > 0 {
+		return fmt.Errorf("errors closing broker: %v", errs)
+	}
+
+	b.logger.Info("Kafka broker closed")
+	return nil
 }
 
-// HealthCheck checks if the broker is healthy.
+// HealthCheck performs a health check
 func (b *Broker) HealthCheck(ctx context.Context) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	if !b.connected {
-		return messaging.ErrNotConnected
+	if !b.connected.Load() {
+		return fmt.Errorf("not connected to Kafka")
 	}
 
-	// Try to connect to any broker
-	conn, err := b.dialer.DialContext(ctx, "tcp", b.config.Brokers[0])
+	conn, err := kafka.DialContext(ctx, "tcp", b.config.Brokers[0])
 	if err != nil {
-		return messaging.ConnectionError("health check failed", err)
+		return fmt.Errorf("health check failed: %w", err)
 	}
-	conn.Close()
+	defer conn.Close()
+
+	_, err = conn.Brokers()
+	if err != nil {
+		return fmt.Errorf("failed to get brokers: %w", err)
+	}
 
 	return nil
 }
 
-// IsConnected returns true if connected to Kafka.
+// IsConnected returns true if connected
 func (b *Broker) IsConnected() bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.connected
+	return b.connected.Load()
 }
 
-// Publish publishes a message to a topic.
-func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.Message, opts ...messaging.PublishOption) error {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return messaging.ErrNotConnected
-	}
-	writer := b.writer
-	b.mu.RUnlock()
+// getOrCreateWriter gets or creates a writer for a topic
+func (b *Broker) getOrCreateWriter(topic string) *kafka.Writer {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
+	if writer, ok := b.writers[topic]; ok {
+		return writer
+	}
+
+	writer := &kafka.Writer{
+		Addr:         kafka.TCP(b.config.Brokers...),
+		Topic:        topic,
+		Balancer:     &kafka.LeastBytes{},
+		BatchSize:    b.config.BatchSize,
+		BatchTimeout: b.config.BatchTimeout,
+		MaxAttempts:  b.config.MaxRetries,
+		RequiredAcks: kafka.RequiredAcks(b.config.RequiredAcks),
+		Async:        false,
+	}
+
+	b.writers[topic] = writer
+	return writer
+}
+
+// Publish publishes a message to a topic
+func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.Message, opts ...messaging.PublishOption) error {
+	startTime := time.Now()
+	
+	if !b.connected.Load() {
+		b.metrics.RecordPublish(0, time.Since(startTime), false)
+		return fmt.Errorf("not connected to Kafka")
+	}
+
+	// Apply options
 	options := messaging.ApplyPublishOptions(opts...)
-	start := time.Now()
+
+	// Serialize message
+	body, err := json.Marshal(message)
+	if err != nil {
+		b.metrics.RecordSerializationError()
+		return fmt.Errorf("failed to serialize message: %w", err)
+	}
 
 	// Build Kafka message
 	kafkaMsg := kafka.Message{
-		Topic: topic,
-		Value: message.Payload,
+		Key:   []byte(message.ID),
+		Value: body,
 		Time:  message.Timestamp,
+		Headers: []kafka.Header{
+			{Key: "type", Value: []byte(message.Type)},
+			{Key: "id", Value: []byte(message.ID)},
+		},
 	}
 
-	// Set key if provided
-	if options.Key != nil {
-		kafkaMsg.Key = options.Key
-	} else if message.CorrelationID != "" {
-		kafkaMsg.Key = []byte(message.CorrelationID)
-	}
-
-	// Set partition if specified
-	if options.Partition != nil {
-		kafkaMsg.Partition = int(*options.Partition)
-	}
-
-	// Set headers
-	kafkaMsg.Headers = make([]kafka.Header, 0)
+	// Add headers
 	for k, v := range message.Headers {
-		kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{Key: k, Value: []byte(v)})
+		kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{
+			Key:   k,
+			Value: []byte(v),
+		})
 	}
+
+	// Add trace ID
 	if message.TraceID != "" {
-		kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{Key: "trace_id", Value: []byte(message.TraceID)})
-	}
-	if message.ID != "" {
-		kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{Key: "message_id", Value: []byte(message.ID)})
-	}
-	kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{Key: "message_type", Value: []byte(message.Type)})
-
-	// Write with timeout
-	writeCtx := ctx
-	if options.Timeout > 0 {
-		var cancel context.CancelFunc
-		writeCtx, cancel = context.WithTimeout(ctx, options.Timeout)
-		defer cancel()
+		kafkaMsg.Headers = append(kafkaMsg.Headers, kafka.Header{
+			Key:   "trace-id",
+			Value: []byte(message.TraceID),
+		})
 	}
 
-	err := writer.WriteMessages(writeCtx, kafkaMsg)
-	if err != nil {
-		b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), false)
-		return messaging.PublishError(topic, err)
+	// Use partition key if specified
+	if len(options.Key) > 0 {
+		kafkaMsg.Key = options.Key
 	}
 
-	b.metrics.RecordPublish(int64(len(message.Payload)), time.Since(start), true)
+	// Get or create writer
+	writer := b.getOrCreateWriter(topic)
+
+	// Write message
+	if err := writer.WriteMessages(ctx, kafkaMsg); err != nil {
+		b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), false)
+		return fmt.Errorf("failed to publish message: %w", err)
+	}
+
+	b.metrics.RecordPublish(int64(len(body)), time.Since(startTime), true)
 	return nil
 }
 
-// PublishBatch publishes multiple messages to a topic.
+// PublishBatch publishes multiple messages
 func (b *Broker) PublishBatch(ctx context.Context, topic string, messages []*messaging.Message, opts ...messaging.PublishOption) error {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return messaging.ErrNotConnected
+	startTime := time.Now()
+	
+	if !b.connected.Load() {
+		return fmt.Errorf("not connected to Kafka")
 	}
-	writer := b.writer
-	b.mu.RUnlock()
 
-	options := messaging.ApplyPublishOptions(opts...)
-	start := time.Now()
-
-	// Convert messages
+	var totalBytes int64
 	kafkaMessages := make([]kafka.Message, len(messages))
-	totalBytes := int64(0)
 	for i, msg := range messages {
+		body, err := json.Marshal(msg)
+		if err != nil {
+			return fmt.Errorf("failed to serialize message %s: %w", msg.ID, err)
+		}
+		totalBytes += int64(len(body))
+
 		kafkaMessages[i] = kafka.Message{
-			Topic: topic,
-			Value: msg.Payload,
+			Key:   []byte(msg.ID),
+			Value: body,
 			Time:  msg.Timestamp,
+			Headers: []kafka.Header{
+				{Key: "type", Value: []byte(msg.Type)},
+				{Key: "id", Value: []byte(msg.ID)},
+			},
 		}
-		if msg.CorrelationID != "" {
-			kafkaMessages[i].Key = []byte(msg.CorrelationID)
-		}
-		kafkaMessages[i].Headers = make([]kafka.Header, 0)
+
+		// Add headers
 		for k, v := range msg.Headers {
-			kafkaMessages[i].Headers = append(kafkaMessages[i].Headers, kafka.Header{Key: k, Value: []byte(v)})
+			kafkaMessages[i].Headers = append(kafkaMessages[i].Headers, kafka.Header{
+				Key:   k,
+				Value: []byte(v),
+			})
 		}
-		if msg.TraceID != "" {
-			kafkaMessages[i].Headers = append(kafkaMessages[i].Headers, kafka.Header{Key: "trace_id", Value: []byte(msg.TraceID)})
-		}
-		if msg.ID != "" {
-			kafkaMessages[i].Headers = append(kafkaMessages[i].Headers, kafka.Header{Key: "message_id", Value: []byte(msg.ID)})
-		}
-		kafkaMessages[i].Headers = append(kafkaMessages[i].Headers, kafka.Header{Key: "message_type", Value: []byte(msg.Type)})
-		totalBytes += int64(len(msg.Payload))
 	}
 
-	// Write with timeout
-	writeCtx := ctx
-	if options.Timeout > 0 {
-		var cancel context.CancelFunc
-		writeCtx, cancel = context.WithTimeout(ctx, options.Timeout)
-		defer cancel()
+	writer := b.getOrCreateWriter(topic)
+	if err := writer.WriteMessages(ctx, kafkaMessages...); err != nil {
+		b.metrics.RecordBatchPublish(len(messages), totalBytes, time.Since(startTime), false)
+		return fmt.Errorf("failed to publish batch: %w", err)
 	}
 
-	err := writer.WriteMessages(writeCtx, kafkaMessages...)
-	if err != nil {
-		b.metrics.RecordBatchPublish(len(messages), totalBytes, time.Since(start), false)
-		return messaging.PublishError(topic, err)
-	}
-
-	b.metrics.RecordBatchPublish(len(messages), totalBytes, time.Since(start), true)
+	b.metrics.RecordBatchPublish(len(messages), totalBytes, time.Since(startTime), true)
 	return nil
 }
 
-// Subscribe creates a subscription to a topic.
+// Subscribe subscribes to a topic
 func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.MessageHandler, opts ...messaging.SubscribeOption) (messaging.Subscription, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if !b.connected {
-		return nil, messaging.ErrNotConnected
+	if !b.connected.Load() {
+		return nil, fmt.Errorf("not connected to Kafka")
 	}
 
+	// Apply options
 	options := messaging.ApplySubscribeOptions(opts...)
 
-	// Create reader config
-	readerConfig := kafka.ReaderConfig{
+	// Determine group ID
+	groupID := b.config.GroupID
+	if options.GroupID != "" {
+		groupID = options.GroupID
+	}
+
+	// Determine start offset
+	startOffset := kafka.FirstOffset
+	if b.config.AutoOffsetReset == "latest" || options.OffsetReset == messaging.OffsetResetLatest {
+		startOffset = kafka.LastOffset
+	}
+
+	// Create reader
+	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        b.config.Brokers,
 		Topic:          topic,
-		GroupID:        options.GroupID,
-		MinBytes:       b.config.MinBytes,
-		MaxBytes:       b.config.MaxBytes,
-		MaxWait:        b.config.MaxWait,
-		CommitInterval: options.CommitInterval,
-		StartOffset:    b.config.StartOffset,
-		Dialer:         b.dialer,
-	}
+		GroupID:        groupID,
+		MinBytes:       b.config.FetchMinBytes,
+		MaxBytes:       b.config.FetchMaxBytes,
+		MaxWait:        b.config.FetchMaxWait,
+		StartOffset:    startOffset,
+		CommitInterval: b.config.AutoCommitInterval,
+		Logger:         nil, // Use zap instead
+	})
 
-	if options.GroupID == "" {
-		readerConfig.GroupID = b.config.GroupID
-	}
+	// Create cancellation context
+	subCtx, cancelFn := context.WithCancel(ctx)
 
-	reader := kafka.NewReader(readerConfig)
-
-	sub := &Subscription{
-		id:       generateSubscriptionID(),
+	// Create subscription
+	subID := fmt.Sprintf("sub-%d", b.subCounter.Add(1))
+	sub := &kafkaSubscription{
+		id:       subID,
 		topic:    topic,
-		broker:   b,
-		reader:   reader,
+		groupID:  groupID,
 		handler:  handler,
-		options:  options,
-		active:   true,
-		stopCh:   make(chan struct{}),
+		reader:   reader,
+		cancelFn: cancelFn,
 	}
+	sub.active.Store(true)
 
-	b.subscribers[sub.id] = sub
-	b.readers[sub.id] = reader
+	b.readers[topic] = sub
 	b.metrics.RecordSubscription()
 
-	// Start consuming in background
-	go sub.consume(ctx)
+	// Start consumer
+	go b.consumeMessages(subCtx, sub)
+
+	b.logger.Info("Subscribed to Kafka topic",
+		zap.String("topic", topic),
+		zap.String("groupID", groupID))
 
 	return sub, nil
 }
 
-// BrokerType returns the broker type.
-func (b *Broker) BrokerType() messaging.BrokerType {
-	return messaging.BrokerTypeKafka
-}
+// consumeMessages handles incoming messages
+func (b *Broker) consumeMessages(ctx context.Context, sub *kafkaSubscription) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 
-// GetMetrics returns broker metrics.
-func (b *Broker) GetMetrics() *messaging.BrokerMetrics {
-	return b.metrics
-}
+		if !sub.active.Load() {
+			return
+		}
 
-// CreateTopic creates a new topic.
-func (b *Broker) CreateTopic(ctx context.Context, name string, partitions int, replication int) error {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return messaging.ErrNotConnected
+		startTime := time.Now()
+
+		// Fetch message
+		kafkaMsg, err := sub.reader.FetchMessage(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				return // Context cancelled
+			}
+			b.logger.Error("Failed to fetch message",
+				zap.String("topic", sub.topic),
+				zap.Error(err))
+			b.metrics.RecordFailed()
+			continue
+		}
+
+		// Parse message
+		var msg messaging.Message
+		if err := json.Unmarshal(kafkaMsg.Value, &msg); err != nil {
+			b.logger.Error("Failed to parse message",
+				zap.Error(err),
+				zap.ByteString("value", kafkaMsg.Value))
+			// Commit offset to skip invalid message
+			sub.reader.CommitMessages(ctx, kafkaMsg)
+			b.metrics.RecordFailed()
+			b.metrics.RecordSerializationError()
+			continue
+		}
+
+		b.metrics.RecordReceive(int64(len(kafkaMsg.Value)), time.Since(startTime))
+
+		// Call handler
+		if err := sub.handler(ctx, &msg); err != nil {
+			b.logger.Error("Handler error",
+				zap.String("topic", sub.topic),
+				zap.String("messageId", msg.ID),
+				zap.Error(err))
+			b.metrics.RecordFailed()
+			// Don't commit on error - message will be reprocessed
+			continue
+		}
+
+		// Commit offset
+		if !b.config.EnableAutoCommit {
+			if err := sub.reader.CommitMessages(ctx, kafkaMsg); err != nil {
+				b.logger.Error("Failed to commit offset",
+					zap.String("topic", sub.topic),
+					zap.Error(err))
+			}
+		}
+		b.metrics.RecordProcessed()
 	}
-	dialer := b.dialer
-	b.mu.RUnlock()
+}
 
-	conn, err := dialer.DialContext(ctx, "tcp", b.config.Brokers[0])
+// CreateTopic creates a Kafka topic
+func (b *Broker) CreateTopic(ctx context.Context, config *TopicConfig) error {
+	conn, err := kafka.DialContext(ctx, "tcp", b.config.Brokers[0])
 	if err != nil {
-		return messaging.ConnectionError("failed to connect for topic creation", err)
+		return fmt.Errorf("failed to connect: %w", err)
 	}
 	defer conn.Close()
 
 	controller, err := conn.Controller()
 	if err != nil {
-		return messaging.TopicError(name, err)
+		return fmt.Errorf("failed to get controller: %w", err)
 	}
 
-	controllerConn, err := dialer.DialContext(ctx, "tcp", controller.Host+":"+string(rune(controller.Port)))
+	controllerConn, err := kafka.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", controller.Host, controller.Port))
 	if err != nil {
-		return messaging.ConnectionError("failed to connect to controller", err)
+		return fmt.Errorf("failed to connect to controller: %w", err)
 	}
 	defer controllerConn.Close()
 
-	topicConfig := kafka.TopicConfig{
-		Topic:             name,
-		NumPartitions:     partitions,
-		ReplicationFactor: replication,
+	topicConfigs := []kafka.TopicConfig{
+		{
+			Topic:             config.Name,
+			NumPartitions:     config.Partitions,
+			ReplicationFactor: config.ReplicationFactor,
+		},
 	}
 
-	err = controllerConn.CreateTopics(topicConfig)
+	err = controllerConn.CreateTopics(topicConfigs...)
 	if err != nil {
-		return messaging.TopicError(name, err)
+		return fmt.Errorf("failed to create topic: %w", err)
 	}
 
 	b.metrics.RecordTopicCreated()
+	b.logger.Info("Created Kafka topic",
+		zap.String("topic", config.Name),
+		zap.Int("partitions", config.Partitions),
+		zap.Int("replication", config.ReplicationFactor))
+
 	return nil
 }
 
-// DeleteTopic deletes a topic.
-func (b *Broker) DeleteTopic(ctx context.Context, name string) error {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return messaging.ErrNotConnected
-	}
-	dialer := b.dialer
-	b.mu.RUnlock()
-
-	conn, err := dialer.DialContext(ctx, "tcp", b.config.Brokers[0])
+// DeleteTopic deletes a Kafka topic
+func (b *Broker) DeleteTopic(ctx context.Context, topic string) error {
+	conn, err := kafka.DialContext(ctx, "tcp", b.config.Brokers[0])
 	if err != nil {
-		return messaging.ConnectionError("failed to connect for topic deletion", err)
+		return fmt.Errorf("failed to connect: %w", err)
 	}
 	defer conn.Close()
 
 	controller, err := conn.Controller()
 	if err != nil {
-		return messaging.TopicError(name, err)
+		return fmt.Errorf("failed to get controller: %w", err)
 	}
 
-	controllerConn, err := dialer.DialContext(ctx, "tcp", controller.Host+":"+string(rune(controller.Port)))
+	controllerConn, err := kafka.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", controller.Host, controller.Port))
 	if err != nil {
-		return messaging.ConnectionError("failed to connect to controller", err)
+		return fmt.Errorf("failed to connect to controller: %w", err)
 	}
 	defer controllerConn.Close()
 
-	err = controllerConn.DeleteTopics(name)
+	err = controllerConn.DeleteTopics(topic)
 	if err != nil {
-		return messaging.TopicError(name, err)
+		return fmt.Errorf("failed to delete topic: %w", err)
 	}
 
+	b.logger.Info("Deleted Kafka topic", zap.String("topic", topic))
 	return nil
 }
 
-// GetTopicMetadata returns metadata for a topic.
-func (b *Broker) GetTopicMetadata(ctx context.Context, topic string) (*messaging.TopicMetadata, error) {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return nil, messaging.ErrNotConnected
-	}
-	dialer := b.dialer
-	b.mu.RUnlock()
-
-	conn, err := dialer.DialContext(ctx, "tcp", b.config.Brokers[0])
+// GetTopicMetadata returns topic metadata
+func (b *Broker) GetTopicMetadata(ctx context.Context, topic string) (*TopicMetadata, error) {
+	conn, err := kafka.DialContext(ctx, "tcp", b.config.Brokers[0])
 	if err != nil {
-		return nil, messaging.ConnectionError("failed to connect for topic metadata", err)
+		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 	defer conn.Close()
 
 	partitions, err := conn.ReadPartitions(topic)
 	if err != nil {
-		return nil, messaging.TopicError(topic, err)
+		return nil, fmt.Errorf("failed to read partitions: %w", err)
 	}
 
-	metadata := &messaging.TopicMetadata{
+	metadata := &TopicMetadata{
 		Name:       topic,
-		Partitions: len(partitions),
-		Timestamp:  time.Now().UTC(),
+		Partitions: make([]PartitionMetadata, len(partitions)),
 	}
 
-	metadata.PartitionInfo = make([]messaging.PartitionInfo, len(partitions))
 	for i, p := range partitions {
-		replicas := make([]int32, len(p.Replicas))
-		for j, r := range p.Replicas {
-			replicas[j] = int32(r.ID)
-		}
-		isr := make([]int32, len(p.Isr))
-		for j, r := range p.Isr {
-			isr[j] = int32(r.ID)
-		}
-		metadata.PartitionInfo[i] = messaging.PartitionInfo{
-			ID:       int32(p.ID),
-			Leader:   int32(p.Leader.ID),
-			Replicas: replicas,
-			ISR:      isr,
+		metadata.Partitions[i] = PartitionMetadata{
+			ID:       p.ID,
+			Leader:   p.Leader.ID,
+			Replicas: extractBrokerIDs(p.Replicas),
+			ISR:      extractBrokerIDs(p.Isr),
 		}
 	}
 
 	return metadata, nil
 }
 
-// PublishEvent publishes an event to a topic.
-func (b *Broker) PublishEvent(ctx context.Context, topic string, event *messaging.Event) error {
-	// Serialize event
-	eventData, err := json.Marshal(event)
-	if err != nil {
-		return messaging.SerializationError(err)
+func extractBrokerIDs(brokers []kafka.Broker) []int {
+	ids := make([]int, len(brokers))
+	for i, b := range brokers {
+		ids[i] = b.ID
 	}
-
-	msg := &messaging.Message{
-		ID:            event.ID,
-		Type:          string(event.Type),
-		Payload:       eventData,
-		Headers:       event.Headers,
-		Timestamp:     event.Timestamp,
-		TraceID:       event.TraceID,
-		CorrelationID: event.CorrelationID,
-	}
-
-	var opts []messaging.PublishOption
-	if event.Key != nil {
-		opts = append(opts, messaging.WithMessageKey(event.Key))
-	}
-
-	return b.Publish(ctx, topic, msg, opts...)
+	return ids
 }
 
-// StreamEvents streams events from a topic.
-func (b *Broker) StreamEvents(ctx context.Context, topic string, opts ...messaging.StreamOption) (<-chan *messaging.Event, error) {
-	b.mu.RLock()
-	if !b.connected {
-		b.mu.RUnlock()
-		return nil, messaging.ErrNotConnected
-	}
-	b.mu.RUnlock()
-
-	options := messaging.ApplyStreamOptions(opts...)
-
-	readerConfig := kafka.ReaderConfig{
-		Brokers:     b.config.Brokers,
-		Topic:       topic,
-		GroupID:     b.config.GroupID + "-stream",
-		MinBytes:    options.MinBytes,
-		MaxBytes:    options.MaxBytes,
-		MaxWait:     options.MaxWait,
-		StartOffset: options.StartOffset,
-		Dialer:      b.dialer,
-	}
-
-	reader := kafka.NewReader(readerConfig)
-
-	eventCh := make(chan *messaging.Event, options.BufferSize)
-
-	go func() {
-		defer close(eventCh)
-		defer reader.Close()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				kafkaMsg, err := reader.FetchMessage(ctx)
-				if err != nil {
-					if ctx.Err() != nil {
-						return
-					}
-					b.metrics.RecordError()
-					continue
-				}
-
-				event := b.kafkaMessageToEvent(kafkaMsg)
-				select {
-				case eventCh <- event:
-					reader.CommitMessages(ctx, kafkaMsg)
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-	}()
-
-	return eventCh, nil
+// BrokerType returns the broker type
+func (b *Broker) BrokerType() messaging.BrokerType {
+	return messaging.BrokerTypeKafka
 }
 
-// kafkaMessageToEvent converts a Kafka message to an Event.
-func (b *Broker) kafkaMessageToEvent(kafkaMsg kafka.Message) *messaging.Event {
-	var event messaging.Event
-	if err := json.Unmarshal(kafkaMsg.Value, &event); err != nil {
-		// If not a valid event JSON, create a simple event
-		event = messaging.Event{
-			ID:        string(getHeaderValue(kafkaMsg.Headers, "message_id")),
-			Type:      messaging.EventType(getHeaderValue(kafkaMsg.Headers, "message_type")),
-			Data:      kafkaMsg.Value,
-			Timestamp: kafkaMsg.Time,
-			Partition: int32(kafkaMsg.Partition),
-			Offset:    kafkaMsg.Offset,
-		}
-	}
-
-	event.Partition = int32(kafkaMsg.Partition)
-	event.Offset = kafkaMsg.Offset
-	event.Key = kafkaMsg.Key
-
-	if event.Headers == nil {
-		event.Headers = make(map[string]string)
-	}
-	for _, h := range kafkaMsg.Headers {
-		event.Headers[h.Key] = string(h.Value)
-	}
-
-	return &event
+// GetMetrics returns broker metrics
+func (b *Broker) GetMetrics() *messaging.BrokerMetrics {
+	return b.metrics
 }
 
-// getHeaderValue gets a header value from Kafka headers.
-func getHeaderValue(headers []kafka.Header, key string) string {
-	for _, h := range headers {
-		if h.Key == key {
-			return string(h.Value)
-		}
-	}
-	return ""
+// TopicMetadata holds topic metadata
+type TopicMetadata struct {
+	Name       string              `json:"name"`
+	Partitions []PartitionMetadata `json:"partitions"`
 }
 
-// CommitOffset commits an offset for a partition.
-func (b *Broker) CommitOffset(ctx context.Context, topic string, partition int32, offset int64) error {
-	// This is handled automatically by the consumer group
-	return nil
-}
-
-// SeekToOffset seeks to a specific offset.
-func (b *Broker) SeekToOffset(ctx context.Context, topic string, partition int32, offset int64) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	// Find reader for this topic
-	for _, reader := range b.readers {
-		if reader.Config().Topic == topic {
-			return reader.SetOffset(offset)
-		}
-	}
-
-	return messaging.TopicError(topic, nil)
-}
-
-// SeekToTimestamp seeks to a specific timestamp.
-func (b *Broker) SeekToTimestamp(ctx context.Context, topic string, partition int32, ts time.Time) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	// Find reader for this topic
-	for _, reader := range b.readers {
-		if reader.Config().Topic == topic {
-			return reader.SetOffsetAt(ctx, ts)
-		}
-	}
-
-	return messaging.TopicError(topic, nil)
-}
-
-// generateSubscriptionID generates a unique subscription ID.
-func generateSubscriptionID() string {
-	return "kafka-sub-" + time.Now().UTC().Format("20060102150405") + "-" + randomString(8)
-}
-
-// randomString generates a random alphanumeric string.
-func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-		time.Sleep(time.Nanosecond)
-	}
-	return string(b)
+// PartitionMetadata holds partition metadata
+type PartitionMetadata struct {
+	ID       int   `json:"id"`
+	Leader   int   `json:"leader"`
+	Replicas []int `json:"replicas"`
+	ISR      []int `json:"isr"`
 }

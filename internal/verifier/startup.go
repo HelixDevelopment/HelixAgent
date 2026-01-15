@@ -4,7 +4,9 @@ package verifier
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -316,21 +318,81 @@ func (sv *StartupVerifier) discoverFreeProviders(ctx context.Context) []*Provide
 	if ollamaURL == "" {
 		ollamaURL = "http://localhost:11434"
 	}
-	// TODO: Health check Ollama
+
+	// Health check Ollama - only add if it's actually running
 	if ollamaURL != "" {
-		providers = append(providers, &ProviderDiscoveryResult{
-			ID:          "ollama",
-			Type:        "ollama",
-			AuthType:    AuthTypeLocal,
-			Discovered:  true,
-			Source:      "auto",
-			Credentials: "Local",
-			BaseURL:     ollamaURL,
-			Models:      []string{"llama3.2"},
-		})
+		ollamaModels := sv.checkOllamaHealth(ollamaURL)
+		if len(ollamaModels) > 0 {
+			providers = append(providers, &ProviderDiscoveryResult{
+				ID:          "ollama",
+				Type:        "ollama",
+				AuthType:    AuthTypeLocal,
+				Discovered:  true,
+				Source:      "auto",
+				Credentials: "Local",
+				BaseURL:     ollamaURL,
+				Models:      ollamaModels,
+			})
+			sv.log.WithFields(logrus.Fields{
+				"url":    ollamaURL,
+				"models": ollamaModels,
+			}).Info("Ollama discovered with available models")
+		} else {
+			sv.log.WithField("url", ollamaURL).Debug("Ollama not running or no models available")
+		}
 	}
 
 	return providers
+}
+
+// checkOllamaHealth checks if Ollama is running and returns available models
+func (sv *StartupVerifier) checkOllamaHealth(baseURL string) []string {
+	// Ollama API endpoint for listing models
+	tagsURL := strings.TrimSuffix(baseURL, "/") + "/api/tags"
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	resp, err := client.Get(tagsURL)
+	if err != nil {
+		sv.log.WithError(err).Debug("Failed to connect to Ollama")
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		sv.log.WithField("status", resp.StatusCode).Debug("Ollama returned non-OK status")
+		return nil
+	}
+
+	// Parse the response to get model names
+	var tagsResp struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		sv.log.WithError(err).Debug("Failed to decode Ollama response")
+		// If we can't parse but Ollama is running, return default model
+		return []string{"llama3.2"}
+	}
+
+	if len(tagsResp.Models) == 0 {
+		sv.log.Debug("Ollama running but no models available")
+		return nil
+	}
+
+	// Extract model names
+	models := make([]string, 0, len(tagsResp.Models))
+	for _, m := range tagsResp.Models {
+		if m.Name != "" {
+			models = append(models, m.Name)
+		}
+	}
+
+	return models
 }
 
 // verifyProviders verifies all discovered providers

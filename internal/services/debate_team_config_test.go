@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -283,10 +284,29 @@ func TestDebateTeamConfigInitializeTeam(t *testing.T) {
 	})
 
 	t.Run("Creates empty team when no verified LLMs", func(t *testing.T) {
+		// Save current env vars and clear them
+		envVars := []string{
+			"CEREBRAS_API_KEY", "MISTRAL_API_KEY", "DEEPSEEK_API_KEY",
+			"GEMINI_API_KEY", "OPENROUTER_API_KEY", "ZAI_API_KEY",
+		}
+		savedEnv := make(map[string]string)
+		for _, key := range envVars {
+			savedEnv[key] = os.Getenv(key)
+			os.Unsetenv(key)
+		}
+		defer func() {
+			// Restore env vars
+			for key, val := range savedEnv {
+				if val != "" {
+					os.Setenv(key, val)
+				}
+			}
+		}()
+
 		config := NewDebateTeamConfig(nil, nil, logger)
 		err := config.InitializeTeam(context.Background())
 		assert.NoError(t, err)
-		// No verified LLMs means no members assigned
+		// No verified LLMs means no members assigned (with no API keys set)
 		assert.Equal(t, 0, len(config.GetActiveMembers()))
 	})
 }

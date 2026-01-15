@@ -241,14 +241,12 @@ type StreamingToolCall struct {
 	Function OpenAIFunctionCall `json:"function"`
 }
 
-// DebatePositionResponse holds both content and tool_calls from a debate position
-// This enables the AI Debate system to collect tool calls during debate rounds
-// and execute them in the ACTION PHASE with proper indicators
-type DebatePositionResponse struct {
-	Content   string              `json:"content"`
-	ToolCalls []StreamingToolCall `json:"tool_calls,omitempty"`
-	Position  services.DebateTeamPosition `json:"position"`
-}
+// DebatePositionResponse is defined in debate_visualization.go with enhanced fields:
+// - Content, ToolCalls, Position (same as before)
+// - ResponseTime, PrimaryProvider, PrimaryModel (timing tracking)
+// - ActualProvider, ActualModel, UsedFallback (fallback tracking)
+// - FallbackChain (full fallback attempt history)
+// - Timestamp
 
 // OpenAIChatResponse represents OpenAI chat completion response
 type OpenAIChatResponse struct {
@@ -680,10 +678,24 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		collectedToolCalls := make([]StreamingToolCall, 0)
 
 		for _, pos := range positions {
-			// First, stream the header (character name and role)
-			debateHeader := h.generateDebateDialogueResponse(pos, topic)
-			if debateHeader != "" {
-				headerChunk := map[string]any{
+			// Get member info for this position for the request indicator
+			member := h.debateTeamConfig.GetTeamMember(pos)
+			var memberProvider, memberModel string
+			var memberRole services.DebateRole
+			if member != nil {
+				memberProvider = member.ProviderName
+				memberModel = member.ModelName
+				memberRole = member.Role
+			} else {
+				memberProvider = "unknown"
+				memberModel = "unknown"
+				memberRole = services.RoleAnalyst
+			}
+
+			// Stream REQUEST indicator: [A: Analyst] <--- Request sent to DeepSeek (deepseek-chat)
+			requestIndicator := FormatRequestIndicator(pos, memberRole, memberProvider, memberModel)
+			if requestIndicator != "" {
+				reqChunk := map[string]any{
 					"id":                 streamID,
 					"object":             "chat.completion.chunk",
 					"created":            time.Now().Unix(),
@@ -692,15 +704,15 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 					"choices": []map[string]any{
 						{
 							"index":         0,
-							"delta":         map[string]any{"content": debateHeader},
+							"delta":         map[string]any{"content": requestIndicator},
 							"logprobs":      nil,
 							"finish_reason": nil,
 						},
 					},
 				}
-				if headerData, err := json.Marshal(headerChunk); err == nil {
+				if reqData, err := json.Marshal(reqChunk); err == nil {
 					c.Writer.Write([]byte("data: "))
-					c.Writer.Write(headerData)
+					c.Writer.Write(reqData)
 					c.Writer.Write([]byte("\n\n"))
 					flusher.Flush()
 				}
@@ -710,12 +722,26 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			// CRITICAL: Pass tools so LLM knows about available coding assistant capabilities
 			debateResp, err := h.generateRealDebateResponse(ctx, pos, topic, previousResponses, req.Tools)
 			var realResponse string
+			var responseIndicator string
+
 			if err != nil {
 				// Log error but continue with fallback message
 				logrus.WithError(err).WithField("position", pos).Warn("Failed to get real debate response, using fallback")
 				realResponse = "Unable to provide analysis at this time."
+				// Format error response indicator
+				responseIndicator = FormatResponseIndicator(pos, memberRole, 0)
 			} else {
 				realResponse = debateResp.Content
+
+				// Format response indicator based on whether fallback was used
+				if debateResp.UsedFallback {
+					// Show fallback chain: [A: Analyst] ---> [Fallback: Claude] ---> (650 ms)
+					responseIndicator = FormatFallbackIndicator(pos, memberRole, debateResp.ActualProvider, debateResp.ActualModel, debateResp.ResponseTime)
+				} else {
+					// Normal response: [A: Analyst] ---> (450 ms)
+					responseIndicator = FormatResponseIndicator(pos, memberRole, debateResp.ResponseTime)
+				}
+
 				// CRITICAL: Collect tool_calls from this position for ACTION PHASE
 				if len(debateResp.ToolCalls) > 0 {
 					logrus.WithFields(logrus.Fields{
@@ -733,8 +759,34 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			// Store for context in subsequent positions
 			previousResponses[pos] = realResponse
 
-			// Stream the actual LLM response
-			responseContent := realResponse + "\"\n"
+			// Stream RESPONSE indicator with timing: [A: Analyst] ---> (450 ms)
+			if responseIndicator != "" {
+				respIndChunk := map[string]any{
+					"id":                 streamID,
+					"object":             "chat.completion.chunk",
+					"created":            time.Now().Unix(),
+					"model":              "helixagent-ensemble",
+					"system_fingerprint": "fp_helixagent_v1",
+					"choices": []map[string]any{
+						{
+							"index":         0,
+							"delta":         map[string]any{"content": responseIndicator},
+							"logprobs":      nil,
+							"finish_reason": nil,
+						},
+					},
+				}
+				if respIndData, err := json.Marshal(respIndChunk); err == nil {
+					c.Writer.Write([]byte("data: "))
+					c.Writer.Write(respIndData)
+					c.Writer.Write([]byte("\n\n"))
+					flusher.Flush()
+				}
+			}
+
+			// Stream the actual LLM response content (in dim/gray for debate phase)
+			// The content is wrapped in dim color for phase content
+			responseContent := FormatPhaseContent(realResponse) + "\n\n"
 			responseChunk := map[string]any{
 				"id":                 streamID,
 				"object":             "chat.completion.chunk",
@@ -795,8 +847,11 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		}
 
 		// Stream the synthesis response as the consensus content
+		// IMPORTANT: Final synthesis uses bright white (FormatFinalResponse) - no dimming
+		// This is the actual answer the user sees, so it should stand out from debate phase content
 		if synthesisResponse != "" {
-			// Stream the synthesis in chunks for better rendering
+			// Format with bright white for final answer visibility
+			formattedSynthesis := FormatFinalResponse(synthesisResponse) + "\n"
 			synthesisChunk := map[string]any{
 				"id":                 streamID,
 				"object":             "chat.completion.chunk",
@@ -806,7 +861,7 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 				"choices": []map[string]any{
 					{
 						"index":         0,
-						"delta":         map[string]any{"content": synthesisResponse + "\n"},
+						"delta":         map[string]any{"content": formattedSynthesis},
 						"logprobs":      nil,
 						"finish_reason": nil,
 					},
@@ -1825,56 +1880,15 @@ func generateID() string {
 
 // generateDebateDialogueIntroduction creates the AI debate team conversation introduction
 // This is displayed before the final response to show how the AI debate ensemble works
+// Uses ANSI colors for enhanced terminal visualization
 func (h *UnifiedHandler) generateDebateDialogueIntroduction(topic string) string {
 	if h.dialogueFormatter == nil || h.debateTeamConfig == nil {
 		return ""
 	}
 
-	var sb strings.Builder
-
-	// Header
-	sb.WriteString("\n")
-	sb.WriteString("╔══════════════════════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                      🎭 HELIXAGENT AI DEBATE ENSEMBLE 🎭                      ║\n")
-	sb.WriteString("╠══════════════════════════════════════════════════════════════════════════════╣\n")
-	sb.WriteString("║  Five AI minds deliberate to synthesize the optimal response.                ║\n")
-	sb.WriteString("╚══════════════════════════════════════════════════════════════════════════════╝\n\n")
-
-	// Topic
-	sb.WriteString("📋 TOPIC: ")
-	if len(topic) > 70 {
-		sb.WriteString(topic[:70])
-		sb.WriteString("...")
-	} else {
-		sb.WriteString(topic)
-	}
-	sb.WriteString("\n\n")
-
-	// Cast of characters
-	sb.WriteString("═══════════════════════════════════════════════════════════════════════════════\n")
-	sb.WriteString("                              DRAMATIS PERSONAE\n")
-	sb.WriteString("═══════════════════════════════════════════════════════════════════════════════\n\n")
-
+	// Use the enhanced colored introduction from debate_visualization.go
 	members := h.debateTeamConfig.GetAllLLMs()
-	for _, member := range members {
-		if member == nil {
-			continue
-		}
-		char := h.dialogueFormatter.GetCharacter(member.Position)
-		if char != nil {
-			sb.WriteString(fmt.Sprintf("  %s  %-15s │ %s (%s)\n",
-				char.Avatar,
-				char.Name,
-				member.ModelName,
-				member.ProviderName))
-		}
-	}
-
-	sb.WriteString("\n═══════════════════════════════════════════════════════════════════════════════\n")
-	sb.WriteString("                               THE DELIBERATION\n")
-	sb.WriteString("═══════════════════════════════════════════════════════════════════════════════\n\n")
-
-	return sb.String()
+	return FormatDebateTeamIntroduction(topic, members)
 }
 
 // generateDebateDialogueResponse creates a debate response header for a position
@@ -1898,6 +1912,8 @@ func (h *UnifiedHandler) generateDebateDialogueResponse(position services.Debate
 // The tools parameter is passed to inform the LLM about available coding assistant capabilities
 // CRITICAL: Now returns *DebatePositionResponse to include tool_calls from LLM, not just content
 func (h *UnifiedHandler) generateRealDebateResponse(ctx context.Context, position services.DebateTeamPosition, topic string, previousResponses map[services.DebateTeamPosition]string, tools []OpenAITool) (*DebatePositionResponse, error) {
+	overallStart := time.Now()
+
 	if h.providerRegistry == nil || h.debateTeamConfig == nil {
 		return nil, fmt.Errorf("provider registry or debate team config not available")
 	}
@@ -1942,12 +1958,26 @@ func (h *UnifiedHandler) generateRealDebateResponse(ctx context.Context, positio
 	maxAttempts := 5 // Primary + up to 4 fallbacks
 	var lastErr error
 
+	// Track fallback chain for visualization
+	fallbackChain := make([]FallbackAttempt, 0)
+	primaryProvider := member.ProviderName
+	primaryModel := member.ModelName
+
 	for currentMember != nil && attemptNum < maxAttempts {
 		attemptNum++
+		attemptStart := time.Now()
 
 		// Get the provider for this member
 		provider, providerErr := h.getProviderForMember(currentMember)
 		if providerErr != nil {
+			fallbackChain = append(fallbackChain, FallbackAttempt{
+				Provider:   currentMember.ProviderName,
+				Model:      currentMember.ModelName,
+				Success:    false,
+				Error:      providerErr.Error(),
+				Duration:   time.Since(attemptStart),
+				AttemptNum: attemptNum,
+			})
 			logrus.WithFields(logrus.Fields{
 				"position": position,
 				"provider": currentMember.ProviderName,
@@ -1993,18 +2023,38 @@ func (h *UnifiedHandler) generateRealDebateResponse(ctx context.Context, positio
 		resp, err := provider.Complete(llmCtx, llmReq)
 		cancel()
 
+		attemptDuration := time.Since(attemptStart)
+
 		if err != nil {
+			fallbackChain = append(fallbackChain, FallbackAttempt{
+				Provider:   currentMember.ProviderName,
+				Model:      currentMember.ModelName,
+				Success:    false,
+				Error:      err.Error(),
+				Duration:   attemptDuration,
+				AttemptNum: attemptNum,
+			})
 			logrus.WithFields(logrus.Fields{
 				"position": position,
 				"provider": currentMember.ProviderName,
 				"model":    currentMember.ModelName,
 				"attempt":  attemptNum,
 				"is_oauth": currentMember.IsOAuth,
+				"duration": attemptDuration,
 			}).WithError(err).Warn("LLM call failed, trying fallback")
 			lastErr = err
 			currentMember = currentMember.Fallback
 			continue
 		}
+
+		// Record successful attempt
+		fallbackChain = append(fallbackChain, FallbackAttempt{
+			Provider:   currentMember.ProviderName,
+			Model:      currentMember.ModelName,
+			Success:    true,
+			Duration:   attemptDuration,
+			AttemptNum: attemptNum,
+		})
 
 		// Success! Clean up the response
 		content := strings.TrimSpace(resp.Content)
@@ -2038,19 +2088,30 @@ func (h *UnifiedHandler) generateRealDebateResponse(ctx context.Context, positio
 			}
 		}
 
-		if attemptNum > 1 {
+		usedFallback := attemptNum > 1
+		if usedFallback {
 			logrus.WithFields(logrus.Fields{
-				"position": position,
-				"provider": currentMember.ProviderName,
-				"model":    currentMember.ModelName,
-				"attempt":  attemptNum,
+				"position":         position,
+				"primary_provider": primaryProvider,
+				"actual_provider":  currentMember.ProviderName,
+				"model":            currentMember.ModelName,
+				"attempt":          attemptNum,
+				"total_duration":   time.Since(overallStart),
 			}).Info("Debate response succeeded with fallback provider")
 		}
 
 		return &DebatePositionResponse{
-			Content:   content,
-			ToolCalls: toolCalls,
-			Position:  position,
+			Content:         content,
+			ToolCalls:       toolCalls,
+			Position:        position,
+			ResponseTime:    time.Since(overallStart),
+			PrimaryProvider: primaryProvider,
+			PrimaryModel:    primaryModel,
+			ActualProvider:  currentMember.ProviderName,
+			ActualModel:     currentMember.ModelName,
+			UsedFallback:    usedFallback,
+			FallbackChain:   fallbackChain,
+			Timestamp:       time.Now(),
 		}, nil
 	}
 
@@ -2141,16 +2202,10 @@ You are participating in an AI debate ensemble. Provide a concise, focused respo
 }
 
 // generateDebateDialogueConclusion creates the conclusion section after debate
+// Uses ANSI colors for enhanced terminal visualization - consensus header in bright white/yellow
 func (h *UnifiedHandler) generateDebateDialogueConclusion() string {
-	var sb strings.Builder
-
-	sb.WriteString("\n═══════════════════════════════════════════════════════════════════════════════\n")
-	sb.WriteString("                              📜 CONSENSUS REACHED 📜\n")
-	sb.WriteString("═══════════════════════════════════════════════════════════════════════════════\n")
-	sb.WriteString("  The AI Debate Ensemble has synthesized the following response:\n")
-	sb.WriteString("───────────────────────────────────────────────────────────────────────────────\n\n")
-
-	return sb.String()
+	// Use the enhanced colored consensus header from debate_visualization.go
+	return FormatConsensusHeader()
 }
 
 // generateFinalSynthesis creates the final synthesized response based on all debate contributions

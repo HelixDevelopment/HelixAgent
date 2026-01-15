@@ -1503,9 +1503,14 @@ func TestProcessResourceMonitor_IsResourceAvailable(t *testing.T) {
 	logger := logrus.New()
 	monitor := NewProcessResourceMonitor(nil, logger)
 
-	// Test with zero requirements (should always be available)
+	// Get current system resources to check load
+	resources, err := monitor.GetSystemResources()
+	require.NoError(t, err)
+
+	// Test with zero requirements (should be available unless system is heavily loaded)
 	available := monitor.IsResourceAvailable(ResourceRequirements{})
-	assert.True(t, available)
+	// If system load is > 90%, IsResourceAvailable will return false regardless of requirements
+	assert.True(t, available || resources.CPULoadPercent > 90 || resources.MemoryUsedPercent > 90)
 }
 
 func TestProcessResourceMonitor_IsResourceAvailable_WithRequirements(t *testing.T) {

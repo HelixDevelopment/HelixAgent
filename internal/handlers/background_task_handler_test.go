@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -1299,4 +1300,278 @@ func TestNewBackgroundTaskHandler(t *testing.T) {
 	assert.Equal(t, resourceMonitor, handler.resourceMonitor)
 	assert.Equal(t, stuckDetector, handler.stuckDetector)
 	assert.Equal(t, logger, handler.logger)
+}
+
+// ============================================================================
+// Webhook Handler Tests
+// ============================================================================
+
+// TestRegisterWebhook_NoDispatcher tests registering webhook when dispatcher is nil
+func TestRegisterWebhook_NoDispatcher(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, nil, nil, logger,
+	)
+
+	router := gin.New()
+	router.POST("/v1/webhooks", handler.RegisterWebhook)
+
+	reqBody := `{"url": "https://example.com/webhook", "events": ["task.completed"]}`
+	req, _ := http.NewRequest("POST", "/v1/webhooks", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Body.String(), "Webhooks not available")
+}
+
+// TestRegisterWebhook_InvalidBody tests registering webhook with invalid body
+func TestRegisterWebhook_InvalidBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, nil, nil, logger,
+	)
+
+	router := gin.New()
+	router.POST("/v1/webhooks", handler.RegisterWebhook)
+
+	req, _ := http.NewRequest("POST", "/v1/webhooks", strings.NewReader("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid request body")
+}
+
+// TestRegisterWebhook_Success tests successful webhook registration
+func TestRegisterWebhook_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	webhookDispatcher := notifications.NewWebhookDispatcher(nil, logger)
+	defer webhookDispatcher.Stop()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, webhookDispatcher, nil, logger,
+	)
+
+	router := gin.New()
+	router.POST("/v1/webhooks", handler.RegisterWebhook)
+
+	reqBody := `{"url": "https://example.com/webhook", "events": ["task.completed"], "secret": "test-secret"}`
+	req, _ := http.NewRequest("POST", "/v1/webhooks", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), "https://example.com/webhook")
+}
+
+// TestListWebhooks_NoDispatcher tests listing webhooks when dispatcher is nil
+func TestListWebhooks_NoDispatcher(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, nil, nil, logger,
+	)
+
+	router := gin.New()
+	router.GET("/v1/webhooks", handler.ListWebhooks)
+
+	req, _ := http.NewRequest("GET", "/v1/webhooks", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Body.String(), "Webhooks not available")
+}
+
+// TestListWebhooks_Empty tests listing webhooks when none registered
+func TestListWebhooks_Empty(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	webhookDispatcher := notifications.NewWebhookDispatcher(nil, logger)
+	defer webhookDispatcher.Stop()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, webhookDispatcher, nil, logger,
+	)
+
+	router := gin.New()
+	router.GET("/v1/webhooks", handler.ListWebhooks)
+
+	req, _ := http.NewRequest("GET", "/v1/webhooks", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"count":0`)
+}
+
+// TestListWebhooks_WithWebhooks tests listing webhooks with registered webhooks
+func TestListWebhooks_WithWebhooks(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	webhookDispatcher := notifications.NewWebhookDispatcher(nil, logger)
+	defer webhookDispatcher.Stop()
+
+	// Register a webhook first
+	webhook := &notifications.WebhookRegistration{
+		URL:    "https://example.com/webhook",
+		Events: []string{"task.completed"},
+	}
+	webhookDispatcher.RegisterWebhook(webhook)
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, webhookDispatcher, nil, logger,
+	)
+
+	router := gin.New()
+	router.GET("/v1/webhooks", handler.ListWebhooks)
+
+	req, _ := http.NewRequest("GET", "/v1/webhooks", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"count":1`)
+	assert.Contains(t, w.Body.String(), "https://example.com/webhook")
+}
+
+// TestDeleteWebhook_NoDispatcher tests deleting webhook when dispatcher is nil
+func TestDeleteWebhook_NoDispatcher(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, nil, nil, logger,
+	)
+
+	router := gin.New()
+	router.DELETE("/v1/webhooks/:id", handler.DeleteWebhook)
+
+	req, _ := http.NewRequest("DELETE", "/v1/webhooks/test-id", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Body.String(), "Webhooks not available")
+}
+
+// TestDeleteWebhook_NotFound tests deleting non-existent webhook
+func TestDeleteWebhook_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	webhookDispatcher := notifications.NewWebhookDispatcher(nil, logger)
+	defer webhookDispatcher.Stop()
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, webhookDispatcher, nil, logger,
+	)
+
+	router := gin.New()
+	router.DELETE("/v1/webhooks/:id", handler.DeleteWebhook)
+
+	req, _ := http.NewRequest("DELETE", "/v1/webhooks/nonexistent-id", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "Webhook not found")
+}
+
+// TestDeleteWebhook_Success tests successful webhook deletion
+func TestDeleteWebhook_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+
+	webhookDispatcher := notifications.NewWebhookDispatcher(nil, logger)
+	defer webhookDispatcher.Stop()
+
+	// Register a webhook first
+	webhook := &notifications.WebhookRegistration{
+		URL:    "https://example.com/webhook",
+		Events: []string{"task.completed"},
+	}
+	webhookDispatcher.RegisterWebhook(webhook)
+	webhookID := webhook.ID
+
+	handler := NewBackgroundTaskHandler(
+		newMockTaskRepository(),
+		newMockTaskQueue(),
+		newMockWorkerPool(),
+		newMockResourceMonitor(),
+		newMockStuckDetector(),
+		nil, nil, nil, webhookDispatcher, nil, logger,
+	)
+
+	router := gin.New()
+	router.DELETE("/v1/webhooks/:id", handler.DeleteWebhook)
+
+	req, _ := http.NewRequest("DELETE", "/v1/webhooks/"+webhookID, nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "deleted")
 }

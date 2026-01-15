@@ -1,10 +1,19 @@
 name: Test Quality Gate
 
+# Manual trigger only - no automatic runs on push/PR
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      run_benchmarks:
+        description: 'Run benchmark tests'
+        required: false
+        default: 'true'
+        type: boolean
+      run_challenges:
+        description: 'Run challenge scripts'
+        required: false
+        default: 'true'
+        type: boolean
 
 jobs:
   test-quality:

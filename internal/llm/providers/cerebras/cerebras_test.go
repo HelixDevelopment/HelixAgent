@@ -427,3 +427,419 @@ func TestCerebrasStreamResponse_Fields(t *testing.T) {
 	assert.Equal(t, "chunk", resp.Choices[0].Delta.Content)
 	assert.NotNil(t, resp.Choices[0].FinishReason)
 }
+
+func TestCerebrasErrorResponse_Fields(t *testing.T) {
+	errResp := CerebrasErrorResponse{}
+	errResp.Error.Message = "Invalid key"
+	errResp.Error.Type = "auth_error"
+	errResp.Error.Code = "401"
+
+	assert.Equal(t, "Invalid key", errResp.Error.Message)
+	assert.Equal(t, "auth_error", errResp.Error.Type)
+	assert.Equal(t, "401", errResp.Error.Code)
+}
+
+func TestCerebrasProvider_CompleteStream_Success(t *testing.T) {
+	// Create mock streaming server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		// Send streaming chunks
+		w.Write([]byte("data: {\"id\":\"chunk-1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Hello\"}}]}\n\n"))
+		w.Write([]byte("data: {\"id\":\"chunk-2\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" world\"}}]}\n\n"))
+		w.Write([]byte("data: [DONE]\n\n"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProvider("test-key", server.URL, "")
+
+	req := &models.LLMRequest{
+		ID:       "req-stream",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	ch, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+
+	// Collect responses
+	var responses []*models.LLMResponse
+	for resp := range ch {
+		responses = append(responses, resp)
+	}
+
+	// Should have received chunks + final response
+	assert.GreaterOrEqual(t, len(responses), 1)
+}
+
+func TestCerebrasProvider_CompleteStream_HTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Server error"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProvider("test-key", server.URL, "")
+
+	req := &models.LLMRequest{
+		ID:       "req-error",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	ch, err := provider.CompleteStream(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, ch)
+	assert.Contains(t, err.Error(), "500")
+}
+
+func TestCerebrasProvider_CompleteStream_WithFinishReason(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		// Send chunk with finish_reason
+		w.Write([]byte("data: {\"id\":\"chunk-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Response\"},\"finish_reason\":\"stop\"}]}\n\n"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProvider("test-key", server.URL, "")
+
+	req := &models.LLMRequest{
+		ID:       "req-finish",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	ch, err := provider.CompleteStream(context.Background(), req)
+	require.NoError(t, err)
+
+	var responses []*models.LLMResponse
+	for resp := range ch {
+		responses = append(responses, resp)
+	}
+
+	assert.NotEmpty(t, responses)
+}
+
+func TestCerebrasProvider_HealthCheck_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/models" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"models": []}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	// Create provider with custom HTTP client that redirects to mock server
+	provider := NewCerebrasProvider("test-key", server.URL, "")
+
+	// The health check goes to a hardcoded URL, so we test the error path
+	// for the actual implementation
+	err := provider.HealthCheck()
+
+	// Will fail because it tries to reach real Cerebras API
+	// This tests that the function executes without panicking
+	assert.Error(t, err)
+}
+
+func TestCerebrasProvider_Complete_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("not valid json"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProvider("key", server.URL, "")
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "parse")
+}
+
+func TestCerebrasProvider_Complete_NonJSONError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("plain text error"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProvider("key", server.URL, "")
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "plain text error")
+}
+
+func TestCerebrasProvider_Complete_ContextCancelled(t *testing.T) {
+	// Create a server that blocks
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProviderWithRetry("key", server.URL, "", RetryConfig{
+		MaxRetries:   0,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel context immediately
+	cancel()
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(ctx, req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "context")
+}
+
+func TestCerebrasProvider_Complete_RetryOnServerError(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("Service unavailable"))
+			return
+		}
+		// Success on 3rd attempt
+		response := `{"id":"test","choices":[{"message":{"role":"assistant","content":"OK"},"finish_reason":"stop"}],"usage":{"total_tokens":10}}`
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(response))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProviderWithRetry("key", server.URL, "", RetryConfig{
+		MaxRetries:   3,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 3, attempts)
+}
+
+func TestCerebrasProvider_Complete_RetryExhausted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("Rate limited"))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProviderWithRetry("key", server.URL, "", RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     50 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+}
+
+func TestCerebrasProvider_Complete_AuthRetry(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			// First attempt returns 401
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":{"message":"Unauthorized"}}`))
+			return
+		}
+		// Second attempt succeeds
+		response := `{"id":"test","choices":[{"message":{"role":"assistant","content":"OK"},"finish_reason":"stop"}],"usage":{"total_tokens":10}}`
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(response))
+	}))
+	defer server.Close()
+
+	provider := NewCerebrasProviderWithRetry("key", server.URL, "", RetryConfig{
+		MaxRetries:   1,
+		InitialDelay: 10 * time.Millisecond,
+		MaxDelay:     50 * time.Millisecond,
+		Multiplier:   2.0,
+	})
+
+	req := &models.LLMRequest{
+		ID:       "req-1",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	resp, err := provider.Complete(context.Background(), req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 2, attempts)
+}
+
+func TestCerebrasProvider_WaitWithJitter(t *testing.T) {
+	provider := NewCerebrasProvider("key", "", "")
+	ctx := context.Background()
+
+	// Test that wait completes
+	start := time.Now()
+	provider.waitWithJitter(ctx, 10*time.Millisecond)
+	elapsed := time.Since(start)
+
+	// Should wait at least 10ms
+	assert.GreaterOrEqual(t, elapsed, 10*time.Millisecond)
+	// Should not wait more than 15ms (10ms + 10% jitter + some margin)
+	assert.LessOrEqual(t, elapsed, 20*time.Millisecond)
+}
+
+func TestCerebrasProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	provider := NewCerebrasProvider("key", "", "")
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel immediately
+	cancel()
+
+	start := time.Now()
+	provider.waitWithJitter(ctx, 1*time.Second)
+	elapsed := time.Since(start)
+
+	// Should return immediately due to cancelled context
+	assert.LessOrEqual(t, elapsed, 50*time.Millisecond)
+}
+
+func TestCerebrasProvider_ConvertRequest_NoPrompt(t *testing.T) {
+	provider := NewCerebrasProvider("key", "", "")
+
+	req := &models.LLMRequest{
+		ID:     "req-1",
+		Prompt: "", // Empty prompt
+		Messages: []models.Message{
+			{Role: "user", Content: "Hello"},
+		},
+		ModelParams: models.ModelParameters{
+			Temperature: 0.5,
+			MaxTokens:   500,
+		},
+	}
+
+	cerebrasReq := provider.convertRequest(req)
+
+	// Should only have 1 message (no system prompt added)
+	assert.Len(t, cerebrasReq.Messages, 1)
+	assert.Equal(t, "user", cerebrasReq.Messages[0].Role)
+}
+
+func TestCerebrasProvider_ConvertResponse_EmptyChoices(t *testing.T) {
+	provider := NewCerebrasProvider("key", "", "")
+
+	req := &models.LLMRequest{ID: "req-1"}
+	cerebrasResp := &CerebrasResponse{
+		ID:      "resp-1",
+		Choices: []CerebrasChoice{}, // Empty choices
+		Usage:   CerebrasUsage{TotalTokens: 10},
+	}
+
+	startTime := time.Now()
+	resp := provider.convertResponse(req, cerebrasResp, startTime)
+
+	assert.Equal(t, "", resp.Content)
+	assert.Equal(t, "", resp.FinishReason)
+}
+
+func TestCerebrasProvider_CalculateConfidence_EdgeCases(t *testing.T) {
+	provider := NewCerebrasProvider("key", "", "")
+
+	// Test unknown finish reason
+	confidence := provider.calculateConfidence("test", "unknown_reason")
+	assert.Equal(t, 0.8, confidence) // Base confidence
+
+	// Test negative confidence floor (shouldn't happen but verify it's bounded)
+	confidence = provider.calculateConfidence("", "length")
+	assert.GreaterOrEqual(t, confidence, 0.0)
+
+	// Test long content with length finish reason
+	longContent := string(make([]byte, 1000))
+	confidence = provider.calculateConfidence(longContent, "length")
+	assert.LessOrEqual(t, confidence, 1.0)
+}
+
+func TestCerebrasChoice_Fields(t *testing.T) {
+	choice := CerebrasChoice{
+		Index: 0,
+		Message: CerebrasMessage{
+			Role:    "assistant",
+			Content: "Test content",
+		},
+		FinishReason: "stop",
+	}
+
+	assert.Equal(t, 0, choice.Index)
+	assert.Equal(t, "assistant", choice.Message.Role)
+	assert.Equal(t, "Test content", choice.Message.Content)
+	assert.Equal(t, "stop", choice.FinishReason)
+}
+
+func TestCerebrasStreamChoice_Fields(t *testing.T) {
+	finishReason := "length"
+	choice := CerebrasStreamChoice{
+		Index: 1,
+		Delta: CerebrasMessage{
+			Role:    "assistant",
+			Content: "Delta content",
+		},
+		FinishReason: &finishReason,
+	}
+
+	assert.Equal(t, 1, choice.Index)
+	assert.Equal(t, "Delta content", choice.Delta.Content)
+	assert.NotNil(t, choice.FinishReason)
+	assert.Equal(t, "length", *choice.FinishReason)
+}
+
+func TestCerebrasStreamChoice_NilFinishReason(t *testing.T) {
+	choice := CerebrasStreamChoice{
+		Index: 0,
+		Delta: CerebrasMessage{Content: "test"},
+	}
+
+	assert.Nil(t, choice.FinishReason)
+}

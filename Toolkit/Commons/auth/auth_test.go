@@ -681,7 +681,7 @@ func TestMiddleware_WrapClient_PreservesSettings(t *testing.T) {
 type testCookieJar struct{}
 
 func (j *testCookieJar) SetCookies(u *url.URL, cookies []*http.Cookie) {}
-func (j *testCookieJar) Cookies(u *url.URL) []*http.Cookie            { return nil }
+func (j *testCookieJar) Cookies(u *url.URL) []*http.Cookie             { return nil }
 
 func TestAuthManager_ConcurrentAccess(t *testing.T) {
 	callCount := 0

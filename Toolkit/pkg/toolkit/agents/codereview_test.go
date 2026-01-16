@@ -10,16 +10,16 @@ import (
 
 // MockProvider is a mock implementation of toolkit.Provider for testing
 type MockProvider struct {
-	name            string
-	chatResponse    toolkit.ChatResponse
-	chatError       error
-	embedResponse   toolkit.EmbeddingResponse
-	embedError      error
-	rerankResponse  toolkit.RerankResponse
-	rerankError     error
-	modelsResponse  []toolkit.ModelInfo
-	modelsError     error
-	validateError   error
+	name           string
+	chatResponse   toolkit.ChatResponse
+	chatError      error
+	embedResponse  toolkit.EmbeddingResponse
+	embedError     error
+	rerankResponse toolkit.RerankResponse
+	rerankError    error
+	modelsResponse []toolkit.ModelInfo
+	modelsError    error
+	validateError  error
 }
 
 func (m *MockProvider) Name() string {
@@ -383,11 +383,11 @@ func TestCodeReviewAgent_Capabilities(t *testing.T) {
 	}
 
 	expectedCapabilities := map[string]bool{
-		"code_review":         true,
-		"security_analysis":   true,
+		"code_review":          true,
+		"security_analysis":    true,
 		"performance_analysis": true,
-		"best_practices":      true,
-		"bug_detection":       true,
+		"best_practices":       true,
+		"bug_detection":        true,
 	}
 
 	for _, cap := range capabilities {

@@ -4,6 +4,7 @@
 package skills
 
 import (
+	"strings"
 	"time"
 )
 
@@ -164,7 +165,95 @@ type AllowedTool struct {
 }
 
 // ParseAllowedTools parses the allowed-tools string into structured tools.
+// Supports formats like "Read, Write, Edit, Bash(cmd:*)" where parentheses contain constraints.
+// Example inputs:
+//   - "Read, Write, Edit" -> [AllowedTool{Name:"Read"}, AllowedTool{Name:"Write"}, AllowedTool{Name:"Edit"}]
+//   - "Bash(cmd:ls,cmd:cat)" -> [AllowedTool{Name:"Bash", Constraints:{"cmd":"ls,cat"}}]
+//   - "Glob(pattern:*.go)" -> [AllowedTool{Name:"Glob", Constraints:{"pattern":"*.go"}}]
 func ParseAllowedTools(toolsStr string) []AllowedTool {
-	// TODO: Implement parsing of tool strings like "Read, Write, Edit, Bash(cmd:*)"
-	return nil
+	if toolsStr == "" {
+		return nil
+	}
+
+	var tools []AllowedTool
+
+	// Split by comma, but respect parentheses
+	var parts []string
+	var current strings.Builder
+	parenDepth := 0
+
+	for _, ch := range toolsStr {
+		switch ch {
+		case '(':
+			parenDepth++
+			current.WriteRune(ch)
+		case ')':
+			parenDepth--
+			current.WriteRune(ch)
+		case ',':
+			if parenDepth == 0 {
+				if s := strings.TrimSpace(current.String()); s != "" {
+					parts = append(parts, s)
+				}
+				current.Reset()
+			} else {
+				current.WriteRune(ch)
+			}
+		default:
+			current.WriteRune(ch)
+		}
+	}
+	if s := strings.TrimSpace(current.String()); s != "" {
+		parts = append(parts, s)
+	}
+
+	for _, part := range parts {
+		tool := parseToolString(part)
+		tools = append(tools, tool)
+	}
+
+	return tools
+}
+
+// parseToolString parses a single tool string like "Bash(cmd:*)" into an AllowedTool.
+func parseToolString(s string) AllowedTool {
+	s = strings.TrimSpace(s)
+
+	// Check for constraints in parentheses
+	parenIdx := strings.Index(s, "(")
+	if parenIdx == -1 {
+		return AllowedTool{Name: s}
+	}
+
+	name := strings.TrimSpace(s[:parenIdx])
+	constraintsStr := s[parenIdx+1:]
+
+	// Remove closing paren
+	if idx := strings.LastIndex(constraintsStr, ")"); idx != -1 {
+		constraintsStr = constraintsStr[:idx]
+	}
+
+	// Parse constraints like "cmd:*, pattern:*.go"
+	constraints := make(map[string]string)
+	constraintParts := strings.Split(constraintsStr, ",")
+
+	for _, cp := range constraintParts {
+		cp = strings.TrimSpace(cp)
+		if colonIdx := strings.Index(cp, ":"); colonIdx != -1 {
+			key := strings.TrimSpace(cp[:colonIdx])
+			value := strings.TrimSpace(cp[colonIdx+1:])
+
+			// If key already exists, append value
+			if existing, ok := constraints[key]; ok {
+				constraints[key] = existing + "," + value
+			} else {
+				constraints[key] = value
+			}
+		}
+	}
+
+	return AllowedTool{
+		Name:        name,
+		Constraints: constraints,
+	}
 }

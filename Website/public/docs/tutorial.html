@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorials - HelixAgent Documentation</title>
+    <meta name="description" content="Step-by-step tutorials for HelixAgent - Learn how to integrate multiple LLM providers, set up AI debates, and build production-ready AI applications.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://helixagent.ai/docs/tutorial">
+    <meta property="og:title" content="Tutorials - HelixAgent Documentation">
+    <meta property="og:description" content="Step-by-step tutorials for building AI applications with HelixAgent multi-provider LLM orchestration.">
+    <meta property="og:image" content="https://helixagent.ai/assets/images/og-image.svg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="Tutorials - HelixAgent Documentation">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/components.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">
+                    <img src="/assets/images/logo.svg" alt="HelixAgent" class="nav-logo">
+                    <span class="nav-title">HelixAgent</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/#features" class="nav-link">Features</a>
+                <a href="/docs" class="nav-link active">Documentation</a>
+                <a href="/#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/helixagent/helixagent" class="nav-link">GitHub</a>
+            </div>
+            <div class="nav-actions">
+                <a href="/docs" class="btn btn-outline">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero hero-small">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title"><span class="gradient-text">Tutorials</span></h1>
+                <p class="hero-description">Learn HelixAgent step-by-step with practical examples</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tutorials Content -->
+    <section class="documentation">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <a href="/docs">Documentation</a> / <span>Tutorials</span>
+            </nav>
+
+            <!-- Tutorial 1: Hello World -->
+            <div class="doc-section">
+                <h2 id="hello-world">Tutorial 1: Hello World</h2>
+                <p>Get started with your first HelixAgent API call in under 5 minutes.</p>
+
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>HelixAgent running locally or deployed</li>
+                    <li>At least one LLM provider API key configured</li>
+                    <li>curl or any HTTP client</li>
+                </ul>
+
+                <h3>Step 1: Verify Installation</h3>
+                <pre><code>curl http://localhost:8080/v1/health</code></pre>
+                <p>Expected response:</p>
+                <pre><code>{
+  "status": "healthy",
+  "providers": {
+    "total": 10,
+    "healthy": 8,
+    "unhealthy": 2
+  }
+}</code></pre>
+
+                <h3>Step 2: Make Your First Chat Request</h3>
+                <pre><code>curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "helix-ensemble",
+    "messages": [
+      {"role": "user", "content": "Hello! What can you do?"}
+    ]
+  }'</code></pre>
+
+                <h3>Step 3: Explore the Response</h3>
+                <p>HelixAgent returns an OpenAI-compatible response with additional ensemble metadata:</p>
+                <pre><code>{
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "model": "helix-ensemble",
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": "Hello! I'm HelixAgent..."
+    }
+  }],
+  "ensemble": {
+    "voting_method": "confidence_weighted",
+    "responses_count": 5
+  }
+}</code></pre>
+            </div>
+
+            <!-- Tutorial 2: Multi-Provider Setup -->
+            <div class="doc-section">
+                <h2 id="multi-provider">Tutorial 2: Multi-Provider Configuration</h2>
+                <p>Learn how to configure multiple LLM providers for optimal performance.</p>
+
+                <h3>Step 1: Set Environment Variables</h3>
+                <pre><code># Primary providers (API Key)
+export DEEPSEEK_API_KEY=your-key
+export GEMINI_API_KEY=your-key
+export OPENROUTER_API_KEY=your-key
+
+# OAuth providers (from CLI tools)
+export CLAUDE_CODE_USE_OAUTH_CREDENTIALS=true
+export QWEN_CODE_USE_OAUTH_CREDENTIALS=true</code></pre>
+
+                <h3>Step 2: Start HelixAgent</h3>
+                <pre><code>./helixagent serve</code></pre>
+
+                <h3>Step 3: Verify Provider Discovery</h3>
+                <pre><code>curl http://localhost:8080/v1/providers</code></pre>
+            </div>
+
+            <!-- Tutorial 3: AI Debate -->
+            <div class="doc-section">
+                <h2 id="ai-debate">Tutorial 3: Running an AI Debate</h2>
+                <p>Experience the power of AI Debate with multiple LLMs discussing a topic.</p>
+
+                <h3>Step 1: Create a Debate</h3>
+                <pre><code>curl -X POST http://localhost:8080/v1/debates \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Should AI systems have consciousness?",
+    "rounds": 3,
+    "enable_multi_pass_validation": true
+  }'</code></pre>
+
+                <h3>Step 2: Monitor Progress</h3>
+                <pre><code>curl http://localhost:8080/v1/debates/{debate_id}/status</code></pre>
+
+                <h3>Step 3: View Results</h3>
+                <pre><code>curl http://localhost:8080/v1/debates/{debate_id}/results</code></pre>
+            </div>
+
+            <!-- Tutorial 4: Streaming -->
+            <div class="doc-section">
+                <h2 id="streaming">Tutorial 4: Streaming Responses</h2>
+                <p>Enable real-time streaming for responsive AI applications.</p>
+
+                <h3>Enable Streaming</h3>
+                <pre><code>curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "model": "helix-ensemble",
+    "stream": true,
+    "messages": [
+      {"role": "user", "content": "Write a poem about AI"}
+    ]
+  }'</code></pre>
+            </div>
+
+            <!-- Tutorial 5: Tool Calling -->
+            <div class="doc-section">
+                <h2 id="tool-calling">Tutorial 5: Tool Calling</h2>
+                <p>Use function calling with HelixAgent for AI coding assistants.</p>
+
+                <h3>Define Tools</h3>
+                <pre><code>curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "helix-ensemble",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "read_file",
+          "description": "Read contents of a file",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file_path": {"type": "string"}
+            },
+            "required": ["file_path"]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {"role": "user", "content": "Read the README.md file"}
+    ]
+  }'</code></pre>
+            </div>
+
+            <!-- Navigation -->
+            <div class="doc-nav">
+                <a href="/docs" class="btn btn-outline">← Back to Docs</a>
+                <a href="/docs/api" class="btn btn-primary">API Reference →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="/assets/images/logo.svg" alt="HelixAgent" class="footer-logo">
+                    <p>AI-powered multi-provider LLM orchestration</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Documentation</h4>
+                        <a href="/docs">Getting Started</a>
+                        <a href="/docs/api">API Reference</a>
+                        <a href="/docs/tutorial">Tutorials</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="/docs/architecture">Architecture</a>
+                        <a href="/docs/troubleshooting">Troubleshooting</a>
+                        <a href="/docs/support">Support</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 HelixAgent. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/scripts/main.js"></script>
+</body>
+</html>

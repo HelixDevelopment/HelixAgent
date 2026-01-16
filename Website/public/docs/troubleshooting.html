@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - HelixAgent Documentation</title>
+    <meta name="description" content="Troubleshooting guide for HelixAgent - Common issues, error codes, debugging tips, and solutions.">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://helixagent.ai/docs/troubleshooting">
+    <meta property="og:title" content="Troubleshooting - HelixAgent Documentation">
+    <meta property="og:image" content="https://helixagent.ai/assets/images/og-image.svg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/components.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">
+                    <img src="/assets/images/logo.svg" alt="HelixAgent" class="nav-logo">
+                    <span class="nav-title">HelixAgent</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/#features" class="nav-link">Features</a>
+                <a href="/docs" class="nav-link active">Documentation</a>
+                <a href="/#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/helixagent/helixagent" class="nav-link">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero hero-small">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title"><span class="gradient-text">Troubleshooting</span></h1>
+                <p class="hero-description">Solutions to common issues and debugging guides</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Troubleshooting Content -->
+    <section class="documentation">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <a href="/docs">Documentation</a> / <span>Troubleshooting</span>
+            </nav>
+
+            <!-- Quick Diagnostics -->
+            <div class="doc-section">
+                <h2 id="diagnostics">Quick Diagnostics</h2>
+                <p>Run these commands to diagnose common issues:</p>
+
+                <h3>Check Server Health</h3>
+                <pre><code>curl http://localhost:8080/v1/health</code></pre>
+
+                <h3>Check Provider Status</h3>
+                <pre><code>curl http://localhost:8080/v1/providers</code></pre>
+
+                <h3>View Logs</h3>
+                <pre><code># Docker
+docker logs helixagent
+
+# Systemd
+journalctl -u helixagent -f
+
+# Direct
+./helixagent serve 2>&1 | tee helixagent.log</code></pre>
+            </div>
+
+            <!-- Common Issues -->
+            <div class="doc-section">
+                <h2 id="common-issues">Common Issues</h2>
+
+                <!-- Issue 1 -->
+                <div class="troubleshoot-item">
+                    <h3>No Providers Available</h3>
+                    <p><strong>Symptoms:</strong> Empty provider list, "no healthy providers" error</p>
+                    <p><strong>Causes:</strong></p>
+                    <ul>
+                        <li>No API keys configured</li>
+                        <li>All providers failing health checks</li>
+                        <li>Network connectivity issues</li>
+                    </ul>
+                    <p><strong>Solution:</strong></p>
+                    <pre><code># 1. Check environment variables
+env | grep -E "(API_KEY|OAUTH)"
+
+# 2. Set at least one provider
+export DEEPSEEK_API_KEY=your-key
+
+# 3. Restart HelixAgent
+./helixagent serve</code></pre>
+                </div>
+
+                <!-- Issue 2 -->
+                <div class="troubleshoot-item">
+                    <h3>OAuth Token Errors (Claude/Qwen)</h3>
+                    <p><strong>Symptoms:</strong> "credential restricted to Claude Code" error</p>
+                    <p><strong>Cause:</strong> OAuth tokens from CLI tools are product-restricted.</p>
+                    <p><strong>Solution:</strong></p>
+                    <pre><code># Claude: Get API key from console
+# https://console.anthropic.com/
+export ANTHROPIC_API_KEY=your-api-key
+
+# Qwen: Get DashScope API key
+# https://dashscope.aliyuncs.com/
+export QWEN_API_KEY=your-api-key</code></pre>
+                </div>
+
+                <!-- Issue 3 -->
+                <div class="troubleshoot-item">
+                    <h3>Rate Limiting</h3>
+                    <p><strong>Symptoms:</strong> 429 Too Many Requests</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>Enable multiple providers for load distribution</li>
+                        <li>Configure rate limiting in HelixAgent</li>
+                        <li>Use backoff and retry logic in your client</li>
+                    </ul>
+                    <pre><code># Check rate limit headers
+curl -I http://localhost:8080/v1/chat/completions</code></pre>
+                </div>
+
+                <!-- Issue 4 -->
+                <div class="troubleshoot-item">
+                    <h3>Database Connection Failed</h3>
+                    <p><strong>Symptoms:</strong> "failed to connect to database" in logs</p>
+                    <p><strong>Solution:</strong></p>
+                    <pre><code># Check PostgreSQL is running
+pg_isready -h localhost -p 5432
+
+# Or run in standalone mode (no database)
+./helixagent serve --standalone</code></pre>
+                </div>
+
+                <!-- Issue 5 -->
+                <div class="troubleshoot-item">
+                    <h3>Slow Response Times</h3>
+                    <p><strong>Symptoms:</strong> Requests taking &gt;30 seconds</p>
+                    <p><strong>Causes:</strong></p>
+                    <ul>
+                        <li>Too many providers in ensemble</li>
+                        <li>Slow providers dragging down average</li>
+                        <li>Network latency</li>
+                    </ul>
+                    <p><strong>Solution:</strong></p>
+                    <pre><code># 1. Check provider latencies
+curl http://localhost:8080/v1/providers/verification
+
+# 2. Configure timeout
+export PROVIDER_TIMEOUT=10s
+
+# 3. Exclude slow providers
+# Set preferred_providers in ensemble_config</code></pre>
+                </div>
+
+                <!-- Issue 6 -->
+                <div class="troubleshoot-item">
+                    <h3>Empty or Truncated Responses</h3>
+                    <p><strong>Symptoms:</strong> Responses cut off or blank</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>Increase max_tokens in request</li>
+                        <li>Check provider status for degraded providers</li>
+                        <li>Enable fallback mechanism</li>
+                    </ul>
+                    <pre><code>{
+  "model": "helix-ensemble",
+  "max_tokens": 4096,
+  "messages": [...]
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Error Codes -->
+            <div class="doc-section">
+                <h2 id="error-codes">Error Codes</h2>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Solution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>400</td>
+                            <td>Bad Request</td>
+                            <td>Check request format, validate JSON</td>
+                        </tr>
+                        <tr>
+                            <td>401</td>
+                            <td>Unauthorized</td>
+                            <td>Check API key, JWT token</td>
+                        </tr>
+                        <tr>
+                            <td>403</td>
+                            <td>Forbidden</td>
+                            <td>Check permissions, role-based access</td>
+                        </tr>
+                        <tr>
+                            <td>404</td>
+                            <td>Not Found</td>
+                            <td>Check endpoint URL, model name</td>
+                        </tr>
+                        <tr>
+                            <td>429</td>
+                            <td>Rate Limited</td>
+                            <td>Reduce request rate, use multiple providers</td>
+                        </tr>
+                        <tr>
+                            <td>500</td>
+                            <td>Internal Error</td>
+                            <td>Check logs, report issue</td>
+                        </tr>
+                        <tr>
+                            <td>502</td>
+                            <td>Bad Gateway</td>
+                            <td>Provider API error, check provider status</td>
+                        </tr>
+                        <tr>
+                            <td>503</td>
+                            <td>Service Unavailable</td>
+                            <td>No healthy providers, check configuration</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Debug Mode -->
+            <div class="doc-section">
+                <h2 id="debug-mode">Debug Mode</h2>
+                <p>Enable verbose logging for debugging:</p>
+
+                <pre><code># Set debug environment
+export GIN_MODE=debug
+export LOG_LEVEL=debug
+
+# Run with verbose output
+./helixagent serve --verbose
+
+# Enable request/response logging
+export LOG_REQUESTS=true</code></pre>
+            </div>
+
+            <!-- Getting Help -->
+            <div class="doc-section">
+                <h2 id="getting-help">Getting Help</h2>
+                <ul>
+                    <li><strong>GitHub Issues:</strong> <a href="https://github.com/helixagent/helixagent/issues">Report bugs and feature requests</a></li>
+                    <li><strong>Documentation:</strong> <a href="/docs">Full documentation</a></li>
+                    <li><strong>FAQ:</strong> <a href="/docs/faq">Frequently asked questions</a></li>
+                </ul>
+
+                <p>When reporting issues, please include:</p>
+                <ul>
+                    <li>HelixAgent version (<code>./helixagent version</code>)</li>
+                    <li>Operating system and version</li>
+                    <li>Relevant log output</li>
+                    <li>Steps to reproduce</li>
+                </ul>
+            </div>
+
+            <!-- Navigation -->
+            <div class="doc-nav">
+                <a href="/docs/faq" class="btn btn-outline">← FAQ</a>
+                <a href="/docs/support" class="btn btn-primary">Get Support →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 HelixAgent. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/scripts/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - HelixAgent Documentation</title>
+    <meta name="description" content="Understand HelixAgent's architecture - provider registry, ensemble orchestration, AI debate system, and multi-protocol support.">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://helixagent.ai/docs/architecture">
+    <meta property="og:title" content="Architecture - HelixAgent Documentation">
+    <meta property="og:description" content="Deep dive into HelixAgent's system architecture and design patterns.">
+    <meta property="og:image" content="https://helixagent.ai/assets/images/og-image.svg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/components.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">
+                    <img src="/assets/images/logo.svg" alt="HelixAgent" class="nav-logo">
+                    <span class="nav-title">HelixAgent</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/#features" class="nav-link">Features</a>
+                <a href="/docs" class="nav-link active">Documentation</a>
+                <a href="/#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/helixagent/helixagent" class="nav-link">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero hero-small">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title"><span class="gradient-text">Architecture</span></h1>
+                <p class="hero-description">Understanding HelixAgent's system design and components</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Content -->
+    <section class="documentation">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <a href="/docs">Documentation</a> / <span>Architecture</span>
+            </nav>
+
+            <!-- Overview -->
+            <div class="doc-section">
+                <h2 id="overview">System Overview</h2>
+                <p>HelixAgent is designed as a modular, extensible platform for orchestrating multiple LLM providers. The architecture follows clean separation of concerns with clear boundaries between components.</p>
+
+                <div class="architecture-diagram">
+                    <pre>
+┌─────────────────────────────────────────────────────────────┐
+│                     HelixAgent Server                        │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   Router    │  │  Handlers   │  │     Middleware      │  │
+│  │  (Gin)      │  │  (OpenAI)   │  │  (Auth, Rate Limit) │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
+│         │                │                     │             │
+│  ┌──────┴────────────────┴─────────────────────┴──────────┐ │
+│  │                    Services Layer                       │ │
+│  ├─────────────────────────────────────────────────────────┤ │
+│  │  Provider Registry │ Ensemble │ Debate │ LLMsVerifier  │ │
+│  └────────────────────┬────────────────────────────────────┘ │
+│                       │                                      │
+│  ┌────────────────────┴────────────────────────────────────┐ │
+│  │                  LLM Providers                          │ │
+│  ├──────┬──────┬──────┬──────┬──────┬──────┬──────┬───────┤ │
+│  │Claude│Gemini│DeepSk│OpenRt│Qwen  │Mistrl│ZAI   │Ollama │ │
+│  └──────┴──────┴──────┴──────┴──────┴──────┴──────┴───────┘ │
+└─────────────────────────────────────────────────────────────┘
+                    </pre>
+                </div>
+            </div>
+
+            <!-- Core Components -->
+            <div class="doc-section">
+                <h2 id="core-components">Core Components</h2>
+
+                <h3>1. Provider Registry</h3>
+                <p>Manages LLM provider registration, configuration, and lifecycle.</p>
+                <ul>
+                    <li><strong>Auto-discovery:</strong> Detects providers from environment variables</li>
+                    <li><strong>Health monitoring:</strong> Continuous provider health checks</li>
+                    <li><strong>Circuit breaker:</strong> Automatic failover on provider failures</li>
+                    <li><strong>Scoring:</strong> LLMsVerifier integration for provider ranking</li>
+                </ul>
+
+                <h3>2. Ensemble Service</h3>
+                <p>Orchestrates parallel requests across multiple providers.</p>
+                <ul>
+                    <li><strong>Confidence-weighted voting:</strong> Combines responses based on confidence</li>
+                    <li><strong>Majority voting:</strong> Selects most common response</li>
+                    <li><strong>Fallback chains:</strong> Sequential provider fallback</li>
+                </ul>
+
+                <h3>3. AI Debate System</h3>
+                <p>Multi-round debate with 5 positions × 3 LLMs = 15 participants.</p>
+                <ul>
+                    <li><strong>Dynamic team selection:</strong> Based on LLMsVerifier scores</li>
+                    <li><strong>Multi-pass validation:</strong> Response refinement across phases</li>
+                    <li><strong>Dialogue formatting:</strong> Theater-style presentation</li>
+                </ul>
+
+                <h3>4. LLMsVerifier Integration</h3>
+                <p>Verification and scoring system for providers.</p>
+                <ul>
+                    <li><strong>8-test pipeline:</strong> Comprehensive capability verification</li>
+                    <li><strong>5-component scoring:</strong> Speed, efficiency, cost, capability, recency</li>
+                    <li><strong>OAuth support:</strong> Claude Code and Qwen CLI integration</li>
+                </ul>
+            </div>
+
+            <!-- Data Flow -->
+            <div class="doc-section">
+                <h2 id="data-flow">Request Flow</h2>
+                <pre><code>1. Client Request
+   │
+   ├──► Router (route matching)
+   │
+   ├──► Middleware (auth, rate limiting, features)
+   │
+   ├──► Handler (request validation)
+   │
+   ├──► Service Layer
+   │    ├──► Provider Registry (select providers)
+   │    ├──► LLMsVerifier (score-based selection)
+   │    └──► Ensemble/Debate Service
+   │
+   ├──► LLM Providers (parallel requests)
+   │
+   ├──► Response Aggregation
+   │
+   └──► Client Response (OpenAI-compatible)</code></pre>
+            </div>
+
+            <!-- Provider Types -->
+            <div class="doc-section">
+                <h2 id="provider-types">Provider Types</h2>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Providers</th>
+                            <th>Authentication</th>
+                            <th>Verification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>API Key</td>
+                            <td>DeepSeek, Gemini, Mistral, OpenRouter, ZAI, Cerebras</td>
+                            <td>Bearer token</td>
+                            <td>Full 8-test</td>
+                        </tr>
+                        <tr>
+                            <td>OAuth</td>
+                            <td>Claude, Qwen</td>
+                            <td>OAuth2 from CLI</td>
+                            <td>Trust on API failure option</td>
+                        </tr>
+                        <tr>
+                            <td>Free</td>
+                            <td>Zen (OpenCode), OpenRouter :free models</td>
+                            <td>Anonymous/X-Device-ID</td>
+                            <td>Reduced, 6.0-7.0 score</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Protocol Support -->
+            <div class="doc-section">
+                <h2 id="protocols">Protocol Support</h2>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Protocol</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>OpenAI-compatible REST</td>
+                            <td>/v1/chat/completions</td>
+                            <td>Drop-in replacement for OpenAI</td>
+                        </tr>
+                        <tr>
+                            <td>MCP</td>
+                            <td>/v1/mcp</td>
+                            <td>Model Context Protocol</td>
+                        </tr>
+                        <tr>
+                            <td>LSP</td>
+                            <td>/v1/lsp</td>
+                            <td>Language Server Protocol</td>
+                        </tr>
+                        <tr>
+                            <td>ACP</td>
+                            <td>/v1/acp</td>
+                            <td>Agent Communication Protocol</td>
+                        </tr>
+                        <tr>
+                            <td>gRPC</td>
+                            <td>:9090</td>
+                            <td>High-performance RPC</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Scoring Algorithm -->
+            <div class="doc-section">
+                <h2 id="scoring">Scoring Algorithm</h2>
+                <p>Providers are scored using 5 weighted components:</p>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Weight</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Response Speed</td>
+                            <td>25%</td>
+                            <td>API response latency</td>
+                        </tr>
+                        <tr>
+                            <td>Model Efficiency</td>
+                            <td>20%</td>
+                            <td>Token efficiency</td>
+                        </tr>
+                        <tr>
+                            <td>Cost Effectiveness</td>
+                            <td>25%</td>
+                            <td>Cost per token</td>
+                        </tr>
+                        <tr>
+                            <td>Capability</td>
+                            <td>20%</td>
+                            <td>Model capability score</td>
+                        </tr>
+                        <tr>
+                            <td>Recency</td>
+                            <td>10%</td>
+                            <td>Model release date</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Navigation -->
+            <div class="doc-nav">
+                <a href="/docs" class="btn btn-outline">← Back to Docs</a>
+                <a href="/docs/deployment" class="btn btn-primary">Deployment Guide →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="/assets/images/logo.svg" alt="HelixAgent" class="footer-logo">
+                    <p>AI-powered multi-provider LLM orchestration</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 HelixAgent. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/scripts/main.js"></script>
+</body>
+</html>

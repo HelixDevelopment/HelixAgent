@@ -1440,6 +1440,7 @@ func TestServiceCacheStatsAccuracy(t *testing.T) {
 // TestServiceContextCancellation tests behavior when context is cancelled
 func TestServiceContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	config := DefaultConfig()
 	config.Streaming.Enabled = true
 

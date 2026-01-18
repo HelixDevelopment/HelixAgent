@@ -517,6 +517,7 @@ func TestQwenProvider_CompleteStream_ContextCancellation(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	responseChan, err := provider.CompleteStream(ctx, req)
 	require.NoError(t, err)

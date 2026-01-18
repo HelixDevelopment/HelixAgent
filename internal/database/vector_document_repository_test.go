@@ -48,7 +48,7 @@ func cleanupVectorDocumentTestDB(t *testing.T, pool *pgxpool.Pool) {
 }
 
 func getTestDBConnString() string {
-	return "postgres://helixagent:secret@localhost:5432/helixagent_db?sslmode=disable"
+	return "postgres://helixagent:helixagent123@localhost:5432/helixagent_db?sslmode=disable"
 }
 
 func createTestVectorDocument() *VectorDocument {

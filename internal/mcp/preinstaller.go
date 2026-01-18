@@ -400,17 +400,20 @@ func (p *MCPPreinstaller) WaitForPackage(ctx context.Context, name string) error
 		case <-ticker.C:
 			p.mu.RLock()
 			status, ok := p.statuses[name]
-			p.mu.RUnlock()
-
 			if !ok {
+				p.mu.RUnlock()
 				return fmt.Errorf("package %s not found", name)
 			}
+			// Copy values while holding the lock to avoid race conditions
+			currentStatus := status.Status
+			statusError := status.Error
+			p.mu.RUnlock()
 
-			switch status.Status {
+			switch currentStatus {
 			case StatusInstalled:
 				return nil
 			case StatusFailed:
-				return fmt.Errorf("package %s failed to install: %v", name, status.Error)
+				return fmt.Errorf("package %s failed to install: %v", name, statusError)
 			case StatusUnavailable:
 				return fmt.Errorf("package %s is unavailable", name)
 			}

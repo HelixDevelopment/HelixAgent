@@ -370,14 +370,14 @@ func TestWorkerPool_TaskTimeout(t *testing.T) {
 
 func TestWorkerPool_OnError(t *testing.T) {
 	var errorCalled atomic.Bool
-	var errorTaskID string
+	var errorTaskID atomic.Value
 
 	pool := NewWorkerPool(&PoolConfig{
 		Workers:   2,
 		QueueSize: 10,
 		OnError: func(taskID string, err error) {
+			errorTaskID.Store(taskID)
 			errorCalled.Store(true)
-			errorTaskID = taskID
 		},
 	})
 	defer pool.Stop()
@@ -390,7 +390,7 @@ func TestWorkerPool_OnError(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	assert.True(t, errorCalled.Load())
-	assert.Equal(t, "failing-task", errorTaskID)
+	assert.Equal(t, "failing-task", errorTaskID.Load().(string))
 }
 
 func TestWorkerPool_OnComplete(t *testing.T) {

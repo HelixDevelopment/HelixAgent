@@ -167,7 +167,8 @@ func (h *Handler) executeReplay(ctx context.Context, req *ReplayRequest, progres
 	replayCtx, cancel := context.WithTimeout(ctx, h.config.ReplayTimeout)
 	defer cancel()
 
-	progress.Status = ReplayStatusRunning
+	// Update status with proper synchronization
+	h.updateStatus(req.ID, ReplayStatusRunning, "")
 
 	// Apply options with defaults
 	options := req.Options
@@ -244,26 +245,27 @@ func (h *Handler) executeReplay(ctx context.Context, req *ReplayRequest, progres
 
 			atomic.AddInt64(&progress.ReplayedCount, 1)
 			processed++
-			progress.LastProcessedID = msg.ID
+			lastID := msg.ID
 
 			// Add delay between messages if configured
 			if options.DelayBetween > 0 {
 				time.Sleep(options.DelayBetween)
 			}
+
+			// Update progress fields with proper synchronization
+			elapsed := time.Since(startTime).Seconds()
+			rate := float64(0)
+			if elapsed > 0 {
+				rate = float64(processed) / elapsed
+			}
+			h.updateProgressFields(req.ID, lastID, rate)
 		}
 
 		atomic.AddInt64(&progress.CurrentOffset, int64(len(batch)))
-
-		// Update rate
-		elapsed := time.Since(startTime).Seconds()
-		if elapsed > 0 {
-			progress.Rate = float64(processed) / elapsed
-		}
 	}
 
-	// Mark as completed
-	progress.EndTime = time.Now()
-	progress.Status = ReplayStatusCompleted
+	// Mark as completed using updateStatus for proper synchronization
+	h.updateStatus(req.ID, ReplayStatusCompleted, "")
 
 	h.logger.Info("Replay completed",
 		zap.String("request_id", req.ID),
@@ -339,6 +341,17 @@ func (h *Handler) updateStatus(requestID string, status ReplayStatus, message st
 		if status == ReplayStatusCompleted || status == ReplayStatusFailed || status == ReplayStatusCancelled {
 			progress.EndTime = time.Now()
 		}
+	}
+}
+
+// updateProgressFields updates the LastProcessedID and Rate fields with proper synchronization
+func (h *Handler) updateProgressFields(requestID string, lastProcessedID string, rate float64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if progress, ok := h.activeReplays[requestID]; ok {
+		progress.LastProcessedID = lastProcessedID
+		progress.Rate = rate
 	}
 }
 

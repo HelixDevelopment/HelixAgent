@@ -311,9 +311,9 @@ func TestProcessor_DefaultRetryHandler(t *testing.T) {
 	processor := NewProcessor(broker, config, logger)
 
 	// Set up a subscriber to verify message is published
-	var received *messaging.Message
+	var received atomic.Value
 	_, err = broker.Subscribe(ctx, "test.topic", func(ctx context.Context, msg *messaging.Message) error {
-		received = msg
+		received.Store(msg)
 		return nil
 	})
 	require.NoError(t, err)
@@ -335,8 +335,9 @@ func TestProcessor_DefaultRetryHandler(t *testing.T) {
 	// Wait for message delivery
 	time.Sleep(100 * time.Millisecond)
 
-	assert.NotNil(t, received)
-	assert.Equal(t, "orig-1", received.ID)
+	receivedMsg := received.Load()
+	assert.NotNil(t, receivedMsg)
+	assert.Equal(t, "orig-1", receivedMsg.(*messaging.Message).ID)
 }
 
 func TestProcessor_DefaultRetryHandler_NoTopic(t *testing.T) {

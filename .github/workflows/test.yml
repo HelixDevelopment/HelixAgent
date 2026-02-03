@@ -93,7 +93,7 @@ jobs:
           go test -bench=. -benchmem -run=^$ ./internal/cache/... | tee benchmark_cache.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
           path: benchmark_*.txt

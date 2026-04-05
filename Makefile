@@ -1,4 +1,4 @@
-.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100
+.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check
 
 EXCLUDE_DIRS := cli_agents MCP MCP-Servers
 
@@ -1685,6 +1685,19 @@ test-benchmarks-provider:
 test-benchmark:
 	@echo "Running benchmark: $(BENCHMARK)"
 	@GOMAXPROCS=2 go test -bench=$(BENCHMARK) -benchmem ./tests/benchmarks/... -timeout 1h
+
+## Capture performance baselines to golden files
+.PHONY: benchmark-baseline
+benchmark-baseline:
+	@bash scripts/benchmark-baseline.sh
+
+## Check benchmarks against baselines
+.PHONY: benchmark-check
+benchmark-check:
+	@echo "Running benchmarks and comparing against baselines..."
+	@GOMAXPROCS=2 nice -n 19 go test -bench=. -benchmem -count=3 \
+		-run=^$$ ./internal/handlers/ -p 1 -timeout=300s > /tmp/bench-current-handlers.txt 2>/dev/null
+	@echo "Handler benchmarks captured. Compare with: benchstat benchmarks/baselines/handlers.txt /tmp/bench-current-handlers.txt"
 
 # =============================================================================
 # Comprehensive Test Targets

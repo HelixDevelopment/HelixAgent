@@ -137,6 +137,7 @@ The `complete_schema.sql` file merges all of these into one executable script.
 | 17 | `planning_sessions.sql` | — | AI planning algorithm results |
 | 18 | `llmops_experiments.sql` | — | LLMOps experiments & prompt versions |
 | 19 | `relationships.sql` | — | Documentation only (no DDL) |
+| 20 | `002_performance_and_security.sql` | 002 | Feature flags, perf baselines, security scans, benchmark runs |
 | — | `clickhouse_analytics.sql` | — | ClickHouse only (separate engine) |
 
 > `complete_schema.sql` is the authoritative single-file reference and can be
@@ -246,6 +247,13 @@ The `complete_schema.sql` file merges all of these into one executable script.
 - **`llmops_experiments`** — A/B experiment definitions with variant configs and aggregate metrics.
 - **`llmops_evaluations`** — Evaluation runs measuring model quality on defined datasets.
 - **`llmops_prompt_versions`** — Versioned prompt templates with performance tracking.
+
+### Performance & Security (Migration 002)
+
+- **`feature_flags`** — Application-level feature toggles with enable/disable state and descriptions. Unique constraint on `name` for fast lookup.
+- **`performance_baselines`** — Captured benchmark baselines per metric and package for regression detection. Stores nanosecond timings and allocation counts.
+- **`security_scan_history`** — Audit log of security scans (Snyk, SonarQube, gosec) with severity-bucketed finding counts and scan duration.
+- **`benchmark_runs`** — Persistent benchmark run results complementing in-memory storage. Tracks per-provider, per-model pass rates, scores, latencies, and JSONB config/summary blobs.
 
 ### Analytics & Observability
 

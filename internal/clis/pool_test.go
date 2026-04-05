@@ -15,9 +15,11 @@ import (
 
 func TestNewInstancePool(t *testing.T) {
 	config := DefaultPoolConfig()
+	var newPoolCounter int64
 	factory := func() (*AgentInstance, error) {
+		id := atomic.AddInt64(&newPoolCounter, 1)
 		return &AgentInstance{
-			ID:   "test-instance",
+			ID:   fmt.Sprintf("new-pool-%d", id),
 			Type: TypeAider,
 		}, nil
 	}
@@ -213,7 +215,7 @@ func TestInstancePool_MaxActiveLimit(t *testing.T) {
 	shortCtx, shortCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer shortCancel()
 	_, err = pool.Acquire(shortCtx)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 
 	// Release one and try again
 	pool.Release(inst1)
@@ -347,8 +349,10 @@ func TestInstancePool_Stats(t *testing.T) {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
 	config := DefaultPoolConfig()
+	var statsCounter int64
 	factory := func() (*AgentInstance, error) {
-		return &AgentInstance{ID: "test", Type: TypeAider}, nil
+		id := atomic.AddInt64(&statsCounter, 1)
+		return &AgentInstance{ID: fmt.Sprintf("stats-%d", id), Type: TypeAider}, nil
 	}
 
 	pool := NewInstancePool(TypeAider, config, factory)
@@ -511,8 +515,10 @@ func BenchmarkInstancePool_AcquireRelease(b *testing.B) {
 		MaxLifetime: time.Hour,
 	}
 
+	var benchCounter int64
 	factory := func() (*AgentInstance, error) {
-		return &AgentInstance{ID: "test", Type: TypeAider}, nil
+		id := atomic.AddInt64(&benchCounter, 1)
+		return &AgentInstance{ID: fmt.Sprintf("bench-%d", id), Type: TypeAider}, nil
 	}
 
 	pool := NewInstancePool(TypeAider, config, factory)
@@ -538,8 +544,10 @@ func BenchmarkInstancePool_ConcurrentAcquireRelease(b *testing.B) {
 		MaxLifetime: time.Hour,
 	}
 
+	var benchConcurrentCounter int64
 	factory := func() (*AgentInstance, error) {
-		return &AgentInstance{ID: "test", Type: TypeAider}, nil
+		id := atomic.AddInt64(&benchConcurrentCounter, 1)
+		return &AgentInstance{ID: fmt.Sprintf("bench-concurrent-%d", id), Type: TypeAider}, nil
 	}
 
 	pool := NewInstancePool(TypeAider, config, factory)

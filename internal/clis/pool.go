@@ -12,28 +12,31 @@ import (
 // InstancePool manages a pool of reusable agent instances.
 type InstancePool struct {
 	agentType AgentType
-	
+
 	// Pool configuration
 	minIdle   int
 	maxIdle   int
 	maxActive int
 	maxLifetime time.Duration
-	
+
 	// Idle instances available for use
 	idle []*AgentInstance
 	idleCh chan *AgentInstance
-	
+
 	// Active instances currently in use
 	active map[string]*AgentInstance
-	
+
 	// Factory for creating new instances
 	factory func() (*AgentInstance, error)
-	
+
 	// Metrics
 	hits   uint64
 	misses uint64
 	evicts uint64
-	
+
+	// placeholderSeq is an atomic counter for generating unique placeholder IDs.
+	placeholderSeq uint64
+
 	// Control
 	mu     sync.RWMutex
 	ctx    context.Context
@@ -155,7 +158,8 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 	// Reserve a slot with a placeholder key so concurrent goroutines see
 	// the updated active count. We use a unique placeholder that cannot
 	// collide with real instance IDs.
-	placeholderID := fmt.Sprintf("__placeholder_%d__", time.Now().UnixNano())
+	seq := atomic.AddUint64(&p.placeholderSeq, 1)
+	placeholderID := fmt.Sprintf("__placeholder_%d__", seq)
 	p.active[placeholderID] = nil
 	p.mu.Unlock()
 
@@ -409,9 +413,16 @@ func (p *InstancePool) prewarm() {
 }
 
 // terminateInstance terminates an instance.
+// Must NOT be called while holding p.mu.
 func (p *InstancePool) terminateInstance(inst *AgentInstance) error {
-	// This would call the instance manager to terminate
-	// For now, just mark as terminated
+	if inst == nil {
+		return nil
+	}
+	// This would call the instance manager to terminate.
+	// Hold the lock while mutating inst.Status so concurrent Release/terminate
+	// calls on the same instance pointer do not race.
+	p.mu.Lock()
 	inst.Status = StatusTerminated
+	p.mu.Unlock()
 	return nil
 }

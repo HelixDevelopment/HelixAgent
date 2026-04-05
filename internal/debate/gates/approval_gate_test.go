@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewApprovalGate_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultGateConfig()
 
 	assert.False(t, cfg.Enabled)
@@ -26,6 +27,7 @@ func TestNewApprovalGate_DefaultConfig(t *testing.T) {
 }
 
 func TestApprovalGate_CheckGate_Disabled(t *testing.T) {
+	t.Parallel()
 	// Gates disabled: should auto-approve regardless of phase.
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    false,
@@ -49,6 +51,7 @@ func TestApprovalGate_CheckGate_Disabled(t *testing.T) {
 }
 
 func TestApprovalGate_CheckGate_Disabled_PhaseNotInGatePoints(t *testing.T) {
+	t.Parallel()
 	// Gates enabled but phase not in gate points: should auto-approve.
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
@@ -70,6 +73,7 @@ func TestApprovalGate_CheckGate_Disabled_PhaseNotInGatePoints(t *testing.T) {
 }
 
 func TestApprovalGate_CheckGate_Enabled(t *testing.T) {
+	t.Parallel()
 	// Gates enabled with matching phase: blocks and creates a pending request.
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
@@ -120,6 +124,7 @@ func TestApprovalGate_CheckGate_Enabled(t *testing.T) {
 }
 
 func TestApprovalGate_Approve(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
 		GatePoints: []topology.DebatePhase{topology.PhaseCritique},
@@ -170,6 +175,7 @@ func TestApprovalGate_Approve(t *testing.T) {
 }
 
 func TestApprovalGate_Approve_NotFound(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(DefaultGateConfig())
 
 	err := gate.Approve("nonexistent-id", "reviewer", "reason")
@@ -178,6 +184,7 @@ func TestApprovalGate_Approve_NotFound(t *testing.T) {
 }
 
 func TestApprovalGate_Reject(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
 		GatePoints: []topology.DebatePhase{topology.PhaseReview},
@@ -224,6 +231,7 @@ func TestApprovalGate_Reject(t *testing.T) {
 }
 
 func TestApprovalGate_Reject_NotFound(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(DefaultGateConfig())
 
 	err := gate.Reject("nonexistent-id", "reviewer", "reason")
@@ -232,6 +240,7 @@ func TestApprovalGate_Reject_NotFound(t *testing.T) {
 }
 
 func TestApprovalGate_GetPendingRequests(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(GateConfig{
 		Enabled: true,
 		GatePoints: []topology.DebatePhase{
@@ -275,6 +284,7 @@ func TestApprovalGate_GetPendingRequests(t *testing.T) {
 }
 
 func TestApprovalGate_IsEnabled(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		enabled  bool
@@ -286,6 +296,7 @@ func TestApprovalGate_IsEnabled(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			gate := NewApprovalGate(GateConfig{Enabled: tc.enabled})
 			assert.Equal(t, tc.expected, gate.IsEnabled())
 		})
@@ -293,6 +304,7 @@ func TestApprovalGate_IsEnabled(t *testing.T) {
 }
 
 func TestApprovalGate_CheckGate_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
 		GatePoints: []topology.DebatePhase{topology.PhaseProposal},
@@ -328,6 +340,7 @@ func TestApprovalGate_CheckGate_ContextCancelled(t *testing.T) {
 }
 
 func TestApprovalGate_CheckGate_Timeout(t *testing.T) {
+	t.Parallel()
 	gate := NewApprovalGate(GateConfig{
 		Enabled:    true,
 		GatePoints: []topology.DebatePhase{topology.PhaseProposal},

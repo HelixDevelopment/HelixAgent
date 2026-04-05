@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewInstancePool(t *testing.T) {
+	t.Parallel()
 	config := DefaultPoolConfig()
 	var newPoolCounter int64
 	factory := func() (*AgentInstance, error) {
@@ -36,6 +37,7 @@ func TestNewInstancePool(t *testing.T) {
 }
 
 func TestInstancePool_AcquireFromEmpty(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -67,6 +69,7 @@ func TestInstancePool_AcquireFromEmpty(t *testing.T) {
 }
 
 func TestInstancePool_AcquireFromPool(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -100,6 +103,7 @@ func TestInstancePool_AcquireFromPool(t *testing.T) {
 }
 
 func TestInstancePool_Release(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -135,6 +139,7 @@ func TestInstancePool_Release(t *testing.T) {
 }
 
 func TestInstancePool_MaxIdleLimit(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -181,6 +186,7 @@ func TestInstancePool_MaxIdleLimit(t *testing.T) {
 }
 
 func TestInstancePool_MaxActiveLimit(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -229,6 +235,7 @@ func TestInstancePool_MaxActiveLimit(t *testing.T) {
 }
 
 func TestInstancePool_Invalidate(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -258,6 +265,7 @@ func TestInstancePool_Invalidate(t *testing.T) {
 }
 
 func TestInstancePool_CleanupExpired(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -295,6 +303,7 @@ func TestInstancePool_CleanupExpired(t *testing.T) {
 }
 
 func TestInstancePool_ConcurrentAcquireRelease(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -346,6 +355,7 @@ func TestInstancePool_ConcurrentAcquireRelease(t *testing.T) {
 }
 
 func TestInstancePool_Stats(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -384,6 +394,7 @@ func TestInstancePool_Stats(t *testing.T) {
 }
 
 func TestInstancePool_Close(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -414,6 +425,7 @@ func TestInstancePool_Close(t *testing.T) {
 }
 
 func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
@@ -507,6 +519,7 @@ func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
 }
 
 func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping goroutine leak test in short mode")
 	}
@@ -571,6 +584,7 @@ func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
 }
 
 func TestInstancePool_EnsureMinIdle_NoDeadlock(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping deadlock test in short mode")
 	}

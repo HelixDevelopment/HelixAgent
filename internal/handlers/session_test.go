@@ -21,6 +21,7 @@ func newTestSessionLogger() *logrus.Logger {
 }
 
 func TestNewSessionHandler(t *testing.T) {
+	t.Parallel()
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
 
@@ -31,11 +32,13 @@ func TestNewSessionHandler(t *testing.T) {
 }
 
 func TestSessionHandler_CreateSession(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
 
 	t.Run("creates session successfully", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -63,6 +66,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("creates session with memory enabled", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -86,6 +90,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("creates session with initial context", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -111,6 +116,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("uses default TTL when not provided", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -134,6 +140,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("caps TTL at 7 days", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -157,6 +164,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid request", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -170,6 +178,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -183,6 +192,7 @@ func TestSessionHandler_CreateSession(t *testing.T) {
 }
 
 func TestSessionHandler_GetSession(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
@@ -206,6 +216,7 @@ func TestSessionHandler_GetSession(t *testing.T) {
 	sessionID := createResp.SessionID
 
 	t.Run("gets session successfully", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: sessionID}}
@@ -224,6 +235,7 @@ func TestSessionHandler_GetSession(t *testing.T) {
 	})
 
 	t.Run("gets session with context", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: sessionID}}
@@ -240,6 +252,7 @@ func TestSessionHandler_GetSession(t *testing.T) {
 	})
 
 	t.Run("returns 404 for non-existent session", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent-session"}}
@@ -252,11 +265,13 @@ func TestSessionHandler_GetSession(t *testing.T) {
 }
 
 func TestSessionHandler_TerminateSession(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
 
 	t.Run("terminates session gracefully", func(t *testing.T) {
+			t.Parallel()
 		// Create a session first
 		createW := httptest.NewRecorder()
 		createC, _ := gin.CreateTestContext(createW)
@@ -291,6 +306,7 @@ func TestSessionHandler_TerminateSession(t *testing.T) {
 	})
 
 	t.Run("terminates session immediately", func(t *testing.T) {
+			t.Parallel()
 		// Create a session first
 		createW := httptest.NewRecorder()
 		createC, _ := gin.CreateTestContext(createW)
@@ -319,6 +335,7 @@ func TestSessionHandler_TerminateSession(t *testing.T) {
 	})
 
 	t.Run("returns 404 for non-existent session", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent-session"}}
@@ -331,6 +348,7 @@ func TestSessionHandler_TerminateSession(t *testing.T) {
 }
 
 func TestSessionHandler_ListSessions(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
@@ -360,6 +378,7 @@ func TestSessionHandler_ListSessions(t *testing.T) {
 	handler.CreateSession(c)
 
 	t.Run("lists all sessions", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/sessions", nil)
@@ -375,6 +394,7 @@ func TestSessionHandler_ListSessions(t *testing.T) {
 	})
 
 	t.Run("filters by user_id", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/sessions?user_id=test-user-list", nil)
@@ -390,6 +410,7 @@ func TestSessionHandler_ListSessions(t *testing.T) {
 	})
 
 	t.Run("filters by status", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/sessions?status=active", nil)
@@ -407,6 +428,7 @@ func TestSessionHandler_ListSessions(t *testing.T) {
 }
 
 func TestSessionHandler_UpdateSessionContext(t *testing.T) {
+	t.Parallel()
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
 
@@ -427,6 +449,7 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	sessionID := createResp.SessionID
 
 	t.Run("updates context successfully", func(t *testing.T) {
+			t.Parallel()
 		err := handler.UpdateSessionContext(sessionID, map[string]interface{}{
 			"new_key": "new_value",
 		})
@@ -439,6 +462,7 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	})
 
 	t.Run("updates context on existing context", func(t *testing.T) {
+			t.Parallel()
 		err := handler.UpdateSessionContext(sessionID, map[string]interface{}{
 			"another_key": 42,
 		})
@@ -452,6 +476,7 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	})
 
 	t.Run("returns nil for non-existent session", func(t *testing.T) {
+			t.Parallel()
 		err := handler.UpdateSessionContext("non-existent", map[string]interface{}{
 			"key": "value",
 		})
@@ -460,15 +485,18 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 }
 
 func TestSessionHandler_GetSessionByID(t *testing.T) {
+	t.Parallel()
 	logger := newTestSessionLogger()
 	handler := NewSessionHandler(logger)
 
 	t.Run("returns nil for non-existent session", func(t *testing.T) {
+			t.Parallel()
 		session := handler.GetSessionByID("non-existent")
 		assert.Nil(t, session)
 	})
 
 	t.Run("returns session when exists", func(t *testing.T) {
+			t.Parallel()
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	g := New()
 
 	assert.NotNil(t, g)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestGitHubSpark_Initialize(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestGitHubSpark_Initialize(t *testing.T) {
 }
 
 func TestGitHubSpark_Execute(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -129,6 +132,7 @@ func TestGitHubSpark_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := g.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -144,6 +148,7 @@ func TestGitHubSpark_Execute(t *testing.T) {
 }
 
 func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -163,6 +168,7 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Now test edit
 	t.Run("edit existing spark", func(t *testing.T) {
+			t.Parallel()
 		result, err := g.Execute(ctx, "edit", map[string]interface{}{
 			"spark_id": sparkID,
 			"prompt":   "Add feature",
@@ -174,6 +180,7 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Test publish
 	t.Run("publish existing spark", func(t *testing.T) {
+			t.Parallel()
 		result, err := g.Execute(ctx, "publish", map[string]interface{}{
 			"spark_id": sparkID,
 		})
@@ -184,6 +191,7 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Test share
 	t.Run("share existing spark", func(t *testing.T) {
+			t.Parallel()
 		result, err := g.Execute(ctx, "share", map[string]interface{}{
 			"spark_id": sparkID,
 		})
@@ -194,6 +202,7 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 }
 
 func TestGitHubSpark_IsAvailable(t *testing.T) {
+	t.Parallel()
 	g := New()
 	assert.False(t, g.IsAvailable())
 
@@ -202,6 +211,7 @@ func TestGitHubSpark_IsAvailable(t *testing.T) {
 }
 
 func TestSpark(t *testing.T) {
+	t.Parallel()
 	spark := Spark{
 		ID:          "spark-1",
 		Name:        "TestApp",
@@ -216,6 +226,7 @@ func TestSpark(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		GitHubToken:       "token",
 		AutoPublish:       false,

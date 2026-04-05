@@ -24,6 +24,7 @@ func (m *mockLLMClient) Complete(
 }
 
 func TestNewReflectionGenerator(t *testing.T) {
+	t.Parallel()
 	client := &mockLLMClient{response: "ok"}
 	gen := NewReflectionGenerator(client)
 	require.NotNil(t, gen)
@@ -31,6 +32,7 @@ func TestNewReflectionGenerator(t *testing.T) {
 }
 
 func TestReflectionGenerator_Generate_WithMockLLM(t *testing.T) {
+	t.Parallel()
 	llmResponse := `ROOT_CAUSE: Off-by-one error in loop boundary
 WHAT_WENT_WRONG: The loop iterates one extra time causing index out of bounds
 WHAT_TO_CHANGE: Use < instead of <= in the loop condition
@@ -65,6 +67,7 @@ CONFIDENCE: 0.85`
 }
 
 func TestReflectionGenerator_Generate_NilRequest(t *testing.T) {
+	t.Parallel()
 	client := &mockLLMClient{}
 	gen := NewReflectionGenerator(client)
 
@@ -75,6 +78,7 @@ func TestReflectionGenerator_Generate_NilRequest(t *testing.T) {
 }
 
 func TestReflectionGenerator_Generate_Fallback(t *testing.T) {
+	t.Parallel()
 	// LLM returns an error; generator should fall back to deterministic.
 	client := &mockLLMClient{
 		response: "",
@@ -101,6 +105,7 @@ func TestReflectionGenerator_Generate_Fallback(t *testing.T) {
 }
 
 func TestReflectionGenerator_Generate_FallbackOnUnparseableResponse(t *testing.T) {
+	t.Parallel()
 	// LLM returns something that cannot be parsed.
 	client := &mockLLMClient{
 		response: "I'm not sure what happened. Let me think...",
@@ -124,6 +129,7 @@ func TestReflectionGenerator_Generate_FallbackOnUnparseableResponse(t *testing.T
 }
 
 func TestReflectionGenerator_ParseReflectionResponse(t *testing.T) {
+	t.Parallel()
 	gen := NewReflectionGenerator(&mockLLMClient{})
 
 	tests := []struct {
@@ -198,6 +204,7 @@ CONFIDENCE: 0.5`,
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			reflection, err := gen.parseReflectionResponse(tc.response)
 			if tc.wantErr {
 				require.Error(t, err)
@@ -217,9 +224,11 @@ CONFIDENCE: 0.5`,
 }
 
 func TestReflectionGenerator_BuildReflectionPrompt(t *testing.T) {
+	t.Parallel()
 	gen := NewReflectionGenerator(&mockLLMClient{})
 
 	t.Run("basic prompt", func(t *testing.T) {
+			t.Parallel()
 		req := &ReflectionRequest{
 			Code:            "func add(a, b int) int { return a - b }",
 			TestResults:     map[string]interface{}{"test_add": "failed"},
@@ -242,6 +251,7 @@ func TestReflectionGenerator_BuildReflectionPrompt(t *testing.T) {
 	})
 
 	t.Run("prompt with prior reflections", func(t *testing.T) {
+			t.Parallel()
 		req := &ReflectionRequest{
 			Code:            "func foo() {}",
 			TestResults:     map[string]interface{}{},
@@ -269,6 +279,7 @@ func TestReflectionGenerator_BuildReflectionPrompt(t *testing.T) {
 }
 
 func TestReflectionGenerator_GenerateFallbackReflection(t *testing.T) {
+	t.Parallel()
 	gen := NewReflectionGenerator(&mockLLMClient{})
 
 	tests := []struct {
@@ -353,6 +364,7 @@ func TestReflectionGenerator_GenerateFallbackReflection(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			req := &ReflectionRequest{
 				Code:            "func test() {}",
 				ErrorMessages:   tc.errorMessages,
@@ -369,6 +381,7 @@ func TestReflectionGenerator_GenerateFallbackReflection(t *testing.T) {
 	}
 
 	t.Run("with prior reflections reduces confidence", func(t *testing.T) {
+			t.Parallel()
 		prior := &Reflection{
 			RootCause:        "previous cause",
 			WhatWentWrong:    "previous wrong",

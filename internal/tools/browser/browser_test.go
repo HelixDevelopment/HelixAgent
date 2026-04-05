@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewBrowser(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	
@@ -25,6 +26,7 @@ func TestNewBrowser(t *testing.T) {
 }
 
 func TestBrowser_Execute_Navigate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -53,6 +55,7 @@ func TestBrowser_Execute_Navigate(t *testing.T) {
 }
 
 func TestBrowser_Execute_Fetch(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -76,6 +79,7 @@ func TestBrowser_Execute_Fetch(t *testing.T) {
 }
 
 func TestBrowser_Execute_Extract(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -98,6 +102,7 @@ func TestBrowser_Execute_Extract(t *testing.T) {
 }
 
 func TestBrowser_Execute_Screenshot(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	
 	browser := NewBrowser(DefaultConfig(), logger)
@@ -117,6 +122,7 @@ func TestBrowser_Execute_Screenshot(t *testing.T) {
 }
 
 func TestBrowser_Execute_InvalidAction(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	browser := NewBrowser(DefaultConfig(), logger)
 	
@@ -135,6 +141,7 @@ func TestBrowser_Execute_InvalidAction(t *testing.T) {
 }
 
 func TestBrowser_Execute_EmptyURL(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	browser := NewBrowser(DefaultConfig(), logger)
 	
@@ -153,6 +160,7 @@ func TestBrowser_Execute_EmptyURL(t *testing.T) {
 }
 
 func TestBrowser_Execute_InvalidURL(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	browser := NewBrowser(DefaultConfig(), logger)
 	
@@ -170,6 +178,7 @@ func TestBrowser_Execute_InvalidURL(t *testing.T) {
 }
 
 func TestExtractTitle(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		html     string
@@ -199,6 +208,7 @@ func TestExtractTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractTitle(tt.html)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -206,6 +216,7 @@ func TestExtractTitle(t *testing.T) {
 }
 
 func TestStripTags(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -235,6 +246,7 @@ func TestStripTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := stripTags(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -242,6 +254,7 @@ func TestStripTags(t *testing.T) {
 }
 
 func TestTruncate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		input   string
@@ -276,6 +289,7 @@ func TestTruncate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := truncate(tt.input, tt.maxLen)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -283,6 +297,7 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	
 	assert.True(t, config.Headless)
@@ -292,6 +307,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestDefaultViewport(t *testing.T) {
+	t.Parallel()
 	viewport := DefaultViewport()
 	
 	assert.Equal(t, 1280, viewport.Width)
@@ -299,6 +315,7 @@ func TestDefaultViewport(t *testing.T) {
 }
 
 func TestScreenshotToBase64(t *testing.T) {
+	t.Parallel()
 	data := []byte("test screenshot data")
 	encoded := ScreenshotToBase64(data)
 	
@@ -307,6 +324,7 @@ func TestScreenshotToBase64(t *testing.T) {
 }
 
 func TestBrowser_WithTimeout(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	browser := NewBrowser(DefaultConfig(), logger)
 	

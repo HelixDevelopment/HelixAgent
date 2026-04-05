@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewEventBus(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	require.NotNil(t, eb)
 	assert.NotNil(t, eb.subscribers)
@@ -25,6 +26,7 @@ func TestNewEventBus(t *testing.T) {
 }
 
 func TestEventBus_Subscribe(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -37,6 +39,7 @@ func TestEventBus_Subscribe(t *testing.T) {
 }
 
 func TestEventBus_SubscribeTopic(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -48,6 +51,7 @@ func TestEventBus_SubscribeTopic(t *testing.T) {
 }
 
 func TestEventBus_SubscribeWildcard(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -58,6 +62,7 @@ func TestEventBus_SubscribeWildcard(t *testing.T) {
 }
 
 func TestEventBus_SubscribeFiltered(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -79,6 +84,7 @@ func TestEventBus_SubscribeFiltered(t *testing.T) {
 }
 
 func TestEventBus_Unsubscribe(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -99,6 +105,7 @@ func TestEventBus_Unsubscribe(t *testing.T) {
 }
 
 func TestEventBus_Publish(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -125,6 +132,7 @@ func TestEventBus_Publish(t *testing.T) {
 }
 
 func TestEventBus_PublishSync(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -150,6 +158,7 @@ func TestEventBus_PublishSync(t *testing.T) {
 }
 
 func TestEventBus_PublishToMultipleSubscribers(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -182,6 +191,7 @@ func TestEventBus_PublishToMultipleSubscribers(t *testing.T) {
 }
 
 func TestEventBus_PublishWithFilter(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -227,6 +237,7 @@ func TestEventBus_PublishWithFilter(t *testing.T) {
 }
 
 func TestEventBus_TopicSubscription(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -262,6 +273,7 @@ func TestEventBus_TopicSubscription(t *testing.T) {
 }
 
 func TestEventBus_WildcardSubscription(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -308,6 +320,7 @@ loop:
 }
 
 func TestEventBus_OnceSubscription(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -354,6 +367,7 @@ func TestEventBus_OnceSubscription(t *testing.T) {
 }
 
 func TestEventBus_HighThroughput(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -389,6 +403,7 @@ func TestEventBus_HighThroughput(t *testing.T) {
 }
 
 func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping concurrent test in short mode")
 	}
@@ -447,6 +462,7 @@ func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
 }
 
 func TestEventBus_GetStats(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	defer eb.Close()
 
@@ -468,6 +484,7 @@ func TestEventBus_GetStats(t *testing.T) {
 }
 
 func TestEventBus_Close(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 
 	sub1 := eb.Subscribe(EventTypeStatus, 10)
@@ -488,6 +505,7 @@ func TestEventBus_Close(t *testing.T) {
 }
 
 func TestEventBus_Close_NoPanicDuringDispatch(t *testing.T) {
+	t.Parallel()
 	// This test verifies that closing the EventBus while events are being
 	// published does not cause a panic (send on closed channel).
 	// We run multiple iterations to increase the chance of hitting the race.
@@ -543,6 +561,7 @@ func TestEventBus_Close_NoPanicDuringDispatch(t *testing.T) {
 }
 
 func TestEventBus_Close_Idempotent(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	eb.Subscribe(EventTypeStatus, 10)
 
@@ -558,6 +577,7 @@ func TestEventBus_Close_Idempotent(t *testing.T) {
 }
 
 func TestEventBus_PublishAfterClose(t *testing.T) {
+	t.Parallel()
 	eb := NewEventBus()
 	sub := eb.Subscribe(EventTypeStatus, 10)
 	_ = sub

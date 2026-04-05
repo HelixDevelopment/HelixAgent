@@ -10,6 +10,7 @@ import (
 )
 
 func TestMCPConnectionPool_ConcurrentGetClose(t *testing.T) {
+	t.Parallel()
 	pool := NewConnectionPool(nil, &MCPPoolConfig{
 		MaxConnections:    20,
 		ConnectionTimeout: 5 * time.Second,

@@ -7,12 +7,14 @@ import (
 )
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := &Provider{}
 	caps := p.GetCapabilities()
 	assert.NotNil(t, caps)
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		config    map[string]interface{}
@@ -44,6 +46,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := &Provider{}
 			valid, errors := p.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -57,6 +60,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider(
 		"https://test.openai.azure.com",
 		"gpt-4",
@@ -66,6 +70,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	p := NewProvider(
 		"https://test.openai.azure.com",
 		"gpt-4",

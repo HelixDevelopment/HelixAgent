@@ -13,6 +13,7 @@ import (
 // --- NewAnalyticsIntegration tests ---
 
 func TestAnalyticsIntegration_New_Enabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	logger := newTestLogger()
 
@@ -24,6 +25,7 @@ func TestAnalyticsIntegration_New_Enabled(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_New_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	logger := newTestLogger()
 
@@ -35,6 +37,7 @@ func TestAnalyticsIntegration_New_Disabled(t *testing.T) {
 // --- PublishProviderMetrics tests ---
 
 func TestAnalyticsIntegration_PublishProviderMetrics_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -59,6 +62,7 @@ func TestAnalyticsIntegration_PublishProviderMetrics_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_PublishProviderMetrics_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -74,6 +78,7 @@ func TestAnalyticsIntegration_PublishProviderMetrics_Disabled(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_PublishProviderMetrics_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("connection refused")
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
@@ -92,6 +97,7 @@ func TestAnalyticsIntegration_PublishProviderMetrics_BrokerError(t *testing.T) {
 // --- PublishDebateMetrics tests ---
 
 func TestAnalyticsIntegration_PublishDebateMetrics_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -120,6 +126,7 @@ func TestAnalyticsIntegration_PublishDebateMetrics_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_PublishDebateMetrics_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -134,6 +141,7 @@ func TestAnalyticsIntegration_PublishDebateMetrics_Disabled(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_PublishDebateMetrics_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("topic not found")
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
@@ -152,6 +160,7 @@ func TestAnalyticsIntegration_PublishDebateMetrics_BrokerError(t *testing.T) {
 // --- PublishConversationMetrics tests ---
 
 func TestAnalyticsIntegration_PublishConversationMetrics_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -178,6 +187,7 @@ func TestAnalyticsIntegration_PublishConversationMetrics_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_PublishConversationMetrics_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -194,6 +204,7 @@ func TestAnalyticsIntegration_PublishConversationMetrics_Disabled(t *testing.T) 
 // --- RecordProviderRequest tests ---
 
 func TestAnalyticsIntegration_RecordProviderRequest_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -213,6 +224,7 @@ func TestAnalyticsIntegration_RecordProviderRequest_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordProviderRequest_Failure(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -231,6 +243,7 @@ func TestAnalyticsIntegration_RecordProviderRequest_Failure(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordProviderRequest_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -246,6 +259,7 @@ func TestAnalyticsIntegration_RecordProviderRequest_Disabled(t *testing.T) {
 // --- RecordDebateRound tests ---
 
 func TestAnalyticsIntegration_RecordDebateRound_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -265,6 +279,7 @@ func TestAnalyticsIntegration_RecordDebateRound_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordDebateRound_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -280,6 +295,7 @@ func TestAnalyticsIntegration_RecordDebateRound_Disabled(t *testing.T) {
 // --- RecordDebateCompletion tests ---
 
 func TestAnalyticsIntegration_RecordDebateCompletion_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -302,6 +318,7 @@ func TestAnalyticsIntegration_RecordDebateCompletion_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordDebateCompletion_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -315,6 +332,7 @@ func TestAnalyticsIntegration_RecordDebateCompletion_Disabled(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordDebateCompletion_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("broker down")
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
@@ -331,6 +349,7 @@ func TestAnalyticsIntegration_RecordDebateCompletion_BrokerError(t *testing.T) {
 // --- RecordConversation tests ---
 
 func TestAnalyticsIntegration_RecordConversation_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -347,6 +366,7 @@ func TestAnalyticsIntegration_RecordConversation_Success(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordConversation_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -359,6 +379,7 @@ func TestAnalyticsIntegration_RecordConversation_Disabled(t *testing.T) {
 }
 
 func TestAnalyticsIntegration_RecordConversation_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("timeout")
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
@@ -374,6 +395,7 @@ func TestAnalyticsIntegration_RecordConversation_BrokerError(t *testing.T) {
 // --- BatchPublishProviderMetrics tests ---
 
 func TestAnalyticsIntegration_BatchPublishProviderMetrics_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -407,6 +429,7 @@ func TestAnalyticsIntegration_BatchPublishProviderMetrics_Success(t *testing.T) 
 }
 
 func TestAnalyticsIntegration_BatchPublishProviderMetrics_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), false)
 
@@ -420,6 +443,7 @@ func TestAnalyticsIntegration_BatchPublishProviderMetrics_Disabled(t *testing.T)
 }
 
 func TestAnalyticsIntegration_BatchPublishProviderMetrics_EmptyBatch(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 
@@ -429,6 +453,7 @@ func TestAnalyticsIntegration_BatchPublishProviderMetrics_EmptyBatch(t *testing.
 }
 
 func TestAnalyticsIntegration_BatchPublishProviderMetrics_BrokerErrorContinues(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("intermittent error")
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
@@ -444,6 +469,7 @@ func TestAnalyticsIntegration_BatchPublishProviderMetrics_BrokerErrorContinues(t
 }
 
 func TestAnalyticsIntegration_BatchPublishProviderMetrics_NilBatch(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ai := NewAnalyticsIntegration(broker, newTestLogger(), true)
 

@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	assert.Equal(t, RuntimeDocker, config.Runtime)
@@ -21,6 +22,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestIsRuntimeAvailable(t *testing.T) {
+	t.Parallel()
 	// This test depends on the environment
 	// Just verify it doesn't panic
 	_ = isRuntimeAvailable(RuntimeDocker)
@@ -28,6 +30,7 @@ func TestIsRuntimeAvailable(t *testing.T) {
 }
 
 func TestAvailableRuntimes(t *testing.T) {
+	t.Parallel()
 	runtimes := AvailableRuntimes()
 
 	// Should always return at least RuntimeNone
@@ -36,6 +39,7 @@ func TestAvailableRuntimes(t *testing.T) {
 }
 
 func TestNewSandbox(t *testing.T) {
+	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
 		t.Skip("No container runtime available")
@@ -54,6 +58,7 @@ func TestNewSandbox(t *testing.T) {
 }
 
 func TestNewSandbox_NoRuntime(t *testing.T) {
+	t.Parallel()
 	config := Config{
 		Runtime: RuntimeDocker,
 	}
@@ -67,6 +72,7 @@ func TestNewSandbox_NoRuntime(t *testing.T) {
 }
 
 func TestSandbox_Execute(t *testing.T) {
+	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
 		t.Skip("No container runtime available")
@@ -93,6 +99,7 @@ func TestSandbox_Execute(t *testing.T) {
 }
 
 func TestSandbox_Execute_WithTimeout(t *testing.T) {
+	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
 		t.Skip("No container runtime available")
@@ -121,6 +128,7 @@ func TestSandbox_Execute_WithTimeout(t *testing.T) {
 }
 
 func TestSandbox_Execute_WithNetworkDisabled(t *testing.T) {
+	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
 		t.Skip("No container runtime available")
@@ -148,6 +156,7 @@ func TestSandbox_Execute_WithNetworkDisabled(t *testing.T) {
 }
 
 func TestSandbox_Execute_WithNetworkEnabled(t *testing.T) {
+	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
 		t.Skip("No container runtime available")
@@ -176,6 +185,7 @@ func TestSandbox_Execute_WithNetworkEnabled(t *testing.T) {
 }
 
 func TestSandbox_ExecuteDirect(t *testing.T) {
+	t.Parallel()
 	config := Config{
 		Runtime:    RuntimeNone,
 		WorkingDir: "/tmp",
@@ -195,6 +205,7 @@ func TestSandbox_ExecuteDirect(t *testing.T) {
 }
 
 func TestSandbox_ExecuteDirect_WithTimeout(t *testing.T) {
+	t.Parallel()
 	config := Config{
 		Runtime:    RuntimeNone,
 		Timeout:    100 * time.Millisecond,
@@ -221,6 +232,7 @@ func TestSandbox_ExecuteDirect_WithTimeout(t *testing.T) {
 }
 
 func TestTool_Execute(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(nil)
 
 	// Skip if no runtime available
@@ -242,6 +254,7 @@ func TestTool_Execute(t *testing.T) {
 }
 
 func TestTool_Execute_MissingCommand(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(nil)
 
 	ctx := context.Background()
@@ -254,6 +267,7 @@ func TestTool_Execute_MissingCommand(t *testing.T) {
 }
 
 func TestTool_Execute_NoSandboxAvailable(t *testing.T) {
+	t.Parallel()
 	// This test checks behavior when no sandbox is available
 	// In practice, this falls back to direct execution
 
@@ -272,16 +286,19 @@ func TestTool_Execute_NoSandboxAvailable(t *testing.T) {
 }
 
 func TestTool_Name(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(nil)
 	assert.Equal(t, "Sandbox", tool.Name())
 }
 
 func TestTool_Description(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(nil)
 	assert.Contains(t, tool.Description(), "sandbox")
 }
 
 func TestTool_Schema(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(nil)
 	schema := tool.Schema()
 

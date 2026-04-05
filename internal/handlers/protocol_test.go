@@ -47,6 +47,7 @@ func (m *MockUnifiedProtocolManager) ConfigureProtocols(ctx context.Context, con
 }
 
 func TestProtocolHandler_ExecuteProtocolRequest(t *testing.T) {
+	t.Parallel()
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -97,6 +98,7 @@ func TestProtocolHandler_ExecuteProtocolRequest(t *testing.T) {
 }
 
 func TestProtocolHandler_ListProtocolServers(t *testing.T) {
+	t.Parallel()
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -139,6 +141,7 @@ func TestProtocolHandler_ListProtocolServers(t *testing.T) {
 }
 
 func TestProtocolHandler_GetProtocolMetrics(t *testing.T) {
+	t.Parallel()
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -179,6 +182,7 @@ func TestProtocolHandler_GetProtocolMetrics(t *testing.T) {
 }
 
 func TestProtocolHandler_RefreshProtocolServers(t *testing.T) {
+	t.Parallel()
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -212,6 +216,7 @@ func TestProtocolHandler_RefreshProtocolServers(t *testing.T) {
 }
 
 func TestProtocolHandler_ConfigureProtocols(t *testing.T) {
+	t.Parallel()
 	// Setup
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -257,6 +262,7 @@ func TestProtocolHandler_ConfigureProtocols(t *testing.T) {
 }
 
 func TestNewProtocolHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	mockManager := &MockUnifiedProtocolManager{}
 
@@ -268,6 +274,7 @@ func TestNewProtocolHandler(t *testing.T) {
 }
 
 func TestProtocolHandler_ExecuteProtocolRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -288,6 +295,7 @@ func TestProtocolHandler_ExecuteProtocolRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestProtocolHandler_ExecuteProtocolRequest_ServiceError(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -317,6 +325,7 @@ func TestProtocolHandler_ExecuteProtocolRequest_ServiceError(t *testing.T) {
 }
 
 func TestProtocolHandler_ListProtocolServers_Error(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -338,6 +347,7 @@ func TestProtocolHandler_ListProtocolServers_Error(t *testing.T) {
 }
 
 func TestProtocolHandler_GetProtocolMetrics_Error(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -359,6 +369,7 @@ func TestProtocolHandler_GetProtocolMetrics_Error(t *testing.T) {
 }
 
 func TestProtocolHandler_RefreshProtocolServers_Error(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -380,6 +391,7 @@ func TestProtocolHandler_RefreshProtocolServers_Error(t *testing.T) {
 }
 
 func TestProtocolHandler_ConfigureProtocols_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 
@@ -399,6 +411,7 @@ func TestProtocolHandler_ConfigureProtocols_InvalidJSON(t *testing.T) {
 }
 
 func TestProtocolHandler_ConfigureProtocols_ServiceError(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 

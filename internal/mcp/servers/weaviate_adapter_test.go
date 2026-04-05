@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewWeaviateAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		config      WeaviateAdapterConfig
@@ -42,6 +43,7 @@ func TestNewWeaviateAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewWeaviateAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -52,6 +54,7 @@ func TestNewWeaviateAdapter(t *testing.T) {
 }
 
 func TestWeaviateAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -76,6 +79,7 @@ func TestWeaviateAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -93,6 +97,7 @@ func TestWeaviateAdapter_Connect(t *testing.T) {
 }
 
 func TestWeaviateAdapter_Health(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -116,6 +121,7 @@ func TestWeaviateAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -131,6 +137,7 @@ func TestWeaviateAdapter_Health(t *testing.T) {
 }
 
 func TestWeaviateAdapter_GetSchema(t *testing.T) {
+	t.Parallel()
 	schema := WeaviateSchema{
 		Classes: []WeaviateClass{
 			{Class: "Article", Description: "News articles"},
@@ -172,6 +179,7 @@ func TestWeaviateAdapter_GetSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -189,6 +197,7 @@ func TestWeaviateAdapter_GetSchema(t *testing.T) {
 }
 
 func TestWeaviateAdapter_ListClasses(t *testing.T) {
+	t.Parallel()
 	schema := WeaviateSchema{
 		Classes: []WeaviateClass{
 			{Class: "Article"},
@@ -209,6 +218,7 @@ func TestWeaviateAdapter_ListClasses(t *testing.T) {
 }
 
 func TestWeaviateAdapter_CreateClass(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		class         *WeaviateClass
@@ -247,6 +257,7 @@ func TestWeaviateAdapter_CreateClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -262,6 +273,7 @@ func TestWeaviateAdapter_CreateClass(t *testing.T) {
 }
 
 func TestWeaviateAdapter_DeleteClass(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		className     string
@@ -290,6 +302,7 @@ func TestWeaviateAdapter_DeleteClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -305,6 +318,7 @@ func TestWeaviateAdapter_DeleteClass(t *testing.T) {
 }
 
 func TestWeaviateAdapter_GetClass(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		className     string
@@ -350,6 +364,7 @@ func TestWeaviateAdapter_GetClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -366,6 +381,7 @@ func TestWeaviateAdapter_GetClass(t *testing.T) {
 }
 
 func TestWeaviateAdapter_CreateObject(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		obj           *WeaviateObject
@@ -427,6 +443,7 @@ func TestWeaviateAdapter_CreateObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -443,6 +460,7 @@ func TestWeaviateAdapter_CreateObject(t *testing.T) {
 }
 
 func TestWeaviateAdapter_BatchCreateObjects(t *testing.T) {
+	t.Parallel()
 	objects := []WeaviateObject{
 		{Class: "Article", Properties: map[string]interface{}{"title": "Article 1"}},
 		{Class: "Article", Properties: map[string]interface{}{"title": "Article 2"}},
@@ -484,6 +502,7 @@ func TestWeaviateAdapter_BatchCreateObjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -499,6 +518,7 @@ func TestWeaviateAdapter_BatchCreateObjects(t *testing.T) {
 }
 
 func TestWeaviateAdapter_GetObject(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		className     string
@@ -554,6 +574,7 @@ func TestWeaviateAdapter_GetObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -570,6 +591,7 @@ func TestWeaviateAdapter_GetObject(t *testing.T) {
 }
 
 func TestWeaviateAdapter_DeleteObject(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		className     string
@@ -601,6 +623,7 @@ func TestWeaviateAdapter_DeleteObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -616,6 +639,7 @@ func TestWeaviateAdapter_DeleteObject(t *testing.T) {
 }
 
 func TestWeaviateAdapter_UpdateObject(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		obj           *WeaviateObject
@@ -652,6 +676,7 @@ func TestWeaviateAdapter_UpdateObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -667,6 +692,7 @@ func TestWeaviateAdapter_UpdateObject(t *testing.T) {
 }
 
 func TestWeaviateAdapter_VectorSearch(t *testing.T) {
+	t.Parallel()
 	graphqlResponse := map[string]interface{}{
 		"data": map[string]interface{}{
 			"Get": map[string]interface{}{
@@ -762,6 +788,7 @@ func TestWeaviateAdapter_VectorSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -778,6 +805,7 @@ func TestWeaviateAdapter_VectorSearch(t *testing.T) {
 }
 
 func TestWeaviateAdapter_HybridSearch(t *testing.T) {
+	t.Parallel()
 	graphqlResponse := map[string]interface{}{
 		"data": map[string]interface{}{
 			"Get": map[string]interface{}{
@@ -867,6 +895,7 @@ func TestWeaviateAdapter_HybridSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -883,6 +912,7 @@ func TestWeaviateAdapter_HybridSearch(t *testing.T) {
 }
 
 func TestWeaviateAdapter_Close(t *testing.T) {
+	t.Parallel()
 	adapter := NewWeaviateAdapter(WeaviateAdapterConfig{BaseURL: "http://localhost:8080"})
 	adapter.connected = true
 
@@ -892,6 +922,7 @@ func TestWeaviateAdapter_Close(t *testing.T) {
 }
 
 func TestWeaviateAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewWeaviateAdapter(WeaviateAdapterConfig{BaseURL: "http://localhost:8080"})
 	tools := adapter.GetMCPTools()
 
@@ -920,6 +951,7 @@ func TestWeaviateAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestWeaviateAdapter_doRequest_WithAPIKey(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		assert.Equal(t, "Bearer test-api-key", authHeader)
@@ -938,6 +970,7 @@ func TestWeaviateAdapter_doRequest_WithAPIKey(t *testing.T) {
 }
 
 func TestWeaviateAdapter_IsConnected(t *testing.T) {
+	t.Parallel()
 	adapter := NewWeaviateAdapter(WeaviateAdapterConfig{BaseURL: "http://localhost:8080"})
 
 	// Initially not connected
@@ -952,6 +985,7 @@ func TestWeaviateAdapter_IsConnected(t *testing.T) {
 }
 
 func TestWeaviateAdapter_VectorSearch_ParseResults(t *testing.T) {
+	t.Parallel()
 	// Test that results are properly parsed from nested GraphQL response
 	graphqlResponse := map[string]interface{}{
 		"data": map[string]interface{}{
@@ -990,6 +1024,7 @@ func TestWeaviateAdapter_VectorSearch_ParseResults(t *testing.T) {
 }
 
 func TestWeaviateAdapter_VectorSearch_EmptyResults(t *testing.T) {
+	t.Parallel()
 	graphqlResponse := map[string]interface{}{
 		"data": map[string]interface{}{
 			"Get": map[string]interface{}{

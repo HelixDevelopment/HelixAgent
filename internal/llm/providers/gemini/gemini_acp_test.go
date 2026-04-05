@@ -11,6 +11,7 @@ import (
 // ==============================================================================
 
 func TestGeminiACPProvider_Basics(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeminiACPConfig()
 	p := NewGeminiACPProvider(config)
 	assert.NotNil(t, p)
@@ -19,6 +20,7 @@ func TestGeminiACPProvider_Basics(t *testing.T) {
 }
 
 func TestGeminiACPProvider_IsAvailable(t *testing.T) {
+	t.Parallel()
 	available := IsGeminiACPAvailable()
 	t.Logf("Gemini ACP available: %v", available)
 }

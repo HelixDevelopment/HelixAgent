@@ -13,6 +13,7 @@ import (
 )
 
 func TestDefaultWorkflowConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultWorkflowConfig()
 
 	assert.Equal(t, 100, config.MaxIterations)
@@ -25,6 +26,7 @@ func TestDefaultWorkflowConfig(t *testing.T) {
 }
 
 func TestNewWorkflow(t *testing.T) {
+	t.Parallel()
 	t.Run("WithNilConfig", func(t *testing.T) {
 		w := NewWorkflow("test", "test workflow", nil, nil)
 
@@ -39,6 +41,7 @@ func TestNewWorkflow(t *testing.T) {
 	})
 
 	t.Run("WithCustomConfig", func(t *testing.T) {
+			t.Parallel()
 		config := &WorkflowConfig{
 			MaxIterations: 50,
 			Timeout:       5 * time.Minute,
@@ -54,9 +57,11 @@ func TestNewWorkflow(t *testing.T) {
 }
 
 func TestWorkflow_AddNode(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("test", "test", nil, nil)
 
 	t.Run("WithID", func(t *testing.T) {
+			t.Parallel()
 		node := &Node{
 			ID:   "node1",
 			Name: "Test Node",
@@ -70,6 +75,7 @@ func TestWorkflow_AddNode(t *testing.T) {
 	})
 
 	t.Run("WithoutID", func(t *testing.T) {
+			t.Parallel()
 		node := &Node{
 			Name: "Auto ID Node",
 			Type: NodeTypeTool,
@@ -84,11 +90,13 @@ func TestWorkflow_AddNode(t *testing.T) {
 }
 
 func TestWorkflow_AddEdge(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("test", "test", nil, nil)
 	_ = w.AddNode(&Node{ID: "node1", Name: "Node 1"})
 	_ = w.AddNode(&Node{ID: "node2", Name: "Node 2"})
 
 	t.Run("ValidEdge", func(t *testing.T) {
+			t.Parallel()
 		err := w.AddEdge("node1", "node2", nil, "edge1")
 		require.NoError(t, err)
 
@@ -99,18 +107,21 @@ func TestWorkflow_AddEdge(t *testing.T) {
 	})
 
 	t.Run("InvalidSourceNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.AddEdge("invalid", "node2", nil, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "source node not found")
 	})
 
 	t.Run("InvalidTargetNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.AddEdge("node1", "invalid", nil, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "target node not found")
 	})
 
 	t.Run("WithCondition", func(t *testing.T) {
+			t.Parallel()
 		condition := func(state *WorkflowState) bool {
 			return state.Variables["proceed"].(bool)
 		}
@@ -120,16 +131,19 @@ func TestWorkflow_AddEdge(t *testing.T) {
 }
 
 func TestWorkflow_SetEntryPoint(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("test", "test", nil, nil)
 	_ = w.AddNode(&Node{ID: "node1", Name: "Node 1"})
 
 	t.Run("ValidNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.SetEntryPoint("node1")
 		require.NoError(t, err)
 		assert.Equal(t, "node1", w.Graph.EntryPoint)
 	})
 
 	t.Run("InvalidNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.SetEntryPoint("invalid")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "node not found")
@@ -137,16 +151,19 @@ func TestWorkflow_SetEntryPoint(t *testing.T) {
 }
 
 func TestWorkflow_AddEndNode(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("test", "test", nil, nil)
 	_ = w.AddNode(&Node{ID: "node1", Name: "Node 1"})
 
 	t.Run("ValidNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.AddEndNode("node1")
 		require.NoError(t, err)
 		assert.Contains(t, w.Graph.EndNodes, "node1")
 	})
 
 	t.Run("InvalidNode", func(t *testing.T) {
+			t.Parallel()
 		err := w.AddEndNode("invalid")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "node not found")
@@ -154,6 +171,7 @@ func TestWorkflow_AddEndNode(t *testing.T) {
 }
 
 func TestWorkflow_Execute(t *testing.T) {
+	t.Parallel()
 	t.Run("NoEntryPoint", func(t *testing.T) {
 		w := NewWorkflow("test", "test", nil, nil)
 		_ = w.AddNode(&Node{ID: "node1", Name: "Node 1"})
@@ -165,6 +183,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("SimpleWorkflow", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("simple", "simple workflow", nil, nil)
 
 		var callCount int32
@@ -188,6 +207,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("MultiNodeWorkflow", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("multi", "multi-node workflow", nil, nil)
 
 		var order []string
@@ -213,6 +233,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("ConditionalBranching", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("conditional", "conditional workflow", nil, nil)
 
 		handler1 := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
@@ -249,6 +270,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("HandlerError", func(t *testing.T) {
+			t.Parallel()
 		config := &WorkflowConfig{
 			MaxIterations: 10,
 			Timeout:       10 * time.Second,
@@ -270,6 +292,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("cancel", "cancel workflow", nil, nil)
 
 		handler := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
@@ -290,6 +313,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("MaxIterations", func(t *testing.T) {
+			t.Parallel()
 		config := &WorkflowConfig{
 			MaxIterations: 3,
 			Timeout:       10 * time.Second,
@@ -314,6 +338,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("NilHandler", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("nil", "nil handler workflow", nil, nil)
 
 		_ = w.AddNode(&Node{ID: "node1", Name: "Node 1", Handler: nil})
@@ -326,6 +351,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("WithInputMessages", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("input", "input workflow", nil, nil)
 
 		handler := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
@@ -348,6 +374,7 @@ func TestWorkflow_Execute(t *testing.T) {
 	})
 
 	t.Run("EndNodeTermination", func(t *testing.T) {
+			t.Parallel()
 		w := NewWorkflow("endnode", "end node workflow", nil, nil)
 
 		handler := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
@@ -365,6 +392,7 @@ func TestWorkflow_Execute(t *testing.T) {
 }
 
 func TestWorkflow_ExecuteWithRetry(t *testing.T) {
+	t.Parallel()
 	t.Run("RetryOnFailure", func(t *testing.T) {
 		config := &WorkflowConfig{
 			MaxIterations: 10,
@@ -393,6 +421,7 @@ func TestWorkflow_ExecuteWithRetry(t *testing.T) {
 	})
 
 	t.Run("RetryWithNodePolicy", func(t *testing.T) {
+			t.Parallel()
 		config := &WorkflowConfig{
 			MaxIterations: 10,
 			Timeout:       10 * time.Second,
@@ -429,6 +458,7 @@ func TestWorkflow_ExecuteWithRetry(t *testing.T) {
 }
 
 func TestWorkflow_RestoreFromCheckpoint(t *testing.T) {
+	t.Parallel()
 	state := &WorkflowState{
 		CurrentNode: "node1",
 		Variables:   map[string]interface{}{"key": "value1"},
@@ -446,6 +476,7 @@ func TestWorkflow_RestoreFromCheckpoint(t *testing.T) {
 	w := NewWorkflow("test", "test", nil, nil)
 
 	t.Run("ValidCheckpoint", func(t *testing.T) {
+			t.Parallel()
 		err := w.RestoreFromCheckpoint(state, "cp1")
 		require.NoError(t, err)
 		assert.Equal(t, "node2", state.CurrentNode)
@@ -454,6 +485,7 @@ func TestWorkflow_RestoreFromCheckpoint(t *testing.T) {
 	})
 
 	t.Run("InvalidCheckpoint", func(t *testing.T) {
+			t.Parallel()
 		err := w.RestoreFromCheckpoint(state, "invalid")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "checkpoint not found")
@@ -461,6 +493,7 @@ func TestWorkflow_RestoreFromCheckpoint(t *testing.T) {
 }
 
 func TestWorkflow_Checkpoints(t *testing.T) {
+	t.Parallel()
 	config := &WorkflowConfig{
 		MaxIterations:      20,
 		Timeout:            10 * time.Second,
@@ -491,6 +524,7 @@ func TestWorkflow_Checkpoints(t *testing.T) {
 }
 
 func TestWorkflow_NextNodeOverride(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("override", "override workflow", nil, nil)
 
 	handler1 := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
@@ -519,6 +553,7 @@ func TestWorkflow_NextNodeOverride(t *testing.T) {
 }
 
 func TestNodeTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, NodeType("agent"), NodeTypeAgent)
 	assert.Equal(t, NodeType("tool"), NodeTypeTool)
 	assert.Equal(t, NodeType("condition"), NodeTypeCondition)
@@ -528,6 +563,7 @@ func TestNodeTypes(t *testing.T) {
 }
 
 func TestWorkflowStatus(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, WorkflowStatus("pending"), StatusPending)
 	assert.Equal(t, WorkflowStatus("running"), StatusRunning)
 	assert.Equal(t, WorkflowStatus("paused"), StatusPaused)
@@ -536,6 +572,7 @@ func TestWorkflowStatus(t *testing.T) {
 }
 
 func TestPow(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		base     float64
 		exp      float64
@@ -554,6 +591,7 @@ func TestPow(t *testing.T) {
 }
 
 func TestWorkflowConcurrency(t *testing.T) {
+	t.Parallel()
 	w := NewWorkflow("concurrent", "concurrent test", nil, nil)
 
 	var counter int64
@@ -583,6 +621,7 @@ func TestWorkflowConcurrency(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
+	t.Parallel()
 	msg := Message{
 		Role:    "assistant",
 		Content: "Hello",
@@ -599,6 +638,7 @@ func TestMessage(t *testing.T) {
 }
 
 func TestTool(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 		return "result", nil
 	}
@@ -623,6 +663,7 @@ func TestTool(t *testing.T) {
 }
 
 func TestToolCall(t *testing.T) {
+	t.Parallel()
 	tc := ToolCall{
 		ID:   "call1",
 		Name: "test_tool",
@@ -639,6 +680,7 @@ func TestToolCall(t *testing.T) {
 }
 
 func TestNodeInput(t *testing.T) {
+	t.Parallel()
 	input := &NodeInput{
 		Query: "test query",
 		Messages: []Message{
@@ -663,6 +705,7 @@ func TestNodeInput(t *testing.T) {
 }
 
 func TestNodeOutput(t *testing.T) {
+	t.Parallel()
 	output := &NodeOutput{
 		Result: "test result",
 		Messages: []Message{
@@ -689,6 +732,7 @@ func TestNodeOutput(t *testing.T) {
 }
 
 func TestRetryPolicy(t *testing.T) {
+	t.Parallel()
 	policy := &RetryPolicy{
 		MaxRetries: 5,
 		Delay:      100 * time.Millisecond,
@@ -701,6 +745,7 @@ func TestRetryPolicy(t *testing.T) {
 }
 
 func TestCheckpoint(t *testing.T) {
+	t.Parallel()
 	checkpoint := Checkpoint{
 		ID:     "cp1",
 		NodeID: "node1",
@@ -717,6 +762,7 @@ func TestCheckpoint(t *testing.T) {
 }
 
 func TestNodeExecution(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	exec := NodeExecution{
 		NodeID:    "node1",
@@ -741,6 +787,7 @@ func TestNodeExecution(t *testing.T) {
 }
 
 func TestEdge(t *testing.T) {
+	t.Parallel()
 	condition := func(state *WorkflowState) bool {
 		return true
 	}
@@ -759,6 +806,7 @@ func TestEdge(t *testing.T) {
 }
 
 func TestNode(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, state *WorkflowState, input *NodeInput) (*NodeOutput, error) {
 		return &NodeOutput{}, nil
 	}
@@ -788,6 +836,7 @@ func TestNode(t *testing.T) {
 }
 
 func TestWorkflowState(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	endTime := now.Add(time.Minute)
 

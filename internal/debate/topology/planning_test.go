@@ -12,6 +12,7 @@ import (
 // ==========================================================================
 
 func TestPlanningStyleSelector_SelectStyle_SmallTeam(t *testing.T) {
+	t.Parallel()
 	selector := NewPlanningStyleSelector(PlanningAdaptive)
 
 	// Small team (<=3) should select CPDE regardless of
@@ -26,6 +27,7 @@ func TestPlanningStyleSelector_SelectStyle_SmallTeam(t *testing.T) {
 }
 
 func TestPlanningStyleSelector_SelectStyle_LargeTeam(t *testing.T) {
+	t.Parallel()
 	selector := NewPlanningStyleSelector(PlanningAdaptive)
 
 	// Large team (>8) should select DPDE
@@ -39,6 +41,7 @@ func TestPlanningStyleSelector_SelectStyle_LargeTeam(t *testing.T) {
 }
 
 func TestPlanningStyleSelector_SelectStyle_TableDriven(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		complexity    float64
@@ -109,6 +112,7 @@ func TestPlanningStyleSelector_SelectStyle_TableDriven(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			selector := NewPlanningStyleSelector(tc.defaultStyle)
 			result := selector.SelectStyle(
 				tc.complexity, tc.ambiguity, tc.agentCount,
@@ -123,6 +127,7 @@ func TestPlanningStyleSelector_SelectStyle_TableDriven(t *testing.T) {
 // ==========================================================================
 
 func TestNewTaskPlan(t *testing.T) {
+	t.Parallel()
 	plan := NewTaskPlan("planner-1", PlanningCPDE)
 
 	require.NotNil(t, plan)
@@ -141,6 +146,7 @@ func TestNewTaskPlan(t *testing.T) {
 // ==========================================================================
 
 func TestTaskPlan_AddTask(t *testing.T) {
+	t.Parallel()
 	plan := NewTaskPlan("planner-1", PlanningCPDE)
 
 	plan.AddTask("t1", "design API", "agent-a", 5)
@@ -167,6 +173,7 @@ func TestTaskPlan_AddTask(t *testing.T) {
 // ==========================================================================
 
 func TestTaskPlan_AddDependency(t *testing.T) {
+	t.Parallel()
 	plan := NewTaskPlan("planner-1", PlanningCPDE)
 
 	plan.AddTask("t1", "foundation", "agent-a", 5)
@@ -190,6 +197,7 @@ func TestTaskPlan_AddDependency(t *testing.T) {
 // ==========================================================================
 
 func TestTaskPlan_GetReadyTasks(t *testing.T) {
+	t.Parallel()
 	t.Run("all tasks ready when no dependencies", func(t *testing.T) {
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "task 1", "a", 5)
@@ -200,6 +208,7 @@ func TestTaskPlan_GetReadyTasks(t *testing.T) {
 	})
 
 	t.Run("only root tasks ready initially", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "design", "a", 5)
 		plan.AddTask("t2", "implement", "b", 3, "t1")
@@ -233,6 +242,7 @@ func TestTaskPlan_GetReadyTasks(t *testing.T) {
 		})
 
 	t.Run("completed tasks not in ready list", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "design", "a", 5)
 
@@ -245,6 +255,7 @@ func TestTaskPlan_GetReadyTasks(t *testing.T) {
 	})
 
 	t.Run("empty plan returns nil", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		ready := plan.GetReadyTasks()
 		assert.Nil(t, ready)
@@ -256,6 +267,7 @@ func TestTaskPlan_GetReadyTasks(t *testing.T) {
 // ==========================================================================
 
 func TestTaskPlan_MarkCompleted(t *testing.T) {
+	t.Parallel()
 	t.Run("marks existing task as completed", func(t *testing.T) {
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "do thing", "a", 5)
@@ -266,6 +278,7 @@ func TestTaskPlan_MarkCompleted(t *testing.T) {
 	})
 
 	t.Run("non-existent task returns error", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "do thing", "a", 5)
 
@@ -275,6 +288,7 @@ func TestTaskPlan_MarkCompleted(t *testing.T) {
 	})
 
 	t.Run("IsComplete after all marked", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "first", "a", 5)
 		plan.AddTask("t2", "second", "b", 3)
@@ -294,6 +308,7 @@ func TestTaskPlan_MarkCompleted(t *testing.T) {
 // ==========================================================================
 
 func TestTaskPlan_TopologicalSort(t *testing.T) {
+	t.Parallel()
 	t.Run("linear dependency chain", func(t *testing.T) {
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "design", "a", 5)
@@ -318,6 +333,7 @@ func TestTaskPlan_TopologicalSort(t *testing.T) {
 	})
 
 	t.Run("diamond dependency", func(t *testing.T) {
+			t.Parallel()
 		// t1 -> t2, t1 -> t3, t2 -> t4, t3 -> t4
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("t1", "root", "a", 5)
@@ -346,6 +362,7 @@ func TestTaskPlan_TopologicalSort(t *testing.T) {
 	})
 
 	t.Run("independent tasks ordered by priority", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		plan.AddTask("low", "low priority", "a", 1)
 		plan.AddTask("high", "high priority", "b", 5)
@@ -361,6 +378,7 @@ func TestTaskPlan_TopologicalSort(t *testing.T) {
 	})
 
 	t.Run("empty plan returns nil", func(t *testing.T) {
+			t.Parallel()
 		plan := NewTaskPlan("planner-1", PlanningCPDE)
 		order := plan.GetExecutionOrder()
 		assert.Nil(t, order)

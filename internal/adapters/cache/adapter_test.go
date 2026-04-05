@@ -15,12 +15,14 @@ import (
 // ============================================================================
 
 func TestNewMemoryCacheAdapter(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	require.NotNil(t, c)
 	defer c.Close()
 }
 
 func TestMemoryCacheAdapter_SetAndGet(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -35,6 +37,7 @@ func TestMemoryCacheAdapter_SetAndGet(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_SetAndGet_Struct(t *testing.T) {
+	t.Parallel()
 	type TestData struct {
 		Name  string `json:"name"`
 		Value int    `json:"value"`
@@ -55,6 +58,7 @@ func TestMemoryCacheAdapter_SetAndGet_Struct(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Get_KeyNotFound(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -65,6 +69,7 @@ func TestMemoryCacheAdapter_Get_KeyNotFound(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Delete(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -81,6 +86,7 @@ func TestMemoryCacheAdapter_Delete(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Exists(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -98,6 +104,7 @@ func TestMemoryCacheAdapter_Exists(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Len(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -110,6 +117,7 @@ func TestMemoryCacheAdapter_Len(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Flush(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -123,6 +131,7 @@ func TestMemoryCacheAdapter_Flush(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Stats(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -131,6 +140,7 @@ func TestMemoryCacheAdapter_Stats(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Underlying(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -139,6 +149,7 @@ func TestMemoryCacheAdapter_Underlying(t *testing.T) {
 }
 
 func TestMemoryCacheAdapter_Expiry(t *testing.T) {
+	t.Parallel()
 	c := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer c.Close()
 
@@ -164,6 +175,7 @@ func TestMemoryCacheAdapter_Expiry(t *testing.T) {
 // ============================================================================
 
 func TestNewRedisClientAdapter_NilConfig(t *testing.T) {
+	t.Parallel()
 	// Test with memory cache adapter instead since RedisClientAdapterFromClient is not implemented
 	a := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	require.NotNil(t, a)
@@ -182,6 +194,7 @@ func TestNewRedisClientAdapter_NilConfig(t *testing.T) {
 // ============================================================================
 
 func TestTypedCacheAdapter_SetAndGet(t *testing.T) {
+	t.Parallel()
 	inner := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer inner.Close()
 
@@ -198,6 +211,7 @@ func TestTypedCacheAdapter_SetAndGet(t *testing.T) {
 }
 
 func TestTypedCacheAdapter_GetMissing(t *testing.T) {
+	t.Parallel()
 	inner := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer inner.Close()
 
@@ -211,6 +225,7 @@ func TestTypedCacheAdapter_GetMissing(t *testing.T) {
 }
 
 func TestTypedCacheAdapter_Delete(t *testing.T) {
+	t.Parallel()
 	inner := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer inner.Close()
 
@@ -227,6 +242,7 @@ func TestTypedCacheAdapter_Delete(t *testing.T) {
 }
 
 func TestTypedCacheAdapter_Exists(t *testing.T) {
+	t.Parallel()
 	inner := adapter.NewMemoryCacheAdapter(100, time.Minute)
 	defer inner.Close()
 
@@ -249,21 +265,25 @@ func TestTypedCacheAdapter_Exists(t *testing.T) {
 // ============================================================================
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultConfig()
 	assert.NotNil(t, cfg)
 }
 
 func TestDefaultRedisConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultRedisConfig()
 	assert.NotNil(t, cfg)
 }
 
 func TestDefaultMemoryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultMemoryConfig()
 	assert.NotNil(t, cfg)
 }
 
 func TestPolicyConstants(t *testing.T) {
+	t.Parallel()
 	// Verify eviction policy constants are accessible and distinct
 	assert.NotEqual(t, adapter.LRU, adapter.LFU)
 	assert.NotEqual(t, adapter.LFU, adapter.FIFO)

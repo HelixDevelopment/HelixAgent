@@ -34,6 +34,7 @@ func setupDebateUnitTest() (*gin.Engine, *DebateHandler) {
 
 // TestDebateHandler_CreateDebate_Success tests successful debate creation
 func TestDebateHandlerUnit_CreateDebate_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -71,6 +72,7 @@ func TestDebateHandlerUnit_CreateDebate_Success(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_InvalidJSON tests debate creation with invalid JSON
 func TestDebateHandlerUnit_CreateDebate_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -89,6 +91,7 @@ func TestDebateHandlerUnit_CreateDebate_InvalidJSON(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_MissingTopic tests debate creation with missing topic
 func TestDebateHandlerUnit_CreateDebate_MissingTopic(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -110,6 +113,7 @@ func TestDebateHandlerUnit_CreateDebate_MissingTopic(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_MissingParticipants tests debate creation with missing participants
 func TestDebateHandlerUnit_CreateDebate_MissingParticipants(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -128,6 +132,7 @@ func TestDebateHandlerUnit_CreateDebate_MissingParticipants(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_InsufficientParticipants tests debate creation with only one participant
 func TestDebateHandlerUnit_CreateDebate_InsufficientParticipants(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -149,6 +154,7 @@ func TestDebateHandlerUnit_CreateDebate_InsufficientParticipants(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_WithAllFields tests debate creation with all fields
 func TestDebateHandlerUnit_CreateDebate_WithAllFields(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -208,6 +214,7 @@ func TestDebateHandlerUnit_CreateDebate_WithAllFields(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_DefaultValues tests debate creation default values
 func TestDebateHandlerUnit_CreateDebate_DefaultValues(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -237,6 +244,7 @@ func TestDebateHandlerUnit_CreateDebate_DefaultValues(t *testing.T) {
 
 // TestDebateHandler_GetDebate_Success tests retrieving a debate successfully
 func TestDebateHandlerUnit_GetDebate_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	// Pre-populate a debate
@@ -290,6 +298,7 @@ func TestDebateHandlerUnit_GetDebate_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebate_NotFound tests retrieving a non-existent debate
 func TestDebateHandlerUnit_GetDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -307,6 +316,7 @@ func TestDebateHandlerUnit_GetDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebateStatus_Success tests getting debate status
 func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	// Pre-populate debates with different states
@@ -390,6 +400,7 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.debateID, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 
@@ -408,6 +419,7 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebateStatus_NotFound tests status for non-existent debate
 func TestDebateHandlerUnit_GetDebateStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -420,6 +432,7 @@ func TestDebateHandlerUnit_GetDebateStatus_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_Success tests getting debate results
 func TestDebateHandlerUnit_GetDebateResults_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -462,6 +475,7 @@ func TestDebateHandlerUnit_GetDebateResults_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_NotCompleted tests results for running debate
 func TestDebateHandlerUnit_GetDebateResults_NotCompleted(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -485,6 +499,7 @@ func TestDebateHandlerUnit_GetDebateResults_NotCompleted(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_NoResult tests results for completed debate without result
 func TestDebateHandlerUnit_GetDebateResults_NoResult(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -513,6 +528,7 @@ func TestDebateHandlerUnit_GetDebateResults_NoResult(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_NotFound tests results for non-existent debate
 func TestDebateHandlerUnit_GetDebateResults_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -525,6 +541,7 @@ func TestDebateHandlerUnit_GetDebateResults_NotFound(t *testing.T) {
 
 // TestDebateHandler_ListDebates_Success tests listing all debates
 func TestDebateHandlerUnit_ListDebates_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -567,6 +584,7 @@ func TestDebateHandlerUnit_ListDebates_Success(t *testing.T) {
 
 // TestDebateHandler_ListDebates_WithStatusFilter tests listing debates with status filter
 func TestDebateHandlerUnit_ListDebates_WithStatusFilter(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -598,6 +616,7 @@ func TestDebateHandlerUnit_ListDebates_WithStatusFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("status_"+tt.query, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates"+tt.query, nil)
 
@@ -615,6 +634,7 @@ func TestDebateHandlerUnit_ListDebates_WithStatusFilter(t *testing.T) {
 
 // TestDebateHandler_DeleteDebate_Success tests deleting a debate
 func TestDebateHandlerUnit_DeleteDebate_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -647,6 +667,7 @@ func TestDebateHandlerUnit_DeleteDebate_Success(t *testing.T) {
 
 // TestDebateHandler_DeleteDebate_NotFound tests deleting non-existent debate
 func TestDebateHandlerUnit_DeleteDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -659,6 +680,7 @@ func TestDebateHandlerUnit_DeleteDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_ApproveDebate_Success tests approving a debate
 func TestDebateHandlerUnit_ApproveDebate_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -691,6 +713,7 @@ func TestDebateHandlerUnit_ApproveDebate_Success(t *testing.T) {
 
 // TestDebateHandler_ApproveDebate_NotFound tests approving non-existent debate
 func TestDebateHandlerUnit_ApproveDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -703,6 +726,7 @@ func TestDebateHandlerUnit_ApproveDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_ApproveDebate_InvalidStatus tests approving debate not awaiting approval
 func TestDebateHandlerUnit_ApproveDebate_InvalidStatus(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -723,6 +747,7 @@ func TestDebateHandlerUnit_ApproveDebate_InvalidStatus(t *testing.T) {
 
 // TestDebateHandler_RejectDebate_Success tests rejecting a debate
 func TestDebateHandlerUnit_RejectDebate_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -762,6 +787,7 @@ func TestDebateHandlerUnit_RejectDebate_Success(t *testing.T) {
 
 // TestDebateHandler_RejectDebate_NotFound tests rejecting non-existent debate
 func TestDebateHandlerUnit_RejectDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -774,6 +800,7 @@ func TestDebateHandlerUnit_RejectDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_RejectDebate_NoReason tests rejecting without reason
 func TestDebateHandlerUnit_RejectDebate_NoReason(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -799,6 +826,7 @@ func TestDebateHandlerUnit_RejectDebate_NoReason(t *testing.T) {
 
 // TestDebateHandler_GetDebateGates_Success tests getting debate gates
 func TestDebateHandlerUnit_GetDebateGates_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	handler.mu.Lock()
@@ -829,6 +857,7 @@ func TestDebateHandlerUnit_GetDebateGates_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebateGates_NotFound tests gates for non-existent debate
 func TestDebateHandlerUnit_GetDebateGates_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -841,6 +870,7 @@ func TestDebateHandlerUnit_GetDebateGates_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebateAudit_Success tests getting debate audit
 func TestDebateHandlerUnit_GetDebateAudit_Success(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -877,6 +907,7 @@ func TestDebateHandlerUnit_GetDebateAudit_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebateAudit_NotFound tests audit for non-existent debate
 func TestDebateHandlerUnit_GetDebateAudit_NotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	w := httptest.NewRecorder()
@@ -889,6 +920,7 @@ func TestDebateHandlerUnit_GetDebateAudit_NotFound(t *testing.T) {
 
 // TestDebateHandlerUnit_NewDebateHandlerWithSkills tests handler creation with skills via setter
 func TestDebateHandlerUnit_NewDebateHandlerWithSkills(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	skillsService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
 	skillsIntegration := skills.NewIntegration(skillsService)
@@ -904,6 +936,7 @@ func TestDebateHandlerUnit_NewDebateHandlerWithSkills(t *testing.T) {
 
 // TestDebateHandler_SetSkillsIntegration tests setting skills integration
 func TestDebateHandlerUnit_SetSkillsIntegration(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewDebateHandler(nil, nil, logger)
 
@@ -917,12 +950,14 @@ func TestDebateHandlerUnit_SetSkillsIntegration(t *testing.T) {
 
 // TestDebateHandler_DebateError tests the debateError type
 func TestDebateHandlerUnit_DebateError(t *testing.T) {
+	t.Parallel()
 	err := &debateError{message: "test error"}
 	assert.Equal(t, "test error", err.Error())
 }
 
 // TestDebateHandler_ConcurrentAccess tests concurrent access to debates map
 func TestDebateHandlerUnit_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	_, handler := setupDebateUnitTest()
 
 	// Pre-populate a debate
@@ -969,6 +1004,7 @@ func TestDebateHandlerUnit_ConcurrentAccess(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_WithSkillsIntegration tests debate creation with skills
 func TestDebateHandlerUnit_CreateDebate_WithSkillsIntegration(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
@@ -1003,6 +1039,7 @@ func TestDebateHandlerUnit_CreateDebate_WithSkillsIntegration(t *testing.T) {
 
 // TestDebateHandler_ParticipantDefaults tests participant default values
 func TestDebateHandlerUnit_ParticipantDefaults(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -1053,6 +1090,7 @@ func TestDebateHandlerUnit_ParticipantDefaults(t *testing.T) {
 
 // TestDebateHandler_GetDebate_WithMultiPassResults tests getting debate with multi-pass results
 func TestDebateHandlerUnit_GetDebate_WithMultiPassResults(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -1118,6 +1156,7 @@ func TestDebateHandlerUnit_GetDebate_WithMultiPassResults(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_GeneratedID tests auto-generated debate ID
 func TestDebateHandlerUnit_CreateDebate_GeneratedID(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -1148,6 +1187,7 @@ func TestDebateHandlerUnit_CreateDebate_GeneratedID(t *testing.T) {
 
 // TestDebateHandler_RegisterRoutes tests route registration
 func TestDebateHandlerUnit_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	// Test that all routes are registered
@@ -1169,6 +1209,7 @@ func TestDebateHandlerUnit_RegisterRoutes(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+"_"+route.path, func(t *testing.T) {
+				t.Parallel()
 			// Just verify route exists - we test functionality elsewhere
 			assert.NotNil(t, router)
 		})
@@ -1177,6 +1218,7 @@ func TestDebateHandlerUnit_RegisterRoutes(t *testing.T) {
 
 // TestDebateHandler_GetDebate_WithSkillsUsed tests getting debate with skills metadata
 func TestDebateHandlerUnit_GetDebate_WithSkillsUsed(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
 	now := time.Now()
@@ -1217,6 +1259,7 @@ func TestDebateHandlerUnit_GetDebate_WithSkillsUsed(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_WithValidationConfig tests debate creation with validation config
 func TestDebateHandlerUnit_CreateDebate_WithValidationConfig(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{
@@ -1249,6 +1292,7 @@ func TestDebateHandlerUnit_CreateDebate_WithValidationConfig(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_NoValidationConfig tests debate creation without validation config
 func TestDebateHandlerUnit_CreateDebate_NoValidationConfig(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateUnitTest()
 
 	reqBody := CreateDebateRequest{

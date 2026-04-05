@@ -17,6 +17,7 @@ import (
 
 // TestMemoryDB_Ping_Direct calls MemoryDB.Ping directly
 func TestMemoryDB_Ping_Direct(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	err := m.Ping()
 	assert.NoError(t, err)
@@ -24,6 +25,7 @@ func TestMemoryDB_Ping_Direct(t *testing.T) {
 
 // TestMemoryDB_Exec_Direct calls MemoryDB.Exec directly
 func TestMemoryDB_Exec_Direct(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	err := m.Exec("INSERT INTO test VALUES (1)")
 	assert.NoError(t, err)
@@ -31,6 +33,7 @@ func TestMemoryDB_Exec_Direct(t *testing.T) {
 
 // TestMemoryDB_Exec_WithArgs calls MemoryDB.Exec with arguments
 func TestMemoryDB_Exec_WithArgs(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	err := m.Exec("INSERT INTO test VALUES ($1, $2)", "val1", 123)
 	assert.NoError(t, err)
@@ -38,6 +41,7 @@ func TestMemoryDB_Exec_WithArgs(t *testing.T) {
 
 // TestMemoryDB_IsMemoryMode_Direct calls MemoryDB.IsMemoryMode directly
 func TestMemoryDB_IsMemoryMode_Direct(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	result := m.IsMemoryMode()
 	assert.True(t, result)
@@ -45,6 +49,7 @@ func TestMemoryDB_IsMemoryMode_Direct(t *testing.T) {
 
 // TestMemoryDB_HealthCheck_ClosedBranch tests the closed branch (line 211-213)
 func TestMemoryDB_HealthCheck_ClosedBranch(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	
 	// Close the database
@@ -63,6 +68,7 @@ func TestMemoryDB_HealthCheck_ClosedBranch(t *testing.T) {
 
 // TestInitConnection_WithExistingDeadline tests context with deadline
 func TestInitConnection_WithExistingDeadline(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -75,6 +81,7 @@ func TestInitConnection_WithExistingDeadline(t *testing.T) {
 
 // TestInitConnection_WithoutDeadline tests context without deadline
 func TestInitConnection_WithoutDeadline(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -86,6 +93,7 @@ func TestInitConnection_WithoutDeadline(t *testing.T) {
 
 // TestInitConnection_PoolAssignment tests pool assignment path (line 64-67)
 func TestInitConnection_PoolAssignment(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -115,6 +123,7 @@ func TestInitConnection_PoolAssignment(t *testing.T) {
 
 // TestPool_RealPath tests Pool when testPG is nil (line 167)
 func TestPool_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -138,6 +147,7 @@ func TestPool_RealPath(t *testing.T) {
 
 // TestPing_RealPath tests Ping when testPG is nil (line 194)
 func TestPing_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -161,6 +171,7 @@ func TestPing_RealPath(t *testing.T) {
 
 // TestHealthCheck_RealPath tests HealthCheck when testPG is nil (line 207)
 func TestHealthCheck_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -184,6 +195,7 @@ func TestHealthCheck_RealPath(t *testing.T) {
 
 // TestExec_RealPath tests Exec when testPG is nil (line 220-221)
 func TestExec_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -207,6 +219,7 @@ func TestExec_RealPath(t *testing.T) {
 
 // TestQuery_RealPath tests Query when testPG is nil (line 234-236)
 func TestQuery_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -231,6 +244,7 @@ func TestQuery_RealPath(t *testing.T) {
 
 // TestQueryRow_RealPath tests QueryRow when testPG is nil (line 262)
 func TestQueryRow_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -258,6 +272,7 @@ func TestQueryRow_RealPath(t *testing.T) {
 
 // TestBegin_RealPath tests Begin when testPG is nil (line 273)
 func TestBegin_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -282,6 +297,7 @@ func TestBegin_RealPath(t *testing.T) {
 
 // TestMigrate_RealPath tests Migrate (line 281)
 func TestMigrate_RealPath(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -311,6 +327,7 @@ func TestMigrate_RealPath(t *testing.T) {
 
 // TestNewPostgresDB_ErrorBranch tests error branch (line 46-48)
 func TestNewPostgresDB_ErrorBranch(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 	
 	// Currently NewClient never returns error
@@ -321,6 +338,7 @@ func TestNewPostgresDB_ErrorBranch(t *testing.T) {
 
 // TestNewPostgresDBWithFallback_SuccessBranch tests success (line 58)
 func TestNewPostgresDBWithFallback_SuccessBranch(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	pgDB := &PostgresDB{client: client}
@@ -335,6 +353,7 @@ func TestNewPostgresDBWithFallback_SuccessBranch(t *testing.T) {
 
 // TestNewPostgresDBWithFallback_PingSuccess tests ping success path (line 58)
 func TestNewPostgresDBWithFallback_PingSuccess(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -348,6 +367,7 @@ func TestNewPostgresDBWithFallback_PingSuccess(t *testing.T) {
 
 // TestConnect_ErrorBranch tests error branch (line 71-73)
 func TestConnect_ErrorBranch(t *testing.T) {
+	t.Parallel()
 	// Currently NewPostgresDB never returns error
 	db, err := Connect()
 	assert.NoError(t, err)
@@ -356,6 +376,7 @@ func TestConnect_ErrorBranch(t *testing.T) {
 
 // TestNewPostgresDBWithFallback_FallbackBranch tests fallback (lines 56, 59, 61-62)
 func TestNewPostgresDBWithFallback_FallbackBranch(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -376,6 +397,7 @@ func TestNewPostgresDBWithFallback_FallbackBranch(t *testing.T) {
 
 // TestNewClientWithFallback_PingFail tests ping failure (line 103-104)
 func TestNewClientWithFallback_PingFail(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -395,6 +417,7 @@ func TestNewClientWithFallback_PingFail(t *testing.T) {
 
 // TestNewClientWithFallback_ReturnClient tests success (line 102)
 func TestNewClientWithFallback_ReturnClient(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	

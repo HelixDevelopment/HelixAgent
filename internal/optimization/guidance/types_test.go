@@ -8,6 +8,7 @@ import (
 )
 
 func TestPromptTemplate(t *testing.T) {
+	t.Parallel()
 	template := &PromptTemplate{
 		Name:        "test_template",
 		Description: "A test template",
@@ -25,6 +26,7 @@ func TestPromptTemplate(t *testing.T) {
 }
 
 func TestTemplateVariable(t *testing.T) {
+	t.Parallel()
 	variable := &TemplateVariable{
 		Name:        "username",
 		Description: "The user's name",
@@ -41,6 +43,7 @@ func TestTemplateVariable(t *testing.T) {
 }
 
 func TestVariableTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, VariableType("string"), VariableTypeString)
 	assert.Equal(t, VariableType("number"), VariableTypeNumber)
 	assert.Equal(t, VariableType("boolean"), VariableTypeBoolean)
@@ -49,6 +52,7 @@ func TestVariableTypes(t *testing.T) {
 }
 
 func TestDefaultGenerationConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGenerationConfig()
 
 	assert.Equal(t, 0.7, config.Temperature)
@@ -57,6 +61,7 @@ func TestDefaultGenerationConfig(t *testing.T) {
 }
 
 func TestGenerationConfig(t *testing.T) {
+	t.Parallel()
 	config := &GenerationConfig{
 		Model:            "gpt-4",
 		Provider:         "openai",
@@ -78,6 +83,7 @@ func TestGenerationConfig(t *testing.T) {
 }
 
 func TestValidationResult(t *testing.T) {
+	t.Parallel()
 	result := &ValidationResult{
 		Valid:    false,
 		Errors:   []string{"Invalid format", "Missing field"},
@@ -92,6 +98,7 @@ func TestValidationResult(t *testing.T) {
 }
 
 func TestGuidanceSession(t *testing.T) {
+	t.Parallel()
 	session := &GuidanceSession{
 		ID:        "session-123",
 		StartedAt: time.Now(),
@@ -107,6 +114,7 @@ func TestGuidanceSession(t *testing.T) {
 }
 
 func TestGenerationRecord(t *testing.T) {
+	t.Parallel()
 	record := &GenerationRecord{
 		Timestamp:   time.Now(),
 		Prompt:      "Generate an email",
@@ -125,6 +133,7 @@ func TestGenerationRecord(t *testing.T) {
 }
 
 func TestOutputModes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, OutputMode("text"), OutputModeText)
 	assert.Equal(t, OutputMode("json"), OutputModeJSON)
 	assert.Equal(t, OutputMode("xml"), OutputModeXML)
@@ -134,6 +143,7 @@ func TestOutputModes(t *testing.T) {
 }
 
 func TestOutputSpec(t *testing.T) {
+	t.Parallel()
 	spec := &OutputSpec{
 		Mode:     OutputModeJSON,
 		Schema:   map[string]interface{}{"type": "object"},
@@ -148,6 +158,7 @@ func TestOutputSpec(t *testing.T) {
 }
 
 func TestGuidanceError(t *testing.T) {
+	t.Parallel()
 	err := &GuidanceError{
 		Code:        ErrorCodeConstraintViolation,
 		Message:     "Output does not match pattern",
@@ -161,6 +172,7 @@ func TestGuidanceError(t *testing.T) {
 }
 
 func TestErrorCodes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, ErrorCode("constraint_violation"), ErrorCodeConstraintViolation)
 	assert.Equal(t, ErrorCode("invalid_input"), ErrorCodeInvalidInput)
 	assert.Equal(t, ErrorCode("generation_failed"), ErrorCodeGenerationFailed)
@@ -170,6 +182,7 @@ func TestErrorCodes(t *testing.T) {
 }
 
 func TestGuidanceMetrics(t *testing.T) {
+	t.Parallel()
 	metrics := &GuidanceMetrics{
 		TotalGenerations:        100,
 		SuccessfulGenerations:   85,
@@ -188,6 +201,7 @@ func TestGuidanceMetrics(t *testing.T) {
 }
 
 func TestConstraintSet(t *testing.T) {
+	t.Parallel()
 	emailConstraint := NewFormatConstraint(FormatEmail)
 	lengthConstraint := NewLengthConstraint(5, 100, LengthUnitCharacters)
 
@@ -203,6 +217,7 @@ func TestConstraintSet(t *testing.T) {
 }
 
 func TestDefaultValidationContext(t *testing.T) {
+	t.Parallel()
 	ctx := DefaultValidationContext()
 
 	assert.True(t, ctx.Strict)
@@ -212,6 +227,7 @@ func TestDefaultValidationContext(t *testing.T) {
 }
 
 func TestDefaultRetryStrategy(t *testing.T) {
+	t.Parallel()
 	strategy := DefaultRetryStrategy()
 
 	assert.Equal(t, 3, strategy.MaxRetries)
@@ -222,6 +238,7 @@ func TestDefaultRetryStrategy(t *testing.T) {
 }
 
 func TestRetryStrategy_GetDelay(t *testing.T) {
+	t.Parallel()
 	strategy := &RetryStrategy{
 		InitialDelay:      100 * time.Millisecond,
 		MaxDelay:          1 * time.Second,
@@ -240,6 +257,7 @@ func TestRetryStrategy_GetDelay(t *testing.T) {
 }
 
 func TestDefaultCapabilities(t *testing.T) {
+	t.Parallel()
 	caps := DefaultCapabilities()
 
 	assert.True(t, caps.SupportsRegex)
@@ -251,6 +269,7 @@ func TestDefaultCapabilities(t *testing.T) {
 }
 
 func TestPredefinedConstraints(t *testing.T) {
+	t.Parallel()
 	// Email
 	assert.NoError(t, PredefinedConstraints.Email.Validate("test@example.com"))
 	assert.Error(t, PredefinedConstraints.Email.Validate("invalid"))

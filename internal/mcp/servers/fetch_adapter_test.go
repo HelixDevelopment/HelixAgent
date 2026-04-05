@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewFetchAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, nil)
 
@@ -21,6 +22,7 @@ func TestNewFetchAdapter(t *testing.T) {
 }
 
 func TestDefaultFetchAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 
 	assert.Equal(t, "HelixAgent-Fetch/1.0", config.UserAgent)
@@ -31,6 +33,7 @@ func TestDefaultFetchAdapterConfig(t *testing.T) {
 }
 
 func TestNewFetchAdapter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := FetchAdapterConfig{}
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -40,6 +43,7 @@ func TestNewFetchAdapter_DefaultConfig(t *testing.T) {
 }
 
 func TestFetchAdapter_Health_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -49,6 +53,7 @@ func TestFetchAdapter_Health_NotInitialized(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -58,6 +63,7 @@ func TestFetchAdapter_Fetch_NotInitialized(t *testing.T) {
 }
 
 func TestFetchAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -68,6 +74,7 @@ func TestFetchAdapter_Close(t *testing.T) {
 }
 
 func TestFetchAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -86,6 +93,7 @@ func TestFetchAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -97,6 +105,7 @@ func TestFetchAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -108,6 +117,7 @@ func TestFetchAdapter_ExecuteTool_UnknownTool(t *testing.T) {
 }
 
 func TestFetchAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -121,6 +131,7 @@ func TestFetchAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestFetchAdapter_Initialize(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -133,6 +144,7 @@ func TestFetchAdapter_Initialize(t *testing.T) {
 }
 
 func TestFetchAdapter_Health(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -145,6 +157,7 @@ func TestFetchAdapter_Health(t *testing.T) {
 }
 
 func TestFetchAdapter_isDomainAllowed(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -171,6 +184,7 @@ func TestFetchAdapter_isDomainAllowed(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte("<html><body>Hello World</body></html>"))
@@ -192,6 +206,7 @@ func TestFetchAdapter_Fetch_WithMockServer(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_WithHeaders(t *testing.T) {
+	t.Parallel()
 	var receivedHeader string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeader = r.Header.Get("X-Custom-Header")
@@ -213,6 +228,7 @@ func TestFetchAdapter_Fetch_WithHeaders(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_POST(t *testing.T) {
+	t.Parallel()
 	var receivedMethod string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedMethod = r.Method
@@ -236,6 +252,7 @@ func TestFetchAdapter_Fetch_POST(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_InvalidURL(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -249,6 +266,7 @@ func TestFetchAdapter_Fetch_InvalidURL(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_BlockedDomain(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	config.BlockedDomains = []string{"blocked.com"}
 	adapter := NewFetchAdapter(config, logrus.New())
@@ -263,6 +281,7 @@ func TestFetchAdapter_Fetch_BlockedDomain(t *testing.T) {
 }
 
 func TestFetchAdapter_Fetch_404(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("Not Found"))
@@ -282,6 +301,7 @@ func TestFetchAdapter_Fetch_404(t *testing.T) {
 }
 
 func TestFetchAdapter_FetchJSON_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -308,6 +328,7 @@ func TestFetchAdapter_FetchJSON_WithMockServer(t *testing.T) {
 }
 
 func TestFetchAdapter_FetchJSON_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -317,6 +338,7 @@ func TestFetchAdapter_FetchJSON_NotInitialized(t *testing.T) {
 }
 
 func TestFetchAdapter_FetchJSON_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("not json"))
 	}))
@@ -335,6 +357,7 @@ func TestFetchAdapter_FetchJSON_InvalidJSON(t *testing.T) {
 }
 
 func TestFetchAdapter_ExtractLinks(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -359,6 +382,7 @@ func TestFetchAdapter_ExtractLinks(t *testing.T) {
 }
 
 func TestFetchAdapter_ExtractText(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 
@@ -383,6 +407,7 @@ func TestFetchAdapter_ExtractText(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_FetchURL(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Test Content"))
 	}))
@@ -404,6 +429,7 @@ func TestFetchAdapter_ExecuteTool_FetchURL(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_FetchJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"key": "value"})
@@ -426,6 +452,7 @@ func TestFetchAdapter_ExecuteTool_FetchJSON(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_ExtractLinks(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(`<a href="https://example.com">Link</a>`))
@@ -448,6 +475,7 @@ func TestFetchAdapter_ExecuteTool_ExtractLinks(t *testing.T) {
 }
 
 func TestFetchAdapter_ExecuteTool_ExtractText(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(`<html><body><p>Hello World</p></body></html>`))
@@ -470,6 +498,7 @@ func TestFetchAdapter_ExecuteTool_ExtractText(t *testing.T) {
 }
 
 func TestFetchAdapter_MarshalJSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultFetchAdapterConfig()
 	adapter := NewFetchAdapter(config, logrus.New())
 

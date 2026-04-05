@@ -48,6 +48,7 @@ func setupMCPUnitTest() (*gin.Engine, *MCPHandler) {
 
 // TestMCPHandler_MCPCapabilities_Success tests successful capabilities request
 func TestMCPHandlerUnit_MCPCapabilities_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -68,6 +69,7 @@ func TestMCPHandlerUnit_MCPCapabilities_Success(t *testing.T) {
 
 // TestMCPHandler_MCPCapabilities_Disabled tests capabilities when MCP is disabled
 func TestMCPHandlerUnit_MCPCapabilities_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -94,6 +96,7 @@ func TestMCPHandlerUnit_MCPCapabilities_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPTools_Success tests successful tools request
 func TestMCPHandlerUnit_MCPTools_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -111,6 +114,7 @@ func TestMCPHandlerUnit_MCPTools_Success(t *testing.T) {
 
 // TestMCPHandler_MCPTools_Disabled tests tools when MCP is disabled
 func TestMCPHandlerUnit_MCPTools_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -132,6 +136,7 @@ func TestMCPHandlerUnit_MCPTools_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_Success tests successful tool execution
 func TestMCPHandlerUnit_MCPToolsCall_Success(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -178,6 +183,7 @@ func TestMCPHandlerUnit_MCPToolsCall_Success(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_Disabled tests tool execution when MCP is disabled
 func TestMCPHandlerUnit_MCPToolsCall_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -199,6 +205,7 @@ func TestMCPHandlerUnit_MCPToolsCall_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_InvalidJSON tests tool execution with invalid JSON
 func TestMCPHandlerUnit_MCPToolsCall_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -212,6 +219,7 @@ func TestMCPHandlerUnit_MCPToolsCall_InvalidJSON(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_MissingName tests tool execution without name
 func TestMCPHandlerUnit_MCPToolsCall_MissingName(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -255,6 +263,7 @@ func TestMCPHandlerUnit_MCPToolsCall_MissingName(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_NoProviderRegistry tests tool execution without provider registry
 func TestMCPHandlerUnit_MCPToolsCall_NoProviderRegistry(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	reqBody := map[string]interface{}{
@@ -278,6 +287,7 @@ func TestMCPHandlerUnit_MCPToolsCall_NoProviderRegistry(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_InvalidToolFormat tests tool execution with invalid format
 func TestMCPHandlerUnit_MCPToolsCall_InvalidToolFormat(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -322,6 +332,7 @@ func TestMCPHandlerUnit_MCPToolsCall_InvalidToolFormat(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_Success tests successful prompts request
 func TestMCPHandlerUnit_MCPPrompts_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -351,6 +362,7 @@ func TestMCPHandlerUnit_MCPPrompts_Success(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_Disabled tests prompts when MCP is disabled
 func TestMCPHandlerUnit_MCPPrompts_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -372,6 +384,7 @@ func TestMCPHandlerUnit_MCPPrompts_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPResources_Success tests successful resources request
 func TestMCPHandlerUnit_MCPResources_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -401,6 +414,7 @@ func TestMCPHandlerUnit_MCPResources_Success(t *testing.T) {
 
 // TestMCPHandler_MCPResources_Disabled tests resources when MCP is disabled
 func TestMCPHandlerUnit_MCPResources_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -422,6 +436,7 @@ func TestMCPHandlerUnit_MCPResources_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_GET tests tool search with GET request
 func TestMCPHandlerUnit_MCPToolSearch_GET(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -441,6 +456,7 @@ func TestMCPHandlerUnit_MCPToolSearch_GET(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_POST tests tool search with POST request
 func TestMCPHandlerUnit_MCPToolSearch_POST(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	reqBody := MCPToolSearchRequest{
@@ -468,6 +484,7 @@ func TestMCPHandlerUnit_MCPToolSearch_POST(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_Disabled tests tool search when MCP is disabled
 func TestMCPHandlerUnit_MCPToolSearch_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -489,6 +506,7 @@ func TestMCPHandlerUnit_MCPToolSearch_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_MissingQuery tests tool search without query
 func TestMCPHandlerUnit_MCPToolSearch_MissingQuery(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -506,6 +524,7 @@ func TestMCPHandlerUnit_MCPToolSearch_MissingQuery(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_InvalidJSON tests tool search with invalid JSON
 func TestMCPHandlerUnit_MCPToolSearch_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -519,6 +538,7 @@ func TestMCPHandlerUnit_MCPToolSearch_InvalidJSON(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_GET tests adapter search with GET request
 func TestMCPHandlerUnit_MCPAdapterSearch_GET(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -538,6 +558,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_GET(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_POST tests adapter search with POST request
 func TestMCPHandlerUnit_MCPAdapterSearch_POST(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	reqBody := MCPAdapterSearchRequest{
@@ -563,6 +584,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_POST(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_Disabled tests adapter search when MCP is disabled
 func TestMCPHandlerUnit_MCPAdapterSearch_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -584,6 +606,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_EmptyQuery tests adapter search with empty query
 func TestMCPHandlerUnit_MCPAdapterSearch_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -604,6 +627,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_EmptyQuery(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_Success tests successful tool suggestions
 func TestMCPHandlerUnit_MCPToolSuggestions_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -623,6 +647,7 @@ func TestMCPHandlerUnit_MCPToolSuggestions_Success(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_MissingPrefix tests suggestions without prefix
 func TestMCPHandlerUnit_MCPToolSuggestions_MissingPrefix(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -640,6 +665,7 @@ func TestMCPHandlerUnit_MCPToolSuggestions_MissingPrefix(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_Disabled tests suggestions when MCP is disabled
 func TestMCPHandlerUnit_MCPToolSuggestions_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -661,6 +687,7 @@ func TestMCPHandlerUnit_MCPToolSuggestions_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPCategories_Success tests successful categories request
 func TestMCPHandlerUnit_MCPCategories_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -680,6 +707,7 @@ func TestMCPHandlerUnit_MCPCategories_Success(t *testing.T) {
 
 // TestMCPHandler_MCPCategories_Disabled tests categories when MCP is disabled
 func TestMCPHandlerUnit_MCPCategories_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -701,6 +729,7 @@ func TestMCPHandlerUnit_MCPCategories_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPStats_Success tests successful stats request
 func TestMCPHandlerUnit_MCPStats_Success(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -729,6 +758,7 @@ func TestMCPHandlerUnit_MCPStats_Success(t *testing.T) {
 
 // TestMCPHandler_MCPStats_Disabled tests stats when MCP is disabled
 func TestMCPHandlerUnit_MCPStats_Disabled(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -750,6 +780,7 @@ func TestMCPHandlerUnit_MCPStats_Disabled(t *testing.T) {
 
 // TestMCPHandler_NewMCPHandler tests handler creation
 func TestMCPHandlerUnit_NewMCPHandler(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -764,6 +795,7 @@ func TestMCPHandlerUnit_NewMCPHandler(t *testing.T) {
 
 // TestMCPHandler_GetMCPManager tests getting MCP manager
 func TestMCPHandlerUnit_GetMCPManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMCPHandler(nil, &config.MCPConfig{Enabled: true})
 
 	// GetMCPManager lazily initializes and returns a valid manager
@@ -776,6 +808,7 @@ func TestMCPHandlerUnit_GetMCPManager(t *testing.T) {
 
 // TestMCPHandler_RegisterMCPServer tests MCP server registration
 func TestMCPHandlerUnit_RegisterMCPServer(t *testing.T) {
+	t.Parallel()
 	handler := NewMCPHandler(nil, &config.MCPConfig{Enabled: true})
 
 	serverConfig := map[string]interface{}{
@@ -792,6 +825,7 @@ func TestMCPHandlerUnit_RegisterMCPServer(t *testing.T) {
 
 // TestFindUnderscoreIndex tests the findUnderscoreIndex helper function
 func TestFindUnderscoreIndexUnit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -814,6 +848,7 @@ func TestFindUnderscoreIndexUnit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := findUnderscoreIndex(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -822,6 +857,7 @@ func TestFindUnderscoreIndexUnit(t *testing.T) {
 
 // TestMCPHandler_MCPCapabilities_WithProviderRegistry tests capabilities with provider registry
 func TestMCPHandlerUnit_MCPCapabilities_WithProviderRegistry(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -857,6 +893,7 @@ func TestMCPHandlerUnit_MCPCapabilities_WithProviderRegistry(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithUnifiedNamespace tests tool call with unified namespace
 func TestMCPHandlerUnit_MCPToolsCall_WithUnifiedNamespace(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -901,6 +938,7 @@ func TestMCPHandlerUnit_MCPToolsCall_WithUnifiedNamespace(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithNilProviderRegistry tests tool call with nil registry
 func TestMCPHandlerUnit_MCPToolsCall_WithNilProviderRegistry(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.MCPConfig{
@@ -934,6 +972,7 @@ func TestMCPHandlerUnit_MCPToolsCall_WithNilProviderRegistry(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_GET_WithAllParams tests tool search with all query params
 func TestMCPHandlerUnit_MCPToolSearch_GET_WithAllParams(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -952,6 +991,7 @@ func TestMCPHandlerUnit_MCPToolSearch_GET_WithAllParams(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_WithFilters tests adapter search with filters
 func TestMCPHandlerUnit_MCPAdapterSearch_WithFilters(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -970,6 +1010,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_WithFilters(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_InvalidJSON tests adapter search with invalid JSON
 func TestMCPHandlerUnit_MCPAdapterSearch_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -984,6 +1025,7 @@ func TestMCPHandlerUnit_MCPAdapterSearch_InvalidJSON(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_DefaultMax tests suggestions with default max
 func TestMCPHandlerUnit_MCPToolSuggestions_DefaultMax(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -1002,6 +1044,7 @@ func TestMCPHandlerUnit_MCPToolSuggestions_DefaultMax(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_InvalidMax tests suggestions with invalid max
 func TestMCPHandlerUnit_MCPToolSuggestions_InvalidMax(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -1020,6 +1063,7 @@ func TestMCPHandlerUnit_MCPToolSuggestions_InvalidMax(t *testing.T) {
 
 // TestMCPHandler_MCPTools_EmptyResponse tests tools endpoint returns empty array
 func TestMCPHandlerUnit_MCPTools_EmptyResponse(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -1037,6 +1081,7 @@ func TestMCPHandlerUnit_MCPTools_EmptyResponse(t *testing.T) {
 
 // TestMCPHandler_MCPResources_ResponseStructure tests resources response structure
 func TestMCPHandlerUnit_MCPResources_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -1065,6 +1110,7 @@ func TestMCPHandlerUnit_MCPResources_ResponseStructure(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_ResponseStructure tests prompts response structure
 func TestMCPHandlerUnit_MCPPrompts_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()
@@ -1092,6 +1138,7 @@ func TestMCPHandlerUnit_MCPPrompts_ResponseStructure(t *testing.T) {
 
 // TestMCPHandler_MCPCapabilities_ResponseStructure tests capabilities response structure
 func TestMCPHandlerUnit_MCPCapabilities_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	router, _ := setupMCPUnitTest()
 
 	w := httptest.NewRecorder()

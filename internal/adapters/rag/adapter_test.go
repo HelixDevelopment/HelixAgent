@@ -15,21 +15,25 @@ import (
 // ============================================================================
 
 func TestNewFixedSizeChunker(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewFixedSizeChunker(100, 10)
 	require.NotNil(t, chunker)
 }
 
 func TestNewRecursiveChunker(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewRecursiveChunker(200, 20)
 	require.NotNil(t, chunker)
 }
 
 func TestNewSentenceChunker(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewSentenceChunker(150)
 	require.NotNil(t, chunker)
 }
 
 func TestFixedSizeChunker_Chunk(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewFixedSizeChunker(10, 0)
 	text := "hello world, this is a test of chunking"
 	chunks := chunker.Chunk(text)
@@ -42,12 +46,14 @@ func TestFixedSizeChunker_Chunk(t *testing.T) {
 }
 
 func TestFixedSizeChunker_Chunk_EmptyText(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewFixedSizeChunker(100, 10)
 	chunks := chunker.Chunk("")
 	assert.NotNil(t, chunks)
 }
 
 func TestRecursiveChunker_Chunk(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewRecursiveChunker(50, 5)
 	text := "First paragraph.\n\nSecond paragraph with more content.\n\nThird paragraph."
 	chunks := chunker.Chunk(text)
@@ -55,6 +61,7 @@ func TestRecursiveChunker_Chunk(t *testing.T) {
 }
 
 func TestSentenceChunker_Chunk(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewSentenceChunker(200)
 	text := "First sentence. Second sentence. Third sentence."
 	chunks := chunker.Chunk(text)
@@ -62,6 +69,7 @@ func TestSentenceChunker_Chunk(t *testing.T) {
 }
 
 func TestFixedSizeChunker_ChunkDocument(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewFixedSizeChunker(20, 0)
 	doc := &helixrag.PipelineDocument{
 		ID:       "doc-001",
@@ -75,6 +83,7 @@ func TestFixedSizeChunker_ChunkDocument(t *testing.T) {
 }
 
 func TestFixedSizeChunker_ChunkDocument_NilDoc(t *testing.T) {
+	t.Parallel()
 	chunker := adapter.NewFixedSizeChunker(100, 10)
 	chunks := chunker.ChunkDocument(nil)
 	assert.Nil(t, chunks)
@@ -85,16 +94,19 @@ func TestFixedSizeChunker_ChunkDocument_NilDoc(t *testing.T) {
 // ============================================================================
 
 func TestNewScoreReranker(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewScoreReranker(10)
 	require.NotNil(t, r)
 }
 
 func TestNewMMRReranker(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewMMRReranker(0.7, 10)
 	require.NotNil(t, r)
 }
 
 func TestScoreReranker_Rerank(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewScoreReranker(5)
 	ctx := context.Background()
 	results := []helixrag.PipelineSearchResult{
@@ -108,6 +120,7 @@ func TestScoreReranker_Rerank(t *testing.T) {
 }
 
 func TestMMRReranker_Rerank(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewMMRReranker(0.7, 5)
 	ctx := context.Background()
 	results := []helixrag.PipelineSearchResult{
@@ -125,6 +138,7 @@ func TestMMRReranker_Rerank(t *testing.T) {
 // ============================================================================
 
 func TestNewPipelineAdapter(t *testing.T) {
+	t.Parallel()
 	retrieverFn := func(ctx context.Context, query string, topK int) ([]helixrag.PipelineSearchResult, error) {
 		return []helixrag.PipelineSearchResult{
 			{
@@ -140,6 +154,7 @@ func TestNewPipelineAdapter(t *testing.T) {
 }
 
 func TestPipelineAdapter_Search(t *testing.T) {
+	t.Parallel()
 	retrieverFn := func(ctx context.Context, query string, topK int) ([]helixrag.PipelineSearchResult, error) {
 		return []helixrag.PipelineSearchResult{
 			{Chunk: helixrag.PipelineChunk{ID: "r1", Content: "retrieved: " + query}, Score: 0.9},
@@ -159,6 +174,7 @@ func TestPipelineAdapter_Search(t *testing.T) {
 // ============================================================================
 
 func TestToModuleDocument(t *testing.T) {
+	t.Parallel()
 	doc := &helixrag.PipelineDocument{
 		ID:      "doc-001",
 		Content: "test content",
@@ -170,12 +186,14 @@ func TestToModuleDocument(t *testing.T) {
 }
 
 func TestToModuleDocument_Nil(t *testing.T) {
+	t.Parallel()
 	modDoc := adapter.ToModuleDocument(nil)
 	assert.Empty(t, modDoc.ID)
 	assert.Empty(t, modDoc.Content)
 }
 
 func TestToHelixSearchResult(t *testing.T) {
+	t.Parallel()
 	modDoc := adapter.ToModuleDocument(&helixrag.PipelineDocument{
 		ID:      "doc-001",
 		Content: "test content",
@@ -193,6 +211,7 @@ func TestToHelixSearchResult(t *testing.T) {
 // ============================================================================
 
 func TestFusionMethodConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "rrf", adapter.FusionRRF)
 	assert.Equal(t, "linear", adapter.FusionLinear)
 }

@@ -36,6 +36,7 @@ func (m *mockAdversarialLLM) Complete(
 }
 
 func TestDefaultAdversarialConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultAdversarialConfig()
 
 	assert.Equal(t, 3, cfg.MaxRounds)
@@ -45,6 +46,7 @@ func TestDefaultAdversarialConfig(t *testing.T) {
 }
 
 func TestNewAdversarialProtocol(t *testing.T) {
+	t.Parallel()
 	mock := &mockAdversarialLLM{}
 	cfg := DefaultAdversarialConfig()
 
@@ -64,6 +66,7 @@ func TestNewAdversarialProtocol(t *testing.T) {
 }
 
 func TestNewAdversarialProtocol_NilLLM(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultAdversarialConfig()
 	ap := NewAdversarialProtocol(cfg, nil)
 	require.NotNil(t, ap)
@@ -71,6 +74,7 @@ func TestNewAdversarialProtocol_NilLLM(t *testing.T) {
 }
 
 func TestAdversarialProtocol_Execute_WithMockLLM(t *testing.T) {
+	t.Parallel()
 	// The mock returns a structured attack with low risk, which should cause
 	// early termination after the first round.
 	attackResponse := `VULNERABILITIES
@@ -135,6 +139,7 @@ PATCHED_CODE
 }
 
 func TestAdversarialProtocol_Execute_FallbackOnLLMFailure(t *testing.T) {
+	t.Parallel()
 	// Use nil LLM client to force fallback on every call.
 	// The adversarial protocol handles nil by getting an error from Complete,
 	// which triggers the fallback path.
@@ -176,6 +181,7 @@ func TestAdversarialProtocol_Execute_FallbackOnLLMFailure(t *testing.T) {
 }
 
 func TestAdversarialProtocol_Execute_MaxRoundsReached(t *testing.T) {
+	t.Parallel()
 	// Return high-risk attacks every time to force all rounds.
 	attackResponse := `VULNERABILITIES
 ID: VULN-001
@@ -227,6 +233,7 @@ PATCHED_CODE
 }
 
 func TestAdversarialProtocol_Execute_NoVulnerabilitiesFound(t *testing.T) {
+	t.Parallel()
 	// The attack response reports no vulnerabilities.
 	attackResponse := `VULNERABILITIES
 
@@ -250,6 +257,7 @@ OVERALL_RISK: 0.0`
 }
 
 func TestAdversarialProtocol_GenerateFallbackAttack(t *testing.T) {
+	t.Parallel()
 	ap := NewAdversarialProtocol(DefaultAdversarialConfig(), nil)
 
 	tests := []struct {
@@ -283,6 +291,7 @@ func TestAdversarialProtocol_GenerateFallbackAttack(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			report := ap.generateFallbackAttack(tc.code, tc.language, 1)
 			require.NotNil(t, report)
 			assert.GreaterOrEqual(t, len(report.Vulnerabilities), tc.minVulns)
@@ -312,6 +321,7 @@ func TestAdversarialProtocol_GenerateFallbackAttack_LanguageEdgeCases(
 
 	for _, tc := range tests {
 		t.Run(tc.language, func(t *testing.T) {
+				t.Parallel()
 			report := ap.generateFallbackAttack(
 				"x = 1", tc.language, 1,
 			)
@@ -322,6 +332,7 @@ func TestAdversarialProtocol_GenerateFallbackAttack_LanguageEdgeCases(
 }
 
 func TestAdversarialProtocol_GenerateFallbackDefense(t *testing.T) {
+	t.Parallel()
 	ap := NewAdversarialProtocol(DefaultAdversarialConfig(), nil)
 
 	attack := &AttackReport{
@@ -389,6 +400,7 @@ func TestAdversarialProtocol_GenerateFallbackDefense_AllCategories(
 
 	for _, tc := range categories {
 		t.Run(tc.category, func(t *testing.T) {
+				t.Parallel()
 			attack := &AttackReport{
 				Vulnerabilities: []Vulnerability{
 					{
@@ -412,6 +424,7 @@ func TestAdversarialProtocol_GenerateFallbackDefense_AllCategories(
 // =============================================================================
 
 func TestContainsAny(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		s        string
@@ -427,12 +440,14 @@ func TestContainsAny(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, containsAny(tc.s, tc.subs...))
 		})
 	}
 }
 
 func TestCalculateFallbackRisk(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		vulns    []Vulnerability
@@ -476,6 +491,7 @@ func TestCalculateFallbackRisk(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			report := &AttackReport{Vulnerabilities: tc.vulns}
 			risk := calculateFallbackRisk(report)
 			assert.InDelta(t, tc.expected, risk, 0.001)
@@ -484,6 +500,7 @@ func TestCalculateFallbackRisk(t *testing.T) {
 }
 
 func TestExtractField(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		line     string
 		key      string
@@ -499,6 +516,7 @@ func TestExtractField(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.line, func(t *testing.T) {
+				t.Parallel()
 			val, ok := extractField(tc.line, tc.key)
 			assert.Equal(t, tc.ok, ok)
 			assert.Equal(t, tc.expected, val)
@@ -507,6 +525,7 @@ func TestExtractField(t *testing.T) {
 }
 
 func TestCollectRemainingRisks(t *testing.T) {
+	t.Parallel()
 	// Case: defense has remaining risks.
 	result := &AdversarialResult{
 		AttackReports: []*AttackReport{
@@ -542,6 +561,7 @@ func TestCollectRemainingRisks(t *testing.T) {
 }
 
 func TestCollectRemainingRisks_Empty(t *testing.T) {
+	t.Parallel()
 	result := &AdversarialResult{
 		AttackReports:  []*AttackReport{},
 		DefenseReports: []*DefenseReport{},

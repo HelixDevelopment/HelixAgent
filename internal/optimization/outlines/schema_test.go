@@ -13,6 +13,7 @@ import (
 // =============================================================================
 
 func TestParseSchema_ValidJSON(t *testing.T) {
+	t.Parallel()
 	data := []byte(`{"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}`)
 	schema, err := ParseSchema(data)
 	require.NoError(t, err)
@@ -22,6 +23,7 @@ func TestParseSchema_ValidJSON(t *testing.T) {
 }
 
 func TestParseSchema_InvalidJSON_Dedicated(t *testing.T) {
+	t.Parallel()
 	data := []byte(`{invalid json}`)
 	schema, err := ParseSchema(data)
 	assert.Error(t, err)
@@ -30,6 +32,7 @@ func TestParseSchema_InvalidJSON_Dedicated(t *testing.T) {
 }
 
 func TestParseSchema_EmptyObject(t *testing.T) {
+	t.Parallel()
 	data := []byte(`{}`)
 	schema, err := ParseSchema(data)
 	require.NoError(t, err)
@@ -38,6 +41,7 @@ func TestParseSchema_EmptyObject(t *testing.T) {
 }
 
 func TestParseSchema_AllFields(t *testing.T) {
+	t.Parallel()
 	data := []byte(`{
 		"type": "object",
 		"description": "A test schema",
@@ -82,6 +86,7 @@ func TestParseSchema_AllFields(t *testing.T) {
 // =============================================================================
 
 func TestParseSchemaFromMap_Valid(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{
 		"type": "string",
 		"enum": []interface{}{"red", "green", "blue"},
@@ -94,6 +99,7 @@ func TestParseSchemaFromMap_Valid(t *testing.T) {
 }
 
 func TestParseSchemaFromMap_WithProperties(t *testing.T) {
+	t.Parallel()
 	data := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -118,6 +124,7 @@ func TestParseSchemaFromMap_WithProperties(t *testing.T) {
 // =============================================================================
 
 func TestJSONSchema_String_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type: "string",
 	}
@@ -126,6 +133,7 @@ func TestJSONSchema_String_Dedicated(t *testing.T) {
 }
 
 func TestJSONSchema_IsRequired_True(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Required: []string{"name", "email"},
 	}
@@ -134,6 +142,7 @@ func TestJSONSchema_IsRequired_True(t *testing.T) {
 }
 
 func TestJSONSchema_IsRequired_False(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Required: []string{"name"},
 	}
@@ -141,11 +150,13 @@ func TestJSONSchema_IsRequired_False(t *testing.T) {
 }
 
 func TestJSONSchema_IsRequired_Empty(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{}
 	assert.False(t, schema.IsRequired("anything"))
 }
 
 func TestJSONSchema_GetPropertySchema_Found(t *testing.T) {
+	t.Parallel()
 	nameSchema := &JSONSchema{Type: "string"}
 	schema := &JSONSchema{
 		Properties: map[string]*JSONSchema{
@@ -158,6 +169,7 @@ func TestJSONSchema_GetPropertySchema_Found(t *testing.T) {
 }
 
 func TestJSONSchema_GetPropertySchema_NotFound(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Properties: map[string]*JSONSchema{
 			"name": {Type: "string"},
@@ -169,6 +181,7 @@ func TestJSONSchema_GetPropertySchema_NotFound(t *testing.T) {
 }
 
 func TestJSONSchema_GetPropertySchema_NilProperties(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{}
 	result := schema.GetPropertySchema("name")
 	assert.Nil(t, result)
@@ -179,48 +192,57 @@ func TestJSONSchema_GetPropertySchema_NilProperties(t *testing.T) {
 // =============================================================================
 
 func TestNewSchemaBuilder(t *testing.T) {
+	t.Parallel()
 	b := NewSchemaBuilder()
 	assert.NotNil(t, b)
 	assert.NotNil(t, b.schema)
 }
 
 func TestSchemaBuilder_Type_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Type("custom").Build()
 	assert.Equal(t, "custom", schema.Type)
 }
 
 func TestSchemaBuilder_Object(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Object().Build()
 	assert.Equal(t, "object", schema.Type)
 	assert.NotNil(t, schema.Properties)
 }
 
 func TestSchemaBuilder_Array_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Array().Build()
 	assert.Equal(t, "array", schema.Type)
 }
 
 func TestSchemaBuilder_String_Type(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().String().Build()
 	assert.Equal(t, "string", schema.Type)
 }
 
 func TestSchemaBuilder_Number_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Number().Build()
 	assert.Equal(t, "number", schema.Type)
 }
 
 func TestSchemaBuilder_Integer_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Integer().Build()
 	assert.Equal(t, "integer", schema.Type)
 }
 
 func TestSchemaBuilder_Boolean_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Boolean().Build()
 	assert.Equal(t, "boolean", schema.Type)
 }
 
 func TestSchemaBuilder_Property(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Object().
 		Property("name", StringSchema()).
@@ -233,6 +255,7 @@ func TestSchemaBuilder_Property(t *testing.T) {
 }
 
 func TestSchemaBuilder_Property_NilProperties(t *testing.T) {
+	t.Parallel()
 	// Property should initialize the map if nil
 	schema := NewSchemaBuilder().
 		Property("name", StringSchema()).
@@ -243,6 +266,7 @@ func TestSchemaBuilder_Property_NilProperties(t *testing.T) {
 }
 
 func TestSchemaBuilder_Required(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Object().
 		Required("name", "email").
@@ -253,6 +277,7 @@ func TestSchemaBuilder_Required(t *testing.T) {
 }
 
 func TestSchemaBuilder_Items(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Array().
 		Items(StringSchema()).
@@ -263,6 +288,7 @@ func TestSchemaBuilder_Items(t *testing.T) {
 }
 
 func TestSchemaBuilder_Enum_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Enum("red", "green", "blue").
 		Build()
@@ -271,6 +297,7 @@ func TestSchemaBuilder_Enum_Dedicated(t *testing.T) {
 }
 
 func TestSchemaBuilder_MinMaxLength(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		MinLength(1).
@@ -284,6 +311,7 @@ func TestSchemaBuilder_MinMaxLength(t *testing.T) {
 }
 
 func TestSchemaBuilder_MinMaximum(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Number().
 		Minimum(0).
@@ -297,6 +325,7 @@ func TestSchemaBuilder_MinMaximum(t *testing.T) {
 }
 
 func TestSchemaBuilder_Pattern(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Pattern(`^\d{3}-\d{2}-\d{4}$`).
@@ -306,6 +335,7 @@ func TestSchemaBuilder_Pattern(t *testing.T) {
 }
 
 func TestSchemaBuilder_MinMaxItems(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Array().
 		MinItems(1).
@@ -319,6 +349,7 @@ func TestSchemaBuilder_MinMaxItems(t *testing.T) {
 }
 
 func TestSchemaBuilder_Description_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Description("A test schema").
 		Build()
@@ -327,6 +358,7 @@ func TestSchemaBuilder_Description_Dedicated(t *testing.T) {
 }
 
 func TestSchemaBuilder_Default_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Default("hello").
@@ -336,6 +368,7 @@ func TestSchemaBuilder_Default_Dedicated(t *testing.T) {
 }
 
 func TestSchemaBuilder_Format_Dedicated(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Format("date-time").
@@ -345,6 +378,7 @@ func TestSchemaBuilder_Format_Dedicated(t *testing.T) {
 }
 
 func TestSchemaBuilder_Chaining(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Object().
 		Property("email", NewSchemaBuilder().
@@ -372,26 +406,31 @@ func TestSchemaBuilder_Chaining(t *testing.T) {
 // =============================================================================
 
 func TestStringSchema(t *testing.T) {
+	t.Parallel()
 	s := StringSchema()
 	assert.Equal(t, "string", s.Type)
 }
 
 func TestIntegerSchema(t *testing.T) {
+	t.Parallel()
 	s := IntegerSchema()
 	assert.Equal(t, "integer", s.Type)
 }
 
 func TestNumberSchema_Dedicated(t *testing.T) {
+	t.Parallel()
 	s := NumberSchema()
 	assert.Equal(t, "number", s.Type)
 }
 
 func TestBooleanSchema(t *testing.T) {
+	t.Parallel()
 	s := BooleanSchema()
 	assert.Equal(t, "boolean", s.Type)
 }
 
 func TestArraySchema_Dedicated(t *testing.T) {
+	t.Parallel()
 	s := ArraySchema(StringSchema())
 	assert.Equal(t, "array", s.Type)
 	assert.NotNil(t, s.Items)
@@ -399,11 +438,13 @@ func TestArraySchema_Dedicated(t *testing.T) {
 }
 
 func TestEnumSchema(t *testing.T) {
+	t.Parallel()
 	s := EnumSchema("a", "b", "c")
 	assert.Len(t, s.Enum, 3)
 }
 
 func TestObjectSchema(t *testing.T) {
+	t.Parallel()
 	props := map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -415,6 +456,7 @@ func TestObjectSchema(t *testing.T) {
 }
 
 func TestObjectSchema_NoRequired(t *testing.T) {
+	t.Parallel()
 	props := map[string]*JSONSchema{
 		"name": StringSchema(),
 	}
@@ -424,6 +466,7 @@ func TestObjectSchema_NoRequired(t *testing.T) {
 }
 
 func TestPatternString(t *testing.T) {
+	t.Parallel()
 	s := PatternString(`^\d+$`)
 	assert.Equal(t, "string", s.Type)
 	assert.Equal(t, `^\d+$`, s.Pattern)
@@ -434,6 +477,7 @@ func TestPatternString(t *testing.T) {
 // =============================================================================
 
 func TestCompilePattern_Valid(t *testing.T) {
+	t.Parallel()
 	cp, err := CompilePattern(`^[a-z]+$`)
 	require.NoError(t, err)
 	assert.NotNil(t, cp)
@@ -442,6 +486,7 @@ func TestCompilePattern_Valid(t *testing.T) {
 }
 
 func TestCompilePattern_Invalid(t *testing.T) {
+	t.Parallel()
 	cp, err := CompilePattern(`[invalid`)
 	assert.Error(t, err)
 	assert.Nil(t, cp)
@@ -449,6 +494,7 @@ func TestCompilePattern_Invalid(t *testing.T) {
 }
 
 func TestCompiledPattern_Match_True(t *testing.T) {
+	t.Parallel()
 	cp, err := CompilePattern(`^\d{3}-\d{4}$`)
 	require.NoError(t, err)
 
@@ -456,6 +502,7 @@ func TestCompiledPattern_Match_True(t *testing.T) {
 }
 
 func TestCompiledPattern_Match_False(t *testing.T) {
+	t.Parallel()
 	cp, err := CompilePattern(`^\d{3}-\d{4}$`)
 	require.NoError(t, err)
 
@@ -464,6 +511,7 @@ func TestCompiledPattern_Match_False(t *testing.T) {
 }
 
 func TestCompiledPattern_Match_TableDriven(t *testing.T) {
+	t.Parallel()
 	cp, err := CompilePattern(`^[a-zA-Z][a-zA-Z0-9_]*$`)
 	require.NoError(t, err)
 
@@ -481,6 +529,7 @@ func TestCompiledPattern_Match_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, cp.Match(tt.input))
 		})
 	}
@@ -491,6 +540,7 @@ func TestCompiledPattern_Match_TableDriven(t *testing.T) {
 // =============================================================================
 
 func TestJSONSchema_Serialization_RoundTrip(t *testing.T) {
+	t.Parallel()
 	original := NewSchemaBuilder().
 		Object().
 		Property("name", NewSchemaBuilder().String().MinLength(1).MaxLength(50).Build()).

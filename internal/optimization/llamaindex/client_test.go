@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	config := &ClientConfig{
 		BaseURL: "http://localhost:8012",
 		Timeout: 30 * time.Second,
@@ -27,12 +28,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	client := NewClient(nil)
 	assert.NotNil(t, client)
 	assert.Equal(t, "http://localhost:8012", client.baseURL)
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	assert.NotNil(t, config)
 	assert.Equal(t, "http://localhost:8012", config.BaseURL)
@@ -40,6 +43,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestClient_Query(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/query", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -91,6 +95,7 @@ func TestClient_Query(t *testing.T) {
 }
 
 func TestClient_QueryWithHyDE(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/query", r.URL.Path)
 
@@ -121,6 +126,7 @@ func TestClient_QueryWithHyDE(t *testing.T) {
 }
 
 func TestClient_HyDEExpand(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/hyde", r.URL.Path)
 
@@ -154,6 +160,7 @@ func TestClient_HyDEExpand(t *testing.T) {
 }
 
 func TestClient_DecomposeQuery(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/decompose", r.URL.Path)
 
@@ -187,6 +194,7 @@ func TestClient_DecomposeQuery(t *testing.T) {
 }
 
 func TestClient_Rerank(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/rerank", r.URL.Path)
 
@@ -223,6 +231,7 @@ func TestClient_Rerank(t *testing.T) {
 }
 
 func TestClient_Health(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/health", r.URL.Path)
 		assert.Equal(t, "GET", r.Method)
@@ -249,6 +258,7 @@ func TestClient_Health(t *testing.T) {
 }
 
 func TestClient_IsAvailable(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			resp := &HealthResponse{Status: "healthy"}
@@ -267,6 +277,7 @@ func TestClient_IsAvailable(t *testing.T) {
 }
 
 func TestClient_IsAvailable_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -279,6 +290,7 @@ func TestClient_IsAvailable_Unhealthy(t *testing.T) {
 }
 
 func TestClient_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal error"}`))
@@ -292,6 +304,7 @@ func TestClient_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_QueryWithRerank(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -320,6 +333,7 @@ func TestClient_QueryWithRerank(t *testing.T) {
 }
 
 func TestClient_QueryWithDecomposition(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -348,6 +362,7 @@ func TestClient_QueryWithDecomposition(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -364,6 +379,7 @@ func TestClient_Timeout(t *testing.T) {
 }
 
 func TestClient_QueryWithStepBack(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/query", r.URL.Path)
 
@@ -397,6 +413,7 @@ func TestClient_QueryWithStepBack(t *testing.T) {
 }
 
 func TestClient_QueryFusion(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/query_fusion", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -444,6 +461,7 @@ func TestClient_QueryFusion(t *testing.T) {
 }
 
 func TestClient_QueryFusion_Defaults(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type fusionReq struct {
 			Query         string `json:"query"`
@@ -477,6 +495,7 @@ func TestClient_QueryFusion_Defaults(t *testing.T) {
 }
 
 func TestClient_HyDEExpand_DefaultHypotheses(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req HyDERequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -505,6 +524,7 @@ func TestClient_HyDEExpand_DefaultHypotheses(t *testing.T) {
 }
 
 func TestClient_DecomposeQuery_DefaultSubqueries(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecomposeQueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -533,6 +553,7 @@ func TestClient_DecomposeQuery_DefaultSubqueries(t *testing.T) {
 }
 
 func TestClient_Rerank_DefaultTopK(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req RerankRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -562,6 +583,7 @@ func TestClient_Rerank_DefaultTopK(t *testing.T) {
 }
 
 func TestClient_Query_DefaultTopK(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -590,6 +612,7 @@ func TestClient_Query_DefaultTopK(t *testing.T) {
 }
 
 func TestClient_QueryFusion_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "fusion failed"}`))
@@ -603,6 +626,7 @@ func TestClient_QueryFusion_Error(t *testing.T) {
 }
 
 func TestClient_HyDEExpand_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": "bad request"}`))
@@ -616,6 +640,7 @@ func TestClient_HyDEExpand_Error(t *testing.T) {
 }
 
 func TestClient_DecomposeQuery_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -628,6 +653,7 @@ func TestClient_DecomposeQuery_Error(t *testing.T) {
 }
 
 func TestClient_Rerank_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -641,6 +667,7 @@ func TestClient_Rerank_Error(t *testing.T) {
 
 // TestClient_QueryWithFilters tests query with metadata filters
 func TestClient_QueryWithFilters(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -677,6 +704,7 @@ func TestClient_QueryWithFilters(t *testing.T) {
 
 // TestClient_ConcurrentQueries tests concurrent query handling
 func TestClient_ConcurrentQueries(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &QueryResponse{
 			Answer:     "Concurrent answer",
@@ -720,6 +748,7 @@ func TestClient_ConcurrentQueries(t *testing.T) {
 
 // TestClient_QueryWithCognee tests query with Cognee integration
 func TestClient_QueryWithCognee(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -753,6 +782,7 @@ func TestClient_QueryWithCognee(t *testing.T) {
 
 // TestClient_SourceMetadata tests source metadata handling
 func TestClient_SourceMetadata(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &QueryResponse{
 			Answer: "Answer with metadata",
@@ -787,10 +817,12 @@ func TestClient_SourceMetadata(t *testing.T) {
 
 // TestClient_QueryAllTransformMethods tests all query transform methods
 func TestClient_QueryAllTransformMethods(t *testing.T) {
+	t.Parallel()
 	transforms := []string{"hyde", "decompose", "step_back"}
 
 	for _, transform := range transforms {
 		t.Run(transform, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req QueryRequest
 				_ = json.NewDecoder(r.Body).Decode(&req)
@@ -828,6 +860,7 @@ func TestClient_QueryAllTransformMethods(t *testing.T) {
 
 // TestClient_RerankWithModel tests rerank with specific model
 func TestClient_RerankWithModel(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req RerankRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -859,6 +892,7 @@ func TestClient_RerankWithModel(t *testing.T) {
 
 // TestClient_HyDEWithMultipleHypotheses tests HyDE with custom hypothesis count
 func TestClient_HyDEWithMultipleHypotheses(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req HyDERequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -891,6 +925,7 @@ func TestClient_HyDEWithMultipleHypotheses(t *testing.T) {
 
 // TestClient_QueryFusionWithCustomParams tests query fusion with custom parameters
 func TestClient_QueryFusionWithCustomParams(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type fusionReq struct {
 			Query         string `json:"query"`
@@ -930,6 +965,7 @@ func TestClient_QueryFusionWithCustomParams(t *testing.T) {
 
 // TestClient_HealthCheckFields tests all health response fields
 func TestClient_HealthCheckFields(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &HealthResponse{
 			Status:              "healthy",
@@ -955,6 +991,7 @@ func TestClient_HealthCheckFields(t *testing.T) {
 
 // TestClient_EmptyQueryResponse tests handling of empty query response
 func TestClient_EmptyQueryResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &QueryResponse{
 			Answer:     "",
@@ -977,6 +1014,7 @@ func TestClient_EmptyQueryResponse(t *testing.T) {
 
 // TestClient_QueryContextCancellation tests context cancellation handling
 func TestClient_QueryContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		resp := &QueryResponse{Answer: "Should not reach"}
@@ -1004,6 +1042,7 @@ func TestClient_QueryContextCancellation(t *testing.T) {
 
 // TestClient_MalformedJSONResponse tests handling of malformed JSON
 func TestClient_MalformedJSONResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{invalid json}`))

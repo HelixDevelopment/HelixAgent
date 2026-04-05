@@ -19,6 +19,7 @@ import (
 // =============================================================================
 
 func TestDefaultIntegrationConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.True(t, config.AutoExtractLessons)
@@ -35,6 +36,7 @@ func TestDefaultIntegrationConfig(t *testing.T) {
 // =============================================================================
 
 func TestNewDebateLearningIntegration(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 
@@ -46,6 +48,7 @@ func TestNewDebateLearningIntegration(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_StartDebateLearning(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -68,6 +71,7 @@ func TestDebateLearningIntegration_StartDebateLearning(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_OnPhaseComplete(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -106,6 +110,7 @@ func TestDebateLearningIntegration_OnPhaseComplete(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_OnPhaseComplete_NoSession(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -116,6 +121,7 @@ func TestDebateLearningIntegration_OnPhaseComplete_NoSession(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_OnDebateComplete(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -145,6 +151,7 @@ func TestDebateLearningIntegration_OnDebateComplete(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_GetAgentKnowledge(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -163,6 +170,7 @@ func TestDebateLearningIntegration_GetAgentKnowledge(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_GetAgentKnowledge_NoSession(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -172,6 +180,7 @@ func TestDebateLearningIntegration_GetAgentKnowledge_NoSession(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_GetLessonsForPrompt(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -191,6 +200,7 @@ func TestDebateLearningIntegration_GetLessonsForPrompt(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_GetActiveSessions(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -208,6 +218,7 @@ func TestDebateLearningIntegration_GetActiveSessions(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_InferDomain(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -227,6 +238,7 @@ func TestDebateLearningIntegration_InferDomain(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.topic, func(t *testing.T) {
+				t.Parallel()
 			domain := integration.inferDomain(tc.topic)
 			assert.Equal(t, tc.expected, domain)
 		})
@@ -238,6 +250,7 @@ func TestDebateLearningIntegration_InferDomain(t *testing.T) {
 // =============================================================================
 
 func TestDebateLearningIntegration_DetectPatterns_HighConsensus(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -271,6 +284,7 @@ func TestDebateLearningIntegration_DetectPatterns_HighConsensus(t *testing.T) {
 }
 
 func TestDebateLearningIntegration_DetectPatterns_ConflictResolution(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -302,6 +316,7 @@ func TestDebateLearningIntegration_DetectPatterns_ConflictResolution(t *testing.
 }
 
 func TestDebateLearningIntegration_DetectPatterns_Expertise(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)
@@ -340,6 +355,7 @@ func TestDebateLearningIntegration_DetectPatterns_Expertise(t *testing.T) {
 // =============================================================================
 
 func TestDebateLearningSession_Structure(t *testing.T) {
+	t.Parallel()
 	session := &DebateLearningSession{
 		DebateID:         "test-debate",
 		Topic:            "Test Topic",
@@ -360,6 +376,7 @@ func TestDebateLearningSession_Structure(t *testing.T) {
 // =============================================================================
 
 func TestPhaseLearning_Structure(t *testing.T) {
+	t.Parallel()
 	phaseLearning := &PhaseLearning{
 		Phase:           topology.PhaseProposal,
 		InsightsGained:  []string{"Insight 1", "Insight 2"},
@@ -378,6 +395,7 @@ func TestPhaseLearning_Structure(t *testing.T) {
 // =============================================================================
 
 func TestDebateLearningResult_Structure(t *testing.T) {
+	t.Parallel()
 	result := &DebateLearningResult{
 		DebateID:             "debate-1",
 		SessionDuration:      5 * time.Minute,
@@ -399,6 +417,7 @@ func TestDebateLearningResult_Structure(t *testing.T) {
 // =============================================================================
 
 func TestNewLearningEnhancedProtocol(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultIntegrationConfig()
 	integration := NewDebateLearningIntegration(repo, config)

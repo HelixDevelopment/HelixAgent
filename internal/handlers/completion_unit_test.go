@@ -110,6 +110,7 @@ func setupCompletionTest() (*gin.Engine, *CompletionHandler, *services.RequestSe
 
 // TestCompletionHandler_Complete_Success tests successful completion
 func TestCompletionHandlerUnit_Complete_Success(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -140,6 +141,7 @@ func TestCompletionHandlerUnit_Complete_Success(t *testing.T) {
 
 // TestCompletionHandler_Complete_MissingPrompt tests completion with missing prompt
 func TestCompletionHandlerUnit_Complete_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := map[string]interface{}{
@@ -163,6 +165,7 @@ func TestCompletionHandlerUnit_Complete_MissingPrompt(t *testing.T) {
 
 // TestCompletionHandler_Complete_InvalidJSON tests completion with invalid JSON
 func TestCompletionHandlerUnit_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -176,6 +179,7 @@ func TestCompletionHandlerUnit_Complete_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_Complete_ProviderError tests completion when provider fails
 func TestCompletionHandlerUnit_Complete_ProviderError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -212,6 +216,7 @@ func TestCompletionHandlerUnit_Complete_ProviderError(t *testing.T) {
 
 // TestCompletionHandler_Complete_RateLimitError tests rate limit handling
 func TestCompletionHandlerUnit_Complete_RateLimitError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -248,6 +253,7 @@ func TestCompletionHandlerUnit_Complete_RateLimitError(t *testing.T) {
 
 // TestCompletionHandler_Complete_TimeoutError tests timeout error handling
 func TestCompletionHandlerUnit_Complete_TimeoutError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -282,6 +288,7 @@ func TestCompletionHandlerUnit_Complete_TimeoutError(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_Success tests successful streaming completion
 func TestCompletionHandlerUnit_CompleteStream_Success(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -306,6 +313,7 @@ func TestCompletionHandlerUnit_CompleteStream_Success(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_InvalidJSON tests streaming with invalid JSON
 func TestCompletionHandlerUnit_CompleteStream_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -319,6 +327,7 @@ func TestCompletionHandlerUnit_CompleteStream_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_NoProviders tests streaming when no providers available
 func TestCompletionHandlerUnit_CompleteStream_NoProviders(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create request service without any providers
@@ -347,6 +356,7 @@ func TestCompletionHandlerUnit_CompleteStream_NoProviders(t *testing.T) {
 
 // TestCompletionHandler_Chat_Success tests successful chat completion
 func TestCompletionHandlerUnit_Chat_Success(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -378,6 +388,7 @@ func TestCompletionHandlerUnit_Chat_Success(t *testing.T) {
 
 // TestCompletionHandler_Chat_MissingPrompt tests chat with missing prompt
 func TestCompletionHandlerUnit_Chat_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := map[string]interface{}{
@@ -396,6 +407,7 @@ func TestCompletionHandlerUnit_Chat_MissingPrompt(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_Success tests successful chat streaming
 func TestCompletionHandlerUnit_ChatStream_Success(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -421,6 +433,7 @@ func TestCompletionHandlerUnit_ChatStream_Success(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_InvalidJSON tests chat streaming with invalid JSON
 func TestCompletionHandlerUnit_ChatStream_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -434,6 +447,7 @@ func TestCompletionHandlerUnit_ChatStream_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_Models tests model listing endpoint
 func TestCompletionHandlerUnit_Models(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -464,6 +478,7 @@ func TestCompletionHandlerUnit_Models(t *testing.T) {
 
 // TestCompletionHandler_Complete_WithSkills tests completion with skills integration
 func TestCompletionHandlerUnit_Complete_WithSkills(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create mock skills service
@@ -497,6 +512,7 @@ func TestCompletionHandlerUnit_Complete_WithSkills(t *testing.T) {
 
 // TestCompletionHandler_Complete_WithEnsembleConfig tests completion with ensemble configuration
 func TestCompletionHandlerUnit_Complete_WithEnsembleConfig(t *testing.T) {
+	t.Parallel()
 	router, _, requestService := setupCompletionTest()
 
 	// Register multiple providers for ensemble
@@ -526,6 +542,7 @@ func TestCompletionHandlerUnit_Complete_WithEnsembleConfig(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_Defaults tests default value handling
 func TestCompletionHandlerUnit_ConvertToInternalRequest_Defaults(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -548,6 +565,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_Defaults(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_WithContextValues tests context value extraction
 func TestCompletionHandlerUnit_ConvertToInternalRequest_WithContextValues(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -567,6 +585,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_WithContextValues(t *tes
 
 // TestCompletionHandler_ConvertToAPIResponse tests response conversion
 func TestCompletionHandlerUnit_ConvertToAPIResponse(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	createdAt := time.Now()
@@ -596,6 +615,7 @@ func TestCompletionHandlerUnit_ConvertToAPIResponse(t *testing.T) {
 
 // TestCompletionHandler_ConvertToChatResponse tests chat response conversion
 func TestCompletionHandlerUnit_ConvertToChatResponse(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	createdAt := time.Now()
@@ -624,6 +644,7 @@ func TestCompletionHandlerUnit_ConvertToChatResponse(t *testing.T) {
 
 // TestCompletionHandler_ConvertToStreamingResponse tests streaming response conversion
 func TestCompletionHandlerUnit_ConvertToStreamingResponse(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	createdAt := time.Now()
@@ -647,6 +668,7 @@ func TestCompletionHandlerUnit_ConvertToStreamingResponse(t *testing.T) {
 
 // TestCompletionHandler_ConvertToChatStreamingResponse tests chat streaming response conversion
 func TestCompletionHandlerUnit_ConvertToChatStreamingResponse(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	createdAt := time.Now()
@@ -670,6 +692,7 @@ func TestCompletionHandlerUnit_ConvertToChatStreamingResponse(t *testing.T) {
 
 // TestCompletionHandler_SendCategorizedError tests error categorization
 func TestCompletionHandlerUnit_SendCategorizedError(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	tests := []struct {
@@ -706,6 +729,7 @@ func TestCompletionHandlerUnit_SendCategorizedError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -724,6 +748,7 @@ func TestCompletionHandlerUnit_SendCategorizedError(t *testing.T) {
 
 // TestCompletionHandler_Complete_WithMessages tests completion with message history
 func TestCompletionHandlerUnit_Complete_WithMessages(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -748,6 +773,7 @@ func TestCompletionHandlerUnit_Complete_WithMessages(t *testing.T) {
 
 // TestCompletionHandler_Complete_WithMemoryEnhanced tests completion with memory enhancement
 func TestCompletionHandlerUnit_Complete_WithMemoryEnhanced(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -767,6 +793,7 @@ func TestCompletionHandlerUnit_Complete_WithMemoryEnhanced(t *testing.T) {
 
 // TestCompletionHandler_Chat_WithLastUserMessage tests chat extracts last user message
 func TestCompletionHandlerUnit_Chat_WithLastUserMessage(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -791,6 +818,7 @@ func TestCompletionHandlerUnit_Chat_WithLastUserMessage(t *testing.T) {
 
 // TestCompletionHandler_SendError tests error response formatting
 func TestCompletionHandlerUnit_SendError(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -811,6 +839,7 @@ func TestCompletionHandlerUnit_SendError(t *testing.T) {
 
 // TestCompletionHandler_ConvertToAPIResponseWithSkills tests response with skills metadata
 func TestCompletionHandlerUnit_ConvertToAPIResponseWithSkills(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	mockSkillService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
@@ -835,6 +864,7 @@ func TestCompletionHandlerUnit_ConvertToAPIResponseWithSkills(t *testing.T) {
 
 // TestCompletionHandler_SetIntentBasedRouter tests setting the intent router
 func TestCompletionHandlerUnit_SetIntentBasedRouter(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -849,6 +879,7 @@ func TestCompletionHandlerUnit_SetIntentBasedRouter(t *testing.T) {
 
 // TestCompletionHandler_NewCompletionHandlerWithSkills tests handler creation with skills
 func TestCompletionHandlerUnit_NewCompletionHandlerWithSkills(t *testing.T) {
+	t.Parallel()
 	mockSkillService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
 	skillsIntegration := skills.NewIntegration(mockSkillService)
 
@@ -864,6 +895,7 @@ func TestCompletionHandlerUnit_NewCompletionHandlerWithSkills(t *testing.T) {
 
 // TestCompletionHandler_SetSkillsIntegration tests setting skills integration
 func TestCompletionHandlerUnit_SetSkillsIntegration(t *testing.T) {
+	t.Parallel()
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
 	requestService := services.NewRequestService("weighted", ensemble, nil)
 	handler := NewCompletionHandler(requestService)
@@ -878,6 +910,7 @@ func TestCompletionHandlerUnit_SetSkillsIntegration(t *testing.T) {
 
 // TestCompletionHandler_ConvertToChatResponseWithSkills tests chat response with skills
 func TestCompletionHandlerUnit_ConvertToChatResponseWithSkills(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	mockSkillService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
@@ -907,6 +940,7 @@ func TestCompletionHandlerUnit_ConvertToChatResponseWithSkills(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_WithToolCalls tests conversion with tool calls
 func TestCompletionHandlerUnit_ConvertToInternalRequest_WithToolCalls(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -936,6 +970,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_WithToolCalls(t *testing
 
 // TestCompletionHandler_ConvertToInternalRequest_WithName tests message with name field
 func TestCompletionHandlerUnit_ConvertToInternalRequest_WithName(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	name := "TestUser"
@@ -962,6 +997,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_WithName(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_StopSequencesNil tests nil stop sequences handling
 func TestCompletionHandlerUnit_ConvertToInternalRequest_StopSequencesNil(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -980,6 +1016,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_StopSequencesNil(t *test
 
 // TestCompletionHandler_ConvertToInternalRequest_WithoutEnsemble tests ensemble disabled
 func TestCompletionHandlerUnit_ConvertToInternalRequest_WithoutEnsemble(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1006,6 +1043,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_WithoutEnsemble(t *testi
 
 // TestCompletionHandler_SendCategorizedError_WithRetryAfter tests retry-after header
 func TestCompletionHandlerUnit_SendCategorizedError_WithRetryAfter(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -1021,6 +1059,7 @@ func TestCompletionHandlerUnit_SendCategorizedError_WithRetryAfter(t *testing.T)
 
 // TestCompletionHandler_SendCategorizedError_LLMServiceError tests with already categorized error
 func TestCompletionHandlerUnit_SendCategorizedError_LLMServiceError(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	w := httptest.NewRecorder()
@@ -1043,6 +1082,7 @@ func TestCompletionHandlerUnit_SendCategorizedError_LLMServiceError(t *testing.T
 
 // TestCompletionHandler_Chat_WithStopSequences tests chat with stop sequences
 func TestCompletionHandlerUnit_Chat_WithStopSequences(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -1062,6 +1102,7 @@ func TestCompletionHandlerUnit_Chat_WithStopSequences(t *testing.T) {
 
 // TestCompletionHandler_Chat_WithTopP tests chat with top_p parameter
 func TestCompletionHandlerUnit_Chat_WithTopP(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{
@@ -1081,10 +1122,12 @@ func TestCompletionHandlerUnit_Chat_WithTopP(t *testing.T) {
 
 // TestCompletionHandler_Stream_WithVariousFinishReasons tests streaming with different finish reasons
 func TestCompletionHandlerUnit_Stream_WithVariousFinishReasons(t *testing.T) {
+	t.Parallel()
 	finishReasons := []string{"stop", "length", "content_filter", ""}
 
 	for _, reason := range finishReasons {
 		t.Run("finish_reason_"+reason, func(t *testing.T) {
+				t.Parallel()
 			gin.SetMode(gin.TestMode)
 
 			ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1131,6 +1174,7 @@ func TestCompletionHandlerUnit_Stream_WithVariousFinishReasons(t *testing.T) {
 
 // TestCompletionHandler_Headers tests that proper headers are set
 func TestCompletionHandlerUnit_Headers(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{Prompt: "Test"}
@@ -1148,6 +1192,7 @@ func TestCompletionHandlerUnit_Headers(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_Headers tests chat stream headers
 func TestCompletionHandlerUnit_ChatStream_Headers(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{Prompt: "Test"}
@@ -1169,6 +1214,7 @@ func TestCompletionHandlerUnit_ChatStream_Headers(t *testing.T) {
 
 // TestCompletionHandler_Stream_ResponseFormat tests streaming response format
 func TestCompletionHandlerUnit_Stream_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupCompletionTest()
 
 	reqBody := CompletionRequest{Prompt: "Test streaming format"}
@@ -1198,6 +1244,7 @@ func TestCompletionHandlerUnit_Stream_ResponseFormat(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_InvalidUserIDType tests invalid user_id type
 func TestCompletionHandlerUnit_ConvertToInternalRequest_InvalidUserIDType(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{Prompt: "Test"}
@@ -1215,6 +1262,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_InvalidUserIDType(t *tes
 
 // TestCompletionHandler_Complete_WithRequestType tests completion with specific request type
 func TestCompletionHandlerUnit_Complete_WithRequestType(t *testing.T) {
+	t.Parallel()
 	_, handler, _ := setupCompletionTest()
 
 	req := &CompletionRequest{
@@ -1232,6 +1280,7 @@ func TestCompletionHandlerUnit_Complete_WithRequestType(t *testing.T) {
 
 // TestCompletionHandler_Chat_RequestType tests chat sets request type
 func TestCompletionHandlerUnit_Chat_RequestType(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1258,6 +1307,7 @@ func TestCompletionHandlerUnit_Chat_RequestType(t *testing.T) {
 
 // TestCompletionHandler_NewCompletionHandler tests basic handler creation
 func TestCompletionHandlerUnit_NewCompletionHandler(t *testing.T) {
+	t.Parallel()
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
 	requestService := services.NewRequestService("weighted", ensemble, nil)
 
@@ -1271,6 +1321,7 @@ func TestCompletionHandlerUnit_NewCompletionHandler(t *testing.T) {
 
 // TestCompletionHandler_NoProvidersAvailable tests error when no providers
 func TestCompletionHandlerUnit_NoProvidersAvailable(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create request service with NO providers
@@ -1297,6 +1348,7 @@ func TestCompletionHandlerUnit_NoProvidersAvailable(t *testing.T) {
 
 // TestCompletionHandler_NetworkError tests network error handling
 func TestCompletionHandlerUnit_NetworkError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1330,6 +1382,7 @@ func TestCompletionHandlerUnit_NetworkError(t *testing.T) {
 
 // TestCompletionHandler_ConfigurationError tests configuration error handling
 func TestCompletionHandlerUnit_ConfigurationError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1363,6 +1416,7 @@ func TestCompletionHandlerUnit_ConfigurationError(t *testing.T) {
 
 // TestCompletionHandler_AllProvidersFailed tests all providers failed error
 func TestCompletionHandlerUnit_AllProvidersFailed(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1388,6 +1442,7 @@ func TestCompletionHandlerUnit_AllProvidersFailed(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_NoFlusher tests streaming without flusher
 func TestCompletionHandlerUnit_CompleteStream_NoFlusher(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)

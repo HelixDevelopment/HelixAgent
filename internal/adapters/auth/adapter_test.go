@@ -13,6 +13,7 @@ import (
 )
 
 func TestDefaultOAuthConfig(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultOAuthConfig()
 
 	assert.NotNil(t, config)
@@ -22,6 +23,7 @@ func TestDefaultOAuthConfig(t *testing.T) {
 }
 
 func TestNewJWTConfig(t *testing.T) {
+	t.Parallel()
 	secret := "test-secret-key"
 	config := adapter.NewJWTConfig(secret)
 
@@ -31,6 +33,7 @@ func TestNewJWTConfig(t *testing.T) {
 }
 
 func TestJWTManagerCreateAndValidate(t *testing.T) {
+	t.Parallel()
 	config := adapter.NewJWTConfig("test-secret-key-12345678")
 	manager := adapter.NewJWTManager(config)
 
@@ -54,6 +57,7 @@ func TestJWTManagerCreateAndValidate(t *testing.T) {
 }
 
 func TestJWTValidatorAdapter(t *testing.T) {
+	t.Parallel()
 	config := adapter.NewJWTConfig("test-secret-key-12345678")
 	manager := adapter.NewJWTManager(config)
 
@@ -74,6 +78,7 @@ func TestJWTValidatorAdapter(t *testing.T) {
 }
 
 func TestJWTValidatorAdapterInvalidToken(t *testing.T) {
+	t.Parallel()
 	config := adapter.NewJWTConfig("test-secret-key-12345678")
 	manager := adapter.NewJWTManager(config)
 	validator := adapter.NewJWTValidatorAdapter(manager)
@@ -83,6 +88,7 @@ func TestJWTValidatorAdapterInvalidToken(t *testing.T) {
 }
 
 func TestIsExpired(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		expiresAt time.Time
@@ -107,6 +113,7 @@ func TestIsExpired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := adapter.IsExpired(tt.expiresAt)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -114,6 +121,7 @@ func TestIsExpired(t *testing.T) {
 }
 
 func TestNeedsRefresh(t *testing.T) {
+	t.Parallel()
 	threshold := 10 * time.Minute
 
 	tests := []struct {
@@ -145,6 +153,7 @@ func TestNeedsRefresh(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := adapter.NeedsRefresh(tt.expiresAt, threshold)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -152,18 +161,21 @@ func TestNeedsRefresh(t *testing.T) {
 }
 
 func TestClaimsFromContext(t *testing.T) {
+	t.Parallel()
 	// Test with empty context
 	claims := adapter.ClaimsFromContext(context.Background())
 	assert.Nil(t, claims)
 }
 
 func TestScopesFromContext(t *testing.T) {
+	t.Parallel()
 	// Test with empty context
 	scopes := adapter.ScopesFromContext(context.Background())
 	assert.Nil(t, scopes)
 }
 
 func TestAPIKeyFromContext(t *testing.T) {
+	t.Parallel()
 	// Test with empty context
 	key := adapter.APIKeyFromContext(context.Background())
 	assert.Empty(t, key)
@@ -171,6 +183,7 @@ func TestAPIKeyFromContext(t *testing.T) {
 
 // TestMiddlewareChain tests the middleware chaining functionality.
 func TestMiddlewareChain(t *testing.T) {
+	t.Parallel()
 	var order []string
 
 	mw1 := func(next http.Handler) http.Handler {

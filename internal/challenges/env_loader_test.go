@@ -10,6 +10,7 @@ import (
 )
 
 func TestLoadEnvFile_Basic(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `# comment
@@ -26,6 +27,7 @@ KEY2=value2
 }
 
 func TestLoadEnvFile_QuotedValues(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `DOUBLE="hello world"
@@ -42,6 +44,7 @@ NOQUOTE=plain
 }
 
 func TestLoadEnvFile_EmptyLines(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `
@@ -60,6 +63,7 @@ KEY=val
 }
 
 func TestLoadEnvFile_NoEquals(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `VALID=yes
@@ -74,6 +78,7 @@ INVALID_LINE
 }
 
 func TestLoadEnvFile_EmptyValue(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `KEY=
@@ -86,11 +91,13 @@ func TestLoadEnvFile_EmptyValue(t *testing.T) {
 }
 
 func TestLoadEnvFile_NotFound(t *testing.T) {
+	t.Parallel()
 	_, err := LoadEnvFile("/nonexistent/.env")
 	assert.Error(t, err)
 }
 
 func TestMergeEnvFiles_Override(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	path1 := filepath.Join(dir, "first.env")
@@ -108,6 +115,7 @@ func TestMergeEnvFiles_Override(t *testing.T) {
 }
 
 func TestMergeEnvFiles_MissingFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path1 := filepath.Join(dir, "exists.env")
 	require.NoError(t, os.WriteFile(path1,
@@ -121,12 +129,14 @@ func TestMergeEnvFiles_MissingFile(t *testing.T) {
 }
 
 func TestMergeEnvFiles_Empty(t *testing.T) {
+	t.Parallel()
 	env := MergeEnvFiles()
 	assert.NotNil(t, env)
 	assert.Empty(t, env)
 }
 
 func TestLoadEnvFile_SpacesAroundEquals(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	content := `KEY = value

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewTabnine(t *testing.T) {
+	t.Parallel()
 	tn := New()
 
 	if tn == nil {
@@ -31,6 +32,7 @@ func TestNewTabnine(t *testing.T) {
 }
 
 func TestTabnineInitialize(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -65,6 +67,7 @@ func TestTabnineInitialize(t *testing.T) {
 }
 
 func TestTabnineStartStop(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -93,6 +96,7 @@ func TestTabnineStartStop(t *testing.T) {
 }
 
 func TestTabnineExecute(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -178,6 +182,7 @@ func TestTabnineExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := tn.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -191,6 +196,7 @@ func TestTabnineExecute(t *testing.T) {
 }
 
 func TestTabnineComplete(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -223,6 +229,7 @@ func TestTabnineComplete(t *testing.T) {
 }
 
 func TestTabnineCompleteLanguages(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -244,6 +251,7 @@ func TestTabnineCompleteLanguages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.language, func(t *testing.T) {
+				t.Parallel()
 			result, err := tn.Execute(ctx, "complete", map[string]interface{}{
 				"prefix":   tt.prefix,
 				"language": tt.language,
@@ -265,6 +273,7 @@ func TestTabnineCompleteLanguages(t *testing.T) {
 }
 
 func TestTabnineChat(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -291,6 +300,7 @@ func TestTabnineChat(t *testing.T) {
 }
 
 func TestTabnineReview(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -321,6 +331,7 @@ func TestTabnineReview(t *testing.T) {
 }
 
 func TestTabnineConfigure(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -362,6 +373,7 @@ func TestTabnineConfigure(t *testing.T) {
 }
 
 func TestTabnineStatus(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -394,6 +406,7 @@ func TestTabnineStatus(t *testing.T) {
 }
 
 func TestTabnineCapabilities(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	info := tn.Info()
 
@@ -421,6 +434,7 @@ func TestTabnineCapabilities(t *testing.T) {
 }
 
 func TestTabnineHealth(t *testing.T) {
+	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
@@ -439,6 +453,7 @@ func TestTabnineHealth(t *testing.T) {
 }
 
 func TestTabnineIsAvailable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		config    *Config
@@ -468,6 +483,7 @@ func TestTabnineIsAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			tn := New()
 			ctx := context.Background()
 			_ = tn.Initialize(ctx, tt.config)
@@ -480,6 +496,7 @@ func TestTabnineIsAvailable(t *testing.T) {
 }
 
 func TestTabnineConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  *Config
@@ -513,6 +530,7 @@ func TestTabnineConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			tn := New()
 			ctx := context.Background()
 			err := tn.Initialize(ctx, tt.config)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	g := New()
 
 	assert.NotNil(t, g)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestGPTR_Initialize(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestGPTR_Initialize(t *testing.T) {
 }
 
 func TestGPTR_Execute(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -116,6 +119,7 @@ func TestGPTR_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := g.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -131,6 +135,7 @@ func TestGPTR_Execute(t *testing.T) {
 }
 
 func TestGPTR_ExecuteWithCreatedTask(t *testing.T) {
+	t.Parallel()
 	g := New()
 	ctx := context.Background()
 
@@ -150,6 +155,7 @@ func TestGPTR_ExecuteWithCreatedTask(t *testing.T) {
 
 	// Now test get_result
 	t.Run("get_result for existing task", func(t *testing.T) {
+			t.Parallel()
 		result, err := g.Execute(ctx, "get_result", map[string]interface{}{
 			"task_id": taskID,
 		})
@@ -160,12 +166,14 @@ func TestGPTR_ExecuteWithCreatedTask(t *testing.T) {
 }
 
 func TestGPTR_IsAvailable(t *testing.T) {
+	t.Parallel()
 	g := New()
 	// GPTR is always available
 	assert.True(t, g.IsAvailable())
 }
 
 func TestTask(t *testing.T) {
+	t.Parallel()
 	task := Task{
 		ID:     "task-1",
 		Name:   "TestTask",
@@ -181,6 +189,7 @@ func TestTask(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		Model:     "gpt-4",
 		MaxTokens: 4096,

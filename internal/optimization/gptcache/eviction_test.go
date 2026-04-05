@@ -14,12 +14,14 @@ import (
 // =============================================================================
 
 func TestNewLRUEviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(10)
 	assert.NotNil(t, e)
 	assert.Equal(t, 0, e.Size())
 }
 
 func TestLRUEviction_Add_NoEviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(3)
 
 	evicted := e.Add("key1")
@@ -36,6 +38,7 @@ func TestLRUEviction_Add_NoEviction(t *testing.T) {
 }
 
 func TestLRUEviction_Add_WithEviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(2)
 
 	e.Add("key1")
@@ -48,6 +51,7 @@ func TestLRUEviction_Add_WithEviction(t *testing.T) {
 }
 
 func TestLRUEviction_Add_ExistingKey(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(3)
 
 	e.Add("key1")
@@ -60,6 +64,7 @@ func TestLRUEviction_Add_ExistingKey(t *testing.T) {
 }
 
 func TestLRUEviction_Add_ExistingKey_Prevents_Eviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(2)
 
 	e.Add("key1")
@@ -74,6 +79,7 @@ func TestLRUEviction_Add_ExistingKey_Prevents_Eviction(t *testing.T) {
 }
 
 func TestLRUEviction_UpdateAccess(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(2)
 
 	e.Add("key1")
@@ -88,12 +94,14 @@ func TestLRUEviction_UpdateAccess(t *testing.T) {
 }
 
 func TestLRUEviction_UpdateAccess_NonExistent(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(5)
 	// Should not panic
 	e.UpdateAccess("nonexistent")
 }
 
 func TestLRUEviction_Remove_Dedicated(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(5)
 
 	e.Add("key1")
@@ -105,6 +113,7 @@ func TestLRUEviction_Remove_Dedicated(t *testing.T) {
 }
 
 func TestLRUEviction_Remove_NonExistent(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(5)
 	e.Add("key1")
 
@@ -114,6 +123,7 @@ func TestLRUEviction_Remove_NonExistent(t *testing.T) {
 }
 
 func TestLRUEviction_Size(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(10)
 	assert.Equal(t, 0, e.Size())
 
@@ -127,10 +137,12 @@ func TestLRUEviction_Size(t *testing.T) {
 }
 
 func TestLRUEviction_ImplementsEvictionStrategy(t *testing.T) {
+	t.Parallel()
 	var _ EvictionStrategy = (*LRUEviction)(nil)
 }
 
 func TestLRUEviction_Concurrent(t *testing.T) {
+	t.Parallel()
 	e := NewLRUEviction(100)
 	var wg sync.WaitGroup
 
@@ -153,6 +165,7 @@ func TestLRUEviction_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewTTLEviction(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(5 * time.Minute)
 	defer e.Stop()
 
@@ -161,6 +174,7 @@ func TestNewTTLEviction(t *testing.T) {
 }
 
 func TestTTLEviction_Add(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(5 * time.Minute)
 	defer e.Stop()
 
@@ -170,6 +184,7 @@ func TestTTLEviction_Add(t *testing.T) {
 }
 
 func TestTTLEviction_UpdateAccess_Dedicated(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(5 * time.Minute)
 	defer e.Stop()
 
@@ -179,6 +194,7 @@ func TestTTLEviction_UpdateAccess_Dedicated(t *testing.T) {
 }
 
 func TestTTLEviction_UpdateAccess_NonExistent(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(5 * time.Minute)
 	defer e.Stop()
 
@@ -188,6 +204,7 @@ func TestTTLEviction_UpdateAccess_NonExistent(t *testing.T) {
 }
 
 func TestTTLEviction_Remove_Dedicated(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(5 * time.Minute)
 	defer e.Stop()
 
@@ -200,6 +217,7 @@ func TestTTLEviction_Remove_Dedicated(t *testing.T) {
 }
 
 func TestTTLEviction_GetExpired(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(10 * time.Millisecond)
 	defer e.Stop()
 
@@ -214,6 +232,7 @@ func TestTTLEviction_GetExpired(t *testing.T) {
 }
 
 func TestTTLEviction_GetExpired_NoneExpired(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(10 * time.Minute)
 	defer e.Stop()
 
@@ -225,6 +244,7 @@ func TestTTLEviction_GetExpired_NoneExpired(t *testing.T) {
 }
 
 func TestTTLEviction_GetExpired_PartiallyExpired(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(30 * time.Millisecond)
 	defer e.Stop()
 
@@ -238,11 +258,13 @@ func TestTTLEviction_GetExpired_PartiallyExpired(t *testing.T) {
 }
 
 func TestTTLEviction_Stop(t *testing.T) {
+	t.Parallel()
 	e := NewTTLEviction(time.Minute)
 	e.Stop() // Should not panic or block
 }
 
 func TestTTLEviction_ImplementsEvictionStrategy(t *testing.T) {
+	t.Parallel()
 	var _ EvictionStrategy = (*TTLEviction)(nil)
 }
 
@@ -251,6 +273,7 @@ func TestTTLEviction_ImplementsEvictionStrategy(t *testing.T) {
 // =============================================================================
 
 func TestNewLRUWithTTLEviction(t *testing.T) {
+	t.Parallel()
 	var evictedKeys []string
 	e := NewLRUWithTTLEviction(10, 5*time.Minute, func(key string) {
 		evictedKeys = append(evictedKeys, key)
@@ -262,6 +285,7 @@ func TestNewLRUWithTTLEviction(t *testing.T) {
 }
 
 func TestLRUWithTTLEviction_Add_NoEviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUWithTTLEviction(5, 5*time.Minute, nil)
 	defer e.Stop()
 
@@ -271,6 +295,7 @@ func TestLRUWithTTLEviction_Add_NoEviction(t *testing.T) {
 }
 
 func TestLRUWithTTLEviction_Add_LRUEviction(t *testing.T) {
+	t.Parallel()
 	e := NewLRUWithTTLEviction(2, 5*time.Minute, nil)
 	defer e.Stop()
 
@@ -283,6 +308,7 @@ func TestLRUWithTTLEviction_Add_LRUEviction(t *testing.T) {
 }
 
 func TestLRUWithTTLEviction_UpdateAccess(t *testing.T) {
+	t.Parallel()
 	e := NewLRUWithTTLEviction(2, 5*time.Minute, nil)
 	defer e.Stop()
 
@@ -296,6 +322,7 @@ func TestLRUWithTTLEviction_UpdateAccess(t *testing.T) {
 }
 
 func TestLRUWithTTLEviction_Remove(t *testing.T) {
+	t.Parallel()
 	e := NewLRUWithTTLEviction(10, 5*time.Minute, nil)
 	defer e.Stop()
 
@@ -308,11 +335,13 @@ func TestLRUWithTTLEviction_Remove(t *testing.T) {
 }
 
 func TestLRUWithTTLEviction_Stop(t *testing.T) {
+	t.Parallel()
 	e := NewLRUWithTTLEviction(10, time.Minute, nil)
 	e.Stop() // Should not panic
 }
 
 func TestLRUWithTTLEviction_ImplementsEvictionStrategy(t *testing.T) {
+	t.Parallel()
 	var _ EvictionStrategy = (*LRUWithTTLEviction)(nil)
 }
 
@@ -321,12 +350,14 @@ func TestLRUWithTTLEviction_ImplementsEvictionStrategy(t *testing.T) {
 // =============================================================================
 
 func TestNewRelevanceEviction(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(10, 0.9)
 	assert.NotNil(t, e)
 	assert.Equal(t, 0, e.Size())
 }
 
 func TestRelevanceEviction_Add_NoEviction(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(5, 0.9)
 
 	evicted := e.Add("key1")
@@ -335,6 +366,7 @@ func TestRelevanceEviction_Add_NoEviction(t *testing.T) {
 }
 
 func TestRelevanceEviction_Add_WithEviction(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(2, 0.9)
 
 	e.Add("key1")
@@ -347,6 +379,7 @@ func TestRelevanceEviction_Add_WithEviction(t *testing.T) {
 }
 
 func TestRelevanceEviction_UpdateAccess(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(3, 0.9)
 
 	e.Add("key1")          // score = 1.0
@@ -358,6 +391,7 @@ func TestRelevanceEviction_UpdateAccess(t *testing.T) {
 }
 
 func TestRelevanceEviction_UpdateAccess_NonExistent(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(5, 0.9)
 	// Should not panic or add key
 	e.UpdateAccess("nonexistent")
@@ -365,6 +399,7 @@ func TestRelevanceEviction_UpdateAccess_NonExistent(t *testing.T) {
 }
 
 func TestRelevanceEviction_Remove_Dedicated(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(5, 0.9)
 
 	e.Add("key1")
@@ -376,6 +411,7 @@ func TestRelevanceEviction_Remove_Dedicated(t *testing.T) {
 }
 
 func TestRelevanceEviction_GetScore_Existing(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(5, 0.9)
 	e.Add("key1")
 
@@ -384,12 +420,14 @@ func TestRelevanceEviction_GetScore_Existing(t *testing.T) {
 }
 
 func TestRelevanceEviction_GetScore_NonExistent(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(5, 0.9)
 	score := e.GetScore("nonexistent")
 	assert.Equal(t, float64(0), score)
 }
 
 func TestRelevanceEviction_EvictsLowestScore(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(2, 0.9)
 
 	e.Add("frequent")
@@ -409,10 +447,12 @@ func TestRelevanceEviction_EvictsLowestScore(t *testing.T) {
 }
 
 func TestRelevanceEviction_ImplementsEvictionStrategy(t *testing.T) {
+	t.Parallel()
 	var _ EvictionStrategy = (*RelevanceEviction)(nil)
 }
 
 func TestRelevanceEviction_Concurrent(t *testing.T) {
+	t.Parallel()
 	e := NewRelevanceEviction(100, 0.9)
 	var wg sync.WaitGroup
 
@@ -436,6 +476,7 @@ func TestRelevanceEviction_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestEvictionStrategy_AllImplementations(t *testing.T) {
+	t.Parallel()
 	strategies := []struct {
 		name     string
 		strategy EvictionStrategy
@@ -471,6 +512,7 @@ func TestEvictionStrategy_AllImplementations(t *testing.T) {
 
 	for _, tt := range strategies {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			s := tt.strategy
 
 			// Add

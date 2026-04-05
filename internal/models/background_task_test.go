@@ -10,6 +10,7 @@ import (
 )
 
 func TestTaskStatus_IsTerminal(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status   TaskStatus
 		expected bool
@@ -27,12 +28,14 @@ func TestTaskStatus_IsTerminal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.status.IsTerminal())
 		})
 	}
 }
 
 func TestTaskStatus_IsActive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status   TaskStatus
 		expected bool
@@ -47,12 +50,14 @@ func TestTaskStatus_IsActive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.status.IsActive())
 		})
 	}
 }
 
 func TestTaskPriority_Weight(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		priority TaskPriority
 		expected int
@@ -67,12 +72,14 @@ func TestTaskPriority_Weight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.priority), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.priority.Weight())
 		})
 	}
 }
 
 func TestNewBackgroundTask(t *testing.T) {
+	t.Parallel()
 	payload := json.RawMessage(`{"command": "echo hello"}`)
 	task := NewBackgroundTask("command", "test-task", payload)
 
@@ -93,6 +100,7 @@ func TestNewBackgroundTask(t *testing.T) {
 }
 
 func TestDefaultTaskConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultTaskConfig()
 
 	assert.Equal(t, 1800, config.TimeoutSeconds)
@@ -107,6 +115,7 @@ func TestDefaultTaskConfig(t *testing.T) {
 }
 
 func TestBackgroundTask_CanRetry(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// Can retry when retry count is less than max
@@ -122,6 +131,7 @@ func TestBackgroundTask_CanRetry(t *testing.T) {
 }
 
 func TestBackgroundTask_CanPause(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// Cannot pause pending task
@@ -137,6 +147,7 @@ func TestBackgroundTask_CanPause(t *testing.T) {
 }
 
 func TestBackgroundTask_CanCancel(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// Can cancel pending task
@@ -157,6 +168,7 @@ func TestBackgroundTask_CanCancel(t *testing.T) {
 }
 
 func TestBackgroundTask_CanResume(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// Cannot resume pending task
@@ -172,6 +184,7 @@ func TestBackgroundTask_CanResume(t *testing.T) {
 }
 
 func TestBackgroundTask_Duration(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// No duration if not started
@@ -197,6 +210,7 @@ func TestBackgroundTask_Duration(t *testing.T) {
 }
 
 func TestBackgroundTask_IsOverdue(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 
 	// Not overdue if no deadline
@@ -214,6 +228,7 @@ func TestBackgroundTask_IsOverdue(t *testing.T) {
 }
 
 func TestBackgroundTask_HasStaleHeartbeat(t *testing.T) {
+	t.Parallel()
 	task := NewBackgroundTask("test", "test", nil)
 	threshold := 5 * time.Minute
 
@@ -232,6 +247,7 @@ func TestBackgroundTask_HasStaleHeartbeat(t *testing.T) {
 }
 
 func TestTaskConfig_JSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultTaskConfig()
 
 	// Marshal to JSON
@@ -248,6 +264,7 @@ func TestTaskConfig_JSON(t *testing.T) {
 }
 
 func TestNotificationConfig_JSON(t *testing.T) {
+	t.Parallel()
 	config := NotificationConfig{
 		Webhooks: []WebhookConfig{
 			{
@@ -284,6 +301,7 @@ func TestNotificationConfig_JSON(t *testing.T) {
 }
 
 func TestResourceSnapshot(t *testing.T) {
+	t.Parallel()
 	snapshot := &ResourceSnapshot{
 		TaskID:         "task-123",
 		CPUPercent:     45.5,
@@ -306,6 +324,7 @@ func TestResourceSnapshot(t *testing.T) {
 }
 
 func TestTaskLogEntry(t *testing.T) {
+	t.Parallel()
 	entry := TaskLogEntry{
 		Timestamp: time.Now(),
 		Level:     "info",
@@ -323,6 +342,7 @@ func TestTaskLogEntry(t *testing.T) {
 }
 
 func TestTaskProgressUpdate(t *testing.T) {
+	t.Parallel()
 	update := TaskProgressUpdate{
 		TaskID:             "task-123",
 		Progress:           50.0,
@@ -341,6 +361,7 @@ func TestTaskProgressUpdate(t *testing.T) {
 }
 
 func TestTaskEventConstants(t *testing.T) {
+	t.Parallel()
 	// Verify event constants are defined
 	events := []string{
 		TaskEventCreated,

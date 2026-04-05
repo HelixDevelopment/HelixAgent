@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidateRequestID(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		requestID string
@@ -21,6 +22,7 @@ func TestValidateRequestID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			trimmed := strings.TrimSpace(tt.requestID)
 			isValid := len(trimmed) > 0 && len(trimmed) <= 128
 			assert.Equal(t, tt.valid, isValid)
@@ -29,6 +31,7 @@ func TestValidateRequestID(t *testing.T) {
 }
 
 func TestValidateModelName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		model string
@@ -42,6 +45,7 @@ func TestValidateModelName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			isValid := len(tt.model) > 0 && len(tt.model) <= 64
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -49,6 +53,7 @@ func TestValidateModelName(t *testing.T) {
 }
 
 func TestValidateMaxTokens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		maxTokens int
@@ -63,6 +68,7 @@ func TestValidateMaxTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			isValid := tt.maxTokens >= 0 && tt.maxTokens <= 32000
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -70,6 +76,7 @@ func TestValidateMaxTokens(t *testing.T) {
 }
 
 func TestValidateTemperature(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		temperature float64
@@ -84,6 +91,7 @@ func TestValidateTemperature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			isValid := tt.temperature >= 0.0 && tt.temperature <= 1.0
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -91,6 +99,7 @@ func TestValidateTemperature(t *testing.T) {
 }
 
 func TestValidateTopP(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		topP  float64
@@ -105,6 +114,7 @@ func TestValidateTopP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			isValid := tt.topP >= 0.0 && tt.topP <= 1.0
 			assert.Equal(t, tt.valid, isValid)
 		})

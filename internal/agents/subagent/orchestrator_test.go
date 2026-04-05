@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewOrchestrator(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 
@@ -20,6 +21,7 @@ func TestNewOrchestrator(t *testing.T) {
 }
 
 func TestOrchestrator_CreateSession(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -34,6 +36,7 @@ func TestOrchestrator_CreateSession(t *testing.T) {
 }
 
 func TestOrchestrator_GetSession(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -52,6 +55,7 @@ func TestOrchestrator_GetSession(t *testing.T) {
 }
 
 func TestOrchestrator_ListSessions(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -73,6 +77,7 @@ func TestOrchestrator_ListSessions(t *testing.T) {
 }
 
 func TestOrchestrator_CancelSession(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -91,6 +96,7 @@ func TestOrchestrator_CancelSession(t *testing.T) {
 }
 
 func TestOrchestrator_Cleanup(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -125,6 +131,7 @@ func TestOrchestrator_Cleanup(t *testing.T) {
 }
 
 func TestOrchestrator_Shutdown(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -143,6 +150,7 @@ func TestOrchestrator_Shutdown(t *testing.T) {
 }
 
 func TestOrchestrator_ExecutePlan(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -183,6 +191,7 @@ func TestOrchestrator_ExecutePlan(t *testing.T) {
 }
 
 func TestOrchestrator_ExecutePlan_NonExistentSession(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -199,6 +208,7 @@ func TestOrchestrator_ExecutePlan_NonExistentSession(t *testing.T) {
 }
 
 func TestOrchestrator_ExecutePlan_Cancellation(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -224,6 +234,7 @@ func TestOrchestrator_ExecutePlan_Cancellation(t *testing.T) {
 }
 
 func TestOrchestrator_ExecuteParallel(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -250,6 +261,7 @@ func TestOrchestrator_ExecuteParallel(t *testing.T) {
 }
 
 func TestOrchestrator_ExecuteParallel_NonExistentSession(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -260,6 +272,7 @@ func TestOrchestrator_ExecuteParallel_NonExistentSession(t *testing.T) {
 }
 
 func TestCreateDefaultPlan(t *testing.T) {
+	t.Parallel()
 	objective := "Implement a new feature"
 	plan := CreateDefaultPlan(objective)
 
@@ -284,6 +297,7 @@ func TestCreateDefaultPlan(t *testing.T) {
 }
 
 func TestOrchestrator_ConcurrentSessions(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()
@@ -318,6 +332,7 @@ func TestOrchestrator_ConcurrentSessions(t *testing.T) {
 }
 
 func TestOrchestrator_Integration(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(&Config{
 		ProviderType: "test",
 		APIKey:       "test-key",
@@ -351,6 +366,7 @@ func TestOrchestrator_Integration(t *testing.T) {
 }
 
 func TestOrchestrator_ComplexDependencyChain(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	orchestrator := NewOrchestrator(manager)
 	ctx := context.Background()

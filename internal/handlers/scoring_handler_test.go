@@ -44,6 +44,7 @@ func setupScoringHandlerWithCache() (*ScoringHandler, *gin.Engine, *verifier.Sco
 }
 
 func TestNewScoringHandler(t *testing.T) {
+	t.Parallel()
 	ss, _ := verifier.NewScoringService(nil)
 	h := NewScoringHandler(ss)
 
@@ -52,6 +53,7 @@ func TestNewScoringHandler(t *testing.T) {
 }
 
 func TestNewScoringHandler_NilService(t *testing.T) {
+	t.Parallel()
 	h := NewScoringHandler(nil)
 
 	assert.NotNil(t, h)
@@ -59,6 +61,7 @@ func TestNewScoringHandler_NilService(t *testing.T) {
 }
 
 func TestGetModelScore_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -78,6 +81,7 @@ func TestGetModelScore_Success(t *testing.T) {
 }
 
 func TestGetModelScore_KnownModels(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	// Note: The scoring service uses a map to match patterns, so pattern order is not guaranteed
@@ -108,6 +112,7 @@ func TestGetModelScore_KnownModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/api/v1/verifier/scores/"+tt.modelID, nil)
 			r.ServeHTTP(w, req)
@@ -127,6 +132,7 @@ func TestGetModelScore_KnownModels(t *testing.T) {
 }
 
 func TestGetModelScore_UnknownModel(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -146,6 +152,7 @@ func TestGetModelScore_UnknownModel(t *testing.T) {
 }
 
 func TestGetModelScore_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -167,6 +174,7 @@ func TestGetModelScore_ResponseFormat(t *testing.T) {
 }
 
 func TestBatchCalculateScores_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := BatchScoreRequest{
@@ -190,6 +198,7 @@ func TestBatchCalculateScores_Success(t *testing.T) {
 }
 
 func TestBatchCalculateScores_SingleModel(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := BatchScoreRequest{
@@ -212,6 +221,7 @@ func TestBatchCalculateScores_SingleModel(t *testing.T) {
 }
 
 func TestBatchCalculateScores_BadRequest_EmptyModelIDs(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	body := []byte(`{}`)
@@ -225,6 +235,7 @@ func TestBatchCalculateScores_BadRequest_EmptyModelIDs(t *testing.T) {
 }
 
 func TestBatchCalculateScores_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -236,6 +247,7 @@ func TestBatchCalculateScores_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestBatchCalculateScores_SortedByScore(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := BatchScoreRequest{
@@ -261,6 +273,7 @@ func TestBatchCalculateScores_SortedByScore(t *testing.T) {
 }
 
 func TestGetTopModels_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	w := httptest.NewRecorder()
@@ -278,6 +291,7 @@ func TestGetTopModels_Success(t *testing.T) {
 }
 
 func TestGetTopModels_WithLimit(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	w := httptest.NewRecorder()
@@ -294,6 +308,7 @@ func TestGetTopModels_WithLimit(t *testing.T) {
 }
 
 func TestGetTopModels_DefaultLimit(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -311,6 +326,7 @@ func TestGetTopModels_DefaultLimit(t *testing.T) {
 }
 
 func TestGetTopModels_InvalidLimit(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -322,6 +338,7 @@ func TestGetTopModels_InvalidLimit(t *testing.T) {
 }
 
 func TestGetModelsByScoreRange_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	w := httptest.NewRecorder()
@@ -341,6 +358,7 @@ func TestGetModelsByScoreRange_Success(t *testing.T) {
 }
 
 func TestGetModelsByScoreRange_DefaultValues(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	w := httptest.NewRecorder()
@@ -358,6 +376,7 @@ func TestGetModelsByScoreRange_DefaultValues(t *testing.T) {
 }
 
 func TestGetModelsByScoreRange_WithLimit(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	w := httptest.NewRecorder()
@@ -374,6 +393,7 @@ func TestGetModelsByScoreRange_WithLimit(t *testing.T) {
 }
 
 func TestGetScoringWeights_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -393,6 +413,7 @@ func TestGetScoringWeights_Success(t *testing.T) {
 }
 
 func TestGetScoringWeights_DefaultValues(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -414,6 +435,7 @@ func TestGetScoringWeights_DefaultValues(t *testing.T) {
 }
 
 func TestUpdateScoringWeights_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := UpdateScoringWeightsRequest{
@@ -441,6 +463,7 @@ func TestUpdateScoringWeights_Success(t *testing.T) {
 }
 
 func TestUpdateScoringWeights_BadRequest_InvalidSum(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	// Weights don't sum to 1.0
@@ -462,6 +485,7 @@ func TestUpdateScoringWeights_BadRequest_InvalidSum(t *testing.T) {
 }
 
 func TestUpdateScoringWeights_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -473,6 +497,7 @@ func TestUpdateScoringWeights_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestGetModelNameWithScore_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -494,6 +519,7 @@ func TestGetModelNameWithScore_Success(t *testing.T) {
 }
 
 func TestGetModelNameWithScore_DifferentModels(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	models := []string{"gpt-4", "claude-3", "gemini-pro"}
@@ -514,6 +540,7 @@ func TestGetModelNameWithScore_DifferentModels(t *testing.T) {
 }
 
 func TestInvalidateCache_AllCache(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	reqBody := InvalidateCacheRequest{
@@ -536,6 +563,7 @@ func TestInvalidateCache_AllCache(t *testing.T) {
 }
 
 func TestInvalidateCache_SpecificModel(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	reqBody := InvalidateCacheRequest{
@@ -558,6 +586,7 @@ func TestInvalidateCache_SpecificModel(t *testing.T) {
 }
 
 func TestInvalidateCache_BadRequest_NoParams(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := InvalidateCacheRequest{}
@@ -572,6 +601,7 @@ func TestInvalidateCache_BadRequest_NoParams(t *testing.T) {
 }
 
 func TestInvalidateCache_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -583,6 +613,7 @@ func TestInvalidateCache_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestCompareModels_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := CompareModelsRequest{
@@ -607,6 +638,7 @@ func TestCompareModels_Success(t *testing.T) {
 }
 
 func TestCompareModels_WinnerDetermination(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	// gpt-4 (9.0) vs llama-3 (7.5) - gpt-4 should win
@@ -630,6 +662,7 @@ func TestCompareModels_WinnerDetermination(t *testing.T) {
 }
 
 func TestCompareModels_BadRequest_TooFewModels(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := CompareModelsRequest{
@@ -646,6 +679,7 @@ func TestCompareModels_BadRequest_TooFewModels(t *testing.T) {
 }
 
 func TestCompareModels_BadRequest_EmptyModelIDs(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	body := []byte(`{}`)
@@ -659,6 +693,7 @@ func TestCompareModels_BadRequest_EmptyModelIDs(t *testing.T) {
 }
 
 func TestCompareModels_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	w := httptest.NewRecorder()
@@ -670,6 +705,7 @@ func TestCompareModels_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestCompareModels_MultipleModels(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	reqBody := CompareModelsRequest{
@@ -693,6 +729,7 @@ func TestCompareModels_MultipleModels(t *testing.T) {
 }
 
 func TestRegisterScoringRoutes(t *testing.T) {
+	t.Parallel()
 	ss, _ := verifier.NewScoringService(nil)
 	h := NewScoringHandler(ss)
 	r := gin.New()
@@ -716,6 +753,7 @@ func TestRegisterScoringRoutes(t *testing.T) {
 }
 
 func TestGetModelScoreResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := GetModelScoreResponse{
 		ModelID:      "gpt-4",
 		ModelName:    "GPT-4",
@@ -741,6 +779,7 @@ func TestGetModelScoreResponse_Fields(t *testing.T) {
 }
 
 func TestScoreComponentsDetail_Fields(t *testing.T) {
+	t.Parallel()
 	comp := ScoreComponentsDetail{
 		SpeedScore:      9.0,
 		EfficiencyScore: 8.5,
@@ -757,6 +796,7 @@ func TestScoreComponentsDetail_Fields(t *testing.T) {
 }
 
 func TestScoringWeightsResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := ScoringWeightsResponse{
 		Weights: ScoringWeightsDetail{
 			ResponseSpeed:     0.25,
@@ -776,6 +816,7 @@ func TestScoringWeightsResponse_Fields(t *testing.T) {
 }
 
 func TestModelWithScoreInfo_Fields(t *testing.T) {
+	t.Parallel()
 	info := ModelWithScoreInfo{
 		ModelID:      "gpt-4",
 		Name:         "GPT-4",
@@ -793,6 +834,7 @@ func TestModelWithScoreInfo_Fields(t *testing.T) {
 }
 
 func TestScoringRoutes_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	routes := []string{
@@ -813,6 +855,7 @@ func TestScoringRoutes_ContentType(t *testing.T) {
 }
 
 func TestScoringRoutes_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	// Note: Routes like /batch and /compare will match /:model_id pattern as GET
@@ -837,6 +880,7 @@ func TestScoringRoutes_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGetBatchAsModelID(t *testing.T) {
+	t.Parallel()
 	// Test that GET /scores/batch is interpreted as getting score for model "batch"
 	_, r := setupScoringHandler()
 
@@ -858,6 +902,7 @@ func TestGetBatchAsModelID(t *testing.T) {
 }
 
 func TestUpdateAndGetWeights_Integration(t *testing.T) {
+	t.Parallel()
 	_, r := setupScoringHandler()
 
 	// Update weights
@@ -893,6 +938,7 @@ func TestUpdateAndGetWeights_Integration(t *testing.T) {
 }
 
 func TestInvalidateCacheAndScore_Integration(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupScoringHandlerWithCache()
 
 	// Invalidate specific model cache

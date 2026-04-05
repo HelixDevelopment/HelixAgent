@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewNoi(t *testing.T) {
+	t.Parallel()
 	n := New()
 	require.NotNil(t, n)
 	
@@ -23,6 +24,7 @@ func TestNewNoi(t *testing.T) {
 }
 
 func TestNoiInitialize(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestNoiInitialize(t *testing.T) {
 }
 
 func TestNoiInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestNoiInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestNoiStartStop(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestNoiStartStop(t *testing.T) {
 }
 
 func TestNoiExecute(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -106,6 +111,7 @@ func TestNoiExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := n.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -118,6 +124,7 @@ func TestNoiExecute(t *testing.T) {
 }
 
 func TestNoiCapabilities(t *testing.T) {
+	t.Parallel()
 	n := New()
 	info := n.Info()
 	
@@ -128,11 +135,13 @@ func TestNoiCapabilities(t *testing.T) {
 }
 
 func TestNoiIsAvailable(t *testing.T) {
+	t.Parallel()
 	n := New()
 	assert.True(t, n.IsAvailable())
 }
 
 func TestNoiRefactorResult(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	

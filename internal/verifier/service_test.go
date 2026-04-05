@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewVerificationService(t *testing.T) {
+	t.Parallel()
 	cfg := &Config{
 		Enabled: true,
 		Verification: VerificationConfig{
@@ -26,6 +27,7 @@ func TestNewVerificationService(t *testing.T) {
 }
 
 func TestVerificationService_SetProviderFunc(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	called := false
@@ -51,6 +53,7 @@ func TestVerificationService_SetProviderFunc(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_NoProviderFunc(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	result, err := svc.VerifyModel(context.Background(), "test-model", "openai")
@@ -69,6 +72,7 @@ func TestVerificationService_VerifyModel_NoProviderFunc(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_Success(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	// Mock provider that confirms code visibility
@@ -105,6 +109,7 @@ func TestVerificationService_VerifyModel_Success(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_ProviderError(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -125,6 +130,7 @@ func TestVerificationService_VerifyModel_ProviderError(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_CodeNotVisible(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	// Mock provider that doesn't confirm code visibility but still responds
@@ -154,6 +160,7 @@ func TestVerificationService_VerifyModel_CodeNotVisible(t *testing.T) {
 }
 
 func TestVerificationService_isAffirmativeCodeResponse(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	tests := []struct {
@@ -190,6 +197,7 @@ func TestVerificationService_isAffirmativeCodeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.response, func(t *testing.T) {
+				t.Parallel()
 			result := svc.isAffirmativeCodeResponse(tt.response)
 			if result != tt.expected {
 				t.Errorf("isAffirmativeCodeResponse(%q) = %v, want %v", tt.response, result, tt.expected)
@@ -199,6 +207,7 @@ func TestVerificationService_isAffirmativeCodeResponse(t *testing.T) {
 }
 
 func TestVerificationService_BatchVerify(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -228,6 +237,7 @@ func TestVerificationService_BatchVerify(t *testing.T) {
 }
 
 func TestVerificationService_BatchVerify_Empty(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	results, err := svc.BatchVerify(context.Background(), []*BatchVerificationRequest{})
@@ -241,6 +251,7 @@ func TestVerificationService_BatchVerify_Empty(t *testing.T) {
 }
 
 func TestVerificationService_GetVerifiedModels(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	models, err := svc.GetVerifiedModels(context.Background())
@@ -254,6 +265,7 @@ func TestVerificationService_GetVerifiedModels(t *testing.T) {
 }
 
 func TestVerificationService_PerformCodeCheck(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -278,6 +290,7 @@ func TestVerificationService_PerformCodeCheck(t *testing.T) {
 }
 
 func TestVerificationService_PerformCodeCheck_Failed(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -298,6 +311,7 @@ func TestVerificationService_PerformCodeCheck_Failed(t *testing.T) {
 }
 
 func TestVerificationService_PerformCodeCheck_Error(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -314,6 +328,7 @@ func TestVerificationService_PerformCodeCheck_Error(t *testing.T) {
 }
 
 func TestVerificationService_GetVerificationStatus(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	status, err := svc.GetVerificationStatus(context.Background(), "test-model")
@@ -327,6 +342,7 @@ func TestVerificationService_GetVerificationStatus(t *testing.T) {
 }
 
 func TestVerificationService_TestCodeVisibility(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -356,6 +372,7 @@ func TestVerificationService_TestCodeVisibility(t *testing.T) {
 }
 
 func TestVerificationService_TestCodeVisibility_UnknownLanguage(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -374,6 +391,7 @@ func TestVerificationService_TestCodeVisibility_UnknownLanguage(t *testing.T) {
 }
 
 func TestVerificationService_TestCodeVisibility_Error(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -394,6 +412,7 @@ func TestVerificationService_TestCodeVisibility_Error(t *testing.T) {
 }
 
 func TestVerificationService_InvalidateVerification(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	// Should not panic
@@ -401,6 +420,7 @@ func TestVerificationService_InvalidateVerification(t *testing.T) {
 }
 
 func TestVerificationService_GetStats(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	stats, err := svc.GetStats(context.Background())
@@ -414,6 +434,7 @@ func TestVerificationService_GetStats(t *testing.T) {
 }
 
 func TestVerificationService_calculateOverallScore(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	tests := []struct {
@@ -454,6 +475,7 @@ func TestVerificationService_calculateOverallScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := svc.calculateOverallScore(tt.results)
 			if result != tt.expected {
 				t.Errorf("calculateOverallScore() = %f, want %f", result, tt.expected)
@@ -463,10 +485,12 @@ func TestVerificationService_calculateOverallScore(t *testing.T) {
 }
 
 func TestVerificationService_verifyExistence(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetTestMode(true) // Enable test mode to skip quality validation
 
 	t.Run("success", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "OK", nil
 		})
@@ -481,6 +505,7 @@ func TestVerificationService_verifyExistence(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "", errors.New("error")
 		})
@@ -496,10 +521,12 @@ func TestVerificationService_verifyExistence(t *testing.T) {
 }
 
 func TestVerificationService_verifyResponsiveness(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetTestMode(true) // Enable test mode to skip quality validation
 
 	t.Run("fast response", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "4", nil
 		})
@@ -514,6 +541,7 @@ func TestVerificationService_verifyResponsiveness(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "", errors.New("error")
 		})
@@ -526,9 +554,11 @@ func TestVerificationService_verifyResponsiveness(t *testing.T) {
 }
 
 func TestVerificationService_verifyFunctionCalling(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	t.Run("success", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return `{"function": "get_weather", "arguments": {"location": "San Francisco"}}`, nil
 		})
@@ -543,6 +573,7 @@ func TestVerificationService_verifyFunctionCalling(t *testing.T) {
 	})
 
 	t.Run("no function call", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "The weather is nice today", nil
 		})
@@ -555,9 +586,11 @@ func TestVerificationService_verifyFunctionCalling(t *testing.T) {
 }
 
 func TestVerificationService_verifyCodingCapability(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	t.Run("good code", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return `def is_prime(n):
     if n <= 1:
@@ -578,6 +611,7 @@ func TestVerificationService_verifyCodingCapability(t *testing.T) {
 	})
 
 	t.Run("bad code", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "I don't know how to write code", nil
 		})
@@ -590,9 +624,11 @@ func TestVerificationService_verifyCodingCapability(t *testing.T) {
 }
 
 func TestVerificationService_verifyErrorDetection(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	t.Run("finds bug", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "The bug is that you're using variable 'c' which is undefined. You should use 'b' instead.", nil
 		})
@@ -607,6 +643,7 @@ func TestVerificationService_verifyErrorDetection(t *testing.T) {
 	})
 
 	t.Run("partial detection", func(t *testing.T) {
+			t.Parallel()
 		// Response mentions "error" but doesn't identify the specific bug (using 'c' instead of 'b')
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "There appears to be an error in the return statement", nil
@@ -622,6 +659,7 @@ func TestVerificationService_verifyErrorDetection(t *testing.T) {
 	})
 
 	t.Run("no detection", func(t *testing.T) {
+			t.Parallel()
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "This code looks fine to me", nil
 		})
@@ -634,6 +672,7 @@ func TestVerificationService_verifyErrorDetection(t *testing.T) {
 }
 
 func TestServiceVerificationResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := &ServiceVerificationResult{
 		ModelID:               "test-model",
 		Provider:              "openai",
@@ -675,6 +714,7 @@ func TestServiceVerificationResult_Fields(t *testing.T) {
 }
 
 func TestTestResult_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	result := TestResult{
 		Name:        "code_visibility",
@@ -700,6 +740,7 @@ func TestTestResult_Fields(t *testing.T) {
 }
 
 func TestBatchVerificationRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := BatchVerificationRequest{
 		ModelID:  "test-model",
 		Provider: "openai",
@@ -714,6 +755,7 @@ func TestBatchVerificationRequest_Fields(t *testing.T) {
 }
 
 func TestVerificationStatus_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	status := VerificationStatus{
 		ModelID:            "test-model",
@@ -743,6 +785,7 @@ func TestVerificationStatus_Fields(t *testing.T) {
 }
 
 func TestCodeVisibilityResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := CodeVisibilityResult{
 		ModelID:     "test-model",
 		Provider:    "openai",
@@ -768,6 +811,7 @@ func TestCodeVisibilityResult_Fields(t *testing.T) {
 }
 
 func TestVerificationStats_Fields(t *testing.T) {
+	t.Parallel()
 	stats := VerificationStats{
 		TotalVerifications: 100,
 		SuccessfulCount:    80,
@@ -794,6 +838,7 @@ func TestVerificationStats_Fields(t *testing.T) {
 }
 
 func TestVerificationService_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -816,6 +861,7 @@ func TestVerificationService_ContextCancellation(t *testing.T) {
 }
 
 func TestVerificationService_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -841,6 +887,7 @@ func TestVerificationService_ConcurrentAccess(t *testing.T) {
 // =====================================================
 
 func TestVerificationService_GetVerificationStatusByProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		modelID        string
@@ -875,6 +922,7 @@ func TestVerificationService_GetVerificationStatusByProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			svc := NewVerificationService(&Config{})
 			if tt.setupFunc != nil {
 				tt.setupFunc(svc)
@@ -896,6 +944,7 @@ func TestVerificationService_GetVerificationStatusByProvider(t *testing.T) {
 }
 
 func TestVerificationService_InvalidateVerificationByProvider(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -924,6 +973,7 @@ func TestVerificationService_InvalidateVerificationByProvider(t *testing.T) {
 }
 
 func TestVerificationService_ResetStats(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -953,6 +1003,7 @@ func TestVerificationService_ResetStats(t *testing.T) {
 }
 
 func TestVerificationService_ClearCache(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -978,6 +1029,7 @@ func TestVerificationService_ClearCache(t *testing.T) {
 }
 
 func TestVerificationService_GetAllVerifications(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -1007,6 +1059,7 @@ func TestVerificationService_GetAllVerifications(t *testing.T) {
 }
 
 func TestVerificationService_StoreVerificationResult_UpdatesStats(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetTestMode(true) // Enable test mode to skip quality validation
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -1026,6 +1079,7 @@ func TestVerificationService_StoreVerificationResult_UpdatesStats(t *testing.T) 
 }
 
 func TestVerificationService_StoreVerificationResult_FailedVerification(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	// Return errors for all calls — this guarantees a truly failed verification
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -1045,6 +1099,7 @@ func TestVerificationService_StoreVerificationResult_FailedVerification(t *testi
 }
 
 func TestVerificationService_verifyLatency(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		responseDelay time.Duration
@@ -1061,6 +1116,7 @@ func TestVerificationService_verifyLatency(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			svc := NewVerificationService(&Config{})
 			svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 				time.Sleep(tt.responseDelay)
@@ -1079,6 +1135,7 @@ func TestVerificationService_verifyLatency(t *testing.T) {
 }
 
 func TestVerificationService_verifyStreaming(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -1095,6 +1152,7 @@ func TestVerificationService_verifyStreaming(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
+			t.Parallel()
 		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "", errors.New("streaming error")
@@ -1111,6 +1169,7 @@ func TestVerificationService_verifyStreaming(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_HighScoreVerified(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		// Return responses that will pass all tests with high scores
@@ -1152,6 +1211,7 @@ func TestVerificationService_VerifyModel_HighScoreVerified(t *testing.T) {
 }
 
 func TestVerificationService_VerifyModel_LowScoreNotVerified(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	callCount := 0
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -1176,6 +1236,7 @@ func TestVerificationService_VerifyModel_LowScoreNotVerified(t *testing.T) {
 }
 
 func TestVerificationService_GetVerificationStatus_FoundByModelID(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(&Config{})
 	svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -1202,6 +1263,7 @@ func TestVerificationService_GetVerificationStatus_FoundByModelID(t *testing.T) 
 }
 
 func TestVerificationService_NilConfig(t *testing.T) {
+	t.Parallel()
 	svc := NewVerificationService(nil)
 	if svc == nil {
 		t.Fatal("NewVerificationService(nil) returned nil")

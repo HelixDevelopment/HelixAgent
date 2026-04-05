@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewChromaAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		config        ChromaAdapterConfig
@@ -42,6 +43,7 @@ func TestNewChromaAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewChromaAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -52,6 +54,7 @@ func TestNewChromaAdapter(t *testing.T) {
 }
 
 func TestChromaAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -77,6 +80,7 @@ func TestChromaAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -97,6 +101,7 @@ func TestChromaAdapter_Connect(t *testing.T) {
 }
 
 func TestChromaAdapter_IsConnected(t *testing.T) {
+	t.Parallel()
 	adapter := NewChromaAdapter(ChromaAdapterConfig{BaseURL: "http://localhost:8000"})
 
 	// Initially not connected
@@ -111,6 +116,7 @@ func TestChromaAdapter_IsConnected(t *testing.T) {
 }
 
 func TestChromaAdapter_Health(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -135,6 +141,7 @@ func TestChromaAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -150,6 +157,7 @@ func TestChromaAdapter_Health(t *testing.T) {
 }
 
 func TestChromaAdapter_ListCollections(t *testing.T) {
+	t.Parallel()
 	expectedCollections := []ChromaCollection{
 		{ID: "col1", Name: "test-collection-1"},
 		{ID: "col2", Name: "test-collection-2"},
@@ -184,6 +192,7 @@ func TestChromaAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -200,6 +209,7 @@ func TestChromaAdapter_ListCollections(t *testing.T) {
 }
 
 func TestChromaAdapter_CreateCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -259,6 +269,7 @@ func TestChromaAdapter_CreateCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -276,6 +287,7 @@ func TestChromaAdapter_CreateCollection(t *testing.T) {
 }
 
 func TestChromaAdapter_DeleteCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -304,6 +316,7 @@ func TestChromaAdapter_DeleteCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -319,6 +332,7 @@ func TestChromaAdapter_DeleteCollection(t *testing.T) {
 }
 
 func TestChromaAdapter_GetCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -364,6 +378,7 @@ func TestChromaAdapter_GetCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -380,6 +395,7 @@ func TestChromaAdapter_GetCollection(t *testing.T) {
 }
 
 func TestChromaAdapter_AddDocuments(t *testing.T) {
+	t.Parallel()
 	docs := []ChromaDocument{
 		{ID: "doc1", Document: "test document 1", Metadata: map[string]interface{}{"key": "value"}},
 		{ID: "doc2", Document: "test document 2", Embedding: []float32{0.1, 0.2, 0.3}},
@@ -432,6 +448,7 @@ func TestChromaAdapter_AddDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -447,6 +464,7 @@ func TestChromaAdapter_AddDocuments(t *testing.T) {
 }
 
 func TestChromaAdapter_Query(t *testing.T) {
+	t.Parallel()
 	queryResult := ChromaQueryResult{
 		IDs:       [][]string{{"doc1", "doc2"}},
 		Documents: [][]string{{"document 1", "document 2"}},
@@ -517,6 +535,7 @@ func TestChromaAdapter_Query(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -533,6 +552,7 @@ func TestChromaAdapter_Query(t *testing.T) {
 }
 
 func TestChromaAdapter_DeleteDocuments(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -564,6 +584,7 @@ func TestChromaAdapter_DeleteDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -579,6 +600,7 @@ func TestChromaAdapter_DeleteDocuments(t *testing.T) {
 }
 
 func TestChromaAdapter_UpdateDocuments(t *testing.T) {
+	t.Parallel()
 	docs := []ChromaDocument{
 		{ID: "doc1", Document: "updated document 1"},
 		{ID: "doc2", Document: "updated document 2", Embedding: []float32{0.1, 0.2}},
@@ -631,6 +653,7 @@ func TestChromaAdapter_UpdateDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -646,6 +669,7 @@ func TestChromaAdapter_UpdateDocuments(t *testing.T) {
 }
 
 func TestChromaAdapter_Count(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -686,6 +710,7 @@ func TestChromaAdapter_Count(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -702,6 +727,7 @@ func TestChromaAdapter_Count(t *testing.T) {
 }
 
 func TestChromaAdapter_Close(t *testing.T) {
+	t.Parallel()
 	adapter := NewChromaAdapter(ChromaAdapterConfig{BaseURL: "http://localhost:8000"})
 	adapter.connected = true
 
@@ -711,6 +737,7 @@ func TestChromaAdapter_Close(t *testing.T) {
 }
 
 func TestChromaAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewChromaAdapter(ChromaAdapterConfig{BaseURL: "http://localhost:8000"})
 	tools := adapter.GetMCPTools()
 
@@ -740,6 +767,7 @@ func TestChromaAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestChromaAdapter_doRequest_WithAuth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		assert.Equal(t, "Bearer test-token", authHeader)
@@ -758,6 +786,7 @@ func TestChromaAdapter_doRequest_WithAuth(t *testing.T) {
 }
 
 func TestChromaAdapter_doRequest_MarshalError(t *testing.T) {
+	t.Parallel()
 	adapter := NewChromaAdapter(ChromaAdapterConfig{
 		BaseURL: "http://localhost:8000",
 	})

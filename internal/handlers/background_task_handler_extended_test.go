@@ -20,6 +20,7 @@ func init() {
 
 // TestNewBackgroundTaskHandler_Extended tests handler creation with all nil dependencies
 func TestNewBackgroundTaskHandler_Extended(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
@@ -34,6 +35,7 @@ func TestNewBackgroundTaskHandler_Extended(t *testing.T) {
 
 // TestBackgroundTaskHandler_CreateTask_InvalidJSON tests create with invalid JSON
 func TestBackgroundTaskHandler_CreateTask_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -56,6 +58,7 @@ func TestBackgroundTaskHandler_CreateTask_InvalidJSON(t *testing.T) {
 
 // TestBackgroundTaskHandler_CreateTask_MissingRequiredFields tests create with missing fields
 func TestBackgroundTaskHandler_CreateTask_MissingRequiredFields(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -79,6 +82,7 @@ func TestBackgroundTaskHandler_CreateTask_MissingRequiredFields(t *testing.T) {
 
 // TestBackgroundTaskHandler_CreateTask_EmptyBody tests create with empty body
 func TestBackgroundTaskHandler_CreateTask_EmptyBody(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -96,6 +100,7 @@ func TestBackgroundTaskHandler_CreateTask_EmptyBody(t *testing.T) {
 
 // TestBackgroundTaskHandler_GetTask_NilRepository tests get with nil repository
 func TestBackgroundTaskHandler_GetTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -117,6 +122,7 @@ func TestBackgroundTaskHandler_GetTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_GetTaskStatus_NilRepository tests status with nil repository
 func TestBackgroundTaskHandler_GetTaskStatus_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -137,6 +143,7 @@ func TestBackgroundTaskHandler_GetTaskStatus_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_GetTaskLogs_NilRepository tests logs with nil repository
 func TestBackgroundTaskHandler_GetTaskLogs_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -157,6 +164,7 @@ func TestBackgroundTaskHandler_GetTaskLogs_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_GetTaskResources_NilRepository tests resources with nil repository
 func TestBackgroundTaskHandler_GetTaskResources_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -177,6 +185,7 @@ func TestBackgroundTaskHandler_GetTaskResources_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_PauseTask_NilRepository tests pause with nil repository
 func TestBackgroundTaskHandler_PauseTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -197,6 +206,7 @@ func TestBackgroundTaskHandler_PauseTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_ResumeTask_NilRepository tests resume with nil repository
 func TestBackgroundTaskHandler_ResumeTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -217,6 +227,7 @@ func TestBackgroundTaskHandler_ResumeTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_CancelTask_NilRepository tests cancel with nil repository
 func TestBackgroundTaskHandler_CancelTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -237,6 +248,7 @@ func TestBackgroundTaskHandler_CancelTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_DeleteTask_NilRepository tests delete with nil repository
 func TestBackgroundTaskHandler_DeleteTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -257,6 +269,7 @@ func TestBackgroundTaskHandler_DeleteTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_ListTasks_NilRepository tests list with nil repository
 func TestBackgroundTaskHandler_ListTasks_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -276,6 +289,7 @@ func TestBackgroundTaskHandler_ListTasks_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_GetQueueStats_NilQueue tests queue stats with nil queue
 func TestBackgroundTaskHandler_GetQueueStats_NilQueue(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -295,6 +309,7 @@ func TestBackgroundTaskHandler_GetQueueStats_NilQueue(t *testing.T) {
 
 // TestBackgroundTaskHandler_PollEvents_NilPollingStore tests poll events with nil store
 func TestBackgroundTaskHandler_PollEvents_NilPollingStore(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -315,6 +330,7 @@ func TestBackgroundTaskHandler_PollEvents_NilPollingStore(t *testing.T) {
 
 // TestBackgroundTaskHandler_RegisterWebhook_NilDispatcher tests webhook registration
 func TestBackgroundTaskHandler_RegisterWebhook_NilDispatcher(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -341,6 +357,7 @@ func TestBackgroundTaskHandler_RegisterWebhook_NilDispatcher(t *testing.T) {
 
 // TestBackgroundTaskHandler_ListWebhooks_NilDispatcher tests list webhooks
 func TestBackgroundTaskHandler_ListWebhooks_NilDispatcher(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -361,6 +378,7 @@ func TestBackgroundTaskHandler_ListWebhooks_NilDispatcher(t *testing.T) {
 
 // TestBackgroundTaskHandler_DeleteWebhook_NilDispatcher tests delete webhook
 func TestBackgroundTaskHandler_DeleteWebhook_NilDispatcher(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -384,6 +402,7 @@ func TestBackgroundTaskHandler_DeleteWebhook_NilDispatcher(t *testing.T) {
 
 // TestBackgroundTaskHandler_AnalyzeTask_NilRepository tests analyze task
 func TestBackgroundTaskHandler_AnalyzeTask_NilRepository(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -404,6 +423,7 @@ func TestBackgroundTaskHandler_AnalyzeTask_NilRepository(t *testing.T) {
 
 // TestBackgroundTaskHandler_RegisterRoutes tests route registration
 func TestBackgroundTaskHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewBackgroundTaskHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger)
@@ -434,6 +454,7 @@ func TestBackgroundTaskHandler_RegisterRoutes(t *testing.T) {
 
 // TestCreateTaskRequest_Struct tests request struct fields
 func TestCreateTaskRequest_Struct(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	later := now.Add(time.Hour)
 
@@ -480,6 +501,7 @@ func TestCreateTaskRequest_Struct(t *testing.T) {
 
 // TestTaskConfigRequest_Struct tests config struct fields
 func TestTaskConfigRequest_Struct(t *testing.T) {
+	t.Parallel()
 	config := TaskConfigRequest{
 		TimeoutSeconds:        600,
 		MaxRetries:            3,
@@ -505,6 +527,7 @@ func TestTaskConfigRequest_Struct(t *testing.T) {
 
 // TestNotificationConfigRequest_Struct tests notification config fields
 func TestNotificationConfigRequest_Struct(t *testing.T) {
+	t.Parallel()
 	config := NotificationConfigRequest{
 		EnableSSE:       true,
 		EnableWebSocket: true,
@@ -530,6 +553,7 @@ func TestNotificationConfigRequest_Struct(t *testing.T) {
 
 // TestWebhookConfigRequest_Struct tests webhook config fields
 func TestWebhookConfigRequest_Struct(t *testing.T) {
+	t.Parallel()
 	config := WebhookConfigRequest{
 		URL:    "https://example.com/hook",
 		Secret: "webhook_secret",
@@ -548,6 +572,7 @@ func TestWebhookConfigRequest_Struct(t *testing.T) {
 
 // TestNilIfEmpty_Extended tests the nilIfEmpty helper function with various inputs
 func TestNilIfEmpty_Extended(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		expected *string

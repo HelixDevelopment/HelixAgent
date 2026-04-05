@@ -42,11 +42,13 @@ func (m *mockLLMPlugin) SetSecurityContext(_ *helixplugins.PluginSecurityContext
 // ============================================================================
 
 func TestNewRegistryAdapter(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	require.NotNil(t, r)
 }
 
 func TestRegistryAdapter_RegisterAndGet(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	p := &mockLLMPlugin{name: "test-plugin", version: "1.0.0"}
 
@@ -60,6 +62,7 @@ func TestRegistryAdapter_RegisterAndGet(t *testing.T) {
 }
 
 func TestRegistryAdapter_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	got, ok := r.Get("nonexistent")
 	assert.False(t, ok)
@@ -67,6 +70,7 @@ func TestRegistryAdapter_Get_NotFound(t *testing.T) {
 }
 
 func TestRegistryAdapter_Unregister(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockLLMPlugin{name: "to-remove", version: "1.0.0"})
 
@@ -78,6 +82,7 @@ func TestRegistryAdapter_Unregister(t *testing.T) {
 }
 
 func TestRegistryAdapter_List(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	list := r.List()
 	assert.Empty(t, list)
@@ -90,12 +95,14 @@ func TestRegistryAdapter_List(t *testing.T) {
 }
 
 func TestRegistryAdapter_StartAll_Empty(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	err := r.StartAll(context.Background())
 	assert.NoError(t, err)
 }
 
 func TestRegistryAdapter_StartAll_WithPlugins(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockLLMPlugin{name: "p1", version: "1.0"})
 	r.Register(&mockLLMPlugin{name: "p2", version: "1.0"})
@@ -105,6 +112,7 @@ func TestRegistryAdapter_StartAll_WithPlugins(t *testing.T) {
 }
 
 func TestRegistryAdapter_StopAll(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockLLMPlugin{name: "p1", version: "1.0"})
 
@@ -113,6 +121,7 @@ func TestRegistryAdapter_StopAll(t *testing.T) {
 }
 
 func TestRegistryAdapter_SetDependencies(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockLLMPlugin{name: "main", version: "1.0"})
 	r.Register(&mockLLMPlugin{name: "dep", version: "1.0"})
@@ -126,16 +135,19 @@ func TestRegistryAdapter_SetDependencies(t *testing.T) {
 // ============================================================================
 
 func TestNewSharedObjectLoaderAdapter(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewSharedObjectLoaderAdapter(nil)
 	require.NotNil(t, l)
 }
 
 func TestNewProcessLoaderAdapter(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewProcessLoaderAdapter(nil)
 	require.NotNil(t, l)
 }
 
 func TestSharedObjectLoaderAdapter_Load_InvalidPath(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewSharedObjectLoaderAdapter(nil)
 	p, err := l.Load("/nonexistent/path/plugin.so")
 	assert.Error(t, err)
@@ -143,6 +155,7 @@ func TestSharedObjectLoaderAdapter_Load_InvalidPath(t *testing.T) {
 }
 
 func TestSharedObjectLoaderAdapter_LoadDir_InvalidDir(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewSharedObjectLoaderAdapter(nil)
 	plugins, err := l.LoadDir("/nonexistent/dir")
 	assert.Error(t, err)
@@ -154,21 +167,25 @@ func TestSharedObjectLoaderAdapter_LoadDir_InvalidDir(t *testing.T) {
 // ============================================================================
 
 func TestNewJSONParserAdapter(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewJSONParserAdapter()
 	require.NotNil(t, p)
 }
 
 func TestNewYAMLParserAdapter(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewYAMLParserAdapter()
 	require.NotNil(t, p)
 }
 
 func TestNewMarkdownParserAdapter(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewMarkdownParserAdapter()
 	require.NotNil(t, p)
 }
 
 func TestJSONParserAdapter_Parse(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewJSONParserAdapter()
 	schema := &adapter.Schema{
 		Type: "object",
@@ -184,6 +201,7 @@ func TestJSONParserAdapter_Parse(t *testing.T) {
 }
 
 func TestJSONParserAdapter_Parse_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewJSONParserAdapter()
 	schema := &adapter.Schema{Type: "object"}
 
@@ -192,6 +210,7 @@ func TestJSONParserAdapter_Parse_InvalidJSON(t *testing.T) {
 }
 
 func TestJSONParserAdapter_Parse_NilSchema(t *testing.T) {
+	t.Parallel()
 	p := adapter.NewJSONParserAdapter()
 	result, err := p.Parse(`{"key": "value"}`, nil)
 	// With nil schema, behavior depends on parser implementation
@@ -205,6 +224,7 @@ func TestJSONParserAdapter_Parse_NilSchema(t *testing.T) {
 // ============================================================================
 
 func TestNewValidatorAdapter(t *testing.T) {
+	t.Parallel()
 	v := adapter.NewValidatorAdapter(false)
 	require.NotNil(t, v)
 
@@ -213,6 +233,7 @@ func TestNewValidatorAdapter(t *testing.T) {
 }
 
 func TestValidatorAdapter_Validate_ValidJSON(t *testing.T) {
+	t.Parallel()
 	v := adapter.NewValidatorAdapter(false)
 	schema := &adapter.Schema{
 		Type: "object",
@@ -229,6 +250,7 @@ func TestValidatorAdapter_Validate_ValidJSON(t *testing.T) {
 }
 
 func TestValidatorAdapter_Validate_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	v := adapter.NewValidatorAdapter(false)
 	schema := &adapter.Schema{Type: "object"}
 
@@ -241,6 +263,7 @@ func TestValidatorAdapter_Validate_InvalidJSON(t *testing.T) {
 }
 
 func TestValidatorAdapter_Repair(t *testing.T) {
+	t.Parallel()
 	v := adapter.NewValidatorAdapter(false)
 	schema := &adapter.Schema{Type: "object"}
 
@@ -255,6 +278,7 @@ func TestValidatorAdapter_Repair(t *testing.T) {
 // ============================================================================
 
 func TestSchema_Fields(t *testing.T) {
+	t.Parallel()
 	schema := &adapter.Schema{
 		Type:        "object",
 		Description: "A test schema",
@@ -276,11 +300,13 @@ func TestSchema_Fields(t *testing.T) {
 }
 
 func TestToModuleSchema_Nil(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToModuleSchema(nil)
 	assert.Nil(t, result)
 }
 
 func TestToModuleSchema_Simple(t *testing.T) {
+	t.Parallel()
 	schema := &adapter.Schema{
 		Type:        "string",
 		Description: "A string field",
@@ -292,6 +318,7 @@ func TestToModuleSchema_Simple(t *testing.T) {
 }
 
 func TestToModuleSchema_WithProperties(t *testing.T) {
+	t.Parallel()
 	schema := &adapter.Schema{
 		Type: "object",
 		Properties: map[string]*adapter.Schema{
@@ -308,6 +335,7 @@ func TestToModuleSchema_WithProperties(t *testing.T) {
 }
 
 func TestToModuleSchema_WithItems(t *testing.T) {
+	t.Parallel()
 	schema := &adapter.Schema{
 		Type:  "array",
 		Items: &adapter.Schema{Type: "string"},
@@ -323,6 +351,7 @@ func TestToModuleSchema_WithItems(t *testing.T) {
 // ============================================================================
 
 func TestToAdapterValidationResult_Nil(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToAdapterValidationResult(nil)
 	assert.Nil(t, result)
 }
@@ -332,23 +361,27 @@ func TestToAdapterValidationResult_Nil(t *testing.T) {
 // ============================================================================
 
 func TestNewStateTrackerAdapter(t *testing.T) {
+	t.Parallel()
 	st := adapter.NewStateTrackerAdapter()
 	require.NotNil(t, st)
 }
 
 func TestStateTrackerAdapter_GetInitialState(t *testing.T) {
+	t.Parallel()
 	st := adapter.NewStateTrackerAdapter()
 	state := st.Get()
 	assert.Equal(t, adapter.StateUninitialized, state)
 }
 
 func TestStateTrackerAdapter_Set(t *testing.T) {
+	t.Parallel()
 	st := adapter.NewStateTrackerAdapter()
 	st.Set(adapter.StateInitialized)
 	assert.Equal(t, adapter.StateInitialized, st.Get())
 }
 
 func TestStateTrackerAdapter_Transition_Valid(t *testing.T) {
+	t.Parallel()
 	st := adapter.NewStateTrackerAdapter()
 	st.Set(adapter.StateInitialized)
 
@@ -358,6 +391,7 @@ func TestStateTrackerAdapter_Transition_Valid(t *testing.T) {
 }
 
 func TestStateTrackerAdapter_Transition_WrongExpected(t *testing.T) {
+	t.Parallel()
 	st := adapter.NewStateTrackerAdapter()
 	st.Set(adapter.StateInitialized)
 
@@ -369,6 +403,7 @@ func TestStateTrackerAdapter_Transition_WrongExpected(t *testing.T) {
 }
 
 func TestPluginStateConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, adapter.PluginState(0), adapter.StateUninitialized)
 	assert.NotEqual(t, adapter.StateUninitialized, adapter.StateInitialized)
 	assert.NotEqual(t, adapter.StateInitialized, adapter.StateRunning)
@@ -381,24 +416,28 @@ func TestPluginStateConstants(t *testing.T) {
 // ============================================================================
 
 func TestCheckVersionConstraint_Satisfied(t *testing.T) {
+	t.Parallel()
 	ok, err := adapter.CheckVersionConstraint("1.2.0", ">=1.0.0")
 	require.NoError(t, err)
 	assert.True(t, ok)
 }
 
 func TestCheckVersionConstraint_NotSatisfied(t *testing.T) {
+	t.Parallel()
 	ok, err := adapter.CheckVersionConstraint("0.5.0", ">=1.0.0")
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestCheckVersionConstraint_Exact(t *testing.T) {
+	t.Parallel()
 	ok, err := adapter.CheckVersionConstraint("1.0.0", "1.0.0")
 	require.NoError(t, err)
 	assert.True(t, ok)
 }
 
 func TestCheckVersionConstraint_Invalid(t *testing.T) {
+	t.Parallel()
 	_, err := adapter.CheckVersionConstraint("not-a-version", ">=1.0.0")
 	// May return error for invalid version strings
 	_ = err

@@ -51,12 +51,14 @@ func registerMock(t *testing.T, registry *FormatterRegistry, name string, langs 
 }
 
 func TestNewFormatterExecutor(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	assert.NotNil(t, executor)
 }
 
 func TestNewFormatterExecutor_WithCache(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, true)
 	assert.NotNil(t, executor)
@@ -64,6 +66,7 @@ func TestNewFormatterExecutor_WithCache(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_ByLanguage(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	registerMock(t, registry, "black", []string{"python"})
 
@@ -82,6 +85,7 @@ func TestFormatterExecutor_Execute_ByLanguage(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_ByFilePath(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	registerMock(t, registry, "gofmt", []string{"go"})
 
@@ -99,6 +103,7 @@ func TestFormatterExecutor_Execute_ByFilePath(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_NoLanguageOrPath(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	ctx := context.Background()
@@ -112,6 +117,7 @@ func TestFormatterExecutor_Execute_NoLanguageOrPath(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_NoFormatterForLanguage(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	ctx := context.Background()
@@ -126,6 +132,7 @@ func TestFormatterExecutor_Execute_NoFormatterForLanguage(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_FormatterError(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	mock := registerMock(t, registry, "errfmt", []string{"python"})
 	mock.formatFunc = func(ctx context.Context, req *FormatRequest) (*FormatResult, error) {
@@ -145,6 +152,7 @@ func TestFormatterExecutor_Execute_FormatterError(t *testing.T) {
 }
 
 func TestFormatterExecutor_Execute_DetectFromUnknownPath(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	ctx := context.Background()
@@ -159,6 +167,7 @@ func TestFormatterExecutor_Execute_DetectFromUnknownPath(t *testing.T) {
 }
 
 func TestFormatterExecutor_ExecuteBatch(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	registerMock(t, registry, "black", []string{"python"})
 	registerMock(t, registry, "gofmt", []string{"go"})
@@ -182,6 +191,7 @@ func TestFormatterExecutor_ExecuteBatch(t *testing.T) {
 }
 
 func TestFormatterExecutor_ExecuteBatch_PartialFailure(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	mock := registerMock(t, registry, "black", []string{"python"})
 	mock.formatFunc = func(ctx context.Context, req *FormatRequest) (*FormatResult, error) {
@@ -205,6 +215,7 @@ func TestFormatterExecutor_ExecuteBatch_PartialFailure(t *testing.T) {
 }
 
 func TestFormatterExecutor_ExecuteBatch_Empty(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	ctx := context.Background()
@@ -215,6 +226,7 @@ func TestFormatterExecutor_ExecuteBatch_Empty(t *testing.T) {
 }
 
 func TestFormatterExecutor_Use(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 
@@ -238,6 +250,7 @@ func TestFormatterExecutor_Use(t *testing.T) {
 // --- Middleware Tests ---
 
 func TestTimeoutMiddleware_Success(t *testing.T) {
+	t.Parallel()
 	mw := TimeoutMiddleware(5 * time.Second)
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -253,6 +266,7 @@ func TestTimeoutMiddleware_Success(t *testing.T) {
 }
 
 func TestTimeoutMiddleware_Timeout(t *testing.T) {
+	t.Parallel()
 	mw := TimeoutMiddleware(10 * time.Millisecond)
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -269,6 +283,7 @@ func TestTimeoutMiddleware_Timeout(t *testing.T) {
 }
 
 func TestTimeoutMiddleware_UsesRequestTimeout(t *testing.T) {
+	t.Parallel()
 	mw := TimeoutMiddleware(5 * time.Second) // default is long
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -288,6 +303,7 @@ func TestTimeoutMiddleware_UsesRequestTimeout(t *testing.T) {
 }
 
 func TestRetryMiddleware_Success(t *testing.T) {
+	t.Parallel()
 	mw := RetryMiddleware(3)
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -303,6 +319,7 @@ func TestRetryMiddleware_Success(t *testing.T) {
 }
 
 func TestRetryMiddleware_EventualSuccess(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping retry test with sleep in short mode")
 	}
@@ -327,6 +344,7 @@ func TestRetryMiddleware_EventualSuccess(t *testing.T) {
 }
 
 func TestRetryMiddleware_AllFail(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	mw := RetryMiddleware(0) // no retries
 
@@ -345,6 +363,7 @@ func TestRetryMiddleware_AllFail(t *testing.T) {
 }
 
 func TestRetryMiddleware_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	mw := RetryMiddleware(3)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -364,6 +383,7 @@ func TestRetryMiddleware_ContextCancellation(t *testing.T) {
 }
 
 func TestRetryMiddleware_MaxRetriesCapped(t *testing.T) {
+	t.Parallel()
 	// Verify that maxRetries > 30 is capped to 30.
 	// We test this indirectly: use RetryMiddleware(100) and cancel immediately
 	// so only 1 attempt executes, then verify the error message shows 30 (the cap).
@@ -386,6 +406,7 @@ func TestRetryMiddleware_MaxRetriesCapped(t *testing.T) {
 }
 
 func TestRetryMiddleware_NegativeRetries(t *testing.T) {
+	t.Parallel()
 	mw := RetryMiddleware(-5) // negative capped to 0
 	attempts := 0
 
@@ -403,6 +424,7 @@ func TestRetryMiddleware_NegativeRetries(t *testing.T) {
 }
 
 func TestValidationMiddleware_EmptyContent(t *testing.T) {
+	t.Parallel()
 	mw := ValidationMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -418,6 +440,7 @@ func TestValidationMiddleware_EmptyContent(t *testing.T) {
 }
 
 func TestValidationMiddleware_EmptyResult(t *testing.T) {
+	t.Parallel()
 	mw := ValidationMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -433,6 +456,7 @@ func TestValidationMiddleware_EmptyResult(t *testing.T) {
 }
 
 func TestValidationMiddleware_Success(t *testing.T) {
+	t.Parallel()
 	mw := ValidationMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -448,6 +472,7 @@ func TestValidationMiddleware_Success(t *testing.T) {
 }
 
 func TestValidationMiddleware_FormatterError(t *testing.T) {
+	t.Parallel()
 	mw := ValidationMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -463,6 +488,7 @@ func TestValidationMiddleware_FormatterError(t *testing.T) {
 }
 
 func TestValidationMiddleware_FailedResultWithEmptyContent(t *testing.T) {
+	t.Parallel()
 	mw := ValidationMiddleware()
 
 	// When Success is false, empty content is OK
@@ -479,6 +505,7 @@ func TestValidationMiddleware_FailedResultWithEmptyContent(t *testing.T) {
 }
 
 func TestCacheMiddleware_CacheHit(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	cache := NewFormatterCache(&CacheConfig{
@@ -510,6 +537,7 @@ func TestCacheMiddleware_CacheHit(t *testing.T) {
 }
 
 func TestCacheMiddleware_CacheMiss(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	cache := NewFormatterCache(&CacheConfig{
@@ -540,6 +568,7 @@ func TestCacheMiddleware_CacheMiss(t *testing.T) {
 }
 
 func TestCacheMiddleware_SkipsCheckOnly(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	cache := NewFormatterCache(&CacheConfig{
@@ -571,6 +600,7 @@ func TestCacheMiddleware_SkipsCheckOnly(t *testing.T) {
 }
 
 func TestCacheMiddleware_UnknownLanguage(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	cache := NewFormatterCache(&CacheConfig{
@@ -596,6 +626,7 @@ func TestCacheMiddleware_UnknownLanguage(t *testing.T) {
 }
 
 func TestMetricsMiddleware_Success(t *testing.T) {
+	t.Parallel()
 	mw := MetricsMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -614,6 +645,7 @@ func TestMetricsMiddleware_Success(t *testing.T) {
 }
 
 func TestMetricsMiddleware_Failure(t *testing.T) {
+	t.Parallel()
 	mw := MetricsMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -631,6 +663,7 @@ func TestMetricsMiddleware_Failure(t *testing.T) {
 }
 
 func TestMetricsMiddleware_UnknownLanguage(t *testing.T) {
+	t.Parallel()
 	mw := MetricsMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -646,6 +679,7 @@ func TestMetricsMiddleware_UnknownLanguage(t *testing.T) {
 }
 
 func TestTracingMiddleware_Passthrough(t *testing.T) {
+	t.Parallel()
 	mw := TracingMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -661,6 +695,7 @@ func TestTracingMiddleware_Passthrough(t *testing.T) {
 }
 
 func TestTracingMiddleware_Error(t *testing.T) {
+	t.Parallel()
 	mw := TracingMiddleware()
 
 	base := func(ctx context.Context, f Formatter, req *FormatRequest) (*FormatResult, error) {
@@ -676,6 +711,7 @@ func TestTracingMiddleware_Error(t *testing.T) {
 }
 
 func TestFormatterExecutor_BuildChain_MultipleMiddleware(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	registerMock(t, registry, "black", []string{"python"})
 

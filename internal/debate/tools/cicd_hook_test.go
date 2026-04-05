@@ -14,6 +14,7 @@ import (
 // =============================================================================
 
 func TestDefaultHookConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultHookConfig()
 
 	assert.True(t, cfg.Enabled)
@@ -44,6 +45,7 @@ func TestDefaultHookConfig(t *testing.T) {
 }
 
 func TestNewCICDHook(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	cfg := DefaultHookConfig()
 
@@ -54,6 +56,7 @@ func TestNewCICDHook(t *testing.T) {
 }
 
 func TestCICDHook_Configure(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	hook := NewCICDHook(HookConfig{}, executor)
 
@@ -72,6 +75,7 @@ func TestCICDHook_Configure(t *testing.T) {
 }
 
 func TestCICDHook_Configure_Overwrite(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	hook := NewCICDHook(DefaultHookConfig(), executor)
 
@@ -85,6 +89,7 @@ func TestCICDHook_Configure_Overwrite(t *testing.T) {
 }
 
 func TestCICDHook_Execute_Disabled(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	cfg := DefaultHookConfig()
 	cfg.Enabled = false
@@ -101,6 +106,7 @@ func TestCICDHook_Execute_Disabled(t *testing.T) {
 }
 
 func TestCICDHook_Execute_NoHooksConfigured(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	cfg := HookConfig{
 		Enabled:    true,
@@ -120,6 +126,7 @@ func TestCICDHook_Execute_NoHooksConfigured(t *testing.T) {
 }
 
 func TestCICDHook_Execute_WithActions(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 
 	// Simple Go code that should pass linting and has test patterns.
@@ -133,6 +140,7 @@ func Hello(name string) string {
 }
 
 func TestHello(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "Hello, World!", Hello("World"))
 }
 `
@@ -167,6 +175,7 @@ func TestHello(t *testing.T) {
 }
 
 func TestCICDHook_Execute_FailFast(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 
 	// Code with no test patterns should fail run_tests.
@@ -201,6 +210,7 @@ func TestCICDHook_Execute_FailFast(t *testing.T) {
 }
 
 func TestCICDHook_EnableDisable(t *testing.T) {
+	t.Parallel()
 	hook := NewCICDHook(DefaultHookConfig(), NewDefaultActionExecutor())
 
 	assert.True(t, hook.IsEnabled())
@@ -213,6 +223,7 @@ func TestCICDHook_EnableDisable(t *testing.T) {
 }
 
 func TestCICDHook_GetConfiguredHooks_ReturnsCopy(t *testing.T) {
+	t.Parallel()
 	hook := NewCICDHook(DefaultHookConfig(), NewDefaultActionExecutor())
 
 	hooks1 := hook.GetConfiguredHooks()
@@ -229,6 +240,7 @@ func TestCICDHook_GetConfiguredHooks_ReturnsCopy(t *testing.T) {
 // =============================================================================
 
 func TestDefaultActionExecutor_RunTests(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -284,6 +296,7 @@ func TestDefaultActionExecutor_RunTests(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := executor.Execute(ctx, ActionRunTests, tc.code, tc.language)
 			require.NoError(t, err)
 			require.NotNil(t, result)
@@ -294,6 +307,7 @@ func TestDefaultActionExecutor_RunTests(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_RunLinter(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -334,6 +348,7 @@ func TestDefaultActionExecutor_RunLinter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := executor.Execute(ctx, ActionRunLinter, tc.code, tc.language)
 			require.NoError(t, err)
 			require.NotNil(t, result)
@@ -344,6 +359,7 @@ func TestDefaultActionExecutor_RunLinter(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_SecurityScan(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -375,6 +391,7 @@ func TestDefaultActionExecutor_SecurityScan(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := executor.Execute(ctx, ActionSecurityScan, tc.code, tc.language)
 			require.NoError(t, err)
 			require.NotNil(t, result)
@@ -385,6 +402,7 @@ func TestDefaultActionExecutor_SecurityScan(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_StaticAnalysis(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -400,6 +418,7 @@ func TestDefaultActionExecutor_StaticAnalysis(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_Benchmarks(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -413,6 +432,7 @@ func TestDefaultActionExecutor_Benchmarks(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_CustomScript(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -426,6 +446,7 @@ func TestDefaultActionExecutor_CustomScript(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_UnknownAction(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 	ctx := context.Background()
 
@@ -439,6 +460,7 @@ func TestDefaultActionExecutor_UnknownAction(t *testing.T) {
 }
 
 func TestDefaultActionExecutor_CancelledContext(t *testing.T) {
+	t.Parallel()
 	executor := NewDefaultActionExecutor()
 
 	ctx, cancel := context.WithCancel(context.Background())

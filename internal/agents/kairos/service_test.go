@@ -11,6 +11,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	assert.True(t, config.Enabled)
@@ -23,6 +24,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestNewService(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -36,6 +38,7 @@ func TestNewService(t *testing.T) {
 }
 
 func TestService_SetCallbacks(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -64,6 +67,7 @@ func TestService_SetCallbacks(t *testing.T) {
 }
 
 func TestService_StartStop(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -87,6 +91,7 @@ func TestService_StartStop(t *testing.T) {
 }
 
 func TestService_Start_AlreadyRunning(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -111,6 +116,7 @@ func TestService_Start_AlreadyRunning(t *testing.T) {
 }
 
 func TestService_Start_Disabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	config.Enabled = false
@@ -124,6 +130,7 @@ func TestService_Start_Disabled(t *testing.T) {
 }
 
 func TestService_Observe(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -147,6 +154,7 @@ func TestService_Observe(t *testing.T) {
 }
 
 func TestService_GetObservations(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -161,6 +169,7 @@ func TestService_GetObservations(t *testing.T) {
 }
 
 func TestService_GetRecentObservations(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -178,6 +187,7 @@ func TestService_GetRecentObservations(t *testing.T) {
 }
 
 func TestService_RecordAction(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -195,6 +205,7 @@ func TestService_RecordAction(t *testing.T) {
 }
 
 func TestService_UpdateAction(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -220,6 +231,7 @@ func TestService_UpdateAction(t *testing.T) {
 }
 
 func TestService_GetDailySummary(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	service := NewService(config, logger)
@@ -247,6 +259,7 @@ func TestService_GetDailySummary(t *testing.T) {
 }
 
 func TestCountByType(t *testing.T) {
+	t.Parallel()
 	observations := []Observation{
 		{Type: "type1"},
 		{Type: "type1"},
@@ -259,6 +272,7 @@ func TestCountByType(t *testing.T) {
 }
 
 func TestCountActionStatuses(t *testing.T) {
+	t.Parallel()
 	actions := []Action{
 		{Status: "completed"},
 		{Status: "completed"},
@@ -271,6 +285,7 @@ func TestCountActionStatuses(t *testing.T) {
 }
 
 func TestGenerateActionID(t *testing.T) {
+	t.Parallel()
 	id1 := generateActionID()
 	id2 := generateActionID()
 
@@ -281,6 +296,7 @@ func TestGenerateActionID(t *testing.T) {
 }
 
 func TestService_CleanupOldLogs(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -295,6 +311,7 @@ func TestService_CleanupOldLogs(t *testing.T) {
 }
 
 func TestService_Tick_WithinBudget(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -330,6 +347,7 @@ func TestService_Tick_WithinBudget(t *testing.T) {
 }
 
 func TestService_Tick_ExceedsBudget(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()

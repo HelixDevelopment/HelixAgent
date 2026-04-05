@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewPlandex(t *testing.T) {
+	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
 	
@@ -23,6 +24,7 @@ func TestNewPlandex(t *testing.T) {
 }
 
 func TestPlandexInitialize(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestPlandexInitialize(t *testing.T) {
 }
 
 func TestPlandexInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestPlandexInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestPlandexStartStop(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestPlandexStartStop(t *testing.T) {
 }
 
 func TestPlandexExecute(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -120,6 +125,7 @@ func TestPlandexExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := p.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -132,6 +138,7 @@ func TestPlandexExecute(t *testing.T) {
 }
 
 func TestPlandexCapabilities(t *testing.T) {
+	t.Parallel()
 	p := New()
 	info := p.Info()
 	
@@ -142,11 +149,13 @@ func TestPlandexCapabilities(t *testing.T) {
 }
 
 func TestPlandexIsAvailable(t *testing.T) {
+	t.Parallel()
 	p := New()
 	assert.True(t, p.IsAvailable())
 }
 
 func TestPlandexPlanResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -165,6 +174,7 @@ func TestPlandexPlanResult(t *testing.T) {
 }
 
 func TestPlandexExecuteResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewPromptfoo(t *testing.T) {
+	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
 	
@@ -23,6 +24,7 @@ func TestNewPromptfoo(t *testing.T) {
 }
 
 func TestPromptfooInitialize(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -41,6 +43,7 @@ func TestPromptfooInitialize(t *testing.T) {
 }
 
 func TestPromptfooInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -51,6 +54,7 @@ func TestPromptfooInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestPromptfooStartStop(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -67,6 +71,7 @@ func TestPromptfooStartStop(t *testing.T) {
 }
 
 func TestPromptfooExecute(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -167,6 +172,7 @@ func TestPromptfooExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := p.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -179,6 +185,7 @@ func TestPromptfooExecute(t *testing.T) {
 }
 
 func TestPromptfooCapabilities(t *testing.T) {
+	t.Parallel()
 	p := New()
 	info := p.Info()
 	
@@ -189,11 +196,13 @@ func TestPromptfooCapabilities(t *testing.T) {
 }
 
 func TestPromptfooIsAvailable(t *testing.T) {
+	t.Parallel()
 	p := New()
 	assert.True(t, p.IsAvailable())
 }
 
 func TestPromptfooInitResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -212,6 +221,7 @@ func TestPromptfooInitResult(t *testing.T) {
 }
 
 func TestPromptfooEvalResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -233,6 +243,7 @@ func TestPromptfooEvalResult(t *testing.T) {
 }
 
 func TestPromptfooCreateSuiteResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	

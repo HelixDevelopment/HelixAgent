@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	l := New()
 
 	assert.NotNil(t, l)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestLovable_Initialize(t *testing.T) {
+	t.Parallel()
 	l := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestLovable_Initialize(t *testing.T) {
 }
 
 func TestLovable_Execute(t *testing.T) {
+	t.Parallel()
 	l := New()
 	ctx := context.Background()
 
@@ -144,6 +147,7 @@ func TestLovable_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := l.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -159,6 +163,7 @@ func TestLovable_Execute(t *testing.T) {
 }
 
 func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
+	t.Parallel()
 	l := New()
 	ctx := context.Background()
 
@@ -178,6 +183,7 @@ func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 
 	// Now test edit
 	t.Run("edit existing project", func(t *testing.T) {
+			t.Parallel()
 		result, err := l.Execute(ctx, "edit", map[string]interface{}{
 			"project_id": projectID,
 			"prompt":     "Change colors",
@@ -189,6 +195,7 @@ func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 
 	// Test deploy
 	t.Run("deploy existing project", func(t *testing.T) {
+			t.Parallel()
 		result, err := l.Execute(ctx, "deploy", map[string]interface{}{
 			"project_id": projectID,
 		})
@@ -199,6 +206,7 @@ func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 
 	// Test export_code
 	t.Run("export_code for existing project", func(t *testing.T) {
+			t.Parallel()
 		result, err := l.Execute(ctx, "export_code", map[string]interface{}{
 			"project_id": projectID,
 		})
@@ -209,6 +217,7 @@ func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 }
 
 func TestLovable_IsAvailable(t *testing.T) {
+	t.Parallel()
 	l := New()
 	assert.False(t, l.IsAvailable())
 
@@ -217,6 +226,7 @@ func TestLovable_IsAvailable(t *testing.T) {
 }
 
 func TestProject(t *testing.T) {
+	t.Parallel()
 	project := Project{
 		ID:          "proj-1",
 		Name:        "TestApp",
@@ -231,6 +241,7 @@ func TestProject(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		APIKey:       "key",
 		DefaultStack: "svelte-node-mongodb",

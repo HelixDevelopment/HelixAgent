@@ -258,6 +258,7 @@ func (m *MockKubernetesClient) Delete(ctx context.Context, kind, namespace, name
 // Tests
 
 func TestDefaultKubernetesConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 
 	assert.Equal(t, "default", config.Namespace)
@@ -266,6 +267,7 @@ func TestDefaultKubernetesConfig(t *testing.T) {
 }
 
 func TestNewKubernetesAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -279,6 +281,7 @@ func TestNewKubernetesAdapter(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -297,6 +300,7 @@ func TestKubernetesAdapter_ListTools(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListPods(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -311,6 +315,7 @@ func TestKubernetesAdapter_ListPods(t *testing.T) {
 }
 
 func TestKubernetesAdapter_GetPod(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -326,6 +331,7 @@ func TestKubernetesAdapter_GetPod(t *testing.T) {
 }
 
 func TestKubernetesAdapter_GetPodLogs(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -343,6 +349,7 @@ func TestKubernetesAdapter_GetPodLogs(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListDeployments(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -357,6 +364,7 @@ func TestKubernetesAdapter_ListDeployments(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ScaleDeployment(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -373,6 +381,7 @@ func TestKubernetesAdapter_ScaleDeployment(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListServices(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -387,6 +396,7 @@ func TestKubernetesAdapter_ListServices(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListNamespaces(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -399,6 +409,7 @@ func TestKubernetesAdapter_ListNamespaces(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ListNodes(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -411,6 +422,7 @@ func TestKubernetesAdapter_ListNodes(t *testing.T) {
 }
 
 func TestKubernetesAdapter_GetEvents(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -425,6 +437,7 @@ func TestKubernetesAdapter_GetEvents(t *testing.T) {
 }
 
 func TestKubernetesAdapter_Apply(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -449,6 +462,7 @@ spec:
 }
 
 func TestKubernetesAdapter_Delete(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -465,6 +479,7 @@ func TestKubernetesAdapter_Delete(t *testing.T) {
 }
 
 func TestKubernetesAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	adapter := NewKubernetesAdapter(config, client)
@@ -476,6 +491,7 @@ func TestKubernetesAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestKubernetesAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultKubernetesConfig()
 	client := NewMockKubernetesClient()
 	client.SetError(true, "simulated error")
@@ -493,6 +509,7 @@ func TestKubernetesAdapter_ErrorHandling(t *testing.T) {
 }
 
 func TestPodTypes(t *testing.T) {
+	t.Parallel()
 	pod := Pod{
 		Name:      "test-pod",
 		Namespace: "default",
@@ -514,6 +531,7 @@ func TestPodTypes(t *testing.T) {
 }
 
 func TestDeploymentTypes(t *testing.T) {
+	t.Parallel()
 	deployment := Deployment{
 		Name:              "test-deployment",
 		Namespace:         "default",
@@ -530,6 +548,7 @@ func TestDeploymentTypes(t *testing.T) {
 }
 
 func TestServiceTypes(t *testing.T) {
+	t.Parallel()
 	service := Service{
 		Name:      "test-service",
 		Namespace: "default",
@@ -547,6 +566,7 @@ func TestServiceTypes(t *testing.T) {
 }
 
 func TestConfigMapTypes(t *testing.T) {
+	t.Parallel()
 	cm := ConfigMap{
 		Name:      "test-config",
 		Namespace: "default",
@@ -559,6 +579,7 @@ func TestConfigMapTypes(t *testing.T) {
 }
 
 func TestSecretTypes(t *testing.T) {
+	t.Parallel()
 	secret := Secret{
 		Name:      "test-secret",
 		Namespace: "default",
@@ -572,6 +593,7 @@ func TestSecretTypes(t *testing.T) {
 }
 
 func TestNamespaceTypes(t *testing.T) {
+	t.Parallel()
 	ns := Namespace{
 		Name:   "production",
 		Status: "Active",
@@ -583,6 +605,7 @@ func TestNamespaceTypes(t *testing.T) {
 }
 
 func TestNodeTypes(t *testing.T) {
+	t.Parallel()
 	node := Node{
 		Name:   "node-1",
 		Status: "Ready",

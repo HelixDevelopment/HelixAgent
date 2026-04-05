@@ -15,6 +15,7 @@ import (
 // ============================================================================
 
 func TestAttackTypeConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		constant adapter.AttackType
@@ -61,12 +62,14 @@ func TestAttackTypeConstants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, adapter.AttackType(tt.value), tt.constant)
 		})
 	}
 }
 
 func TestSeverityConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, adapter.Severity("critical"), adapter.SeverityCritical)
 	assert.Equal(t, adapter.Severity("high"), adapter.SeverityHigh)
 	assert.Equal(t, adapter.Severity("medium"), adapter.SeverityMedium)
@@ -75,6 +78,7 @@ func TestSeverityConstants(t *testing.T) {
 }
 
 func TestAuditEventTypeConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, adapter.AuditEventType("tool_call"), adapter.AuditEventToolCall)
 	assert.Equal(t, adapter.AuditEventType("guardrail_block"), adapter.AuditEventGuardrailBlock)
 	assert.Equal(t, adapter.AuditEventType("attack_detected"), adapter.AuditEventAttackDetected)
@@ -85,6 +89,7 @@ func TestAuditEventTypeConstants(t *testing.T) {
 }
 
 func TestAttackTypeUniqueness(t *testing.T) {
+	t.Parallel()
 	attackTypes := []adapter.AttackType{
 		adapter.AttackTypeDirectPromptInjection,
 		adapter.AttackTypeIndirectPromptInjection,
@@ -137,6 +142,7 @@ func TestAttackTypeUniqueness(t *testing.T) {
 // ============================================================================
 
 func TestAttackStruct(t *testing.T) {
+	t.Parallel()
 	attack := &adapter.Attack{
 		ID:          "atk-001",
 		Name:        "Jailbreak Test",
@@ -156,11 +162,13 @@ func TestAttackStruct(t *testing.T) {
 // ============================================================================
 
 func TestNewInMemoryAuditLogger(t *testing.T) {
+	t.Parallel()
 	logger := adapter.NewInMemoryAuditLogger(100, nil)
 	require.NotNil(t, logger)
 }
 
 func TestInMemoryAuditLogger_Log(t *testing.T) {
+	t.Parallel()
 	logger := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -181,6 +189,7 @@ func TestInMemoryAuditLogger_Log(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Log_PreservesID(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -198,6 +207,7 @@ func TestInMemoryAuditLogger_Log_PreservesID(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Query(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -220,6 +230,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Query_ByUser(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -234,6 +245,7 @@ func TestInMemoryAuditLogger_Query_ByUser(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Query_ByEventType(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -248,6 +260,7 @@ func TestInMemoryAuditLogger_Query_ByEventType(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Query_WithLimit(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -262,6 +275,7 @@ func TestInMemoryAuditLogger_Query_WithLimit(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_GetStats(t *testing.T) {
+	t.Parallel()
 	l := adapter.NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -277,6 +291,7 @@ func TestInMemoryAuditLogger_GetStats(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_MaxEventsEnforced(t *testing.T) {
+	t.Parallel()
 	maxEvents := 10
 	l := adapter.NewInMemoryAuditLogger(maxEvents, nil)
 	ctx := context.Background()
@@ -298,11 +313,13 @@ func TestInMemoryAuditLogger_MaxEventsEnforced(t *testing.T) {
 // ============================================================================
 
 func TestNewGuardrailEngineAdapter(t *testing.T) {
+	t.Parallel()
 	e := adapter.NewGuardrailEngineAdapter(nil)
 	require.NotNil(t, e)
 }
 
 func TestGuardrailEngineAdapter_Check(t *testing.T) {
+	t.Parallel()
 	e := adapter.NewGuardrailEngineAdapter(nil)
 	result := e.Check("Hello, how are you?")
 	assert.NotNil(t, result)
@@ -313,17 +330,20 @@ func TestGuardrailEngineAdapter_Check(t *testing.T) {
 // ============================================================================
 
 func TestNewPIIDetectorAdapter(t *testing.T) {
+	t.Parallel()
 	d := adapter.NewPIIDetectorAdapter(nil)
 	require.NotNil(t, d)
 }
 
 func TestPIIDetectorAdapter_Detect(t *testing.T) {
+	t.Parallel()
 	d := adapter.NewPIIDetectorAdapter(nil)
 	matches := d.Detect("My email is test@example.com")
 	assert.NotNil(t, matches)
 }
 
 func TestPIIDetectorAdapter_Redact(t *testing.T) {
+	t.Parallel()
 	d := adapter.NewPIIDetectorAdapter(nil)
 	redacted, matches := d.Redact("Contact test@example.com for info.")
 	assert.NotEmpty(t, redacted)
@@ -335,6 +355,7 @@ func TestPIIDetectorAdapter_Redact(t *testing.T) {
 // ============================================================================
 
 func TestNewPolicyEnforcerAdapter(t *testing.T) {
+	t.Parallel()
 	e := adapter.NewPolicyEnforcerAdapter()
 	require.NotNil(t, e)
 }
@@ -344,6 +365,7 @@ func TestNewPolicyEnforcerAdapter(t *testing.T) {
 // ============================================================================
 
 func TestSeverityToExternal_AllValues(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input adapter.Severity
 	}{
@@ -357,6 +379,7 @@ func TestSeverityToExternal_AllValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.input), func(t *testing.T) {
+				t.Parallel()
 			result := adapter.SeverityToExternal(tt.input)
 			// Just verify it returns a non-empty value
 			assert.NotEmpty(t, string(result))
@@ -365,6 +388,7 @@ func TestSeverityToExternal_AllValues(t *testing.T) {
 }
 
 func TestSeverityFromExternal_RoundTrip(t *testing.T) {
+	t.Parallel()
 	severities := []adapter.Severity{
 		adapter.SeverityCritical,
 		adapter.SeverityHigh,

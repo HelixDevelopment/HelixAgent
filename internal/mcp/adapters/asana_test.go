@@ -153,6 +153,7 @@ func (m *MockAsanaClient) SearchTasks(ctx context.Context, workspaceID, query st
 }
 
 func TestAsanaAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 	info := adapter.GetServerInfo()
 
@@ -164,6 +165,7 @@ func TestAsanaAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestAsanaAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 	tools := adapter.ListTools()
 
@@ -183,6 +185,7 @@ func TestAsanaAdapter_ListTools(t *testing.T) {
 }
 
 func TestAsanaAdapter_GetTask(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		client := &MockAsanaClient{
 			Tasks: []AsanaTask{
@@ -206,6 +209,7 @@ func TestAsanaAdapter_GetTask(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
+			t.Parallel()
 		client := &MockAsanaClient{Tasks: []AsanaTask{}}
 		adapter := NewAsanaAdapter(DefaultAsanaConfig(), client)
 
@@ -219,6 +223,7 @@ func TestAsanaAdapter_GetTask(t *testing.T) {
 }
 
 func TestAsanaAdapter_ListTasks(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		Tasks: []AsanaTask{
 			{GID: "1", Name: "Task 1", Completed: false},
@@ -235,6 +240,7 @@ func TestAsanaAdapter_ListTasks(t *testing.T) {
 }
 
 func TestAsanaAdapter_CreateTask(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	result, err := adapter.CallTool(context.Background(), "asana_create_task", map[string]interface{}{
@@ -247,6 +253,7 @@ func TestAsanaAdapter_CreateTask(t *testing.T) {
 }
 
 func TestAsanaAdapter_UpdateTask(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	result, err := adapter.CallTool(context.Background(), "asana_update_task", map[string]interface{}{
@@ -260,6 +267,7 @@ func TestAsanaAdapter_UpdateTask(t *testing.T) {
 }
 
 func TestAsanaAdapter_CompleteTask(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	result, err := adapter.CallTool(context.Background(), "asana_complete_task", map[string]interface{}{
@@ -272,6 +280,7 @@ func TestAsanaAdapter_CompleteTask(t *testing.T) {
 }
 
 func TestAsanaAdapter_ListProjects(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		Projects: []AsanaProject{
 			{GID: "proj-1", Name: "Project Alpha", Archived: false},
@@ -288,6 +297,7 @@ func TestAsanaAdapter_ListProjects(t *testing.T) {
 }
 
 func TestAsanaAdapter_ListWorkspaces(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		Workspaces: []AsanaWorkspace{
 			{GID: "ws-1", Name: "My Workspace", IsOrganization: false},
@@ -304,6 +314,7 @@ func TestAsanaAdapter_ListWorkspaces(t *testing.T) {
 }
 
 func TestAsanaAdapter_ListSections(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		Sections: []AsanaSection{
 			{GID: "sec-1", Name: "To Do"},
@@ -323,6 +334,7 @@ func TestAsanaAdapter_ListSections(t *testing.T) {
 }
 
 func TestAsanaAdapter_AddComment(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	result, err := adapter.CallTool(context.Background(), "asana_add_comment", map[string]interface{}{
@@ -336,6 +348,7 @@ func TestAsanaAdapter_AddComment(t *testing.T) {
 }
 
 func TestAsanaAdapter_GetMe(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		CurrentUser: &AsanaUser{
 			GID:   "user-1",
@@ -353,6 +366,7 @@ func TestAsanaAdapter_GetMe(t *testing.T) {
 }
 
 func TestAsanaAdapter_SearchTasks(t *testing.T) {
+	t.Parallel()
 	client := &MockAsanaClient{
 		Tasks: []AsanaTask{
 			{GID: "1", Name: "Bug fix", Completed: false},
@@ -370,6 +384,7 @@ func TestAsanaAdapter_SearchTasks(t *testing.T) {
 }
 
 func TestAsanaAdapter_CreateSubtask(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	result, err := adapter.CallTool(context.Background(), "asana_create_subtask", map[string]interface{}{
@@ -383,6 +398,7 @@ func TestAsanaAdapter_CreateSubtask(t *testing.T) {
 }
 
 func TestAsanaAdapter_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewAsanaAdapter(DefaultAsanaConfig(), &MockAsanaClient{})
 
 	_, err := adapter.CallTool(context.Background(), "unknown_tool", map[string]interface{}{})
@@ -392,6 +408,7 @@ func TestAsanaAdapter_UnknownTool(t *testing.T) {
 }
 
 func TestDefaultAsanaConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultAsanaConfig()
 	assert.Equal(t, 30*time.Second, config.Timeout)
 }

@@ -10,6 +10,7 @@ import (
 )
 
 func TestDefaultOAuthAdapterConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultOAuthAdapterConfig()
 
 	assert.NotNil(t, cfg)
@@ -25,6 +26,7 @@ func TestDefaultOAuthAdapterConfig(t *testing.T) {
 }
 
 func TestNewOAuthAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	require.NotNil(t, adapter)
@@ -35,6 +37,7 @@ func TestNewOAuthAdapter(t *testing.T) {
 }
 
 func TestNewOAuthAdapterWithConfig(t *testing.T) {
+	t.Parallel()
 	customConfig := &OAuthAdapterConfig{
 		RefreshThresholdMins:       5,
 		TrustOnVerificationFailure: false,
@@ -60,6 +63,7 @@ func TestNewOAuthAdapterWithConfig(t *testing.T) {
 }
 
 func TestNewOAuthAdapterWithConfig_NilConfig(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapterWithConfig(nil, nil, nil)
 
 	require.NotNil(t, adapter)
@@ -70,6 +74,7 @@ func TestNewOAuthAdapterWithConfig_NilConfig(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetClaudeToken_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	token, expiry := adapter.GetClaudeToken()
@@ -79,6 +84,7 @@ func TestOAuthAdapter_GetClaudeToken_Empty(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetQwenToken_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	token, expiry := adapter.GetQwenToken()
@@ -88,6 +94,7 @@ func TestOAuthAdapter_GetQwenToken_Empty(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsClaudeTokenValid_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	valid := adapter.IsClaudeTokenValid()
@@ -96,6 +103,7 @@ func TestOAuthAdapter_IsClaudeTokenValid_Empty(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsQwenTokenValid_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	valid := adapter.IsQwenTokenValid()
@@ -104,6 +112,7 @@ func TestOAuthAdapter_IsQwenTokenValid_Empty(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsClaudeTokenValid_WithToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set a token manually for testing
@@ -118,6 +127,7 @@ func TestOAuthAdapter_IsClaudeTokenValid_WithToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsQwenTokenValid_WithToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set a token manually for testing
@@ -132,6 +142,7 @@ func TestOAuthAdapter_IsQwenTokenValid_WithToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsClaudeTokenValid_ExpiredToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set an expired token
@@ -146,6 +157,7 @@ func TestOAuthAdapter_IsClaudeTokenValid_ExpiredToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsQwenTokenValid_ExpiredToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set an expired token
@@ -160,6 +172,7 @@ func TestOAuthAdapter_IsQwenTokenValid_ExpiredToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetClaudeToken_WithToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	expectedToken := "test-claude-token"
@@ -177,6 +190,7 @@ func TestOAuthAdapter_GetClaudeToken_WithToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetQwenToken_WithToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	expectedToken := "test-qwen-token"
@@ -194,6 +208,7 @@ func TestOAuthAdapter_GetQwenToken_WithToken(t *testing.T) {
 }
 
 func TestOAuthAdapterConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &OAuthAdapterConfig{
 		RefreshThresholdMins:       15,
 		TrustOnVerificationFailure: true,
@@ -216,6 +231,7 @@ func TestOAuthAdapterConfig_Fields(t *testing.T) {
 }
 
 func TestOAuthAdapterConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	cfg := &OAuthAdapterConfig{}
 
 	assert.Equal(t, 0, cfg.RefreshThresholdMins)
@@ -229,6 +245,7 @@ func TestOAuthAdapterConfig_ZeroValue(t *testing.T) {
 }
 
 func TestOAuthAdapter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Simulate concurrent read/write operations
@@ -279,6 +296,7 @@ func TestOAuthAdapter_ConcurrentAccess(t *testing.T) {
 }
 
 func TestOAuthAdapter_TokenValidityChecks_Concurrent(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set initial tokens

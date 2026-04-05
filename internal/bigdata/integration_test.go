@@ -54,11 +54,13 @@ var _ llm.LLMProvider = (*mockLLMProvider)(nil)
 // --- DefaultIntegrationConfig tests ---
 
 func TestDefaultIntegrationConfig_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 	require.NotNil(t, config)
 }
 
 func TestDefaultIntegrationConfig_EnableFlags(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.True(t, config.EnableInfiniteContext)
@@ -69,6 +71,7 @@ func TestDefaultIntegrationConfig_EnableFlags(t *testing.T) {
 }
 
 func TestDefaultIntegrationConfig_KafkaDefaults(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.Equal(t, "localhost:9092", config.KafkaBootstrapServers)
@@ -76,6 +79,7 @@ func TestDefaultIntegrationConfig_KafkaDefaults(t *testing.T) {
 }
 
 func TestDefaultIntegrationConfig_ClickHouseDefaults(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.Equal(t, "localhost", config.ClickHouseHost)
@@ -86,6 +90,7 @@ func TestDefaultIntegrationConfig_ClickHouseDefaults(t *testing.T) {
 }
 
 func TestDefaultIntegrationConfig_Neo4jDefaults(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.Equal(t, "bolt://localhost:7687", config.Neo4jURI)
@@ -95,6 +100,7 @@ func TestDefaultIntegrationConfig_Neo4jDefaults(t *testing.T) {
 }
 
 func TestDefaultIntegrationConfig_ContextDefaults(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.Equal(t, 100, config.ContextCacheSize)
@@ -103,6 +109,7 @@ func TestDefaultIntegrationConfig_ContextDefaults(t *testing.T) {
 }
 
 func TestDefaultIntegrationConfig_LearningDefaults(t *testing.T) {
+	t.Parallel()
 	config := DefaultIntegrationConfig()
 
 	assert.InDelta(t, 0.7, config.LearningMinConfidence, 0.001)
@@ -112,6 +119,7 @@ func TestDefaultIntegrationConfig_LearningDefaults(t *testing.T) {
 // --- NewBigDataIntegration tests ---
 
 func TestNewBigDataIntegration_NilConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	bdi, err := NewBigDataIntegration(nil, nil, logger)
 
@@ -123,6 +131,7 @@ func TestNewBigDataIntegration_NilConfig(t *testing.T) {
 }
 
 func TestNewBigDataIntegration_CustomConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -144,6 +153,7 @@ func TestNewBigDataIntegration_CustomConfig(t *testing.T) {
 }
 
 func TestNewBigDataIntegration_StoresKafkaBroker(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{}
 	// Pass nil broker — should still create integration
@@ -156,6 +166,7 @@ func TestNewBigDataIntegration_StoresKafkaBroker(t *testing.T) {
 // --- IsRunning tests ---
 
 func TestBigDataIntegration_IsRunning_InitiallyFalse(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -165,6 +176,7 @@ func TestBigDataIntegration_IsRunning_InitiallyFalse(t *testing.T) {
 }
 
 func TestBigDataIntegration_IsRunning_TrueAfterStart(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -182,6 +194,7 @@ func TestBigDataIntegration_IsRunning_TrueAfterStart(t *testing.T) {
 }
 
 func TestBigDataIntegration_IsRunning_FalseAfterStop(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -204,6 +217,7 @@ func TestBigDataIntegration_IsRunning_FalseAfterStop(t *testing.T) {
 // --- Start tests ---
 
 func TestBigDataIntegration_Start_AlreadyRunning(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -220,6 +234,7 @@ func TestBigDataIntegration_Start_AlreadyRunning(t *testing.T) {
 // --- Stop tests ---
 
 func TestBigDataIntegration_Stop_WhenNotRunning(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -233,6 +248,7 @@ func TestBigDataIntegration_Stop_WhenNotRunning(t *testing.T) {
 // --- Getter methods ---
 
 func TestBigDataIntegration_GetInfiniteContext_NilWhenNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{EnableInfiniteContext: false}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -242,6 +258,7 @@ func TestBigDataIntegration_GetInfiniteContext_NilWhenNotInitialized(t *testing.
 }
 
 func TestBigDataIntegration_GetDistributedMemory_NilWhenNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{EnableDistributedMemory: false}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -251,6 +268,7 @@ func TestBigDataIntegration_GetDistributedMemory_NilWhenNotInitialized(t *testin
 }
 
 func TestBigDataIntegration_GetKnowledgeGraph_NilWhenNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{EnableKnowledgeGraph: false}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -260,6 +278,7 @@ func TestBigDataIntegration_GetKnowledgeGraph_NilWhenNotInitialized(t *testing.T
 }
 
 func TestBigDataIntegration_GetAnalytics_NilWhenNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{EnableAnalytics: false}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -269,6 +288,7 @@ func TestBigDataIntegration_GetAnalytics_NilWhenNotInitialized(t *testing.T) {
 }
 
 func TestBigDataIntegration_GetCrossLearner_NilWhenNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{EnableCrossLearning: false}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -280,6 +300,7 @@ func TestBigDataIntegration_GetCrossLearner_NilWhenNotInitialized(t *testing.T) 
 // --- HealthCheck tests ---
 
 func TestBigDataIntegration_HealthCheck_AllDisabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -301,6 +322,7 @@ func TestBigDataIntegration_HealthCheck_AllDisabled(t *testing.T) {
 }
 
 func TestBigDataIntegration_HealthCheck_EnabledButNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   true,
@@ -322,6 +344,7 @@ func TestBigDataIntegration_HealthCheck_EnabledButNotInitialized(t *testing.T) {
 }
 
 func TestBigDataIntegration_HealthCheck_ReturnsAllFiveComponents(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{}
 	bdi, err := NewBigDataIntegration(config, nil, logger)
@@ -346,6 +369,7 @@ func TestBigDataIntegration_HealthCheck_ReturnsAllFiveComponents(t *testing.T) {
 // --- Initialize tests (all disabled path) ---
 
 func TestBigDataIntegration_Initialize_AllDisabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -371,6 +395,7 @@ func TestBigDataIntegration_Initialize_AllDisabled(t *testing.T) {
 // --- Initialize and Start lifecycle ---
 
 func TestBigDataIntegration_FullLifecycle_AllDisabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := &IntegrationConfig{
 		EnableInfiniteContext:   false,
@@ -410,6 +435,7 @@ func TestBigDataIntegration_FullLifecycle_AllDisabled(t *testing.T) {
 // --- inMemoryEventLog tests ---
 
 func TestInMemoryEventLog_Append(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 
 	event := &memory.MemoryEvent{
@@ -425,6 +451,7 @@ func TestInMemoryEventLog_Append(t *testing.T) {
 }
 
 func TestInMemoryEventLog_GetEvents(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 
 	_ = log.Append(&memory.MemoryEvent{MemoryID: "mem-1", EventID: "evt-1"})
@@ -437,6 +464,7 @@ func TestInMemoryEventLog_GetEvents(t *testing.T) {
 }
 
 func TestInMemoryEventLog_GetEvents_NoMatch(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 
 	_ = log.Append(&memory.MemoryEvent{MemoryID: "mem-1", EventID: "evt-1"})
@@ -447,6 +475,7 @@ func TestInMemoryEventLog_GetEvents_NoMatch(t *testing.T) {
 }
 
 func TestInMemoryEventLog_GetEventsSince(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 	now := time.Now()
 
@@ -469,6 +498,7 @@ func TestInMemoryEventLog_GetEventsSince(t *testing.T) {
 }
 
 func TestInMemoryEventLog_GetEventsForUser(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-1", UserID: "user-a"})
@@ -481,6 +511,7 @@ func TestInMemoryEventLog_GetEventsForUser(t *testing.T) {
 }
 
 func TestInMemoryEventLog_GetEventsFromNode(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-1", NodeID: "node-1"})
@@ -495,6 +526,7 @@ func TestInMemoryEventLog_GetEventsFromNode(t *testing.T) {
 // --- providerRegistryLLMClient tests ---
 
 func TestProviderRegistryLLMClient_Complete_NilRegistry(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	client := &providerRegistryLLMClient{
 		registry: nil,
@@ -511,6 +543,7 @@ func TestProviderRegistryLLMClient_Complete_NilRegistry(t *testing.T) {
 // --- Initialize tests with components enabled ---
 
 func TestBigDataIntegration_Initialize_InfiniteContextOnly(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -536,6 +569,7 @@ func TestBigDataIntegration_Initialize_InfiniteContextOnly(t *testing.T) {
 }
 
 func TestBigDataIntegration_Initialize_DistributedMemoryOnly(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -556,6 +590,7 @@ func TestBigDataIntegration_Initialize_DistributedMemoryOnly(t *testing.T) {
 }
 
 func TestBigDataIntegration_Initialize_InfiniteContextAndDistributedMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -578,6 +613,7 @@ func TestBigDataIntegration_Initialize_InfiniteContextAndDistributedMemory(t *te
 // --- HealthCheck tests with initialized components ---
 
 func TestBigDataIntegration_HealthCheck_InfiniteContextHealthy(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -602,6 +638,7 @@ func TestBigDataIntegration_HealthCheck_InfiniteContextHealthy(t *testing.T) {
 }
 
 func TestBigDataIntegration_HealthCheck_DistributedMemoryHealthy(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -625,6 +662,7 @@ func TestBigDataIntegration_HealthCheck_DistributedMemoryHealthy(t *testing.T) {
 // --- Stop tests with components ---
 
 func TestBigDataIntegration_Stop_WithDistributedMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -650,6 +688,7 @@ func TestBigDataIntegration_Stop_WithDistributedMemory(t *testing.T) {
 }
 
 func TestBigDataIntegration_Stop_WithInfiniteContext(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -676,6 +715,7 @@ func TestBigDataIntegration_Stop_WithInfiniteContext(t *testing.T) {
 // --- Initialize and lifecycle with multiple components ---
 
 func TestBigDataIntegration_FullLifecycle_InfiniteContextAndDistributedMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -713,6 +753,7 @@ func TestBigDataIntegration_FullLifecycle_InfiniteContextAndDistributedMemory(t 
 // --- providerRegistryLLMClient with empty providers ---
 
 func TestProviderRegistryLLMClient_Complete_EmptyProviders(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	// Create a ProviderRegistry without auto-discovery (no providers)
 	cfg := &services.RegistryConfig{}
@@ -733,6 +774,7 @@ func TestProviderRegistryLLMClient_Complete_EmptyProviders(t *testing.T) {
 // --- Initialize tests with components that require external services ---
 
 func TestBigDataIntegration_Initialize_KnowledgeGraphFails(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -755,6 +797,7 @@ func TestBigDataIntegration_Initialize_KnowledgeGraphFails(t *testing.T) {
 }
 
 func TestBigDataIntegration_Initialize_AnalyticsFails(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -778,6 +821,7 @@ func TestBigDataIntegration_Initialize_AnalyticsFails(t *testing.T) {
 }
 
 func TestBigDataIntegration_Initialize_CrossLearningEnabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -799,6 +843,7 @@ func TestBigDataIntegration_Initialize_CrossLearningEnabled(t *testing.T) {
 }
 
 func TestBigDataIntegration_HealthCheck_CrossLearnerHealthy(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -823,6 +868,7 @@ func TestBigDataIntegration_HealthCheck_CrossLearnerHealthy(t *testing.T) {
 // --- providerRegistryLLMClient with registered provider ---
 
 func TestProviderRegistryLLMClient_Complete_WithRegisteredProvider(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	cfg := &services.RegistryConfig{}
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
@@ -847,6 +893,7 @@ func TestProviderRegistryLLMClient_Complete_WithRegisteredProvider(t *testing.T)
 }
 
 func TestProviderRegistryLLMClient_Complete_ProviderFails(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	cfg := &services.RegistryConfig{}
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
@@ -872,6 +919,7 @@ func TestProviderRegistryLLMClient_Complete_ProviderFails(t *testing.T) {
 }
 
 func TestProviderRegistryLLMClient_Complete_FirstProviderFailsSecondSucceeds(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	cfg := &services.RegistryConfig{}
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
@@ -908,6 +956,7 @@ func TestProviderRegistryLLMClient_Complete_FirstProviderFailsSecondSucceeds(t *
 // --- Initialize tests with CrossLearning error path ---
 
 func TestBigDataIntegration_Initialize_CrossLearningSubscribeFails(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	broker.subscribeErr = fmt.Errorf("subscribe unavailable")
@@ -932,6 +981,7 @@ func TestBigDataIntegration_Initialize_CrossLearningSubscribeFails(t *testing.T)
 // --- Initialize with all components that can succeed ---
 
 func TestBigDataIntegration_Initialize_AllSuccessfulComponents(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	broker := newMockBroker()
 	config := &IntegrationConfig{
@@ -975,6 +1025,7 @@ func TestBigDataIntegration_Initialize_AllSuccessfulComponents(t *testing.T) {
 // --- inMemoryEventLog concurrent access tests ---
 
 func TestInMemoryEventLog_ConcurrentAppendAndRead(t *testing.T) {
+	t.Parallel()
 	log := &inMemoryEventLog{}
 	done := make(chan bool, 2)
 

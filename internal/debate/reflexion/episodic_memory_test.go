@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewEpisodicMemoryBuffer_DefaultSize(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		inputSize   int
@@ -23,6 +24,7 @@ func TestNewEpisodicMemoryBuffer_DefaultSize(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			buf := NewEpisodicMemoryBuffer(tc.inputSize)
 			require.NotNil(t, buf)
 			assert.Equal(t, tc.expectedCap, buf.maxSize)
@@ -32,6 +34,7 @@ func TestNewEpisodicMemoryBuffer_DefaultSize(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_Store(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	ep := &Episode{
@@ -57,6 +60,7 @@ func TestEpisodicMemoryBuffer_Store(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_Store_AutoGenerateID(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	ep := &Episode{
@@ -70,6 +74,7 @@ func TestEpisodicMemoryBuffer_Store_AutoGenerateID(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_Store_Validation(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	tests := []struct {
@@ -91,6 +96,7 @@ func TestEpisodicMemoryBuffer_Store_Validation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			err := buf.Store(tc.episode)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.errMsg)
@@ -99,6 +105,7 @@ func TestEpisodicMemoryBuffer_Store_Validation(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_GetByAgent(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	episodes := []*Episode{
@@ -125,6 +132,7 @@ func TestEpisodicMemoryBuffer_GetByAgent(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_GetBySession(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	episodes := []*Episode{
@@ -155,6 +163,7 @@ func TestEpisodicMemoryBuffer_GetBySession(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_GetRecent(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	for i := 1; i <= 5; i++ {
@@ -178,6 +187,7 @@ func TestEpisodicMemoryBuffer_GetRecent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			recent := buf.GetRecent(tc.n)
 			if tc.expected == nil {
 				assert.Empty(t, recent)
@@ -192,12 +202,14 @@ func TestEpisodicMemoryBuffer_GetRecent(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_GetRecent_EmptyBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 	recent := buf.GetRecent(5)
 	assert.Empty(t, recent)
 }
 
 func TestEpisodicMemoryBuffer_GetRelevant(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	episodes := []*Episode{
@@ -230,12 +242,14 @@ func TestEpisodicMemoryBuffer_GetRelevant(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_GetRelevant_EmptyBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 	relevant := buf.GetRelevant("search algorithm", 5)
 	assert.Empty(t, relevant)
 }
 
 func TestEpisodicMemoryBuffer_FIFO_Eviction(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(3)
 
 	// Fill the buffer.
@@ -297,6 +311,7 @@ func TestEpisodicMemoryBuffer_FIFO_Eviction(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(50)
 
 	episodes := []*Episode{
@@ -352,12 +367,14 @@ func TestEpisodicMemoryBuffer_MarshalJSON_UnmarshalJSON(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_UnmarshalJSON_InvalidData(t *testing.T) {
+	t.Parallel()
 	buf := &EpisodicMemoryBuffer{}
 	err := json.Unmarshal([]byte(`{invalid json`), buf)
 	assert.Error(t, err)
 }
 
 func TestEpisodicMemoryBuffer_UnmarshalJSON_DefaultMaxSize(t *testing.T) {
+	t.Parallel()
 	// max_size of 0 should default to 1000.
 	buf := &EpisodicMemoryBuffer{}
 	err := json.Unmarshal([]byte(`{"episodes":[],"max_size":0}`), buf)
@@ -366,6 +383,7 @@ func TestEpisodicMemoryBuffer_UnmarshalJSON_DefaultMaxSize(t *testing.T) {
 }
 
 func TestEpisodicMemoryBuffer_Clear(t *testing.T) {
+	t.Parallel()
 	buf := NewEpisodicMemoryBuffer(100)
 
 	for i := 0; i < 5; i++ {

@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewCloudflareProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewCloudflareProvider("test-api-key", "test-account-id", "", "")
 	assert.NotNil(t, provider)
 	assert.Equal(t, "test-api-key", provider.apiKey)
@@ -22,6 +23,7 @@ func TestNewCloudflareProvider(t *testing.T) {
 }
 
 func TestNewCloudflareProviderWithCustomURL(t *testing.T) {
+	t.Parallel()
 	customURL := "https://custom.cloudflare.com/v1/chat/completions"
 	provider := NewCloudflareProvider("test-key", "test-account", customURL, "@cf/custom/model")
 	assert.Equal(t, customURL, provider.baseURL)
@@ -29,6 +31,7 @@ func TestNewCloudflareProviderWithCustomURL(t *testing.T) {
 }
 
 func TestNewCloudflareProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -41,6 +44,7 @@ func TestNewCloudflareProviderWithRetry(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 	assert.Equal(t, 3, config.MaxRetries)
 	assert.Equal(t, 1*time.Second, config.InitialDelay)
@@ -49,6 +53,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -99,6 +104,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestCompleteWithErrors(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := CloudflareResponse{
 			Success: false,
@@ -123,6 +129,7 @@ func TestCompleteWithErrors(t *testing.T) {
 }
 
 func TestCompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 
@@ -160,6 +167,7 @@ func TestCompleteStream(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewCloudflareProvider("test-key", "test-account", "", "")
 	caps := provider.GetCapabilities()
 
@@ -173,6 +181,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		apiKey    string
@@ -212,6 +221,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewCloudflareProvider(tt.apiKey, tt.accountID, "", "")
 			valid, errs := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -221,6 +231,7 @@ func TestValidateConfig(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping health check test in short mode - requires real Cloudflare API")
 	}
@@ -232,6 +243,7 @@ func TestHealthCheck(t *testing.T) {
 }
 
 func TestHealthCheckNoAccountID(t *testing.T) {
+	t.Parallel()
 	provider := NewCloudflareProvider("test-key", "", "", "")
 	err := provider.HealthCheck()
 	assert.Error(t, err)
@@ -239,6 +251,7 @@ func TestHealthCheckNoAccountID(t *testing.T) {
 }
 
 func TestConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewCloudflareProvider("test-key", "test-account", "", "")
 	req := &models.LLMRequest{
 		Prompt: "You are helpful.",
@@ -265,6 +278,7 @@ func TestConvertRequest(t *testing.T) {
 }
 
 func TestConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewCloudflareProvider("test-key", "test-account", "", "")
 	startTime := time.Now()
 

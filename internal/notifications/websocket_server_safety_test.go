@@ -12,6 +12,7 @@ import (
 // (clientsMu before globalClientsMu) is correct under concurrent access.
 // Running with -race detects any data races or lock-order violations.
 func TestWebSocketServer_Concurrent(t *testing.T) {
+	t.Parallel()
 	logger := testLogger()
 	server := NewWebSocketServer(nil, logger)
 

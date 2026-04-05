@@ -12,6 +12,7 @@ import (
 )
 
 func TestVerificationEventType_String(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		eventType VerificationEventType
 		expected  string
@@ -29,12 +30,14 @@ func TestVerificationEventType_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.eventType.String())
 		})
 	}
 }
 
 func TestVerificationEventType_Topic(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		eventType VerificationEventType
 		expected  string
@@ -52,12 +55,14 @@ func TestVerificationEventType_Topic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.eventType), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.eventType.Topic())
 		})
 	}
 }
 
 func TestNewVerificationEvent(t *testing.T) {
+	t.Parallel()
 	event := NewVerificationEvent(VerificationEventStarted)
 
 	assert.NotEmpty(t, event.ID)
@@ -67,6 +72,7 @@ func TestNewVerificationEvent(t *testing.T) {
 }
 
 func TestNewProviderVerificationEvent(t *testing.T) {
+	t.Parallel()
 	provider := &UnifiedProvider{
 		ID:       "test-provider",
 		Name:     "Test Provider",
@@ -87,6 +93,7 @@ func TestNewProviderVerificationEvent(t *testing.T) {
 }
 
 func TestNewProviderVerificationEvent_NilProvider(t *testing.T) {
+	t.Parallel()
 	event := NewProviderVerificationEvent(VerificationEventVerified, nil)
 
 	assert.NotEmpty(t, event.ID)
@@ -95,6 +102,7 @@ func TestNewProviderVerificationEvent_NilProvider(t *testing.T) {
 }
 
 func TestVerificationEvent_ToMessagingEvent(t *testing.T) {
+	t.Parallel()
 	event := &VerificationEvent{
 		ID:            "event-1",
 		Type:          VerificationEventVerified,
@@ -118,12 +126,14 @@ func TestVerificationEvent_ToMessagingEvent(t *testing.T) {
 }
 
 func TestDefaultVerificationEventPublisherConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultVerificationEventPublisherConfig()
 
 	assert.True(t, config.Enabled)
 }
 
 func TestNewVerificationEventPublisher(t *testing.T) {
+	t.Parallel()
 	config := DefaultVerificationEventPublisherConfig()
 	publisher := NewVerificationEventPublisher(nil, nil, config)
 
@@ -132,6 +142,7 @@ func TestNewVerificationEventPublisher(t *testing.T) {
 }
 
 func TestNewVerificationEventPublisher_NilConfig(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	assert.NotNil(t, publisher)
@@ -139,6 +150,7 @@ func TestNewVerificationEventPublisher_NilConfig(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_IsEnabled_NoHub(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	// Should be false when hub is nil
@@ -146,6 +158,7 @@ func TestVerificationEventPublisher_IsEnabled_NoHub(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_SetCorrelationID(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	publisher.SetCorrelationID("custom-corr-id")
@@ -153,6 +166,7 @@ func TestVerificationEventPublisher_SetCorrelationID(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_Publish_NoHub(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	event := NewVerificationEvent(VerificationEventStarted)
 
@@ -162,6 +176,7 @@ func TestVerificationEventPublisher_Publish_NoHub(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_Publish_NilEvent(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	err := publisher.Publish(context.Background(), nil)
@@ -169,6 +184,7 @@ func TestVerificationEventPublisher_Publish_NilEvent(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishStarted(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	err := publisher.PublishStarted(context.Background(), 10)
@@ -176,6 +192,7 @@ func TestVerificationEventPublisher_PublishStarted(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishProviderDiscovered(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID:       "test-provider",
@@ -189,6 +206,7 @@ func TestVerificationEventPublisher_PublishProviderDiscovered(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishProviderVerified(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID:       "test-provider",
@@ -201,6 +219,7 @@ func TestVerificationEventPublisher_PublishProviderVerified(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishProviderFailed(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID: "test-provider",
@@ -211,6 +230,7 @@ func TestVerificationEventPublisher_PublishProviderFailed(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishProviderScored(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID:    "test-provider",
@@ -226,6 +246,7 @@ func TestVerificationEventPublisher_PublishProviderScored(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishProviderRanked(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID:    "test-provider",
@@ -237,6 +258,7 @@ func TestVerificationEventPublisher_PublishProviderRanked(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishHealthCheck(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	provider := &UnifiedProvider{
 		ID: "test-provider",
@@ -247,6 +269,7 @@ func TestVerificationEventPublisher_PublishHealthCheck(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishDebateTeamSelected(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	team := &DebateTeamResult{
 		TotalLLMs:     25,   // 5 positions × 5 LLMs each
@@ -274,6 +297,7 @@ func TestVerificationEventPublisher_PublishDebateTeamSelected(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishDebateTeamSelected_NilTeam(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	err := publisher.PublishDebateTeamSelected(context.Background(), nil)
@@ -281,6 +305,7 @@ func TestVerificationEventPublisher_PublishDebateTeamSelected_NilTeam(t *testing
 }
 
 func TestVerificationEventPublisher_PublishCompleted(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 	result := &StartupResult{
 		TotalProviders:  10,
@@ -299,6 +324,7 @@ func TestVerificationEventPublisher_PublishCompleted(t *testing.T) {
 }
 
 func TestVerificationEventPublisher_PublishCompleted_NilResult(t *testing.T) {
+	t.Parallel()
 	publisher := NewVerificationEventPublisher(nil, nil, nil)
 
 	err := publisher.PublishCompleted(context.Background(), nil)
@@ -306,6 +332,7 @@ func TestVerificationEventPublisher_PublishCompleted_NilResult(t *testing.T) {
 }
 
 func TestTopicConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "helixagent.events.verification", TopicVerificationEvents)
 	assert.Equal(t, "helixagent.events.verification.discovered", TopicProviderDiscovered)
 	assert.Equal(t, "helixagent.events.verification.verified", TopicProviderVerified)
@@ -316,6 +343,7 @@ func TestTopicConstants(t *testing.T) {
 }
 
 func TestGenerateVerificationEventID(t *testing.T) {
+	t.Parallel()
 	id1 := generateVerificationEventID()
 	time.Sleep(time.Millisecond)
 	id2 := generateVerificationEventID()
@@ -326,6 +354,7 @@ func TestGenerateVerificationEventID(t *testing.T) {
 }
 
 func TestRandomVerificationString(t *testing.T) {
+	t.Parallel()
 	str1 := randomVerificationString(8)
 	time.Sleep(time.Millisecond)
 	str2 := randomVerificationString(8)

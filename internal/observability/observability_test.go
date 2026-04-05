@@ -95,6 +95,7 @@ func (r *mockProviderRegistry) ListProviders() []string {
 // Tests for tracer.go
 
 func TestExporterType(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, ExporterType("otlp"), ExporterOTLP)
 	assert.Equal(t, ExporterType("jaeger"), ExporterJaeger)
 	assert.Equal(t, ExporterType("zipkin"), ExporterZipkin)
@@ -103,6 +104,7 @@ func TestExporterType(t *testing.T) {
 }
 
 func TestDefaultTracerConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultTracerConfig()
 
 	assert.Equal(t, "helixagent", config.ServiceName)
@@ -114,6 +116,7 @@ func TestDefaultTracerConfig(t *testing.T) {
 }
 
 func TestTracerConfig(t *testing.T) {
+	t.Parallel()
 	config := &TracerConfig{
 		ServiceName:        "test-service",
 		ServiceVersion:     "2.0.0",
@@ -130,6 +133,7 @@ func TestTracerConfig(t *testing.T) {
 }
 
 func TestNewLLMTracer(t *testing.T) {
+	t.Parallel()
 	t.Run("WithNilConfig", func(t *testing.T) {
 		tracer, err := NewLLMTracer(nil)
 		require.NoError(t, err)
@@ -138,6 +142,7 @@ func TestNewLLMTracer(t *testing.T) {
 	})
 
 	t.Run("WithCustomConfig", func(t *testing.T) {
+			t.Parallel()
 		config := &TracerConfig{
 			ServiceName:    "test-service",
 			ServiceVersion: "1.0.0",
@@ -151,6 +156,7 @@ func TestNewLLMTracer(t *testing.T) {
 }
 
 func TestLLMRequestParams(t *testing.T) {
+	t.Parallel()
 	params := &LLMRequestParams{
 		Provider:      "openai",
 		Model:         "gpt-4",
@@ -174,6 +180,7 @@ func TestLLMRequestParams(t *testing.T) {
 }
 
 func TestLLMResponseParams(t *testing.T) {
+	t.Parallel()
 	params := &LLMResponseParams{
 		InputTokens:   100,
 		OutputTokens:  200,
@@ -193,10 +200,12 @@ func TestLLMResponseParams(t *testing.T) {
 }
 
 func TestLLMTracer_StartEndRequest(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
 	t.Run("BasicRequest", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		params := &LLMRequestParams{
 			Provider:  "openai",
@@ -218,6 +227,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 	})
 
 	t.Run("WithAllParams", func(t *testing.T) {
+			t.Parallel()
 		tracer, _ := NewLLMTracer(&TracerConfig{
 			EnableContentTrace: true,
 		})
@@ -257,6 +267,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 	})
 
 	t.Run("WithError", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		params := &LLMRequestParams{
 			Provider:  "openai",
@@ -275,6 +286,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 }
 
 func TestLLMTracer_StartEnsembleRequest(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -285,6 +297,7 @@ func TestLLMTracer_StartEnsembleRequest(t *testing.T) {
 }
 
 func TestLLMTracer_StartDebateRound(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -295,6 +308,7 @@ func TestLLMTracer_StartDebateRound(t *testing.T) {
 }
 
 func TestLLMTracer_StartRAGRetrieval(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -307,6 +321,7 @@ func TestLLMTracer_StartRAGRetrieval(t *testing.T) {
 }
 
 func TestLLMTracer_StartToolExecution(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -317,6 +332,7 @@ func TestLLMTracer_StartToolExecution(t *testing.T) {
 }
 
 func TestGetTracer(t *testing.T) {
+	t.Parallel()
 	tracer := GetTracer()
 	assert.NotNil(t, tracer)
 }
@@ -324,6 +340,7 @@ func TestGetTracer(t *testing.T) {
 // Tests for metrics.go
 
 func TestNewLLMMetrics(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, metrics)
@@ -333,25 +350,30 @@ func TestNewLLMMetrics(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRequest(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-service")
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	t.Run("SuccessfulRequest", func(t *testing.T) {
+			t.Parallel()
 		metrics.RecordRequest(ctx, "openai", "gpt-4", 100*time.Millisecond, 100, 200, 0.01, nil)
 	})
 
 	t.Run("FailedRequest", func(t *testing.T) {
+			t.Parallel()
 		metrics.RecordRequest(ctx, "openai", "gpt-4", 50*time.Millisecond, 100, 0, 0, errors.New("error"))
 	})
 
 	t.Run("NoCost", func(t *testing.T) {
+			t.Parallel()
 		metrics.RecordRequest(ctx, "ollama", "llama2", 200*time.Millisecond, 50, 100, 0, nil)
 	})
 }
 
 func TestLLMMetrics_RecordCache(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-service")
 	require.NoError(t, err)
 
@@ -362,6 +384,7 @@ func TestLLMMetrics_RecordCache(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordDebateRound(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-service")
 	require.NoError(t, err)
 
@@ -370,6 +393,7 @@ func TestLLMMetrics_RecordDebateRound(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRAGRetrieval(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-service")
 	require.NoError(t, err)
 
@@ -378,6 +402,7 @@ func TestLLMMetrics_RecordRAGRetrieval(t *testing.T) {
 }
 
 func TestGetMetrics(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	assert.NotNil(t, metrics)
 }
@@ -385,6 +410,7 @@ func TestGetMetrics(t *testing.T) {
 // Tests for exporter.go
 
 func TestExporterConfig(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterOTLP,
 		Endpoint:    "localhost:4318",
@@ -401,6 +427,7 @@ func TestExporterConfig(t *testing.T) {
 }
 
 func TestSetupTraceExporter_NoOp(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "test-service",
@@ -420,6 +447,7 @@ func TestSetupTraceExporter_NoOp(t *testing.T) {
 }
 
 func TestSetupTraceExporter_Console(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterConsole,
 		ServiceName: "test-service",
@@ -439,6 +467,7 @@ func TestSetupTraceExporter_Console(t *testing.T) {
 }
 
 func TestSetupTraceExporter_Unsupported(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type: ExporterType("unknown"),
 	}
@@ -449,11 +478,13 @@ func TestSetupTraceExporter_Unsupported(t *testing.T) {
 }
 
 func TestShutdownTraceExporter_Nil(t *testing.T) {
+	t.Parallel()
 	err := ShutdownTraceExporter(context.Background(), nil)
 	require.NoError(t, err)
 }
 
 func TestLangfuseConfig(t *testing.T) {
+	t.Parallel()
 	config := &LangfuseConfig{
 		PublicKey:  "pk-test",
 		SecretKey:  "sk-test",
@@ -469,6 +500,7 @@ func TestLangfuseConfig(t *testing.T) {
 // Tests for llm_middleware.go
 
 func TestNewTracedProvider(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 
@@ -481,6 +513,7 @@ func TestNewTracedProvider(t *testing.T) {
 }
 
 func TestTracedProvider_Complete(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -500,6 +533,7 @@ func TestTracedProvider_Complete(t *testing.T) {
 }
 
 func TestTracedProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeFunc: func(ctx context.Context, request *models.LLMRequest) (*models.LLMResponse, error) {
 			return nil, errors.New("completion error")
@@ -517,6 +551,7 @@ func TestTracedProvider_Complete_Error(t *testing.T) {
 }
 
 func TestTracedProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -540,6 +575,7 @@ func TestTracedProvider_CompleteStream(t *testing.T) {
 }
 
 func TestTracedProvider_CompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeStreamFunc: func(ctx context.Context, request *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 			return nil, errors.New("stream error")
@@ -557,6 +593,7 @@ func TestTracedProvider_CompleteStream_Error(t *testing.T) {
 }
 
 func TestTracedProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		capabilities: &models.ProviderCapabilities{
 			SupportsStreaming:       true,
@@ -572,6 +609,7 @@ func TestTracedProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestTracedProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	t.Run("Healthy", func(t *testing.T) {
 		provider := &mockLLMProvider{}
 		tracer, _ := NewLLMTracer(nil)
@@ -582,6 +620,7 @@ func TestTracedProvider_HealthCheck(t *testing.T) {
 	})
 
 	t.Run("Unhealthy", func(t *testing.T) {
+			t.Parallel()
 		provider := &mockLLMProvider{healthErr: errors.New("unhealthy")}
 		tracer, _ := NewLLMTracer(nil)
 		traced := NewTracedProvider(provider, tracer, "test")
@@ -592,6 +631,7 @@ func TestTracedProvider_HealthCheck(t *testing.T) {
 }
 
 func TestTracedProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -602,6 +642,7 @@ func TestTracedProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestEstimateTokens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		text     string
 		expected int
@@ -619,6 +660,7 @@ func TestEstimateTokens(t *testing.T) {
 }
 
 func TestNewTracedProviderRegistry(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{
 			"openai": &mockLLMProvider{},
@@ -631,6 +673,7 @@ func TestNewTracedProviderRegistry(t *testing.T) {
 }
 
 func TestTracedProviderRegistry_GetProvider(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{
 			"openai": &mockLLMProvider{},
@@ -640,17 +683,20 @@ func TestTracedProviderRegistry_GetProvider(t *testing.T) {
 	traced := NewTracedProviderRegistry(registry, tracer)
 
 	t.Run("ExistingProvider", func(t *testing.T) {
+			t.Parallel()
 		provider := traced.GetProvider("openai")
 		assert.NotNil(t, provider)
 	})
 
 	t.Run("NonExistingProvider", func(t *testing.T) {
+			t.Parallel()
 		provider := traced.GetProvider("nonexistent")
 		assert.Nil(t, provider)
 	})
 }
 
 func TestTracedProviderRegistry_GetProviderByModel(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{
 			"model-gpt-4": &mockLLMProvider{},
@@ -660,17 +706,20 @@ func TestTracedProviderRegistry_GetProviderByModel(t *testing.T) {
 	traced := NewTracedProviderRegistry(registry, tracer)
 
 	t.Run("ExistingModel", func(t *testing.T) {
+			t.Parallel()
 		provider := traced.GetProviderByModel("gpt-4")
 		assert.NotNil(t, provider)
 	})
 
 	t.Run("NonExistingModel", func(t *testing.T) {
+			t.Parallel()
 		provider := traced.GetProviderByModel("nonexistent")
 		assert.Nil(t, provider)
 	})
 }
 
 func TestTracedProviderRegistry_GetHealthyProviders(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{
 			"openai":    &mockLLMProvider{},
@@ -685,6 +734,7 @@ func TestTracedProviderRegistry_GetHealthyProviders(t *testing.T) {
 }
 
 func TestTracedProviderRegistry_ListProviders(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{
 			"openai":    &mockLLMProvider{},
@@ -699,6 +749,7 @@ func TestTracedProviderRegistry_ListProviders(t *testing.T) {
 }
 
 func TestNewDebateTracer(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test")
 
@@ -709,6 +760,7 @@ func TestNewDebateTracer(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test")
 	debateTracer := NewDebateTracer(tracer, metrics)
@@ -730,6 +782,7 @@ func TestDebateTracer_TraceDebateRound(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound_NoConsensus(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test")
 	debateTracer := NewDebateTracer(tracer, metrics)
@@ -741,6 +794,7 @@ func TestDebateTracer_TraceDebateRound_NoConsensus(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound_NoMetrics(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	debateTracer := NewDebateTracer(tracer, nil)
 
@@ -751,6 +805,7 @@ func TestDebateTracer_TraceDebateRound_NoMetrics(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateComplete(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test")
 	debateTracer := NewDebateTracer(tracer, metrics)
@@ -764,6 +819,7 @@ func TestDebateTracer_TraceDebateComplete(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateComplete_NoMetrics(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	debateTracer := NewDebateTracer(tracer, nil)
 
@@ -776,6 +832,7 @@ func TestDebateTracer_TraceDebateComplete_NoMetrics(t *testing.T) {
 // Tests for semantic convention constants
 
 func TestSemanticConventions(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "gen_ai.system", AttrLLMSystem)
 	assert.Equal(t, "gen_ai.request.model", AttrLLMProvider)
 	assert.Equal(t, "gen_ai.request.model", AttrLLMModel)
@@ -858,6 +915,7 @@ func BenchmarkLLMMetricsRecordDebateRound(b *testing.B) {
 // Test LLMMetrics struct fields
 
 func TestLLMMetricsFields(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test")
 	require.NoError(t, err)
 
@@ -889,6 +947,7 @@ func TestLLMMetricsFields(t *testing.T) {
 // Test trace.Span interface compliance
 
 func TestSpanInterface(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 
 	ctx, span := tracer.StartLLMRequest(context.Background(), &LLMRequestParams{

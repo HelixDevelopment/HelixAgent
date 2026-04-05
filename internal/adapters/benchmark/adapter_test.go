@@ -33,17 +33,20 @@ func (m *mockProviderService) GetProvider(name string) extbenchmark.LLMProvider 
 }
 
 func TestAdapter_New_NilLogger(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	require.NotNil(t, adapter, "New with nil logger should return a non-nil adapter")
 }
 
 func TestAdapter_New_WithLogger(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := benchmarkadapter.New(logger)
 	require.NotNil(t, adapter)
 }
 
 func TestAdapter_ListBenchmarks_BeforeInit(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	// Before Initialize, GetRunner returns nil — ListBenchmarks should return nil, nil
 	benchmarks, err := adapter.ListBenchmarks(context.Background())
@@ -52,6 +55,7 @@ func TestAdapter_ListBenchmarks_BeforeInit(t *testing.T) {
 }
 
 func TestAdapter_Initialize(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	err := adapter.Initialize(svc, "test-provider", "test-model")
@@ -59,6 +63,7 @@ func TestAdapter_Initialize(t *testing.T) {
 }
 
 func TestAdapter_GetRunner_AfterInit(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	require.NoError(t, adapter.Initialize(svc, "test-provider", "test-model"))
@@ -68,6 +73,7 @@ func TestAdapter_GetRunner_AfterInit(t *testing.T) {
 }
 
 func TestAdapter_ListBenchmarks_AfterInit(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	require.NoError(t, adapter.Initialize(svc, "test-provider", "test-model"))
@@ -78,6 +84,7 @@ func TestAdapter_ListBenchmarks_AfterInit(t *testing.T) {
 }
 
 func TestAdapter_RunBenchmarkWithBestProvider_NilConfig(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	require.NoError(t, adapter.Initialize(svc, "test-provider", "test-model"))
@@ -94,6 +101,7 @@ func TestAdapter_RunBenchmarkWithBestProvider_NilConfig(t *testing.T) {
 }
 
 func TestAdapter_CompareProviders_EmptyList(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	require.NoError(t, adapter.Initialize(svc, "test-provider", "test-model"))
@@ -109,6 +117,7 @@ func TestAdapter_CompareProviders_EmptyList(t *testing.T) {
 }
 
 func TestAdapter_GenerateLeaderboard(t *testing.T) {
+	t.Parallel()
 	adapter := benchmarkadapter.New(nil)
 	svc := &mockProviderService{}
 	require.NoError(t, adapter.Initialize(svc, "test-provider", "test-model"))

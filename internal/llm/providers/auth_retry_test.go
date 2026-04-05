@@ -22,6 +22,7 @@ import (
 
 // TestAuthRetry_MistralProvider tests that Mistral provider retries on 401
 func TestAuthRetry_MistralProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +94,7 @@ func TestAuthRetry_MistralProvider(t *testing.T) {
 
 // TestAuthRetry_ClaudeProvider tests that Claude provider retries on 401
 func TestAuthRetry_ClaudeProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +166,7 @@ func TestAuthRetry_ClaudeProvider(t *testing.T) {
 
 // TestAuthRetry_DeepSeekProvider tests that DeepSeek provider retries on 401
 func TestAuthRetry_DeepSeekProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -235,6 +238,7 @@ func TestAuthRetry_DeepSeekProvider(t *testing.T) {
 
 // TestAuthRetry_GeminiProvider tests that Gemini provider retries on 401
 func TestAuthRetry_GeminiProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -310,6 +314,7 @@ func TestAuthRetry_GeminiProvider(t *testing.T) {
 
 // TestAuthRetry_CerebrasProvider tests that Cerebras provider retries on 401
 func TestAuthRetry_CerebrasProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -385,6 +390,7 @@ func TestAuthRetry_CerebrasProvider(t *testing.T) {
 
 // TestAuthRetry_QwenProvider tests that Qwen provider retries on 401
 func TestAuthRetry_QwenProvider(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -460,6 +466,7 @@ func TestAuthRetry_QwenProvider(t *testing.T) {
 
 // TestAuthRetry_NoInfiniteLoop tests that 401 retry doesn't cause infinite loop
 func TestAuthRetry_NoInfiniteLoop(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -502,6 +509,7 @@ func TestAuthRetry_NoInfiniteLoop(t *testing.T) {
 
 // TestAuthRetry_ContextCancellation tests that context cancellation works during auth retry
 func TestAuthRetry_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -545,6 +553,7 @@ func TestAuthRetry_ContextCancellation(t *testing.T) {
 
 // TestAuthRetry_SuccessFirstTry tests that successful first request doesn't trigger retry
 func TestAuthRetry_SuccessFirstTry(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -605,6 +614,7 @@ func TestAuthRetry_SuccessFirstTry(t *testing.T) {
 
 // TestAuthRetry_403NotRetried tests that 403 errors are not retried
 func TestAuthRetry_403NotRetried(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -647,6 +657,7 @@ func TestAuthRetry_403NotRetried(t *testing.T) {
 
 // TestAuthRetry_RetryableStatusCodesStillWork tests that 429/5xx retries still work
 func TestAuthRetry_RetryableStatusCodesStillWork(t *testing.T) {
+	t.Parallel()
 	var requestCount int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

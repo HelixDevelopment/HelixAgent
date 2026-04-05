@@ -15,6 +15,7 @@ import (
 // =============================================================================
 
 func TestNewCapabilitySet(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 	assert.NotNil(t, cs)
 	assert.NotNil(t, cs.Capabilities)
@@ -22,6 +23,7 @@ func TestNewCapabilitySet(t *testing.T) {
 }
 
 func TestCapabilitySet_Add(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 
 	cap := &Capability{
@@ -39,6 +41,7 @@ func TestCapabilitySet_Add(t *testing.T) {
 }
 
 func TestCapabilitySet_HasCapability(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 	cs.Add(&Capability{
 		Type:        CapCodeAnalysis,
@@ -52,6 +55,7 @@ func TestCapabilitySet_HasCapability(t *testing.T) {
 }
 
 func TestCapabilitySet_GetByDomain(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 
 	// Add code capabilities
@@ -69,6 +73,7 @@ func TestCapabilitySet_GetByDomain(t *testing.T) {
 }
 
 func TestCapabilitySet_CalculateDomainScore(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 
 	cs.Add(&Capability{Type: CapCodeAnalysis, Proficiency: 0.8})
@@ -87,6 +92,7 @@ func TestCapabilitySet_CalculateDomainScore(t *testing.T) {
 // =============================================================================
 
 func TestNewSpecializedAgent(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test Agent", "claude", "claude-3", DomainCode)
 
 	assert.NotEmpty(t, agent.ID)
@@ -99,6 +105,7 @@ func TestNewSpecializedAgent(t *testing.T) {
 }
 
 func TestSpecializedAgent_InitDefaultCapabilities(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Code Agent", "test", "test-model", DomainCode)
 
 	// Should have code capabilities
@@ -110,6 +117,7 @@ func TestSpecializedAgent_InitDefaultCapabilities(t *testing.T) {
 }
 
 func TestSpecializedAgent_RoleAffinities(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		domain       Domain
 		expectedTop  topology.AgentRole
@@ -134,6 +142,7 @@ func TestSpecializedAgent_RoleAffinities(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.domain), func(t *testing.T) {
+				t.Parallel()
 			agent := NewSpecializedAgent("Test", "test", "model", tc.domain)
 
 			// Check top role
@@ -156,6 +165,7 @@ func TestSpecializedAgent_RoleAffinities(t *testing.T) {
 }
 
 func TestSpecializedAgent_GetAffinityForRole(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Security Agent", "test", "model", DomainSecurity)
 
 	// Security agent should have high affinity for Critic
@@ -169,6 +179,7 @@ func TestSpecializedAgent_GetAffinityForRole(t *testing.T) {
 }
 
 func TestSpecializedAgent_ToTopologyAgent(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test Agent", "claude", "claude-3", DomainCode)
 	agent.Score = 8.5
 
@@ -184,6 +195,7 @@ func TestSpecializedAgent_ToTopologyAgent(t *testing.T) {
 }
 
 func TestSpecializedAgent_SetScore(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	agent.SetScore(9.0)
@@ -191,6 +203,7 @@ func TestSpecializedAgent_SetScore(t *testing.T) {
 }
 
 func TestSpecializedAgent_SetSystemPrompt(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	agent.SetSystemPrompt("You are a helpful assistant.")
@@ -198,6 +211,7 @@ func TestSpecializedAgent_SetSystemPrompt(t *testing.T) {
 }
 
 func TestSpecializedAgent_UpdateActivity(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	originalTime := agent.LastActive
@@ -211,6 +225,7 @@ func TestSpecializedAgent_UpdateActivity(t *testing.T) {
 // =============================================================================
 
 func TestCalculateCompositeScore(t *testing.T) {
+	t.Parallel()
 	// Weights: 40% verifier, 35% domain, 25% affinity
 	score := CalculateCompositeScore(0.8, 0.7, 0.9)
 	expected := 0.8*0.4 + 0.7*0.35 + 0.9*0.25
@@ -218,6 +233,7 @@ func TestCalculateCompositeScore(t *testing.T) {
 }
 
 func TestSpecializedAgent_ScoreAgent(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Code Agent", "claude", "claude-3", DomainCode)
 	agent.Score = 8.5
 
@@ -243,6 +259,7 @@ func (m *mockCapabilityDiscoverer) DiscoverCapabilities(ctx context.Context, pro
 }
 
 func TestSpecializedAgent_DiscoverCapabilities(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	discoverer := &mockCapabilityDiscoverer{
@@ -263,6 +280,7 @@ func TestSpecializedAgent_DiscoverCapabilities(t *testing.T) {
 }
 
 func TestSpecializedAgent_DiscoverCapabilities_NilDiscoverer(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	err := agent.DiscoverCapabilities(context.Background(), nil)
@@ -274,6 +292,7 @@ func TestSpecializedAgent_DiscoverCapabilities_NilDiscoverer(t *testing.T) {
 // =============================================================================
 
 func TestGetDomainCapabilities(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		domain   Domain
 		expected []CapabilityType
@@ -306,6 +325,7 @@ func TestGetDomainCapabilities(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.domain), func(t *testing.T) {
+				t.Parallel()
 			caps := getDomainCapabilities(tc.domain)
 			assert.NotEmpty(t, caps)
 
@@ -324,6 +344,7 @@ func TestGetDomainCapabilities(t *testing.T) {
 }
 
 func TestGetDomainRoleAffinities(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		domain  Domain
 		topRole topology.AgentRole
@@ -338,6 +359,7 @@ func TestGetDomainRoleAffinities(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.domain), func(t *testing.T) {
+				t.Parallel()
 			affinities := getDomainRoleAffinities(tc.domain)
 			assert.NotEmpty(t, affinities)
 
@@ -361,6 +383,7 @@ func TestGetDomainRoleAffinities(t *testing.T) {
 // =============================================================================
 
 func TestSpecializedAgent_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	agent := NewSpecializedAgent("Test", "test", "model", DomainCode)
 
 	done := make(chan bool, 4)
@@ -402,6 +425,7 @@ func TestSpecializedAgent_ConcurrentAccess(t *testing.T) {
 }
 
 func TestCapabilitySet_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	cs := NewCapabilitySet()
 
 	done := make(chan bool, 3)

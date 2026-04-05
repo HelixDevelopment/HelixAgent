@@ -13,6 +13,7 @@ import (
 )
 
 func TestToGenericRequest(t *testing.T) {
+	t.Parallel()
 	req := &formatters.FormatRequest{
 		Content:    "test content",
 		FilePath:   "/test/path.go",
@@ -41,6 +42,7 @@ func TestToGenericRequest(t *testing.T) {
 }
 
 func TestFromGenericResult(t *testing.T) {
+	t.Parallel()
 	generic := &genericfmt.FormatResult{
 		Content:          "formatted content",
 		Changed:          true,
@@ -73,6 +75,7 @@ func TestFromGenericResult(t *testing.T) {
 }
 
 func TestToGenericMetadata(t *testing.T) {
+	t.Parallel()
 	metadata := &formatters.FormatterMetadata{
 		Name:            "gofmt",
 		Type:            formatters.FormatterTypeNative,
@@ -95,6 +98,7 @@ func TestToGenericMetadata(t *testing.T) {
 }
 
 func TestFromGenericMetadata(t *testing.T) {
+	t.Parallel()
 	generic := &genericfmt.FormatterMetadata{
 		Name:          "black",
 		Type:          genericfmt.FormatterTypeNative,
@@ -117,6 +121,7 @@ func TestFromGenericMetadata(t *testing.T) {
 }
 
 func TestNilConversions(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, adapter.ToGenericRequest(nil))
 	assert.Nil(t, adapter.FromGenericResult(nil))
 	assert.Nil(t, adapter.ToGenericMetadata(nil))
@@ -124,6 +129,7 @@ func TestNilConversions(t *testing.T) {
 }
 
 func TestDetectLanguageFromPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -146,6 +152,7 @@ func TestDetectLanguageFromPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+				t.Parallel()
 			result := adapter.DetectLanguageFromPath(tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -195,6 +202,7 @@ func (m *mockFormatter) FormatBatch(
 }
 
 func TestFormatterAdapter(t *testing.T) {
+	t.Parallel()
 	mock := &mockFormatter{
 		name:      "test-formatter",
 		version:   "1.0.0",
@@ -225,6 +233,7 @@ func TestFormatterAdapter(t *testing.T) {
 }
 
 func TestNativeFormatterFactory(t *testing.T) {
+	t.Parallel()
 	factory := adapter.NewNativeFormatterFactory()
 
 	// These will fail health checks if the binaries aren't installed,

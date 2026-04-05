@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultProviderAdapterConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultProviderAdapterConfig()
 	if cfg == nil {
 		t.Fatal("DefaultProviderAdapterConfig returned nil")
@@ -29,6 +30,7 @@ func TestDefaultProviderAdapterConfig(t *testing.T) {
 }
 
 func TestNewProviderAdapter(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewProviderAdapter("openai", "OpenAI", "sk-test", "https://api.openai.com", nil)
 	if err != nil {
 		t.Fatalf("NewProviderAdapter failed: %v", err)
@@ -45,6 +47,7 @@ func TestNewProviderAdapter(t *testing.T) {
 }
 
 func TestNewProviderAdapter_WithConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &ProviderAdapterConfig{
 		Timeout:         30 * time.Second,
 		MaxRetries:      5,
@@ -64,6 +67,7 @@ func TestNewProviderAdapter_WithConfig(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns OpenAI-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -93,6 +97,7 @@ func TestProviderAdapter_Complete(t *testing.T) {
 }
 
 func TestProviderAdapter_CompleteStream(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewProviderAdapter("test", "Test Provider", "key", "url", nil)
 
 	stream, err := adapter.CompleteStream(context.Background(), "gpt-4", "Hello", nil)
@@ -112,6 +117,7 @@ func TestProviderAdapter_CompleteStream(t *testing.T) {
 }
 
 func TestProviderAdapter_CompleteStream_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &ProviderAdapterConfig{
 		EnableStreaming: false,
 	}
@@ -125,6 +131,7 @@ func TestProviderAdapter_CompleteStream_Disabled(t *testing.T) {
 }
 
 func TestProviderAdapter_HealthCheck(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewProviderAdapter("test", "Test Provider", "key", "url", nil)
 
 	err := adapter.HealthCheck(context.Background())
@@ -134,6 +141,7 @@ func TestProviderAdapter_HealthCheck(t *testing.T) {
 }
 
 func TestProviderAdapter_HealthCheck_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &ProviderAdapterConfig{
 		EnableHealthCheck: false,
 	}
@@ -147,6 +155,7 @@ func TestProviderAdapter_HealthCheck_Disabled(t *testing.T) {
 }
 
 func TestProviderAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewProviderAdapter("test", "Test Provider", "key", "url", nil)
 
 	caps := adapter.GetCapabilities()
@@ -165,6 +174,7 @@ func TestProviderAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestProviderAdapter_GetMetrics(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns OpenAI-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -192,6 +202,7 @@ func TestProviderAdapter_GetMetrics(t *testing.T) {
 }
 
 func TestProviderAdapterConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &ProviderAdapterConfig{
 		Timeout:             time.Minute,
 		MaxRetries:          5,
@@ -213,6 +224,7 @@ func TestProviderAdapterConfig_Fields(t *testing.T) {
 }
 
 func TestProviderMetrics_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	metrics := &ProviderMetrics{
 		TotalRequests:      100,
@@ -237,6 +249,7 @@ func TestProviderMetrics_Fields(t *testing.T) {
 }
 
 func TestProviderCapabilities_Fields(t *testing.T) {
+	t.Parallel()
 	caps := &ProviderCapabilities{
 		SupportsStreaming:    true,
 		SupportsFunctionCall: true,
@@ -255,6 +268,7 @@ func TestProviderCapabilities_Fields(t *testing.T) {
 }
 
 func TestCompletionRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := CompletionRequest{
 		Model:       "gpt-4",
 		Prompt:      "Hello",
@@ -279,6 +293,7 @@ func TestCompletionRequest_Fields(t *testing.T) {
 }
 
 func TestCompletionResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := CompletionResponse{
 		Content: "Hello World",
 	}
@@ -289,6 +304,7 @@ func TestCompletionResponse_Fields(t *testing.T) {
 }
 
 func TestStreamChunk_Fields(t *testing.T) {
+	t.Parallel()
 	chunk := StreamChunk{
 		Content: "chunk content",
 		Error:   nil,
@@ -303,6 +319,7 @@ func TestStreamChunk_Fields(t *testing.T) {
 }
 
 func TestProviderCaps_Fields(t *testing.T) {
+	t.Parallel()
 	caps := &ProviderCaps{
 		SupportsStreaming:       true,
 		SupportsFunctionCalling: true,
@@ -321,6 +338,7 @@ func TestProviderCaps_Fields(t *testing.T) {
 }
 
 func TestProviderConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := ProviderConfig{
 		APIKey:  "sk-test-key",
 		BaseURL: "https://api.example.com",
@@ -335,6 +353,7 @@ func TestProviderConfig_Fields(t *testing.T) {
 }
 
 func TestGetIntOption(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		options  map[string]interface{}
@@ -351,6 +370,7 @@ func TestGetIntOption(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := getIntOption(tt.options, tt.key, tt.defVal)
 			if result != tt.expected {
 				t.Errorf("getIntOption() = %d, want %d", result, tt.expected)
@@ -360,6 +380,7 @@ func TestGetIntOption(t *testing.T) {
 }
 
 func TestGetFloat64Option(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		options  map[string]interface{}
@@ -376,6 +397,7 @@ func TestGetFloat64Option(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := getFloat64Option(tt.options, tt.key, tt.defVal)
 			if result != tt.expected {
 				t.Errorf("getFloat64Option() = %f, want %f", result, tt.expected)
@@ -385,6 +407,7 @@ func TestGetFloat64Option(t *testing.T) {
 }
 
 func TestNewProviderAdapterRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 	if registry == nil {
 		t.Fatal("NewProviderAdapterRegistry returned nil")
@@ -395,6 +418,7 @@ func TestNewProviderAdapterRegistry(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_Register(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 	adapter, _ := NewProviderAdapter("test", "Test", "key", "url", nil)
 
@@ -410,6 +434,7 @@ func TestProviderAdapterRegistry_Register(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 
 	_, ok := registry.Get("nonexistent")
@@ -419,6 +444,7 @@ func TestProviderAdapterRegistry_Get_NotFound(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_GetAll(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 
 	adapter1, _ := NewProviderAdapter("test1", "Test1", "key", "url", nil)
@@ -434,6 +460,7 @@ func TestProviderAdapterRegistry_GetAll(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_Remove(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 	adapter, _ := NewProviderAdapter("test", "Test", "key", "url", nil)
 
@@ -447,6 +474,7 @@ func TestProviderAdapterRegistry_Remove(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_GetHealthyAdapters(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 	adapter, _ := NewProviderAdapter("test", "Test", "key", "url", nil)
 
@@ -459,6 +487,7 @@ func TestProviderAdapterRegistry_GetHealthyAdapters(t *testing.T) {
 }
 
 func TestProviderAdapter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewProviderAdapter("test", "Test", "key", "url", nil)
 
 	done := make(chan bool, 10)
@@ -481,6 +510,7 @@ func TestProviderAdapter_ConcurrentAccess(t *testing.T) {
 }
 
 func TestProviderAdapter_RecordFailure(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewProviderAdapter("test", "Test", "key", "url", nil)
 
 	// Manually record a failure
@@ -496,6 +526,7 @@ func TestProviderAdapter_RecordFailure(t *testing.T) {
 }
 
 func TestProviderAdapterRegistry_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	registry := NewProviderAdapterRegistry()
 
 	done := make(chan bool, 20)
@@ -533,6 +564,7 @@ func TestProviderAdapterRegistry_ConcurrentAccess(t *testing.T) {
 // ============================================================================
 
 func TestProviderAdapter_Complete_AnthropicFormat(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns Anthropic-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -553,6 +585,7 @@ func TestProviderAdapter_Complete_AnthropicFormat(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_GeminiFormat(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns Gemini-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -573,6 +606,7 @@ func TestProviderAdapter_Complete_GeminiFormat(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_OllamaFormat(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns Ollama-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -593,6 +627,7 @@ func TestProviderAdapter_Complete_OllamaFormat(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_DeepSeekFormat(t *testing.T) {
+	t.Parallel()
 	// DeepSeek uses OpenAI-compatible format
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -612,6 +647,7 @@ func TestProviderAdapter_Complete_DeepSeekFormat(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_InvalidFormat(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns invalid response format
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -628,6 +664,7 @@ func TestProviderAdapter_Complete_InvalidFormat(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns empty choices array
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -644,6 +681,7 @@ func TestProviderAdapter_Complete_EmptyChoices(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_EmptyContent(t *testing.T) {
+	t.Parallel()
 	// Anthropic format with empty content array
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -660,6 +698,7 @@ func TestProviderAdapter_Complete_EmptyContent(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns malformed JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -676,6 +715,7 @@ func TestProviderAdapter_Complete_MalformedJSON(t *testing.T) {
 }
 
 func TestProviderAdapter_Complete_ServerError(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns 500 error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -12,6 +12,7 @@ import (
 
 // TestQwenCLIProvider_DefaultConfig tests default configuration
 func TestQwenCLIProvider_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultQwenCLIConfig()
 
 	// Model is empty by default - will be discovered dynamically
@@ -22,6 +23,7 @@ func TestQwenCLIProvider_DefaultConfig(t *testing.T) {
 
 // TestQwenCLIProvider_NewProvider tests provider creation
 func TestQwenCLIProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	config := QwenCLIConfig{
 		Model:           "qwen-max",
 		Timeout:         60 * time.Second,
@@ -38,6 +40,7 @@ func TestQwenCLIProvider_NewProvider(t *testing.T) {
 
 // TestQwenCLIProvider_NewProviderWithModel tests model-specific creation
 func TestQwenCLIProvider_NewProviderWithModel(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-turbo")
 
 	assert.NotNil(t, provider)
@@ -46,18 +49,21 @@ func TestQwenCLIProvider_NewProviderWithModel(t *testing.T) {
 
 // TestQwenCLIProvider_GetName tests provider name
 func TestQwenCLIProvider_GetName(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen-cli", provider.GetName())
 }
 
 // TestQwenCLIProvider_GetProviderType tests provider type
 func TestQwenCLIProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen", provider.GetProviderType())
 }
 
 // TestQwenCLIProvider_GetCapabilities tests capabilities
 func TestQwenCLIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 	caps := provider.GetCapabilities()
 
@@ -74,6 +80,7 @@ func TestQwenCLIProvider_GetCapabilities(t *testing.T) {
 
 // TestQwenCLIProvider_SetModel tests model setting
 func TestQwenCLIProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen-plus", provider.GetCurrentModel())
 
@@ -83,6 +90,7 @@ func TestQwenCLIProvider_SetModel(t *testing.T) {
 
 // TestIsQwenCodeInstalled tests CLI installation check
 func TestIsQwenCodeInstalled(t *testing.T) {
+	t.Parallel()
 	// This test is informational - actual result depends on system
 	installed := IsQwenCodeInstalled()
 	t.Logf("Qwen Code installed: %v", installed)
@@ -95,6 +103,7 @@ func TestIsQwenCodeInstalled(t *testing.T) {
 
 // TestGetQwenCodePath tests path lookup
 func TestGetQwenCodePath(t *testing.T) {
+	t.Parallel()
 	path, err := GetQwenCodePath()
 
 	// Just verify it returns proper types
@@ -109,6 +118,7 @@ func TestGetQwenCodePath(t *testing.T) {
 
 // TestIsQwenCodeAuthenticated tests auth check
 func TestIsQwenCodeAuthenticated(t *testing.T) {
+	t.Parallel()
 	// This test is informational - actual result depends on system
 	authenticated := IsQwenCodeAuthenticated()
 	t.Logf("Qwen Code authenticated: %v", authenticated)
@@ -121,6 +131,7 @@ func TestIsQwenCodeAuthenticated(t *testing.T) {
 
 // TestQwenCLIProvider_IsCLIAvailable tests availability check
 func TestQwenCLIProvider_IsCLIAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 
 	available := provider.IsCLIAvailable()
@@ -139,6 +150,7 @@ func TestQwenCLIProvider_IsCLIAvailable(t *testing.T) {
 
 // TestQwenCLIProvider_ValidateConfig tests config validation
 func TestQwenCLIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 
 	valid, errs := provider.ValidateConfig(nil)
@@ -153,6 +165,7 @@ func TestQwenCLIProvider_ValidateConfig(t *testing.T) {
 
 // TestQwenCLIProvider_Complete_NoPrompt tests error on empty prompt
 func TestQwenCLIProvider_Complete_NoPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
 
 	// Skip if CLI not available
@@ -173,6 +186,7 @@ func TestQwenCLIProvider_Complete_NoPrompt(t *testing.T) {
 
 // TestQwenCLIProvider_Complete_CLIUnavailable tests behavior when CLI unavailable
 func TestQwenCLIProvider_Complete_CLIUnavailable(t *testing.T) {
+	t.Parallel()
 	// Create provider with invalid path
 	provider := &QwenCLIProvider{
 		model:        "qwen-plus",
@@ -194,6 +208,7 @@ func TestQwenCLIProvider_Complete_CLIUnavailable(t *testing.T) {
 
 // TestQwenCLIProvider_HealthCheck_CLIUnavailable tests health check when CLI unavailable
 func TestQwenCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
+	t.Parallel()
 	provider := &QwenCLIProvider{
 		model:        "qwen-plus",
 		cliAvailable: false,
@@ -209,6 +224,7 @@ func TestQwenCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
 
 // Integration test - only runs if Qwen CLI is installed and authenticated
 func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -249,6 +265,7 @@ func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
 
 // Integration test for health check
 func TestQwenCLIProvider_Integration_HealthCheck(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -278,6 +295,7 @@ func TestQwenCLIProvider_Integration_HealthCheck(t *testing.T) {
 
 // TestCanUseQwenOAuth tests the OAuth check function
 func TestCanUseQwenOAuth(t *testing.T) {
+	t.Parallel()
 	// This test is informational
 	canUse := CanUseQwenOAuth()
 	t.Logf("Can use Qwen OAuth: %v", canUse)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewNativeFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -37,6 +38,7 @@ func TestNewNativeFormatter(t *testing.T) {
 }
 
 func TestNativeFormatter_buildArgs(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -94,6 +96,7 @@ func TestNativeFormatter_buildArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			metadata.SupportsCheck = tc.supportsCheck
 			formatter := &NativeFormatter{
 				BaseFormatter: formatters.NewBaseFormatter(metadata),
@@ -113,6 +116,7 @@ func TestNativeFormatter_buildArgs(t *testing.T) {
 }
 
 func TestNativeFormatter_HealthCheck_BinaryMissing(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -131,6 +135,7 @@ func TestNativeFormatter_HealthCheck_BinaryMissing(t *testing.T) {
 }
 
 func TestNativeFormatter_FormatBatch(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -158,6 +163,7 @@ func TestNativeFormatter_FormatBatch(t *testing.T) {
 }
 
 func TestNativeFormatter_Format_MissingBinary(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -177,6 +183,7 @@ func TestNativeFormatter_Format_MissingBinary(t *testing.T) {
 }
 
 func TestComputeLineChanges(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		original  string
@@ -223,6 +230,7 @@ func TestComputeLineChanges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := computeLineChanges(tt.original, tt.formatted)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -230,6 +238,7 @@ func TestComputeLineChanges(t *testing.T) {
 }
 
 func TestNewGofmtFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewGofmtFormatter(logger)
 
@@ -240,6 +249,7 @@ func TestNewGofmtFormatter(t *testing.T) {
 }
 
 func TestNewBlackFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewBlackFormatter(logger)
 
@@ -249,6 +259,7 @@ func TestNewBlackFormatter(t *testing.T) {
 }
 
 func TestNewRuffFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewRuffFormatter(logger)
 
@@ -258,6 +269,7 @@ func TestNewRuffFormatter(t *testing.T) {
 }
 
 func TestNewPrettierFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewPrettierFormatter(logger)
 
@@ -266,6 +278,7 @@ func TestNewPrettierFormatter(t *testing.T) {
 }
 
 func TestNewRustfmtFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewRustfmtFormatter(logger)
 
@@ -275,6 +288,7 @@ func TestNewRustfmtFormatter(t *testing.T) {
 }
 
 func TestNewClangFormatFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewClangFormatFormatter(logger)
 
@@ -283,6 +297,7 @@ func TestNewClangFormatFormatter(t *testing.T) {
 }
 
 func TestNewBiomeFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewBiomeFormatter(logger)
 
@@ -291,6 +306,7 @@ func TestNewBiomeFormatter(t *testing.T) {
 }
 
 func TestNewShfmtFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewShfmtFormatter(logger)
 
@@ -300,6 +316,7 @@ func TestNewShfmtFormatter(t *testing.T) {
 }
 
 func TestNewYamlfmtFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewYamlfmtFormatter(logger)
 
@@ -309,6 +326,7 @@ func TestNewYamlfmtFormatter(t *testing.T) {
 }
 
 func TestNewTaploFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewTaploFormatter(logger)
 
@@ -318,6 +336,7 @@ func TestNewTaploFormatter(t *testing.T) {
 }
 
 func TestNewStyluaFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatter := NewStyluaFormatter(logger)
 
@@ -327,6 +346,7 @@ func TestNewStyluaFormatter(t *testing.T) {
 }
 
 func TestAllFormatters_UniqueNames(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	formatters := map[string]*NativeFormatter{
 		"gofmt":        NewGofmtFormatter(logger),

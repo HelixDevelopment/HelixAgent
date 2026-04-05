@@ -236,6 +236,7 @@ func (m *MockDockerClient) SystemInfo(ctx context.Context) (*SystemInfo, error) 
 // Tests
 
 func TestDefaultDockerConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 
 	assert.Equal(t, "unix:///var/run/docker.sock", config.Host)
@@ -245,6 +246,7 @@ func TestDefaultDockerConfig(t *testing.T) {
 }
 
 func TestNewDockerAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -257,6 +259,7 @@ func TestNewDockerAdapter(t *testing.T) {
 }
 
 func TestDockerAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -273,6 +276,7 @@ func TestDockerAdapter_ListTools(t *testing.T) {
 }
 
 func TestDockerAdapter_ListContainers(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -288,6 +292,7 @@ func TestDockerAdapter_ListContainers(t *testing.T) {
 }
 
 func TestDockerAdapter_GetContainer(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -302,6 +307,7 @@ func TestDockerAdapter_GetContainer(t *testing.T) {
 }
 
 func TestDockerAdapter_StartContainer(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -316,6 +322,7 @@ func TestDockerAdapter_StartContainer(t *testing.T) {
 }
 
 func TestDockerAdapter_StopContainer(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -331,6 +338,7 @@ func TestDockerAdapter_StopContainer(t *testing.T) {
 }
 
 func TestDockerAdapter_ContainerLogs(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -346,6 +354,7 @@ func TestDockerAdapter_ContainerLogs(t *testing.T) {
 }
 
 func TestDockerAdapter_ListImages(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -358,6 +367,7 @@ func TestDockerAdapter_ListImages(t *testing.T) {
 }
 
 func TestDockerAdapter_PullImage(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -372,6 +382,7 @@ func TestDockerAdapter_PullImage(t *testing.T) {
 }
 
 func TestDockerAdapter_ListNetworks(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -384,6 +395,7 @@ func TestDockerAdapter_ListNetworks(t *testing.T) {
 }
 
 func TestDockerAdapter_ListVolumes(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -396,6 +408,7 @@ func TestDockerAdapter_ListVolumes(t *testing.T) {
 }
 
 func TestDockerAdapter_SystemInfo(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -408,6 +421,7 @@ func TestDockerAdapter_SystemInfo(t *testing.T) {
 }
 
 func TestDockerAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	adapter := NewDockerAdapter(config, client)
@@ -419,6 +433,7 @@ func TestDockerAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestDockerAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultDockerConfig()
 	client := NewMockDockerClient()
 	client.SetError(true)
@@ -435,6 +450,7 @@ func TestDockerAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestContainerTypes(t *testing.T) {
+	t.Parallel()
 	container := Container{
 		ID:     "abc123def456789012345678901234567890123456789012345678901234",
 		Names:  []string{"/web-app"},
@@ -451,6 +467,7 @@ func TestContainerTypes(t *testing.T) {
 }
 
 func TestImageTypes(t *testing.T) {
+	t.Parallel()
 	image := Image{
 		ID:       "sha256:abc123def456789012345678901234567890123456789012345678901234",
 		RepoTags: []string{"nginx:latest", "nginx:1.21"},
@@ -462,6 +479,7 @@ func TestImageTypes(t *testing.T) {
 }
 
 func TestNetworkTypes(t *testing.T) {
+	t.Parallel()
 	network := Network{
 		ID:     "net123def456789012345678901234567890123456789012345678901234",
 		Name:   "my-network",
@@ -474,6 +492,7 @@ func TestNetworkTypes(t *testing.T) {
 }
 
 func TestVolumeTypes(t *testing.T) {
+	t.Parallel()
 	volume := Volume{
 		Name:       "data-volume",
 		Driver:     "local",
@@ -486,6 +505,7 @@ func TestVolumeTypes(t *testing.T) {
 }
 
 func TestPortTypes(t *testing.T) {
+	t.Parallel()
 	port := Port{
 		IP:          "0.0.0.0",
 		PrivatePort: 80,
@@ -499,6 +519,7 @@ func TestPortTypes(t *testing.T) {
 }
 
 func TestContainerConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := ContainerConfig{
 		Image:      "nginx:latest",
 		Cmd:        []string{"nginx", "-g", "daemon off;"},

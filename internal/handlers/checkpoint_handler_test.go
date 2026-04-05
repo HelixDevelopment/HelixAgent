@@ -17,6 +17,7 @@ import (
 )
 
 func TestCheckpointHandler_CreateCheckpoint(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a temporary directory for checkpoints
@@ -54,6 +55,7 @@ func TestCheckpointHandler_CreateCheckpoint(t *testing.T) {
 }
 
 func TestCheckpointHandler_ListCheckpoints(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tempDir := t.TempDir()
@@ -83,6 +85,7 @@ func TestCheckpointHandler_ListCheckpoints(t *testing.T) {
 }
 
 func TestCheckpointHandler_DeleteCheckpoint(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tempDir := t.TempDir()

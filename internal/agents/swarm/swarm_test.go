@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewSwarm(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test-swarm", nil)
 
 	require.NotNil(t, swarm)
@@ -20,6 +21,7 @@ func TestNewSwarm(t *testing.T) {
 }
 
 func TestSwarm_AddAgent(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 
 	agent, err := swarm.AddAgent("Agent1", RoleWorker)
@@ -38,6 +40,7 @@ func TestSwarm_AddAgent(t *testing.T) {
 }
 
 func TestSwarm_RemoveAgent(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	agent, _ := swarm.AddAgent("Agent1", RoleWorker)
 
@@ -49,6 +52,7 @@ func TestSwarm_RemoveAgent(t *testing.T) {
 }
 
 func TestSwarm_RemoveAgent_NotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 
 	err := swarm.RemoveAgent("nonexistent")
@@ -57,6 +61,7 @@ func TestSwarm_RemoveAgent_NotFound(t *testing.T) {
 }
 
 func TestSwarm_GetAgent(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	agent, _ := swarm.AddAgent("Agent1", RoleWorker)
 
@@ -67,6 +72,7 @@ func TestSwarm_GetAgent(t *testing.T) {
 }
 
 func TestSwarm_GetAgentsByRole(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	swarm.AddAgent("Worker1", RoleWorker)
 	swarm.AddAgent("Worker2", RoleWorker)
@@ -80,6 +86,7 @@ func TestSwarm_GetAgentsByRole(t *testing.T) {
 }
 
 func TestSwarm_ListAgents(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	swarm.AddAgent("Agent1", RoleWorker)
 	swarm.AddAgent("Agent2", RoleSpecialist)
@@ -90,6 +97,7 @@ func TestSwarm_ListAgents(t *testing.T) {
 }
 
 func TestSwarm_UpdateAgentStatus(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	agent, _ := swarm.AddAgent("Agent1", RoleWorker)
 
@@ -101,6 +109,7 @@ func TestSwarm_UpdateAgentStatus(t *testing.T) {
 }
 
 func TestSwarm_UpdateAgentStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 
 	err := swarm.UpdateAgentStatus("nonexistent", AgentWorking)
@@ -108,6 +117,7 @@ func TestSwarm_UpdateAgentStatus_NotFound(t *testing.T) {
 }
 
 func TestSwarm_GetScratchpad(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 
 	scratchpad := swarm.GetScratchpad()
@@ -115,6 +125,7 @@ func TestSwarm_GetScratchpad(t *testing.T) {
 }
 
 func TestSwarm_Broadcast(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	swarm.AddAgent("Agent1", RoleWorker)
 
@@ -129,6 +140,7 @@ func TestSwarm_Broadcast(t *testing.T) {
 }
 
 func TestSwarm_SendTo(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	agent, _ := swarm.AddAgent("Agent1", RoleWorker)
 
@@ -137,6 +149,7 @@ func TestSwarm_SendTo(t *testing.T) {
 }
 
 func TestSwarm_SendTo_NotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 
 	err := swarm.SendTo("agent-1", "nonexistent", "Message")
@@ -145,6 +158,7 @@ func TestSwarm_SendTo_NotFound(t *testing.T) {
 }
 
 func TestXMLMessage_ToXML(t *testing.T) {
+	t.Parallel()
 	msg := &XMLMessage{
 		Type:    "broadcast",
 		From:    "agent1",
@@ -160,6 +174,7 @@ func TestXMLMessage_ToXML(t *testing.T) {
 }
 
 func TestParseXML(t *testing.T) {
+	t.Parallel()
 	xmlData := `<?xml version="1.0"?>
 <message type="direct" from="agent1" to="agent2">
   <content>Hello</content>
@@ -173,12 +188,14 @@ func TestParseXML(t *testing.T) {
 }
 
 func TestNewScratchpad(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 	require.NotNil(t, sp)
 	assert.Empty(t, sp.GetEntries())
 }
 
 func TestScratchpad_AddEntry(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 
 	sp.AddEntry(ScratchpadEntry{
@@ -194,6 +211,7 @@ func TestScratchpad_AddEntry(t *testing.T) {
 }
 
 func TestScratchpad_GetEntriesByType(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 
 	sp.AddEntry(ScratchpadEntry{Type: "message", Content: "msg1"})
@@ -205,6 +223,7 @@ func TestScratchpad_GetEntriesByType(t *testing.T) {
 }
 
 func TestScratchpad_GetEntriesByAgent(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 
 	sp.AddEntry(ScratchpadEntry{AgentID: "agent1", Content: "content1"})
@@ -216,6 +235,7 @@ func TestScratchpad_GetEntriesByAgent(t *testing.T) {
 }
 
 func TestScratchpad_Clear(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 	sp.AddEntry(ScratchpadEntry{Type: "test"})
 
@@ -225,6 +245,7 @@ func TestScratchpad_Clear(t *testing.T) {
 }
 
 func TestScratchpad_LastN(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 
 	sp.AddEntry(ScratchpadEntry{Content: "1"})
@@ -240,6 +261,7 @@ func TestScratchpad_LastN(t *testing.T) {
 }
 
 func TestScratchpad_ToXML(t *testing.T) {
+	t.Parallel()
 	sp := NewScratchpad()
 	sp.AddEntry(ScratchpadEntry{
 		Type:    "test",
@@ -255,6 +277,7 @@ func TestScratchpad_ToXML(t *testing.T) {
 }
 
 func TestNewCoordinator(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 
@@ -265,6 +288,7 @@ func TestNewCoordinator(t *testing.T) {
 }
 
 func TestCoordinator_CreateTask(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 
@@ -277,6 +301,7 @@ func TestCoordinator_CreateTask(t *testing.T) {
 }
 
 func TestCoordinator_Assign(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	agent, _ := swarm.AddAgent("Agent1", RoleWorker)
 	coord := NewCoordinator(swarm, nil)
@@ -289,6 +314,7 @@ func TestCoordinator_Assign(t *testing.T) {
 }
 
 func TestCoordinator_Assign_TaskNotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 
@@ -298,6 +324,7 @@ func TestCoordinator_Assign_TaskNotFound(t *testing.T) {
 }
 
 func TestCoordinator_Assign_AgentNotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 	task := coord.CreateTask("Test")
@@ -308,6 +335,7 @@ func TestCoordinator_Assign_AgentNotFound(t *testing.T) {
 }
 
 func TestCoordinator_ReportResult(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 	task := coord.CreateTask("Test")
@@ -319,6 +347,7 @@ func TestCoordinator_ReportResult(t *testing.T) {
 }
 
 func TestCoordinator_GetTask(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 	task := coord.CreateTask("Test")
@@ -330,6 +359,7 @@ func TestCoordinator_GetTask(t *testing.T) {
 }
 
 func TestCoordinator_GetTask_NotFound(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 
@@ -338,6 +368,7 @@ func TestCoordinator_GetTask_NotFound(t *testing.T) {
 }
 
 func TestColorize(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		color AgentColor
 		want  string
@@ -360,18 +391,21 @@ func TestColorize(t *testing.T) {
 }
 
 func TestAgentColors(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AgentColor("red"), ColorRed)
 	assert.Equal(t, AgentColor("blue"), ColorBlue)
 	assert.Equal(t, AgentColor("green"), ColorGreen)
 }
 
 func TestAgentRoles(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AgentRole("leader"), RoleLeader)
 	assert.Equal(t, AgentRole("worker"), RoleWorker)
 	assert.Equal(t, AgentRole("specialist"), RoleSpecialist)
 }
 
 func TestAgentStatus(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AgentStatus("idle"), AgentIdle)
 	assert.Equal(t, AgentStatus("working"), AgentWorking)
 	assert.Equal(t, AgentStatus("done"), AgentDone)
@@ -379,6 +413,7 @@ func TestAgentStatus(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	done := make(chan bool, 3)
 
@@ -406,6 +441,7 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 func TestCoordinator_Concurrent(t *testing.T) {
+	t.Parallel()
 	swarm := NewSwarm("test", nil)
 	coord := NewCoordinator(swarm, nil)
 

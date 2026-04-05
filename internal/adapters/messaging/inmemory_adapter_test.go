@@ -13,6 +13,7 @@ import (
 )
 
 func TestInMemoryBrokerAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 
 	ctx := context.Background()
@@ -29,6 +30,7 @@ func TestInMemoryBrokerAdapter_Connect(t *testing.T) {
 }
 
 func TestInMemoryBrokerAdapter_PublishSubscribe(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 
 	ctx := context.Background()
@@ -64,6 +66,7 @@ func TestInMemoryBrokerAdapter_PublishSubscribe(t *testing.T) {
 }
 
 func TestInMemoryBrokerAdapter_PublishBatch(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 
 	ctx := context.Background()
@@ -103,11 +106,13 @@ func TestInMemoryBrokerAdapter_PublishBatch(t *testing.T) {
 }
 
 func TestInMemoryBrokerAdapter_BrokerType(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 	assert.Equal(t, messaging.BrokerTypeInMemory, adapter.BrokerType())
 }
 
 func TestInMemoryBrokerAdapter_Metrics(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 
 	ctx := context.Background()
@@ -120,6 +125,7 @@ func TestInMemoryBrokerAdapter_Metrics(t *testing.T) {
 }
 
 func TestInMemoryBrokerAdapter_Unwrap(t *testing.T) {
+	t.Parallel()
 	adapter := NewInMemoryBrokerAdapter()
 	assert.NotNil(t, adapter.Unwrap())
 }

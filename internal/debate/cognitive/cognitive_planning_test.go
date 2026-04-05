@@ -31,6 +31,7 @@ func createTestAgents(count int) []*topology.Agent {
 // ============================================================================
 
 func TestDefaultPlanningConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 
 	assert.True(t, config.EnableLearning)
@@ -45,6 +46,7 @@ func TestDefaultPlanningConfig(t *testing.T) {
 // ============================================================================
 
 func TestNewCognitivePlanner(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -62,6 +64,7 @@ func TestNewCognitivePlanner(t *testing.T) {
 // ============================================================================
 
 func TestSetExpectation(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -81,6 +84,7 @@ func TestSetExpectation(t *testing.T) {
 }
 
 func TestSetExpectation_UpdatesMetrics(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -96,6 +100,7 @@ func TestSetExpectation_UpdatesMetrics(t *testing.T) {
 }
 
 func TestSetExpectation_DifferentPhases(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -118,6 +123,7 @@ func TestSetExpectation_DifferentPhases(t *testing.T) {
 }
 
 func TestSetExpectation_HighScoringAgents(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -149,6 +155,7 @@ func TestSetExpectation_HighScoringAgents(t *testing.T) {
 // ============================================================================
 
 func TestCompare(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -179,6 +186,7 @@ func TestCompare(t *testing.T) {
 }
 
 func TestCompare_CalculatesDeltas(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -208,6 +216,7 @@ func TestCompare_CalculatesDeltas(t *testing.T) {
 }
 
 func TestCompare_UpdatesBaseline(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -226,6 +235,7 @@ func TestCompare_UpdatesBaseline(t *testing.T) {
 }
 
 func TestCompare_UpdatesMetrics(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -242,6 +252,7 @@ func TestCompare_UpdatesMetrics(t *testing.T) {
 }
 
 func TestCompare_WithoutExpectation(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -264,6 +275,7 @@ func TestCompare_WithoutExpectation(t *testing.T) {
 // ============================================================================
 
 func TestRefine(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -283,6 +295,7 @@ func TestRefine(t *testing.T) {
 }
 
 func TestRefine_AdjustsAgentPriorities(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -303,6 +316,7 @@ func TestRefine_AdjustsAgentPriorities(t *testing.T) {
 }
 
 func TestRefine_GeneratesMitigationStrategies(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -326,6 +340,7 @@ func TestRefine_GeneratesMitigationStrategies(t *testing.T) {
 }
 
 func TestRefine_ExtractsPatterns(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -365,6 +380,7 @@ func TestRefine_ExtractsPatterns(t *testing.T) {
 // ============================================================================
 
 func TestGetNextPhaseStrategy(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -378,6 +394,7 @@ func TestGetNextPhaseStrategy(t *testing.T) {
 }
 
 func TestGetNextPhaseStrategy_WithRefinements(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -402,6 +419,7 @@ func TestGetNextPhaseStrategy_WithRefinements(t *testing.T) {
 // ============================================================================
 
 func TestLearning_ExtractsInsights(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.EnableLearning = true
 	planner := NewCognitivePlanner(config)
@@ -419,6 +437,7 @@ func TestLearning_ExtractsInsights(t *testing.T) {
 }
 
 func TestLearning_EnforcesMaxHistory(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.MaxHistorySize = 5
 	config.EnableLearning = true
@@ -438,6 +457,7 @@ func TestLearning_EnforcesMaxHistory(t *testing.T) {
 }
 
 func TestLearning_Disabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.EnableLearning = false
 	planner := NewCognitivePlanner(config)
@@ -457,6 +477,7 @@ func TestLearning_Disabled(t *testing.T) {
 // ============================================================================
 
 func TestReflectOnPerformance(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.EnableMetaCognition = true
 	planner := NewCognitivePlanner(config)
@@ -481,6 +502,7 @@ func TestReflectOnPerformance(t *testing.T) {
 }
 
 func TestReflectOnPerformance_Disabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.EnableMetaCognition = false
 	planner := NewCognitivePlanner(config)
@@ -492,6 +514,7 @@ func TestReflectOnPerformance_Disabled(t *testing.T) {
 }
 
 func TestReflectOnPerformance_GeneratesRecommendations(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	config.EnableMetaCognition = true
 	planner := NewCognitivePlanner(config)
@@ -517,6 +540,7 @@ func TestReflectOnPerformance_GeneratesRecommendations(t *testing.T) {
 // ============================================================================
 
 func TestGetPlanningMetrics(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -537,6 +561,7 @@ func TestGetPlanningMetrics(t *testing.T) {
 }
 
 func TestMetrics_AccuracyRate(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -556,6 +581,7 @@ func TestMetrics_AccuracyRate(t *testing.T) {
 // ============================================================================
 
 func TestFullCognitiveCycle(t *testing.T) {
+	t.Parallel()
 	config := DefaultPlanningConfig()
 	planner := NewCognitivePlanner(config)
 
@@ -621,6 +647,7 @@ func TestFullCognitiveCycle(t *testing.T) {
 // ============================================================================
 
 func TestGetNextPhase(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		current  topology.DebatePhase
 		expected topology.DebatePhase
@@ -634,12 +661,14 @@ func TestGetNextPhase(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.current), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, getNextPhase(tc.current))
 		})
 	}
 }
 
 func TestDefaultValues(t *testing.T) {
+	t.Parallel()
 	phases := []topology.DebatePhase{
 		topology.PhaseProposal,
 		topology.PhaseCritique,
@@ -650,6 +679,7 @@ func TestDefaultValues(t *testing.T) {
 
 	for _, phase := range phases {
 		t.Run(string(phase), func(t *testing.T) {
+				t.Parallel()
 			confidence := getDefaultConfidence(phase)
 			consensus := getDefaultConsensus(phase)
 			insights := getDefaultInsights(phase)

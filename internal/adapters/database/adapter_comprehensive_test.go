@@ -165,6 +165,7 @@ func (m *mockDatabase) Migrate(ctx context.Context, migrations []string) error {
 // ============================================================================
 
 func TestErrorRow_ScanReturnsError(t *testing.T) {
+	t.Parallel()
 	testErr := errors.New("test error")
 	row := &ErrorRow{err: testErr}
 	
@@ -176,6 +177,7 @@ func TestErrorRow_ScanReturnsError(t *testing.T) {
 }
 
 func TestErrorRow_ScanWithMultipleDestinations(t *testing.T) {
+	t.Parallel()
 	testErr := errors.New("connection failed")
 	row := &ErrorRow{err: testErr}
 	
@@ -199,6 +201,7 @@ func newTestClient(mockDB *mockDatabase) *Client {
 }
 
 func TestClient_Pool_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -209,6 +212,7 @@ func TestClient_Pool_WithMock(t *testing.T) {
 }
 
 func TestClient_Database_ReturnsUnderlyingDB(t *testing.T) {
+	t.Parallel()
 	// Create a real client to test Database() method
 	cfg := &config.Config{}
 	client, err := NewClient(cfg)
@@ -219,6 +223,7 @@ func TestClient_Database_ReturnsUnderlyingDB(t *testing.T) {
 }
 
 func TestClient_Close_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -229,6 +234,7 @@ func TestClient_Close_WithMock(t *testing.T) {
 }
 
 func TestClient_Close_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{closeErr: errors.New("close failed")}
 	client := newTestClient(mock)
 	
@@ -239,6 +245,7 @@ func TestClient_Close_MockError(t *testing.T) {
 }
 
 func TestClient_Ping_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -249,6 +256,7 @@ func TestClient_Ping_WithMock(t *testing.T) {
 }
 
 func TestClient_Ping_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{healthCheckErr: errors.New("ping failed")}
 	client := newTestClient(mock)
 	
@@ -259,6 +267,7 @@ func TestClient_Ping_MockError(t *testing.T) {
 }
 
 func TestClient_HealthCheck_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -269,6 +278,7 @@ func TestClient_HealthCheck_WithMock(t *testing.T) {
 }
 
 func TestClient_HealthCheck_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{healthCheckErr: errors.New("health check failed")}
 	client := newTestClient(mock)
 	
@@ -279,6 +289,7 @@ func TestClient_HealthCheck_MockError(t *testing.T) {
 }
 
 func TestClient_Exec_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -289,6 +300,7 @@ func TestClient_Exec_WithMock(t *testing.T) {
 }
 
 func TestClient_Exec_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{execErr: errors.New("exec failed")}
 	client := newTestClient(mock)
 	
@@ -299,6 +311,7 @@ func TestClient_Exec_MockError(t *testing.T) {
 }
 
 func TestClient_Query_WithMock(t *testing.T) {
+	t.Parallel()
 	mockRows := &mockRows{nextReturns: []bool{true, true, false}}
 	mock := &mockDatabase{queryRows: mockRows}
 	client := newTestClient(mock)
@@ -311,6 +324,7 @@ func TestClient_Query_WithMock(t *testing.T) {
 }
 
 func TestClient_Query_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{queryErr: errors.New("query failed")}
 	client := newTestClient(mock)
 	
@@ -322,6 +336,7 @@ func TestClient_Query_MockError(t *testing.T) {
 }
 
 func TestClient_Query_RowsError(t *testing.T) {
+	t.Parallel()
 	mockRows := &mockRows{
 		nextReturns: []bool{true, false},
 		errVal:      errors.New("rows iteration error"),
@@ -337,6 +352,7 @@ func TestClient_Query_RowsError(t *testing.T) {
 }
 
 func TestClient_QueryRow_WithMock(t *testing.T) {
+	t.Parallel()
 	mockRow := mockRow{}
 	mock := &mockDatabase{queryRowResult: mockRow}
 	client := newTestClient(mock)
@@ -348,6 +364,7 @@ func TestClient_QueryRow_WithMock(t *testing.T) {
 }
 
 func TestClient_Begin_WithMock(t *testing.T) {
+	t.Parallel()
 	mockTx := &mockTx{}
 	mock := &mockDatabase{beginTx: mockTx}
 	client := newTestClient(mock)
@@ -360,6 +377,7 @@ func TestClient_Begin_WithMock(t *testing.T) {
 }
 
 func TestClient_Begin_MockError(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{beginErr: errors.New("begin failed")}
 	client := newTestClient(mock)
 	
@@ -375,6 +393,7 @@ func TestClient_Begin_MockError(t *testing.T) {
 // ============================================================================
 
 func TestClient_Pool_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	// Create client with invalid config to trigger connection failure
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -397,6 +416,7 @@ func TestClient_Pool_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_Ping_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -418,6 +438,7 @@ func TestClient_Ping_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_HealthCheck_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -439,6 +460,7 @@ func TestClient_HealthCheck_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_Exec_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -460,6 +482,7 @@ func TestClient_Exec_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_Query_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -482,6 +505,7 @@ func TestClient_Query_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_QueryRow_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -507,6 +531,7 @@ func TestClient_QueryRow_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_Begin_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -529,6 +554,7 @@ func TestClient_Begin_ConnectionFailure(t *testing.T) {
 }
 
 func TestClient_Migrate_ConnectionFailure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -554,6 +580,7 @@ func TestClient_Migrate_ConnectionFailure(t *testing.T) {
 // ============================================================================
 
 func TestClient_initConnection_WithExistingDeadline(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -567,6 +594,7 @@ func TestClient_initConnection_WithExistingDeadline(t *testing.T) {
 }
 
 func TestClient_initConnection_WithoutDeadline(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -579,6 +607,7 @@ func TestClient_initConnection_WithoutDeadline(t *testing.T) {
 }
 
 func TestClient_initConnection_AlreadyConnected(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -598,6 +627,7 @@ func TestClient_initConnection_AlreadyConnected(t *testing.T) {
 // ============================================================================
 
 func TestNewClient_Success(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "localhost",
@@ -616,6 +646,7 @@ func TestNewClient_Success(t *testing.T) {
 }
 
 func TestNewClient_WithEmptyConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 	
 	client, err := NewClient(cfg)
@@ -629,6 +660,7 @@ func TestNewClient_WithEmptyConfig(t *testing.T) {
 // ============================================================================
 
 func TestTypeAliases(t *testing.T) {
+	t.Parallel()
 	// These tests ensure type aliases compile correctly
 	
 	// Test Row alias

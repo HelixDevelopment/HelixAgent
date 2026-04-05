@@ -102,6 +102,7 @@ func setupIntegrationTest() (*gin.Engine, map[string]interface{}) {
 
 // TestIntegration_HealthEndpoint tests the health endpoint
 func TestIntegration_HealthEndpoint(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	w := httptest.NewRecorder()
@@ -119,6 +120,7 @@ func TestIntegration_HealthEndpoint(t *testing.T) {
 
 // TestIntegration_CompleteFlow tests the complete completion flow
 func TestIntegration_CompleteFlow(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	reqBody := CompletionRequest{
@@ -148,6 +150,7 @@ func TestIntegration_CompleteFlow(t *testing.T) {
 
 // TestIntegration_ChatFlow tests the chat completion flow
 func TestIntegration_ChatFlow(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	reqBody := CompletionRequest{
@@ -179,6 +182,7 @@ func TestIntegration_ChatFlow(t *testing.T) {
 
 // TestIntegration_ModelsEndpoint tests the models endpoint
 func TestIntegration_ModelsEndpoint(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	w := httptest.NewRecorder()
@@ -200,6 +204,7 @@ func TestIntegration_ModelsEndpoint(t *testing.T) {
 
 // TestIntegration_DebateCreateAndRetrieve tests debate creation and retrieval
 func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Create debate
@@ -246,6 +251,7 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 
 // TestIntegration_DebateStatusFlow tests debate status flow
 func TestIntegration_DebateStatusFlow(t *testing.T) {
+	t.Parallel()
 	router, handlers := setupIntegrationTest()
 	debateHandler := handlers["debate"].(*DebateHandler)
 
@@ -300,6 +306,7 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 
 // TestIntegration_DebateListAndDelete tests debate listing and deletion
 func TestIntegration_DebateListAndDelete(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Create multiple debates
@@ -338,6 +345,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 
 // TestIntegration_MCPFlow tests MCP endpoints flow
 func TestIntegration_MCPFlow(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Test capabilities
@@ -392,6 +400,7 @@ func TestIntegration_MCPFlow(t *testing.T) {
 
 // TestIntegration_InvalidRoutes tests invalid routes
 func TestIntegration_InvalidRoutes(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	invalidRoutes := []struct {
@@ -411,6 +420,7 @@ func TestIntegration_InvalidRoutes(t *testing.T) {
 
 	for _, route := range invalidRoutes {
 		t.Run(route.method+"_"+route.path, func(t *testing.T) {
+				t.Parallel()
 			var body *bytes.Buffer
 			if route.body != "" {
 				body = bytes.NewBufferString(route.body)
@@ -433,6 +443,7 @@ func TestIntegration_InvalidRoutes(t *testing.T) {
 
 // TestIntegration_HTTPMethods tests various HTTP methods
 func TestIntegration_HTTPMethods(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Test GET
@@ -480,6 +491,7 @@ func TestIntegration_HTTPMethods(t *testing.T) {
 
 // TestIntegration_ContentTypes tests various content types
 func TestIntegration_ContentTypes(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// JSON content type
@@ -502,6 +514,7 @@ func TestIntegration_ContentTypes(t *testing.T) {
 
 // TestIntegration_MiddlewareNotFound tests not found handling
 func TestIntegration_MiddlewareNotFound(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	w := httptest.NewRecorder()
@@ -514,6 +527,7 @@ func TestIntegration_MiddlewareNotFound(t *testing.T) {
 
 // TestIntegration_ConcurrentRequests tests handling concurrent requests
 func TestIntegration_ConcurrentRequests(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	done := make(chan bool, 10)
@@ -551,6 +565,7 @@ func TestIntegration_ConcurrentRequests(t *testing.T) {
 
 // TestIntegration_ResponseHeaders tests response headers
 func TestIntegration_ResponseHeaders(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Test JSON response headers
@@ -579,6 +594,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 
 // TestIntegration_LargePayload tests handling of large payloads
 func TestIntegration_LargePayload(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Create a large prompt
@@ -603,6 +619,7 @@ func TestIntegration_LargePayload(t *testing.T) {
 
 // TestIntegration_ComplexDebateFlow tests a complex debate workflow
 func TestIntegration_ComplexDebateFlow(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Create debate with all options
@@ -706,6 +723,7 @@ func TestIntegration_ComplexDebateFlow(t *testing.T) {
 
 // TestIntegration_ErrorResponseFormat tests error response format consistency
 func TestIntegration_ErrorResponseFormat(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	testCases := []struct {
@@ -740,6 +758,7 @@ func TestIntegration_ErrorResponseFormat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			var body *bytes.Buffer
 			if tc.body != "" {
 				body = bytes.NewBufferString(tc.body)
@@ -766,10 +785,12 @@ func TestIntegration_ErrorResponseFormat(t *testing.T) {
 
 // TestIntegration_RequestResponseCycle tests complete request-response cycles
 func TestIntegration_RequestResponseCycle(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Test 1: Completion request-response
 	t.Run("completion cycle", func(t *testing.T) {
+			t.Parallel()
 		reqBody := CompletionRequest{
 			Prompt:      "What is 2+2?",
 			Temperature: 0.5,
@@ -793,6 +814,7 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 	// Test 2: Debate request-response
 	t.Run("debate cycle", func(t *testing.T) {
+			t.Parallel()
 		reqBody := CreateDebateRequest{
 			Topic: "Test topic",
 			Participants: []ParticipantConfigRequest{
@@ -818,6 +840,7 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 	// Test 3: MCP request-response
 	t.Run("mcp cycle", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/mcp/capabilities", nil)
 		router.ServeHTTP(w, req)
@@ -833,10 +856,12 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 // TestIntegration_URLRouting tests URL routing patterns
 func TestIntegration_URLRouting(t *testing.T) {
+	t.Parallel()
 	router, _ := setupIntegrationTest()
 
 	// Test completion routes
 	t.Run("POST_/v1/completions", func(t *testing.T) {
+			t.Parallel()
 		reqBody := CompletionRequest{Prompt: "Test"}
 		b, _ := json.Marshal(reqBody)
 		body := bytes.NewBuffer(b)
@@ -850,6 +875,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("GET_/v1/models", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 		router.ServeHTTP(w, req)
@@ -858,6 +884,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("POST_/v1_debates", func(t *testing.T) {
+			t.Parallel()
 		reqBody := CreateDebateRequest{
 			Topic: "Test",
 			Participants: []ParticipantConfigRequest{
@@ -877,6 +904,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("GET_/v1_debates", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/debates", nil)
 		router.ServeHTTP(w, req)
@@ -887,8 +915,10 @@ func TestIntegration_URLRouting(t *testing.T) {
 
 // TestIntegration_JSONMarshaling tests JSON marshaling/unmarshaling
 func TestIntegration_JSONMarshaling(t *testing.T) {
+	t.Parallel()
 	// Test CompletionRequest marshaling
 	t.Run("completion request", func(t *testing.T) {
+			t.Parallel()
 		req := CompletionRequest{
 			Prompt:      "Test",
 			Model:       "test-model",
@@ -918,6 +948,7 @@ func TestIntegration_JSONMarshaling(t *testing.T) {
 
 	// Test CreateDebateRequest marshaling
 	t.Run("debate request", func(t *testing.T) {
+			t.Parallel()
 		req := CreateDebateRequest{
 			Topic: "Test",
 			Participants: []ParticipantConfigRequest{

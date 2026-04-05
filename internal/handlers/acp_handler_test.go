@@ -17,6 +17,7 @@ import (
 
 // TestNewACPHandler tests handler creation
 func TestNewACPHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewACPHandler(nil, logger)
 
@@ -28,6 +29,7 @@ func TestNewACPHandler(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_Initialize tests the initialize method
 func TestACPHandler_HandleJSONRPC_Initialize(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -75,6 +77,7 @@ func TestACPHandler_HandleJSONRPC_Initialize(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_AgentList tests the agent/list method
 func TestACPHandler_HandleJSONRPC_AgentList(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -139,6 +142,7 @@ func TestACPHandler_HandleJSONRPC_AgentList(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_AgentGet tests the agent/get method
 func TestACPHandler_HandleJSONRPC_AgentGet(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -204,6 +208,7 @@ func TestACPHandler_HandleJSONRPC_AgentGet(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_AgentExecute tests the agent/execute method
 func TestACPHandler_HandleJSONRPC_AgentExecute(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -296,6 +301,7 @@ func TestACPHandler_HandleJSONRPC_AgentExecute(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_SessionCreate tests the session/create method
 func TestACPHandler_HandleJSONRPC_SessionCreate(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -359,6 +365,7 @@ func TestACPHandler_HandleJSONRPC_SessionCreate(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_SessionUpdate tests the session/update method
 func TestACPHandler_HandleJSONRPC_SessionUpdate(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -467,6 +474,7 @@ func TestACPHandler_HandleJSONRPC_SessionUpdate(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_SessionClose tests the session/close method
 func TestACPHandler_HandleJSONRPC_SessionClose(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -548,6 +556,7 @@ func TestACPHandler_HandleJSONRPC_SessionClose(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_Health tests the health method
 func TestACPHandler_HandleJSONRPC_Health(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -589,6 +598,7 @@ func TestACPHandler_HandleJSONRPC_Health(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_MethodNotFound tests unknown method
 func TestACPHandler_HandleJSONRPC_MethodNotFound(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -623,6 +633,7 @@ func TestACPHandler_HandleJSONRPC_MethodNotFound(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_InvalidJSON tests invalid JSON parsing
 func TestACPHandler_HandleJSONRPC_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -649,6 +660,7 @@ func TestACPHandler_HandleJSONRPC_InvalidJSON(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_InvalidParams tests invalid parameters
 func TestACPHandler_HandleJSONRPC_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -684,6 +696,7 @@ func TestACPHandler_HandleJSONRPC_InvalidParams(t *testing.T) {
 
 // TestACPHandler_ConcurrentAccess tests concurrent access to sessions
 func TestACPHandler_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -749,6 +762,7 @@ func TestACPHandler_ConcurrentAccess(t *testing.T) {
 
 // TestACPHandler_REST_Endpoints tests backward compatibility with REST endpoints
 func TestACPHandler_REST_Endpoints(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -834,6 +848,7 @@ func TestACPHandler_REST_Endpoints(t *testing.T) {
 
 // TestACPHandler_RegisterRoutes tests route registration
 func TestACPHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -870,6 +885,7 @@ func TestACPHandler_RegisterRoutes(t *testing.T) {
 
 // TestACPHandler_AllAgentExecutions tests execution of all agent types
 func TestACPHandler_AllAgentExecutions(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -886,6 +902,7 @@ func TestACPHandler_AllAgentExecutions(t *testing.T) {
 
 	for _, agentID := range agents {
 		t.Run(agentID, func(t *testing.T) {
+				t.Parallel()
 			msg := JSONRPCMessage{
 				JSONRPC: "2.0",
 				ID:      agentID,
@@ -919,6 +936,7 @@ func TestACPHandler_AllAgentExecutions(t *testing.T) {
 
 // TestACPHandler_DetectTaskType tests the detectTaskType function
 func TestACPHandler_DetectTaskType(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewACPHandler(nil, logger)
 
@@ -946,6 +964,7 @@ func TestACPHandler_DetectTaskType(t *testing.T) {
 
 // TestACPHandler_InitializeWithClientInfo tests initialize with clientInfo
 func TestACPHandler_InitializeWithClientInfo(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -978,6 +997,7 @@ func TestACPHandler_InitializeWithClientInfo(t *testing.T) {
 
 // TestACPHandler_AgentListFilter tests agent/list with various filters
 func TestACPHandler_AgentListFilter(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1014,6 +1034,7 @@ func TestACPHandler_AgentListFilter(t *testing.T) {
 
 // TestACPHandler_ExecuteWithTimeout tests agent execution with timeout (should be ignored but not error)
 func TestACPHandler_ExecuteWithTimeout(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1042,6 +1063,7 @@ func TestACPHandler_ExecuteWithTimeout(t *testing.T) {
 
 // TestACPHandler_GetContextKeys tests getContextKeys function
 func TestACPHandler_GetContextKeys(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewACPHandler(nil, logger)
 
@@ -1068,6 +1090,7 @@ func TestACPHandler_GetContextKeys(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_Initialize_InvalidParams tests initialize with invalid params
 func TestACPHandler_HandleJSONRPC_Initialize_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1102,6 +1125,7 @@ func TestACPHandler_HandleJSONRPC_Initialize_InvalidParams(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_AgentList_InvalidParams tests agent/list with invalid params
 func TestACPHandler_HandleJSONRPC_AgentList_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1136,6 +1160,7 @@ func TestACPHandler_HandleJSONRPC_AgentList_InvalidParams(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_AgentExecute_InvalidParams tests agent/execute with invalid params
 func TestACPHandler_HandleJSONRPC_AgentExecute_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1170,6 +1195,7 @@ func TestACPHandler_HandleJSONRPC_AgentExecute_InvalidParams(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_SessionCreate_InvalidParams tests session/create with invalid params
 func TestACPHandler_HandleJSONRPC_SessionCreate_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
@@ -1204,6 +1230,7 @@ func TestACPHandler_HandleJSONRPC_SessionCreate_InvalidParams(t *testing.T) {
 
 // TestACPHandler_HandleJSONRPC_SessionUpdate_InvalidParams tests session/update with invalid params
 func TestACPHandler_HandleJSONRPC_SessionUpdate_InvalidParams(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()

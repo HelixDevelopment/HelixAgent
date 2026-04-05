@@ -20,6 +20,7 @@ func init() {
 
 // TestProviderManagementHandler_VerifyProvider tests provider verification endpoint
 func TestProviderManagementHandler_VerifyProvider(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -46,6 +47,7 @@ func TestProviderManagementHandler_VerifyProvider(t *testing.T) {
 
 // TestProviderManagementHandler_VerifyAllProviders tests verify all endpoint
 func TestProviderManagementHandler_VerifyAllProviders(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -70,6 +72,7 @@ func TestProviderManagementHandler_VerifyAllProviders(t *testing.T) {
 
 // TestProviderManagementHandler_GetProviderVerification tests get verification status
 func TestProviderManagementHandler_GetProviderVerification(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -93,6 +96,7 @@ func TestProviderManagementHandler_GetProviderVerification(t *testing.T) {
 
 // TestProviderManagementHandler_GetAllProvidersVerification tests get all verification status
 func TestProviderManagementHandler_GetAllProvidersVerification(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -118,6 +122,7 @@ func TestProviderManagementHandler_GetAllProvidersVerification(t *testing.T) {
 
 // TestProviderManagementHandler_GetDiscoverySummary_NoDiscovery tests discovery with no discovery
 func TestProviderManagementHandler_GetDiscoverySummary_NoDiscovery(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -142,6 +147,7 @@ func TestProviderManagementHandler_GetDiscoverySummary_NoDiscovery(t *testing.T)
 
 // TestProviderManagementHandler_DiscoverAndVerifyProviders_NoDiscovery tests discover with no discovery
 func TestProviderManagementHandler_DiscoverAndVerifyProviders_NoDiscovery(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -159,6 +165,7 @@ func TestProviderManagementHandler_DiscoverAndVerifyProviders_NoDiscovery(t *tes
 
 // TestProviderManagementHandler_GetBestProviders tests get best providers
 func TestProviderManagementHandler_GetBestProviders(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -184,6 +191,7 @@ func TestProviderManagementHandler_GetBestProviders(t *testing.T) {
 
 // TestProviderManagementHandler_GetBestProviders_WithParams tests get best providers with query params
 func TestProviderManagementHandler_GetBestProviders_WithParams(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -208,6 +216,7 @@ func TestProviderManagementHandler_GetBestProviders_WithParams(t *testing.T) {
 // Note: The implementation has a bug where parseIntParam returns (false, nil) on invalid input
 // but the handler only checks for err != nil. This test documents the actual behavior.
 func TestProviderManagementHandler_GetBestProviders_InvalidMinParam(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -227,6 +236,7 @@ func TestProviderManagementHandler_GetBestProviders_InvalidMinParam(t *testing.T
 // TestProviderManagementHandler_GetBestProviders_InvalidMaxParam tests invalid max param
 // Note: Same bug as InvalidMinParam - see note there.
 func TestProviderManagementHandler_GetBestProviders_InvalidMaxParam(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -244,6 +254,7 @@ func TestProviderManagementHandler_GetBestProviders_InvalidMaxParam(t *testing.T
 
 // TestProviderManagementHandler_ReDiscoverProviders_NoDiscovery tests rediscover with no discovery
 func TestProviderManagementHandler_ReDiscoverProviders_NoDiscovery(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -261,6 +272,7 @@ func TestProviderManagementHandler_ReDiscoverProviders_NoDiscovery(t *testing.T)
 
 // TestProviderManagementHandler_ParseIntParam tests the parseIntParam helper
 func TestProviderManagementHandler_ParseIntParam(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -282,6 +294,7 @@ func TestProviderManagementHandler_ParseIntParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			var result int
 			valid, _ := handler.parseIntParam(tt.input, &result)
 
@@ -295,6 +308,7 @@ func TestProviderManagementHandler_ParseIntParam(t *testing.T) {
 
 // TestProviderManagementHandler_GetValidProviderTypes tests dynamic provider type discovery
 func TestProviderManagementHandler_GetValidProviderTypes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -309,6 +323,7 @@ func TestProviderManagementHandler_GetValidProviderTypes(t *testing.T) {
 
 // TestProviderManagementHandler_VerifyProvider_VariousProviders tests various provider IDs
 func TestProviderManagementHandler_VerifyProvider_VariousProviders(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -318,6 +333,7 @@ func TestProviderManagementHandler_VerifyProvider_VariousProviders(t *testing.T)
 
 	for _, provider := range providers {
 		t.Run(provider, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "id", Value: provider}}
@@ -336,6 +352,7 @@ func TestProviderManagementHandler_VerifyProvider_VariousProviders(t *testing.T)
 
 // TestProviderManagementHandler_VerificationSummary tests verification summary structure
 func TestProviderManagementHandler_VerificationSummary(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -363,6 +380,7 @@ func TestProviderManagementHandler_VerificationSummary(t *testing.T) {
 
 // TestProviderManagementHandler_AddProvider_ConflictCheck tests duplicate provider detection
 func TestProviderManagementHandler_AddProvider_ConflictCheck(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -405,6 +423,7 @@ func TestProviderManagementHandler_AddProvider_ConflictCheck(t *testing.T) {
 
 // TestProviderManagementHandler_UpdateProvider_NotFound tests update on non-existent provider
 func TestProviderManagementHandler_UpdateProvider_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -429,6 +448,7 @@ func TestProviderManagementHandler_UpdateProvider_NotFound(t *testing.T) {
 
 // TestProviderManagementHandler_UpdateProvider_InvalidJSON tests update with invalid JSON
 func TestProviderManagementHandler_UpdateProvider_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -447,6 +467,7 @@ func TestProviderManagementHandler_UpdateProvider_InvalidJSON(t *testing.T) {
 
 // TestProviderManagementHandler_DeleteProvider_NotFound tests delete on non-existent provider
 func TestProviderManagementHandler_DeleteProvider_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -464,6 +485,7 @@ func TestProviderManagementHandler_DeleteProvider_NotFound(t *testing.T) {
 
 // TestProviderManagementHandler_DeleteProvider_WithForce_Extended tests delete with force parameter
 func TestProviderManagementHandler_DeleteProvider_WithForce_Extended(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -482,6 +504,7 @@ func TestProviderManagementHandler_DeleteProvider_WithForce_Extended(t *testing.
 
 // TestProviderManagementHandler_GetProvider_Extended tests get provider endpoint
 func TestProviderManagementHandler_GetProvider_Extended(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -499,6 +522,7 @@ func TestProviderManagementHandler_GetProvider_Extended(t *testing.T) {
 
 // TestProviderManagementHandler_AddProvider_InvalidJSON tests add with invalid JSON
 func TestProviderManagementHandler_AddProvider_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -516,6 +540,7 @@ func TestProviderManagementHandler_AddProvider_InvalidJSON(t *testing.T) {
 
 // TestProviderManagementHandler_AddProvider_MissingRequiredFields tests add with missing fields
 func TestProviderManagementHandler_AddProvider_MissingRequiredFields(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -539,6 +564,7 @@ func TestProviderManagementHandler_AddProvider_MissingRequiredFields(t *testing.
 
 // TestProviderManagementHandler_AddProvider_InvalidProviderType tests add with invalid type
 func TestProviderManagementHandler_AddProvider_InvalidProviderType(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -565,6 +591,7 @@ func TestProviderManagementHandler_AddProvider_InvalidProviderType(t *testing.T)
 
 // TestProviderManagementHandler_GetAllProvidersVerification_Extended tests get all verification status
 func TestProviderManagementHandler_GetAllProvidersVerification_Extended(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)

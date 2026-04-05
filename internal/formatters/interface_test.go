@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewBaseFormatter(t *testing.T) {
+	t.Parallel()
 	metadata := &FormatterMetadata{
 		Name:            "gofmt",
 		Version:         "1.22.0",
@@ -32,6 +33,7 @@ func TestNewBaseFormatter(t *testing.T) {
 }
 
 func TestBaseFormatter_Name(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -56,6 +58,7 @@ func TestBaseFormatter_Name(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Name: tc.input})
 			assert.Equal(t, tc.expected, bf.Name())
 		})
@@ -63,6 +66,7 @@ func TestBaseFormatter_Name(t *testing.T) {
 }
 
 func TestBaseFormatter_Version(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		version  string
@@ -75,6 +79,7 @@ func TestBaseFormatter_Version(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Version: tc.version})
 			assert.Equal(t, tc.expected, bf.Version())
 		})
@@ -82,6 +87,7 @@ func TestBaseFormatter_Version(t *testing.T) {
 }
 
 func TestBaseFormatter_Languages(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		languages []string
@@ -93,6 +99,7 @@ func TestBaseFormatter_Languages(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Languages: tc.languages})
 			assert.Equal(t, tc.languages, bf.Languages())
 		})
@@ -100,6 +107,7 @@ func TestBaseFormatter_Languages(t *testing.T) {
 }
 
 func TestBaseFormatter_SupportsStdin(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		supports bool
@@ -110,6 +118,7 @@ func TestBaseFormatter_SupportsStdin(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{SupportsStdin: tc.supports})
 			assert.Equal(t, tc.supports, bf.SupportsStdin())
 		})
@@ -117,6 +126,7 @@ func TestBaseFormatter_SupportsStdin(t *testing.T) {
 }
 
 func TestBaseFormatter_SupportsInPlace(t *testing.T) {
+	t.Parallel()
 	bf := NewBaseFormatter(&FormatterMetadata{SupportsInPlace: true})
 	assert.True(t, bf.SupportsInPlace())
 
@@ -125,6 +135,7 @@ func TestBaseFormatter_SupportsInPlace(t *testing.T) {
 }
 
 func TestBaseFormatter_SupportsCheck(t *testing.T) {
+	t.Parallel()
 	bf := NewBaseFormatter(&FormatterMetadata{SupportsCheck: true})
 	assert.True(t, bf.SupportsCheck())
 
@@ -133,6 +144,7 @@ func TestBaseFormatter_SupportsCheck(t *testing.T) {
 }
 
 func TestBaseFormatter_SupportsConfig(t *testing.T) {
+	t.Parallel()
 	bf := NewBaseFormatter(&FormatterMetadata{SupportsConfig: true})
 	assert.True(t, bf.SupportsConfig())
 
@@ -141,6 +153,7 @@ func TestBaseFormatter_SupportsConfig(t *testing.T) {
 }
 
 func TestBaseFormatter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	bf := NewBaseFormatter(&FormatterMetadata{Name: "test"})
 	cfg := bf.DefaultConfig()
 	assert.NotNil(t, cfg)
@@ -148,6 +161,7 @@ func TestBaseFormatter_DefaultConfig(t *testing.T) {
 }
 
 func TestBaseFormatter_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	bf := NewBaseFormatter(&FormatterMetadata{Name: "test"})
 
 	// Default implementation accepts any config
@@ -159,6 +173,7 @@ func TestBaseFormatter_ValidateConfig(t *testing.T) {
 }
 
 func TestFormatterType_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, FormatterType("native"), FormatterTypeNative)
 	assert.Equal(t, FormatterType("service"), FormatterTypeService)
 	assert.Equal(t, FormatterType("builtin"), FormatterTypeBuiltin)
@@ -166,6 +181,7 @@ func TestFormatterType_Constants(t *testing.T) {
 }
 
 func TestFormatRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := &FormatRequest{
 		Content:    "x = 1",
 		FilePath:   "test.py",
@@ -193,6 +209,7 @@ func TestFormatRequest_Fields(t *testing.T) {
 }
 
 func TestFormatResult_Fields(t *testing.T) {
+	t.Parallel()
 	stats := &FormatStats{
 		LinesTotal:   100,
 		LinesChanged: 5,
@@ -222,6 +239,7 @@ func TestFormatResult_Fields(t *testing.T) {
 }
 
 func TestFormatterMetadata_Fields(t *testing.T) {
+	t.Parallel()
 	metadata := &FormatterMetadata{
 		Name:          "black",
 		Type:          FormatterTypeNative,

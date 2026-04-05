@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewOrchestrator_Defaults(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{})
 	assert.NotNil(t, o.registry)
 	assert.NotNil(t, o.runner)
@@ -25,6 +26,7 @@ func TestNewOrchestrator_Defaults(t *testing.T) {
 }
 
 func TestNewOrchestrator_CustomConfig(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{
 		ResultsDir:     "/tmp/results",
 		MaxConcurrency: 4,
@@ -37,6 +39,7 @@ func TestNewOrchestrator_CustomConfig(t *testing.T) {
 }
 
 func TestOrchestrator_RegisterAll_NoScriptsDir(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{})
 	err := o.RegisterAll()
 	assert.Error(t, err)
@@ -44,6 +47,7 @@ func TestOrchestrator_RegisterAll_NoScriptsDir(t *testing.T) {
 }
 
 func TestOrchestrator_RegisterAll_WithScripts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -81,12 +85,14 @@ func TestOrchestrator_RegisterAll_WithScripts(t *testing.T) {
 }
 
 func TestOrchestrator_List_Empty(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{})
 	list := o.List()
 	assert.Empty(t, list)
 }
 
 func TestOrchestrator_Run_Empty(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{
 		ResultsDir: t.TempDir(),
 	})
@@ -96,6 +102,7 @@ func TestOrchestrator_Run_Empty(t *testing.T) {
 }
 
 func TestOrchestrator_Run_WithScripts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -125,6 +132,7 @@ func TestOrchestrator_Run_WithScripts(t *testing.T) {
 }
 
 func TestOrchestrator_RunSingle(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -150,6 +158,7 @@ func TestOrchestrator_RunSingle(t *testing.T) {
 }
 
 func TestOrchestrator_RunSingle_NotFound(t *testing.T) {
+	t.Parallel()
 	o := NewOrchestrator(OrchestratorConfig{
 		ResultsDir: t.TempDir(),
 	})
@@ -161,6 +170,7 @@ func TestOrchestrator_RunSingle_NotFound(t *testing.T) {
 }
 
 func TestOrchestrator_Filter(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -190,6 +200,7 @@ func TestOrchestrator_Filter(t *testing.T) {
 }
 
 func TestOrchestrator_CategoryFilter(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -218,6 +229,7 @@ func TestOrchestrator_CategoryFilter(t *testing.T) {
 }
 
 func TestDetectCategory(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		filename string
 		expected string
@@ -237,6 +249,7 @@ func TestDetectCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.filename, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected,
 				detectCategory(tc.filename))
 		})
@@ -244,6 +257,7 @@ func TestDetectCategory(t *testing.T) {
 }
 
 func TestRegisterShellChallengesEnhanced_Basic(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	scripts := []string{
@@ -275,6 +289,7 @@ func TestRegisterShellChallengesEnhanced_NonexistentDir(
 }
 
 func TestOrchestrator_EnvLoading(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	require.NoError(t, os.WriteFile(
@@ -289,6 +304,7 @@ func TestOrchestrator_EnvLoading(t *testing.T) {
 }
 
 func TestOrchestrator_Run_Parallel(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	scriptsDir := filepath.Join(dir, "challenges", "scripts")
 	require.NoError(t, os.MkdirAll(scriptsDir, 0755))
@@ -320,6 +336,7 @@ func TestOrchestrator_Run_Parallel(t *testing.T) {
 }
 
 func TestChallengeInfo_Fields(t *testing.T) {
+	t.Parallel()
 	info := ChallengeInfo{
 		ID:          "test-id",
 		Name:        "Test Name",

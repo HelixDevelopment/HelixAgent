@@ -42,6 +42,7 @@ func setupHealthHandlerWithProviders() (*HealthHandler, *gin.Engine, *verifier.H
 }
 
 func TestNewHealthHandler(t *testing.T) {
+	t.Parallel()
 	hs := verifier.NewHealthService(nil)
 	h := NewHealthHandler(hs)
 
@@ -50,6 +51,7 @@ func TestNewHealthHandler(t *testing.T) {
 }
 
 func TestNewHealthHandler_NilService(t *testing.T) {
+	t.Parallel()
 	h := NewHealthHandler(nil)
 
 	assert.NotNil(t, h)
@@ -57,6 +59,7 @@ func TestNewHealthHandler_NilService(t *testing.T) {
 }
 
 func TestGetProviderHealth_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -76,6 +79,7 @@ func TestGetProviderHealth_Success(t *testing.T) {
 }
 
 func TestGetProviderHealth_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -92,6 +96,7 @@ func TestGetProviderHealth_NotFound(t *testing.T) {
 }
 
 func TestGetAllProvidersHealth_EmptyList(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -111,6 +116,7 @@ func TestGetAllProvidersHealth_EmptyList(t *testing.T) {
 }
 
 func TestGetAllProvidersHealth_WithProviders(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -130,6 +136,7 @@ func TestGetAllProvidersHealth_WithProviders(t *testing.T) {
 }
 
 func TestGetAllProvidersHealth_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -147,6 +154,7 @@ func TestGetAllProvidersHealth_ResponseFormat(t *testing.T) {
 }
 
 func TestGetHealthyProviders_EmptyList(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -164,6 +172,7 @@ func TestGetHealthyProviders_EmptyList(t *testing.T) {
 }
 
 func TestGetHealthyProviders_WithProviders(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -181,6 +190,7 @@ func TestGetHealthyProviders_WithProviders(t *testing.T) {
 }
 
 func TestGetFastestProvider_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	reqBody := GetFastestProviderRequest{
@@ -203,6 +213,7 @@ func TestGetFastestProvider_Success(t *testing.T) {
 }
 
 func TestGetFastestProvider_BadRequest_EmptyProviders(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	body := []byte(`{}`)
@@ -216,6 +227,7 @@ func TestGetFastestProvider_BadRequest_EmptyProviders(t *testing.T) {
 }
 
 func TestGetFastestProvider_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -227,6 +239,7 @@ func TestGetFastestProvider_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestGetFastestProvider_NotFound_NoAvailableProviders(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	reqBody := GetFastestProviderRequest{
@@ -243,6 +256,7 @@ func TestGetFastestProvider_NotFound_NoAvailableProviders(t *testing.T) {
 }
 
 func TestGetCircuitBreakerStatus_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -261,6 +275,7 @@ func TestGetCircuitBreakerStatus_Success(t *testing.T) {
 }
 
 func TestGetCircuitBreakerStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -277,6 +292,7 @@ func TestGetCircuitBreakerStatus_NotFound(t *testing.T) {
 }
 
 func TestRecordSuccess_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	reqBody := RecordSuccessRequest{
@@ -300,6 +316,7 @@ func TestRecordSuccess_Success(t *testing.T) {
 }
 
 func TestRecordSuccess_BadRequest_MissingProviderID(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	body := []byte(`{}`)
@@ -313,6 +330,7 @@ func TestRecordSuccess_BadRequest_MissingProviderID(t *testing.T) {
 }
 
 func TestRecordSuccess_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -324,6 +342,7 @@ func TestRecordSuccess_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestRecordFailure_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	reqBody := RecordFailureRequest{
@@ -347,6 +366,7 @@ func TestRecordFailure_Success(t *testing.T) {
 }
 
 func TestRecordFailure_BadRequest_MissingProviderID(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	body := []byte(`{}`)
@@ -360,6 +380,7 @@ func TestRecordFailure_BadRequest_MissingProviderID(t *testing.T) {
 }
 
 func TestRecordFailure_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -371,6 +392,7 @@ func TestRecordFailure_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestAddProvider_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	reqBody := HealthAddProviderRequest{
@@ -396,6 +418,7 @@ func TestAddProvider_Success(t *testing.T) {
 }
 
 func TestAddProvider_BadRequest_MissingFields(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	tests := []struct {
@@ -409,6 +432,7 @@ func TestAddProvider_BadRequest_MissingFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/api/v1/verifier/health/providers", bytes.NewBuffer([]byte(tt.body)))
 			req.Header.Set("Content-Type", "application/json")
@@ -420,6 +444,7 @@ func TestAddProvider_BadRequest_MissingFields(t *testing.T) {
 }
 
 func TestAddProvider_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -431,6 +456,7 @@ func TestAddProvider_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestRemoveProvider_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -448,6 +474,7 @@ func TestRemoveProvider_Success(t *testing.T) {
 }
 
 func TestRemoveProvider_NonExistent(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -459,6 +486,7 @@ func TestRemoveProvider_NonExistent(t *testing.T) {
 }
 
 func TestIsProviderAvailable_Available(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -476,6 +504,7 @@ func TestIsProviderAvailable_Available(t *testing.T) {
 }
 
 func TestIsProviderAvailable_NotAvailable(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -493,6 +522,7 @@ func TestIsProviderAvailable_NotAvailable(t *testing.T) {
 }
 
 func TestGetProviderLatency_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -509,6 +539,7 @@ func TestGetProviderLatency_Success(t *testing.T) {
 }
 
 func TestGetProviderLatency_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -519,6 +550,7 @@ func TestGetProviderLatency_NotFound(t *testing.T) {
 }
 
 func TestGetHealthServiceStatus_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	w := httptest.NewRecorder()
@@ -536,6 +568,7 @@ func TestGetHealthServiceStatus_Success(t *testing.T) {
 }
 
 func TestGetHealthServiceStatus_WithProviders(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	w := httptest.NewRecorder()
@@ -552,6 +585,7 @@ func TestGetHealthServiceStatus_WithProviders(t *testing.T) {
 }
 
 func TestRegisterHealthRoutes(t *testing.T) {
+	t.Parallel()
 	hs := verifier.NewHealthService(nil)
 	h := NewHealthHandler(hs)
 	r := gin.New()
@@ -569,6 +603,7 @@ func TestRegisterHealthRoutes(t *testing.T) {
 }
 
 func TestProviderHealthResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := ProviderHealthResponse{
 		ProviderID:    "openai",
 		ProviderName:  "OpenAI",
@@ -594,6 +629,7 @@ func TestProviderHealthResponse_Fields(t *testing.T) {
 }
 
 func TestCircuitBreakerResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := CircuitBreakerResponse{
 		ProviderID:   "openai",
 		State:        "closed",
@@ -608,6 +644,7 @@ func TestCircuitBreakerResponse_Fields(t *testing.T) {
 }
 
 func TestHealthSummary_Fields(t *testing.T) {
+	t.Parallel()
 	summary := HealthSummary{
 		OverallHealthy:           true,
 		AverageResponseMs:        100,
@@ -622,6 +659,7 @@ func TestHealthSummary_Fields(t *testing.T) {
 }
 
 func TestLatencyStatsResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := LatencyStatsResponse{
 		ProviderID:   "openai",
 		AvgLatencyMs: 150,
@@ -639,6 +677,7 @@ func TestLatencyStatsResponse_Fields(t *testing.T) {
 }
 
 func TestHealthServiceStatusResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := HealthServiceStatusResponse{
 		Running:           true,
 		CheckInterval:     "30s",
@@ -652,6 +691,7 @@ func TestHealthServiceStatusResponse_Fields(t *testing.T) {
 }
 
 func TestHealthRoutes_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	routes := []string{
@@ -670,6 +710,7 @@ func TestHealthRoutes_ContentType(t *testing.T) {
 }
 
 func TestHealthRoutes_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	tests := []struct {
@@ -693,6 +734,7 @@ func TestHealthRoutes_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGetAllProvidersHealth_SummaryCalculation(t *testing.T) {
+	t.Parallel()
 	_, r, hs := setupHealthHandlerWithProviders()
 
 	// Record some failures to change health status
@@ -714,6 +756,7 @@ func TestGetAllProvidersHealth_SummaryCalculation(t *testing.T) {
 }
 
 func TestRecordSuccessAndFailure_Integration(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupHealthHandlerWithProviders()
 
 	// Record success
@@ -754,6 +797,7 @@ func TestRecordSuccessAndFailure_Integration(t *testing.T) {
 }
 
 func TestAddAndRemoveProvider_Integration(t *testing.T) {
+	t.Parallel()
 	_, r := setupHealthHandler()
 
 	// Add a new provider

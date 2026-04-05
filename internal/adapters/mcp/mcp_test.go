@@ -29,11 +29,13 @@ func (m *mockMCPAdapter) HealthCheck(_ context.Context) error { return nil }
 // ============================================================================
 
 func TestNewRegistryAdapter(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	require.NotNil(t, r)
 }
 
 func TestRegistryAdapter_RegisterAndGet(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	mock := &mockMCPAdapter{name: "test-adapter"}
 
@@ -47,6 +49,7 @@ func TestRegistryAdapter_RegisterAndGet(t *testing.T) {
 }
 
 func TestRegistryAdapter_Register_DuplicateName(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	mock1 := &mockMCPAdapter{name: "dup"}
 	mock2 := &mockMCPAdapter{name: "dup"}
@@ -60,6 +63,7 @@ func TestRegistryAdapter_Register_DuplicateName(t *testing.T) {
 }
 
 func TestRegistryAdapter_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	got, ok := r.Get("nonexistent")
 	assert.False(t, ok)
@@ -67,6 +71,7 @@ func TestRegistryAdapter_Get_NotFound(t *testing.T) {
 }
 
 func TestRegistryAdapter_List(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	list := r.List()
 	assert.NotNil(t, list)
@@ -80,6 +85,7 @@ func TestRegistryAdapter_List(t *testing.T) {
 }
 
 func TestRegistryAdapter_Unregister(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockMCPAdapter{name: "to-remove"})
 
@@ -91,18 +97,21 @@ func TestRegistryAdapter_Unregister(t *testing.T) {
 }
 
 func TestRegistryAdapter_Unregister_NotFound(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	err := r.Unregister("nonexistent")
 	assert.Error(t, err)
 }
 
 func TestRegistryAdapter_StartAll_Empty(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	err := r.StartAll(context.Background())
 	assert.NoError(t, err)
 }
 
 func TestRegistryAdapter_StartAll_WithAdapters(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockMCPAdapter{name: "s1"})
 	r.Register(&mockMCPAdapter{name: "s2"})
@@ -112,6 +121,7 @@ func TestRegistryAdapter_StartAll_WithAdapters(t *testing.T) {
 }
 
 func TestRegistryAdapter_StopAll(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockMCPAdapter{name: "s1"})
 
@@ -123,6 +133,7 @@ func TestRegistryAdapter_StopAll(t *testing.T) {
 }
 
 func TestRegistryAdapter_HealthCheckAll_Empty(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	results := r.HealthCheckAll(context.Background())
 	assert.NotNil(t, results)
@@ -130,6 +141,7 @@ func TestRegistryAdapter_HealthCheckAll_Empty(t *testing.T) {
 }
 
 func TestRegistryAdapter_HealthCheckAll_WithAdapters(t *testing.T) {
+	t.Parallel()
 	r := adapter.NewRegistryAdapter()
 	r.Register(&mockMCPAdapter{name: "h1"})
 	r.Register(&mockMCPAdapter{name: "h2"})
@@ -147,6 +159,7 @@ func TestRegistryAdapter_HealthCheckAll_WithAdapters(t *testing.T) {
 // ============================================================================
 
 func TestServerConfig_ToExternalConfig_Basic(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.ServerConfig{
 		Name:    "my-mcp-server",
 		Command: []string{"npx", "-y", "my-server"},
@@ -163,6 +176,7 @@ func TestServerConfig_ToExternalConfig_Basic(t *testing.T) {
 }
 
 func TestServerConfig_ToExternalConfig_EmptyCommand(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.ServerConfig{
 		Name: "empty-cmd",
 	}
@@ -172,6 +186,7 @@ func TestServerConfig_ToExternalConfig_EmptyCommand(t *testing.T) {
 }
 
 func TestServerConfig_ToExternalConfig_SingleCommand(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.ServerConfig{
 		Name:    "single",
 		Command: []string{"myserver"},
@@ -182,6 +197,7 @@ func TestServerConfig_ToExternalConfig_SingleCommand(t *testing.T) {
 }
 
 func TestServerConfig_ToExternalConfig_ZeroTimeout(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.ServerConfig{
 		Name:    "no-timeout",
 		Timeout: 0,
@@ -196,6 +212,7 @@ func TestServerConfig_ToExternalConfig_ZeroTimeout(t *testing.T) {
 // ============================================================================
 
 func TestDefaultClientConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultClientConfig()
 	// Should return a valid non-zero config
 	assert.NotEmpty(t, cfg.Transport)
@@ -206,6 +223,7 @@ func TestDefaultClientConfig(t *testing.T) {
 // ============================================================================
 
 func TestTransportConstants(t *testing.T) {
+	t.Parallel()
 	// Ensure constants are accessible and distinct
 	assert.NotEqual(t, adapter.TransportStdio, adapter.TransportHTTP)
 }
@@ -215,6 +233,7 @@ func TestTransportConstants(t *testing.T) {
 // ============================================================================
 
 func TestTypeAliases(t *testing.T) {
+	t.Parallel()
 	// Verify type aliases compile - create nil instances of each alias type
 	var _ adapter.Tool
 	var _ adapter.ToolResult

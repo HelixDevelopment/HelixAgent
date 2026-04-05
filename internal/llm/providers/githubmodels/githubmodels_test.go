@@ -16,6 +16,7 @@ import (
 )
 
 func TestNewGitHubModelsProvider(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, "ghp_test-token", p.apiKey)
@@ -24,6 +25,7 @@ func TestNewGitHubModelsProvider(t *testing.T) {
 }
 
 func TestNewGitHubModelsProvider_CustomConfig(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider(
 		"ghp_custom-token",
 		"https://custom.github.ai/inference/chat/completions",
@@ -38,6 +40,7 @@ func TestNewGitHubModelsProvider_CustomConfig(t *testing.T) {
 }
 
 func TestNewGitHubModelsProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -62,6 +65,7 @@ func TestNewGitHubModelsProviderWithRetry(t *testing.T) {
 }
 
 func TestComplete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "POST", r.Method)
@@ -142,6 +146,7 @@ func TestComplete_Success(t *testing.T) {
 }
 
 func TestComplete_WithMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -198,6 +203,7 @@ func TestComplete_WithMessages(t *testing.T) {
 }
 
 func TestComplete_ErrorResponse_401(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -227,6 +233,7 @@ func TestComplete_ErrorResponse_401(t *testing.T) {
 }
 
 func TestComplete_ErrorResponse_500(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -260,6 +267,7 @@ func TestComplete_ErrorResponse_500(t *testing.T) {
 }
 
 func TestComplete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			// Verify GitHub-specific headers
@@ -355,6 +363,7 @@ func TestComplete_WithTools(t *testing.T) {
 }
 
 func TestCompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t,
@@ -422,6 +431,7 @@ func TestCompleteStream(t *testing.T) {
 }
 
 func TestCompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -448,6 +458,7 @@ func TestCompleteStream_Error(t *testing.T) {
 }
 
 func TestHealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "GET", r.Method)
@@ -487,6 +498,7 @@ func TestHealthCheck_Success(t *testing.T) {
 }
 
 func TestHealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -514,6 +526,7 @@ func TestHealthCheck_Error(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 	caps := p.GetCapabilities()
 
@@ -557,6 +570,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig_Valid(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_valid-token-12345", "", "")
 	valid, errs := p.ValidateConfig(nil)
 	assert.True(t, valid)
@@ -564,6 +578,7 @@ func TestValidateConfig_Valid(t *testing.T) {
 }
 
 func TestValidateConfig_EmptyKey(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("", "", "")
 	valid, errs := p.ValidateConfig(nil)
 	assert.False(t, valid)
@@ -572,6 +587,7 @@ func TestValidateConfig_EmptyKey(t *testing.T) {
 }
 
 func TestRetry_RateLimited(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -620,6 +636,7 @@ func TestRetry_RateLimited(t *testing.T) {
 }
 
 func TestRetry_ServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -668,6 +685,7 @@ func TestRetry_ServerError(t *testing.T) {
 }
 
 func TestContextTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(5 * time.Second)
@@ -695,16 +713,19 @@ func TestContextTimeout(t *testing.T) {
 }
 
 func TestGetName(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 	assert.Equal(t, "github-models", p.GetName())
 }
 
 func TestGetProviderType(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 	assert.Equal(t, "github-models", p.GetProviderType())
 }
 
 func TestGetModel(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider(
 		"ghp_test-token", "", "openai/gpt-4.1",
 	)
@@ -712,6 +733,7 @@ func TestGetModel(t *testing.T) {
 }
 
 func TestSetModel(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider(
 		"ghp_test-token", "", "openai/gpt-4.1",
 	)
@@ -725,6 +747,7 @@ func TestSetModel(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRetryConfig()
 	assert.Equal(t, 3, cfg.MaxRetries)
 	assert.Equal(t, 1*time.Second, cfg.InitialDelay)
@@ -733,6 +756,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestConvertRequest(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider(
 		"ghp_test-token", "", "openai/gpt-4.1",
 	)
@@ -770,6 +794,7 @@ func TestConvertRequest(t *testing.T) {
 }
 
 func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 
 	req := &models.LLMRequest{
@@ -785,6 +810,7 @@ func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
 }
 
 func TestConvertRequest_ModelNamePreserved(t *testing.T) {
+	t.Parallel()
 	// Verify publisher/model-name format is preserved
 	p := NewGitHubModelsProvider(
 		"ghp_test-token", "",
@@ -803,6 +829,7 @@ func TestConvertRequest_ModelNamePreserved(t *testing.T) {
 }
 
 func TestCalculateConfidence(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 
 	tests := []struct {
@@ -853,6 +880,7 @@ func TestCalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)
@@ -861,6 +889,7 @@ func TestCalculateConfidence(t *testing.T) {
 }
 
 func TestCalculateBackoff(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 
 	// First attempt should be around initial delay (1s)
@@ -879,6 +908,7 @@ func TestCalculateBackoff(t *testing.T) {
 }
 
 func TestGitHubAPIVersionHeader(t *testing.T) {
+	t.Parallel()
 	headerSent := false
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -919,6 +949,7 @@ func TestGitHubAPIVersionHeader(t *testing.T) {
 }
 
 func TestBearerAuthHeader(t *testing.T) {
+	t.Parallel()
 	var receivedAuth string
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -956,6 +987,7 @@ func TestBearerAuthHeader(t *testing.T) {
 }
 
 func TestConvertResponse_ToolCallsOverrideFinishReason(t *testing.T) {
+	t.Parallel()
 	p := NewGitHubModelsProvider("ghp_test-token", "", "")
 
 	resp := &Response{
@@ -989,6 +1021,7 @@ func TestConvertResponse_ToolCallsOverrideFinishReason(t *testing.T) {
 }
 
 func TestRetry_502_504(t *testing.T) {
+	t.Parallel()
 	statusCodes := []int{502, 504}
 
 	for _, statusCode := range statusCodes {

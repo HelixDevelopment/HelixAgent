@@ -14,9 +14,11 @@ import (
 // ============================================================================
 
 func TestNewStreamBufferAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []string{"word", "sentence", "line", "size", "unknown"}
 	for _, strategy := range tests {
 		t.Run(strategy, func(t *testing.T) {
+				t.Parallel()
 			buf := adapter.NewStreamBufferAdapter(strategy, 100)
 			require.NotNil(t, buf)
 		})
@@ -24,18 +26,21 @@ func TestNewStreamBufferAdapter(t *testing.T) {
 }
 
 func TestStreamBufferAdapter_Add_Word(t *testing.T) {
+	t.Parallel()
 	buf := adapter.NewStreamBufferAdapter("word", 0)
 	flushed := buf.Add("hello ")
 	assert.NotNil(t, flushed)
 }
 
 func TestStreamBufferAdapter_Add_Sentence(t *testing.T) {
+	t.Parallel()
 	buf := adapter.NewStreamBufferAdapter("sentence", 0)
 	_ = buf.Add("hello world. ")
 	_ = buf.Add("this is a test. ")
 }
 
 func TestStreamBufferAdapter_Flush(t *testing.T) {
+	t.Parallel()
 	buf := adapter.NewStreamBufferAdapter("word", 0)
 	_ = buf.Add("hello")
 	remaining := buf.Flush()
@@ -43,6 +48,7 @@ func TestStreamBufferAdapter_Flush(t *testing.T) {
 }
 
 func TestStreamBufferAdapter_Reset(t *testing.T) {
+	t.Parallel()
 	buf := adapter.NewStreamBufferAdapter("word", 0)
 	_ = buf.Add("some text")
 	buf.Reset()
@@ -56,35 +62,41 @@ func TestStreamBufferAdapter_Reset(t *testing.T) {
 // ============================================================================
 
 func TestNewSchemaAdapter(t *testing.T) {
+	t.Parallel()
 	sa := adapter.NewSchemaAdapter()
 	require.NotNil(t, sa)
 }
 
 func TestStringSchema(t *testing.T) {
+	t.Parallel()
 	schema := adapter.StringSchema()
 	require.NotNil(t, schema)
 	assert.Equal(t, "string", schema.Type)
 }
 
 func TestIntegerSchema(t *testing.T) {
+	t.Parallel()
 	schema := adapter.IntegerSchema()
 	require.NotNil(t, schema)
 	assert.Equal(t, "integer", schema.Type)
 }
 
 func TestNumberSchema(t *testing.T) {
+	t.Parallel()
 	schema := adapter.NumberSchema()
 	require.NotNil(t, schema)
 	assert.Equal(t, "number", schema.Type)
 }
 
 func TestBooleanSchema(t *testing.T) {
+	t.Parallel()
 	schema := adapter.BooleanSchema()
 	require.NotNil(t, schema)
 	assert.Equal(t, "boolean", schema.Type)
 }
 
 func TestArraySchema(t *testing.T) {
+	t.Parallel()
 	items := adapter.StringSchema()
 	schema := adapter.ArraySchema(items)
 	require.NotNil(t, schema)
@@ -92,6 +104,7 @@ func TestArraySchema(t *testing.T) {
 }
 
 func TestObjectSchema(t *testing.T) {
+	t.Parallel()
 	props := map[string]*adapter.Schema{
 		"name": adapter.StringSchema(),
 		"age":  adapter.IntegerSchema(),
@@ -102,6 +115,7 @@ func TestObjectSchema(t *testing.T) {
 }
 
 func TestNewSchemaBuilder(t *testing.T) {
+	t.Parallel()
 	builder := adapter.NewSchemaBuilder()
 	require.NotNil(t, builder)
 }
@@ -111,6 +125,7 @@ func TestNewSchemaBuilder(t *testing.T) {
 // ============================================================================
 
 func TestToHelixOptimizedRequest_NilCacheHit(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToHelixOptimizedRequest(nil, "my prompt")
 	require.NotNil(t, result)
 	assert.Equal(t, "my prompt", result.OriginalPrompt)
@@ -120,6 +135,7 @@ func TestToHelixOptimizedRequest_NilCacheHit(t *testing.T) {
 }
 
 func TestToHelixOptimizedRequest_WithCacheHit(t *testing.T) {
+	t.Parallel()
 	hit := &adapter.CacheHit{
 		Response:   "cached response",
 		Similarity: 0.95,
@@ -139,6 +155,7 @@ func TestToHelixOptimizedRequest_WithCacheHit(t *testing.T) {
 // ============================================================================
 
 func TestCacheHit_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	hit := &adapter.CacheHit{
 		Response:   "hello",

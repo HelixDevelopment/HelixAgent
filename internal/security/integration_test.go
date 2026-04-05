@@ -86,6 +86,7 @@ func (m *mockSecurityVerifier) GetVerificationStatus() map[string]bool {
 // =============================================================================
 
 func TestNewSecurityIntegration(t *testing.T) {
+	t.Parallel()
 	t.Run("with nil config", func(t *testing.T) {
 		si := NewSecurityIntegration(nil, nil)
 		assert.NotNil(t, si)
@@ -98,6 +99,7 @@ func TestNewSecurityIntegration(t *testing.T) {
 	})
 
 	t.Run("with custom config - all enabled", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableRedTeam:      true,
 			EnableGuardrails:   true,
@@ -118,6 +120,7 @@ func TestNewSecurityIntegration(t *testing.T) {
 	})
 
 	t.Run("with custom config - all disabled", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableRedTeam:      false,
 			EnableGuardrails:   false,
@@ -137,6 +140,7 @@ func TestNewSecurityIntegration(t *testing.T) {
 }
 
 func TestSecurityIntegration_SetDebateEvaluator(t *testing.T) {
+	t.Parallel()
 	config := &SecurityIntegrationConfig{
 		EnableRedTeam:      true,
 		EnableGuardrails:   false,
@@ -153,6 +157,7 @@ func TestSecurityIntegration_SetDebateEvaluator(t *testing.T) {
 }
 
 func TestSecurityIntegration_SetVerifier(t *testing.T) {
+	t.Parallel()
 	config := &SecurityIntegrationConfig{
 		EnableRedTeam:      true,
 		EnableGuardrails:   false,
@@ -169,9 +174,11 @@ func TestSecurityIntegration_SetVerifier(t *testing.T) {
 }
 
 func TestSecurityIntegration_ProcessInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("clean input passes all checks", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		config.UseDebateEvaluation = false
 		si := NewSecurityIntegration(config, nil)
@@ -184,6 +191,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("injection attempt is blocked", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		config.UseDebateEvaluation = false
 		si := NewSecurityIntegration(config, nil)
@@ -196,6 +204,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("PII detection in input", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		config.UseDebateEvaluation = false
 		si := NewSecurityIntegration(config, nil)
@@ -207,6 +216,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("with debate evaluation - safe content", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		config.UseDebateEvaluation = true
 		si := NewSecurityIntegration(config, nil)
@@ -228,6 +238,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("with debate evaluation - unsafe content blocked", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails:    false, // Disable so we can test debate blocking
 			UseDebateEvaluation: true,
@@ -251,6 +262,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("debate evaluation error continues without blocking", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails:    false,
 			UseDebateEvaluation: true,
@@ -269,6 +281,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("guardrail modify action changes content", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		config.UseDebateEvaluation = false
 		si := NewSecurityIntegration(config, nil)
@@ -291,6 +304,7 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 	})
 
 	t.Run("with guardrails disabled", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails:   false,
 			EnablePIIDetection: false,
@@ -305,9 +319,11 @@ func TestSecurityIntegration_ProcessInput(t *testing.T) {
 }
 
 func TestSecurityIntegration_ProcessOutput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("clean output passes", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		si := NewSecurityIntegration(config, nil)
 
@@ -317,6 +333,7 @@ func TestSecurityIntegration_ProcessOutput(t *testing.T) {
 	})
 
 	t.Run("PII in output is masked", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		si := NewSecurityIntegration(config, nil)
 
@@ -329,6 +346,7 @@ func TestSecurityIntegration_ProcessOutput(t *testing.T) {
 	})
 
 	t.Run("output sanitization", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultSecurityIntegrationConfig()
 		si := NewSecurityIntegration(config, nil)
 
@@ -342,6 +360,7 @@ func TestSecurityIntegration_ProcessOutput(t *testing.T) {
 	})
 
 	t.Run("with guardrails disabled", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails:   false,
 			EnablePIIDetection: false,
@@ -356,9 +375,11 @@ func TestSecurityIntegration_ProcessOutput(t *testing.T) {
 }
 
 func TestSecurityIntegration_CheckToolCall(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("MCP security disabled allows all", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: false,
 		}
@@ -375,6 +396,7 @@ func TestSecurityIntegration_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("provider trust score check", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity:     true,
 			UseVerifier:           true,
@@ -401,6 +423,7 @@ func TestSecurityIntegration_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("trusted provider passes", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity:     true,
 			UseVerifier:           true,
@@ -427,9 +450,11 @@ func TestSecurityIntegration_CheckToolCall(t *testing.T) {
 }
 
 func TestSecurityIntegration_RunRedTeamTest(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("red team disabled returns error", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableRedTeam: false,
 		}
@@ -442,6 +467,7 @@ func TestSecurityIntegration_RunRedTeamTest(t *testing.T) {
 	})
 
 	t.Run("red team enabled runs test", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableRedTeam:      true,
 			EnableAuditLogging: true,
@@ -465,9 +491,11 @@ func TestSecurityIntegration_RunRedTeamTest(t *testing.T) {
 }
 
 func TestSecurityIntegration_GetAuditStats(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("audit logging disabled returns error", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableAuditLogging: false,
 		}
@@ -479,6 +507,7 @@ func TestSecurityIntegration_GetAuditStats(t *testing.T) {
 	})
 
 	t.Run("audit logging enabled returns stats", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableAuditLogging: true,
 			MaxAuditEvents:     1000,
@@ -492,6 +521,7 @@ func TestSecurityIntegration_GetAuditStats(t *testing.T) {
 }
 
 func TestSecurityIntegration_GetGuardrailStats(t *testing.T) {
+	t.Parallel()
 	t.Run("guardrails disabled returns nil", func(t *testing.T) {
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails: false,
@@ -503,6 +533,7 @@ func TestSecurityIntegration_GetGuardrailStats(t *testing.T) {
 	})
 
 	t.Run("guardrails enabled returns stats", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableGuardrails: true,
 		}
@@ -514,9 +545,11 @@ func TestSecurityIntegration_GetGuardrailStats(t *testing.T) {
 }
 
 func TestSecurityIntegration_QueryAuditEvents(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("audit logging disabled returns error", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableAuditLogging: false,
 		}
@@ -527,6 +560,7 @@ func TestSecurityIntegration_QueryAuditEvents(t *testing.T) {
 	})
 
 	t.Run("audit logging enabled returns events", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableAuditLogging: true,
 			MaxAuditEvents:     1000,
@@ -541,6 +575,7 @@ func TestSecurityIntegration_QueryAuditEvents(t *testing.T) {
 }
 
 func TestSecurityIntegration_RegisterTrustedMCPServer(t *testing.T) {
+	t.Parallel()
 	t.Run("MCP security disabled returns error", func(t *testing.T) {
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: false,
@@ -552,6 +587,7 @@ func TestSecurityIntegration_RegisterTrustedMCPServer(t *testing.T) {
 	})
 
 	t.Run("MCP security enabled registers server", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: true,
 		}
@@ -569,6 +605,7 @@ func TestSecurityIntegration_RegisterTrustedMCPServer(t *testing.T) {
 }
 
 func TestSecurityIntegration_RegisterToolPermission(t *testing.T) {
+	t.Parallel()
 	t.Run("MCP security disabled does nothing", func(t *testing.T) {
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: false,
@@ -583,6 +620,7 @@ func TestSecurityIntegration_RegisterToolPermission(t *testing.T) {
 	})
 
 	t.Run("MCP security enabled registers permission", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: true,
 		}
@@ -609,6 +647,7 @@ func TestSecurityIntegration_RegisterToolPermission(t *testing.T) {
 }
 
 func TestSecurityIntegration_MCPCallStack(t *testing.T) {
+	t.Parallel()
 	t.Run("get call stack with nil MCP security", func(t *testing.T) {
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: false,
@@ -620,6 +659,7 @@ func TestSecurityIntegration_MCPCallStack(t *testing.T) {
 	})
 
 	t.Run("get and pop call stack", func(t *testing.T) {
+			t.Parallel()
 		config := &SecurityIntegrationConfig{
 			EnableMCPSecurity: true,
 		}
@@ -639,6 +679,7 @@ func TestSecurityIntegration_MCPCallStack(t *testing.T) {
 // =============================================================================
 
 func TestProcessingResultFields(t *testing.T) {
+	t.Parallel()
 	result := &ProcessingResult{
 		Original:         "original content",
 		Modified:         "modified content",
@@ -663,6 +704,7 @@ func TestProcessingResultFields(t *testing.T) {
 // =============================================================================
 
 func TestContentEvaluationFields(t *testing.T) {
+	t.Parallel()
 	eval := &ContentEvaluation{
 		IsSafe:       false,
 		Confidence:   0.95,
@@ -685,6 +727,7 @@ func TestContentEvaluationFields(t *testing.T) {
 // =============================================================================
 
 func TestDefaultSecurityIntegrationConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecurityIntegrationConfig()
 
 	assert.True(t, config.EnableRedTeam)
@@ -699,6 +742,7 @@ func TestDefaultSecurityIntegrationConfig(t *testing.T) {
 }
 
 func TestSecurityIntegrationConfigFields(t *testing.T) {
+	t.Parallel()
 	config := &SecurityIntegrationConfig{
 		EnableRedTeam:         true,
 		EnableGuardrails:      true,
@@ -721,6 +765,7 @@ func TestSecurityIntegrationConfigFields(t *testing.T) {
 // =============================================================================
 
 func TestDebateTargetAdapter(t *testing.T) {
+	t.Parallel()
 	evaluator := &mockDebateSecurityEvaluator{
 		attackResult: &DebateEvaluation{
 			IsVulnerable: true,
@@ -742,6 +787,7 @@ func TestDebateTargetAdapter(t *testing.T) {
 }
 
 func TestVerifierAdapter(t *testing.T) {
+	t.Parallel()
 	secVerifier := newMockSecurityVerifier()
 	secVerifier.scores["provider1"] = 8.0
 	secVerifier.scores["provider2"] = 4.0
@@ -759,12 +805,14 @@ func TestVerifierAdapter(t *testing.T) {
 // =============================================================================
 
 func TestNewDebateSecurityAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := NewDebateSecurityAdapter(nil)
 	assert.NotNil(t, adapter)
 	assert.True(t, adapter.healthy)
 }
 
 func TestDebateSecurityAdapter_EvaluateAttack(t *testing.T) {
+	t.Parallel()
 	adapter := NewDebateSecurityAdapter(nil)
 
 	attack := &Attack{
@@ -780,6 +828,7 @@ func TestDebateSecurityAdapter_EvaluateAttack(t *testing.T) {
 }
 
 func TestDebateSecurityAdapter_EvaluateContent(t *testing.T) {
+	t.Parallel()
 	adapter := NewDebateSecurityAdapter(nil)
 
 	result, err := adapter.EvaluateContent(context.Background(), "test content", "input")
@@ -789,6 +838,7 @@ func TestDebateSecurityAdapter_EvaluateContent(t *testing.T) {
 }
 
 func TestDebateSecurityAdapter_IsHealthy(t *testing.T) {
+	t.Parallel()
 	adapter := NewDebateSecurityAdapter(nil)
 	assert.True(t, adapter.IsHealthy())
 
@@ -801,12 +851,14 @@ func TestDebateSecurityAdapter_IsHealthy(t *testing.T) {
 // =============================================================================
 
 func TestNewVerifierSecurityAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := NewVerifierSecurityAdapter()
 	assert.NotNil(t, adapter)
 	assert.NotNil(t, adapter.providerScores)
 }
 
 func TestVerifierSecurityAdapter_SetProviderScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewVerifierSecurityAdapter()
 
 	adapter.SetProviderScore("provider1", 9.0)
@@ -817,6 +869,7 @@ func TestVerifierSecurityAdapter_SetProviderScore(t *testing.T) {
 }
 
 func TestVerifierSecurityAdapter_GetProviderSecurityScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewVerifierSecurityAdapter()
 
 	// Unknown provider returns default
@@ -828,6 +881,7 @@ func TestVerifierSecurityAdapter_GetProviderSecurityScore(t *testing.T) {
 }
 
 func TestVerifierSecurityAdapter_IsProviderTrusted(t *testing.T) {
+	t.Parallel()
 	adapter := NewVerifierSecurityAdapter()
 
 	adapter.SetProviderScore("trusted", 7.0)
@@ -838,6 +892,7 @@ func TestVerifierSecurityAdapter_IsProviderTrusted(t *testing.T) {
 }
 
 func TestVerifierSecurityAdapter_GetVerificationStatus(t *testing.T) {
+	t.Parallel()
 	adapter := NewVerifierSecurityAdapter()
 
 	adapter.SetProviderScore("provider1", 8.0)

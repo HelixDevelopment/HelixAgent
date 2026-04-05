@@ -18,6 +18,7 @@ import (
 // TestSQLInjectionPrevention validates that the database adapter
 // properly handles parameterized queries to prevent SQL injection.
 func TestSQLInjectionPrevention(t *testing.T) {
+	t.Parallel()
 	// This test validates that the adapter doesn't use string concatenation
 	// for SQL queries. The adapter delegates to pgx which uses parameterized
 	// queries, but we should verify our adapter doesn't introduce vulnerabilities.
@@ -63,6 +64,7 @@ func TestSQLInjectionPrevention(t *testing.T) {
 // TestConcurrentLazyLoadingSafety validates that sync.Once prevents
 // race conditions during lazy connection initialization.
 func TestConcurrentLazyLoadingSafety(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist",
@@ -108,6 +110,7 @@ func TestConcurrentLazyLoadingSafety(t *testing.T) {
 
 // TestContextTimeoutSafety validates that database operations respect context timeouts.
 func TestContextTimeoutSafety(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist",
@@ -149,6 +152,7 @@ func TestContextTimeoutSafety(t *testing.T) {
 // TestErrorRowSecurity validates that errorRow type safely handles
 // connection errors without exposing sensitive information.
 func TestErrorRowSecurity(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist",
@@ -194,6 +198,7 @@ func TestErrorRowSecurity(t *testing.T) {
 // TestConnectionStringSecurity validates that buildPostgresConfig
 // doesn't log or expose sensitive information.
 func TestConnectionStringSecurity(t *testing.T) {
+	t.Parallel()
 	// Test with sensitive data
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{

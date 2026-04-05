@@ -269,6 +269,7 @@ func (m *mockHostManager) HostState(
 }
 
 func TestNewAdapter(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -277,6 +278,7 @@ func TestNewAdapter(t *testing.T) {
 }
 
 func TestNewAdapter_WithProjectDir(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithProjectDir("/tmp/test"),
 		WithLogger(logging.NopLogger{}),
@@ -286,6 +288,7 @@ func TestNewAdapter_WithProjectDir(t *testing.T) {
 }
 
 func TestAdapter_DetectRuntime_WithExisting(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "docker"}
 	adapter, err := NewAdapter(
 		WithRuntime(rt),
@@ -299,6 +302,7 @@ func TestAdapter_DetectRuntime_WithExisting(t *testing.T) {
 }
 
 func TestAdapter_DetectRuntime_WithoutRuntime(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping runtime detection in short mode")
 	}
@@ -318,6 +322,7 @@ func TestAdapter_DetectRuntime_WithoutRuntime(t *testing.T) {
 }
 
 func TestAdapter_RuntimeAvailable(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "docker"}
 	adapter, err := NewAdapter(
 		WithRuntime(rt),
@@ -331,6 +336,7 @@ func TestAdapter_RuntimeAvailable(t *testing.T) {
 }
 
 func TestAdapter_RuntimeAvailable_WithoutRuntime(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping runtime detection in short mode")
 	}
@@ -344,6 +350,7 @@ func TestAdapter_RuntimeAvailable_WithoutRuntime(t *testing.T) {
 }
 
 func TestAdapter_ComposeUp(t *testing.T) {
+	t.Parallel()
 	orch := &mockOrchestrator{}
 	adapter, err := NewAdapter(
 		WithOrchestrator(orch),
@@ -362,6 +369,7 @@ func TestAdapter_ComposeUp(t *testing.T) {
 }
 
 func TestAdapter_ComposeDown(t *testing.T) {
+	t.Parallel()
 	orch := &mockOrchestrator{}
 	adapter, err := NewAdapter(
 		WithOrchestrator(orch),
@@ -379,6 +387,7 @@ func TestAdapter_ComposeDown(t *testing.T) {
 }
 
 func TestAdapter_ComposeUp_NoOrchestrator(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -393,6 +402,7 @@ func TestAdapter_ComposeUp_NoOrchestrator(t *testing.T) {
 }
 
 func TestAdapter_ComposeStatus_NoOrchestrator(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -406,6 +416,7 @@ func TestAdapter_ComposeStatus_NoOrchestrator(t *testing.T) {
 }
 
 func TestAdapter_HealthCheck_NoChecker(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -420,6 +431,7 @@ func TestAdapter_HealthCheck_NoChecker(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckHTTP_InvalidURL(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -430,6 +442,7 @@ func TestAdapter_HealthCheckHTTP_InvalidURL(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckTCP_InvalidPort(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -440,6 +453,7 @@ func TestAdapter_HealthCheckTCP_InvalidPort(t *testing.T) {
 }
 
 func TestAdapter_Distribute(t *testing.T) {
+	t.Parallel()
 	dist := &mockDistributor{}
 	adapter, err := NewAdapter(
 		WithDistributor(dist),
@@ -459,6 +473,7 @@ func TestAdapter_Distribute(t *testing.T) {
 }
 
 func TestAdapter_Distribute_NoDistributor(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -472,6 +487,7 @@ func TestAdapter_Distribute_NoDistributor(t *testing.T) {
 }
 
 func TestAdapter_Undistribute(t *testing.T) {
+	t.Parallel()
 	dist := &mockDistributor{}
 	adapter, err := NewAdapter(
 		WithDistributor(dist),
@@ -485,6 +501,7 @@ func TestAdapter_Undistribute(t *testing.T) {
 }
 
 func TestAdapter_Undistribute_NoDistributor(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -495,6 +512,7 @@ func TestAdapter_Undistribute_NoDistributor(t *testing.T) {
 }
 
 func TestAdapter_DistributionStatus(t *testing.T) {
+	t.Parallel()
 	containers := []distribution.DistributedContainer{
 		{HostName: "local", State: distribution.StateRunning},
 	}
@@ -510,6 +528,7 @@ func TestAdapter_DistributionStatus(t *testing.T) {
 }
 
 func TestAdapter_RemoteEnabled(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	assert.False(t, adapter.RemoteEnabled())
 
@@ -521,6 +540,7 @@ func TestAdapter_RemoteEnabled(t *testing.T) {
 }
 
 func TestAdapter_ListHosts(t *testing.T) {
+	t.Parallel()
 	hm := &mockHostManager{
 		hosts: map[string]remote.RemoteHost{
 			"h1": {Name: "h1", Address: "10.0.0.1"},
@@ -536,12 +556,14 @@ func TestAdapter_ListHosts(t *testing.T) {
 }
 
 func TestAdapter_ListHosts_NoManager(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	hosts := adapter.ListHosts()
 	assert.Nil(t, hosts)
 }
 
 func TestAdapter_ProbeHost(t *testing.T) {
+	t.Parallel()
 	hm := &mockHostManager{
 		hosts: map[string]remote.RemoteHost{},
 	}
@@ -558,6 +580,7 @@ func TestAdapter_ProbeHost(t *testing.T) {
 }
 
 func TestAdapter_ProbeHost_NoManager(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	_, err := adapter.ProbeHost(
 		context.Background(), "h1",
@@ -566,6 +589,7 @@ func TestAdapter_ProbeHost_NoManager(t *testing.T) {
 }
 
 func TestAdapter_Shutdown(t *testing.T) {
+	t.Parallel()
 	dist := &mockDistributor{}
 	adapter, _ := NewAdapter(
 		WithDistributor(dist),
@@ -578,6 +602,7 @@ func TestAdapter_Shutdown(t *testing.T) {
 }
 
 func TestAdapter_Runtime(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "podman"}
 	adapter, _ := NewAdapter(
 		WithRuntime(rt),
@@ -588,6 +613,7 @@ func TestAdapter_Runtime(t *testing.T) {
 }
 
 func TestAdapter_Orchestrator(t *testing.T) {
+	t.Parallel()
 	orch := &mockOrchestrator{}
 	adapter, _ := NewAdapter(
 		WithOrchestrator(orch),
@@ -598,6 +624,7 @@ func TestAdapter_Orchestrator(t *testing.T) {
 }
 
 func TestAdapter_ToEndpoint(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	ep := adapter.ToEndpoint(
 		"postgres", "localhost", "5432",
@@ -612,6 +639,7 @@ func TestAdapter_ToEndpoint(t *testing.T) {
 }
 
 func TestAdapter_HealthCheck_WithChecker(t *testing.T) {
+	t.Parallel()
 	checker := health.NewDefaultChecker()
 	adapter, err := NewAdapter(
 		WithHealthChecker(checker),
@@ -630,6 +658,7 @@ func TestAdapter_HealthCheck_WithChecker(t *testing.T) {
 }
 
 func TestAdapter_HealthCheck_WithMockChecker(t *testing.T) {
+	t.Parallel()
 	checker := &mockHealthChecker{
 		checkResults: map[string]bool{
 			"service1": true,
@@ -662,6 +691,7 @@ func TestAdapter_HealthCheck_WithMockChecker(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckAll(t *testing.T) {
+	t.Parallel()
 	checker := &mockHealthChecker{
 		checkAllResults: []*health.HealthResult{
 			{Healthy: true},
@@ -685,6 +715,7 @@ func TestAdapter_HealthCheckAll(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckAll_NoChecker(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)
 
@@ -693,6 +724,7 @@ func TestAdapter_HealthCheckAll_NoChecker(t *testing.T) {
 }
 
 func TestAdapter_StatusAll(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "docker"}
 	adapter, err := NewAdapter(
 		WithRuntime(rt),
@@ -706,6 +738,7 @@ func TestAdapter_StatusAll(t *testing.T) {
 }
 
 func TestAdapter_StatusAll_NoRuntime(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)
 
@@ -714,6 +747,7 @@ func TestAdapter_StatusAll_NoRuntime(t *testing.T) {
 }
 
 func TestAdapter_ListContainers(t *testing.T) {
+	t.Parallel()
 	orch := &mockOrchestrator{}
 	adapter, err := NewAdapter(
 		WithOrchestrator(orch),
@@ -728,6 +762,7 @@ func TestAdapter_ListContainers(t *testing.T) {
 }
 
 func TestAdapter_ListContainers_NoOrchestrator(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)
 
@@ -736,6 +771,7 @@ func TestAdapter_ListContainers_NoOrchestrator(t *testing.T) {
 }
 
 func TestAdapter_ToHealthTarget(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	target := adapter.ToHealthTarget(
 		"postgres", "localhost", "5432",
@@ -751,6 +787,7 @@ func TestAdapter_ToHealthTarget(t *testing.T) {
 }
 
 func TestAdapter_BootAll(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "docker"}
 	orch := &mockOrchestrator{}
 	hc := &mockHealthChecker{}
@@ -769,6 +806,7 @@ func TestAdapter_BootAll(t *testing.T) {
 }
 
 func TestAdapter_BootAll_WithDistributor(t *testing.T) {
+	t.Parallel()
 	dist := &mockDistributor{}
 	hm := &mockHostManager{hosts: map[string]remote.RemoteHost{}}
 	adapter, err := NewAdapter(
@@ -785,6 +823,7 @@ func TestAdapter_BootAll_WithDistributor(t *testing.T) {
 }
 
 func TestNewAdapterFromConfig_NoRuntime(t *testing.T) {
+	t.Parallel()
 	// Create a temporary directory as project root
 	tmpDir := t.TempDir()
 	// Change working directory to tmpDir
@@ -812,6 +851,7 @@ func TestNewAdapterFromConfig_NoRuntime(t *testing.T) {
 }
 
 func TestAdapter_StatusAll_WithListError(t *testing.T) {
+	t.Parallel()
 	rt := &mockRuntime{name: "docker", listError: fmt.Errorf("runtime error")}
 	adapter, err := NewAdapter(
 		WithRuntime(rt),
@@ -825,6 +865,7 @@ func TestAdapter_StatusAll_WithListError(t *testing.T) {
 }
 
 func TestAdapter_RemoteComposeUp_NoRemoteDistribution(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	err := adapter.RemoteComposeUp(context.Background(), "docker-compose.yml", "default")
 	assert.Error(t, err)
@@ -832,6 +873,7 @@ func TestAdapter_RemoteComposeUp_NoRemoteDistribution(t *testing.T) {
 }
 
 func TestAdapter_RemoteEnabled_WithDistributorOnly(t *testing.T) {
+	t.Parallel()
 	adapter, _ := NewAdapter(WithLogger(logging.NopLogger{}))
 	adapter.distributor = &mockDistributor{}
 	// hostManager nil
@@ -839,6 +881,7 @@ func TestAdapter_RemoteEnabled_WithDistributorOnly(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckHTTP_Success(t *testing.T) {
+	t.Parallel()
 	// Start a test HTTP server that returns 200 OK
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -853,6 +896,7 @@ func TestAdapter_HealthCheckHTTP_Success(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckHTTP_Failure(t *testing.T) {
+	t.Parallel()
 	// Start a test HTTP server that returns 500 Internal Server Error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -868,6 +912,7 @@ func TestAdapter_HealthCheckHTTP_Failure(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckHTTP_ConnectionError(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)
 
@@ -878,6 +923,7 @@ func TestAdapter_HealthCheckHTTP_ConnectionError(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckTCP_Success(t *testing.T) {
+	t.Parallel()
 	// Start a test TCP server
 	listener, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
@@ -903,6 +949,7 @@ func TestAdapter_HealthCheckTCP_Success(t *testing.T) {
 }
 
 func TestAdapter_HealthCheckTCP_Failure(t *testing.T) {
+	t.Parallel()
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)
 
@@ -912,6 +959,7 @@ func TestAdapter_HealthCheckTCP_Failure(t *testing.T) {
 }
 
 func TestLogrusAdapter(t *testing.T) {
+	t.Parallel()
 	l := &logrusAdapter{}
 	// Just verify no panic.
 	l.Debug("debug %s", "test")

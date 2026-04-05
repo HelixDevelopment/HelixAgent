@@ -9,6 +9,7 @@ import (
 )
 
 func TestSchemaBuilder(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Object().
 		Property("name", StringSchema()).
@@ -24,6 +25,7 @@ func TestSchemaBuilder(t *testing.T) {
 }
 
 func TestSchemaBuilder_Array(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Array().
 		Items(StringSchema()).
@@ -38,6 +40,7 @@ func TestSchemaBuilder_Array(t *testing.T) {
 }
 
 func TestSchemaBuilder_String(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		MinLength(5).
@@ -52,6 +55,7 @@ func TestSchemaBuilder_String(t *testing.T) {
 }
 
 func TestSchemaBuilder_Number(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Number().
 		Minimum(0).
@@ -64,6 +68,7 @@ func TestSchemaBuilder_Number(t *testing.T) {
 }
 
 func TestParseSchema(t *testing.T) {
+	t.Parallel()
 	jsonSchema := `{
 		"type": "object",
 		"properties": {
@@ -83,6 +88,7 @@ func TestParseSchema(t *testing.T) {
 }
 
 func TestSchemaValidator_ValidObject(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -98,6 +104,7 @@ func TestSchemaValidator_ValidObject(t *testing.T) {
 }
 
 func TestSchemaValidator_MissingRequired(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -114,6 +121,7 @@ func TestSchemaValidator_MissingRequired(t *testing.T) {
 }
 
 func TestSchemaValidator_InvalidType(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -130,6 +138,7 @@ func TestSchemaValidator_InvalidType(t *testing.T) {
 }
 
 func TestSchemaValidator_StringConstraints(t *testing.T) {
+	t.Parallel()
 	minLen := 5
 	maxLen := 10
 	schema := &JSONSchema{
@@ -157,6 +166,7 @@ func TestSchemaValidator_StringConstraints(t *testing.T) {
 }
 
 func TestSchemaValidator_NumberConstraints(t *testing.T) {
+	t.Parallel()
 	min := float64(0)
 	max := float64(100)
 	schema := &JSONSchema{
@@ -182,6 +192,7 @@ func TestSchemaValidator_NumberConstraints(t *testing.T) {
 }
 
 func TestSchemaValidator_Pattern(t *testing.T) {
+	t.Parallel()
 	schema := PatternString(`^[A-Z][a-z]+$`)
 
 	validator, err := NewSchemaValidator(schema)
@@ -197,6 +208,7 @@ func TestSchemaValidator_Pattern(t *testing.T) {
 }
 
 func TestSchemaValidator_Enum(t *testing.T) {
+	t.Parallel()
 	schema := EnumSchema("red", "green", "blue")
 
 	validator, err := NewSchemaValidator(schema)
@@ -212,6 +224,7 @@ func TestSchemaValidator_Enum(t *testing.T) {
 }
 
 func TestSchemaValidator_Array(t *testing.T) {
+	t.Parallel()
 	minItems := 1
 	maxItems := 3
 	schema := &JSONSchema{
@@ -242,6 +255,7 @@ func TestSchemaValidator_Array(t *testing.T) {
 }
 
 func TestSchemaValidator_NestedObject(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"user": ObjectSchema(map[string]*JSONSchema{
 			"name":  StringSchema(),
@@ -264,6 +278,7 @@ func TestSchemaValidator_NestedObject(t *testing.T) {
 }
 
 func TestSchemaValidator_Formats(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		format  string
 		valid   string
@@ -278,6 +293,7 @@ func TestSchemaValidator_Formats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
+				t.Parallel()
 			schema := &JSONSchema{Type: "string", Format: tt.format}
 			validator, err := NewSchemaValidator(schema)
 			require.NoError(t, err)
@@ -292,6 +308,7 @@ func TestSchemaValidator_Formats(t *testing.T) {
 }
 
 func TestExtractJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -331,6 +348,7 @@ func TestExtractJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractJSON(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -338,6 +356,7 @@ func TestExtractJSON(t *testing.T) {
 }
 
 func TestFindMatchingBrace(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -352,6 +371,7 @@ func TestFindMatchingBrace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := findMatchingBrace(tt.input, '{', '}')
 			assert.Equal(t, tt.expected, result)
 		})
@@ -374,6 +394,7 @@ func (m *mockProvider) Complete(ctx context.Context, prompt string) (string, err
 }
 
 func TestStructuredGenerator_ValidResponse(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -397,6 +418,7 @@ func TestStructuredGenerator_ValidResponse(t *testing.T) {
 }
 
 func TestStructuredGenerator_RetryOnInvalid(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -421,6 +443,7 @@ func TestStructuredGenerator_RetryOnInvalid(t *testing.T) {
 }
 
 func TestStructuredGenerator_StrictMode(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 	}, "name")
@@ -443,6 +466,7 @@ func TestStructuredGenerator_StrictMode(t *testing.T) {
 }
 
 func TestRegexGenerator(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{`ABC123`},
 	}
@@ -458,6 +482,7 @@ func TestRegexGenerator(t *testing.T) {
 }
 
 func TestChoiceGenerator(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{`red`},
 	}
@@ -472,6 +497,7 @@ func TestChoiceGenerator(t *testing.T) {
 }
 
 func TestChoiceGenerator_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{`RED`},
 	}
@@ -486,6 +512,7 @@ func TestChoiceGenerator_CaseInsensitive(t *testing.T) {
 }
 
 func TestCompiledPattern(t *testing.T) {
+	t.Parallel()
 	pattern, err := CompilePattern(`^[A-Z][a-z]+$`)
 	require.NoError(t, err)
 
@@ -495,6 +522,7 @@ func TestCompiledPattern(t *testing.T) {
 }
 
 func TestValidate_Convenience(t *testing.T) {
+	t.Parallel()
 	schema := StringSchema()
 
 	result := Validate(`"hello"`, schema)
@@ -505,6 +533,7 @@ func TestValidate_Convenience(t *testing.T) {
 }
 
 func TestSchemaValidator_OneOf(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		OneOf: []*JSONSchema{
 			StringSchema(),
@@ -529,6 +558,7 @@ func TestSchemaValidator_OneOf(t *testing.T) {
 }
 
 func TestSchemaValidator_AnyOf(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		AnyOf: []*JSONSchema{
 			{Type: "string", MinLength: intPtr(5)},
@@ -583,6 +613,7 @@ func BenchmarkExtractJSON(b *testing.B) {
 }
 
 func TestDefaultGeneratorConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -592,6 +623,7 @@ func TestDefaultGeneratorConfig(t *testing.T) {
 }
 
 func TestStructuredGenerator_GenerateWithType(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -618,6 +650,7 @@ func TestStructuredGenerator_GenerateWithType(t *testing.T) {
 }
 
 func TestStructuredGenerator_GenerateWithType_ValidationFails(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -655,6 +688,7 @@ func (e *errorProvider) Complete(ctx context.Context, prompt string) (string, er
 }
 
 func TestStructuredGenerator_ProviderError(t *testing.T) {
+	t.Parallel()
 	schema := StringSchema()
 
 	provider := &errorProvider{err: context.DeadlineExceeded}
@@ -669,6 +703,7 @@ func TestStructuredGenerator_ProviderError(t *testing.T) {
 }
 
 func TestRegexGenerator_ProviderError(t *testing.T) {
+	t.Parallel()
 	provider := &errorProvider{err: context.DeadlineExceeded}
 
 	generator, err := NewRegexGenerator(provider, `^test$`, nil)
@@ -681,6 +716,7 @@ func TestRegexGenerator_ProviderError(t *testing.T) {
 }
 
 func TestChoiceGenerator_ProviderError(t *testing.T) {
+	t.Parallel()
 	provider := &errorProvider{err: context.DeadlineExceeded}
 
 	generator := NewChoiceGenerator(provider, []string{"a", "b"}, nil)
@@ -692,6 +728,7 @@ func TestChoiceGenerator_ProviderError(t *testing.T) {
 }
 
 func TestRegexGenerator_Retry(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{
 			"not matching",
@@ -711,6 +748,7 @@ func TestRegexGenerator_Retry(t *testing.T) {
 }
 
 func TestRegexGenerator_StrictMode(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 	config.StrictMode = true
 
@@ -730,6 +768,7 @@ func TestRegexGenerator_StrictMode(t *testing.T) {
 }
 
 func TestRegexGenerator_MaxRetries(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 	config.MaxRetries = 2
 
@@ -748,6 +787,7 @@ func TestRegexGenerator_MaxRetries(t *testing.T) {
 }
 
 func TestChoiceGenerator_ContainsMatch(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{"I think the answer is red."},
 	}
@@ -762,6 +802,7 @@ func TestChoiceGenerator_ContainsMatch(t *testing.T) {
 }
 
 func TestChoiceGenerator_Retry(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{
 			"yellow",
@@ -781,6 +822,7 @@ func TestChoiceGenerator_Retry(t *testing.T) {
 }
 
 func TestChoiceGenerator_StrictMode(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 	config.StrictMode = true
 
@@ -798,6 +840,7 @@ func TestChoiceGenerator_StrictMode(t *testing.T) {
 }
 
 func TestChoiceGenerator_MaxRetries(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 	config.MaxRetries = 1
 
@@ -815,6 +858,7 @@ func TestChoiceGenerator_MaxRetries(t *testing.T) {
 }
 
 func TestNewRegexGenerator_InvalidPattern(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{}
 
 	_, err := NewRegexGenerator(provider, `[invalid`, nil)
@@ -823,6 +867,7 @@ func TestNewRegexGenerator_InvalidPattern(t *testing.T) {
 }
 
 func TestNewStructuredGenerator_NilConfig(t *testing.T) {
+	t.Parallel()
 	schema := StringSchema()
 	provider := &mockProvider{responses: []string{`"test"`}}
 
@@ -832,6 +877,7 @@ func TestNewStructuredGenerator_NilConfig(t *testing.T) {
 }
 
 func TestStructuredGenerator_MaxRetriesExhausted(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 	}, "name")
@@ -859,6 +905,7 @@ func TestStructuredGenerator_MaxRetriesExhausted(t *testing.T) {
 }
 
 func TestStructuredGenerator_NoJSONRetry(t *testing.T) {
+	t.Parallel()
 	schema := StringSchema()
 
 	provider := &mockProvider{
@@ -880,6 +927,7 @@ func TestStructuredGenerator_NoJSONRetry(t *testing.T) {
 }
 
 func TestExtractJSON_MarkdownCodeBlock(t *testing.T) {
+	t.Parallel()
 	input := "Here's the result:\n```\n{\"key\": \"value\"}\n```\nDone."
 
 	result := extractJSON(input)
@@ -887,6 +935,7 @@ func TestExtractJSON_MarkdownCodeBlock(t *testing.T) {
 }
 
 func TestExtractJSON_ArrayWithText(t *testing.T) {
+	t.Parallel()
 	input := "The array is: [1, 2, 3, 4] and that's it."
 
 	result := extractJSON(input)
@@ -894,6 +943,7 @@ func TestExtractJSON_ArrayWithText(t *testing.T) {
 }
 
 func TestSchemaValidator_Boolean(t *testing.T) {
+	t.Parallel()
 	schema := BooleanSchema()
 
 	validator, err := NewSchemaValidator(schema)
@@ -910,6 +960,7 @@ func TestSchemaValidator_Boolean(t *testing.T) {
 }
 
 func TestSchemaValidator_Null(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{Type: "null"}
 
 	validator, err := NewSchemaValidator(schema)
@@ -923,6 +974,7 @@ func TestSchemaValidator_Null(t *testing.T) {
 }
 
 func TestSchemaBuilder_Integer(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Integer().
 		Minimum(0).
@@ -935,12 +987,14 @@ func TestSchemaBuilder_Integer(t *testing.T) {
 }
 
 func TestSchemaBuilder_Boolean(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().Boolean().Build()
 
 	assert.Equal(t, "boolean", schema.Type)
 }
 
 func TestSchemaBuilder_Enum(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Enum("a", "b", "c").
 		Build()
@@ -949,6 +1003,7 @@ func TestSchemaBuilder_Enum(t *testing.T) {
 }
 
 func TestValidationResult_ErrorMessages(t *testing.T) {
+	t.Parallel()
 	result := &ValidationResult{
 		Valid: false,
 		Errors: []*ValidationError{
@@ -965,6 +1020,7 @@ func TestValidationResult_ErrorMessages(t *testing.T) {
 }
 
 func TestArraySchema(t *testing.T) {
+	t.Parallel()
 	schema := ArraySchema(StringSchema())
 
 	assert.Equal(t, "array", schema.Type)
@@ -973,6 +1029,7 @@ func TestArraySchema(t *testing.T) {
 }
 
 func TestParseSchemaFromMap(t *testing.T) {
+	t.Parallel()
 	schemaMap := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -991,6 +1048,7 @@ func TestParseSchemaFromMap(t *testing.T) {
 }
 
 func TestJSONSchema_String(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -1003,6 +1061,7 @@ func TestJSONSchema_String(t *testing.T) {
 }
 
 func TestJSONSchema_GetPropertySchema(t *testing.T) {
+	t.Parallel()
 	nameSchema := StringSchema()
 	ageSchema := IntegerSchema()
 
@@ -1024,6 +1083,7 @@ func TestJSONSchema_GetPropertySchema(t *testing.T) {
 }
 
 func TestSchemaBuilder_Type(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Type("custom").
 		Build()
@@ -1032,6 +1092,7 @@ func TestSchemaBuilder_Type(t *testing.T) {
 }
 
 func TestSchemaBuilder_Description(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Description("A test description").
@@ -1041,6 +1102,7 @@ func TestSchemaBuilder_Description(t *testing.T) {
 }
 
 func TestSchemaBuilder_Default(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Default("default value").
@@ -1050,6 +1112,7 @@ func TestSchemaBuilder_Default(t *testing.T) {
 }
 
 func TestSchemaBuilder_Format(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Format("email").
@@ -1059,12 +1122,14 @@ func TestSchemaBuilder_Format(t *testing.T) {
 }
 
 func TestNumberSchema(t *testing.T) {
+	t.Parallel()
 	schema := NumberSchema()
 
 	assert.Equal(t, "number", schema.Type)
 }
 
 func TestSchemaValidator_ValidateData(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -1084,6 +1149,7 @@ func TestSchemaValidator_ValidateData(t *testing.T) {
 }
 
 func TestSchemaValidator_ValidateData_MissingRequired(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -1102,6 +1168,7 @@ func TestSchemaValidator_ValidateData_MissingRequired(t *testing.T) {
 }
 
 func TestSchemaValidator_ValidateAllOf(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		AllOf: []*JSONSchema{
 			{Type: "object", Properties: map[string]*JSONSchema{"name": StringSchema()}},
@@ -1117,6 +1184,7 @@ func TestSchemaValidator_ValidateAllOf(t *testing.T) {
 }
 
 func TestSchemaValidator_DateTimeFormat(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Format("date-time").
@@ -1135,6 +1203,7 @@ func TestSchemaValidator_DateTimeFormat(t *testing.T) {
 }
 
 func TestSchemaValidator_TimeFormat(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Format("time").
@@ -1153,6 +1222,7 @@ func TestSchemaValidator_TimeFormat(t *testing.T) {
 }
 
 func TestSchemaValidator_IPv6Format(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		String().
 		Format("ipv6").
@@ -1171,6 +1241,7 @@ func TestSchemaValidator_IPv6Format(t *testing.T) {
 }
 
 func TestExtractJSON_EdgeCases(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 	}, "name")
@@ -1189,6 +1260,7 @@ func TestExtractJSON_EdgeCases(t *testing.T) {
 }
 
 func TestExtractJSON_NestedBraces(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"data": ObjectSchema(map[string]*JSONSchema{
 			"nested": StringSchema(),
@@ -1209,6 +1281,7 @@ func TestExtractJSON_NestedBraces(t *testing.T) {
 }
 
 func TestSchemaValidator_NumberValidation(t *testing.T) {
+	t.Parallel()
 	min := float64(0)
 	max := float64(100)
 	schema := &JSONSchema{
@@ -1234,6 +1307,7 @@ func TestSchemaValidator_NumberValidation(t *testing.T) {
 }
 
 func TestExtractJSON_MoreCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -1273,6 +1347,7 @@ func TestExtractJSON_MoreCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractJSON(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1280,6 +1355,7 @@ func TestExtractJSON_MoreCases(t *testing.T) {
 }
 
 func TestFindMatchingBrace_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -1295,6 +1371,7 @@ func TestFindMatchingBrace_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := findMatchingBrace(tt.input, tt.open, tt.close)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1302,6 +1379,7 @@ func TestFindMatchingBrace_EdgeCases(t *testing.T) {
 }
 
 func TestSchemaValidator_ArrayValidation_MoreCases(t *testing.T) {
+	t.Parallel()
 	// Array with no items schema
 	schema := &JSONSchema{
 		Type: "array",
@@ -1332,6 +1410,7 @@ func TestSchemaValidator_ArrayValidation_MoreCases(t *testing.T) {
 }
 
 func TestSchemaValidator_ObjectValidation_AdditionalProperties(t *testing.T) {
+	t.Parallel()
 	// Test object with additional properties
 	schema := &JSONSchema{
 		Type: "object",
@@ -1349,6 +1428,7 @@ func TestSchemaValidator_ObjectValidation_AdditionalProperties(t *testing.T) {
 }
 
 func TestSchemaValidator_IntegerValidation_Constraints(t *testing.T) {
+	t.Parallel()
 	min := float64(10)
 	max := float64(20)
 	schema := &JSONSchema{
@@ -1373,6 +1453,7 @@ func TestSchemaValidator_IntegerValidation_Constraints(t *testing.T) {
 }
 
 func TestSchemaValidator_NumberNotANumber(t *testing.T) {
+	t.Parallel()
 	schema := NumberSchema()
 
 	validator, err := NewSchemaValidator(schema)
@@ -1388,11 +1469,13 @@ func TestSchemaValidator_NumberNotANumber(t *testing.T) {
 }
 
 func TestParseSchema_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, err := ParseSchema([]byte(`{invalid json`))
 	assert.Error(t, err)
 }
 
 func TestParseSchemaFromMap_InvalidProperties(t *testing.T) {
+	t.Parallel()
 	// Test with malformed properties
 	schemaMap := map[string]interface{}{
 		"type":       "object",
@@ -1404,6 +1487,7 @@ func TestParseSchemaFromMap_InvalidProperties(t *testing.T) {
 }
 
 func TestParseSchemaFromMap_NestedProperties(t *testing.T) {
+	t.Parallel()
 	schemaMap := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -1424,6 +1508,7 @@ func TestParseSchemaFromMap_NestedProperties(t *testing.T) {
 }
 
 func TestGetPropertySchema_NonObject(t *testing.T) {
+	t.Parallel()
 	schema := StringSchema()
 
 	// Getting property from non-object should return nil
@@ -1432,6 +1517,7 @@ func TestGetPropertySchema_NonObject(t *testing.T) {
 }
 
 func TestSchemaValidator_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 	})
@@ -1444,6 +1530,7 @@ func TestSchemaValidator_InvalidJSON(t *testing.T) {
 }
 
 func TestSchemaValidator_ExclusiveMinMax(t *testing.T) {
+	t.Parallel()
 	// ExclusiveMinimum/ExclusiveMaximum in JSON Schema draft-07+ are values, not booleans
 	exclusiveMin := float64(0)
 	exclusiveMax := float64(10)
@@ -1469,6 +1556,7 @@ func TestSchemaValidator_ExclusiveMinMax(t *testing.T) {
 }
 
 func TestSchemaValidator_AdditionalPropertiesFalse(t *testing.T) {
+	t.Parallel()
 	// Test additionalProperties: false validation
 	additionalProps := false
 	schema := &JSONSchema{
@@ -1492,6 +1580,7 @@ func TestSchemaValidator_AdditionalPropertiesFalse(t *testing.T) {
 }
 
 func TestSchemaValidator_UniqueItemsValidation(t *testing.T) {
+	t.Parallel()
 	// Test uniqueItems validation
 	schema := &JSONSchema{
 		Type:        "array",
@@ -1512,6 +1601,7 @@ func TestSchemaValidator_UniqueItemsValidation(t *testing.T) {
 }
 
 func TestValidationError_String(t *testing.T) {
+	t.Parallel()
 	err := &ValidationError{
 		Path:    "user.name",
 		Message: "must be a string",
@@ -1523,6 +1613,7 @@ func TestValidationError_String(t *testing.T) {
 }
 
 func TestNewStructuredGenerator_NilProvider(t *testing.T) {
+	t.Parallel()
 	// Nil provider is accepted during creation - error happens during Generate
 	schema := StringSchema()
 
@@ -1533,6 +1624,7 @@ func TestNewStructuredGenerator_NilProvider(t *testing.T) {
 }
 
 func TestNewStructuredGenerator_NilSchema(t *testing.T) {
+	t.Parallel()
 	// Nil schema causes panic in NewSchemaValidator when accessing schema.Pattern
 	provider := &mockProvider{}
 
@@ -1543,6 +1635,7 @@ func TestNewStructuredGenerator_NilSchema(t *testing.T) {
 }
 
 func TestSchemaValidator_EmptyOneOf(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		OneOf: []*JSONSchema{}, // Empty oneOf
 	}
@@ -1557,6 +1650,7 @@ func TestSchemaValidator_EmptyOneOf(t *testing.T) {
 }
 
 func TestSchemaValidator_MultipleOneOfMatches(t *testing.T) {
+	t.Parallel()
 	// OneOf where multiple could match
 	schema := &JSONSchema{
 		OneOf: []*JSONSchema{
@@ -1575,6 +1669,7 @@ func TestSchemaValidator_MultipleOneOfMatches(t *testing.T) {
 }
 
 func TestSchemaValidator_ComplexNesting(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"users": ArraySchema(ObjectSchema(map[string]*JSONSchema{
 			"name":  StringSchema(),
@@ -1597,6 +1692,7 @@ func TestSchemaValidator_ComplexNesting(t *testing.T) {
 // Additional tests to improve coverage
 
 func TestExtractJSON_ArrayExtraction(t *testing.T) {
+	t.Parallel()
 	// Test extracting JSON array from response
 	response := "Here is the data: [1, 2, 3] and more text"
 	result := extractJSON(response)
@@ -1604,6 +1700,7 @@ func TestExtractJSON_ArrayExtraction(t *testing.T) {
 }
 
 func TestExtractJSON_PlainPrimitive(t *testing.T) {
+	t.Parallel()
 	// Test when entire response is valid JSON primitive
 	response := "42"
 	result := extractJSON(response)
@@ -1619,6 +1716,7 @@ func TestExtractJSON_PlainPrimitive(t *testing.T) {
 }
 
 func TestExtractJSON_MarkdownJSONCodeBlock(t *testing.T) {
+	t.Parallel()
 	// Test extracting from markdown json code block
 	response := "Here is the response:\n```json\n{\"key\": \"value\"}\n```\nEnd."
 	result := extractJSON(response)
@@ -1626,6 +1724,7 @@ func TestExtractJSON_MarkdownJSONCodeBlock(t *testing.T) {
 }
 
 func TestExtractJSON_GenericCodeBlock(t *testing.T) {
+	t.Parallel()
 	// Test extracting from generic code block (not ```json)
 	response := "Response:\n```\n{\"data\": 123}\n```"
 	result := extractJSON(response)
@@ -1638,6 +1737,7 @@ func TestExtractJSON_GenericCodeBlock(t *testing.T) {
 }
 
 func TestExtractJSON_InvalidCodeBlock(t *testing.T) {
+	t.Parallel()
 	// Test code block with invalid JSON
 	response := "```\nnot valid json\n```"
 	result := extractJSON(response)
@@ -1645,6 +1745,7 @@ func TestExtractJSON_InvalidCodeBlock(t *testing.T) {
 }
 
 func TestExtractJSON_UnclosedBrace(t *testing.T) {
+	t.Parallel()
 	// Test with unclosed brace
 	response := "{\"key\": \"value\""
 	result := extractJSON(response)
@@ -1652,6 +1753,7 @@ func TestExtractJSON_UnclosedBrace(t *testing.T) {
 }
 
 func TestValidateNumber_IntTypes(t *testing.T) {
+	t.Parallel()
 	schema := NumberSchema()
 	validator, err := NewSchemaValidator(schema)
 	require.NoError(t, err)
@@ -1676,6 +1778,7 @@ func TestValidateNumber_IntTypes(t *testing.T) {
 }
 
 func TestValidateInteger_IntTypes(t *testing.T) {
+	t.Parallel()
 	schema := IntegerSchema()
 	validator, err := NewSchemaValidator(schema)
 	require.NoError(t, err)
@@ -1692,6 +1795,7 @@ func TestValidateInteger_IntTypes(t *testing.T) {
 }
 
 func TestValidateObject_MissingProperties(t *testing.T) {
+	t.Parallel()
 	schema := ObjectSchema(map[string]*JSONSchema{
 		"name": StringSchema(),
 		"age":  IntegerSchema(),
@@ -1710,6 +1814,7 @@ func TestValidateObject_MissingProperties(t *testing.T) {
 }
 
 func TestValidateArray_MaxItemsViolation(t *testing.T) {
+	t.Parallel()
 	maxItems := 3
 	schema := &JSONSchema{
 		Type:     "array",
@@ -1726,6 +1831,7 @@ func TestValidateArray_MaxItemsViolation(t *testing.T) {
 }
 
 func TestSchemaValidator_UnknownType(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type: "unknown_type",
 	}
@@ -1739,6 +1845,7 @@ func TestSchemaValidator_UnknownType(t *testing.T) {
 }
 
 func TestSchemaValidator_NullType(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type: "null",
 	}
@@ -1754,6 +1861,7 @@ func TestSchemaValidator_NullType(t *testing.T) {
 }
 
 func TestSchemaValidator_NoTypeAllowsAnything(t *testing.T) {
+	t.Parallel()
 	// Schema with no type specified should allow any value
 	schema := &JSONSchema{}
 
@@ -1771,6 +1879,7 @@ func TestSchemaValidator_NoTypeAllowsAnything(t *testing.T) {
 }
 
 func TestSchemaValidator_AnyOfValidation(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		AnyOf: []*JSONSchema{
 			{Type: "string"},
@@ -1795,6 +1904,7 @@ func TestSchemaValidator_AnyOfValidation(t *testing.T) {
 }
 
 func TestSchemaValidator_AllOfValidation(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		AllOf: []*JSONSchema{
 			{Type: "object", Properties: map[string]*JSONSchema{"name": StringSchema()}},
@@ -1811,6 +1921,7 @@ func TestSchemaValidator_AllOfValidation(t *testing.T) {
 }
 
 func TestSchemaValidator_ConstValidation(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Const: "fixed_value",
 	}
@@ -1826,6 +1937,7 @@ func TestSchemaValidator_ConstValidation(t *testing.T) {
 }
 
 func TestSchemaBuilder_MultipleProperties(t *testing.T) {
+	t.Parallel()
 	schema := NewSchemaBuilder().
 		Object().
 		Property("name", StringSchema()).
@@ -1840,6 +1952,7 @@ func TestSchemaBuilder_MultipleProperties(t *testing.T) {
 }
 
 func TestSchemaBuilder_PropertyOnNilProperties(t *testing.T) {
+	t.Parallel()
 	// Builder without calling Object() first
 	schema := NewSchemaBuilder().
 		Property("test", StringSchema()).
@@ -1850,6 +1963,7 @@ func TestSchemaBuilder_PropertyOnNilProperties(t *testing.T) {
 }
 
 func TestValidate_InvalidPattern(t *testing.T) {
+	t.Parallel()
 	// Schema with invalid regex pattern
 	schema := &JSONSchema{
 		Type:    "string",
@@ -1862,6 +1976,7 @@ func TestValidate_InvalidPattern(t *testing.T) {
 }
 
 func TestNewSchemaValidator_InvalidPattern(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type:    "string",
 		Pattern: "[invalid",
@@ -1872,6 +1987,7 @@ func TestNewSchemaValidator_InvalidPattern(t *testing.T) {
 }
 
 func TestGenerateWithType_ValidationFailed(t *testing.T) {
+	t.Parallel()
 	provider := &mockProvider{
 		responses: []string{`{"wrong": "format"}`},
 	}
@@ -1893,6 +2009,7 @@ func TestGenerateWithType_ValidationFailed(t *testing.T) {
 }
 
 func TestIsValidIPv4_InvalidOctets(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type:   "string",
 		Format: "ipv4",
@@ -1911,6 +2028,7 @@ func TestIsValidIPv4_InvalidOctets(t *testing.T) {
 }
 
 func TestValidateFormat_UnknownFormat(t *testing.T) {
+	t.Parallel()
 	schema := &JSONSchema{
 		Type:   "string",
 		Format: "unknown_format",

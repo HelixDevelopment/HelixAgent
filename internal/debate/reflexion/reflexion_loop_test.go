@@ -37,6 +37,7 @@ func (m *mockTestExecutor) Execute(
 }
 
 func TestDefaultReflexionConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultReflexionConfig()
 
 	assert.Equal(t, 3, cfg.MaxAttempts)
@@ -45,6 +46,7 @@ func TestDefaultReflexionConfig(t *testing.T) {
 }
 
 func TestNewReflexionLoop(t *testing.T) {
+	t.Parallel()
 	t.Run("with valid config", func(t *testing.T) {
 		cfg := ReflexionConfig{
 			MaxAttempts:         5,
@@ -62,6 +64,7 @@ func TestNewReflexionLoop(t *testing.T) {
 	})
 
 	t.Run("defaults applied for zero values", func(t *testing.T) {
+			t.Parallel()
 		cfg := ReflexionConfig{} // all zeroes
 		loop := NewReflexionLoop(cfg, nil, nil, nil)
 		require.NotNil(t, loop)
@@ -76,6 +79,7 @@ func TestNewReflexionLoop(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_NilTask(t *testing.T) {
+	t.Parallel()
 	loop := NewReflexionLoop(DefaultReflexionConfig(), nil, &mockTestExecutor{}, nil)
 
 	result, err := loop.Execute(context.Background(), nil)
@@ -85,6 +89,7 @@ func TestReflexionLoop_Execute_NilTask(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_NilExecutor(t *testing.T) {
+	t.Parallel()
 	loop := NewReflexionLoop(DefaultReflexionConfig(), nil, nil, nil)
 
 	task := &ReflexionTask{
@@ -100,6 +105,7 @@ func TestReflexionLoop_Execute_NilExecutor(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_AllPassFirstAttempt(t *testing.T) {
+	t.Parallel()
 	executor := &mockTestExecutor{
 		results: [][]*TestResult{
 			{
@@ -136,6 +142,7 @@ func TestReflexionLoop_Execute_AllPassFirstAttempt(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_FailThenPass(t *testing.T) {
+	t.Parallel()
 	executor := &mockTestExecutor{
 		results: [][]*TestResult{
 			// First attempt: one test fails.
@@ -202,6 +209,7 @@ CONFIDENCE: 0.7`
 }
 
 func TestReflexionLoop_Execute_MaxAttempts(t *testing.T) {
+	t.Parallel()
 	// All attempts fail.
 	failResult := []*TestResult{
 		{Name: "TestMain", Passed: false, Error: "assertion mismatch"},
@@ -267,6 +275,7 @@ CONFIDENCE: 0.4`
 }
 
 func TestReflexionLoop_Execute_NoCodeGenerator(t *testing.T) {
+	t.Parallel()
 	// No initial code AND no code generator: should error.
 	executor := &mockTestExecutor{}
 	loop := NewReflexionLoop(DefaultReflexionConfig(), nil, executor, nil)
@@ -286,6 +295,7 @@ func TestReflexionLoop_Execute_NoCodeGenerator(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_NoCodeGenerator_WithInitialCode(t *testing.T) {
+	t.Parallel()
 	// Has initial code but no code generator. Tests fail: should return
 	// without error (cannot improve, just reports result).
 	executor := &mockTestExecutor{
@@ -313,6 +323,7 @@ func TestReflexionLoop_Execute_NoCodeGenerator_WithInitialCode(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_CodeGeneratorError(t *testing.T) {
+	t.Parallel()
 	// First test fails, then code generator fails.
 	executor := &mockTestExecutor{
 		results: [][]*TestResult{
@@ -361,6 +372,7 @@ CONFIDENCE: 0.3`,
 }
 
 func TestReflexionLoop_Execute_TestExecutorError(t *testing.T) {
+	t.Parallel()
 	executor := &mockTestExecutor{
 		errs: []error{errors.New("executor crashed")},
 	}
@@ -381,6 +393,7 @@ func TestReflexionLoop_Execute_TestExecutorError(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_InitialCodeGeneration(t *testing.T) {
+	t.Parallel()
 	// No initial code but code generator provided.
 	executor := &mockTestExecutor{
 		results: [][]*TestResult{
@@ -415,6 +428,7 @@ func TestReflexionLoop_Execute_InitialCodeGeneration(t *testing.T) {
 }
 
 func TestReflexionLoop_Execute_InitialCodeGenerationError(t *testing.T) {
+	t.Parallel()
 	codeGen := func(
 		_ context.Context,
 		_ string,

@@ -34,6 +34,7 @@ func createTestConcurrencyAlertManager() *services.ConcurrencyAlertManager {
 
 // TestNewMonitoringHandler tests handler creation
 func TestNewMonitoringHandler(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	assert.NotNil(t, handler)
@@ -46,6 +47,7 @@ func TestNewMonitoringHandler(t *testing.T) {
 
 // TestMonitoringHandler_GetOverallStatus_AllNil tests when all monitors are nil
 func TestMonitoringHandler_GetOverallStatus_AllNil(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -69,6 +71,7 @@ func TestMonitoringHandler_GetOverallStatus_AllNil(t *testing.T) {
 
 // TestMonitoringHandler_GetCircuitBreakerStatus_NilMonitor tests when circuit breaker monitor is nil
 func TestMonitoringHandler_GetCircuitBreakerStatus_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -87,6 +90,7 @@ func TestMonitoringHandler_GetCircuitBreakerStatus_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_ResetCircuitBreaker_NilMonitor tests reset with nil monitor
 func TestMonitoringHandler_ResetCircuitBreaker_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -106,6 +110,7 @@ func TestMonitoringHandler_ResetCircuitBreaker_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_ResetAllCircuitBreakers_NilMonitor tests reset all with nil monitor
 func TestMonitoringHandler_ResetAllCircuitBreakers_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -124,6 +129,7 @@ func TestMonitoringHandler_ResetAllCircuitBreakers_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_GetOAuthTokenStatus_NilMonitor tests OAuth with nil monitor
 func TestMonitoringHandler_GetOAuthTokenStatus_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -142,6 +148,7 @@ func TestMonitoringHandler_GetOAuthTokenStatus_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_RefreshOAuthToken_NilMonitor tests OAuth refresh with nil monitor
 func TestMonitoringHandler_RefreshOAuthToken_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -161,6 +168,7 @@ func TestMonitoringHandler_RefreshOAuthToken_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_GetProviderHealthStatus_NilMonitor tests provider health with nil monitor
 func TestMonitoringHandler_GetProviderHealthStatus_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -179,6 +187,7 @@ func TestMonitoringHandler_GetProviderHealthStatus_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_ForceHealthCheck_NilMonitor tests force health check with nil monitor
 func TestMonitoringHandler_ForceHealthCheck_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -197,6 +206,7 @@ func TestMonitoringHandler_ForceHealthCheck_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_ForceProviderHealthCheck_NilMonitor tests provider health check with nil monitor
 func TestMonitoringHandler_ForceProviderHealthCheck_NilMonitor(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -216,6 +226,7 @@ func TestMonitoringHandler_ForceProviderHealthCheck_NilMonitor(t *testing.T) {
 
 // TestMonitoringHandler_GetFallbackChainStatus_NilValidator tests fallback status with nil validator
 func TestMonitoringHandler_GetFallbackChainStatus_NilValidator(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -234,6 +245,7 @@ func TestMonitoringHandler_GetFallbackChainStatus_NilValidator(t *testing.T) {
 
 // TestMonitoringHandler_ValidateFallbackChain_NilValidator tests validate with nil validator
 func TestMonitoringHandler_ValidateFallbackChain_NilValidator(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -252,6 +264,7 @@ func TestMonitoringHandler_ValidateFallbackChain_NilValidator(t *testing.T) {
 
 // TestMonitoringHandler_RegisterRoutes tests route registration
 func TestMonitoringHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	router := gin.New()
@@ -295,6 +308,7 @@ func TestMonitoringHandler_RegisterRoutes(t *testing.T) {
 
 // TestOverallMonitoringStatus_Struct tests the struct fields
 func TestOverallMonitoringStatus_Struct(t *testing.T) {
+	t.Parallel()
 	status := OverallMonitoringStatus{
 		Healthy: true,
 	}
@@ -308,11 +322,13 @@ func TestOverallMonitoringStatus_Struct(t *testing.T) {
 
 // TestMonitoringHandler_MultipleProviderEndpoints tests different provider parameter values
 func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 	providers := []string{"claude", "qwen", "deepseek", "gemini", "ollama", "openrouter"}
 
 	for _, provider := range providers {
 		t.Run("Reset_"+provider, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -325,6 +341,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 		})
 
 		t.Run("OAuthRefresh_"+provider, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -336,6 +353,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 		})
 
 		t.Run("HealthCheck_"+provider, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -350,6 +368,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 
 // TestMonitoringHandler_EmptyProviderParam tests empty provider parameter
 func TestMonitoringHandler_EmptyProviderParam(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	tests := []struct {
@@ -376,6 +395,7 @@ func TestMonitoringHandler_EmptyProviderParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: ""}}
@@ -391,6 +411,7 @@ func TestMonitoringHandler_EmptyProviderParam(t *testing.T) {
 
 // TestMonitoringHandler_ResponseFormats tests that all responses are valid JSON
 func TestMonitoringHandler_ResponseFormats(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	endpoints := []struct {
@@ -463,6 +484,7 @@ func TestMonitoringHandler_ResponseFormats(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.name+"_ValidJSON", func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/test", nil)
@@ -479,6 +501,7 @@ func TestMonitoringHandler_ResponseFormats(t *testing.T) {
 }
 
 func TestMonitoringHandler_GetDeadLetterAlerts_NilManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -496,6 +519,7 @@ func TestMonitoringHandler_GetDeadLetterAlerts_NilManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_GetDeadLetterAlerts_WithManager(t *testing.T) {
+	t.Parallel()
 	manager := createTestConcurrencyAlertManager()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, manager)
 
@@ -514,6 +538,7 @@ func TestMonitoringHandler_GetDeadLetterAlerts_WithManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_RetryDeadLetterAlert_NilManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -532,6 +557,7 @@ func TestMonitoringHandler_RetryDeadLetterAlert_NilManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_RetryDeadLetterAlert_WithManager(t *testing.T) {
+	t.Parallel()
 	manager := createTestConcurrencyAlertManager()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, manager)
 
@@ -551,6 +577,7 @@ func TestMonitoringHandler_RetryDeadLetterAlert_WithManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_GetRetryQueueAlerts_NilManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -568,6 +595,7 @@ func TestMonitoringHandler_GetRetryQueueAlerts_NilManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_GetRetryQueueAlerts_WithManager(t *testing.T) {
+	t.Parallel()
 	manager := createTestConcurrencyAlertManager()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, manager)
 
@@ -586,6 +614,7 @@ func TestMonitoringHandler_GetRetryQueueAlerts_WithManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_CancelRetryAttempt_NilManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
@@ -604,6 +633,7 @@ func TestMonitoringHandler_CancelRetryAttempt_NilManager(t *testing.T) {
 }
 
 func TestMonitoringHandler_CancelRetryAttempt_WithManager(t *testing.T) {
+	t.Parallel()
 	manager := createTestConcurrencyAlertManager()
 	handler := NewMonitoringHandler(nil, nil, nil, nil, nil, manager)
 

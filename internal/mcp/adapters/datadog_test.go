@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewDatadogAdapter(t *testing.T) {
+	t.Parallel()
 	config := DatadogConfig{
 		APIKey:         "api-key",
 		ApplicationKey: "app-key",
@@ -30,6 +31,7 @@ func TestNewDatadogAdapter(t *testing.T) {
 }
 
 func TestDatadogAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewDatadogAdapter(DatadogConfig{})
 
 	info := adapter.GetServerInfo()
@@ -43,6 +45,7 @@ func TestDatadogAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestDatadogAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewDatadogAdapter(DatadogConfig{})
 
 	tools := adapter.ListTools()
@@ -70,6 +73,7 @@ func TestDatadogAdapter_ListTools(t *testing.T) {
 }
 
 func TestDatadogAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewDatadogAdapter(DatadogConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -80,6 +84,7 @@ func TestDatadogAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestDatadogAdapter_QueryMetrics(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check path - note: server.URL includes scheme and host, so path is relative
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/query"))
@@ -124,6 +129,7 @@ func TestDatadogAdapter_QueryMetrics(t *testing.T) {
 }
 
 func TestDatadogAdapter_ListDashboards(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/dashboard"))
 
@@ -156,6 +162,7 @@ func TestDatadogAdapter_ListDashboards(t *testing.T) {
 }
 
 func TestDatadogAdapter_GetDashboard(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/api/v1/dashboard/dash-1")
 
@@ -193,6 +200,7 @@ func TestDatadogAdapter_GetDashboard(t *testing.T) {
 }
 
 func TestDatadogAdapter_ListMonitors(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/monitor"))
 
@@ -239,6 +247,7 @@ func TestDatadogAdapter_ListMonitors(t *testing.T) {
 }
 
 func TestDatadogAdapter_GetMonitor(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/api/v1/monitor/123")
 
@@ -279,6 +288,7 @@ func TestDatadogAdapter_GetMonitor(t *testing.T) {
 }
 
 func TestDatadogAdapter_MuteMonitor(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/v1/monitor/123/mute")
@@ -306,6 +316,7 @@ func TestDatadogAdapter_MuteMonitor(t *testing.T) {
 }
 
 func TestDatadogAdapter_UnmuteMonitor(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/v1/monitor/123/unmute")
@@ -333,6 +344,7 @@ func TestDatadogAdapter_UnmuteMonitor(t *testing.T) {
 }
 
 func TestDatadogAdapter_QueryLogs(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v2/logs/events/search"))
@@ -379,6 +391,7 @@ func TestDatadogAdapter_QueryLogs(t *testing.T) {
 }
 
 func TestDatadogAdapter_ListHosts(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/hosts"))
 
@@ -415,6 +428,7 @@ func TestDatadogAdapter_ListHosts(t *testing.T) {
 }
 
 func TestDatadogAdapter_ListEvents(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/events"))
 
@@ -450,6 +464,7 @@ func TestDatadogAdapter_ListEvents(t *testing.T) {
 }
 
 func TestDatadogAdapter_CreateEvent(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.True(t, strings.HasSuffix(r.URL.Path, "/api/v1/events"))
@@ -492,6 +507,7 @@ func TestDatadogAdapter_CreateEvent(t *testing.T) {
 }
 
 func TestDatadogAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`{"errors": ["Invalid API key"]}`))
@@ -515,6 +531,7 @@ func TestDatadogAdapter_APIError(t *testing.T) {
 }
 
 func TestDefaultDatadogConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultDatadogConfig()
 
 	assert.Equal(t, "datadoghq.com", config.Site)
@@ -522,6 +539,7 @@ func TestDefaultDatadogConfig(t *testing.T) {
 }
 
 func TestGetInt64Arg(t *testing.T) {
+	t.Parallel()
 	args := map[string]interface{}{
 		"float64_val": float64(123),
 		"int64_val":   int64(456),

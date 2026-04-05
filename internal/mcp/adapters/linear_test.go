@@ -169,6 +169,7 @@ func (m *MockLinearClient) SearchIssues(ctx context.Context, query string, limit
 }
 
 func TestLinearAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewLinearAdapter(DefaultLinearConfig(), &MockLinearClient{})
 	info := adapter.GetServerInfo()
 
@@ -180,6 +181,7 @@ func TestLinearAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestLinearAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewLinearAdapter(DefaultLinearConfig(), &MockLinearClient{})
 	tools := adapter.ListTools()
 
@@ -199,6 +201,7 @@ func TestLinearAdapter_ListTools(t *testing.T) {
 }
 
 func TestLinearAdapter_GetIssue(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		client := &MockLinearClient{
 			Issues: []LinearIssue{
@@ -224,6 +227,7 @@ func TestLinearAdapter_GetIssue(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
+			t.Parallel()
 		client := &MockLinearClient{Issues: []LinearIssue{}}
 		adapter := NewLinearAdapter(DefaultLinearConfig(), client)
 
@@ -237,6 +241,7 @@ func TestLinearAdapter_GetIssue(t *testing.T) {
 }
 
 func TestLinearAdapter_ListIssues(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		Issues: []LinearIssue{
 			{ID: "1", Identifier: "ENG-1", Title: "Issue 1", State: &LinearWorkflowState{Name: "Open"}},
@@ -255,6 +260,7 @@ func TestLinearAdapter_ListIssues(t *testing.T) {
 }
 
 func TestLinearAdapter_CreateIssue(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{}
 	adapter := NewLinearAdapter(DefaultLinearConfig(), client)
 
@@ -269,6 +275,7 @@ func TestLinearAdapter_CreateIssue(t *testing.T) {
 }
 
 func TestLinearAdapter_UpdateIssue(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{}
 	adapter := NewLinearAdapter(DefaultLinearConfig(), client)
 
@@ -283,6 +290,7 @@ func TestLinearAdapter_UpdateIssue(t *testing.T) {
 }
 
 func TestLinearAdapter_ListTeams(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		Teams: []LinearTeam{
 			{ID: "team-1", Name: "Engineering", Key: "ENG", IssueCount: 50},
@@ -301,6 +309,7 @@ func TestLinearAdapter_ListTeams(t *testing.T) {
 }
 
 func TestLinearAdapter_ListProjects(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		Projects: []LinearProject{
 			{ID: "proj-1", Name: "Project Alpha", State: "started", Progress: 0.5},
@@ -317,6 +326,7 @@ func TestLinearAdapter_ListProjects(t *testing.T) {
 }
 
 func TestLinearAdapter_ListCycles(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		Cycles: []LinearCycle{
 			{ID: "cycle-1", Number: 1, Name: "Sprint 1", StartsAt: "2024-01-01T00:00:00Z", EndsAt: "2024-01-14T00:00:00Z", Progress: 0.8},
@@ -335,6 +345,7 @@ func TestLinearAdapter_ListCycles(t *testing.T) {
 }
 
 func TestLinearAdapter_AddComment(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{}
 	adapter := NewLinearAdapter(DefaultLinearConfig(), client)
 
@@ -349,6 +360,7 @@ func TestLinearAdapter_AddComment(t *testing.T) {
 }
 
 func TestLinearAdapter_GetMe(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		CurrentUser: &LinearUser{
 			ID:          "user-1",
@@ -367,6 +379,7 @@ func TestLinearAdapter_GetMe(t *testing.T) {
 }
 
 func TestLinearAdapter_SearchIssues(t *testing.T) {
+	t.Parallel()
 	client := &MockLinearClient{
 		Issues: []LinearIssue{
 			{ID: "1", Identifier: "ENG-1", Title: "Bug fix", State: &LinearWorkflowState{Name: "Open"}},
@@ -384,6 +397,7 @@ func TestLinearAdapter_SearchIssues(t *testing.T) {
 }
 
 func TestLinearAdapter_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewLinearAdapter(DefaultLinearConfig(), &MockLinearClient{})
 
 	_, err := adapter.CallTool(context.Background(), "unknown_tool", map[string]interface{}{})
@@ -393,6 +407,7 @@ func TestLinearAdapter_UnknownTool(t *testing.T) {
 }
 
 func TestDefaultLinearConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultLinearConfig()
 	assert.Equal(t, 30*time.Second, config.Timeout)
 }

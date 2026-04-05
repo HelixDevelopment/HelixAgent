@@ -14,6 +14,7 @@ import (
 
 // TestClaudeCLIProvider_DefaultConfig tests default configuration
 func TestClaudeCLIProvider_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultClaudeCLIConfig()
 
 	// Model is empty by default - will be discovered dynamically
@@ -24,6 +25,7 @@ func TestClaudeCLIProvider_DefaultConfig(t *testing.T) {
 
 // TestClaudeCLIProvider_NewProvider tests provider creation
 func TestClaudeCLIProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	config := ClaudeCLIConfig{
 		Model:           "claude-opus-4-5-20251101",
 		Timeout:         60 * time.Second,
@@ -40,6 +42,7 @@ func TestClaudeCLIProvider_NewProvider(t *testing.T) {
 
 // TestClaudeCLIProvider_NewProviderWithModel tests model-specific creation
 func TestClaudeCLIProvider_NewProviderWithModel(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-haiku-4-5-20251001")
 
 	assert.NotNil(t, provider)
@@ -48,18 +51,21 @@ func TestClaudeCLIProvider_NewProviderWithModel(t *testing.T) {
 
 // TestClaudeCLIProvider_GetName tests provider name
 func TestClaudeCLIProvider_GetName(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 	assert.Equal(t, "claude-cli", provider.GetName())
 }
 
 // TestClaudeCLIProvider_GetProviderType tests provider type
 func TestClaudeCLIProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 	assert.Equal(t, "claude", provider.GetProviderType())
 }
 
 // TestClaudeCLIProvider_GetCapabilities tests capabilities
 func TestClaudeCLIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 	caps := provider.GetCapabilities()
 
@@ -76,6 +82,7 @@ func TestClaudeCLIProvider_GetCapabilities(t *testing.T) {
 
 // TestClaudeCLIProvider_SetModel tests model setting
 func TestClaudeCLIProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 	assert.Equal(t, "claude-sonnet-4-20250514", provider.GetCurrentModel())
 
@@ -85,6 +92,7 @@ func TestClaudeCLIProvider_SetModel(t *testing.T) {
 
 // TestIsClaudeCodeInstalled tests CLI installation check
 func TestIsClaudeCodeInstalled(t *testing.T) {
+	t.Parallel()
 	// This test is informational - actual result depends on system
 	installed := IsClaudeCodeInstalled()
 	t.Logf("Claude Code installed: %v", installed)
@@ -97,6 +105,7 @@ func TestIsClaudeCodeInstalled(t *testing.T) {
 
 // TestGetClaudeCodePath tests path lookup
 func TestGetClaudeCodePath(t *testing.T) {
+	t.Parallel()
 	path, err := GetClaudeCodePath()
 
 	// Just verify it returns proper types
@@ -111,6 +120,7 @@ func TestGetClaudeCodePath(t *testing.T) {
 
 // TestIsClaudeCodeAuthenticated tests auth check
 func TestIsClaudeCodeAuthenticated(t *testing.T) {
+	t.Parallel()
 	// This test is informational - actual result depends on system
 	authenticated := IsClaudeCodeAuthenticated()
 	t.Logf("Claude Code authenticated: %v", authenticated)
@@ -123,6 +133,7 @@ func TestIsClaudeCodeAuthenticated(t *testing.T) {
 
 // TestClaudeCLIProvider_IsCLIAvailable tests availability check
 func TestClaudeCLIProvider_IsCLIAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	available := provider.IsCLIAvailable()
@@ -141,6 +152,7 @@ func TestClaudeCLIProvider_IsCLIAvailable(t *testing.T) {
 
 // TestClaudeCLIProvider_ValidateConfig tests config validation
 func TestClaudeCLIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	valid, errs := provider.ValidateConfig(nil)
@@ -157,6 +169,7 @@ func TestClaudeCLIProvider_ValidateConfig(t *testing.T) {
 
 // TestClaudeCLIProvider_Complete_NoPrompt tests error on empty prompt
 func TestClaudeCLIProvider_Complete_NoPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	// Skip if CLI not available
@@ -177,6 +190,7 @@ func TestClaudeCLIProvider_Complete_NoPrompt(t *testing.T) {
 
 // TestClaudeCLIProvider_Complete_CLIUnavailable tests behavior when CLI unavailable
 func TestClaudeCLIProvider_Complete_CLIUnavailable(t *testing.T) {
+	t.Parallel()
 	// Create provider with invalid path; consume sync.Once so IsCLIAvailable returns pre-set false
 	provider := &ClaudeCLIProvider{
 		model:        "claude-sonnet-4-20250514",
@@ -197,6 +211,7 @@ func TestClaudeCLIProvider_Complete_CLIUnavailable(t *testing.T) {
 
 // TestClaudeCLIProvider_HealthCheck_CLIUnavailable tests health check when CLI unavailable
 func TestClaudeCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeCLIProvider{
 		model:        "claude-sonnet-4-20250514",
 		cliAvailable: false,
@@ -210,6 +225,7 @@ func TestClaudeCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
 
 // Integration test - only runs if Claude CLI is installed and authenticated
 func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
+	t.Parallel()
 	if !IsClaudeCodeInstalled() {
 		t.Skip("Claude Code CLI not installed")
 	}
@@ -249,6 +265,7 @@ func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 
 // Integration test for health check
 func TestClaudeCLIProvider_Integration_HealthCheck(t *testing.T) {
+	t.Parallel()
 	if !IsClaudeCodeInstalled() {
 		t.Skip("Claude Code CLI not installed")
 	}
@@ -275,6 +292,7 @@ func TestClaudeCLIProvider_Integration_HealthCheck(t *testing.T) {
 
 // TestCanUseClaudeOAuth tests the OAuth check function
 func TestCanUseClaudeOAuth(t *testing.T) {
+	t.Parallel()
 	// This test is informational
 	canUse := CanUseClaudeOAuth()
 	t.Logf("Can use Claude OAuth: %v", canUse)
@@ -287,6 +305,7 @@ func TestCanUseClaudeOAuth(t *testing.T) {
 
 // TestClaudeCLIProvider_ParseJSONResponse tests JSON response parsing
 func TestClaudeCLIProvider_ParseJSONResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	tests := []struct {
@@ -342,6 +361,7 @@ func TestClaudeCLIProvider_ParseJSONResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, sessionID, metadata := provider.parseJSONResponse(tt.input)
 
 			assert.Equal(t, tt.expectedResult, result)
@@ -357,6 +377,7 @@ func TestClaudeCLIProvider_ParseJSONResponse(t *testing.T) {
 
 // TestClaudeCLIProvider_SessionContinuity tests session ID persistence
 func TestClaudeCLIProvider_SessionContinuity(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	// Initially no session
@@ -376,6 +397,7 @@ func TestClaudeCLIProvider_SessionContinuity(t *testing.T) {
 
 // TestClaudeCLIProvider_JSONResponseStruct tests the JSON response structure
 func TestClaudeCLIProvider_JSONResponseStruct(t *testing.T) {
+	t.Parallel()
 	jsonStr := `{
 		"result": "Test response content",
 		"session_id": "session-12345",
@@ -407,6 +429,7 @@ func TestClaudeCLIProvider_JSONResponseStruct(t *testing.T) {
 
 // TestClaudeCLIProvider_TokenEstimation tests token count estimation from metadata
 func TestClaudeCLIProvider_TokenEstimation(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	// Test with usage metadata
@@ -426,6 +449,7 @@ func TestClaudeCLIProvider_TokenEstimation(t *testing.T) {
 
 // TestClaudeCLIProvider_ModelDiscovery tests model discovery functions
 func TestClaudeCLIProvider_ModelDiscovery(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("")
 
 	// GetAvailableModels should return models (known or discovered)
@@ -446,6 +470,7 @@ func TestClaudeCLIProvider_ModelDiscovery(t *testing.T) {
 
 // TestClaudeCLIProvider_GetBestAvailableModel tests best model selection
 func TestClaudeCLIProvider_GetBestAvailableModel(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeCLIProvider{
 		availableModels: []string{
 			"claude-haiku-4-5-20251001",
@@ -462,6 +487,7 @@ func TestClaudeCLIProvider_GetBestAvailableModel(t *testing.T) {
 
 // TestClaudeCLIProvider_IsModelAvailable tests model availability check
 func TestClaudeCLIProvider_IsModelAvailable(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeCLIProvider{
 		availableModels: []string{
 			"claude-opus-4-5-20251101",
@@ -477,6 +503,7 @@ func TestClaudeCLIProvider_IsModelAvailable(t *testing.T) {
 
 // TestParseModelsOutput tests the CLI output parser
 func TestParseModelsOutput(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -506,6 +533,7 @@ func TestParseModelsOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := parseModelsOutput(tt.input)
 			if tt.expected == nil {
 				assert.Empty(t, result)
@@ -521,6 +549,7 @@ func TestParseModelsOutput(t *testing.T) {
 
 // TestGetKnownClaudeModels tests the known models list
 func TestGetKnownClaudeModels(t *testing.T) {
+	t.Parallel()
 	models := GetKnownClaudeModels()
 	assert.NotEmpty(t, models)
 	assert.Contains(t, models, "claude-opus-4-6")
@@ -531,6 +560,7 @@ func TestGetKnownClaudeModels(t *testing.T) {
 
 // TestDiscoverClaudeModels tests standalone discovery function
 func TestDiscoverClaudeModels(t *testing.T) {
+	t.Parallel()
 	models, err := DiscoverClaudeModels()
 	assert.NotEmpty(t, models)
 
@@ -546,6 +576,7 @@ func TestDiscoverClaudeModels(t *testing.T) {
 
 // TestClaudeCLIProvider_CompleteStream_NotAvailable tests streaming when CLI not available
 func TestClaudeCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeCLIProvider{
 		model:        "claude-sonnet-4-20250514",
 		cliAvailable: false,
@@ -565,6 +596,7 @@ func TestClaudeCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
 
 // TestClaudeCLIProvider_CompleteStream_NoPrompt tests streaming with empty prompt
 func TestClaudeCLIProvider_CompleteStream_NoPrompt(t *testing.T) {
+	t.Parallel()
 	if !IsClaudeCodeInstalled() {
 		t.Skip("Claude CLI not installed")
 	}
@@ -591,6 +623,7 @@ func TestClaudeCLIProvider_CompleteStream_NoPrompt(t *testing.T) {
 
 // TestIsInsideClaudeCodeSession tests detection of Claude Code session
 func TestIsInsideClaudeCodeSession(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns false when no env vars set", func(t *testing.T) {
 		// This test assumes we're not running inside Claude Code during test
 		// The actual result depends on the environment
@@ -605,6 +638,7 @@ func TestIsInsideClaudeCodeSession(t *testing.T) {
 
 // TestClaudeCLIProvider_Complete_InsideSession tests error when inside Claude Code session
 func TestClaudeCLIProvider_Complete_InsideSession(t *testing.T) {
+	t.Parallel()
 	// Create provider
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
@@ -623,6 +657,7 @@ func TestClaudeCLIProvider_Complete_InsideSession(t *testing.T) {
 
 // TestClaudeCLIProvider_CompleteStream_InsideSession tests streaming error when inside session
 func TestClaudeCLIProvider_CompleteStream_InsideSession(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 
 	// If we're inside a session, we should get an error
@@ -640,6 +675,7 @@ func TestClaudeCLIProvider_CompleteStream_InsideSession(t *testing.T) {
 
 // TestClaudeCLIProvider_Complete_EmptyResponse tests handling of empty response
 func TestClaudeCLIProvider_Complete_EmptyResponse(t *testing.T) {
+	t.Parallel()
 	// Create provider with mock behavior
 	provider := &ClaudeCLIProvider{
 		model:        "claude-sonnet-4-20250514",

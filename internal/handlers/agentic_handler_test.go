@@ -28,6 +28,7 @@ func setupAgenticHandler() (*AgenticHandler, *gin.Engine) {
 }
 
 func TestNewAgenticHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewAgenticHandler(logger)
 
@@ -37,6 +38,7 @@ func TestNewAgenticHandler(t *testing.T) {
 }
 
 func TestNewAgenticHandler_NilLogger(t *testing.T) {
+	t.Parallel()
 	h := NewAgenticHandler(nil)
 
 	assert.NotNil(t, h)
@@ -44,6 +46,7 @@ func TestNewAgenticHandler_NilLogger(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -84,6 +87,7 @@ func TestAgenticHandler_CreateWorkflow_Success(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_SingleNode(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -113,6 +117,7 @@ func TestAgenticHandler_CreateWorkflow_SingleNode(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_WithConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	trueVal := true
@@ -147,6 +152,7 @@ func TestAgenticHandler_CreateWorkflow_WithConfig(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_WithInput(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -177,6 +183,7 @@ func TestAgenticHandler_CreateWorkflow_WithInput(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	w := httptest.NewRecorder()
@@ -188,6 +195,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_EmptyBody(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	w := httptest.NewRecorder()
@@ -200,6 +208,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_MissingName(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	body := []byte(`{
@@ -216,6 +225,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_MissingName(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEntryPoint(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -241,6 +251,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEntryPoint(t *testing.T
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEndNode(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -267,6 +278,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEndNode(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEdge(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -295,6 +307,7 @@ func TestAgenticHandler_CreateWorkflow_BadRequest_InvalidEdge(t *testing.T) {
 }
 
 func TestAgenticHandler_GetWorkflow_Success(t *testing.T) {
+	t.Parallel()
 	h, r := setupAgenticHandler()
 
 	// First create a workflow
@@ -344,6 +357,7 @@ func TestAgenticHandler_GetWorkflow_Success(t *testing.T) {
 }
 
 func TestAgenticHandler_GetWorkflow_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	w := httptest.NewRecorder()
@@ -359,6 +373,7 @@ func TestAgenticHandler_GetWorkflow_NotFound(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_ResponseContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -381,6 +396,7 @@ func TestAgenticHandler_CreateWorkflow_ResponseContentType(t *testing.T) {
 }
 
 func TestAgenticHandler_GetWorkflow_ResponseContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	w := httptest.NewRecorder()
@@ -392,6 +408,7 @@ func TestAgenticHandler_GetWorkflow_ResponseContentType(t *testing.T) {
 }
 
 func TestAgenticHandler_CreateWorkflow_MultiNodeChain(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	reqBody := CreateWorkflowRequest{
@@ -429,6 +446,7 @@ func TestAgenticHandler_CreateWorkflow_MultiNodeChain(t *testing.T) {
 }
 
 func TestAgenticHandler_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	_, r := setupAgenticHandler()
 
 	tests := []struct {
@@ -454,6 +472,7 @@ func TestAgenticHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestRegisterAgenticRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewAgenticHandler(logger)
 	r := gin.New()
@@ -471,6 +490,7 @@ func TestRegisterAgenticRoutes(t *testing.T) {
 }
 
 func TestCreateWorkflowRequest_Fields(t *testing.T) {
+	t.Parallel()
 	trueVal := true
 	req := CreateWorkflowRequest{
 		Name:        "test",
@@ -507,6 +527,7 @@ func TestCreateWorkflowRequest_Fields(t *testing.T) {
 }
 
 func TestNodeExecutionSummary_Fields(t *testing.T) {
+	t.Parallel()
 	s := NodeExecutionSummary{
 		NodeID:     "node-1",
 		NodeName:   "Test Node",

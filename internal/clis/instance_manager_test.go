@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewInstanceManager(t *testing.T) {
+	t.Parallel()
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
@@ -34,6 +35,7 @@ func TestNewInstanceManager(t *testing.T) {
 }
 
 func TestInstanceManager_CreateInstance(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -100,6 +102,7 @@ func TestInstanceManager_CreateInstance(t *testing.T) {
 }
 
 func TestInstanceManager_AcquireInstance(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -143,6 +146,7 @@ func TestInstanceManager_AcquireInstance(t *testing.T) {
 }
 
 func TestInstanceManager_ReleaseInstance(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -190,6 +194,7 @@ func TestInstanceManager_ReleaseInstance(t *testing.T) {
 }
 
 func TestInstanceManager_GetInstance(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -232,6 +237,7 @@ func TestInstanceManager_GetInstance(t *testing.T) {
 }
 
 func TestInstanceManager_ListInstances(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -284,6 +290,7 @@ func TestInstanceManager_ListInstances(t *testing.T) {
 }
 
 func TestInstanceManager_TerminateInstance(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -337,6 +344,7 @@ func TestInstanceManager_TerminateInstance(t *testing.T) {
 }
 
 func TestInstanceManager_SendRequest(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -399,6 +407,7 @@ func TestInstanceManager_SendRequest(t *testing.T) {
 }
 
 func TestInstanceManager_BroadcastRequest(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -465,6 +474,7 @@ func TestInstanceManager_BroadcastRequest(t *testing.T) {
 }
 
 func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -500,6 +510,7 @@ func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
 }
 
 func TestInstanceManager_GetMetrics(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
 	}
@@ -530,6 +541,7 @@ func TestInstanceManager_GetMetrics(t *testing.T) {
 }
 
 func TestAgentInstance_IsActive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		status   InstanceStatus
@@ -545,6 +557,7 @@ func TestAgentInstance_IsActive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			inst := &AgentInstance{Status: tt.status}
 			assert.Equal(t, tt.expected, inst.IsActive())
 		})
@@ -552,6 +565,7 @@ func TestAgentInstance_IsActive(t *testing.T) {
 }
 
 func TestAgentInstance_IsHealthy(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		health   HealthStatus
@@ -565,6 +579,7 @@ func TestAgentInstance_IsHealthy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			inst := &AgentInstance{Health: tt.health}
 			assert.Equal(t, tt.expected, inst.IsHealthy())
 		})
@@ -572,6 +587,7 @@ func TestAgentInstance_IsHealthy(t *testing.T) {
 }
 
 func TestAgentInstance_CanAcceptWork(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		status   InstanceStatus
@@ -586,6 +602,7 @@ func TestAgentInstance_CanAcceptWork(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			inst := &AgentInstance{Status: tt.status, Health: tt.health}
 			assert.Equal(t, tt.expected, inst.CanAcceptWork())
 		})

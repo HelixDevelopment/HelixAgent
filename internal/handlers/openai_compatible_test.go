@@ -31,6 +31,7 @@ func stringPtr(s string) *string {
 
 // TestUnifiedHandler_Models tests models endpoint
 func TestUnifiedHandler_Models(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -49,6 +50,7 @@ func TestUnifiedHandler_Models(t *testing.T) {
 
 // TestUnifiedHandler_ModelsPublic tests public models endpoint
 func TestUnifiedHandler_ModelsPublic(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -67,6 +69,7 @@ func TestUnifiedHandler_ModelsPublic(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_InvalidRequest tests invalid request
 func TestUnifiedHandler_ChatCompletions_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -86,6 +89,7 @@ func TestUnifiedHandler_ChatCompletions_InvalidRequest(t *testing.T) {
 
 // TestUnifiedHandler_Completions_InvalidRequest tests invalid completions request
 func TestUnifiedHandler_Completions_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -105,6 +109,7 @@ func TestUnifiedHandler_Completions_InvalidRequest(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletionsStream_InvalidRequest tests invalid stream request
 func TestUnifiedHandler_ChatCompletionsStream_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -124,6 +129,7 @@ func TestUnifiedHandler_ChatCompletionsStream_InvalidRequest(t *testing.T) {
 
 // TestUnifiedHandler_CompletionsStream_InvalidRequest tests invalid completions stream request
 func TestUnifiedHandler_CompletionsStream_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -143,6 +149,7 @@ func TestUnifiedHandler_CompletionsStream_InvalidRequest(t *testing.T) {
 
 // TestNewUnifiedHandler tests handler creation
 func TestNewUnifiedHandler(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 
 	handler := NewUnifiedHandler(nil, cfg)
@@ -154,6 +161,7 @@ func TestNewUnifiedHandler(t *testing.T) {
 
 // TestSendOpenAIError tests error response formatting
 func TestSendOpenAIError(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	w := httptest.NewRecorder()
@@ -172,6 +180,7 @@ func TestSendOpenAIError(t *testing.T) {
 
 // TestUnifiedHandler_RegisterOpenAIRoutes tests route registration
 func TestUnifiedHandler_RegisterOpenAIRoutes(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	router := gin.Default()
 	api := router.Group("/api")
@@ -214,6 +223,7 @@ func TestUnifiedHandler_RegisterOpenAIRoutes(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest tests request conversion
 func TestUnifiedHandler_ConvertOpenAIChatRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openaiReq := &OpenAIChatRequest{
@@ -245,6 +255,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_WithEnsemble tests request conversion with ensemble config
 func TestUnifiedHandler_ConvertOpenAIChatRequest_WithEnsemble(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	ensembleConfig := &models.EnsembleConfig{
@@ -278,6 +289,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_WithEnsemble(t *testing.T) {
 
 // TestUnifiedHandler_ConvertToOpenAIChatResponse tests response conversion
 func TestUnifiedHandler_ConvertToOpenAIChatResponse(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// Create a time for CreatedAt
@@ -319,6 +331,7 @@ func TestUnifiedHandler_ConvertToOpenAIChatResponse(t *testing.T) {
 
 // TestUnifiedHandler_ConvertToOpenAIChatStreamResponse tests stream response conversion
 func TestUnifiedHandler_ConvertToOpenAIChatStreamResponse(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// Create a time for CreatedAt
@@ -365,6 +378,7 @@ func TestUnifiedHandler_ConvertToOpenAIChatStreamResponse(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCalls tests conversion with tool calls
 func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCalls(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openaiReq := &OpenAIChatRequest{
@@ -403,6 +417,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCalls(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_WithAllParams tests conversion with all parameters
 func TestUnifiedHandler_ConvertOpenAIChatRequest_WithAllParams(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openaiReq := &OpenAIChatRequest{
@@ -441,6 +456,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_WithAllParams(t *testing.T) {
 
 // TestUnifiedHandler_ProcessWithEnsemble_NoRegistry tests ensemble without registry
 func TestUnifiedHandler_ProcessWithEnsemble_NoRegistry(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		providerRegistry: nil,
 	}
@@ -453,6 +469,7 @@ func TestUnifiedHandler_ProcessWithEnsemble_NoRegistry(t *testing.T) {
 
 // TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry tests streaming without registry
 func TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		providerRegistry: nil,
 	}
@@ -465,6 +482,7 @@ func TestUnifiedHandler_ProcessWithEnsembleStream_NoRegistry(t *testing.T) {
 
 // TestUnifiedHandler_Models_WithProviderRegistry tests Models with a real provider registry
 func TestUnifiedHandler_Models_WithProviderRegistry(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -487,6 +505,7 @@ func TestUnifiedHandler_Models_WithProviderRegistry(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_MissingMessages tests ChatCompletions with missing messages
 func TestUnifiedHandler_ChatCompletions_MissingMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -509,6 +528,7 @@ func TestUnifiedHandler_ChatCompletions_MissingMessages(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletionsStream_MissingMessages tests ChatCompletionsStream with missing messages
 func TestUnifiedHandler_ChatCompletionsStream_MissingMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -532,6 +552,7 @@ func TestUnifiedHandler_ChatCompletionsStream_MissingMessages(t *testing.T) {
 
 // TestUnifiedHandler_Completions_MissingPrompt tests Completions with missing prompt
 func TestUnifiedHandler_Completions_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -552,6 +573,7 @@ func TestUnifiedHandler_Completions_MissingPrompt(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_ValidRequest tests ChatCompletions with valid request but no registry
 func TestUnifiedHandler_ChatCompletions_ValidRequest(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -573,6 +595,7 @@ func TestUnifiedHandler_ChatCompletions_ValidRequest(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletionsStream_ValidRequest tests ChatCompletionsStream with valid request but no registry
 func TestUnifiedHandler_ChatCompletionsStream_ValidRequest(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -595,6 +618,7 @@ func TestUnifiedHandler_ChatCompletionsStream_ValidRequest(t *testing.T) {
 
 // TestUnifiedHandler_Completions_ValidRequest tests Completions with valid request but no registry
 func TestUnifiedHandler_Completions_ValidRequest(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &UnifiedHandler{}
@@ -616,6 +640,7 @@ func TestUnifiedHandler_Completions_ValidRequest(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_SystemMessage tests conversion with system message
 func TestUnifiedHandler_ConvertOpenAIChatRequest_SystemMessage(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openaiReq := &OpenAIChatRequest{
@@ -639,6 +664,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_SystemMessage(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCallResponse tests conversion with tool call response
 func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCallResponse(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openaiReq := &OpenAIChatRequest{
@@ -666,6 +692,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_WithToolCallResponse(t *testing
 
 // TestUnifiedHandler_SendOpenAIError_VariousErrors tests various error types
 func TestUnifiedHandler_SendOpenAIError_VariousErrors(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	testCases := []struct {
@@ -683,6 +710,7 @@ func TestUnifiedHandler_SendOpenAIError_VariousErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.errType, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -698,6 +726,7 @@ func TestUnifiedHandler_SendOpenAIError_VariousErrors(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_WithProviderRegistry tests ChatCompletions with registry but no providers
 func TestUnifiedHandler_ChatCompletions_WithProviderRegistry(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -729,6 +758,7 @@ func TestUnifiedHandler_ChatCompletions_WithProviderRegistry(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletionsStream_WithProviderRegistry tests ChatCompletionsStream with registry but no providers
 func TestUnifiedHandler_ChatCompletionsStream_WithProviderRegistry(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -763,6 +793,7 @@ func TestUnifiedHandler_ChatCompletionsStream_WithProviderRegistry(t *testing.T)
 
 // TestUnifiedHandler_ConcurrentModelsRequests tests concurrent Models requests
 func TestUnifiedHandler_ConcurrentModelsRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -794,6 +825,7 @@ func TestUnifiedHandler_ConcurrentModelsRequests(t *testing.T) {
 
 // TestUnifiedHandler_ConcurrentChatCompletionsRequests tests concurrent ChatCompletions requests
 func TestUnifiedHandler_ConcurrentChatCompletionsRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -839,6 +871,7 @@ func TestUnifiedHandler_ConcurrentChatCompletionsRequests(t *testing.T) {
 
 // TestUnifiedHandler_ConcurrentCompletionsRequests tests concurrent Completions requests
 func TestUnifiedHandler_ConcurrentCompletionsRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -886,6 +919,7 @@ func TestUnifiedHandler_ConcurrentCompletionsRequests(t *testing.T) {
 
 // TestUnifiedHandler_RequestWithSpecialCharacters tests handling of special characters in messages
 func TestUnifiedHandler_RequestWithSpecialCharacters(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -903,6 +937,7 @@ func TestUnifiedHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "` + tc.content + `"}]}`
 
 			w := httptest.NewRecorder()
@@ -921,6 +956,7 @@ func TestUnifiedHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 // TestUnifiedHandler_LargeMessageHistory tests handling of large message history
 func TestUnifiedHandler_LargeMessageHistory(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -957,6 +993,7 @@ func TestUnifiedHandler_LargeMessageHistory(t *testing.T) {
 
 // TestUnifiedHandler_AllParameters tests request with all possible parameters
 func TestUnifiedHandler_AllParameters(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -997,6 +1034,7 @@ func TestUnifiedHandler_AllParameters(t *testing.T) {
 
 // TestUnifiedHandler_ConvertOpenAIChatRequest_AllRoles tests conversion with all message roles
 func TestUnifiedHandler_ConvertOpenAIChatRequest_AllRoles(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -1026,6 +1064,7 @@ func TestUnifiedHandler_ConvertOpenAIChatRequest_AllRoles(t *testing.T) {
 
 // TestUnifiedHandler_ResponseConversion_EdgeCases tests response conversion edge cases
 func TestUnifiedHandler_ResponseConversion_EdgeCases(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -1044,6 +1083,7 @@ func TestUnifiedHandler_ResponseConversion_EdgeCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := &services.EnsembleResult{
 				Selected: &models.LLMResponse{
 					ID:           "test-" + tc.name,
@@ -1067,6 +1107,7 @@ func TestUnifiedHandler_ResponseConversion_EdgeCases(t *testing.T) {
 
 // TestUnifiedHandler_StreamResponseConversion tests stream response conversion
 func TestUnifiedHandler_StreamResponseConversion(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &UnifiedHandler{}
 
@@ -1173,6 +1214,7 @@ func BenchmarkUnifiedHandler_ConvertToOpenAIChatResponse(b *testing.B) {
 // TestStreamingResponseContainsDoneMarker verifies that streaming responses
 // always end with the [DONE] marker
 func TestStreamingResponseContainsDoneMarker(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -1199,6 +1241,7 @@ func TestStreamingResponseContainsDoneMarker(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			// Create a mock response channel
 			respChan := make(chan *models.LLMResponse, len(tt.content)+1)
 			for _, content := range tt.content {
@@ -1223,6 +1266,7 @@ func TestStreamingResponseContainsDoneMarker(t *testing.T) {
 // TestStreamingContextCancellation verifies that context cancellation
 // properly stops the streaming loop
 func TestStreamingContextCancellation(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a buffered channel
@@ -1260,6 +1304,7 @@ func TestStreamingContextCancellation(t *testing.T) {
 
 // TestStreamingChunkFormat verifies that streaming chunks are properly formatted
 func TestStreamingChunkFormat(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	streamID := "test-stream-id"
 
@@ -1301,6 +1346,7 @@ func TestStreamingChunkFormat(t *testing.T) {
 
 // TestStreamingEmptyChunks verifies that empty chunks are handled correctly
 func TestStreamingEmptyChunks(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	streamID := "empty-stream"
 
@@ -1333,6 +1379,7 @@ func TestStreamingEmptyChunks(t *testing.T) {
 // TestStreamingConcurrentClients verifies that multiple concurrent
 // streaming clients are handled correctly
 func TestStreamingConcurrentClients(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping concurrent test in short mode")
 	}
@@ -1387,6 +1434,7 @@ func TestStreamingConcurrentClients(t *testing.T) {
 // TestStreamingResponseMarshal verifies that streaming responses can be
 // properly marshaled to JSON
 func TestStreamingResponseMarshal(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	streamID := "marshal-test"
 
@@ -1409,6 +1457,7 @@ func TestStreamingResponseMarshal(t *testing.T) {
 
 // TestStreamingSSEFormat verifies the SSE format is correct
 func TestStreamingSSEFormat(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	streamID := "sse-test"
 
@@ -1438,6 +1487,7 @@ func TestStreamingSSEFormat(t *testing.T) {
 
 // TestStreamingDoneMarkerFormat verifies the [DONE] marker format
 func TestStreamingDoneMarkerFormat(t *testing.T) {
+	t.Parallel()
 	done := "data: [DONE]\n\n"
 
 	assert.True(t, strings.HasPrefix(done, "data: "), "[DONE] should start with 'data: '")
@@ -1447,6 +1497,7 @@ func TestStreamingDoneMarkerFormat(t *testing.T) {
 
 // TestStreamingFinishReasonHandling verifies that finish_reason is properly handled
 func TestStreamingFinishReasonHandling(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		finishReason string
@@ -1459,6 +1510,7 @@ func TestStreamingFinishReasonHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "finish-test",
 				Content:      "",
@@ -1527,6 +1579,7 @@ func BenchmarkStreamingSSEFormat(b *testing.B) {
 // TestStreamingTimeoutPreventsEndlessLoop verifies that the 120-second
 // timeout prevents endless streaming loops
 func TestStreamingTimeoutPreventsEndlessLoop(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a mock provider that never closes its stream
@@ -1543,6 +1596,7 @@ func TestStreamingTimeoutPreventsEndlessLoop(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			startTime := time.Now()
 
 			// Simulate receiving from a channel that doesn't close
@@ -1572,6 +1626,7 @@ func TestStreamingTimeoutPreventsEndlessLoop(t *testing.T) {
 // TestStreamingIdleTimeoutResetOnData verifies that idle timeout resets
 // when data is received
 func TestStreamingIdleTimeoutResetOnData(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	idleTimeout := time.NewTicker(50 * time.Millisecond)
@@ -1616,6 +1671,7 @@ func TestStreamingIdleTimeoutResetOnData(t *testing.T) {
 // TestStreamingContextCancellationWithTimeout verifies that context.WithTimeout
 // properly cancels the stream
 func TestStreamingContextCancellationWithTimeout(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -1628,6 +1684,7 @@ func TestStreamingContextCancellationWithTimeout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			// Create context with timeout
 			doneChan, cancel := timeoutContext(tt.timeout)
 			defer cancel()
@@ -1648,6 +1705,7 @@ func TestStreamingContextCancellationWithTimeout(t *testing.T) {
 // TestStreamingDoneMarkerAlwaysSent verifies that [DONE] marker is always sent
 // even when stream is cancelled or times out
 func TestStreamingDoneMarkerAlwaysSent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		chunks         []string
@@ -1660,6 +1718,7 @@ func TestStreamingDoneMarkerAlwaysSent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			var builder strings.Builder
 
 			// Simulate chunks
@@ -1682,6 +1741,7 @@ func TestStreamingDoneMarkerAlwaysSent(t *testing.T) {
 // TestStreamingClientDisconnectionHandling verifies that client disconnection
 // stops the stream gracefully
 func TestStreamingClientDisconnectionHandling(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	clientGone := make(chan bool)
@@ -1713,6 +1773,7 @@ func TestStreamingClientDisconnectionHandling(t *testing.T) {
 
 // TestStreamingNoBlocking verifies that streaming doesn't block on channel operations
 func TestStreamingNoBlocking(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Simulate a buffered stream channel
@@ -1749,6 +1810,7 @@ func TestStreamingNoBlocking(t *testing.T) {
 
 // TestStreamingWriteErrorHandling verifies that write errors are handled properly
 func TestStreamingWriteErrorHandling(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Simulate write with potential error
@@ -1763,6 +1825,7 @@ func TestStreamingWriteErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			writeAttempted := false
 			aborted := false
 
@@ -1784,6 +1847,7 @@ func TestStreamingWriteErrorHandling(t *testing.T) {
 
 // TestStreamingFlushBehavior verifies that flush is called after each chunk
 func TestStreamingFlushBehavior(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	flushCount := int32(0)
@@ -1804,6 +1868,7 @@ func TestStreamingFlushBehavior(t *testing.T) {
 // TestStreamingConcurrentRequests verifies that concurrent streaming requests
 // don't interfere with each other
 func TestStreamingConcurrentRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	numRequests := 10
@@ -1870,6 +1935,7 @@ func timeoutContext(timeout time.Duration) (chan struct{}, func()) {
 // TestUnifiedHandler_DebateDialogueIntroduction_HasContent tests that debate dialogue
 // introduction is generated with content (not empty sections)
 func TestUnifiedHandler_DebateDialogueIntroduction_HasContent(t *testing.T) {
+	t.Parallel()
 	// Create handler with initialized debate team
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
@@ -1897,6 +1963,7 @@ func TestUnifiedHandler_DebateDialogueIntroduction_HasContent(t *testing.T) {
 // TestUnifiedHandler_DebateTeamInitialized tests that the debate team is properly
 // initialized with members
 func TestUnifiedHandler_DebateTeamInitialized(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -1914,6 +1981,7 @@ func TestUnifiedHandler_DebateTeamInitialized(t *testing.T) {
 
 // TestUnifiedHandler_DebateDialogueConclusion_HasContent tests conclusion section
 func TestUnifiedHandler_DebateDialogueConclusion_HasContent(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -1938,6 +2006,7 @@ func TestUnifiedHandler_DebateDialogueConclusion_HasContent(t *testing.T) {
 
 // TestUnifiedHandler_DialogueFormatterCharacters tests that characters are registered
 func TestUnifiedHandler_DialogueFormatterCharacters(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -1966,6 +2035,7 @@ func TestUnifiedHandler_DialogueFormatterCharacters(t *testing.T) {
 
 // TestUnifiedHandler_FullDebateDialogueFlow tests the complete dialogue generation flow
 func TestUnifiedHandler_FullDebateDialogueFlow(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -2000,6 +2070,7 @@ func TestUnifiedHandler_FullDebateDialogueFlow(t *testing.T) {
 
 // TestUnifiedHandler_GenerateRealDebateResponse_NoConfig tests fallback behavior
 func TestUnifiedHandler_GenerateRealDebateResponse_NoConfig(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -2019,6 +2090,7 @@ func TestUnifiedHandler_GenerateRealDebateResponse_NoConfig(t *testing.T) {
 
 // TestUnifiedHandler_RealDebateResponses_Integration tests the full integration of debate responses
 func TestUnifiedHandler_RealDebateResponses_Integration(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -2054,6 +2126,7 @@ func TestUnifiedHandler_RealDebateResponses_Integration(t *testing.T) {
 
 // TestUnifiedHandler_DebateDialogueFlow_WithPreviousResponses tests context building
 func TestUnifiedHandler_DebateDialogueFlow_WithPreviousResponses(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
@@ -2072,11 +2145,13 @@ func TestUnifiedHandler_DebateDialogueFlow_WithPreviousResponses(t *testing.T) {
 
 // TestUnifiedHandler_GetProviderForMember tests provider retrieval for team members
 func TestUnifiedHandler_GetProviderForMember(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	handler := NewUnifiedHandler(registry, cfg)
 
 	t.Run("NilMemberProvider_TriesRegistry", func(t *testing.T) {
+			t.Parallel()
 		member := &services.DebateTeamMember{
 			Position:     services.PositionAnalyst,
 			ProviderName: "nonexistent-provider",
@@ -2094,11 +2169,13 @@ func TestUnifiedHandler_GetProviderForMember(t *testing.T) {
 
 // TestUnifiedHandler_FallbackChain tests the fallback chain mechanism
 func TestUnifiedHandler_FallbackChain(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	_ = NewUnifiedHandler(registry, cfg) // Verify handler creation works
 
 	t.Run("NoFallbackAvailable", func(t *testing.T) {
+			t.Parallel()
 		// Create a team member with no provider and no fallback
 		// This tests the structure of a member without fallback
 		member := &services.DebateTeamMember{
@@ -2128,6 +2205,7 @@ func TestUnifiedHandler_FallbackChain(t *testing.T) {
 	})
 
 	t.Run("FallbackChainStructure", func(t *testing.T) {
+			t.Parallel()
 		// Test that fallback chain can be constructed
 		fallback2 := &services.DebateTeamMember{
 			Position:     services.PositionAnalyst,
@@ -2167,6 +2245,7 @@ func TestUnifiedHandler_FallbackChain(t *testing.T) {
 
 // TestUnifiedHandler_OAuthProviderHandling tests OAuth provider behavior
 func TestUnifiedHandler_OAuthProviderHandling(t *testing.T) {
+	t.Parallel()
 	t.Run("OAuthFlagInMember", func(t *testing.T) {
 		member := &services.DebateTeamMember{
 			Position:     services.PositionAnalyst,
@@ -2181,6 +2260,7 @@ func TestUnifiedHandler_OAuthProviderHandling(t *testing.T) {
 	})
 
 	t.Run("NonOAuthMember", func(t *testing.T) {
+			t.Parallel()
 		member := &services.DebateTeamMember{
 			Position:     services.PositionSynthesis,
 			Role:         services.RoleSynthesis,
@@ -2196,11 +2276,13 @@ func TestUnifiedHandler_OAuthProviderHandling(t *testing.T) {
 
 // TestUnifiedHandler_DebateResponseErrorHandling tests error scenarios
 func TestUnifiedHandler_DebateResponseErrorHandling(t *testing.T) {
+	t.Parallel()
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 	cfg := &config.Config{}
 	_ = NewUnifiedHandler(registry, cfg) // Verify handler can be created
 
 	t.Run("NilProviderRegistry", func(t *testing.T) {
+			t.Parallel()
 		handlerNoRegistry := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: nil,
@@ -2215,6 +2297,7 @@ func TestUnifiedHandler_DebateResponseErrorHandling(t *testing.T) {
 	})
 
 	t.Run("NilDebateTeamConfig", func(t *testing.T) {
+			t.Parallel()
 		handlerNoConfig := NewUnifiedHandler(registry, cfg)
 		handlerNoConfig.debateTeamConfig = nil
 
@@ -2229,6 +2312,7 @@ func TestUnifiedHandler_DebateResponseErrorHandling(t *testing.T) {
 
 // TestUnifiedHandler_MaxFallbackAttempts tests that fallback has maximum attempts
 func TestUnifiedHandler_MaxFallbackAttempts(t *testing.T) {
+	t.Parallel()
 	// The generateRealDebateResponse function limits attempts to maxAttempts (5)
 	// This test verifies the concept of the limit
 
@@ -2270,6 +2354,7 @@ func TestUnifiedHandler_MaxFallbackAttempts(t *testing.T) {
 // TestGenerateFinalSynthesis_NotEmpty tests that the final synthesis is never empty
 // THIS TEST WILL FAIL if the consensus generation is broken
 func TestGenerateFinalSynthesis_NotEmpty(t *testing.T) {
+	t.Parallel()
 	// Create handler with mock dependencies
 	handler := &UnifiedHandler{
 		showDebateDialogue: true,
@@ -2298,6 +2383,7 @@ func TestGenerateFinalSynthesis_NotEmpty(t *testing.T) {
 
 // TestDebateDialogueConclusionNotEmpty validates the conclusion header is present
 func TestDebateDialogueConclusionNotEmpty(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	conclusion := handler.generateDebateDialogueConclusion(OutputFormatANSI)
@@ -2310,6 +2396,7 @@ func TestDebateDialogueConclusionNotEmpty(t *testing.T) {
 
 // TestDebateResponseFooterPresent validates the footer is present
 func TestDebateResponseFooterPresent(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	footer := handler.generateResponseFooter()
@@ -2322,6 +2409,7 @@ func TestDebateResponseFooterPresent(t *testing.T) {
 
 // TestDebateDialogueIntroductionFormat validates the intro format is correct
 func TestDebateDialogueIntroductionFormat(t *testing.T) {
+	t.Parallel()
 	// Test that when debate team config is properly initialized, the introduction is generated
 	handler := &UnifiedHandler{
 		showDebateDialogue: true,
@@ -2344,6 +2432,7 @@ func TestDebateDialogueIntroductionFormat(t *testing.T) {
 
 // TestConsensusMustHaveContent is a meta-test to ensure we have the generateFinalSynthesis function
 func TestConsensusMustHaveContent(t *testing.T) {
+	t.Parallel()
 	// This test verifies that the generateFinalSynthesis function exists
 	// and that the code flow ensures consensus is generated
 	handler := &UnifiedHandler{
@@ -2368,6 +2457,7 @@ func TestConsensusMustHaveContent(t *testing.T) {
 // TestStreamingFlowIncludesSynthesis validates that the streaming code calls generateFinalSynthesis
 // This is a structural test to ensure the flow is correct
 func TestStreamingFlowIncludesSynthesis(t *testing.T) {
+	t.Parallel()
 	// Read the source file to verify the flow
 	// This is a meta-test to catch if someone removes the synthesis call
 
@@ -2406,6 +2496,7 @@ func TestStreamingFlowIncludesSynthesis(t *testing.T) {
 
 // TestOpenAIToolStructures validates that tool-related structures are properly defined
 func TestOpenAIToolStructures(t *testing.T) {
+	t.Parallel()
 	// Test OpenAITool structure
 	tool := OpenAITool{
 		Type: "function",
@@ -2433,6 +2524,7 @@ func TestOpenAIToolStructures(t *testing.T) {
 
 // TestOpenAIChatRequestToolSupport validates that tools can be included in requests
 func TestOpenAIChatRequestToolSupport(t *testing.T) {
+	t.Parallel()
 	req := OpenAIChatRequest{
 		Model: "helixagent-debate",
 		Messages: []OpenAIMessage{
@@ -2473,6 +2565,7 @@ func TestOpenAIChatRequestToolSupport(t *testing.T) {
 
 // TestSystemPromptIncludesToolNames validates that tool names are included in system prompts
 func TestSystemPromptIncludesToolNames(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	tools := []OpenAITool{
@@ -2512,6 +2605,7 @@ func TestSystemPromptIncludesToolNames(t *testing.T) {
 
 // TestSystemPromptWithNoTools validates prompts work correctly without tools
 func TestSystemPromptWithNoTools(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	positions := []struct {
@@ -2543,6 +2637,7 @@ func TestSystemPromptWithNoTools(t *testing.T) {
 
 // TestToolsPassedToLLMRequest validates that tools are passed through to LLM requests
 func TestToolsPassedToLLMRequest(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// Create a mock request with tools
@@ -2584,6 +2679,7 @@ func TestToolsPassedToLLMRequest(t *testing.T) {
 
 // TestCodingAssistantContextAlwaysPresent validates that coding context is always present
 func TestCodingAssistantContextAlwaysPresent(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// With tools
@@ -2621,6 +2717,7 @@ func TestCodingAssistantContextAlwaysPresent(t *testing.T) {
 
 // TestGenerateActionToolCalls tests the tool call generation from debate synthesis
 func TestGenerateActionToolCalls(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -2677,11 +2774,13 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	}
 
 	t.Run("returns_empty_when_no_tools", func(t *testing.T) {
+			t.Parallel()
 		result := handler.generateActionToolCalls(ctx, "test topic", "synthesis", nil, nil, nil)
 		assert.Empty(t, result, "Should return empty when no tools provided")
 	})
 
 	t.Run("generates_glob_for_codebase_access_question", func(t *testing.T) {
+			t.Parallel()
 		topic := "Do you see my codebase?"
 		synthesis := "Yes, I can access the codebase using the available tools."
 
@@ -2693,6 +2792,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("generates_grep_for_search_queries", func(t *testing.T) {
+			t.Parallel()
 		topic := "Search for OpenAITool in the codebase"
 		synthesis := "I can search for OpenAITool using grep."
 
@@ -2711,6 +2811,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("generates_read_for_file_read_requests", func(t *testing.T) {
+			t.Parallel()
 		topic := "Read README.md please"
 		synthesis := "I will read the README.md file."
 
@@ -2729,6 +2830,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("synthesizes_tool_calls_from_synthesis_content", func(t *testing.T) {
+			t.Parallel()
 		topic := "How is the project structured?"
 		synthesis := "To understand the project structure, I recommend using the Glob tool to explore the file system."
 
@@ -2739,6 +2841,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("tool_calls_have_valid_structure", func(t *testing.T) {
+			t.Parallel()
 		topic := "Can you access my code?"
 		synthesis := "Yes, I can access the codebase."
 
@@ -2756,6 +2859,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 
 // TestGenerateLLMBasedToolCalls tests the LLM-based tool call generation
 func TestGenerateLLMBasedToolCalls(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		providerRegistry: nil, // Will cause early return
 		debateTeamConfig: nil,
@@ -2792,16 +2896,19 @@ func TestGenerateLLMBasedToolCalls(t *testing.T) {
 	synthesis := "To explore the codebase, I will use the Glob tool to list all files."
 
 	t.Run("returns_empty_when_no_registry", func(t *testing.T) {
+			t.Parallel()
 		result := handler.generateLLMBasedToolCalls(ctx, messages, tools, synthesis)
 		assert.Empty(t, result, "Should return empty when provider registry is nil")
 	})
 
 	t.Run("returns_empty_when_no_tools", func(t *testing.T) {
+			t.Parallel()
 		result := handler.generateLLMBasedToolCalls(ctx, messages, nil, synthesis)
 		assert.Empty(t, result, "Should return empty when no tools provided")
 	})
 
 	t.Run("returns_empty_when_no_debate_config", func(t *testing.T) {
+			t.Parallel()
 		handlerWithRegistry := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: nil,
@@ -2813,6 +2920,7 @@ func TestGenerateLLMBasedToolCalls(t *testing.T) {
 
 // TestConvertModelToolCallsToStreamingToolCalls tests the conversion function
 func TestConvertModelToolCallsToStreamingToolCalls(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	modelToolCalls := []models.ToolCall{
@@ -2850,6 +2958,7 @@ func TestConvertModelToolCallsToStreamingToolCalls(t *testing.T) {
 
 // TestConvertOpenAIToolsToModelTools tests the conversion function
 func TestConvertOpenAIToolsToModelTools(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	openAITools := []OpenAITool{
@@ -2887,6 +2996,7 @@ func TestConvertOpenAIToolsToModelTools(t *testing.T) {
 
 // TestStreamingToolCallStruct tests the StreamingToolCall structure
 func TestStreamingToolCallStruct(t *testing.T) {
+	t.Parallel()
 	tc := StreamingToolCall{
 		Index: 0,
 		ID:    "call_123",
@@ -2906,12 +3016,14 @@ func TestStreamingToolCallStruct(t *testing.T) {
 
 // TestContainsAny tests the helper function
 func TestContainsAny(t *testing.T) {
+	t.Parallel()
 	t.Run("returns_true_when_pattern_found", func(t *testing.T) {
 		result := containsAny("hello world", []string{"world", "foo"})
 		assert.True(t, result)
 	})
 
 	t.Run("returns_false_when_no_pattern_found", func(t *testing.T) {
+			t.Parallel()
 		result := containsAny("hello world", []string{"foo", "bar"})
 		assert.False(t, result)
 	})
@@ -2920,6 +3032,7 @@ func TestContainsAny(t *testing.T) {
 // TestValidateAndFilterToolCalls tests the comprehensive tool call validation
 // This test suite covers ALL 21 tools and ensures invalid tool calls are filtered
 func TestValidateAndFilterToolCalls(t *testing.T) {
+	t.Parallel()
 	// Helper to create a tool call
 	createToolCall := func(name, args string) StreamingToolCall {
 		return StreamingToolCall{
@@ -2937,6 +3050,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 1: Valid tool calls pass through
 	// ============================================
 	t.Run("valid_read_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "README.md"}`),
 		}
@@ -2945,6 +3059,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_write_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "output.md", "content": "Hello World"}`),
 		}
@@ -2953,6 +3068,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_edit_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Edit", `{"file_path": "file.go", "old_string": "foo", "new_string": "bar"}`),
 		}
@@ -2961,6 +3077,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_glob_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Glob", `{"pattern": "**/*.go"}`),
 		}
@@ -2969,6 +3086,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_grep_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Grep", `{"pattern": "func.*Test"}`),
 		}
@@ -2977,6 +3095,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_bash_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"command": "go test", "description": "Run tests"}`),
 		}
@@ -2985,6 +3104,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_git_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Git", `{"operation": "status", "description": "Check git status"}`),
 		}
@@ -2993,6 +3113,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_websearch_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebSearch", `{"query": "golang testing"}`),
 		}
@@ -3001,6 +3122,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_webfetch_tool_passes", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"url": "https://example.com", "prompt": "Summarize"}`),
 		}
@@ -3012,6 +3134,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 2: Invalid tool calls are filtered
 	// ============================================
 	t.Run("write_missing_file_path_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"content": "Hello World"}`),
 		}
@@ -3020,6 +3143,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_missing_content_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "output.md"}`),
 		}
@@ -3028,6 +3152,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_empty_file_path_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "", "content": "Hello"}`),
 		}
@@ -3036,6 +3161,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("read_missing_file_path_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{}`),
 		}
@@ -3044,6 +3170,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("bash_missing_description_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"command": "ls"}`),
 		}
@@ -3052,6 +3179,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("bash_missing_command_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"description": "List files"}`),
 		}
@@ -3060,6 +3188,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("glob_missing_pattern_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Glob", `{}`),
 		}
@@ -3068,6 +3197,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("grep_missing_pattern_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Grep", `{}`),
 		}
@@ -3076,6 +3206,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("git_missing_operation_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Git", `{"description": "Git operation"}`),
 		}
@@ -3084,6 +3215,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("websearch_missing_query_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebSearch", `{}`),
 		}
@@ -3092,6 +3224,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("webfetch_missing_url_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"prompt": "Summarize"}`),
 		}
@@ -3100,6 +3233,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("webfetch_missing_prompt_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"url": "https://example.com"}`),
 		}
@@ -3111,6 +3245,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 3: Edge cases
 	// ============================================
 	t.Run("invalid_json_arguments_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{not valid json}`),
 		}
@@ -3119,16 +3254,19 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("empty_tool_calls_returns_empty", func(t *testing.T) {
+			t.Parallel()
 		result := validateAndFilterToolCalls([]StreamingToolCall{})
 		assert.Len(t, result, 0, "Empty input should return empty")
 	})
 
 	t.Run("nil_tool_calls_returns_nil", func(t *testing.T) {
+			t.Parallel()
 		result := validateAndFilterToolCalls(nil)
 		assert.Nil(t, result, "Nil input should return nil")
 	})
 
 	t.Run("mixed_valid_invalid_filters_correctly", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "valid.md"}`),    // Valid
 			createToolCall("Write", `{"content": "missing path"}`), // Invalid
@@ -3140,6 +3278,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("whitespace_only_values_filtered", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "   "}`),
 		}
@@ -3151,6 +3290,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 4: Case insensitivity for tool names
 	// ============================================
 	t.Run("lowercase_read_validates", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("read", `{"file_path": "file.txt"}`),
 		}
@@ -3159,6 +3299,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("lowercase_write_validates", func(t *testing.T) {
+			t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("write", `{"file_path": "file.txt", "content": "test"}`),
 		}
@@ -3170,6 +3311,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 5: All 21 tools validation rules
 	// ============================================
 	t.Run("all_tools_have_validation_rules", func(t *testing.T) {
+			t.Parallel()
 		// Test that all known tools have proper validation
 		toolsToTest := []struct {
 			name        string
@@ -3201,12 +3343,14 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 
 		for _, tc := range toolsToTest {
 			t.Run(tc.name+"_valid", func(t *testing.T) {
+					t.Parallel()
 				toolCalls := []StreamingToolCall{createToolCall(tc.name, tc.validArgs)}
 				result := validateAndFilterToolCalls(toolCalls)
 				assert.Len(t, result, 1, "%s with valid args should pass", tc.name)
 			})
 
 			t.Run(tc.name+"_invalid", func(t *testing.T) {
+					t.Parallel()
 				toolCalls := []StreamingToolCall{createToolCall(tc.name, tc.invalidArgs)}
 				result := validateAndFilterToolCalls(toolCalls)
 				assert.Len(t, result, 0, "%s with invalid args should be filtered", tc.name)
@@ -3219,6 +3363,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// This tests the exact error user reported: "filePath: undefined"
 	// ============================================
 	t.Run("null_file_path_value_filtered", func(t *testing.T) {
+			t.Parallel()
 		// This simulates the case where filePath is null/undefined in JSON
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": null, "content": "test"}`),
@@ -3228,6 +3373,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_with_camelCase_filePath_missing_filtered", func(t *testing.T) {
+			t.Parallel()
 		// LLM might generate with camelCase, but we require snake_case
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"filePath": "test.md", "content": "test"}`),
@@ -3239,6 +3385,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 
 // TestExtractSearchTerm tests search term extraction
 func TestExtractSearchTerm(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -3252,6 +3399,7 @@ func TestExtractSearchTerm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := extractSearchTerm(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3260,6 +3408,7 @@ func TestExtractSearchTerm(t *testing.T) {
 
 // TestExtractFilePath tests file path extraction
 func TestExtractFilePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -3272,6 +3421,7 @@ func TestExtractFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := extractFilePath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3280,6 +3430,7 @@ func TestExtractFilePath(t *testing.T) {
 
 // TestExtractCreateFilePath tests file creation path extraction
 func TestExtractCreateFilePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -3297,6 +3448,7 @@ func TestExtractCreateFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := extractCreateFilePath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3305,6 +3457,7 @@ func TestExtractCreateFilePath(t *testing.T) {
 
 // TestExtractFileContent tests file content generation from synthesis
 func TestExtractFileContent(t *testing.T) {
+	t.Parallel()
 	t.Run("extracts_code_block_content", func(t *testing.T) {
 		synthesis := "Here's the content:\n```markdown\n# Hello\n\nThis is content\n```"
 		result := extractFileContent(synthesis, "./test.md", "create test.md")
@@ -3313,6 +3466,7 @@ func TestExtractFileContent(t *testing.T) {
 	})
 
 	t.Run("generates_agents_md_content", func(t *testing.T) {
+			t.Parallel()
 		synthesis := "This is a Go project with main.go as the entry point"
 		result := extractFileContent(synthesis, "./AGENTS.md", "create AGENTS.md")
 		assert.Contains(t, result, "AGENTS.md")
@@ -3321,6 +3475,7 @@ func TestExtractFileContent(t *testing.T) {
 	})
 
 	t.Run("generates_readme_content", func(t *testing.T) {
+			t.Parallel()
 		synthesis := "A web application for managing tasks"
 		result := extractFileContent(synthesis, "./README.md", "create README.md")
 		assert.Contains(t, result, "Description")
@@ -3330,6 +3485,7 @@ func TestExtractFileContent(t *testing.T) {
 
 // TestCleanSynthesisForFile tests synthesis cleaning
 func TestCleanSynthesisForFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -3341,6 +3497,7 @@ func TestCleanSynthesisForFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := cleanSynthesisForFile(tt.input)
 			assert.Equal(t, strings.TrimSpace(tt.expected), result)
 		})
@@ -3349,6 +3506,7 @@ func TestCleanSynthesisForFile(t *testing.T) {
 
 // TestEscapeJSONString tests JSON string escaping
 func TestEscapeJSONString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -3361,6 +3519,7 @@ func TestEscapeJSONString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := escapeJSONString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3373,6 +3532,7 @@ func TestEscapeJSONString(t *testing.T) {
 
 // TestParseEmbeddedFunctionCalls tests parsing of embedded function calls in LLM responses
 func TestParseEmbeddedFunctionCalls(t *testing.T) {
+	t.Parallel()
 	t.Run("parses_function_equals_format", func(t *testing.T) {
 		content := `Here's the file:
 <function=write>
@@ -3388,6 +3548,7 @@ Done!`
 	})
 
 	t.Run("parses_function_call_format", func(t *testing.T) {
+			t.Parallel()
 		content := `Creating file:
 <function_call name="write">
 <path>./AGENTS.md</path>
@@ -3401,6 +3562,7 @@ Done!`
 	})
 
 	t.Run("parses_simple_xml_format", func(t *testing.T) {
+			t.Parallel()
 		content := `<Write>
 <file_path>/tmp/test.txt</file_path>
 <content>Hello World</content>
@@ -3413,6 +3575,7 @@ Done!`
 	})
 
 	t.Run("parses_multiple_calls", func(t *testing.T) {
+			t.Parallel()
 		content := `<function=write>
 <parameter=path>file1.md</parameter>
 <parameter=content>Content 1</parameter>
@@ -3428,6 +3591,7 @@ Some text
 	})
 
 	t.Run("returns_empty_for_no_function_calls", func(t *testing.T) {
+			t.Parallel()
 		content := "This is just regular text without any function calls."
 		calls := parseEmbeddedFunctionCalls(content)
 		assert.Len(t, calls, 0)
@@ -3436,6 +3600,7 @@ Some text
 
 // TestGetParam tests the getParam helper function
 func TestGetParam(t *testing.T) {
+	t.Parallel()
 	params := map[string]string{
 		"path":      "/test/path",
 		"content":   "test content",
@@ -3443,21 +3608,25 @@ func TestGetParam(t *testing.T) {
 	}
 
 	t.Run("finds_exact_key", func(t *testing.T) {
+			t.Parallel()
 		result := getParam(params, "path")
 		assert.Equal(t, "/test/path", result)
 	})
 
 	t.Run("finds_first_available_key", func(t *testing.T) {
+			t.Parallel()
 		result := getParam(params, "missing", "path", "content")
 		assert.Equal(t, "/test/path", result)
 	})
 
 	t.Run("finds_alternative_key", func(t *testing.T) {
+			t.Parallel()
 		result := getParam(params, "filepath", "file_path")
 		assert.Equal(t, "/other/path", result)
 	})
 
 	t.Run("returns_empty_for_missing_keys", func(t *testing.T) {
+			t.Parallel()
 		result := getParam(params, "nonexistent", "also_missing")
 		assert.Equal(t, "", result)
 	})
@@ -3469,6 +3638,7 @@ func TestGetParam(t *testing.T) {
 
 // TestCLIAgentToolCallsFormat validates that tool_calls are formatted correctly for all CLI agents
 func TestCLIAgentToolCallsFormat(t *testing.T) {
+	t.Parallel()
 	t.Run("tool_calls_have_required_fields", func(t *testing.T) {
 		// Tool calls must have: index, id, type, function.name, function.arguments
 		tc := StreamingToolCall{
@@ -3494,6 +3664,7 @@ func TestCLIAgentToolCallsFormat(t *testing.T) {
 	})
 
 	t.Run("tool_call_id_is_unique", func(t *testing.T) {
+			t.Parallel()
 		ids := make(map[string]bool)
 		for i := 0; i < 100; i++ {
 			id := generateToolCallID()
@@ -3505,6 +3676,7 @@ func TestCLIAgentToolCallsFormat(t *testing.T) {
 
 // TestToolResultMessageDetection tests that tool result messages are correctly detected
 func TestToolResultMessageDetection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		messages []OpenAIMessage
@@ -3542,6 +3714,7 @@ func TestToolResultMessageDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			hasToolResults := false
 			for _, msg := range tt.messages {
 				if msg.Role == "tool" || msg.ToolCallID != "" {
@@ -3556,6 +3729,7 @@ func TestToolResultMessageDetection(t *testing.T) {
 
 // TestOpenAIMessageStructure validates message structure for CLI agent compatibility
 func TestOpenAIMessageStructure(t *testing.T) {
+	t.Parallel()
 	t.Run("user_message", func(t *testing.T) {
 		msg := OpenAIMessage{
 			Role:    "user",
@@ -3566,6 +3740,7 @@ func TestOpenAIMessageStructure(t *testing.T) {
 	})
 
 	t.Run("assistant_message_with_tool_calls", func(t *testing.T) {
+			t.Parallel()
 		msg := OpenAIMessage{
 			Role:    "assistant",
 			Content: "Let me search for that.",
@@ -3586,6 +3761,7 @@ func TestOpenAIMessageStructure(t *testing.T) {
 	})
 
 	t.Run("tool_result_message", func(t *testing.T) {
+			t.Parallel()
 		msg := OpenAIMessage{
 			Role:       "tool",
 			Content:    `{"matches": ["line 10: TODO fix this"]}`,
@@ -3599,6 +3775,7 @@ func TestOpenAIMessageStructure(t *testing.T) {
 
 // TestStreamingResponseFormat validates SSE streaming format for CLI agents
 func TestStreamingResponseFormat(t *testing.T) {
+	t.Parallel()
 	t.Run("chunk_has_required_fields", func(t *testing.T) {
 		chunk := map[string]any{
 			"id":                 "chatcmpl-123",
@@ -3631,6 +3808,7 @@ func TestStreamingResponseFormat(t *testing.T) {
 	})
 
 	t.Run("finish_reason_stop_format", func(t *testing.T) {
+			t.Parallel()
 		chunk := map[string]any{
 			"id":      "chatcmpl-123",
 			"object":  "chat.completion.chunk",
@@ -3658,6 +3836,7 @@ func TestStreamingResponseFormat(t *testing.T) {
 	})
 
 	t.Run("finish_reason_tool_calls_format", func(t *testing.T) {
+			t.Parallel()
 		chunk := map[string]any{
 			"id":      "chatcmpl-123",
 			"object":  "chat.completion.chunk",
@@ -3687,6 +3866,7 @@ func TestStreamingResponseFormat(t *testing.T) {
 
 // TestToolCallStreamingChunk validates tool call streaming format
 func TestToolCallStreamingChunk(t *testing.T) {
+	t.Parallel()
 	toolCall := StreamingToolCall{
 		Index: 0,
 		ID:    "call_xyz789",
@@ -3748,6 +3928,7 @@ func TestToolCallStreamingChunk(t *testing.T) {
 
 // TestOpenAIToolDefinition validates tool definition structure for CLI agents
 func TestOpenAIToolDefinition(t *testing.T) {
+	t.Parallel()
 	tool := OpenAITool{
 		Type: "function",
 		Function: OpenAIToolFunction{
@@ -3783,6 +3964,7 @@ func TestOpenAIToolDefinition(t *testing.T) {
 
 // TestCLIAgentRequestFormats tests various request formats used by different CLI agents
 func TestCLIAgentRequestFormats(t *testing.T) {
+	t.Parallel()
 	t.Run("opencode_style_request", func(t *testing.T) {
 		// OpenCode sends tools in this format
 		reqJSON := `{
@@ -3813,6 +3995,7 @@ func TestCLIAgentRequestFormats(t *testing.T) {
 	})
 
 	t.Run("tool_result_request", func(t *testing.T) {
+			t.Parallel()
 		// CLI agent sends tool result back
 		reqJSON := `{
 			"model": "helixagent-debate",
@@ -3840,6 +4023,7 @@ func TestCLIAgentRequestFormats(t *testing.T) {
 
 // TestDebateSkippedForToolResults validates debate is skipped when tool results are present
 func TestDebateSkippedForToolResults(t *testing.T) {
+	t.Parallel()
 	messages := []OpenAIMessage{
 		{Role: "user", Content: "Question"},
 		{Role: "assistant", Content: "Using tools..."},
@@ -3860,6 +4044,7 @@ func TestDebateSkippedForToolResults(t *testing.T) {
 
 // TestToolCallPatternMatching tests pattern matching for tool call generation
 func TestToolCallPatternMatching(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		topic       string
 		patterns    []string
@@ -3876,6 +4061,7 @@ func TestToolCallPatternMatching(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.topic, func(t *testing.T) {
+				t.Parallel()
 			topicLower := strings.ToLower(tt.topic)
 			matches := containsAny(topicLower, tt.patterns)
 			assert.Equal(t, tt.shouldMatch, matches)
@@ -3886,6 +4072,7 @@ func TestToolCallPatternMatching(t *testing.T) {
 // TestToolMessageConversionToUser validates that tool messages are converted to user messages
 // CRITICAL: This ensures Mistral and other providers that don't support "tool" role get proper messages
 func TestToolMessageConversionToUser(t *testing.T) {
+	t.Parallel()
 	// Simulate the conversion logic from processToolResultsWithLLM
 	inputMessages := []OpenAIMessage{
 		{Role: "user", Content: "Show me my codebase"},
@@ -3957,6 +4144,7 @@ func TestToolMessageConversionToUser(t *testing.T) {
 
 // TestToolResultProcessingFlow validates the complete tool result flow
 func TestToolResultProcessingFlow(t *testing.T) {
+	t.Parallel()
 	t.Run("detects_tool_results_in_request", func(t *testing.T) {
 		// This simulates what the handler checks
 		messages := []OpenAIMessage{
@@ -3977,6 +4165,7 @@ func TestToolResultProcessingFlow(t *testing.T) {
 	})
 
 	t.Run("no_tool_results_detected_for_normal_chat", func(t *testing.T) {
+			t.Parallel()
 		messages := []OpenAIMessage{
 			{Role: "user", Content: "Hello"},
 			{Role: "assistant", Content: "Hi there!"},
@@ -3995,6 +4184,7 @@ func TestToolResultProcessingFlow(t *testing.T) {
 	})
 
 	t.Run("assistant_with_tool_calls_properly_serialized", func(t *testing.T) {
+			t.Parallel()
 		msg := OpenAIMessage{
 			Role:    "assistant",
 			Content: "",
@@ -4013,6 +4203,7 @@ func TestToolResultProcessingFlow(t *testing.T) {
 
 // TestMistralCompatibility validates messages are compatible with Mistral API requirements
 func TestMistralCompatibility(t *testing.T) {
+	t.Parallel()
 	t.Run("no_tool_role_in_converted_messages", func(t *testing.T) {
 		// Simulate tool result request
 		inputMessages := []OpenAIMessage{
@@ -4036,6 +4227,7 @@ func TestMistralCompatibility(t *testing.T) {
 
 // TestDynamicProviderOrdering validates that provider ordering is dynamic based on LLMsVerifier scores
 func TestDynamicProviderOrdering(t *testing.T) {
+	t.Parallel()
 	t.Run("ordering_is_not_hardcoded", func(t *testing.T) {
 		// CRITICAL: Provider ordering must come from LLMsVerifier scores, NOT hardcoded lists
 		// This test documents that we DO NOT use hardcoded fallback chains
@@ -4051,6 +4243,7 @@ func TestDynamicProviderOrdering(t *testing.T) {
 	})
 
 	t.Run("score_based_sorting", func(t *testing.T) {
+			t.Parallel()
 		// Simulate score-based sorting logic
 		type providerScore struct {
 			name  string
@@ -4081,6 +4274,7 @@ func TestDynamicProviderOrdering(t *testing.T) {
 
 // TestToolResultRequestDetectionInNonStreaming validates non-streaming tool result detection
 func TestToolResultRequestDetectionInNonStreaming(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		messages       []OpenAIMessage
@@ -4115,6 +4309,7 @@ func TestToolResultRequestDetectionInNonStreaming(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			hasToolResults := false
 			for _, msg := range tt.messages {
 				if msg.Role == "tool" || msg.ToolCallID != "" {
@@ -4129,6 +4324,7 @@ func TestToolResultRequestDetectionInNonStreaming(t *testing.T) {
 
 // TestContextTimeoutValues validates timeout configuration
 func TestContextTimeoutValues(t *testing.T) {
+	t.Parallel()
 	// These are the expected timeout values for production
 	mainContextTimeout := 420 * time.Second // 7 minutes for main handler (with buffer)
 	perProviderTimeout := 60 * time.Second  // 1 minute per provider
@@ -4144,6 +4340,7 @@ func TestContextTimeoutValues(t *testing.T) {
 
 // TestToolResultResponseStructure validates the response structure for tool results
 func TestToolResultResponseStructure(t *testing.T) {
+	t.Parallel()
 	// Simulate the response structure from processToolResultsWithLLM
 	toolResultResponse := "Analysis of files: main.go, handler.go"
 
@@ -4182,6 +4379,7 @@ func TestToolResultResponseStructure(t *testing.T) {
 
 // TestEmptyToolResultHandling validates handling of empty tool results
 func TestEmptyToolResultHandling(t *testing.T) {
+	t.Parallel()
 	messages := []OpenAIMessage{
 		{Role: "user", Content: "Search for pattern"},
 		{Role: "assistant", ToolCalls: []OpenAIToolCall{{ID: "call_grep"}}},
@@ -4220,6 +4418,7 @@ func TestEmptyToolResultHandling(t *testing.T) {
 //   - New user requests → AI Debate (return false)
 //   - Tool results → Direct processing (return true)
 func TestIsToolResultProcessingTurn(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	tests := []struct {
@@ -4315,6 +4514,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := handler.isToolResultProcessingTurn(tc.messages)
 			assert.Equal(t, tc.expectedResult, result, tc.description)
 		})
@@ -4325,6 +4525,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 //   - New user requests → AI Debate
 //   - Tool result turns → Direct processing (prevents infinite loops)
 func TestDebateVsDirectProcessing(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// Scenario: User asks initial question, debate runs, tool calls generated,
@@ -4376,6 +4577,7 @@ func TestDebateVsDirectProcessing(t *testing.T) {
 // like "yes 1", "1", "ok" that reference options from previous assistant messages.
 // CRITICAL: This ensures AI Debate understands "yes 1." means "execute option 1 from previous response".
 func TestExpandFollowUpResponse(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	tests := []struct {
@@ -4520,6 +4722,7 @@ Would you like me to:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := handler.expandFollowUpResponse(tc.userMessage, tc.messages)
 
 			if tc.shouldExpand {
@@ -4544,6 +4747,7 @@ Would you like me to:
 // TestFollowUpResponseConversationFlow tests the full conversation flow scenario
 // where user first asks a question, gets options, and then selects one.
 func TestFollowUpResponseConversationFlow(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	// Simulate the exact conversation from the user's issue
@@ -4571,6 +4775,7 @@ Would you like me to:
 
 // TestFollowUpResponseEdgeCases tests edge cases for follow-up detection
 func TestFollowUpResponseEdgeCases(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	tests := []struct {
@@ -4606,6 +4811,7 @@ func TestFollowUpResponseEdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			messages := append(messagesWithOptions, OpenAIMessage{Role: "user", Content: tc.userMessage})
 			result := handler.expandFollowUpResponse(tc.userMessage, messages)
 
@@ -4622,6 +4828,7 @@ func TestFollowUpResponseEdgeCases(t *testing.T) {
 // This test was added after a bug where Bash tool calls were missing the description field,
 // causing "Invalid input: expected string, received undefined" errors in CLI tools
 func TestBashToolCallsIncludeDescription(t *testing.T) {
+	t.Parallel()
 	// Test the generateBashDescription function directly
 	tests := []struct {
 		command     string
@@ -4647,6 +4854,7 @@ func TestBashToolCallsIncludeDescription(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.command, func(t *testing.T) {
+				t.Parallel()
 			result := generateBashDescription(tc.command)
 
 			if tc.shouldMatch {
@@ -4661,6 +4869,7 @@ func TestBashToolCallsIncludeDescription(t *testing.T) {
 
 // TestBashToolCallArgumentsStructure ensures Bash tool call arguments include all required fields
 func TestBashToolCallArgumentsStructure(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -4714,6 +4923,7 @@ func TestBashToolCallArgumentsStructure(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, tools, nil, nil)
 
 			// Find Bash tool call
@@ -4741,6 +4951,7 @@ func TestBashToolCallArgumentsStructure(t *testing.T) {
 
 // TestAllToolCallsHaveRequiredFields validates that ALL tool types have required fields
 func TestAllToolCallsHaveRequiredFields(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -4883,6 +5094,7 @@ func TestAllToolCallsHaveRequiredFields(t *testing.T) {
 
 	for _, tc := range testScenarios {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, allTools, nil, nil)
 
 			// Find the expected tool call
@@ -4912,6 +5124,7 @@ func TestAllToolCallsHaveRequiredFields(t *testing.T) {
 
 // TestToolCallParameterNaming validates snake_case is used for all parameters
 func TestToolCallParameterNaming(t *testing.T) {
+	t.Parallel()
 	// This test ensures we use snake_case consistently
 	invalidCamelCasePatterns := []string{
 		"filePath",  // Should be file_path
@@ -4940,6 +5153,7 @@ func TestToolCallParameterNaming(t *testing.T) {
 
 	for _, args := range sampleArguments {
 		t.Run(args, func(t *testing.T) {
+				t.Parallel()
 			// Check no camelCase patterns
 			for _, camel := range invalidCamelCasePatterns {
 				assert.NotContains(t, args, camel,
@@ -4969,6 +5183,7 @@ func TestToolCallParameterNaming(t *testing.T) {
 
 // TestExtractToolArgumentsRequiredFields tests that extractToolArguments returns all required fields
 func TestExtractToolArgumentsRequiredFields(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name           string
 		toolName       string
@@ -5039,6 +5254,7 @@ func TestExtractToolArgumentsRequiredFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			args := extractToolArguments(tc.toolName, tc.context)
 
 			// Parse the JSON
@@ -5065,6 +5281,7 @@ func TestExtractToolArgumentsRequiredFields(t *testing.T) {
 
 // TestSanitizeDisplayContent tests that system-level tags are properly stripped from content
 func TestSanitizeDisplayContent(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		input    string
@@ -5124,6 +5341,7 @@ func TestSanitizeDisplayContent(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := sanitizeDisplayContent(tc.input)
 			assert.Equal(t, tc.expected, result, "Sanitized content should match expected")
 		})
@@ -5140,6 +5358,7 @@ func TestSanitizeDisplayContent(t *testing.T) {
 // contain hardcoded confirmation patterns like "yes", "proceed", "go ahead" etc.
 // The system should ALWAYS use LLM-based tool generation for arbitrary user intents.
 func TestNoHardcodedConfirmationPatterns(t *testing.T) {
+	t.Parallel()
 	// These patterns used to be hardcoded but were removed in favor of LLM-based generation
 	deprecatedPatterns := []string{
 		// Simple confirmations
@@ -5163,6 +5382,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 	}
 
 	t.Run("no_hardcoded_confirmation_patterns_in_generateActionToolCalls", func(t *testing.T) {
+			t.Parallel()
 		// Read the source file to verify no hardcoded patterns exist
 		// This is a meta-test that ensures code quality
 		// The actual implementation uses LLM-based generation
@@ -5201,6 +5421,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 
 		for _, input := range arbitraryInputs {
 			t.Run(input, func(t *testing.T) {
+					t.Parallel()
 				// Without LLM-based generation (no registry), this should return empty
 				// because these inputs don't match task-specific patterns
 				result := handler.generateActionToolCalls(ctx, input, input, tools, nil, nil)
@@ -5213,6 +5434,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 	})
 
 	t.Run("deprecated_patterns_documented", func(t *testing.T) {
+			t.Parallel()
 		// Document the patterns that were removed
 		for _, pattern := range deprecatedPatterns {
 			t.Logf("Deprecated pattern (no longer hardcoded): %s", pattern)
@@ -5223,6 +5445,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 // TestLLMBasedToolGenerationWithArbitraryIntents tests that arbitrary user intents
 // are handled by LLM-based tool generation, not pattern matching.
 func TestLLMBasedToolGenerationWithArbitraryIntents(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		providerRegistry: nil, // Will cause early return
 		debateTeamConfig: nil,
@@ -5320,6 +5543,7 @@ func TestLLMBasedToolGenerationWithArbitraryIntents(t *testing.T) {
 
 	for _, tc := range arbitraryIntents {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			messages := []OpenAIMessage{
 				{Role: "user", Content: "Help me with my code"},
 				{Role: "assistant", Content: "I can help. Let me analyze your codebase first."},
@@ -5343,6 +5567,7 @@ func TestLLMBasedToolGenerationWithArbitraryIntents(t *testing.T) {
 // TestGenerateActionToolCallsUsesLLMWhenNoPatternMatch tests that when no
 // task-specific patterns match, the system falls back to LLM-based generation.
 func TestGenerateActionToolCallsUsesLLMWhenNoPatternMatch(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	tools := []OpenAITool{
@@ -5385,6 +5610,7 @@ func TestGenerateActionToolCallsUsesLLMWhenNoPatternMatch(t *testing.T) {
 
 	for _, input := range nonMatchingInputs {
 		t.Run(input.topic, func(t *testing.T) {
+				t.Parallel()
 			// Without provider registry, this will return empty but
 			// the LLM-based generation code path should be attempted
 			handler := &UnifiedHandler{}
@@ -5400,6 +5626,7 @@ func TestGenerateActionToolCallsUsesLLMWhenNoPatternMatch(t *testing.T) {
 // TestLLMBasedToolGenerationRequiresValidConfig tests the prerequisites for
 // LLM-based tool generation.
 func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	tools := []OpenAITool{
@@ -5419,6 +5646,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	synthesis := "test synthesis"
 
 	t.Run("requires_provider_registry", func(t *testing.T) {
+			t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: &services.DebateTeamConfig{}, // Has config but no registry
@@ -5429,6 +5657,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	})
 
 	t.Run("requires_debate_team_config", func(t *testing.T) {
+			t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: &services.ProviderRegistry{}, // Has registry but no config
 			debateTeamConfig: nil,
@@ -5439,6 +5668,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	})
 
 	t.Run("requires_tools", func(t *testing.T) {
+			t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: &services.ProviderRegistry{},
 			debateTeamConfig: &services.DebateTeamConfig{},
@@ -5455,6 +5685,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 // TestLLMBasedToolGenerationMessageConversion tests that messages are properly
 // converted for the LLM call.
 func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		providerRegistry: nil, // Will cause early return, but we can still test structure
 		debateTeamConfig: nil,
@@ -5483,6 +5714,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	}
 
 	t.Run("handles_long_messages", func(t *testing.T) {
+			t.Parallel()
 		// Test with a very long message
 		longContent := strings.Repeat("This is a very long message. ", 100)
 		messages := []OpenAIMessage{
@@ -5496,6 +5728,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	})
 
 	t.Run("handles_empty_messages", func(t *testing.T) {
+			t.Parallel()
 		messages := []OpenAIMessage{}
 
 		// Should not panic
@@ -5504,6 +5737,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	})
 
 	t.Run("handles_system_messages", func(t *testing.T) {
+			t.Parallel()
 		messages := []OpenAIMessage{
 			{Role: "system", Content: "You are a helpful assistant."},
 			{Role: "user", Content: "Help me"},
@@ -5518,6 +5752,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 // TestLLMBasedToolGenerationToolDescriptions tests that tool descriptions are
 // properly formatted for the LLM prompt.
 func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
+	t.Parallel()
 	t.Run("formats_tool_with_parameters", func(t *testing.T) {
 		tools := []OpenAITool{
 			{
@@ -5554,6 +5789,7 @@ func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
 	})
 
 	t.Run("formats_tool_without_parameters", func(t *testing.T) {
+			t.Parallel()
 		tools := []OpenAITool{
 			{
 				Type: "function",
@@ -5569,6 +5805,7 @@ func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
 	})
 
 	t.Run("skips_non_function_tools", func(t *testing.T) {
+			t.Parallel()
 		handler := &UnifiedHandler{}
 		tools := []OpenAITool{
 			{
@@ -5596,6 +5833,7 @@ func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
 // TestSynthesisBasedToolSelection tests that synthesis content can trigger
 // tool selection when it mentions specific tools.
 func TestSynthesisBasedToolSelection(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -5669,6 +5907,7 @@ func TestSynthesisBasedToolSelection(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, tools, nil, nil)
 
 			// Check that expected tools were selected
@@ -5688,6 +5927,7 @@ func TestSynthesisBasedToolSelection(t *testing.T) {
 
 // TestGenerateToolCallIDUniqueness tests that generated tool call IDs are unique.
 func TestGenerateToolCallIDUniqueness(t *testing.T) {
+	t.Parallel()
 	ids := make(map[string]bool)
 	iterations := 1000
 
@@ -5706,6 +5946,7 @@ func TestGenerateToolCallIDUniqueness(t *testing.T) {
 
 // TestEscapeJSONStringExtended tests additional JSON string escaping cases for tool arguments.
 func TestEscapeJSONStringExtended(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		expected string
@@ -5742,6 +5983,7 @@ func TestEscapeJSONStringExtended(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+				t.Parallel()
 			result := escapeJSONString(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -5750,6 +5992,7 @@ func TestEscapeJSONStringExtended(t *testing.T) {
 
 // TestContainsAnyPerformance tests the performance of containsAny with many patterns.
 func TestContainsAnyPerformance(t *testing.T) {
+	t.Parallel()
 	patterns := make([]string, 100)
 	for i := 0; i < 100; i++ {
 		patterns[i] = "pattern" + strconv.Itoa(i)
@@ -5779,6 +6022,7 @@ func TestContainsAnyPerformance(t *testing.T) {
 
 // TestDebatePositionResponse_Struct tests the DebatePositionResponse struct
 func TestDebatePositionResponse_Struct(t *testing.T) {
+	t.Parallel()
 	resp := DebatePositionResponse{
 		Content: "Test analysis response",
 		ToolCalls: []StreamingToolCall{
@@ -5803,6 +6047,7 @@ func TestDebatePositionResponse_Struct(t *testing.T) {
 
 // TestDebatePositionResponse_EmptyToolCalls tests response with no tool calls
 func TestDebatePositionResponse_EmptyToolCalls(t *testing.T) {
+	t.Parallel()
 	resp := DebatePositionResponse{
 		Content:   "Just text analysis",
 		ToolCalls: nil,
@@ -5816,6 +6061,7 @@ func TestDebatePositionResponse_EmptyToolCalls(t *testing.T) {
 
 // TestDebatePositionResponse_MultipleToolCalls tests response with multiple tool calls
 func TestDebatePositionResponse_MultipleToolCalls(t *testing.T) {
+	t.Parallel()
 	resp := DebatePositionResponse{
 		Content: "Analysis requires multiple tools",
 		ToolCalls: []StreamingToolCall{
@@ -5858,6 +6104,7 @@ func TestDebatePositionResponse_MultipleToolCalls(t *testing.T) {
 
 // TestDebatePositionResponse_JSONSerialization tests JSON serialization
 func TestDebatePositionResponse_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	resp := DebatePositionResponse{
 		Content: "Test response",
 		ToolCalls: []StreamingToolCall{
@@ -5888,6 +6135,7 @@ func TestDebatePositionResponse_JSONSerialization(t *testing.T) {
 
 // TestToolCallsCollectionFromDebate tests collection of tool calls across positions
 func TestToolCallsCollectionFromDebate(t *testing.T) {
+	t.Parallel()
 	// Simulate collecting tool calls from multiple debate positions
 	collectedToolCalls := make([]StreamingToolCall, 0)
 
@@ -5937,6 +6185,7 @@ func TestToolCallsCollectionFromDebate(t *testing.T) {
 
 // TestActionIndicatorGeneration tests that action indicators are properly formatted
 func TestActionIndicatorGeneration(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name          string
 		actionCount   int
@@ -5961,6 +6210,7 @@ func TestActionIndicatorGeneration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			// Generate action indicator (simulating the logic in the handler)
 			actionIndicator := "\n\n<--- EXECUTING " + strconv.Itoa(tc.actionCount) + " ACTION(S) --->\n"
 			assert.Contains(t, actionIndicator, tc.expectedMatch)
@@ -5972,6 +6222,7 @@ func TestActionIndicatorGeneration(t *testing.T) {
 
 // TestGenerateActionToolCalls_WithTools tests tool call generation with available tools
 func TestGenerateActionToolCalls_WithTools(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		dialogueFormatter: services.NewDialogueFormatter(services.StyleTheater),
 	}
@@ -6022,6 +6273,7 @@ func TestGenerateActionToolCalls_WithTools(t *testing.T) {
 
 // TestGenerateActionToolCalls_NoTools tests tool call generation without tools
 func TestGenerateActionToolCalls_NoTools(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 
 	toolCalls := handler.generateActionToolCalls(
@@ -6039,6 +6291,7 @@ func TestGenerateActionToolCalls_NoTools(t *testing.T) {
 
 // TestGenerateActionToolCalls_SearchQuery tests tool call generation for search queries
 func TestGenerateActionToolCalls_SearchQuery(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		dialogueFormatter: services.NewDialogueFormatter(services.StyleTheater),
 	}
@@ -6078,6 +6331,7 @@ func TestGenerateActionToolCalls_SearchQuery(t *testing.T) {
 
 // TestStreamingToolCall_FieldValidation tests StreamingToolCall field validation
 func TestStreamingToolCall_FieldValidation(t *testing.T) {
+	t.Parallel()
 	tc := StreamingToolCall{
 		Index: 0,
 		ID:    "call_abc123",
@@ -6098,6 +6352,7 @@ func TestStreamingToolCall_FieldValidation(t *testing.T) {
 
 // TestToolCallArgumentsValidation tests that tool call arguments follow correct format
 func TestToolCallArgumentsValidation(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name        string
 		toolName    string
@@ -6138,6 +6393,7 @@ func TestToolCallArgumentsValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			var args map[string]interface{}
 			err := json.Unmarshal([]byte(tc.arguments), &args)
 
@@ -6151,6 +6407,7 @@ func TestToolCallArgumentsValidation(t *testing.T) {
 
 // TestDebateToolCallsIntegration tests the full flow of tool call collection and usage
 func TestDebateToolCallsIntegration(t *testing.T) {
+	t.Parallel()
 	// This test simulates the complete flow:
 	// 1. Debate positions generate responses with tool_calls
 	// 2. Tool calls are collected
@@ -6211,6 +6468,7 @@ func TestDebateToolCallsIntegration(t *testing.T) {
 
 // TestActionIndicatorVisibility ensures action indicators are visible in output
 func TestActionIndicatorVisibility(t *testing.T) {
+	t.Parallel()
 	indicators := []string{
 		"<--- AI Debate: LLM returned tool_calls --->",
 		"<--- Tool call detected --->",
@@ -6223,6 +6481,7 @@ func TestActionIndicatorVisibility(t *testing.T) {
 
 	for _, indicator := range indicators {
 		t.Run(indicator, func(t *testing.T) {
+				t.Parallel()
 			assert.Contains(t, indicator, "<---")
 			assert.Contains(t, indicator, "--->")
 		})
@@ -6231,6 +6490,7 @@ func TestActionIndicatorVisibility(t *testing.T) {
 
 // TestToolCallsNotDiscarded tests that tool calls are properly preserved
 func TestToolCallsNotDiscarded(t *testing.T) {
+	t.Parallel()
 	// Create a response with tool calls
 	resp := DebatePositionResponse{
 		Content: "Content text",
@@ -6255,6 +6515,7 @@ func TestToolCallsNotDiscarded(t *testing.T) {
 
 // TestExecuteGrepFunction_ValidPattern tests grep with a valid regex pattern
 func TestExecuteGrepFunction_ValidPattern(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6292,6 +6553,7 @@ func helper() {
 
 // TestExecuteGrepFunction_MissingPattern tests grep without a pattern
 func TestExecuteGrepFunction_MissingPattern(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6307,6 +6569,7 @@ func TestExecuteGrepFunction_MissingPattern(t *testing.T) {
 
 // TestExecuteGrepFunction_InvalidRegex tests grep with invalid regex
 func TestExecuteGrepFunction_InvalidRegex(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6324,6 +6587,7 @@ func TestExecuteGrepFunction_InvalidRegex(t *testing.T) {
 
 // TestExecuteGrepFunction_NoMatches tests grep when no matches found
 func TestExecuteGrepFunction_NoMatches(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6349,6 +6613,7 @@ func TestExecuteGrepFunction_NoMatches(t *testing.T) {
 
 // TestExecuteGrepFunction_AlternativeParamNames tests grep with alternative parameter names
 func TestExecuteGrepFunction_AlternativeParamNames(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6368,6 +6633,7 @@ func TestExecuteGrepFunction_AlternativeParamNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			call := EmbeddedFunctionCall{
 				Name:       "grep",
 				Parameters: tt.params,
@@ -6382,6 +6648,7 @@ func TestExecuteGrepFunction_AlternativeParamNames(t *testing.T) {
 
 // TestExecuteGrepFunction_SkipsNonTextFiles tests that grep skips binary/non-text files
 func TestExecuteGrepFunction_SkipsNonTextFiles(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6412,6 +6679,7 @@ func TestExecuteGrepFunction_SkipsNonTextFiles(t *testing.T) {
 
 // TestExecuteGrepFunction_SkipsGitDirectory tests that .git directory is skipped
 func TestExecuteGrepFunction_SkipsGitDirectory(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6445,6 +6713,7 @@ func TestExecuteGrepFunction_SkipsGitDirectory(t *testing.T) {
 
 // TestExecuteGrepFunction_ResultLimit tests that grep respects max results limit
 func TestExecuteGrepFunction_ResultLimit(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6487,6 +6756,7 @@ func TestExecuteGrepFunction_ResultLimit(t *testing.T) {
 
 // TestExecuteGrepFunction_LongLinesTruncated tests that long lines are truncated
 func TestExecuteGrepFunction_LongLinesTruncated(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6514,6 +6784,7 @@ func TestExecuteGrepFunction_LongLinesTruncated(t *testing.T) {
 
 // TestGetParam_GrepHelper tests the getParam helper function for grep
 func TestGetParam_GrepHelper(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		params   map[string]string
@@ -6548,6 +6819,7 @@ func TestGetParam_GrepHelper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := getParam(tt.params, tt.keys...)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -6556,6 +6828,7 @@ func TestGetParam_GrepHelper(t *testing.T) {
 
 // TestExecuteGrepFunction_MultipleFileTypes tests grep searches all supported text file types
 func TestExecuteGrepFunction_MultipleFileTypes(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{}
 	ctx := context.Background()
 
@@ -6608,6 +6881,7 @@ func TestExecuteGrepFunction_MultipleFileTypes(t *testing.T) {
 // when NewUnifiedHandler creates a handler. This is critical for CLI agents
 // (OpenCode, Crush, etc.) to see debate team members, positions, and voting.
 func TestDebateDialogueEnabledByDefault(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	assert.True(t, handler.showDebateDialogue,
@@ -6618,6 +6892,7 @@ func TestDebateDialogueEnabledByDefault(t *testing.T) {
 // get trimmed system context to prevent oversized prompts from CLI agents
 // causing code generation instead of natural responses.
 func TestSimpleMessageTrimming(t *testing.T) {
+	t.Parallel()
 	// Simulate an OpenCode-style request with massive system prompt
 	messages := []models.Message{
 		{Role: "system", Content: strings.Repeat("You are a coding assistant with full access to tools. ", 200)},
@@ -6662,6 +6937,7 @@ func TestSimpleMessageTrimming(t *testing.T) {
 
 // TestDebateDialogueFooterContainsEnsembleInfo validates the footer shows ensemble branding
 func TestDebateDialogueFooterContainsEnsembleInfo(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{showDebateDialogue: true}
 	footer := handler.generateResponseFooter()
 
@@ -6673,6 +6949,7 @@ func TestDebateDialogueFooterContainsEnsembleInfo(t *testing.T) {
 
 // TestDebateDialogueConclusionContainsConsensus validates conclusion content
 func TestDebateDialogueConclusionContainsConsensus(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{showDebateDialogue: true}
 	conclusion := handler.generateDebateDialogueConclusion(OutputFormatANSI)
 
@@ -6682,6 +6959,7 @@ func TestDebateDialogueConclusionContainsConsensus(t *testing.T) {
 
 // TestDebateDialogueIntroductionSafe validates introduction doesn't panic with nil config
 func TestDebateDialogueIntroductionSafe(t *testing.T) {
+	t.Parallel()
 	handler := &UnifiedHandler{
 		showDebateDialogue: true,
 		dialogueFormatter:  services.NewDialogueFormatter(services.StyleTheater),
@@ -6695,6 +6973,7 @@ func TestDebateDialogueIntroductionSafe(t *testing.T) {
 
 // TestDebateDialogueFormatterInitialized validates dialogue formatter is created
 func TestDebateDialogueFormatterInitialized(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	assert.NotNil(t, handler.dialogueFormatter,
@@ -6703,6 +6982,7 @@ func TestDebateDialogueFormatterInitialized(t *testing.T) {
 
 // TestDebateDialogueGatingConditions validates the gating logic
 func TestDebateDialogueGatingConditions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		show      bool
@@ -6719,6 +6999,7 @@ func TestDebateDialogueGatingConditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			h := &UnifiedHandler{showDebateDialogue: tt.show}
 			if tt.formatter {
 				h.dialogueFormatter = services.NewDialogueFormatter(services.StyleTheater)
@@ -6738,6 +7019,7 @@ func TestDebateDialogueGatingConditions(t *testing.T) {
 // which causes StreamDebate to return an error immediately. This exercises the
 // defer close(streamChan) path and proves the channel drains promptly.
 func TestProcessWithComprehensiveStream_ChannelClosesOnContextCancel(t *testing.T) {
+	t.Parallel()
 	// Build a handler with a minimal DebateService that returns an error instantly.
 	// IsComprehensiveSystemEnabled() returns false on a zero-valued service, so
 	// StreamDebate returns ("comprehensive streaming debate system is not enabled")
@@ -6783,6 +7065,7 @@ func TestProcessWithComprehensiveStream_ChannelClosesOnContextCancel(t *testing.
 // select) exits promptly when the context is cancelled while the goroutine is
 // blocked sending to the channel.
 func TestProcessWithComprehensiveStream_GoroutinePatternCtxDone(t *testing.T) {
+	t.Parallel()
 	// Replicate the exact goroutine pattern from processWithComprehensiveStream
 	// to verify the ctx.Done() escape hatch works even with a full buffer.
 	streamChan := make(chan *models.LLMResponse, 1) // tiny buffer to force blocking

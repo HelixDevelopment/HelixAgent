@@ -17,6 +17,7 @@ import (
 // TestSemaphoreSecurity validates that the semaphore prevents
 // resource exhaustion attacks (too many concurrent container operations).
 func TestSemaphoreSecurity(t *testing.T) {
+	t.Parallel()
 	// Create adapter with test configuration
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
@@ -36,6 +37,7 @@ func TestSemaphoreSecurity(t *testing.T) {
 // TestCommandInjectionPrevention validates that remote execution
 // doesn't allow command injection through user input.
 func TestCommandInjectionPrevention(t *testing.T) {
+	t.Parallel()
 	// This test validates that the adapter properly handles command strings
 	// and doesn't allow injection through shell metacharacters.
 
@@ -60,6 +62,7 @@ func TestCommandInjectionPrevention(t *testing.T) {
 // TestPathTraversalPrevention validates that file operations
 // prevent directory traversal attacks.
 func TestPathTraversalPrevention(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -76,6 +79,7 @@ func TestPathTraversalPrevention(t *testing.T) {
 // TestConcurrentRuntimeDetection validates that runtime detection
 // is thread-safe and uses sync.Once for idempotent initialization.
 func TestConcurrentRuntimeDetection(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -112,6 +116,7 @@ func TestConcurrentRuntimeDetection(t *testing.T) {
 // TestComposeFileValidation validates that compose file parsing
 // doesn't allow YAML/JSON injection or malicious directives.
 func TestComposeFileValidation(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -129,6 +134,7 @@ func TestComposeFileValidation(t *testing.T) {
 // TestResourceLimitsEnforcement validates that container operations
 // respect resource limits to prevent DoS attacks.
 func TestResourceLimitsEnforcement(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -156,6 +162,7 @@ func TestResourceLimitsEnforcement(t *testing.T) {
 // TestAuthenticationSecurity validates that remote connections
 // use secure authentication methods.
 func TestAuthenticationSecurity(t *testing.T) {
+	t.Parallel()
 	// Skip test - requires actual remote configuration
 	t.Skip("Remote authentication test requires SSH configuration")
 }
@@ -163,6 +170,7 @@ func TestAuthenticationSecurity(t *testing.T) {
 // TestContextPropagation validates that container operations
 // respect context cancellation and timeouts.
 func TestContextPropagation(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)
@@ -184,6 +192,7 @@ func TestContextPropagation(t *testing.T) {
 // TestErrorHandlingSecurity validates that errors don't leak
 // sensitive information (paths, hostnames, credentials).
 func TestErrorHandlingSecurity(t *testing.T) {
+	t.Parallel()
 	a, err := NewAdapter(
 		WithLogger(logging.NopLogger{}),
 	)

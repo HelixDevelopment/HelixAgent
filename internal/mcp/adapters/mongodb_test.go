@@ -142,6 +142,7 @@ func (m *MockMongoDBClient) Count(ctx context.Context, database, collection stri
 // Tests
 
 func TestDefaultMongoDBConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 
 	assert.Equal(t, "mongodb://localhost:27017", config.URI)
@@ -151,6 +152,7 @@ func TestDefaultMongoDBConfig(t *testing.T) {
 }
 
 func TestNewMongoDBAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -163,6 +165,7 @@ func TestNewMongoDBAdapter(t *testing.T) {
 }
 
 func TestMongoDBAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -180,6 +183,7 @@ func TestMongoDBAdapter_ListTools(t *testing.T) {
 }
 
 func TestMongoDBAdapter_ListDatabases(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -193,6 +197,7 @@ func TestMongoDBAdapter_ListDatabases(t *testing.T) {
 }
 
 func TestMongoDBAdapter_ListCollections(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -207,6 +212,7 @@ func TestMongoDBAdapter_ListCollections(t *testing.T) {
 }
 
 func TestMongoDBAdapter_Find(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -224,6 +230,7 @@ func TestMongoDBAdapter_Find(t *testing.T) {
 }
 
 func TestMongoDBAdapter_FindOne(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -240,6 +247,7 @@ func TestMongoDBAdapter_FindOne(t *testing.T) {
 }
 
 func TestMongoDBAdapter_InsertOne(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -256,6 +264,7 @@ func TestMongoDBAdapter_InsertOne(t *testing.T) {
 }
 
 func TestMongoDBAdapter_InsertMany(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -275,6 +284,7 @@ func TestMongoDBAdapter_InsertMany(t *testing.T) {
 }
 
 func TestMongoDBAdapter_UpdateOne(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -292,6 +302,7 @@ func TestMongoDBAdapter_UpdateOne(t *testing.T) {
 }
 
 func TestMongoDBAdapter_DeleteOne(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -308,6 +319,7 @@ func TestMongoDBAdapter_DeleteOne(t *testing.T) {
 }
 
 func TestMongoDBAdapter_Aggregate(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -327,6 +339,7 @@ func TestMongoDBAdapter_Aggregate(t *testing.T) {
 }
 
 func TestMongoDBAdapter_Count(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -343,6 +356,7 @@ func TestMongoDBAdapter_Count(t *testing.T) {
 }
 
 func TestMongoDBAdapter_CreateIndex(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -360,6 +374,7 @@ func TestMongoDBAdapter_CreateIndex(t *testing.T) {
 }
 
 func TestMongoDBAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	adapter := NewMongoDBAdapter(config, client)
@@ -371,6 +386,7 @@ func TestMongoDBAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestMongoDBAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultMongoDBConfig()
 	client := NewMockMongoDBClient()
 	client.SetError(true)
@@ -387,6 +403,7 @@ func TestMongoDBAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestFindOptionsTypes(t *testing.T) {
+	t.Parallel()
 	options := FindOptions{
 		Limit:      100,
 		Skip:       10,
@@ -401,6 +418,7 @@ func TestFindOptionsTypes(t *testing.T) {
 }
 
 func TestIndexOptionsTypes(t *testing.T) {
+	t.Parallel()
 	options := IndexOptions{
 		Unique:     true,
 		Background: true,
@@ -413,6 +431,7 @@ func TestIndexOptionsTypes(t *testing.T) {
 }
 
 func TestMongoDBConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := MongoDBConfig{
 		URI:         "mongodb://user:pass@localhost:27017",
 		Database:    "production",

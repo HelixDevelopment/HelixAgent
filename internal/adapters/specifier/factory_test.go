@@ -8,6 +8,7 @@ import (
 )
 
 func TestFactoryReturnsConsistentState(t *testing.T) {
+	t.Parallel()
 	enabled := adapter.IsHelixSpecifierEnabled()
 	sa := adapter.NewOptimalSpecAdapter()
 

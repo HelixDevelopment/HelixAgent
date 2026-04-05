@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultConfig_Extended(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	require.NotNil(t, config)
@@ -61,12 +62,14 @@ func TestDefaultConfig_Extended(t *testing.T) {
 }
 
 func TestConfig_Validate_Valid(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	err := config.Validate()
 	assert.NoError(t, err)
 }
 
 func TestConfig_Validate_FixesInvalidSimilarityThreshold(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		threshold float64
@@ -81,6 +84,7 @@ func TestConfig_Validate_FixesInvalidSimilarityThreshold(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			config := DefaultConfig()
 			config.SemanticCache.SimilarityThreshold = tt.threshold
 			err := config.Validate()
@@ -91,6 +95,7 @@ func TestConfig_Validate_FixesInvalidSimilarityThreshold(t *testing.T) {
 }
 
 func TestConfig_Validate_FixesInvalidMaxEntries(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.MaxEntries = -10
 	err := config.Validate()
@@ -99,6 +104,7 @@ func TestConfig_Validate_FixesInvalidMaxEntries(t *testing.T) {
 }
 
 func TestConfig_Validate_FixesInvalidMaxRetries(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.StructuredOutput.MaxRetries = 0
 	err := config.Validate()
@@ -107,6 +113,7 @@ func TestConfig_Validate_FixesInvalidMaxRetries(t *testing.T) {
 }
 
 func TestConfig_Validate_DisabledComponents(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		Enabled: true,
 		SemanticCache: SemanticCacheConfig{
@@ -128,6 +135,7 @@ func TestConfig_Validate_DisabledComponents(t *testing.T) {
 }
 
 func TestIsComplexTask_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		prompt   string
@@ -141,6 +149,7 @@ func TestIsComplexTask_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := isComplexTask(tt.prompt)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -148,12 +157,14 @@ func TestIsComplexTask_Extended(t *testing.T) {
 }
 
 func TestContainsIgnoreCaseOptimization(t *testing.T) {
+	t.Parallel()
 	assert.True(t, containsIgnoreCase("Hello World", "hello"))
 	assert.True(t, containsIgnoreCase("HELLO WORLD", "hello world"))
 	assert.False(t, containsIgnoreCase("Hello", "xyz"))
 }
 
 func TestMin(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 3, min(3, 5))
 	assert.Equal(t, 3, min(5, 3))
 	assert.Equal(t, 0, min(0, 5))

@@ -14,6 +14,7 @@ import (
 // =============================================================================
 
 func TestNewProvenanceTracker(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	require.NotNil(t, tracker)
 	assert.NotNil(t, tracker.entries)
@@ -22,6 +23,7 @@ func TestNewProvenanceTracker(t *testing.T) {
 }
 
 func TestProvenanceTracker_Record(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	now := time.Now()
@@ -51,6 +53,7 @@ func TestProvenanceTracker_Record(t *testing.T) {
 }
 
 func TestProvenanceTracker_Record_NilEntry(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	tracker.Record("session-1", nil)
 
@@ -59,6 +62,7 @@ func TestProvenanceTracker_Record_NilEntry(t *testing.T) {
 }
 
 func TestProvenanceTracker_Record_AutoID(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	e1 := &AuditEntry{EventType: EventPromptSent}
@@ -78,6 +82,7 @@ func TestProvenanceTracker_Record_AutoID(t *testing.T) {
 }
 
 func TestProvenanceTracker_Record_AutoTimestamp(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	before := time.Now()
@@ -98,6 +103,7 @@ func TestProvenanceTracker_Record_AutoTimestamp(t *testing.T) {
 }
 
 func TestProvenanceTracker_Record_SessionIDOverwritten(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	entry := &AuditEntry{
@@ -113,6 +119,7 @@ func TestProvenanceTracker_Record_SessionIDOverwritten(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetEntries(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	// Add entries with different timestamps out of order.
@@ -140,12 +147,14 @@ func TestProvenanceTracker_GetEntries(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetEntries_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	entries := tracker.GetEntries("no-such-session")
 	assert.Nil(t, entries)
 }
 
 func TestProvenanceTracker_GetEntriesByType(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	tracker.Record("s1", &AuditEntry{
@@ -173,12 +182,14 @@ func TestProvenanceTracker_GetEntriesByType(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetEntriesByType_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	entries := tracker.GetEntriesByType("no-session", EventPromptSent)
 	assert.Nil(t, entries)
 }
 
 func TestProvenanceTracker_GetEntriesByType_NoMatches(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	tracker.Record("s1", &AuditEntry{
 		ID: "1", EventType: EventPromptSent, Timestamp: time.Now(),
@@ -189,6 +200,7 @@ func TestProvenanceTracker_GetEntriesByType_NoMatches(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetEntriesByAgent(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	tracker.Record("s1", &AuditEntry{
@@ -216,12 +228,14 @@ func TestProvenanceTracker_GetEntriesByAgent(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetEntriesByAgent_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	entries := tracker.GetEntriesByAgent("no-session", "agent-a")
 	assert.Nil(t, entries)
 }
 
 func TestProvenanceTracker_GetAuditTrail(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	now := time.Now()
@@ -248,12 +262,14 @@ func TestProvenanceTracker_GetAuditTrail(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetAuditTrail_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	trail := tracker.GetAuditTrail("no-session")
 	assert.Nil(t, trail)
 }
 
 func TestProvenanceTracker_GetSummary(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	t1 := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
@@ -323,12 +339,14 @@ func TestProvenanceTracker_GetSummary(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetSummary_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	summary := tracker.GetSummary("no-session")
 	assert.Nil(t, summary)
 }
 
 func TestProvenanceTracker_GetSummary_EmptyData(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	now := time.Now()
@@ -344,6 +362,7 @@ func TestProvenanceTracker_GetSummary_EmptyData(t *testing.T) {
 }
 
 func TestProvenanceTracker_MarshalSessionJSON(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	now := time.Now()
@@ -372,6 +391,7 @@ func TestProvenanceTracker_MarshalSessionJSON(t *testing.T) {
 }
 
 func TestProvenanceTracker_MarshalSessionJSON_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	data, err := tracker.MarshalSessionJSON("no-session")
@@ -381,6 +401,7 @@ func TestProvenanceTracker_MarshalSessionJSON_NonexistentSession(t *testing.T) {
 }
 
 func TestProvenanceTracker_Clear(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	tracker.Record("s1", &AuditEntry{
@@ -402,6 +423,7 @@ func TestProvenanceTracker_Clear(t *testing.T) {
 }
 
 func TestProvenanceTracker_Clear_NonexistentSession(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	// Should not panic or error.
@@ -412,6 +434,7 @@ func TestProvenanceTracker_Clear_NonexistentSession(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetSessionIDs(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	tracker.Record("beta", &AuditEntry{
@@ -432,12 +455,14 @@ func TestProvenanceTracker_GetSessionIDs(t *testing.T) {
 }
 
 func TestProvenanceTracker_GetSessionIDs_Empty(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 	ids := tracker.GetSessionIDs()
 	assert.Empty(t, ids)
 }
 
 func TestProvenanceTracker_MultipleSessions(t *testing.T) {
+	t.Parallel()
 	tracker := NewProvenanceTracker()
 
 	tracker.Record("s1", &AuditEntry{
@@ -462,6 +487,7 @@ func TestProvenanceTracker_MultipleSessions(t *testing.T) {
 // =============================================================================
 
 func TestSortedKeys(t *testing.T) {
+	t.Parallel()
 	m := map[string]struct{}{
 		"cherry": {},
 		"apple":  {},
@@ -472,12 +498,14 @@ func TestSortedKeys(t *testing.T) {
 }
 
 func TestSortedKeys_Empty(t *testing.T) {
+	t.Parallel()
 	m := map[string]struct{}{}
 	keys := sortedKeys(m)
 	assert.Equal(t, []string{}, keys)
 }
 
 func TestExtractStringField(t *testing.T) {
+	t.Parallel()
 	target := make(map[string]struct{})
 
 	// Nil data should not panic.

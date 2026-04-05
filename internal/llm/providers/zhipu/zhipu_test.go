@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewZhipuProvider("test-api-key", "", "")
 	assert.NotNil(t, provider)
 	assert.Equal(t, "test-api-key", provider.apiKey)
@@ -22,6 +23,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestNewProviderWithCustomURL(t *testing.T) {
+	t.Parallel()
 	customURL := "https://custom.api.com/v1/chat/completions"
 	provider := NewZhipuProvider("test-key", customURL, "custom-model")
 	assert.Equal(t, customURL, provider.baseURL)
@@ -29,6 +31,7 @@ func TestNewProviderWithCustomURL(t *testing.T) {
 }
 
 func TestNewProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -41,6 +44,7 @@ func TestNewProviderWithRetry(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 	assert.Equal(t, 3, config.MaxRetries)
 	assert.Equal(t, 1*time.Second, config.InitialDelay)
@@ -49,6 +53,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -94,6 +99,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestCompleteWithError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		resp := map[string]interface{}{
@@ -111,6 +117,7 @@ func TestCompleteWithError(t *testing.T) {
 }
 
 func TestCompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -141,6 +148,7 @@ func TestCompleteStream(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewZhipuProvider("test-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -153,6 +161,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		apiKey    string
@@ -164,6 +173,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewZhipuProvider(tt.apiKey, "", "")
 			valid, errs := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -175,6 +185,7 @@ func TestValidateConfig(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping health check test in short mode")
 	}
@@ -193,6 +204,7 @@ func TestHealthCheck(t *testing.T) {
 }
 
 func TestHealthCheckWithError(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping health check test in short mode")
 	}

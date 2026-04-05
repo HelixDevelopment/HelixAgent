@@ -10,6 +10,7 @@ import (
 )
 
 func TestMCPServer_JSON(t *testing.T) {
+	t.Parallel()
 	cmd := "npx server"
 	server := MCPServer{
 		ID:        "mcp-1",
@@ -37,6 +38,7 @@ func TestMCPServer_JSON(t *testing.T) {
 }
 
 func TestLSPServer_Fields(t *testing.T) {
+	t.Parallel()
 	server := LSPServer{
 		ID:           "lsp-1",
 		Name:         "gopls",
@@ -54,6 +56,7 @@ func TestLSPServer_Fields(t *testing.T) {
 }
 
 func TestACPServer_Fields(t *testing.T) {
+	t.Parallel()
 	url := "http://localhost:8080"
 	server := ACPServer{
 		ID:      "acp-1",
@@ -70,6 +73,7 @@ func TestACPServer_Fields(t *testing.T) {
 }
 
 func TestEmbeddingConfig_APIKeyHidden(t *testing.T) {
+	t.Parallel()
 	apiKey := "secret-key"
 	config := EmbeddingConfig{
 		ID:        1,
@@ -86,6 +90,7 @@ func TestEmbeddingConfig_APIKeyHidden(t *testing.T) {
 }
 
 func TestVectorDocument_EmbeddingHidden(t *testing.T) {
+	t.Parallel()
 	doc := VectorDocument{
 		ID:                "doc-1",
 		Title:             "Test Document",
@@ -104,6 +109,7 @@ func TestVectorDocument_EmbeddingHidden(t *testing.T) {
 }
 
 func TestProtocolCache_Expiration(t *testing.T) {
+	t.Parallel()
 	cache := ProtocolCache{
 		CacheKey:  "test-key",
 		CacheData: json.RawMessage(`{"result":"cached"}`),
@@ -115,6 +121,7 @@ func TestProtocolCache_Expiration(t *testing.T) {
 }
 
 func TestProtocolMetrics_Fields(t *testing.T) {
+	t.Parallel()
 	dur := 150
 	metrics := ProtocolMetrics{
 		ID:           1,
@@ -132,6 +139,7 @@ func TestProtocolMetrics_Fields(t *testing.T) {
 }
 
 func TestProtocolTypeConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "mcp", ProtocolTypeMCP)
 	assert.Equal(t, "lsp", ProtocolTypeLSP)
 	assert.Equal(t, "acp", ProtocolTypeACP)
@@ -139,17 +147,20 @@ func TestProtocolTypeConstants(t *testing.T) {
 }
 
 func TestMetricsStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "success", MetricsStatusSuccess)
 	assert.Equal(t, "error", MetricsStatusError)
 	assert.Equal(t, "timeout", MetricsStatusTimeout)
 }
 
 func TestServerTypeConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "local", ServerTypeLocal)
 	assert.Equal(t, "remote", ServerTypeRemote)
 }
 
 func TestMCPTool_JSON(t *testing.T) {
+	t.Parallel()
 	tool := MCPTool{
 		Name:        "read_file",
 		Description: "Reads a file",
@@ -162,6 +173,7 @@ func TestMCPTool_JSON(t *testing.T) {
 }
 
 func TestLSPCapability_Fields(t *testing.T) {
+	t.Parallel()
 	cap := LSPCapability{
 		Name:     "completion",
 		Enabled:  true,
@@ -173,6 +185,7 @@ func TestLSPCapability_Fields(t *testing.T) {
 }
 
 func TestVectorSearchResult_Fields(t *testing.T) {
+	t.Parallel()
 	doc := &VectorDocument{ID: "doc-1", Title: "Test"}
 	result := VectorSearchResult{
 		Document:   doc,
@@ -187,6 +200,7 @@ func TestVectorSearchResult_Fields(t *testing.T) {
 }
 
 func TestCodeIntelligence_Fields(t *testing.T) {
+	t.Parallel()
 	ci := CodeIntelligence{
 		FilePath:    "/test.go",
 		Diagnostics: []*Diagnostic{},
@@ -199,6 +213,7 @@ func TestCodeIntelligence_Fields(t *testing.T) {
 }
 
 func TestDiagnostic_Fields(t *testing.T) {
+	t.Parallel()
 	diag := Diagnostic{
 		Range:    Range{Start: Position{Line: 10, Character: 5}, End: Position{Line: 10, Character: 15}},
 		Severity: 1,
@@ -212,6 +227,7 @@ func TestDiagnostic_Fields(t *testing.T) {
 }
 
 func TestCompletionItem_Fields(t *testing.T) {
+	t.Parallel()
 	item := CompletionItem{
 		Label:         "Println",
 		Kind:          3,
@@ -225,6 +241,7 @@ func TestCompletionItem_Fields(t *testing.T) {
 }
 
 func TestWorkspaceEdit_JSON(t *testing.T) {
+	t.Parallel()
 	edit := WorkspaceEdit{
 		Changes: map[string][]*TextEdit{
 			"file:///test.go": {
@@ -239,6 +256,7 @@ func TestWorkspaceEdit_JSON(t *testing.T) {
 }
 
 func TestSymbolInfo_WithChildren(t *testing.T) {
+	t.Parallel()
 	symbol := SymbolInfo{
 		Name:          "MyStruct",
 		Kind:          5, // struct
@@ -254,6 +272,7 @@ func TestSymbolInfo_WithChildren(t *testing.T) {
 }
 
 func TestTool_JSON(t *testing.T) {
+	t.Parallel()
 	tool := Tool{
 		Type: "function",
 		Function: ToolFunction{
@@ -276,6 +295,7 @@ func TestTool_JSON(t *testing.T) {
 }
 
 func TestToolCall_JSON(t *testing.T) {
+	t.Parallel()
 	tc := ToolCall{
 		ID:   "call_1",
 		Type: "function",

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	j := New()
 
 	assert.NotNil(t, j)
@@ -25,6 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestJetBrainsAI_Initialize(t *testing.T) {
+	t.Parallel()
 	j := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestJetBrainsAI_Initialize(t *testing.T) {
 }
 
 func TestJetBrainsAI_Execute(t *testing.T) {
+	t.Parallel()
 	j := New()
 	ctx := context.Background()
 
@@ -159,6 +162,7 @@ func TestJetBrainsAI_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := j.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -174,6 +178,7 @@ func TestJetBrainsAI_Execute(t *testing.T) {
 }
 
 func TestJetBrainsAI_IsAvailable(t *testing.T) {
+	t.Parallel()
 	j := New()
 	assert.True(t, j.IsAvailable()) // IDEType is set by default
 
@@ -182,6 +187,7 @@ func TestJetBrainsAI_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		IDEType:      "pycharm",
 		Model:        "claude-3",

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewRedisAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, nil)
 
@@ -22,6 +23,7 @@ func TestNewRedisAdapter(t *testing.T) {
 }
 
 func TestDefaultRedisAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 
 	assert.Equal(t, "localhost", config.Host)
@@ -36,6 +38,7 @@ func TestDefaultRedisAdapterConfig(t *testing.T) {
 }
 
 func TestNewRedisAdapter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := RedisAdapterConfig{}
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -45,6 +48,7 @@ func TestNewRedisAdapter_DefaultConfig(t *testing.T) {
 }
 
 func TestRedisAdapter_Health_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -54,6 +58,7 @@ func TestRedisAdapter_Health_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Get_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -63,6 +68,7 @@ func TestRedisAdapter_Get_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Set_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -72,6 +78,7 @@ func TestRedisAdapter_Set_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Delete_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -81,6 +88,7 @@ func TestRedisAdapter_Delete_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Exists_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -90,6 +98,7 @@ func TestRedisAdapter_Exists_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Keys_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -99,6 +108,7 @@ func TestRedisAdapter_Keys_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Expire_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -108,6 +118,7 @@ func TestRedisAdapter_Expire_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_TTL_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -117,6 +128,7 @@ func TestRedisAdapter_TTL_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_HSet_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -126,6 +138,7 @@ func TestRedisAdapter_HSet_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_HGet_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -135,6 +148,7 @@ func TestRedisAdapter_HGet_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_HGetAll_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -144,6 +158,7 @@ func TestRedisAdapter_HGetAll_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_LPush_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -153,6 +168,7 @@ func TestRedisAdapter_LPush_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_LRange_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -162,6 +178,7 @@ func TestRedisAdapter_LRange_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_SAdd_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -171,6 +188,7 @@ func TestRedisAdapter_SAdd_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_SMembers_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -180,6 +198,7 @@ func TestRedisAdapter_SMembers_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Incr_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -189,6 +208,7 @@ func TestRedisAdapter_Incr_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Decr_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -198,6 +218,7 @@ func TestRedisAdapter_Decr_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Info_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -207,6 +228,7 @@ func TestRedisAdapter_Info_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_DBSize_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -216,6 +238,7 @@ func TestRedisAdapter_DBSize_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -226,6 +249,7 @@ func TestRedisAdapter_Close(t *testing.T) {
 }
 
 func TestRedisAdapter_Close_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -235,6 +259,7 @@ func TestRedisAdapter_Close_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -263,6 +288,7 @@ func TestRedisAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestRedisAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -274,6 +300,7 @@ func TestRedisAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestRedisAdapter_ExecuteTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -284,6 +311,7 @@ func TestRedisAdapter_ExecuteTool_UnknownTool(t *testing.T) {
 }
 
 func TestRedisAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	config.KeyPrefix = "test:"
 	adapter := NewRedisAdapter(config, logrus.New())
@@ -300,6 +328,7 @@ func TestRedisAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestRedisAdapter_prefixKey(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -312,6 +341,7 @@ func TestRedisAdapter_prefixKey(t *testing.T) {
 }
 
 func TestRedisAdapter_MarshalJSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultRedisAdapterConfig()
 	adapter := NewRedisAdapter(config, logrus.New())
 
@@ -328,6 +358,7 @@ func TestRedisAdapter_MarshalJSON(t *testing.T) {
 // Integration tests that require a running Redis instance
 // These tests are skipped by default
 func TestRedisAdapter_Integration(t *testing.T) {
+	t.Parallel()
 	testutil.RequireRedis(t)
 
 	config := RedisAdapterConfig{

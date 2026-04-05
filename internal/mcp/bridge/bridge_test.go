@@ -10,6 +10,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	if config.Port != 9000 {
@@ -30,6 +31,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	// Test with nil config
 	b := New(nil)
 	if b == nil {
@@ -51,6 +53,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestHandleRoot(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.MCPCommand = "echo test"
 	b := New(config)
@@ -87,6 +90,7 @@ func TestHandleRoot(t *testing.T) {
 }
 
 func TestHandleMessage_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.MCPCommand = "echo test"
 	b := New(config)
@@ -102,6 +106,7 @@ func TestHandleMessage_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleMessage_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.MCPCommand = "echo test"
 	b := New(config)
@@ -117,6 +122,7 @@ func TestHandleMessage_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleHealth_NoProcess(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.MCPCommand = "echo test"
 	b := New(config)

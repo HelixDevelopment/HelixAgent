@@ -12,6 +12,7 @@ import (
 )
 
 func TestSubscriptionType_Constants(t *testing.T) {
+	t.Parallel()
 	// Verify all subscription type constants are distinct and non-empty
 	types := []SubscriptionType{
 		SubTypeFree, SubTypeFreeCredits, SubTypeFreeTier,
@@ -29,6 +30,7 @@ func TestSubscriptionType_Constants(t *testing.T) {
 }
 
 func TestSubscriptionType_IsValid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		st    SubscriptionType
@@ -46,12 +48,14 @@ func TestSubscriptionType_IsValid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.valid, tt.st.IsValid())
 		})
 	}
 }
 
 func TestSubscriptionType_IsFree(t *testing.T) {
+	t.Parallel()
 	assert.True(t, SubTypeFree.IsFree())
 	assert.True(t, SubTypeFreeCredits.IsFree())
 	assert.True(t, SubTypeFreeTier.IsFree())
@@ -61,6 +65,7 @@ func TestSubscriptionType_IsFree(t *testing.T) {
 }
 
 func TestSubscriptionType_IsPaid(t *testing.T) {
+	t.Parallel()
 	assert.False(t, SubTypeFree.IsPaid())
 	assert.False(t, SubTypeFreeCredits.IsPaid())
 	assert.False(t, SubTypeFreeTier.IsPaid())
@@ -70,6 +75,7 @@ func TestSubscriptionType_IsPaid(t *testing.T) {
 }
 
 func TestAuthMechanism_Fields(t *testing.T) {
+	t.Parallel()
 	am := AuthMechanism{
 		HeaderName:     "Authorization",
 		HeaderPrefix:   "Bearer ",
@@ -88,6 +94,7 @@ func TestAuthMechanism_Fields(t *testing.T) {
 }
 
 func TestAuthMechanism_ApplyAuth_Bearer(t *testing.T) {
+	t.Parallel()
 	am := AuthMechanism{
 		HeaderName:   "Authorization",
 		HeaderPrefix: "Bearer ",
@@ -100,6 +107,7 @@ func TestAuthMechanism_ApplyAuth_Bearer(t *testing.T) {
 }
 
 func TestAuthMechanism_ApplyAuth_XAPIKey(t *testing.T) {
+	t.Parallel()
 	am := AuthMechanism{
 		HeaderName: "x-api-key",
 		ExtraHeaders: map[string]string{
@@ -115,6 +123,7 @@ func TestAuthMechanism_ApplyAuth_XAPIKey(t *testing.T) {
 }
 
 func TestAuthMechanism_ApplyAuth_QueryParam(t *testing.T) {
+	t.Parallel()
 	am := AuthMechanism{
 		QueryParam: "key",
 	}
@@ -127,6 +136,7 @@ func TestAuthMechanism_ApplyAuth_QueryParam(t *testing.T) {
 }
 
 func TestAuthMechanism_ApplyAuth_NoAuth(t *testing.T) {
+	t.Parallel()
 	am := AuthMechanism{
 		NoAuth:         true,
 		DeviceIDHeader: "X-Device-ID",
@@ -140,6 +150,7 @@ func TestAuthMechanism_ApplyAuth_NoAuth(t *testing.T) {
 }
 
 func TestSubscriptionInfo_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	credits := 4.50
 	expires := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 
@@ -173,6 +184,7 @@ func TestSubscriptionInfo_JSONSerialization(t *testing.T) {
 }
 
 func TestRateLimitInfo_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	resetTime := now.Add(1 * time.Minute)
 
@@ -196,6 +208,7 @@ func TestRateLimitInfo_Fields(t *testing.T) {
 }
 
 func TestProviderAccessConfig_HasRateLimitHeaders(t *testing.T) {
+	t.Parallel()
 	// With rate limit headers
 	config := &ProviderAccessConfig{
 		RateLimitHeaders: &RateLimitHeaderNames{
@@ -216,6 +229,7 @@ func TestProviderAccessConfig_HasRateLimitHeaders(t *testing.T) {
 }
 
 func TestProviderAccessConfig_HasSubscriptionCheckAPI(t *testing.T) {
+	t.Parallel()
 	config := &ProviderAccessConfig{
 		SubscriptionCheckURL: "https://openrouter.ai/api/v1/auth/key",
 	}

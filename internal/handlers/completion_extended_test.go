@@ -24,6 +24,7 @@ func init() {
 
 // TestCompletionHandler_NewCompletionHandlerWithSkills tests handler creation with skills
 func TestCompletionHandler_NewCompletionHandlerWithSkills(t *testing.T) {
+	t.Parallel()
 	handler := NewCompletionHandlerWithSkills(nil, nil)
 
 	assert.NotNil(t, handler)
@@ -33,6 +34,7 @@ func TestCompletionHandler_NewCompletionHandlerWithSkills(t *testing.T) {
 
 // TestCompletionHandler_SetSkillsIntegration tests setting skills integration
 func TestCompletionHandler_SetSkillsIntegration(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 	assert.Nil(t, handler.skillsIntegration)
 
@@ -43,6 +45,7 @@ func TestCompletionHandler_SetSkillsIntegration(t *testing.T) {
 
 // TestCompletionHandler_SendCategorizedError_LLMServiceError tests categorized error handling
 func TestCompletionHandler_SendCategorizedError_LLMServiceError(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	testCases := []struct {
@@ -59,6 +62,7 @@ func TestCompletionHandler_SendCategorizedError_LLMServiceError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -77,6 +81,7 @@ func TestCompletionHandler_SendCategorizedError_LLMServiceError(t *testing.T) {
 
 // TestCompletionHandler_ConvertToAPIResponseWithSkills_NoSkills tests conversion without skills
 func TestCompletionHandler_ConvertToAPIResponseWithSkills_NoSkills(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -96,6 +101,7 @@ func TestCompletionHandler_ConvertToAPIResponseWithSkills_NoSkills(t *testing.T)
 
 // TestCompletionHandler_ConvertToAPIResponseWithSkills_EmptyUsages tests with empty skill usages
 func TestCompletionHandler_ConvertToAPIResponseWithSkills_EmptyUsages(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -118,6 +124,7 @@ func TestCompletionHandler_ConvertToAPIResponseWithSkills_EmptyUsages(t *testing
 
 // TestCompletionHandler_ConvertToChatResponseWithSkills_NoSkills tests chat response without skills
 func TestCompletionHandler_ConvertToChatResponseWithSkills_NoSkills(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -138,6 +145,7 @@ func TestCompletionHandler_ConvertToChatResponseWithSkills_NoSkills(t *testing.T
 
 // TestCompletionHandler_ConvertToChatResponseWithSkills_EmptyUsages tests with empty usages
 func TestCompletionHandler_ConvertToChatResponseWithSkills_EmptyUsages(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -160,6 +168,7 @@ func TestCompletionHandler_ConvertToChatResponseWithSkills_EmptyUsages(t *testin
 
 // TestCompletionHandler_Complete_WithRequestService_Error tests Complete with service error
 func TestCompletionHandler_Complete_WithRequestService_Error(t *testing.T) {
+	t.Parallel()
 	// Create service without ensemble (will fail)
 	service := services.NewRequestService("random", nil, nil)
 	handler := NewCompletionHandler(service)
@@ -183,6 +192,7 @@ func TestCompletionHandler_Complete_WithRequestService_Error(t *testing.T) {
 
 // TestCompletionHandler_Chat_WithRequestService_Error tests Chat with service error
 func TestCompletionHandler_Chat_WithRequestService_Error(t *testing.T) {
+	t.Parallel()
 	// Create service without ensemble (will fail)
 	service := services.NewRequestService("random", nil, nil)
 	handler := NewCompletionHandler(service)
@@ -217,6 +227,7 @@ func TestCompletionHandler_Chat_WithRequestService_Error(t *testing.T) {
 
 // TestCompletionHandler_Chat_ExtractsLastUserMessage tests user message extraction
 func TestCompletionHandler_Chat_ExtractsLastUserMessage(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	// This tests the message extraction logic indirectly
@@ -242,6 +253,7 @@ func TestCompletionHandler_Chat_ExtractsLastUserMessage(t *testing.T) {
 
 // TestCompletionHandler_Complete_VariousContentTypes tests different content types
 func TestCompletionHandler_Complete_VariousContentTypes(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	contentTypes := []string{
@@ -252,6 +264,7 @@ func TestCompletionHandler_Complete_VariousContentTypes(t *testing.T) {
 
 	for _, ct := range contentTypes {
 		t.Run(ct, func(t *testing.T) {
+				t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt": "Test",
 			}
@@ -273,6 +286,7 @@ func TestCompletionHandler_Complete_VariousContentTypes(t *testing.T) {
 
 // TestCompletionHandler_ErrorResponse_Fields tests error response field structure
 func TestCompletionHandler_ErrorResponse_Fields(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -292,6 +306,7 @@ func TestCompletionHandler_ErrorResponse_Fields(t *testing.T) {
 
 // TestCompletionHandler_Complete_LargePayload tests handling large request payload
 func TestCompletionHandler_Complete_LargePayload(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	// Create large prompt
@@ -320,6 +335,7 @@ func TestCompletionHandler_Complete_LargePayload(t *testing.T) {
 
 // TestCompletionHandler_Models_ResponseStructure tests models endpoint response structure
 func TestCompletionHandler_Models_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -352,6 +368,7 @@ func TestCompletionHandler_Models_ResponseStructure(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_EmptyEnsembleConfig tests empty ensemble
 func TestCompletionHandler_ConvertToInternalRequest_EmptyEnsembleConfig(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -373,6 +390,7 @@ func TestCompletionHandler_ConvertToInternalRequest_EmptyEnsembleConfig(t *testi
 
 // TestCompletionHandler_ConvertToInternalRequest_NilStopSequences tests nil stop sequences
 func TestCompletionHandler_ConvertToInternalRequest_NilStopSequences(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -392,6 +410,7 @@ func TestCompletionHandler_ConvertToInternalRequest_NilStopSequences(t *testing.
 
 // TestCompletionHandler_ConvertToInternalRequest_ZeroValues tests zero value defaults
 func TestCompletionHandler_ConvertToInternalRequest_ZeroValues(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -414,6 +433,7 @@ func TestCompletionHandler_ConvertToInternalRequest_ZeroValues(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_ValidRequest tests stream with valid request
 func TestCompletionHandler_CompleteStream_ValidRequest(t *testing.T) {
+	t.Parallel()
 	service := services.NewRequestService("random", nil, nil)
 	handler := NewCompletionHandler(service)
 
@@ -436,6 +456,7 @@ func TestCompletionHandler_CompleteStream_ValidRequest(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_ValidRequest tests chat stream with valid request
 func TestCompletionHandler_ChatStream_ValidRequest(t *testing.T) {
+	t.Parallel()
 	service := services.NewRequestService("random", nil, nil)
 	handler := NewCompletionHandler(service)
 
@@ -461,6 +482,7 @@ func TestCompletionHandler_ChatStream_ValidRequest(t *testing.T) {
 
 // TestCompletionHandler_ProviderSpecific tests provider specific params
 func TestCompletionHandler_ProviderSpecific(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -479,6 +501,7 @@ func TestCompletionHandler_ProviderSpecific(t *testing.T) {
 
 // TestCompletionHandler_Memory tests memory field
 func TestCompletionHandler_Memory(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -498,6 +521,7 @@ func TestCompletionHandler_Memory(t *testing.T) {
 
 // TestCompletionHandler_RequestType tests request type field
 func TestCompletionHandler_RequestType(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -515,6 +539,7 @@ func TestCompletionHandler_RequestType(t *testing.T) {
 
 // TestCompletionHandler_CreatedAtAndStatus tests created at and status
 func TestCompletionHandler_CreatedAtAndStatus(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	beforeTime := time.Now()
@@ -537,6 +562,7 @@ func TestCompletionHandler_CreatedAtAndStatus(t *testing.T) {
 
 // TestCompletionHandler_IDGeneration tests ID generation
 func TestCompletionHandler_IDGeneration(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -558,6 +584,7 @@ func TestCompletionHandler_IDGeneration(t *testing.T) {
 
 // TestCompletionHandler_SessionIDGeneration tests session ID generation
 func TestCompletionHandler_SessionIDGeneration(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{

@@ -8,6 +8,7 @@ import (
 )
 
 func TestRegexConstraint_Valid(t *testing.T) {
+	t.Parallel()
 	constraint, err := NewRegexConstraint(`^[a-zA-Z]+$`)
 	require.NoError(t, err)
 
@@ -18,6 +19,7 @@ func TestRegexConstraint_Valid(t *testing.T) {
 }
 
 func TestRegexConstraint_Inverted(t *testing.T) {
+	t.Parallel()
 	constraint, err := NewRegexConstraint(`\d+`)
 	require.NoError(t, err)
 	constraint.Invert = true
@@ -27,11 +29,13 @@ func TestRegexConstraint_Inverted(t *testing.T) {
 }
 
 func TestRegexConstraint_InvalidPattern(t *testing.T) {
+	t.Parallel()
 	_, err := NewRegexConstraint(`[invalid`)
 	assert.Error(t, err)
 }
 
 func TestRegexConstraint_Description(t *testing.T) {
+	t.Parallel()
 	constraint, _ := NewRegexConstraint(`^\d+$`)
 	assert.Contains(t, constraint.Description(), "pattern")
 
@@ -40,6 +44,7 @@ func TestRegexConstraint_Description(t *testing.T) {
 }
 
 func TestChoiceConstraint(t *testing.T) {
+	t.Parallel()
 	constraint := NewChoiceConstraint([]string{"yes", "no", "maybe"})
 
 	assert.Equal(t, ConstraintTypeChoice, constraint.Type())
@@ -50,6 +55,7 @@ func TestChoiceConstraint(t *testing.T) {
 }
 
 func TestChoiceConstraint_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	constraint := NewChoiceConstraint([]string{"Yes", "No"})
 	constraint.CaseSensitive = false
 
@@ -59,6 +65,7 @@ func TestChoiceConstraint_CaseInsensitive(t *testing.T) {
 }
 
 func TestChoiceConstraint_Multiple(t *testing.T) {
+	t.Parallel()
 	constraint := NewChoiceConstraint([]string{"red", "green", "blue"})
 	constraint.AllowMultiple = true
 	constraint.Separator = ","
@@ -69,6 +76,7 @@ func TestChoiceConstraint_Multiple(t *testing.T) {
 }
 
 func TestLengthConstraint_Characters(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(5, 20, LengthUnitCharacters)
 
 	assert.Equal(t, ConstraintTypeLength, constraint.Type())
@@ -78,6 +86,7 @@ func TestLengthConstraint_Characters(t *testing.T) {
 }
 
 func TestLengthConstraint_Words(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(2, 5, LengthUnitWords)
 
 	assert.NoError(t, constraint.Validate("Hello World"))
@@ -87,6 +96,7 @@ func TestLengthConstraint_Words(t *testing.T) {
 }
 
 func TestLengthConstraint_Sentences(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(1, 3, LengthUnitSentences)
 
 	assert.NoError(t, constraint.Validate("Hello. World!"))
@@ -94,6 +104,7 @@ func TestLengthConstraint_Sentences(t *testing.T) {
 }
 
 func TestLengthConstraint_NoMin(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(0, 10, LengthUnitWords)
 
 	assert.NoError(t, constraint.Validate("Hello"))
@@ -101,6 +112,7 @@ func TestLengthConstraint_NoMin(t *testing.T) {
 }
 
 func TestLengthConstraint_NoMax(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(2, 0, LengthUnitWords)
 
 	assert.NoError(t, constraint.Validate("Hello World"))
@@ -108,6 +120,7 @@ func TestLengthConstraint_NoMax(t *testing.T) {
 }
 
 func TestRangeConstraint(t *testing.T) {
+	t.Parallel()
 	constraint := NewRangeConstraint(0, 100)
 
 	assert.Equal(t, ConstraintTypeRange, constraint.Type())
@@ -120,6 +133,7 @@ func TestRangeConstraint(t *testing.T) {
 }
 
 func TestRangeConstraint_IntegerOnly(t *testing.T) {
+	t.Parallel()
 	constraint := NewRangeConstraint(0, 100)
 	constraint.IntegerOnly = true
 
@@ -128,6 +142,7 @@ func TestRangeConstraint_IntegerOnly(t *testing.T) {
 }
 
 func TestFormatConstraint_JSON(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatJSON)
 
 	assert.Equal(t, ConstraintTypeFormat, constraint.Type())
@@ -138,6 +153,7 @@ func TestFormatConstraint_JSON(t *testing.T) {
 }
 
 func TestFormatConstraint_Email(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatEmail)
 
 	assert.NoError(t, constraint.Validate("test@example.com"))
@@ -147,6 +163,7 @@ func TestFormatConstraint_Email(t *testing.T) {
 }
 
 func TestFormatConstraint_URL(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatURL)
 
 	assert.NoError(t, constraint.Validate("https://example.com"))
@@ -156,6 +173,7 @@ func TestFormatConstraint_URL(t *testing.T) {
 }
 
 func TestFormatConstraint_UUID(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatUUID)
 
 	assert.NoError(t, constraint.Validate("550e8400-e29b-41d4-a716-446655440000"))
@@ -165,6 +183,7 @@ func TestFormatConstraint_UUID(t *testing.T) {
 }
 
 func TestFormatConstraint_IPv4(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatIPv4)
 
 	assert.NoError(t, constraint.Validate("192.168.1.1"))
@@ -173,6 +192,7 @@ func TestFormatConstraint_IPv4(t *testing.T) {
 }
 
 func TestFormatConstraint_PhoneNumber(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatPhoneNumber)
 
 	assert.NoError(t, constraint.Validate("555-123-4567"))
@@ -181,6 +201,7 @@ func TestFormatConstraint_PhoneNumber(t *testing.T) {
 }
 
 func TestSchemaConstraint(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -200,6 +221,7 @@ func TestSchemaConstraint(t *testing.T) {
 }
 
 func TestSchemaConstraint_TypeValidation(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -229,6 +251,7 @@ func TestSchemaConstraint_TypeValidation(t *testing.T) {
 }
 
 func TestCompositeConstraint_All(t *testing.T) {
+	t.Parallel()
 	lengthConstraint := NewLengthConstraint(5, 50, LengthUnitCharacters)
 	choiceConstraint := NewChoiceConstraint([]string{"hello", "world", "hello world"})
 
@@ -241,6 +264,7 @@ func TestCompositeConstraint_All(t *testing.T) {
 }
 
 func TestCompositeConstraint_Any(t *testing.T) {
+	t.Parallel()
 	emailConstraint := NewFormatConstraint(FormatEmail)
 	urlConstraint := NewFormatConstraint(FormatURL)
 
@@ -252,6 +276,7 @@ func TestCompositeConstraint_Any(t *testing.T) {
 }
 
 func TestGrammarConstraint(t *testing.T) {
+	t.Parallel()
 	grammar := `
 		start: greeting
 		greeting: "hello" | "hi"
@@ -265,6 +290,7 @@ func TestGrammarConstraint(t *testing.T) {
 }
 
 func TestConstraintBuilder(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 
 	constraint := builder.
@@ -279,6 +305,7 @@ func TestConstraintBuilder(t *testing.T) {
 }
 
 func TestConstraintBuilder_BuildAny(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 
 	constraint := builder.
@@ -291,6 +318,7 @@ func TestConstraintBuilder_BuildAny(t *testing.T) {
 }
 
 func TestConstraintBuilder_SingleConstraint(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 
 	constraint := builder.
@@ -307,53 +335,63 @@ func TestConstraintBuilder_SingleConstraint(t *testing.T) {
 // ============================================================================
 
 func TestGrammarConstraint_JSONGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("json schema validation")
 	assert.NoError(t, constraint.Validate(`{"key": "value"}`))
 	assert.NoError(t, constraint.Validate(`[1, 2, 3]`))
 }
 
 func TestGrammarConstraint_JSONGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("json output format")
 	assert.Error(t, constraint.Validate("not json at all"))
 	assert.Error(t, constraint.Validate("{bad json}"))
 }
 
 func TestGrammarConstraint_ListGrammar_JSONArray(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("list of items")
 	assert.NoError(t, constraint.Validate(`["a", "b", "c"]`))
 }
 
 func TestGrammarConstraint_ListGrammar_BulletList(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("list format")
 	assert.NoError(t, constraint.Validate("- item one\n- item two\n- item three"))
 }
 
 func TestGrammarConstraint_ListGrammar_NumberedList(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("array of results")
 	assert.NoError(t, constraint.Validate("1. First item\n2. Second item"))
 }
 
 func TestGrammarConstraint_ListGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("list format")
 	assert.Error(t, constraint.Validate("just plain text without list markers"))
 }
 
 func TestGrammarConstraint_KeyValueGrammar_JSONObject(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("key value pairs")
 	assert.NoError(t, constraint.Validate(`{"name": "Alice", "age": 30}`))
 }
 
 func TestGrammarConstraint_KeyValueGrammar_ColonFormat(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("key: value grammar")
 	assert.NoError(t, constraint.Validate("name: Alice\nage: 30"))
 }
 
 func TestGrammarConstraint_KeyValueGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("key value format")
 	assert.Error(t, constraint.Validate("no pairs here"))
 }
 
 func TestGrammarConstraint_NumberGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("number format")
 	assert.NoError(t, constraint.Validate("42"))
 	assert.NoError(t, constraint.Validate("3.14"))
@@ -361,17 +399,20 @@ func TestGrammarConstraint_NumberGrammar_Valid(t *testing.T) {
 }
 
 func TestGrammarConstraint_NumberGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("number grammar")
 	assert.Error(t, constraint.Validate("not a number"))
 	assert.Error(t, constraint.Validate("abc123"))
 }
 
 func TestGrammarConstraint_IntegerGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("integer output")
 	assert.NoError(t, constraint.Validate("100"))
 }
 
 func TestGrammarConstraint_BooleanGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("boolean grammar")
 	assert.NoError(t, constraint.Validate("true"))
 	assert.NoError(t, constraint.Validate("false"))
@@ -380,6 +421,7 @@ func TestGrammarConstraint_BooleanGrammar_Valid(t *testing.T) {
 }
 
 func TestGrammarConstraint_BooleanGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("boolean format")
 	// valid bools: true/false/yes/no/1/0 — use strings not in that list
 	assert.Error(t, constraint.Validate("maybe"))
@@ -388,24 +430,28 @@ func TestGrammarConstraint_BooleanGrammar_Invalid(t *testing.T) {
 }
 
 func TestGrammarConstraint_BoolGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("bool type")
 	assert.NoError(t, constraint.Validate("true"))
 	assert.NoError(t, constraint.Validate("false"))
 }
 
 func TestGrammarConstraint_EmailGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("email address grammar")
 	assert.NoError(t, constraint.Validate("user@example.com"))
 	assert.NoError(t, constraint.Validate("test.name+tag@domain.co.uk"))
 }
 
 func TestGrammarConstraint_EmailGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("email format")
 	assert.Error(t, constraint.Validate("not-an-email"))
 	assert.Error(t, constraint.Validate("@nodomain.com"))
 }
 
 func TestGrammarConstraint_URLGrammar_Valid(t *testing.T) {
+	t.Parallel()
 	// URL pattern: ^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/\S*)?$
 	// Requires a TLD — localhost without TLD does not match
 	constraint := NewGrammarConstraint("url format grammar")
@@ -414,18 +460,21 @@ func TestGrammarConstraint_URLGrammar_Valid(t *testing.T) {
 }
 
 func TestGrammarConstraint_URLGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("url grammar")
 	assert.Error(t, constraint.Validate("not a url"))
 	assert.Error(t, constraint.Validate("ftp://invalid-scheme"))
 }
 
 func TestGrammarConstraint_DateGrammar_YYYYMMDD(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("date format grammar")
 	assert.NoError(t, constraint.Validate("2024-01-15"))
 	assert.NoError(t, constraint.Validate("2023-12-31"))
 }
 
 func TestGrammarConstraint_DateGrammar_Invalid(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("date grammar")
 	// validateDate default fallback accepts 6-50 char strings,
 	// so use a very short string that falls below the 6-char minimum
@@ -438,6 +487,7 @@ func TestGrammarConstraint_DateGrammar_Invalid(t *testing.T) {
 // ============================================================================
 
 func TestConstraintBuilder_WithRegex(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithRegex(`^\d{3}-\d{4}$`).
@@ -449,6 +499,7 @@ func TestConstraintBuilder_WithRegex(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithRegex_InvalidPattern(t *testing.T) {
+	t.Parallel()
 	// Invalid regex should be silently ignored by WithRegex
 	builder := NewConstraintBuilder()
 	builder.WithRegex(`[invalid`)
@@ -457,6 +508,7 @@ func TestConstraintBuilder_WithRegex_InvalidPattern(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithChoice(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithChoice("alpha", "beta", "gamma").
@@ -469,6 +521,7 @@ func TestConstraintBuilder_WithChoice(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithRange(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithRange(1.0, 10.0).
@@ -483,6 +536,7 @@ func TestConstraintBuilder_WithRange(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithSchema(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -505,6 +559,7 @@ func TestConstraintBuilder_WithSchema(t *testing.T) {
 }
 
 func TestConstraintBuilder_MultipleTypes(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithRegex(`^\d+$`).
@@ -518,6 +573,7 @@ func TestConstraintBuilder_MultipleTypes(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithChoice_BuildAny(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithChoice("yes", "no").
@@ -530,6 +586,7 @@ func TestConstraintBuilder_WithChoice_BuildAny(t *testing.T) {
 }
 
 func TestConstraintBuilder_Empty_BuildAll(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	// Building with no constraints — should return nil composite
 	constraint := builder.BuildAll()
@@ -540,6 +597,7 @@ func TestConstraintBuilder_Empty_BuildAll(t *testing.T) {
 }
 
 func TestConstraintBuilder_Empty_BuildAny(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.BuildAny()
 	if constraint != nil {
@@ -548,6 +606,7 @@ func TestConstraintBuilder_Empty_BuildAny(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithSchema_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -562,6 +621,7 @@ func TestConstraintBuilder_WithSchema_InvalidJSON(t *testing.T) {
 }
 
 func TestConstraintBuilder_WithRange_FloatValues(t *testing.T) {
+	t.Parallel()
 	builder := NewConstraintBuilder()
 	constraint := builder.
 		WithRange(0.5, 9.5).
@@ -574,6 +634,7 @@ func TestConstraintBuilder_WithRange_FloatValues(t *testing.T) {
 }
 
 func TestConstraintBuilder_Chain_AllTypes(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{"type": "object"}
 	builder := NewConstraintBuilder()
 	result := builder.
@@ -595,6 +656,7 @@ func TestConstraintBuilder_Chain_AllTypes(t *testing.T) {
 // ============================================================================
 
 func TestSchemaConstraint_Hint(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
@@ -608,6 +670,7 @@ func TestSchemaConstraint_Hint(t *testing.T) {
 }
 
 func TestSchemaConstraint_Description(t *testing.T) {
+	t.Parallel()
 	schema := map[string]interface{}{"type": "string"}
 	constraint := NewSchemaConstraint(schema)
 	desc := constraint.Description()
@@ -615,6 +678,7 @@ func TestSchemaConstraint_Description(t *testing.T) {
 }
 
 func TestCompositeConstraint_Hint(t *testing.T) {
+	t.Parallel()
 	c1 := NewLengthConstraint(1, 100, LengthUnitCharacters)
 	c2 := NewFormatConstraint(FormatEmail)
 	composite := NewCompositeConstraint(CompositeModeAll, c1, c2)
@@ -624,6 +688,7 @@ func TestCompositeConstraint_Hint(t *testing.T) {
 }
 
 func TestCompositeConstraint_Hint_Any(t *testing.T) {
+	t.Parallel()
 	c1 := NewFormatConstraint(FormatEmail)
 	c2 := NewFormatConstraint(FormatURL)
 	composite := NewCompositeConstraint(CompositeModeAny, c1, c2)
@@ -632,6 +697,7 @@ func TestCompositeConstraint_Hint_Any(t *testing.T) {
 }
 
 func TestGrammarConstraint_Hint(t *testing.T) {
+	t.Parallel()
 	grammar := "greeting = hello | hi"
 	constraint := NewGrammarConstraint(grammar)
 	hint := constraint.Hint()
@@ -645,6 +711,7 @@ func TestGrammarConstraint_Hint(t *testing.T) {
 // ============================================================================
 
 func TestGrammarConstraint_EBNF_SingleLineRules(t *testing.T) {
+	t.Parallel()
 	// Single-line grammar that parseGrammarRules can parse
 	constraint := NewGrammarConstraint("greeting = hello | hi")
 	// validateEBNF → parseGrammarRules finds rules → validateAgainstRule
@@ -653,6 +720,7 @@ func TestGrammarConstraint_EBNF_SingleLineRules(t *testing.T) {
 }
 
 func TestGrammarConstraint_EBNF_NoMatchingRule(t *testing.T) {
+	t.Parallel()
 	// Grammar with rules but output doesn't match
 	constraint := NewGrammarConstraint("status = ok | error")
 	assert.NoError(t, constraint.Validate("ok"))
@@ -660,6 +728,7 @@ func TestGrammarConstraint_EBNF_NoMatchingRule(t *testing.T) {
 }
 
 func TestGrammarConstraint_EBNF_WithStartSymbol(t *testing.T) {
+	t.Parallel()
 	// Grammar using 'start' as rule name — will be found as startRule directly
 	constraint := &GrammarConstraint{
 		Grammar:     "start = yes | no",
@@ -670,6 +739,7 @@ func TestGrammarConstraint_EBNF_WithStartSymbol(t *testing.T) {
 }
 
 func TestGrammarConstraint_EBNF_MultipleRules(t *testing.T) {
+	t.Parallel()
 	// Grammar with multiple rules using = separator
 	constraint := NewGrammarConstraint("root = A | B; A = hello; B = world")
 	// parseGrammarRules parses semicolon-terminated rules
@@ -683,6 +753,7 @@ func TestGrammarConstraint_EBNF_MultipleRules(t *testing.T) {
 // ============================================================================
 
 func TestGrammarConstraint_BasicStructure_UnbalancedClose(t *testing.T) {
+	t.Parallel()
 	// No rules in grammar → validateBasicStructure is called
 	// Unbalanced close bracket: ) without preceding (
 	constraint := NewGrammarConstraint("simple text grammar") // no = or :: patterns
@@ -690,12 +761,14 @@ func TestGrammarConstraint_BasicStructure_UnbalancedClose(t *testing.T) {
 }
 
 func TestGrammarConstraint_BasicStructure_UnclosedOpen(t *testing.T) {
+	t.Parallel()
 	// Unclosed open bracket: ( without )
 	constraint := NewGrammarConstraint("simple text grammar")
 	assert.Error(t, constraint.Validate("(unclosed"))
 }
 
 func TestGrammarConstraint_BasicStructure_BalancedBrackets(t *testing.T) {
+	t.Parallel()
 	// Balanced brackets — should pass
 	constraint := NewGrammarConstraint("simple text grammar")
 	assert.NoError(t, constraint.Validate("(balanced)"))
@@ -704,6 +777,7 @@ func TestGrammarConstraint_BasicStructure_BalancedBrackets(t *testing.T) {
 }
 
 func TestGrammarConstraint_BasicStructure_Nested(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("simple text grammar")
 	assert.NoError(t, constraint.Validate("(a [b {c}])"))
 	assert.Error(t, constraint.Validate("(a [b {c]})")) // wrong close order
@@ -714,6 +788,7 @@ func TestGrammarConstraint_BasicStructure_Nested(t *testing.T) {
 // ============================================================================
 
 func TestMustRegexConstraint_ValidPattern(t *testing.T) {
+	t.Parallel()
 	c := mustRegexConstraint(`^\d+$`)
 	require.NotNil(t, c)
 	assert.NoError(t, c.Validate("123"))
@@ -721,6 +796,7 @@ func TestMustRegexConstraint_ValidPattern(t *testing.T) {
 }
 
 func TestMustRegexConstraint_InvalidPattern_Fallback(t *testing.T) {
+	t.Parallel()
 	// Invalid regex pattern → should return fallback .* constraint (not nil, not panic)
 	c := mustRegexConstraint(`[invalid`)
 	// Should return a fallback that accepts anything
@@ -734,24 +810,28 @@ func TestMustRegexConstraint_InvalidPattern_Fallback(t *testing.T) {
 // ============================================================================
 
 func TestRangeConstraint_Hint(t *testing.T) {
+	t.Parallel()
 	constraint := NewRangeConstraint(0, 100)
 	hint := constraint.Hint()
 	assert.Contains(t, hint, "number")
 }
 
 func TestFormatConstraint_Hint(t *testing.T) {
+	t.Parallel()
 	constraint := NewFormatConstraint(FormatJSON)
 	hint := constraint.Hint()
 	assert.Contains(t, hint, "json")
 }
 
 func TestGrammarConstraint_Description(t *testing.T) {
+	t.Parallel()
 	constraint := NewGrammarConstraint("greeting = hello")
 	desc := constraint.Description()
 	assert.NotEmpty(t, desc)
 }
 
 func TestConstraint_Hints(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		constraint Constraint
@@ -786,6 +866,7 @@ func TestConstraint_Hints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			hint := tt.constraint.Hint()
 			assert.Contains(t, hint, tt.contains)
 		})
@@ -793,6 +874,7 @@ func TestConstraint_Hints(t *testing.T) {
 }
 
 func TestConstraint_Descriptions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		constraint Constraint
@@ -808,6 +890,7 @@ func TestConstraint_Descriptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			desc := tt.constraint.Description()
 			assert.NotEmpty(t, desc)
 		})
@@ -815,6 +898,7 @@ func TestConstraint_Descriptions(t *testing.T) {
 }
 
 func TestLengthConstraint_MinOnly(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(5, 0, LengthUnitWords)
 
 	desc := constraint.Description()
@@ -826,6 +910,7 @@ func TestLengthConstraint_MinOnly(t *testing.T) {
 }
 
 func TestLengthConstraint_MaxOnly(t *testing.T) {
+	t.Parallel()
 	constraint := NewLengthConstraint(0, 10, LengthUnitWords)
 
 	desc := constraint.Description()
@@ -837,6 +922,7 @@ func TestLengthConstraint_MaxOnly(t *testing.T) {
 }
 
 func TestRangeConstraint_IntegerHint(t *testing.T) {
+	t.Parallel()
 	constraint := NewRangeConstraint(0, 100)
 	constraint.IntegerOnly = true
 
@@ -848,6 +934,7 @@ func TestRangeConstraint_IntegerHint(t *testing.T) {
 }
 
 func TestCompositeConstraint_Description(t *testing.T) {
+	t.Parallel()
 	c1 := NewLengthConstraint(5, 10, LengthUnitWords)
 	c2 := NewFormatConstraint(FormatJSON)
 

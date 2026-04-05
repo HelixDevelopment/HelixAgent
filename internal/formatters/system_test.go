@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewSystem(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -34,6 +35,7 @@ func TestNewSystem(t *testing.T) {
 }
 
 func TestNewSystem_WithCache(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -52,6 +54,7 @@ func TestNewSystem_WithCache(t *testing.T) {
 }
 
 func TestNewSystem_WithAllFeatures(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -66,6 +69,7 @@ func TestNewSystem_WithAllFeatures(t *testing.T) {
 }
 
 func TestSystem_Shutdown(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 

@@ -14,6 +14,7 @@ import (
 // =============================================================================
 
 func TestNewBenchmarkBridge(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	require.NotNil(t, bridge)
 	assert.NotNil(t, bridge.evaluators)
@@ -50,6 +51,7 @@ func (m *mockEvaluator) Evaluate(
 }
 
 func TestBenchmarkBridge_RegisterEvaluator(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	eval := &mockEvaluator{score: 0.95}
@@ -64,6 +66,7 @@ func TestBenchmarkBridge_RegisterEvaluator(t *testing.T) {
 }
 
 func TestBenchmarkBridge_RegisterEvaluator_Overwrite(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	eval1 := &mockEvaluator{score: 0.5}
@@ -79,6 +82,7 @@ func TestBenchmarkBridge_RegisterEvaluator_Overwrite(t *testing.T) {
 }
 
 func TestBenchmarkBridge_EvaluateDebateResult_CustomEvaluator(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	ctx := context.Background()
 
@@ -110,6 +114,7 @@ func BinarySearch(arr []int, target int) int {
 }
 
 func TestBinarySearch(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 2, BinarySearch([]int{1, 2, 3, 4, 5}, 3))
 }
 `,
@@ -144,6 +149,7 @@ func TestBinarySearch(t *testing.T) {
 }
 
 func TestBenchmarkBridge_EvaluateDebateResult_CustomEvaluatorRegistered(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	ctx := context.Background()
 
@@ -168,6 +174,7 @@ func TestBenchmarkBridge_EvaluateDebateResult_CustomEvaluatorRegistered(t *testi
 }
 
 func TestBenchmarkBridge_EvaluateDebateResult_FallbackToCustom(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	ctx := context.Background()
 
@@ -189,6 +196,7 @@ func TestBenchmarkBridge_EvaluateDebateResult_FallbackToCustom(t *testing.T) {
 }
 
 func TestBenchmarkBridge_EvaluateDebateResult_NilResult(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	ctx := context.Background()
 
@@ -199,6 +207,7 @@ func TestBenchmarkBridge_EvaluateDebateResult_NilResult(t *testing.T) {
 }
 
 func TestBenchmarkBridge_EvaluateDebateResult_EvaluatorError(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	ctx := context.Background()
 
@@ -223,6 +232,7 @@ func TestBenchmarkBridge_EvaluateDebateResult_EvaluatorError(t *testing.T) {
 // =============================================================================
 
 func TestBenchmarkBridge_CalculateCustomMetrics_GoCode(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	goCode := `package main
@@ -243,6 +253,7 @@ func Greet(name string) (string, error) {
 }
 
 func TestGreet(t *testing.T) {
+	t.Parallel()
 	result, err := Greet("World")
 	assert.NoError(t, err)
 	assert.Equal(t, "Hello, World!", result)
@@ -272,6 +283,7 @@ func TestGreet(t *testing.T) {
 }
 
 func TestBenchmarkBridge_CalculateCustomMetrics_PythonCode(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	pythonCode := `# Module for greeting utilities
@@ -300,6 +312,7 @@ def test_greet():
 }
 
 func TestBenchmarkBridge_CalculateCustomMetrics_EmptyCode(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	metrics, err := bridge.CalculateCustomMetrics("", "go")
@@ -314,6 +327,7 @@ func TestBenchmarkBridge_CalculateCustomMetrics_EmptyCode(t *testing.T) {
 }
 
 func TestBenchmarkBridge_CalculateCustomMetrics_SecurityIssues(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 
 	insecureCode := `package main
@@ -340,6 +354,7 @@ func query(userInput string) {
 // =============================================================================
 
 func TestDebateBenchmarkSuite_AddProblem(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -359,6 +374,7 @@ func TestDebateBenchmarkSuite_AddProblem(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_AddProblem_Multiple(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -377,6 +393,7 @@ func TestDebateBenchmarkSuite_AddProblem_Multiple(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_GetProblems_ReturnsCopy(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -393,6 +410,7 @@ func TestDebateBenchmarkSuite_GetProblems_ReturnsCopy(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_Run(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -452,6 +470,7 @@ func validate() error {
 }
 
 func TestDebateBenchmarkSuite_Run_EmptyProblems(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -468,6 +487,7 @@ func TestDebateBenchmarkSuite_Run_EmptyProblems(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_Run_SolveError(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -490,6 +510,7 @@ func TestDebateBenchmarkSuite_Run_SolveError(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_Run_NilResultSkipped(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -523,6 +544,7 @@ func TestDebateBenchmarkSuite_Run_NilResultSkipped(t *testing.T) {
 }
 
 func TestDebateBenchmarkSuite_Run_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	bridge := NewBenchmarkBridge()
 	suite := NewDebateBenchmarkSuite(bridge)
 
@@ -550,6 +572,7 @@ func TestDebateBenchmarkSuite_Run_ContextCancelled(t *testing.T) {
 // =============================================================================
 
 func TestClampScore(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    float64
 		expected float64
@@ -565,6 +588,7 @@ func TestClampScore(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("clamp(%f)", tc.input), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, clampScore(tc.input))
 		})
 	}

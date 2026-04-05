@@ -8,12 +8,14 @@ import (
 )
 
 func TestIsHelixMemoryEnabled(t *testing.T) {
+	t.Parallel()
 	// Value depends on build tag; just verify it returns a bool
 	enabled := adapter.IsHelixMemoryEnabled()
 	assert.IsType(t, true, enabled)
 }
 
 func TestMemoryBackendName(t *testing.T) {
+	t.Parallel()
 	name := adapter.MemoryBackendName()
 	assert.NotEmpty(t, name)
 	// Must be one of the known backends
@@ -21,6 +23,7 @@ func TestMemoryBackendName(t *testing.T) {
 }
 
 func TestNewOptimalStoreAdapter_Default(t *testing.T) {
+	t.Parallel()
 	// Default build (no tags) should use HelixMemory
 	if !adapter.IsHelixMemoryEnabled() {
 		t.Skip("Skipping default test when nohelixmemory tag is active")
@@ -32,6 +35,7 @@ func TestNewOptimalStoreAdapter_Default(t *testing.T) {
 }
 
 func TestNewOptimalStoreAdapter_OptOut(t *testing.T) {
+	t.Parallel()
 	if adapter.IsHelixMemoryEnabled() {
 		t.Skip("Skipping opt-out test when HelixMemory is active (default)")
 	}
@@ -43,6 +47,7 @@ func TestNewOptimalStoreAdapter_OptOut(t *testing.T) {
 }
 
 func TestHelixMemoryIsDefault(t *testing.T) {
+	t.Parallel()
 	// This test documents the architectural decision: HelixMemory IS the default.
 	// Without any build tags, HelixMemory's unified cognitive engine is active.
 	// To opt out, build with: go build -tags nohelixmemory

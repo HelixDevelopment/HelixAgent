@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewExtendedProvidersAdapter(t *testing.T) {
+	t.Parallel()
 	t.Run("creates adapter with default config", func(t *testing.T) {
 		adapter := NewExtendedProvidersAdapter(nil)
 		assert.NotNil(t, adapter)
@@ -22,6 +23,7 @@ func TestNewExtendedProvidersAdapter(t *testing.T) {
 	})
 
 	t.Run("creates adapter with custom config", func(t *testing.T) {
+			t.Parallel()
 		config := &ExtendedProviderConfig{
 			VerificationTimeout:        60 * time.Second,
 			MaxConcurrentVerifications: 10,
@@ -34,6 +36,7 @@ func TestNewExtendedProvidersAdapter(t *testing.T) {
 }
 
 func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
+	t.Parallel()
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,6 +59,7 @@ func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
 	adapter := NewExtendedProvidersAdapter(DefaultExtendedProviderConfig())
 
 	t.Run("verifies provider successfully", func(t *testing.T) {
+			t.Parallel()
 		req := &ProviderVerificationRequest{
 			ProviderID:   "test-provider",
 			ProviderName: "Test Provider",
@@ -79,6 +83,7 @@ func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
 	})
 
 	t.Run("handles API error gracefully", func(t *testing.T) {
+			t.Parallel()
 		errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(`{"error": "internal server error"}`))
@@ -108,15 +113,18 @@ func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
 }
 
 func TestExtendedProvidersAdapter_CalculateProviderScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewExtendedProvidersAdapter(nil)
 
 	t.Run("returns zero for no models", func(t *testing.T) {
+			t.Parallel()
 		req := &ProviderVerificationRequest{Tier: 2}
 		score := adapter.calculateProviderScore(nil, req)
 		assert.Equal(t, 0.0, score)
 	})
 
 	t.Run("calculates score based on models", func(t *testing.T) {
+			t.Parallel()
 		models := []verifier.UnifiedModel{
 			{ID: "model-1", Score: 8.0},
 			{ID: "model-2", Score: 9.0},
@@ -127,6 +135,7 @@ func TestExtendedProvidersAdapter_CalculateProviderScore(t *testing.T) {
 	})
 
 	t.Run("applies tier bonus", func(t *testing.T) {
+			t.Parallel()
 		models := []verifier.UnifiedModel{
 			{ID: "model-1", Score: 7.0},
 		}
@@ -142,9 +151,11 @@ func TestExtendedProvidersAdapter_CalculateProviderScore(t *testing.T) {
 }
 
 func TestExtendedProvidersAdapter_CalculateModelScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewExtendedProvidersAdapter(nil)
 
 	t.Run("rewards low latency", func(t *testing.T) {
+			t.Parallel()
 		req := &ProviderVerificationRequest{Tier: 2}
 		testResults := map[string]bool{"basic_completion": true}
 
@@ -155,6 +166,7 @@ func TestExtendedProvidersAdapter_CalculateModelScore(t *testing.T) {
 	})
 
 	t.Run("rewards passing tests", func(t *testing.T) {
+			t.Parallel()
 		req := &ProviderVerificationRequest{Tier: 2}
 
 		moreTests := map[string]bool{
@@ -174,31 +186,37 @@ func TestExtendedProvidersAdapter_CalculateModelScore(t *testing.T) {
 }
 
 func TestExtendedProvidersAdapter_InferCapabilities(t *testing.T) {
+	t.Parallel()
 	adapter := NewExtendedProvidersAdapter(nil)
 
 	t.Run("infers vision capability", func(t *testing.T) {
+			t.Parallel()
 		caps := adapter.inferCapabilities("grok", "grok-2-vision")
 		assert.Contains(t, caps, "vision")
 	})
 
 	t.Run("infers function calling", func(t *testing.T) {
+			t.Parallel()
 		caps := adapter.inferCapabilities("together", "some-model")
 		assert.Contains(t, caps, "function_calling")
 		assert.Contains(t, caps, "tools")
 	})
 
 	t.Run("infers web search for perplexity", func(t *testing.T) {
+			t.Parallel()
 		caps := adapter.inferCapabilities("perplexity", "sonar-online")
 		assert.Contains(t, caps, "web_search")
 		assert.Contains(t, caps, "realtime_info")
 	})
 
 	t.Run("infers code generation", func(t *testing.T) {
+			t.Parallel()
 		caps := adapter.inferCapabilities("any", "codestral-latest")
 		assert.Contains(t, caps, "code_generation")
 	})
 
 	t.Run("always includes base capabilities", func(t *testing.T) {
+			t.Parallel()
 		caps := adapter.inferCapabilities("any", "any-model")
 		assert.Contains(t, caps, "text_completion")
 		assert.Contains(t, caps, "chat")
@@ -207,21 +225,25 @@ func TestExtendedProvidersAdapter_InferCapabilities(t *testing.T) {
 }
 
 func TestExtendedProvidersAdapter_GetVerifiedProviders(t *testing.T) {
+	t.Parallel()
 	adapter := NewExtendedProvidersAdapter(nil)
 
 	t.Run("returns empty map initially", func(t *testing.T) {
+			t.Parallel()
 		providers := adapter.GetVerifiedProviders()
 		assert.Empty(t, providers)
 	})
 }
 
 func TestGetModelDisplayNameExt(t *testing.T) {
+	t.Parallel()
 	t.Run("removes provider prefix", func(t *testing.T) {
 		name := getModelDisplayNameExt("meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo")
 		assert.NotContains(t, name, "meta-llama/")
 	})
 
 	t.Run("cleans up suffixes", func(t *testing.T) {
+			t.Parallel()
 		name := getModelDisplayNameExt("Model-Instruct-Turbo")
 		assert.Contains(t, name, "Instruct")
 		assert.NotContains(t, name, "-Turbo")
@@ -229,6 +251,7 @@ func TestGetModelDisplayNameExt(t *testing.T) {
 }
 
 func TestCountPassedTests(t *testing.T) {
+	t.Parallel()
 	t.Run("counts correctly", func(t *testing.T) {
 		results := map[string]bool{
 			"test1": true,
@@ -240,10 +263,12 @@ func TestCountPassedTests(t *testing.T) {
 	})
 
 	t.Run("handles empty map", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, 0, countPassedTests(map[string]bool{}))
 	})
 
 	t.Run("handles all false", func(t *testing.T) {
+			t.Parallel()
 		results := map[string]bool{
 			"test1": false,
 			"test2": false,
@@ -252,6 +277,7 @@ func TestCountPassedTests(t *testing.T) {
 	})
 
 	t.Run("handles all true", func(t *testing.T) {
+			t.Parallel()
 		results := map[string]bool{
 			"test1": true,
 			"test2": true,
@@ -261,6 +287,7 @@ func TestCountPassedTests(t *testing.T) {
 }
 
 func TestDefaultExtendedProviderConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultExtendedProviderConfig()
 
 	assert.Equal(t, 30*time.Second, config.VerificationTimeout)

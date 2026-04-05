@@ -39,6 +39,7 @@ func setupTestRouter() (*gin.Engine, *EnsembleHandlerExtensions, *PlanningHandle
 }
 
 func TestNewEnsembleHandlerExtensions(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	coordinator := &multi_instance.Coordinator{}
 
@@ -52,6 +53,7 @@ func TestNewEnsembleHandlerExtensions(t *testing.T) {
 }
 
 func TestNewEnsembleHandlerExtensions_NilLogger(t *testing.T) {
+	t.Parallel()
 	coordinator := &multi_instance.Coordinator{}
 	handler := NewEnsembleHandlerExtensions(coordinator, nil)
 	require.NotNil(t, handler)
@@ -59,6 +61,7 @@ func TestNewEnsembleHandlerExtensions_NilLogger(t *testing.T) {
 }
 
 func TestCreateTeam(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupTestRouter()
 
 	tests := []struct {
@@ -111,6 +114,7 @@ func TestCreateTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/teams", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -133,6 +137,7 @@ func TestCreateTeam(t *testing.T) {
 }
 
 func TestGetTeam(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
@@ -170,6 +175,7 @@ func TestGetTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/teams/"+tt.teamID, nil)
 			w := httptest.NewRecorder()
 
@@ -187,6 +193,7 @@ func TestGetTeam(t *testing.T) {
 }
 
 func TestListTeams(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create test teams
@@ -231,6 +238,7 @@ func TestListTeams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/teams"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -246,6 +254,7 @@ func TestListTeams(t *testing.T) {
 }
 
 func TestUpdateTeam(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
@@ -295,6 +304,7 @@ func TestUpdateTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/ensemble/teams/"+tt.teamID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -314,6 +324,7 @@ func TestUpdateTeam(t *testing.T) {
 }
 
 func TestDeleteTeam(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team
@@ -345,6 +356,7 @@ func TestDeleteTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			url := "/api/v1/ensemble/teams/" + tt.teamID
 			if tt.force {
 				url += "?force=true"
@@ -360,6 +372,7 @@ func TestDeleteTeam(t *testing.T) {
 }
 
 func TestCreateTask(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupTestRouter()
 
 	tests := []struct {
@@ -410,6 +423,7 @@ func TestCreateTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/tasks", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -431,6 +445,7 @@ func TestCreateTask(t *testing.T) {
 }
 
 func TestGetTask(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
@@ -465,6 +480,7 @@ func TestGetTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/tasks/"+tt.taskID, nil)
 			w := httptest.NewRecorder()
 
@@ -482,6 +498,7 @@ func TestGetTask(t *testing.T) {
 }
 
 func TestListTasks(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
@@ -538,6 +555,7 @@ func TestListTasks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/tasks"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -553,6 +571,7 @@ func TestListTasks(t *testing.T) {
 }
 
 func TestUpdateTask(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
@@ -599,6 +618,7 @@ func TestUpdateTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/ensemble/tasks/"+tt.taskID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -612,6 +632,7 @@ func TestUpdateTask(t *testing.T) {
 }
 
 func TestStopTask(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
@@ -652,6 +673,7 @@ func TestStopTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/tasks/"+tt.taskID+"/stop", nil)
 			w := httptest.NewRecorder()
 
@@ -663,6 +685,7 @@ func TestStopTask(t *testing.T) {
 }
 
 func TestSendMessage(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupTestRouter()
 
 	tests := []struct {
@@ -707,6 +730,7 @@ func TestSendMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/messages", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -727,6 +751,7 @@ func TestSendMessage(t *testing.T) {
 }
 
 func TestListMessages(t *testing.T) {
+	t.Parallel()
 	router, handler, _ := setupTestRouter()
 
 	// Create test messages
@@ -748,6 +773,7 @@ func TestListMessages(t *testing.T) {
 // Planning Handler Tests
 
 func TestNewPlanningHandlerExtensions(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewPlanningHandlerExtensions(logger)
 	require.NotNil(t, handler)
@@ -756,12 +782,14 @@ func TestNewPlanningHandlerExtensions(t *testing.T) {
 }
 
 func TestNewPlanningHandlerExtensions_NilLogger(t *testing.T) {
+	t.Parallel()
 	handler := NewPlanningHandlerExtensions(nil)
 	require.NotNil(t, handler)
 	assert.NotNil(t, handler.logger)
 }
 
 func TestEnterPlanMode(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupTestRouter()
 
 	tests := []struct {
@@ -797,6 +825,7 @@ func TestEnterPlanMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/enter", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -818,6 +847,7 @@ func TestEnterPlanMode(t *testing.T) {
 }
 
 func TestGetPlanStatus(t *testing.T) {
+	t.Parallel()
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
@@ -853,6 +883,7 @@ func TestGetPlanStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/planning/plan-mode/"+tt.sessionID, nil)
 			w := httptest.NewRecorder()
 
@@ -870,6 +901,7 @@ func TestGetPlanStatus(t *testing.T) {
 }
 
 func TestUpdatePlan(t *testing.T) {
+	t.Parallel()
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
@@ -912,6 +944,7 @@ func TestUpdatePlan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/planning/plan-mode/"+tt.sessionID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -925,6 +958,7 @@ func TestUpdatePlan(t *testing.T) {
 }
 
 func TestPausePlan(t *testing.T) {
+	t.Parallel()
 	router, _, handler := setupTestRouter()
 
 	// Create test sessions
@@ -963,6 +997,7 @@ func TestPausePlan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/"+tt.sessionID+"/pause", nil)
 			w := httptest.NewRecorder()
 
@@ -974,6 +1009,7 @@ func TestPausePlan(t *testing.T) {
 }
 
 func TestExitPlanMode(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - test needs fixing")
 	router, _, handler := setupTestRouter()
 
@@ -1012,6 +1048,7 @@ func TestExitPlanMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			url := "/api/v1/planning/plan-mode/" + tt.sessionID + "/exit"
 			if tt.save {
 				url += "?save=true"
@@ -1027,6 +1064,7 @@ func TestExitPlanMode(t *testing.T) {
 }
 
 func TestCreateTodo(t *testing.T) {
+	t.Parallel()
 	router, _, _ := setupTestRouter()
 
 	tests := []struct {
@@ -1054,6 +1092,7 @@ func TestCreateTodo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/todos", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -1077,6 +1116,7 @@ func TestCreateTodo(t *testing.T) {
 // Type alias tests
 
 func TestTypeAliases(t *testing.T) {
+	t.Parallel()
 	// Test that type aliases work correctly
 	var team Team = AgentTeam{ID: "test", Name: "Test Team"}
 	assert.Equal(t, "test", team.ID)
@@ -1089,6 +1129,7 @@ func TestTypeAliases(t *testing.T) {
 // Constants tests
 
 func TestTeamStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, TeamStatus("active"), TeamStatusActive)
 	assert.Equal(t, TeamStatus("inactive"), TeamStatusInactive)
 	assert.Equal(t, TeamStatus("busy"), TeamStatusBusy)
@@ -1096,6 +1137,7 @@ func TestTeamStatusConstants(t *testing.T) {
 }
 
 func TestTaskStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AgentTaskStatus("pending"), AgentTaskStatusPending)
 	assert.Equal(t, AgentTaskStatus("assigned"), AgentTaskStatusAssigned)
 	assert.Equal(t, AgentTaskStatus("in_progress"), AgentTaskStatusInProgress)
@@ -1110,6 +1152,7 @@ func TestTaskStatusConstants(t *testing.T) {
 }
 
 func TestTaskPriorityConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, TaskPriority("low"), TaskPriorityLow)
 	assert.Equal(t, TaskPriority("medium"), TaskPriorityMedium)
 	assert.Equal(t, TaskPriority("high"), TaskPriorityHigh)
@@ -1117,6 +1160,7 @@ func TestTaskPriorityConstants(t *testing.T) {
 }
 
 func TestPlanModeStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, PlanModeStatus("draft"), PlanModeStatusDraft)
 	assert.Equal(t, PlanModeStatus("planning"), PlanModeStatusPlanning)
 	assert.Equal(t, PlanModeStatus("review"), PlanModeStatusReview)
@@ -1127,6 +1171,7 @@ func TestPlanModeStatusConstants(t *testing.T) {
 }
 
 func TestPlanStepStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, PlanStepStatus("pending"), PlanStepStatusPending)
 	assert.Equal(t, PlanStepStatus("blocked"), PlanStepStatusBlocked)
 	assert.Equal(t, PlanStepStatus("in_progress"), PlanStepStatusInProgress)
@@ -1136,6 +1181,7 @@ func TestPlanStepStatusConstants(t *testing.T) {
 }
 
 func TestTodoStatusConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, TodoStatus("pending"), TodoStatusPending)
 	assert.Equal(t, TodoStatus("in_progress"), TodoStatusInProgress)
 	assert.Equal(t, TodoStatus("completed"), TodoStatusCompleted)

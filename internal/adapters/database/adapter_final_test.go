@@ -16,6 +16,7 @@ import (
 
 // Test NewClientWithFallback success path - returns client without error
 func TestNewClientWithFallback_ReturnsClient(t *testing.T) {
+	t.Parallel()
 	// Create client that will succeed with mock
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
@@ -28,6 +29,7 @@ func TestNewClientWithFallback_ReturnsClient(t *testing.T) {
 
 // Test initConnection with connectErr != nil path (line 64.26-67.4)
 func TestClient_initConnection_ConnectError(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -52,6 +54,7 @@ func TestClient_initConnection_ConnectError(t *testing.T) {
 
 // Test Pool with testPG != nil (line 164.21-166.3)
 func TestClient_Pool_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -62,6 +65,7 @@ func TestClient_Pool_WithTestPG(t *testing.T) {
 
 // Test Ping with testPG != nil (line 191.21-193.3)
 func TestClient_Ping_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -72,6 +76,7 @@ func TestClient_Ping_WithTestPG(t *testing.T) {
 
 // Test HealthCheck with testPG != nil (line 204.21-206.3)
 func TestClient_HealthCheck_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -82,6 +87,7 @@ func TestClient_HealthCheck_WithTestPG(t *testing.T) {
 
 // Test Exec with testPG != nil (line 216.21-219.3)
 func TestClient_Exec_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	
@@ -92,6 +98,7 @@ func TestClient_Exec_WithTestPG(t *testing.T) {
 
 // Test Exec error return path (line 220.2-221.12)
 func TestClient_Exec_WithRealPG_ReturnsError(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -115,6 +122,7 @@ func TestClient_Exec_WithRealPG_ReturnsError(t *testing.T) {
 
 // Test Query with testPG != nil (line 232.21-234.3)
 func TestClient_Query_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mockRows := &mockRows{nextReturns: []bool{true, false}}
 	mock := &mockDatabase{queryRows: mockRows}
 	client := newTestClient(mock)
@@ -127,6 +135,7 @@ func TestClient_Query_WithTestPG(t *testing.T) {
 
 // Test QueryRow with testPG != nil (line 259.21-261.3)
 func TestClient_QueryRow_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mockRow := mockRow{}
 	mock := &mockDatabase{queryRowResult: mockRow}
 	client := newTestClient(mock)
@@ -138,6 +147,7 @@ func TestClient_QueryRow_WithTestPG(t *testing.T) {
 
 // Test Begin with testPG != nil (line 270.21-272.3)
 func TestClient_Begin_WithTestPG(t *testing.T) {
+	t.Parallel()
 	mockTx := &mockTx{}
 	mock := &mockDatabase{beginTx: mockTx}
 	client := newTestClient(mock)
@@ -150,6 +160,7 @@ func TestClient_Begin_WithTestPG(t *testing.T) {
 
 // Test Migrate success path
 func TestClient_Migrate_Success(t *testing.T) {
+	t.Parallel()
 	// This test uses the real Migrate method which calls pg.Migrate
 	// Since we can't mock this easily without the testPG supporting Migrate,
 	// we test the connection failure path instead
@@ -179,6 +190,7 @@ func TestClient_Migrate_Success(t *testing.T) {
 // ============================================================================
 
 func TestNewClientWithFallback_NewClientError(t *testing.T) {
+	t.Parallel()
 	// NewClient never returns error currently, but test the fallback path
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -202,6 +214,7 @@ func TestNewClientWithFallback_NewClientError(t *testing.T) {
 // ============================================================================
 
 func TestNewPostgresDB_ErrorPath(t *testing.T) {
+	t.Parallel()
 	// NewPostgresDB only errors if NewClient errors
 	// Since NewClient never returns error, this path is unreachable in practice
 	// But we test it for completeness
@@ -217,6 +230,7 @@ func TestNewPostgresDB_ErrorPath(t *testing.T) {
 // ============================================================================
 
 func TestNewPostgresDBWithFallback_DBError(t *testing.T) {
+	t.Parallel()
 	// This tests the path where NewPostgresDB returns an error
 	// Since NewPostgresDB only errors if NewClient errors,
 	// and NewClient never returns error, this path is unreachable in practice
@@ -234,6 +248,7 @@ func TestNewPostgresDBWithFallback_DBError(t *testing.T) {
 // ============================================================================
 
 func TestConnect_ErrorPath_Final(t *testing.T) {
+	t.Parallel()
 	// Connect only errors if NewPostgresDB errors
 	// Since NewPostgresDB never returns error, this path is unreachable
 	// But we test the success path
@@ -248,6 +263,7 @@ func TestConnect_ErrorPath_Final(t *testing.T) {
 // ============================================================================
 
 func TestClient_Query_WithRealPGQueryError(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -275,6 +291,7 @@ func TestClient_Query_WithRealPGQueryError(t *testing.T) {
 // ============================================================================
 
 func TestClient_Begin_WithRealPGBeginError(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -302,6 +319,7 @@ func TestClient_Begin_WithRealPGBeginError(t *testing.T) {
 // ============================================================================
 
 func TestMemoryDB_HealthCheck_Closed(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	
 	// Close the database
@@ -319,6 +337,7 @@ func TestMemoryDB_HealthCheck_Closed(t *testing.T) {
 // ============================================================================
 
 func TestPostgresDB_GetPool_WithMock(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	pgDB := &PostgresDB{client: client}

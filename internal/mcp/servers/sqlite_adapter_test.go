@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewSQLiteAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, nil)
 
@@ -21,6 +22,7 @@ func TestNewSQLiteAdapter(t *testing.T) {
 }
 
 func TestDefaultSQLiteAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 
 	assert.True(t, config.InMemory)
@@ -32,6 +34,7 @@ func TestDefaultSQLiteAdapterConfig(t *testing.T) {
 }
 
 func TestNewSQLiteAdapter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := SQLiteAdapterConfig{}
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -41,6 +44,7 @@ func TestNewSQLiteAdapter_DefaultConfig(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Health_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -50,6 +54,7 @@ func TestSQLiteAdapter_Health_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Query_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -59,6 +64,7 @@ func TestSQLiteAdapter_Query_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Execute_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -68,6 +74,7 @@ func TestSQLiteAdapter_Execute_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ListTables_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -77,6 +84,7 @@ func TestSQLiteAdapter_ListTables_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DescribeTable_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -86,6 +94,7 @@ func TestSQLiteAdapter_DescribeTable_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ListIndexes_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -95,6 +104,7 @@ func TestSQLiteAdapter_ListIndexes_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_GetStats_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -104,6 +114,7 @@ func TestSQLiteAdapter_GetStats_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -126,6 +137,7 @@ func TestSQLiteAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -137,6 +149,7 @@ func TestSQLiteAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -147,6 +160,7 @@ func TestSQLiteAdapter_ExecuteTool_UnknownTool(t *testing.T) {
 }
 
 func TestSQLiteAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -159,6 +173,7 @@ func TestSQLiteAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Initialize_InMemory(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -172,6 +187,7 @@ func TestSQLiteAdapter_Initialize_InMemory(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Initialize_File(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
@@ -195,6 +211,7 @@ func TestSQLiteAdapter_Initialize_File(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Initialize_FileNotExists(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	// Use a file in an existing directory that doesn't exist
 	dbPath := filepath.Join(tmpDir, "nonexistent.db")
@@ -212,6 +229,7 @@ func TestSQLiteAdapter_Initialize_FileNotExists(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Initialize_NoPath(t *testing.T) {
+	t.Parallel()
 	config := SQLiteAdapterConfig{
 		InMemory: false,
 	}
@@ -223,6 +241,7 @@ func TestSQLiteAdapter_Initialize_NoPath(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Health(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -235,6 +254,7 @@ func TestSQLiteAdapter_Health(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Query(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -250,6 +270,7 @@ func TestSQLiteAdapter_Query(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Query_WithParams(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -263,6 +284,7 @@ func TestSQLiteAdapter_Query_WithParams(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Execute_CreateTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -281,6 +303,7 @@ func TestSQLiteAdapter_Execute_CreateTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Execute_Insert(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -303,6 +326,7 @@ func TestSQLiteAdapter_Execute_Insert(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Execute_ReadOnly(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	config.ReadOnly = true
 	adapter := NewSQLiteAdapter(config, logrus.New())
@@ -317,6 +341,7 @@ func TestSQLiteAdapter_Execute_ReadOnly(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Query_ReadOnlyCheck(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	config.ReadOnly = true
 	adapter := NewSQLiteAdapter(config, logrus.New())
@@ -336,6 +361,7 @@ func TestSQLiteAdapter_Query_ReadOnlyCheck(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ListTables(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -359,6 +385,7 @@ func TestSQLiteAdapter_ListTables(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DescribeTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -389,6 +416,7 @@ func TestSQLiteAdapter_DescribeTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DescribeTable_NotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -402,6 +430,7 @@ func TestSQLiteAdapter_DescribeTable_NotFound(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DescribeTable_EmptyName(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -415,6 +444,7 @@ func TestSQLiteAdapter_DescribeTable_EmptyName(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ListIndexes(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -445,6 +475,7 @@ func TestSQLiteAdapter_ListIndexes(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ListIndexes_EmptyTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -458,6 +489,7 @@ func TestSQLiteAdapter_ListIndexes_EmptyTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_GetStats(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -471,6 +503,7 @@ func TestSQLiteAdapter_GetStats(t *testing.T) {
 }
 
 func TestSQLiteAdapter_CreateTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -495,6 +528,7 @@ func TestSQLiteAdapter_CreateTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_CreateTable_EmptyParams(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -508,6 +542,7 @@ func TestSQLiteAdapter_CreateTable_EmptyParams(t *testing.T) {
 }
 
 func TestSQLiteAdapter_CreateTable_ReadOnly(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	config.ReadOnly = true
 	adapter := NewSQLiteAdapter(config, logrus.New())
@@ -523,6 +558,7 @@ func TestSQLiteAdapter_CreateTable_ReadOnly(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DropTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -543,6 +579,7 @@ func TestSQLiteAdapter_DropTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DropTable_EmptyName(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -556,6 +593,7 @@ func TestSQLiteAdapter_DropTable_EmptyName(t *testing.T) {
 }
 
 func TestSQLiteAdapter_DropTable_ReadOnly(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	config.ReadOnly = true
 	adapter := NewSQLiteAdapter(config, logrus.New())
@@ -570,6 +608,7 @@ func TestSQLiteAdapter_DropTable_ReadOnly(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_Query(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -586,6 +625,7 @@ func TestSQLiteAdapter_ExecuteTool_Query(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_Execute(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -600,6 +640,7 @@ func TestSQLiteAdapter_ExecuteTool_Execute(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_ListTables(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -617,6 +658,7 @@ func TestSQLiteAdapter_ExecuteTool_ListTables(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_DescribeTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -636,6 +678,7 @@ func TestSQLiteAdapter_ExecuteTool_DescribeTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_CreateTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -658,6 +701,7 @@ func TestSQLiteAdapter_ExecuteTool_CreateTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_ExecuteTool_DropTable(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -679,6 +723,7 @@ func TestSQLiteAdapter_ExecuteTool_DropTable(t *testing.T) {
 }
 
 func TestSQLiteAdapter_Close_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -688,6 +733,7 @@ func TestSQLiteAdapter_Close_NotInitialized(t *testing.T) {
 }
 
 func TestSQLiteAdapter_MarshalJSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 
@@ -702,6 +748,7 @@ func TestSQLiteAdapter_MarshalJSON(t *testing.T) {
 }
 
 func TestSQLiteAdapter_isReadOnlyQuery(t *testing.T) {
+	t.Parallel()
 	config := DefaultSQLiteAdapterConfig()
 	adapter := NewSQLiteAdapter(config, logrus.New())
 

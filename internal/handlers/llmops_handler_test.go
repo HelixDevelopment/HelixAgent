@@ -43,6 +43,7 @@ func setupLLMOpsHandlerUninit() (*LLMOpsHandler, *gin.Engine) {
 // --- constructor ---
 
 func TestLLMOpsHandler_NewLLMOpsHandler(t *testing.T) {
+	t.Parallel()
 	system := llmops.NewLLMOpsSystem(nil, nil)
 	h := NewLLMOpsHandler(system)
 
@@ -51,6 +52,7 @@ func TestLLMOpsHandler_NewLLMOpsHandler(t *testing.T) {
 }
 
 func TestLLMOpsHandler_NewLLMOpsHandler_NilSystem(t *testing.T) {
+	t.Parallel()
 	h := NewLLMOpsHandler(nil)
 
 	assert.NotNil(t, h)
@@ -60,6 +62,7 @@ func TestLLMOpsHandler_NewLLMOpsHandler_NilSystem(t *testing.T) {
 // --- CreateExperiment ---
 
 func TestLLMOpsHandler_CreateExperiment_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	reqBody := CreateExperimentRequest{
@@ -91,6 +94,7 @@ func TestLLMOpsHandler_CreateExperiment_Success(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateExperiment_BadRequest_MissingName(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"variants": [{"id":"a","name":"A"},{"id":"b","name":"B"}]}`)
@@ -104,6 +108,7 @@ func TestLLMOpsHandler_CreateExperiment_BadRequest_MissingName(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateExperiment_BadRequest_TooFewVariants(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"name":"exp","variants":[{"id":"a","name":"A"}]}`)
@@ -117,6 +122,7 @@ func TestLLMOpsHandler_CreateExperiment_BadRequest_TooFewVariants(t *testing.T) 
 }
 
 func TestLLMOpsHandler_CreateExperiment_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -131,6 +137,7 @@ func TestLLMOpsHandler_CreateExperiment_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateExperiment_UninitializedManager(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	reqBody := CreateExperimentRequest{
@@ -158,6 +165,7 @@ func TestLLMOpsHandler_CreateExperiment_UninitializedManager(t *testing.T) {
 // --- ListExperiments ---
 
 func TestLLMOpsHandler_ListExperiments_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -175,6 +183,7 @@ func TestLLMOpsHandler_ListExperiments_Empty(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ListExperiments_WithData(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create an experiment first
@@ -210,6 +219,7 @@ func TestLLMOpsHandler_ListExperiments_WithData(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ListExperiments_FilterByStatus(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create an experiment (status=draft)
@@ -253,6 +263,7 @@ func TestLLMOpsHandler_ListExperiments_FilterByStatus(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ListExperiments_UninitializedManager(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	w := httptest.NewRecorder()
@@ -265,6 +276,7 @@ func TestLLMOpsHandler_ListExperiments_UninitializedManager(t *testing.T) {
 // --- GetExperiment ---
 
 func TestLLMOpsHandler_GetExperiment_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create experiment
@@ -303,6 +315,7 @@ func TestLLMOpsHandler_GetExperiment_Success(t *testing.T) {
 }
 
 func TestLLMOpsHandler_GetExperiment_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -318,6 +331,7 @@ func TestLLMOpsHandler_GetExperiment_NotFound(t *testing.T) {
 }
 
 func TestLLMOpsHandler_GetExperiment_UninitializedManager(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	w := httptest.NewRecorder()
@@ -330,6 +344,7 @@ func TestLLMOpsHandler_GetExperiment_UninitializedManager(t *testing.T) {
 // --- CreateEvaluation ---
 
 func TestLLMOpsHandler_CreateEvaluation_BadRequest_MissingName(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"dataset":"ds1"}`)
@@ -343,6 +358,7 @@ func TestLLMOpsHandler_CreateEvaluation_BadRequest_MissingName(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateEvaluation_BadRequest_MissingDataset(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"name":"eval1"}`)
@@ -356,6 +372,7 @@ func TestLLMOpsHandler_CreateEvaluation_BadRequest_MissingDataset(t *testing.T) 
 }
 
 func TestLLMOpsHandler_CreateEvaluation_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -370,6 +387,7 @@ func TestLLMOpsHandler_CreateEvaluation_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateEvaluation_DatasetNotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	reqBody := CreateEvaluationRequest{
@@ -394,6 +412,7 @@ func TestLLMOpsHandler_CreateEvaluation_DatasetNotFound(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreateEvaluation_UninitializedEvaluator(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	reqBody := CreateEvaluationRequest{
@@ -413,6 +432,7 @@ func TestLLMOpsHandler_CreateEvaluation_UninitializedEvaluator(t *testing.T) {
 // --- ListPrompts ---
 
 func TestLLMOpsHandler_ListPrompts_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -430,6 +450,7 @@ func TestLLMOpsHandler_ListPrompts_Empty(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ListPrompts_WithData(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create a prompt
@@ -463,6 +484,7 @@ func TestLLMOpsHandler_ListPrompts_WithData(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ListPrompts_UninitializedRegistry(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	w := httptest.NewRecorder()
@@ -475,6 +497,7 @@ func TestLLMOpsHandler_ListPrompts_UninitializedRegistry(t *testing.T) {
 // --- CreatePromptVersion ---
 
 func TestLLMOpsHandler_CreatePromptVersion_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	reqBody := CreatePromptVersionRequest{
@@ -507,6 +530,7 @@ func TestLLMOpsHandler_CreatePromptVersion_Success(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingName(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"version":"1.0.0","content":"hello"}`)
@@ -520,6 +544,7 @@ func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingName(t *testing.T) 
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingVersion(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"name":"test","content":"hello"}`)
@@ -533,6 +558,7 @@ func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingVersion(t *testing.
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingContent(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	body := []byte(`{"name":"test","version":"1.0.0"}`)
@@ -546,6 +572,7 @@ func TestLLMOpsHandler_CreatePromptVersion_BadRequest_MissingContent(t *testing.
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	w := httptest.NewRecorder()
@@ -560,6 +587,7 @@ func TestLLMOpsHandler_CreatePromptVersion_BadRequest_InvalidJSON(t *testing.T) 
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_DuplicateVersion(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	reqBody := CreatePromptVersionRequest{
@@ -591,6 +619,7 @@ func TestLLMOpsHandler_CreatePromptVersion_DuplicateVersion(t *testing.T) {
 }
 
 func TestLLMOpsHandler_CreatePromptVersion_UninitializedRegistry(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandlerUninit()
 
 	reqBody := CreatePromptVersionRequest{
@@ -611,6 +640,7 @@ func TestLLMOpsHandler_CreatePromptVersion_UninitializedRegistry(t *testing.T) {
 // --- Route registration ---
 
 func TestLLMOpsHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	system := llmops.NewLLMOpsSystem(nil, nil)
 	h := NewLLMOpsHandler(system)
 	r := gin.New()
@@ -628,6 +658,7 @@ func TestLLMOpsHandler_RegisterRoutes(t *testing.T) {
 }
 
 func TestLLMOpsHandler_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	routes := []string{
@@ -648,6 +679,7 @@ func TestLLMOpsHandler_ContentType(t *testing.T) {
 // --- Integration: create experiment then get ---
 
 func TestLLMOpsHandler_CreateAndGetExperiment_Integration(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create
@@ -703,6 +735,7 @@ func TestLLMOpsHandler_CreateAndGetExperiment_Integration(t *testing.T) {
 // --- Integration: create and list prompts ---
 
 func TestLLMOpsHandler_CreateAndListPrompts_Integration(t *testing.T) {
+	t.Parallel()
 	_, r := setupLLMOpsHandler()
 
 	// Create prompt v1
@@ -752,6 +785,7 @@ func TestLLMOpsHandler_CreateAndListPrompts_Integration(t *testing.T) {
 // --- Response type field tests ---
 
 func TestLLMOpsHandler_ExperimentResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := ExperimentResponse{
 		ID:           "exp-1",
 		Name:         "Test",
@@ -768,6 +802,7 @@ func TestLLMOpsHandler_ExperimentResponse_Fields(t *testing.T) {
 }
 
 func TestLLMOpsHandler_PromptVersionResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := PromptVersionResponse{
 		ID:       "p-1",
 		Name:     "test-prompt",
@@ -783,6 +818,7 @@ func TestLLMOpsHandler_PromptVersionResponse_Fields(t *testing.T) {
 }
 
 func TestLLMOpsHandler_EvaluationRunResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := EvaluationRunResponse{
 		ID:      "eval-1",
 		Name:    "eval-run",

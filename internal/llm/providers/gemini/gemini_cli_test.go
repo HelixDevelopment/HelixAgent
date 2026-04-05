@@ -11,11 +11,13 @@ import (
 // ==============================================================================
 
 func TestIsGeminiCLIInstalled(t *testing.T) {
+	t.Parallel()
 	installed := IsGeminiCLIInstalled()
 	t.Logf("Gemini CLI installed: %v", installed)
 }
 
 func TestGeminiCLIProvider_Basics(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeminiCLIConfig()
 	p := NewGeminiCLIProvider(config)
 	assert.NotNil(t, p)
@@ -24,6 +26,7 @@ func TestGeminiCLIProvider_Basics(t *testing.T) {
 }
 
 func TestGeminiCLIProvider_KnownModels(t *testing.T) {
+	t.Parallel()
 	models := GetKnownGeminiCLIModels()
 	assert.GreaterOrEqual(t, len(models), 7)
 	assert.Contains(t, models, "gemini-2.5-pro")
@@ -32,6 +35,7 @@ func TestGeminiCLIProvider_KnownModels(t *testing.T) {
 }
 
 func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
+	t.Parallel()
 	t.Run("has sessionID field", func(t *testing.T) {
 		config := DefaultGeminiCLIConfig()
 		p := NewGeminiCLIProvider(config)
@@ -41,6 +45,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("SetModel works correctly", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		config.Model = "gemini-2.5-flash"
 		p := NewGeminiCLIProvider(config)
@@ -55,6 +60,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("GetBestAvailableModel returns reasonable default", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		p := NewGeminiCLIProvider(config)
 
@@ -80,6 +86,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("provider name and type are correct", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		p := NewGeminiCLIProvider(config)
 

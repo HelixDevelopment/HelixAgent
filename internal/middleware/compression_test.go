@@ -15,6 +15,7 @@ import (
 )
 
 func TestDefaultCompressionConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultCompressionConfig()
 
 	assert.NotNil(t, config)
@@ -31,6 +32,7 @@ func TestDefaultCompressionConfig(t *testing.T) {
 }
 
 func TestCompressData_Brotli(t *testing.T) {
+	t.Parallel()
 	data := []byte("This is a test string that will be compressed with Brotli encoding.")
 
 	compressed, err := CompressData(data, "br", 4)
@@ -44,6 +46,7 @@ func TestCompressData_Brotli(t *testing.T) {
 }
 
 func TestCompressData_Gzip(t *testing.T) {
+	t.Parallel()
 	data := []byte("This is a test string that will be compressed with Gzip encoding.")
 
 	compressed, err := CompressData(data, "gzip", 5)
@@ -57,6 +60,7 @@ func TestCompressData_Gzip(t *testing.T) {
 }
 
 func TestCompressData_UnknownEncoding(t *testing.T) {
+	t.Parallel()
 	data := []byte("Test data")
 
 	result, err := CompressData(data, "unknown", 4)
@@ -65,6 +69,7 @@ func TestCompressData_UnknownEncoding(t *testing.T) {
 }
 
 func TestCompressData_EmptyData(t *testing.T) {
+	t.Parallel()
 	data := []byte{}
 
 	compressed, err := CompressData(data, "br", 4)
@@ -76,6 +81,7 @@ func TestCompressData_EmptyData(t *testing.T) {
 }
 
 func TestCompressData_LargeData(t *testing.T) {
+	t.Parallel()
 	// Create large repetitive data (compresses well)
 	data := bytes.Repeat([]byte("This is repetitive test data. "), 1000)
 
@@ -92,6 +98,7 @@ func TestCompressData_LargeData(t *testing.T) {
 }
 
 func TestDecompressData_UnknownEncoding(t *testing.T) {
+	t.Parallel()
 	data := []byte("Test data")
 
 	result, err := DecompressData(data, "unknown")
@@ -100,6 +107,7 @@ func TestDecompressData_UnknownEncoding(t *testing.T) {
 }
 
 func TestDecompressData_InvalidGzip(t *testing.T) {
+	t.Parallel()
 	invalidData := []byte("not valid gzip data")
 
 	_, err := DecompressData(invalidData, "gzip")
@@ -107,41 +115,49 @@ func TestDecompressData_InvalidGzip(t *testing.T) {
 }
 
 func TestEstimateCompressionRatio_JSON(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("application/json")
 	assert.Equal(t, 0.15, ratio)
 }
 
 func TestEstimateCompressionRatio_JavaScript(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("application/javascript")
 	assert.Equal(t, 0.20, ratio)
 }
 
 func TestEstimateCompressionRatio_HTML(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("text/html")
 	assert.Equal(t, 0.20, ratio)
 }
 
 func TestEstimateCompressionRatio_CSS(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("text/css")
 	assert.Equal(t, 0.25, ratio)
 }
 
 func TestEstimateCompressionRatio_XML(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("application/xml")
 	assert.Equal(t, 0.20, ratio)
 }
 
 func TestEstimateCompressionRatio_PlainText(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("text/plain")
 	assert.Equal(t, 0.30, ratio)
 }
 
 func TestEstimateCompressionRatio_Unknown(t *testing.T) {
+	t.Parallel()
 	ratio := EstimateCompressionRatio("application/octet-stream")
 	assert.Equal(t, 0.50, ratio)
 }
 
 func TestBrotliMiddleware(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := BrotliMiddleware()
@@ -149,6 +165,7 @@ func TestBrotliMiddleware(t *testing.T) {
 }
 
 func TestBrotliMiddlewareWithLevel(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := BrotliMiddlewareWithLevel(6)
@@ -156,6 +173,7 @@ func TestBrotliMiddlewareWithLevel(t *testing.T) {
 }
 
 func TestCompressionMiddleware_NilConfig(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := CompressionMiddleware(nil)
@@ -163,6 +181,7 @@ func TestCompressionMiddleware_NilConfig(t *testing.T) {
 }
 
 func TestCompressionMiddleware_ExcludedPath(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -183,6 +202,7 @@ func TestCompressionMiddleware_ExcludedPath(t *testing.T) {
 }
 
 func TestCompressionMiddleware_NoAcceptEncoding(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -203,6 +223,7 @@ func TestCompressionMiddleware_NoAcceptEncoding(t *testing.T) {
 }
 
 func TestCompressionMiddleware_BrotliCompression(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultCompressionConfig()
@@ -232,6 +253,7 @@ func TestCompressionMiddleware_BrotliCompression(t *testing.T) {
 }
 
 func TestCompressionMiddleware_GzipFallback(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultCompressionConfig()
@@ -263,6 +285,7 @@ func TestCompressionMiddleware_GzipFallback(t *testing.T) {
 }
 
 func TestCompressionMiddleware_SmallResponse(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -284,6 +307,7 @@ func TestCompressionMiddleware_SmallResponse(t *testing.T) {
 }
 
 func TestBrotliRequestDecoder_NoEncoding(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -304,6 +328,7 @@ func TestBrotliRequestDecoder_NoEncoding(t *testing.T) {
 }
 
 func TestBrotliRequestDecoder_BrotliBody(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Compress the request body
@@ -332,6 +357,7 @@ func TestBrotliRequestDecoder_BrotliBody(t *testing.T) {
 }
 
 func TestBrotliRequestDecoder_GzipBody(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Compress the request body with gzip
@@ -360,6 +386,7 @@ func TestBrotliRequestDecoder_GzipBody(t *testing.T) {
 }
 
 func TestBrotliRequestDecoder_InvalidGzip(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -378,6 +405,7 @@ func TestBrotliRequestDecoder_InvalidGzip(t *testing.T) {
 }
 
 func TestCompressionWriter_WriteString(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultCompressionConfig()
@@ -402,6 +430,7 @@ func TestCompressionWriter_WriteString(t *testing.T) {
 }
 
 func TestBrotliReader_ReadAndClose(t *testing.T) {
+	t.Parallel()
 	// Test brotliReader directly
 	originalData := "Test data for brotli reader"
 	var buf bytes.Buffer
@@ -423,6 +452,7 @@ func TestBrotliReader_ReadAndClose(t *testing.T) {
 }
 
 func TestGzipReader_ReadAndClose(t *testing.T) {
+	t.Parallel()
 	// Test gzipReader directly
 	originalData := "Test data for gzip reader"
 	var buf bytes.Buffer
@@ -452,6 +482,7 @@ type nopCloser struct{}
 func (n *nopCloser) Close() error { return nil }
 
 func TestCompressionMiddleware_NonCompressibleType(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultCompressionConfig()
@@ -476,6 +507,7 @@ func TestCompressionMiddleware_NonCompressibleType(t *testing.T) {
 }
 
 func TestCompressionConfig_DisabledCompression(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultCompressionConfig()
@@ -501,6 +533,7 @@ func TestCompressionConfig_DisabledCompression(t *testing.T) {
 }
 
 func TestCompressData_GzipErrors(t *testing.T) {
+	t.Parallel()
 	// Test gzip with invalid level
 	data := []byte("Test data")
 
@@ -511,6 +544,7 @@ func TestCompressData_GzipErrors(t *testing.T) {
 }
 
 func TestDecompressData_InvalidBrotli(t *testing.T) {
+	t.Parallel()
 	invalidData := []byte("not valid brotli data")
 
 	_, err := DecompressData(invalidData, "br")

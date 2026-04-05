@@ -68,6 +68,7 @@ func waitForBenchmarkComplete(r *gin.Engine, runID string, timeout time.Duration
 // --- constructor ---
 
 func TestBenchmarkHandler_NewBenchmarkHandler(t *testing.T) {
+	t.Parallel()
 	system := benchmark.NewBenchmarkSystem(nil, nil)
 	h := NewBenchmarkHandler(system)
 
@@ -76,6 +77,7 @@ func TestBenchmarkHandler_NewBenchmarkHandler(t *testing.T) {
 }
 
 func TestBenchmarkHandler_NewBenchmarkHandler_NilSystem(t *testing.T) {
+	t.Parallel()
 	h := NewBenchmarkHandler(nil)
 
 	assert.NotNil(t, h)
@@ -85,6 +87,7 @@ func TestBenchmarkHandler_NewBenchmarkHandler_NilSystem(t *testing.T) {
 // --- StartBenchmark ---
 
 func TestBenchmarkHandler_StartBenchmark_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	reqBody := StartBenchmarkRequest{
@@ -115,6 +118,7 @@ func TestBenchmarkHandler_StartBenchmark_Success(t *testing.T) {
 }
 
 func TestBenchmarkHandler_StartBenchmark_DefaultName(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	reqBody := StartBenchmarkRequest{
@@ -140,6 +144,7 @@ func TestBenchmarkHandler_StartBenchmark_DefaultName(t *testing.T) {
 }
 
 func TestBenchmarkHandler_StartBenchmark_WithConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	reqBody := StartBenchmarkRequest{
@@ -171,6 +176,7 @@ func TestBenchmarkHandler_StartBenchmark_WithConfig(t *testing.T) {
 }
 
 func TestBenchmarkHandler_StartBenchmark_BadRequest_MissingType(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	body := []byte(`{"provider_name":"test"}`)
@@ -184,6 +190,7 @@ func TestBenchmarkHandler_StartBenchmark_BadRequest_MissingType(t *testing.T) {
 }
 
 func TestBenchmarkHandler_StartBenchmark_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	w := httptest.NewRecorder()
@@ -198,6 +205,7 @@ func TestBenchmarkHandler_StartBenchmark_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestBenchmarkHandler_StartBenchmark_UninitializedRunner(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandlerUninit()
 
 	reqBody := StartBenchmarkRequest{
@@ -221,6 +229,7 @@ func TestBenchmarkHandler_StartBenchmark_UninitializedRunner(t *testing.T) {
 // --- ListBenchmarkResults ---
 
 func TestBenchmarkHandler_ListBenchmarkResults_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	w := httptest.NewRecorder()
@@ -238,6 +247,7 @@ func TestBenchmarkHandler_ListBenchmarkResults_Empty(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ListBenchmarkResults_WithData(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	// Create and start a run
@@ -276,6 +286,7 @@ func TestBenchmarkHandler_ListBenchmarkResults_WithData(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ListBenchmarkResults_FilterByType(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	// Create a swe-bench run
@@ -323,6 +334,7 @@ func TestBenchmarkHandler_ListBenchmarkResults_FilterByType(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ListBenchmarkResults_FilterByProvider(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	// Create a run
@@ -359,6 +371,7 @@ func TestBenchmarkHandler_ListBenchmarkResults_FilterByProvider(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ListBenchmarkResults_UninitializedRunner(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandlerUninit()
 
 	w := httptest.NewRecorder()
@@ -371,6 +384,7 @@ func TestBenchmarkHandler_ListBenchmarkResults_UninitializedRunner(t *testing.T)
 // --- GetBenchmarkResult ---
 
 func TestBenchmarkHandler_GetBenchmarkResult_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	// Create a run
@@ -411,6 +425,7 @@ func TestBenchmarkHandler_GetBenchmarkResult_Success(t *testing.T) {
 }
 
 func TestBenchmarkHandler_GetBenchmarkResult_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	w := httptest.NewRecorder()
@@ -426,6 +441,7 @@ func TestBenchmarkHandler_GetBenchmarkResult_NotFound(t *testing.T) {
 }
 
 func TestBenchmarkHandler_GetBenchmarkResult_UninitializedRunner(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandlerUninit()
 
 	w := httptest.NewRecorder()
@@ -438,6 +454,7 @@ func TestBenchmarkHandler_GetBenchmarkResult_UninitializedRunner(t *testing.T) {
 // --- Route registration ---
 
 func TestBenchmarkHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	system := benchmark.NewBenchmarkSystem(nil, nil)
 	h := NewBenchmarkHandler(system)
 	r := gin.New()
@@ -455,6 +472,7 @@ func TestBenchmarkHandler_RegisterRoutes(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	w := httptest.NewRecorder()
@@ -467,6 +485,7 @@ func TestBenchmarkHandler_ContentType(t *testing.T) {
 // --- Integration: create and retrieve ---
 
 func TestBenchmarkHandler_CreateAndRetrieve_Integration(t *testing.T) {
+	t.Parallel()
 	_, r := setupBenchmarkHandler()
 
 	// Create run
@@ -522,6 +541,7 @@ func TestBenchmarkHandler_CreateAndRetrieve_Integration(t *testing.T) {
 // --- Response type field tests ---
 
 func TestBenchmarkHandler_BenchmarkRunResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := BenchmarkRunResponse{
 		ID:            "run-1",
 		Name:          "Test Run",
@@ -539,6 +559,7 @@ func TestBenchmarkHandler_BenchmarkRunResponse_Fields(t *testing.T) {
 }
 
 func TestBenchmarkHandler_ListBenchmarkRunsResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := ListBenchmarkRunsResponse{
 		Runs:  []BenchmarkRunResponse{{ID: "r1"}, {ID: "r2"}},
 		Total: 2,

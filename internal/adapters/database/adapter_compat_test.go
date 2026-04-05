@@ -13,6 +13,7 @@ import (
 // ============================================================================
 
 func TestConnect_WithEmptyConfig(t *testing.T) {
+	t.Parallel()
 	// Connect() creates a client with empty config
 	// Connection is lazy, so this succeeds
 	db, err := Connect()
@@ -27,6 +28,7 @@ func TestConnect_WithEmptyConfig(t *testing.T) {
 // ============================================================================
 
 func TestPostgresDB_AllMethods(t *testing.T) {
+	t.Parallel()
 	// Create a PostgresDB with a mock client
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
@@ -83,6 +85,7 @@ func TestPostgresDB_AllMethods(t *testing.T) {
 }
 
 func TestPostgresDB_Methods_WithErrors(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{
 		healthCheckErr: errors.New("health check failed"),
 		execErr:        errors.New("exec failed"),
@@ -122,6 +125,7 @@ func TestPostgresDB_Methods_WithErrors(t *testing.T) {
 // ============================================================================
 
 func TestNewPostgresDB_Success(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 	
 	// This will create a client but not connect yet
@@ -134,6 +138,7 @@ func TestNewPostgresDB_Success(t *testing.T) {
 }
 
 func TestNewPostgresDB_WithFallback(t *testing.T) {
+	t.Parallel()
 	// Use invalid config to trigger fallback
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -154,6 +159,7 @@ func TestNewPostgresDB_WithFallback(t *testing.T) {
 }
 
 func TestNewPostgresDBWithFallback_RealConnection(t *testing.T) {
+	t.Parallel()
 	// This test requires a real PostgreSQL connection
 	cfg := &config.Config{}
 	
@@ -176,6 +182,7 @@ func TestNewPostgresDBWithFallback_RealConnection(t *testing.T) {
 // ============================================================================
 
 func TestRunMigration(t *testing.T) {
+	t.Parallel()
 	// Create a real PostgresDB with a config that won't connect
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -206,6 +213,7 @@ func TestRunMigration(t *testing.T) {
 // ============================================================================
 
 func TestMemoryRow_Scan_WithString(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	m.StoreRow("users", "user-001", []any{"Alice", 30})
 	
@@ -222,6 +230,7 @@ func TestMemoryRow_Scan_WithString(t *testing.T) {
 }
 
 func TestMemoryRow_Scan_WithDifferentTypes(t *testing.T) {
+	t.Parallel()
 	// Test scanning different types
 	row := &memoryRow{
 		values: []any{"test", 42, true},
@@ -240,6 +249,7 @@ func TestMemoryRow_Scan_WithDifferentTypes(t *testing.T) {
 }
 
 func TestMemoryRow_Scan_WithUnsupportedType(t *testing.T) {
+	t.Parallel()
 	row := &memoryRow{
 		values: []any{3.14}, // float64 not supported
 	}
@@ -253,6 +263,7 @@ func TestMemoryRow_Scan_WithUnsupportedType(t *testing.T) {
 }
 
 func TestMemoryRow_Scan_NoValues(t *testing.T) {
+	t.Parallel()
 	row := &memoryRow{
 		values: []any{},
 		err:    nil,
@@ -267,6 +278,7 @@ func TestMemoryRow_Scan_NoValues(t *testing.T) {
 }
 
 func TestMemoryRow_Scan_Error(t *testing.T) {
+	t.Parallel()
 	testErr := errors.New("scan error")
 	row := &memoryRow{
 		values: []any{"test"},
@@ -281,6 +293,7 @@ func TestMemoryRow_Scan_Error(t *testing.T) {
 }
 
 func TestMemoryRow_Scan_NoRows(t *testing.T) {
+	t.Parallel()
 	row := &memoryRow{
 		values: nil,
 		err:    nil,
@@ -298,6 +311,7 @@ func TestMemoryRow_Scan_NoRows(t *testing.T) {
 // ============================================================================
 
 func TestMemoryDB_Query_WithStoredRow(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	m.StoreRow("users", "user-001", []any{"Alice", 30})
 	
@@ -309,6 +323,7 @@ func TestMemoryDB_Query_WithStoredRow(t *testing.T) {
 }
 
 func TestMemoryDB_GetPool_ReturnsNil(t *testing.T) {
+	t.Parallel()
 	m := NewMemoryDB()
 	pool := m.GetPool()
 	assert.Nil(t, pool)
@@ -319,21 +334,25 @@ func TestMemoryDB_GetPool_ReturnsNil(t *testing.T) {
 // ============================================================================
 
 func TestPostgresDB_ImplementsDB(t *testing.T) {
+	t.Parallel()
 	// Compile-time check
 	var _ DB = (*PostgresDB)(nil)
 }
 
 func TestPostgresDB_ImplementsLegacyDB(t *testing.T) {
+	t.Parallel()
 	// Compile-time check
 	var _ LegacyDB = (*PostgresDB)(nil)
 }
 
 func TestMemoryDB_ImplementsDB(t *testing.T) {
+	t.Parallel()
 	// Compile-time check
 	var _ DB = (*MemoryDB)(nil)
 }
 
 func TestMemoryDB_ImplementsLegacyDB(t *testing.T) {
+	t.Parallel()
 	// Compile-time check
 	var _ LegacyDB = (*MemoryDB)(nil)
 }
@@ -343,6 +362,7 @@ func TestMemoryDB_ImplementsLegacyDB(t *testing.T) {
 // ============================================================================
 
 func TestConfigAliases(t *testing.T) {
+	t.Parallel()
 	// These tests ensure config type aliases compile correctly
 	
 	// Test Config alias
@@ -357,6 +377,7 @@ func TestConfigAliases(t *testing.T) {
 // ============================================================================
 
 func TestNewClientWithFallback_SuccessPath(t *testing.T) {
+	t.Parallel()
 	// This test would need a real PostgreSQL connection
 	// We test the error path instead
 	cfg := &config.Config{

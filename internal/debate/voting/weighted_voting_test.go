@@ -32,6 +32,7 @@ func createTestVotes(count int, choice string, confidence float64) []*Vote {
 // ============================================================================
 
 func TestDefaultVotingConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 
 	assert.Equal(t, 3, config.MinimumVotes)
@@ -48,6 +49,7 @@ func TestDefaultVotingConfig(t *testing.T) {
 // ============================================================================
 
 func TestNewWeightedVotingSystem(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -61,6 +63,7 @@ func TestNewWeightedVotingSystem(t *testing.T) {
 // ============================================================================
 
 func TestAddVote(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -78,6 +81,7 @@ func TestAddVote(t *testing.T) {
 }
 
 func TestAddVote_EmptyChoice(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -92,6 +96,7 @@ func TestAddVote_EmptyChoice(t *testing.T) {
 }
 
 func TestAddVote_InvalidConfidence(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -106,6 +111,7 @@ func TestAddVote_InvalidConfidence(t *testing.T) {
 }
 
 func TestAddVote_DuplicateReplacesExisting(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -131,6 +137,7 @@ func TestAddVote_DuplicateReplacesExisting(t *testing.T) {
 }
 
 func TestAddVote_SetsTimestamp(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -147,6 +154,7 @@ func TestAddVote_SetsTimestamp(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -167,6 +175,7 @@ func TestReset(t *testing.T) {
 // ============================================================================
 
 func TestCalculate_MiniMaxFormula(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -186,6 +195,7 @@ func TestCalculate_MiniMaxFormula(t *testing.T) {
 }
 
 func TestCalculate_InsufficientVotes(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 5
 	wvs := NewWeightedVotingSystem(config)
@@ -200,6 +210,7 @@ func TestCalculate_InsufficientVotes(t *testing.T) {
 }
 
 func TestCalculate_FiltersLowConfidence(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.MinimumConfidence = 0.5
@@ -218,6 +229,7 @@ func TestCalculate_FiltersLowConfidence(t *testing.T) {
 }
 
 func TestCalculate_WeightedScores(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.EnableDiversityBonus = false
@@ -238,6 +250,7 @@ func TestCalculate_WeightedScores(t *testing.T) {
 }
 
 func TestCalculate_VoteWeights(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	wvs := NewWeightedVotingSystem(config)
@@ -260,6 +273,7 @@ func TestCalculate_VoteWeights(t *testing.T) {
 // ============================================================================
 
 func TestCalculate_TieDetection(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.EnableTieBreaking = false // Disable to detect tie
@@ -278,6 +292,7 @@ func TestCalculate_TieDetection(t *testing.T) {
 }
 
 func TestCalculate_TieBreakByHighestConfidence(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 4
 	config.EnableTieBreaking = true
@@ -303,6 +318,7 @@ func TestCalculate_TieBreakByHighestConfidence(t *testing.T) {
 }
 
 func TestCalculate_TieBreakByMostVotes(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	config.EnableTieBreaking = true
@@ -326,6 +342,7 @@ func TestCalculate_TieBreakByMostVotes(t *testing.T) {
 }
 
 func TestCalculate_TieBreakByLeaderVote(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.EnableTieBreaking = true
@@ -353,6 +370,7 @@ func TestCalculate_TieBreakByLeaderVote(t *testing.T) {
 // ============================================================================
 
 func TestCalculate_DiversityBonus(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	config.EnableDiversityBonus = true
@@ -375,6 +393,7 @@ func TestCalculate_DiversityBonus(t *testing.T) {
 }
 
 func TestCalculate_DiversityBonus_Disabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.EnableDiversityBonus = false
@@ -397,6 +416,7 @@ func TestCalculate_DiversityBonus_Disabled(t *testing.T) {
 // ============================================================================
 
 func TestUpdateHistory(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -414,6 +434,7 @@ func TestUpdateHistory(t *testing.T) {
 }
 
 func TestCalculate_HistoricalWeight(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 2
 	config.EnableHistoricalWeight = true
@@ -441,6 +462,7 @@ func TestCalculate_HistoricalWeight(t *testing.T) {
 // ============================================================================
 
 func TestCalculate_ConsensusLevel(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -458,6 +480,7 @@ func TestCalculate_ConsensusLevel(t *testing.T) {
 }
 
 func TestCalculate_SplitConsensus(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 4
 	wvs := NewWeightedVotingSystem(config)
@@ -480,6 +503,7 @@ func TestCalculate_SplitConsensus(t *testing.T) {
 // ============================================================================
 
 func TestCalculateSimpleMajority(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -502,6 +526,7 @@ func TestCalculateSimpleMajority(t *testing.T) {
 // ============================================================================
 
 func TestCalculateBordaCount(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -526,6 +551,7 @@ func TestCalculateBordaCount(t *testing.T) {
 // ============================================================================
 
 func TestSimulateProductiveChaos(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -554,6 +580,7 @@ func TestSimulateProductiveChaos(t *testing.T) {
 }
 
 func TestSimulateProductiveChaos_InvalidLevel(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -583,6 +610,7 @@ func TestSimulateProductiveChaos_InvalidLevel(t *testing.T) {
 // ============================================================================
 
 func TestGetStatistics(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -603,6 +631,7 @@ func TestGetStatistics(t *testing.T) {
 }
 
 func TestGetStatistics_EmptyVotes(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -618,6 +647,7 @@ func TestGetStatistics_EmptyVotes(t *testing.T) {
 // ============================================================================
 
 func TestFullVotingWorkflow(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 5
 	config.EnableDiversityBonus = true
@@ -673,6 +703,7 @@ func TestFullVotingWorkflow(t *testing.T) {
 // ============================================================================
 
 func TestCalculateCondorcet_ClearWinner(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -694,6 +725,7 @@ func TestCalculateCondorcet_ClearWinner(t *testing.T) {
 }
 
 func TestCalculateCondorcet_Cycle(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -717,6 +749,7 @@ func TestCalculateCondorcet_Cycle(t *testing.T) {
 }
 
 func TestCalculateCondorcet_TwoCandidates(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -735,6 +768,7 @@ func TestCalculateCondorcet_TwoCandidates(t *testing.T) {
 }
 
 func TestCalculateCondorcet_SingleCandidate(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -753,6 +787,7 @@ func TestCalculateCondorcet_SingleCandidate(t *testing.T) {
 }
 
 func TestCalculateCondorcet_InsufficientRankings(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -768,6 +803,7 @@ func TestCalculateCondorcet_InsufficientRankings(t *testing.T) {
 }
 
 func TestBuildCondorcetMatrix(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -793,6 +829,7 @@ func TestBuildCondorcetMatrix(t *testing.T) {
 }
 
 func TestFindCondorcetWinner_Found(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -811,6 +848,7 @@ func TestFindCondorcetWinner_Found(t *testing.T) {
 }
 
 func TestFindCondorcetWinner_NotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -834,6 +872,7 @@ func TestFindCondorcetWinner_NotFound(t *testing.T) {
 // ============================================================================
 
 func TestCalculatePlurality_ClearWinner(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -854,6 +893,7 @@ func TestCalculatePlurality_ClearWinner(t *testing.T) {
 }
 
 func TestCalculatePlurality_Tie(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	config.EnableTieBreaking = true
@@ -874,6 +914,7 @@ func TestCalculatePlurality_Tie(t *testing.T) {
 }
 
 func TestCalculatePlurality_InsufficientVotes(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -887,6 +928,7 @@ func TestCalculatePlurality_InsufficientVotes(t *testing.T) {
 }
 
 func TestCalculatePlurality_NoMajorityNeeded(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 5
 	wvs := NewWeightedVotingSystem(config)
@@ -911,6 +953,7 @@ func TestCalculatePlurality_NoMajorityNeeded(t *testing.T) {
 // ============================================================================
 
 func TestCalculateUnanimous_AllAgree(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -930,6 +973,7 @@ func TestCalculateUnanimous_AllAgree(t *testing.T) {
 }
 
 func TestCalculateUnanimous_Disagreement(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -950,6 +994,7 @@ func TestCalculateUnanimous_Disagreement(t *testing.T) {
 }
 
 func TestCalculateUnanimous_InsufficientVotes(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -963,6 +1008,7 @@ func TestCalculateUnanimous_InsufficientVotes(t *testing.T) {
 }
 
 func TestCalculateUnanimous_LargeGroup(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)
@@ -990,6 +1036,7 @@ func TestCalculateUnanimous_LargeGroup(t *testing.T) {
 // ============================================================================
 
 func TestAutoSelectMethod(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	wvs := NewWeightedVotingSystem(config)
 
@@ -1009,6 +1056,7 @@ func TestAutoSelectMethod(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			method := wvs.AutoSelectMethod(tc.agentCount)
 			assert.Equal(t, tc.expected, method)
 		})
@@ -1020,6 +1068,7 @@ func TestAutoSelectMethod(t *testing.T) {
 // ============================================================================
 
 func TestVotingMethods_SameData_DifferentResults(t *testing.T) {
+	t.Parallel()
 	config := DefaultVotingConfig()
 	config.MinimumVotes = 3
 	wvs := NewWeightedVotingSystem(config)

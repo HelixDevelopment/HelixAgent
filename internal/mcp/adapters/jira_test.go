@@ -167,6 +167,7 @@ func (m *MockJiraClient) RemoveWatcher(ctx context.Context, issueKey, accountID 
 }
 
 func TestJiraAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -181,6 +182,7 @@ func TestJiraAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestJiraAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -202,6 +204,7 @@ func TestJiraAdapter_ListTools(t *testing.T) {
 }
 
 func TestJiraAdapter_GetIssue(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		client := &MockJiraClient{
 			Issues: []JiraIssue{
@@ -230,6 +233,7 @@ func TestJiraAdapter_GetIssue(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
+			t.Parallel()
 		client := &MockJiraClient{Issues: []JiraIssue{}}
 		config := DefaultJiraConfig()
 		config.BaseURL = "https://test.atlassian.net"
@@ -245,6 +249,7 @@ func TestJiraAdapter_GetIssue(t *testing.T) {
 }
 
 func TestJiraAdapter_SearchIssues(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Issues: []JiraIssue{
 			{Key: "PROJ-1", Fields: JiraIssueFields{Summary: "Issue 1", Status: &JiraStatus{Name: "Open"}}},
@@ -265,6 +270,7 @@ func TestJiraAdapter_SearchIssues(t *testing.T) {
 }
 
 func TestJiraAdapter_CreateIssue(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -281,6 +287,7 @@ func TestJiraAdapter_CreateIssue(t *testing.T) {
 }
 
 func TestJiraAdapter_UpdateIssue(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -296,6 +303,7 @@ func TestJiraAdapter_UpdateIssue(t *testing.T) {
 }
 
 func TestJiraAdapter_TransitionIssue(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -311,6 +319,7 @@ func TestJiraAdapter_TransitionIssue(t *testing.T) {
 }
 
 func TestJiraAdapter_GetTransitions(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Transitions: []JiraTransition{
 			{ID: "11", Name: "To Do", To: &JiraStatus{Name: "To Do"}},
@@ -334,6 +343,7 @@ func TestJiraAdapter_GetTransitions(t *testing.T) {
 }
 
 func TestJiraAdapter_AssignIssue(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -349,6 +359,7 @@ func TestJiraAdapter_AssignIssue(t *testing.T) {
 }
 
 func TestJiraAdapter_AddComment(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -364,6 +375,7 @@ func TestJiraAdapter_AddComment(t *testing.T) {
 }
 
 func TestJiraAdapter_ListProjects(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Projects: []JiraProject{
 			{Key: "PROJ1", Name: "Project One", ProjectType: "software"},
@@ -382,6 +394,7 @@ func TestJiraAdapter_ListProjects(t *testing.T) {
 }
 
 func TestJiraAdapter_ListSprints(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Sprints: []JiraSprint{
 			{ID: 1, Name: "Sprint 1", State: "closed", StartDate: "2024-01-01T00:00:00Z", EndDate: "2024-01-14T00:00:00Z"},
@@ -402,6 +415,7 @@ func TestJiraAdapter_ListSprints(t *testing.T) {
 }
 
 func TestJiraAdapter_ListBoards(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Boards: []JiraBoard{
 			{ID: 1, Name: "Scrum Board", Type: "scrum"},
@@ -420,6 +434,7 @@ func TestJiraAdapter_ListBoards(t *testing.T) {
 }
 
 func TestJiraAdapter_GetMe(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		CurrentUser: &JiraUser{
 			AccountID:    "user-1",
@@ -439,6 +454,7 @@ func TestJiraAdapter_GetMe(t *testing.T) {
 }
 
 func TestJiraAdapter_ListIssueTypes(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		IssueTypes: []JiraIssueType{
 			{ID: "1", Name: "Bug", Subtask: false},
@@ -460,6 +476,7 @@ func TestJiraAdapter_ListIssueTypes(t *testing.T) {
 }
 
 func TestJiraAdapter_ListPriorities(t *testing.T) {
+	t.Parallel()
 	client := &MockJiraClient{
 		Priorities: []JiraPriority{
 			{ID: "1", Name: "Highest"},
@@ -480,6 +497,7 @@ func TestJiraAdapter_ListPriorities(t *testing.T) {
 }
 
 func TestJiraAdapter_AddWorklog(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -496,6 +514,7 @@ func TestJiraAdapter_AddWorklog(t *testing.T) {
 }
 
 func TestJiraAdapter_AddWatcher(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -511,6 +530,7 @@ func TestJiraAdapter_AddWatcher(t *testing.T) {
 }
 
 func TestJiraAdapter_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	config.BaseURL = "https://test.atlassian.net"
 	adapter := NewJiraAdapter(config, &MockJiraClient{})
@@ -522,6 +542,7 @@ func TestJiraAdapter_UnknownTool(t *testing.T) {
 }
 
 func TestDefaultJiraConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultJiraConfig()
 	assert.Equal(t, 30*time.Second, config.Timeout)
 }

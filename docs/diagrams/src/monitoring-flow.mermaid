@@ -1,0 +1,17 @@
+graph LR
+    HA[HelixAgent /metrics] --> P[Prometheus :9090]
+    P --> G[Grafana :3000]
+    P --> AM[AlertManager :9093]
+    AM --> S[Slack/Email]
+
+    subgraph Dashboards
+        D1[API Overview]
+        D2[Provider Health]
+        D3[Ensemble Perf]
+        D4[Resources]
+        D5[Cache]
+        D6[MCP Adapters]
+        D7[Security]
+    end
+
+    G --> Dashboards

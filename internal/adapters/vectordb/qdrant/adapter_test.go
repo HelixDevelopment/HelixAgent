@@ -27,6 +27,7 @@ func isQdrantAvailable() bool {
 // ============================================================================
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultConfig()
 	require.NotNil(t, cfg)
 	assert.Equal(t, "localhost", cfg.Host)
@@ -36,6 +37,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.Config{
 		Host:   "qdrant-server",
 		Port:   6333,
@@ -53,6 +55,7 @@ func TestConfig_Fields(t *testing.T) {
 // ============================================================================
 
 func TestDefaultSearchOptions(t *testing.T) {
+	t.Parallel()
 	opts := adapter.DefaultSearchOptions()
 	require.NotNil(t, opts)
 	assert.Equal(t, 10, opts.Limit)
@@ -62,6 +65,7 @@ func TestDefaultSearchOptions(t *testing.T) {
 }
 
 func TestSearchOptions_WithLimit(t *testing.T) {
+	t.Parallel()
 	opts := adapter.DefaultSearchOptions()
 	result := opts.WithLimit(25)
 	assert.Same(t, opts, result) // returns self for chaining
@@ -69,6 +73,7 @@ func TestSearchOptions_WithLimit(t *testing.T) {
 }
 
 func TestSearchOptions_Fields(t *testing.T) {
+	t.Parallel()
 	opts := &adapter.SearchOptions{
 		Limit:          50,
 		ScoreThreshold: 0.8,
@@ -88,6 +93,7 @@ func TestSearchOptions_Fields(t *testing.T) {
 // ============================================================================
 
 func TestDefaultCollectionConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultCollectionConfig("my-collection", 384)
 	require.NotNil(t, cfg)
 	assert.Equal(t, "my-collection", cfg.Name)
@@ -96,6 +102,7 @@ func TestDefaultCollectionConfig(t *testing.T) {
 }
 
 func TestCollectionConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.CollectionConfig{
 		Name:       "test-col",
 		VectorSize: 1536,
@@ -111,6 +118,7 @@ func TestCollectionConfig_Fields(t *testing.T) {
 // ============================================================================
 
 func TestDistanceMetricConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, adapter.DistanceMetric("Cosine"), adapter.DistanceCosine)
 	assert.Equal(t, adapter.DistanceMetric("Dot"), adapter.DistanceDot)
 	assert.Equal(t, adapter.DistanceMetric("Euclid"), adapter.DistanceEuclidean)
@@ -126,6 +134,7 @@ func TestDistanceMetricConstants(t *testing.T) {
 // ============================================================================
 
 func TestCollectionInfo_Fields(t *testing.T) {
+	t.Parallel()
 	info := adapter.CollectionInfo{
 		Name:         "test-collection",
 		VectorSize:   768,
@@ -145,6 +154,7 @@ func TestCollectionInfo_Fields(t *testing.T) {
 // ============================================================================
 
 func TestPoint_Fields(t *testing.T) {
+	t.Parallel()
 	p := adapter.Point{
 		ID:      "point-001",
 		Vector:  []float32{0.1, 0.2, 0.3},
@@ -156,6 +166,7 @@ func TestPoint_Fields(t *testing.T) {
 }
 
 func TestScoredPoint_Fields(t *testing.T) {
+	t.Parallel()
 	sp := adapter.ScoredPoint{
 		ID:      "scored-001",
 		Score:   0.95,
@@ -173,6 +184,7 @@ func TestScoredPoint_Fields(t *testing.T) {
 // ============================================================================
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultConfig()
 	client, err := adapter.NewClient(cfg, nil)
 	// NewClient should succeed (lazy connection)
@@ -181,6 +193,7 @@ func TestNewClient_DefaultConfig(t *testing.T) {
 }
 
 func TestNewClient_NilConfig_UsesDefault(t *testing.T) {
+	t.Parallel()
 	// nil config should use DefaultConfig
 	client, err := adapter.NewClient(nil, nil)
 	require.NoError(t, err)
@@ -189,6 +202,7 @@ func TestNewClient_NilConfig_UsesDefault(t *testing.T) {
 }
 
 func TestNewClient_Connect_FailsWithoutQdrant(t *testing.T) {
+	t.Parallel()
 	if isQdrantAvailable() {
 		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")
 	}
@@ -206,6 +220,7 @@ func TestNewClient_Connect_FailsWithoutQdrant(t *testing.T) {
 }
 
 func TestNewClient_Close(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultConfig()
 	client, err := adapter.NewClient(cfg, nil)
 	require.NoError(t, err)
@@ -215,6 +230,7 @@ func TestNewClient_Close(t *testing.T) {
 }
 
 func TestNewClient_HealthCheck_FailsWithoutQdrant(t *testing.T) {
+	t.Parallel()
 	if isQdrantAvailable() {
 		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")
 	}
@@ -231,6 +247,7 @@ func TestNewClient_HealthCheck_FailsWithoutQdrant(t *testing.T) {
 }
 
 func TestNewClient_CountPoints(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultConfig()
 	client, err := adapter.NewClient(cfg, nil)
 	require.NoError(t, err)

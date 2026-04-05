@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewGitAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	adapter := NewGitAdapter(config, nil)
 
@@ -23,6 +24,7 @@ func TestNewGitAdapter(t *testing.T) {
 }
 
 func TestDefaultGitAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 
 	homeDir, _ := os.UserHomeDir()
@@ -35,6 +37,7 @@ func TestDefaultGitAdapterConfig(t *testing.T) {
 }
 
 func TestGitAdapter_Initialize(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -50,6 +53,7 @@ func TestGitAdapter_Initialize(t *testing.T) {
 }
 
 func TestGitAdapter_Initialize_InvalidGit(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	config.GitPath = "/nonexistent/git"
 	adapter := NewGitAdapter(config, logrus.New())
@@ -60,6 +64,7 @@ func TestGitAdapter_Initialize_InvalidGit(t *testing.T) {
 }
 
 func TestGitAdapter_Health(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -82,6 +87,7 @@ func TestGitAdapter_Health(t *testing.T) {
 }
 
 func TestGitAdapter_Status(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -121,6 +127,7 @@ func TestGitAdapter_Status(t *testing.T) {
 }
 
 func TestGitAdapter_Status_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	adapter := NewGitAdapter(config, logrus.New())
 
@@ -130,6 +137,7 @@ func TestGitAdapter_Status_NotInitialized(t *testing.T) {
 }
 
 func TestGitAdapter_Status_WithFiles(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -172,6 +180,7 @@ func TestGitAdapter_Status_WithFiles(t *testing.T) {
 }
 
 func TestGitAdapter_Add(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -209,6 +218,7 @@ func TestGitAdapter_Add(t *testing.T) {
 }
 
 func TestGitAdapter_Add_All(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -247,6 +257,7 @@ func TestGitAdapter_Add_All(t *testing.T) {
 }
 
 func TestGitAdapter_Commit(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -296,6 +307,7 @@ func TestGitAdapter_Commit(t *testing.T) {
 }
 
 func TestGitAdapter_Commit_NoMessage(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -313,6 +325,7 @@ func TestGitAdapter_Commit_NoMessage(t *testing.T) {
 }
 
 func TestGitAdapter_Commit_Amend_NotAllowed(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -331,6 +344,7 @@ func TestGitAdapter_Commit_Amend_NotAllowed(t *testing.T) {
 }
 
 func TestGitAdapter_Log(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -384,6 +398,7 @@ func TestGitAdapter_Log(t *testing.T) {
 }
 
 func TestGitAdapter_Branch(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -439,6 +454,7 @@ func TestGitAdapter_Branch(t *testing.T) {
 }
 
 func TestGitAdapter_Checkout(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -493,6 +509,7 @@ func TestGitAdapter_Checkout(t *testing.T) {
 }
 
 func TestGitAdapter_Diff(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -547,6 +564,7 @@ func TestGitAdapter_Diff(t *testing.T) {
 }
 
 func TestGitAdapter_Remotes(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -582,6 +600,7 @@ func TestGitAdapter_Remotes(t *testing.T) {
 }
 
 func TestGitAdapter_Push_NotAllowed(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -600,6 +619,7 @@ func TestGitAdapter_Push_NotAllowed(t *testing.T) {
 }
 
 func TestGitAdapter_Push_ForceNotAllowed(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -619,6 +639,7 @@ func TestGitAdapter_Push_ForceNotAllowed(t *testing.T) {
 }
 
 func TestGitAdapter_RemoteOperations_NotAllowed(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -641,6 +662,7 @@ func TestGitAdapter_RemoteOperations_NotAllowed(t *testing.T) {
 }
 
 func TestGitAdapter_Stash(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -698,6 +720,7 @@ func TestGitAdapter_Stash(t *testing.T) {
 }
 
 func TestGitAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	adapter := NewGitAdapter(config, logrus.New())
 
@@ -725,6 +748,7 @@ func TestGitAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestGitAdapter_ExecuteTool(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -769,6 +793,7 @@ func TestGitAdapter_ExecuteTool(t *testing.T) {
 }
 
 func TestGitAdapter_ExecuteTool_Unknown(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -786,6 +811,7 @@ func TestGitAdapter_ExecuteTool_Unknown(t *testing.T) {
 }
 
 func TestGitAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	adapter := NewGitAdapter(config, logrus.New())
 
@@ -795,6 +821,7 @@ func TestGitAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestGitAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	adapter := NewGitAdapter(config, logrus.New())
 
@@ -811,6 +838,7 @@ func TestGitAdapter_Close(t *testing.T) {
 }
 
 func TestGitAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitAdapterConfig()
 	config.AllowPush = true
 	config.AllowForce = true
@@ -825,6 +853,7 @@ func TestGitAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestGitAdapter_PathNotAllowed(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -844,6 +873,7 @@ func TestGitAdapter_PathNotAllowed(t *testing.T) {
 }
 
 func TestGitAdapter_DeniedPaths(t *testing.T) {
+	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")

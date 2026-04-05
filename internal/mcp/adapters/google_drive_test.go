@@ -176,12 +176,14 @@ func (m *MockGoogleDriveClient) ShareFile(ctx context.Context, fileID, email, ro
 // Tests
 
 func TestDefaultGoogleDriveConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 
 	assert.Equal(t, 60*time.Second, config.Timeout)
 }
 
 func TestNewGoogleDriveAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -194,6 +196,7 @@ func TestNewGoogleDriveAdapter(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -213,6 +216,7 @@ func TestGoogleDriveAdapter_ListTools(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_ListFiles(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -229,6 +233,7 @@ func TestGoogleDriveAdapter_ListFiles(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_GetFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -243,6 +248,7 @@ func TestGoogleDriveAdapter_GetFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_DownloadFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -257,6 +263,7 @@ func TestGoogleDriveAdapter_DownloadFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_CreateFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -274,6 +281,7 @@ func TestGoogleDriveAdapter_CreateFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_UpdateFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -289,6 +297,7 @@ func TestGoogleDriveAdapter_UpdateFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_DeleteFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -303,6 +312,7 @@ func TestGoogleDriveAdapter_DeleteFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_CreateFolder(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -318,6 +328,7 @@ func TestGoogleDriveAdapter_CreateFolder(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_Search(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -332,6 +343,7 @@ func TestGoogleDriveAdapter_Search(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_ShareFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -348,6 +360,7 @@ func TestGoogleDriveAdapter_ShareFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_CopyFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -363,6 +376,7 @@ func TestGoogleDriveAdapter_CopyFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_MoveFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -378,6 +392,7 @@ func TestGoogleDriveAdapter_MoveFile(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -389,6 +404,7 @@ func TestGoogleDriveAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	client.SetError(true)
@@ -405,6 +421,7 @@ func TestGoogleDriveAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestDriveFileTypes(t *testing.T) {
+	t.Parallel()
 	file := DriveFile{
 		ID:           "abc123",
 		Name:         "test-document.pdf",
@@ -429,6 +446,7 @@ func TestDriveFileTypes(t *testing.T) {
 }
 
 func TestOwnerTypes(t *testing.T) {
+	t.Parallel()
 	owner := Owner{
 		DisplayName:  "Jane Smith",
 		EmailAddress: "jane@example.com",
@@ -439,6 +457,7 @@ func TestOwnerTypes(t *testing.T) {
 }
 
 func TestGoogleDriveConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := GoogleDriveConfig{
 		ClientID:     "client-id-123",
 		ClientSecret: "client-secret-456",
@@ -453,6 +472,7 @@ func TestGoogleDriveConfigTypes(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_GetServerInfoCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)
@@ -465,6 +485,7 @@ func TestGoogleDriveAdapter_GetServerInfoCapabilities(t *testing.T) {
 }
 
 func TestGoogleDriveAdapter_ListFilesWithFolderIcon(t *testing.T) {
+	t.Parallel()
 	config := DefaultGoogleDriveConfig()
 	client := NewMockGoogleDriveClient()
 	adapter := NewGoogleDriveAdapter(config, client)

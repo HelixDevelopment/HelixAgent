@@ -16,6 +16,7 @@ import (
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_execute_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -41,6 +42,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	require.NoError(t, adapter.Initialize(ctx))
 
 	t.Run("filesystem_read_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": testFile})
 		result, err := adapter.ExecuteTool(ctx, "filesystem_read_file", args)
 
@@ -54,6 +56,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_write_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		newFile := filepath.Join(tempDir, "new_write.txt")
 		args, _ := json.Marshal(map[string]string{
 			"path":    newFile,
@@ -71,6 +74,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_append_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		appendFile := filepath.Join(tempDir, "append_test.txt")
 		require.NoError(t, os.WriteFile(appendFile, []byte("initial"), 0644))
 
@@ -89,6 +93,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_delete_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		deleteFile := filepath.Join(tempDir, "to_delete.txt")
 		require.NoError(t, os.WriteFile(deleteFile, []byte("delete me"), 0644))
 
@@ -103,6 +108,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_list_directory via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": tempDir})
 
 		result, err := adapter.ExecuteTool(ctx, "filesystem_list_directory", args)
@@ -116,6 +122,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_create_directory via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		newDir := filepath.Join(tempDir, "created_dir", "nested")
 		args, _ := json.Marshal(map[string]string{"path": newDir})
 
@@ -129,6 +136,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_delete_directory via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		dirToDelete := filepath.Join(tempDir, "dir_to_delete")
 		require.NoError(t, os.MkdirAll(dirToDelete, 0755))
 		require.NoError(t, os.WriteFile(filepath.Join(dirToDelete, "file.txt"), []byte("content"), 0644))
@@ -147,6 +155,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_delete_directory non-recursive via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		emptyDir := filepath.Join(tempDir, "empty_dir")
 		require.NoError(t, os.MkdirAll(emptyDir, 0755))
 
@@ -164,6 +173,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_get_info via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": testFile})
 
 		result, err := adapter.ExecuteTool(ctx, "filesystem_get_info", args)
@@ -177,6 +187,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_copy_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		srcFile := filepath.Join(tempDir, "copy_src.txt")
 		dstFile := filepath.Join(tempDir, "copy_dst.txt")
 		require.NoError(t, os.WriteFile(srcFile, []byte("copy content"), 0644))
@@ -200,6 +211,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_move_file via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		srcFile := filepath.Join(tempDir, "move_src.txt")
 		dstFile := filepath.Join(tempDir, "move_dst.txt")
 		require.NoError(t, os.WriteFile(srcFile, []byte("move content"), 0644))
@@ -223,6 +235,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_search via ExecuteTool", func(t *testing.T) {
+			t.Parallel()
 		// Create some searchable files
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "search1.log"), []byte("log1"), 0644))
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "search2.log"), []byte("log2"), 0644))
@@ -244,6 +257,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("filesystem_search with default max_results", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]interface{}{
 			"root_path": tempDir,
 			"pattern":   "*",
@@ -260,6 +274,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("unknown tool returns error", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{})
 
 		_, err := adapter.ExecuteTool(ctx, "filesystem_nonexistent", args)
@@ -268,6 +283,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("invalid JSON args returns error", func(t *testing.T) {
+			t.Parallel()
 		_, err := adapter.ExecuteTool(ctx, "filesystem_read_file", json.RawMessage(`not json`))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "parse arguments")
@@ -279,6 +295,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_execute_error_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -295,12 +312,14 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	require.NoError(t, adapter.Initialize(ctx))
 
 	t.Run("read_file nonexistent path", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": filepath.Join(tempDir, "nonexistent.txt")})
 		_, err := adapter.ExecuteTool(ctx, "filesystem_read_file", args)
 		assert.Error(t, err)
 	})
 
 	t.Run("write_file when writes disabled", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{
 			"path":    filepath.Join(tempDir, "test.txt"),
 			"content": "test",
@@ -311,6 +330,7 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("delete_file when deletes disabled", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "test.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
 
@@ -321,6 +341,7 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("list_directory on file", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "testfile.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
 
@@ -330,12 +351,14 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("get_info nonexistent path", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": filepath.Join(tempDir, "nonexistent.txt")})
 		_, err := adapter.ExecuteTool(ctx, "filesystem_get_info", args)
 		assert.Error(t, err)
 	})
 
 	t.Run("copy_file when writes disabled", func(t *testing.T) {
+			t.Parallel()
 		srcFile := filepath.Join(tempDir, "src.txt")
 		require.NoError(t, os.WriteFile(srcFile, []byte("test"), 0644))
 
@@ -349,6 +372,7 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("search_files in nonexistent directory", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]interface{}{
 			"root_path": filepath.Join(tempDir, "nonexistent"),
 			"pattern":   "*",
@@ -370,11 +394,13 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_permission_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	t.Run("CreateDirectory when not allowed", func(t *testing.T) {
+			t.Parallel()
 		config := FilesystemAdapterConfig{
 			AllowedPaths:   []string{tempDir},
 			AllowCreateDir: false,
@@ -390,6 +416,7 @@ func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
 	})
 
 	t.Run("DeleteDirectory when not allowed", func(t *testing.T) {
+			t.Parallel()
 		dirToDelete := filepath.Join(tempDir, "dir_to_delete")
 		require.NoError(t, os.MkdirAll(dirToDelete, 0755))
 
@@ -411,6 +438,7 @@ func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
 	})
 
 	t.Run("MoveFile requires both write and delete", func(t *testing.T) {
+			t.Parallel()
 		srcFile := filepath.Join(tempDir, "src.txt")
 		require.NoError(t, os.WriteFile(srcFile, []byte("test"), 0644))
 
@@ -438,6 +466,7 @@ func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_path_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -454,6 +483,7 @@ func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 	require.NoError(t, adapter.Initialize(ctx))
 
 	t.Run("read_file outside allowed paths", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": "/etc/passwd"})
 		_, err := adapter.ExecuteTool(ctx, "filesystem_read_file", args)
 		assert.Error(t, err)
@@ -461,6 +491,7 @@ func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 	})
 
 	t.Run("write_file outside allowed paths", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{
 			"path":    "/etc/test.txt",
 			"content": "test",
@@ -470,6 +501,7 @@ func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 	})
 
 	t.Run("copy_file destination outside allowed paths", func(t *testing.T) {
+			t.Parallel()
 		srcFile := filepath.Join(tempDir, "src.txt")
 		require.NoError(t, os.WriteFile(srcFile, []byte("test"), 0644))
 
@@ -487,6 +519,7 @@ func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_edge_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -504,12 +537,14 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	require.NoError(t, adapter.Initialize(ctx))
 
 	t.Run("read_file empty path", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]string{"path": ""})
 		_, err := adapter.ExecuteTool(ctx, "filesystem_read_file", args)
 		assert.Error(t, err)
 	})
 
 	t.Run("write_file empty content", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "empty.txt")
 		args, _ := json.Marshal(map[string]string{
 			"path":    testFile,
@@ -526,6 +561,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("search_files empty pattern", func(t *testing.T) {
+			t.Parallel()
 		args, _ := json.Marshal(map[string]interface{}{
 			"root_path": tempDir,
 			"pattern":   "",
@@ -544,6 +580,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("delete_file that is a directory", func(t *testing.T) {
+			t.Parallel()
 		dirPath := filepath.Join(tempDir, "a_directory")
 		require.NoError(t, os.MkdirAll(dirPath, 0755))
 
@@ -554,6 +591,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("delete_directory that is a file", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "not_a_dir.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
 
@@ -567,6 +605,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("copy_file source is directory", func(t *testing.T) {
+			t.Parallel()
 		dirPath := filepath.Join(tempDir, "src_dir")
 		require.NoError(t, os.MkdirAll(dirPath, 0755))
 
@@ -585,6 +624,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 // ============================================================================
 
 func TestFilesystemAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "fs_not_init_test")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -616,6 +656,7 @@ func TestFilesystemAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 
 	for _, tool := range tools {
 		t.Run(tool+" not initialized", func(t *testing.T) {
+				t.Parallel()
 			args, _ := json.Marshal(map[string]interface{}{
 				"path":        tempDir,
 				"content":     "test",

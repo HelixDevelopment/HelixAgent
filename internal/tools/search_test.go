@@ -8,6 +8,7 @@ import (
 )
 
 func TestSearchTools_ExactNameMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "Bash",
 		MaxResults: 10,
@@ -20,6 +21,7 @@ func TestSearchTools_ExactNameMatch(t *testing.T) {
 }
 
 func TestSearchTools_PartialNameMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "bas",
 		MaxResults: 10,
@@ -40,6 +42,7 @@ func TestSearchTools_PartialNameMatch(t *testing.T) {
 }
 
 func TestSearchTools_DescriptionMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "shell commands",
 		MaxResults: 10,
@@ -58,6 +61,7 @@ func TestSearchTools_DescriptionMatch(t *testing.T) {
 }
 
 func TestSearchTools_CategoryFilter(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "file",
 		Categories: []string{CategoryFileSystem},
@@ -72,6 +76,7 @@ func TestSearchTools_CategoryFilter(t *testing.T) {
 }
 
 func TestSearchTools_AliasMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "shell",
 		MaxResults: 10,
@@ -90,6 +95,7 @@ func TestSearchTools_AliasMatch(t *testing.T) {
 }
 
 func TestSearchTools_ParameterMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:         "file_path",
 		IncludeParams: true,
@@ -109,6 +115,7 @@ func TestSearchTools_ParameterMatch(t *testing.T) {
 }
 
 func TestSearchTools_FuzzyMatch(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "bsh",
 		FuzzyMatch: true,
@@ -128,6 +135,7 @@ func TestSearchTools_FuzzyMatch(t *testing.T) {
 }
 
 func TestSearchTools_MaxResults(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:      "a",
 		MaxResults: 3,
@@ -137,6 +145,7 @@ func TestSearchTools_MaxResults(t *testing.T) {
 }
 
 func TestSearchTools_MinScore(t *testing.T) {
+	t.Parallel()
 	results := SearchTools(SearchOptions{
 		Query:    "bash",
 		MinScore: 0.9,
@@ -148,6 +157,7 @@ func TestSearchTools_MinScore(t *testing.T) {
 }
 
 func TestSearchByKeywords(t *testing.T) {
+	t.Parallel()
 	results := SearchByKeywords([]string{"git", "version"}, nil)
 
 	require.NotEmpty(t, results)
@@ -163,6 +173,7 @@ func TestSearchByKeywords(t *testing.T) {
 }
 
 func TestSearchByKeywords_WithCategory(t *testing.T) {
+	t.Parallel()
 	results := SearchByKeywords([]string{"file"}, []string{CategoryFileSystem})
 
 	// All results should be filesystem tools
@@ -172,6 +183,7 @@ func TestSearchByKeywords_WithCategory(t *testing.T) {
 }
 
 func TestGetToolSuggestions(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping flaky test - non-deterministic map iteration order")
 	suggestions := GetToolSuggestions("Re", 5)
 
@@ -186,6 +198,7 @@ func TestGetToolSuggestions(t *testing.T) {
 }
 
 func TestGetToolSuggestions_MaxLimit(t *testing.T) {
+	t.Parallel()
 	suggestions := GetToolSuggestions("", 3)
 
 	// When prefix is empty, may return up to 3 suggestions
@@ -193,6 +206,7 @@ func TestGetToolSuggestions_MaxLimit(t *testing.T) {
 }
 
 func TestFuzzyMatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		s1       string
 		s2       string
@@ -214,6 +228,7 @@ func TestFuzzyMatch(t *testing.T) {
 }
 
 func TestCalculateToolScore_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	schema := &ToolSchema{
 		Name:        "Test",
 		Description: "Test tool",
@@ -228,6 +243,7 @@ func TestCalculateToolScore_EmptyQuery(t *testing.T) {
 }
 
 func TestSortToolResults(t *testing.T) {
+	t.Parallel()
 	results := []ToolSearchResult{
 		{Score: 0.5},
 		{Score: 0.9},

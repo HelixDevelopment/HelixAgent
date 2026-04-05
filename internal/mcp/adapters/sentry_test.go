@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewSentryAdapter(t *testing.T) {
+	t.Parallel()
 	config := SentryConfig{
 		AuthToken:    "test-token",
 		Organization: "test-org",
@@ -28,6 +29,7 @@ func TestNewSentryAdapter(t *testing.T) {
 }
 
 func TestSentryAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewSentryAdapter(SentryConfig{})
 
 	info := adapter.GetServerInfo()
@@ -41,6 +43,7 @@ func TestSentryAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestSentryAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewSentryAdapter(SentryConfig{})
 
 	tools := adapter.ListTools()
@@ -66,6 +69,7 @@ func TestSentryAdapter_ListTools(t *testing.T) {
 }
 
 func TestSentryAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewSentryAdapter(SentryConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -76,6 +80,7 @@ func TestSentryAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestSentryAdapter_ListProjects(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/organizations/test-org/projects/")
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -106,6 +111,7 @@ func TestSentryAdapter_ListProjects(t *testing.T) {
 }
 
 func TestSentryAdapter_ListIssues(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/projects/test-org/frontend/issues/")
 		// Note: query is URL-encoded (is:unresolved becomes is%3Aunresolved)
@@ -151,6 +157,7 @@ func TestSentryAdapter_ListIssues(t *testing.T) {
 }
 
 func TestSentryAdapter_GetIssue(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/issues/123/")
 
@@ -199,6 +206,7 @@ func TestSentryAdapter_GetIssue(t *testing.T) {
 }
 
 func TestSentryAdapter_ResolveIssue(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
 		assert.Contains(t, r.URL.Path, "/issues/123/")
@@ -229,6 +237,7 @@ func TestSentryAdapter_ResolveIssue(t *testing.T) {
 }
 
 func TestSentryAdapter_ListEvents(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/issues/123/events/")
 
@@ -270,6 +279,7 @@ func TestSentryAdapter_ListEvents(t *testing.T) {
 }
 
 func TestSentryAdapter_GetEvent(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/projects/test-org/frontend/events/event-1/")
 
@@ -318,6 +328,7 @@ func TestSentryAdapter_GetEvent(t *testing.T) {
 }
 
 func TestSentryAdapter_ListAlerts(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/projects/test-org/frontend/rules/")
 
@@ -355,6 +366,7 @@ func TestSentryAdapter_ListAlerts(t *testing.T) {
 }
 
 func TestSentryAdapter_QueryStats(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/projects/test-org/frontend/stats/")
 
@@ -388,6 +400,7 @@ func TestSentryAdapter_QueryStats(t *testing.T) {
 }
 
 func TestSentryAdapter_SearchIssues(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/organizations/test-org/issues/")
 		assert.Contains(t, r.URL.RawQuery, "query=TypeError")
@@ -426,6 +439,7 @@ func TestSentryAdapter_SearchIssues(t *testing.T) {
 }
 
 func TestSentryAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"detail": "Invalid token"}`))
@@ -447,6 +461,7 @@ func TestSentryAdapter_APIError(t *testing.T) {
 }
 
 func TestDefaultSentryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSentryConfig()
 
 	assert.Equal(t, "https://sentry.io/api/0", config.BaseURL)

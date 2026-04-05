@@ -20,6 +20,7 @@ import (
 // =============================================================================
 
 func TestBaseTopology_GetChannels_Copy(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	bt := NewBaseTopology(config)
 
@@ -41,6 +42,7 @@ func TestBaseTopology_GetChannels_Copy(t *testing.T) {
 }
 
 func TestBaseTopology_GetAgentsByRole_Empty(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	bt := NewBaseTopology(config)
 
@@ -50,6 +52,7 @@ func TestBaseTopology_GetAgentsByRole_Empty(t *testing.T) {
 }
 
 func TestBaseTopology_GetMetrics_Copy(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	bt := NewBaseTopology(config)
 
@@ -61,6 +64,7 @@ func TestBaseTopology_GetMetrics_Copy(t *testing.T) {
 }
 
 func TestBaseTopology_GetNextPhase_Unknown(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	bt := NewBaseTopology(config)
 
@@ -74,6 +78,7 @@ func TestBaseTopology_GetNextPhase_Unknown(t *testing.T) {
 // =============================================================================
 
 func TestGraphMeshTopology_InitializeWithDifferentRoles(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -107,6 +112,7 @@ func TestGraphMeshTopology_InitializeWithDifferentRoles(t *testing.T) {
 }
 
 func TestGraphMeshTopology_SelectLeader_NoAgents(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 
@@ -117,6 +123,7 @@ func TestGraphMeshTopology_SelectLeader_NoAgents(t *testing.T) {
 }
 
 func TestGraphMeshTopology_RouteMessage_PartialTargets(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -139,6 +146,7 @@ func TestGraphMeshTopology_RouteMessage_PartialTargets(t *testing.T) {
 }
 
 func TestGraphMeshTopology_CalculateChannelWeight(t *testing.T) {
+	t.Parallel()
 	// Test channel weight calculation with different agent configurations
 	from := &Agent{
 		ID:             "from",
@@ -162,6 +170,7 @@ func TestGraphMeshTopology_CalculateChannelWeight(t *testing.T) {
 }
 
 func TestGraphMeshTopology_CalculateLeaderScore_AllPhases(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -180,6 +189,7 @@ func TestGraphMeshTopology_CalculateLeaderScore_AllPhases(t *testing.T) {
 
 	for _, phase := range phases {
 		t.Run(string(phase), func(t *testing.T) {
+				t.Parallel()
 			leader, err := gm.SelectLeader(phase)
 			require.NoError(t, err)
 			assert.NotNil(t, leader)
@@ -188,6 +198,7 @@ func TestGraphMeshTopology_CalculateLeaderScore_AllPhases(t *testing.T) {
 }
 
 func TestGraphMeshTopology_DynamicRoleReassignment_TopPerformers(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	config.EnableDynamicRoles = true
 	gm := NewGraphMeshTopology(config)
@@ -215,6 +226,7 @@ func TestGraphMeshTopology_DynamicRoleReassignment_TopPerformers(t *testing.T) {
 }
 
 func TestGraphMeshTopology_GetTopologySnapshot_Complete(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -237,6 +249,7 @@ func TestGraphMeshTopology_GetTopologySnapshot_Complete(t *testing.T) {
 }
 
 func TestGraphMeshTopology_ExecuteParallelPhase_WithErrors(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -261,6 +274,7 @@ func TestGraphMeshTopology_ExecuteParallelPhase_WithErrors(t *testing.T) {
 // =============================================================================
 
 func TestStarTopology_Initialize_WithMultipleModerators(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -281,6 +295,7 @@ func TestStarTopology_Initialize_WithMultipleModerators(t *testing.T) {
 }
 
 func TestStarTopology_Initialize_NoModerators(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -301,6 +316,7 @@ func TestStarTopology_Initialize_NoModerators(t *testing.T) {
 }
 
 func TestStarTopology_RouteMessage_ModeratorBroadcast(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -323,6 +339,7 @@ func TestStarTopology_RouteMessage_ModeratorBroadcast(t *testing.T) {
 }
 
 func TestStarTopology_SendMessage_EmptyTargets(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -342,6 +359,7 @@ func TestStarTopology_SendMessage_EmptyTargets(t *testing.T) {
 }
 
 func TestStarTopology_SelectLeader_NoModerator(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 
@@ -352,6 +370,7 @@ func TestStarTopology_SelectLeader_NoModerator(t *testing.T) {
 }
 
 func TestStarTopology_GetParallelGroups_SingleAgent(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	config.MaxParallelism = 10
 	st := NewStarTopology(config)
@@ -371,6 +390,7 @@ func TestStarTopology_GetParallelGroups_SingleAgent(t *testing.T) {
 }
 
 func TestStarTopology_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyStar)
 	st := NewStarTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -388,6 +408,7 @@ func TestStarTopology_Close(t *testing.T) {
 // =============================================================================
 
 func TestChainTopology_BuildChain_AllRoles(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -416,6 +437,7 @@ func TestChainTopology_BuildChain_AllRoles(t *testing.T) {
 }
 
 func TestChainTopology_AdvancePosition_WrapAround(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -434,6 +456,7 @@ func TestChainTopology_AdvancePosition_WrapAround(t *testing.T) {
 }
 
 func TestChainTopology_GetNextAgent_NonExistent(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -447,6 +470,7 @@ func TestChainTopology_GetNextAgent_NonExistent(t *testing.T) {
 }
 
 func TestChainTopology_GetPreviousAgent_NonExistent(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -460,6 +484,7 @@ func TestChainTopology_GetPreviousAgent_NonExistent(t *testing.T) {
 }
 
 func TestChainTopology_RouteMessage_NonExistent(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -477,6 +502,7 @@ func TestChainTopology_RouteMessage_NonExistent(t *testing.T) {
 }
 
 func TestChainTopology_BroadcastMessage_Timeout(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	config.MessageTimeout = 1 * time.Nanosecond // Very short timeout
 	ct := NewChainTopology(config)
@@ -504,6 +530,7 @@ func TestChainTopology_BroadcastMessage_Timeout(t *testing.T) {
 }
 
 func TestChainTopology_SelectLeader_AllPhases(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -522,6 +549,7 @@ func TestChainTopology_SelectLeader_AllPhases(t *testing.T) {
 
 	for _, phase := range phases {
 		t.Run(string(phase), func(t *testing.T) {
+				t.Parallel()
 			leader, err := ct.SelectLeader(phase)
 			require.NoError(t, err)
 			assert.NotNil(t, leader)
@@ -530,6 +558,7 @@ func TestChainTopology_SelectLeader_AllPhases(t *testing.T) {
 }
 
 func TestChainTopology_SelectLeader_EmptyChain(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 
@@ -540,6 +569,7 @@ func TestChainTopology_SelectLeader_EmptyChain(t *testing.T) {
 }
 
 func TestChainTopology_ReorderChain_AgentNotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -556,6 +586,7 @@ func TestChainTopology_ReorderChain_AgentNotFound(t *testing.T) {
 }
 
 func TestChainTopology_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyChain)
 	ct := NewChainTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -573,6 +604,7 @@ func TestChainTopology_Close(t *testing.T) {
 // =============================================================================
 
 func TestMessage_AllFields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	msg := &Message{
 		ID:          "msg-1",
@@ -597,6 +629,7 @@ func TestMessage_AllFields(t *testing.T) {
 }
 
 func TestCommunicationChannel_Fields(t *testing.T) {
+	t.Parallel()
 	channel := CommunicationChannel{
 		FromAgent:     "agent-1",
 		ToAgent:       "agent-2",
@@ -611,6 +644,7 @@ func TestCommunicationChannel_Fields(t *testing.T) {
 }
 
 func TestTopologyMetrics_AllFields(t *testing.T) {
+	t.Parallel()
 	metrics := TopologyMetrics{
 		TotalMessages:      100,
 		BroadcastCount:     20,
@@ -628,6 +662,7 @@ func TestTopologyMetrics_AllFields(t *testing.T) {
 }
 
 func TestTopologyConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	config := TopologyConfig{
 		Type:                TopologyGraphMesh,
 		MaxParallelism:      10,
@@ -644,6 +679,7 @@ func TestTopologyConfig_AllFields(t *testing.T) {
 }
 
 func TestPhaseTransition_Structure(t *testing.T) {
+	t.Parallel()
 	pt := PhaseTransition{
 		FromPhase: PhaseProposal,
 		ToPhase:   PhaseCritique,
@@ -658,6 +694,7 @@ func TestPhaseTransition_Structure(t *testing.T) {
 }
 
 func TestLeaderSelection_Structure(t *testing.T) {
+	t.Parallel()
 	ls := LeaderSelection{
 		Phase:     PhaseProposal,
 		LeaderID:  "agent-1",
@@ -672,6 +709,7 @@ func TestLeaderSelection_Structure(t *testing.T) {
 }
 
 func TestTopologySnapshot_Structure(t *testing.T) {
+	t.Parallel()
 	snapshot := TopologySnapshot{
 		Type:          TopologyGraphMesh,
 		Agents:        []*Agent{{ID: "a1"}},
@@ -692,6 +730,7 @@ func TestTopologySnapshot_Structure(t *testing.T) {
 // =============================================================================
 
 func TestGraphMeshTopology_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyGraphMesh)
 	gm := NewGraphMeshTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())

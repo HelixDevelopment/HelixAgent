@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewLSPHandler(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -26,6 +27,7 @@ func TestNewLSPHandler(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -42,6 +44,7 @@ func TestLSPHandler_ExecuteLSPRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_ValidJSON(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -61,6 +64,7 @@ func TestLSPHandler_ExecuteLSPRequest_ValidJSON(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -77,12 +81,14 @@ func TestLSPHandler_ExecuteLSPRequest_EmptyBody(t *testing.T) {
 }
 
 func TestLSPHandler_SyncLSPServer_ParamParsing(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
 	handler := NewLSPHandler(nil, log)
 
 	t.Run("with server id param", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/lsp/servers/gopls/sync", nil)
@@ -142,12 +148,14 @@ func (m *MockLSPManager) GetLSPStats(ctx interface{}) (map[string]interface{}, e
 }
 
 func TestLSPHandler_ExecuteLSPRequest_WithFields(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
 	handler := NewLSPHandler(nil, log)
 
 	t.Run("valid request with all fields", func(t *testing.T) {
+			t.Parallel()
 		body := `{
 			"serverId": "gopls",
 			"toolName": "completion",
@@ -169,6 +177,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithFields(t *testing.T) {
 	})
 
 	t.Run("request with minimal fields", func(t *testing.T) {
+			t.Parallel()
 		// hover requires uri
 		body := `{"serverId": "pyright", "toolName": "hover", "arguments": {"uri": "file:///test.py"}}`
 		w := httptest.NewRecorder()
@@ -183,6 +192,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithFields(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -195,6 +205,7 @@ func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
 
 	for _, op := range operationsWithUri {
 		t.Run("operation_"+op, func(t *testing.T) {
+				t.Parallel()
 			// Use JSON field names (camelCase as per struct tags) with uri
 			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 			w := httptest.NewRecorder()
@@ -213,6 +224,7 @@ func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
 
 	for _, op := range unsupportedOps {
 		t.Run("operation_"+op+"_unsupported", func(t *testing.T) {
+				t.Parallel()
 			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {"uri": "file:///main.go"}}`
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
@@ -231,6 +243,7 @@ func TestLSPHandler_ExecuteLSPRequest_Operations(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_WithContext(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -252,6 +265,7 @@ func TestLSPHandler_ExecuteLSPRequest_WithContext(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -279,6 +293,7 @@ func TestLSPHandler_ExecuteLSPRequest_ResponseFormat(t *testing.T) {
 }
 
 func TestLSPHandler_SyncLSPServer_MultipleIDs(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -288,6 +303,7 @@ func TestLSPHandler_SyncLSPServer_MultipleIDs(t *testing.T) {
 
 	for _, serverID := range serverIDs {
 		t.Run("server_"+serverID, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("POST", "/v1/lsp/servers/"+serverID+"/sync", nil)
@@ -301,6 +317,7 @@ func TestLSPHandler_SyncLSPServer_MultipleIDs(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_MissingServerID(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -323,6 +340,7 @@ func TestLSPHandler_ExecuteLSPRequest_MissingServerID(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_MissingToolName(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -345,6 +363,7 @@ func TestLSPHandler_ExecuteLSPRequest_MissingToolName(t *testing.T) {
 }
 
 func TestLSPHandler_ExecuteLSPRequest_MissingUri(t *testing.T) {
+	t.Parallel()
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
@@ -355,6 +374,7 @@ func TestLSPHandler_ExecuteLSPRequest_MissingUri(t *testing.T) {
 
 	for _, op := range operations {
 		t.Run(op, func(t *testing.T) {
+				t.Parallel()
 			body := `{"serverId": "gopls", "toolName": "` + op + `", "arguments": {}}`
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
@@ -375,6 +395,7 @@ func TestLSPHandler_ExecuteLSPRequest_MissingUri(t *testing.T) {
 
 // TestLSPHandler_WithRealManager tests with a real LSP manager (using demo data)
 func TestLSPHandler_WithRealManager(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
@@ -384,6 +405,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	handler := NewLSPHandler(lspManager, log)
 
 	t.Run("ListLSPServers success", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/lsp/servers", nil)
@@ -399,6 +421,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("GetLSPStats success", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/lsp/stats", nil)
@@ -414,6 +437,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("SyncLSPServer success", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/lsp/servers/gopls/sync", nil)
@@ -431,6 +455,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("SyncLSPServers success", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/lsp/sync", nil)
@@ -446,6 +471,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ExecuteLSPRequest with real service - completion", func(t *testing.T) {
+			t.Parallel()
 		body := `{"serverId": "gopls", "toolName": "completion", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5, "text": "package main"}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -463,6 +489,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ExecuteLSPRequest with real service - hover", func(t *testing.T) {
+			t.Parallel()
 		body := `{"serverId": "gopls", "toolName": "hover", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -475,6 +502,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ExecuteLSPRequest with real service - definition", func(t *testing.T) {
+			t.Parallel()
 		body := `{"serverId": "gopls", "toolName": "definition", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -487,6 +515,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ExecuteLSPRequest with real service - references", func(t *testing.T) {
+			t.Parallel()
 		body := `{"serverId": "gopls", "toolName": "references", "arguments": {"uri": "file:///main.go", "line": 10, "character": 5}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -499,6 +528,7 @@ func TestLSPHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ExecuteLSPRequest with real service - diagnostics", func(t *testing.T) {
+			t.Parallel()
 		body := `{"serverId": "gopls", "toolName": "diagnostics", "arguments": {"uri": "file:///main.go"}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

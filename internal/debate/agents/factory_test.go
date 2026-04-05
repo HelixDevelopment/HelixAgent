@@ -15,12 +15,14 @@ import (
 // =============================================================================
 
 func TestNewAgentFactory(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	assert.NotNil(t, factory)
 	assert.NotNil(t, factory.templateRegistry)
 }
 
 func TestAgentFactory_GetTemplateRegistry(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	registry := factory.GetTemplateRegistry()
 	assert.NotNil(t, registry)
@@ -31,6 +33,7 @@ func TestAgentFactory_GetTemplateRegistry(t *testing.T) {
 }
 
 func TestAgentFactory_CreateFromTemplate(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	agent, err := factory.CreateFromTemplate("code-specialist", "claude", "claude-3")
@@ -42,6 +45,7 @@ func TestAgentFactory_CreateFromTemplate(t *testing.T) {
 }
 
 func TestAgentFactory_CreateFromTemplate_NotFound(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	_, err := factory.CreateFromTemplate("nonexistent", "claude", "claude-3")
@@ -49,6 +53,7 @@ func TestAgentFactory_CreateFromTemplate_NotFound(t *testing.T) {
 }
 
 func TestAgentFactory_CreateForDomain(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	testCases := []Domain{
@@ -59,6 +64,7 @@ func TestAgentFactory_CreateForDomain(t *testing.T) {
 
 	for _, domain := range testCases {
 		t.Run(string(domain), func(t *testing.T) {
+				t.Parallel()
 			agent, err := factory.CreateForDomain(domain, "test", "model")
 			require.NoError(t, err)
 			require.NotNil(t, agent)
@@ -70,6 +76,7 @@ func TestAgentFactory_CreateForDomain(t *testing.T) {
 }
 
 func TestAgentFactory_CreateForRole(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	testCases := []topology.AgentRole{
@@ -82,6 +89,7 @@ func TestAgentFactory_CreateForRole(t *testing.T) {
 
 	for _, role := range testCases {
 		t.Run(string(role), func(t *testing.T) {
+				t.Parallel()
 			agent, err := factory.CreateForRole(role, "test", "model")
 			require.NoError(t, err)
 			require.NotNil(t, agent)
@@ -93,6 +101,7 @@ func TestAgentFactory_CreateForRole(t *testing.T) {
 }
 
 func TestAgentFactory_CreateWithDiscovery(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	discoverer := &mockCapabilityDiscoverer{
@@ -113,6 +122,7 @@ func TestAgentFactory_CreateWithDiscovery(t *testing.T) {
 }
 
 func TestAgentFactory_CreateDebateTeam(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	providers := []ProviderSpec{
@@ -138,6 +148,7 @@ func TestAgentFactory_CreateDebateTeam(t *testing.T) {
 }
 
 func TestAgentFactory_CreateDebateTeam_Empty(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 
 	_, err := factory.CreateDebateTeam([]ProviderSpec{})
@@ -149,6 +160,7 @@ func TestAgentFactory_CreateDebateTeam_Empty(t *testing.T) {
 // =============================================================================
 
 func TestNewAgentPool(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -157,6 +169,7 @@ func TestNewAgentPool(t *testing.T) {
 }
 
 func TestAgentPool_Add(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -172,6 +185,7 @@ func TestAgentPool_Add(t *testing.T) {
 }
 
 func TestAgentPool_GetByRole(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -197,6 +211,7 @@ func TestAgentPool_GetByRole(t *testing.T) {
 }
 
 func TestAgentPool_GetByDomain(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -216,6 +231,7 @@ func TestAgentPool_GetByDomain(t *testing.T) {
 }
 
 func TestAgentPool_Remove(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -233,6 +249,7 @@ func TestAgentPool_Remove(t *testing.T) {
 }
 
 func TestAgentPool_SelectBestForRole(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -252,6 +269,7 @@ func TestAgentPool_SelectBestForRole(t *testing.T) {
 }
 
 func TestAgentPool_SelectTopNForRole(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -273,6 +291,7 @@ func TestAgentPool_SelectTopNForRole(t *testing.T) {
 }
 
 func TestAgentPool_ToTopologyAgents(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -289,6 +308,7 @@ func TestAgentPool_ToTopologyAgents(t *testing.T) {
 // =============================================================================
 
 func TestNewTeamBuilder(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 	builder := NewTeamBuilder(pool)
@@ -297,6 +317,7 @@ func TestNewTeamBuilder(t *testing.T) {
 }
 
 func TestDefaultTeamConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultTeamConfig()
 
 	assert.NotEmpty(t, config.RequiredRoles)
@@ -306,6 +327,7 @@ func TestDefaultTeamConfig(t *testing.T) {
 }
 
 func TestTeamBuilder_BuildTeam(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -338,6 +360,7 @@ func TestTeamBuilder_BuildTeam(t *testing.T) {
 }
 
 func TestTeamBuilder_BuildTeam_NoSuitable(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory) // Empty pool
 
@@ -348,6 +371,7 @@ func TestTeamBuilder_BuildTeam_NoSuitable(t *testing.T) {
 }
 
 func TestTeamBuilder_BuildTeamTopologyAgents(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -376,6 +400,7 @@ func TestTeamBuilder_BuildTeamTopologyAgents(t *testing.T) {
 }
 
 func TestTeamBuilder_BuildTeam_AllowRoleSharing(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 
@@ -407,6 +432,7 @@ func TestTeamBuilder_BuildTeam_AllowRoleSharing(t *testing.T) {
 // =============================================================================
 
 func TestFullWorkflow_CreateAndBuildTeam(t *testing.T) {
+	t.Parallel()
 	// 1. Create factory
 	factory := NewAgentFactory()
 
@@ -472,6 +498,7 @@ func TestFullWorkflow_CreateAndBuildTeam(t *testing.T) {
 }
 
 func TestConcurrentPoolAccess(t *testing.T) {
+	t.Parallel()
 	factory := NewAgentFactory()
 	pool := NewAgentPool(factory)
 

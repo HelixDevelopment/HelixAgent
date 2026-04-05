@@ -12,6 +12,7 @@ import (
 // --- ConfigToIntegrationConfig tests ---
 
 func TestConfigToIntegrationConfig_NilInput(t *testing.T) {
+	t.Parallel()
 	result := ConfigToIntegrationConfig(nil)
 	require.NotNil(t, result)
 	// Should return DefaultIntegrationConfig values
@@ -24,6 +25,7 @@ func TestConfigToIntegrationConfig_NilInput(t *testing.T) {
 }
 
 func TestConfigToIntegrationConfig_AllFieldsMapped(t *testing.T) {
+	t.Parallel()
 	cfg := &config.BigDataConfig{
 		EnableInfiniteContext:   true,
 		EnableDistributedMemory: true,
@@ -80,6 +82,7 @@ func TestConfigToIntegrationConfig_AllFieldsMapped(t *testing.T) {
 }
 
 func TestConfigToIntegrationConfig_ZeroValues(t *testing.T) {
+	t.Parallel()
 	cfg := &config.BigDataConfig{}
 	result := ConfigToIntegrationConfig(cfg)
 	require.NotNil(t, result)
@@ -94,6 +97,7 @@ func TestConfigToIntegrationConfig_ZeroValues(t *testing.T) {
 // --- IntegrationConfigToConfig tests ---
 
 func TestIntegrationConfigToConfig_NilInput(t *testing.T) {
+	t.Parallel()
 	result := IntegrationConfigToConfig(nil)
 	require.NotNil(t, result)
 	// Should return an empty BigDataConfig
@@ -102,6 +106,7 @@ func TestIntegrationConfigToConfig_NilInput(t *testing.T) {
 }
 
 func TestIntegrationConfigToConfig_AllFieldsMapped(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableInfiniteContext:   true,
 		EnableDistributedMemory: false,
@@ -156,6 +161,7 @@ func TestIntegrationConfigToConfig_AllFieldsMapped(t *testing.T) {
 // --- Round-trip conversion tests ---
 
 func TestConfigConverter_RoundTrip_BigDataToIntegrationAndBack(t *testing.T) {
+	t.Parallel()
 	original := &config.BigDataConfig{
 		EnableInfiniteContext:   true,
 		EnableDistributedMemory: true,
@@ -207,6 +213,7 @@ func TestConfigConverter_RoundTrip_BigDataToIntegrationAndBack(t *testing.T) {
 }
 
 func TestConfigConverter_RoundTrip_IntegrationToBigDataAndBack(t *testing.T) {
+	t.Parallel()
 	original := &IntegrationConfig{
 		EnableInfiniteContext:   false,
 		EnableDistributedMemory: true,
@@ -260,11 +267,13 @@ func TestConfigConverter_RoundTrip_IntegrationToBigDataAndBack(t *testing.T) {
 // --- DefaultBigDataConfig tests ---
 
 func TestDefaultBigDataConfig_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	result := DefaultBigDataConfig()
 	require.NotNil(t, result)
 }
 
 func TestDefaultBigDataConfig_MatchesDefaultIntegrationConfig(t *testing.T) {
+	t.Parallel()
 	defaultICfg := DefaultIntegrationConfig()
 	result := DefaultBigDataConfig()
 
@@ -286,11 +295,13 @@ func TestDefaultBigDataConfig_MatchesDefaultIntegrationConfig(t *testing.T) {
 // --- ValidateConfig tests ---
 
 func TestValidateConfig_NilConfig(t *testing.T) {
+	t.Parallel()
 	err := ValidateConfig(nil)
 	assert.NoError(t, err)
 }
 
 func TestValidateConfig_ValidFullConfig(t *testing.T) {
+	t.Parallel()
 	icfg := DefaultIntegrationConfig()
 	// Enable all and provide required fields
 	icfg.EnableCrossLearning = true
@@ -307,6 +318,7 @@ func TestValidateConfig_ValidFullConfig(t *testing.T) {
 }
 
 func TestValidateConfig_AllDisabled(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableInfiniteContext:   false,
 		EnableDistributedMemory: false,
@@ -323,6 +335,7 @@ func TestValidateConfig_AllDisabled(t *testing.T) {
 }
 
 func TestValidateConfig_KafkaRequiredForCrossLearning(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableCrossLearning:   true,
 		KafkaBootstrapServers: "",
@@ -334,6 +347,7 @@ func TestValidateConfig_KafkaRequiredForCrossLearning(t *testing.T) {
 }
 
 func TestValidateConfig_KafkaRequiredForInfiniteContext(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableInfiniteContext: true,
 		KafkaBootstrapServers: "",
@@ -345,6 +359,7 @@ func TestValidateConfig_KafkaRequiredForInfiniteContext(t *testing.T) {
 }
 
 func TestValidateConfig_KafkaProvidedForCrossLearning(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableCrossLearning:   true,
 		KafkaBootstrapServers: "kafka:9092",
@@ -355,6 +370,7 @@ func TestValidateConfig_KafkaProvidedForCrossLearning(t *testing.T) {
 }
 
 func TestValidateConfig_ClickHouseHostRequiredForAnalytics(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableAnalytics:       true,
 		ClickHouseHost:        "",
@@ -367,6 +383,7 @@ func TestValidateConfig_ClickHouseHostRequiredForAnalytics(t *testing.T) {
 }
 
 func TestValidateConfig_ClickHousePortMustBePositive(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableAnalytics:       true,
 		ClickHouseHost:        "ch-host",
@@ -379,6 +396,7 @@ func TestValidateConfig_ClickHousePortMustBePositive(t *testing.T) {
 }
 
 func TestValidateConfig_ClickHousePortNegative(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableAnalytics:       true,
 		ClickHouseHost:        "ch-host",
@@ -391,6 +409,7 @@ func TestValidateConfig_ClickHousePortNegative(t *testing.T) {
 }
 
 func TestValidateConfig_Neo4jURIRequiredForKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableKnowledgeGraph:  true,
 		Neo4jURI:              "",
@@ -402,6 +421,7 @@ func TestValidateConfig_Neo4jURIRequiredForKnowledgeGraph(t *testing.T) {
 }
 
 func TestValidateConfig_Neo4jURIProvidedForKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		EnableKnowledgeGraph:  true,
 		Neo4jURI:              "bolt://localhost:7687",
@@ -412,6 +432,7 @@ func TestValidateConfig_Neo4jURIProvidedForKnowledgeGraph(t *testing.T) {
 }
 
 func TestValidateConfig_NegativeContextCacheSize(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		ContextCacheSize:      -1,
 		LearningMinConfidence: 0.5,
@@ -422,6 +443,7 @@ func TestValidateConfig_NegativeContextCacheSize(t *testing.T) {
 }
 
 func TestValidateConfig_NegativeContextCacheTTL(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		ContextCacheTTL:       -1 * time.Second,
 		LearningMinConfidence: 0.5,
@@ -432,6 +454,7 @@ func TestValidateConfig_NegativeContextCacheTTL(t *testing.T) {
 }
 
 func TestValidateConfig_LearningConfidenceTooLow(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: -0.1,
 	}
@@ -441,6 +464,7 @@ func TestValidateConfig_LearningConfidenceTooLow(t *testing.T) {
 }
 
 func TestValidateConfig_LearningConfidenceTooHigh(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: 1.1,
 	}
@@ -450,6 +474,7 @@ func TestValidateConfig_LearningConfidenceTooHigh(t *testing.T) {
 }
 
 func TestValidateConfig_LearningConfidenceBoundaryZero(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: 0.0,
 	}
@@ -458,6 +483,7 @@ func TestValidateConfig_LearningConfidenceBoundaryZero(t *testing.T) {
 }
 
 func TestValidateConfig_LearningConfidenceBoundaryOne(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: 1.0,
 	}
@@ -466,6 +492,7 @@ func TestValidateConfig_LearningConfidenceBoundaryOne(t *testing.T) {
 }
 
 func TestValidateConfig_NegativeLearningMinFrequency(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: 0.5,
 		LearningMinFrequency:  -1,
@@ -476,6 +503,7 @@ func TestValidateConfig_NegativeLearningMinFrequency(t *testing.T) {
 }
 
 func TestValidateConfig_ZeroLearningMinFrequency(t *testing.T) {
+	t.Parallel()
 	icfg := &IntegrationConfig{
 		LearningMinConfidence: 0.5,
 		LearningMinFrequency:  0,

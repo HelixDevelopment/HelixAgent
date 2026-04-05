@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewGitHubAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, nil)
 
@@ -21,6 +22,7 @@ func TestNewGitHubAdapter(t *testing.T) {
 }
 
 func TestDefaultGitHubAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 
 	assert.Equal(t, "https://api.github.com", config.BaseURL)
@@ -30,6 +32,7 @@ func TestDefaultGitHubAdapterConfig(t *testing.T) {
 }
 
 func TestNewGitHubAdapter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := GitHubAdapterConfig{}
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -38,6 +41,7 @@ func TestNewGitHubAdapter_DefaultConfig(t *testing.T) {
 }
 
 func TestGitHubAdapter_Health_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -47,6 +51,7 @@ func TestGitHubAdapter_Health_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -57,6 +62,7 @@ func TestGitHubAdapter_Close(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -82,6 +88,7 @@ func TestGitHubAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestGitHubAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -91,6 +98,7 @@ func TestGitHubAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_ExecuteTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -102,6 +110,7 @@ func TestGitHubAdapter_ExecuteTool_UnknownTool(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	config.Token = "test-token"
 	adapter := NewGitHubAdapter(config, logrus.New())
@@ -115,6 +124,7 @@ func TestGitHubAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetCapabilities_NoToken(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -123,6 +133,7 @@ func TestGitHubAdapter_GetCapabilities_NoToken(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetUser_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -132,6 +143,7 @@ func TestGitHubAdapter_GetUser_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListRepositories_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -141,6 +153,7 @@ func TestGitHubAdapter_ListRepositories_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetRepository_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -150,6 +163,7 @@ func TestGitHubAdapter_GetRepository_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListIssues_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -159,6 +173,7 @@ func TestGitHubAdapter_ListIssues_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetIssue_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -168,6 +183,7 @@ func TestGitHubAdapter_GetIssue_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListPullRequests_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -177,6 +193,7 @@ func TestGitHubAdapter_ListPullRequests_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetPullRequest_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -186,6 +203,7 @@ func TestGitHubAdapter_GetPullRequest_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetContent_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -195,6 +213,7 @@ func TestGitHubAdapter_GetContent_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_SearchRepositories_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -204,6 +223,7 @@ func TestGitHubAdapter_SearchRepositories_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_SearchCode_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -213,6 +233,7 @@ func TestGitHubAdapter_SearchCode_NotInitialized(t *testing.T) {
 }
 
 func TestGitHubAdapter_CreateIssue_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 
@@ -223,6 +244,7 @@ func TestGitHubAdapter_CreateIssue_NotInitialized(t *testing.T) {
 
 // Mock server tests
 func TestGitHubAdapter_Initialize_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/user" {
 			w.Header().Set("Content-Type", "application/json")
@@ -246,6 +268,7 @@ func TestGitHubAdapter_Initialize_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_Initialize_InvalidToken(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -263,6 +286,7 @@ func TestGitHubAdapter_Initialize_InvalidToken(t *testing.T) {
 }
 
 func TestGitHubAdapter_Health_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/rate_limit" {
 			w.Header().Set("Content-Type", "application/json")
@@ -288,6 +312,7 @@ func TestGitHubAdapter_Health_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetUser_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/users/testuser" {
 			w.Header().Set("Content-Type", "application/json")
@@ -318,6 +343,7 @@ func TestGitHubAdapter_GetUser_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetUser_NotFound(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -336,6 +362,7 @@ func TestGitHubAdapter_GetUser_NotFound(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListRepositories_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/users/testuser/repos" {
 			w.Header().Set("Content-Type", "application/json")
@@ -370,6 +397,7 @@ func TestGitHubAdapter_ListRepositories_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetRepository_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo" {
 			w.Header().Set("Content-Type", "application/json")
@@ -402,6 +430,7 @@ func TestGitHubAdapter_GetRepository_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetRepository_MissingParams(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -413,6 +442,7 @@ func TestGitHubAdapter_GetRepository_MissingParams(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListIssues_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/issues" {
 			w.Header().Set("Content-Type", "application/json")
@@ -442,6 +472,7 @@ func TestGitHubAdapter_ListIssues_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetIssue_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/issues/1" {
 			w.Header().Set("Content-Type", "application/json")
@@ -470,6 +501,7 @@ func TestGitHubAdapter_GetIssue_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_ListPullRequests_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/pulls" {
 			w.Header().Set("Content-Type", "application/json")
@@ -499,6 +531,7 @@ func TestGitHubAdapter_ListPullRequests_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetPullRequest_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/pulls/1" {
 			w.Header().Set("Content-Type", "application/json")
@@ -527,6 +560,7 @@ func TestGitHubAdapter_GetPullRequest_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetContent_File_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/contents/README.md" {
 			w.Header().Set("Content-Type", "application/json")
@@ -557,6 +591,7 @@ func TestGitHubAdapter_GetContent_File_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_GetContent_Directory_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/contents/src" {
 			w.Header().Set("Content-Type", "application/json")
@@ -589,6 +624,7 @@ func TestGitHubAdapter_GetContent_Directory_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_SearchRepositories_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/repositories" {
 			w.Header().Set("Content-Type", "application/json")
@@ -620,6 +656,7 @@ func TestGitHubAdapter_SearchRepositories_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_SearchRepositories_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -631,6 +668,7 @@ func TestGitHubAdapter_SearchRepositories_EmptyQuery(t *testing.T) {
 }
 
 func TestGitHubAdapter_SearchCode_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/code" {
 			w.Header().Set("Content-Type", "application/json")
@@ -661,6 +699,7 @@ func TestGitHubAdapter_SearchCode_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_CreateIssue_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/testuser/testrepo/issues" && r.Method == "POST" {
 			w.WriteHeader(http.StatusCreated)
@@ -689,6 +728,7 @@ func TestGitHubAdapter_CreateIssue_WithMockServer(t *testing.T) {
 }
 
 func TestGitHubAdapter_CreateIssue_MissingParams(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 	adapter.initialized = true
@@ -700,6 +740,7 @@ func TestGitHubAdapter_CreateIssue_MissingParams(t *testing.T) {
 }
 
 func TestGitHubAdapter_ExecuteTool_GetUser(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -725,6 +766,7 @@ func TestGitHubAdapter_ExecuteTool_GetUser(t *testing.T) {
 }
 
 func TestGitHubAdapter_ExecuteTool_ListRepos(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]map[string]interface{}{
@@ -749,6 +791,7 @@ func TestGitHubAdapter_ExecuteTool_ListRepos(t *testing.T) {
 }
 
 func TestGitHubAdapter_MarshalJSON(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitHubAdapterConfig()
 	adapter := NewGitHubAdapter(config, logrus.New())
 

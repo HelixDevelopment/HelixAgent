@@ -15,6 +15,7 @@ import (
 )
 
 func TestTemplateHandler_ListTemplates(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a temporary template manager
@@ -42,6 +43,7 @@ func TestTemplateHandler_ListTemplates(t *testing.T) {
 }
 
 func TestTemplateHandler_GetTemplate(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := templates.ManagerConfig{
@@ -68,6 +70,7 @@ func TestTemplateHandler_GetTemplate(t *testing.T) {
 }
 
 func TestTemplateHandler_ApplyTemplate(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := templates.ManagerConfig{
@@ -101,6 +104,7 @@ func TestTemplateHandler_ApplyTemplate(t *testing.T) {
 }
 
 func TestTemplateHandler_GetTemplate_NotFound(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := templates.ManagerConfig{

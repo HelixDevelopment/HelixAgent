@@ -8,6 +8,7 @@ import (
 )
 
 func TestDefaultWeights(t *testing.T) {
+	t.Parallel()
 	weights := DefaultWeights()
 	if weights == nil {
 		t.Fatal("DefaultWeights returned nil")
@@ -39,6 +40,7 @@ func TestDefaultWeights(t *testing.T) {
 }
 
 func TestNewScoringService(t *testing.T) {
+	t.Parallel()
 	svc, err := NewScoringService(nil)
 	if err != nil {
 		t.Fatalf("NewScoringService failed: %v", err)
@@ -49,6 +51,7 @@ func TestNewScoringService(t *testing.T) {
 }
 
 func TestNewScoringService_WithConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	svc, err := NewScoringService(cfg)
 	if err != nil {
@@ -60,6 +63,7 @@ func TestNewScoringService_WithConfig(t *testing.T) {
 }
 
 func TestScoringService_CalculateScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	result, err := svc.CalculateScore(context.Background(), "gpt-4")
@@ -82,6 +86,7 @@ func TestScoringService_CalculateScore(t *testing.T) {
 }
 
 func TestScoringService_CalculateScore_Cache(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// First call
@@ -96,6 +101,7 @@ func TestScoringService_CalculateScore_Cache(t *testing.T) {
 }
 
 func TestScoringService_GetTopModels(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	models, err := svc.GetTopModels(context.Background(), 5)
@@ -108,6 +114,7 @@ func TestScoringService_GetTopModels(t *testing.T) {
 }
 
 func TestScoringResult_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	result := &ScoringResult{
 		ModelID:      "gpt-4",
@@ -143,6 +150,7 @@ func TestScoringResult_Fields(t *testing.T) {
 }
 
 func TestScoreComponents_Fields(t *testing.T) {
+	t.Parallel()
 	components := ScoreComponents{
 		SpeedScore:      9.0,
 		EfficiencyScore: 8.5,
@@ -169,6 +177,7 @@ func TestScoreComponents_Fields(t *testing.T) {
 }
 
 func TestScoreWeights_Fields(t *testing.T) {
+	t.Parallel()
 	weights := &ScoreWeights{
 		ResponseSpeed:     0.25,
 		ModelEfficiency:   0.20,
@@ -195,6 +204,7 @@ func TestScoreWeights_Fields(t *testing.T) {
 }
 
 func TestModelWithScore_Fields(t *testing.T) {
+	t.Parallel()
 	model := &ModelWithScore{
 		ModelID:      "gpt-4",
 		Name:         "GPT-4",
@@ -218,6 +228,7 @@ func TestModelWithScore_Fields(t *testing.T) {
 }
 
 func TestScoringResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var result ScoringResult
 
 	if result.ModelID != "" {
@@ -229,6 +240,7 @@ func TestScoringResult_ZeroValue(t *testing.T) {
 }
 
 func TestScoreComponents_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var components ScoreComponents
 
 	if components.SpeedScore != 0 {
@@ -240,6 +252,7 @@ func TestScoreComponents_ZeroValue(t *testing.T) {
 }
 
 func TestScoreWeights_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var weights ScoreWeights
 
 	if weights.ResponseSpeed != 0 {
@@ -251,6 +264,7 @@ func TestScoreWeights_ZeroValue(t *testing.T) {
 }
 
 func TestScoringService_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	done := make(chan bool, 10)
@@ -272,6 +286,7 @@ func TestScoringService_ConcurrentAccess(t *testing.T) {
 // =====================================================
 
 func TestScoringService_CalculateScore_DifferentModels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		modelID string
@@ -289,6 +304,7 @@ func TestScoringService_CalculateScore_DifferentModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := svc.CalculateScore(context.Background(), tt.modelID)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -308,6 +324,7 @@ func TestScoringService_CalculateScore_DifferentModels(t *testing.T) {
 }
 
 func TestScoringService_GetTopModels_Limit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		limit int
@@ -323,6 +340,7 @@ func TestScoringService_GetTopModels_Limit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			models, err := svc.GetTopModels(context.Background(), tt.limit)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -339,6 +357,7 @@ func TestScoringService_GetTopModels_Limit(t *testing.T) {
 }
 
 func TestScoringService_CalculateScore_Caching(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// First call
@@ -365,6 +384,7 @@ func TestScoringService_CalculateScore_Caching(t *testing.T) {
 }
 
 func TestScoringService_calculateSpeedScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	tests := []struct {
@@ -380,6 +400,7 @@ func TestScoringService_calculateSpeedScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			score := svc.calculateSpeedScore(tt.modelID)
 			if score < tt.minScore || score > tt.maxScore {
 				t.Errorf("expected score in range [%f, %f], got %f", tt.minScore, tt.maxScore, score)
@@ -389,6 +410,7 @@ func TestScoringService_calculateSpeedScore(t *testing.T) {
 }
 
 func TestScoringService_calculateEfficiencyScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	tests := []struct {
@@ -403,6 +425,7 @@ func TestScoringService_calculateEfficiencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			score := svc.calculateEfficiencyScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("efficiency score out of range: %f", score)
@@ -412,6 +435,7 @@ func TestScoringService_calculateEfficiencyScore(t *testing.T) {
 }
 
 func TestScoringService_calculateCostScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	tests := []struct {
@@ -426,6 +450,7 @@ func TestScoringService_calculateCostScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			score := svc.calculateCostScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("cost score out of range: %f", score)
@@ -435,6 +460,7 @@ func TestScoringService_calculateCostScore(t *testing.T) {
 }
 
 func TestScoringService_calculateCapabilityScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	tests := []struct {
@@ -449,6 +475,7 @@ func TestScoringService_calculateCapabilityScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			score := svc.calculateCapabilityScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("capability score out of range: %f", score)
@@ -458,6 +485,7 @@ func TestScoringService_calculateCapabilityScore(t *testing.T) {
 }
 
 func TestScoringService_calculateRecencyScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	tests := []struct {
@@ -472,6 +500,7 @@ func TestScoringService_calculateRecencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			score := svc.calculateRecencyScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("recency score out of range: %f", score)
@@ -481,6 +510,7 @@ func TestScoringService_calculateRecencyScore(t *testing.T) {
 }
 
 func TestScoringService_GetModelScore_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// Without calculating first, cache is empty
@@ -497,6 +527,7 @@ func TestScoringService_GetModelScore_NotFound(t *testing.T) {
 }
 
 func TestScoringService_GetModelScore_Found(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// Calculate first
@@ -520,6 +551,7 @@ func TestScoringService_GetModelScore_Found(t *testing.T) {
 }
 
 func TestScoringService_ClearCache(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// Calculate some scores
@@ -538,6 +570,7 @@ func TestScoringService_ClearCache(t *testing.T) {
 }
 
 func TestScoringService_GetAllScores(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	// Calculate some scores
@@ -553,6 +586,7 @@ func TestScoringService_GetAllScores(t *testing.T) {
 }
 
 func TestScoringService_GetAllScores_Empty(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	scores := svc.GetAllScores()
@@ -566,6 +600,7 @@ func TestScoringService_GetAllScores_Empty(t *testing.T) {
 }
 
 func TestScoreWeights_SumToOne(t *testing.T) {
+	t.Parallel()
 	weights := DefaultWeights()
 
 	sum := weights.ResponseSpeed + weights.ModelEfficiency +
@@ -578,6 +613,7 @@ func TestScoreWeights_SumToOne(t *testing.T) {
 }
 
 func TestScoreWeights_AllPositive(t *testing.T) {
+	t.Parallel()
 	weights := DefaultWeights()
 
 	if weights.ResponseSpeed <= 0 {
@@ -598,6 +634,7 @@ func TestScoreWeights_AllPositive(t *testing.T) {
 }
 
 func TestScoringService_CalculateScore_WithCustomWeights(t *testing.T) {
+	t.Parallel()
 	cfg := &Config{
 		Scoring: ScoringConfig{
 			Weights: ScoringWeightsConfig{
@@ -629,6 +666,7 @@ func TestScoringService_CalculateScore_WithCustomWeights(t *testing.T) {
 }
 
 func TestScoringService_ComputeWeightedScore(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	components := ScoreComponents{
@@ -648,6 +686,7 @@ func TestScoringService_ComputeWeightedScore(t *testing.T) {
 }
 
 func TestScoringService_ComputeWeightedScore_Mixed(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	components := ScoreComponents{
@@ -667,6 +706,7 @@ func TestScoringService_ComputeWeightedScore_Mixed(t *testing.T) {
 }
 
 func TestScoringResult_ScoreSuffix_Format(t *testing.T) {
+	t.Parallel()
 	svc, _ := NewScoringService(nil)
 
 	result, _ := svc.CalculateScore(context.Background(), "test-model")
@@ -684,6 +724,7 @@ func TestScoringResult_ScoreSuffix_Format(t *testing.T) {
 }
 
 func TestModelWithScore_Sorting(t *testing.T) {
+	t.Parallel()
 	models := []*ModelWithScore{
 		{ModelID: "low", OverallScore: 3.0},
 		{ModelID: "high", OverallScore: 9.0},

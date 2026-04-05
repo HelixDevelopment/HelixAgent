@@ -45,6 +45,7 @@ func setupSecurityTestRouterWithAuth() *gin.Engine {
 }
 
 func TestSecurity_HealthEndpointNoAuth(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouter()
 
 	req := httptest.NewRequest("GET", "/health", nil)
@@ -56,6 +57,7 @@ func TestSecurity_HealthEndpointNoAuth(t *testing.T) {
 }
 
 func TestSecurity_APIEndpointRequiresAuth(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouterWithAuth()
 
 	req := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(`{"model":"test"}`))
@@ -68,6 +70,7 @@ func TestSecurity_APIEndpointRequiresAuth(t *testing.T) {
 }
 
 func TestSecurity_APIEndpointWithValidAuth(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouterWithAuth()
 
 	req := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(`{"model":"test"}`))
@@ -81,6 +84,7 @@ func TestSecurity_APIEndpointWithValidAuth(t *testing.T) {
 }
 
 func TestSecurity_SQLInjectionPrevention(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouter()
 
 	// Use URL-encoded values to avoid malformed URLs
@@ -92,6 +96,7 @@ func TestSecurity_SQLInjectionPrevention(t *testing.T) {
 
 	for _, input := range maliciousInputs {
 		t.Run("sql_injection", func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest("GET", "/v1/models?id="+input, nil)
 			rec := httptest.NewRecorder()
 
@@ -104,6 +109,7 @@ func TestSecurity_SQLInjectionPrevention(t *testing.T) {
 }
 
 func TestSecurity_XSSPrevention(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouter()
 
 	// Use URL-encoded values to avoid malformed URLs
@@ -115,6 +121,7 @@ func TestSecurity_XSSPrevention(t *testing.T) {
 
 	for _, payload := range xssPayloads {
 		t.Run("xss_prevention", func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest("GET", "/v1/models?q="+payload, nil)
 			rec := httptest.NewRecorder()
 
@@ -127,6 +134,7 @@ func TestSecurity_XSSPrevention(t *testing.T) {
 }
 
 func TestSecurity_RequestSizeLimit(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
@@ -146,6 +154,7 @@ func TestSecurity_RequestSizeLimit(t *testing.T) {
 }
 
 func TestSecurity_TimeoutHandling(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping timeout test in short mode")
 	}
@@ -167,6 +176,7 @@ func TestSecurity_TimeoutHandling(t *testing.T) {
 }
 
 func TestSecurity_HTTPHeaders(t *testing.T) {
+	t.Parallel()
 	router := setupSecurityTestRouter()
 
 	req := httptest.NewRequest("GET", "/v1/models", nil)
@@ -178,6 +188,7 @@ func TestSecurity_HTTPHeaders(t *testing.T) {
 }
 
 func TestHealthHandler_SecurityValidation(t *testing.T) {
+	t.Parallel()
 	hs := verifier.NewHealthService(nil)
 	h := NewHealthHandler(hs)
 
@@ -186,6 +197,7 @@ func TestHealthHandler_SecurityValidation(t *testing.T) {
 }
 
 func TestSecurity_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -194,6 +206,7 @@ func TestSecurity_ContextCancellation(t *testing.T) {
 }
 
 func TestSecurity_InputSanitization(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -207,6 +220,7 @@ func TestSecurity_InputSanitization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			if tt.hasIssue {
 				assert.True(t, strings.Contains(tt.input, "\x00") || strings.Contains(tt.input, "\x1b"))
 			}

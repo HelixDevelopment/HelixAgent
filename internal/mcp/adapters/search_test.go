@@ -8,6 +8,7 @@ import (
 )
 
 func TestAdapterRegistry_Search_ExactNameMatch(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 	InitializeDefaultRegistry()
 
@@ -23,6 +24,7 @@ func TestAdapterRegistry_Search_ExactNameMatch(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_PartialNameMatch(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -45,6 +47,7 @@ func TestAdapterRegistry_Search_PartialNameMatch(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_DescriptionMatch(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -63,6 +66,7 @@ func TestAdapterRegistry_Search_DescriptionMatch(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_CategoryFilter(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -80,6 +84,7 @@ func TestAdapterRegistry_Search_CategoryFilter(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_AuthTypeFilter(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -96,6 +101,7 @@ func TestAdapterRegistry_Search_AuthTypeFilter(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_OfficialFilter(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	official := true
@@ -112,6 +118,7 @@ func TestAdapterRegistry_Search_OfficialFilter(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_SupportedFilter(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	supported := true
@@ -128,6 +135,7 @@ func TestAdapterRegistry_Search_SupportedFilter(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_CombinedFilters(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	official := true
@@ -145,6 +153,7 @@ func TestAdapterRegistry_Search_CombinedFilters(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_MaxResults(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -155,6 +164,7 @@ func TestAdapterRegistry_Search_MaxResults(t *testing.T) {
 }
 
 func TestAdapterRegistry_Search_MinScore(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.Search(AdapterSearchOptions{
@@ -168,6 +178,7 @@ func TestAdapterRegistry_Search_MinScore(t *testing.T) {
 }
 
 func TestAdapterRegistry_SearchByCapability(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	results := registry.SearchByCapability("database")
@@ -185,6 +196,7 @@ func TestAdapterRegistry_SearchByCapability(t *testing.T) {
 }
 
 func TestAdapterRegistry_GetAdapterSuggestions(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	suggestions := registry.GetAdapterSuggestions("git", 5)
@@ -200,6 +212,7 @@ func TestAdapterRegistry_GetAdapterSuggestions(t *testing.T) {
 }
 
 func TestAdapterRegistry_GetAdapterSuggestions_MaxLimit(t *testing.T) {
+	t.Parallel()
 	registry := NewAdapterRegistry()
 
 	suggestions := registry.GetAdapterSuggestions("", 3)
@@ -208,6 +221,7 @@ func TestAdapterRegistry_GetAdapterSuggestions_MaxLimit(t *testing.T) {
 }
 
 func TestGetAllCategories(t *testing.T) {
+	t.Parallel()
 	categories := GetAllCategories()
 
 	require.NotEmpty(t, categories)
@@ -223,6 +237,7 @@ func TestGetAllCategories(t *testing.T) {
 }
 
 func TestGetAllAuthTypes(t *testing.T) {
+	t.Parallel()
 	authTypes := GetAllAuthTypes()
 
 	require.NotEmpty(t, authTypes)
@@ -236,6 +251,7 @@ func TestGetAllAuthTypes(t *testing.T) {
 }
 
 func TestSearch_GetSupportedAdapters(t *testing.T) {
+	t.Parallel()
 	supported := GetSupportedAdapters()
 
 	require.NotEmpty(t, supported)
@@ -246,6 +262,7 @@ func TestSearch_GetSupportedAdapters(t *testing.T) {
 }
 
 func TestSearch_GetOfficialAdapters(t *testing.T) {
+	t.Parallel()
 	official := GetOfficialAdapters()
 
 	require.NotEmpty(t, official)
@@ -256,6 +273,7 @@ func TestSearch_GetOfficialAdapters(t *testing.T) {
 }
 
 func TestSortAdapterResults(t *testing.T) {
+	t.Parallel()
 	results := []AdapterSearchResult{
 		{Score: 0.5},
 		{Score: 0.9},
@@ -273,6 +291,7 @@ func TestSortAdapterResults(t *testing.T) {
 }
 
 func TestCalculateAdapterScore_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	meta := AdapterMetadata{
 		Name:        "test",
 		Description: "Test adapter",
@@ -284,6 +303,7 @@ func TestCalculateAdapterScore_EmptyQuery(t *testing.T) {
 }
 
 func TestMatchesAdapterFilters_NoFilters(t *testing.T) {
+	t.Parallel()
 	meta := AdapterMetadata{
 		Name:      "test",
 		Category:  CategoryDatabase,
@@ -297,6 +317,7 @@ func TestMatchesAdapterFilters_NoFilters(t *testing.T) {
 }
 
 func TestMatchesAdapterFilters_CategoryMismatch(t *testing.T) {
+	t.Parallel()
 	meta := AdapterMetadata{
 		Name:     "test",
 		Category: CategoryDatabase,
@@ -309,6 +330,7 @@ func TestMatchesAdapterFilters_CategoryMismatch(t *testing.T) {
 }
 
 func TestMatchesAdapterFilters_AuthTypeMismatch(t *testing.T) {
+	t.Parallel()
 	meta := AdapterMetadata{
 		Name:     "test",
 		AuthType: "api_key",
@@ -321,6 +343,7 @@ func TestMatchesAdapterFilters_AuthTypeMismatch(t *testing.T) {
 }
 
 func TestAdapterRegistry_ListByCategory(t *testing.T) {
+	t.Parallel()
 	// Use DefaultRegistry which has all adapters initialized
 	names := DefaultRegistry.ListByCategory(CategoryDatabase)
 

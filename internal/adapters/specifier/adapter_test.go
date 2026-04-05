@@ -9,11 +9,13 @@ import (
 )
 
 func TestIsHelixSpecifierEnabled(t *testing.T) {
+	t.Parallel()
 	enabled := adapter.IsHelixSpecifierEnabled()
 	assert.IsType(t, true, enabled)
 }
 
 func TestSpecifierBackendName(t *testing.T) {
+	t.Parallel()
 	name := adapter.SpecifierBackendName()
 	assert.NotEmpty(t, name)
 	assert.Contains(t, []string{
@@ -22,6 +24,7 @@ func TestSpecifierBackendName(t *testing.T) {
 }
 
 func TestNewOptimalSpecAdapter_Default(t *testing.T) {
+	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
 		t.Skip(
 			"Skipping: nohelixspecifier tag is active",
@@ -36,6 +39,7 @@ func TestNewOptimalSpecAdapter_Default(t *testing.T) {
 }
 
 func TestNewOptimalSpecAdapter_OptOut(t *testing.T) {
+	t.Parallel()
 	if adapter.IsHelixSpecifierEnabled() {
 		t.Skip(
 			"Skipping opt-out test when HelixSpecifier is active",
@@ -49,6 +53,7 @@ func TestNewOptimalSpecAdapter_OptOut(t *testing.T) {
 }
 
 func TestHelixSpecifierIsDefault(t *testing.T) {
+	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
 		t.Skip("HelixSpecifier not active (nohelixspecifier tag). " +
 			"Default builds always use HelixSpecifier.")
@@ -66,6 +71,7 @@ func TestHelixSpecifierIsDefault(t *testing.T) {
 }
 
 func TestSpecAdapter_NilEngine(t *testing.T) {
+	t.Parallel()
 	sa := adapter.NewSpecAdapter(nil)
 	assert.NotNil(t, sa, "NewSpecAdapter should return a no-op adapter, never nil")
 	assert.False(t, sa.IsReady())
@@ -83,6 +89,7 @@ func TestSpecAdapter_NilEngine(t *testing.T) {
 }
 
 func TestSpecAdapter_Health(t *testing.T) {
+	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
 		t.Skip("HelixSpecifier not active")
 	}
@@ -93,6 +100,7 @@ func TestSpecAdapter_Health(t *testing.T) {
 }
 
 func TestSpecAdapter_ClassifyEffort(t *testing.T) {
+	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
 		t.Skip("HelixSpecifier not active")
 	}
@@ -109,6 +117,7 @@ func TestSpecAdapter_ClassifyEffort(t *testing.T) {
 }
 
 func TestSpecAdapter_SetDebateFunc(t *testing.T) {
+	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
 		t.Skip("HelixSpecifier not active")
 	}

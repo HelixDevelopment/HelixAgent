@@ -16,6 +16,7 @@ import (
 
 // TestMCPHandler_MCPCapabilities_Disabled tests MCP capabilities when disabled
 func TestMCPHandler_MCPCapabilities_Disabled(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP disabled
 	cfg := &config.MCPConfig{
 		Enabled: false,
@@ -45,6 +46,7 @@ func TestMCPHandler_MCPCapabilities_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPCapabilities_Enabled tests basic MCP capabilities structure
 func TestMCPHandler_MCPCapabilities_Enabled(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP enabled
 	cfg := &config.MCPConfig{
 		Enabled: true,
@@ -78,6 +80,7 @@ func TestMCPHandler_MCPCapabilities_Enabled(t *testing.T) {
 
 // TestMCPHandler_MCPTools_Disabled tests MCP tools endpoint when disabled
 func TestMCPHandler_MCPTools_Disabled(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP disabled
 	cfg := &config.MCPConfig{
 		Enabled: false,
@@ -106,6 +109,7 @@ func TestMCPHandler_MCPTools_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPTools_Enabled tests MCP tools endpoint when enabled
 func TestMCPHandler_MCPTools_Enabled(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP enabled
 	cfg := &config.MCPConfig{
 		Enabled: true,
@@ -133,6 +137,7 @@ func TestMCPHandler_MCPTools_Enabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_Disabled tests tool execution when disabled
 func TestMCPHandler_MCPToolsCall_Disabled(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP disabled
 	cfg := &config.MCPConfig{
 		Enabled: false,
@@ -159,6 +164,7 @@ func TestMCPHandler_MCPToolsCall_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_InvalidRequest tests tool execution with invalid request
 func TestMCPHandler_MCPToolsCall_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	// Create config with MCP enabled
 	cfg := &config.MCPConfig{
 		Enabled: true,
@@ -185,6 +191,7 @@ func TestMCPHandler_MCPToolsCall_InvalidRequest(t *testing.T) {
 
 // TestNewMCPHandler tests handler creation
 func TestNewMCPHandler(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -201,6 +208,7 @@ func TestNewMCPHandler(t *testing.T) {
 
 // TestMCPHandler_GetMCPManager tests getting MCP manager
 func TestMCPHandler_GetMCPManager(t *testing.T) {
+	t.Parallel()
 	handler := NewMCPHandler(nil, &config.MCPConfig{Enabled: true})
 
 	// GetMCPManager lazily initializes and returns a valid manager
@@ -213,6 +221,7 @@ func TestMCPHandler_GetMCPManager(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_Disabled tests MCP prompts when disabled
 func TestMCPHandler_MCPPrompts_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -234,6 +243,7 @@ func TestMCPHandler_MCPPrompts_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_Enabled tests MCP prompts when enabled
 func TestMCPHandler_MCPPrompts_Enabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -257,6 +267,7 @@ func TestMCPHandler_MCPPrompts_Enabled(t *testing.T) {
 
 // TestMCPHandler_MCPResources_Disabled tests MCP resources when disabled
 func TestMCPHandler_MCPResources_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -278,6 +289,7 @@ func TestMCPHandler_MCPResources_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPResources_Enabled tests MCP resources when enabled
 func TestMCPHandler_MCPResources_Enabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -302,6 +314,7 @@ func TestMCPHandler_MCPResources_Enabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_ValidRequest tests MCP tools call with valid request
 func TestMCPHandler_MCPToolsCall_ValidRequest(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -334,6 +347,7 @@ func TestMCPHandler_MCPToolsCall_ValidRequest(t *testing.T) {
 
 // TestFindUnderscoreIndex tests the findUnderscoreIndex helper function
 func TestFindUnderscoreIndex(t *testing.T) {
+	t.Parallel()
 	// Test with underscore in middle
 	assert.Equal(t, 4, findUnderscoreIndex("test_tool"))
 
@@ -361,6 +375,7 @@ func TestFindUnderscoreIndex(t *testing.T) {
 
 // TestMCPHandler_RegisterMCPServer tests MCP server registration
 func TestMCPHandler_RegisterMCPServer(t *testing.T) {
+	t.Parallel()
 	handler := NewMCPHandler(nil, &config.MCPConfig{Enabled: true})
 
 	// Test registering a server
@@ -381,6 +396,7 @@ func TestMCPHandler_RegisterMCPServer(t *testing.T) {
 
 // TestMCPHandler_GetProviderTools tests provider tools retrieval
 func TestMCPHandler_GetProviderTools(t *testing.T) {
+	t.Parallel()
 	// Since we can't easily create a ProviderRegistry with actual providers,
 	// we'll skip this test as it causes a panic when accessing nil registry
 	// The function getProviderTools is private and only used internally
@@ -390,6 +406,7 @@ func TestMCPHandler_GetProviderTools(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithUnifiedNamespace tests tool call with unified namespace
 func TestMCPHandler_MCPToolsCall_WithUnifiedNamespace(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled:              true,
 		UnifiedToolNamespace: true,
@@ -422,6 +439,7 @@ func TestMCPHandler_MCPToolsCall_WithUnifiedNamespace(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithExposeAllTools tests capabilities with expose all tools
 func TestMCPHandler_MCPToolsCall_WithExposeAllTools(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled:        true,
 		ExposeAllTools: true,
@@ -446,6 +464,7 @@ func TestMCPHandler_MCPToolsCall_WithExposeAllTools(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_MissingName tests tool call without name
 func TestMCPHandler_MCPToolsCall_MissingName(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -474,6 +493,7 @@ func TestMCPHandler_MCPToolsCall_MissingName(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_InvalidToolFormat tests tool call with invalid tool format
 func TestMCPHandler_MCPToolsCall_InvalidToolFormat(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled:              true,
 		UnifiedToolNamespace: false,
@@ -504,6 +524,7 @@ func TestMCPHandler_MCPToolsCall_InvalidToolFormat(t *testing.T) {
 
 // TestMCPHandler_RegisterMCPServer_Success tests that registration logs and succeeds
 func TestMCPHandler_RegisterMCPServer_Success(t *testing.T) {
+	t.Parallel()
 	handler := NewMCPHandler(nil, &config.MCPConfig{Enabled: true})
 
 	serverConfig := map[string]interface{}{
@@ -516,6 +537,7 @@ func TestMCPHandler_RegisterMCPServer_Success(t *testing.T) {
 
 // TestMCPHandler_MCPCapabilities_WithProviderRegistry tests capabilities with nil registry
 func TestMCPHandler_MCPCapabilities_WithNilProviderRegistry(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -540,6 +562,7 @@ func TestMCPHandler_MCPCapabilities_WithNilProviderRegistry(t *testing.T) {
 
 // TestFindUnderscoreIndex_EdgeCases tests edge cases for underscore finder
 func TestFindUnderscoreIndex_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -556,6 +579,7 @@ func TestFindUnderscoreIndex_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := findUnderscoreIndex(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -564,6 +588,7 @@ func TestFindUnderscoreIndex_EdgeCases(t *testing.T) {
 
 // TestMCPHandler_MCPTools_Enabled_EmptyTools tests tools endpoint with empty tools
 func TestMCPHandler_MCPTools_Enabled_EmptyTools(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -588,6 +613,7 @@ func TestMCPHandler_MCPTools_Enabled_EmptyTools(t *testing.T) {
 
 // TestMCPHandler_MCPPrompts_ResponseStructure tests prompts response structure
 func TestMCPHandler_MCPPrompts_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -622,6 +648,7 @@ func TestMCPHandler_MCPPrompts_ResponseStructure(t *testing.T) {
 
 // TestMCPHandler_MCPResources_ResponseStructure tests resources response structure
 func TestMCPHandler_MCPResources_ResponseStructure(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -656,6 +683,7 @@ func TestMCPHandler_MCPResources_ResponseStructure(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithProviderRegistry tests tool call with a real provider registry
 func TestMCPHandler_MCPToolsCall_WithProviderRegistry(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled:              true,
 		UnifiedToolNamespace: true,
@@ -699,6 +727,7 @@ func TestMCPHandler_MCPToolsCall_WithProviderRegistry(t *testing.T) {
 
 // TestMCPHandler_MCPToolsCall_WithProviderRegistry_NoUnderscore tests tool call without underscore in name
 func TestMCPHandler_MCPToolsCall_WithProviderRegistry_NoUnderscore(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled:              true,
 		UnifiedToolNamespace: true,
@@ -742,6 +771,7 @@ func TestMCPHandler_MCPToolsCall_WithProviderRegistry_NoUnderscore(t *testing.T)
 
 // TestMCPHandler_MCPToolsCall_MissingNameWithRegistry tests tool call without name field
 func TestMCPHandler_MCPToolsCall_MissingNameWithRegistry(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -783,6 +813,7 @@ func TestMCPHandler_MCPToolsCall_MissingNameWithRegistry(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_Disabled tests tool search when MCP is disabled
 func TestMCPHandler_MCPToolSearch_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -804,6 +835,7 @@ func TestMCPHandler_MCPToolSearch_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_GET tests tool search with GET request
 func TestMCPHandler_MCPToolSearch_GET(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -828,6 +860,7 @@ func TestMCPHandler_MCPToolSearch_GET(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_POST tests tool search with POST request
 func TestMCPHandler_MCPToolSearch_POST(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -861,6 +894,7 @@ func TestMCPHandler_MCPToolSearch_POST(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_MissingQuery tests tool search without query
 func TestMCPHandler_MCPToolSearch_MissingQuery(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -880,6 +914,7 @@ func TestMCPHandler_MCPToolSearch_MissingQuery(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_InvalidJSON tests tool search with invalid JSON
 func TestMCPHandler_MCPToolSearch_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -900,6 +935,7 @@ func TestMCPHandler_MCPToolSearch_InvalidJSON(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_Disabled tests adapter search when MCP is disabled
 func TestMCPHandler_MCPAdapterSearch_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -921,6 +957,7 @@ func TestMCPHandler_MCPAdapterSearch_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_GET tests adapter search with GET request
 func TestMCPHandler_MCPAdapterSearch_GET(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -945,6 +982,7 @@ func TestMCPHandler_MCPAdapterSearch_GET(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_POST tests adapter search with POST request
 func TestMCPHandler_MCPAdapterSearch_POST(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -976,6 +1014,7 @@ func TestMCPHandler_MCPAdapterSearch_POST(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_EmptyQuery tests adapter search with empty query returns all adapters
 func TestMCPHandler_MCPAdapterSearch_EmptyQuery(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1002,6 +1041,7 @@ func TestMCPHandler_MCPAdapterSearch_EmptyQuery(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_Disabled tests tool suggestions when MCP is disabled
 func TestMCPHandler_MCPToolSuggestions_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -1023,6 +1063,7 @@ func TestMCPHandler_MCPToolSuggestions_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions tests tool suggestions endpoint
 func TestMCPHandler_MCPToolSuggestions(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1047,6 +1088,7 @@ func TestMCPHandler_MCPToolSuggestions(t *testing.T) {
 
 // TestMCPHandler_MCPToolSuggestions_EmptyPrefix tests tool suggestions with empty prefix returns error
 func TestMCPHandler_MCPToolSuggestions_EmptyPrefix(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1068,6 +1110,7 @@ func TestMCPHandler_MCPToolSuggestions_EmptyPrefix(t *testing.T) {
 
 // TestMCPHandler_MCPCategories_Disabled tests categories when MCP is disabled
 func TestMCPHandler_MCPCategories_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -1089,6 +1132,7 @@ func TestMCPHandler_MCPCategories_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPCategories tests categories endpoint
 func TestMCPHandler_MCPCategories(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1121,6 +1165,7 @@ func TestMCPHandler_MCPCategories(t *testing.T) {
 
 // TestMCPHandler_MCPStats_Disabled tests stats when MCP is disabled
 func TestMCPHandler_MCPStats_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: false,
 	}
@@ -1142,6 +1187,7 @@ func TestMCPHandler_MCPStats_Disabled(t *testing.T) {
 
 // TestMCPHandler_MCPStats tests stats endpoint
 func TestMCPHandler_MCPStats(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1175,6 +1221,7 @@ func TestMCPHandler_MCPStats(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_WithCategories tests tool search with category filter
 func TestMCPHandler_MCPToolSearch_WithCategories(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1197,6 +1244,7 @@ func TestMCPHandler_MCPToolSearch_WithCategories(t *testing.T) {
 
 // TestMCPHandler_MCPAdapterSearch_WithFilters tests adapter search with multiple filters
 func TestMCPHandler_MCPAdapterSearch_WithFilters(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}
@@ -1223,6 +1271,7 @@ func TestMCPHandler_MCPAdapterSearch_WithFilters(t *testing.T) {
 
 // TestMCPHandler_MCPToolSearch_AlternateQueryParam tests tool search with "query" param instead of "q"
 func TestMCPHandler_MCPToolSearch_AlternateQueryParam(t *testing.T) {
+	t.Parallel()
 	cfg := &config.MCPConfig{
 		Enabled: true,
 	}

@@ -29,6 +29,7 @@ func init() {
 // =============================================================================
 
 func TestVulnerabilitySeverity_AllValues(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    VulnerabilitySeverity
@@ -43,6 +44,7 @@ func TestVulnerabilitySeverity_AllValues(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, VulnerabilitySeverity(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -54,6 +56,7 @@ func TestVulnerabilitySeverity_AllValues(t *testing.T) {
 // =============================================================================
 
 func TestVulnerabilityCategory_AllValues(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    VulnerabilityCategory
@@ -73,6 +76,7 @@ func TestVulnerabilityCategory_AllValues(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, VulnerabilityCategory(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -80,6 +84,7 @@ func TestVulnerabilityCategory_AllValues(t *testing.T) {
 }
 
 func TestVulnerabilityCategory_Uniqueness(t *testing.T) {
+	t.Parallel()
 	categories := []VulnerabilityCategory{
 		CategoryInjection, CategoryXSS, CategoryAuthentication,
 		CategoryAuthorization, CategoryCryptographic, CategorySensitiveData,
@@ -100,6 +105,7 @@ func TestVulnerabilityCategory_Uniqueness(t *testing.T) {
 // =============================================================================
 
 func TestSecurityScanResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var r SecurityScanResult
 	assert.Nil(t, r.Vulnerabilities)
 	assert.Zero(t, r.TotalFiles)
@@ -109,6 +115,7 @@ func TestSecurityScanResult_ZeroValue(t *testing.T) {
 }
 
 func TestSecurityScanResult_MarshalJSON_DurationConversion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		duration   time.Duration
@@ -123,6 +130,7 @@ func TestSecurityScanResult_MarshalJSON_DurationConversion(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := &SecurityScanResult{
 				Vulnerabilities: []*Vulnerability{},
 				TotalFiles:      1,
@@ -150,6 +158,7 @@ func TestSecurityScanResult_MarshalJSON_DurationConversion(t *testing.T) {
 // =============================================================================
 
 func TestSecurityResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var r SecurityResult
 	assert.Nil(t, r.Vulnerabilities)
 	assert.Nil(t, r.Fixes)
@@ -158,6 +167,7 @@ func TestSecurityResult_ZeroValue(t *testing.T) {
 }
 
 func TestSecurityResult_MarshalJSON_ContainsDurationMs(t *testing.T) {
+	t.Parallel()
 	result := &SecurityResult{
 		Vulnerabilities: []*Vulnerability{},
 		Fixes:           []*SecurityFix{},
@@ -183,6 +193,7 @@ func TestSecurityResult_MarshalJSON_ContainsDurationMs(t *testing.T) {
 // =============================================================================
 
 func TestDefaultSecureFixAgentConfig_AllDefaults(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultSecureFixAgentConfig()
 
 	assert.True(t, cfg.EnableAutoFix)
@@ -194,6 +205,7 @@ func TestDefaultSecureFixAgentConfig_AllDefaults(t *testing.T) {
 }
 
 func TestSecureFixAgentConfig_CustomValues(t *testing.T) {
+	t.Parallel()
 	cfg := SecureFixAgentConfig{
 		EnableAutoFix:            false,
 		RequireValidation:        false,
@@ -216,6 +228,7 @@ func TestSecureFixAgentConfig_CustomValues(t *testing.T) {
 // =============================================================================
 
 func TestNewPatternBasedScanner_InitializesPatterns(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -235,12 +248,14 @@ func TestNewPatternBasedScanner_InitializesPatterns(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Name_ReturnsCorrectName(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 	assert.Equal(t, "pattern-based", scanner.Name())
 }
 
 func TestPatternBasedScanner_Scan_SQLInjectionPatterns(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -275,6 +290,7 @@ func TestPatternBasedScanner_Scan_SQLInjectionPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 			if tc.expectHit {
@@ -298,6 +314,7 @@ func TestPatternBasedScanner_Scan_SQLInjectionPatterns(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Scan_XSSPatterns(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -329,6 +346,7 @@ func TestPatternBasedScanner_Scan_XSSPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "javascript")
 			require.NoError(t, err)
 
@@ -349,6 +367,7 @@ func TestPatternBasedScanner_Scan_XSSPatterns(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Scan_SensitiveDataPatterns(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -388,6 +407,7 @@ func TestPatternBasedScanner_Scan_SensitiveDataPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 
@@ -408,6 +428,7 @@ func TestPatternBasedScanner_Scan_SensitiveDataPatterns(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Scan_CryptographicPatterns(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -452,6 +473,7 @@ func TestPatternBasedScanner_Scan_CryptographicPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 
@@ -471,6 +493,7 @@ func TestPatternBasedScanner_Scan_CryptographicPatterns(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Scan_VulnerabilityFields(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -496,6 +519,7 @@ func TestPatternBasedScanner_Scan_VulnerabilityFields(t *testing.T) {
 }
 
 func TestPatternBasedScanner_Scan_MultiLineCode(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -523,6 +547,7 @@ func main() {
 }
 
 func TestPatternBasedScanner_Scan_MultipleVulnerabilities(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -546,6 +571,7 @@ api_key = "key123"
 }
 
 func TestPatternBasedScanner_Scan_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -564,6 +590,7 @@ func TestPatternBasedScanner_Scan_ContextCancellation(t *testing.T) {
 // =============================================================================
 
 func TestPatternBasedScanner_ScanFile_NonExistent(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -575,6 +602,7 @@ func TestPatternBasedScanner_ScanFile_NonExistent(t *testing.T) {
 }
 
 func TestPatternBasedScanner_ScanFile_ValidFile(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -597,6 +625,7 @@ func TestPatternBasedScanner_ScanFile_ValidFile(t *testing.T) {
 }
 
 func TestPatternBasedScanner_ScanFile_CleanFile(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	scanner := NewPatternBasedScanner(logger)
@@ -623,6 +652,7 @@ func main() {
 // =============================================================================
 
 func TestPatternBasedScanner_GetLineNumber_EdgeCases(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 
@@ -645,6 +675,7 @@ func TestPatternBasedScanner_GetLineNumber_EdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, scanner.getLineNumber(tc.code, tc.offset))
 		})
 	}
@@ -655,6 +686,7 @@ func TestPatternBasedScanner_GetLineNumber_EdgeCases(t *testing.T) {
 // =============================================================================
 
 func TestDetectLanguageFromPath_AllLanguages(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -682,12 +714,14 @@ func TestDetectLanguageFromPath_AllLanguages(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
 }
 
 func TestDetectLanguageFromPath_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -700,12 +734,14 @@ func TestDetectLanguageFromPath_CaseInsensitive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
 }
 
 func TestDetectLanguageFromPath_WithPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -717,6 +753,7 @@ func TestDetectLanguageFromPath_WithPaths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
@@ -727,6 +764,7 @@ func TestDetectLanguageFromPath_WithPaths(t *testing.T) {
 // =============================================================================
 
 func TestMin_Various(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		a, b     int
@@ -743,6 +781,7 @@ func TestMin_Various(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, min(tc.a, tc.b))
 		})
 	}
@@ -753,6 +792,7 @@ func TestMin_Various(t *testing.T) {
 // =============================================================================
 
 func TestNewSecureFixAgent_WithAllParams(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	gen := &stubFixGenerator{fixedCode: "safe code"}
@@ -770,6 +810,7 @@ func TestNewSecureFixAgent_WithAllParams(t *testing.T) {
 }
 
 func TestNewSecureFixAgent_WithNilLogger(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	agent := NewSecureFixAgent(config, nil, nil, nil)
 	require.NotNil(t, agent)
@@ -777,6 +818,7 @@ func TestNewSecureFixAgent_WithNilLogger(t *testing.T) {
 }
 
 func TestNewSecureFixAgent_WithNilGeneratorAndValidator(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -790,6 +832,7 @@ func TestNewSecureFixAgent_WithNilGeneratorAndValidator(t *testing.T) {
 // =============================================================================
 
 func TestSecureFixAgent_RegisterScanner_Multiple(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -804,6 +847,7 @@ func TestSecureFixAgent_RegisterScanner_Multiple(t *testing.T) {
 }
 
 func TestSecureFixAgent_RegisterScanner_Concurrent(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -827,6 +871,7 @@ func TestSecureFixAgent_RegisterScanner_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestSecureFixAgent_ShouldReport_SeverityThresholds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		threshold VulnerabilitySeverity
@@ -844,6 +889,7 @@ func TestSecureFixAgent_ShouldReport_SeverityThresholds(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			config := DefaultSecureFixAgentConfig()
 			config.SeverityThreshold = tc.threshold
 			logger := logrus.New()
@@ -860,6 +906,7 @@ func TestSecureFixAgent_ShouldReport_SeverityThresholds(t *testing.T) {
 // =============================================================================
 
 func TestSecureFixAgent_DetectRepairValidate_NoScanners(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -874,6 +921,7 @@ func TestSecureFixAgent_DetectRepairValidate_NoScanners(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_DetectOnly(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.EnableAutoFix = false
 	logger := logrus.New()
@@ -892,6 +940,7 @@ func TestSecureFixAgent_DetectRepairValidate_DetectOnly(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_WithGeneratorNoValidator(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = false
 	logger := logrus.New()
@@ -914,6 +963,7 @@ func TestSecureFixAgent_DetectRepairValidate_WithGeneratorNoValidator(t *testing
 }
 
 func TestSecureFixAgent_DetectRepairValidate_WithValidation(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = true
 	logger := logrus.New()
@@ -936,6 +986,7 @@ func TestSecureFixAgent_DetectRepairValidate_WithValidation(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_ValidationFails(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = true
 	logger := logrus.New()
@@ -955,6 +1006,7 @@ func TestSecureFixAgent_DetectRepairValidate_ValidationFails(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_GeneratorError(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = false
 	logger := logrus.New()
@@ -974,6 +1026,7 @@ func TestSecureFixAgent_DetectRepairValidate_GeneratorError(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_ValidatorError(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = true
 	logger := logrus.New()
@@ -994,6 +1047,7 @@ func TestSecureFixAgent_DetectRepairValidate_ValidatorError(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_ScannerError(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
@@ -1009,6 +1063,7 @@ func TestSecureFixAgent_DetectRepairValidate_ScannerError(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_StoresVulnsAndFixes(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = false
 	logger := logrus.New()
@@ -1040,6 +1095,7 @@ func TestSecureFixAgent_DetectRepairValidate_StoresVulnsAndFixes(t *testing.T) {
 }
 
 func TestSecureFixAgent_DetectRepairValidate_Duration(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1055,6 +1111,7 @@ func TestSecureFixAgent_DetectRepairValidate_Duration(t *testing.T) {
 // =============================================================================
 
 func TestSecureFixAgent_ApplyFix_ValidatedFix(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1075,6 +1132,7 @@ func TestSecureFixAgent_ApplyFix_ValidatedFix(t *testing.T) {
 }
 
 func TestSecureFixAgent_ApplyFix_UnvalidatedFix(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1092,6 +1150,7 @@ func TestSecureFixAgent_ApplyFix_UnvalidatedFix(t *testing.T) {
 }
 
 func TestSecureFixAgent_ApplyFix_OriginalNotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1113,6 +1172,7 @@ func TestSecureFixAgent_ApplyFix_OriginalNotFound(t *testing.T) {
 // =============================================================================
 
 func TestSecureFixAgent_GetVulnerability_NotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1122,6 +1182,7 @@ func TestSecureFixAgent_GetVulnerability_NotFound(t *testing.T) {
 }
 
 func TestSecureFixAgent_GetFix_NotFound(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	logger := logrus.New()
 	agent := NewSecureFixAgent(config, nil, nil, logger)
@@ -1131,6 +1192,7 @@ func TestSecureFixAgent_GetFix_NotFound(t *testing.T) {
 }
 
 func TestSecureFixAgent_GetVulnerability_Concurrent(t *testing.T) {
+	t.Parallel()
 	config := DefaultSecureFixAgentConfig()
 	config.RequireValidation = false
 	logger := logrus.New()
@@ -1166,6 +1228,7 @@ func TestSecureFixAgent_GetVulnerability_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewLLMFixGenerator_Creation(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	genFunc := func(ctx context.Context, prompt string) (string, error) {
 		return "fixed", nil
@@ -1178,6 +1241,7 @@ func TestNewLLMFixGenerator_Creation(t *testing.T) {
 }
 
 func TestLLMFixGenerator_GenerateFix_Success(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	var capturedPrompt string
 	genFunc := func(ctx context.Context, prompt string) (string, error) {
@@ -1215,6 +1279,7 @@ func TestLLMFixGenerator_GenerateFix_Success(t *testing.T) {
 }
 
 func TestLLMFixGenerator_GenerateFix_TrimsWhitespace(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	genFunc := func(ctx context.Context, prompt string) (string, error) {
 		return "  \n  safe code  \n  ", nil
@@ -1230,6 +1295,7 @@ func TestLLMFixGenerator_GenerateFix_TrimsWhitespace(t *testing.T) {
 }
 
 func TestLLMFixGenerator_GenerateFix_ErrorReturned(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	genFunc := func(ctx context.Context, prompt string) (string, error) {
 		return "", fmt.Errorf("LLM unavailable")
@@ -1249,6 +1315,7 @@ func TestLLMFixGenerator_GenerateFix_ErrorReturned(t *testing.T) {
 // =============================================================================
 
 func TestNewRescanValidator_Creation(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 	val := NewRescanValidator(scanner, logger)
@@ -1258,6 +1325,7 @@ func TestNewRescanValidator_Creation(t *testing.T) {
 }
 
 func TestRescanValidator_ValidateFix_VulnerabilityRemoved(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 	val := NewRescanValidator(scanner, logger)
@@ -1278,6 +1346,7 @@ func TestRescanValidator_ValidateFix_VulnerabilityRemoved(t *testing.T) {
 }
 
 func TestRescanValidator_ValidateFix_VulnerabilityPersists(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 	val := NewRescanValidator(scanner, logger)
@@ -1298,6 +1367,7 @@ func TestRescanValidator_ValidateFix_VulnerabilityPersists(t *testing.T) {
 }
 
 func TestRescanValidator_ValidateFix_ScannerError(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	val := NewRescanValidator(&stubScanner{err: fmt.Errorf("scan error")}, logger)
 	ctx := context.Background()
@@ -1314,6 +1384,7 @@ func TestRescanValidator_ValidateFix_ScannerError(t *testing.T) {
 // =============================================================================
 
 func TestNewFiveRingDefense_Creation(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 	require.NotNil(t, defense)
@@ -1323,6 +1394,7 @@ func TestNewFiveRingDefense_Creation(t *testing.T) {
 }
 
 func TestFiveRingDefense_AddRing(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 
@@ -1335,6 +1407,7 @@ func TestFiveRingDefense_AddRing(t *testing.T) {
 }
 
 func TestFiveRingDefense_Defend_NoRings(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 
@@ -1348,6 +1421,7 @@ func TestFiveRingDefense_Defend_NoRings(t *testing.T) {
 }
 
 func TestFiveRingDefense_Defend_AllPass(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 
@@ -1368,6 +1442,7 @@ func TestFiveRingDefense_Defend_AllPass(t *testing.T) {
 }
 
 func TestFiveRingDefense_Defend_BlockedByFirstRing(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 
@@ -1383,6 +1458,7 @@ func TestFiveRingDefense_Defend_BlockedByFirstRing(t *testing.T) {
 }
 
 func TestFiveRingDefense_Defend_BlockedBySecondRing(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	defense := NewFiveRingDefense(logger)
 
@@ -1400,6 +1476,7 @@ func TestFiveRingDefense_Defend_BlockedBySecondRing(t *testing.T) {
 }
 
 func TestFiveRingDefense_Defend_RingErrorContinues(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 	defense := NewFiveRingDefense(logger)
@@ -1420,11 +1497,13 @@ func TestFiveRingDefense_Defend_RingErrorContinues(t *testing.T) {
 // =============================================================================
 
 func TestInputSanitizationRing_NameValue(t *testing.T) {
+	t.Parallel()
 	ring := NewInputSanitizationRing()
 	assert.Equal(t, "input_sanitization", ring.Name())
 }
 
 func TestInputSanitizationRing_Check_MaliciousPatterns(t *testing.T) {
+	t.Parallel()
 	ring := NewInputSanitizationRing()
 	ctx := context.Background()
 
@@ -1453,6 +1532,7 @@ func TestInputSanitizationRing_Check_MaliciousPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			passed, msg, err := ring.Check(ctx, tc.input)
 			require.NoError(t, err)
 			assert.Equal(t, tc.shouldPass, passed, "Message: %s", msg)
@@ -1466,11 +1546,13 @@ func TestInputSanitizationRing_Check_MaliciousPatterns(t *testing.T) {
 // =============================================================================
 
 func TestRateLimitingRing_NameValue(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(10, time.Minute)
 	assert.Equal(t, "rate_limiting", ring.Name())
 }
 
 func TestRateLimitingRing_Check_AllowsUnderLimit(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(5, time.Minute)
 	ctx := context.Background()
 
@@ -1482,6 +1564,7 @@ func TestRateLimitingRing_Check_AllowsUnderLimit(t *testing.T) {
 }
 
 func TestRateLimitingRing_Check_BlocksOverLimit(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(3, time.Minute)
 	ctx := context.Background()
 
@@ -1500,6 +1583,7 @@ func TestRateLimitingRing_Check_BlocksOverLimit(t *testing.T) {
 }
 
 func TestRateLimitingRing_Check_WindowExpiry(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(2, 50*time.Millisecond)
 	ctx := context.Background()
 
@@ -1523,6 +1607,7 @@ func TestRateLimitingRing_Check_WindowExpiry(t *testing.T) {
 }
 
 func TestRateLimitingRing_Check_DifferentKeys(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(2, time.Minute)
 	ctx := context.Background()
 
@@ -1538,6 +1623,7 @@ func TestRateLimitingRing_Check_DifferentKeys(t *testing.T) {
 }
 
 func TestRateLimitingRing_Check_Concurrent(t *testing.T) {
+	t.Parallel()
 	ring := NewRateLimitingRing(100, time.Minute)
 	ctx := context.Background()
 
@@ -1558,6 +1644,7 @@ func TestRateLimitingRing_Check_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestDefenseRing_InterfaceCompliance(t *testing.T) {
+	t.Parallel()
 	var _ DefenseRing = (*InputSanitizationRing)(nil)
 	var _ DefenseRing = (*RateLimitingRing)(nil)
 }
@@ -1567,6 +1654,7 @@ func TestDefenseRing_InterfaceCompliance(t *testing.T) {
 // =============================================================================
 
 func TestVulnerabilityScanner_InterfaceCompliance(t *testing.T) {
+	t.Parallel()
 	var _ VulnerabilityScanner = (*PatternBasedScanner)(nil)
 }
 
@@ -1575,6 +1663,7 @@ func TestVulnerabilityScanner_InterfaceCompliance(t *testing.T) {
 // =============================================================================
 
 func TestFixGenerator_InterfaceCompliance(t *testing.T) {
+	t.Parallel()
 	var _ FixGenerator = (*LLMFixGenerator)(nil)
 }
 
@@ -1583,6 +1672,7 @@ func TestFixGenerator_InterfaceCompliance(t *testing.T) {
 // =============================================================================
 
 func TestFixValidator_InterfaceCompliance(t *testing.T) {
+	t.Parallel()
 	var _ FixValidator = (*RescanValidator)(nil)
 }
 
@@ -1591,6 +1681,7 @@ func TestFixValidator_InterfaceCompliance(t *testing.T) {
 // =============================================================================
 
 func TestVulnerability_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	v := Vulnerability{
 		ID:          "VULN-123",
@@ -1625,6 +1716,7 @@ func TestVulnerability_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestSecurityFix_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	fix := SecurityFix{
 		VulnerabilityID: "vuln-1",
@@ -1648,6 +1740,7 @@ func TestSecurityFix_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestDefenseResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var dr DefenseResult
 	assert.False(t, dr.Passed)
 	assert.Empty(t, dr.BlockedBy)
@@ -1659,6 +1752,7 @@ func TestDefenseResult_ZeroValue(t *testing.T) {
 // =============================================================================
 
 func TestRingResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var rr RingResult
 	assert.Empty(t, rr.Name)
 	assert.False(t, rr.Passed)
@@ -1670,6 +1764,7 @@ func TestRingResult_ZeroValue(t *testing.T) {
 // =============================================================================
 
 func TestVulnerabilityPattern_PatternCategories(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	scanner := NewPatternBasedScanner(logger)
 

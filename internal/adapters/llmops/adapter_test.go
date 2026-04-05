@@ -11,23 +11,27 @@ import (
 )
 
 func TestNew_NotNil(t *testing.T) {
+	t.Parallel()
 	adapter := llmopsadapter.New(nil)
 	require.NotNil(t, adapter)
 }
 
 func TestAdapter_NewEvaluator_NotNil(t *testing.T) {
+	t.Parallel()
 	adapter := llmopsadapter.New(nil)
 	evaluator := adapter.NewEvaluator()
 	require.NotNil(t, evaluator)
 }
 
 func TestAdapter_NewExperimentManager_NotNil(t *testing.T) {
+	t.Parallel()
 	adapter := llmopsadapter.New(nil)
 	mgr := adapter.NewExperimentManager()
 	require.NotNil(t, mgr)
 }
 
 func TestAdapter_CreateDataset(t *testing.T) {
+	t.Parallel()
 	adapter := llmopsadapter.New(nil)
 	evaluator := adapter.NewEvaluator()
 	ctx := context.Background()

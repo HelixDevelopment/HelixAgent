@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, "gsk_test-key", p.apiKey)
@@ -23,6 +24,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestNewProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 1 * time.Second,
@@ -39,6 +41,7 @@ func TestNewProviderWithRetry(t *testing.T) {
 }
 
 func TestProvider_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "Bearer gsk_test-key", r.Header.Get("Authorization"))
@@ -95,6 +98,7 @@ func TestProvider_Complete(t *testing.T) {
 }
 
 func TestProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody Request
 		_ = json.NewDecoder(r.Body).Decode(&reqBody)
@@ -167,6 +171,7 @@ func TestProvider_Complete_WithTools(t *testing.T) {
 }
 
 func TestProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid request"}}`))
@@ -188,6 +193,7 @@ func TestProvider_Complete_Error(t *testing.T) {
 }
 
 func TestProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		flusher, _ := w.(http.Flusher)
@@ -229,6 +235,7 @@ func TestProvider_CompleteStream(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		w.WriteHeader(http.StatusOK)
@@ -258,6 +265,7 @@ func TestProvider_HealthCheck(t *testing.T) {
 }
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 	caps := p.GetCapabilities()
 
@@ -277,6 +285,7 @@ func TestProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		apiKey     string
@@ -305,6 +314,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.apiKey, "", "")
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -314,6 +324,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "llama-3.3-70b-versatile")
 
 	req := &models.LLMRequest{
@@ -346,6 +357,7 @@ func TestProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestProvider_ConvertRequest_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 
 	req := &models.LLMRequest{
@@ -361,6 +373,7 @@ func TestProvider_ConvertRequest_DefaultMaxTokens(t *testing.T) {
 }
 
 func TestProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 
 	tests := []struct {
@@ -402,6 +415,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)
@@ -410,6 +424,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestProvider_CalculateBackoff(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 
 	// First attempt should be around initial delay (500ms for Groq)
@@ -424,6 +439,7 @@ func TestProvider_CalculateBackoff(t *testing.T) {
 }
 
 func TestProvider_GetSetModel(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "llama-3.3-70b-versatile")
 	assert.Equal(t, "llama-3.3-70b-versatile", p.GetModel())
 
@@ -432,11 +448,13 @@ func TestProvider_GetSetModel(t *testing.T) {
 }
 
 func TestProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("gsk_test-key", "", "")
 	assert.Equal(t, "groq", p.GetName())
 }
 
 func TestProvider_Retry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -477,6 +495,7 @@ func TestProvider_Retry(t *testing.T) {
 }
 
 func TestProvider_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
 		w.WriteHeader(http.StatusOK)
@@ -498,6 +517,7 @@ func TestProvider_ContextCancellation(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRetryConfig()
 	assert.Equal(t, 3, cfg.MaxRetries)
 	assert.Equal(t, 500*time.Millisecond, cfg.InitialDelay) // Groq is fast
@@ -506,6 +526,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestProvider_ServerError_Retry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -546,6 +567,7 @@ func TestProvider_ServerError_Retry(t *testing.T) {
 }
 
 func TestProvider_TimingMetadata(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := Response{
 			ID:      "chatcmpl-timing",

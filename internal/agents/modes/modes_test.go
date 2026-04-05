@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	require.NotNil(t, registry)
@@ -17,6 +18,7 @@ func TestNewRegistry(t *testing.T) {
 }
 
 func TestRegistry_Register(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	config := &ModeConfig{
@@ -31,6 +33,7 @@ func TestRegistry_Register(t *testing.T) {
 }
 
 func TestRegistry_Get(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	config, ok := registry.Get(ModeCode)
@@ -40,6 +43,7 @@ func TestRegistry_Get(t *testing.T) {
 }
 
 func TestRegistry_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	_, ok := registry.Get("nonexistent")
@@ -47,6 +51,7 @@ func TestRegistry_Get_NotFound(t *testing.T) {
 }
 
 func TestRegistry_List(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	modes := registry.List()
@@ -58,6 +63,7 @@ func TestRegistry_List(t *testing.T) {
 }
 
 func TestRegistry_ListConfigs(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	configs := registry.ListConfigs()
@@ -66,6 +72,7 @@ func TestRegistry_ListConfigs(t *testing.T) {
 }
 
 func TestRegistry_HasMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	assert.True(t, registry.HasMode(ModeCode))
@@ -74,6 +81,7 @@ func TestRegistry_HasMode(t *testing.T) {
 }
 
 func TestNewAgent(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	agent, err := NewAgent(registry, ModeCode)
@@ -84,6 +92,7 @@ func TestNewAgent(t *testing.T) {
 }
 
 func TestNewAgent_UnknownMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	_, err := NewAgent(registry, "unknown")
@@ -93,6 +102,7 @@ func TestNewAgent_UnknownMode(t *testing.T) {
 }
 
 func TestAgent_GetMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeDebug)
 	
@@ -100,6 +110,7 @@ func TestAgent_GetMode(t *testing.T) {
 }
 
 func TestAgent_SetMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -110,6 +121,7 @@ func TestAgent_SetMode(t *testing.T) {
 }
 
 func TestAgent_SetMode_Invalid(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -119,6 +131,7 @@ func TestAgent_SetMode_Invalid(t *testing.T) {
 }
 
 func TestAgent_GetConfig(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -129,6 +142,7 @@ func TestAgent_GetConfig(t *testing.T) {
 }
 
 func TestAgent_CanUseTool(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	// Code mode should allow edit
@@ -143,6 +157,7 @@ func TestAgent_CanUseTool(t *testing.T) {
 }
 
 func TestAgent_CanUseTool_Unknown(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -150,6 +165,7 @@ func TestAgent_CanUseTool_Unknown(t *testing.T) {
 }
 
 func TestAgent_CanExecute(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	// Code mode allows write but not execute
@@ -164,6 +180,7 @@ func TestAgent_CanExecute(t *testing.T) {
 }
 
 func TestAgent_GetPrompt(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -174,6 +191,7 @@ func TestAgent_GetPrompt(t *testing.T) {
 }
 
 func TestAgent_GetTemperature(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -184,6 +202,7 @@ func TestAgent_GetTemperature(t *testing.T) {
 }
 
 func TestAgent_GetMaxTokens(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -193,6 +212,7 @@ func TestAgent_GetMaxTokens(t *testing.T) {
 }
 
 func TestWithMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -205,6 +225,7 @@ func TestWithMode(t *testing.T) {
 }
 
 func TestGetModeFromContext(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeDebug)
 	
@@ -216,6 +237,7 @@ func TestGetModeFromContext(t *testing.T) {
 }
 
 func TestGetModeFromContext_NotFound(t *testing.T) {
+	t.Parallel()
 	mode, ok := GetModeFromContext(context.Background())
 	
 	assert.False(t, ok)
@@ -223,6 +245,7 @@ func TestGetModeFromContext_NotFound(t *testing.T) {
 }
 
 func TestAgent_SwitchMode(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -239,6 +262,7 @@ func TestAgent_SwitchMode(t *testing.T) {
 }
 
 func TestAgent_SwitchMode_Invalid(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	
@@ -249,11 +273,13 @@ func TestAgent_SwitchMode_Invalid(t *testing.T) {
 }
 
 func TestAgentMode_String(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "code", ModeCode.String())
 	assert.Equal(t, "debug", ModeDebug.String())
 }
 
 func TestAgentMode_IsValid(t *testing.T) {
+	t.Parallel()
 	assert.True(t, ModeCode.IsValid())
 	assert.True(t, ModeArchitect.IsValid())
 	assert.True(t, ModeAsk.IsValid())
@@ -264,6 +290,7 @@ func TestAgentMode_IsValid(t *testing.T) {
 }
 
 func TestDefaultModesConfiguration(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	
 	// Test Code mode
@@ -290,6 +317,7 @@ func TestDefaultModesConfiguration(t *testing.T) {
 }
 
 func TestModeContext_ImplementsContext(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry()
 	agent, _ := NewAgent(registry, ModeCode)
 	

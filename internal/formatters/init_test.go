@@ -10,6 +10,7 @@ import (
 )
 
 func TestInitializeFormattersSystem(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -26,6 +27,7 @@ func TestInitializeFormattersSystem(t *testing.T) {
 }
 
 func TestInitializeFormattersSystem_WithCache(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -43,6 +45,7 @@ func TestInitializeFormattersSystem_WithCache(t *testing.T) {
 }
 
 func TestInitializeFormattersSystem_AllFeatures(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -56,6 +59,7 @@ func TestInitializeFormattersSystem_AllFeatures(t *testing.T) {
 }
 
 func TestRegisterFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -86,6 +90,7 @@ func TestRegisterFormatter(t *testing.T) {
 }
 
 func TestRegisterFormatter_Duplicate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 

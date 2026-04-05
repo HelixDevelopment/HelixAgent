@@ -47,6 +47,7 @@ func setupEnsembleSessionRouter(t *testing.T) (*EnsembleHandler, *gin.Engine) {
 // --- Constructor -------------------------------------------------------
 
 func TestNewEnsembleHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewEnsembleHandler(nil, logger)
 
@@ -56,6 +57,7 @@ func TestNewEnsembleHandler(t *testing.T) {
 }
 
 func TestNewEnsembleHandler_NilLogger(t *testing.T) {
+	t.Parallel()
 	h := NewEnsembleHandler(nil, nil)
 	assert.NotNil(t, h)
 	assert.Nil(t, h.coordinator)
@@ -65,6 +67,7 @@ func TestNewEnsembleHandler_NilLogger(t *testing.T) {
 // --- CreateSession request validation ----------------------------------
 
 func TestEnsembleHandler_CreateSession_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleSessionRouter(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/ensemble/sessions", bytes.NewBufferString("{bad"))
@@ -76,6 +79,7 @@ func TestEnsembleHandler_CreateSession_InvalidJSON(t *testing.T) {
 }
 
 func TestEnsembleHandler_CreateSession_MissingStrategy(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleSessionRouter(t)
 
 	body, _ := json.Marshal(map[string]interface{}{
@@ -92,6 +96,7 @@ func TestEnsembleHandler_CreateSession_MissingStrategy(t *testing.T) {
 // --- ExecuteSession request validation ---------------------------------
 
 func TestEnsembleHandler_ExecuteSession_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleSessionRouter(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/ensemble/sessions/some-id/execute", bytes.NewBufferString("bad"))
@@ -103,6 +108,7 @@ func TestEnsembleHandler_ExecuteSession_InvalidJSON(t *testing.T) {
 }
 
 func TestEnsembleHandler_ExecuteSession_MissingContent(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleSessionRouter(t)
 
 	body, _ := json.Marshal(map[string]interface{}{})
@@ -117,6 +123,7 @@ func TestEnsembleHandler_ExecuteSession_MissingContent(t *testing.T) {
 // --- Request/Response type JSON round-trips ----------------------------
 
 func TestCreateSessionRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := CreateSessionRequest{
 		Strategy: "voting",
 		Participants: ParticipantRequest{
@@ -141,6 +148,7 @@ func TestCreateSessionRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestExecuteRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ExecuteRequest{Content: "solve this problem", Timeout: 120}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -151,6 +159,7 @@ func TestExecuteRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestTeamExecutionRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := TeamExecutionRequest{
 		Task:             "Analyze this code",
 		Context:          map[string]interface{}{"language": "go"},
@@ -167,6 +176,7 @@ func TestTeamExecutionRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestTeamExecutionResult_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := TeamExecutionResult{
 		TeamID:           "team_123",
 		Task:             "test",
@@ -191,6 +201,7 @@ func TestTeamExecutionResult_JSONRoundTrip(t *testing.T) {
 // --- AgentType constants -----------------------------------------------
 
 func TestAgentType_Values(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AgentType("primary"), AgentTypePrimary)
 	assert.Equal(t, AgentType("critic"), AgentTypeCritic)
 	assert.Equal(t, AgentType("verifier"), AgentTypeVerifier)
@@ -202,6 +213,7 @@ func TestAgentType_Values(t *testing.T) {
 // --- AgentDefinition / ProviderConfig JSON -----------------------------
 
 func TestAgentDefinition_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := AgentDefinition{
 		ID:   "agent_1",
 		Name: "Primary Agent",
@@ -227,6 +239,7 @@ func TestAgentDefinition_JSONRoundTrip(t *testing.T) {
 }
 
 func TestProviderConfig_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ProviderConfig{
 		Name:   "anthropic",
 		Model:  "claude-3-opus",
@@ -243,6 +256,7 @@ func TestProviderConfig_JSONRoundTrip(t *testing.T) {
 // --- Team JSON ---------------------------------------------------------
 
 func TestTeam_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	now := time.Now().Truncate(time.Second)
 	orig := Team{
 		ID:          "team_1",
@@ -275,6 +289,7 @@ func TestTeam_JSONRoundTrip(t *testing.T) {
 // --- TeamConfig --------------------------------------------------------
 
 func TestTeamConfig_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := TeamConfig{
 		MaxParallel:        8,
 		ConsensusThreshold: 0.75,
@@ -292,6 +307,7 @@ func TestTeamConfig_JSONRoundTrip(t *testing.T) {
 // --- CreateTeamRequest validation via handler --------------------------
 
 func TestEnsembleHandler_CreateTeam_MissingName(t *testing.T) {
+	t.Parallel()
 	handler := &EnsembleHandler{
 		logger: logrus.New(),
 		teams:  make(map[string]*Team),
@@ -313,6 +329,7 @@ func TestEnsembleHandler_CreateTeam_MissingName(t *testing.T) {
 // --- executeAgent coverage (all agent types) ---------------------------
 
 func TestEnsembleHandler_ExecuteAgent_AllTypes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
@@ -332,6 +349,7 @@ func TestEnsembleHandler_ExecuteAgent_AllTypes(t *testing.T) {
 
 	for _, at := range agentTypes {
 		t.Run(string(at), func(t *testing.T) {
+				t.Parallel()
 			agent := AgentDefinition{
 				ID:   "test-agent",
 				Name: "Test",
@@ -358,6 +376,7 @@ func TestEnsembleHandler_ExecuteAgent_AllTypes(t *testing.T) {
 // --- calculateConsensus edge cases -------------------------------------
 
 func TestEnsembleHandler_CalculateConsensus_ZeroThreshold(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
@@ -376,6 +395,7 @@ func TestEnsembleHandler_CalculateConsensus_ZeroThreshold(t *testing.T) {
 }
 
 func TestEnsembleHandler_CalculateConsensus_Unanimous(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
@@ -398,6 +418,7 @@ func TestEnsembleHandler_CalculateConsensus_Unanimous(t *testing.T) {
 // --- AgentResult JSON --------------------------------------------------
 
 func TestAgentResult_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := AgentResult{
 		AgentID:       "a1",
 		AgentName:     "Primary",
@@ -417,6 +438,7 @@ func TestAgentResult_JSONRoundTrip(t *testing.T) {
 // --- RegisterRoutes verification ---------------------------------------
 
 func TestEnsembleHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewEnsembleHandler(nil, logger)
 

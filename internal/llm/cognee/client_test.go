@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{
 			BaseURL: "http://localhost:7061",
@@ -30,6 +31,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClientWithEmptyConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{},
 	}
@@ -41,6 +43,7 @@ func TestNewClientWithEmptyConfig(t *testing.T) {
 }
 
 func TestGetBaseURL(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{
 			BaseURL: "http://test:7061",
@@ -52,6 +55,7 @@ func TestGetBaseURL(t *testing.T) {
 }
 
 func TestAddMemory(t *testing.T) {
+	t.Parallel()
 	t.Run("successful add memory", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/memory", r.URL.Path)
@@ -92,6 +96,7 @@ func TestAddMemory(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -111,6 +116,7 @@ func TestAddMemory(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -131,6 +137,7 @@ func TestAddMemory(t *testing.T) {
 }
 
 func TestSearchMemory(t *testing.T) {
+	t.Parallel()
 	t.Run("successful search", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/search", r.URL.Path)
@@ -177,6 +184,7 @@ func TestSearchMemory(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -194,6 +202,7 @@ func TestSearchMemory(t *testing.T) {
 }
 
 func TestCognify(t *testing.T) {
+	t.Parallel()
 	t.Run("successful cognify", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/cognify", r.URL.Path)
@@ -221,6 +230,7 @@ func TestCognify(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -238,6 +248,7 @@ func TestCognify(t *testing.T) {
 }
 
 func TestSearchInsights(t *testing.T) {
+	t.Parallel()
 	t.Run("successful insights search", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/search", r.URL.Path)
@@ -275,6 +286,7 @@ func TestSearchInsights(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -292,6 +304,7 @@ func TestSearchInsights(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -312,6 +325,7 @@ func TestSearchInsights(t *testing.T) {
 }
 
 func TestSearchGraphCompletion(t *testing.T) {
+	t.Parallel()
 	t.Run("successful graph completion search", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var req map[string]interface{}
@@ -343,6 +357,7 @@ func TestSearchGraphCompletion(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -360,6 +375,7 @@ func TestSearchGraphCompletion(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -380,6 +396,7 @@ func TestSearchGraphCompletion(t *testing.T) {
 }
 
 func TestProcessCodePipeline(t *testing.T) {
+	t.Parallel()
 	t.Run("successful code pipeline", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/code-pipeline/index", r.URL.Path)
@@ -417,6 +434,7 @@ func TestProcessCodePipeline(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -434,6 +452,7 @@ func TestProcessCodePipeline(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -454,6 +473,7 @@ func TestProcessCodePipeline(t *testing.T) {
 }
 
 func TestCreateDataset(t *testing.T) {
+	t.Parallel()
 	t.Run("successful dataset creation", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/datasets", r.URL.Path)
@@ -492,6 +512,7 @@ func TestCreateDataset(t *testing.T) {
 	})
 
 	t.Run("creation fails", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -509,6 +530,7 @@ func TestCreateDataset(t *testing.T) {
 }
 
 func TestListDatasets(t *testing.T) {
+	t.Parallel()
 	t.Run("successful list", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/datasets", r.URL.Path)
@@ -541,6 +563,7 @@ func TestListDatasets(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -558,6 +581,7 @@ func TestListDatasets(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -578,6 +602,7 @@ func TestListDatasets(t *testing.T) {
 }
 
 func TestVisualizeGraph(t *testing.T) {
+	t.Parallel()
 	t.Run("successful visualization", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/visualize", r.URL.Path)
@@ -610,6 +635,7 @@ func TestVisualizeGraph(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
@@ -627,6 +653,7 @@ func TestVisualizeGraph(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -647,6 +674,7 @@ func TestVisualizeGraph(t *testing.T) {
 }
 
 func TestDeleteData(t *testing.T) {
+	t.Parallel()
 	t.Run("successful delete", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/api/delete", r.URL.Path)
@@ -672,6 +700,7 @@ func TestDeleteData(t *testing.T) {
 	})
 
 	t.Run("delete fails", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
@@ -689,6 +718,7 @@ func TestDeleteData(t *testing.T) {
 }
 
 func TestTestConnection(t *testing.T) {
+	t.Parallel()
 	t.Run("connection successful", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/health", r.URL.Path)
@@ -706,6 +736,7 @@ func TestTestConnection(t *testing.T) {
 	})
 
 	t.Run("connection failed", func(t *testing.T) {
+			t.Parallel()
 		client := &Client{
 			baseURL: "http://localhost:9999", // Non-existent URL
 			client:  &http.Client{Timeout: 1 * time.Second},
@@ -716,6 +747,7 @@ func TestTestConnection(t *testing.T) {
 	})
 
 	t.Run("server returns error status", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -732,6 +764,7 @@ func TestTestConnection(t *testing.T) {
 }
 
 func TestAutoContainerize(t *testing.T) {
+	t.Parallel()
 	t.Run("already running", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -748,6 +781,7 @@ func TestAutoContainerize(t *testing.T) {
 	})
 
 	t.Run("not running and docker not available", func(t *testing.T) {
+			t.Parallel()
 		client := &Client{
 			baseURL: "http://localhost:9999",
 			client:  &http.Client{Timeout: 1 * time.Second},
@@ -765,6 +799,7 @@ func TestAutoContainerize(t *testing.T) {
 
 // Struct field tests
 func TestMemoryRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &MemoryRequest{
 		Content:     "test content",
 		DatasetName: "test-dataset",
@@ -777,6 +812,7 @@ func TestMemoryRequestFields(t *testing.T) {
 }
 
 func TestMemoryResponseFields(t *testing.T) {
+	t.Parallel()
 	response := &MemoryResponse{
 		VectorID: "vector-123",
 		GraphNodes: map[string]interface{}{
@@ -790,6 +826,7 @@ func TestMemoryResponseFields(t *testing.T) {
 }
 
 func TestSearchRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &SearchRequest{
 		Query:       "test query",
 		DatasetName: "test-dataset",
@@ -802,6 +839,7 @@ func TestSearchRequestFields(t *testing.T) {
 }
 
 func TestCognifyRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &CognifyRequest{
 		Datasets: []string{"ds1", "ds2"},
 	}
@@ -811,6 +849,7 @@ func TestCognifyRequestFields(t *testing.T) {
 }
 
 func TestInsightsRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &InsightsRequest{
 		Query:    "insights query",
 		Datasets: []string{"ds1"},
@@ -823,6 +862,7 @@ func TestInsightsRequestFields(t *testing.T) {
 }
 
 func TestCodePipelineRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &CodePipelineRequest{
 		Code:        "func main() {}",
 		DatasetName: "code-ds",
@@ -835,6 +875,7 @@ func TestCodePipelineRequestFields(t *testing.T) {
 }
 
 func TestDatasetRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &DatasetRequest{
 		Name:        "test-ds",
 		Description: "Test description",
@@ -847,6 +888,7 @@ func TestDatasetRequestFields(t *testing.T) {
 }
 
 func TestDatasetResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &DatasetResponse{
 		ID:          "ds-123",
 		Name:        "test-ds",
@@ -862,6 +904,7 @@ func TestDatasetResponseFields(t *testing.T) {
 }
 
 func TestVisualizeRequestFields(t *testing.T) {
+	t.Parallel()
 	req := &VisualizeRequest{
 		DatasetName: "test-ds",
 		Format:      "graphml",
@@ -917,6 +960,7 @@ func BenchmarkSearchMemory(b *testing.B) {
 // ==============================================================================
 
 func TestAddMemory_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999", // Non-existent server
 		apiKey:  "test-key",
@@ -929,6 +973,7 @@ func TestAddMemory_NetworkError(t *testing.T) {
 }
 
 func TestAddMemory_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("invalid json"))
@@ -947,6 +992,7 @@ func TestAddMemory_InvalidJSON(t *testing.T) {
 }
 
 func TestSearchMemory_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -958,6 +1004,7 @@ func TestSearchMemory_NetworkError(t *testing.T) {
 }
 
 func TestSearchMemory_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not valid json"))
@@ -975,6 +1022,7 @@ func TestSearchMemory_InvalidJSON(t *testing.T) {
 }
 
 func TestCognify_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -986,6 +1034,7 @@ func TestCognify_NetworkError(t *testing.T) {
 }
 
 func TestCognify_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{invalid"))
@@ -1003,6 +1052,7 @@ func TestCognify_InvalidJSON(t *testing.T) {
 }
 
 func TestSearchInsights_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1014,6 +1064,7 @@ func TestSearchInsights_NetworkError(t *testing.T) {
 }
 
 func TestSearchInsights_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("broken json"))
@@ -1031,6 +1082,7 @@ func TestSearchInsights_InvalidJSON(t *testing.T) {
 }
 
 func TestSearchGraphCompletion_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1042,6 +1094,7 @@ func TestSearchGraphCompletion_NetworkError(t *testing.T) {
 }
 
 func TestSearchGraphCompletion_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("<not json>"))
@@ -1059,6 +1112,7 @@ func TestSearchGraphCompletion_InvalidJSON(t *testing.T) {
 }
 
 func TestProcessCodePipeline_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1070,6 +1124,7 @@ func TestProcessCodePipeline_NetworkError(t *testing.T) {
 }
 
 func TestProcessCodePipeline_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{invalid json syntax"))
@@ -1087,6 +1142,7 @@ func TestProcessCodePipeline_InvalidJSON(t *testing.T) {
 }
 
 func TestCreateDataset_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1098,6 +1154,7 @@ func TestCreateDataset_NetworkError(t *testing.T) {
 }
 
 func TestCreateDataset_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("not json response"))
@@ -1115,6 +1172,7 @@ func TestCreateDataset_InvalidJSON(t *testing.T) {
 }
 
 func TestListDatasets_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1126,6 +1184,7 @@ func TestListDatasets_NetworkError(t *testing.T) {
 }
 
 func TestListDatasets_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("[broken]"))
@@ -1143,6 +1202,7 @@ func TestListDatasets_InvalidJSON(t *testing.T) {
 }
 
 func TestVisualizeGraph_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1154,6 +1214,7 @@ func TestVisualizeGraph_NetworkError(t *testing.T) {
 }
 
 func TestVisualizeGraph_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{invalid json"))
@@ -1171,6 +1232,7 @@ func TestVisualizeGraph_InvalidJSON(t *testing.T) {
 }
 
 func TestDeleteData_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := &Client{
 		baseURL: "http://localhost:9999",
 		client:  &http.Client{Timeout: 100 * time.Millisecond},
@@ -1181,6 +1243,7 @@ func TestDeleteData_NetworkError(t *testing.T) {
 }
 
 func TestAddMemory_VerifyHeaders(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/memory", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -1209,6 +1272,7 @@ func TestAddMemory_VerifyHeaders(t *testing.T) {
 }
 
 func TestSearchMemory_VerifyRequestBody(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req SearchRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -1245,6 +1309,7 @@ func TestSearchMemory_VerifyRequestBody(t *testing.T) {
 }
 
 func TestCognify_WithMultipleDatasets(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req CognifyRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -1271,6 +1336,7 @@ func TestCognify_WithMultipleDatasets(t *testing.T) {
 }
 
 func TestSearchInsights_RequestFormat(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]interface{}
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -1307,6 +1373,7 @@ func TestSearchInsights_RequestFormat(t *testing.T) {
 }
 
 func TestSearchGraphCompletion_RequestFormat(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]interface{}
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -1336,6 +1403,7 @@ func TestSearchGraphCompletion_RequestFormat(t *testing.T) {
 }
 
 func TestProcessCodePipeline_WithLanguage(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/code-pipeline/index", r.URL.Path)
 
@@ -1376,6 +1444,7 @@ func TestProcessCodePipeline_WithLanguage(t *testing.T) {
 }
 
 func TestCreateDataset_WithMetadata(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DatasetRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -1414,6 +1483,7 @@ func TestCreateDataset_WithMetadata(t *testing.T) {
 }
 
 func TestVisualizeGraph_WithFormat(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/visualize", r.URL.Path)
 
@@ -1449,6 +1519,7 @@ func TestVisualizeGraph_WithFormat(t *testing.T) {
 }
 
 func TestDeleteData_WithMultipleIDs(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/delete", r.URL.Path)
 		assert.Equal(t, "DELETE", r.Method)
@@ -1477,6 +1548,7 @@ func TestDeleteData_WithMultipleIDs(t *testing.T) {
 
 // Test response types
 func TestSearchResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &SearchResponse{
 		Results: []models.MemorySource{
 			{
@@ -1494,6 +1566,7 @@ func TestSearchResponseFields(t *testing.T) {
 }
 
 func TestCognifyResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &CognifyResponse{
 		Status: "completed",
 	}
@@ -1502,6 +1575,7 @@ func TestCognifyResponseFields(t *testing.T) {
 }
 
 func TestInsightsResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &InsightsResponse{
 		Insights: []map[string]interface{}{
 			{"key1": "value1"},
@@ -1514,6 +1588,7 @@ func TestInsightsResponseFields(t *testing.T) {
 }
 
 func TestCodePipelineResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &CodePipelineResponse{
 		Processed: true,
 		Results: map[string]interface{}{
@@ -1526,6 +1601,7 @@ func TestCodePipelineResponseFields(t *testing.T) {
 }
 
 func TestDatasetsResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &DatasetsResponse{
 		Datasets: []DatasetResponse{
 			{ID: "ds1", Name: "Dataset 1"},
@@ -1539,6 +1615,7 @@ func TestDatasetsResponseFields(t *testing.T) {
 }
 
 func TestVisualizeResponseFields(t *testing.T) {
+	t.Parallel()
 	resp := &VisualizeResponse{
 		Graph: map[string]interface{}{
 			"format": "json",

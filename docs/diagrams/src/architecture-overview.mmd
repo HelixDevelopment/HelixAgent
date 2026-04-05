@@ -11,6 +11,8 @@ graph TB
 
     subgraph Handlers["Handlers"]
         ChatHandler["Chat Handler"]
+        CompletionHandler["Completion Handler"]
+        EnsembleHandler["Ensemble Handler"]
         DebateHandler["Debate Handler"]
         MCPHandler["MCP Handler"]
         LSPHandler["LSP Handler"]
@@ -20,6 +22,11 @@ graph TB
         CogneeHandler["Cognee Handler"]
         TaskHandler["Task Handler"]
         StartupHandler["Startup Verification Handler"]
+        AgenticHandler["Agentic Handler"]
+        PlanningHandler["Planning Handler"]
+        LLMOpsHandler["LLMOps Handler"]
+        BenchmarkHandler["Benchmark Handler"]
+        QAHandler["QA Handler"]
     end
 
     subgraph Services["Services"]
@@ -33,7 +40,7 @@ graph TB
         LSPManager["LSP Manager"]
     end
 
-    subgraph LLMProviders["LLM Providers (10)"]
+    subgraph LLMProviders["LLM Providers (43)"]
         Claude["Claude"]
         DeepSeek["DeepSeek"]
         Gemini["Gemini"]
@@ -44,6 +51,23 @@ graph TB
         Zen["Zen"]
         Cerebras["Cerebras"]
         Ollama["Ollama"]
+        OpenAI["OpenAI"]
+        Anthropic["Anthropic"]
+        Cohere["Cohere"]
+        Fireworks["Fireworks"]
+        Groq["Groq"]
+        HuggingFace["HuggingFace"]
+        Together["Together"]
+        Replicate["Replicate"]
+        xAI["xAI"]
+        OtherProviders["+ 24 more providers"]
+    end
+
+    subgraph FeatureFlags["Feature Flags"]
+        GraphQLFlag["GRAPHQL_ENABLED"]
+        CogneeFlag["COGNEE_ENABLED"]
+        BigDataFlag["BIGDATA_ENABLE_*"]
+        ConstitutionFlag["CONSTITUTION_WATCHER_ENABLED"]
     end
 
     subgraph Databases["Databases"]
@@ -84,10 +108,16 @@ graph TB
     ValidationMW --> Handlers
 
     ChatHandler --> EnsembleService
+    CompletionHandler --> EnsembleService
+    EnsembleHandler --> EnsembleService
     DebateHandler --> DebateService
     MCPHandler --> MCPClient
     LSPHandler --> LSPManager
     TaskHandler --> TaskQueue
+    AgenticHandler --> EnsembleService
+    PlanningHandler --> EnsembleService
+    LLMOpsHandler --> ProviderRegistry
+    BenchmarkHandler --> ProviderRegistry
 
     EnsembleService --> ProviderRegistry
     DebateService --> ProviderRegistry

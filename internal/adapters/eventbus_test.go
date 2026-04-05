@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewEventBus(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -18,6 +19,7 @@ func TestNewEventBus(t *testing.T) {
 }
 
 func TestEventBus_PublishAndSubscribe(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -39,6 +41,7 @@ func TestEventBus_PublishAndSubscribe(t *testing.T) {
 }
 
 func TestEventBus_PublishAsync(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -59,6 +62,7 @@ func TestEventBus_PublishAsync(t *testing.T) {
 }
 
 func TestEventBus_SubscribeMultiple(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -79,6 +83,7 @@ func TestEventBus_SubscribeMultiple(t *testing.T) {
 }
 
 func TestEventBus_SubscribeWithFilter(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -105,6 +110,7 @@ func TestEventBus_SubscribeWithFilter(t *testing.T) {
 }
 
 func TestEventBus_Wait(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -124,6 +130,7 @@ func TestEventBus_Wait(t *testing.T) {
 }
 
 func TestEventBus_Wait_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -137,6 +144,7 @@ func TestEventBus_Wait_ContextCancelled(t *testing.T) {
 }
 
 func TestEventBus_SubscriberCount(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -157,6 +165,7 @@ func TestEventBus_SubscriberCount(t *testing.T) {
 }
 
 func TestEventBus_TotalSubscribers(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -173,6 +182,7 @@ func TestEventBus_TotalSubscribers(t *testing.T) {
 }
 
 func TestEventBus_Metrics(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -183,6 +193,7 @@ func TestEventBus_Metrics(t *testing.T) {
 }
 
 func TestEventBus_Inner(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	bus := adapters.NewEventBus(cfg)
 	require.NotNil(t, bus)
@@ -193,6 +204,7 @@ func TestEventBus_Inner(t *testing.T) {
 }
 
 func TestNewEvent(t *testing.T) {
+	t.Parallel()
 	payload := map[string]string{"key": "value"}
 	evt := adapters.NewEvent(adapters.EventProviderRegistered, "test-source", payload)
 
@@ -203,6 +215,7 @@ func TestNewEvent(t *testing.T) {
 }
 
 func TestEventTypeConstants(t *testing.T) {
+	t.Parallel()
 	// Verify all event type constants have expected string values
 	assert.Equal(t, adapters.EventType("provider.registered"), adapters.EventProviderRegistered)
 	assert.Equal(t, adapters.EventType("provider.unregistered"), adapters.EventProviderUnregistered)
@@ -216,6 +229,7 @@ func TestEventTypeConstants(t *testing.T) {
 }
 
 func TestGlobalBus_InitAndEmit(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	adapters.InitGlobalBus(cfg)
 
@@ -233,6 +247,7 @@ func TestGlobalBus_InitAndEmit(t *testing.T) {
 }
 
 func TestGlobalBus_EmitAsync(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultBusConfig()
 	adapters.InitGlobalBus(cfg)
 
@@ -250,6 +265,7 @@ func TestGlobalBus_EmitAsync(t *testing.T) {
 }
 
 func TestOn_NilGlobalBus(t *testing.T) {
+	t.Parallel()
 	// When GlobalBus is nil, On should return a closed channel
 	adapters.GlobalBus = nil
 	ch := adapters.On(adapters.EventSystemStartup)
@@ -269,6 +285,7 @@ func TestOn_NilGlobalBus(t *testing.T) {
 }
 
 func TestDefaultLazyProviderConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapters.DefaultLazyProviderConfig()
 	require.NotNil(t, cfg)
 	assert.Equal(t, 30*time.Second, cfg.InitTimeout)

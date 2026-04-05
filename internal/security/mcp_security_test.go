@@ -16,6 +16,7 @@ import (
 // =============================================================================
 
 func TestNewMCPSecurityManager(t *testing.T) {
+	t.Parallel()
 	t.Run("with nil config and logger", func(t *testing.T) {
 		manager := NewMCPSecurityManager(nil, nil)
 		assert.NotNil(t, manager)
@@ -26,6 +27,7 @@ func TestNewMCPSecurityManager(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers:         false,
 			TrustedServers:        []string{"server1", "server2"},
@@ -41,6 +43,7 @@ func TestNewMCPSecurityManager(t *testing.T) {
 }
 
 func TestMCPSecurityManager_SetAuditLogger(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 	auditLogger := &mockAuditLogger{}
 
@@ -49,9 +52,11 @@ func TestMCPSecurityManager_SetAuditLogger(t *testing.T) {
 }
 
 func TestMCPSecurityManager_RegisterTrustedServer(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	t.Run("register server with ID", func(t *testing.T) {
+			t.Parallel()
 		server := &TrustedServer{
 			ID:           "server-001",
 			Name:         "Test Server",
@@ -67,6 +72,7 @@ func TestMCPSecurityManager_RegisterTrustedServer(t *testing.T) {
 	})
 
 	t.Run("register server without ID generates one", func(t *testing.T) {
+			t.Parallel()
 		server := &TrustedServer{
 			Name: "Auto ID Server",
 			URL:  "https://auto.example.com",
@@ -79,12 +85,14 @@ func TestMCPSecurityManager_RegisterTrustedServer(t *testing.T) {
 }
 
 func TestMCPSecurityManager_VerifyServer(t *testing.T) {
+	t.Parallel()
 	config := &MCPSecurityConfig{
 		VerifyServers: true,
 	}
 	manager := NewMCPSecurityManager(config, nil)
 
 	t.Run("verify registered server", func(t *testing.T) {
+			t.Parallel()
 		server := &TrustedServer{
 			ID:   "verified-server",
 			Name: "Verified",
@@ -100,12 +108,14 @@ func TestMCPSecurityManager_VerifyServer(t *testing.T) {
 	})
 
 	t.Run("verify non-existent server fails", func(t *testing.T) {
+			t.Parallel()
 		_, err := manager.VerifyServer("non-existent")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "server not found")
 	})
 
 	t.Run("verify with verification disabled returns nil", func(t *testing.T) {
+			t.Parallel()
 		disabledConfig := &MCPSecurityConfig{
 			VerifyServers: false,
 		}
@@ -118,6 +128,7 @@ func TestMCPSecurityManager_VerifyServer(t *testing.T) {
 }
 
 func TestMCPSecurityManager_RegisterToolPermission(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	permission := &ToolPermission{
@@ -139,6 +150,7 @@ func TestMCPSecurityManager_RegisterToolPermission(t *testing.T) {
 }
 
 func TestMCPSecurityManager_SetDefaultToolPermission(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	manager.SetDefaultToolPermission("bash", PermissionDeny)
@@ -149,9 +161,11 @@ func TestMCPSecurityManager_SetDefaultToolPermission(t *testing.T) {
 }
 
 func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("allow tool call without verification", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers:         false,
 			RequireToolSignatures: false,
@@ -174,6 +188,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("deny unverified server", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: true,
 			MaxCallDepth:  10,
@@ -192,6 +207,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("deny missing signature when required", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers:         false,
 			RequireToolSignatures: true,
@@ -211,6 +227,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("allow with valid signature", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers:         false,
 			RequireToolSignatures: true,
@@ -229,6 +246,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("deny exceeding max call depth", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  2,
@@ -249,6 +267,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("deny tool with PermissionDeny", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -273,6 +292,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("deny write operation with read-only permission", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -297,6 +317,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("rate limit exceeded", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -334,6 +355,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("blocked argument value", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -364,6 +386,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("invalid argument value (not in allowed list)", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -394,6 +417,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("require approval flag", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -419,6 +443,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("sandbox sanitizes arguments", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -449,6 +474,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("audit logging on allowed call", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -475,6 +501,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("trusted server from config list", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers:  true,
 			TrustedServers: []string{"implicitly-trusted"},
@@ -493,6 +520,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 	})
 
 	t.Run("check tool not in server capabilities", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: true,
 			MaxCallDepth:  10,
@@ -521,14 +549,17 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 }
 
 func TestMCPSecurityManager_CallStack(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	t.Run("get empty call stack", func(t *testing.T) {
+			t.Parallel()
 		stack := manager.GetCallStack()
 		assert.Empty(t, stack)
 	})
 
 	t.Run("pop call stack", func(t *testing.T) {
+			t.Parallel()
 		config := &MCPSecurityConfig{
 			VerifyServers: false,
 			MaxCallDepth:  10,
@@ -554,6 +585,7 @@ func TestMCPSecurityManager_CallStack(t *testing.T) {
 	})
 
 	t.Run("pop empty call stack", func(t *testing.T) {
+			t.Parallel()
 		manager := NewMCPSecurityManager(nil, nil)
 
 		// Should not panic
@@ -565,6 +597,7 @@ func TestMCPSecurityManager_CallStack(t *testing.T) {
 }
 
 func TestMCPSecurityManager_IsWriteOperation(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	writeTools := []string{"write", "edit", "delete", "create", "execute", "bash", "shell", "modify", "update", "remove", "notebookedit"}
@@ -572,6 +605,7 @@ func TestMCPSecurityManager_IsWriteOperation(t *testing.T) {
 
 	for _, tool := range writeTools {
 		t.Run(tool+"_is_write", func(t *testing.T) {
+				t.Parallel()
 			request := &ToolCallRequest{ToolName: tool}
 			assert.True(t, manager.isWriteOperation(request))
 		})
@@ -579,6 +613,7 @@ func TestMCPSecurityManager_IsWriteOperation(t *testing.T) {
 
 	for _, tool := range readTools {
 		t.Run(tool+"_is_not_write", func(t *testing.T) {
+				t.Parallel()
 			request := &ToolCallRequest{ToolName: tool}
 			assert.False(t, manager.isWriteOperation(request))
 		})
@@ -586,9 +621,11 @@ func TestMCPSecurityManager_IsWriteOperation(t *testing.T) {
 }
 
 func TestMCPSecurityManager_CheckRateLimit(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	t.Run("within rate limit", func(t *testing.T) {
+			t.Parallel()
 		limit := &ToolRateLimit{
 			MaxCalls:    5,
 			Window:      time.Minute,
@@ -601,6 +638,7 @@ func TestMCPSecurityManager_CheckRateLimit(t *testing.T) {
 	})
 
 	t.Run("exceeds rate limit", func(t *testing.T) {
+			t.Parallel()
 		limit := &ToolRateLimit{
 			MaxCalls:     2,
 			Window:       time.Minute,
@@ -612,6 +650,7 @@ func TestMCPSecurityManager_CheckRateLimit(t *testing.T) {
 	})
 
 	t.Run("window expired resets count", func(t *testing.T) {
+			t.Parallel()
 		limit := &ToolRateLimit{
 			MaxCalls:     2,
 			Window:       time.Millisecond,
@@ -625,6 +664,7 @@ func TestMCPSecurityManager_CheckRateLimit(t *testing.T) {
 }
 
 func TestMCPSecurityManager_SanitizeString(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	testCases := []struct {
@@ -645,6 +685,7 @@ func TestMCPSecurityManager_SanitizeString(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+				t.Parallel()
 			result := manager.sanitizeString(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -652,6 +693,7 @@ func TestMCPSecurityManager_SanitizeString(t *testing.T) {
 }
 
 func TestMCPSecurityManager_SanitizeArguments(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	args := map[string]interface{}{
@@ -672,6 +714,7 @@ func TestMCPSecurityManager_SanitizeArguments(t *testing.T) {
 }
 
 func TestMCPSecurityManager_CalculateFingerprint(t *testing.T) {
+	t.Parallel()
 	manager := NewMCPSecurityManager(nil, nil)
 
 	server := &TrustedServer{
@@ -694,6 +737,7 @@ func TestMCPSecurityManager_CalculateFingerprint(t *testing.T) {
 // =============================================================================
 
 func TestNewSandboxedToolExecutor(t *testing.T) {
+	t.Parallel()
 	t.Run("with nil config", func(t *testing.T) {
 		executor := NewSandboxedToolExecutor(nil, nil)
 		assert.NotNil(t, executor)
@@ -702,6 +746,7 @@ func TestNewSandboxedToolExecutor(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
+			t.Parallel()
 		config := &SandboxConfig{
 			Enabled:          true,
 			MaxExecutionTime: time.Minute,
@@ -718,9 +763,11 @@ func TestNewSandboxedToolExecutor(t *testing.T) {
 }
 
 func TestSandboxedToolExecutor_Execute(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("execute with sandbox disabled", func(t *testing.T) {
+			t.Parallel()
 		executor := NewSandboxedToolExecutor(&SandboxConfig{
 			Enabled: false,
 		}, nil)
@@ -734,6 +781,7 @@ func TestSandboxedToolExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("execute with sandbox enabled - success", func(t *testing.T) {
+			t.Parallel()
 		executor := NewSandboxedToolExecutor(&SandboxConfig{
 			Enabled:          true,
 			MaxExecutionTime: 5 * time.Second,
@@ -748,6 +796,7 @@ func TestSandboxedToolExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("execute with sandbox enabled - error", func(t *testing.T) {
+			t.Parallel()
 		executor := NewSandboxedToolExecutor(&SandboxConfig{
 			Enabled:          true,
 			MaxExecutionTime: 5 * time.Second,
@@ -762,6 +811,7 @@ func TestSandboxedToolExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("execute with sandbox enabled - timeout", func(t *testing.T) {
+			t.Parallel()
 		executor := NewSandboxedToolExecutor(&SandboxConfig{
 			Enabled:          true,
 			MaxExecutionTime: 50 * time.Millisecond,
@@ -783,6 +833,7 @@ func TestSandboxedToolExecutor_Execute(t *testing.T) {
 // =============================================================================
 
 func TestDefaultMCPSecurityConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultMCPSecurityConfig()
 
 	assert.True(t, config.VerifyServers)
@@ -796,6 +847,7 @@ func TestDefaultMCPSecurityConfig(t *testing.T) {
 }
 
 func TestPermissionLevel(t *testing.T) {
+	t.Parallel()
 	levels := []PermissionLevel{
 		PermissionDeny,
 		PermissionReadOnly,
@@ -809,6 +861,7 @@ func TestPermissionLevel(t *testing.T) {
 }
 
 func TestNetworkPolicy(t *testing.T) {
+	t.Parallel()
 	policies := []NetworkPolicy{
 		NetworkPolicyNone,
 		NetworkPolicyLocal,
@@ -822,6 +875,7 @@ func TestNetworkPolicy(t *testing.T) {
 }
 
 func TestFilesystemPolicy(t *testing.T) {
+	t.Parallel()
 	policies := []FilesystemPolicy{
 		FilesystemPolicyNone,
 		FilesystemPolicyReadOnly,
@@ -835,6 +889,7 @@ func TestFilesystemPolicy(t *testing.T) {
 }
 
 func TestTrustedServerFields(t *testing.T) {
+	t.Parallel()
 	server := &TrustedServer{
 		ID:           "server-001",
 		Name:         "Test Server",
@@ -853,6 +908,7 @@ func TestTrustedServerFields(t *testing.T) {
 }
 
 func TestToolPermissionFields(t *testing.T) {
+	t.Parallel()
 	permission := &ToolPermission{
 		ToolName:   "read_file",
 		ServerID:   "server-001",
@@ -882,6 +938,7 @@ func TestToolPermissionFields(t *testing.T) {
 }
 
 func TestToolCallRequestFields(t *testing.T) {
+	t.Parallel()
 	request := &ToolCallRequest{
 		ToolName:  "read_file",
 		ServerID:  "server-001",
@@ -898,6 +955,7 @@ func TestToolCallRequestFields(t *testing.T) {
 }
 
 func TestToolCallResponseFields(t *testing.T) {
+	t.Parallel()
 	response := &ToolCallResponse{
 		Allowed:         true,
 		Reason:          "Access granted",
@@ -912,6 +970,7 @@ func TestToolCallResponseFields(t *testing.T) {
 }
 
 func TestSandboxConfigFields(t *testing.T) {
+	t.Parallel()
 	config := &SandboxConfig{
 		Enabled:          true,
 		MaxExecutionTime: 30 * time.Second,
@@ -926,6 +985,7 @@ func TestSandboxConfigFields(t *testing.T) {
 }
 
 func TestToolRateLimitFields(t *testing.T) {
+	t.Parallel()
 	limit := &ToolRateLimit{
 		MaxCalls: 100,
 		Window:   5 * time.Minute,
@@ -940,6 +1000,7 @@ func TestToolRateLimitFields(t *testing.T) {
 // =============================================================================
 
 func TestReplaceAll(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		old      string
@@ -954,6 +1015,7 @@ func TestReplaceAll(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+				t.Parallel()
 			result := replaceAll(tc.input, tc.old, tc.new)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -961,6 +1023,7 @@ func TestReplaceAll(t *testing.T) {
 }
 
 func TestFindIndex(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		s        string
 		substr   string
@@ -975,6 +1038,7 @@ func TestFindIndex(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.s+"_"+tc.substr, func(t *testing.T) {
+				t.Parallel()
 			result := findIndex(tc.s, tc.substr)
 			assert.Equal(t, tc.expected, result)
 		})

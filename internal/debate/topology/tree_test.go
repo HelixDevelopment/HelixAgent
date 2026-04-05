@@ -53,6 +53,7 @@ func createTreeTestAgents() []*Agent {
 // ==========================================================================
 
 func TestNewTreeTopology(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 
@@ -69,6 +70,7 @@ func TestNewTreeTopology(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_Initialize(t *testing.T) {
+	t.Parallel()
 	t.Run("successful initialization", func(t *testing.T) {
 		config := DefaultTopologyConfig(TopologyTree)
 		tt := NewTreeTopology(config)
@@ -96,6 +98,7 @@ func TestTreeTopology_Initialize(t *testing.T) {
 	})
 
 	t.Run("empty agents returns error", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultTopologyConfig(TopologyTree)
 		tt := NewTreeTopology(config)
 		ctx := context.Background()
@@ -106,6 +109,7 @@ func TestTreeTopology_Initialize(t *testing.T) {
 	})
 
 	t.Run("single agent becomes root", func(t *testing.T) {
+			t.Parallel()
 		config := DefaultTopologyConfig(TopologyTree)
 		tt := NewTreeTopology(config)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -133,6 +137,7 @@ func TestTreeTopology_Initialize(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_GetType(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 
@@ -144,6 +149,7 @@ func TestTreeTopology_GetType(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_CanCommunicate(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,6 +163,7 @@ func TestTreeTopology_CanCommunicate(t *testing.T) {
 	require.NotNil(t, root)
 
 	t.Run("parent to child is allowed", func(t *testing.T) {
+			t.Parallel()
 		// Root (architect-1) should be able to communicate with
 		// its direct children
 		if len(root.Children) > 0 {
@@ -166,6 +173,7 @@ func TestTreeTopology_CanCommunicate(t *testing.T) {
 	})
 
 	t.Run("child to parent is allowed", func(t *testing.T) {
+			t.Parallel()
 		if len(root.Children) > 0 {
 			childID := root.Children[0].AgentID
 			assert.True(t, tt.CanCommunicate(childID, root.AgentID))
@@ -173,6 +181,7 @@ func TestTreeTopology_CanCommunicate(t *testing.T) {
 	})
 
 	t.Run("non-adjacent nodes cannot communicate directly", func(t *testing.T) {
+			t.Parallel()
 		// Find two leaf nodes under different subtrees
 		if len(root.Children) >= 2 {
 			lead1 := root.Children[0]
@@ -185,12 +194,14 @@ func TestTreeTopology_CanCommunicate(t *testing.T) {
 	})
 
 	t.Run("same agent cannot communicate with itself", func(t *testing.T) {
+			t.Parallel()
 		assert.False(t, tt.CanCommunicate(
 			root.AgentID, root.AgentID,
 		))
 	})
 
 	t.Run("non-existent agent returns false", func(t *testing.T) {
+			t.Parallel()
 		assert.False(t, tt.CanCommunicate(
 			root.AgentID, "non-existent",
 		))
@@ -205,6 +216,7 @@ func TestTreeTopology_CanCommunicate(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_GetCommunicationTargets(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -218,12 +230,14 @@ func TestTreeTopology_GetCommunicationTargets(t *testing.T) {
 	require.NotNil(t, root)
 
 	t.Run("root targets are its children", func(t *testing.T) {
+			t.Parallel()
 		targets := tt.GetCommunicationTargets(root.AgentID)
 		// Root has no parent, so targets = children only
 		assert.Len(t, targets, len(root.Children))
 	})
 
 	t.Run("child targets include parent", func(t *testing.T) {
+			t.Parallel()
 		if len(root.Children) > 0 {
 			childID := root.Children[0].AgentID
 			targets := tt.GetCommunicationTargets(childID)
@@ -241,6 +255,7 @@ func TestTreeTopology_GetCommunicationTargets(t *testing.T) {
 	})
 
 	t.Run("non-existent agent returns empty", func(t *testing.T) {
+			t.Parallel()
 		targets := tt.GetCommunicationTargets("non-existent")
 		assert.Empty(t, targets)
 	})
@@ -251,6 +266,7 @@ func TestTreeTopology_GetCommunicationTargets(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_RouteMessage(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -264,6 +280,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 	require.NotNil(t, root)
 
 	t.Run("broadcast when no targets specified", func(t *testing.T) {
+			t.Parallel()
 		msg := &Message{
 			FromAgent: root.AgentID,
 			ToAgents:  nil,
@@ -276,6 +293,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 	})
 
 	t.Run("route from parent to child", func(t *testing.T) {
+			t.Parallel()
 		if len(root.Children) > 0 {
 			childID := root.Children[0].AgentID
 			msg := &Message{
@@ -296,6 +314,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 	})
 
 	t.Run("route from child to parent", func(t *testing.T) {
+			t.Parallel()
 		if len(root.Children) > 0 {
 			childID := root.Children[0].AgentID
 			msg := &Message{
@@ -316,6 +335,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 	})
 
 	t.Run("non-existent sender returns error", func(t *testing.T) {
+			t.Parallel()
 		msg := &Message{
 			FromAgent: "ghost-agent",
 			ToAgents:  []string{root.AgentID},
@@ -326,6 +346,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 	})
 
 	t.Run("sibling routing goes through parent", func(t *testing.T) {
+			t.Parallel()
 		if len(root.Children) >= 2 {
 			sibling1 := root.Children[0].AgentID
 			sibling2 := root.Children[1].AgentID
@@ -355,6 +376,7 @@ func TestTreeTopology_RouteMessage(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_BroadcastMessage(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	config.MessageTimeout = 2 * time.Second
 	tt := NewTreeTopology(config)
@@ -366,6 +388,7 @@ func TestTreeTopology_BroadcastMessage(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("broadcast from root succeeds", func(t *testing.T) {
+			t.Parallel()
 		msg := &Message{
 			FromAgent:   "architect-1",
 			Content:     "test broadcast",
@@ -378,6 +401,7 @@ func TestTreeTopology_BroadcastMessage(t *testing.T) {
 	})
 
 	t.Run("broadcast on nil root fails", func(t *testing.T) {
+			t.Parallel()
 		emptyTree := NewTreeTopology(config)
 		msg := &Message{
 			FromAgent: "nobody",
@@ -394,6 +418,7 @@ func TestTreeTopology_BroadcastMessage(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_SelectLeader(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -404,18 +429,21 @@ func TestTreeTopology_SelectLeader(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("proposal phase selects root", func(t *testing.T) {
+			t.Parallel()
 		leader, err := tt.SelectLeader(PhaseProposal)
 		require.NoError(t, err)
 		assert.Equal(t, "architect-1", leader.ID)
 	})
 
 	t.Run("convergence phase selects root", func(t *testing.T) {
+			t.Parallel()
 		leader, err := tt.SelectLeader(PhaseConvergence)
 		require.NoError(t, err)
 		assert.Equal(t, "architect-1", leader.ID)
 	})
 
 	t.Run("critique phase selects security lead if available", func(t *testing.T) {
+			t.Parallel()
 		leader, err := tt.SelectLeader(PhaseCritique)
 		require.NoError(t, err)
 		// Security agent is a lead in the tree
@@ -430,6 +458,7 @@ func TestTreeTopology_SelectLeader(t *testing.T) {
 		})
 
 	t.Run("no root returns error", func(t *testing.T) {
+			t.Parallel()
 		emptyTree := NewTreeTopology(config)
 		_, err := emptyTree.SelectLeader(PhaseProposal)
 		assert.Error(t, err)
@@ -441,6 +470,7 @@ func TestTreeTopology_SelectLeader(t *testing.T) {
 // ==========================================================================
 
 func TestTreeTopology_GetParallelGroups(t *testing.T) {
+	t.Parallel()
 	config := DefaultTopologyConfig(TopologyTree)
 	tt := NewTreeTopology(config)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -451,6 +481,7 @@ func TestTreeTopology_GetParallelGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("returns subtree groups", func(t *testing.T) {
+			t.Parallel()
 		groups := tt.GetParallelGroups(PhaseProposal)
 		assert.NotEmpty(t, groups)
 
@@ -464,6 +495,7 @@ func TestTreeTopology_GetParallelGroups(t *testing.T) {
 	})
 
 	t.Run("single-agent tree returns root as group", func(t *testing.T) {
+			t.Parallel()
 		singleTree := NewTreeTopology(config)
 		ctxSingle, cancelSingle := context.WithCancel(
 			context.Background(),
@@ -486,6 +518,7 @@ func TestTreeTopology_GetParallelGroups(t *testing.T) {
 	})
 
 	t.Run("nil root returns nil", func(t *testing.T) {
+			t.Parallel()
 		emptyTree := NewTreeTopology(config)
 		groups := emptyTree.GetParallelGroups(PhaseProposal)
 		assert.Nil(t, groups)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	k := New()
 
 	assert.NotNil(t, k)
@@ -25,6 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestKimi_Initialize(t *testing.T) {
+	t.Parallel()
 	k := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestKimi_Initialize(t *testing.T) {
 }
 
 func TestKimi_Execute(t *testing.T) {
+	t.Parallel()
 	k := New()
 	ctx := context.Background()
 
@@ -131,6 +134,7 @@ func TestKimi_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := k.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -146,6 +150,7 @@ func TestKimi_Execute(t *testing.T) {
 }
 
 func TestKimi_IsAvailable(t *testing.T) {
+	t.Parallel()
 	k := New()
 	assert.False(t, k.IsAvailable())
 
@@ -154,6 +159,7 @@ func TestKimi_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		APIKey:        "test-key",
 		Model:         "kimi-k2",

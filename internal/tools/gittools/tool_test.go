@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewTool(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	tool := NewTool("/tmp", logger)
 	
@@ -19,11 +20,13 @@ func TestNewTool(t *testing.T) {
 }
 
 func TestTool_Name(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", nil)
 	assert.Equal(t, "GitTools", tool.Name())
 }
 
 func TestTool_Description(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", nil)
 	desc := tool.Description()
 	assert.Contains(t, desc, "Git")
@@ -31,6 +34,7 @@ func TestTool_Description(t *testing.T) {
 }
 
 func TestTool_Schema(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", nil)
 	schema := tool.Schema()
 	
@@ -50,6 +54,7 @@ func TestTool_Schema(t *testing.T) {
 }
 
 func TestTool_Execute_MissingOperation(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", nil)
 	ctx := context.Background()
 	
@@ -61,6 +66,7 @@ func TestTool_Execute_MissingOperation(t *testing.T) {
 }
 
 func TestTool_Execute_InvalidOperation(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", nil)
 	ctx := context.Background()
 	
@@ -74,6 +80,7 @@ func TestTool_Execute_InvalidOperation(t *testing.T) {
 }
 
 func TestTool_Execute_Status(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -89,6 +96,7 @@ func TestTool_Execute_Status(t *testing.T) {
 }
 
 func TestTool_Execute_Status_WithChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -107,6 +115,7 @@ func TestTool_Execute_Status_WithChanges(t *testing.T) {
 }
 
 func TestTool_Execute_Commit(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -132,6 +141,7 @@ func TestTool_Execute_Commit(t *testing.T) {
 }
 
 func TestTool_Execute_Commit_NoChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -147,6 +157,7 @@ func TestTool_Execute_Commit_NoChanges(t *testing.T) {
 }
 
 func TestTool_Execute_Commit_AutoGenerate(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -172,6 +183,7 @@ func TestTool_Execute_Commit_AutoGenerate(t *testing.T) {
 }
 
 func TestTool_Execute_Branch(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -191,6 +203,7 @@ func TestTool_Execute_Branch(t *testing.T) {
 }
 
 func TestTool_Execute_Branch_Create(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -212,6 +225,7 @@ func TestTool_Execute_Branch_Create(t *testing.T) {
 }
 
 func TestTool_Execute_Branch_Create_MissingName(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -226,6 +240,7 @@ func TestTool_Execute_Branch_Create_MissingName(t *testing.T) {
 }
 
 func TestTool_Execute_Stash(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -250,6 +265,7 @@ func TestTool_Execute_Stash(t *testing.T) {
 }
 
 func TestTool_Execute_StashPop(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -277,6 +293,7 @@ func TestTool_Execute_StashPop(t *testing.T) {
 }
 
 func TestTool_Commit(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -295,6 +312,7 @@ func TestTool_Commit(t *testing.T) {
 }
 
 func TestTool_Status(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()
@@ -305,6 +323,7 @@ func TestTool_Status(t *testing.T) {
 }
 
 func TestTool_Push(t *testing.T) {
+	t.Parallel()
 	// Can't test actual push without remote
 	// Just test error handling
 	dir := setupTestRepo(t)
@@ -319,6 +338,7 @@ func TestTool_Push(t *testing.T) {
 }
 
 func TestTool_Pull(t *testing.T) {
+	t.Parallel()
 	// Can't test actual pull without remote
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
@@ -331,12 +351,14 @@ func TestTool_Pull(t *testing.T) {
 }
 
 func TestTruncate(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "hello", truncate("hello", 100))
 	assert.Equal(t, "hello...", truncate("hello world", 5))
 }
 
 // Integration test
 func TestTool_Workflow(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	tool := NewTool(dir, nil)
 	ctx := context.Background()

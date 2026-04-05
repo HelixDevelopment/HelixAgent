@@ -16,6 +16,7 @@ import (
 
 // TestHelixMemoryFusionAdapter_New tests adapter creation.
 func TestHelixMemoryFusionAdapter_New(t *testing.T) {
+	t.Parallel()
 	// This will initialize even without actual HelixMemory services running
 	// The adapter handles service failures gracefully via circuit breakers
 	adapter := memory.NewOptimalStoreAdapter()
@@ -27,12 +28,14 @@ func TestHelixMemoryFusionAdapter_New(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_IsHelixMemoryEnabled tests the feature flag.
 func TestHelixMemoryFusionAdapter_IsHelixMemoryEnabled(t *testing.T) {
+	t.Parallel()
 	enabled := memory.IsHelixMemoryEnabled()
 	assert.True(t, enabled)
 }
 
 // TestHelixMemoryFusionAdapter_MemoryBackendName tests backend name.
 func TestHelixMemoryFusionAdapter_MemoryBackendName(t *testing.T) {
+	t.Parallel()
 	name := memory.MemoryBackendName()
 	assert.Contains(t, name, "helixmemory")
 	assert.Contains(t, name, "Fusion")
@@ -43,6 +46,7 @@ func TestHelixMemoryFusionAdapter_MemoryBackendName(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_TypeConversions tests type conversion helpers.
 func TestHelixMemoryFusionAdapter_TypeConversions(t *testing.T) {
+	t.Parallel()
 	// Test helixmem.Memory to helixmem.Memory conversion
 	now := time.Now()
 	original := &helixmem.Memory{
@@ -68,6 +72,7 @@ func TestHelixMemoryFusionAdapter_TypeConversions(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_CRUD tests CRUD operations (mock).
 func TestHelixMemoryFusionAdapter_CRUD(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	adapter := memory.NewOptimalStoreAdapter()
 
@@ -113,6 +118,7 @@ func TestHelixMemoryFusionAdapter_CRUD(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_AgentMemory tests agent-specific memory.
 func TestHelixMemoryFusionAdapter_AgentMemory(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	adapter := memory.NewOptimalStoreAdapter()
 
@@ -138,6 +144,7 @@ func TestHelixMemoryFusionAdapter_AgentMemory(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_KnowledgeGraph tests knowledge graph operations.
 func TestHelixMemoryFusionAdapter_KnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	adapter := memory.NewOptimalStoreAdapter()
 
@@ -168,6 +175,7 @@ func TestHelixMemoryFusionAdapter_KnowledgeGraph(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_Health tests health checking.
 func TestHelixMemoryFusionAdapter_Health(t *testing.T) {
+	t.Parallel()
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {
@@ -181,6 +189,7 @@ func TestHelixMemoryFusionAdapter_Health(t *testing.T) {
 
 // TestHelixMemoryFusionAdapter_Stats tests stats retrieval.
 func TestHelixMemoryFusionAdapter_Stats(t *testing.T) {
+	t.Parallel()
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {

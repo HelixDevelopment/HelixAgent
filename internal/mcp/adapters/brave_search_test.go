@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewBraveSearchAdapter(t *testing.T) {
+	t.Parallel()
 	config := BraveSearchConfig{
 		APIKey: "test-api-key",
 	}
@@ -27,6 +28,7 @@ func TestNewBraveSearchAdapter(t *testing.T) {
 }
 
 func TestDefaultBraveSearchConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultBraveSearchConfig()
 
 	assert.Equal(t, "https://api.search.brave.com/res/v1", config.BaseURL)
@@ -38,6 +40,7 @@ func TestDefaultBraveSearchConfig(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewBraveSearchAdapter(DefaultBraveSearchConfig())
 
 	info := adapter.GetServerInfo()
@@ -54,6 +57,7 @@ func TestBraveSearchAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewBraveSearchAdapter(DefaultBraveSearchConfig())
 
 	tools := adapter.ListTools()
@@ -74,6 +78,7 @@ func TestBraveSearchAdapter_ListTools(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewBraveSearchAdapter(DefaultBraveSearchConfig())
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -84,6 +89,7 @@ func TestBraveSearchAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_WebSearch(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/web/search", r.URL.Path)
 		assert.Equal(t, "test-api-key", r.Header.Get("X-Subscription-Token"))
@@ -140,6 +146,7 @@ func TestBraveSearchAdapter_WebSearch(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_WebSearchWithFreshness(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.RawQuery, "freshness=pd")
 
@@ -164,6 +171,7 @@ func TestBraveSearchAdapter_WebSearchWithFreshness(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_LocalSearch(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/web/search", r.URL.Path)
 		assert.Contains(t, r.URL.RawQuery, "q=coffee+shops")
@@ -227,6 +235,7 @@ func TestBraveSearchAdapter_LocalSearch(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_ImageSearch(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/images/search", r.URL.Path)
 		assert.Contains(t, r.URL.RawQuery, "q=cats")
@@ -277,6 +286,7 @@ func TestBraveSearchAdapter_ImageSearch(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_NewsSearch(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/news/search", r.URL.Path)
 		assert.Contains(t, r.URL.RawQuery, "q=technology")
@@ -324,6 +334,7 @@ func TestBraveSearchAdapter_NewsSearch(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": "Invalid API key"}`))
@@ -346,6 +357,7 @@ func TestBraveSearchAdapter_APIError(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_NetworkError(t *testing.T) {
+	t.Parallel()
 	config := DefaultBraveSearchConfig()
 	config.APIKey = "test-key"
 	config.BaseURL = "http://localhost:99999" // Invalid port
@@ -362,6 +374,7 @@ func TestBraveSearchAdapter_NetworkError(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{invalid json}`))
@@ -383,6 +396,7 @@ func TestBraveSearchAdapter_InvalidJSON(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_EmptyResults(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := BraveWebSearchResponse{}
 		w.Header().Set("Content-Type", "application/json")
@@ -406,6 +420,7 @@ func TestBraveSearchAdapter_EmptyResults(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_DefaultCountValue(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.RawQuery, "count=10") // Default value
 
@@ -429,6 +444,7 @@ func TestBraveSearchAdapter_DefaultCountValue(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_CustomCountValue(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.RawQuery, "count=5")
 
@@ -452,6 +468,7 @@ func TestBraveSearchAdapter_CustomCountValue(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_SafeSearchConfig(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.RawQuery, "safesearch=strict")
 
@@ -475,6 +492,7 @@ func TestBraveSearchAdapter_SafeSearchConfig(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_CountryAndLanguageConfig(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.RawQuery, "country=de")
 		assert.Contains(t, r.URL.RawQuery, "search_lang=de")
@@ -500,6 +518,7 @@ func TestBraveSearchAdapter_CountryAndLanguageConfig(t *testing.T) {
 }
 
 func TestGetIntArg(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		args     map[string]interface{}
@@ -546,6 +565,7 @@ func TestGetIntArg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := getIntArg(tt.args, tt.key, tt.def)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -553,6 +573,7 @@ func TestGetIntArg(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_LocalSearchNoLocations(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := BraveLocalSearchResponse{
 			Locations: nil, // No locations found
@@ -577,11 +598,13 @@ func TestBraveSearchAdapter_LocalSearchNoLocations(t *testing.T) {
 }
 
 func TestBraveSearchAdapter_ToolInputSchemas(t *testing.T) {
+	t.Parallel()
 	adapter := NewBraveSearchAdapter(DefaultBraveSearchConfig())
 	tools := adapter.ListTools()
 
 	for _, tool := range tools {
 		t.Run(tool.Name, func(t *testing.T) {
+				t.Parallel()
 			schema := tool.InputSchema
 			assert.NotNil(t, schema)
 			assert.Equal(t, "object", schema["type"])

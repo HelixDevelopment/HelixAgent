@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewReplicateAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		config ReplicateConfig
@@ -53,6 +54,7 @@ func TestNewReplicateAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewReplicateAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.want.baseURL, adapter.baseURL)
@@ -62,6 +64,7 @@ func TestNewReplicateAdapter(t *testing.T) {
 }
 
 func TestReplicateAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		statusCode  int
@@ -96,6 +99,7 @@ func TestReplicateAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/account", r.URL.Path)
 				assert.Equal(t, "Token test-token", r.Header.Get("Authorization"))
@@ -125,6 +129,7 @@ func TestReplicateAdapter_Connect(t *testing.T) {
 }
 
 func TestReplicateAdapter_Health(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		connected  bool
@@ -153,6 +158,7 @@ func TestReplicateAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -176,6 +182,7 @@ func TestReplicateAdapter_Health(t *testing.T) {
 }
 
 func TestReplicateAdapter_GetModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		owner       string
@@ -212,6 +219,7 @@ func TestReplicateAdapter_GetModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/models/"+tt.owner+"/"+tt.modelName)
@@ -242,6 +250,7 @@ func TestReplicateAdapter_GetModel(t *testing.T) {
 }
 
 func TestReplicateAdapter_GetModelVersion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		owner      string
@@ -276,6 +285,7 @@ func TestReplicateAdapter_GetModelVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -299,6 +309,7 @@ func TestReplicateAdapter_GetModelVersion(t *testing.T) {
 }
 
 func TestReplicateAdapter_ListModels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		cursor     string
@@ -344,6 +355,7 @@ func TestReplicateAdapter_ListModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/models")
@@ -375,6 +387,7 @@ func TestReplicateAdapter_ListModels(t *testing.T) {
 }
 
 func TestReplicateAdapter_CreatePrediction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		version    string
@@ -427,6 +440,7 @@ func TestReplicateAdapter_CreatePrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/predictions", r.URL.Path)
@@ -458,6 +472,7 @@ func TestReplicateAdapter_CreatePrediction(t *testing.T) {
 }
 
 func TestReplicateAdapter_GetPrediction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		predictionID string
@@ -489,6 +504,7 @@ func TestReplicateAdapter_GetPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/predictions/"+tt.predictionID)
@@ -518,6 +534,7 @@ func TestReplicateAdapter_GetPrediction(t *testing.T) {
 }
 
 func TestReplicateAdapter_CancelPrediction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		predictionID string
@@ -546,6 +563,7 @@ func TestReplicateAdapter_CancelPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/cancel")
@@ -572,6 +590,7 @@ func TestReplicateAdapter_CancelPrediction(t *testing.T) {
 }
 
 func TestReplicateAdapter_ListPredictions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		cursor     string
@@ -602,6 +621,7 @@ func TestReplicateAdapter_ListPredictions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -625,6 +645,7 @@ func TestReplicateAdapter_ListPredictions(t *testing.T) {
 }
 
 func TestReplicateAdapter_WaitForPrediction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		predictionID string
@@ -657,6 +678,7 @@ func TestReplicateAdapter_WaitForPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			callCount := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				status := tt.statuses[callCount]
@@ -692,6 +714,7 @@ func TestReplicateAdapter_WaitForPrediction(t *testing.T) {
 }
 
 func TestReplicateAdapter_GetCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		slug        string
@@ -723,6 +746,7 @@ func TestReplicateAdapter_GetCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Contains(t, r.URL.Path, "/collections/"+tt.slug)
 
@@ -751,6 +775,7 @@ func TestReplicateAdapter_GetCollection(t *testing.T) {
 }
 
 func TestReplicateAdapter_ListCollections(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		statusCode int
@@ -774,6 +799,7 @@ func TestReplicateAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -797,6 +823,7 @@ func TestReplicateAdapter_ListCollections(t *testing.T) {
 }
 
 func TestReplicateAdapter_Close(t *testing.T) {
+	t.Parallel()
 	adapter := NewReplicateAdapter(ReplicateConfig{
 		APIToken: "test-token",
 	})
@@ -808,6 +835,7 @@ func TestReplicateAdapter_Close(t *testing.T) {
 }
 
 func TestReplicateAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewReplicateAdapter(ReplicateConfig{
 		APIToken: "test-token",
 	})
@@ -836,6 +864,7 @@ func TestReplicateAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestReplicateAdapter_AuthHeader(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify Token auth
 		assert.Equal(t, "Token test-api-token", r.Header.Get("Authorization"))

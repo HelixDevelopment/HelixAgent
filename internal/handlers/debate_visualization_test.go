@@ -11,6 +11,7 @@ import (
 
 // TestFormatRequestIndicator tests the request indicator formatting
 func TestFormatRequestIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("Formats request indicator with position and provider", func(t *testing.T) {
 		indicator := FormatRequestIndicator(
 			services.PositionAnalyst,
@@ -29,6 +30,7 @@ func TestFormatRequestIndicator(t *testing.T) {
 	})
 
 	t.Run("Handles all debate positions", func(t *testing.T) {
+			t.Parallel()
 		positions := []struct {
 			pos  services.DebateTeamPosition
 			role services.DebateRole
@@ -51,6 +53,7 @@ func TestFormatRequestIndicator(t *testing.T) {
 
 // TestFormatResponseIndicator tests the response indicator formatting
 func TestFormatResponseIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("Formats response with milliseconds timing", func(t *testing.T) {
 		indicator := FormatResponseIndicator(
 			services.PositionAnalyst,
@@ -67,6 +70,7 @@ func TestFormatResponseIndicator(t *testing.T) {
 	})
 
 	t.Run("Formats response with seconds timing", func(t *testing.T) {
+			t.Parallel()
 		indicator := FormatResponseIndicator(
 			services.PositionMediator,
 			services.RoleMediator,
@@ -80,6 +84,7 @@ func TestFormatResponseIndicator(t *testing.T) {
 
 // TestFormatFallbackIndicator tests the fallback chain visualization
 func TestFormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("Shows fallback provider in chain", func(t *testing.T) {
 		indicator := FormatFallbackIndicator(
 			services.PositionMediator,
@@ -103,6 +108,7 @@ func TestFormatFallbackIndicator(t *testing.T) {
 
 // TestFormatPhaseContent tests the phase content formatting
 func TestFormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	t.Run("Wraps content with dim ANSI codes", func(t *testing.T) {
 		content := "This is debate phase content"
 		formatted := FormatPhaseContent(content)
@@ -117,6 +123,7 @@ func TestFormatPhaseContent(t *testing.T) {
 
 // TestFormatFinalResponse tests the final response formatting
 func TestFormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	t.Run("Wraps content with bright white ANSI codes", func(t *testing.T) {
 		content := "This is the final consensus response"
 		formatted := FormatFinalResponse(content)
@@ -131,6 +138,7 @@ func TestFormatFinalResponse(t *testing.T) {
 
 // TestFormatConsensusHeader tests the consensus header formatting
 func TestFormatConsensusHeader(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains consensus text and formatting", func(t *testing.T) {
 		header := FormatConsensusHeader()
 
@@ -145,6 +153,7 @@ func TestFormatConsensusHeader(t *testing.T) {
 
 // TestFormatDebateTeamIntroduction tests the team introduction formatting
 func TestFormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains topic and header", func(t *testing.T) {
 		members := []*services.DebateTeamMember{
 			{
@@ -168,6 +177,7 @@ func TestFormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Truncates long topics", func(t *testing.T) {
+			t.Parallel()
 		longTopic := strings.Repeat("x", 100)
 		intro := FormatDebateTeamIntroduction(longTopic, nil)
 
@@ -180,6 +190,7 @@ func TestFormatDebateTeamIntroduction(t *testing.T) {
 
 // TestStripANSI tests the ANSI stripping function
 func TestStripANSI(t *testing.T) {
+	t.Parallel()
 	t.Run("Removes ANSI codes from string", func(t *testing.T) {
 		colored := ANSIRed + "Red text" + ANSIReset
 		stripped := StripANSI(colored)
@@ -189,6 +200,7 @@ func TestStripANSI(t *testing.T) {
 	})
 
 	t.Run("Removes all common ANSI codes", func(t *testing.T) {
+			t.Parallel()
 		colored := ANSIBold + ANSICyan + "Bold Cyan" + ANSIReset +
 			ANSIDim + "Dim" + ANSIReset +
 			ANSIBrightWhite + "Bright" + ANSIReset
@@ -201,6 +213,7 @@ func TestStripANSI(t *testing.T) {
 
 // TestDebatePositionResponse tests the enhanced response struct
 func TestDebatePositionResponse(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains all tracking fields", func(t *testing.T) {
 		resp := &DebatePositionResponse{
 			Content:         "Test content",
@@ -241,6 +254,7 @@ func TestDebatePositionResponse(t *testing.T) {
 
 // TestFormatDuration tests the duration formatting helper
 func TestFormatDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		duration time.Duration
 		expected string
@@ -262,6 +276,7 @@ func TestFormatDuration(t *testing.T) {
 
 // TestRoleColors verifies all roles have colors
 func TestRoleColors(t *testing.T) {
+	t.Parallel()
 	roles := []services.DebateRole{
 		services.RoleAnalyst,
 		services.RoleProposer,
@@ -279,6 +294,7 @@ func TestRoleColors(t *testing.T) {
 
 // TestFormatFallbackChainIndicator tests the full fallback chain visualization
 func TestFormatFallbackChainIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("Single failed attempt with successful fallback", func(t *testing.T) {
 		chain := []FallbackAttempt{
 			{
@@ -318,6 +334,7 @@ func TestFormatFallbackChainIndicator(t *testing.T) {
 	})
 
 	t.Run("Multiple chained fallbacks", func(t *testing.T) {
+			t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "DeepSeek",
@@ -363,6 +380,7 @@ func TestFormatFallbackChainIndicator(t *testing.T) {
 	})
 
 	t.Run("Empty chain", func(t *testing.T) {
+			t.Parallel()
 		indicator := FormatFallbackChainIndicator(
 			services.PositionAnalyst,
 			services.RoleAnalyst,
@@ -377,6 +395,7 @@ func TestFormatFallbackChainIndicator(t *testing.T) {
 
 // TestFormatFallbackChainWithContent tests fallback chain with response content
 func TestFormatFallbackChainWithContent(t *testing.T) {
+	t.Parallel()
 	t.Run("Formats fallback chain with content", func(t *testing.T) {
 		chain := []FallbackAttempt{
 			{
@@ -413,6 +432,7 @@ func TestFormatFallbackChainWithContent(t *testing.T) {
 	})
 
 	t.Run("Direct success without fallback", func(t *testing.T) {
+			t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "Claude",
@@ -441,6 +461,7 @@ func TestFormatFallbackChainWithContent(t *testing.T) {
 	})
 
 	t.Run("Multiple chained fallbacks with content", func(t *testing.T) {
+			t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "DeepSeek",
@@ -486,6 +507,7 @@ func TestFormatFallbackChainWithContent(t *testing.T) {
 
 // TestFormatFallbackReason tests the fallback reason formatting
 func TestFormatFallbackReason(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -506,6 +528,7 @@ func TestFormatFallbackReason(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := formatFallbackReason(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -514,6 +537,7 @@ func TestFormatFallbackReason(t *testing.T) {
 
 // TestTimingColorIsDarker verifies timing uses darker shade
 func TestTimingColorIsDarker(t *testing.T) {
+	t.Parallel()
 	t.Run("Response indicator uses dim timing color", func(t *testing.T) {
 		indicator := FormatResponseIndicator(
 			services.PositionAnalyst,
@@ -526,6 +550,7 @@ func TestTimingColorIsDarker(t *testing.T) {
 	})
 
 	t.Run("Fallback indicator uses dim timing color", func(t *testing.T) {
+			t.Parallel()
 		indicator := FormatFallbackIndicator(
 			services.PositionAnalyst,
 			services.RoleAnalyst,
@@ -541,6 +566,7 @@ func TestTimingColorIsDarker(t *testing.T) {
 
 // TestFallbackAttemptStruct tests the FallbackAttempt struct
 func TestFallbackAttemptStruct(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains all required fields", func(t *testing.T) {
 		attempt := FallbackAttempt{
 			Provider:   "DeepSeek",
@@ -562,6 +588,7 @@ func TestFallbackAttemptStruct(t *testing.T) {
 
 // TestFormatPhaseHeader tests phase header formatting for all phases
 func TestFormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	phases := []struct {
 		phase    services.ValidationPhase
 		expected string
@@ -574,6 +601,7 @@ func TestFormatPhaseHeader(t *testing.T) {
 
 	for _, tt := range phases {
 		t.Run(string(tt.phase), func(t *testing.T) {
+				t.Parallel()
 			result := FormatPhaseHeader(tt.phase, 1)
 			assert.Contains(t, result, "PHASE 1")
 			assert.Contains(t, result, tt.expected)
@@ -584,6 +612,7 @@ func TestFormatPhaseHeader(t *testing.T) {
 
 // TestFormatPhaseHeader_UnknownPhase tests phase header with unknown phase
 func TestFormatPhaseHeader_UnknownPhase(t *testing.T) {
+	t.Parallel()
 	result := FormatPhaseHeader(services.ValidationPhase("unknown"), 5)
 	assert.Contains(t, result, "PHASE 5")
 	assert.Contains(t, result, "unknown")
@@ -591,6 +620,7 @@ func TestFormatPhaseHeader_UnknownPhase(t *testing.T) {
 
 // TestGetPhaseDisplayName_Extended tests phase display name mapping
 func TestGetPhaseDisplayName_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		phase    services.ValidationPhase
 		expected string
@@ -604,6 +634,7 @@ func TestGetPhaseDisplayName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.phase), func(t *testing.T) {
+				t.Parallel()
 			result := getPhaseDisplayName(tt.phase)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -612,6 +643,7 @@ func TestGetPhaseDisplayName_Extended(t *testing.T) {
 
 // TestGetPositionAvatar tests all position avatars
 func TestGetPositionAvatar(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		position services.DebateTeamPosition
 		expected string
@@ -626,6 +658,7 @@ func TestGetPositionAvatar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
+				t.Parallel()
 			result := getPositionAvatar(tt.position)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -634,6 +667,7 @@ func TestGetPositionAvatar(t *testing.T) {
 
 // TestGetRoleName_Extended tests all role names
 func TestGetRoleName_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		role     services.DebateRole
 		expected string
@@ -648,6 +682,7 @@ func TestGetRoleName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.role), func(t *testing.T) {
+				t.Parallel()
 			result := getRoleName(tt.role)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -656,6 +691,7 @@ func TestGetRoleName_Extended(t *testing.T) {
 
 // TestPhaseIndicators_Extended tests that all phase indicators are defined correctly
 func TestPhaseIndicators_Extended(t *testing.T) {
+	t.Parallel()
 	phases := []services.ValidationPhase{
 		services.PhaseInitialResponse,
 		services.PhaseValidation,
@@ -665,6 +701,7 @@ func TestPhaseIndicators_Extended(t *testing.T) {
 
 	for _, phase := range phases {
 		t.Run(string(phase), func(t *testing.T) {
+				t.Parallel()
 			indicator, ok := PhaseIndicators[phase]
 			assert.True(t, ok, "Phase indicator should exist")
 			assert.NotEmpty(t, indicator.Icon)
@@ -675,6 +712,7 @@ func TestPhaseIndicators_Extended(t *testing.T) {
 
 // TestComplexFallbackScenarios tests complex real-world fallback scenarios
 func TestComplexFallbackScenarios(t *testing.T) {
+	t.Parallel()
 	t.Run("All providers fail except last", func(t *testing.T) {
 		chain := []FallbackAttempt{
 			{Provider: "DeepSeek", Success: false, Error: "rate limit", Duration: 10 * time.Millisecond, AttemptNum: 1},
@@ -698,6 +736,7 @@ func TestComplexFallbackScenarios(t *testing.T) {
 	})
 
 	t.Run("First provider succeeds immediately", func(t *testing.T) {
+			t.Parallel()
 		chain := []FallbackAttempt{
 			{Provider: "DeepSeek", Success: true, Duration: 50 * time.Millisecond, AttemptNum: 1},
 		}

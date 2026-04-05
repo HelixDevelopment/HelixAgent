@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewDeepSeekProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string
@@ -46,6 +47,7 @@ func TestNewDeepSeekProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewDeepSeekProvider(tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
@@ -58,6 +60,7 @@ func TestNewDeepSeekProvider(t *testing.T) {
 }
 
 func TestDeepSeekProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/v1/chat/completions", r.URL.Path)
@@ -99,6 +102,7 @@ func TestDeepSeekProvider_Complete_Success(t *testing.T) {
 }
 
 func TestDeepSeekProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid request", "type": "invalid_request_error"}}`))
@@ -120,6 +124,7 @@ func TestDeepSeekProvider_Complete_Error(t *testing.T) {
 }
 
 func TestDeepSeekProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "test-request",
@@ -153,6 +158,7 @@ func TestDeepSeekProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestDeepSeekProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 
 	tests := []struct {
@@ -222,6 +228,7 @@ func TestDeepSeekProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -230,6 +237,7 @@ func TestDeepSeekProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestDeepSeekProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -268,6 +276,7 @@ func TestDeepSeekProvider_CompleteStream(t *testing.T) {
 }
 
 func TestDeepSeekProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -310,6 +319,7 @@ func TestDeepSeekProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestDeepSeekProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		apiKey       string
@@ -362,6 +372,7 @@ func TestDeepSeekProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := &DeepSeekProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -376,6 +387,7 @@ func TestDeepSeekProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestDeepSeekProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	t.Run("health check with invalid API key", func(t *testing.T) {
 		provider := NewDeepSeekProvider("invalid-key", "", "deepseek-coder")
 		provider.httpClient.Timeout = 2 * time.Second
@@ -390,6 +402,7 @@ func TestDeepSeekProvider_HealthCheck(t *testing.T) {
 	})
 
 	t.Run("health check timeout", func(t *testing.T) {
+			t.Parallel()
 		provider := NewDeepSeekProvider("test-key", "", "deepseek-coder")
 		// Set very short timeout to trigger timeout error
 		provider.httpClient.Timeout = 1 * time.Nanosecond
@@ -401,6 +414,7 @@ func TestDeepSeekProvider_HealthCheck(t *testing.T) {
 }
 
 func TestDeepSeekProvider_Complete_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond) // Simulate slow response
 		w.WriteHeader(http.StatusOK)
@@ -426,6 +440,7 @@ func TestDeepSeekProvider_Complete_ContextCancellation(t *testing.T) {
 }
 
 func TestDeepSeekProvider_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -461,6 +476,7 @@ func TestDeepSeekProvider_RetryOnServerError(t *testing.T) {
 }
 
 func TestDeepSeekProvider_ConvertRequestWithSystemPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID:     "test-request",
@@ -485,6 +501,7 @@ func TestDeepSeekProvider_ConvertRequestWithSystemPrompt(t *testing.T) {
 }
 
 func TestDeepSeekProvider_ConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -524,6 +541,7 @@ func TestDeepSeekProvider_ConvertResponse(t *testing.T) {
 }
 
 func TestDeepSeekProvider_ConvertResponse_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -541,6 +559,7 @@ func TestDeepSeekProvider_ConvertResponse_EmptyChoices(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -550,6 +569,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestNewDeepSeekProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -567,6 +587,7 @@ func TestNewDeepSeekProviderWithRetry(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -585,12 +606,14 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}
 }
 
 func TestDeepSeekProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewDeepSeekProviderWithRetry("test-key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 1 * time.Second,
@@ -608,6 +631,7 @@ func TestDeepSeekProvider_NextDelay(t *testing.T) {
 }
 
 func TestDeepSeekProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{invalid json`))
@@ -629,6 +653,7 @@ func TestDeepSeekProvider_Complete_InvalidJSON(t *testing.T) {
 }
 
 func TestDeepSeekProvider_RetryExhaustion(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -659,6 +684,7 @@ func TestDeepSeekProvider_RetryExhaustion(t *testing.T) {
 }
 
 func TestDeepSeekProvider_MakeAPICall_NetworkError(t *testing.T) {
+	t.Parallel()
 	// Use an invalid URL to simulate network error
 	retryConfig := RetryConfig{
 		MaxRetries:   1,
@@ -684,6 +710,7 @@ func TestDeepSeekProvider_MakeAPICall_NetworkError(t *testing.T) {
 }
 
 func TestDeepSeekProvider_CompleteStream_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(500 * time.Millisecond)
 		w.Header().Set("Content-Type", "text/event-stream")

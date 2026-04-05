@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewSVGMakerAdapter(t *testing.T) {
+	t.Parallel()
 	config := SVGMakerConfig{
 		APIKey: "test-key",
 	}
@@ -26,6 +27,7 @@ func TestNewSVGMakerAdapter(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewSVGMakerAdapter(SVGMakerConfig{})
 
 	info := adapter.GetServerInfo()
@@ -40,6 +42,7 @@ func TestSVGMakerAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewSVGMakerAdapter(SVGMakerConfig{})
 
 	tools := adapter.ListTools()
@@ -64,6 +67,7 @@ func TestSVGMakerAdapter_ListTools(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewSVGMakerAdapter(SVGMakerConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -74,6 +78,7 @@ func TestSVGMakerAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_GenerateSVG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/generate", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -113,6 +118,7 @@ func TestSVGMakerAdapter_GenerateSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_EditSVG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/edit", r.URL.Path)
 
@@ -148,6 +154,7 @@ func TestSVGMakerAdapter_EditSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_OptimizeSVG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/optimize", r.URL.Path)
 
@@ -183,6 +190,7 @@ func TestSVGMakerAdapter_OptimizeSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ImageToSVG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/vectorize", r.URL.Path)
 
@@ -220,6 +228,7 @@ func TestSVGMakerAdapter_ImageToSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_GenerateIcon(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/icon", r.URL.Path)
 
@@ -256,6 +265,7 @@ func TestSVGMakerAdapter_GenerateIcon(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_SVGToPNG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/convert/png", r.URL.Path)
 
@@ -289,6 +299,7 @@ func TestSVGMakerAdapter_SVGToPNG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_AnalyzeSVG(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/analyze", r.URL.Path)
 
@@ -327,6 +338,7 @@ func TestSVGMakerAdapter_AnalyzeSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CombineSVGs(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/combine", r.URL.Path)
 
@@ -364,6 +376,7 @@ func TestSVGMakerAdapter_CombineSVGs(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": "Invalid API key"}`))
@@ -386,6 +399,7 @@ func TestSVGMakerAdapter_APIError(t *testing.T) {
 }
 
 func TestDefaultSVGMakerConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerConfig()
 
 	assert.Equal(t, "https://api.svgmaker.io/v1", config.BaseURL)
@@ -393,6 +407,7 @@ func TestDefaultSVGMakerConfig(t *testing.T) {
 }
 
 func TestGetBoolArg(t *testing.T) {
+	t.Parallel()
 	args := map[string]interface{}{
 		"true_val":  true,
 		"false_val": false,

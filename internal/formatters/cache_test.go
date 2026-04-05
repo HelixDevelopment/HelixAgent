@@ -22,6 +22,7 @@ func newTestCache(ttl time.Duration, maxSize int) *FormatterCache {
 }
 
 func TestNewFormatterCache(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -30,6 +31,7 @@ func TestNewFormatterCache(t *testing.T) {
 }
 
 func TestFormatterCache_Set_Get(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -56,6 +58,7 @@ func TestFormatterCache_Set_Get(t *testing.T) {
 }
 
 func TestFormatterCache_Get_Miss(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -70,6 +73,7 @@ func TestFormatterCache_Get_Miss(t *testing.T) {
 }
 
 func TestFormatterCache_Get_Expired(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Millisecond, 100)
 	defer cache.Stop()
 
@@ -93,6 +97,7 @@ func TestFormatterCache_Get_Expired(t *testing.T) {
 }
 
 func TestFormatterCache_Set_Eviction(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 2)
 	defer cache.Stop()
 
@@ -116,6 +121,7 @@ func TestFormatterCache_Set_Eviction(t *testing.T) {
 }
 
 func TestFormatterCache_Clear(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -136,6 +142,7 @@ func TestFormatterCache_Clear(t *testing.T) {
 }
 
 func TestFormatterCache_Size(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -149,6 +156,7 @@ func TestFormatterCache_Size(t *testing.T) {
 }
 
 func TestFormatterCache_Stats(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(30*time.Minute, 500)
 	defer cache.Stop()
 
@@ -161,12 +169,14 @@ func TestFormatterCache_Stats(t *testing.T) {
 }
 
 func TestFormatterCache_Stop(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	// Should not panic
 	cache.Stop()
 }
 
 func TestFormatterCache_CacheKey_DifferentContent(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -189,6 +199,7 @@ func TestFormatterCache_CacheKey_DifferentContent(t *testing.T) {
 }
 
 func TestFormatterCache_CacheKey_DifferentLanguage(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -209,6 +220,7 @@ func TestFormatterCache_CacheKey_DifferentLanguage(t *testing.T) {
 }
 
 func TestFormatterCache_CacheKey_DifferentFilePath(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -229,6 +241,7 @@ func TestFormatterCache_CacheKey_DifferentFilePath(t *testing.T) {
 }
 
 func TestFormatterCache_Set_SameKeyOverwrites(t *testing.T) {
+	t.Parallel()
 	cache := newTestCache(1*time.Hour, 100)
 	defer cache.Stop()
 
@@ -244,6 +257,7 @@ func TestFormatterCache_Set_SameKeyOverwrites(t *testing.T) {
 }
 
 func TestFormatterCache_Cleanup(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 

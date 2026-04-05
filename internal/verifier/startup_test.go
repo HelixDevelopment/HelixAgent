@@ -74,6 +74,7 @@ func (m *MockLLMProvider) ValidateConfig(config map[string]interface{}) (bool, [
 var _ llm.LLMProvider = (*MockLLMProvider)(nil)
 
 func TestDefaultStartupConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 
 	assert.NotNil(t, cfg)
@@ -93,6 +94,7 @@ func TestDefaultStartupConfig(t *testing.T) {
 }
 
 func TestNewStartupVerifier(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	logger := logrus.New()
 
@@ -105,6 +107,7 @@ func TestNewStartupVerifier(t *testing.T) {
 }
 
 func TestNewStartupVerifierWithNilConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 
 	sv := NewStartupVerifier(nil, logger)
@@ -115,6 +118,7 @@ func TestNewStartupVerifierWithNilConfig(t *testing.T) {
 }
 
 func TestNewStartupVerifierWithNilLogger(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 
 	sv := NewStartupVerifier(cfg, nil)
@@ -124,6 +128,7 @@ func TestNewStartupVerifierWithNilLogger(t *testing.T) {
 }
 
 func TestStartupVerifier_SetProviderFactory(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
@@ -139,6 +144,7 @@ func TestStartupVerifier_SetProviderFactory(t *testing.T) {
 }
 
 func TestStartupVerifier_GetRankedProviders_Empty(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
@@ -149,6 +155,7 @@ func TestStartupVerifier_GetRankedProviders_Empty(t *testing.T) {
 }
 
 func TestProviderAuthType_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, ProviderAuthType("api_key"), AuthTypeAPIKey)
 	assert.Equal(t, ProviderAuthType("oauth"), AuthTypeOAuth)
 	assert.Equal(t, ProviderAuthType("free"), AuthTypeFree)
@@ -157,6 +164,7 @@ func TestProviderAuthType_Constants(t *testing.T) {
 }
 
 func TestProviderStatus_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, ProviderStatus("unknown"), StatusUnknown)
 	assert.Equal(t, ProviderStatus("healthy"), StatusHealthy)
 	assert.Equal(t, ProviderStatus("verified"), StatusVerified)
@@ -169,6 +177,7 @@ func TestProviderStatus_Constants(t *testing.T) {
 }
 
 func TestSupportedProviders(t *testing.T) {
+	t.Parallel()
 	// Verify expected providers are defined
 	expectedProviders := []string{"claude", "qwen", "gemini", "deepseek", "mistral", "groq", "cerebras", "openrouter", "zen", "ollama", "zai"}
 
@@ -182,6 +191,7 @@ func TestSupportedProviders(t *testing.T) {
 }
 
 func TestGetProviderInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		provider string
@@ -197,6 +207,7 @@ func TestGetProviderInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			info, ok := GetProviderInfo(tt.provider)
 			assert.Equal(t, tt.wantOK, ok)
 			if tt.wantOK {
@@ -207,6 +218,7 @@ func TestGetProviderInfo(t *testing.T) {
 }
 
 func TestIsOAuthProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		provider string
@@ -222,6 +234,7 @@ func TestIsOAuthProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := IsOAuthProvider(tt.provider)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -229,6 +242,7 @@ func TestIsOAuthProvider(t *testing.T) {
 }
 
 func TestIsFreeProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		provider string
@@ -244,6 +258,7 @@ func TestIsFreeProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := IsFreeProvider(tt.provider)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -251,6 +266,7 @@ func TestIsFreeProvider(t *testing.T) {
 }
 
 func TestGetProvidersByAuthType(t *testing.T) {
+	t.Parallel()
 	// Test OAuth providers
 	oauthProviders := GetProvidersByAuthType(AuthTypeOAuth)
 	assert.NotEmpty(t, oauthProviders)
@@ -273,6 +289,7 @@ func TestGetProvidersByAuthType(t *testing.T) {
 }
 
 func TestGetProvidersByTier(t *testing.T) {
+	t.Parallel()
 	// Tier 1 should have premium providers
 	tier1 := GetProvidersByTier(1)
 	assert.NotEmpty(t, tier1)
@@ -287,6 +304,7 @@ func TestGetProvidersByTier(t *testing.T) {
 }
 
 func TestUnifiedProvider_Fields(t *testing.T) {
+	t.Parallel()
 	provider := &UnifiedProvider{
 		ID:          "test-provider",
 		Name:        "Test Provider",
@@ -318,6 +336,7 @@ func TestUnifiedProvider_Fields(t *testing.T) {
 }
 
 func TestUnifiedModel_Fields(t *testing.T) {
+	t.Parallel()
 	model := &UnifiedModel{
 		ID:                "model-1",
 		Name:              "Test Model",
@@ -348,6 +367,7 @@ func TestUnifiedModel_Fields(t *testing.T) {
 }
 
 func TestStartupResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := &StartupResult{
 		TotalProviders:  10,
 		VerifiedCount:   8,
@@ -371,6 +391,7 @@ func TestStartupResult_Fields(t *testing.T) {
 }
 
 func TestDebateTeamResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := &DebateTeamResult{
 		Positions: []*DebatePosition{
 			{
@@ -410,6 +431,7 @@ func TestDebateTeamResult_Fields(t *testing.T) {
 }
 
 func TestStartupError_Fields(t *testing.T) {
+	t.Parallel()
 	err := &StartupError{
 		Provider:    "test-provider",
 		ModelID:     "test-model",
@@ -426,6 +448,7 @@ func TestStartupError_Fields(t *testing.T) {
 }
 
 func TestProviderDiscoveryResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := &ProviderDiscoveryResult{
 		ID:          "test-provider",
 		Type:        "api_key",
@@ -445,6 +468,7 @@ func TestProviderDiscoveryResult_Fields(t *testing.T) {
 }
 
 func TestStartupVerifier_VerifyAllProviders_EmptyEnvironment(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
 	sv := NewStartupVerifier(cfg, nil)
@@ -463,6 +487,7 @@ func TestStartupVerifier_VerifyAllProviders_EmptyEnvironment(t *testing.T) {
 }
 
 func TestStartupVerifier_GetDebateTeam_BeforeVerification(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
@@ -473,6 +498,7 @@ func TestStartupVerifier_GetDebateTeam_BeforeVerification(t *testing.T) {
 }
 
 func TestStartupConfig_Validation(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 
 	// Verify all expected fields have sensible defaults
@@ -486,6 +512,7 @@ func TestStartupConfig_Validation(t *testing.T) {
 }
 
 func TestProviderTypeInfo_Fields(t *testing.T) {
+	t.Parallel()
 	// Test Claude provider info
 	claude, ok := SupportedProviders["claude"]
 	require.True(t, ok)
@@ -513,6 +540,7 @@ func TestProviderTypeInfo_Fields(t *testing.T) {
 // ============================================================================
 
 func TestStartupVerifier_ReEvaluation_TimestampsUpdated(t *testing.T) {
+	t.Parallel()
 	// Test that each call to VerifyAllProviders updates timestamps
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -547,6 +575,7 @@ func TestStartupVerifier_ReEvaluation_TimestampsUpdated(t *testing.T) {
 }
 
 func TestStartupVerifier_ReEvaluation_ResultsAreConsistent(t *testing.T) {
+	t.Parallel()
 	// Test that multiple verifications produce consistent results
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -579,6 +608,7 @@ func TestStartupVerifier_ReEvaluation_ResultsAreConsistent(t *testing.T) {
 }
 
 func TestStartupVerifier_ReEvaluation_ProvidersReSorted(t *testing.T) {
+	t.Parallel()
 	// Test that providers are re-sorted on each verification (purely by score)
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -606,6 +636,7 @@ func TestStartupVerifier_ReEvaluation_ProvidersReSorted(t *testing.T) {
 }
 
 func TestStartupVerifier_ReEvaluation_DebateTeamReselected(t *testing.T) {
+	t.Parallel()
 	// Test that debate team is reselected on each verification
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -639,6 +670,7 @@ func TestStartupVerifier_ReEvaluation_DebateTeamReselected(t *testing.T) {
 }
 
 func TestStartupVerifier_ReEvaluation_LastVerifyAtUpdated(t *testing.T) {
+	t.Parallel()
 	// Test that lastVerifyAt is updated on each call
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -667,6 +699,7 @@ func TestStartupVerifier_ReEvaluation_LastVerifyAtUpdated(t *testing.T) {
 }
 
 func TestStartupResult_FreshTimestamps(t *testing.T) {
+	t.Parallel()
 	// Test that StartupResult has fresh timestamps (within last 5 minutes)
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -700,6 +733,7 @@ func TestStartupResult_FreshTimestamps(t *testing.T) {
 // ============================================================================
 
 func TestDebateTeamSelection_AllPositionsFilled(t *testing.T) {
+	t.Parallel()
 	// Test that all positions (up to 25 LLMs) are filled regardless of unique LLM count
 	cfg := DefaultStartupConfig()
 	cfg.VerificationTimeout = 5 * time.Second
@@ -738,6 +772,7 @@ func TestDebateTeamSelection_AllPositionsFilled(t *testing.T) {
 }
 
 func TestDebateTeamSelection_LLMReuse(t *testing.T) {
+	t.Parallel()
 	// Test that strongest LLMs are reused when fewer than 25 unique LLMs available
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -786,6 +821,7 @@ func TestDebateTeamSelection_LLMReuse(t *testing.T) {
 }
 
 func TestDebateTeamSelection_SingleLLMReuse(t *testing.T) {
+	t.Parallel()
 	// Test with only 1 LLM - should reuse it for all positions
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -821,6 +857,7 @@ func TestDebateTeamSelection_SingleLLMReuse(t *testing.T) {
 }
 
 func TestDebateTeamSelection_ScoreBasedOnly(t *testing.T) {
+	t.Parallel()
 	// Test that providers are sorted PURELY by score (NO OAuth priority)
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -863,6 +900,7 @@ func TestDebateTeamSelection_ScoreBasedOnly(t *testing.T) {
 }
 
 func TestDebateTeamSelection_SortedByScore(t *testing.T) {
+	t.Parallel()
 	// Test that LLMs are sorted purely by score (NO auth type grouping)
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -916,6 +954,7 @@ func TestDebateTeamSelection_SortedByScore(t *testing.T) {
 }
 
 func TestDebateTeamSelection_NoProviders(t *testing.T) {
+	t.Parallel()
 	// Test with no providers - should return error
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -929,6 +968,7 @@ func TestDebateTeamSelection_NoProviders(t *testing.T) {
 }
 
 func TestDebateTeamSelection_UnverifiedExcluded(t *testing.T) {
+	t.Parallel()
 	// Test that unverified providers are excluded from team
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -972,6 +1012,7 @@ func TestDebateTeamSelection_UnverifiedExcluded(t *testing.T) {
 }
 
 func TestDebateTeamSelection_BelowMinScoreExcluded(t *testing.T) {
+	t.Parallel()
 	// Test that providers below min score are excluded
 	cfg := DefaultStartupConfig()
 	cfg.MinScore = 5.0
@@ -1013,6 +1054,7 @@ func TestDebateTeamSelection_BelowMinScoreExcluded(t *testing.T) {
 }
 
 func TestDebateTeamSelection_RolesAssigned(t *testing.T) {
+	t.Parallel()
 	// Test that all 5 positions have correct roles assigned
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -1043,6 +1085,7 @@ func TestDebateTeamSelection_RolesAssigned(t *testing.T) {
 }
 
 func TestDebateTeamSelection_MultipleModelsPerProvider(t *testing.T) {
+	t.Parallel()
 	// Test that all models from a provider are considered
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -1083,6 +1126,7 @@ func TestDebateTeamSelection_MultipleModelsPerProvider(t *testing.T) {
 }
 
 func TestDebateTeamSelection_ReusedLLMsAreSeparateInstances(t *testing.T) {
+	t.Parallel()
 	// Test that reused LLMs are SEPARATE UNIQUE INSTANCES, not the same pointer
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
@@ -1130,6 +1174,7 @@ func TestDebateTeamSelection_ReusedLLMsAreSeparateInstances(t *testing.T) {
 // TestVerifyOAuthProviderTrust tests that OAuth providers are trusted even when
 // API verification fails (due to product-restricted tokens).
 func TestVerifyOAuthProviderTrust(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	cfg.TrustOAuthOnFailure = true
 	sv := NewStartupVerifier(cfg, logrus.New())
@@ -1188,6 +1233,7 @@ func TestVerifyOAuthProviderTrust(t *testing.T) {
 // TestVerifyOAuthProviderNoTrust tests that OAuth providers fail verification
 // when TrustOAuthOnFailure is false.
 func TestVerifyOAuthProviderNoTrust(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultStartupConfig()
 	cfg.TrustOAuthOnFailure = false // Disable trust
 	sv := NewStartupVerifier(cfg, logrus.New())
@@ -1228,6 +1274,7 @@ func TestVerifyOAuthProviderNoTrust(t *testing.T) {
 
 // TestZAIProviderHasModels tests that ZAI (Zhipu GLM) provider has models configured
 func TestZAIProviderHasModels(t *testing.T) {
+	t.Parallel()
 	info, ok := GetProviderInfo("zai")
 	assert.True(t, ok, "ZAI provider should exist")
 	assert.NotEmpty(t, info.Models, "ZAI provider should have models configured")
@@ -1236,6 +1283,7 @@ func TestZAIProviderHasModels(t *testing.T) {
 
 // TestZenProviderFreeModels tests that Zen provider has correct free models
 func TestZenProviderFreeModels(t *testing.T) {
+	t.Parallel()
 	info, ok := GetProviderInfo("zen")
 	assert.True(t, ok, "Zen provider should exist")
 	assert.True(t, info.Free, "Zen provider should be free")

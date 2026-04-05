@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewMasterIntegration(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -21,6 +22,7 @@ func TestNewMasterIntegration(t *testing.T) {
 }
 
 func TestMasterIntegration_Start(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -37,6 +39,7 @@ func TestMasterIntegration_Start(t *testing.T) {
 }
 
 func TestMasterIntegration_Stop(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -61,6 +64,7 @@ func TestMasterIntegration_Stop(t *testing.T) {
 }
 
 func TestMasterIntegration_IsStarted(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -74,6 +78,7 @@ func TestMasterIntegration_IsStarted(t *testing.T) {
 }
 
 func TestMasterIntegration_GetRegistry(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -86,6 +91,7 @@ func TestMasterIntegration_GetRegistry(t *testing.T) {
 }
 
 func TestMasterIntegration_ListAgents(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -95,6 +101,7 @@ func TestMasterIntegration_ListAgents(t *testing.T) {
 }
 
 func TestMasterIntegration_ListAvailable(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -104,6 +111,7 @@ func TestMasterIntegration_ListAvailable(t *testing.T) {
 }
 
 func TestMasterIntegration_GetAgent(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -123,6 +131,7 @@ func TestMasterIntegration_GetAgent(t *testing.T) {
 }
 
 func TestMasterIntegration_Execute(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -134,6 +143,7 @@ func TestMasterIntegration_Execute(t *testing.T) {
 }
 
 func TestMasterIntegration_HealthCheck(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -145,6 +155,7 @@ func TestMasterIntegration_HealthCheck(t *testing.T) {
 }
 
 func TestMasterIntegration_GetStats(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -159,6 +170,7 @@ func TestMasterIntegration_GetStats(t *testing.T) {
 }
 
 func TestGetMaster(t *testing.T) {
+	t.Parallel()
 	// Get master twice - should return same instance
 	m1 := GetMaster()
 	m2 := GetMaster()
@@ -168,6 +180,7 @@ func TestGetMaster(t *testing.T) {
 }
 
 func TestMasterIntegration_RegisterAllAgents(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 
@@ -190,6 +203,7 @@ func TestMasterIntegration_RegisterAllAgents(t *testing.T) {
 }
 
 func TestMasterIntegration_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	m, err := NewMasterIntegration()
 	require.NoError(t, err)
 

@@ -8,6 +8,7 @@ import (
 )
 
 func TestProviderAccessRegistry_Completeness(t *testing.T) {
+	t.Parallel()
 	// All core providers must be in the registry
 	coreProviders := []string{
 		"openai", "claude", "gemini", "deepseek", "mistral",
@@ -19,6 +20,7 @@ func TestProviderAccessRegistry_Completeness(t *testing.T) {
 
 	for _, provider := range coreProviders {
 		t.Run(provider, func(t *testing.T) {
+				t.Parallel()
 			config := GetProviderAccessConfig(provider)
 			require.NotNil(t, config, "provider %s should be in registry", provider)
 			assert.Equal(t, provider, config.ProviderType)
@@ -30,8 +32,10 @@ func TestProviderAccessRegistry_Completeness(t *testing.T) {
 }
 
 func TestProviderAccessRegistry_AuthMechanisms(t *testing.T) {
+	t.Parallel()
 	for name, config := range ProviderAccessRegistry {
 		t.Run(name, func(t *testing.T) {
+				t.Parallel()
 			assert.NotEmpty(t, config.AuthMechanisms,
 				"provider %s should have at least one auth mechanism", name)
 
@@ -45,8 +49,10 @@ func TestProviderAccessRegistry_AuthMechanisms(t *testing.T) {
 }
 
 func TestProviderAccessRegistry_AvailableTiers(t *testing.T) {
+	t.Parallel()
 	for name, config := range ProviderAccessRegistry {
 		t.Run(name, func(t *testing.T) {
+				t.Parallel()
 			assert.NotEmpty(t, config.AvailableTiers,
 				"provider %s should have available tiers", name)
 			assert.True(t, config.DefaultSubscription.IsValid(),
@@ -56,6 +62,7 @@ func TestProviderAccessRegistry_AvailableTiers(t *testing.T) {
 }
 
 func TestProviderAccessConfig_Anthropic_XAPIKey(t *testing.T) {
+	t.Parallel()
 	config := GetProviderAccessConfig("claude")
 	require.NotNil(t, config)
 
@@ -67,6 +74,7 @@ func TestProviderAccessConfig_Anthropic_XAPIKey(t *testing.T) {
 }
 
 func TestProviderAccessConfig_Gemini_XGoogAPIKey(t *testing.T) {
+	t.Parallel()
 	config := GetProviderAccessConfig("gemini")
 	require.NotNil(t, config)
 
@@ -79,6 +87,7 @@ func TestProviderAccessConfig_Gemini_XGoogAPIKey(t *testing.T) {
 }
 
 func TestProviderAccessConfig_Zen_Anonymous(t *testing.T) {
+	t.Parallel()
 	config := GetProviderAccessConfig("zen")
 	require.NotNil(t, config)
 
@@ -88,6 +97,7 @@ func TestProviderAccessConfig_Zen_Anonymous(t *testing.T) {
 }
 
 func TestProviderAccessConfig_Ollama_NoAuth(t *testing.T) {
+	t.Parallel()
 	config := GetProviderAccessConfig("ollama")
 	require.NotNil(t, config)
 
@@ -98,11 +108,13 @@ func TestProviderAccessConfig_Ollama_NoAuth(t *testing.T) {
 }
 
 func TestGetProviderAccessConfig_Unknown(t *testing.T) {
+	t.Parallel()
 	config := GetProviderAccessConfig("nonexistent_provider")
 	assert.Nil(t, config)
 }
 
 func TestGetProvidersWithSubscriptionAPI(t *testing.T) {
+	t.Parallel()
 	providers := GetProvidersWithSubscriptionAPI()
 	assert.GreaterOrEqual(t, len(providers), 2,
 		"at least OpenRouter and Cohere should have subscription check APIs")
@@ -117,6 +129,7 @@ func TestGetProvidersWithSubscriptionAPI(t *testing.T) {
 }
 
 func TestGetProvidersWithRateLimitHeaders(t *testing.T) {
+	t.Parallel()
 	providers := GetProvidersWithRateLimitHeaders()
 	assert.GreaterOrEqual(t, len(providers), 4,
 		"at least 4 providers should have rate limit header mappings")

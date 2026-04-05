@@ -20,6 +20,7 @@ import (
 // =============================================================================
 
 func TestLLMMetrics_RecordRequest_Concurrent(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-concurrent")
 	require.NoError(t, err)
 
@@ -51,6 +52,7 @@ func TestLLMMetrics_RecordRequest_Concurrent(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordCacheHitMiss_Concurrent(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-cache-concurrent")
 	require.NoError(t, err)
 
@@ -75,6 +77,7 @@ func TestLLMMetrics_RecordCacheHitMiss_Concurrent(t *testing.T) {
 }
 
 func TestLLMTracer_StartLLMRequest_Concurrent(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -104,6 +107,7 @@ func TestLLMTracer_StartLLMRequest_Concurrent(t *testing.T) {
 }
 
 func TestLLMTracer_StartEnsembleRequest_Concurrent(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -125,6 +129,7 @@ func TestLLMTracer_StartEnsembleRequest_Concurrent(t *testing.T) {
 }
 
 func TestLLMTracer_StartDebateRound_Concurrent(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -146,6 +151,7 @@ func TestLLMTracer_StartDebateRound_Concurrent(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordDebateRound_Concurrent(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-debate-concurrent")
 	require.NoError(t, err)
 
@@ -165,6 +171,7 @@ func TestLLMMetrics_RecordDebateRound_Concurrent(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRAGRetrieval_Concurrent(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-rag-concurrent")
 	require.NoError(t, err)
 
@@ -189,6 +196,7 @@ func TestLLMMetrics_RecordRAGRetrieval_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestSetupTraceExporter_OTLP_InvalidEndpoint(t *testing.T) {
+	t.Parallel()
 	// OTLP exporter creation typically succeeds even with bad endpoint;
 	// errors appear on export. But the resource merge may fail or the
 	// provider creation may reveal issues.
@@ -214,6 +222,7 @@ func TestSetupTraceExporter_OTLP_InvalidEndpoint(t *testing.T) {
 }
 
 func TestSetupTraceExporter_OTLP_WithHeaders(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:     ExporterOTLP,
 		Endpoint: "localhost:4318",
@@ -237,6 +246,7 @@ func TestSetupTraceExporter_OTLP_WithHeaders(t *testing.T) {
 }
 
 func TestSetupTraceExporter_OTLP_Secure(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterOTLP,
 		Endpoint:    "localhost:4318",
@@ -256,6 +266,7 @@ func TestSetupTraceExporter_OTLP_Secure(t *testing.T) {
 }
 
 func TestSetupLangfuseExporter_DefaultBaseURL(t *testing.T) {
+	t.Parallel()
 	config := &LangfuseConfig{
 		PublicKey: "pk-test",
 		SecretKey: "sk-test",
@@ -274,6 +285,7 @@ func TestSetupLangfuseExporter_DefaultBaseURL(t *testing.T) {
 }
 
 func TestSetupLangfuseExporter_CustomBaseURL(t *testing.T) {
+	t.Parallel()
 	config := &LangfuseConfig{
 		PublicKey: "pk-custom",
 		SecretKey: "sk-custom",
@@ -290,6 +302,7 @@ func TestSetupLangfuseExporter_CustomBaseURL(t *testing.T) {
 }
 
 func TestShutdownTraceExporter_WithProvider(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "test-shutdown",
@@ -313,6 +326,7 @@ func TestShutdownTraceExporter_WithProvider(t *testing.T) {
 }
 
 func TestShutdownTraceExporter_CancelledContext(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "test-shutdown-cancel",
@@ -336,6 +350,7 @@ func TestShutdownTraceExporter_CancelledContext(t *testing.T) {
 }
 
 func TestSetupTraceExporter_UnsupportedTypes(t *testing.T) {
+	t.Parallel()
 	unsupportedTypes := []ExporterType{
 		ExporterType("unknown"),
 		ExporterType(""),
@@ -345,6 +360,7 @@ func TestSetupTraceExporter_UnsupportedTypes(t *testing.T) {
 
 	for _, exporterType := range unsupportedTypes {
 		t.Run(string(exporterType), func(t *testing.T) {
+				t.Parallel()
 			config := &ExporterConfig{
 				Type:        exporterType,
 				ServiceName: "test",
@@ -361,6 +377,7 @@ func TestSetupTraceExporter_UnsupportedTypes(t *testing.T) {
 // =============================================================================
 
 func TestTracedProvider_Complete_NilResponse(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
 			return nil, nil // nil response, no error
@@ -379,6 +396,7 @@ func TestTracedProvider_Complete_NilResponse(t *testing.T) {
 }
 
 func TestTracedProvider_Complete_WithContentTrace(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
 			return &models.LLMResponse{
@@ -407,6 +425,7 @@ func TestTracedProvider_Complete_WithContentTrace(t *testing.T) {
 }
 
 func TestTracedProvider_CompleteStream_EmptyStream(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeStreamFunc: func(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 			ch := make(chan *models.LLMResponse)
@@ -434,6 +453,7 @@ func TestTracedProvider_CompleteStream_EmptyStream(t *testing.T) {
 }
 
 func TestTracedProvider_CompleteStream_ManyChunks(t *testing.T) {
+	t.Parallel()
 	const chunkCount = 100
 	provider := &mockLLMProvider{
 		completeStreamFunc: func(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
@@ -469,6 +489,7 @@ func TestTracedProvider_CompleteStream_ManyChunks(t *testing.T) {
 }
 
 func TestTracedProvider_CompleteStream_ChunksWithEmptyContent(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeStreamFunc: func(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 			ch := make(chan *models.LLMResponse, 4)
@@ -500,6 +521,7 @@ func TestTracedProvider_CompleteStream_ChunksWithEmptyContent(t *testing.T) {
 }
 
 func TestTracedProvider_Complete_Concurrent(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test-concurrent")
@@ -528,6 +550,7 @@ func TestTracedProvider_Complete_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestDebateTracer_TraceDebateRound_EmptyParticipants(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-empty-participants")
 	dt := NewDebateTracer(tracer, metrics)
@@ -539,6 +562,7 @@ func TestDebateTracer_TraceDebateRound_EmptyParticipants(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound_EmptyResponses(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-empty-responses")
 	dt := NewDebateTracer(tracer, metrics)
@@ -552,6 +576,7 @@ func TestDebateTracer_TraceDebateRound_EmptyResponses(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound_LargeResponses(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-large-responses")
 	dt := NewDebateTracer(tracer, metrics)
@@ -571,6 +596,7 @@ func TestDebateTracer_TraceDebateRound_LargeResponses(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateComplete_EmptyParticipants(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-complete-empty")
 	dt := NewDebateTracer(tracer, metrics)
@@ -582,6 +608,7 @@ func TestDebateTracer_TraceDebateComplete_EmptyParticipants(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateComplete_EmptyResult(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-complete-empty-result")
 	dt := NewDebateTracer(tracer, metrics)
@@ -593,6 +620,7 @@ func TestDebateTracer_TraceDebateComplete_EmptyResult(t *testing.T) {
 }
 
 func TestDebateTracer_TraceDebateRound_Concurrent(t *testing.T) {
+	t.Parallel()
 	tracer, _ := NewLLMTracer(nil)
 	metrics, _ := NewLLMMetrics("test-debate-round-concurrent")
 	dt := NewDebateTracer(tracer, metrics)
@@ -622,6 +650,7 @@ func TestDebateTracer_TraceDebateRound_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestEstimateTokens_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		text     string
@@ -691,6 +720,7 @@ func TestEstimateTokens_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := estimateTokens(tt.text)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -702,6 +732,7 @@ func TestEstimateTokens_EdgeCases(t *testing.T) {
 // =============================================================================
 
 func TestLLMTracer_StartLLMRequest_CancelledContext(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -723,6 +754,7 @@ func TestLLMTracer_StartLLMRequest_CancelledContext(t *testing.T) {
 }
 
 func TestLLMTracer_StartEnsembleRequest_CancelledContext(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -736,6 +768,7 @@ func TestLLMTracer_StartEnsembleRequest_CancelledContext(t *testing.T) {
 }
 
 func TestLLMTracer_StartDebateRound_CancelledContext(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -749,6 +782,7 @@ func TestLLMTracer_StartDebateRound_CancelledContext(t *testing.T) {
 }
 
 func TestLLMTracer_StartRAGRetrieval_CancelledContext(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -763,6 +797,7 @@ func TestLLMTracer_StartRAGRetrieval_CancelledContext(t *testing.T) {
 }
 
 func TestLLMTracer_StartToolExecution_CancelledContext(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -776,6 +811,7 @@ func TestLLMTracer_StartToolExecution_CancelledContext(t *testing.T) {
 }
 
 func TestLLMTracer_StartLLMRequest_DeadlineExceeded(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -796,6 +832,7 @@ func TestLLMTracer_StartLLMRequest_DeadlineExceeded(t *testing.T) {
 }
 
 func TestTracedProvider_Complete_CancelledContext(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{
 		completeFunc: func(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
 			return nil, ctx.Err()
@@ -816,6 +853,7 @@ func TestTracedProvider_Complete_CancelledContext(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRequest_CancelledContext(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-cancel-metrics")
 	require.NoError(t, err)
 
@@ -832,6 +870,7 @@ func TestLLMMetrics_RecordRequest_CancelledContext(t *testing.T) {
 // =============================================================================
 
 func TestLLMTracer_EndLLMRequest_ZeroTokens(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -848,6 +887,7 @@ func TestLLMTracer_EndLLMRequest_ZeroTokens(t *testing.T) {
 }
 
 func TestLLMTracer_EndLLMRequest_NoCostNoScore(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -867,6 +907,7 @@ func TestLLMTracer_EndLLMRequest_NoCostNoScore(t *testing.T) {
 }
 
 func TestLLMTracer_EndLLMRequest_WithContentTrace(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(&TracerConfig{
 		EnableContentTrace: true,
 	})
@@ -889,6 +930,7 @@ func TestLLMTracer_EndLLMRequest_WithContentTrace(t *testing.T) {
 }
 
 func TestLLMTracer_EndLLMRequest_ContentTraceDisabled(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(&TracerConfig{
 		EnableContentTrace: false,
 	})
@@ -910,6 +952,7 @@ func TestLLMTracer_EndLLMRequest_ContentTraceDisabled(t *testing.T) {
 }
 
 func TestLLMTracer_EndLLMRequest_EmptyResponseID(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -931,6 +974,7 @@ func TestLLMTracer_EndLLMRequest_EmptyResponseID(t *testing.T) {
 // =============================================================================
 
 func TestLLMTracer_StartLLMRequest_MinimalParams(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -947,6 +991,7 @@ func TestLLMTracer_StartLLMRequest_MinimalParams(t *testing.T) {
 }
 
 func TestLLMTracer_StartLLMRequest_AllOptionalParams(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(&TracerConfig{
 		EnableContentTrace: true,
 	})
@@ -975,6 +1020,7 @@ func TestLLMTracer_StartLLMRequest_AllOptionalParams(t *testing.T) {
 }
 
 func TestLLMTracer_StartLLMRequest_ZeroTemperature(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -998,6 +1044,7 @@ func TestLLMTracer_StartLLMRequest_ZeroTemperature(t *testing.T) {
 // =============================================================================
 
 func TestTracedProviderRegistry_GetProvider_NilFromRegistry(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{},
 	}
@@ -1009,6 +1056,7 @@ func TestTracedProviderRegistry_GetProvider_NilFromRegistry(t *testing.T) {
 }
 
 func TestTracedProviderRegistry_GetProviderByModel_NilFromRegistry(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{},
 	}
@@ -1020,6 +1068,7 @@ func TestTracedProviderRegistry_GetProviderByModel_NilFromRegistry(t *testing.T)
 }
 
 func TestTracedProviderRegistry_GetHealthyProviders_Empty(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{},
 	}
@@ -1031,6 +1080,7 @@ func TestTracedProviderRegistry_GetHealthyProviders_Empty(t *testing.T) {
 }
 
 func TestTracedProviderRegistry_ListProviders_Empty(t *testing.T) {
+	t.Parallel()
 	registry := &mockProviderRegistry{
 		providers: map[string]llm.LLMProvider{},
 	}
@@ -1046,6 +1096,7 @@ func TestTracedProviderRegistry_ListProviders_Empty(t *testing.T) {
 // =============================================================================
 
 func TestNewLLMTracer_EmptyServiceName(t *testing.T) {
+	t.Parallel()
 	config := &TracerConfig{
 		ServiceName:    "",
 		ServiceVersion: "",
@@ -1058,6 +1109,7 @@ func TestNewLLMTracer_EmptyServiceName(t *testing.T) {
 }
 
 func TestLLMTracer_Initialized_Flag(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 	assert.True(t, tracer.initialized)
@@ -1068,12 +1120,14 @@ func TestLLMTracer_Initialized_Flag(t *testing.T) {
 // =============================================================================
 
 func TestNewLLMMetrics_EmptyServiceName(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("")
 	require.NoError(t, err)
 	assert.NotNil(t, metrics)
 }
 
 func TestLLMMetrics_RecordRequest_WithZeroCost(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-zero-cost")
 	require.NoError(t, err)
 
@@ -1083,6 +1137,7 @@ func TestLLMMetrics_RecordRequest_WithZeroCost(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRequest_NegativeCost(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-negative-cost")
 	require.NoError(t, err)
 
@@ -1092,6 +1147,7 @@ func TestLLMMetrics_RecordRequest_NegativeCost(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordCacheHit_ZeroLatency(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-zero-latency")
 	require.NoError(t, err)
 
@@ -1099,6 +1155,7 @@ func TestLLMMetrics_RecordCacheHit_ZeroLatency(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordRAGRetrieval_ZeroResults(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-zero-rag")
 	require.NoError(t, err)
 
@@ -1106,6 +1163,7 @@ func TestLLMMetrics_RecordRAGRetrieval_ZeroResults(t *testing.T) {
 }
 
 func TestLLMMetrics_RecordDebateRound_ZeroParticipants(t *testing.T) {
+	t.Parallel()
 	metrics, err := NewLLMMetrics("test-zero-debate")
 	require.NoError(t, err)
 
@@ -1117,6 +1175,7 @@ func TestLLMMetrics_RecordDebateRound_ZeroParticipants(t *testing.T) {
 // =============================================================================
 
 func TestSetupNoOpProvider_ValidConfig(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "test-noop",
@@ -1139,6 +1198,7 @@ func TestSetupNoOpProvider_ValidConfig(t *testing.T) {
 // =============================================================================
 
 func TestSetupTraceExporter_Console_WithServiceInfo(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterConsole,
 		ServiceName: "console-test",
@@ -1161,6 +1221,7 @@ func TestSetupTraceExporter_Console_WithServiceInfo(t *testing.T) {
 // =============================================================================
 
 func TestLLMTracer_RecordRAGRetrievalResult_ZeroValues(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -1171,6 +1232,7 @@ func TestLLMTracer_RecordRAGRetrievalResult_ZeroValues(t *testing.T) {
 }
 
 func TestLLMTracer_RecordRAGRetrievalResult_LargeValues(t *testing.T) {
+	t.Parallel()
 	tracer, err := NewLLMTracer(nil)
 	require.NoError(t, err)
 
@@ -1185,6 +1247,7 @@ func TestLLMTracer_RecordRAGRetrievalResult_LargeValues(t *testing.T) {
 // =============================================================================
 
 func TestTracedProvider_ValidateConfig_EmptyConfig(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -1195,6 +1258,7 @@ func TestTracedProvider_ValidateConfig_EmptyConfig(t *testing.T) {
 }
 
 func TestTracedProvider_ValidateConfig_NilConfig(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{}
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -1209,6 +1273,7 @@ func TestTracedProvider_ValidateConfig_NilConfig(t *testing.T) {
 // =============================================================================
 
 func TestShutdownTraceExporter_WithTimeoutContext(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "test-timeout-shutdown",
@@ -1233,6 +1298,7 @@ func TestShutdownTraceExporter_WithTimeoutContext(t *testing.T) {
 // =============================================================================
 
 func TestLangfuseConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	config := &LangfuseConfig{
 		PublicKey:  "pk-prod-key",
 		SecretKey:  "sk-prod-key",
@@ -1249,6 +1315,7 @@ func TestLangfuseConfig_AllFields(t *testing.T) {
 }
 
 func TestLangfuseConfig_EmptyFields(t *testing.T) {
+	t.Parallel()
 	config := &LangfuseConfig{}
 
 	assert.Empty(t, config.PublicKey)
@@ -1263,6 +1330,7 @@ func TestLangfuseConfig_EmptyFields(t *testing.T) {
 // =============================================================================
 
 func TestExporterConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterOTLP,
 		Endpoint:    "otel-collector:4318",
@@ -1283,6 +1351,7 @@ func TestExporterConfig_AllFields(t *testing.T) {
 }
 
 func TestExporterConfig_EmptyHeaders(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterOTLP,
 		Endpoint:    "localhost:4318",
@@ -1294,6 +1363,7 @@ func TestExporterConfig_EmptyHeaders(t *testing.T) {
 }
 
 func TestExporterConfig_NilHeaders(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterOTLP,
 		Endpoint:    "localhost:4318",
@@ -1309,6 +1379,7 @@ func TestExporterConfig_NilHeaders(t *testing.T) {
 // =============================================================================
 
 func TestTracedProvider_GetCapabilities_Default(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMProvider{} // no custom capabilities set
 	tracer, _ := NewLLMTracer(nil)
 	traced := NewTracedProvider(provider, tracer, "test")
@@ -1324,6 +1395,7 @@ func TestTracedProvider_GetCapabilities_Default(t *testing.T) {
 // =============================================================================
 
 func TestSetupTraceExporter_ReturnsCorrectType(t *testing.T) {
+	t.Parallel()
 	config := &ExporterConfig{
 		Type:        ExporterNone,
 		ServiceName: "type-check",

@@ -11,6 +11,7 @@ import (
 )
 
 func TestProviderVerification_ID(t *testing.T) {
+	t.Parallel()
 	c := &ProviderVerificationChallenge{
 		BaseChallenge: challenge.NewBaseChallenge(
 			"helix-provider-verification",
@@ -24,6 +25,7 @@ func TestProviderVerification_ID(t *testing.T) {
 }
 
 func TestProviderVerification_AllPass(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "claude", Verified: true, Score: 8.5},
 		{Name: "deepseek", Verified: true, Score: 7.2},
@@ -41,6 +43,7 @@ func TestProviderVerification_AllPass(t *testing.T) {
 }
 
 func TestProviderVerification_SomeFail(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "claude", Verified: true, Score: 8.5},
 		{Name: "failing", Verified: false, Score: 3.0},
@@ -54,6 +57,7 @@ func TestProviderVerification_SomeFail(t *testing.T) {
 }
 
 func TestProviderVerification_LowScore(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "low-score", Verified: true, Score: 4.0},
 	}
@@ -66,6 +70,7 @@ func TestProviderVerification_LowScore(t *testing.T) {
 }
 
 func TestProviderVerification_Empty(t *testing.T) {
+	t.Parallel()
 	c := &ProviderVerificationChallenge{providers: nil}
 
 	result, err := c.Execute(context.Background())

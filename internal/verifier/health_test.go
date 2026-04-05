@@ -7,6 +7,7 @@ import (
 )
 
 func TestCircuitState_String(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		state    CircuitState
 		expected string
@@ -19,6 +20,7 @@ func TestCircuitState_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
+				t.Parallel()
 			result := tt.state.String()
 			if result != tt.expected {
 				t.Errorf("CircuitState.String() = %s, want %s", result, tt.expected)
@@ -28,6 +30,7 @@ func TestCircuitState_String(t *testing.T) {
 }
 
 func TestNewCircuitBreaker(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test-provider")
 	if cb == nil {
 		t.Fatal("NewCircuitBreaker returned nil")
@@ -41,6 +44,7 @@ func TestNewCircuitBreaker(t *testing.T) {
 }
 
 func TestCircuitBreaker_RecordSuccess(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 
 	cb.RecordSuccess()
@@ -53,6 +57,7 @@ func TestCircuitBreaker_RecordSuccess(t *testing.T) {
 }
 
 func TestCircuitBreaker_RecordFailure_OpensCircuit(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 
 	// Default threshold is 5
@@ -74,6 +79,7 @@ func TestCircuitBreaker_RecordFailure_OpensCircuit(t *testing.T) {
 }
 
 func TestCircuitBreaker_TransitionToHalfOpen(t *testing.T) {
+	t.Parallel()
 	// Create a circuit breaker and manually set a short reset timeout for testing
 	cb := NewCircuitBreaker("test")
 	cb.resetTimeout = 100 * time.Millisecond
@@ -100,6 +106,7 @@ func TestCircuitBreaker_TransitionToHalfOpen(t *testing.T) {
 }
 
 func TestCircuitBreaker_HalfOpen_SuccessCloses(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 	cb.resetTimeout = 100 * time.Millisecond
 
@@ -120,6 +127,7 @@ func TestCircuitBreaker_HalfOpen_SuccessCloses(t *testing.T) {
 }
 
 func TestCircuitBreaker_HalfOpen_FailureOpens(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 	cb.resetTimeout = 100 * time.Millisecond
 
@@ -140,6 +148,7 @@ func TestCircuitBreaker_HalfOpen_FailureOpens(t *testing.T) {
 }
 
 func TestCircuitBreaker_Call_Success(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 
 	err := cb.Call(func() error {
@@ -152,6 +161,7 @@ func TestCircuitBreaker_Call_Success(t *testing.T) {
 }
 
 func TestCircuitBreaker_Call_CircuitOpen(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test")
 
 	// Open the circuit
@@ -169,6 +179,7 @@ func TestCircuitBreaker_Call_CircuitOpen(t *testing.T) {
 }
 
 func TestProviderHealth_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	health := &ProviderHealth{
 		ProviderID:    "test-provider",
@@ -199,6 +210,7 @@ func TestProviderHealth_Fields(t *testing.T) {
 }
 
 func TestNewHealthService(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	if svc == nil {
 		t.Fatal("NewHealthService returned nil")
@@ -212,6 +224,7 @@ func TestNewHealthService(t *testing.T) {
 }
 
 func TestNewHealthService_WithConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.Health.CheckInterval = time.Minute
 	cfg.Health.Timeout = 15 * time.Second
@@ -226,6 +239,7 @@ func TestNewHealthService_WithConfig(t *testing.T) {
 }
 
 func TestHealthService_AddProvider(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test-provider", "Test Provider")
 
@@ -245,6 +259,7 @@ func TestHealthService_AddProvider(t *testing.T) {
 }
 
 func TestHealthService_RemoveProvider(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test-provider", "Test")
 	svc.RemoveProvider("test-provider")
@@ -256,6 +271,7 @@ func TestHealthService_RemoveProvider(t *testing.T) {
 }
 
 func TestHealthService_GetProviderHealth_NotFound(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	_, err := svc.GetProviderHealth("non-existent")
@@ -265,6 +281,7 @@ func TestHealthService_GetProviderHealth_NotFound(t *testing.T) {
 }
 
 func TestHealthService_RecordSuccess(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -280,6 +297,7 @@ func TestHealthService_RecordSuccess(t *testing.T) {
 }
 
 func TestHealthService_RecordFailure(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -292,18 +310,21 @@ func TestHealthService_RecordFailure(t *testing.T) {
 }
 
 func TestHealthService_RecordSuccess_NonExistent(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	// Should not panic
 	svc.RecordSuccess("non-existent")
 }
 
 func TestHealthService_RecordFailure_NonExistent(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	// Should not panic
 	svc.RecordFailure("non-existent")
 }
 
 func TestHealthService_IsProviderAvailable(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -317,6 +338,7 @@ func TestHealthService_IsProviderAvailable(t *testing.T) {
 }
 
 func TestHealthService_GetHealthyProviders(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("healthy1", "Healthy 1")
 	svc.AddProvider("healthy2", "Healthy 2")
@@ -328,6 +350,7 @@ func TestHealthService_GetHealthyProviders(t *testing.T) {
 }
 
 func TestHealthService_GetAllProviderHealth(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("p1", "Provider 1")
 	svc.AddProvider("p2", "Provider 2")
@@ -339,6 +362,7 @@ func TestHealthService_GetAllProviderHealth(t *testing.T) {
 }
 
 func TestHealthService_GetFastestProvider(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("slow", "Slow")
 	svc.AddProvider("fast", "Fast")
@@ -359,6 +383,7 @@ func TestHealthService_GetFastestProvider(t *testing.T) {
 }
 
 func TestHealthService_GetFastestProvider_Empty(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	_, err := svc.GetFastestProvider([]string{})
@@ -368,6 +393,7 @@ func TestHealthService_GetFastestProvider_Empty(t *testing.T) {
 }
 
 func TestHealthService_GetFastestProvider_NoHealthy(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	_, err := svc.GetFastestProvider([]string{"non-existent"})
@@ -377,6 +403,7 @@ func TestHealthService_GetFastestProvider_NoHealthy(t *testing.T) {
 }
 
 func TestHealthService_GetProviderLatency(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -395,6 +422,7 @@ func TestHealthService_GetProviderLatency(t *testing.T) {
 }
 
 func TestHealthService_GetProviderLatency_NotFound(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	_, err := svc.GetProviderLatency("non-existent")
@@ -404,6 +432,7 @@ func TestHealthService_GetProviderLatency_NotFound(t *testing.T) {
 }
 
 func TestHealthService_GetCircuitBreaker(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -419,6 +448,7 @@ func TestHealthService_GetCircuitBreaker(t *testing.T) {
 }
 
 func TestHealthService_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -442,6 +472,7 @@ func TestHealthService_ConcurrentAccess(t *testing.T) {
 }
 
 func TestHealthService_UptimeCalculation(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -465,6 +496,7 @@ func TestHealthService_UptimeCalculation(t *testing.T) {
 }
 
 func TestHealthService_CircuitBreakerIntegration(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 
@@ -488,6 +520,7 @@ func TestHealthService_CircuitBreakerIntegration(t *testing.T) {
 }
 
 func TestHealthService_StartStop(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	// Start should succeed
@@ -510,6 +543,7 @@ func TestHealthService_StartStop(t *testing.T) {
 }
 
 func TestHealthService_ExecuteWithFailover(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("p1", "Provider 1")
 	svc.AddProvider("p2", "Provider 2")
@@ -529,6 +563,7 @@ func TestHealthService_ExecuteWithFailover(t *testing.T) {
 }
 
 func TestHealthService_ExecuteWithFailover_AllFail(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	err := svc.ExecuteWithFailover(nil, []string{"non-existent"}, func(providerID string) error {
@@ -541,6 +576,7 @@ func TestHealthService_ExecuteWithFailover_AllFail(t *testing.T) {
 }
 
 func TestProviderHealth_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var health ProviderHealth
 
 	if health.ProviderID != "" {
@@ -555,6 +591,7 @@ func TestProviderHealth_ZeroValue(t *testing.T) {
 }
 
 func TestCircuitBreaker_Fields(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("test-cb")
 
 	if cb.name != "test-cb" {
@@ -573,6 +610,7 @@ func TestCircuitBreaker_Fields(t *testing.T) {
 // =====================================================
 
 func TestCircuitBreaker_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("concurrent-test")
 
 	done := make(chan bool, 20)
@@ -599,6 +637,7 @@ func TestCircuitBreaker_ConcurrentAccess(t *testing.T) {
 }
 
 func TestCircuitBreaker_Call_WithError(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("error-test")
 
 	err := cb.Call(func() error {
@@ -627,6 +666,7 @@ func TestCircuitBreaker_Call_WithError(t *testing.T) {
 }
 
 func TestHealthService_MultipleProviders(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	providers := []string{"openai", "anthropic", "gemini", "groq"}
@@ -649,6 +689,7 @@ func TestHealthService_MultipleProviders(t *testing.T) {
 }
 
 func TestHealthService_ExecuteWithFailover_Retry(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("failing", "Failing Provider")
 	svc.AddProvider("working", "Working Provider")
@@ -678,6 +719,7 @@ func TestHealthService_ExecuteWithFailover_Retry(t *testing.T) {
 }
 
 func TestHealthService_PerformHealthCheck_UnknownProvider(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	result := svc.performHealthCheck("unknown-provider")
@@ -687,6 +729,7 @@ func TestHealthService_PerformHealthCheck_UnknownProvider(t *testing.T) {
 }
 
 func TestHealthService_PerformHealthCheck_KnownProviders(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	// These will fail because we're not actually reaching the endpoints
@@ -700,6 +743,7 @@ func TestHealthService_PerformHealthCheck_KnownProviders(t *testing.T) {
 }
 
 func TestHealthService_CheckProviderHealth_Integration(t *testing.T) {
+	t.Parallel()
 	cfg := &Config{
 		Health: HealthConfig{
 			Timeout:       1 * time.Second,
@@ -725,6 +769,7 @@ func TestHealthService_CheckProviderHealth_Integration(t *testing.T) {
 }
 
 func TestHealthService_HealthCheckLoop_WithCancel(t *testing.T) {
+	t.Parallel()
 	cfg := &Config{
 		Health: HealthConfig{
 			Timeout:       100 * time.Millisecond,
@@ -756,6 +801,7 @@ func TestHealthService_HealthCheckLoop_WithCancel(t *testing.T) {
 }
 
 func TestHealthService_UptimePercentCalculation(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "test")
 
@@ -775,6 +821,7 @@ func TestHealthService_UptimePercentCalculation(t *testing.T) {
 }
 
 func TestCircuitBreaker_ResetAfterSuccess(t *testing.T) {
+	t.Parallel()
 	cb := NewCircuitBreaker("reset-test")
 	cb.resetTimeout = 50 * time.Millisecond
 
@@ -809,6 +856,7 @@ func TestCircuitBreaker_ResetAfterSuccess(t *testing.T) {
 }
 
 func TestHealthService_GetFastestProvider_MultipleWithSameLatency(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("p1", "P1")
 	svc.AddProvider("p2", "P2")
@@ -831,6 +879,7 @@ func TestHealthService_GetFastestProvider_MultipleWithSameLatency(t *testing.T) 
 }
 
 func TestHealthService_AddProvider_Duplicate(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("test", "Test")
 	svc.AddProvider("test", "Test Updated") // Should overwrite
@@ -847,6 +896,7 @@ func TestHealthService_AddProvider_Duplicate(t *testing.T) {
 }
 
 func TestHealthService_GetHealthyProviders_WithCircuitOpen(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 	svc.AddProvider("healthy", "Healthy")
 	svc.AddProvider("unhealthy", "Unhealthy")
@@ -868,6 +918,7 @@ func TestHealthService_GetHealthyProviders_WithCircuitOpen(t *testing.T) {
 }
 
 func TestCircuitState_AllStates(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		state    CircuitState
 		expected string
@@ -881,6 +932,7 @@ func TestCircuitState_AllStates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
+				t.Parallel()
 			result := tt.state.String()
 			if result != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, result)
@@ -890,6 +942,7 @@ func TestCircuitState_AllStates(t *testing.T) {
 }
 
 func TestHealthService_PerformHealthChecks_Empty(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	// Should not panic with empty providers
@@ -897,6 +950,7 @@ func TestHealthService_PerformHealthChecks_Empty(t *testing.T) {
 }
 
 func TestHealthService_CheckProviderHealth_NilCircuitBreaker(t *testing.T) {
+	t.Parallel()
 	svc := NewHealthService(nil)
 
 	// Should not panic when checking non-existent provider

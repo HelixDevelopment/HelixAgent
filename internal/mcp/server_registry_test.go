@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewServerRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("/tmp/mcp-servers")
 	assert.NotNil(t, registry)
 	assert.NotNil(t, registry.servers)
@@ -17,6 +18,7 @@ func TestNewServerRegistry(t *testing.T) {
 }
 
 func TestServerRegistry_LoadServers(t *testing.T) {
+	t.Parallel()
 	// Create a temporary directory with test servers
 	tempDir, err := os.MkdirTemp("", "mcp-test-*")
 	require.NoError(t, err)
@@ -62,6 +64,7 @@ func TestServerRegistry_LoadServers(t *testing.T) {
 }
 
 func TestServerRegistry_LoadServers_Multiple(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "mcp-test-*")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -97,6 +100,7 @@ func TestServerRegistry_LoadServers_Multiple(t *testing.T) {
 }
 
 func TestServerRegistry_GetAll(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	// Register test servers
@@ -118,6 +122,7 @@ func TestServerRegistry_GetAll(t *testing.T) {
 }
 
 func TestServerRegistry_GetEnabled(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	// Register servers with different enabled states
@@ -144,6 +149,7 @@ func TestServerRegistry_GetEnabled(t *testing.T) {
 }
 
 func TestServerRegistry_GetByStatus(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	// Register servers with different statuses
@@ -174,6 +180,7 @@ func TestServerRegistry_GetByStatus(t *testing.T) {
 }
 
 func TestServerRegistry_EnableDisable(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{
@@ -201,6 +208,7 @@ func TestServerRegistry_EnableDisable(t *testing.T) {
 }
 
 func TestServerRegistry_EnableDisable_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	err := registry.Enable("nonexistent")
@@ -211,6 +219,7 @@ func TestServerRegistry_EnableDisable_NotFound(t *testing.T) {
 }
 
 func TestServerRegistry_UpdateStatus(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{
@@ -228,6 +237,7 @@ func TestServerRegistry_UpdateStatus(t *testing.T) {
 }
 
 func TestServerRegistry_Remove(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{
@@ -246,6 +256,7 @@ func TestServerRegistry_Remove(t *testing.T) {
 }
 
 func TestServerRegistry_Remove_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	err := registry.Remove("nonexistent")
@@ -253,6 +264,7 @@ func TestServerRegistry_Remove_NotFound(t *testing.T) {
 }
 
 func TestServerRegistry_Stats(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	// Register servers
@@ -296,6 +308,7 @@ func TestServerRegistry_Stats(t *testing.T) {
 }
 
 func TestServerRegistry_ToMCPConfig(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{
@@ -328,6 +341,7 @@ func TestServerRegistry_ToMCPConfig(t *testing.T) {
 }
 
 func TestServerRegistry_Register_Duplicate(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{
@@ -344,6 +358,7 @@ func TestServerRegistry_Register_Duplicate(t *testing.T) {
 }
 
 func TestServerRegistry_Register_NoConfig(t *testing.T) {
+	t.Parallel()
 	registry := NewServerRegistry("")
 
 	server := &MCPServer{

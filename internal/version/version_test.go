@@ -11,6 +11,7 @@ import (
 )
 
 func TestGet_DefaultValues(t *testing.T) {
+	t.Parallel()
 	info := Get()
 
 	assert.Equal(t, Version, info.Version)
@@ -25,6 +26,7 @@ func TestGet_DefaultValues(t *testing.T) {
 }
 
 func TestGet_RuntimeFields(t *testing.T) {
+	t.Parallel()
 	info := Get()
 
 	assert.True(t, strings.HasPrefix(info.GoVersion, "go"))
@@ -32,6 +34,7 @@ func TestGet_RuntimeFields(t *testing.T) {
 }
 
 func TestInfo_JSONRoundtrip(t *testing.T) {
+	t.Parallel()
 	info := Get()
 
 	data, err := json.Marshal(info)
@@ -53,6 +56,7 @@ func TestInfo_JSONRoundtrip(t *testing.T) {
 }
 
 func TestInfo_JSONFields(t *testing.T) {
+	t.Parallel()
 	info := Get()
 
 	data, err := json.Marshal(info)
@@ -72,6 +76,7 @@ func TestInfo_JSONFields(t *testing.T) {
 }
 
 func TestInfo_String(t *testing.T) {
+	t.Parallel()
 	info := Get()
 	s := info.String()
 
@@ -88,6 +93,7 @@ func TestInfo_String(t *testing.T) {
 }
 
 func TestShort(t *testing.T) {
+	t.Parallel()
 	s := Short()
 
 	assert.True(t, strings.HasPrefix(s, "HelixAgent v"))
@@ -97,6 +103,7 @@ func TestShort(t *testing.T) {
 }
 
 func TestInfo_JSON(t *testing.T) {
+	t.Parallel()
 	info := Get()
 	j := info.JSON()
 
@@ -109,6 +116,7 @@ func TestInfo_JSON(t *testing.T) {
 }
 
 func TestInfo_String_MultiLine(t *testing.T) {
+	t.Parallel()
 	info := Get()
 	s := info.String()
 

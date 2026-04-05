@@ -12,6 +12,7 @@ import (
 )
 
 func TestHealthCheckFlow(t *testing.T) {
+	t.Parallel()
 	flow := HealthCheckFlow()
 	assert.NotEmpty(t, flow.Steps)
 	assert.GreaterOrEqual(t, len(flow.Steps), 3,
@@ -25,6 +26,7 @@ func TestHealthCheckFlow(t *testing.T) {
 }
 
 func TestProviderDiscoveryFlow(t *testing.T) {
+	t.Parallel()
 	flow := ProviderDiscoveryFlow("test-token")
 	assert.NotEmpty(t, flow.Steps)
 	assert.GreaterOrEqual(t, len(flow.Steps), 4)
@@ -35,6 +37,7 @@ func TestProviderDiscoveryFlow(t *testing.T) {
 }
 
 func TestChatCompletionFlow(t *testing.T) {
+	t.Parallel()
 	flow := ChatCompletionFlow()
 	require.Len(t, flow.Steps, 1)
 
@@ -46,6 +49,7 @@ func TestChatCompletionFlow(t *testing.T) {
 }
 
 func TestStreamingCompletionFlow(t *testing.T) {
+	t.Parallel()
 	flow := StreamingCompletionFlow()
 	require.Len(t, flow.Steps, 1)
 
@@ -54,12 +58,14 @@ func TestStreamingCompletionFlow(t *testing.T) {
 }
 
 func TestEmbeddingsFlow(t *testing.T) {
+	t.Parallel()
 	flow := EmbeddingsFlow()
 	require.Len(t, flow.Steps, 1)
 	assert.Equal(t, "/v1/embeddings/generate", flow.Steps[0].Path)
 }
 
 func TestFormattersFlow(t *testing.T) {
+	t.Parallel()
 	flow := FormattersFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 2)
 
@@ -71,12 +77,14 @@ func TestFormattersFlow(t *testing.T) {
 }
 
 func TestDebateFlow(t *testing.T) {
+	t.Parallel()
 	flow := DebateFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 2)
 	assert.Contains(t, flow.Steps[0].Body, "topic")
 }
 
 func TestMonitoringFlow(t *testing.T) {
+	t.Parallel()
 	flow := MonitoringFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 5)
 
@@ -93,22 +101,26 @@ func TestMonitoringFlow(t *testing.T) {
 }
 
 func TestMCPProtocolFlow(t *testing.T) {
+	t.Parallel()
 	flow := MCPProtocolFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 2)
 }
 
 func TestRAGFlow(t *testing.T) {
+	t.Parallel()
 	flow := RAGFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 2)
 }
 
 func TestFeatureFlagsFlow(t *testing.T) {
+	t.Parallel()
 	flow := FeatureFlagsFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 1)
 	assert.Equal(t, "/v1/features", flow.Steps[0].Path)
 }
 
 func TestAuthenticationFlow(t *testing.T) {
+	t.Parallel()
 	flow := AuthenticationFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 5,
 		"should have at least 5 auth steps")
@@ -124,6 +136,7 @@ func TestAuthenticationFlow(t *testing.T) {
 }
 
 func TestErrorHandlingFlow(t *testing.T) {
+	t.Parallel()
 	flow := ErrorHandlingFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 5,
 		"should have at least 5 error handling steps")
@@ -147,6 +160,7 @@ func TestErrorHandlingFlow(t *testing.T) {
 }
 
 func TestConcurrentUsersFlow(t *testing.T) {
+	t.Parallel()
 	flow := ConcurrentUsersFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 5,
 		"should have at least 5 concurrent steps")
@@ -163,6 +177,7 @@ func TestConcurrentUsersFlow(t *testing.T) {
 }
 
 func TestMultiTurnConversationFlow(t *testing.T) {
+	t.Parallel()
 	flow := MultiTurnConversationFlow()
 	require.Len(t, flow.Steps, 3,
 		"should have 3 multi-turn steps")
@@ -185,6 +200,7 @@ func TestMultiTurnConversationFlow(t *testing.T) {
 }
 
 func TestToolCallingFlow(t *testing.T) {
+	t.Parallel()
 	flow := ToolCallingFlow()
 	require.Len(t, flow.Steps, 2,
 		"should have 2 tool calling steps")
@@ -215,6 +231,7 @@ func TestToolCallingFlow(t *testing.T) {
 }
 
 func TestProviderFailoverFlow(t *testing.T) {
+	t.Parallel()
 	flow := ProviderFailoverFlow()
 	require.Len(t, flow.Steps, 4,
 		"should have 4 failover steps")
@@ -246,6 +263,7 @@ func TestProviderFailoverFlow(t *testing.T) {
 }
 
 func TestWebSocketStreamingFlow(t *testing.T) {
+	t.Parallel()
 	flow := WebSocketStreamingFlow()
 	require.Len(t, flow.Steps, 3,
 		"should have 3 websocket streaming steps")
@@ -271,6 +289,7 @@ func TestWebSocketStreamingFlow(t *testing.T) {
 }
 
 func TestGRPCServiceFlow(t *testing.T) {
+	t.Parallel()
 	flow := GRPCServiceFlow()
 	require.Len(t, flow.Steps, 3,
 		"should have 3 gRPC service steps")
@@ -296,6 +315,7 @@ func TestGRPCServiceFlow(t *testing.T) {
 }
 
 func TestRateLimitingFlow(t *testing.T) {
+	t.Parallel()
 	flow := RateLimitingFlow()
 	require.Len(t, flow.Steps, 4,
 		"should have 4 rate limiting steps")
@@ -324,6 +344,7 @@ func TestRateLimitingFlow(t *testing.T) {
 }
 
 func TestPaginationFlow(t *testing.T) {
+	t.Parallel()
 	flow := PaginationFlow()
 	require.Len(t, flow.Steps, 3,
 		"should have 3 pagination steps")
@@ -353,6 +374,7 @@ func TestPaginationFlow(t *testing.T) {
 }
 
 func TestFullSystemFlow(t *testing.T) {
+	t.Parallel()
 	flow := FullSystemFlow()
 	assert.GreaterOrEqual(t, len(flow.Steps), 7,
 		"full system flow should cover all phases")
@@ -364,6 +386,7 @@ func TestFullSystemFlow(t *testing.T) {
 }
 
 func TestChallengeConstructors_NotNil(t *testing.T) {
+	t.Parallel()
 	var adapter mockAPIAdapter
 	healthDep := []challenge.ID{"helix-health-check"}
 	providerDep := []challenge.ID{
@@ -520,6 +543,7 @@ func TestChallengeConstructors_NotNil(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := tt.fn()
 			require.NotNil(t, result)
 			c, ok := result.(challenge.Challenge)
@@ -534,6 +558,7 @@ func TestChallengeConstructors_NotNil(t *testing.T) {
 }
 
 func TestOrchestratorConstruction(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	assert.NotNil(t, o)
@@ -542,6 +567,7 @@ func TestOrchestratorConstruction(t *testing.T) {
 }
 
 func TestOrchestratorListChallenges(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	ids := o.ListChallenges()
@@ -558,6 +584,7 @@ func TestOrchestratorListChallenges(t *testing.T) {
 }
 
 func TestOrchestratorSummary(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	summary := o.Summary()
@@ -626,6 +653,7 @@ func (m *mockAPIAdapter) Available(
 }
 
 func TestOrchestrator_Challenges(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	challenges := o.Challenges()
@@ -642,6 +670,7 @@ func TestOrchestrator_Challenges(t *testing.T) {
 }
 
 func TestOrchestrator_ChallengeCategories(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	challenges := o.Challenges()
@@ -655,6 +684,7 @@ func TestOrchestrator_ChallengeCategories(t *testing.T) {
 }
 
 func TestSetCategory_Override(t *testing.T) {
+	t.Parallel()
 	var adapter mockAPIAdapter
 	c := NewHealthCheckChallenge(&adapter)
 	assert.Equal(t, "api", c.Category(),
@@ -666,6 +696,7 @@ func TestSetCategory_Override(t *testing.T) {
 }
 
 func TestOrchestrator_RunByID_NotFound(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -679,6 +710,7 @@ func TestOrchestrator_RunByID_NotFound(t *testing.T) {
 }
 
 func TestOrchestrator_RunAll_NoServer(t *testing.T) {
+	t.Parallel()
 	o, err := NewOrchestrator("http://localhost:7061")
 	require.NoError(t, err)
 

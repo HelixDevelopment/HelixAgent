@@ -19,6 +19,7 @@ import (
 // =============================================================================
 
 func TestNewConsumerGroupAdapter(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewConsumerGroupAdapter("test-group", b)
 
@@ -28,6 +29,7 @@ func TestNewConsumerGroupAdapter(t *testing.T) {
 }
 
 func TestConsumerGroupAdapter_ID(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewConsumerGroupAdapter("my-group-id", b)
 
@@ -35,6 +37,7 @@ func TestConsumerGroupAdapter_ID(t *testing.T) {
 }
 
 func TestConsumerGroupAdapter_Add(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewConsumerGroupAdapter("test-group", b)
 
@@ -47,6 +50,7 @@ func TestConsumerGroupAdapter_Add(t *testing.T) {
 }
 
 func TestConsumerGroupAdapter_Topics(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewConsumerGroupAdapter("test-group", b)
 
@@ -64,6 +68,7 @@ func TestConsumerGroupAdapter_Topics(t *testing.T) {
 }
 
 func TestConsumerGroupAdapter_IsRunning_BeforeStart(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewConsumerGroupAdapter("test-group", b)
 
@@ -71,6 +76,7 @@ func TestConsumerGroupAdapter_IsRunning_BeforeStart(t *testing.T) {
 }
 
 func TestConsumerGroupAdapter_StartStop(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	ctx := context.Background()
 	_ = b.Connect(ctx)
@@ -97,12 +103,14 @@ func TestConsumerGroupAdapter_StartStop(t *testing.T) {
 // =============================================================================
 
 func TestNewRetryPolicyAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := NewRetryPolicyAdapter()
 	assert.NotNil(t, adapter)
 	assert.NotNil(t, adapter.rp)
 }
 
 func TestNewRetryPolicyAdapterWithConfig(t *testing.T) {
+	t.Parallel()
 	adapter := NewRetryPolicyAdapterWithConfig(
 		5,
 		100*time.Millisecond,
@@ -119,6 +127,7 @@ func TestNewRetryPolicyAdapterWithConfig(t *testing.T) {
 }
 
 func TestRetryPolicyAdapter_Delay(t *testing.T) {
+	t.Parallel()
 	adapter := NewRetryPolicyAdapterWithConfig(
 		3,
 		100*time.Millisecond,
@@ -134,6 +143,7 @@ func TestRetryPolicyAdapter_Delay(t *testing.T) {
 }
 
 func TestRetryPolicyAdapter_ShouldRetry(t *testing.T) {
+	t.Parallel()
 	adapter := NewRetryPolicyAdapterWithConfig(
 		3,
 		100*time.Millisecond,
@@ -149,6 +159,7 @@ func TestRetryPolicyAdapter_ShouldRetry(t *testing.T) {
 }
 
 func TestRetryPolicyAdapter_Unwrap(t *testing.T) {
+	t.Parallel()
 	adapter := NewRetryPolicyAdapter()
 	rp := adapter.Unwrap()
 	assert.NotNil(t, rp)
@@ -159,6 +170,7 @@ func TestRetryPolicyAdapter_Unwrap(t *testing.T) {
 // =============================================================================
 
 func TestWithRetryAdapter_NilPolicy(t *testing.T) {
+	t.Parallel()
 	var called int32
 	handler := func(ctx context.Context, msg *messaging.Message) error {
 		atomic.AddInt32(&called, 1)
@@ -176,6 +188,7 @@ func TestWithRetryAdapter_NilPolicy(t *testing.T) {
 }
 
 func TestWithRetryAdapter_WithPolicy(t *testing.T) {
+	t.Parallel()
 	var called int32
 	handler := func(ctx context.Context, msg *messaging.Message) error {
 		atomic.AddInt32(&called, 1)
@@ -197,6 +210,7 @@ func TestWithRetryAdapter_WithPolicy(t *testing.T) {
 // =============================================================================
 
 func TestNewDeadLetterHandlerAdapter(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewDeadLetterHandlerAdapter(b, "dlq-topic")
 
@@ -206,6 +220,7 @@ func TestNewDeadLetterHandlerAdapter(t *testing.T) {
 }
 
 func TestDeadLetterHandlerAdapter_DLQTopic(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewDeadLetterHandlerAdapter(b, "my-dlq")
 
@@ -213,6 +228,7 @@ func TestDeadLetterHandlerAdapter_DLQTopic(t *testing.T) {
 }
 
 func TestDeadLetterHandlerAdapter_Count_Initially(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewDeadLetterHandlerAdapter(b, "dlq-topic")
 
@@ -220,6 +236,7 @@ func TestDeadLetterHandlerAdapter_Count_Initially(t *testing.T) {
 }
 
 func TestDeadLetterHandlerAdapter_Handle(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	ctx := context.Background()
 	_ = b.Connect(ctx)
@@ -234,6 +251,7 @@ func TestDeadLetterHandlerAdapter_Handle(t *testing.T) {
 }
 
 func TestDeadLetterHandlerAdapter_SetOnFailure(t *testing.T) {
+	t.Parallel()
 	b := broker.NewInMemoryBroker()
 	adapter := NewDeadLetterHandlerAdapter(b, "dlq-topic")
 
@@ -251,6 +269,7 @@ func TestDeadLetterHandlerAdapter_SetOnFailure(t *testing.T) {
 // =============================================================================
 
 func TestNewBatchConsumerAdapter(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -262,6 +281,7 @@ func TestNewBatchConsumerAdapter(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_BatchSize(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -271,6 +291,7 @@ func TestBatchConsumerAdapter_BatchSize(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_BufferLen_Empty(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -280,6 +301,7 @@ func TestBatchConsumerAdapter_BufferLen_Empty(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_Add(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -293,6 +315,7 @@ func TestBatchConsumerAdapter_Add(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_Add_Multiple(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -308,6 +331,7 @@ func TestBatchConsumerAdapter_Add_Multiple(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_Flush(t *testing.T) {
+	t.Parallel()
 	var receivedCount int32
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		atomic.AddInt32(&receivedCount, int32(len(msgs)))
@@ -328,6 +352,7 @@ func TestBatchConsumerAdapter_Flush(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_AsHandler(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}
@@ -344,6 +369,7 @@ func TestBatchConsumerAdapter_AsHandler(t *testing.T) {
 }
 
 func TestBatchConsumerAdapter_StartStop(t *testing.T) {
+	t.Parallel()
 	handler := func(ctx context.Context, msgs []*messaging.Message) error {
 		return nil
 	}

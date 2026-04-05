@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	config := &ClientConfig{
 		BaseURL: "http://localhost:8014",
 		Timeout: 30 * time.Second,
@@ -25,12 +26,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	client := NewClient(nil)
 	assert.NotNil(t, client)
 	assert.Equal(t, "http://localhost:8014", client.baseURL)
 }
 
 func TestClient_ExecuteQuery(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/query", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -82,6 +85,7 @@ func TestClient_ExecuteQuery(t *testing.T) {
 }
 
 func TestClient_GenerateConstrained(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/constrained", r.URL.Path)
 
@@ -121,6 +125,7 @@ func TestClient_GenerateConstrained(t *testing.T) {
 }
 
 func TestClient_GenerateWithMaxLength(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ConstrainedRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -154,6 +159,7 @@ func TestClient_GenerateWithMaxLength(t *testing.T) {
 }
 
 func TestClient_GenerateContaining(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ConstrainedRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -180,6 +186,7 @@ func TestClient_GenerateContaining(t *testing.T) {
 }
 
 func TestClient_GenerateWithPattern(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ConstrainedRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -212,6 +219,7 @@ func TestClient_GenerateWithPattern(t *testing.T) {
 }
 
 func TestClient_Health(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/health", r.URL.Path)
 
@@ -235,6 +243,7 @@ func TestClient_Health(t *testing.T) {
 }
 
 func TestClient_IsAvailable(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &HealthResponse{Status: "healthy"}
 		w.Header().Set("Content-Type", "application/json")
@@ -249,6 +258,7 @@ func TestClient_IsAvailable(t *testing.T) {
 }
 
 func TestClient_IsAvailable_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -261,6 +271,7 @@ func TestClient_IsAvailable_Unhealthy(t *testing.T) {
 }
 
 func TestClient_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal error"}`))
@@ -274,6 +285,7 @@ func TestClient_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -290,6 +302,7 @@ func TestClient_Timeout(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	assert.NotNil(t, config)
 	assert.Equal(t, "http://localhost:8014", config.BaseURL)
@@ -297,6 +310,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestClient_Decode(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/decode", r.URL.Path)
 
@@ -333,6 +347,7 @@ func TestClient_Decode(t *testing.T) {
 }
 
 func TestClient_Decode_DefaultStrategy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -359,6 +374,7 @@ func TestClient_Decode_DefaultStrategy(t *testing.T) {
 }
 
 func TestClient_DecodeGreedy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -383,6 +399,7 @@ func TestClient_DecodeGreedy(t *testing.T) {
 }
 
 func TestClient_DecodeGreedy_NoOutput(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &DecodingResponse{
 			Outputs:      []string{},
@@ -403,6 +420,7 @@ func TestClient_DecodeGreedy_NoOutput(t *testing.T) {
 }
 
 func TestClient_DecodeSample(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -429,6 +447,7 @@ func TestClient_DecodeSample(t *testing.T) {
 }
 
 func TestClient_DecodeSample_Defaults(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -454,6 +473,7 @@ func TestClient_DecodeSample_Defaults(t *testing.T) {
 }
 
 func TestClient_DecodeBeam(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -479,6 +499,7 @@ func TestClient_DecodeBeam(t *testing.T) {
 }
 
 func TestClient_DecodeBeam_DefaultWidth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecodingRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -503,6 +524,7 @@ func TestClient_DecodeBeam_DefaultWidth(t *testing.T) {
 }
 
 func TestClient_ScoreCompletions(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/score", r.URL.Path)
 
@@ -533,6 +555,7 @@ func TestClient_ScoreCompletions(t *testing.T) {
 }
 
 func TestClient_SelectBestCompletion(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &ScoreResponse{
 			Prompt: "What is 2+2?",
@@ -560,6 +583,7 @@ func TestClient_SelectBestCompletion(t *testing.T) {
 }
 
 func TestClient_ExecuteQuery_DefaultValues(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req QueryRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -587,6 +611,7 @@ func TestClient_ExecuteQuery_DefaultValues(t *testing.T) {
 }
 
 func TestClient_GenerateConstrained_DefaultTemperature(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ConstrainedRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)

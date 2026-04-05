@@ -15,6 +15,7 @@ import (
 // =============================================================================
 
 func TestNewMCPMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -27,6 +28,7 @@ func TestNewMCPMetrics(t *testing.T) {
 }
 
 func TestMCPMetrics_RecordToolCall_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-mcp")
 	require.NoError(t, err)
 
@@ -36,6 +38,7 @@ func TestMCPMetrics_RecordToolCall_Success(t *testing.T) {
 }
 
 func TestMCPMetrics_RecordToolCall_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-mcp")
 	require.NoError(t, err)
 
@@ -46,6 +49,7 @@ func TestMCPMetrics_RecordToolCall_WithError(t *testing.T) {
 }
 
 func TestMCPMetrics_RecordToolCall_ZeroResultSize(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-mcp")
 	require.NoError(t, err)
 
@@ -55,6 +59,7 @@ func TestMCPMetrics_RecordToolCall_ZeroResultSize(t *testing.T) {
 }
 
 func TestMCPMetrics_StartToolCall(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-mcp")
 	require.NoError(t, err)
 
@@ -67,6 +72,7 @@ func TestMCPMetrics_StartToolCall(t *testing.T) {
 }
 
 func TestMCPMetrics_RecordToolCall_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-mcp-concurrent")
 	require.NoError(t, err)
 
@@ -93,6 +99,7 @@ func TestMCPMetrics_RecordToolCall_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewEmbeddingMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewEmbeddingMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -106,6 +113,7 @@ func TestNewEmbeddingMetrics(t *testing.T) {
 }
 
 func TestEmbeddingMetrics_RecordEmbedding_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewEmbeddingMetrics("test-embedding")
 	require.NoError(t, err)
 
@@ -114,6 +122,7 @@ func TestEmbeddingMetrics_RecordEmbedding_Success(t *testing.T) {
 }
 
 func TestEmbeddingMetrics_RecordEmbedding_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewEmbeddingMetrics("test-embedding")
 	require.NoError(t, err)
 
@@ -123,6 +132,7 @@ func TestEmbeddingMetrics_RecordEmbedding_WithError(t *testing.T) {
 }
 
 func TestEmbeddingMetrics_RecordEmbedding_ZeroBatchSize(t *testing.T) {
+	t.Parallel()
 	m, err := NewEmbeddingMetrics("test-embedding")
 	require.NoError(t, err)
 
@@ -132,6 +142,7 @@ func TestEmbeddingMetrics_RecordEmbedding_ZeroBatchSize(t *testing.T) {
 }
 
 func TestEmbeddingMetrics_RecordEmbedding_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewEmbeddingMetrics("test-embedding-concurrent")
 	require.NoError(t, err)
 
@@ -154,6 +165,7 @@ func TestEmbeddingMetrics_RecordEmbedding_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewVectorDBMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -167,6 +179,7 @@ func TestNewVectorDBMetrics(t *testing.T) {
 }
 
 func TestVectorDBMetrics_RecordOperation_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-vectordb")
 	require.NoError(t, err)
 
@@ -175,6 +188,7 @@ func TestVectorDBMetrics_RecordOperation_Success(t *testing.T) {
 }
 
 func TestVectorDBMetrics_RecordOperation_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-vectordb")
 	require.NoError(t, err)
 
@@ -184,6 +198,7 @@ func TestVectorDBMetrics_RecordOperation_WithError(t *testing.T) {
 }
 
 func TestVectorDBMetrics_RecordOperation_ZeroResults(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-vectordb")
 	require.NoError(t, err)
 
@@ -193,6 +208,7 @@ func TestVectorDBMetrics_RecordOperation_ZeroResults(t *testing.T) {
 }
 
 func TestVectorDBMetrics_RecordCollectionStats(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-vectordb")
 	require.NoError(t, err)
 
@@ -201,6 +217,7 @@ func TestVectorDBMetrics_RecordCollectionStats(t *testing.T) {
 }
 
 func TestVectorDBMetrics_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewVectorDBMetrics("test-vectordb-concurrent")
 	require.NoError(t, err)
 
@@ -224,6 +241,7 @@ func TestVectorDBMetrics_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewMemoryMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -237,6 +255,7 @@ func TestNewMemoryMetrics(t *testing.T) {
 }
 
 func TestMemoryMetrics_RecordOperation_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory")
 	require.NoError(t, err)
 
@@ -245,6 +264,7 @@ func TestMemoryMetrics_RecordOperation_Success(t *testing.T) {
 }
 
 func TestMemoryMetrics_RecordOperation_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory")
 	require.NoError(t, err)
 
@@ -254,6 +274,7 @@ func TestMemoryMetrics_RecordOperation_WithError(t *testing.T) {
 }
 
 func TestMemoryMetrics_RecordEntries(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory")
 	require.NoError(t, err)
 
@@ -262,6 +283,7 @@ func TestMemoryMetrics_RecordEntries(t *testing.T) {
 }
 
 func TestMemoryMetrics_RecordCacheHit(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory")
 	require.NoError(t, err)
 
@@ -270,6 +292,7 @@ func TestMemoryMetrics_RecordCacheHit(t *testing.T) {
 }
 
 func TestMemoryMetrics_RecordCacheMiss(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory")
 	require.NoError(t, err)
 
@@ -278,6 +301,7 @@ func TestMemoryMetrics_RecordCacheMiss(t *testing.T) {
 }
 
 func TestMemoryMetrics_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewMemoryMetrics("test-memory-concurrent")
 	require.NoError(t, err)
 
@@ -306,6 +330,7 @@ func TestMemoryMetrics_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewStreamingMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -318,6 +343,7 @@ func TestNewStreamingMetrics(t *testing.T) {
 }
 
 func TestStreamingMetrics_RecordChunk(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-streaming")
 	require.NoError(t, err)
 
@@ -326,6 +352,7 @@ func TestStreamingMetrics_RecordChunk(t *testing.T) {
 }
 
 func TestStreamingMetrics_RecordStream_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-streaming")
 	require.NoError(t, err)
 
@@ -334,6 +361,7 @@ func TestStreamingMetrics_RecordStream_Success(t *testing.T) {
 }
 
 func TestStreamingMetrics_RecordStream_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-streaming")
 	require.NoError(t, err)
 
@@ -343,6 +371,7 @@ func TestStreamingMetrics_RecordStream_WithError(t *testing.T) {
 }
 
 func TestStreamingMetrics_StartAndEndStream(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-streaming")
 	require.NoError(t, err)
 
@@ -352,6 +381,7 @@ func TestStreamingMetrics_StartAndEndStream(t *testing.T) {
 }
 
 func TestStreamingMetrics_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewStreamingMetrics("test-streaming-concurrent")
 	require.NoError(t, err)
 
@@ -377,6 +407,7 @@ func TestStreamingMetrics_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestNewProtocolMetrics(t *testing.T) {
+	t.Parallel()
 	m, err := NewProtocolMetrics("test-service")
 	require.NoError(t, err)
 	assert.NotNil(t, m)
@@ -387,6 +418,7 @@ func TestNewProtocolMetrics(t *testing.T) {
 }
 
 func TestProtocolMetrics_RecordRequest_Success(t *testing.T) {
+	t.Parallel()
 	m, err := NewProtocolMetrics("test-protocol")
 	require.NoError(t, err)
 
@@ -395,6 +427,7 @@ func TestProtocolMetrics_RecordRequest_Success(t *testing.T) {
 }
 
 func TestProtocolMetrics_RecordRequest_WithError(t *testing.T) {
+	t.Parallel()
 	m, err := NewProtocolMetrics("test-protocol")
 	require.NoError(t, err)
 
@@ -404,6 +437,7 @@ func TestProtocolMetrics_RecordRequest_WithError(t *testing.T) {
 }
 
 func TestProtocolMetrics_RecordRequest_Concurrent(t *testing.T) {
+	t.Parallel()
 	m, err := NewProtocolMetrics("test-protocol-concurrent")
 	require.NoError(t, err)
 
@@ -428,31 +462,37 @@ func TestProtocolMetrics_RecordRequest_Concurrent(t *testing.T) {
 // =============================================================================
 
 func TestGetMCPMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetMCPMetrics()
 	assert.NotNil(t, m)
 }
 
 func TestGetEmbeddingMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetEmbeddingMetrics()
 	assert.NotNil(t, m)
 }
 
 func TestGetVectorDBMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetVectorDBMetrics()
 	assert.NotNil(t, m)
 }
 
 func TestGetMemoryMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetMemoryMetrics()
 	assert.NotNil(t, m)
 }
 
 func TestGetStreamingMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetStreamingMetrics()
 	assert.NotNil(t, m)
 }
 
 func TestGetProtocolMetrics(t *testing.T) {
+	t.Parallel()
 	m := GetProtocolMetrics()
 	assert.NotNil(t, m)
 }
@@ -462,11 +502,13 @@ func TestGetProtocolMetrics(t *testing.T) {
 // =============================================================================
 
 func TestErrorType_Nil(t *testing.T) {
+	t.Parallel()
 	result := errorType(nil)
 	assert.Equal(t, "", result)
 }
 
 func TestErrorType_WithError(t *testing.T) {
+	t.Parallel()
 	err := errors.New("test error message")
 	result := errorType(err)
 	assert.Equal(t, "test error message", result)
@@ -477,6 +519,7 @@ func TestErrorType_WithError(t *testing.T) {
 // =============================================================================
 
 func TestEndToolCallFunc_Type(t *testing.T) {
+	t.Parallel()
 	m, err := NewMCPMetrics("test-end-func")
 	require.NoError(t, err)
 

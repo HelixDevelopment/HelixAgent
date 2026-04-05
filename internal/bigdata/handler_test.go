@@ -45,11 +45,13 @@ func newTestIntegrationAllDisabled() *BigDataIntegration {
 // --- NewHandler tests ---
 
 func TestNewHandler_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	assert.NotNil(t, h)
 }
 
 func TestNewHandler_SetsFields(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	logger := logrus.New()
 	h := NewHandler(integration, nil, logger)
@@ -62,6 +64,7 @@ func TestNewHandler_SetsFields(t *testing.T) {
 // --- RegisterRoutes tests ---
 
 func TestHandler_RegisterRoutes_RegistersExpectedRoutes(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	router := gin.New()
 	h.RegisterRoutes(router)
@@ -97,6 +100,7 @@ func TestHandler_RegisterRoutes_RegistersExpectedRoutes(t *testing.T) {
 // --- ReplayConversation tests ---
 
 func TestHandler_ReplayConversation_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -113,6 +117,7 @@ func TestHandler_ReplayConversation_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_ReplayConversation_MissingConversationID(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -126,6 +131,7 @@ func TestHandler_ReplayConversation_MissingConversationID(t *testing.T) {
 }
 
 func TestHandler_ReplayConversation_NilDebateIntegration(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -143,6 +149,7 @@ func TestHandler_ReplayConversation_NilDebateIntegration(t *testing.T) {
 }
 
 func TestHandler_ReplayConversation_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	// Verify that max_tokens defaults to 4000 when not specified.
 	// We test this by confirming the handler reaches the debateIntegration
 	// nil check (which means it parsed the request successfully with default).
@@ -162,6 +169,7 @@ func TestHandler_ReplayConversation_DefaultMaxTokens(t *testing.T) {
 // --- GetContextStats tests ---
 
 func TestHandler_GetContextStats_NilInfiniteContext(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -180,6 +188,7 @@ func TestHandler_GetContextStats_NilInfiniteContext(t *testing.T) {
 }
 
 func TestHandler_GetContextStats_EmptyConversationID(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -196,6 +205,7 @@ func TestHandler_GetContextStats_EmptyConversationID(t *testing.T) {
 // --- GetMemorySyncStatus tests ---
 
 func TestHandler_GetMemorySyncStatus_NilDistributedMemory(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -215,6 +225,7 @@ func TestHandler_GetMemorySyncStatus_NilDistributedMemory(t *testing.T) {
 // --- ForceMemorySync tests ---
 
 func TestHandler_ForceMemorySync_NilDistributedMemory(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -234,6 +245,7 @@ func TestHandler_ForceMemorySync_NilDistributedMemory(t *testing.T) {
 // --- GetRelatedEntities tests ---
 
 func TestHandler_GetRelatedEntities_NilKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -252,6 +264,7 @@ func TestHandler_GetRelatedEntities_NilKnowledgeGraph(t *testing.T) {
 }
 
 func TestHandler_GetRelatedEntities_EmptyEntityID(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -268,6 +281,7 @@ func TestHandler_GetRelatedEntities_EmptyEntityID(t *testing.T) {
 // --- SearchKnowledgeGraph tests ---
 
 func TestHandler_SearchKnowledgeGraph_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -282,6 +296,7 @@ func TestHandler_SearchKnowledgeGraph_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_SearchKnowledgeGraph_MissingQuery(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -297,6 +312,7 @@ func TestHandler_SearchKnowledgeGraph_MissingQuery(t *testing.T) {
 }
 
 func TestHandler_SearchKnowledgeGraph_NilKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -318,6 +334,7 @@ func TestHandler_SearchKnowledgeGraph_NilKnowledgeGraph(t *testing.T) {
 // --- GetProviderAnalytics tests ---
 
 func TestHandler_GetProviderAnalytics_NilAnalytics(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -336,6 +353,7 @@ func TestHandler_GetProviderAnalytics_NilAnalytics(t *testing.T) {
 }
 
 func TestHandler_GetProviderAnalytics_EmptyProvider(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -350,6 +368,7 @@ func TestHandler_GetProviderAnalytics_EmptyProvider(t *testing.T) {
 }
 
 func TestHandler_GetProviderAnalytics_InvalidWindowDuration(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	// We need analytics to be non-nil to reach the duration parsing.
 	// Since we cannot easily set clickhouseAnalytics without live infra,
@@ -371,6 +390,7 @@ func TestHandler_GetProviderAnalytics_InvalidWindowDuration(t *testing.T) {
 // --- GetDebateAnalytics tests ---
 
 func TestHandler_GetDebateAnalytics_NilAnalytics(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -385,6 +405,7 @@ func TestHandler_GetDebateAnalytics_NilAnalytics(t *testing.T) {
 }
 
 func TestHandler_GetDebateAnalytics_EmptyDebateID(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -401,6 +422,7 @@ func TestHandler_GetDebateAnalytics_EmptyDebateID(t *testing.T) {
 // --- QueryAnalytics tests ---
 
 func TestHandler_QueryAnalytics_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -415,6 +437,7 @@ func TestHandler_QueryAnalytics_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_QueryAnalytics_MissingQuery(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -430,6 +453,7 @@ func TestHandler_QueryAnalytics_MissingQuery(t *testing.T) {
 }
 
 func TestHandler_QueryAnalytics_NilAnalytics(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -447,6 +471,7 @@ func TestHandler_QueryAnalytics_NilAnalytics(t *testing.T) {
 // --- GetLearningInsights tests ---
 
 func TestHandler_GetLearningInsights_NilCrossLearner(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -466,6 +491,7 @@ func TestHandler_GetLearningInsights_NilCrossLearner(t *testing.T) {
 // --- GetLearnedPatterns tests ---
 
 func TestHandler_GetLearnedPatterns_NilCrossLearner(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -485,6 +511,7 @@ func TestHandler_GetLearnedPatterns_NilCrossLearner(t *testing.T) {
 // --- HealthCheck tests ---
 
 func TestHandler_HealthCheck_AllDisabled(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -513,6 +540,7 @@ func TestHandler_HealthCheck_AllDisabled(t *testing.T) {
 }
 
 func TestHandler_HealthCheck_EnabledButNotInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	config := &IntegrationConfig{
@@ -552,6 +580,7 @@ func TestHandler_HealthCheck_EnabledButNotInitialized(t *testing.T) {
 }
 
 func TestHandler_HealthCheck_Running(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	_ = integration.Start(t.Context())
 	h := newTestHandler(integration, nil)
@@ -573,6 +602,7 @@ func TestHandler_HealthCheck_Running(t *testing.T) {
 // --- HealthCheck via router (full roundtrip) ---
 
 func TestHandler_HealthCheck_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -593,6 +623,7 @@ func TestHandler_HealthCheck_ViaRouter(t *testing.T) {
 // --- Request type tests ---
 
 func TestReplayConversationRequest_JSONBinding(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		json    string
@@ -617,6 +648,7 @@ func TestReplayConversationRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))
@@ -635,6 +667,7 @@ func TestReplayConversationRequest_JSONBinding(t *testing.T) {
 }
 
 func TestSearchKnowledgeGraphRequest_JSONBinding(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		json    string
@@ -659,6 +692,7 @@ func TestSearchKnowledgeGraphRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))
@@ -679,6 +713,7 @@ func TestSearchKnowledgeGraphRequest_JSONBinding(t *testing.T) {
 // --- GetLearningInsights additional tests ---
 
 func TestHandler_GetLearningInsights_InvalidLimit(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -693,6 +728,7 @@ func TestHandler_GetLearningInsights_InvalidLimit(t *testing.T) {
 }
 
 func TestHandler_GetLearningInsights_LimitOutOfRangeHigh(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -707,6 +743,7 @@ func TestHandler_GetLearningInsights_LimitOutOfRangeHigh(t *testing.T) {
 }
 
 func TestHandler_GetLearningInsights_LimitZero(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -723,6 +760,7 @@ func TestHandler_GetLearningInsights_LimitZero(t *testing.T) {
 // --- GetLearnedPatterns additional tests ---
 
 func TestHandler_GetLearnedPatterns_WithTypeParam(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -739,6 +777,7 @@ func TestHandler_GetLearnedPatterns_WithTypeParam(t *testing.T) {
 // --- GetRelatedEntities depth parsing tests ---
 
 func TestHandler_GetRelatedEntities_CustomMaxDepth(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -754,6 +793,7 @@ func TestHandler_GetRelatedEntities_CustomMaxDepth(t *testing.T) {
 }
 
 func TestHandler_GetRelatedEntities_InvalidMaxDepth(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -769,6 +809,7 @@ func TestHandler_GetRelatedEntities_InvalidMaxDepth(t *testing.T) {
 }
 
 func TestHandler_GetRelatedEntities_NegativeMaxDepth(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -783,6 +824,7 @@ func TestHandler_GetRelatedEntities_NegativeMaxDepth(t *testing.T) {
 }
 
 func TestHandler_GetRelatedEntities_NonNumericMaxDepth(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -799,6 +841,7 @@ func TestHandler_GetRelatedEntities_NonNumericMaxDepth(t *testing.T) {
 // --- SearchKnowledgeGraph additional tests ---
 
 func TestHandler_SearchKnowledgeGraph_DefaultLimit(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -815,6 +858,7 @@ func TestHandler_SearchKnowledgeGraph_DefaultLimit(t *testing.T) {
 }
 
 func TestHandler_SearchKnowledgeGraph_WithAllFields(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -832,6 +876,7 @@ func TestHandler_SearchKnowledgeGraph_WithAllFields(t *testing.T) {
 // --- GetProviderAnalytics additional tests ---
 
 func TestHandler_GetProviderAnalytics_ValidWindow(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -847,6 +892,7 @@ func TestHandler_GetProviderAnalytics_ValidWindow(t *testing.T) {
 }
 
 func TestHandler_GetProviderAnalytics_DefaultWindow(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -864,6 +910,7 @@ func TestHandler_GetProviderAnalytics_DefaultWindow(t *testing.T) {
 // --- QueryAnalytics additional tests ---
 
 func TestHandler_QueryAnalytics_WithParameters(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 
@@ -881,6 +928,7 @@ func TestHandler_QueryAnalytics_WithParameters(t *testing.T) {
 // --- ReplayConversation additional tests ---
 
 func TestHandler_ReplayConversation_WithMaxTokensAndStrategy(t *testing.T) {
+	t.Parallel()
 	h := newTestHandler(newTestIntegrationAllDisabled(), nil)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -897,6 +945,7 @@ func TestHandler_ReplayConversation_WithMaxTokensAndStrategy(t *testing.T) {
 // --- Full router roundtrip tests ---
 
 func TestHandler_GetContextStats_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -911,6 +960,7 @@ func TestHandler_GetContextStats_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetMemorySyncStatus_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -924,6 +974,7 @@ func TestHandler_GetMemorySyncStatus_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_ForceMemorySync_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -937,6 +988,7 @@ func TestHandler_ForceMemorySync_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetRelatedEntities_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -950,6 +1002,7 @@ func TestHandler_GetRelatedEntities_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetProviderAnalytics_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -963,6 +1016,7 @@ func TestHandler_GetProviderAnalytics_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetDebateAnalytics_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -976,6 +1030,7 @@ func TestHandler_GetDebateAnalytics_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetLearningInsights_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -989,6 +1044,7 @@ func TestHandler_GetLearningInsights_ViaRouter(t *testing.T) {
 }
 
 func TestHandler_GetLearnedPatterns_ViaRouter(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationAllDisabled()
 	h := newTestHandler(integration, nil)
 	router := gin.New()
@@ -1058,6 +1114,7 @@ func newMockBrokerForHandler() *mockBroker {
 }
 
 func TestHandler_GetLearningInsights_WithCrossLearner(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1078,6 +1135,7 @@ func TestHandler_GetLearningInsights_WithCrossLearner(t *testing.T) {
 }
 
 func TestHandler_GetLearningInsights_WithCrossLearner_DefaultLimit(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1095,6 +1153,7 @@ func TestHandler_GetLearningInsights_WithCrossLearner_DefaultLimit(t *testing.T)
 }
 
 func TestHandler_GetLearningInsights_WithCrossLearner_InvalidLimit(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1108,6 +1167,7 @@ func TestHandler_GetLearningInsights_WithCrossLearner_InvalidLimit(t *testing.T)
 }
 
 func TestHandler_GetLearningInsights_WithCrossLearner_LimitTooHigh(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1125,6 +1185,7 @@ func TestHandler_GetLearningInsights_WithCrossLearner_LimitTooHigh(t *testing.T)
 }
 
 func TestHandler_GetLearningInsights_WithCrossLearner_LimitZero(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1138,6 +1199,7 @@ func TestHandler_GetLearningInsights_WithCrossLearner_LimitZero(t *testing.T) {
 }
 
 func TestHandler_GetLearnedPatterns_WithCrossLearner(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1158,6 +1220,7 @@ func TestHandler_GetLearnedPatterns_WithCrossLearner(t *testing.T) {
 }
 
 func TestHandler_GetLearnedPatterns_WithCrossLearner_SpecificType(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1177,6 +1240,7 @@ func TestHandler_GetLearnedPatterns_WithCrossLearner_SpecificType(t *testing.T) 
 // --- GetContextStats with infinite context ---
 
 func TestHandler_GetContextStats_WithInfiniteContext(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithInfiniteContext()
 	h := newTestHandler(integration, nil)
 
@@ -1198,6 +1262,7 @@ func TestHandler_GetContextStats_WithInfiniteContext(t *testing.T) {
 // --- GetMemorySyncStatus with distributed memory ---
 
 func TestHandler_GetMemorySyncStatus_WithDistributedMemory(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithDistributedMemory()
 	h := newTestHandler(integration, nil)
 
@@ -1217,6 +1282,7 @@ func TestHandler_GetMemorySyncStatus_WithDistributedMemory(t *testing.T) {
 // --- ForceMemorySync with distributed memory ---
 
 func TestHandler_ForceMemorySync_WithDistributedMemory(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithDistributedMemory()
 	h := newTestHandler(integration, nil)
 
@@ -1235,6 +1301,7 @@ func TestHandler_ForceMemorySync_WithDistributedMemory(t *testing.T) {
 // --- HealthCheck with mixed components ---
 
 func TestHandler_HealthCheck_WithCrossLearner(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithCrossLearner()
 	h := newTestHandler(integration, nil)
 
@@ -1259,6 +1326,7 @@ func TestHandler_HealthCheck_WithCrossLearner(t *testing.T) {
 // --- ReplayConversation with DebateIntegration ---
 
 func TestHandler_ReplayConversation_WithDebateIntegration_FailsGetContext(t *testing.T) {
+	t.Parallel()
 	// Create a debate integration with nil infiniteContext, which causes
 	// GetConversationContext to panic. We need an integration with a real
 	// InfiniteContextEngine but one that returns an error.
@@ -1294,6 +1362,7 @@ func TestHandler_ReplayConversation_WithDebateIntegration_FailsGetContext(t *tes
 // --- GetContextStats with InfiniteContext snapshot error ---
 
 func TestHandler_GetContextStats_WithInfiniteContext_SnapshotError(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithInfiniteContext()
 	h := newTestHandler(integration, nil)
 
@@ -1316,6 +1385,7 @@ func TestHandler_GetContextStats_WithInfiniteContext_SnapshotError(t *testing.T)
 // --- ForceMemorySync success path ---
 
 func TestHandler_ForceMemorySync_WithDistributedMemory_Success(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithDistributedMemory()
 	h := newTestHandler(integration, nil)
 
@@ -1358,6 +1428,7 @@ func newTestIntegrationWithDistributedMemoryBrokerError() *BigDataIntegration {
 }
 
 func TestHandler_ForceMemorySync_WithDistributedMemory_Error(t *testing.T) {
+	t.Parallel()
 	integration := newTestIntegrationWithDistributedMemoryBrokerError()
 	h := newTestHandler(integration, nil)
 
@@ -1377,6 +1448,7 @@ func TestHandler_ForceMemorySync_WithDistributedMemory_Error(t *testing.T) {
 }
 
 func TestQueryAnalyticsRequest_JSONBinding(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		json    string
@@ -1401,6 +1473,7 @@ func TestQueryAnalyticsRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))

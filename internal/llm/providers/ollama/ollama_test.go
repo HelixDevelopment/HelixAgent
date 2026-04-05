@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewOllamaProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		baseURL  string
@@ -48,6 +49,7 @@ func TestNewOllamaProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewOllamaProvider(tt.baseURL, tt.model)
 			assert.Equal(t, tt.expected.baseURL, provider.baseURL)
 			assert.Equal(t, tt.expected.model, provider.model)
@@ -57,6 +59,7 @@ func TestNewOllamaProvider(t *testing.T) {
 }
 
 func TestOllamaProvider_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/api/generate", r.URL.Path)
@@ -105,6 +108,7 @@ func TestOllamaProvider_Complete(t *testing.T) {
 }
 
 func TestOllamaProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Internal Server Error"))
@@ -125,6 +129,7 @@ func TestOllamaProvider_Complete_Error(t *testing.T) {
 }
 
 func TestOllamaProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/api/generate", r.URL.Path)
@@ -176,6 +181,7 @@ func TestOllamaProvider_CompleteStream(t *testing.T) {
 }
 
 func TestOllamaProvider_CompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Return invalid JSON to trigger error in streaming
 		w.Header().Set("Content-Type", "application/json")
@@ -201,6 +207,7 @@ func TestOllamaProvider_CompleteStream_Error(t *testing.T) {
 }
 
 func TestOllamaProvider_CompleteStream_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond) // Simulate delay
 		w.WriteHeader(http.StatusOK)
@@ -231,6 +238,7 @@ func TestOllamaProvider_CompleteStream_ContextCancellation(t *testing.T) {
 }
 
 func TestOllamaProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		responseStatus int
@@ -250,6 +258,7 @@ func TestOllamaProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/api/tags", r.URL.Path)
@@ -270,6 +279,7 @@ func TestOllamaProvider_HealthCheck(t *testing.T) {
 }
 
 func TestOllamaProvider_HealthCheck_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewOllamaProvider("http://invalid-url:1234", "llama2")
 	err := provider.HealthCheck()
 	assert.Error(t, err)
@@ -277,6 +287,7 @@ func TestOllamaProvider_HealthCheck_NetworkError(t *testing.T) {
 }
 
 func TestOllamaProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewOllamaProvider("", "")
 	caps := provider.GetCapabilities()
 
@@ -295,6 +306,7 @@ func TestOllamaProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestOllamaProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	// Note: NewOllamaProvider sets defaults for baseURL and model,
 	// so validation will always pass when using the constructor.
 	// The validator is useful for checking manually created providers.
@@ -337,6 +349,7 @@ func TestOllamaProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewOllamaProvider(tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(nil)
 
@@ -352,6 +365,7 @@ func TestOllamaProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestOllamaProvider_convertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewOllamaProvider("", "")
 
 	ollamaResp := &OllamaResponse{
@@ -375,6 +389,7 @@ func TestOllamaProvider_convertResponse(t *testing.T) {
 }
 
 func TestOllamaProvider_makeRequest(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		request        OllamaRequest
@@ -412,6 +427,7 @@ func TestOllamaProvider_makeRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/api/generate", r.URL.Path)
@@ -451,6 +467,7 @@ func TestOllamaProvider_makeRequest(t *testing.T) {
 }
 
 func TestOllamaProvider_makeRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	// Use an invalid URL to ensure we get a network error, not a server response
 	provider := NewOllamaProvider("http://invalid-ollama-host-12345:11434", "llama2")
 
@@ -477,6 +494,7 @@ func TestOllamaProvider_makeRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestOllamaProvider_makeRequest_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewOllamaProvider("http://invalid-url:1234", "llama2")
 
 	req := OllamaRequest{
@@ -490,6 +508,7 @@ func TestOllamaProvider_makeRequest_NetworkError(t *testing.T) {
 }
 
 func TestOllamaProvider_makeRequest_InvalidResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte("invalid json"))

@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewMemoryAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	adapter := NewMemoryAdapter(config, nil)
 
@@ -23,6 +24,7 @@ func TestNewMemoryAdapter(t *testing.T) {
 }
 
 func TestDefaultMemoryAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 
 	homeDir, _ := os.UserHomeDir()
@@ -34,6 +36,7 @@ func TestDefaultMemoryAdapterConfig(t *testing.T) {
 }
 
 func TestMemoryAdapter_Initialize(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "memory-adapter-test-*")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -50,6 +53,7 @@ func TestMemoryAdapter_Initialize(t *testing.T) {
 }
 
 func TestMemoryAdapter_Initialize_DisabledPersistence(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -60,6 +64,7 @@ func TestMemoryAdapter_Initialize_DisabledPersistence(t *testing.T) {
 }
 
 func TestMemoryAdapter_Health(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -78,6 +83,7 @@ func TestMemoryAdapter_Health(t *testing.T) {
 }
 
 func TestMemoryAdapter_CreateEntity(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -102,6 +108,7 @@ func TestMemoryAdapter_CreateEntity(t *testing.T) {
 }
 
 func TestMemoryAdapter_CreateEntity_MaxLimit(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	config.MaxEntities = 2
@@ -122,6 +129,7 @@ func TestMemoryAdapter_CreateEntity_MaxLimit(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetEntity(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -143,6 +151,7 @@ func TestMemoryAdapter_GetEntity(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetEntityByName(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -164,6 +173,7 @@ func TestMemoryAdapter_GetEntityByName(t *testing.T) {
 }
 
 func TestMemoryAdapter_UpdateEntity(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -194,6 +204,7 @@ func TestMemoryAdapter_UpdateEntity(t *testing.T) {
 }
 
 func TestMemoryAdapter_DeleteEntity(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -212,6 +223,7 @@ func TestMemoryAdapter_DeleteEntity(t *testing.T) {
 }
 
 func TestMemoryAdapter_DeleteEntity_RemovesRelations(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -238,6 +250,7 @@ func TestMemoryAdapter_DeleteEntity_RemovesRelations(t *testing.T) {
 }
 
 func TestMemoryAdapter_SearchEntities(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -272,6 +285,7 @@ func TestMemoryAdapter_SearchEntities(t *testing.T) {
 }
 
 func TestMemoryAdapter_CreateRelation(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -303,6 +317,7 @@ func TestMemoryAdapter_CreateRelation(t *testing.T) {
 }
 
 func TestMemoryAdapter_CreateRelation_InvalidEntities(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -323,6 +338,7 @@ func TestMemoryAdapter_CreateRelation_InvalidEntities(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetEntityRelations(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -356,6 +372,7 @@ func TestMemoryAdapter_GetEntityRelations(t *testing.T) {
 }
 
 func TestMemoryAdapter_DeleteRelation(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -376,6 +393,7 @@ func TestMemoryAdapter_DeleteRelation(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetStatistics(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -396,6 +414,7 @@ func TestMemoryAdapter_GetStatistics(t *testing.T) {
 }
 
 func TestMemoryAdapter_AddObservation(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -413,6 +432,7 @@ func TestMemoryAdapter_AddObservation(t *testing.T) {
 }
 
 func TestMemoryAdapter_ReadGraph(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -434,6 +454,7 @@ func TestMemoryAdapter_ReadGraph(t *testing.T) {
 }
 
 func TestMemoryAdapter_Clear(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -452,6 +473,7 @@ func TestMemoryAdapter_Clear(t *testing.T) {
 }
 
 func TestMemoryAdapter_Persistence(t *testing.T) {
+	t.Parallel()
 	tempDir, err := os.MkdirTemp("", "memory-adapter-test-*")
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempDir) }()
@@ -484,6 +506,7 @@ func TestMemoryAdapter_Persistence(t *testing.T) {
 }
 
 func TestMemoryAdapter_SearchWithRelevance(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -508,6 +531,7 @@ func TestMemoryAdapter_SearchWithRelevance(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	adapter := NewMemoryAdapter(config, logrus.New())
 
@@ -535,6 +559,7 @@ func TestMemoryAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestMemoryAdapter_ExecuteTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -574,6 +599,7 @@ func TestMemoryAdapter_ExecuteTool(t *testing.T) {
 }
 
 func TestMemoryAdapter_ExecuteTool_Unknown(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -587,6 +613,7 @@ func TestMemoryAdapter_ExecuteTool_Unknown(t *testing.T) {
 }
 
 func TestMemoryAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	adapter := NewMemoryAdapter(config, logrus.New())
 
@@ -596,6 +623,7 @@ func TestMemoryAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestMemoryAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -610,6 +638,7 @@ func TestMemoryAdapter_Close(t *testing.T) {
 }
 
 func TestMemoryAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())
@@ -627,6 +656,7 @@ func TestMemoryAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestMemoryAdapter_OpenNodes(t *testing.T) {
+	t.Parallel()
 	config := DefaultMemoryAdapterConfig()
 	config.EnablePersistence = false
 	adapter := NewMemoryAdapter(config, logrus.New())

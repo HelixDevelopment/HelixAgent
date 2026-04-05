@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewMultiAgentCoding(t *testing.T) {
+	t.Parallel()
 	m := New()
 	require.NotNil(t, m)
 	
@@ -23,6 +24,7 @@ func TestNewMultiAgentCoding(t *testing.T) {
 }
 
 func TestMultiAgentCodingInitialize(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestMultiAgentCodingInitialize(t *testing.T) {
 }
 
 func TestMultiAgentCodingInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestMultiAgentCodingInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestMultiAgentCodingStartStop(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestMultiAgentCodingStartStop(t *testing.T) {
 }
 
 func TestMultiAgentCodingExecute(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -106,6 +111,7 @@ func TestMultiAgentCodingExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := m.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -118,6 +124,7 @@ func TestMultiAgentCodingExecute(t *testing.T) {
 }
 
 func TestMultiAgentCodingCapabilities(t *testing.T) {
+	t.Parallel()
 	m := New()
 	info := m.Info()
 	
@@ -128,11 +135,13 @@ func TestMultiAgentCodingCapabilities(t *testing.T) {
 }
 
 func TestMultiAgentCodingIsAvailable(t *testing.T) {
+	t.Parallel()
 	m := New()
 	assert.True(t, m.IsAvailable())
 }
 
 func TestMultiAgentCodingCollaborateResult(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	

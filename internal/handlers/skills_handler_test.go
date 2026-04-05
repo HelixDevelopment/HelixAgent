@@ -126,6 +126,7 @@ func setupEmptySkillsHandler() (*SkillsHandler, *gin.Engine) {
 // ============================================================================
 
 func TestNewSkillsHandler(t *testing.T) {
+	t.Parallel()
 	svc := skills.NewService(nil)
 	integration := skills.NewIntegration(svc)
 	h := NewSkillsHandler(integration)
@@ -136,6 +137,7 @@ func TestNewSkillsHandler(t *testing.T) {
 }
 
 func TestSkillsHandler_SetLogger(t *testing.T) {
+	t.Parallel()
 	svc := skills.NewService(nil)
 	integration := skills.NewIntegration(svc)
 	h := NewSkillsHandler(integration)
@@ -152,6 +154,7 @@ func TestSkillsHandler_SetLogger(t *testing.T) {
 // ============================================================================
 
 func TestSkillResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := SkillResponse{
 		Name:         "test-skill",
 		Description:  "A test skill",
@@ -182,6 +185,7 @@ func TestSkillResponse_Fields(t *testing.T) {
 }
 
 func TestSkillResponse_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	resp := SkillResponse{
 		Name:        "json-test",
 		Description: "JSON serialization test",
@@ -206,6 +210,7 @@ func TestSkillResponse_JSONSerialization(t *testing.T) {
 }
 
 func TestListSkillsResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := ListSkillsResponse{
 		Skills: []SkillResponse{
 			{Name: "skill-1", Category: "cat-1"},
@@ -219,6 +224,7 @@ func TestListSkillsResponse_Fields(t *testing.T) {
 }
 
 func TestMatchRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := MatchRequest{
 		Input: "review my code",
 	}
@@ -227,6 +233,7 @@ func TestMatchRequest_Fields(t *testing.T) {
 }
 
 func TestMatchResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := MatchResponse{
 		Matches: []SkillMatchResponse{
 			{
@@ -247,6 +254,7 @@ func TestMatchResponse_Fields(t *testing.T) {
 }
 
 func TestSkillMatchResponse_Fields(t *testing.T) {
+	t.Parallel()
 	smr := SkillMatchResponse{
 		Skill:          SkillResponse{Name: "test"},
 		Confidence:     0.88,
@@ -261,6 +269,7 @@ func TestSkillMatchResponse_Fields(t *testing.T) {
 }
 
 func TestCategoriesResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := CategoriesResponse{
 		Categories: []string{"development", "search", "testing"},
 		Count:      3,
@@ -275,6 +284,7 @@ func TestCategoriesResponse_Fields(t *testing.T) {
 // ============================================================================
 
 func TestSkillsHandler_ListSkills_WithSkills(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -300,6 +310,7 @@ func TestSkillsHandler_ListSkills_WithSkills(t *testing.T) {
 }
 
 func TestSkillsHandler_ListSkills_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupEmptySkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -317,6 +328,7 @@ func TestSkillsHandler_ListSkills_Empty(t *testing.T) {
 }
 
 func TestSkillsHandler_ListSkills_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -346,6 +358,7 @@ func TestSkillsHandler_ListSkills_ResponseFormat(t *testing.T) {
 // ============================================================================
 
 func TestSkillsHandler_GetSkillsByCategory_Development(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -365,6 +378,7 @@ func TestSkillsHandler_GetSkillsByCategory_Development(t *testing.T) {
 }
 
 func TestSkillsHandler_GetSkillsByCategory_Search(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -382,6 +396,7 @@ func TestSkillsHandler_GetSkillsByCategory_Search(t *testing.T) {
 }
 
 func TestSkillsHandler_GetSkillsByCategory_NonExistent(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -403,6 +418,7 @@ func TestSkillsHandler_GetSkillsByCategory_NonExistent(t *testing.T) {
 // ============================================================================
 
 func TestSkillsHandler_ListCategories_WithSkills(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -421,6 +437,7 @@ func TestSkillsHandler_ListCategories_WithSkills(t *testing.T) {
 }
 
 func TestSkillsHandler_ListCategories_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupEmptySkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -442,6 +459,7 @@ func TestSkillsHandler_ListCategories_Empty(t *testing.T) {
 // ============================================================================
 
 func TestSkillsHandler_MatchSkills_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	body, _ := json.Marshal(MatchRequest{Input: "review code"})
@@ -461,6 +479,7 @@ func TestSkillsHandler_MatchSkills_Success(t *testing.T) {
 }
 
 func TestSkillsHandler_MatchSkills_NoMatches(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	body, _ := json.Marshal(MatchRequest{
@@ -483,6 +502,7 @@ func TestSkillsHandler_MatchSkills_NoMatches(t *testing.T) {
 }
 
 func TestSkillsHandler_MatchSkills_BadRequest_MissingInput(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	body := []byte(`{}`)
@@ -502,6 +522,7 @@ func TestSkillsHandler_MatchSkills_BadRequest_MissingInput(t *testing.T) {
 }
 
 func TestSkillsHandler_MatchSkills_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -517,6 +538,7 @@ func TestSkillsHandler_MatchSkills_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestSkillsHandler_MatchSkills_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	w := httptest.NewRecorder()
@@ -532,6 +554,7 @@ func TestSkillsHandler_MatchSkills_BadRequest_EmptyBody(t *testing.T) {
 // ============================================================================
 
 func TestConvertSkillToResponse(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	skill := &skills.Skill{
 		Name:           "test-skill",
@@ -587,6 +610,7 @@ func TestConvertSkillToResponse(t *testing.T) {
 }
 
 func TestConvertSkillToResponse_EmptyFields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	skill := &skills.Skill{
 		Name:      "minimal",
@@ -609,6 +633,7 @@ func TestConvertSkillToResponse_EmptyFields(t *testing.T) {
 // ============================================================================
 
 func TestSkillsHandler_ResponseContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupSkillsHandler()
 
 	routes := []struct {
@@ -624,6 +649,7 @@ func TestSkillsHandler_ResponseContentType(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if route.body != "" {

@@ -45,6 +45,7 @@ func (m *mockUserService) AuthenticateByAPIKey(ctx context.Context, apiKey strin
 }
 
 func TestAPIKeyValidator_ValidateAPIKey(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	userService := newMockUserService()
 	validator := NewAPIKeyValidator(userService, logger)
@@ -81,6 +82,7 @@ func TestAPIKeyValidator_ValidateAPIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			valid, claims := validator.ValidateAPIKey(tt.apiKey)
 			assert.Equal(t, tt.wantValid, valid)
 
@@ -94,6 +96,7 @@ func TestAPIKeyValidator_ValidateAPIKey(t *testing.T) {
 }
 
 func TestAPIKeyValidator_ValidateAPIKey_NilService(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	validator := NewAPIKeyValidator(nil, logger)
 
@@ -103,6 +106,7 @@ func TestAPIKeyValidator_ValidateAPIKey_NilService(t *testing.T) {
 }
 
 func TestAPIKeyAuthMiddleware(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := logrus.New()
 	userService := newMockUserService()
@@ -136,6 +140,7 @@ func TestAPIKeyAuthMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			router := gin.New()
 			router.Use(APIKeyAuthMiddleware(validator, "X-API-Key"))
 			router.GET("/test", func(c *gin.Context) {
@@ -157,6 +162,7 @@ func TestAPIKeyAuthMiddleware(t *testing.T) {
 }
 
 func TestExtractBearerToken(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		header  string
@@ -191,6 +197,7 @@ func TestExtractBearerToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			token, err := extractBearerToken(tt.header)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -203,6 +210,7 @@ func TestExtractBearerToken(t *testing.T) {
 }
 
 func TestBearerTokenAuthMiddleware(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	validator := NewBearerTokenValidator("test-secret", "helixagent")
 
@@ -237,6 +245,7 @@ func TestBearerTokenAuthMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/test", nil)
 			if tt.authHeader != "" {
@@ -250,6 +259,7 @@ func TestBearerTokenAuthMiddleware(t *testing.T) {
 }
 
 func TestRequireScopes(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -284,6 +294,7 @@ func TestRequireScopes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
 				c.Set("authenticated", tt.auth)
@@ -305,6 +316,7 @@ func TestRequireScopes(t *testing.T) {
 }
 
 func TestGetOAuthCredentialPaths(t *testing.T) {
+	t.Parallel()
 	paths := GetOAuthCredentialPaths()
 
 	assert.NotNil(t, paths)
@@ -312,15 +324,18 @@ func TestGetOAuthCredentialPaths(t *testing.T) {
 }
 
 func TestOAuthCredentialManager(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 
 	t.Run("new manager with no paths fails", func(t *testing.T) {
+			t.Parallel()
 		manager, err := NewOAuthCredentialManager(map[string]string{}, "client-id", logger)
 		assert.Error(t, err)
 		assert.Nil(t, manager)
 	})
 
 	t.Run("new manager with paths succeeds", func(t *testing.T) {
+			t.Parallel()
 		paths := map[string]string{
 			"claude": "/tmp/test-claude-creds.json",
 		}
@@ -332,6 +347,7 @@ func TestOAuthCredentialManager(t *testing.T) {
 }
 
 func TestGetTokenEndpoint(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		provider string
 		want     string
@@ -352,6 +368,7 @@ func TestGetTokenEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.provider, func(t *testing.T) {
+				t.Parallel()
 			endpoint := getTokenEndpoint(tt.provider)
 			assert.Equal(t, tt.want, endpoint)
 		})
@@ -359,6 +376,7 @@ func TestGetTokenEndpoint(t *testing.T) {
 }
 
 func TestIsAuthenticated(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -385,6 +403,7 @@ func TestIsAuthenticated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			if tt.auth != nil {
 				c.Set("authenticated", tt.auth)
@@ -395,6 +414,7 @@ func TestIsAuthenticated(t *testing.T) {
 }
 
 func TestGetUserRole(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -426,6 +446,7 @@ func TestGetUserRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			if tt.role != nil {
 				c.Set("role", tt.role)
@@ -436,6 +457,7 @@ func TestGetUserRole(t *testing.T) {
 }
 
 func TestHasScope(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -466,6 +488,7 @@ func TestHasScope(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			c.Set("role", tt.role)
 			assert.Equal(t, tt.expected, hasScope(c, tt.scope))
@@ -474,6 +497,7 @@ func TestHasScope(t *testing.T) {
 }
 
 func TestInitializeAuthIntegration(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := logrus.New()
 	userService := newMockUserService()
@@ -486,6 +510,7 @@ func TestInitializeAuthIntegration(t *testing.T) {
 }
 
 func TestOAuthCredentialManager_Integration(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("SKIP_OAUTH_TESTS") != "" {
 		t.Skip("Skipping OAuth integration tests")
 	}
@@ -510,22 +535,26 @@ func TestOAuthCredentialManager_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("get access token", func(t *testing.T) {
+			t.Parallel()
 		token, err := manager.GetAccessToken("test")
 		require.NoError(t, err)
 		assert.Equal(t, "test-token", token)
 	})
 
 	t.Run("has valid credentials", func(t *testing.T) {
+			t.Parallel()
 		valid := manager.HasValidCredentials("test")
 		assert.True(t, valid)
 	})
 
 	t.Run("invalid provider", func(t *testing.T) {
+			t.Parallel()
 		_, err := manager.GetAccessToken("nonexistent")
 		assert.Error(t, err)
 	})
 
 	t.Run("start and refresh", func(t *testing.T) {
+			t.Parallel()
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
@@ -557,10 +586,12 @@ func generateTestJWTToken(secret []byte, issuer string, userID, username, role s
 }
 
 func TestValidateJWTToken(t *testing.T) {
+	t.Parallel()
 	secret := []byte("test-secret-key-32-bytes-long!")
 	issuer := "helixagent"
 
 	t.Run("valid token", func(t *testing.T) {
+			t.Parallel()
 		tokenString := generateTestJWTToken(secret, issuer, "123", "testuser", "user", time.Hour)
 
 		claims, err := ValidateJWTToken(tokenString, secret, issuer)
@@ -573,6 +604,7 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("valid token without issuer check", func(t *testing.T) {
+			t.Parallel()
 		tokenString := generateTestJWTToken(secret, issuer, "456", "admin", "admin", time.Hour)
 
 		claims, err := ValidateJWTToken(tokenString, secret, "")
@@ -583,6 +615,7 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("invalid signature", func(t *testing.T) {
+			t.Parallel()
 		tokenString := generateTestJWTToken(secret, issuer, "123", "testuser", "user", time.Hour)
 		wrongSecret := []byte("wrong-secret-key-32-bytes-long")
 
@@ -593,6 +626,7 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
+			t.Parallel()
 		tokenString := generateTestJWTToken(secret, issuer, "123", "testuser", "user", -time.Hour)
 
 		_, err := ValidateJWTToken(tokenString, secret, issuer)
@@ -602,6 +636,7 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("invalid issuer", func(t *testing.T) {
+			t.Parallel()
 		tokenString := generateTestJWTToken(secret, "wrong-issuer", "123", "testuser", "user", time.Hour)
 
 		_, err := ValidateJWTToken(tokenString, secret, issuer)
@@ -611,6 +646,7 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("malformed token", func(t *testing.T) {
+			t.Parallel()
 		_, err := ValidateJWTToken("not-a-valid-token", secret, issuer)
 
 		assert.Error(t, err)
@@ -618,12 +654,14 @@ func TestValidateJWTToken(t *testing.T) {
 	})
 
 	t.Run("empty token", func(t *testing.T) {
+			t.Parallel()
 		_, err := ValidateJWTToken("", secret, issuer)
 
 		assert.Error(t, err)
 	})
 
 	t.Run("wrong signing method", func(t *testing.T) {
+			t.Parallel()
 		// Create token with RS256 instead of HS256
 		claims := &Claims{
 			UserID: "123",

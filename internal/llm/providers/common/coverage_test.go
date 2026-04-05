@@ -9,6 +9,7 @@ import (
 
 // TestProviderConfig_Validation tests provider configuration validation
 func TestProviderConfig_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		apiKey    string
@@ -41,6 +42,7 @@ func TestProviderConfig_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			config := &ProviderConfig{
 				APIKey:  tt.apiKey,
 				BaseURL: tt.baseURL,
@@ -60,6 +62,7 @@ func TestProviderConfig_Validation(t *testing.T) {
 
 // TestRetryConfig_Validation tests retry configuration
 func TestRetryConfig_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		maxRetries int
@@ -88,6 +91,7 @@ func TestRetryConfig_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			config := &RetryConfig{
 				MaxRetries: tt.maxRetries,
 				Backoff:    tt.backoff,

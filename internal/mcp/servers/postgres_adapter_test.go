@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewPostgresAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, nil)
 
@@ -22,6 +23,7 @@ func TestNewPostgresAdapter(t *testing.T) {
 }
 
 func TestDefaultPostgresAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 
 	assert.Equal(t, "localhost", config.Host)
@@ -38,6 +40,7 @@ func TestDefaultPostgresAdapterConfig(t *testing.T) {
 }
 
 func TestNewPostgresAdapter_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	// Test with empty config - should apply defaults
 	config := PostgresAdapterConfig{}
 	adapter := NewPostgresAdapter(config, logrus.New())
@@ -52,6 +55,7 @@ func TestNewPostgresAdapter_DefaultConfig(t *testing.T) {
 }
 
 func TestPostgresAdapter_Health_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -61,6 +65,7 @@ func TestPostgresAdapter_Health_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_Query_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -70,6 +75,7 @@ func TestPostgresAdapter_Query_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_Execute_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -79,6 +85,7 @@ func TestPostgresAdapter_Execute_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_ListTables_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -88,6 +95,7 @@ func TestPostgresAdapter_ListTables_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_DescribeTable_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -97,6 +105,7 @@ func TestPostgresAdapter_DescribeTable_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_ListSchemas_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -106,6 +115,7 @@ func TestPostgresAdapter_ListSchemas_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_ListIndexes_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -115,6 +125,7 @@ func TestPostgresAdapter_ListIndexes_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_GetStats_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -124,6 +135,7 @@ func TestPostgresAdapter_GetStats_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_IsSchemaAllowed(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	config.AllowedSchemas = []string{"public", "app"}
 	adapter := NewPostgresAdapter(config, logrus.New())
@@ -136,6 +148,7 @@ func TestPostgresAdapter_IsSchemaAllowed(t *testing.T) {
 }
 
 func TestPostgresAdapter_IsSchemaAllowed_NoRestriction(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	config.AllowedSchemas = []string{}
 	adapter := NewPostgresAdapter(config, logrus.New())
@@ -145,6 +158,7 @@ func TestPostgresAdapter_IsSchemaAllowed_NoRestriction(t *testing.T) {
 }
 
 func TestPostgresAdapter_IsReadOnlyQuery(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -165,6 +179,7 @@ func TestPostgresAdapter_IsReadOnlyQuery(t *testing.T) {
 }
 
 func TestPostgresAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -186,6 +201,7 @@ func TestPostgresAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestPostgresAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -197,6 +213,7 @@ func TestPostgresAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_ExecuteTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 	adapter.initialized = true // Manually set for this test
@@ -207,6 +224,7 @@ func TestPostgresAdapter_ExecuteTool_UnknownTool(t *testing.T) {
 }
 
 func TestPostgresAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	config.ReadOnly = true
 	adapter := NewPostgresAdapter(config, logrus.New())
@@ -222,6 +240,7 @@ func TestPostgresAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestPostgresAdapter_Close_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	adapter := NewPostgresAdapter(config, logrus.New())
 
@@ -231,6 +250,7 @@ func TestPostgresAdapter_Close_NotInitialized(t *testing.T) {
 }
 
 func TestPostgresAdapter_SchemaNotAllowed(t *testing.T) {
+	t.Parallel()
 	config := DefaultPostgresAdapterConfig()
 	config.AllowedSchemas = []string{"public"}
 	adapter := NewPostgresAdapter(config, logrus.New())
@@ -250,6 +270,7 @@ func TestPostgresAdapter_SchemaNotAllowed(t *testing.T) {
 // Integration tests that require a running PostgreSQL instance
 // These tests are skipped by default
 func TestPostgresAdapter_Integration(t *testing.T) {
+	t.Parallel()
 	testutil.RequirePostgres(t)
 
 	config := PostgresAdapterConfig{

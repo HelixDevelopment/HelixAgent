@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	assert.True(t, config.Enabled)
@@ -22,6 +23,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestNewDreamer(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -36,6 +38,7 @@ func TestNewDreamer(t *testing.T) {
 }
 
 func TestDreamer_SetCallbacks(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -65,6 +68,7 @@ func TestDreamer_SetCallbacks(t *testing.T) {
 }
 
 func TestDreamer_StartStop(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -88,6 +92,7 @@ func TestDreamer_StartStop(t *testing.T) {
 }
 
 func TestDreamer_Start_AlreadyRunning(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()
@@ -112,6 +117,7 @@ func TestDreamer_Start_AlreadyRunning(t *testing.T) {
 }
 
 func TestDreamer_Start_Disabled(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	config.Enabled = false
@@ -125,6 +131,7 @@ func TestDreamer_Start_Disabled(t *testing.T) {
 }
 
 func TestDreamer_ShouldDream(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -141,6 +148,7 @@ func TestDreamer_ShouldDream(t *testing.T) {
 }
 
 func TestDreamer_ShouldDream_TimeGate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -154,6 +162,7 @@ func TestDreamer_ShouldDream_TimeGate(t *testing.T) {
 }
 
 func TestDreamer_ShouldDream_SessionGate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -167,6 +176,7 @@ func TestDreamer_ShouldDream_SessionGate(t *testing.T) {
 }
 
 func TestDreamer_ShouldDream_LockGate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -180,6 +190,7 @@ func TestDreamer_ShouldDream_LockGate(t *testing.T) {
 }
 
 func TestDreamer_RecordSession(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -197,6 +208,7 @@ func TestDreamer_RecordSession(t *testing.T) {
 }
 
 func TestDreamer_AddMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -226,6 +238,7 @@ func TestDreamer_AddMemory(t *testing.T) {
 }
 
 func TestDreamer_UpdateMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -265,6 +278,7 @@ func TestDreamer_UpdateMemory(t *testing.T) {
 }
 
 func TestDreamer_UpdateMemory_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -275,6 +289,7 @@ func TestDreamer_UpdateMemory_NotFound(t *testing.T) {
 }
 
 func TestDreamer_GetMemory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -296,6 +311,7 @@ func TestDreamer_GetMemory(t *testing.T) {
 }
 
 func TestDreamer_GetMemoriesByCategory(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -316,6 +332,7 @@ func TestDreamer_GetMemoriesByCategory(t *testing.T) {
 }
 
 func TestDreamer_GetAllMemories(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -333,6 +350,7 @@ func TestDreamer_GetAllMemories(t *testing.T) {
 }
 
 func TestDreamer_GetCurrentSession(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -343,6 +361,7 @@ func TestDreamer_GetCurrentSession(t *testing.T) {
 }
 
 func TestDreamer_GetSessions(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	config := DefaultConfig()
 	dreamer := NewDreamer(config, logger)
@@ -352,6 +371,7 @@ func TestDreamer_GetSessions(t *testing.T) {
 }
 
 func TestGenerateDreamID(t *testing.T) {
+	t.Parallel()
 	id1 := generateDreamID()
 	id2 := generateDreamID()
 
@@ -362,6 +382,7 @@ func TestGenerateDreamID(t *testing.T) {
 }
 
 func TestGenerateMemoryID(t *testing.T) {
+	t.Parallel()
 	id1 := generateMemoryID()
 	id2 := generateMemoryID()
 
@@ -374,6 +395,7 @@ func TestGenerateMemoryID(t *testing.T) {
 
 
 func TestDreamer_Dream_Locked(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	config := DefaultConfig()

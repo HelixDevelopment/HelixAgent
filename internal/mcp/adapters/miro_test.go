@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewMiroAdapter(t *testing.T) {
+	t.Parallel()
 	config := MiroConfig{
 		AccessToken: "test-token",
 	}
@@ -26,6 +27,7 @@ func TestNewMiroAdapter(t *testing.T) {
 }
 
 func TestMiroAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewMiroAdapter(MiroConfig{})
 
 	info := adapter.GetServerInfo()
@@ -39,6 +41,7 @@ func TestMiroAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestMiroAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewMiroAdapter(MiroConfig{})
 
 	tools := adapter.ListTools()
@@ -67,6 +70,7 @@ func TestMiroAdapter_ListTools(t *testing.T) {
 }
 
 func TestMiroAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewMiroAdapter(MiroConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -77,6 +81,7 @@ func TestMiroAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestMiroAdapter_ListBoards(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/boards", r.URL.Path)
 		assert.Contains(t, r.Header.Get("Authorization"), "Bearer")
@@ -110,6 +115,7 @@ func TestMiroAdapter_ListBoards(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateBoard(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards", r.URL.Path)
@@ -148,6 +154,7 @@ func TestMiroAdapter_CreateBoard(t *testing.T) {
 }
 
 func TestMiroAdapter_GetBoard(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/boards/board-1", r.URL.Path)
 
@@ -183,6 +190,7 @@ func TestMiroAdapter_GetBoard(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateStickyNote(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards/board-1/sticky_notes", r.URL.Path)
@@ -223,6 +231,7 @@ func TestMiroAdapter_CreateStickyNote(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateShape(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards/board-1/shapes", r.URL.Path)
@@ -267,6 +276,7 @@ func TestMiroAdapter_CreateShape(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateText(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards/board-1/texts", r.URL.Path)
@@ -302,6 +312,7 @@ func TestMiroAdapter_CreateText(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateConnector(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards/board-1/connectors", r.URL.Path)
@@ -345,6 +356,7 @@ func TestMiroAdapter_CreateConnector(t *testing.T) {
 }
 
 func TestMiroAdapter_ListItems(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/boards/board-1/items", r.URL.Path)
 
@@ -379,6 +391,7 @@ func TestMiroAdapter_ListItems(t *testing.T) {
 }
 
 func TestMiroAdapter_GetItem(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/boards/board-1/items/item-1", r.URL.Path)
 
@@ -414,6 +427,7 @@ func TestMiroAdapter_GetItem(t *testing.T) {
 }
 
 func TestMiroAdapter_DeleteItem(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, "/boards/board-1/items/item-1", r.URL.Path)
@@ -439,6 +453,7 @@ func TestMiroAdapter_DeleteItem(t *testing.T) {
 }
 
 func TestMiroAdapter_CreateFrame(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/boards/board-1/frames", r.URL.Path)
@@ -481,6 +496,7 @@ func TestMiroAdapter_CreateFrame(t *testing.T) {
 }
 
 func TestMiroAdapter_ExportBoard(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/boards/board-1", r.URL.Path)
 
@@ -512,6 +528,7 @@ func TestMiroAdapter_ExportBoard(t *testing.T) {
 }
 
 func TestMiroAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"message": "Invalid token"}`))
@@ -532,6 +549,7 @@ func TestMiroAdapter_APIError(t *testing.T) {
 }
 
 func TestDefaultMiroConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultMiroConfig()
 
 	assert.Equal(t, "https://api.miro.com/v2", config.BaseURL)

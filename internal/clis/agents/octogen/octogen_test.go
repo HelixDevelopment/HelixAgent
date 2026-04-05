@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewOctogen(t *testing.T) {
+	t.Parallel()
 	o := New()
 	require.NotNil(t, o)
 	
@@ -23,6 +24,7 @@ func TestNewOctogen(t *testing.T) {
 }
 
 func TestOctogenInitialize(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestOctogenInitialize(t *testing.T) {
 }
 
 func TestOctogenInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestOctogenInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestOctogenStartStop(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestOctogenStartStop(t *testing.T) {
 }
 
 func TestOctogenExecute(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -106,6 +111,7 @@ func TestOctogenExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := o.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -118,6 +124,7 @@ func TestOctogenExecute(t *testing.T) {
 }
 
 func TestOctogenCapabilities(t *testing.T) {
+	t.Parallel()
 	o := New()
 	info := o.Info()
 	
@@ -128,11 +135,13 @@ func TestOctogenCapabilities(t *testing.T) {
 }
 
 func TestOctogenIsAvailable(t *testing.T) {
+	t.Parallel()
 	o := New()
 	assert.True(t, o.IsAvailable())
 }
 
 func TestOctogenGenerateResult(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	

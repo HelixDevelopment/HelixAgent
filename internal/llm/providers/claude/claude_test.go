@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewClaudeProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string
@@ -48,6 +49,7 @@ func TestNewClaudeProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewClaudeProvider(tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
@@ -60,6 +62,7 @@ func TestNewClaudeProvider(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/v1/messages", r.URL.Path)
@@ -99,6 +102,7 @@ func TestClaudeProvider_Complete_Success(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"type": "invalid_request_error", "message": "Invalid request"}}`))
@@ -120,6 +124,7 @@ func TestClaudeProvider_Complete_Error(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "test-request",
@@ -153,6 +158,7 @@ func TestClaudeProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestClaudeProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 
 	tests := []struct {
@@ -201,6 +207,7 @@ func TestClaudeProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -209,6 +216,7 @@ func TestClaudeProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestClaudeProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "test-key", r.Header.Get("x-api-key"))
@@ -247,6 +255,7 @@ func TestClaudeProvider_CompleteStream(t *testing.T) {
 }
 
 func TestClaudeProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -292,6 +301,7 @@ func TestClaudeProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestClaudeProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		apiKey       string
@@ -344,6 +354,7 @@ func TestClaudeProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := &ClaudeProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -358,6 +369,7 @@ func TestClaudeProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond) // Simulate slow response
 		w.WriteHeader(http.StatusOK)
@@ -383,6 +395,7 @@ func TestClaudeProvider_Complete_ContextCancellation(t *testing.T) {
 }
 
 func TestClaudeProvider_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -418,6 +431,7 @@ func TestClaudeProvider_RetryOnServerError(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequestWithSystemMessage(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "test-request",
@@ -442,6 +456,7 @@ func TestClaudeProvider_ConvertRequestWithSystemMessage(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -478,6 +493,7 @@ func TestClaudeProvider_ConvertResponse(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse_EmptyContent(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -495,6 +511,7 @@ func TestClaudeProvider_ConvertResponse_EmptyContent(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -504,6 +521,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestNewClaudeProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -521,6 +539,7 @@ func TestNewClaudeProviderWithRetry(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -539,12 +558,14 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}
 }
 
 func TestClaudeProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProviderWithRetry("test-key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 1 * time.Second,
@@ -562,6 +583,7 @@ func TestClaudeProvider_NextDelay(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{invalid json`))
@@ -614,6 +636,7 @@ func BenchmarkClaudeProvider_CalculateConfidence(b *testing.B) {
 }
 
 func TestClaudeProvider_CalculateConfidence_EdgeCases(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 
 	tests := []struct {
@@ -676,6 +699,7 @@ func TestClaudeProvider_CalculateConfidence_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -684,6 +708,7 @@ func TestClaudeProvider_CalculateConfidence_EdgeCases(t *testing.T) {
 }
 
 func TestClaudeProvider_CompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": {"message": "Internal server error"}}`))
@@ -713,6 +738,7 @@ func TestClaudeProvider_CompleteStream_Error(t *testing.T) {
 }
 
 func TestClaudeProvider_CompleteStream_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -751,6 +777,7 @@ func TestClaudeProvider_CompleteStream_ContextCancellation(t *testing.T) {
 // Claude API requires {"type": "auto"} not just "auto" string
 
 func TestClaudeProvider_ToolChoice_StringAutoConvertsToObject(t *testing.T) {
+	t.Parallel()
 	// This test verifies the critical fix: string "auto" must be converted to {"type": "auto"}
 	var capturedToolChoice interface{}
 
@@ -797,6 +824,7 @@ func TestClaudeProvider_ToolChoice_StringAutoConvertsToObject(t *testing.T) {
 }
 
 func TestClaudeProvider_ToolChoice_StringAnyConvertsToObject(t *testing.T) {
+	t.Parallel()
 	var capturedToolChoice interface{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -839,6 +867,7 @@ func TestClaudeProvider_ToolChoice_StringAnyConvertsToObject(t *testing.T) {
 }
 
 func TestClaudeProvider_ToolChoice_ObjectPassedThrough(t *testing.T) {
+	t.Parallel()
 	var capturedToolChoice interface{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -886,6 +915,7 @@ func TestClaudeProvider_ToolChoice_ObjectPassedThrough(t *testing.T) {
 }
 
 func TestClaudeProvider_ToolChoice_NilWhenNoTools(t *testing.T) {
+	t.Parallel()
 	var capturedToolChoice interface{}
 	var hasToolChoice bool
 
@@ -920,6 +950,7 @@ func TestClaudeProvider_ToolChoice_NilWhenNoTools(t *testing.T) {
 }
 
 func TestClaudeProvider_ToolChoice_AllFormats(t *testing.T) {
+	t.Parallel()
 	// Comprehensive test for all tool_choice formats
 	testCases := []struct {
 		name           string
@@ -955,6 +986,7 @@ func TestClaudeProvider_ToolChoice_AllFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			var capturedToolChoice interface{}
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1004,12 +1036,14 @@ func TestClaudeProvider_ToolChoice_AllFormats(t *testing.T) {
 // ==============================================================================
 
 func TestClaudeProvider_GetAuthType(t *testing.T) {
+	t.Parallel()
 	t.Run("default is API key", func(t *testing.T) {
 		provider := NewClaudeProvider("test-key", "", "")
 		assert.Equal(t, AuthTypeAPIKey, provider.GetAuthType())
 	})
 
 	t.Run("explicit API key auth type", func(t *testing.T) {
+			t.Parallel()
 		provider := &ClaudeProvider{
 			apiKey:   "test-key",
 			authType: AuthTypeAPIKey,
@@ -1018,6 +1052,7 @@ func TestClaudeProvider_GetAuthType(t *testing.T) {
 	})
 
 	t.Run("OAuth auth type", func(t *testing.T) {
+			t.Parallel()
 		provider := &ClaudeProvider{
 			authType: AuthTypeOAuth,
 		}
@@ -1026,6 +1061,7 @@ func TestClaudeProvider_GetAuthType(t *testing.T) {
 }
 
 func TestClaudeProvider_getAuthHeader_APIKey(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeProvider{
 		apiKey:   "sk-test-key",
 		authType: AuthTypeAPIKey,
@@ -1038,6 +1074,7 @@ func TestClaudeProvider_getAuthHeader_APIKey(t *testing.T) {
 }
 
 func TestClaudeProvider_getAuthHeader_OAuthNoReader(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeProvider{
 		authType:        AuthTypeOAuth,
 		oauthCredReader: nil, // No credential reader
@@ -1059,6 +1096,7 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 }
 
 func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
+	t.Parallel()
 	t.Run("success - API returns response", func(t *testing.T) {
 		mockResp := &http.Response{
 			StatusCode: http.StatusBadRequest, // Expected for GET to messages endpoint
@@ -1079,6 +1117,7 @@ func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - unauthorized", func(t *testing.T) {
+			t.Parallel()
 		mockResp := &http.Response{
 			StatusCode: http.StatusUnauthorized,
 			Body:       http.NoBody,
@@ -1099,6 +1138,7 @@ func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - network error", func(t *testing.T) {
+			t.Parallel()
 		provider := &ClaudeProvider{
 			apiKey:   "test-key",
 			baseURL:  ClaudeAPIURL,
@@ -1118,6 +1158,7 @@ func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
 }
 
 func TestIsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -1131,12 +1172,14 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.retryable, isAuthRetryableStatus(tt.statusCode))
 		})
 	}
 }
 
 func TestClaudeProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 
 	start := time.Now()
@@ -1154,6 +1197,7 @@ func TestClaudeProvider_WaitWithJitter(t *testing.T) {
 }
 
 func TestClaudeProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1168,6 +1212,7 @@ func TestClaudeProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse_WithToolUse(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -1204,6 +1249,7 @@ func TestClaudeProvider_ConvertResponse_WithToolUse(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse_MultipleTextBlocks(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 
@@ -1237,6 +1283,7 @@ func TestClaudeProvider_ConvertResponse_MultipleTextBlocks(t *testing.T) {
 // ==============================================================================
 
 func TestClaudeProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	var capturedRequest ClaudeRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1301,6 +1348,7 @@ func TestClaudeProvider_Complete_WithTools(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequest_ToolWithoutParameters(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "test",
@@ -1328,6 +1376,7 @@ func TestClaudeProvider_ConvertRequest_ToolWithoutParameters(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequest_ToolWithMissingType(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "test",
@@ -1358,6 +1407,7 @@ func TestClaudeProvider_ConvertRequest_ToolWithMissingType(t *testing.T) {
 }
 
 func TestClaudeProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "2023-06-01", r.Header.Get("anthropic-version"))
@@ -1375,6 +1425,7 @@ func TestClaudeProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestClaudeProvider_HealthCheck_Unauthorized(t *testing.T) {
+	t.Parallel()
 	// Test using mockRoundTripper since HealthCheck uses hardcoded URL
 	mockResp := &http.Response{
 		StatusCode: http.StatusUnauthorized,
@@ -1396,6 +1447,7 @@ func TestClaudeProvider_HealthCheck_Unauthorized(t *testing.T) {
 }
 
 func TestClaudeProvider_HealthCheck_ServerError(t *testing.T) {
+	t.Parallel()
 	mockResp := &http.Response{
 		StatusCode: http.StatusInternalServerError,
 		Body:       http.NoBody,
@@ -1416,6 +1468,7 @@ func TestClaudeProvider_HealthCheck_ServerError(t *testing.T) {
 }
 
 func TestClaudeProvider_ValidateConfig_OAuthWithoutReader(t *testing.T) {
+	t.Parallel()
 	provider := &ClaudeProvider{
 		baseURL:         "https://api.anthropic.com",
 		model:           "claude-3-sonnet",
@@ -1429,6 +1482,7 @@ func TestClaudeProvider_ValidateConfig_OAuthWithoutReader(t *testing.T) {
 }
 
 func TestClaudeProvider_CompleteStream_WithTextDelta(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1476,6 +1530,7 @@ func TestClaudeProvider_CompleteStream_WithTextDelta(t *testing.T) {
 }
 
 func TestClaudeProvider_CompleteStream_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1506,6 +1561,7 @@ func TestClaudeProvider_CompleteStream_MalformedJSON(t *testing.T) {
 }
 
 func TestClaudeProvider_Retry_AllAttemptsFail(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1533,6 +1589,7 @@ func TestClaudeProvider_Retry_AllAttemptsFail(t *testing.T) {
 }
 
 func TestClaudeProvider_Retry_ContextCancelledDuringRetry(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -1562,6 +1619,7 @@ func TestClaudeProvider_Retry_ContextCancelledDuringRetry(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse_WithMultipleToolUse(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "multi-tool"}
 
@@ -1599,6 +1657,7 @@ func TestClaudeProvider_ConvertResponse_WithMultipleToolUse(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertResponse_ToolUseMarshalError(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{ID: "marshal-error"}
 
@@ -1625,6 +1684,7 @@ func TestClaudeProvider_ConvertResponse_ToolUseMarshalError(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_BadGateway(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1654,6 +1714,7 @@ func TestClaudeProvider_Complete_BadGateway(t *testing.T) {
 }
 
 func TestClaudeProvider_Complete_GatewayTimeout(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1683,6 +1744,7 @@ func TestClaudeProvider_Complete_GatewayTimeout(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequest_EmptyMessages(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID:       "empty-messages",
@@ -1701,6 +1763,7 @@ func TestClaudeProvider_ConvertRequest_EmptyMessages(t *testing.T) {
 }
 
 func TestClaudeProvider_ConvertRequest_OnlySystemMessage(t *testing.T) {
+	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 	req := &models.LLMRequest{
 		ID: "system-only",
@@ -1717,17 +1780,20 @@ func TestClaudeProvider_ConvertRequest_OnlySystemMessage(t *testing.T) {
 }
 
 func TestClaudeProvider_AuthTypeConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, AuthType("api_key"), AuthTypeAPIKey)
 	assert.Equal(t, AuthType("oauth"), AuthTypeOAuth)
 }
 
 func TestClaudeProvider_APIURLConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "https://api.anthropic.com/v1/messages", ClaudeAPIURL)
 	assert.Equal(t, "claude-sonnet-4-6", ClaudeModel)      // Updated to Claude 4 model
 	assert.Equal(t, "claude-sonnet-4-6", ClaudeOAuthModel) // Updated to Claude 4 model
 }
 
 func TestClaudeProvider_Complete_ReadBodyError(t *testing.T) {
+	t.Parallel()
 	// Create a server that returns a response that can't be fully read
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", "1000") // Claim more content than we send

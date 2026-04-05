@@ -14,6 +14,7 @@ import (
 )
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -23,6 +24,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestNewCerebrasProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("test-key", "", "")
 
 	assert.NotNil(t, provider)
@@ -32,6 +34,7 @@ func TestNewCerebrasProvider(t *testing.T) {
 }
 
 func TestNewCerebrasProvider_CustomValues(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("api-key", "https://custom.api.com", "custom-model")
 
 	assert.Equal(t, "api-key", provider.apiKey)
@@ -40,6 +43,7 @@ func TestNewCerebrasProvider_CustomValues(t *testing.T) {
 }
 
 func TestNewCerebrasProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 500 * time.Millisecond,
@@ -56,6 +60,7 @@ func TestNewCerebrasProviderWithRetry(t *testing.T) {
 }
 
 func TestCerebrasProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	req := &models.LLMRequest{
@@ -85,6 +90,7 @@ func TestCerebrasProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestCerebrasProvider_ConvertRequest_MaxTokensLimit(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	// Test exceeding max limit
@@ -105,6 +111,7 @@ func TestCerebrasProvider_ConvertRequest_MaxTokensLimit(t *testing.T) {
 }
 
 func TestCerebrasProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	tests := []struct {
@@ -128,6 +135,7 @@ func TestCerebrasProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestCerebrasProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	caps := provider.GetCapabilities()
@@ -142,6 +150,7 @@ func TestCerebrasProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestCerebrasProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	// Note: NewCerebrasProvider sets default values for empty baseURL and model,
 	// so only the apiKey check can fail via the constructor.
 	tests := []struct {
@@ -168,6 +177,7 @@ func TestCerebrasProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestCerebrasProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProviderWithRetry("key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 1 * time.Second,
@@ -188,6 +198,7 @@ func TestCerebrasProvider_NextDelay(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -209,12 +220,14 @@ func TestIsRetryableStatus(t *testing.T) {
 }
 
 func TestIsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	assert.True(t, isAuthRetryableStatus(http.StatusUnauthorized))
 	assert.False(t, isAuthRetryableStatus(http.StatusForbidden))
 	assert.False(t, isAuthRetryableStatus(http.StatusOK))
 }
 
 func TestMin(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1, min(1, 2))
 	assert.Equal(t, 1, min(2, 1))
 	assert.Equal(t, 0, min(0, 5))
@@ -222,6 +235,7 @@ func TestMin(t *testing.T) {
 }
 
 func TestCerebrasRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := CerebrasRequest{
 		Model:       "llama-3.3-70b",
 		Messages:    []CerebrasMessage{{Role: "user", Content: "test"}},
@@ -239,6 +253,7 @@ func TestCerebrasRequest_Fields(t *testing.T) {
 }
 
 func TestCerebrasMessage_Fields(t *testing.T) {
+	t.Parallel()
 	msg := CerebrasMessage{
 		Role:    "assistant",
 		Content: "Hello, how can I help?",
@@ -249,6 +264,7 @@ func TestCerebrasMessage_Fields(t *testing.T) {
 }
 
 func TestCerebrasResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := CerebrasResponse{
 		ID:      "resp-123",
 		Object:  "chat.completion",
@@ -274,6 +290,7 @@ func TestCerebrasResponse_Fields(t *testing.T) {
 }
 
 func TestCerebrasUsage_Fields(t *testing.T) {
+	t.Parallel()
 	usage := CerebrasUsage{
 		PromptTokens:     100,
 		CompletionTokens: 200,
@@ -286,6 +303,7 @@ func TestCerebrasUsage_Fields(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
@@ -329,6 +347,7 @@ func TestCerebrasProvider_Complete_Success(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{"error": {"message": "Invalid API key", "type": "auth_error", "code": "401"}}`
 		w.WriteHeader(http.StatusUnauthorized)
@@ -351,6 +370,7 @@ func TestCerebrasProvider_Complete_Error(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{"id": "test", "choices": [], "usage": {}}`
 		w.WriteHeader(http.StatusOK)
@@ -373,6 +393,7 @@ func TestCerebrasProvider_Complete_EmptyChoices(t *testing.T) {
 }
 
 func TestCerebrasProvider_ConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	req := &models.LLMRequest{ID: "req-1"}
@@ -407,6 +428,7 @@ func TestCerebrasProvider_ConvertResponse(t *testing.T) {
 }
 
 func TestCerebrasStreamResponse_Fields(t *testing.T) {
+	t.Parallel()
 	finishReason := "stop"
 	resp := CerebrasStreamResponse{
 		ID:      "stream-1",
@@ -429,6 +451,7 @@ func TestCerebrasStreamResponse_Fields(t *testing.T) {
 }
 
 func TestCerebrasErrorResponse_Fields(t *testing.T) {
+	t.Parallel()
 	errResp := CerebrasErrorResponse{}
 	errResp.Error.Message = "Invalid key"
 	errResp.Error.Type = "auth_error"
@@ -440,6 +463,7 @@ func TestCerebrasErrorResponse_Fields(t *testing.T) {
 }
 
 func TestCerebrasProvider_CompleteStream_Success(t *testing.T) {
+	t.Parallel()
 	// Create mock streaming server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
@@ -476,6 +500,7 @@ func TestCerebrasProvider_CompleteStream_Success(t *testing.T) {
 }
 
 func TestCerebrasProvider_CompleteStream_HTTPError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Server error"))
@@ -497,6 +522,7 @@ func TestCerebrasProvider_CompleteStream_HTTPError(t *testing.T) {
 }
 
 func TestCerebrasProvider_CompleteStream_WithFinishReason(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -525,6 +551,7 @@ func TestCerebrasProvider_CompleteStream_WithFinishReason(t *testing.T) {
 }
 
 func TestCerebrasProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/models" {
 			w.WriteHeader(http.StatusOK)
@@ -548,6 +575,7 @@ func TestCerebrasProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not valid json"))
@@ -569,6 +597,7 @@ func TestCerebrasProvider_Complete_InvalidJSON(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_NonJSONError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("plain text error"))
@@ -590,6 +619,7 @@ func TestCerebrasProvider_Complete_NonJSONError(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	// Create a server that blocks
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
@@ -621,6 +651,7 @@ func TestCerebrasProvider_Complete_ContextCancelled(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -656,6 +687,7 @@ func TestCerebrasProvider_Complete_RetryOnServerError(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_RetryExhausted(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte("Rate limited"))
@@ -681,6 +713,7 @@ func TestCerebrasProvider_Complete_RetryExhausted(t *testing.T) {
 }
 
 func TestCerebrasProvider_Complete_AuthRetry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -717,6 +750,7 @@ func TestCerebrasProvider_Complete_AuthRetry(t *testing.T) {
 }
 
 func TestCerebrasProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 	ctx := context.Background()
 
@@ -732,6 +766,7 @@ func TestCerebrasProvider_WaitWithJitter(t *testing.T) {
 }
 
 func TestCerebrasProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -747,6 +782,7 @@ func TestCerebrasProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
 }
 
 func TestCerebrasProvider_ConvertRequest_NoPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	req := &models.LLMRequest{
@@ -769,6 +805,7 @@ func TestCerebrasProvider_ConvertRequest_NoPrompt(t *testing.T) {
 }
 
 func TestCerebrasProvider_ConvertResponse_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	req := &models.LLMRequest{ID: "req-1"}
@@ -786,6 +823,7 @@ func TestCerebrasProvider_ConvertResponse_EmptyChoices(t *testing.T) {
 }
 
 func TestCerebrasProvider_CalculateConfidence_EdgeCases(t *testing.T) {
+	t.Parallel()
 	provider := NewCerebrasProvider("key", "", "")
 
 	// Test unknown finish reason
@@ -803,6 +841,7 @@ func TestCerebrasProvider_CalculateConfidence_EdgeCases(t *testing.T) {
 }
 
 func TestCerebrasChoice_Fields(t *testing.T) {
+	t.Parallel()
 	choice := CerebrasChoice{
 		Index: 0,
 		Message: CerebrasMessage{
@@ -819,6 +858,7 @@ func TestCerebrasChoice_Fields(t *testing.T) {
 }
 
 func TestCerebrasStreamChoice_Fields(t *testing.T) {
+	t.Parallel()
 	finishReason := "length"
 	choice := CerebrasStreamChoice{
 		Index: 1,
@@ -836,6 +876,7 @@ func TestCerebrasStreamChoice_Fields(t *testing.T) {
 }
 
 func TestCerebrasStreamChoice_NilFinishReason(t *testing.T) {
+	t.Parallel()
 	choice := CerebrasStreamChoice{
 		Index: 0,
 		Delta: CerebrasMessage{Content: "test"},

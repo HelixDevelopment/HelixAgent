@@ -17,6 +17,7 @@ import (
 // ============================================================================
 
 func TestClient_Close_RealClient(t *testing.T) {
+	t.Parallel()
 	// Create client with real postgres client (but not connected)
 	cfg := &config.Config{}
 	client, err := NewClient(cfg)
@@ -33,6 +34,7 @@ func TestClient_Close_RealClient(t *testing.T) {
 // ============================================================================
 
 func TestClient_initConnection_WithExistingDeadline_EdgeCase(t *testing.T) {
+	t.Parallel()
 	// Create client
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -58,6 +60,7 @@ func TestClient_initConnection_WithExistingDeadline_EdgeCase(t *testing.T) {
 }
 
 func TestClient_initConnection_WithoutExistingDeadline_EdgeCase(t *testing.T) {
+	t.Parallel()
 	// Create client
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -89,6 +92,7 @@ func TestClient_initConnection_WithoutExistingDeadline_EdgeCase(t *testing.T) {
 // ============================================================================
 
 func TestClient_Pool_NotConnected(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -115,6 +119,7 @@ func TestClient_Pool_NotConnected(t *testing.T) {
 // ============================================================================
 
 func TestClient_Ping_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -136,6 +141,7 @@ func TestClient_Ping_NotConnected_Error(t *testing.T) {
 }
 
 func TestClient_Ping_WithMockSuccess(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{healthCheckErr: nil}
 	client := newTestClient(mock)
 	
@@ -149,6 +155,7 @@ func TestClient_Ping_WithMockSuccess(t *testing.T) {
 // ============================================================================
 
 func TestClient_HealthCheck_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -174,6 +181,7 @@ func TestClient_HealthCheck_NotConnected_Error(t *testing.T) {
 // ============================================================================
 
 func TestClient_Exec_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -195,6 +203,7 @@ func TestClient_Exec_NotConnected_Error(t *testing.T) {
 }
 
 func TestClient_Exec_WithMockErrorCase(t *testing.T) {
+	t.Parallel()
 	mock := &mockDatabase{execErr: errors.New("exec failed")}
 	client := newTestClient(mock)
 	
@@ -208,6 +217,7 @@ func TestClient_Exec_WithMockErrorCase(t *testing.T) {
 // ============================================================================
 
 func TestClient_Query_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -230,6 +240,7 @@ func TestClient_Query_NotConnected_Error(t *testing.T) {
 }
 
 func TestClient_Query_NoRows_ReturnsEmpty(t *testing.T) {
+	t.Parallel()
 	mockRows := &mockRows{nextReturns: []bool{false}}
 	mock := &mockDatabase{queryRows: mockRows}
 	client := newTestClient(mock)
@@ -244,6 +255,7 @@ func TestClient_Query_NoRows_ReturnsEmpty(t *testing.T) {
 // ============================================================================
 
 func TestClient_QueryRow_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -270,6 +282,7 @@ func TestClient_QueryRow_NotConnected_Error(t *testing.T) {
 }
 
 func TestClient_QueryRow_WithMockSuccess(t *testing.T) {
+	t.Parallel()
 	mockRow := mockRow{}
 	mock := &mockDatabase{queryRowResult: mockRow}
 	client := newTestClient(mock)
@@ -284,6 +297,7 @@ func TestClient_QueryRow_WithMockSuccess(t *testing.T) {
 // ============================================================================
 
 func TestClient_Begin_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -306,6 +320,7 @@ func TestClient_Begin_NotConnected_Error(t *testing.T) {
 }
 
 func TestClient_Begin_WithMockSuccess(t *testing.T) {
+	t.Parallel()
 	mockTx := &mockTx{}
 	mock := &mockDatabase{beginTx: mockTx}
 	client := newTestClient(mock)
@@ -321,6 +336,7 @@ func TestClient_Begin_WithMockSuccess(t *testing.T) {
 // ============================================================================
 
 func TestClient_Migrate_NotConnected_Error(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -346,6 +362,7 @@ func TestClient_Migrate_NotConnected_Error(t *testing.T) {
 // ============================================================================
 
 func TestNewClientWithFallback_WithRealConnection(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 	
 	client, err := NewClientWithFallback(cfg)
@@ -364,6 +381,7 @@ func TestNewClientWithFallback_WithRealConnection(t *testing.T) {
 // ============================================================================
 
 func TestNewPostgresDB_NoError(t *testing.T) {
+	t.Parallel()
 	// Create a config
 	// NewClient doesn't return errors for invalid configs (connection is lazy)
 	// So this test verifies the NewPostgresDB creates a client successfully
@@ -384,6 +402,7 @@ func TestNewPostgresDB_NoError(t *testing.T) {
 // ============================================================================
 
 func TestNewPostgresDBWithFallback_ConnectError_Fallback(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host",
@@ -403,6 +422,7 @@ func TestNewPostgresDBWithFallback_ConnectError_Fallback(t *testing.T) {
 }
 
 func TestNewPostgresDBWithFallback_PingFails_Fallback(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
 			Host:     "invalid-host-that-does-not-exist.example.com",
@@ -427,6 +447,7 @@ func TestNewPostgresDBWithFallback_PingFails_Fallback(t *testing.T) {
 // ============================================================================
 
 func TestConnect_Success(t *testing.T) {
+	t.Parallel()
 	// Connect creates a client with empty config
 	// The connection won't happen until used (lazy)
 	db, err := Connect()

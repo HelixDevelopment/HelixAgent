@@ -39,6 +39,7 @@ func setupVisionHandler() (*VisionHandler, *gin.Engine) {
 // ============================================================================
 
 func TestNewVisionHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewVisionHandler(nil, logger)
 
@@ -50,6 +51,7 @@ func TestNewVisionHandler(t *testing.T) {
 }
 
 func TestNewVisionHandler_CapabilitiesInitialized(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewVisionHandler(nil, logger)
 
@@ -70,6 +72,7 @@ func TestNewVisionHandler_CapabilitiesInitialized(t *testing.T) {
 // ============================================================================
 
 func TestVisionCapability_Fields(t *testing.T) {
+	t.Parallel()
 	cap := VisionCapability{
 		ID:          "test-cap",
 		Name:        "Test Capability",
@@ -86,6 +89,7 @@ func TestVisionCapability_Fields(t *testing.T) {
 }
 
 func TestVisionRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := VisionRequest{
 		Capability: "analyze",
 		Image:      "base64data",
@@ -100,6 +104,7 @@ func TestVisionRequest_Fields(t *testing.T) {
 }
 
 func TestVisionResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := VisionResponse{
 		Capability: "analyze",
 		Status:     "completed",
@@ -124,6 +129,7 @@ func TestVisionResponse_Fields(t *testing.T) {
 }
 
 func TestDetection_Fields(t *testing.T) {
+	t.Parallel()
 	d := Detection{
 		Label:       "cat",
 		Confidence:  0.99,
@@ -136,6 +142,7 @@ func TestDetection_Fields(t *testing.T) {
 }
 
 func TestVisionResponse_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	resp := VisionResponse{
 		Capability: "ocr",
 		Status:     "completed",
@@ -163,6 +170,7 @@ func TestVisionResponse_JSONSerialization(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Health(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -188,6 +196,7 @@ func TestVisionHandler_Health(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_ListCapabilities(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -211,6 +220,7 @@ func TestVisionHandler_ListCapabilities(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_GetCapabilityStatus_Success(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		capability   string
@@ -228,6 +238,7 @@ func TestVisionHandler_GetCapabilityStatus_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"GET",
@@ -249,6 +260,7 @@ func TestVisionHandler_GetCapabilityStatus_Success(t *testing.T) {
 }
 
 func TestVisionHandler_GetCapabilityStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -270,6 +282,7 @@ func TestVisionHandler_GetCapabilityStatus_NotFound(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Analyze_WithBase64Image(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	// Create a valid base64-encoded string (fake PNG header)
@@ -301,6 +314,7 @@ func TestVisionHandler_Analyze_WithBase64Image(t *testing.T) {
 }
 
 func TestVisionHandler_Analyze_WithImageURL(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -326,6 +340,7 @@ func TestVisionHandler_Analyze_WithImageURL(t *testing.T) {
 }
 
 func TestVisionHandler_Analyze_EmptyRequest(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{})
@@ -347,6 +362,7 @@ func TestVisionHandler_Analyze_EmptyRequest(t *testing.T) {
 }
 
 func TestVisionHandler_Analyze_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -366,6 +382,7 @@ func TestVisionHandler_Analyze_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_OCR_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -389,6 +406,7 @@ func TestVisionHandler_OCR_Success(t *testing.T) {
 }
 
 func TestVisionHandler_OCR_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -408,6 +426,7 @@ func TestVisionHandler_OCR_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Detect_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -434,6 +453,7 @@ func TestVisionHandler_Detect_Success(t *testing.T) {
 }
 
 func TestVisionHandler_Detect_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -453,6 +473,7 @@ func TestVisionHandler_Detect_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Caption_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -476,6 +497,7 @@ func TestVisionHandler_Caption_Success(t *testing.T) {
 }
 
 func TestVisionHandler_Caption_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -495,6 +517,7 @@ func TestVisionHandler_Caption_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Describe_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -518,6 +541,7 @@ func TestVisionHandler_Describe_Success(t *testing.T) {
 }
 
 func TestVisionHandler_Describe_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -537,6 +561,7 @@ func TestVisionHandler_Describe_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Classify_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -560,6 +585,7 @@ func TestVisionHandler_Classify_Success(t *testing.T) {
 }
 
 func TestVisionHandler_Classify_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	w := httptest.NewRecorder()
@@ -579,6 +605,7 @@ func TestVisionHandler_Classify_InvalidJSON(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_HandleCapability_RoutesCorrectly(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		capability string
@@ -596,6 +623,7 @@ func TestVisionHandler_HandleCapability_RoutesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(VisionRequest{
 				ImageURL: "https://example.com/test.png",
 			})
@@ -622,6 +650,7 @@ func TestVisionHandler_HandleCapability_RoutesCorrectly(t *testing.T) {
 }
 
 func TestVisionHandler_HandleCapability_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -651,6 +680,7 @@ func TestVisionHandler_HandleCapability_NotFound(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_ProcessImage_Base64PNG(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	pngHeader := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00}
@@ -674,6 +704,7 @@ func TestVisionHandler_ProcessImage_Base64PNG(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_Base64JPEG(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	jpegHeader := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46}
@@ -697,6 +728,7 @@ func TestVisionHandler_ProcessImage_Base64JPEG(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_Base64GIF(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	gifHeader := []byte("GIF89a\x00\x00\x00\x00")
@@ -720,6 +752,7 @@ func TestVisionHandler_ProcessImage_Base64GIF(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_Base64WEBP(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	webpHeader := []byte("RIFF\x00\x00\x00\x00WEBP\x00\x00")
@@ -743,6 +776,7 @@ func TestVisionHandler_ProcessImage_Base64WEBP(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_URLContentTypeDetection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		url         string
@@ -759,6 +793,7 @@ func TestVisionHandler_ProcessImage_URLContentTypeDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(VisionRequest{ImageURL: tt.url})
 
 			w := httptest.NewRecorder()
@@ -779,6 +814,7 @@ func TestVisionHandler_ProcessImage_URLContentTypeDetection(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_InvalidBase64(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -802,6 +838,7 @@ func TestVisionHandler_ProcessImage_InvalidBase64(t *testing.T) {
 }
 
 func TestVisionHandler_ProcessImage_NoImageProvided(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{})
@@ -825,6 +862,7 @@ func TestVisionHandler_ProcessImage_NoImageProvided(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewVisionHandler(nil, logger)
 	r := gin.New()
@@ -851,6 +889,7 @@ func TestVisionHandler_RegisterRoutes(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_ResponseContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	endpoints := []struct {
@@ -865,6 +904,7 @@ func TestVisionHandler_ResponseContentType(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.method+" "+ep.path, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if ep.body != "" {
@@ -885,6 +925,7 @@ func TestVisionHandler_ResponseContentType(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_Analyze_HasDurationAndTimestamp(t *testing.T) {
+	t.Parallel()
 	_, r := setupVisionHandler()
 
 	body, _ := json.Marshal(VisionRequest{
@@ -911,6 +952,7 @@ func TestVisionHandler_Analyze_HasDurationAndTimestamp(t *testing.T) {
 // ============================================================================
 
 func TestVisionHandler_AllEndpoints_BadRequest(t *testing.T) {
+	t.Parallel()
 	endpoints := []string{
 		"/v1/vision/analyze",
 		"/v1/vision/ocr",
@@ -924,6 +966,7 @@ func TestVisionHandler_AllEndpoints_BadRequest(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"POST",

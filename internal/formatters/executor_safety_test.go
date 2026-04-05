@@ -15,6 +15,7 @@ import (
 // does not hang the call or crash the process — the panic is recovered and returned
 // as an error in the result set.
 func TestExecuteBatch_PanicRecovery(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 
 	// Register a formatter that panics on Format
@@ -51,6 +52,7 @@ func TestExecuteBatch_PanicRecovery(t *testing.T) {
 // TestExecuteBatch_PanicRecovery_MixedBatch verifies that a panic in one goroutine
 // does not prevent the other formatters from completing — all slots are filled.
 func TestExecuteBatch_PanicRecovery_MixedBatch(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 
 	// Healthy formatter for "go"
@@ -95,17 +97,20 @@ func TestExecuteBatch_PanicRecovery_MixedBatch(t *testing.T) {
 // TestExecuteBatch_EmptyBatch verifies that an empty (nil or zero-length) slice
 // returns immediately with no error and an empty result slice.
 func TestExecuteBatch_EmptyBatch(t *testing.T) {
+	t.Parallel()
 	registry := newTestRegistry(t)
 	executor := newTestExecutor(t, registry, false)
 	ctx := context.Background()
 
 	t.Run("nil slice", func(t *testing.T) {
+			t.Parallel()
 		results, err := executor.ExecuteBatch(ctx, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, results)
 	})
 
 	t.Run("empty slice", func(t *testing.T) {
+			t.Parallel()
 		results, err := executor.ExecuteBatch(ctx, []*FormatRequest{})
 		assert.NoError(t, err)
 		assert.Empty(t, results)

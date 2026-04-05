@@ -26,11 +26,13 @@ func newTestHealthChecker(t *testing.T) (*HealthChecker, *FormatterRegistry) {
 }
 
 func TestNewHealthChecker(t *testing.T) {
+	t.Parallel()
 	hc, _ := newTestHealthChecker(t)
 	assert.NotNil(t, hc)
 }
 
 func TestHealthChecker_CheckAll_AllHealthy(t *testing.T) {
+	t.Parallel()
 	hc, registry := newTestHealthChecker(t)
 
 	// Register healthy formatters
@@ -55,6 +57,7 @@ func TestHealthChecker_CheckAll_AllHealthy(t *testing.T) {
 }
 
 func TestHealthChecker_CheckAll_SomeUnhealthy(t *testing.T) {
+	t.Parallel()
 	hc, registry := newTestHealthChecker(t)
 
 	healthy := newMockFormatter("black", "1.0", []string{"python"})
@@ -85,6 +88,7 @@ func TestHealthChecker_CheckAll_SomeUnhealthy(t *testing.T) {
 }
 
 func TestHealthChecker_CheckAll_Empty(t *testing.T) {
+	t.Parallel()
 	hc, _ := newTestHealthChecker(t)
 
 	report := hc.CheckAll(context.Background())
@@ -96,6 +100,7 @@ func TestHealthChecker_CheckAll_Empty(t *testing.T) {
 }
 
 func TestHealthChecker_Check_Healthy(t *testing.T) {
+	t.Parallel()
 	hc, registry := newTestHealthChecker(t)
 
 	mock := newMockFormatter("black", "1.0", []string{"python"})
@@ -115,6 +120,7 @@ func TestHealthChecker_Check_Healthy(t *testing.T) {
 }
 
 func TestHealthChecker_Check_Unhealthy(t *testing.T) {
+	t.Parallel()
 	hc, registry := newTestHealthChecker(t)
 
 	mock := newMockFormatter("broken", "1.0", []string{"python"})
@@ -134,6 +140,7 @@ func TestHealthChecker_Check_Unhealthy(t *testing.T) {
 }
 
 func TestHealthChecker_Check_NotFound(t *testing.T) {
+	t.Parallel()
 	hc, _ := newTestHealthChecker(t)
 
 	_, err := hc.Check(context.Background(), "nonexistent")
@@ -142,6 +149,7 @@ func TestHealthChecker_Check_NotFound(t *testing.T) {
 }
 
 func TestHealthReport_IsHealthy(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		unhealthy int
@@ -154,6 +162,7 @@ func TestHealthReport_IsHealthy(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			report := &HealthReport{UnhealthyCount: tc.unhealthy}
 			assert.Equal(t, tc.expected, report.IsHealthy())
 		})
@@ -161,6 +170,7 @@ func TestHealthReport_IsHealthy(t *testing.T) {
 }
 
 func TestHealthReport_HealthPercentage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		total    int
@@ -176,6 +186,7 @@ func TestHealthReport_HealthPercentage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			report := &HealthReport{
 				TotalFormatters: tc.total,
 				HealthyCount:    tc.healthy,
@@ -186,6 +197,7 @@ func TestHealthReport_HealthPercentage(t *testing.T) {
 }
 
 func TestFormatterHealthResult_Fields(t *testing.T) {
+	t.Parallel()
 	result := FormatterHealthResult{
 		Name:     "black",
 		Healthy:  true,
@@ -200,6 +212,7 @@ func TestFormatterHealthResult_Fields(t *testing.T) {
 }
 
 func TestHealthChecker_CheckAll_FormatterResults(t *testing.T) {
+	t.Parallel()
 	hc, registry := newTestHealthChecker(t)
 
 	mock := newMockFormatter("black", "1.0", []string{"python"})

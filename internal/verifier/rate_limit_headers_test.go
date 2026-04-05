@@ -10,6 +10,7 @@ import (
 )
 
 func TestParseRateLimitHeaders_OpenAI(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("x-ratelimit-limit-requests", "200")
 	headers.Set("x-ratelimit-remaining-requests", "195")
@@ -27,6 +28,7 @@ func TestParseRateLimitHeaders_OpenAI(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_Anthropic(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("anthropic-ratelimit-requests-limit", "1000")
 	headers.Set("anthropic-ratelimit-requests-remaining", "999")
@@ -43,6 +45,7 @@ func TestParseRateLimitHeaders_Anthropic(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_OpenRouter(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("X-RateLimit-Limit", "500")
 	headers.Set("X-RateLimit-Remaining", "490")
@@ -55,6 +58,7 @@ func TestParseRateLimitHeaders_OpenRouter(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_SambaNova(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("X-RateLimit-Limit-RPM", "60")
 	headers.Set("X-RateLimit-Limit-RPD", "1000")
@@ -67,6 +71,7 @@ func TestParseRateLimitHeaders_SambaNova(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_Groq(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("x-ratelimit-limit-requests", "30")
 	headers.Set("x-ratelimit-remaining-requests", "28")
@@ -82,6 +87,7 @@ func TestParseRateLimitHeaders_Groq(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_HuggingFace(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("RateLimit", "100")
 
@@ -92,6 +98,7 @@ func TestParseRateLimitHeaders_HuggingFace(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_UnknownProvider(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("X-RateLimit-Limit", "100")
 	headers.Set("X-RateLimit-Remaining", "90")
@@ -105,16 +112,19 @@ func TestParseRateLimitHeaders_UnknownProvider(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_EmptyHeaders(t *testing.T) {
+	t.Parallel()
 	info := ParseRateLimitHeaders("openai", http.Header{})
 	assert.Nil(t, info)
 }
 
 func TestParseRateLimitHeaders_NilHeaders(t *testing.T) {
+	t.Parallel()
 	info := ParseRateLimitHeaders("openai", nil)
 	assert.Nil(t, info)
 }
 
 func TestParseRateLimitHeaders_WithTimestampReset(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("x-ratelimit-limit-requests", "200")
 	// Unix timestamp for reset
@@ -128,6 +138,7 @@ func TestParseRateLimitHeaders_WithTimestampReset(t *testing.T) {
 }
 
 func TestParseRateLimitHeaders_WithRFC3339Reset(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("anthropic-ratelimit-requests-limit", "100")
 	resetTime := time.Now().Add(1 * time.Minute).UTC().Format(time.RFC3339)
@@ -141,6 +152,7 @@ func TestParseRateLimitHeaders_WithRFC3339Reset(t *testing.T) {
 }
 
 func TestParseHeaderInt(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 	headers.Set("X-Limit", "100")
 	headers.Set("X-Invalid", "abc")
@@ -152,6 +164,7 @@ func TestParseHeaderInt(t *testing.T) {
 }
 
 func TestParseHeaderTime(t *testing.T) {
+	t.Parallel()
 	headers := http.Header{}
 
 	// Unix timestamp
@@ -185,11 +198,13 @@ func TestParseHeaderTime(t *testing.T) {
 }
 
 func TestRateLimitHeaderMap_Coverage(t *testing.T) {
+	t.Parallel()
 	// Verify known providers have entries
 	expectedProviders := []string{"openai", "groq", "claude", "openrouter", "sambanova", "huggingface"}
 
 	for _, provider := range expectedProviders {
 		t.Run(provider, func(t *testing.T) {
+				t.Parallel()
 			headers, ok := RateLimitHeaderMap[provider]
 			require.True(t, ok, "provider %s should have rate limit header mapping", provider)
 			require.NotNil(t, headers)

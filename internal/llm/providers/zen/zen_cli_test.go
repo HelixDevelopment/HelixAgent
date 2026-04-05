@@ -14,6 +14,7 @@ import (
 
 // TestZenCLIProvider_DefaultConfig tests default configuration
 func TestZenCLIProvider_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultZenCLIConfig()
 
 	// Model is empty by default - will be discovered dynamically
@@ -24,6 +25,7 @@ func TestZenCLIProvider_DefaultConfig(t *testing.T) {
 
 // TestZenCLIProvider_NewProvider tests provider creation
 func TestZenCLIProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	config := ZenCLIConfig{
 		Model:           "grok-code",
 		Timeout:         60 * time.Second,
@@ -40,24 +42,28 @@ func TestZenCLIProvider_NewProvider(t *testing.T) {
 
 // TestZenCLIProvider_NewProviderWithModel tests model-specific creation
 func TestZenCLIProvider_NewProviderWithModel(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("big-pickle")
 	assert.Equal(t, "big-pickle", provider.model)
 }
 
 // TestZenCLIProvider_GetName tests provider name
 func TestZenCLIProvider_GetName(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 	assert.Equal(t, "zen-cli", provider.GetName())
 }
 
 // TestZenCLIProvider_GetProviderType tests provider type
 func TestZenCLIProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 	assert.Equal(t, "zen", provider.GetProviderType())
 }
 
 // TestZenCLIProvider_GetCapabilities tests capabilities
 func TestZenCLIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping CLI availability test in short mode")
 	}
@@ -78,6 +84,7 @@ func TestZenCLIProvider_GetCapabilities(t *testing.T) {
 
 // TestZenCLIProvider_SetModel tests model setting
 func TestZenCLIProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 	assert.Equal(t, "grok-code", provider.GetCurrentModel())
 
@@ -87,6 +94,7 @@ func TestZenCLIProvider_SetModel(t *testing.T) {
 
 // TestZenCLIProvider_MarkModelAsFailedAPI tests failed API tracking
 func TestZenCLIProvider_MarkModelAsFailedAPI(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 
 	assert.False(t, provider.IsModelFailedAPI("grok-code"))
@@ -98,6 +106,7 @@ func TestZenCLIProvider_MarkModelAsFailedAPI(t *testing.T) {
 
 // TestZenCLIProvider_ShouldUseCLIFacade tests facade decision logic
 func TestZenCLIProvider_ShouldUseCLIFacade(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 
 	// Model not failed - should not use facade
@@ -117,6 +126,7 @@ func TestZenCLIProvider_ShouldUseCLIFacade(t *testing.T) {
 
 // TestZenCLIProvider_IsCLIAvailable tests CLI availability check
 func TestZenCLIProvider_IsCLIAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 
 	available := provider.IsCLIAvailable()
@@ -131,6 +141,7 @@ func TestZenCLIProvider_IsCLIAvailable(t *testing.T) {
 
 // TestZenCLIProvider_ValidateConfig tests configuration validation
 func TestZenCLIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithModel("grok-code")
 
 	valid, errs := provider.ValidateConfig(nil)
@@ -145,6 +156,7 @@ func TestZenCLIProvider_ValidateConfig(t *testing.T) {
 
 // TestZenCLIProvider_HealthCheck tests health check
 func TestZenCLIProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping CLI availability test in short mode")
 	}
@@ -161,6 +173,7 @@ func TestZenCLIProvider_HealthCheck(t *testing.T) {
 
 // TestZenCLIProvider_Complete_NotAvailable tests completion when CLI not available
 func TestZenCLIProvider_Complete_NotAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithUnavailableCLI("grok-code", exec.ErrNotFound)
 
 	req := &models.LLMRequest{
@@ -175,6 +188,7 @@ func TestZenCLIProvider_Complete_NotAvailable(t *testing.T) {
 
 // TestZenCLIProvider_CompleteStream_NotAvailable tests streaming when CLI not available
 func TestZenCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewZenCLIProviderWithUnavailableCLI("grok-code", exec.ErrNotFound)
 
 	req := &models.LLMRequest{
@@ -189,6 +203,7 @@ func TestZenCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
 
 // TestZenCLIProvider_GetAvailableModels tests model discovery
 func TestZenCLIProvider_GetAvailableModels(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping model discovery test in short mode")
 	}
@@ -203,6 +218,7 @@ func TestZenCLIProvider_GetAvailableModels(t *testing.T) {
 
 // TestZenCLIProvider_IsModelAvailable tests model availability check
 func TestZenCLIProvider_IsModelAvailable(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping model discovery test in short mode")
 	}
@@ -231,6 +247,7 @@ func TestZenCLIProvider_IsModelAvailable(t *testing.T) {
 
 // TestZenCLIProvider_GetBestAvailableModel tests best model selection
 func TestZenCLIProvider_GetBestAvailableModel(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping model discovery test in short mode")
 	}
@@ -244,12 +261,14 @@ func TestZenCLIProvider_GetBestAvailableModel(t *testing.T) {
 
 // TestIsOpenCodeInstalled tests the standalone installation check
 func TestIsOpenCodeInstalled(t *testing.T) {
+	t.Parallel()
 	installed := IsOpenCodeInstalled()
 	t.Logf("OpenCode installed: %v", installed)
 }
 
 // TestGetKnownZenModels tests the known models list
 func TestGetKnownZenModels(t *testing.T) {
+	t.Parallel()
 	models := GetKnownZenModels()
 	require.NotEmpty(t, models)
 	require.Len(t, models, 5) // Updated 2026-02: qwen3-coder removed from free tier
@@ -263,6 +282,7 @@ func TestGetKnownZenModels(t *testing.T) {
 
 // TestParseZenModelsOutput tests output parsing
 func TestParseZenModelsOutput(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		output   string
@@ -292,6 +312,7 @@ func TestParseZenModelsOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			models := parseZenModelsOutput(tt.output)
 			if tt.expected == nil {
 				assert.Empty(t, models)
@@ -307,6 +328,7 @@ func TestParseZenModelsOutput(t *testing.T) {
 
 // TestDiscoverZenModels tests the standalone discovery function
 func TestDiscoverZenModels(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping model discovery test in short mode")
 	}
@@ -318,6 +340,7 @@ func TestDiscoverZenModels(t *testing.T) {
 
 // Integration test - only run if OpenCode is actually installed
 func TestZenCLIProvider_Integration(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping model discovery test in short mode")
 	}

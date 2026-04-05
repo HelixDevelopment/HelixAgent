@@ -14,6 +14,7 @@ import (
 // ========================================
 
 func TestNewConfigGenerator(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	assert.Equal(t, "http://localhost:7061/v1", gen.baseURL)
@@ -24,24 +25,28 @@ func TestNewConfigGenerator(t *testing.T) {
 }
 
 func TestConfigGenerator_SetTimeout(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "model")
 	gen.SetTimeout(300)
 	assert.Equal(t, 300, gen.timeout)
 }
 
 func TestConfigGenerator_SetMaxTokens(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "model")
 	gen.SetMaxTokens(4096)
 	assert.Equal(t, 4096, gen.maxTokens)
 }
 
 func TestConfigGenerator_Validate_Success(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	err := gen.validate()
 	assert.NoError(t, err)
 }
 
 func TestConfigGenerator_Validate_EmptyBaseURL(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("", "test-key", "model")
 	err := gen.validate()
 	assert.Error(t, err)
@@ -49,6 +54,7 @@ func TestConfigGenerator_Validate_EmptyBaseURL(t *testing.T) {
 }
 
 func TestConfigGenerator_Validate_EmptyModel(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "")
 	err := gen.validate()
 	assert.Error(t, err)
@@ -56,6 +62,7 @@ func TestConfigGenerator_Validate_EmptyModel(t *testing.T) {
 }
 
 func TestConfigGenerator_Validate_InvalidURL(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("://invalid", "test-key", "model")
 	err := gen.validate()
 	assert.Error(t, err)
@@ -67,6 +74,7 @@ func TestConfigGenerator_Validate_InvalidURL(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateOpenCodeConfig(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetTimeout(180)
 
@@ -85,6 +93,7 @@ func TestConfigGenerator_GenerateOpenCodeConfig(t *testing.T) {
 }
 
 func TestConfigGenerator_GenerateOpenCodeConfig_JSON(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeOpenCode)
@@ -108,6 +117,7 @@ func TestConfigGenerator_GenerateOpenCodeConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateCrushConfig(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetMaxTokens(4096)
 
@@ -127,6 +137,7 @@ func TestConfigGenerator_GenerateCrushConfig(t *testing.T) {
 }
 
 func TestConfigGenerator_GenerateCrushConfig_JSON(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeCrush)
@@ -153,6 +164,7 @@ func TestConfigGenerator_GenerateCrushConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateHelixCodeConfig(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	gen.SetTimeout(300).SetMaxTokens(16384)
 
@@ -174,6 +186,7 @@ func TestConfigGenerator_GenerateHelixCodeConfig(t *testing.T) {
 }
 
 func TestConfigGenerator_GenerateHelixCodeConfig_JSON(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	jsonData, err := gen.GenerateJSON(AgentTypeHelixCode)
@@ -194,6 +207,7 @@ func TestConfigGenerator_GenerateHelixCodeConfig_JSON(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateConfig_AllTypes(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 
 	tests := []struct {
@@ -208,6 +222,7 @@ func TestConfigGenerator_GenerateConfig_AllTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.agentType), func(t *testing.T) {
+				t.Parallel()
 			config, err := gen.GenerateConfig(tt.agentType)
 			if tt.valid {
 				assert.NoError(t, err)
@@ -225,6 +240,7 @@ func TestConfigGenerator_GenerateConfig_AllTypes(t *testing.T) {
 // ========================================
 
 func TestNewConfigValidator(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 	assert.NotNil(t, v)
 }
@@ -234,6 +250,7 @@ func TestNewConfigValidator(t *testing.T) {
 // ========================================
 
 func TestConfigValidator_ValidateOpenCodeConfig_Valid(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -256,6 +273,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_Valid(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateOpenCodeConfig_MissingProvider(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -268,6 +286,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_MissingProvider(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateOpenCodeConfig_MissingAgentModel(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -289,6 +308,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_MissingAgentModel(t *testing.T) 
 }
 
 func TestConfigValidator_ValidateOpenCodeConfig_InvalidMCPType(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -314,6 +334,7 @@ func TestConfigValidator_ValidateOpenCodeConfig_InvalidMCPType(t *testing.T) {
 // ========================================
 
 func TestConfigValidator_ValidateCrushConfig_Valid(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &CrushConfig{
@@ -336,6 +357,7 @@ func TestConfigValidator_ValidateCrushConfig_Valid(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateCrushConfig_InvalidType(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &CrushConfig{
@@ -352,6 +374,7 @@ func TestConfigValidator_ValidateCrushConfig_InvalidType(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateCrushConfig_OpenAICompatMissingBaseURL(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &CrushConfig{
@@ -369,6 +392,7 @@ func TestConfigValidator_ValidateCrushConfig_OpenAICompatMissingBaseURL(t *testi
 }
 
 func TestConfigValidator_ValidateCrushConfig_MCPValidation(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	tests := []struct {
@@ -389,6 +413,7 @@ func TestConfigValidator_ValidateCrushConfig_MCPValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			config := &CrushConfig{
 				Providers: map[string]CrushProvider{
 					"test": {Type: "openai", BaseURL: "http://test"},
@@ -417,6 +442,7 @@ func TestConfigValidator_ValidateCrushConfig_MCPValidation(t *testing.T) {
 // ========================================
 
 func TestConfigValidator_ValidateHelixCodeConfig_Valid(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &HelixCodeConfig{
@@ -439,6 +465,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_Valid(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateHelixCodeConfig_MissingBaseURL(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &HelixCodeConfig{
@@ -456,6 +483,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_MissingBaseURL(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateHelixCodeConfig_MissingModel(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &HelixCodeConfig{
@@ -473,6 +501,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_MissingModel(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateHelixCodeConfig_InvalidDefaultProvider(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &HelixCodeConfig{
@@ -497,6 +526,7 @@ func TestConfigValidator_ValidateHelixCodeConfig_InvalidDefaultProvider(t *testi
 // ========================================
 
 func TestConfigValidator_ValidateJSON_OpenCode(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	jsonData := `{
@@ -519,6 +549,7 @@ func TestConfigValidator_ValidateJSON_OpenCode(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateJSON_Crush(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	jsonData := `{
@@ -538,6 +569,7 @@ func TestConfigValidator_ValidateJSON_Crush(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateJSON_HelixCode(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	jsonData := `{
@@ -556,6 +588,7 @@ func TestConfigValidator_ValidateJSON_HelixCode(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateJSON_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	jsonData := `{invalid json}`
@@ -566,6 +599,7 @@ func TestConfigValidator_ValidateJSON_InvalidJSON(t *testing.T) {
 }
 
 func TestConfigValidator_ValidateJSON_UnsupportedAgent(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	_, err := v.ValidateJSON("unknown", []byte(`{}`))
@@ -578,12 +612,14 @@ func TestConfigValidator_ValidateJSON_UnsupportedAgent(t *testing.T) {
 // ========================================
 
 func TestValidationResult_String_Valid(t *testing.T) {
+	t.Parallel()
 	result := &ValidationResult{Valid: true}
 	str := result.String()
 	assert.Contains(t, str, "Configuration is valid")
 }
 
 func TestValidationResult_String_Invalid(t *testing.T) {
+	t.Parallel()
 	result := &ValidationResult{
 		Valid:    false,
 		Errors:   []string{"error1", "error2"},
@@ -601,6 +637,7 @@ func TestValidationResult_String_Invalid(t *testing.T) {
 // ========================================
 
 func TestConfigGenerator_GenerateAndValidate_AllAgents(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	v := NewConfigValidator()
 
@@ -608,6 +645,7 @@ func TestConfigGenerator_GenerateAndValidate_AllAgents(t *testing.T) {
 
 	for _, agent := range agents {
 		t.Run(string(agent), func(t *testing.T) {
+				t.Parallel()
 			// Generate config
 			jsonData, err := gen.GenerateJSON(agent)
 			require.NoError(t, err)
@@ -683,6 +721,7 @@ func BenchmarkConfigValidator_ValidateOpenCodeConfig(b *testing.B) {
 // ========================================
 
 func TestOpenCodeConfig_AgentsSection_HasRequiredAgents(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	config, err := gen.GenerateOpenCodeConfig()
 	require.NoError(t, err)
@@ -698,6 +737,7 @@ func TestOpenCodeConfig_AgentsSection_HasRequiredAgents(t *testing.T) {
 }
 
 func TestOpenCodeConfig_AgentsSection_ModelFormat(t *testing.T) {
+	t.Parallel()
 	// Verify the model format is "provider.model-name"
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	config, err := gen.GenerateOpenCodeConfig()
@@ -711,6 +751,7 @@ func TestOpenCodeConfig_AgentsSection_ModelFormat(t *testing.T) {
 }
 
 func TestOpenCodeConfig_AgentsSection_JSONStructure(t *testing.T) {
+	t.Parallel()
 	// This test verifies the JSON structure is correct at the raw JSON level
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	jsonData, err := gen.GenerateJSON(AgentTypeOpenCode)
@@ -737,6 +778,7 @@ func TestOpenCodeConfig_AgentsSection_JSONStructure(t *testing.T) {
 }
 
 func TestOpenCodeConfig_AgentsSection_Validation_MissingModel(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -758,6 +800,7 @@ func TestOpenCodeConfig_AgentsSection_Validation_MissingModel(t *testing.T) {
 }
 
 func TestOpenCodeConfig_AgentsSection_Validation_InvalidModelFormat(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	config := &OpenCodeConfig{
@@ -780,6 +823,7 @@ func TestOpenCodeConfig_AgentsSection_Validation_InvalidModelFormat(t *testing.T
 }
 
 func TestOpenCodeConfig_AgentsSection_CompleteWorkingConfig(t *testing.T) {
+	t.Parallel()
 	// Test a complete configuration that matches what works with OpenCode v1.1.30+
 	v := NewConfigValidator()
 
@@ -816,6 +860,7 @@ func TestOpenCodeConfig_AgentsSection_CompleteWorkingConfig(t *testing.T) {
 }
 
 func TestOpenCodeConfig_MCPServersSection_Structure(t *testing.T) {
+	t.Parallel()
 	// Verify the MCPServers section is properly structured
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	config, err := gen.GenerateOpenCodeConfig()
@@ -837,6 +882,7 @@ func TestOpenCodeConfig_MCPServersSection_Structure(t *testing.T) {
 }
 
 func TestOpenCodeConfig_ProvidersSection_LocalProvider(t *testing.T) {
+	t.Parallel()
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	config, err := gen.GenerateOpenCodeConfig()
 	require.NoError(t, err)
@@ -847,6 +893,7 @@ func TestOpenCodeConfig_ProvidersSection_LocalProvider(t *testing.T) {
 }
 
 func TestOpenCodeConfig_ValidateJSON_WithNewSchema(t *testing.T) {
+	t.Parallel()
 	v := NewConfigValidator()
 
 	// Valid config with new v1.1.30+ schema
@@ -870,6 +917,7 @@ func TestOpenCodeConfig_ValidateJSON_WithNewSchema(t *testing.T) {
 }
 
 func TestOpenCodeConfig_GeneratedConfigCanBeReParsed(t *testing.T) {
+	t.Parallel()
 	// Test that generated config can be serialized and deserialized without loss
 	gen := NewConfigGenerator("http://localhost:7061/v1", "test-key", "helixagent-debate")
 	v := NewConfigValidator()

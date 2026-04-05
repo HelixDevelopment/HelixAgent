@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	config := &ClientConfig{
 		BaseURL: "http://localhost:8013",
 		Timeout: 30 * time.Second,
@@ -25,12 +26,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	client := NewClient(nil)
 	assert.NotNil(t, client)
 	assert.Equal(t, "http://localhost:8013", client.baseURL)
 }
 
 func TestClient_GenerateWithGrammar(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/grammar", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -76,6 +79,7 @@ func TestClient_GenerateWithGrammar(t *testing.T) {
 }
 
 func TestClient_GenerateFromTemplate(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/template", r.URL.Path)
 
@@ -116,6 +120,7 @@ func TestClient_GenerateFromTemplate(t *testing.T) {
 }
 
 func TestClient_Select(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/select", r.URL.Path)
 
@@ -146,6 +151,7 @@ func TestClient_Select(t *testing.T) {
 }
 
 func TestClient_SelectOne(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &SelectResponse{
 			Selected:  []string{"Go"},
@@ -165,6 +171,7 @@ func TestClient_SelectOne(t *testing.T) {
 }
 
 func TestClient_GenerateWithRegex(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/regex", r.URL.Path)
 
@@ -196,6 +203,7 @@ func TestClient_GenerateWithRegex(t *testing.T) {
 }
 
 func TestClient_GenerateJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/json_schema", r.URL.Path)
 
@@ -240,6 +248,7 @@ func TestClient_GenerateJSON(t *testing.T) {
 }
 
 func TestClient_Health(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/health", r.URL.Path)
 
@@ -263,6 +272,7 @@ func TestClient_Health(t *testing.T) {
 }
 
 func TestClient_IsAvailable(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &HealthResponse{Status: "healthy"}
 		w.Header().Set("Content-Type", "application/json")
@@ -277,6 +287,7 @@ func TestClient_IsAvailable(t *testing.T) {
 }
 
 func TestClient_IsAvailable_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -289,6 +300,7 @@ func TestClient_IsAvailable_Unhealthy(t *testing.T) {
 }
 
 func TestClient_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal error"}`))
@@ -305,6 +317,7 @@ func TestClient_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -321,6 +334,7 @@ func TestClient_Timeout(t *testing.T) {
 }
 
 func TestClient_GenerateEmail(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/regex", r.URL.Path)
 
@@ -347,6 +361,7 @@ func TestClient_GenerateEmail(t *testing.T) {
 }
 
 func TestClient_GenerateEmail_Invalid(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &RegexResponse{
 			Text:    "not-an-email",
@@ -366,6 +381,7 @@ func TestClient_GenerateEmail_Invalid(t *testing.T) {
 }
 
 func TestClient_GenerateEmail_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -378,6 +394,7 @@ func TestClient_GenerateEmail_Error(t *testing.T) {
 }
 
 func TestClient_GeneratePhoneNumber(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/regex", r.URL.Path)
 
@@ -405,6 +422,7 @@ func TestClient_GeneratePhoneNumber(t *testing.T) {
 }
 
 func TestClient_GeneratePhoneNumber_Invalid(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &RegexResponse{
 			Text:    "not-a-phone",
@@ -424,6 +442,7 @@ func TestClient_GeneratePhoneNumber_Invalid(t *testing.T) {
 }
 
 func TestClient_GeneratePhoneNumber_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -436,6 +455,7 @@ func TestClient_GeneratePhoneNumber_Error(t *testing.T) {
 }
 
 func TestClient_GenerateWithRegex_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": "invalid regex"}`))

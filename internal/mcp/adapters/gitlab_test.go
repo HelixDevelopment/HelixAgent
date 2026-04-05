@@ -11,6 +11,7 @@ import (
 // Tests
 
 func TestDefaultGitLabConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 
 	assert.Equal(t, "https://gitlab.com", config.BaseURL)
@@ -18,6 +19,7 @@ func TestDefaultGitLabConfig(t *testing.T) {
 }
 
 func TestNewGitLabAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -29,6 +31,7 @@ func TestNewGitLabAdapter(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -52,6 +55,7 @@ func TestGitLabAdapter_ListTools(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListProjects(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -68,6 +72,7 @@ func TestGitLabAdapter_ListProjects(t *testing.T) {
 }
 
 func TestGitLabAdapter_GetProject(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -81,6 +86,7 @@ func TestGitLabAdapter_GetProject(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListIssues(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -96,6 +102,7 @@ func TestGitLabAdapter_ListIssues(t *testing.T) {
 }
 
 func TestGitLabAdapter_CreateIssue(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -112,6 +119,7 @@ func TestGitLabAdapter_CreateIssue(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListMergeRequests(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -126,6 +134,7 @@ func TestGitLabAdapter_ListMergeRequests(t *testing.T) {
 }
 
 func TestGitLabAdapter_CreateMergeRequest(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -143,6 +152,7 @@ func TestGitLabAdapter_CreateMergeRequest(t *testing.T) {
 }
 
 func TestGitLabAdapter_GetFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -158,6 +168,7 @@ func TestGitLabAdapter_GetFile(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListPipelines(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -173,6 +184,7 @@ func TestGitLabAdapter_ListPipelines(t *testing.T) {
 }
 
 func TestGitLabAdapter_TriggerPipeline(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -188,6 +200,7 @@ func TestGitLabAdapter_TriggerPipeline(t *testing.T) {
 }
 
 func TestGitLabAdapter_ListBranches(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -202,6 +215,7 @@ func TestGitLabAdapter_ListBranches(t *testing.T) {
 }
 
 func TestGitLabAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 
@@ -214,6 +228,7 @@ func TestGitLabAdapter_InvalidTool(t *testing.T) {
 // Type tests
 
 func TestGitLabProjectTypes(t *testing.T) {
+	t.Parallel()
 	project := GitLabProject{
 		ID:                1,
 		Name:              "my-project",
@@ -232,6 +247,7 @@ func TestGitLabProjectTypes(t *testing.T) {
 }
 
 func TestGitLabIssueTypes(t *testing.T) {
+	t.Parallel()
 	issue := GitLabIssue{
 		ID:          1,
 		IID:         42,
@@ -250,6 +266,7 @@ func TestGitLabIssueTypes(t *testing.T) {
 }
 
 func TestGitLabMergeRequestTypes(t *testing.T) {
+	t.Parallel()
 	mr := GitLabMergeRequest{
 		ID:           1,
 		IID:          10,
@@ -269,6 +286,7 @@ func TestGitLabMergeRequestTypes(t *testing.T) {
 }
 
 func TestGitLabPipelineTypes(t *testing.T) {
+	t.Parallel()
 	pipeline := GitLabPipeline{
 		ID:        100,
 		Status:    "success",
@@ -284,6 +302,7 @@ func TestGitLabPipelineTypes(t *testing.T) {
 }
 
 func TestGitLabConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := GitLabConfig{
 		BaseURL: "https://gitlab.example.com",
 		Token:   "glpat-xxxxxxxxxxxx",
@@ -296,6 +315,7 @@ func TestGitLabConfigTypes(t *testing.T) {
 }
 
 func TestGitLabProjectSerialize(t *testing.T) {
+	t.Parallel()
 	project := GitLabProject{
 		ID:                1,
 		Name:              "test-project",
@@ -309,6 +329,7 @@ func TestGitLabProjectSerialize(t *testing.T) {
 }
 
 func TestFormatGitLabProjects(t *testing.T) {
+	t.Parallel()
 	projects := []GitLabProject{
 		{Name: "project1", PathWithNamespace: "group/project1", DefaultBranch: "main", WebURL: "https://gitlab.com/group/project1"},
 		{Name: "project2", PathWithNamespace: "group/project2", DefaultBranch: "develop", WebURL: "https://gitlab.com/group/project2"},
@@ -321,6 +342,7 @@ func TestFormatGitLabProjects(t *testing.T) {
 }
 
 func TestGitLabAdapter_GetServerInfoCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultGitLabConfig()
 	adapter := NewGitLabAdapter(config)
 

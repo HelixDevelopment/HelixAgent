@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewSubscriptionDetector(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(nil)
 	require.NotNil(t, sd)
 	assert.NotNil(t, sd.cache)
@@ -24,6 +25,7 @@ func TestNewSubscriptionDetector(t *testing.T) {
 }
 
 func TestSubscriptionDetector_DetectSubscription_StaticFallback(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	// Providers without subscription check APIs should fall back to static
@@ -41,6 +43,7 @@ func TestSubscriptionDetector_DetectSubscription_StaticFallback(t *testing.T) {
 
 	for _, tt := range providers {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			info := sd.DetectSubscription(context.Background(), tt.name, "")
 			require.NotNil(t, info)
 			assert.Equal(t, tt.expected, info.Type)
@@ -51,6 +54,7 @@ func TestSubscriptionDetector_DetectSubscription_StaticFallback(t *testing.T) {
 }
 
 func TestSubscriptionDetector_DetectSubscription_UnknownProvider(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	info := sd.DetectSubscription(context.Background(), "nonexistent_provider", "")
@@ -60,6 +64,7 @@ func TestSubscriptionDetector_DetectSubscription_UnknownProvider(t *testing.T) {
 }
 
 func TestSubscriptionDetector_OpenRouterAPI(t *testing.T) {
+	t.Parallel()
 	// Mock OpenRouter auth endpoint
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -90,6 +95,7 @@ func TestSubscriptionDetector_OpenRouterAPI(t *testing.T) {
 }
 
 func TestSubscriptionDetector_CohereAPI(t *testing.T) {
+	t.Parallel()
 	// Mock Cohere check-api-key endpoint
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -112,6 +118,7 @@ func TestSubscriptionDetector_CohereAPI(t *testing.T) {
 }
 
 func TestSubscriptionDetector_InferFromRateLimits(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		provider   string
@@ -169,6 +176,7 @@ func TestSubscriptionDetector_InferFromRateLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			sd := NewSubscriptionDetector(logrus.New())
 			info := sd.InferFromRateLimits(tt.provider, tt.rateLimits)
 
@@ -185,6 +193,7 @@ func TestSubscriptionDetector_InferFromRateLimits(t *testing.T) {
 }
 
 func TestSubscriptionDetector_Caching(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	// First call — should detect via static
@@ -201,6 +210,7 @@ func TestSubscriptionDetector_Caching(t *testing.T) {
 }
 
 func TestSubscriptionDetector_CacheSize(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	assert.Equal(t, 0, sd.CacheSize())
@@ -217,6 +227,7 @@ func TestSubscriptionDetector_CacheSize(t *testing.T) {
 }
 
 func TestSubscriptionDetector_GetCachedSubscription(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	// Not cached yet
@@ -230,6 +241,7 @@ func TestSubscriptionDetector_GetCachedSubscription(t *testing.T) {
 }
 
 func TestSubscriptionDetector_UpdateFromHeaders(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	headers := http.Header{}
@@ -246,6 +258,7 @@ func TestSubscriptionDetector_UpdateFromHeaders(t *testing.T) {
 }
 
 func TestSubscriptionDetector_UpdateFromHeaders_ExistingCache(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 
 	// Pre-populate cache
@@ -265,6 +278,7 @@ func TestSubscriptionDetector_UpdateFromHeaders_ExistingCache(t *testing.T) {
 }
 
 func TestSubscriptionDetector_ThreadSafety(t *testing.T) {
+	t.Parallel()
 	sd := NewSubscriptionDetector(logrus.New())
 	ctx := context.Background()
 
@@ -296,6 +310,7 @@ func TestSubscriptionDetector_ThreadSafety(t *testing.T) {
 }
 
 func TestInferSubTypeFromLimits(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		rl       *RateLimitInfo
@@ -335,6 +350,7 @@ func TestInferSubTypeFromLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := inferSubTypeFromLimits(tt.rl)
 			assert.Equal(t, tt.expected, result)
 		})

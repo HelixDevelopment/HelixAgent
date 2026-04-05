@@ -30,6 +30,7 @@ func (m *MockLLMBackend) Complete(ctx context.Context, prompt string) (string, e
 }
 
 func TestDefaultSummaryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSummaryConfig()
 
 	assert.Equal(t, 256, config.MaxLength)
@@ -41,6 +42,7 @@ func TestDefaultSummaryConfig(t *testing.T) {
 }
 
 func TestSummaryStyles(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, SummaryStyle("brief"), StyleBrief)
 	assert.Equal(t, SummaryStyle("detailed"), StyleDetailed)
 	assert.Equal(t, SummaryStyle("bullet_points"), StyleBulletPoints)
@@ -49,6 +51,7 @@ func TestSummaryStyles(t *testing.T) {
 }
 
 func TestLLMSummarizer_Summarize(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"This is a summary."},
 	}
@@ -63,6 +66,7 @@ func TestLLMSummarizer_Summarize(t *testing.T) {
 }
 
 func TestLLMSummarizer_SummarizeWithConfig(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Brief summary"},
 	}
@@ -81,6 +85,7 @@ func TestLLMSummarizer_SummarizeWithConfig(t *testing.T) {
 }
 
 func TestLLMSummarizer_SummarizeEmpty(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{}
 
 	summarizer := NewLLMSummarizer(backend, nil)
@@ -92,6 +97,7 @@ func TestLLMSummarizer_SummarizeEmpty(t *testing.T) {
 }
 
 func TestLLMSummarizer_SummarizeError(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		shouldErr: true,
 	}
@@ -104,6 +110,7 @@ func TestLLMSummarizer_SummarizeError(t *testing.T) {
 }
 
 func TestLLMSummarizer_BuildPrompt(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{responses: []string{"Summary"}}
 	summarizer := NewLLMSummarizer(backend, nil)
 
@@ -126,6 +133,7 @@ func TestLLMSummarizer_BuildPrompt(t *testing.T) {
 }
 
 func TestExtractiveRuleSummarizer_Summarize(t *testing.T) {
+	t.Parallel()
 	summarizer := NewExtractiveRuleSummarizer(nil)
 
 	content := "This is the first sentence. This is the second sentence. This is the third sentence."
@@ -136,6 +144,7 @@ func TestExtractiveRuleSummarizer_Summarize(t *testing.T) {
 }
 
 func TestExtractiveRuleSummarizer_SummarizeEmpty(t *testing.T) {
+	t.Parallel()
 	summarizer := NewExtractiveRuleSummarizer(nil)
 
 	_, err := summarizer.Summarize(context.Background(), "")
@@ -145,6 +154,7 @@ func TestExtractiveRuleSummarizer_SummarizeEmpty(t *testing.T) {
 }
 
 func TestExtractiveRuleSummarizer_SummarizeWithConfig(t *testing.T) {
+	t.Parallel()
 	summarizer := NewExtractiveRuleSummarizer(nil)
 	config := &SummaryConfig{
 		MaxLength:   50,
@@ -159,6 +169,7 @@ func TestExtractiveRuleSummarizer_SummarizeWithConfig(t *testing.T) {
 }
 
 func TestDefaultConversationSummaryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConversationSummaryConfig()
 
 	assert.Equal(t, 20, config.MaxTurns)
@@ -168,6 +179,7 @@ func TestDefaultConversationSummaryConfig(t *testing.T) {
 }
 
 func TestConversationSummarizer_Summarize(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Summary of conversation"},
 	}
@@ -191,6 +203,7 @@ func TestConversationSummarizer_Summarize(t *testing.T) {
 }
 
 func TestConversationSummarizer_SummarizeEmpty(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{}
 
 	summarizer := NewConversationSummarizer(backend, nil)
@@ -202,6 +215,7 @@ func TestConversationSummarizer_SummarizeEmpty(t *testing.T) {
 }
 
 func TestConversationSummarizer_SummarizeFewTurns(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{}
 
 	config := &ConversationSummaryConfig{
@@ -223,6 +237,7 @@ func TestConversationSummarizer_SummarizeFewTurns(t *testing.T) {
 }
 
 func TestTurn(t *testing.T) {
+	t.Parallel()
 	turn := Turn{
 		Role:      "user",
 		Content:   "Hello world",
@@ -234,6 +249,7 @@ func TestTurn(t *testing.T) {
 }
 
 func TestConversationSummaryResult(t *testing.T) {
+	t.Parallel()
 	result := &ConversationSummaryResult{
 		Summary: "Conversation summary",
 		PreservedTurns: []Turn{
@@ -248,6 +264,7 @@ func TestConversationSummaryResult(t *testing.T) {
 }
 
 func TestDefaultIncrementalConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultIncrementalConfig()
 
 	assert.Equal(t, 10, config.SummarizeAfterItems)
@@ -256,6 +273,7 @@ func TestDefaultIncrementalConfig(t *testing.T) {
 }
 
 func TestIncrementalSummarizer_Add(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Incremental summary"},
 	}
@@ -273,6 +291,7 @@ func TestIncrementalSummarizer_Add(t *testing.T) {
 }
 
 func TestIncrementalSummarizer_Update(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Updated summary"},
 	}
@@ -292,6 +311,7 @@ func TestIncrementalSummarizer_Update(t *testing.T) {
 }
 
 func TestIncrementalSummarizer_UpdateError(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		shouldErr: true,
 	}
@@ -310,6 +330,7 @@ func TestIncrementalSummarizer_UpdateError(t *testing.T) {
 }
 
 func TestIncrementalSummarizer_Reset(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Summary"},
 	}
@@ -329,6 +350,7 @@ func TestIncrementalSummarizer_Reset(t *testing.T) {
 }
 
 func TestSummaryCache_GetSet(t *testing.T) {
+	t.Parallel()
 	cache := NewSummaryCache(1 * time.Hour)
 
 	cache.Set("key1", "Summary 1")
@@ -339,6 +361,7 @@ func TestSummaryCache_GetSet(t *testing.T) {
 }
 
 func TestSummaryCache_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	cache := NewSummaryCache(1 * time.Hour)
 
 	_, found := cache.Get("nonexistent")
@@ -346,6 +369,7 @@ func TestSummaryCache_Get_NotFound(t *testing.T) {
 }
 
 func TestSummaryCache_Get_Expired(t *testing.T) {
+	t.Parallel()
 	cache := NewSummaryCache(1 * time.Millisecond)
 
 	cache.Set("key1", "Summary")
@@ -356,6 +380,7 @@ func TestSummaryCache_Get_Expired(t *testing.T) {
 }
 
 func TestSummaryCache_Clear(t *testing.T) {
+	t.Parallel()
 	cache := NewSummaryCache(1 * time.Hour)
 
 	cache.Set("key1", "Summary 1")
@@ -370,6 +395,7 @@ func TestSummaryCache_Clear(t *testing.T) {
 }
 
 func TestSummaryCache_Cleanup(t *testing.T) {
+	t.Parallel()
 	cache := NewSummaryCache(1 * time.Millisecond)
 
 	cache.Set("key1", "Summary 1")
@@ -382,6 +408,7 @@ func TestSummaryCache_Cleanup(t *testing.T) {
 }
 
 func TestCachedSummary(t *testing.T) {
+	t.Parallel()
 	cached := CachedSummary{
 		Summary:     "Test summary",
 		CreatedAt:   time.Now(),
@@ -393,6 +420,7 @@ func TestCachedSummary(t *testing.T) {
 }
 
 func TestSplitIntoSentences(t *testing.T) {
+	t.Parallel()
 	text := "First sentence. Second sentence! Third sentence?"
 	sentences := splitIntoSentences(text)
 
@@ -403,6 +431,7 @@ func TestSplitIntoSentences(t *testing.T) {
 }
 
 func TestSplitIntoSentences_NoTerminal(t *testing.T) {
+	t.Parallel()
 	text := "This has no terminal punctuation"
 	sentences := splitIntoSentences(text)
 
@@ -411,11 +440,13 @@ func TestSplitIntoSentences_NoTerminal(t *testing.T) {
 }
 
 func TestSplitIntoSentences_Empty(t *testing.T) {
+	t.Parallel()
 	sentences := splitIntoSentences("")
 	assert.Empty(t, sentences)
 }
 
 func TestExtractiveRuleSummarizer_ScoreSentences(t *testing.T) {
+	t.Parallel()
 	summarizer := NewExtractiveRuleSummarizer(nil)
 
 	sentences := []string{
@@ -432,6 +463,7 @@ func TestExtractiveRuleSummarizer_ScoreSentences(t *testing.T) {
 }
 
 func TestExtractiveRuleSummarizer_SelectTopSentences(t *testing.T) {
+	t.Parallel()
 	summarizer := NewExtractiveRuleSummarizer(nil)
 
 	sentences := []string{
@@ -451,6 +483,7 @@ func TestExtractiveRuleSummarizer_SelectTopSentences(t *testing.T) {
 }
 
 func TestIncrementalSummarizer_WithExistingSummary(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Initial summary", "Combined summary"},
 	}

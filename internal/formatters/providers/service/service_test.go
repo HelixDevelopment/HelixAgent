@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewServiceFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -40,6 +41,7 @@ func TestNewServiceFormatter(t *testing.T) {
 }
 
 func TestServiceFormatter_Format_Success(t *testing.T) {
+	t.Parallel()
 	// Create a test server that mimics a formatter service
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/format", r.URL.Path)
@@ -85,6 +87,7 @@ func TestServiceFormatter_Format_Success(t *testing.T) {
 }
 
 func TestServiceFormatter_Format_ServiceError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{
 			"success": false,
@@ -118,6 +121,7 @@ func TestServiceFormatter_Format_ServiceError(t *testing.T) {
 }
 
 func TestServiceFormatter_Format_HTTPError(t *testing.T) {
+	t.Parallel()
 	// Server that returns 500 Internal Server Error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -145,6 +149,7 @@ func TestServiceFormatter_Format_HTTPError(t *testing.T) {
 }
 
 func TestServiceFormatter_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/health", r.URL.Path)
 		response := `{
@@ -174,6 +179,7 @@ func TestServiceFormatter_HealthCheck_Success(t *testing.T) {
 }
 
 func TestServiceFormatter_HealthCheck_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -196,6 +202,7 @@ func TestServiceFormatter_HealthCheck_Unhealthy(t *testing.T) {
 }
 
 func TestServiceFormatter_FormatBatch(t *testing.T) {
+	t.Parallel()
 	requestCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
@@ -239,6 +246,7 @@ func TestServiceFormatter_FormatBatch(t *testing.T) {
 }
 
 func TestSpecificServiceFormatters(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -265,6 +273,7 @@ func TestSpecificServiceFormatters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			formatter := tc.function(tc.baseURL, logger)
 			assert.NotNil(t, formatter)
 			assert.Equal(t, tc.name, formatter.Name())

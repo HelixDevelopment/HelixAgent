@@ -11,6 +11,7 @@ import (
 // --- VerifierErrorResponse JSON round-trip -----------------------------
 
 func TestVerifierErrorResponse_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input VerifierErrorResponse
@@ -35,6 +36,7 @@ func TestVerifierErrorResponse_JSONRoundTrip(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			data, err := json.Marshal(tt.input)
 			require.NoError(t, err)
 
@@ -48,6 +50,7 @@ func TestVerifierErrorResponse_JSONRoundTrip(t *testing.T) {
 // --- JSON field name verification --------------------------------------
 
 func TestVerifierErrorResponse_JSONFieldName(t *testing.T) {
+	t.Parallel()
 	resp := VerifierErrorResponse{Error: "test error"}
 	data, err := json.Marshal(resp)
 	require.NoError(t, err)
@@ -67,6 +70,7 @@ func TestVerifierErrorResponse_JSONFieldName(t *testing.T) {
 // --- Unmarshal from raw JSON -------------------------------------------
 
 func TestVerifierErrorResponse_UnmarshalFromRawJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		jsonStr  string
@@ -102,6 +106,7 @@ func TestVerifierErrorResponse_UnmarshalFromRawJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			var resp VerifierErrorResponse
 			err := json.Unmarshal([]byte(tt.jsonStr), &resp)
 			if tt.wantErr {
@@ -117,6 +122,7 @@ func TestVerifierErrorResponse_UnmarshalFromRawJSON(t *testing.T) {
 // --- Zero value --------------------------------------------------------
 
 func TestVerifierErrorResponse_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var resp VerifierErrorResponse
 	assert.Equal(t, "", resp.Error)
 

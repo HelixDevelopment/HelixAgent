@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewVeniceProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, "venice-test-key", p.apiKey)
@@ -23,6 +24,7 @@ func TestNewVeniceProvider(t *testing.T) {
 }
 
 func TestNewVeniceProvider_Custom(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -47,6 +49,7 @@ func TestNewVeniceProvider_Custom(t *testing.T) {
 }
 
 func TestComplete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "POST", r.Method)
@@ -121,6 +124,7 @@ func TestComplete_Success(t *testing.T) {
 }
 
 func TestComplete_WithMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -170,6 +174,7 @@ func TestComplete_WithMessages(t *testing.T) {
 }
 
 func TestComplete_ErrorResponse_401(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -196,6 +201,7 @@ func TestComplete_ErrorResponse_401(t *testing.T) {
 }
 
 func TestComplete_ErrorResponse_500(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +236,7 @@ func TestComplete_ErrorResponse_500(t *testing.T) {
 }
 
 func TestComplete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -308,6 +315,7 @@ func TestComplete_WithTools(t *testing.T) {
 }
 
 func TestCompleteStream_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -355,6 +363,7 @@ func TestCompleteStream_Success(t *testing.T) {
 }
 
 func TestCompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
@@ -379,6 +388,7 @@ func TestCompleteStream_Error(t *testing.T) {
 }
 
 func TestHealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "GET", r.Method)
@@ -406,6 +416,7 @@ func TestHealthCheck_Success(t *testing.T) {
 }
 
 func TestHealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -428,6 +439,7 @@ func TestHealthCheck_Error(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 	caps := p.GetCapabilities()
 
@@ -451,6 +463,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		apiKey     string
@@ -473,6 +486,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.apiKey, "", "")
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -482,6 +496,7 @@ func TestValidateConfig(t *testing.T) {
 }
 
 func TestRetry_RateLimited(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -528,6 +543,7 @@ func TestRetry_RateLimited(t *testing.T) {
 }
 
 func TestRetry_ServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -574,6 +590,7 @@ func TestRetry_ServerError(t *testing.T) {
 }
 
 func TestContextTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(5 * time.Second)
@@ -599,21 +616,25 @@ func TestContextTimeout(t *testing.T) {
 }
 
 func TestGetName(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 	assert.Equal(t, "venice", p.GetName())
 }
 
 func TestGetProviderType(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 	assert.Equal(t, "venice", p.GetProviderType())
 }
 
 func TestGetModel(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "llama-3.3-70b")
 	assert.Equal(t, "llama-3.3-70b", p.GetModel())
 }
 
 func TestSetModel(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "llama-3.3-70b")
 	assert.Equal(t, "llama-3.3-70b", p.GetModel())
 
@@ -622,6 +643,7 @@ func TestSetModel(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRetryConfig()
 	assert.Equal(t, 3, cfg.MaxRetries)
 	assert.Equal(t, 1*time.Second, cfg.InitialDelay)
@@ -630,6 +652,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestVeniceParameters(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -688,6 +711,7 @@ func TestVeniceParameters(t *testing.T) {
 }
 
 func TestVeniceParameters_NoProviderSpecific(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var reqBody Request
@@ -727,6 +751,7 @@ func TestVeniceParameters_NoProviderSpecific(t *testing.T) {
 }
 
 func TestConvertRequest(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "llama-3.3-70b")
 
 	req := &models.LLMRequest{
@@ -762,6 +787,7 @@ func TestConvertRequest(t *testing.T) {
 }
 
 func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 
 	req := &models.LLMRequest{
@@ -777,6 +803,7 @@ func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
 }
 
 func TestCalculateConfidence(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 
 	tests := []struct {
@@ -820,6 +847,7 @@ func TestCalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			conf := p.calculateConfidence(
 				tt.content, tt.finishReason,
 			)
@@ -830,6 +858,7 @@ func TestCalculateConfidence(t *testing.T) {
 }
 
 func TestCalculateBackoff(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("venice-test-key", "", "")
 
 	// First attempt should be around initial delay (1s)
@@ -844,6 +873,7 @@ func TestCalculateBackoff(t *testing.T) {
 }
 
 func TestRetry_502_504(t *testing.T) {
+	t.Parallel()
 	statusCodes := []int{502, 504}
 	for _, code := range statusCodes {
 		t.Run(
@@ -907,6 +937,7 @@ func TestRetry_502_504(t *testing.T) {
 }
 
 func TestModelsURLDerivation(t *testing.T) {
+	t.Parallel()
 	// Default URL
 	p1 := NewProvider("key", "", "")
 	assert.Equal(t, VeniceModelsURL, p1.modelsURL)
@@ -924,6 +955,7 @@ func TestModelsURLDerivation(t *testing.T) {
 }
 
 func TestEmptyChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			resp := Response{
@@ -951,6 +983,7 @@ func TestEmptyChoices(t *testing.T) {
 }
 
 func TestVeniceProvider_GetSupportedEndpoints(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("key", "", "")
 	endpoints := p.GetSupportedEndpoints()
 	assert.Contains(t, endpoints, "chat/completions")
@@ -965,6 +998,7 @@ func TestVeniceProvider_GetSupportedEndpoints(t *testing.T) {
 }
 
 func TestVeniceProvider_Capabilities_MultiModal(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("key", "", "")
 	caps := p.GetCapabilities()
 	assert.Contains(t, caps.SupportedFeatures, "embeddings")
@@ -977,6 +1011,7 @@ func TestVeniceProvider_Capabilities_MultiModal(t *testing.T) {
 }
 
 func TestVeniceProvider_Capabilities_Metadata(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("key", "", "")
 	caps := p.GetCapabilities()
 	assert.Equal(t, "true", caps.Metadata["e2ee"])
@@ -988,6 +1023,7 @@ func TestVeniceProvider_Capabilities_Metadata(t *testing.T) {
 }
 
 func TestVeniceProvider_EndpointConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t,
 		"https://api.venice.ai/api/v1/embeddings",
 		VeniceEmbeddingsURL,

@@ -10,6 +10,7 @@ import (
 )
 
 func TestRiskLevel_String(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "low", RiskLow.String())
 	assert.Equal(t, "medium", RiskMedium.String())
 	assert.Equal(t, "high", RiskHigh.String())
@@ -18,6 +19,7 @@ func TestRiskLevel_String(t *testing.T) {
 }
 
 func TestNewHeuristicClassifier(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	hc := NewHeuristicClassifier(logger)
 
@@ -29,11 +31,13 @@ func TestNewHeuristicClassifier(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Name(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	assert.Equal(t, "heuristic", hc.Name())
 }
 
 func TestHeuristicClassifier_Classify_ReadOperation(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -52,6 +56,7 @@ func TestHeuristicClassifier_Classify_ReadOperation(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Classify_WriteOperation(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -67,6 +72,7 @@ func TestHeuristicClassifier_Classify_WriteOperation(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Classify_DeleteOperation(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -83,6 +89,7 @@ func TestHeuristicClassifier_Classify_DeleteOperation(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Classify_ExecuteCommand(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -98,6 +105,7 @@ func TestHeuristicClassifier_Classify_ExecuteCommand(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Classify_SystemOperation(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -114,6 +122,7 @@ func TestHeuristicClassifier_Classify_SystemOperation(t *testing.T) {
 }
 
 func TestHeuristicClassifier_Train(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 	ctx := context.Background()
 
@@ -140,6 +149,7 @@ func TestHeuristicClassifier_Train(t *testing.T) {
 }
 
 func TestHeuristicClassifier_assessToolRisk(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 
 	tests := []struct {
@@ -161,6 +171,7 @@ func TestHeuristicClassifier_assessToolRisk(t *testing.T) {
 }
 
 func TestHeuristicClassifier_GetHistory(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 
 	// Train with some examples
@@ -176,6 +187,7 @@ func TestHeuristicClassifier_GetHistory(t *testing.T) {
 }
 
 func TestNewAutoApprover(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	logger := logrus.New()
 
@@ -189,6 +201,7 @@ func TestNewAutoApprover(t *testing.T) {
 }
 
 func TestAutoApprover_Evaluate_AutoApprove(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	approver := NewAutoApprover(classifier, RiskMedium, 0.5, nil)
 	ctx := context.Background()
@@ -208,6 +221,7 @@ func TestAutoApprover_Evaluate_AutoApprove(t *testing.T) {
 }
 
 func TestAutoApprover_Evaluate_AutoReject(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	approver := NewAutoApprover(classifier, RiskLow, 0.5, nil) // Only allow low risk
 	ctx := context.Background()
@@ -226,6 +240,7 @@ func TestAutoApprover_Evaluate_AutoReject(t *testing.T) {
 }
 
 func TestAutoApprover_Evaluate_ManualReview(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	approver := NewAutoApprover(classifier, RiskLow, 0.95, nil) // High confidence threshold
 	ctx := context.Background()
@@ -244,6 +259,7 @@ func TestAutoApprover_Evaluate_ManualReview(t *testing.T) {
 }
 
 func TestAutoApprover_GetStats(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	approver := NewAutoApprover(classifier, RiskMedium, 0.5, nil)
 	ctx := context.Background()
@@ -260,6 +276,7 @@ func TestAutoApprover_GetStats(t *testing.T) {
 }
 
 func TestAutoApprover_ResetStats(t *testing.T) {
+	t.Parallel()
 	classifier := NewHeuristicClassifier(nil)
 	approver := NewAutoApprover(classifier, RiskMedium, 0.5, nil)
 	ctx := context.Background()
@@ -272,6 +289,7 @@ func TestAutoApprover_ResetStats(t *testing.T) {
 }
 
 func TestHashExecution(t *testing.T) {
+	t.Parallel()
 	exec1 := ToolExecution{
 		ToolName:  "read_file",
 		Arguments: map[string]interface{}{"path": "/tmp/test.txt"},
@@ -297,6 +315,7 @@ func TestHashExecution(t *testing.T) {
 }
 
 func TestConfidenceScore(t *testing.T) {
+	t.Parallel()
 	exec := ToolExecution{ToolName: "read_file"}
 
 	// With good history
@@ -321,6 +340,7 @@ func TestConfidenceScore(t *testing.T) {
 }
 
 func TestConfidenceScore_ReadOperations(t *testing.T) {
+	t.Parallel()
 	readExec := ToolExecution{ToolName: "read_file"}
 	writeExec := ToolExecution{ToolName: "write_file"}
 	deleteExec := ToolExecution{ToolName: "delete_file"}
@@ -334,6 +354,7 @@ func TestConfidenceScore_ReadOperations(t *testing.T) {
 }
 
 func TestClassification(t *testing.T) {
+	t.Parallel()
 	classification := &Classification{
 		ToolName:    "test_tool",
 		RiskLevel:   RiskMedium,
@@ -349,6 +370,7 @@ func TestClassification(t *testing.T) {
 }
 
 func TestApprovalDecision(t *testing.T) {
+	t.Parallel()
 	classification := &Classification{
 		ToolName:   "test",
 		RiskLevel:  RiskLow,
@@ -367,6 +389,7 @@ func TestApprovalDecision(t *testing.T) {
 }
 
 func TestHistoryEntry(t *testing.T) {
+	t.Parallel()
 	entry := &HistoryEntry{
 		ToolName:    "test_tool",
 		Count:       5,
@@ -379,6 +402,7 @@ func TestHistoryEntry(t *testing.T) {
 }
 
 func TestRule_Match(t *testing.T) {
+	t.Parallel()
 	rule := Rule{
 		Name: "test_rule",
 		Match: func(exec ToolExecution) bool {
@@ -396,6 +420,7 @@ func TestRule_Match(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	hc := NewHeuristicClassifier(nil)
 
 	done := make(chan bool, 3)

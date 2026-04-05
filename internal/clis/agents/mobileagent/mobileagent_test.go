@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewMobileAgent(t *testing.T) {
+	t.Parallel()
 	m := New()
 	require.NotNil(t, m)
 	
@@ -23,6 +24,7 @@ func TestNewMobileAgent(t *testing.T) {
 }
 
 func TestMobileAgentInitialize(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestMobileAgentInitialize(t *testing.T) {
 }
 
 func TestMobileAgentInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestMobileAgentInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestMobileAgentStartStop(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestMobileAgentStartStop(t *testing.T) {
 }
 
 func TestMobileAgentExecute(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	
@@ -112,6 +117,7 @@ func TestMobileAgentExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := m.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -124,6 +130,7 @@ func TestMobileAgentExecute(t *testing.T) {
 }
 
 func TestMobileAgentCapabilities(t *testing.T) {
+	t.Parallel()
 	m := New()
 	info := m.Info()
 	
@@ -134,11 +141,13 @@ func TestMobileAgentCapabilities(t *testing.T) {
 }
 
 func TestMobileAgentIsAvailable(t *testing.T) {
+	t.Parallel()
 	m := New()
 	assert.True(t, m.IsAvailable())
 }
 
 func TestMobileAgentGenerateResult(t *testing.T) {
+	t.Parallel()
 	m := New()
 	ctx := context.Background()
 	

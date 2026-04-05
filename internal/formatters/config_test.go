@@ -11,6 +11,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	assert.True(t, cfg.Enabled)
@@ -34,6 +35,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestDefaultConfig_Preferences(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	tests := []struct {
@@ -53,6 +55,7 @@ func TestDefaultConfig_Preferences(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.language, func(t *testing.T) {
+				t.Parallel()
 			pref, ok := cfg.Preferences[tc.language]
 			assert.True(t, ok, "no preference for %s", tc.language)
 			assert.Equal(t, tc.formatter, pref)
@@ -61,6 +64,7 @@ func TestDefaultConfig_Preferences(t *testing.T) {
 }
 
 func TestDefaultConfig_Fallback(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	pythonFallback := cfg.Fallback["python"]
@@ -72,12 +76,14 @@ func TestDefaultConfig_Fallback(t *testing.T) {
 }
 
 func TestConfig_Validate_Valid(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	err := cfg.Validate()
 	assert.NoError(t, err)
 }
 
 func TestConfig_Validate_InvalidTimeout(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.DefaultTimeout = 0
 	err := cfg.Validate()
@@ -90,6 +96,7 @@ func TestConfig_Validate_InvalidTimeout(t *testing.T) {
 }
 
 func TestConfig_Validate_InvalidMaxConcurrent(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.MaxConcurrent = 0
 	err := cfg.Validate()
@@ -98,6 +105,7 @@ func TestConfig_Validate_InvalidMaxConcurrent(t *testing.T) {
 }
 
 func TestConfig_Validate_InvalidLineLength(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.DefaultLineLength = 0
 	err := cfg.Validate()
@@ -106,6 +114,7 @@ func TestConfig_Validate_InvalidLineLength(t *testing.T) {
 }
 
 func TestConfig_Validate_InvalidIndentSize(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.DefaultIndentSize = 0
 	err := cfg.Validate()
@@ -114,6 +123,7 @@ func TestConfig_Validate_InvalidIndentSize(t *testing.T) {
 }
 
 func TestConfig_GetPreferredFormatter(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	formatter, ok := cfg.GetPreferredFormatter("python")
@@ -126,6 +136,7 @@ func TestConfig_GetPreferredFormatter(t *testing.T) {
 }
 
 func TestConfig_GetFallbackChain(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	chain := cfg.GetFallbackChain("python")
@@ -137,6 +148,7 @@ func TestConfig_GetFallbackChain(t *testing.T) {
 }
 
 func TestConfig_GetLanguageConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.LanguageConfigs["python"] = LanguageConfig{
 		LineLength: 100,
@@ -154,6 +166,7 @@ func TestConfig_GetLanguageConfig(t *testing.T) {
 }
 
 func TestConfig_ApplyOverrides(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.Overrides = []OverrideConfig{
 		{
@@ -176,6 +189,7 @@ func TestConfig_ApplyOverrides(t *testing.T) {
 }
 
 func TestConfig_ApplyOverrides_NoMatch(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.Overrides = []OverrideConfig{
 		{
@@ -194,6 +208,7 @@ func TestConfig_ApplyOverrides_NoMatch(t *testing.T) {
 }
 
 func TestConfig_ApplyOverrides_NilConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.Overrides = []OverrideConfig{
 		{
@@ -213,6 +228,7 @@ func TestConfig_ApplyOverrides_NilConfig(t *testing.T) {
 }
 
 func TestConfig_ApplyOverrides_ZeroLineLength(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.Overrides = []OverrideConfig{
 		{
@@ -231,6 +247,7 @@ func TestConfig_ApplyOverrides_ZeroLineLength(t *testing.T) {
 }
 
 func TestMatchesPattern(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		filePath string
@@ -246,12 +263,14 @@ func TestMatchesPattern(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, matchesPattern(tc.filePath, tc.pattern))
 		})
 	}
 }
 
 func TestConfig_ToRegistryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	rc := cfg.ToRegistryConfig()
 
@@ -269,6 +288,7 @@ func TestConfig_ToRegistryConfig(t *testing.T) {
 }
 
 func TestConfig_ToExecutorConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	ec := cfg.ToExecutorConfig()
 
@@ -280,6 +300,7 @@ func TestConfig_ToExecutorConfig(t *testing.T) {
 }
 
 func TestConfig_ToCacheConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cc := cfg.ToCacheConfig()
 
@@ -289,6 +310,7 @@ func TestConfig_ToCacheConfig(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
+	t.Parallel()
 	// Create a temp YAML config
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "formatters.yaml")
@@ -321,12 +343,14 @@ preferences:
 }
 
 func TestLoadConfig_FileNotFound(t *testing.T) {
+	t.Parallel()
 	_, err := LoadConfig("/nonexistent/path/config.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read config file")
 }
 
 func TestLoadConfig_InvalidYAML(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "bad.yaml")
 
@@ -339,6 +363,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 }
 
 func TestLoadConfig_ResolvesRelativePaths(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -365,6 +390,7 @@ default_indent_size: 4
 }
 
 func TestSaveConfig(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "output.yaml")
 
@@ -383,6 +409,7 @@ func TestSaveConfig(t *testing.T) {
 }
 
 func TestSaveConfig_InvalidPath(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	err := SaveConfig(cfg, "/nonexistent/dir/config.yaml")
 	assert.Error(t, err)
@@ -390,6 +417,7 @@ func TestSaveConfig_InvalidPath(t *testing.T) {
 }
 
 func TestConfig_ResolvePaths_AbsolutePaths(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 	cfg.SubmodulesPath = "/absolute/path/formatters"
 	cfg.BinariesPath = "/absolute/path/bin"

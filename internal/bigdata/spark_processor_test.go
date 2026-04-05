@@ -19,6 +19,7 @@ func newTestSparkProcessor() *SparkBatchProcessor {
 }
 
 func TestParseJobOutput_EntityExtraction(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobEntityExtraction,
@@ -35,6 +36,7 @@ func TestParseJobOutput_EntityExtraction(t *testing.T) {
 }
 
 func TestParseJobOutput_RelationshipMining(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobRelationshipMining,
@@ -51,6 +53,7 @@ func TestParseJobOutput_RelationshipMining(t *testing.T) {
 }
 
 func TestParseJobOutput_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobEntityExtraction,
@@ -64,6 +67,7 @@ func TestParseJobOutput_InvalidJSON(t *testing.T) {
 }
 
 func TestParseJobOutput_EmptyOutput(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobEntityExtraction,
@@ -79,6 +83,7 @@ func TestParseJobOutput_EmptyOutput(t *testing.T) {
 // --- NewSparkBatchProcessor tests ---
 
 func TestNewSparkBatchProcessor_NilLogger(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor(
 		"spark://localhost:7077",
 		nil,
@@ -95,6 +100,7 @@ func TestNewSparkBatchProcessor_NilLogger(t *testing.T) {
 }
 
 func TestNewSparkBatchProcessor_WithLogger(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	processor := NewSparkBatchProcessor(
 		"spark://master:7077",
@@ -109,6 +115,7 @@ func TestNewSparkBatchProcessor_WithLogger(t *testing.T) {
 }
 
 func TestNewSparkBatchProcessor_WithDataLakeClient(t *testing.T) {
+	t.Parallel()
 	dlc := &DataLakeClient{logger: logrus.New()}
 	processor := NewSparkBatchProcessor(
 		"local",
@@ -122,6 +129,7 @@ func TestNewSparkBatchProcessor_WithDataLakeClient(t *testing.T) {
 // --- createJobConfig tests ---
 
 func TestSparkBatchProcessor_CreateJobConfig_EntityExtraction(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: BatchJobEntityExtraction}
@@ -138,6 +146,7 @@ func TestSparkBatchProcessor_CreateJobConfig_EntityExtraction(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CreateJobConfig_RelationshipMining(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: BatchJobRelationshipMining}
@@ -149,6 +158,7 @@ func TestSparkBatchProcessor_CreateJobConfig_RelationshipMining(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CreateJobConfig_TopicModeling(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: BatchJobTopicModeling}
@@ -160,6 +170,7 @@ func TestSparkBatchProcessor_CreateJobConfig_TopicModeling(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CreateJobConfig_ProviderPerformance(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: BatchJobProviderPerformance}
@@ -171,6 +182,7 @@ func TestSparkBatchProcessor_CreateJobConfig_ProviderPerformance(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CreateJobConfig_DebateAnalysis(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: BatchJobDebateAnalysis}
@@ -182,6 +194,7 @@ func TestSparkBatchProcessor_CreateJobConfig_DebateAnalysis(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CreateJobConfig_UnknownJobType(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{JobType: "unknown_type"}
@@ -196,6 +209,7 @@ func TestSparkBatchProcessor_CreateJobConfig_UnknownJobType(t *testing.T) {
 // --- buildJobArgs tests ---
 
 func TestSparkBatchProcessor_BuildJobArgs_BasicParams(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{
@@ -216,6 +230,7 @@ func TestSparkBatchProcessor_BuildJobArgs_BasicParams(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_BuildJobArgs_WithDateRange(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	startDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -239,6 +254,7 @@ func TestSparkBatchProcessor_BuildJobArgs_WithDateRange(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_BuildJobArgs_WithOptions(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{
@@ -267,6 +283,7 @@ func TestSparkBatchProcessor_BuildJobArgs_WithOptions(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_BuildJobArgs_EmptyOptions(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{
@@ -286,6 +303,7 @@ func TestSparkBatchProcessor_BuildJobArgs_EmptyOptions(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_BuildJobArgs_ZeroDateNotIncluded(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://master:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{
@@ -306,6 +324,7 @@ func TestSparkBatchProcessor_BuildJobArgs_ZeroDateNotIncluded(t *testing.T) {
 // --- getSparkRESTBaseURL tests ---
 
 func TestSparkBatchProcessor_GetSparkRESTBaseURL_Configured(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://localhost:7077", nil, "/scripts", logrus.New())
 
 	url, err := processor.getSparkRESTBaseURL()
@@ -314,6 +333,7 @@ func TestSparkBatchProcessor_GetSparkRESTBaseURL_Configured(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetSparkRESTBaseURL_EmptyURL(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("", nil, "/scripts", logrus.New())
 
 	url, err := processor.getSparkRESTBaseURL()
@@ -325,6 +345,7 @@ func TestSparkBatchProcessor_GetSparkRESTBaseURL_EmptyURL(t *testing.T) {
 // --- getSparkHistoryBaseURL tests ---
 
 func TestSparkBatchProcessor_GetSparkHistoryBaseURL(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://localhost:7077", nil, "/scripts", logrus.New())
 
 	url, err := processor.getSparkHistoryBaseURL()
@@ -335,6 +356,7 @@ func TestSparkBatchProcessor_GetSparkHistoryBaseURL(t *testing.T) {
 // --- GetJobStatus tests (using httptest) ---
 
 func TestSparkBatchProcessor_GetJobStatus_EmptyMasterURL(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("", nil, "/scripts", logrus.New())
 
 	result, err := processor.GetJobStatus(context.Background(), "app-123")
@@ -344,6 +366,7 @@ func TestSparkBatchProcessor_GetJobStatus_EmptyMasterURL(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_ServerReturnsJobs(t *testing.T) {
+	t.Parallel()
 	// Create a test HTTP server that mimics the Spark REST API
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -372,6 +395,7 @@ func TestSparkBatchProcessor_GetJobStatus_ServerReturnsJobs(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_ServerError(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("internal error"))
@@ -393,6 +417,7 @@ func TestSparkBatchProcessor_GetJobStatus_ServerError(t *testing.T) {
 // --- CancelJob tests ---
 
 func TestSparkBatchProcessor_CancelJob_EmptyMasterURL(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("", nil, "/scripts", logrus.New())
 
 	err := processor.CancelJob(context.Background(), "app-123")
@@ -401,6 +426,7 @@ func TestSparkBatchProcessor_CancelJob_EmptyMasterURL(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CancelJob_ConnectionError(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://configured:7077", nil, "/scripts", logrus.New())
 	processor.httpClient = &http.Client{Timeout: 1 * time.Second}
 
@@ -411,6 +437,7 @@ func TestSparkBatchProcessor_CancelJob_ConnectionError(t *testing.T) {
 // --- ListCompletedJobs tests ---
 
 func TestSparkBatchProcessor_ListCompletedJobs_ConnectionError(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://configured:7077", nil, "/scripts", logrus.New())
 	processor.httpClient = &http.Client{Timeout: 1 * time.Second}
 
@@ -422,6 +449,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_ConnectionError(t *testing.T) {
 // --- CleanupOldResults tests ---
 
 func TestSparkBatchProcessor_CleanupOldResults_NilDataLakeClient(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://localhost:7077", nil, "/scripts", logrus.New())
 
 	count, err := processor.CleanupOldResults(context.Background(), 24*time.Hour)
@@ -433,6 +461,7 @@ func TestSparkBatchProcessor_CleanupOldResults_NilDataLakeClient(t *testing.T) {
 // --- GetJobStatus tests with mock HTTP server ---
 
 func TestSparkBatchProcessor_GetJobStatus_SuccessfulResponse(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/api/v1/applications/")
 		assert.Contains(t, r.URL.Path, "/jobs")
@@ -477,6 +506,7 @@ func TestSparkBatchProcessor_GetJobStatus_SuccessfulResponse(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_EmptyJobsList(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`))
@@ -493,6 +523,7 @@ func TestSparkBatchProcessor_GetJobStatus_EmptyJobsList(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_Non200Response(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("application not found"))
@@ -507,6 +538,7 @@ func TestSparkBatchProcessor_GetJobStatus_Non200Response(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`not json`))
@@ -523,6 +555,7 @@ func TestSparkBatchProcessor_GetJobStatus_InvalidJSON(t *testing.T) {
 // --- CancelJob tests with mock HTTP server ---
 
 func TestSparkBatchProcessor_CancelJob_SuccessfulResponse(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
 		assert.Contains(t, r.URL.Path, "/api/v1/applications/")
@@ -538,6 +571,7 @@ func TestSparkBatchProcessor_CancelJob_SuccessfulResponse(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CancelJob_Non200Response(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte("forbidden"))
@@ -554,6 +588,7 @@ func TestSparkBatchProcessor_CancelJob_Non200Response(t *testing.T) {
 // --- ListCompletedJobs tests with mock HTTP server ---
 
 func TestSparkBatchProcessor_ListCompletedJobs_SuccessfulResponse(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Contains(t, r.URL.Path, "/api/v1/applications")
@@ -628,6 +663,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_SuccessfulResponse(t *testing.T) 
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_EmptyList(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`))
@@ -642,6 +678,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_EmptyList(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_Non200Response(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte("history server unavailable"))
@@ -658,6 +695,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_Non200Response(t *testing.T) {
 // --- ProcessConversationDataset tests ---
 
 func TestSparkBatchProcessor_ProcessConversationDataset_NilDataLakeClient(t *testing.T) {
+	t.Parallel()
 	processor := NewSparkBatchProcessor("spark://localhost:7077", nil, "/scripts", logrus.New())
 
 	params := BatchParams{
@@ -675,6 +713,7 @@ func TestSparkBatchProcessor_ProcessConversationDataset_NilDataLakeClient(t *tes
 // --- parseJSONOutput additional tests ---
 
 func TestSparkBatchProcessor_ParseJSONOutput_AllFieldsPresent(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType:    BatchJobEntityExtraction,
@@ -694,6 +733,7 @@ func TestSparkBatchProcessor_ParseJSONOutput_AllFieldsPresent(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ParseJSONOutput_NoValidJSON(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{JobType: BatchJobEntityExtraction}
 
@@ -702,6 +742,7 @@ func TestSparkBatchProcessor_ParseJSONOutput_NoValidJSON(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ParseJSONOutput_JSONWithoutStatusSkipped(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{JobType: BatchJobEntityExtraction}
 
@@ -715,6 +756,7 @@ func TestSparkBatchProcessor_ParseJSONOutput_JSONWithoutStatusSkipped(t *testing
 }
 
 func TestSparkBatchProcessor_ParseJSONOutput_MalformedJSONLine(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{JobType: BatchJobEntityExtraction}
 
@@ -728,6 +770,7 @@ func TestSparkBatchProcessor_ParseJSONOutput_MalformedJSONLine(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ParseJSONOutput_EmptyString(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{JobType: BatchJobEntityExtraction}
 
@@ -738,6 +781,7 @@ func TestSparkBatchProcessor_ParseJSONOutput_EmptyString(t *testing.T) {
 // --- parseJobOutput additional tests ---
 
 func TestParseJobOutput_TopicModeling(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType:    BatchJobTopicModeling,
@@ -755,6 +799,7 @@ func TestParseJobOutput_TopicModeling(t *testing.T) {
 }
 
 func TestParseJobOutput_WithExtraMetrics(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobProviderPerformance,
@@ -771,6 +816,7 @@ func TestParseJobOutput_WithExtraMetrics(t *testing.T) {
 }
 
 func TestParseJobOutput_MultiLineWithJSON(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobEntityExtraction,
@@ -788,6 +834,7 @@ INFO: Job done`
 }
 
 func TestParseJobOutput_JSONWithoutStatus(t *testing.T) {
+	t.Parallel()
 	processor := newTestSparkProcessor()
 	params := BatchParams{
 		JobType: BatchJobEntityExtraction,
@@ -803,6 +850,7 @@ func TestParseJobOutput_JSONWithoutStatus(t *testing.T) {
 // --- BatchJobType constants tests ---
 
 func TestBatchJobType_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, BatchJobType("entity_extraction"), BatchJobEntityExtraction)
 	assert.Equal(t, BatchJobType("relationship_mining"), BatchJobRelationshipMining)
 	assert.Equal(t, BatchJobType("topic_modeling"), BatchJobTopicModeling)
@@ -813,6 +861,7 @@ func TestBatchJobType_Constants(t *testing.T) {
 // --- BatchResult tests ---
 
 func TestBatchResult_FieldAssignment(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	result := &BatchResult{
 		JobID:              "job-1",
@@ -842,6 +891,7 @@ func TestBatchResult_FieldAssignment(t *testing.T) {
 // --- SparkJobConfig tests ---
 
 func TestSparkJobConfig_FieldAssignment(t *testing.T) {
+	t.Parallel()
 	config := &SparkJobConfig{
 		ExecutorMemory:  "4g",
 		ExecutorCores:   4,
@@ -889,6 +939,7 @@ func (rt *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error
 // --- GetJobStatus tests using redirectTransport ---
 
 func TestSparkBatchProcessor_GetJobStatus_FullPath_Success(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/api/v1/applications/")
 		assert.Contains(t, r.URL.Path, "/jobs")
@@ -929,6 +980,7 @@ func TestSparkBatchProcessor_GetJobStatus_FullPath_Success(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_FullPath_EmptyJobs(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`))
@@ -950,6 +1002,7 @@ func TestSparkBatchProcessor_GetJobStatus_FullPath_EmptyJobs(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_FullPath_Non200(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("application not found"))
@@ -971,6 +1024,7 @@ func TestSparkBatchProcessor_GetJobStatus_FullPath_Non200(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_FullPath_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`not json at all`))
@@ -992,6 +1046,7 @@ func TestSparkBatchProcessor_GetJobStatus_FullPath_InvalidJSON(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_GetJobStatus_FullPath_NoEndTime(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[{
@@ -1028,6 +1083,7 @@ func TestSparkBatchProcessor_GetJobStatus_FullPath_NoEndTime(t *testing.T) {
 // --- CancelJob tests using redirectTransport ---
 
 func TestSparkBatchProcessor_CancelJob_FullPath_Success(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
 		assert.Contains(t, r.URL.Path, "/api/v1/applications/")
@@ -1048,6 +1104,7 @@ func TestSparkBatchProcessor_CancelJob_FullPath_Success(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_CancelJob_FullPath_Forbidden(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte("forbidden"))
@@ -1070,6 +1127,7 @@ func TestSparkBatchProcessor_CancelJob_FullPath_Forbidden(t *testing.T) {
 // --- ListCompletedJobs tests using redirectTransport ---
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_Success(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		q := r.URL.Query()
@@ -1120,6 +1178,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_Success(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_EmptyList(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[]`))
@@ -1140,6 +1199,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_EmptyList(t *testing.T) 
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_Non200(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte("history server down"))
@@ -1161,6 +1221,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_Non200(t *testing.T) {
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`not valid json`))
@@ -1182,6 +1243,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_InvalidJSON(t *testing.T
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_LimitApplied(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		assert.Equal(t, "3", q.Get("limit"))
@@ -1208,6 +1270,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_LimitApplied(t *testing.
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_FiltersNonCompleted(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[
@@ -1235,6 +1298,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_FiltersNonCompleted(t *t
 }
 
 func TestSparkBatchProcessor_ListCompletedJobs_FullPath_JobTypeDetection(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[
@@ -1268,6 +1332,7 @@ func TestSparkBatchProcessor_ListCompletedJobs_FullPath_JobTypeDetection(t *test
 // --- ProcessConversationDataset with mock S3 ---
 
 func TestSparkBatchProcessor_ProcessConversationDataset_InputPathNotExists(t *testing.T) {
+	t.Parallel()
 	s := newMockS3Server()
 	defer s.Close()
 
@@ -1288,6 +1353,7 @@ func TestSparkBatchProcessor_ProcessConversationDataset_InputPathNotExists(t *te
 }
 
 func TestSparkBatchProcessor_ProcessConversationDataset_InputPathExists_SparkSubmitFails(t *testing.T) {
+	t.Parallel()
 	s := newMockS3Server()
 	defer s.Close()
 
@@ -1317,6 +1383,7 @@ func TestSparkBatchProcessor_ProcessConversationDataset_InputPathExists_SparkSub
 // --- CleanupOldResults with mock S3 ---
 
 func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_NoDirectories(t *testing.T) {
+	t.Parallel()
 	s := newMockS3Server()
 	defer s.Close()
 
@@ -1329,6 +1396,7 @@ func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_NoDirectories(t *testi
 }
 
 func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_HasOldDirectories(t *testing.T) {
+	t.Parallel()
 	s := newMockS3Server()
 	defer s.Close()
 
@@ -1353,6 +1421,7 @@ func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_HasOldDirectories(t *t
 }
 
 func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_MixedOldAndNew(t *testing.T) {
+	t.Parallel()
 	s := newMockS3Server()
 	defer s.Close()
 
@@ -1381,6 +1450,7 @@ func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_MixedOldAndNew(t *test
 }
 
 func TestBatchParams_FieldAssignment(t *testing.T) {
+	t.Parallel()
 	params := BatchParams{
 		JobType:    BatchJobDebateAnalysis,
 		InputPath:  "/input",

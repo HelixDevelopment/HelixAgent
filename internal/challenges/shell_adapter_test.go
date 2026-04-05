@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegisterShellChallenges_EmptyDir(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	reg := registry.NewRegistry()
 
@@ -21,6 +22,7 @@ func TestRegisterShellChallenges_EmptyDir(t *testing.T) {
 }
 
 func TestRegisterShellChallenges_WithScripts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create test scripts matching the _challenge.sh pattern.
@@ -47,6 +49,7 @@ func TestRegisterShellChallenges_WithScripts(t *testing.T) {
 }
 
 func TestRegisterShellChallenges_TestScripts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// _test.sh files should also be registered.
@@ -65,12 +68,14 @@ func TestRegisterShellChallenges_TestScripts(t *testing.T) {
 }
 
 func TestRegisterShellChallenges_NonexistentDir(t *testing.T) {
+	t.Parallel()
 	reg := registry.NewRegistry()
 	err := RegisterShellChallenges(reg, "/nonexistent/path", "")
 	require.Error(t, err)
 }
 
 func TestRegisterShellChallenges_SkipsDirectories(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Create a subdirectory named like a challenge.
@@ -87,6 +92,7 @@ func TestRegisterShellChallenges_SkipsDirectories(t *testing.T) {
 }
 
 func TestFormatName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -101,6 +107,7 @@ func TestFormatName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, formatName(tt.input))
 		})
 	}

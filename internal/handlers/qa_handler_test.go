@@ -27,12 +27,14 @@ func setupQAHandler(adapter *helixqaadapter.Adapter) (*QAHandler, *gin.Engine) {
 }
 
 func TestQAHandler_New_NilAdapter(t *testing.T) {
+	t.Parallel()
 	h := NewQAHandler(nil)
 	require.NotNil(t, h)
 	assert.Nil(t, h.adapter)
 }
 
 func TestQAHandler_New_WithAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	h := NewQAHandler(adapter)
 	require.NotNil(t, h)
@@ -40,6 +42,7 @@ func TestQAHandler_New_WithAdapter(t *testing.T) {
 }
 
 func TestQAHandler_ListPlatforms_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -54,6 +57,7 @@ func TestQAHandler_ListPlatforms_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_ListPlatforms_Success(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -71,6 +75,7 @@ func TestQAHandler_ListPlatforms_Success(t *testing.T) {
 }
 
 func TestQAHandler_ListFindings_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -81,6 +86,7 @@ func TestQAHandler_ListFindings_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_ListFindings_StoreNotInit(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -93,6 +99,7 @@ func TestQAHandler_ListFindings_StoreNotInit(t *testing.T) {
 }
 
 func TestQAHandler_ListFindings_EmptyStore(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	dbPath := t.TempDir() + "/test.db"
 	require.NoError(t, adapter.Initialize(dbPath))
@@ -112,6 +119,7 @@ func TestQAHandler_ListFindings_EmptyStore(t *testing.T) {
 }
 
 func TestQAHandler_GetFinding_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -122,6 +130,7 @@ func TestQAHandler_GetFinding_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_UpdateFinding_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	body := `{"status":"fixed"}`
@@ -135,6 +144,7 @@ func TestQAHandler_UpdateFinding_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_UpdateFinding_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -148,6 +158,7 @@ func TestQAHandler_UpdateFinding_InvalidJSON(t *testing.T) {
 }
 
 func TestQAHandler_StartSession_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	body := `{"project_root":"/tmp","platforms":["api"]}`
@@ -161,6 +172,7 @@ func TestQAHandler_StartSession_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_StartSession_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -174,6 +186,7 @@ func TestQAHandler_StartSession_InvalidJSON(t *testing.T) {
 }
 
 func TestQAHandler_StartSession_MissingRequired(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -189,6 +202,7 @@ func TestQAHandler_StartSession_MissingRequired(t *testing.T) {
 }
 
 func TestQAHandler_DiscoverKnowledge_NilAdapter(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	body := `{"project_root":"/tmp"}`
@@ -202,6 +216,7 @@ func TestQAHandler_DiscoverKnowledge_NilAdapter(t *testing.T) {
 }
 
 func TestQAHandler_DiscoverKnowledge_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -215,6 +230,7 @@ func TestQAHandler_DiscoverKnowledge_InvalidJSON(t *testing.T) {
 }
 
 func TestQAHandler_DiscoverKnowledge_ValidRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, r := setupQAHandler(adapter)
 
@@ -238,6 +254,7 @@ func TestQAHandler_DiscoverKnowledge_ValidRoot(t *testing.T) {
 }
 
 func TestRegisterQARoutes_AllEndpoints(t *testing.T) {
+	t.Parallel()
 	_, r := setupQAHandler(nil)
 
 	routes := r.Routes()

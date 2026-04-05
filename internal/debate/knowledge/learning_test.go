@@ -20,6 +20,7 @@ import (
 // =============================================================================
 
 func TestDefaultLearningConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultLearningConfig()
 
 	assert.Equal(t, 3, config.MinDebatesForPattern)
@@ -36,6 +37,7 @@ func TestDefaultLearningConfig(t *testing.T) {
 // =============================================================================
 
 func TestNewCrossDebateLearner(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 
@@ -48,6 +50,7 @@ func TestNewCrossDebateLearner(t *testing.T) {
 }
 
 func TestNewCrossDebateLearner_NoKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	config.EnableKnowledgeGraph = false
@@ -58,6 +61,7 @@ func TestNewCrossDebateLearner_NoKnowledgeGraph(t *testing.T) {
 }
 
 func TestCrossDebateLearner_LearnFromDebate(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	learner := NewCrossDebateLearner(repo, config)
@@ -81,6 +85,7 @@ func TestCrossDebateLearner_LearnFromDebate(t *testing.T) {
 }
 
 func TestCrossDebateLearner_GetRecommendations(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	learner := NewCrossDebateLearner(repo, config)
@@ -101,6 +106,7 @@ func TestCrossDebateLearner_GetRecommendations(t *testing.T) {
 // =============================================================================
 
 func TestNewPatternAnalyzer(t *testing.T) {
+	t.Parallel()
 	analyzer := NewPatternAnalyzer()
 
 	assert.NotNil(t, analyzer)
@@ -109,6 +115,7 @@ func TestNewPatternAnalyzer(t *testing.T) {
 }
 
 func TestPatternAnalyzer_Analyze(t *testing.T) {
+	t.Parallel()
 	analyzer := NewPatternAnalyzer()
 	result := createTestDebateResult()
 
@@ -123,6 +130,7 @@ func TestPatternAnalyzer_Analyze(t *testing.T) {
 // =============================================================================
 
 func TestConsensusPatternDetector_Detect_EarlyHighConsensus(t *testing.T) {
+	t.Parallel()
 	detector := &ConsensusPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -151,6 +159,7 @@ func TestConsensusPatternDetector_Detect_EarlyHighConsensus(t *testing.T) {
 }
 
 func TestConsensusPatternDetector_Detect_ProgressiveConsensus(t *testing.T) {
+	t.Parallel()
 	detector := &ConsensusPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -180,6 +189,7 @@ func TestConsensusPatternDetector_Detect_ProgressiveConsensus(t *testing.T) {
 }
 
 func TestConsensusPatternDetector_Detect_NoConsensus(t *testing.T) {
+	t.Parallel()
 	detector := &ConsensusPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -196,6 +206,7 @@ func TestConsensusPatternDetector_Detect_NoConsensus(t *testing.T) {
 // =============================================================================
 
 func TestConflictPatternDetector_Detect(t *testing.T) {
+	t.Parallel()
 	detector := &ConflictPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -223,6 +234,7 @@ func TestConflictPatternDetector_Detect(t *testing.T) {
 }
 
 func TestConflictPatternDetector_Detect_FailedDebate(t *testing.T) {
+	t.Parallel()
 	detector := &ConflictPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -242,6 +254,7 @@ func TestConflictPatternDetector_Detect_FailedDebate(t *testing.T) {
 // =============================================================================
 
 func TestExpertisePatternDetector_Detect(t *testing.T) {
+	t.Parallel()
 	detector := &ExpertisePatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -274,6 +287,7 @@ func TestExpertisePatternDetector_Detect(t *testing.T) {
 // =============================================================================
 
 func TestFailurePatternDetector_Detect(t *testing.T) {
+	t.Parallel()
 	detector := &FailurePatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -300,6 +314,7 @@ func TestFailurePatternDetector_Detect(t *testing.T) {
 }
 
 func TestFailurePatternDetector_Detect_SuccessfulDebate(t *testing.T) {
+	t.Parallel()
 	detector := &FailurePatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -316,6 +331,7 @@ func TestFailurePatternDetector_Detect_SuccessfulDebate(t *testing.T) {
 // =============================================================================
 
 func TestOptimizationPatternDetector_Detect_FastConvergence(t *testing.T) {
+	t.Parallel()
 	detector := &OptimizationPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -339,6 +355,7 @@ func TestOptimizationPatternDetector_Detect_FastConvergence(t *testing.T) {
 }
 
 func TestOptimizationPatternDetector_Detect_HighQuality(t *testing.T) {
+	t.Parallel()
 	detector := &OptimizationPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -366,11 +383,13 @@ func TestOptimizationPatternDetector_Detect_HighQuality(t *testing.T) {
 // =============================================================================
 
 func TestNewStrategySynthesizer(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 	assert.NotNil(t, synthesizer)
 }
 
 func TestStrategySynthesizer_Synthesize(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 	result := createTestDebateResult()
 
@@ -385,6 +404,7 @@ func TestStrategySynthesizer_Synthesize(t *testing.T) {
 }
 
 func TestStrategySynthesizer_Synthesize_FailedDebate(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 
 	result := &protocol.DebateResult{
@@ -397,6 +417,7 @@ func TestStrategySynthesizer_Synthesize_FailedDebate(t *testing.T) {
 }
 
 func TestStrategySynthesizer_Synthesize_NoConsensus(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 
 	result := &protocol.DebateResult{
@@ -414,6 +435,7 @@ func TestStrategySynthesizer_Synthesize_NoConsensus(t *testing.T) {
 // =============================================================================
 
 func TestNewKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 
 	assert.NotNil(t, graph)
@@ -423,6 +445,7 @@ func TestNewKnowledgeGraph(t *testing.T) {
 }
 
 func TestKnowledgeGraph_AddDebate(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 	result := createTestDebateResult()
 	lessons := []*debate.Lesson{
@@ -447,6 +470,7 @@ func TestKnowledgeGraph_AddDebate(t *testing.T) {
 }
 
 func TestKnowledgeGraph_GetNode(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 
 	// Add a node manually
@@ -467,6 +491,7 @@ func TestKnowledgeGraph_GetNode(t *testing.T) {
 }
 
 func TestKnowledgeGraph_GetConnections(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 
 	// Add nodes and edges
@@ -488,6 +513,7 @@ func TestKnowledgeGraph_GetConnections(t *testing.T) {
 }
 
 func TestKnowledgeGraph_Size(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 
 	assert.Equal(t, 0, graph.Size())
@@ -499,6 +525,7 @@ func TestKnowledgeGraph_Size(t *testing.T) {
 }
 
 func TestKnowledgeGraph_TrimIfNecessary(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(5) // Very small limit
 
 	// Add multiple debates
@@ -513,6 +540,7 @@ func TestKnowledgeGraph_TrimIfNecessary(t *testing.T) {
 }
 
 func TestKnowledgeGraph_GetRoleAdvice(t *testing.T) {
+	t.Parallel()
 	graph := NewKnowledgeGraph(1000)
 
 	// Add some high-weight lesson nodes
@@ -540,6 +568,7 @@ func TestKnowledgeGraph_GetRoleAdvice(t *testing.T) {
 // =============================================================================
 
 func TestNodeTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, NodeType("topic"), NodeTypeTopic)
 	assert.Equal(t, NodeType("concept"), NodeTypeConcept)
 	assert.Equal(t, NodeType("pattern"), NodeTypePattern)
@@ -553,6 +582,7 @@ func TestNodeTypes(t *testing.T) {
 // =============================================================================
 
 func TestEdgeTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, EdgeType("related_to"), EdgeTypeRelatedTo)
 	assert.Equal(t, EdgeType("leads_to"), EdgeTypeLeadsTo)
 	assert.Equal(t, EdgeType("derived_from"), EdgeTypeDerivedFrom)
@@ -565,6 +595,7 @@ func TestEdgeTypes(t *testing.T) {
 // =============================================================================
 
 func TestLearningOutcome_Structure(t *testing.T) {
+	t.Parallel()
 	outcome := &LearningOutcome{
 		DebateID:        "debate-1",
 		LearnedAt:       time.Now(),
@@ -585,6 +616,7 @@ func TestLearningOutcome_Structure(t *testing.T) {
 // =============================================================================
 
 func TestDebateRecommendations_Structure(t *testing.T) {
+	t.Parallel()
 	recommendations := &DebateRecommendations{
 		Topic:            "Test Topic",
 		Domain:           agents.DomainCode,
@@ -605,6 +637,7 @@ func TestDebateRecommendations_Structure(t *testing.T) {
 // =============================================================================
 
 func TestStrategy_Structure(t *testing.T) {
+	t.Parallel()
 	strategy := &Strategy{
 		ID:           "strategy-1",
 		Name:         "Test Strategy",

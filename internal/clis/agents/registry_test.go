@@ -71,6 +71,7 @@ func newMockAgent(agentType AgentType, name string, available bool) *mockAgent {
 }
 
 func TestRegistry(t *testing.T) {
+	t.Parallel()
 	t.Run("NewRegistry", func(t *testing.T) {
 		r := NewRegistry()
 		if r == nil {
@@ -84,6 +85,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("Register", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		agent := newMockAgent("test1", "Test Agent 1", true)
 		
@@ -100,6 +102,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("RegisterDuplicate", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		agent := newMockAgent("test1", "Test Agent 1", true)
 		
@@ -112,6 +115,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("Get", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		agent := newMockAgent("test1", "Test Agent 1", true)
 		
@@ -127,6 +131,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("GetNotFound", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		
 		_, ok := r.Get("nonexistent")
@@ -136,6 +141,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("List", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		
 		// Register multiple agents
@@ -158,6 +164,7 @@ func TestRegistry(t *testing.T) {
 	})
 
 	t.Run("ListAvailable", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		
 		// Register agents with different availability
@@ -173,6 +180,7 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestRegistryStartStop(t *testing.T) {
+	t.Parallel()
 	t.Run("StartAll", func(t *testing.T) {
 		r := NewRegistry()
 		agent1 := newMockAgent("agent1", "Agent 1", true)
@@ -197,6 +205,7 @@ func TestRegistryStartStop(t *testing.T) {
 	})
 
 	t.Run("StopAll", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		agent := newMockAgent("agent1", "Agent 1", true)
 		
@@ -216,6 +225,7 @@ func TestRegistryStartStop(t *testing.T) {
 	})
 
 	t.Run("Execute", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		agent := newMockAgent("agent1", "Agent 1", true)
 		
@@ -235,6 +245,7 @@ func TestRegistryStartStop(t *testing.T) {
 	})
 
 	t.Run("ExecuteNotFound", func(t *testing.T) {
+			t.Parallel()
 		r := NewRegistry()
 		
 		ctx := context.Background()
@@ -247,6 +258,7 @@ func TestRegistryStartStop(t *testing.T) {
 }
 
 func TestRegistryHealth(t *testing.T) {
+	t.Parallel()
 	t.Run("HealthCheck", func(t *testing.T) {
 		r := NewRegistry()
 		
@@ -275,6 +287,7 @@ func TestRegistryHealth(t *testing.T) {
 }
 
 func TestRegistryStats(t *testing.T) {
+	t.Parallel()
 	t.Run("GetStats", func(t *testing.T) {
 		r := NewRegistry()
 		
@@ -295,6 +308,7 @@ func TestRegistryStats(t *testing.T) {
 }
 
 func TestGlobalRegistry(t *testing.T) {
+	t.Parallel()
 	t.Run("GetGlobalRegistry", func(t *testing.T) {
 		r1 := GetGlobalRegistry()
 		r2 := GetGlobalRegistry()
@@ -306,6 +320,7 @@ func TestGlobalRegistry(t *testing.T) {
 }
 
 func TestAllAgentTypes(t *testing.T) {
+	t.Parallel()
 	types := AllAgentTypes()
 	
 	if len(types) == 0 {
@@ -323,6 +338,7 @@ func TestAllAgentTypes(t *testing.T) {
 }
 
 func TestRegistryConcurrency(t *testing.T) {
+	t.Parallel()
 	r := NewRegistry()
 	
 	// Concurrent registrations

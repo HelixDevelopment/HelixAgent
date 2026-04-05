@@ -10,6 +10,7 @@ import (
 )
 
 func TestPublicAIProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-api-key", "", "")
 	assert.NotNil(t, provider)
 	assert.Equal(t, "test-api-key", provider.apiKey)
@@ -18,6 +19,7 @@ func TestPublicAIProvider_NewProvider(t *testing.T) {
 }
 
 func TestPublicAIProvider_NewProviderWithCustomConfig(t *testing.T) {
+	t.Parallel()
 	customURL := "https://custom.publicai.co/v1/chat/completions"
 	customModel := "swiss-ai/custom-model"
 	provider := NewPublicAIProvider("test-key", customURL, customModel)
@@ -27,6 +29,7 @@ func TestPublicAIProvider_NewProviderWithCustomConfig(t *testing.T) {
 }
 
 func TestPublicAIProvider_DefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRetryConfig()
 
 	assert.Equal(t, 3, cfg.MaxRetries)
@@ -36,6 +39,7 @@ func TestPublicAIProvider_DefaultRetryConfig(t *testing.T) {
 }
 
 func TestPublicAIProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "", "")
 
 	req := &models.LLMRequest{
@@ -66,6 +70,7 @@ func TestPublicAIProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestPublicAIProvider_ConvertRequestDefaultValues(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "", "")
 
 	req := &models.LLMRequest{
@@ -84,6 +89,7 @@ func TestPublicAIProvider_ConvertRequestDefaultValues(t *testing.T) {
 }
 
 func TestPublicAIProvider_ConvertRequestMaxTokensCap(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "", "")
 
 	req := &models.LLMRequest{
@@ -102,6 +108,7 @@ func TestPublicAIProvider_ConvertRequestMaxTokensCap(t *testing.T) {
 }
 
 func TestPublicAIProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "", "")
 
 	tests := []struct {
@@ -119,6 +126,7 @@ func TestPublicAIProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -127,6 +135,7 @@ func TestPublicAIProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestPublicAIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -145,6 +154,7 @@ func TestPublicAIProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestPublicAIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("test-key", "https://api.publicai.co/v1", "swiss-ai/apertus-8b-instruct")
 
 	valid, errors := provider.ValidateConfig(nil)
@@ -153,6 +163,7 @@ func TestPublicAIProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestPublicAIProvider_ValidateConfigMissingAPIKey(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("", "https://api.publicai.co/v1", "swiss-ai/apertus-8b-instruct")
 
 	valid, errors := provider.ValidateConfig(nil)
@@ -161,6 +172,7 @@ func TestPublicAIProvider_ValidateConfigMissingAPIKey(t *testing.T) {
 }
 
 func TestPublicAIProvider_ValidateConfigMissingBaseURL(t *testing.T) {
+	t.Parallel()
 	provider := &PublicAIProvider{
 		apiKey:  "test-key",
 		baseURL: "",
@@ -173,6 +185,7 @@ func TestPublicAIProvider_ValidateConfigMissingBaseURL(t *testing.T) {
 }
 
 func TestPublicAIProvider_ValidateConfigMissingModel(t *testing.T) {
+	t.Parallel()
 	provider := &PublicAIProvider{
 		apiKey:  "test-key",
 		baseURL: "https://api.publicai.co/v1",
@@ -185,6 +198,7 @@ func TestPublicAIProvider_ValidateConfigMissingModel(t *testing.T) {
 }
 
 func TestPublicAIProvider_IsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		expected   bool
@@ -203,6 +217,7 @@ func TestPublicAIProvider_IsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(rune(tt.statusCode)), func(t *testing.T) {
+				t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -210,18 +225,21 @@ func TestPublicAIProvider_IsRetryableStatus(t *testing.T) {
 }
 
 func TestPublicAIProvider_IsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	assert.True(t, isAuthRetryableStatus(401))
 	assert.False(t, isAuthRetryableStatus(403))
 	assert.False(t, isAuthRetryableStatus(500))
 }
 
 func TestPublicAIProvider_Min(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 5, min(5, 10))
 	assert.Equal(t, 3, min(10, 3))
 	assert.Equal(t, 7, min(7, 7))
 }
 
 func TestPublicAIProvider_Complete_InvalidAPIKey(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("invalid-key", "", "")
 
 	req := &models.LLMRequest{
@@ -239,6 +257,7 @@ func TestPublicAIProvider_Complete_InvalidAPIKey(t *testing.T) {
 }
 
 func TestPublicAIProvider_HealthCheck_InvalidAPIKey(t *testing.T) {
+	t.Parallel()
 	provider := NewPublicAIProvider("invalid-key", "", "")
 
 	err := provider.HealthCheck()

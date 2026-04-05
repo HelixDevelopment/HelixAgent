@@ -24,6 +24,7 @@ import (
 // =============================================================================
 
 func TestEmbeddingModelConfig_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		config EmbeddingModelConfig
@@ -65,6 +66,7 @@ func TestEmbeddingModelConfig_JSONSerialization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			data, err := json.Marshal(tt.config)
 			require.NoError(t, err)
 
@@ -85,6 +87,7 @@ func TestEmbeddingModelConfig_JSONSerialization(t *testing.T) {
 // =============================================================================
 
 func TestEmbeddingModelRegistry_FallbackChainBehavior(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fallbackChain []string
@@ -109,6 +112,7 @@ func TestEmbeddingModelRegistry_FallbackChainBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			registry := NewEmbeddingModelRegistry(RegistryConfig{
 				FallbackChain: tt.fallbackChain,
 			})
@@ -123,6 +127,7 @@ func TestEmbeddingModelRegistry_FallbackChainBehavior(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_DefaultModelSelection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		defaultModel    string
@@ -150,6 +155,7 @@ func TestEmbeddingModelRegistry_DefaultModelSelection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			registry := NewEmbeddingModelRegistry(RegistryConfig{
 				DefaultModel:  tt.defaultModel,
 				FallbackChain: tt.fallbackChain,
@@ -161,6 +167,7 @@ func TestEmbeddingModelRegistry_DefaultModelSelection(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_RegisterMultipleModels(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	models := make([]*MockEmbeddingModel, 10)
@@ -190,6 +197,7 @@ func TestEmbeddingModelRegistry_RegisterMultipleModels(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_GetNonExistent(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	_, err := registry.Get("nonexistent-model")
@@ -198,6 +206,7 @@ func TestEmbeddingModelRegistry_GetNonExistent(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_GetOrCreate_Concurrent(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	// Add a local config that can be created
@@ -246,6 +255,7 @@ func TestEmbeddingModelRegistry_GetOrCreate_Concurrent(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_EncodeWithFallback_PartialFailures(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{
 		FallbackChain: []string{"failing1", "failing2", "working"},
 	})
@@ -272,6 +282,7 @@ func TestEmbeddingModelRegistry_EncodeWithFallback_PartialFailures(t *testing.T)
 }
 
 func TestEmbeddingModelRegistry_EncodeWithFallback_ConfiguredButNotCreated(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{
 		FallbackChain: []string{"local-fallback"},
 	})
@@ -284,6 +295,7 @@ func TestEmbeddingModelRegistry_EncodeWithFallback_ConfiguredButNotCreated(t *te
 }
 
 func TestEmbeddingModelRegistry_Health_MixedResults(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	healthy1 := NewMockEmbeddingModel("healthy1", 768)
@@ -308,6 +320,7 @@ func TestEmbeddingModelRegistry_Health_MixedResults(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_Close_WithErrors(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	// Create a mock that returns an error on Close
@@ -342,6 +355,7 @@ func (m *MockEmbeddingModelWithCloseError) Close() error {
 // =============================================================================
 
 func TestOpenAIEmbeddingModel_EncodeWithBatching(t *testing.T) {
+	t.Parallel()
 	callCount := int32(0)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&callCount, 1)
@@ -382,6 +396,7 @@ func TestOpenAIEmbeddingModel_EncodeWithBatching(t *testing.T) {
 }
 
 func TestOpenAIEmbeddingModel_EncodeSingle(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -413,6 +428,7 @@ func TestOpenAIEmbeddingModel_EncodeSingle(t *testing.T) {
 }
 
 func TestOpenAIEmbeddingModel_Encode_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("invalid json{{{"))
@@ -429,6 +445,7 @@ func TestOpenAIEmbeddingModel_Encode_InvalidJSON(t *testing.T) {
 }
 
 func TestOpenAIEmbeddingModel_Health_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal server error"}`))
@@ -449,6 +466,7 @@ func TestOpenAIEmbeddingModel_Health_Error(t *testing.T) {
 // =============================================================================
 
 func TestOllamaEmbeddingModel_DefaultBaseURL_Extended(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:     "ollama-test",
 		Provider: "ollama",
@@ -460,6 +478,7 @@ func TestOllamaEmbeddingModel_DefaultBaseURL_Extended(t *testing.T) {
 }
 
 func TestOllamaEmbeddingModel_CustomBaseURL(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:     "ollama-test",
 		Provider: "ollama",
@@ -472,6 +491,7 @@ func TestOllamaEmbeddingModel_CustomBaseURL(t *testing.T) {
 }
 
 func TestOllamaEmbeddingModel_Encode_MultipleTexts(t *testing.T) {
+	t.Parallel()
 	callCount := int32(0)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&callCount, 1)
@@ -501,6 +521,7 @@ func TestOllamaEmbeddingModel_Encode_MultipleTexts(t *testing.T) {
 }
 
 func TestOllamaEmbeddingModel_Encode_PartialFailure(t *testing.T) {
+	t.Parallel()
 	callCount := int32(0)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count := atomic.AddInt32(&callCount, 1)
@@ -537,6 +558,7 @@ func TestOllamaEmbeddingModel_Encode_PartialFailure(t *testing.T) {
 // =============================================================================
 
 func TestSentenceTransformersModel_Health_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			w.WriteHeader(http.StatusOK)
@@ -558,6 +580,7 @@ func TestSentenceTransformersModel_Health_Success(t *testing.T) {
 }
 
 func TestSentenceTransformersModel_Health_Failure(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -576,6 +599,7 @@ func TestSentenceTransformersModel_Health_Failure(t *testing.T) {
 }
 
 func TestSentenceTransformersModel_Encode_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/encode", r.URL.Path)
 
@@ -611,6 +635,7 @@ func TestSentenceTransformersModel_Encode_Success(t *testing.T) {
 }
 
 func TestSentenceTransformersModel_Encode_InvalidResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("invalid json"))
@@ -635,6 +660,7 @@ func TestSentenceTransformersModel_Encode_InvalidResponse(t *testing.T) {
 // =============================================================================
 
 func TestLocalHashModel_GenerateHashEmbedding_Consistency(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "local-test",
 		Provider:   "local",
@@ -654,6 +680,7 @@ func TestLocalHashModel_GenerateHashEmbedding_Consistency(t *testing.T) {
 }
 
 func TestLocalHashModel_GenerateHashEmbedding_Normalization(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "local-test",
 		Provider:   "local",
@@ -678,6 +705,7 @@ func TestLocalHashModel_GenerateHashEmbedding_Normalization(t *testing.T) {
 }
 
 func TestLocalHashModel_Encode_EmptyInput(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "local-test",
 		Provider:   "local",
@@ -692,6 +720,7 @@ func TestLocalHashModel_Encode_EmptyInput(t *testing.T) {
 }
 
 func TestLocalHashModel_Encode_LargeInput(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "local-test",
 		Provider:   "local",
@@ -717,6 +746,7 @@ func TestLocalHashModel_Encode_LargeInput(t *testing.T) {
 }
 
 func TestLocalHashModel_Health_AlwaysHealthy(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:     "local-test",
 		Provider: "local",
@@ -740,6 +770,7 @@ func TestLocalHashModel_Health_AlwaysHealthy(t *testing.T) {
 // =============================================================================
 
 func TestEmbeddingModelRegistry_createModel_AllProviders(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	tests := []struct {
@@ -803,6 +834,7 @@ func TestEmbeddingModelRegistry_createModel_AllProviders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			model, err := registry.createModel(tt.config)
 
 			if tt.expectError {
@@ -823,6 +855,7 @@ func TestEmbeddingModelRegistry_createModel_AllProviders(t *testing.T) {
 // =============================================================================
 
 func TestOpenAIEmbeddingModel_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second) // Simulate slow response
 	}))
@@ -841,6 +874,7 @@ func TestOpenAIEmbeddingModel_ContextCancellation(t *testing.T) {
 }
 
 func TestOllamaEmbeddingModel_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
 	}))
@@ -866,6 +900,7 @@ func TestOllamaEmbeddingModel_ContextCancellation(t *testing.T) {
 // =============================================================================
 
 func TestMockEmbeddingCache_Concurrent(t *testing.T) {
+	t.Parallel()
 	cache := NewMockEmbeddingCache()
 
 	var wg sync.WaitGroup
@@ -887,6 +922,7 @@ func TestMockEmbeddingCache_Concurrent(t *testing.T) {
 }
 
 func TestMockEmbeddingCache_Delete(t *testing.T) {
+	t.Parallel()
 	cache := NewMockEmbeddingCache()
 
 	cache.Set("key1", []float32{1.0, 2.0}, time.Hour)
@@ -905,6 +941,7 @@ func TestMockEmbeddingCache_Delete(t *testing.T) {
 // =============================================================================
 
 func TestOpenAIEmbeddingModel_ImplementsEmbeddingModel(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "test",
 		Dimensions: 1536,
@@ -916,6 +953,7 @@ func TestOpenAIEmbeddingModel_ImplementsEmbeddingModel(t *testing.T) {
 }
 
 func TestOllamaEmbeddingModel_ImplementsEmbeddingModel(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "test",
 		Dimensions: 768,
@@ -926,6 +964,7 @@ func TestOllamaEmbeddingModel_ImplementsEmbeddingModel(t *testing.T) {
 }
 
 func TestSentenceTransformersModel_ImplementsEmbeddingModel(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "test",
 		Dimensions: 768,
@@ -936,6 +975,7 @@ func TestSentenceTransformersModel_ImplementsEmbeddingModel(t *testing.T) {
 }
 
 func TestLocalHashModel_ImplementsEmbeddingModel(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "test",
 		Dimensions: 512,
@@ -950,6 +990,7 @@ func TestLocalHashModel_ImplementsEmbeddingModel(t *testing.T) {
 // =============================================================================
 
 func TestLocalHashModel_ZeroDimensions(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:       "test",
 		Provider:   "local",
@@ -962,6 +1003,7 @@ func TestLocalHashModel_ZeroDimensions(t *testing.T) {
 }
 
 func TestOpenAIEmbeddingModel_EmptyAPIKey(t *testing.T) {
+	t.Parallel()
 	config := EmbeddingModelConfig{
 		Name:   "test",
 		APIKey: "", // Empty API key
@@ -973,6 +1015,7 @@ func TestOpenAIEmbeddingModel_EmptyAPIKey(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_EncodeSingleWithFallback_Extended(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{
 		FallbackChain: []string{"local-fallback"},
 	})
@@ -985,6 +1028,7 @@ func TestEmbeddingModelRegistry_EncodeSingleWithFallback_Extended(t *testing.T) 
 }
 
 func TestEmbeddingModelRegistry_EncodeSingleWithFallback_AllFail(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{
 		FallbackChain: []string{},
 	})
@@ -1001,6 +1045,7 @@ func TestEmbeddingModelRegistry_EncodeSingleWithFallback_AllFail(t *testing.T) {
 // =============================================================================
 
 func TestEmbeddingModelRegistry_CustomLogger(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 
@@ -1012,6 +1057,7 @@ func TestEmbeddingModelRegistry_CustomLogger(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_DefaultLogger(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	assert.NotNil(t, registry.logger)
@@ -1022,6 +1068,7 @@ func TestEmbeddingModelRegistry_DefaultLogger(t *testing.T) {
 // =============================================================================
 
 func TestEmbeddingModelRegistry_ConfigOverride(t *testing.T) {
+	t.Parallel()
 	registry := NewEmbeddingModelRegistry(RegistryConfig{
 		Configs: map[string]EmbeddingModelConfig{
 			"custom-model": {
@@ -1049,6 +1096,7 @@ func TestEmbeddingModelRegistry_ConfigOverride(t *testing.T) {
 // =============================================================================
 
 func TestOpenAIEmbeddingModel_HTTPErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		statusCode int
@@ -1065,6 +1113,7 @@ func TestOpenAIEmbeddingModel_HTTPErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_, _ = w.Write([]byte(tt.body))
@@ -1088,6 +1137,7 @@ func TestOpenAIEmbeddingModel_HTTPErrors(t *testing.T) {
 // =============================================================================
 
 func TestLocalHashModel_StressTest(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping stress test in short mode")
 	}
@@ -1125,6 +1175,7 @@ func TestLocalHashModel_StressTest(t *testing.T) {
 }
 
 func TestEmbeddingModelRegistry_StressTest(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping stress test in short mode")
 	}

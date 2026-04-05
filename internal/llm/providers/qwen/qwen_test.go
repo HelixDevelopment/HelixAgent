@@ -17,6 +17,7 @@ import (
 )
 
 func TestNewQwenProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		apiKey  string
@@ -70,6 +71,7 @@ func TestNewQwenProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			got := NewQwenProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -81,6 +83,7 @@ func TestNewQwenProvider(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/services/aigc/text-generation/generation", r.URL.Path)
@@ -161,6 +164,7 @@ func TestQwenProvider_Complete_Success(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_WithMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody QwenRequest
 		body, err := io.ReadAll(r.Body)
@@ -227,6 +231,7 @@ func TestQwenProvider_Complete_WithMessages(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_ErrorResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := QwenError{
 			Error: struct {
@@ -264,6 +269,7 @@ func TestQwenProvider_Complete_ErrorResponse(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_NoChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := QwenResponse{
 			ID:      "chatcmpl-789",
@@ -302,6 +308,7 @@ func TestQwenProvider_Complete_NoChoices(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("test-api-key", "https://invalid-url-that-does-not-exist.example.com", "qwen-turbo")
 	// Create a client that will fail quickly
 	provider.httpClient = &http.Client{
@@ -323,6 +330,7 @@ func TestQwenProvider_Complete_NetworkError(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -412,6 +420,7 @@ func createSSEMockServer(t *testing.T, chunks []string, includeFinishReason bool
 }
 
 func TestQwenProvider_CompleteStream_Success(t *testing.T) {
+	t.Parallel()
 	chunks := []string{"Hello", " world", "! How", " are", " you", "?"}
 	server := createSSEMockServer(t, chunks, false, true)
 	defer server.Close()
@@ -451,6 +460,7 @@ func TestQwenProvider_CompleteStream_Success(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_WithFinishReason(t *testing.T) {
+	t.Parallel()
 	chunks := []string{"Hello", " there", "!"}
 	server := createSSEMockServer(t, chunks, true, false)
 	defer server.Close()
@@ -477,6 +487,7 @@ func TestQwenProvider_CompleteStream_WithFinishReason(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	// Create a server that sends chunks slowly
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -555,6 +566,7 @@ func TestQwenProvider_CompleteStream_ContextCancellation(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := QwenError{
 			Error: struct {
@@ -593,6 +605,7 @@ func TestQwenProvider_CompleteStream_APIError(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_EmptyChunks(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -670,6 +683,7 @@ func TestQwenProvider_CompleteStream_EmptyChunks(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -725,6 +739,7 @@ func TestQwenProvider_CompleteStream_MalformedJSON(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_EOFWithoutDone(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -776,6 +791,7 @@ func TestQwenProvider_CompleteStream_EOFWithoutDone(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_NonDataLines(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -831,6 +847,7 @@ func TestQwenProvider_CompleteStream_NonDataLines(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -891,6 +908,7 @@ func TestQwenProvider_CompleteStream_RetryOnServerError(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_ChunkMetadata(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -948,6 +966,7 @@ func TestQwenProvider_CompleteStream_ChunkMetadata(t *testing.T) {
 }
 
 func TestQwenProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/models", r.URL.Path)
@@ -967,6 +986,7 @@ func TestQwenProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestQwenProvider_HealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -983,6 +1003,7 @@ func TestQwenProvider_HealthCheck_Error(t *testing.T) {
 }
 
 func TestQwenProvider_HealthCheck_EmptyAPIKey(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("", "https://api.example.com", "qwen-turbo")
 	// Create a client that will fail quickly
 	provider.httpClient = &http.Client{
@@ -995,6 +1016,7 @@ func TestQwenProvider_HealthCheck_EmptyAPIKey(t *testing.T) {
 }
 
 func TestQwenProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("test-api-key", "https://api.example.com", "qwen-turbo")
 	caps := provider.GetCapabilities()
 
@@ -1033,6 +1055,7 @@ func TestQwenProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestQwenProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		apiKey    string
@@ -1091,6 +1114,7 @@ func TestQwenProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewQwenProvider(tt.apiKey, tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -1100,6 +1124,7 @@ func TestQwenProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_ContextTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
@@ -1153,6 +1178,7 @@ func TestQwenProvider_Complete_ContextTimeout(t *testing.T) {
 }
 
 func TestQwenProvider_Complete_WithStopSequences(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody QwenRequest
 		body, err := io.ReadAll(r.Body)
@@ -1213,6 +1239,7 @@ func TestQwenProvider_Complete_WithStopSequences(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -1222,6 +1249,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestNewQwenProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	customConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 500 * time.Millisecond,
@@ -1241,6 +1269,7 @@ func TestNewQwenProviderWithRetry(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -1259,6 +1288,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.retryable, result)
 		})
@@ -1266,6 +1296,7 @@ func TestIsRetryableStatus(t *testing.T) {
 }
 
 func TestQwenProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProviderWithRetry("key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 100 * time.Millisecond,
@@ -1274,6 +1305,7 @@ func TestQwenProvider_NextDelay(t *testing.T) {
 	})
 
 	t.Run("exponential backoff", func(t *testing.T) {
+			t.Parallel()
 		delay1 := provider.nextDelay(100 * time.Millisecond)
 		assert.Equal(t, 200*time.Millisecond, delay1)
 
@@ -1282,12 +1314,14 @@ func TestQwenProvider_NextDelay(t *testing.T) {
 	})
 
 	t.Run("respects max delay", func(t *testing.T) {
+			t.Parallel()
 		delay := provider.nextDelay(800 * time.Millisecond)
 		assert.Equal(t, 1*time.Second, delay) // Capped at MaxDelay
 	})
 }
 
 func TestQwenProvider_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1338,6 +1372,7 @@ func TestQwenProvider_RetryOnServerError(t *testing.T) {
 }
 
 func TestQwenProvider_RetryExhausted(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1366,6 +1401,7 @@ func TestQwenProvider_RetryExhausted(t *testing.T) {
 }
 
 func TestQwenProvider_ContextCancelledDuringRetry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1397,6 +1433,7 @@ func TestQwenProvider_ContextCancelledDuringRetry(t *testing.T) {
 }
 
 func TestQwenProvider_RateLimitRetry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1446,6 +1483,7 @@ func TestQwenProvider_RateLimitRetry(t *testing.T) {
 }
 
 func TestQwenProvider_NonRetryableErrorNoRetry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1489,6 +1527,7 @@ func TestQwenProvider_NonRetryableErrorNoRetry(t *testing.T) {
 }
 
 func TestQwenProvider_NonJSONErrorResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("Bad Request: plain text error"))
@@ -1511,9 +1550,11 @@ func TestQwenProvider_NonJSONErrorResponse(t *testing.T) {
 }
 
 func TestQwenProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("key", "", "")
 
 	t.Run("respects context cancellation", func(t *testing.T) {
+			t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
@@ -1526,6 +1567,7 @@ func TestQwenProvider_WaitWithJitter(t *testing.T) {
 	})
 
 	t.Run("waits for duration with jitter", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		delay := 50 * time.Millisecond
 
@@ -1541,6 +1583,7 @@ func TestQwenProvider_WaitWithJitter(t *testing.T) {
 }
 
 func TestParseSSELine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		line        string
@@ -1598,6 +1641,7 @@ func TestParseSSELine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			chunk, done, err := parseSSELine([]byte(tt.line))
 
 			if tt.wantError {
@@ -1621,6 +1665,7 @@ func TestParseSSELine(t *testing.T) {
 }
 
 func TestQwenStreamChunk_Struct(t *testing.T) {
+	t.Parallel()
 	// Test that the struct can be properly marshaled and unmarshaled
 	stopReason := "stop"
 	original := QwenStreamChunk{
@@ -1660,6 +1705,7 @@ func TestQwenStreamChunk_Struct(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_Headers(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify streaming-specific headers
 		assert.Equal(t, "text/event-stream", r.Header.Get("Accept"))
@@ -1700,6 +1746,7 @@ func TestQwenProvider_MakeStreamingRequest_Headers(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("test-api-key", "https://api.example.com", "qwen-turbo")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1717,6 +1764,7 @@ func TestQwenProvider_MakeStreamingRequest_ContextCancelled(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_RetryExhausted(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1746,6 +1794,7 @@ func TestQwenProvider_MakeStreamingRequest_RetryExhausted(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_NonJSONError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("Plain text error"))
@@ -1767,6 +1816,7 @@ func TestQwenProvider_MakeStreamingRequest_NonJSONError(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_MultipleWords(t *testing.T) {
+	t.Parallel()
 	// Test that token counting works correctly for multi-word content
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -1819,6 +1869,7 @@ func TestQwenProvider_CompleteStream_MultipleWords(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_SingleCharacter(t *testing.T) {
+	t.Parallel()
 	// Test that single character content gets token count of 1
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -1870,6 +1921,7 @@ func TestQwenProvider_CompleteStream_SingleCharacter(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1929,9 +1981,11 @@ func TestQwenProvider_CompleteStream_EmptyChoices(t *testing.T) {
 }
 
 func TestConvertToQwenRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-max")
 
 	t.Run("with prompt only", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "System prompt",
 			ModelParams: models.ModelParameters{
@@ -1954,6 +2008,7 @@ func TestConvertToQwenRequest(t *testing.T) {
 	})
 
 	t.Run("with messages", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "System prompt",
 			Messages: []models.Message{
@@ -1972,6 +2027,7 @@ func TestConvertToQwenRequest(t *testing.T) {
 	})
 
 	t.Run("without prompt", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			Messages: []models.Message{
 				{Role: "user", Content: "Hello"},
@@ -1986,9 +2042,11 @@ func TestConvertToQwenRequest(t *testing.T) {
 }
 
 func TestConvertFromQwenResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-turbo")
 
 	t.Run("successful response", func(t *testing.T) {
+			t.Parallel()
 		qwenResp := &QwenResponse{
 			ID:      "resp-123",
 			Object:  "chat.completion",
@@ -2025,6 +2083,7 @@ func TestConvertFromQwenResponse(t *testing.T) {
 	})
 
 	t.Run("empty choices", func(t *testing.T) {
+			t.Parallel()
 		qwenResp := &QwenResponse{
 			ID:      "resp-empty",
 			Choices: []QwenChoice{},
@@ -2039,6 +2098,7 @@ func TestConvertFromQwenResponse(t *testing.T) {
 }
 
 func TestQwenProvider_ValidateConfig_AllErrors(t *testing.T) {
+	t.Parallel()
 	// Create provider and manually clear fields to trigger all validation errors
 	provider := &QwenProvider{
 		apiKey:  "",
@@ -2055,6 +2115,7 @@ func TestQwenProvider_ValidateConfig_AllErrors(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_ReadError(t *testing.T) {
+	t.Parallel()
 	// Test that read errors during streaming are handled properly
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -2113,6 +2174,7 @@ func TestQwenProvider_CompleteStream_ReadError(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_APIErrorWithJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := QwenError{
 			Error: struct {
@@ -2148,6 +2210,7 @@ func TestQwenProvider_MakeStreamingRequest_APIErrorWithJSON(t *testing.T) {
 }
 
 func TestQwenProvider_MakeStreamingRequest_NetworkRetry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -2195,6 +2258,7 @@ func TestQwenProvider_MakeStreamingRequest_NetworkRetry(t *testing.T) {
 }
 
 func TestQwenProvider_CompleteStream_LongRunning(t *testing.T) {
+	t.Parallel()
 	// Test streaming with many chunks to ensure stability
 	numChunks := 50
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

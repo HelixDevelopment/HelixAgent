@@ -12,6 +12,7 @@ import (
 )
 
 func TestBuildFailureReason_CodeVisibilityFailed(t *testing.T) {
+	t.Parallel()
 	result := &ServiceVerificationResult{
 		Verified:     false,
 		CodeVisible:  false,
@@ -31,6 +32,7 @@ func TestBuildFailureReason_CodeVisibilityFailed(t *testing.T) {
 }
 
 func TestBuildFailureReason_ScoreBelowThreshold(t *testing.T) {
+	t.Parallel()
 	result := &ServiceVerificationResult{
 		Verified:     false,
 		CodeVisible:  true,
@@ -48,6 +50,7 @@ func TestBuildFailureReason_ScoreBelowThreshold(t *testing.T) {
 }
 
 func TestBuildFailureReason_APIError(t *testing.T) {
+	t.Parallel()
 	result := &ServiceVerificationResult{
 		Verified:     false,
 		ErrorMessage: "connection refused: api.provider.com:443",
@@ -59,6 +62,7 @@ func TestBuildFailureReason_APIError(t *testing.T) {
 }
 
 func TestBuildFailureReason_EmptyResponse(t *testing.T) {
+	t.Parallel()
 	result := &ServiceVerificationResult{
 		Verified:     false,
 		CodeVisible:  true,
@@ -74,11 +78,13 @@ func TestBuildFailureReason_EmptyResponse(t *testing.T) {
 }
 
 func TestBuildFailureReason_NilResult(t *testing.T) {
+	t.Parallel()
 	reason := buildFailureReason(nil)
 	assert.Equal(t, "verification returned nil result", reason)
 }
 
 func TestCategorizeFailure_AllCategories(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		result   *ServiceVerificationResult
@@ -160,6 +166,7 @@ func TestCategorizeFailure_AllCategories(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			category := categorizeFailure(tc.result)
 			assert.Equal(t, tc.expected, category)
 		})
@@ -167,6 +174,7 @@ func TestCategorizeFailure_AllCategories(t *testing.T) {
 }
 
 func TestMapTestDetails(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	tests := []TestResult{
 		{
@@ -203,6 +211,7 @@ func TestMapTestDetails(t *testing.T) {
 }
 
 func TestMapTestDetails_Empty(t *testing.T) {
+	t.Parallel()
 	details := mapTestDetails(nil)
 	assert.Nil(t, details)
 
@@ -211,6 +220,7 @@ func TestMapTestDetails_Empty(t *testing.T) {
 }
 
 func TestProviderTestDetail_Serialization(t *testing.T) {
+	t.Parallel()
 	detail := ProviderTestDetail{
 		Name:       "code_visibility",
 		Passed:     false,
@@ -234,6 +244,7 @@ func TestProviderTestDetail_Serialization(t *testing.T) {
 }
 
 func TestUnifiedProvider_FailureFields_JSON(t *testing.T) {
+	t.Parallel()
 	provider := UnifiedProvider{
 		ID:              "test-provider",
 		Name:            "test",
@@ -266,6 +277,7 @@ func TestUnifiedProvider_FailureFields_JSON(t *testing.T) {
 }
 
 func TestUnifiedProvider_FailureFields_OmitEmpty(t *testing.T) {
+	t.Parallel()
 	// Verified provider should omit failure fields
 	provider := UnifiedProvider{
 		ID:       "verified-provider",
@@ -294,6 +306,7 @@ func TestUnifiedProvider_FailureFields_OmitEmpty(t *testing.T) {
 }
 
 func TestTruncateString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		maxLen   int
@@ -309,6 +322,7 @@ func TestTruncateString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+				t.Parallel()
 			result := truncateString(tc.input, tc.maxLen)
 			assert.Equal(t, tc.expected, result)
 			assert.LessOrEqual(t, len(result), tc.maxLen)
@@ -317,6 +331,7 @@ func TestTruncateString(t *testing.T) {
 }
 
 func TestPopulateFailureDetails_VerifiedProvider(t *testing.T) {
+	t.Parallel()
 	provider := &UnifiedProvider{Verified: true}
 	result := &ServiceVerificationResult{
 		Message:      "All tests passed",
@@ -338,6 +353,7 @@ func TestPopulateFailureDetails_VerifiedProvider(t *testing.T) {
 }
 
 func TestPopulateFailureDetails_FailedProvider(t *testing.T) {
+	t.Parallel()
 	provider := &UnifiedProvider{Verified: false}
 	result := &ServiceVerificationResult{
 		Verified:     false,

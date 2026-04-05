@@ -8,6 +8,7 @@ import (
 )
 
 func TestProviderInfo_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	tests := []struct {
 		name string
@@ -60,6 +61,7 @@ func TestProviderInfo_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.info.Name, tt.info.Name)
 			assert.Equal(t, tt.info.DisplayName, tt.info.DisplayName)
 			assert.Equal(t, tt.info.Type, tt.info.Type)
@@ -73,6 +75,7 @@ func TestProviderInfo_Fields(t *testing.T) {
 }
 
 func TestProviderInfo_VerifiedState(t *testing.T) {
+	t.Parallel()
 	verified := ProviderInfo{
 		Name:       "openai",
 		Score:      9.0,
@@ -92,6 +95,7 @@ func TestProviderInfo_VerifiedState(t *testing.T) {
 }
 
 func TestModelScore_Fields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		score ModelScore
@@ -130,6 +134,7 @@ func TestModelScore_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.score.ModelID, tt.score.ModelID)
 			assert.Equal(t, tt.score.Provider, tt.score.Provider)
 			assert.Equal(t, tt.score.ResponseSpeed, tt.score.ResponseSpeed)
@@ -143,6 +148,7 @@ func TestModelScore_Fields(t *testing.T) {
 }
 
 func TestModelScore_WeightedComponents(t *testing.T) {
+	t.Parallel()
 	score := ModelScore{
 		ResponseSpeed:     8.0,
 		CostEffectiveness: 7.0,
@@ -163,6 +169,7 @@ func TestModelScore_WeightedComponents(t *testing.T) {
 }
 
 func TestDebateGroup_Fields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		group DebateGroup
@@ -194,6 +201,7 @@ func TestDebateGroup_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.group.Name, tt.group.Name)
 			assert.Equal(t, tt.group.Strategy, tt.group.Strategy)
 			assert.Equal(t, tt.group.Members, tt.group.Members)
@@ -202,6 +210,7 @@ func TestDebateGroup_Fields(t *testing.T) {
 }
 
 func TestDebateGroupMember_Fields(t *testing.T) {
+	t.Parallel()
 	member := DebateGroupMember{
 		Provider: "deepseek",
 		Model:    "coder",
@@ -216,6 +225,7 @@ func TestDebateGroupMember_Fields(t *testing.T) {
 }
 
 func TestDebateGroup_MemberCount(t *testing.T) {
+	t.Parallel()
 	group := DebateGroup{
 		Name: "test-team",
 		Members: []DebateGroupMember{
@@ -231,6 +241,7 @@ func TestDebateGroup_MemberCount(t *testing.T) {
 }
 
 func TestTestPrompt_Fields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		prompt TestPrompt
@@ -265,6 +276,7 @@ func TestTestPrompt_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.prompt.ID, tt.prompt.ID)
 			assert.Equal(t, tt.prompt.Category, tt.prompt.Category)
 			assert.Equal(t, tt.prompt.Prompt, tt.prompt.Prompt)
@@ -276,6 +288,7 @@ func TestTestPrompt_Fields(t *testing.T) {
 }
 
 func TestAPITestResult_Fields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		result APITestResult
@@ -324,6 +337,7 @@ func TestAPITestResult_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.result.PromptID, tt.result.PromptID)
 			assert.Equal(t, tt.result.Response, tt.result.Response)
 			assert.Equal(t, tt.result.Latency, tt.result.Latency)
@@ -336,6 +350,7 @@ func TestAPITestResult_Fields(t *testing.T) {
 }
 
 func TestAPITestResult_PassedState(t *testing.T) {
+	t.Parallel()
 	passed := APITestResult{
 		PromptID:   "p1",
 		StatusCode: 200,

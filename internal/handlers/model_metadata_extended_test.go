@@ -15,6 +15,7 @@ func init() {
 
 // TestNewModelMetadataHandler_Extended tests handler creation
 func TestNewModelMetadataHandler_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	assert.NotNil(t, handler)
@@ -23,6 +24,7 @@ func TestNewModelMetadataHandler_Extended(t *testing.T) {
 
 // TestModelMetadataHandler_Struct tests handler struct initialization
 func TestModelMetadataHandler_Struct(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	assert.NotNil(t, handler)
@@ -31,6 +33,7 @@ func TestModelMetadataHandler_Struct(t *testing.T) {
 
 // TestModelMetadataHandler_GetModel_EmptyID tests get model with empty ID
 func TestModelMetadataHandler_GetModel_EmptyID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -45,6 +48,7 @@ func TestModelMetadataHandler_GetModel_EmptyID(t *testing.T) {
 
 // TestModelMetadataHandler_GetModelBenchmarks_EmptyID tests get benchmarks with empty ID
 func TestModelMetadataHandler_GetModelBenchmarks_EmptyID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -59,6 +63,7 @@ func TestModelMetadataHandler_GetModelBenchmarks_EmptyID(t *testing.T) {
 
 // TestModelMetadataHandler_GetModelBenchmarks_NoRepository_Extended tests get benchmarks without repository
 func TestModelMetadataHandler_GetModelBenchmarks_NoRepository_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -73,6 +78,7 @@ func TestModelMetadataHandler_GetModelBenchmarks_NoRepository_Extended(t *testin
 
 // TestModelMetadataHandler_CompareModels_TooFewIDs tests compare with too few IDs
 func TestModelMetadataHandler_CompareModels_TooFewIDs(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -86,6 +92,7 @@ func TestModelMetadataHandler_CompareModels_TooFewIDs(t *testing.T) {
 
 // TestModelMetadataHandler_CompareModels_TooManyIDs tests compare with too many IDs
 func TestModelMetadataHandler_CompareModels_TooManyIDs(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -101,6 +108,7 @@ func TestModelMetadataHandler_CompareModels_TooManyIDs(t *testing.T) {
 
 // TestModelMetadataHandler_GetProviderModels_EmptyProviderID tests get provider models with empty ID
 func TestModelMetadataHandler_GetProviderModels_EmptyProviderID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -115,6 +123,7 @@ func TestModelMetadataHandler_GetProviderModels_EmptyProviderID(t *testing.T) {
 
 // TestModelMetadataHandler_GetModelsByCapability_EmptyCapability tests with empty capability
 func TestModelMetadataHandler_GetModelsByCapability_EmptyCapability(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -129,6 +138,7 @@ func TestModelMetadataHandler_GetModelsByCapability_EmptyCapability(t *testing.T
 
 // TestModelMetadataHandler_GetModelsByCapability_InvalidCapability_Extended tests with invalid capability
 func TestModelMetadataHandler_GetModelsByCapability_InvalidCapability_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -143,6 +153,7 @@ func TestModelMetadataHandler_GetModelsByCapability_InvalidCapability_Extended(t
 
 // TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities_Extended tests with valid capabilities
 func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities_Extended(t *testing.T) {
+	t.Parallel()
 	validCapabilities := []string{
 		"vision",
 		"function_calling",
@@ -158,6 +169,7 @@ func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities_Extended(t
 
 	for _, capability := range validCapabilities {
 		t.Run(capability, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "capability", Value: capability}}
@@ -182,6 +194,7 @@ func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities_Extended(t
 
 // TestModelMetadataHandler_ListModels_InvalidQueryParams tests listing with invalid query params
 func TestModelMetadataHandler_ListModels_InvalidQueryParams(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -196,6 +209,7 @@ func TestModelMetadataHandler_ListModels_InvalidQueryParams(t *testing.T) {
 
 // TestModelMetadataHandler_ListModels_InvalidLimit tests listing with invalid limit
 func TestModelMetadataHandler_ListModels_InvalidLimit(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -210,6 +224,7 @@ func TestModelMetadataHandler_ListModels_InvalidLimit(t *testing.T) {
 
 // TestModelMetadataHandler_GetRefreshStatus_InvalidLimit tests refresh status with invalid limit
 func TestModelMetadataHandler_GetRefreshStatus_InvalidLimit(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()

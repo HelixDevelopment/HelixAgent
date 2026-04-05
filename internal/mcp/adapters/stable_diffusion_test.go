@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewStableDiffusionAdapter(t *testing.T) {
+	t.Parallel()
 	config := StableDiffusionConfig{
 		BaseURL: "http://localhost:7860",
 	}
@@ -25,6 +26,7 @@ func TestNewStableDiffusionAdapter(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewStableDiffusionAdapter(StableDiffusionConfig{})
 
 	info := adapter.GetServerInfo()
@@ -39,6 +41,7 @@ func TestStableDiffusionAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewStableDiffusionAdapter(StableDiffusionConfig{})
 
 	tools := adapter.ListTools()
@@ -64,6 +67,7 @@ func TestStableDiffusionAdapter_ListTools(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewStableDiffusionAdapter(StableDiffusionConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -74,6 +78,7 @@ func TestStableDiffusionAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_Txt2Img(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/txt2img", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -116,6 +121,7 @@ func TestStableDiffusionAdapter_Txt2Img(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_Img2Img(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/img2img", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -154,6 +160,7 @@ func TestStableDiffusionAdapter_Img2Img(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_ListModels(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/sd-models", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -181,6 +188,7 @@ func TestStableDiffusionAdapter_ListModels(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_ListSamplers(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/samplers", r.URL.Path)
 
@@ -208,6 +216,7 @@ func TestStableDiffusionAdapter_ListSamplers(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_ListLoras(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/loras", r.URL.Path)
 
@@ -234,6 +243,7 @@ func TestStableDiffusionAdapter_ListLoras(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_SetModel(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/options", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -261,6 +271,7 @@ func TestStableDiffusionAdapter_SetModel(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_GetProgress(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/progress", r.URL.Path)
 
@@ -292,6 +303,7 @@ func TestStableDiffusionAdapter_GetProgress(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_Upscale(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/extra-single-image", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -322,6 +334,7 @@ func TestStableDiffusionAdapter_Upscale(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_ControlNet(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/sdapi/v1/txt2img", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -358,6 +371,7 @@ func TestStableDiffusionAdapter_ControlNet(t *testing.T) {
 }
 
 func TestStableDiffusionAdapter_WithAuth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		assert.NotEmpty(t, authHeader)
@@ -385,6 +399,7 @@ func TestStableDiffusionAdapter_WithAuth(t *testing.T) {
 }
 
 func TestDefaultStableDiffusionConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultStableDiffusionConfig()
 
 	assert.Equal(t, "http://127.0.0.1:7860", config.BaseURL)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	d := New()
 
 	assert.NotNil(t, d)
@@ -25,6 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestDeepSeek_Initialize(t *testing.T) {
+	t.Parallel()
 	d := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestDeepSeek_Initialize(t *testing.T) {
 }
 
 func TestDeepSeek_Execute(t *testing.T) {
+	t.Parallel()
 	d := New()
 	ctx := context.Background()
 
@@ -133,6 +136,7 @@ func TestDeepSeek_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := d.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -148,6 +152,7 @@ func TestDeepSeek_Execute(t *testing.T) {
 }
 
 func TestDeepSeek_IsAvailable(t *testing.T) {
+	t.Parallel()
 	d := New()
 	assert.False(t, d.IsAvailable())
 
@@ -156,6 +161,7 @@ func TestDeepSeek_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		APIKey:      "test-key",
 		Model:       "deepseek-coder-v3",

@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewFigmaAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		config        FigmaAdapterConfig
@@ -38,6 +39,7 @@ func TestNewFigmaAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewFigmaAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedToken, adapter.apiToken)
@@ -48,6 +50,7 @@ func TestNewFigmaAdapter(t *testing.T) {
 }
 
 func TestFigmaAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -79,6 +82,7 @@ func TestFigmaAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -98,6 +102,7 @@ func TestFigmaAdapter_Connect(t *testing.T) {
 }
 
 func TestFigmaAdapter_Health(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -122,6 +127,7 @@ func TestFigmaAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -139,6 +145,7 @@ func TestFigmaAdapter_Health(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFile(t *testing.T) {
+	t.Parallel()
 	expectedFile := FigmaFile{
 		Name:         "Test File",
 		LastModified: "2024-01-01T00:00:00Z",
@@ -188,6 +195,7 @@ func TestFigmaAdapter_GetFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -207,6 +215,7 @@ func TestFigmaAdapter_GetFile(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFileNodes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fileKey       string
@@ -257,6 +266,7 @@ func TestFigmaAdapter_GetFileNodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -276,6 +286,7 @@ func TestFigmaAdapter_GetFileNodes(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetImages(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fileKey       string
@@ -351,6 +362,7 @@ func TestFigmaAdapter_GetImages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -369,6 +381,7 @@ func TestFigmaAdapter_GetImages(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetComments(t *testing.T) {
+	t.Parallel()
 	expectedComments := []FigmaComment{
 		{
 			ID:        "comment1",
@@ -412,6 +425,7 @@ func TestFigmaAdapter_GetComments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -430,6 +444,7 @@ func TestFigmaAdapter_GetComments(t *testing.T) {
 }
 
 func TestFigmaAdapter_PostComment(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fileKey       string
@@ -490,6 +505,7 @@ func TestFigmaAdapter_PostComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -508,6 +524,7 @@ func TestFigmaAdapter_PostComment(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		teamID        string
@@ -542,6 +559,7 @@ func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -561,6 +579,7 @@ func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		projectID     string
@@ -594,6 +613,7 @@ func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -612,6 +632,7 @@ func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFileComponents(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fileKey       string
@@ -647,6 +668,7 @@ func TestFigmaAdapter_GetFileComponents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -665,6 +687,7 @@ func TestFigmaAdapter_GetFileComponents(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFileStyles(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		fileKey       string
@@ -700,6 +723,7 @@ func TestFigmaAdapter_GetFileStyles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -718,6 +742,7 @@ func TestFigmaAdapter_GetFileStyles(t *testing.T) {
 }
 
 func TestFigmaAdapter_Close(t *testing.T) {
+	t.Parallel()
 	adapter := NewFigmaAdapter(FigmaAdapterConfig{APIToken: "test-token"})
 	adapter.connected = true
 
@@ -727,6 +752,7 @@ func TestFigmaAdapter_Close(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewFigmaAdapter(FigmaAdapterConfig{APIToken: "test-token"})
 	tools := adapter.GetMCPTools()
 
@@ -757,6 +783,7 @@ func TestFigmaAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestFigmaAdapter_doRequest_WithAuth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("X-Figma-Token")
 		assert.Equal(t, "test-token", token)
@@ -774,6 +801,7 @@ func TestFigmaAdapter_doRequest_WithAuth(t *testing.T) {
 }
 
 func TestJoinIDs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		ids      []string
@@ -786,6 +814,7 @@ func TestJoinIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := joinIDs(tt.ids)
 			assert.Equal(t, tt.expected, result)
 		})

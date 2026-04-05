@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewQdrantAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		config      QdrantAdapterConfig
@@ -42,6 +43,7 @@ func TestNewQdrantAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewQdrantAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -52,6 +54,7 @@ func TestNewQdrantAdapter(t *testing.T) {
 }
 
 func TestQdrantAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -76,6 +79,7 @@ func TestQdrantAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -93,6 +97,7 @@ func TestQdrantAdapter_Connect(t *testing.T) {
 }
 
 func TestQdrantAdapter_Health(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		serverHandler func(w http.ResponseWriter, r *http.Request)
@@ -116,6 +121,7 @@ func TestQdrantAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -131,6 +137,7 @@ func TestQdrantAdapter_Health(t *testing.T) {
 }
 
 func TestQdrantAdapter_ListCollections(t *testing.T) {
+	t.Parallel()
 	response := QdrantCollectionsResponse{
 		Result: struct {
 			Collections []QdrantCollection `json:"collections"`
@@ -173,6 +180,7 @@ func TestQdrantAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -189,6 +197,7 @@ func TestQdrantAdapter_ListCollections(t *testing.T) {
 }
 
 func TestQdrantAdapter_CreateCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -243,6 +252,7 @@ func TestQdrantAdapter_CreateCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -258,6 +268,7 @@ func TestQdrantAdapter_CreateCollection(t *testing.T) {
 }
 
 func TestQdrantAdapter_DeleteCollection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -286,6 +297,7 @@ func TestQdrantAdapter_DeleteCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -301,6 +313,7 @@ func TestQdrantAdapter_DeleteCollection(t *testing.T) {
 }
 
 func TestQdrantAdapter_CollectionExists(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -330,6 +343,7 @@ func TestQdrantAdapter_CollectionExists(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -346,6 +360,7 @@ func TestQdrantAdapter_CollectionExists(t *testing.T) {
 }
 
 func TestQdrantAdapter_GetCollectionInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collName      string
@@ -385,6 +400,7 @@ func TestQdrantAdapter_GetCollectionInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -401,6 +417,7 @@ func TestQdrantAdapter_GetCollectionInfo(t *testing.T) {
 }
 
 func TestQdrantAdapter_UpsertPoints(t *testing.T) {
+	t.Parallel()
 	points := []QdrantPoint{
 		{ID: uint64(1), Vector: []float32{0.1, 0.2, 0.3}, Payload: map[string]interface{}{"key": "value"}},
 		{ID: "point-2", Vector: []float32{0.4, 0.5, 0.6}},
@@ -439,6 +456,7 @@ func TestQdrantAdapter_UpsertPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -454,6 +472,7 @@ func TestQdrantAdapter_UpsertPoints(t *testing.T) {
 }
 
 func TestQdrantAdapter_DeletePoints(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -485,6 +504,7 @@ func TestQdrantAdapter_DeletePoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -500,6 +520,7 @@ func TestQdrantAdapter_DeletePoints(t *testing.T) {
 }
 
 func TestQdrantAdapter_Search(t *testing.T) {
+	t.Parallel()
 	searchResponse := QdrantSearchResponse{
 		Result: []QdrantSearchResult{
 			{ID: uint64(1), Score: 0.95, Payload: map[string]interface{}{"key": "value"}},
@@ -584,6 +605,7 @@ func TestQdrantAdapter_Search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -600,6 +622,7 @@ func TestQdrantAdapter_Search(t *testing.T) {
 }
 
 func TestQdrantAdapter_SearchBatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		collection string
@@ -675,6 +698,7 @@ func TestQdrantAdapter_SearchBatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -691,6 +715,7 @@ func TestQdrantAdapter_SearchBatch(t *testing.T) {
 }
 
 func TestQdrantAdapter_GetPoints(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -741,6 +766,7 @@ func TestQdrantAdapter_GetPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -757,6 +783,7 @@ func TestQdrantAdapter_GetPoints(t *testing.T) {
 }
 
 func TestQdrantAdapter_CountPoints(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -799,6 +826,7 @@ func TestQdrantAdapter_CountPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -815,6 +843,7 @@ func TestQdrantAdapter_CountPoints(t *testing.T) {
 }
 
 func TestQdrantAdapter_Scroll(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		collection    string
@@ -894,6 +923,7 @@ func TestQdrantAdapter_Scroll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -911,6 +941,7 @@ func TestQdrantAdapter_Scroll(t *testing.T) {
 }
 
 func TestQdrantAdapter_Close(t *testing.T) {
+	t.Parallel()
 	adapter := NewQdrantAdapter(QdrantAdapterConfig{BaseURL: "http://localhost:6333"})
 	adapter.connected = true
 
@@ -920,6 +951,7 @@ func TestQdrantAdapter_Close(t *testing.T) {
 }
 
 func TestQdrantAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewQdrantAdapter(QdrantAdapterConfig{BaseURL: "http://localhost:6333"})
 	tools := adapter.GetMCPTools()
 
@@ -948,6 +980,7 @@ func TestQdrantAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestQdrantAdapter_doRequest_WithAPIKey(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get("api-key")
 		assert.Equal(t, "test-api-key", apiKey)
@@ -966,6 +999,7 @@ func TestQdrantAdapter_doRequest_WithAPIKey(t *testing.T) {
 }
 
 func TestQdrantAdapter_IsConnected(t *testing.T) {
+	t.Parallel()
 	adapter := NewQdrantAdapter(QdrantAdapterConfig{BaseURL: "http://localhost:6333"})
 
 	// Initially not connected

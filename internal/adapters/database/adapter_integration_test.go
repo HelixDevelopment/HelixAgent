@@ -18,6 +18,7 @@ import (
 // TestIntegration_NewClientWithFallback_Success tests the success path of NewClientWithFallback
 // This covers line 106: return client, nil after successful ping
 func TestIntegration_NewClientWithFallback_Success(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -39,6 +40,7 @@ func TestIntegration_NewClientWithFallback_Success(t *testing.T) {
 // TestIntegration_InitConnection_Success tests successful connection
 // This covers line 65-67: pool assignment after successful connect
 func TestIntegration_InitConnection_Success(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -67,6 +69,7 @@ func TestIntegration_InitConnection_Success(t *testing.T) {
 // TestIntegration_Pool_ReturnsRealPool tests Pool() returns real pool after connection
 // This covers line 167: return c.pool
 func TestIntegration_Pool_ReturnsRealPool(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -94,6 +97,7 @@ func TestIntegration_Pool_ReturnsRealPool(t *testing.T) {
 // TestIntegration_Ping_RealConnection tests Ping with real connection
 // This covers line 194: return c.pg.HealthCheck
 func TestIntegration_Ping_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -121,6 +125,7 @@ func TestIntegration_Ping_RealConnection(t *testing.T) {
 // TestIntegration_HealthCheck_RealConnection tests HealthCheck with real connection
 // This covers line 207: return c.pg.HealthCheck
 func TestIntegration_HealthCheck_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -148,6 +153,7 @@ func TestIntegration_HealthCheck_RealConnection(t *testing.T) {
 // TestIntegration_Exec_RealConnection tests Exec with real connection
 // This covers line 220-221: real pg path
 func TestIntegration_Exec_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -175,6 +181,7 @@ func TestIntegration_Exec_RealConnection(t *testing.T) {
 // TestIntegration_Query_RealConnection tests Query with real connection
 // This covers line 234-236: real pg path
 func TestIntegration_Query_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -203,6 +210,7 @@ func TestIntegration_Query_RealConnection(t *testing.T) {
 // TestIntegration_QueryRow_RealConnection tests QueryRow with real connection
 // This covers line 262: real pg path
 func TestIntegration_QueryRow_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -235,6 +243,7 @@ func TestIntegration_QueryRow_RealConnection(t *testing.T) {
 // TestIntegration_Begin_RealConnection tests Begin with real connection
 // This covers line 273: real pg path
 func TestIntegration_Begin_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -268,6 +277,7 @@ func TestIntegration_Begin_RealConnection(t *testing.T) {
 // TestIntegration_Migrate_RealConnection tests Migrate with real connection
 // This covers line 281: c.pg.Migrate
 func TestIntegration_Migrate_RealConnection(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -298,6 +308,7 @@ func TestIntegration_Migrate_RealConnection(t *testing.T) {
 // TestIntegration_NewPostgresDB_Success tests NewPostgresDB success
 // This covers line 48: return &PostgresDB{client: client}, nil
 func TestIntegration_NewPostgresDB_Success(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -320,6 +331,7 @@ func TestIntegration_NewPostgresDB_Success(t *testing.T) {
 // TestIntegration_NewPostgresDBWithFallback_PostgresSuccess tests fallback with postgres success
 // This covers line 58: return db, nil, nil
 func TestIntegration_NewPostgresDBWithFallback_PostgresSuccess(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")
@@ -341,6 +353,7 @@ func TestIntegration_NewPostgresDBWithFallback_PostgresSuccess(t *testing.T) {
 // TestIntegration_Connect_Success tests Connect success
 // This covers line 75: return db, nil
 func TestIntegration_Connect_Success(t *testing.T) {
+	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
 		t.Skip("PostgreSQL not available, skipping integration test")

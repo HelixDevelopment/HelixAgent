@@ -10,6 +10,7 @@ import (
 )
 
 func TestEditBlock_Apply(t *testing.T) {
+	t.Parallel()
 	// Create temp directory
 	tempDir := t.TempDir()
 
@@ -40,6 +41,7 @@ func TestEditBlock_Apply(t *testing.T) {
 }
 
 func TestEditBlock_Apply_EmptyFilePath(t *testing.T) {
+	t.Parallel()
 	block := EditBlock{}
 	result, err := block.Apply("/tmp")
 	require.NoError(t, err)
@@ -48,6 +50,7 @@ func TestEditBlock_Apply_EmptyFilePath(t *testing.T) {
 }
 
 func TestEditBlock_Apply_FileNotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	block := EditBlock{
@@ -63,6 +66,7 @@ func TestEditBlock_Apply_FileNotFound(t *testing.T) {
 }
 
 func TestEditBlock_Apply_PathEscape(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	block := EditBlock{
@@ -78,6 +82,7 @@ func TestEditBlock_Apply_PathEscape(t *testing.T) {
 }
 
 func TestEditBlock_Apply_SearchNotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -96,6 +101,7 @@ func TestEditBlock_Apply_SearchNotFound(t *testing.T) {
 }
 
 func TestEditBlock_Apply_SingleLine(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -116,6 +122,7 @@ func TestEditBlock_Apply_SingleLine(t *testing.T) {
 }
 
 func TestEditBlock_Apply_FlexibleWhitespace(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -139,6 +146,7 @@ func TestEditBlock_Apply_FlexibleWhitespace(t *testing.T) {
 }
 
 func TestApplyMultiple(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -160,6 +168,7 @@ func TestApplyMultiple(t *testing.T) {
 }
 
 func TestFormatEditBlock(t *testing.T) {
+	t.Parallel()
 	result := FormatEditBlock("test.go", "old code", "new code")
 	assert.Contains(t, result, "<<<<<<< SEARCH")
 	assert.Contains(t, result, "old code")
@@ -169,6 +178,7 @@ func TestFormatEditBlock(t *testing.T) {
 }
 
 func TestParseEditBlocks(t *testing.T) {
+	t.Parallel()
 	text := `Some context here
 <<<<<<< SEARCH
 old line 1
@@ -186,6 +196,7 @@ More context here`
 }
 
 func TestParseEditBlocks_Multiple(t *testing.T) {
+	t.Parallel()
 	text := `<<<<<<< SEARCH
 first search
 =======
@@ -205,11 +216,13 @@ second replace
 }
 
 func TestParseEditBlocks_Empty(t *testing.T) {
+	t.Parallel()
 	blocks := ParseEditBlocks("no edit blocks here")
 	assert.Len(t, blocks, 0)
 }
 
 func TestEditBlock_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		block   EditBlock
@@ -244,6 +257,7 @@ func TestEditBlock_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			err := tt.block.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -255,6 +269,7 @@ func TestEditBlock_Validate(t *testing.T) {
 }
 
 func TestEditBlock_Diff(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -275,6 +290,7 @@ func TestEditBlock_Diff(t *testing.T) {
 }
 
 func TestEditBlock_Diff_NotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -292,6 +308,7 @@ func TestEditBlock_Diff_NotFound(t *testing.T) {
 }
 
 func TestReadFileLines(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.txt")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\nline2\nline3"), 0644))
@@ -302,6 +319,7 @@ func TestReadFileLines(t *testing.T) {
 }
 
 func TestWriteFileLines(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.txt")
 
@@ -314,6 +332,7 @@ func TestWriteFileLines(t *testing.T) {
 }
 
 func TestNormalizeLineEndings(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -331,6 +350,7 @@ func TestNormalizeLineEndings(t *testing.T) {
 }
 
 func TestNormalizeWhitespace(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -348,12 +368,14 @@ func TestNormalizeWhitespace(t *testing.T) {
 }
 
 func TestTruncate(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "short", truncate("short", 100))
 	assert.Equal(t, "long str...", truncate("long string", 8))
 	assert.Equal(t, "", truncate("", 10))
 }
 
 func TestMatchBlock(t *testing.T) {
+	t.Parallel()
 	lines := []string{"  line1  ", "line2", "  line3  "}
 	
 	// Should match with flexible whitespace
@@ -367,6 +389,7 @@ func TestMatchBlock(t *testing.T) {
 }
 
 func TestFindAndReplace(t *testing.T) {
+	t.Parallel()
 	content := "line1\nline2\nline3\nline4"
 	
 	newContent, start, end, found := findAndReplace(content, "line2\nline3", "replaced", 0)
@@ -378,6 +401,7 @@ func TestFindAndReplace(t *testing.T) {
 }
 
 func TestFindAndReplace_WithHint(t *testing.T) {
+	t.Parallel()
 	content := "a\na\na\ntarget\nb\nb\nb"
 	
 	newContent, start, end, found := findAndReplace(content, "target", "REPLACED", 4)
@@ -388,6 +412,7 @@ func TestFindAndReplace_WithHint(t *testing.T) {
 }
 
 func TestFindAndReplace_NotFound(t *testing.T) {
+	t.Parallel()
 	content := "line1\nline2"
 	
 	_, _, _, found := findAndReplace(content, "nonexistent", "replace", 0)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultKafkaTransportConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 
 	assert.True(t, config.Enabled)
@@ -22,6 +23,7 @@ func TestDefaultKafkaTransportConfig(t *testing.T) {
 }
 
 func TestNewKafkaTransport(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -31,6 +33,7 @@ func TestNewKafkaTransport(t *testing.T) {
 }
 
 func TestNewKafkaTransport_NilConfig(t *testing.T) {
+	t.Parallel()
 	transport := NewKafkaTransport(nil, nil, nil)
 
 	assert.NotNil(t, transport)
@@ -39,6 +42,7 @@ func TestNewKafkaTransport_NilConfig(t *testing.T) {
 }
 
 func TestKafkaTransport_IsEnabled_NoHub(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -47,6 +51,7 @@ func TestKafkaTransport_IsEnabled_NoHub(t *testing.T) {
 }
 
 func TestKafkaTransport_IsEnabled_Disabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	config.Enabled = false
 	transport := NewKafkaTransport(nil, nil, config)
@@ -55,6 +60,7 @@ func TestKafkaTransport_IsEnabled_Disabled(t *testing.T) {
 }
 
 func TestKafkaTransport_Send_NoHub(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -71,6 +77,7 @@ func TestKafkaTransport_Send_NoHub(t *testing.T) {
 }
 
 func TestKafkaTransport_Send_WithTask(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -94,6 +101,7 @@ func TestKafkaTransport_Send_WithTask(t *testing.T) {
 }
 
 func TestKafkaTransport_PublishAuditEvent_NoHub(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -104,6 +112,7 @@ func TestKafkaTransport_PublishAuditEvent_NoHub(t *testing.T) {
 }
 
 func TestKafkaTransport_PublishAuditEvent_Disabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	config.EnableAuditLog = false
 	transport := NewKafkaTransport(nil, nil, config)
@@ -113,6 +122,7 @@ func TestKafkaTransport_PublishAuditEvent_Disabled(t *testing.T) {
 }
 
 func TestKafkaTransport_StartStop(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -127,6 +137,7 @@ func TestKafkaTransport_StartStop(t *testing.T) {
 }
 
 func TestKafkaNotificationEvent_Fields(t *testing.T) {
+	t.Parallel()
 	event := &KafkaNotificationEvent{
 		ID:            "event-1",
 		TaskID:        "task-1",
@@ -147,6 +158,7 @@ func TestKafkaNotificationEvent_Fields(t *testing.T) {
 }
 
 func TestGenerateNotificationEventID(t *testing.T) {
+	t.Parallel()
 	id1 := generateNotificationEventID()
 	time.Sleep(time.Millisecond)
 	id2 := generateNotificationEventID()
@@ -157,12 +169,14 @@ func TestGenerateNotificationEventID(t *testing.T) {
 }
 
 func TestTopicNotificationConstants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "helixagent.notifications", TopicNotifications)
 	assert.Equal(t, "helixagent.notifications.tasks", TopicTaskNotifications)
 	assert.Equal(t, "helixagent.events.audit", TopicAuditLog)
 }
 
 func TestKafkaTransportConfig_Fields(t *testing.T) {
+	t.Parallel()
 	config := &KafkaTransportConfig{
 		Enabled:        true,
 		Topic:          "custom-topic",
@@ -179,6 +193,7 @@ func TestKafkaTransportConfig_Fields(t *testing.T) {
 }
 
 func TestKafkaTransport_SyncMode(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	config.Async = false
 	transport := NewKafkaTransport(nil, nil, config)
@@ -200,6 +215,7 @@ func TestKafkaTransport_SyncMode(t *testing.T) {
 }
 
 func TestNewNotificationHubKafkaIntegration(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	integration := NewNotificationHubKafkaIntegration(nil, nil, nil, config)
 
@@ -208,6 +224,7 @@ func TestNewNotificationHubKafkaIntegration(t *testing.T) {
 }
 
 func TestNotificationHubKafkaIntegration_StartStop(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	integration := NewNotificationHubKafkaIntegration(nil, nil, nil, config)
 
@@ -218,6 +235,7 @@ func TestNotificationHubKafkaIntegration_StartStop(t *testing.T) {
 }
 
 func TestNotificationHubKafkaIntegration_PublishNotification(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	integration := NewNotificationHubKafkaIntegration(nil, nil, nil, config)
 
@@ -232,6 +250,7 @@ func TestNotificationHubKafkaIntegration_PublishNotification(t *testing.T) {
 }
 
 func TestNotificationHubKafkaIntegration_PublishAudit(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	integration := NewNotificationHubKafkaIntegration(nil, nil, nil, config)
 
@@ -243,6 +262,7 @@ func TestNotificationHubKafkaIntegration_PublishAudit(t *testing.T) {
 }
 
 func TestKafkaTransport_Stop_DoubleCloseNoPanic(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -261,6 +281,7 @@ func TestKafkaTransport_Stop_DoubleCloseNoPanic(t *testing.T) {
 }
 
 func TestKafkaTransport_Stop_ConcurrentStopNoPanic(t *testing.T) {
+	t.Parallel()
 	config := DefaultKafkaTransportConfig()
 	transport := NewKafkaTransport(nil, nil, config)
 
@@ -285,6 +306,7 @@ func TestKafkaTransport_Stop_ConcurrentStopNoPanic(t *testing.T) {
 }
 
 func TestRandomNotificationString(t *testing.T) {
+	t.Parallel()
 	str1 := randomNotificationString(8)
 	time.Sleep(time.Millisecond)
 	str2 := randomNotificationString(8)

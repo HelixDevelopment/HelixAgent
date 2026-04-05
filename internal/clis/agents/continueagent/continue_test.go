@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	c := New()
 
 	assert.NotNil(t, c)
@@ -25,6 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestContinue_Initialize(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -40,6 +42,7 @@ func TestContinue_Initialize(t *testing.T) {
 }
 
 func TestContinue_Execute(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -132,6 +135,7 @@ func TestContinue_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := c.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -147,6 +151,7 @@ func TestContinue_Execute(t *testing.T) {
 }
 
 func TestContinue_IsAvailable(t *testing.T) {
+	t.Parallel()
 	c := New()
 	// Availability depends on the presence of 'continue' command in PATH
 	// Result may vary by system
@@ -154,6 +159,7 @@ func TestContinue_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		ServerURL:      "http://localhost:3000",
 		AllowAnonymous: false,

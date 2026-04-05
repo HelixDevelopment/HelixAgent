@@ -19,6 +19,7 @@ import (
 // ==============================================================================
 
 func TestNewGeminiAPIProvider(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiAPIProvider("test-key", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, GeminiDefaultModel, p.model)
@@ -27,6 +28,7 @@ func TestNewGeminiAPIProvider(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -101,6 +103,7 @@ func TestGeminiAPIProvider_Complete_Success(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_WithMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody GeminiAPIRequest
 		body, err := io.ReadAll(r.Body)
@@ -165,6 +168,7 @@ func TestGeminiAPIProvider_Complete_WithMessages(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_ErrorResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -190,6 +194,7 @@ func TestGeminiAPIProvider_Complete_ErrorResponse(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_NoCandidates(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := GeminiResponse{
 			Candidates: []GeminiCandidate{},
@@ -225,6 +230,7 @@ func TestGeminiAPIProvider_Complete_NoCandidates(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-api-key", "https://invalid-url-that-does-not-exist.example.com/v1beta/models/%s:generateContent", "gemini-pro")
 	provider.httpClient = &http.Client{
 		Timeout: 1 * time.Millisecond,
@@ -245,6 +251,7 @@ func TestGeminiAPIProvider_Complete_NetworkError(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -270,6 +277,7 @@ func TestGeminiAPIProvider_Complete_InvalidJSON(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -316,6 +324,7 @@ func TestGeminiAPIProvider_CompleteStream(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_CompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -341,6 +350,7 @@ func TestGeminiAPIProvider_CompleteStream_Error(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -362,6 +372,7 @@ func TestGeminiAPIProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_HealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": {"code": 401, "message": "Invalid API key"}}`))
@@ -377,6 +388,7 @@ func TestGeminiAPIProvider_HealthCheck_Error(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "")
 
 	tests := []struct {
@@ -430,6 +442,7 @@ func TestGeminiAPIProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.wantMin)
 			assert.LessOrEqual(t, confidence, tt.wantMax)
@@ -438,6 +451,7 @@ func TestGeminiAPIProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_ContextTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		response := GeminiResponse{
@@ -487,6 +501,7 @@ func TestGeminiAPIProvider_Complete_ContextTimeout(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_WithStopSequences(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody GeminiAPIRequest
 		body, err := io.ReadAll(r.Body)
@@ -545,6 +560,7 @@ func TestGeminiAPIProvider_Complete_WithStopSequences(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody GeminiAPIRequest
 		body, err := io.ReadAll(r.Body)
@@ -630,6 +646,7 @@ func TestGeminiAPIProvider_Complete_WithTools(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		apiKey       string
@@ -682,6 +699,7 @@ func TestGeminiAPIProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := &GeminiAPIProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -696,6 +714,7 @@ func TestGeminiAPIProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -715,6 +734,7 @@ func TestGeminiAPIProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Retry_RateLimited(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -757,6 +777,7 @@ func TestGeminiAPIProvider_Retry_RateLimited(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Retry_ServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -798,6 +819,7 @@ func TestGeminiAPIProvider_Retry_ServerError(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_Retry_AuthError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -835,6 +857,7 @@ func TestGeminiAPIProvider_Retry_AuthError(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -853,12 +876,14 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}
 }
 
 func TestIsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -871,12 +896,14 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.retryable, isAuthRetryableStatus(tt.statusCode))
 		})
 	}
 }
 
 func TestGeminiAPIProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProviderWithRetry("test-key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 1 * time.Second,
@@ -892,6 +919,7 @@ func TestGeminiAPIProvider_NextDelay(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_CompleteStream_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -921,6 +949,7 @@ func TestGeminiAPIProvider_CompleteStream_MalformedJSON(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_CompleteStream_ArrayWrapper(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -948,6 +977,7 @@ func TestGeminiAPIProvider_CompleteStream_ArrayWrapper(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_ConvertResponse_MultipleParts(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "gemini-pro")
 	req := &models.LLMRequest{ID: "multi-part"}
 
@@ -975,6 +1005,7 @@ func TestGeminiAPIProvider_ConvertResponse_MultipleParts(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_HealthCheck_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "gemini-pro")
 	provider.healthURL = "http://localhost:9999/nonexistent"
 	provider.httpClient = &http.Client{Timeout: 100 * time.Millisecond}
@@ -985,6 +1016,7 @@ func TestGeminiAPIProvider_HealthCheck_NetworkError(t *testing.T) {
 }
 
 func TestNewGeminiAPIProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -1001,6 +1033,7 @@ func TestNewGeminiAPIProviderWithRetry(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -1010,6 +1043,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "")
 
 	start := time.Now()
@@ -1025,6 +1059,7 @@ func TestGeminiAPIProvider_WaitWithJitter(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewGeminiAPIProvider("test-key", "", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1042,6 +1077,7 @@ func TestGeminiAPIProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
 // ==============================================================================
 
 func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
+	t.Parallel()
 	t.Run("pro model includes thinkingConfig", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody GeminiAPIRequest
@@ -1092,6 +1128,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("flash model does not include thinkingConfig", func(t *testing.T) {
+			t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody GeminiAPIRequest
 			body, err := io.ReadAll(r.Body)
@@ -1139,6 +1176,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("gemini-3-pro-preview includes thinkingConfig", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-3-pro-preview")
 		geminiReq := provider.convertRequest(&models.LLMRequest{
 			Prompt:      "Test",
@@ -1150,6 +1188,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("gemini-3.1-pro-preview includes thinkingConfig", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-3.1-pro-preview")
 		geminiReq := provider.convertRequest(&models.LLMRequest{
 			Prompt:      "Test",
@@ -1162,6 +1201,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
+	t.Parallel()
 	t.Run("always includes googleSearch in tools", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody GeminiAPIRequest
@@ -1221,6 +1261,7 @@ func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
 	})
 
 	t.Run("googleSearch present alongside user tools", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-flash")
 
 		req := &models.LLMRequest{
@@ -1250,6 +1291,7 @@ func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
 	})
 
 	t.Run("googleSearch only when no user tools", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-flash")
 
 		req := &models.LLMRequest{
@@ -1270,6 +1312,7 @@ func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_ModelAwareMaxTokens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name              string
 		model             string
@@ -1328,6 +1371,7 @@ func TestGeminiAPIProvider_ModelAwareMaxTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewGeminiAPIProvider("test-key", "", tt.model)
 			geminiReq := provider.convertRequest(&models.LLMRequest{
 				Prompt: "Test",
@@ -1344,6 +1388,7 @@ func TestGeminiAPIProvider_ModelAwareMaxTokens(t *testing.T) {
 }
 
 func TestGeminiAPIProvider_ThinkingContentExtraction(t *testing.T) {
+	t.Parallel()
 	t.Run("extracts thinking content into metadata", func(t *testing.T) {
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-pro")
 
@@ -1379,6 +1424,7 @@ func TestGeminiAPIProvider_ThinkingContentExtraction(t *testing.T) {
 	})
 
 	t.Run("no thinking metadata when no thought parts", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.0-flash")
 
 		geminiResp := &GeminiResponse{
@@ -1407,6 +1453,7 @@ func TestGeminiAPIProvider_ThinkingContentExtraction(t *testing.T) {
 	})
 
 	t.Run("multiple thinking parts concatenated", func(t *testing.T) {
+			t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-pro")
 
 		geminiResp := &GeminiResponse{

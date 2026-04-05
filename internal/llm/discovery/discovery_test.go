@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewDiscoverer(t *testing.T) {
+	t.Parallel()
 	config := ProviderConfig{
 		ProviderName:   "test",
 		ModelsEndpoint: "https://api.test.com/v1/models",
@@ -30,6 +31,7 @@ func TestNewDiscoverer(t *testing.T) {
 }
 
 func TestNewDiscoverer_CustomAuth(t *testing.T) {
+	t.Parallel()
 	config := ProviderConfig{
 		ProviderName: "anthropic",
 		AuthHeader:   "x-api-key",
@@ -45,6 +47,7 @@ func TestNewDiscoverer_CustomAuth(t *testing.T) {
 }
 
 func TestDiscoverModels_Tier1_ProviderAPI(t *testing.T) {
+	t.Parallel()
 	// Mock OpenAI-compatible /v1/models endpoint
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -78,6 +81,7 @@ func TestDiscoverModels_Tier1_ProviderAPI(t *testing.T) {
 }
 
 func TestDiscoverModels_Tier1_WithCustomFilter(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := openAIModelsResponse{
 			Data: []openAIModel{
@@ -113,6 +117,7 @@ func TestDiscoverModels_Tier1_WithCustomFilter(t *testing.T) {
 }
 
 func TestDiscoverModels_Tier1_APIFails_FallsToTier3(t *testing.T) {
+	t.Parallel()
 	// API returns error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -135,6 +140,7 @@ func TestDiscoverModels_Tier1_APIFails_FallsToTier3(t *testing.T) {
 }
 
 func TestDiscoverModels_Tier1_EmptyResponse_FallsToTier3(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := openAIModelsResponse{Data: []openAIModel{}}
 		w.Header().Set("Content-Type", "application/json")
@@ -157,6 +163,7 @@ func TestDiscoverModels_Tier1_EmptyResponse_FallsToTier3(t *testing.T) {
 }
 
 func TestDiscoverModels_NoAPIKey_SkipsTier1(t *testing.T) {
+	t.Parallel()
 	config := ProviderConfig{
 		ProviderName:   "test",
 		ModelsEndpoint: "https://api.test.com/v1/models", // Would fail anyway
@@ -172,6 +179,7 @@ func TestDiscoverModels_NoAPIKey_SkipsTier1(t *testing.T) {
 }
 
 func TestDiscoverModels_Caching(t *testing.T) {
+	t.Parallel()
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount++
@@ -204,6 +212,7 @@ func TestDiscoverModels_Caching(t *testing.T) {
 }
 
 func TestDiscoverModels_CacheExpiry(t *testing.T) {
+	t.Parallel()
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount++
@@ -237,6 +246,7 @@ func TestDiscoverModels_CacheExpiry(t *testing.T) {
 }
 
 func TestInvalidateCache(t *testing.T) {
+	t.Parallel()
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount++
@@ -268,6 +278,7 @@ func TestInvalidateCache(t *testing.T) {
 }
 
 func TestGetCachedModels_Empty(t *testing.T) {
+	t.Parallel()
 	config := ProviderConfig{
 		ProviderName:   "test",
 		FallbackModels: []string{"fallback-1", "fallback-2"},
@@ -280,6 +291,7 @@ func TestGetCachedModels_Empty(t *testing.T) {
 }
 
 func TestGetCachedModels_AfterDiscovery(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := openAIModelsResponse{
 			Data: []openAIModel{{ID: "api-model"}},
@@ -304,6 +316,7 @@ func TestGetCachedModels_AfterDiscovery(t *testing.T) {
 }
 
 func TestDiscoverModels_ExtraHeaders(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify custom auth header (x-api-key without Bearer prefix)
 		assert.Equal(t, "sk-test", r.Header.Get("x-api-key"))
@@ -337,6 +350,7 @@ func TestDiscoverModels_ExtraHeaders(t *testing.T) {
 }
 
 func TestDiscoverModels_CustomResponseParser(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify custom auth header
 		assert.Equal(t, "test-key", r.Header.Get("x-goog-api-key"))
@@ -371,6 +385,7 @@ func TestDiscoverModels_CustomResponseParser(t *testing.T) {
 }
 
 func TestParseGeminiModelsResponse(t *testing.T) {
+	t.Parallel()
 	body := `{
 		"models": [
 			{
@@ -405,6 +420,7 @@ func TestParseGeminiModelsResponse(t *testing.T) {
 }
 
 func TestParseOllamaModelsResponse(t *testing.T) {
+	t.Parallel()
 	body := `{
 		"models": [
 			{"name": "llama2:latest"},
@@ -426,6 +442,7 @@ func TestParseOllamaModelsResponse(t *testing.T) {
 }
 
 func TestParseCohereModelsResponse(t *testing.T) {
+	t.Parallel()
 	body := `{
 		"models": [
 			{"name": "command-r-plus", "endpoints": ["chat", "generate"]},
@@ -447,6 +464,7 @@ func TestParseCohereModelsResponse(t *testing.T) {
 }
 
 func TestParseReplicateModelsResponse(t *testing.T) {
+	t.Parallel()
 	body := `{
 		"results": [
 			{"owner": "meta", "name": "llama-2-70b-chat"},
@@ -467,6 +485,7 @@ func TestParseReplicateModelsResponse(t *testing.T) {
 }
 
 func TestParseZAIModelsResponse(t *testing.T) {
+	t.Parallel()
 	body := `{
 		"data": [
 			{"id": "glm-4.7"},
@@ -487,6 +506,7 @@ func TestParseZAIModelsResponse(t *testing.T) {
 }
 
 func TestIsChatModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		modelID string
 		want    bool
@@ -511,12 +531,14 @@ func TestIsChatModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.want, IsChatModel(tt.modelID), "IsChatModel(%q)", tt.modelID)
 		})
 	}
 }
 
 func TestDiscoverModels_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := openAIModelsResponse{
 			Data: []openAIModel{{ID: "model-1"}, {ID: "model-2"}},

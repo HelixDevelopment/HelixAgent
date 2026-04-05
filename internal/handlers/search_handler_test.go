@@ -65,6 +65,7 @@ func setupSearchRouter(searcher search.Searcher, indexer search.Indexer) (*Searc
 // --- Constructor -------------------------------------------------------
 
 func TestNewSearchHandler(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{}
 	i := &mockIndexer{}
 	h := NewSearchHandler(s, i)
@@ -73,6 +74,7 @@ func TestNewSearchHandler(t *testing.T) {
 }
 
 func TestNewSearchHandler_NilDeps(t *testing.T) {
+	t.Parallel()
 	h := NewSearchHandler(nil, nil)
 	assert.NotNil(t, h)
 }
@@ -80,6 +82,7 @@ func TestNewSearchHandler_NilDeps(t *testing.T) {
 // --- SemanticSearch ----------------------------------------------------
 
 func TestSearchHandler_SemanticSearch_Success(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{
 		results: []search.SearchResult{
 			{
@@ -118,6 +121,7 @@ func TestSearchHandler_SemanticSearch_Success(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_DefaultTopK(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{results: []search.SearchResult{}}
 	_, router := setupSearchRouter(s, &mockIndexer{})
 
@@ -134,6 +138,7 @@ func TestSearchHandler_SemanticSearch_DefaultTopK(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupSearchRouter(&mockSearcher{}, &mockIndexer{})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/search/semantic", bytes.NewBufferString("{bad"))
@@ -145,6 +150,7 @@ func TestSearchHandler_SemanticSearch_InvalidJSON(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_MissingQuery(t *testing.T) {
+	t.Parallel()
 	_, router := setupSearchRouter(&mockSearcher{}, &mockIndexer{})
 
 	body, _ := json.Marshal(map[string]interface{}{"top_k": 5})
@@ -157,6 +163,7 @@ func TestSearchHandler_SemanticSearch_MissingQuery(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_SearchError(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{err: errors.New("embedding service down")}
 	_, router := setupSearchRouter(s, &mockIndexer{})
 
@@ -175,6 +182,7 @@ func TestSearchHandler_SemanticSearch_SearchError(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_WithLanguageFilter(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{results: []search.SearchResult{}}
 	_, router := setupSearchRouter(s, &mockIndexer{})
 
@@ -197,6 +205,7 @@ func TestSearchHandler_SemanticSearch_WithLanguageFilter(t *testing.T) {
 }
 
 func TestSearchHandler_SemanticSearch_WithMinScore(t *testing.T) {
+	t.Parallel()
 	s := &mockSearcher{results: []search.SearchResult{}}
 	_, router := setupSearchRouter(s, &mockIndexer{})
 
@@ -215,6 +224,7 @@ func TestSearchHandler_SemanticSearch_WithMinScore(t *testing.T) {
 // --- TriggerIndex ------------------------------------------------------
 
 func TestSearchHandler_TriggerIndex_Success(t *testing.T) {
+	t.Parallel()
 	idx := &mockIndexer{
 		result: &search.IndexResult{
 			FilesIndexed: 42,
@@ -238,6 +248,7 @@ func TestSearchHandler_TriggerIndex_Success(t *testing.T) {
 }
 
 func TestSearchHandler_TriggerIndex_WithErrors(t *testing.T) {
+	t.Parallel()
 	idx := &mockIndexer{
 		result: &search.IndexResult{
 			FilesIndexed: 10,
@@ -263,6 +274,7 @@ func TestSearchHandler_TriggerIndex_WithErrors(t *testing.T) {
 }
 
 func TestSearchHandler_TriggerIndex_Error(t *testing.T) {
+	t.Parallel()
 	idx := &mockIndexer{err: errors.New("index unavailable")}
 	_, router := setupSearchRouter(&mockSearcher{}, idx)
 
@@ -281,6 +293,7 @@ func TestSearchHandler_TriggerIndex_Error(t *testing.T) {
 // --- Request/Response JSON round-trips ---------------------------------
 
 func TestSemanticSearchRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := SemanticSearchRequest{
 		Query:       "find handler",
 		Language:    "go",
@@ -302,6 +315,7 @@ func TestSemanticSearchRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestSearchResponse_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := SearchResponse{
 		TotalFound: 3,
 		QueryTime:  45,
@@ -316,6 +330,7 @@ func TestSearchResponse_JSONRoundTrip(t *testing.T) {
 }
 
 func TestIndexResponse_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := IndexResponse{
 		FilesIndexed:  100,
 		ChunksCreated: 500,
@@ -335,6 +350,7 @@ func TestIndexResponse_JSONRoundTrip(t *testing.T) {
 // --- RegisterRoutes verification ---------------------------------------
 
 func TestSearchHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	handler := NewSearchHandler(&mockSearcher{}, &mockIndexer{})
 	router := gin.New()
 	handler.RegisterRoutes(router)

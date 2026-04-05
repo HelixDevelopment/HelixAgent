@@ -16,11 +16,13 @@ import (
 // ============================================================================
 
 func TestToModuleMemory_Nil(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToModuleMemory(nil)
 	assert.Nil(t, result)
 }
 
 func TestToModuleMemory_Basic(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	helix := &helixmem.Memory{
 		ID:          "mem-001",
@@ -52,11 +54,13 @@ func TestToModuleMemory_Basic(t *testing.T) {
 }
 
 func TestToHelixMemory_Nil(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToHelixMemory(nil)
 	assert.Nil(t, result)
 }
 
 func TestToHelixMemory_Basic(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	modMemory := &modmem.Memory{
 		ID:      "mem-001",
@@ -83,6 +87,7 @@ func TestToHelixMemory_Basic(t *testing.T) {
 }
 
 func TestToHelixMemories(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	modMems := []*modmem.Memory{
 		{ID: "m1", Content: "Memory 1", Metadata: map[string]any{}, CreatedAt: now, UpdatedAt: now},
@@ -98,6 +103,7 @@ func TestToHelixMemories(t *testing.T) {
 }
 
 func TestToHelixMemories_Empty(t *testing.T) {
+	t.Parallel()
 	result := adapter.ToHelixMemories(nil)
 	assert.Len(t, result, 0)
 
@@ -106,6 +112,7 @@ func TestToHelixMemories_Empty(t *testing.T) {
 }
 
 func TestRoundTrip_Memory(t *testing.T) {
+	t.Parallel()
 	now := time.Now().Truncate(time.Second)
 	original := &helixmem.Memory{
 		ID:          "round-trip-001",
@@ -135,6 +142,7 @@ func TestRoundTrip_Memory(t *testing.T) {
 }
 
 func TestToModuleMemory_WithEmbedding(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	embedding := []float32{0.1, 0.2, 0.3}
 	helix := &helixmem.Memory{
@@ -155,11 +163,13 @@ func TestToModuleMemory_WithEmbedding(t *testing.T) {
 // ============================================================================
 
 func TestToModuleSearchOptions_Nil(t *testing.T) {
+	t.Parallel()
 	opts := adapter.ToModuleSearchOptions(nil)
 	require.NotNil(t, opts) // Should return default
 }
 
 func TestToModuleSearchOptions_WithValues(t *testing.T) {
+	t.Parallel()
 	start := time.Now().Add(-time.Hour)
 	end := time.Now()
 	helixOpts := &helixmem.SearchOptions{
@@ -181,6 +191,7 @@ func TestToModuleSearchOptions_WithValues(t *testing.T) {
 }
 
 func TestToModuleSearchOptions_NoTimeRange(t *testing.T) {
+	t.Parallel()
 	helixOpts := &helixmem.SearchOptions{
 		TopK:     5,
 		MinScore: 0.5,
@@ -197,11 +208,13 @@ func TestToModuleSearchOptions_NoTimeRange(t *testing.T) {
 // ============================================================================
 
 func TestToModuleListOptions_Nil(t *testing.T) {
+	t.Parallel()
 	opts := adapter.ToModuleListOptions(nil)
 	require.NotNil(t, opts) // Should return default
 }
 
 func TestToModuleListOptions_WithValues(t *testing.T) {
+	t.Parallel()
 	helixOpts := &helixmem.ListOptions{
 		Offset: 10,
 		Limit:  50,
@@ -220,11 +233,13 @@ func TestToModuleListOptions_WithValues(t *testing.T) {
 // ============================================================================
 
 func TestNewEntityExtractorAdapter(t *testing.T) {
+	t.Parallel()
 	ea := adapter.NewEntityExtractorAdapter()
 	require.NotNil(t, ea)
 }
 
 func TestEntityExtractorAdapter_ExtractEntities(t *testing.T) {
+	t.Parallel()
 	ea := adapter.NewEntityExtractorAdapter()
 
 	entities, err := ea.ExtractEntities("John works at Google in New York.")
@@ -233,6 +248,7 @@ func TestEntityExtractorAdapter_ExtractEntities(t *testing.T) {
 }
 
 func TestEntityExtractorAdapter_ExtractRelations(t *testing.T) {
+	t.Parallel()
 	ea := adapter.NewEntityExtractorAdapter()
 
 	relations, err := ea.ExtractRelations("John works at Google.")
@@ -241,6 +257,7 @@ func TestEntityExtractorAdapter_ExtractRelations(t *testing.T) {
 }
 
 func TestEntityExtractorAdapter_ExtractEntities_EmptyText(t *testing.T) {
+	t.Parallel()
 	ea := adapter.NewEntityExtractorAdapter()
 
 	entities, err := ea.ExtractEntities("")

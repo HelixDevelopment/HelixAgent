@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultExtendedRegistryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultExtendedRegistryConfig()
 	if cfg == nil {
 		t.Fatal("DefaultExtendedRegistryConfig returned nil")
@@ -26,6 +27,7 @@ func TestDefaultExtendedRegistryConfig(t *testing.T) {
 }
 
 func TestNewExtendedProviderRegistry(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("NewExtendedProviderRegistry failed: %v", err)
@@ -45,6 +47,7 @@ func TestNewExtendedProviderRegistry(t *testing.T) {
 }
 
 func TestNewExtendedProviderRegistry_WithConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 		VerificationInterval:   time.Hour,
@@ -63,6 +66,7 @@ func TestNewExtendedProviderRegistry_WithConfig(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_RegisterProvider(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false, // Disable auto-verify for this test
 	}
@@ -95,6 +99,7 @@ func TestExtendedProviderRegistry_RegisterProvider(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_UnregisterProvider(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -110,6 +115,7 @@ func TestExtendedProviderRegistry_UnregisterProvider(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_VerifyModel(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -133,6 +139,7 @@ func TestExtendedProviderRegistry_VerifyModel(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_VerifyModel_ProviderNotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	err := registry.VerifyModel(context.Background(), "model", "nonexistent")
@@ -142,6 +149,7 @@ func TestExtendedProviderRegistry_VerifyModel_ProviderNotFound(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetVerifiedModel(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -160,6 +168,7 @@ func TestExtendedProviderRegistry_GetVerifiedModel(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetVerifiedModel_NotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	_, err := registry.GetVerifiedModel("nonexistent")
@@ -169,6 +178,7 @@ func TestExtendedProviderRegistry_GetVerifiedModel_NotFound(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetVerifiedModels(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -192,6 +202,7 @@ func TestExtendedProviderRegistry_GetVerifiedModels(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetProviderHealth(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -209,6 +220,7 @@ func TestExtendedProviderRegistry_GetProviderHealth(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetProviderHealth_NotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	_, err := registry.GetProviderHealth("nonexistent")
@@ -218,6 +230,7 @@ func TestExtendedProviderRegistry_GetProviderHealth_NotFound(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetHealthyProviders(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -238,6 +251,7 @@ func TestExtendedProviderRegistry_GetHealthyProviders(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_Complete(t *testing.T) {
+	t.Parallel()
 	// Create mock server that returns OpenAI-compatible response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -266,6 +280,7 @@ func TestExtendedProviderRegistry_Complete(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_Complete_ModelNotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	_, err := registry.Complete(context.Background(), "nonexistent", "Hello", nil)
@@ -275,6 +290,7 @@ func TestExtendedProviderRegistry_Complete_ModelNotFound(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetModelWithScoreSuffix(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -294,6 +310,7 @@ func TestExtendedProviderRegistry_GetModelWithScoreSuffix(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetModelWithScoreSuffix_NotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	_, err := registry.GetModelWithScoreSuffix("nonexistent")
@@ -303,6 +320,7 @@ func TestExtendedProviderRegistry_GetModelWithScoreSuffix_NotFound(t *testing.T)
 }
 
 func TestExtendedProviderRegistry_GetAdapter(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -320,6 +338,7 @@ func TestExtendedProviderRegistry_GetAdapter(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetAdapter_NotFound(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	_, ok := registry.GetAdapter("nonexistent")
@@ -329,6 +348,7 @@ func TestExtendedProviderRegistry_GetAdapter_NotFound(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_Events(t *testing.T) {
+	t.Parallel()
 	registry, _ := NewExtendedProviderRegistry(nil)
 
 	ch := registry.Events()
@@ -338,6 +358,7 @@ func TestExtendedProviderRegistry_Events(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_GetTopModels(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -361,6 +382,7 @@ func TestExtendedProviderRegistry_GetTopModels(t *testing.T) {
 }
 
 func TestExtendedRegistryConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: true,
 		VerificationInterval:   time.Hour,
@@ -387,6 +409,7 @@ func TestExtendedRegistryConfig_Fields(t *testing.T) {
 }
 
 func TestVerifiedModel_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	model := &VerifiedModel{
 		ModelID:           "gpt-4",
@@ -417,6 +440,7 @@ func TestVerifiedModel_Fields(t *testing.T) {
 }
 
 func TestProviderHealthStatus_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	health := &ProviderHealthStatus{
 		ProviderID:       "openai",
@@ -441,6 +465,7 @@ func TestProviderHealthStatus_Fields(t *testing.T) {
 }
 
 func TestProviderEvent_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	event := &ProviderEvent{
 		Type:       "verification_complete",
@@ -462,6 +487,7 @@ func TestProviderEvent_Fields(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_StartStop(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 		HealthCheckInterval:    100 * time.Millisecond,
@@ -481,6 +507,7 @@ func TestExtendedProviderRegistry_StartStop(t *testing.T) {
 }
 
 func TestExtendedProviderRegistry_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	cfg := &ExtendedRegistryConfig{
 		AutoVerifyNewProviders: false,
 	}
@@ -507,6 +534,7 @@ func TestExtendedProviderRegistry_ConcurrentAccess(t *testing.T) {
 }
 
 func TestVerifiedModel_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var model VerifiedModel
 
 	if model.ModelID != "" {
@@ -521,6 +549,7 @@ func TestVerifiedModel_ZeroValue(t *testing.T) {
 }
 
 func TestProviderHealthStatus_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var health ProviderHealthStatus
 
 	if health.ProviderID != "" {
@@ -535,6 +564,7 @@ func TestProviderHealthStatus_ZeroValue(t *testing.T) {
 }
 
 func TestTopModelsRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := &TopModelsRequest{
 		Limit:          10,
 		ProviderFilter: []string{"openai", "anthropic"},
@@ -561,6 +591,7 @@ func TestTopModelsRequest_Fields(t *testing.T) {
 // ============================================================================
 
 func TestExtendedRegistry_RecordProviderFailure(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -594,6 +625,7 @@ func TestExtendedRegistry_RecordProviderFailure(t *testing.T) {
 }
 
 func TestExtendedRegistry_RecordProviderFailure_CircuitBreaker(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -630,6 +662,7 @@ func TestExtendedRegistry_RecordProviderFailure_CircuitBreaker(t *testing.T) {
 }
 
 func TestExtendedRegistry_RecordProviderFailure_NonExistent(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -641,6 +674,7 @@ func TestExtendedRegistry_RecordProviderFailure_NonExistent(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_EmptyRegistry(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -658,6 +692,7 @@ func TestExtendedRegistry_GetTopModels_EmptyRegistry(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_WithModels(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -698,6 +733,7 @@ func TestExtendedRegistry_GetTopModels_WithModels(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_ProviderFilter(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -735,6 +771,7 @@ func TestExtendedRegistry_GetTopModels_ProviderFilter(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_MinScoreFilter(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -769,6 +806,7 @@ func TestExtendedRegistry_GetTopModels_MinScoreFilter(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_CodeVisibilityFilter(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -805,6 +843,7 @@ func TestExtendedRegistry_GetTopModels_CodeVisibilityFilter(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_LimitFilter(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -834,6 +873,7 @@ func TestExtendedRegistry_GetTopModels_LimitFilter(t *testing.T) {
 }
 
 func TestExtendedRegistry_GetTopModels_CombinedFilters(t *testing.T) {
+	t.Parallel()
 	registry, err := NewExtendedProviderRegistry(nil)
 	if err != nil {
 		t.Fatalf("Failed to create registry: %v", err)
@@ -889,6 +929,7 @@ func TestExtendedRegistry_GetTopModels_CombinedFilters(t *testing.T) {
 }
 
 func TestExtendedRegistry_RunHealthChecks(t *testing.T) {
+	t.Parallel()
 	// Create a mock server that returns success
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -936,6 +977,7 @@ func TestExtendedRegistry_RunHealthChecks(t *testing.T) {
 }
 
 func TestExtendedRegistry_RunHealthChecks_NoHealthCheckEnabled(t *testing.T) {
+	t.Parallel()
 	// Test that health check doesn't fail when EnableHealthCheck is false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

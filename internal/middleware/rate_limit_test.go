@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultKeyFunc(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
@@ -31,6 +32,7 @@ func TestDefaultKeyFunc(t *testing.T) {
 }
 
 func TestByUserID(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
@@ -51,6 +53,7 @@ func TestByUserID(t *testing.T) {
 }
 
 func TestByAPIKey(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
@@ -70,6 +73,7 @@ func TestByAPIKey(t *testing.T) {
 }
 
 func TestMaxFunction(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name string
 		a    int
@@ -85,6 +89,7 @@ func TestMaxFunction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			got := max(tc.a, tc.b)
 			if got != tc.want {
 				t.Errorf("max(%d, %d) = %d, want %d", tc.a, tc.b, got, tc.want)
@@ -94,6 +99,7 @@ func TestMaxFunction(t *testing.T) {
 }
 
 func TestNewRateLimiter(t *testing.T) {
+	t.Parallel()
 	// Create a mock config with invalid Redis host to force cache disable
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
@@ -136,6 +142,7 @@ func TestNewRateLimiter(t *testing.T) {
 }
 
 func TestAddLimit(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host:     "localhost",
@@ -181,6 +188,7 @@ func TestAddLimit(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host:     "localhost",
@@ -221,6 +229,7 @@ func TestGetConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			config := limiter.getConfig(tc.path)
 			if config == nil {
 				t.Fatal("Expected configuration")
@@ -234,6 +243,7 @@ func TestGetConfig(t *testing.T) {
 }
 
 func TestRateLimitConfig(t *testing.T) {
+	t.Parallel()
 	config := &RateLimitConfig{
 		Requests: 100,
 		Window:   time.Minute,
@@ -254,6 +264,7 @@ func TestRateLimitConfig(t *testing.T) {
 }
 
 func TestRateLimitResult(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	result := &RateLimitResult{
 		Allowed:    true,
@@ -280,6 +291,7 @@ func TestRateLimitResult(t *testing.T) {
 }
 
 func TestKeyFuncs(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -328,6 +340,7 @@ func TestKeyFuncs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			router := gin.New()
 			var actualKey string
 
@@ -362,6 +375,7 @@ func TestKeyFuncs(t *testing.T) {
 }
 
 func TestRateLimiterMiddleware_AllowsWithinLimit(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.Config{
@@ -404,6 +418,7 @@ func TestRateLimiterMiddleware_AllowsWithinLimit(t *testing.T) {
 }
 
 func TestRateLimiterMiddleware_BlocksOverLimit(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.Config{
@@ -456,6 +471,7 @@ func TestRateLimiterMiddleware_BlocksOverLimit(t *testing.T) {
 }
 
 func TestRateLimiterMiddleware_DifferentKeysIndependent(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.Config{
@@ -512,6 +528,7 @@ func TestRateLimiterMiddleware_DifferentKeysIndependent(t *testing.T) {
 }
 
 func TestMinFunction(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name string
 		a    int
@@ -527,6 +544,7 @@ func TestMinFunction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			got := min(tc.a, tc.b)
 			if got != tc.want {
 				t.Errorf("min(%d, %d) = %d, want %d", tc.a, tc.b, got, tc.want)
@@ -536,6 +554,7 @@ func TestMinFunction(t *testing.T) {
 }
 
 func TestNewRateLimiterWithConfig(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -567,6 +586,7 @@ func TestNewRateLimiterWithConfig(t *testing.T) {
 }
 
 func TestNewRateLimiterWithConfig_NilKeyFunc(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",

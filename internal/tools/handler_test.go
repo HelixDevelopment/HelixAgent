@@ -15,12 +15,14 @@ import (
 // ============================================================================
 
 func TestNewToolRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 	require.NotNil(t, registry)
 	assert.NotNil(t, registry.handlers)
 }
 
 func TestToolRegistry_Register(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 	handler := &GitHandler{}
 
@@ -34,6 +36,7 @@ func TestToolRegistry_Register(t *testing.T) {
 }
 
 func TestToolRegistry_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 
 	h, ok := registry.Get("nonexistent")
@@ -42,6 +45,7 @@ func TestToolRegistry_Get_NotFound(t *testing.T) {
 }
 
 func TestToolRegistry_Get_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 	registry.Register(&GitHandler{})
 
@@ -49,6 +53,7 @@ func TestToolRegistry_Get_CaseInsensitive(t *testing.T) {
 	testCases := []string{"git", "Git", "GIT", "gIt"}
 	for _, tc := range testCases {
 		t.Run(tc, func(t *testing.T) {
+				t.Parallel()
 			h, ok := registry.Get(tc)
 			assert.True(t, ok, "Should find handler for %s", tc)
 			if ok {
@@ -59,6 +64,7 @@ func TestToolRegistry_Get_CaseInsensitive(t *testing.T) {
 }
 
 func TestToolRegistry_Execute_UnknownTool(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 	ctx := context.Background()
 
@@ -70,6 +76,7 @@ func TestToolRegistry_Execute_UnknownTool(t *testing.T) {
 }
 
 func TestToolRegistry_Execute_ValidationError(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 	registry.Register(&GitHandler{})
 	ctx := context.Background()
@@ -81,6 +88,7 @@ func TestToolRegistry_Execute_ValidationError(t *testing.T) {
 }
 
 func TestGetDefaultToolRegistry(t *testing.T) {
+	t.Parallel()
 	// Verify GetDefaultToolRegistry() has handlers registered via init()
 	expectedHandlers := []string{
 		"read_file", "git", "test", "lint", "diff", "treeview",
@@ -90,6 +98,7 @@ func TestGetDefaultToolRegistry(t *testing.T) {
 
 	for _, name := range expectedHandlers {
 		t.Run(name, func(t *testing.T) {
+				t.Parallel()
 			h, ok := GetDefaultToolRegistry().Get(name)
 			assert.True(t, ok, "GetDefaultToolRegistry() should have %s handler", name)
 			assert.NotNil(t, h)
@@ -102,11 +111,13 @@ func TestGetDefaultToolRegistry(t *testing.T) {
 // ============================================================================
 
 func TestReadFileHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	assert.Equal(t, "read_file", handler.Name())
 }
 
 func TestReadFileHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"file_path": "test.go",
@@ -115,6 +126,7 @@ func TestReadFileHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestReadFileHandler_ValidateArgs_MissingFilePath(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{})
 	// read_file schema doesn't have description as required, only file_path
@@ -124,6 +136,7 @@ func TestReadFileHandler_ValidateArgs_MissingFilePath(t *testing.T) {
 }
 
 func TestReadFileHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "README.md", args["file_path"])
@@ -133,6 +146,7 @@ func TestReadFileHandler_GenerateDefaultArgs(t *testing.T) {
 }
 
 func TestReadFileHandler_Execute_EmptyFilePath(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	ctx := context.Background()
 
@@ -145,6 +159,7 @@ func TestReadFileHandler_Execute_EmptyFilePath(t *testing.T) {
 }
 
 func TestReadFileHandler_Execute_WithOffset(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	ctx := context.Background()
 
@@ -160,6 +175,7 @@ func TestReadFileHandler_Execute_WithOffset(t *testing.T) {
 }
 
 func TestReadFileHandler_Execute_NonexistentFile(t *testing.T) {
+	t.Parallel()
 	handler := &ReadFileHandler{}
 	ctx := context.Background()
 
@@ -176,11 +192,13 @@ func TestReadFileHandler_Execute_NonexistentFile(t *testing.T) {
 // ============================================================================
 
 func TestGitHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 	assert.Equal(t, "Git", handler.Name())
 }
 
 func TestGitHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"operation":   "status",
@@ -190,6 +208,7 @@ func TestGitHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestGitHandler_ValidateArgs_MissingRequired(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"operation": "status",
@@ -198,6 +217,7 @@ func TestGitHandler_ValidateArgs_MissingRequired(t *testing.T) {
 }
 
 func TestGitHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 
 	testCases := []struct {
@@ -219,6 +239,7 @@ func TestGitHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
+				t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedOperation, args["operation"])
 			assert.NotEmpty(t, args["description"])
@@ -231,11 +252,13 @@ func TestGitHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestTestHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &TestHandler{}
 	assert.Equal(t, "Test", handler.Name())
 }
 
 func TestTestHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &TestHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Run tests",
@@ -244,6 +267,7 @@ func TestTestHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestTestHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &TestHandler{}
 
 	testCases := []struct {
@@ -261,6 +285,7 @@ func TestTestHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
+				t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedTestType, args["test_type"])
 			assert.Equal(t, tc.expectedCoverage, args["coverage"])
@@ -275,11 +300,13 @@ func TestTestHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestLintHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &LintHandler{}
 	assert.Equal(t, "Lint", handler.Name())
 }
 
 func TestLintHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &LintHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Run linting",
@@ -288,6 +315,7 @@ func TestLintHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestLintHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &LintHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "./...", args["path"])
@@ -301,11 +329,13 @@ func TestLintHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestDiffHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &DiffHandler{}
 	assert.Equal(t, "Diff", handler.Name())
 }
 
 func TestDiffHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &DiffHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Show diff",
@@ -314,6 +344,7 @@ func TestDiffHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestDiffHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &DiffHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "working", args["mode"])
@@ -325,11 +356,13 @@ func TestDiffHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestTreeViewHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &TreeViewHandler{}
 	assert.Equal(t, "TreeView", handler.Name())
 }
 
 func TestTreeViewHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &TreeViewHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Show tree",
@@ -338,6 +371,7 @@ func TestTreeViewHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestTreeViewHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &TreeViewHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, ".", args["path"])
@@ -351,11 +385,13 @@ func TestTreeViewHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestFileInfoHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &FileInfoHandler{}
 	assert.Equal(t, "FileInfo", handler.Name())
 }
 
 func TestFileInfoHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &FileInfoHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"file_path":   "test.go",
@@ -365,6 +401,7 @@ func TestFileInfoHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestFileInfoHandler_ValidateArgs_MissingFilePath(t *testing.T) {
+	t.Parallel()
 	handler := &FileInfoHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Get file info",
@@ -373,6 +410,7 @@ func TestFileInfoHandler_ValidateArgs_MissingFilePath(t *testing.T) {
 }
 
 func TestFileInfoHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &FileInfoHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "README.md", args["file_path"])
@@ -386,11 +424,13 @@ func TestFileInfoHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestSymbolsHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &SymbolsHandler{}
 	assert.Equal(t, "Symbols", handler.Name())
 }
 
 func TestSymbolsHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &SymbolsHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Extract symbols",
@@ -399,6 +439,7 @@ func TestSymbolsHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestSymbolsHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &SymbolsHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, ".", args["file_path"])
@@ -411,11 +452,13 @@ func TestSymbolsHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestReferencesHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	assert.Equal(t, "References", handler.Name())
 }
 
 func TestReferencesHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"symbol":      "TestFunction",
@@ -425,6 +468,7 @@ func TestReferencesHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestReferencesHandler_ValidateArgs_MissingSymbol(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Find references",
@@ -433,6 +477,7 @@ func TestReferencesHandler_ValidateArgs_MissingSymbol(t *testing.T) {
 }
 
 func TestReferencesHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "main", args["symbol"])
@@ -445,11 +490,13 @@ func TestReferencesHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestDefinitionHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &DefinitionHandler{}
 	assert.Equal(t, "Definition", handler.Name())
 }
 
 func TestDefinitionHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &DefinitionHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"symbol":      "TestFunction",
@@ -459,6 +506,7 @@ func TestDefinitionHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestDefinitionHandler_ValidateArgs_MissingSymbol(t *testing.T) {
+	t.Parallel()
 	handler := &DefinitionHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "Find definition",
@@ -467,6 +515,7 @@ func TestDefinitionHandler_ValidateArgs_MissingSymbol(t *testing.T) {
 }
 
 func TestDefinitionHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &DefinitionHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "main", args["symbol"])
@@ -478,11 +527,13 @@ func TestDefinitionHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestPRHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	assert.Equal(t, "PR", handler.Name())
 }
 
 func TestPRHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"action":      "list",
@@ -492,6 +543,7 @@ func TestPRHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestPRHandler_ValidateArgs_MissingAction(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "List PRs",
@@ -500,6 +552,7 @@ func TestPRHandler_ValidateArgs_MissingAction(t *testing.T) {
 }
 
 func TestPRHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 
 	testCases := []struct {
@@ -515,6 +568,7 @@ func TestPRHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
+				t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedAction, args["action"])
 			assert.NotEmpty(t, args["description"])
@@ -527,11 +581,13 @@ func TestPRHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestIssueHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	assert.Equal(t, "Issue", handler.Name())
 }
 
 func TestIssueHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"action":      "list",
@@ -541,6 +597,7 @@ func TestIssueHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestIssueHandler_ValidateArgs_MissingAction(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "List issues",
@@ -549,6 +606,7 @@ func TestIssueHandler_ValidateArgs_MissingAction(t *testing.T) {
 }
 
 func TestIssueHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "list", args["action"])
@@ -560,11 +618,13 @@ func TestIssueHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestWorkflowHandler_Name(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	assert.Equal(t, "Workflow", handler.Name())
 }
 
 func TestWorkflowHandler_ValidateArgs_Valid(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"action":      "list",
@@ -574,6 +634,7 @@ func TestWorkflowHandler_ValidateArgs_Valid(t *testing.T) {
 }
 
 func TestWorkflowHandler_ValidateArgs_MissingAction(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	err := handler.ValidateArgs(map[string]interface{}{
 		"description": "List workflows",
@@ -582,6 +643,7 @@ func TestWorkflowHandler_ValidateArgs_MissingAction(t *testing.T) {
 }
 
 func TestWorkflowHandler_GenerateDefaultArgs(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	args := handler.GenerateDefaultArgs("any context")
 	assert.Equal(t, "list", args["action"])
@@ -593,6 +655,7 @@ func TestWorkflowHandler_GenerateDefaultArgs(t *testing.T) {
 // ============================================================================
 
 func TestToolResult_Structure(t *testing.T) {
+	t.Parallel()
 	// Test successful result
 	successResult := ToolResult{
 		Success: true,
@@ -618,6 +681,7 @@ func TestToolResult_Structure(t *testing.T) {
 // ============================================================================
 
 func TestReferencesHandler_Execute_EmptySymbol(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	ctx := context.Background()
 
@@ -628,6 +692,7 @@ func TestReferencesHandler_Execute_EmptySymbol(t *testing.T) {
 }
 
 func TestDefinitionHandler_Execute_EmptySymbol(t *testing.T) {
+	t.Parallel()
 	handler := &DefinitionHandler{}
 	ctx := context.Background()
 
@@ -638,6 +703,7 @@ func TestDefinitionHandler_Execute_EmptySymbol(t *testing.T) {
 }
 
 func TestPRHandler_Execute_MergeWithoutPRNumber(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	ctx := context.Background()
 
@@ -650,6 +716,7 @@ func TestPRHandler_Execute_MergeWithoutPRNumber(t *testing.T) {
 }
 
 func TestPRHandler_Execute_CloseWithoutPRNumber(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	ctx := context.Background()
 
@@ -662,6 +729,7 @@ func TestPRHandler_Execute_CloseWithoutPRNumber(t *testing.T) {
 }
 
 func TestPRHandler_Execute_UnknownAction(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	ctx := context.Background()
 
@@ -674,6 +742,7 @@ func TestPRHandler_Execute_UnknownAction(t *testing.T) {
 }
 
 func TestIssueHandler_Execute_ViewWithoutIssueNumber(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	ctx := context.Background()
 
@@ -686,6 +755,7 @@ func TestIssueHandler_Execute_ViewWithoutIssueNumber(t *testing.T) {
 }
 
 func TestIssueHandler_Execute_CloseWithoutIssueNumber(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	ctx := context.Background()
 
@@ -698,6 +768,7 @@ func TestIssueHandler_Execute_CloseWithoutIssueNumber(t *testing.T) {
 }
 
 func TestIssueHandler_Execute_UnknownAction(t *testing.T) {
+	t.Parallel()
 	handler := &IssueHandler{}
 	ctx := context.Background()
 
@@ -710,6 +781,7 @@ func TestIssueHandler_Execute_UnknownAction(t *testing.T) {
 }
 
 func TestWorkflowHandler_Execute_CancelWithoutRunID(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	ctx := context.Background()
 
@@ -722,6 +794,7 @@ func TestWorkflowHandler_Execute_CancelWithoutRunID(t *testing.T) {
 }
 
 func TestWorkflowHandler_Execute_LogsWithoutRunID(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	ctx := context.Background()
 
@@ -734,6 +807,7 @@ func TestWorkflowHandler_Execute_LogsWithoutRunID(t *testing.T) {
 }
 
 func TestWorkflowHandler_Execute_UnknownAction(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	ctx := context.Background()
 
@@ -746,6 +820,7 @@ func TestWorkflowHandler_Execute_UnknownAction(t *testing.T) {
 }
 
 func TestLintHandler_Execute_UnsupportedLinter(t *testing.T) {
+	t.Parallel()
 	handler := &LintHandler{}
 	ctx := context.Background()
 
@@ -762,6 +837,7 @@ func TestLintHandler_Execute_UnsupportedLinter(t *testing.T) {
 // ============================================================================
 
 func TestGitHandler_GenerateDefaultArgs_AllOperations(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 
 	// Test all operation keywords - note that the code checks keywords in order,
@@ -781,6 +857,7 @@ func TestGitHandler_GenerateDefaultArgs_AllOperations(t *testing.T) {
 
 	for context, expectedOp := range operations {
 		t.Run(context, func(t *testing.T) {
+				t.Parallel()
 			args := handler.GenerateDefaultArgs(context)
 			assert.Equal(t, expectedOp, args["operation"])
 		})
@@ -788,6 +865,7 @@ func TestGitHandler_GenerateDefaultArgs_AllOperations(t *testing.T) {
 }
 
 func TestTestHandler_GenerateDefaultArgs_AllTestTypes(t *testing.T) {
+	t.Parallel()
 	handler := &TestHandler{}
 
 	testCases := []struct {
@@ -803,6 +881,7 @@ func TestTestHandler_GenerateDefaultArgs_AllTestTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
+				t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedType, args["test_type"])
 			assert.Equal(t, tc.expectedPath, args["test_path"])
@@ -815,6 +894,7 @@ func TestTestHandler_GenerateDefaultArgs_AllTestTypes(t *testing.T) {
 // ============================================================================
 
 func TestToolRegistry_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	registry := NewToolRegistry()
 
 	// Register handlers concurrently
@@ -854,6 +934,7 @@ func TestToolRegistry_ConcurrentAccess(t *testing.T) {
 // ============================================================================
 
 func TestToolResult_WithData(t *testing.T) {
+	t.Parallel()
 	result := ToolResult{
 		Success: true,
 		Output:  "Success",
@@ -873,6 +954,7 @@ func TestToolResult_WithData(t *testing.T) {
 }
 
 func TestToolResult_EmptyFields(t *testing.T) {
+	t.Parallel()
 	result := ToolResult{}
 
 	assert.False(t, result.Success)
@@ -886,6 +968,7 @@ func TestToolResult_EmptyFields(t *testing.T) {
 // ============================================================================
 
 func TestAllHandlers_ImplementInterface(t *testing.T) {
+	t.Parallel()
 	handlers := []ToolHandler{
 		&ReadFileHandler{},
 		&GitHandler{},
@@ -904,6 +987,7 @@ func TestAllHandlers_ImplementInterface(t *testing.T) {
 
 	for _, h := range handlers {
 		t.Run(h.Name(), func(t *testing.T) {
+				t.Parallel()
 			// Verify Name() returns non-empty
 			assert.NotEmpty(t, h.Name())
 
@@ -924,6 +1008,7 @@ func TestAllHandlers_ImplementInterface(t *testing.T) {
 // ============================================================================
 
 func TestGitHandler_Execute_WithArguments(t *testing.T) {
+	t.Parallel()
 	handler := &GitHandler{}
 	ctx := context.Background()
 
@@ -939,6 +1024,7 @@ func TestGitHandler_Execute_WithArguments(t *testing.T) {
 }
 
 func TestTestHandler_Execute_DefaultValues(t *testing.T) {
+	t.Parallel()
 	handler := &TestHandler{}
 	// Use a short timeout to avoid running full test suite for 5+ minutes
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -955,12 +1041,14 @@ func TestTestHandler_Execute_DefaultValues(t *testing.T) {
 }
 
 func TestDiffHandler_Execute_Modes(t *testing.T) {
+	t.Parallel()
 	handler := &DiffHandler{}
 	ctx := context.Background()
 
 	modes := []string{"working", "staged", "commit", "branch"}
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
+				t.Parallel()
 			result, _ := handler.Execute(ctx, map[string]interface{}{
 				"mode":          mode,
 				"compare_with":  "main",
@@ -973,6 +1061,7 @@ func TestDiffHandler_Execute_Modes(t *testing.T) {
 }
 
 func TestTreeViewHandler_Execute_WithIgnorePatterns(t *testing.T) {
+	t.Parallel()
 	handler := &TreeViewHandler{}
 	ctx := context.Background()
 
@@ -988,6 +1077,7 @@ func TestTreeViewHandler_Execute_WithIgnorePatterns(t *testing.T) {
 }
 
 func TestSymbolsHandler_Execute_Recursive(t *testing.T) {
+	t.Parallel()
 	handler := &SymbolsHandler{}
 	ctx := context.Background()
 
@@ -1001,6 +1091,7 @@ func TestSymbolsHandler_Execute_Recursive(t *testing.T) {
 }
 
 func TestReferencesHandler_Execute_WithFilePath(t *testing.T) {
+	t.Parallel()
 	handler := &ReferencesHandler{}
 	ctx := context.Background()
 
@@ -1014,6 +1105,7 @@ func TestReferencesHandler_Execute_WithFilePath(t *testing.T) {
 }
 
 func TestPRHandler_Execute_CreateWithOptions(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	ctx := context.Background()
 
@@ -1030,6 +1122,7 @@ func TestPRHandler_Execute_CreateWithOptions(t *testing.T) {
 }
 
 func TestPRHandler_Execute_ViewWithPRNumber(t *testing.T) {
+	t.Parallel()
 	handler := &PRHandler{}
 	ctx := context.Background()
 
@@ -1043,6 +1136,7 @@ func TestPRHandler_Execute_ViewWithPRNumber(t *testing.T) {
 }
 
 func TestIssueHandler_Execute_CreateWithOptions(t *testing.T) {
+	t.Parallel()
 	// Skip in short mode to avoid long timeouts
 	if testing.Short() {
 		t.Skip("Skipping in short mode")
@@ -1068,6 +1162,7 @@ func TestIssueHandler_Execute_CreateWithOptions(t *testing.T) {
 }
 
 func TestWorkflowHandler_Execute_RunWithOptions(t *testing.T) {
+	t.Parallel()
 	// Skip in short mode to avoid long timeouts
 	if testing.Short() {
 		t.Skip("Skipping in short mode")
@@ -1093,6 +1188,7 @@ func TestWorkflowHandler_Execute_RunWithOptions(t *testing.T) {
 }
 
 func TestWorkflowHandler_Execute_ViewWithRunID(t *testing.T) {
+	t.Parallel()
 	handler := &WorkflowHandler{}
 	ctx := context.Background()
 

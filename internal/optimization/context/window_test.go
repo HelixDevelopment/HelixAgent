@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultWindowConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultWindowConfig()
 
 	assert.Equal(t, 4096, config.MaxTokens)
@@ -20,6 +21,7 @@ func TestDefaultWindowConfig(t *testing.T) {
 }
 
 func TestNewContextWindow(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 
 	assert.NotNil(t, window)
@@ -28,6 +30,7 @@ func TestNewContextWindow(t *testing.T) {
 }
 
 func TestContextWindow_Add(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(&WindowConfig{
 		MaxTokens:     1000,
 		ReserveTokens: 100,
@@ -44,6 +47,7 @@ func TestContextWindow_Add(t *testing.T) {
 }
 
 func TestContextWindow_AddMessage(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 
 	err := window.AddMessage("user", "Test message")
@@ -55,6 +59,7 @@ func TestContextWindow_AddMessage(t *testing.T) {
 }
 
 func TestContextWindow_AddSystemPrompt(t *testing.T) {
+	t.Parallel()
 	config := DefaultWindowConfig()
 	config.PreserveSystemPrompt = true
 	window := NewContextWindow(config)
@@ -68,6 +73,7 @@ func TestContextWindow_AddSystemPrompt(t *testing.T) {
 }
 
 func TestContextWindow_Get(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Message 1")
 	_ = window.AddMessage("assistant", "Message 2")
@@ -80,6 +86,7 @@ func TestContextWindow_Get(t *testing.T) {
 }
 
 func TestContextWindow_GetMessages(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Hello")
 	_ = window.AddMessage("assistant", "Hi there")
@@ -92,6 +99,7 @@ func TestContextWindow_GetMessages(t *testing.T) {
 }
 
 func TestContextWindow_TokenCount(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Hello world")
 
@@ -101,6 +109,7 @@ func TestContextWindow_TokenCount(t *testing.T) {
 }
 
 func TestContextWindow_AvailableTokens(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:     1000,
 		ReserveTokens: 100,
@@ -113,6 +122,7 @@ func TestContextWindow_AvailableTokens(t *testing.T) {
 }
 
 func TestContextWindow_UsageRatio(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:     1000,
 		ReserveTokens: 100,
@@ -127,6 +137,7 @@ func TestContextWindow_UsageRatio(t *testing.T) {
 }
 
 func TestContextWindow_Clear(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Message 1")
 	_ = window.AddMessage("assistant", "Message 2")
@@ -138,6 +149,7 @@ func TestContextWindow_Clear(t *testing.T) {
 }
 
 func TestContextWindow_ClearExceptPinned(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(&WindowConfig{
 		MaxTokens:            4096,
 		ReserveTokens:        512,
@@ -155,6 +167,7 @@ func TestContextWindow_ClearExceptPinned(t *testing.T) {
 }
 
 func TestContextWindow_RemoveEntry(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.Add(ContextEntry{ID: "entry-1", Role: "user", Content: "Message 1"})
 	_ = window.Add(ContextEntry{ID: "entry-2", Role: "assistant", Content: "Message 2"})
@@ -167,6 +180,7 @@ func TestContextWindow_RemoveEntry(t *testing.T) {
 }
 
 func TestContextWindow_RemoveEntry_NotFound(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Test")
 
@@ -176,6 +190,7 @@ func TestContextWindow_RemoveEntry_NotFound(t *testing.T) {
 }
 
 func TestContextWindow_UpdateEntry(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.Add(ContextEntry{ID: "entry-1", Role: "user", Content: "Original"})
 
@@ -186,6 +201,7 @@ func TestContextWindow_UpdateEntry(t *testing.T) {
 }
 
 func TestContextWindow_UpdateEntry_NotFound(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 
 	err := window.UpdateEntry("nonexistent", "New content")
@@ -194,6 +210,7 @@ func TestContextWindow_UpdateEntry_NotFound(t *testing.T) {
 }
 
 func TestContextWindow_Eviction_FIFO(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      100,
 		ReserveTokens:  10,
@@ -212,6 +229,7 @@ func TestContextWindow_Eviction_FIFO(t *testing.T) {
 }
 
 func TestContextWindow_Eviction_Priority(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      100,
 		ReserveTokens:  10,
@@ -255,6 +273,7 @@ func TestContextWindow_Eviction_Priority(t *testing.T) {
 }
 
 func TestContextWindow_Overflow(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:     50,
 		ReserveTokens: 10,
@@ -282,6 +301,7 @@ func TestContextWindow_Overflow(t *testing.T) {
 }
 
 func TestContextWindow_Snapshot(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Message 1")
 	_ = window.AddMessage("assistant", "Message 2")
@@ -294,6 +314,7 @@ func TestContextWindow_Snapshot(t *testing.T) {
 }
 
 func TestContextWindow_RestoreFromSnapshot(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "Original message")
 
@@ -308,6 +329,7 @@ func TestContextWindow_RestoreFromSnapshot(t *testing.T) {
 }
 
 func TestContextWindow_Stats(t *testing.T) {
+	t.Parallel()
 	window := NewContextWindow(nil)
 	_ = window.AddMessage("user", "User message")
 	_ = window.AddMessage("assistant", "Assistant message")
@@ -324,6 +346,7 @@ func TestContextWindow_Stats(t *testing.T) {
 }
 
 func TestContextWindow_EventHandler(t *testing.T) {
+	t.Parallel()
 	var events []*WindowEvent
 	handler := func(event *WindowEvent) {
 		events = append(events, event)
@@ -339,6 +362,7 @@ func TestContextWindow_EventHandler(t *testing.T) {
 }
 
 func TestPriority(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, Priority(0), PriorityLow)
 	assert.Equal(t, Priority(1), PriorityNormal)
 	assert.Equal(t, Priority(2), PriorityHigh)
@@ -346,6 +370,7 @@ func TestPriority(t *testing.T) {
 }
 
 func TestEvictionPolicies(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, EvictionPolicy("fifo"), EvictionPolicyFIFO)
 	assert.Equal(t, EvictionPolicy("lru"), EvictionPolicyLRU)
 	assert.Equal(t, EvictionPolicy("priority"), EvictionPolicyPriority)
@@ -353,6 +378,7 @@ func TestEvictionPolicies(t *testing.T) {
 }
 
 func TestWindowEventTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, WindowEventType("entry_added"), EventTypeEntryAdded)
 	assert.Equal(t, WindowEventType("entry_evicted"), EventTypeEntryEvicted)
 	assert.Equal(t, WindowEventType("entry_updated"), EventTypeEntryUpdated)
@@ -361,6 +387,7 @@ func TestWindowEventTypes(t *testing.T) {
 }
 
 func TestContextEntry(t *testing.T) {
+	t.Parallel()
 	entry := ContextEntry{
 		ID:         "entry-123",
 		Role:       "user",
@@ -381,6 +408,7 @@ func TestContextEntry(t *testing.T) {
 }
 
 func TestWindowSnapshot(t *testing.T) {
+	t.Parallel()
 	snapshot := &WindowSnapshot{
 		Entries: []ContextEntry{
 			{ID: "1", Role: "user", Content: "Test"},
@@ -408,6 +436,7 @@ func largeContent() string {
 }
 
 func TestContextWindow_Eviction_LRU_Triggered(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      50,
 		ReserveTokens:  5,
@@ -431,6 +460,7 @@ func TestContextWindow_Eviction_LRU_Triggered(t *testing.T) {
 }
 
 func TestContextWindow_Eviction_LRU_Multiple_Rounds(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      50,
 		ReserveTokens:  5,
@@ -450,6 +480,7 @@ func TestContextWindow_Eviction_LRU_Multiple_Rounds(t *testing.T) {
 }
 
 func TestContextWindow_Eviction_Priority_LowEvictedFirst(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      50,
 		ReserveTokens:  5,
@@ -488,6 +519,7 @@ func TestContextWindow_Eviction_Priority_LowEvictedFirst(t *testing.T) {
 }
 
 func TestContextWindow_Eviction_Priority_AllPriorityLevels(t *testing.T) {
+	t.Parallel()
 	config := &WindowConfig{
 		MaxTokens:      50,
 		ReserveTokens:  5,
@@ -519,6 +551,7 @@ func TestContextWindow_Eviction_Priority_AllPriorityLevels(t *testing.T) {
 }
 
 func TestWindowStats(t *testing.T) {
+	t.Parallel()
 	stats := &WindowStats{
 		TotalEntries:     10,
 		TotalTokens:      500,
@@ -535,6 +568,7 @@ func TestWindowStats(t *testing.T) {
 }
 
 func TestEstimateTokens(t *testing.T) {
+	t.Parallel()
 	// ~4 characters per token
 	tokens := estimateTokens("Hello World") // 11 chars
 	assert.Equal(t, 2, tokens)              // 11/4 = 2

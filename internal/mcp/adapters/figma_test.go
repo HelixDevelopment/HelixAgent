@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewFigmaAdapter(t *testing.T) {
+	t.Parallel()
 	config := FigmaConfig{
 		AccessToken: "test-token",
 	}
@@ -27,6 +28,7 @@ func TestNewFigmaAdapter(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetServerInfo(t *testing.T) {
+	t.Parallel()
 	adapter := NewFigmaAdapter(FigmaConfig{})
 
 	info := adapter.GetServerInfo()
@@ -40,6 +42,7 @@ func TestFigmaAdapter_GetServerInfo(t *testing.T) {
 }
 
 func TestFigmaAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	adapter := NewFigmaAdapter(FigmaConfig{})
 
 	tools := adapter.ListTools()
@@ -65,6 +68,7 @@ func TestFigmaAdapter_ListTools(t *testing.T) {
 }
 
 func TestFigmaAdapter_CallTool_UnknownTool(t *testing.T) {
+	t.Parallel()
 	adapter := NewFigmaAdapter(FigmaConfig{})
 
 	result, err := adapter.CallTool(context.Background(), "unknown_tool", nil)
@@ -75,6 +79,7 @@ func TestFigmaAdapter_CallTool_UnknownTool(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFile(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v1/files/test-file-key", r.URL.Path)
 		assert.Equal(t, "test-token", r.Header.Get("X-Figma-Token"))
@@ -120,6 +125,7 @@ func TestFigmaAdapter_GetFile(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetFileNodes(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/files/test-file-key/nodes")
 		assert.Contains(t, r.URL.RawQuery, "ids=1:1,2:2")
@@ -153,6 +159,7 @@ func TestFigmaAdapter_GetFileNodes(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetImages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/images/test-file-key")
 
@@ -187,6 +194,7 @@ func TestFigmaAdapter_GetImages(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetComments(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/files/test-file-key/comments")
 
@@ -222,6 +230,7 @@ func TestFigmaAdapter_GetComments(t *testing.T) {
 }
 
 func TestFigmaAdapter_PostComment(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/files/test-file-key/comments")
@@ -257,6 +266,7 @@ func TestFigmaAdapter_PostComment(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/teams/team-123/projects")
 
@@ -288,6 +298,7 @@ func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
 }
 
 func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "/projects/proj-123/files")
 
@@ -319,6 +330,7 @@ func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
 }
 
 func TestFigmaAdapter_APIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": "Invalid token"}`))
@@ -341,6 +353,7 @@ func TestFigmaAdapter_APIError(t *testing.T) {
 }
 
 func TestDefaultFigmaConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultFigmaConfig()
 
 	assert.Equal(t, "https://api.figma.com/v1", config.BaseURL)

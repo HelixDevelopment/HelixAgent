@@ -7,6 +7,7 @@ import (
 )
 
 func TestDefaultDiscoveryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultDiscoveryConfig()
 	if cfg == nil {
 		t.Fatal("DefaultDiscoveryConfig returned nil")
@@ -14,6 +15,7 @@ func TestDefaultDiscoveryConfig(t *testing.T) {
 }
 
 func TestDiscoveryConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &DiscoveryConfig{
 		Enabled:               true,
 		DiscoveryInterval:     time.Hour,
@@ -49,6 +51,7 @@ func TestDiscoveryConfig_Fields(t *testing.T) {
 }
 
 func TestNewModelDiscoveryService(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 	if svc == nil {
 		t.Fatal("NewModelDiscoveryService returned nil")
@@ -56,6 +59,7 @@ func TestNewModelDiscoveryService(t *testing.T) {
 }
 
 func TestNewModelDiscoveryService_CustomConfig(t *testing.T) {
+	t.Parallel()
 	customCfg := &DiscoveryConfig{
 		Enabled:              true,
 		MaxModelsForEnsemble: 3,
@@ -69,6 +73,7 @@ func TestNewModelDiscoveryService_CustomConfig(t *testing.T) {
 }
 
 func TestModelDiscoveryService_GetDiscoveredModels_Empty(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	models := svc.GetDiscoveredModels()
@@ -81,6 +86,7 @@ func TestModelDiscoveryService_GetDiscoveredModels_Empty(t *testing.T) {
 }
 
 func TestModelDiscoveryService_GetSelectedModels_Empty(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	models := svc.GetSelectedModels()
@@ -93,6 +99,7 @@ func TestModelDiscoveryService_GetSelectedModels_Empty(t *testing.T) {
 }
 
 func TestModelDiscoveryService_GetDiscoveryStats(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	stats := svc.GetDiscoveryStats()
@@ -102,6 +109,7 @@ func TestModelDiscoveryService_GetDiscoveryStats(t *testing.T) {
 }
 
 func TestModelDiscoveryService_GetModelForDebate(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	_, found := svc.GetModelForDebate("non-existent")
@@ -111,6 +119,7 @@ func TestModelDiscoveryService_GetModelForDebate(t *testing.T) {
 }
 
 func TestModelDiscoveryService_Stop(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	// Should not panic even if not started
@@ -118,6 +127,7 @@ func TestModelDiscoveryService_Stop(t *testing.T) {
 }
 
 func TestDiscoveredModel_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	model := &DiscoveredModel{
 		ModelID:       "test-model",
@@ -164,6 +174,7 @@ func TestDiscoveredModel_Fields(t *testing.T) {
 }
 
 func TestSelectedModel_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	discovered := &DiscoveredModel{
 		ModelID:      "test-model",
@@ -196,6 +207,7 @@ func TestSelectedModel_Fields(t *testing.T) {
 }
 
 func TestProviderCredentials_Fields(t *testing.T) {
+	t.Parallel()
 	creds := ProviderCredentials{
 		ProviderName: "openai",
 		APIKey:       "sk-test-key",
@@ -214,6 +226,7 @@ func TestProviderCredentials_Fields(t *testing.T) {
 }
 
 func TestDiscoveryStats_Fields(t *testing.T) {
+	t.Parallel()
 	stats := &DiscoveryStats{
 		TotalDiscovered:  100,
 		TotalVerified:    80,
@@ -244,6 +257,7 @@ func TestDiscoveryStats_Fields(t *testing.T) {
 }
 
 func TestDiscoveryConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var cfg DiscoveryConfig
 
 	if cfg.Enabled {
@@ -258,6 +272,7 @@ func TestDiscoveryConfig_ZeroValue(t *testing.T) {
 }
 
 func TestDiscoveredModel_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var model DiscoveredModel
 
 	if model.ModelID != "" {
@@ -272,6 +287,7 @@ func TestDiscoveredModel_ZeroValue(t *testing.T) {
 }
 
 func TestSelectedModel_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var model SelectedModel
 
 	if model.Rank != 0 {
@@ -290,6 +306,7 @@ func TestSelectedModel_ZeroValue(t *testing.T) {
 // =====================================================
 
 func TestModelDiscoveryService_getDiscoveryEndpoint(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	tests := []struct {
@@ -366,6 +383,7 @@ func TestModelDiscoveryService_getDiscoveryEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			endpoint := svc.getDiscoveryEndpoint(tt.cred)
 			if tt.expectedPrefix == "" && endpoint != "" {
 				t.Errorf("expected empty endpoint for unknown provider, got %s", endpoint)
@@ -378,6 +396,7 @@ func TestModelDiscoveryService_getDiscoveryEndpoint(t *testing.T) {
 }
 
 func TestModelDiscoveryService_isChatModel(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	tests := []struct {
@@ -403,6 +422,7 @@ func TestModelDiscoveryService_isChatModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := svc.isChatModel(tt.modelID, tt.provider)
 			if result != tt.expected {
 				t.Errorf("isChatModel(%s, %s) = %v, want %v", tt.modelID, tt.provider, result, tt.expected)
@@ -412,6 +432,7 @@ func TestModelDiscoveryService_isChatModel(t *testing.T) {
 }
 
 func TestModelDiscoveryService_calculateVoteWeight(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	tests := []struct {
@@ -460,6 +481,7 @@ func TestModelDiscoveryService_calculateVoteWeight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			weight := svc.calculateVoteWeight(tt.model)
 			if weight < tt.minWeight || weight > tt.maxWeight {
 				t.Errorf("expected weight in range [%f, %f], got %f", tt.minWeight, tt.maxWeight, weight)
@@ -469,6 +491,7 @@ func TestModelDiscoveryService_calculateVoteWeight(t *testing.T) {
 }
 
 func TestModelDiscoveryService_selectTopModels(t *testing.T) {
+	t.Parallel()
 	cfg := &DiscoveryConfig{
 		MaxModelsForEnsemble: 3,
 		MinScore:             7.0,
@@ -502,6 +525,7 @@ func TestModelDiscoveryService_selectTopModels(t *testing.T) {
 }
 
 func TestModelDiscoveryService_selectTopModels_NoDiversity(t *testing.T) {
+	t.Parallel()
 	cfg := &DiscoveryConfig{
 		MaxModelsForEnsemble: 3,
 		MinScore:             7.0,
@@ -523,6 +547,7 @@ func TestModelDiscoveryService_selectTopModels_NoDiversity(t *testing.T) {
 }
 
 func TestModelDiscoveryService_selectTopModels_AllBelowMinScore(t *testing.T) {
+	t.Parallel()
 	cfg := &DiscoveryConfig{
 		MaxModelsForEnsemble: 3,
 		MinScore:             9.0,
@@ -543,6 +568,7 @@ func TestModelDiscoveryService_selectTopModels_AllBelowMinScore(t *testing.T) {
 }
 
 func TestModelDiscoveryService_Start_Stop(t *testing.T) {
+	t.Parallel()
 	cfg := &DiscoveryConfig{
 		Enabled:           true,
 		DiscoveryInterval: 100 * time.Millisecond,
@@ -566,6 +592,7 @@ func TestModelDiscoveryService_Start_Stop(t *testing.T) {
 }
 
 func TestContainsIgnoreCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		s        string
 		substr   string
@@ -581,6 +608,7 @@ func TestContainsIgnoreCase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.s+"_"+tt.substr, func(t *testing.T) {
+				t.Parallel()
 			result := containsIgnoreCase(tt.s, tt.substr)
 			if result != tt.expected {
 				t.Errorf("containsIgnoreCase(%q, %q) = %v, want %v", tt.s, tt.substr, result, tt.expected)
@@ -590,6 +618,7 @@ func TestContainsIgnoreCase(t *testing.T) {
 }
 
 func TestDiscoveryStats_Calculation(t *testing.T) {
+	t.Parallel()
 	vs := NewVerificationService(nil)
 	ss, _ := NewScoringService(nil)
 	hs := NewHealthService(nil)
@@ -651,6 +680,7 @@ func TestDiscoveryStats_Calculation(t *testing.T) {
 }
 
 func TestModelDiscoveryService_GetModelForDebate_Found(t *testing.T) {
+	t.Parallel()
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	// Add a selected model
@@ -676,6 +706,7 @@ func TestModelDiscoveryService_GetModelForDebate_Found(t *testing.T) {
 }
 
 func TestDiscoveryConfig_DefaultValues(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultDiscoveryConfig()
 
 	if !cfg.Enabled {

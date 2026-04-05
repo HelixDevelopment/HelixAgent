@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewOllamaCode(t *testing.T) {
+	t.Parallel()
 	o := New()
 	require.NotNil(t, o)
 	
@@ -23,6 +24,7 @@ func TestNewOllamaCode(t *testing.T) {
 }
 
 func TestOllamaCodeInitialize(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -41,6 +43,7 @@ func TestOllamaCodeInitialize(t *testing.T) {
 }
 
 func TestOllamaCodeInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -51,6 +54,7 @@ func TestOllamaCodeInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestOllamaCodeStartStop(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -67,6 +71,7 @@ func TestOllamaCodeStartStop(t *testing.T) {
 }
 
 func TestOllamaCodeExecute(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -109,6 +114,7 @@ func TestOllamaCodeExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := o.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -121,6 +127,7 @@ func TestOllamaCodeExecute(t *testing.T) {
 }
 
 func TestOllamaCodeCapabilities(t *testing.T) {
+	t.Parallel()
 	o := New()
 	info := o.Info()
 	
@@ -131,6 +138,7 @@ func TestOllamaCodeCapabilities(t *testing.T) {
 }
 
 func TestOllamaCodeIsAvailable(t *testing.T) {
+	t.Parallel()
 	o := New()
 	assert.True(t, o.IsAvailable())
 	
@@ -140,6 +148,7 @@ func TestOllamaCodeIsAvailable(t *testing.T) {
 }
 
 func TestOllamaCodeGenerateResult(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	

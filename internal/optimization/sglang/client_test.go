@@ -17,6 +17,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	config := &ClientConfig{
 		BaseURL: "http://localhost:30000",
 		Timeout: 30 * time.Second,
@@ -29,12 +30,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	client := NewClient(nil)
 	assert.NotNil(t, client)
 	assert.Equal(t, "http://localhost:30000", client.baseURL)
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	assert.NotNil(t, config)
 	assert.Equal(t, "http://localhost:30000", config.BaseURL)
@@ -42,6 +45,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestClient_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v1/chat/completions", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -100,6 +104,7 @@ func TestClient_Complete(t *testing.T) {
 }
 
 func TestClient_CompleteSimple(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &CompletionResponse{
 			ID: "cmpl-simple",
@@ -123,6 +128,7 @@ func TestClient_CompleteSimple(t *testing.T) {
 }
 
 func TestClient_CompleteWithSystem(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req CompletionRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -153,6 +159,7 @@ func TestClient_CompleteWithSystem(t *testing.T) {
 }
 
 func TestClient_CreateSession(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// WarmPrefix makes a completion request
 		resp := &CompletionResponse{
@@ -176,6 +183,7 @@ func TestClient_CreateSession(t *testing.T) {
 }
 
 func TestClient_GetSession(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	// Create a session first
@@ -193,6 +201,7 @@ func TestClient_GetSession(t *testing.T) {
 }
 
 func TestClient_GetSession_NotFound(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	_, err := client.GetSession(context.Background(), "nonexistent")
@@ -202,6 +211,7 @@ func TestClient_GetSession_NotFound(t *testing.T) {
 }
 
 func TestClient_ContinueSession(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &CompletionResponse{
 			Choices: []CompletionChoice{
@@ -235,6 +245,7 @@ func TestClient_ContinueSession(t *testing.T) {
 }
 
 func TestClient_DeleteSession(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	client.sessions["to-delete"] = &Session{ID: "to-delete"}
@@ -247,6 +258,7 @@ func TestClient_DeleteSession(t *testing.T) {
 }
 
 func TestClient_WarmPrefix(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &CompletionResponse{
 			Choices: []CompletionChoice{
@@ -267,6 +279,7 @@ func TestClient_WarmPrefix(t *testing.T) {
 }
 
 func TestClient_WarmPrefixes(t *testing.T) {
+	t.Parallel()
 	var callCount atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount.Add(1)
@@ -293,6 +306,7 @@ func TestClient_WarmPrefixes(t *testing.T) {
 }
 
 func TestClient_CleanupSessions(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	// Add stale and fresh sessions
@@ -310,6 +324,7 @@ func TestClient_CleanupSessions(t *testing.T) {
 }
 
 func TestClient_Health(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/health", r.URL.Path)
 		resp := &HealthResponse{
@@ -331,6 +346,7 @@ func TestClient_Health(t *testing.T) {
 }
 
 func TestClient_IsAvailable(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &HealthResponse{Status: "healthy"}
 		w.Header().Set("Content-Type", "application/json")
@@ -345,6 +361,7 @@ func TestClient_IsAvailable(t *testing.T) {
 }
 
 func TestClient_IsAvailable_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -357,6 +374,7 @@ func TestClient_IsAvailable_Unhealthy(t *testing.T) {
 }
 
 func TestClient_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal error"}`))
@@ -372,6 +390,7 @@ func TestClient_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -391,6 +410,7 @@ func TestClient_Timeout(t *testing.T) {
 
 // TestClient_SessionHistory tests session history management
 func TestClient_SessionHistory(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req CompletionRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -428,6 +448,7 @@ func TestClient_SessionHistory(t *testing.T) {
 
 // TestClient_ConcurrentSessions tests concurrent session access
 func TestClient_ConcurrentSessions(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &CompletionResponse{
 			Choices: []CompletionChoice{
@@ -475,6 +496,7 @@ func TestClient_ConcurrentSessions(t *testing.T) {
 
 // TestClient_CompleteWithOptions tests completion with various options
 func TestClient_CompleteWithOptions(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req CompletionRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -510,6 +532,7 @@ func TestClient_CompleteWithOptions(t *testing.T) {
 
 // TestClient_ListSessions tests session listing
 func TestClient_ListSessions(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	// Create sessions
@@ -528,6 +551,7 @@ func TestClient_ListSessions(t *testing.T) {
 
 // TestClient_SessionExpiry tests session cleanup based on age
 func TestClient_SessionExpiry(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	// Create old sessions
@@ -555,6 +579,7 @@ func TestClient_SessionExpiry(t *testing.T) {
 
 // TestClient_WarmPrefixWithLongContent tests prefix warming with long content
 func TestClient_WarmPrefixWithLongContent(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req CompletionRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -583,6 +608,7 @@ func TestClient_WarmPrefixWithLongContent(t *testing.T) {
 
 // TestClient_RetryOnNetworkError tests retry behavior on network errors
 func TestClient_RetryOnNetworkError(t *testing.T) {
+	t.Parallel()
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -613,6 +639,7 @@ func TestClient_RetryOnNetworkError(t *testing.T) {
 
 // TestClient_EmptyResponse tests handling of empty responses
 func TestClient_EmptyResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := &CompletionResponse{
 			Choices: []CompletionChoice{},
@@ -631,6 +658,7 @@ func TestClient_EmptyResponse(t *testing.T) {
 
 // TestClient_ContinueSession_NotFound tests continuing non-existent session
 func TestClient_ContinueSession_NotFound(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	_, err := client.ContinueSession(context.Background(), "nonexistent", "hello")
@@ -640,6 +668,7 @@ func TestClient_ContinueSession_NotFound(t *testing.T) {
 
 // TestClient_DeleteSession_NotFound tests deleting non-existent session
 func TestClient_DeleteSession_NotFound(t *testing.T) {
+	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	err := client.DeleteSession(context.Background(), "nonexistent")
@@ -648,6 +677,7 @@ func TestClient_DeleteSession_NotFound(t *testing.T) {
 
 // TestClient_Health_MalformedResponse tests handling of malformed health response
 func TestClient_Health_MalformedResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{invalid json`))

@@ -32,6 +32,7 @@ func setupDebateTestRouter() (*gin.Engine, *DebateHandler) {
 }
 
 func TestNewDebateHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewDebateHandler(nil, nil, logger)
 
@@ -41,6 +42,7 @@ func TestNewDebateHandler(t *testing.T) {
 }
 
 func TestCreateDebate(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateTestRouter()
 
 	tests := []struct {
@@ -134,6 +136,7 @@ func TestCreateDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.request)
 			req := httptest.NewRequest(http.MethodPost, "/v1/debates", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -154,6 +157,7 @@ func TestCreateDebate(t *testing.T) {
 }
 
 func TestGetDebate(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
@@ -188,6 +192,7 @@ func TestGetDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -207,6 +212,7 @@ func TestGetDebate(t *testing.T) {
 }
 
 func TestGetDebateStatus(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate debates with different states
@@ -290,6 +296,7 @@ func TestGetDebateStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 			w := httptest.NewRecorder()
 
@@ -308,6 +315,7 @@ func TestGetDebateStatus(t *testing.T) {
 }
 
 func TestGetDebateResults(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate debates
@@ -387,6 +395,7 @@ func TestGetDebateResults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/results", nil)
 			w := httptest.NewRecorder()
 
@@ -405,6 +414,7 @@ func TestGetDebateResults(t *testing.T) {
 }
 
 func TestListDebates(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate debates
@@ -470,6 +480,7 @@ func TestListDebates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -489,6 +500,7 @@ func TestListDebates(t *testing.T) {
 }
 
 func TestDeleteDebate(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
@@ -519,6 +531,7 @@ func TestDeleteDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodDelete, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -544,6 +557,7 @@ func TestDeleteDebate(t *testing.T) {
 }
 
 func TestDebateRouteRegistration(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate for routes that need it
@@ -579,6 +593,7 @@ func TestDebateRouteRegistration(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
+				t.Parallel()
 			// Re-create the debate for DELETE test (since it gets deleted)
 			if route.method == http.MethodDelete {
 				handler.mu.Lock()
@@ -609,6 +624,7 @@ func TestDebateRouteRegistration(t *testing.T) {
 }
 
 func TestParticipantDefaults(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	request := CreateDebateRequest{
@@ -658,11 +674,13 @@ func TestParticipantDefaults(t *testing.T) {
 }
 
 func TestDebateError(t *testing.T) {
+	t.Parallel()
 	err := &debateError{message: "test error"}
 	assert.Equal(t, "test error", err.Error())
 }
 
 func TestConcurrentDebateAccess(t *testing.T) {
+	t.Parallel()
 	_, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
@@ -710,6 +728,7 @@ func TestConcurrentDebateAccess(t *testing.T) {
 // TestDebateContextNotNil verifies that debates are conducted with a valid context
 // This test prevents regression of the nil context panic bug (fixed 2026-01-06)
 func TestDebateContextNotNil(t *testing.T) {
+	t.Parallel()
 	// This test ensures the runDebate function uses context.Background() instead of nil
 	// The fix was in debate_handler.go:198-200 where nil was passed to ConductDebate
 
@@ -734,6 +753,7 @@ func TestDebateContextNotNil(t *testing.T) {
 // TestDebateWithMockService tests debate execution with a mock service
 // to ensure proper context handling
 func TestDebateWithMockService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
@@ -772,6 +792,7 @@ func TestDebateWithMockService(t *testing.T) {
 
 // TestCreateDebateWithMultiPassValidation tests debate creation with multi-pass validation enabled
 func TestCreateDebateWithMultiPassValidation(t *testing.T) {
+	t.Parallel()
 	router, _ := setupDebateTestRouter()
 
 	tests := []struct {
@@ -841,6 +862,7 @@ func TestCreateDebateWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body, _ := json.Marshal(tt.request)
 			req := httptest.NewRequest(http.MethodPost, "/v1/debates", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -862,6 +884,7 @@ func TestCreateDebateWithMultiPassValidation(t *testing.T) {
 
 // TestGetDebateWithMultiPassValidation tests retrieval of debates with multi-pass validation
 func TestGetDebateWithMultiPassValidation(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	now := time.Now()
@@ -975,6 +998,7 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -994,6 +1018,7 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 
 // TestGetDebateStatusWithMultiPassValidation tests status endpoint with multi-pass validation
 func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
+	t.Parallel()
 	router, handler := setupDebateTestRouter()
 
 	now := time.Now()
@@ -1077,6 +1102,7 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 			w := httptest.NewRecorder()
 
@@ -1096,6 +1122,7 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 
 // TestValidationConfigRequest tests ValidationConfigRequest struct
 func TestValidationConfigRequest(t *testing.T) {
+	t.Parallel()
 	config := ValidationConfigRequest{
 		EnableValidation:    true,
 		EnablePolish:        true,

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewWindsurf(t *testing.T) {
+	t.Parallel()
 	w := New()
 
 	if w == nil {
@@ -33,6 +34,7 @@ func TestNewWindsurf(t *testing.T) {
 }
 
 func TestWindsurfInitialize(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -66,6 +68,7 @@ func TestWindsurfInitialize(t *testing.T) {
 }
 
 func TestWindsurfStartStop(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -94,6 +97,7 @@ func TestWindsurfStartStop(t *testing.T) {
 }
 
 func TestWindsurfExecute(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -186,6 +190,7 @@ func TestWindsurfExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := w.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -199,6 +204,7 @@ func TestWindsurfExecute(t *testing.T) {
 }
 
 func TestWindsurfCascade(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -243,6 +249,7 @@ func TestWindsurfCascade(t *testing.T) {
 }
 
 func TestWindsurfCreateProject(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()
@@ -296,6 +303,7 @@ func TestWindsurfCreateProject(t *testing.T) {
 }
 
 func TestWindsurfGenerateComponent(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -315,6 +323,7 @@ func TestWindsurfGenerateComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.framework, func(t *testing.T) {
+				t.Parallel()
 			result, err := w.Execute(ctx, "generate_component", map[string]interface{}{
 				"name":      "Card",
 				"type":      "functional",
@@ -347,6 +356,7 @@ func TestWindsurfGenerateComponent(t *testing.T) {
 }
 
 func TestWindsurfListProjects(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()
@@ -392,6 +402,7 @@ func TestWindsurfListProjects(t *testing.T) {
 }
 
 func TestWindsurfDeploy(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -442,6 +453,7 @@ func TestWindsurfDeploy(t *testing.T) {
 }
 
 func TestWindsurfDeployProjectNotFound(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -459,6 +471,7 @@ func TestWindsurfDeployProjectNotFound(t *testing.T) {
 }
 
 func TestWindsurfTerminalAI(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -493,6 +506,7 @@ func TestWindsurfTerminalAI(t *testing.T) {
 }
 
 func TestWindsurfCapabilities(t *testing.T) {
+	t.Parallel()
 	w := New()
 	info := w.Info()
 
@@ -521,6 +535,7 @@ func TestWindsurfCapabilities(t *testing.T) {
 }
 
 func TestWindsurfHealth(t *testing.T) {
+	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
@@ -539,6 +554,7 @@ func TestWindsurfHealth(t *testing.T) {
 }
 
 func TestWindsurfProjectsPersistence(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - test needs fixing")
 	tempDir := t.TempDir()
 
@@ -582,6 +598,7 @@ func TestWindsurfProjectsPersistence(t *testing.T) {
 }
 
 func TestWindsurfConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  *Config
@@ -614,6 +631,7 @@ func TestWindsurfConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := New()
 			ctx := context.Background()
 			err := w.Initialize(ctx, tt.config)
@@ -625,6 +643,7 @@ func TestWindsurfConfigValidation(t *testing.T) {
 }
 
 func TestWindsurfGetProjects(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()

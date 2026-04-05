@@ -26,32 +26,38 @@ import (
 // ============================================================================
 
 func TestNormalizeID_AllTypes(t *testing.T) {
+	t.Parallel()
 	t.Run("Float64 whole number converts to int64", func(t *testing.T) {
 		result := normalizeID(float64(42))
 		assert.Equal(t, int64(42), result)
 	})
 
 	t.Run("Float64 decimal stays as float64", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(float64(42.5))
 		assert.Equal(t, float64(42.5), result)
 	})
 
 	t.Run("Int64 stays as int64", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(int64(123))
 		assert.Equal(t, int64(123), result)
 	})
 
 	t.Run("Int converts to int64", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(int(456))
 		assert.Equal(t, int64(456), result)
 	})
 
 	t.Run("String stays as string", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID("request-123")
 		assert.Equal(t, "request-123", result)
 	})
 
 	t.Run("Other types pass through unchanged", func(t *testing.T) {
+			t.Parallel()
 		// Test with a custom type
 		type CustomID struct{ Value int }
 		custom := CustomID{Value: 42}
@@ -60,21 +66,25 @@ func TestNormalizeID_AllTypes(t *testing.T) {
 	})
 
 	t.Run("Nil passes through", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(nil)
 		assert.Nil(t, result)
 	})
 
 	t.Run("Large float64 whole number", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(float64(9007199254740992)) // 2^53
 		assert.Equal(t, int64(9007199254740992), result)
 	})
 
 	t.Run("Negative numbers", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(float64(-42))
 		assert.Equal(t, int64(-42), result)
 	})
 
 	t.Run("Zero", func(t *testing.T) {
+			t.Parallel()
 		result := normalizeID(float64(0))
 		assert.Equal(t, int64(0), result)
 	})
@@ -85,6 +95,7 @@ func TestNormalizeID_AllTypes(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridgeState_String_Comprehensive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		state    SSEBridgeState
 		expected string
@@ -102,6 +113,7 @@ func TestSSEBridgeState_String_Comprehensive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("State_%d", tt.state), func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, tt.state.String())
 		})
 	}
@@ -112,6 +124,7 @@ func TestSSEBridgeState_String_Comprehensive(t *testing.T) {
 // ============================================================================
 
 func TestDefaultSSEBridgeConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	config := DefaultSSEBridgeConfig()
 
 	assert.Equal(t, ":8080", config.Address)
@@ -133,6 +146,7 @@ func TestDefaultSSEBridgeConfig_AllFields(t *testing.T) {
 // ============================================================================
 
 func TestNewSSEBridge_ConfigValidation(t *testing.T) {
+	t.Parallel()
 	t.Run("Empty command slice returns error", func(t *testing.T) {
 		config := SSEBridgeConfig{
 			Command: []string{},
@@ -144,6 +158,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Nil command returns error", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: nil,
 		}
@@ -153,6 +168,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Single command element works", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 		}
@@ -162,6 +178,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Multiple command elements work", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"/bin/bash", "-c", "echo hello"},
 		}
@@ -171,6 +188,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Custom environment is preserved", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Environment: map[string]string{
@@ -185,6 +203,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Custom timeouts are preserved", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command:      []string{"echo"},
 			ReadTimeout:  5 * time.Second,
@@ -199,6 +218,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Working directory is preserved", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command:          []string{"echo"},
 			WorkingDirectory: "/tmp",
@@ -209,6 +229,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("OnProcessExit callback is preserved", func(t *testing.T) {
+			t.Parallel()
 		called := false
 		callback := func(err error) {
 			called = true
@@ -227,6 +248,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("Initial state is idle", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 		}
@@ -236,6 +258,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("HTTP server is configured", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command:      []string{"echo"},
 			Address:      ":9999",
@@ -257,6 +280,7 @@ func TestNewSSEBridge_ConfigValidation(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_AccessorMethods(t *testing.T) {
+	t.Parallel()
 	config := SSEBridgeConfig{
 		Command: []string{"echo"},
 		Address: ":9876",
@@ -265,27 +289,33 @@ func TestSSEBridge_AccessorMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Address returns configured address", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, ":9876", bridge.Address())
 	})
 
 	t.Run("Handler returns non-nil http.Handler", func(t *testing.T) {
+			t.Parallel()
 		handler := bridge.Handler()
 		assert.NotNil(t, handler)
 	})
 
 	t.Run("State returns current state", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, StateIdle, bridge.State())
 	})
 
 	t.Run("ActiveClients returns zero initially", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, 0, bridge.ActiveClients())
 	})
 
 	t.Run("IsHealthy returns false when not running", func(t *testing.T) {
+			t.Parallel()
 		assert.False(t, bridge.IsHealthy())
 	})
 
 	t.Run("Metrics returns valid metrics struct", func(t *testing.T) {
+			t.Parallel()
 		metrics := bridge.Metrics()
 		assert.Equal(t, int64(0), metrics.TotalRequests)
 		assert.Equal(t, int64(0), metrics.SuccessfulRequests)
@@ -303,11 +333,13 @@ func TestSSEBridge_AccessorMethods(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_HandleHealth_EdgeCases(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
 	t.Run("Returns unhealthy when not started", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -330,6 +362,7 @@ func TestSSEBridge_HandleHealth_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Returns unhealthy when in error state", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -354,11 +387,13 @@ func TestSSEBridge_HandleHealth_EdgeCases(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
 	t.Run("Rejects request with wrong content type", func(t *testing.T) {
+			t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -392,6 +427,7 @@ func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Accepts request without content type header", func(t *testing.T) {
+			t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -422,6 +458,7 @@ func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Handles malformed JSON gracefully", func(t *testing.T) {
+			t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -464,6 +501,7 @@ func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Handles string ID in request", func(t *testing.T) {
+			t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -500,6 +538,7 @@ func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_HandleSSE_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("Rejects non-streaming response writer", func(t *testing.T) {
 		// Create a mock response writer that doesn't implement http.Flusher
 		config := SSEBridgeConfig{
@@ -522,6 +561,7 @@ func TestSSEBridge_HandleSSE_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Sends endpoint event with correct host", func(t *testing.T) {
+			t.Parallel()
 		if testing.Short() {
 			t.Skip("Skipping integration test in short mode")
 		}
@@ -600,6 +640,7 @@ func (w *nonFlushingResponseWriter) WriteHeader(statusCode int) {
 // ============================================================================
 
 func TestSSEBridge_SendNotification_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns error with complex params", func(t *testing.T) {
 		if testing.Short() {
 			t.Skip("Skipping integration test in short mode")
@@ -638,6 +679,7 @@ func TestSSEBridge_SendNotification_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Returns error with unmarshalable params", func(t *testing.T) {
+			t.Parallel()
 		if testing.Short() {
 			t.Skip("Skipping integration test in short mode")
 		}
@@ -673,6 +715,7 @@ func TestSSEBridge_SendNotification_EdgeCases(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_SendRequest_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns error with context cancellation", func(t *testing.T) {
 		if testing.Short() {
 			t.Skip("Skipping integration test in short mode")
@@ -732,6 +775,7 @@ done`
 	})
 
 	t.Run("Returns error with unmarshalable params", func(t *testing.T) {
+			t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -755,6 +799,7 @@ done`
 // ============================================================================
 
 func TestSSEBridge_ConcurrentSSEConnections(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -841,6 +886,7 @@ func TestSSEBridge_ConcurrentSSEConnections(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_GracefulShutdown_WithActiveConnections(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -904,11 +950,13 @@ func TestSSEBridge_GracefulShutdown_WithActiveConnections(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_ProcessMonitoring(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
 	t.Run("Calls OnProcessExit when process exits unexpectedly", func(t *testing.T) {
+			t.Parallel()
 		dir := createTempDir(t)
 
 		// Create a script that exits after initialization
@@ -968,6 +1016,7 @@ done`
 // ============================================================================
 
 func TestSSEBridge_ErrorResponses(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -991,6 +1040,7 @@ func TestSSEBridge_ErrorResponses(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	t.Run("Handles MCP error response", func(t *testing.T) {
+			t.Parallel()
 		reqBody := `{"jsonrpc":"2.0","id":1,"method":"error"}`
 		req := httptest.NewRequest(http.MethodPost, "/message", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -1012,6 +1062,7 @@ func TestSSEBridge_ErrorResponses(t *testing.T) {
 // ============================================================================
 
 func TestJSONRPCTypes_Marshaling(t *testing.T) {
+	t.Parallel()
 	t.Run("JSONRPCRequest with all fields", func(t *testing.T) {
 		req := JSONRPCRequest{
 			JSONRPC: "2.0",
@@ -1033,6 +1084,7 @@ func TestJSONRPCTypes_Marshaling(t *testing.T) {
 	})
 
 	t.Run("JSONRPCRequest without ID (notification)", func(t *testing.T) {
+			t.Parallel()
 		req := JSONRPCRequest{
 			JSONRPC: "2.0",
 			Method:  "notification/method",
@@ -1046,6 +1098,7 @@ func TestJSONRPCTypes_Marshaling(t *testing.T) {
 	})
 
 	t.Run("JSONRPCResponse with result", func(t *testing.T) {
+			t.Parallel()
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      1,
@@ -1060,6 +1113,7 @@ func TestJSONRPCTypes_Marshaling(t *testing.T) {
 	})
 
 	t.Run("JSONRPCResponse with error", func(t *testing.T) {
+			t.Parallel()
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      1,
@@ -1079,6 +1133,7 @@ func TestJSONRPCTypes_Marshaling(t *testing.T) {
 	})
 
 	t.Run("JSONRPCError with complex data", func(t *testing.T) {
+			t.Parallel()
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      1,
@@ -1105,6 +1160,7 @@ func TestJSONRPCTypes_Marshaling(t *testing.T) {
 // ============================================================================
 
 func TestJSONRPCErrorCodes_Values(t *testing.T) {
+	t.Parallel()
 	// Standard error codes
 	assert.Equal(t, -32700, JSONRPCParseError)
 	assert.Equal(t, -32600, JSONRPCInvalidRequest)
@@ -1128,6 +1184,7 @@ func TestJSONRPCErrorCodes_Values(t *testing.T) {
 // ============================================================================
 
 func TestSSEClient_Fields(t *testing.T) {
+	t.Parallel()
 	client := &SSEClient{
 		ID:        "test-client-123",
 		Done:      make(chan struct{}),
@@ -1144,6 +1201,7 @@ func TestSSEClient_Fields(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridgeMetrics_Fields(t *testing.T) {
+	t.Parallel()
 	metrics := SSEBridgeMetrics{
 		TotalRequests:        100,
 		SuccessfulRequests:   90,
@@ -1174,6 +1232,7 @@ func TestSSEBridgeMetrics_Fields(t *testing.T) {
 // ============================================================================
 
 func TestBridge_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	assert.Equal(t, 9000, config.Port)
@@ -1185,6 +1244,7 @@ func TestBridge_DefaultConfig(t *testing.T) {
 }
 
 func TestBridge_New(t *testing.T) {
+	t.Parallel()
 	t.Run("With nil config uses defaults", func(t *testing.T) {
 		b := New(nil)
 		assert.NotNil(t, b)
@@ -1192,6 +1252,7 @@ func TestBridge_New(t *testing.T) {
 	})
 
 	t.Run("With custom config", func(t *testing.T) {
+			t.Parallel()
 		config := &Config{
 			Port:       8080,
 			MCPCommand: "echo hello",
@@ -1204,17 +1265,20 @@ func TestBridge_New(t *testing.T) {
 	})
 
 	t.Run("Initializes clients map", func(t *testing.T) {
+			t.Parallel()
 		b := New(nil)
 		assert.NotNil(t, b.clients)
 	})
 
 	t.Run("Initializes done channel", func(t *testing.T) {
+			t.Parallel()
 		b := New(nil)
 		assert.NotNil(t, b.done)
 	})
 }
 
 func TestBridge_HandleRoot(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "echo test",
 	})
@@ -1242,6 +1306,7 @@ func TestBridge_HandleRoot(t *testing.T) {
 }
 
 func TestBridge_HandleHealth_NoProcess(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "echo test",
 	})
@@ -1262,6 +1327,7 @@ func TestBridge_HandleHealth_NoProcess(t *testing.T) {
 }
 
 func TestBridge_HandleMessage_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "echo test",
 	})
@@ -1269,6 +1335,7 @@ func TestBridge_HandleMessage_MethodNotAllowed(t *testing.T) {
 	methods := []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch}
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(method, "/message", nil)
 			w := httptest.NewRecorder()
 
@@ -1280,6 +1347,7 @@ func TestBridge_HandleMessage_MethodNotAllowed(t *testing.T) {
 }
 
 func TestBridge_HandleMessage_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "echo test",
 	})
@@ -1292,6 +1360,7 @@ func TestBridge_HandleMessage_InvalidJSON(t *testing.T) {
 
 	for _, input := range invalidJSONInputs {
 		t.Run(fmt.Sprintf("input_%s", input), func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/message", strings.NewReader(input))
 			w := httptest.NewRecorder()
 
@@ -1303,6 +1372,7 @@ func TestBridge_HandleMessage_InvalidJSON(t *testing.T) {
 }
 
 func TestBridge_HandleSSE_FlusherSupport(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "echo test",
 	})
@@ -1321,6 +1391,7 @@ func TestBridge_HandleSSE_FlusherSupport(t *testing.T) {
 // ============================================================================
 
 func TestBridge_Start_EmptyCommand(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "",
 	})
@@ -1334,6 +1405,7 @@ func TestBridge_Start_EmptyCommand(t *testing.T) {
 }
 
 func TestBridge_Start_InvalidCommand(t *testing.T) {
+	t.Parallel()
 	b := New(&Config{
 		MCPCommand: "/nonexistent/command that does not exist",
 	})
@@ -1351,6 +1423,7 @@ func TestBridge_Start_InvalidCommand(t *testing.T) {
 // ============================================================================
 
 func TestMain_RequiresMCPCommand(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("TEST_MAIN_EXIT") == "1" {
 		// Clear MCP_COMMAND to trigger error
 		_ = os.Unsetenv("MCP_COMMAND")
@@ -1375,6 +1448,7 @@ func TestMain_RequiresMCPCommand(t *testing.T) {
 // ============================================================================
 
 func TestBufioScanner_LargeMessages(t *testing.T) {
+	t.Parallel()
 	// Test that the scanner can handle large messages (up to 10MB)
 	largeData := strings.Repeat("x", 1000000) // 1MB
 	input := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"result":{"data":"%s"}}`, largeData)
@@ -1390,6 +1464,7 @@ func TestBufioScanner_LargeMessages(t *testing.T) {
 }
 
 func TestBufioScanner_EmptyLines(t *testing.T) {
+	t.Parallel()
 	input := "\n\n{\"jsonrpc\":\"2.0\",\"id\":1}\n\n{\"jsonrpc\":\"2.0\",\"id\":2}\n\n"
 	reader := strings.NewReader(input)
 	scanner := bufio.NewScanner(reader)
@@ -1411,6 +1486,7 @@ func TestBufioScanner_EmptyLines(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_ConcurrentRequestIDGeneration(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -1478,6 +1554,7 @@ func TestSSEBridge_ConcurrentRequestIDGeneration(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_PendingRequestCleanup(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -1521,6 +1598,7 @@ func TestSSEBridge_PendingRequestCleanup(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_RemoveNonExistentClient(t *testing.T) {
+	t.Parallel()
 	config := SSEBridgeConfig{
 		Command: []string{"echo"},
 		Logger:  createTestLogger(),
@@ -1536,6 +1614,7 @@ func TestSSEBridge_RemoveNonExistentClient(t *testing.T) {
 }
 
 func TestSSEBridge_RemoveClientTwice(t *testing.T) {
+	t.Parallel()
 	config := SSEBridgeConfig{
 		Command: []string{"echo"},
 		Logger:  createTestLogger(),
@@ -1565,6 +1644,7 @@ func TestSSEBridge_RemoveClientTwice(t *testing.T) {
 // ============================================================================
 
 func TestSSEBridge_WriteJSONRPCResponse_MarshalError(t *testing.T) {
+	t.Parallel()
 	config := SSEBridgeConfig{
 		Command: []string{"echo"},
 		Logger:  createTestLogger(),

@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewSimpleOpenRouterProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		apiKey string
@@ -46,6 +47,7 @@ func TestNewSimpleOpenRouterProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			got := NewSimpleOpenRouterProvider(tt.apiKey)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -56,6 +58,7 @@ func TestNewSimpleOpenRouterProvider(t *testing.T) {
 }
 
 func TestNewSimpleOpenRouterProviderWithBaseURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		apiKey  string
@@ -90,6 +93,7 @@ func TestNewSimpleOpenRouterProviderWithBaseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			got := NewSimpleOpenRouterProviderWithBaseURL(tt.apiKey, tt.baseURL)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -100,6 +104,7 @@ func TestNewSimpleOpenRouterProviderWithBaseURL(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/chat/completions", r.URL.Path)
@@ -182,6 +187,7 @@ func TestSimpleOpenRouterProvider_Complete_Success(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_ErrorResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"error": map[string]interface{}{
@@ -215,6 +221,7 @@ func TestSimpleOpenRouterProvider_Complete_ErrorResponse(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_NoChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"id":      "chatcmpl-789",
@@ -247,6 +254,7 @@ func TestSimpleOpenRouterProvider_Complete_NoChoices(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProvider("test-api-key")
 	// Create a client that will fail
 	provider.client = &http.Client{
@@ -274,6 +282,7 @@ func TestSimpleOpenRouterProvider_Complete_NetworkError(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -299,6 +308,7 @@ func TestSimpleOpenRouterProvider_Complete_InvalidJSON(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	// Create a mock server that simulates SSE streaming
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -361,6 +371,7 @@ func TestSimpleOpenRouterProvider_CompleteStream(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		apiKey  string
@@ -380,6 +391,7 @@ func TestSimpleOpenRouterProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewSimpleOpenRouterProvider(tt.apiKey)
 			err := provider.HealthCheck()
 			if tt.wantErr {
@@ -393,6 +405,7 @@ func TestSimpleOpenRouterProvider_HealthCheck(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProvider("test-api-key")
 	caps := provider.GetCapabilities()
 
@@ -432,6 +445,7 @@ func TestSimpleOpenRouterProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		apiKey    string
@@ -457,6 +471,7 @@ func TestSimpleOpenRouterProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewSimpleOpenRouterProvider(tt.apiKey)
 			valid, errs := provider.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -466,6 +481,7 @@ func TestSimpleOpenRouterProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_WithMessages(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody struct {
 			Messages []models.Message `json:"messages"`
@@ -523,6 +539,7 @@ func TestSimpleOpenRouterProvider_Complete_WithMessages(t *testing.T) {
 }
 
 func TestSimpleOpenRouterProvider_Complete_ContextTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
@@ -569,6 +586,7 @@ func TestSimpleOpenRouterProvider_Complete_ContextTimeout(t *testing.T) {
 
 // Test isRetryableStatus function
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		statusCode int
@@ -588,6 +606,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -596,6 +615,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 // Test isAuthRetryableStatus function
 func TestIsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		statusCode int
@@ -610,6 +630,7 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := isAuthRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -618,6 +639,7 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 // Test Complete with retry on server error
 func TestSimpleOpenRouterProvider_Complete_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -668,6 +690,7 @@ func TestSimpleOpenRouterProvider_Complete_RetryOnServerError(t *testing.T) {
 
 // Test Complete with all retries exhausted (network error path)
 func TestSimpleOpenRouterProvider_Complete_RetryExhausted(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -709,6 +732,7 @@ func TestSimpleOpenRouterProvider_Complete_RetryExhausted(t *testing.T) {
 
 // Test Complete with network failure during retry
 func TestSimpleOpenRouterProvider_Complete_RetryNetworkFailure(t *testing.T) {
+	t.Parallel()
 	// Use an invalid address to simulate network failure
 	provider := NewSimpleOpenRouterProviderWithRetry("test-key", "http://localhost:1", RetryConfig{
 		MaxRetries:   2,
@@ -735,6 +759,7 @@ func TestSimpleOpenRouterProvider_Complete_RetryNetworkFailure(t *testing.T) {
 
 // Test Complete with rate limiting (429)
 func TestSimpleOpenRouterProvider_Complete_RateLimited429(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -785,6 +810,7 @@ func TestSimpleOpenRouterProvider_Complete_RateLimited429(t *testing.T) {
 
 // Test Complete with nil context (should use default)
 func TestSimpleOpenRouterProvider_Complete_NilContext(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"id": "chatcmpl-nil-ctx",
@@ -824,6 +850,7 @@ func TestSimpleOpenRouterProvider_Complete_NilContext(t *testing.T) {
 
 // Test Complete with max tokens capping
 func TestSimpleOpenRouterProvider_Complete_MaxTokensCapping(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name              string
 		inputMaxTokens    int
@@ -838,6 +865,7 @@ func TestSimpleOpenRouterProvider_Complete_MaxTokensCapping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var reqBody struct {
 					MaxTokens int `json:"max_tokens"`
@@ -884,6 +912,7 @@ func TestSimpleOpenRouterProvider_Complete_MaxTokensCapping(t *testing.T) {
 
 // Test Complete with tools
 func TestSimpleOpenRouterProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody struct {
 			Tools []struct {
@@ -976,6 +1005,7 @@ func TestSimpleOpenRouterProvider_Complete_WithTools(t *testing.T) {
 
 // Test Complete with tools - non-function tool type is skipped
 func TestSimpleOpenRouterProvider_Complete_WithNonFunctionTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody struct {
 			Tools []interface{} `json:"tools"`
@@ -1028,6 +1058,7 @@ func TestSimpleOpenRouterProvider_Complete_WithNonFunctionTools(t *testing.T) {
 
 // Test Complete with numeric ID in response
 func TestSimpleOpenRouterProvider_Complete_NumericIDInResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"id": 12345, // Numeric ID
@@ -1064,6 +1095,7 @@ func TestSimpleOpenRouterProvider_Complete_NumericIDInResponse(t *testing.T) {
 
 // Test Complete with finish_reason in response
 func TestSimpleOpenRouterProvider_Complete_WithFinishReason(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		finishReason   string
@@ -1077,6 +1109,7 @@ func TestSimpleOpenRouterProvider_Complete_WithFinishReason(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				response := map[string]interface{}{
 					"id": "chatcmpl-finish",
@@ -1116,6 +1149,7 @@ func TestSimpleOpenRouterProvider_Complete_WithFinishReason(t *testing.T) {
 
 // Test CompleteStream with HTTP error
 func TestSimpleOpenRouterProvider_CompleteStream_HTTPError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": "Invalid API key"}`))
@@ -1140,6 +1174,7 @@ func TestSimpleOpenRouterProvider_CompleteStream_HTTPError(t *testing.T) {
 
 // Test CompleteStream with context cancellation
 func TestSimpleOpenRouterProvider_CompleteStream_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1198,6 +1233,7 @@ func TestSimpleOpenRouterProvider_CompleteStream_ContextCancelled(t *testing.T) 
 
 // Test CompleteStream with max tokens capping
 func TestSimpleOpenRouterProvider_CompleteStream_MaxTokensCapping(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody struct {
 			MaxTokens int `json:"max_tokens"`
@@ -1236,6 +1272,7 @@ func TestSimpleOpenRouterProvider_CompleteStream_MaxTokensCapping(t *testing.T) 
 
 // Test HealthCheck with mock server
 func TestSimpleOpenRouterProvider_HealthCheck_WithServer(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		statusCode int
@@ -1250,6 +1287,7 @@ func TestSimpleOpenRouterProvider_HealthCheck_WithServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/models", r.URL.Path)
@@ -1273,6 +1311,7 @@ func TestSimpleOpenRouterProvider_HealthCheck_WithServer(t *testing.T) {
 
 // Test HealthCheck with network error
 func TestSimpleOpenRouterProvider_HealthCheck_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProviderWithBaseURL("test-key", "http://localhost:1")
 	provider.client = &http.Client{Timeout: 100 * time.Millisecond}
 
@@ -1283,6 +1322,7 @@ func TestSimpleOpenRouterProvider_HealthCheck_NetworkError(t *testing.T) {
 
 // Test waitWithJitter
 func TestSimpleOpenRouterProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProvider("test-key")
 
 	// Test normal wait
@@ -1297,6 +1337,7 @@ func TestSimpleOpenRouterProvider_WaitWithJitter(t *testing.T) {
 
 // Test waitWithJitter with cancelled context
 func TestSimpleOpenRouterProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProvider("test-key")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1312,6 +1353,7 @@ func TestSimpleOpenRouterProvider_WaitWithJitter_ContextCancelled(t *testing.T) 
 
 // Test nextDelay
 func TestSimpleOpenRouterProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewSimpleOpenRouterProviderWithRetry("test-key", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 100 * time.Millisecond,
@@ -1334,6 +1376,7 @@ func TestSimpleOpenRouterProvider_NextDelay(t *testing.T) {
 
 // Test DefaultRetryConfig
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -1344,6 +1387,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 
 // Test Complete with context cancelled before request
 func TestSimpleOpenRouterProvider_Complete_ContextCancelledBeforeRequest(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("should not reach server")
 	}))
@@ -1370,6 +1414,7 @@ func TestSimpleOpenRouterProvider_Complete_ContextCancelledBeforeRequest(t *test
 
 // Test Complete with nil usage in response
 func TestSimpleOpenRouterProvider_Complete_NilUsage(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"id": "chatcmpl-nil-usage",
@@ -1407,6 +1452,7 @@ func TestSimpleOpenRouterProvider_Complete_NilUsage(t *testing.T) {
 
 // Test Complete with nil ID in response
 func TestSimpleOpenRouterProvider_Complete_NilID(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			// No id field

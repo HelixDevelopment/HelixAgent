@@ -9,6 +9,7 @@ import (
 )
 
 func TestGetMetrics(t *testing.T) {
+	t.Parallel()
 	// GetMetrics should return the singleton instance
 	metrics1 := GetMetrics()
 	require.NotNil(t, metrics1)
@@ -21,6 +22,7 @@ func TestGetMetrics(t *testing.T) {
 }
 
 func TestMetrics_RecordCacheHit(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -33,6 +35,7 @@ func TestMetrics_RecordCacheHit(t *testing.T) {
 }
 
 func TestMetrics_RecordCacheMiss(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -42,6 +45,7 @@ func TestMetrics_RecordCacheMiss(t *testing.T) {
 }
 
 func TestMetrics_RecordValidation(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -64,12 +68,14 @@ func TestMetrics_RecordValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			metrics.RecordValidation(tt.success, tt.duration)
 		})
 	}
 }
 
 func TestMetrics_RecordStreamComplete(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -97,12 +103,14 @@ func TestMetrics_RecordStreamComplete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			metrics.RecordStreamComplete(tt.duration, tt.tokens)
 		})
 	}
 }
 
 func TestMetrics_RecordServiceCall(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -138,12 +146,14 @@ func TestMetrics_RecordServiceCall(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			metrics.RecordServiceCall(tt.service, tt.method, tt.duration, tt.err)
 		})
 	}
 }
 
 func TestMetrics_SetServiceAvailable(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -171,12 +181,14 @@ func TestMetrics_SetServiceAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			metrics.SetServiceAvailable(tt.service, tt.available)
 		})
 	}
 }
 
 func TestMetrics_RecordOptimization(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -199,12 +211,14 @@ func TestMetrics_RecordOptimization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			metrics.RecordOptimization(tt.isRequest, tt.duration)
 		})
 	}
 }
 
 func TestMetrics_GetCacheHitRate(t *testing.T) {
+	t.Parallel()
 	metrics := GetMetrics()
 	require.NotNil(t, metrics)
 
@@ -215,6 +229,7 @@ func TestMetrics_GetCacheHitRate(t *testing.T) {
 }
 
 func TestMetricsSnapshot(t *testing.T) {
+	t.Parallel()
 	// Test MetricsSnapshot struct
 	snapshot := MetricsSnapshot{
 		CacheHits:         100,

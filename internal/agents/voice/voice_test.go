@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewService(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	svc := NewService(logger)
 
@@ -23,6 +24,7 @@ func TestNewService(t *testing.T) {
 }
 
 func TestService_SetRecognizer(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 	recognizer := NewMockRecognizer([]string{"test"})
 
@@ -32,6 +34,7 @@ func TestService_SetRecognizer(t *testing.T) {
 }
 
 func TestService_RegisterCommand(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	cmd := &Command{
@@ -48,6 +51,7 @@ func TestService_RegisterCommand(t *testing.T) {
 }
 
 func TestService_RegisterAlias(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	// Register a command first
@@ -65,6 +69,7 @@ func TestService_RegisterAlias(t *testing.T) {
 }
 
 func TestService_EnableDisable(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	assert.True(t, svc.IsEnabled())
@@ -77,6 +82,7 @@ func TestService_EnableDisable(t *testing.T) {
 }
 
 func TestService_IsAvailable(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	// No recognizer set
@@ -88,6 +94,7 @@ func TestService_IsAvailable(t *testing.T) {
 }
 
 func TestService_Listen(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 	svc.SetRecognizer(NewMockRecognizer([]string{"status"}))
 
@@ -101,6 +108,7 @@ func TestService_Listen(t *testing.T) {
 }
 
 func TestService_Listen_Disabled(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 	svc.Disable()
 
@@ -112,6 +120,7 @@ func TestService_Listen_Disabled(t *testing.T) {
 }
 
 func TestService_Listen_NoRecognizer(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	ctx := context.Background()
@@ -122,6 +131,7 @@ func TestService_Listen_NoRecognizer(t *testing.T) {
 }
 
 func TestService_ProcessCommand(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	actionCalled := false
@@ -140,6 +150,7 @@ func TestService_ProcessCommand(t *testing.T) {
 }
 
 func TestService_ProcessCommand_Unknown(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	result, err := svc.ProcessCommand("unknowncommand")
@@ -150,6 +161,7 @@ func TestService_ProcessCommand_Unknown(t *testing.T) {
 }
 
 func TestService_ProcessCommand_ActionError(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 	svc.RegisterCommand(&Command{
 		Name:   "fail",
@@ -164,6 +176,7 @@ func TestService_ProcessCommand_ActionError(t *testing.T) {
 }
 
 func TestService_parseCommand(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	tests := []struct {
@@ -186,6 +199,7 @@ func TestService_parseCommand(t *testing.T) {
 }
 
 func TestService_GetCommands(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	cmds := svc.GetCommands()
@@ -194,6 +208,7 @@ func TestService_GetCommands(t *testing.T) {
 }
 
 func TestMockRecognizer(t *testing.T) {
+	t.Parallel()
 	responses := []string{"first", "second"}
 	mock := NewMockRecognizer(responses)
 
@@ -218,6 +233,7 @@ func TestMockRecognizer(t *testing.T) {
 }
 
 func TestTextRecognizer(t *testing.T) {
+	t.Parallel()
 	// Test with custom reader
 	reader := func() (string, error) {
 		return "typed input", nil
@@ -235,12 +251,14 @@ func TestTextRecognizer(t *testing.T) {
 }
 
 func TestTextRecognizer_Default(t *testing.T) {
+	t.Parallel()
 	// Test with default reader (will fail without stdin)
 	recognizer := NewTextRecognizer(nil)
 	assert.NotNil(t, recognizer)
 }
 
 func TestCommandMatcher(t *testing.T) {
+	t.Parallel()
 	commands := []Command{
 		{
 			Name:     "status",
@@ -267,6 +285,7 @@ func TestCommandMatcher(t *testing.T) {
 }
 
 func TestSimilarity(t *testing.T) {
+	t.Parallel()
 	// Exact match
 	assert.Equal(t, 1.0, similarity("hello world", "hello world"))
 
@@ -284,6 +303,7 @@ func TestSimilarity(t *testing.T) {
 }
 
 func TestWordSet(t *testing.T) {
+	t.Parallel()
 	words := wordSet("hello world hello")
 
 	assert.Len(t, words, 2)
@@ -293,6 +313,7 @@ func TestWordSet(t *testing.T) {
 }
 
 func TestDefaultCommands(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	// Test status command
@@ -318,6 +339,7 @@ func TestDefaultCommands(t *testing.T) {
 }
 
 func TestCommandResult(t *testing.T) {
+	t.Parallel()
 	result := &CommandResult{
 		Command: "test",
 		Args:    []string{"arg1"},
@@ -331,6 +353,7 @@ func TestCommandResult(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	svc := NewService(nil)
 
 	// Test concurrent reads and writes

@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewTool(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	tool := NewTool(logger)
 	
@@ -20,11 +21,13 @@ func TestNewTool(t *testing.T) {
 }
 
 func TestTool_Name(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	assert.Equal(t, "Browser", tool.Name())
 }
 
 func TestTool_Description(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	desc := tool.Description()
 	assert.NotEmpty(t, desc)
@@ -32,6 +35,7 @@ func TestTool_Description(t *testing.T) {
 }
 
 func TestTool_Schema(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	schema := tool.Schema()
 	
@@ -55,6 +59,7 @@ func TestTool_Schema(t *testing.T) {
 }
 
 func TestTool_Execute_MissingAction(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -69,6 +74,7 @@ func TestTool_Execute_MissingAction(t *testing.T) {
 }
 
 func TestTool_Execute_MissingURL(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -83,6 +89,7 @@ func TestTool_Execute_MissingURL(t *testing.T) {
 }
 
 func TestTool_Execute_ValidNavigate(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -105,6 +112,7 @@ func TestTool_Execute_ValidNavigate(t *testing.T) {
 }
 
 func TestTool_Execute_WithSelector(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -124,6 +132,7 @@ func TestTool_Execute_WithSelector(t *testing.T) {
 }
 
 func TestTool_Navigate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -139,6 +148,7 @@ func TestTool_Navigate(t *testing.T) {
 }
 
 func TestTool_Fetch(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -154,6 +164,7 @@ func TestTool_Fetch(t *testing.T) {
 }
 
 func TestTool_Extract(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	
@@ -169,6 +180,7 @@ func TestTool_Extract(t *testing.T) {
 }
 
 func TestTool_Screenshot(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -181,6 +193,7 @@ func TestTool_Screenshot(t *testing.T) {
 }
 
 func TestTool_Execute_InvalidTimeoutType(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	ctx := context.Background()
 	
@@ -197,6 +210,7 @@ func TestTool_Execute_InvalidTimeoutType(t *testing.T) {
 }
 
 func TestTool_Execute_ContextTimeout(t *testing.T) {
+	t.Parallel()
 	tool := NewTool(logrus.New())
 	
 	// Create context with very short timeout
@@ -218,6 +232,7 @@ func TestTool_Execute_ContextTimeout(t *testing.T) {
 }
 
 func TestTool_ConcurrentExecution(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	

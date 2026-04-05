@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, "test-key", p.apiKey)
@@ -23,12 +24,14 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestNewProviderWithCustomValues(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "https://custom.api.com", "gpt-4")
 	assert.Equal(t, "https://custom.api.com", p.baseURL)
 	assert.Equal(t, "gpt-4", p.model)
 }
 
 func TestNewProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	config := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -41,6 +44,7 @@ func TestNewProviderWithRetry(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 	assert.Equal(t, 3, config.MaxRetries)
 	assert.Equal(t, time.Second, config.InitialDelay)
@@ -49,6 +53,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestProvider_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -101,6 +106,7 @@ func TestProvider_Complete(t *testing.T) {
 }
 
 func TestProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -173,6 +179,7 @@ func TestProvider_Complete_WithTools(t *testing.T) {
 }
 
 func TestProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid request"}}`))
@@ -189,6 +196,7 @@ func TestProvider_Complete_Error(t *testing.T) {
 }
 
 func TestProvider_Complete_WithSystemPrompt(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -218,6 +226,7 @@ func TestProvider_Complete_WithSystemPrompt(t *testing.T) {
 }
 
 func TestProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -258,6 +267,7 @@ func TestProvider_CompleteStream(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		w.WriteHeader(http.StatusOK)
@@ -271,6 +281,7 @@ func TestProvider_HealthCheck(t *testing.T) {
 }
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 	caps := p.GetCapabilities()
 
@@ -287,6 +298,7 @@ func TestProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		apiKey     string
@@ -309,6 +321,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.apiKey, "", "")
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -318,6 +331,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "gpt-4o")
 
 	req := &models.LLMRequest{
@@ -350,6 +364,7 @@ func TestProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestProvider_ConvertRequest_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "gpt-4o")
 
 	req := &models.LLMRequest{
@@ -365,6 +380,7 @@ func TestProvider_ConvertRequest_DefaultMaxTokens(t *testing.T) {
 }
 
 func TestProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 
 	tests := []struct {
@@ -406,6 +422,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)
@@ -414,6 +431,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestProvider_CalculateBackoff(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 
 	// First attempt should be around initial delay
@@ -428,6 +446,7 @@ func TestProvider_CalculateBackoff(t *testing.T) {
 }
 
 func TestProvider_GetSetModel(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "gpt-4")
 	assert.Equal(t, "gpt-4", p.GetModel())
 
@@ -436,11 +455,13 @@ func TestProvider_GetSetModel(t *testing.T) {
 }
 
 func TestProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 	assert.Equal(t, "openai", p.GetName())
 }
 
 func TestProvider_SetOrganization(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("test-key", "", "")
 	assert.Empty(t, p.organization)
 
@@ -449,6 +470,7 @@ func TestProvider_SetOrganization(t *testing.T) {
 }
 
 func TestProvider_Retry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -489,6 +511,7 @@ func TestProvider_Retry(t *testing.T) {
 }
 
 func TestProvider_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
 		w.WriteHeader(http.StatusOK)

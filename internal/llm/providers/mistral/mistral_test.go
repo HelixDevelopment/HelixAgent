@@ -14,6 +14,7 @@ import (
 )
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 
 	assert.Equal(t, 3, config.MaxRetries)
@@ -23,6 +24,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestNewMistralProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("test-key", "", "")
 
 	assert.NotNil(t, provider)
@@ -32,6 +34,7 @@ func TestNewMistralProvider(t *testing.T) {
 }
 
 func TestNewMistralProvider_CustomValues(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("api-key", "https://custom.api.com", "custom-model")
 
 	assert.Equal(t, "api-key", provider.apiKey)
@@ -40,6 +43,7 @@ func TestNewMistralProvider_CustomValues(t *testing.T) {
 }
 
 func TestNewMistralProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 500 * time.Millisecond,
@@ -56,6 +60,7 @@ func TestNewMistralProviderWithRetry(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	req := &models.LLMRequest{
@@ -86,6 +91,7 @@ func TestMistralProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertRequest_WithTools(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	req := &models.LLMRequest{
@@ -117,6 +123,7 @@ func TestMistralProvider_ConvertRequest_WithTools(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertRequest_MaxTokensLimit(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	// Test exceeding max limit
@@ -137,6 +144,7 @@ func TestMistralProvider_ConvertRequest_MaxTokensLimit(t *testing.T) {
 }
 
 func TestMistralProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	tests := []struct {
@@ -160,6 +168,7 @@ func TestMistralProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestMistralProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	caps := provider.GetCapabilities()
@@ -177,6 +186,7 @@ func TestMistralProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestMistralProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	// Note: NewMistralProvider sets default values for empty baseURL and model,
 	// so only the apiKey check can fail via the constructor.
 	tests := []struct {
@@ -203,6 +213,7 @@ func TestMistralProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestMistralProvider_NextDelay(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProviderWithRetry("key", "", "", RetryConfig{
 		MaxRetries:   3,
 		InitialDelay: 1 * time.Second,
@@ -223,6 +234,7 @@ func TestMistralProvider_NextDelay(t *testing.T) {
 }
 
 func TestIsRetryableStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode int
 		retryable  bool
@@ -244,12 +256,14 @@ func TestIsRetryableStatus(t *testing.T) {
 }
 
 func TestIsAuthRetryableStatus(t *testing.T) {
+	t.Parallel()
 	assert.True(t, isAuthRetryableStatus(http.StatusUnauthorized))
 	assert.False(t, isAuthRetryableStatus(http.StatusForbidden))
 	assert.False(t, isAuthRetryableStatus(http.StatusOK))
 }
 
 func TestMin(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1, min(1, 2))
 	assert.Equal(t, 1, min(2, 1))
 	assert.Equal(t, 0, min(0, 5))
@@ -257,6 +271,7 @@ func TestMin(t *testing.T) {
 }
 
 func TestMistralRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := MistralRequest{
 		Model:       "mistral-large-latest",
 		Messages:    []MistralMessage{{Role: "user", Content: "test"}},
@@ -274,6 +289,7 @@ func TestMistralRequest_Fields(t *testing.T) {
 }
 
 func TestMistralMessage_Fields(t *testing.T) {
+	t.Parallel()
 	msg := MistralMessage{
 		Role:    "assistant",
 		Content: "Hello, how can I help?",
@@ -296,6 +312,7 @@ func TestMistralMessage_Fields(t *testing.T) {
 }
 
 func TestMistralResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := MistralResponse{
 		ID:      "resp-123",
 		Object:  "chat.completion",
@@ -321,6 +338,7 @@ func TestMistralResponse_Fields(t *testing.T) {
 }
 
 func TestMistralUsage_Fields(t *testing.T) {
+	t.Parallel()
 	usage := MistralUsage{
 		PromptTokens:     100,
 		CompletionTokens: 200,
@@ -333,6 +351,7 @@ func TestMistralUsage_Fields(t *testing.T) {
 }
 
 func TestMistralTool_Fields(t *testing.T) {
+	t.Parallel()
 	tool := MistralTool{
 		Type: "function",
 		Function: MistralToolFunc{
@@ -352,6 +371,7 @@ func TestMistralTool_Fields(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -394,6 +414,7 @@ func TestMistralProvider_Complete_Success(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_WithToolCalls(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{
 			"id": "test-id",
@@ -438,6 +459,7 @@ func TestMistralProvider_Complete_WithToolCalls(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{"message": "Invalid API key", "type": "auth_error"}`
 		w.WriteHeader(http.StatusUnauthorized)
@@ -460,6 +482,7 @@ func TestMistralProvider_Complete_Error(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{"id": "test", "choices": [], "usage": {}}`
 		w.WriteHeader(http.StatusOK)
@@ -482,6 +505,7 @@ func TestMistralProvider_Complete_EmptyChoices(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	req := &models.LLMRequest{ID: "req-1"}
@@ -529,6 +553,7 @@ func TestMistralProvider_ConvertResponse(t *testing.T) {
 }
 
 func TestMistralStreamResponse_Fields(t *testing.T) {
+	t.Parallel()
 	finishReason := "stop"
 	resp := MistralStreamResponse{
 		ID:      "stream-1",
@@ -551,6 +576,7 @@ func TestMistralStreamResponse_Fields(t *testing.T) {
 }
 
 func TestMistralErrorResponse_Fields(t *testing.T) {
+	t.Parallel()
 	code := "invalid_api_key"
 	resp := MistralErrorResponse{
 		Object:  "error",
@@ -566,6 +592,7 @@ func TestMistralErrorResponse_Fields(t *testing.T) {
 }
 
 func TestMistralProvider_CompleteStream_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Contains(t, r.Header.Get("Authorization"), "Bearer")
@@ -606,6 +633,7 @@ func TestMistralProvider_CompleteStream_Success(t *testing.T) {
 }
 
 func TestMistralProvider_CompleteStream_HTTPError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Internal Server Error"))
@@ -627,6 +655,7 @@ func TestMistralProvider_CompleteStream_HTTPError(t *testing.T) {
 }
 
 func TestMistralProvider_CompleteStream_WithFinishReason(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -656,6 +685,7 @@ func TestMistralProvider_CompleteStream_WithFinishReason(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not valid json"))
@@ -677,6 +707,7 @@ func TestMistralProvider_Complete_InvalidJSON(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate slow response
 		time.Sleep(2 * time.Second)
@@ -701,6 +732,7 @@ func TestMistralProvider_Complete_ContextCancelled(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_RetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -739,6 +771,7 @@ func TestMistralProvider_Complete_RetryOnServerError(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_RetryExhausted(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -766,6 +799,7 @@ func TestMistralProvider_Complete_RetryExhausted(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_RateLimited429(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -800,6 +834,7 @@ func TestMistralProvider_Complete_RateLimited429(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_AuthRetry401(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -835,6 +870,7 @@ func TestMistralProvider_Complete_AuthRetry401(t *testing.T) {
 }
 
 func TestMistralProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/models" {
 			w.WriteHeader(http.StatusOK)
@@ -856,6 +892,7 @@ func TestMistralProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestMistralProvider_HealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	// Use invalid URL to simulate connection error
 	provider := NewMistralProvider("test-key", "http://invalid.local", "")
 	provider.httpClient = &http.Client{Timeout: 100 * time.Millisecond}
@@ -867,6 +904,7 @@ func TestMistralProvider_HealthCheck_Error(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_ErrorResponseParsing(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"message": "Bad request: invalid model", "type": "invalid_request_error"}`))
@@ -888,6 +926,7 @@ func TestMistralProvider_Complete_ErrorResponseParsing(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_NonJSONErrorResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Internal Server Error"))
@@ -909,6 +948,7 @@ func TestMistralProvider_Complete_NonJSONErrorResponse(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertResponse_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	req := &models.LLMRequest{ID: "req-1"}
@@ -926,6 +966,7 @@ func TestMistralProvider_ConvertResponse_EmptyChoices(t *testing.T) {
 }
 
 func TestMistralProvider_CalculateConfidence_Bounds(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	// Test that confidence stays within 0-1 bounds
@@ -942,6 +983,7 @@ func TestMistralProvider_CalculateConfidence_Bounds(t *testing.T) {
 }
 
 func TestMistralProvider_WaitWithJitter(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	ctx := context.Background()
@@ -956,6 +998,7 @@ func TestMistralProvider_WaitWithJitter(t *testing.T) {
 }
 
 func TestMistralProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -970,6 +1013,7 @@ func TestMistralProvider_WaitWithJitter_ContextCancelled(t *testing.T) {
 }
 
 func TestMistralProvider_CompleteStream_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1002,6 +1046,7 @@ func TestMistralProvider_CompleteStream_MalformedJSON(t *testing.T) {
 }
 
 func TestMistralProvider_CompleteStream_EmptyLines(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -1034,6 +1079,7 @@ func TestMistralProvider_CompleteStream_EmptyLines(t *testing.T) {
 }
 
 func TestRetryConfig_Fields(t *testing.T) {
+	t.Parallel()
 	config := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -1048,6 +1094,7 @@ func TestRetryConfig_Fields(t *testing.T) {
 }
 
 func TestMistralProvider_Complete_GeneratesRequestID(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := `{"id": "test", "choices": [{"message": {"content": "OK"}, "finish_reason": "stop"}], "usage": {"total_tokens": 5}}`
 		w.WriteHeader(http.StatusOK)
@@ -1069,6 +1116,7 @@ func TestMistralProvider_Complete_GeneratesRequestID(t *testing.T) {
 }
 
 func TestMistralProvider_ConvertRequest_NoSystemPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewMistralProvider("key", "", "")
 
 	req := &models.LLMRequest{

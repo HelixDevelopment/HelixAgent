@@ -10,17 +10,20 @@ import (
 )
 
 func TestNew_NotNil(t *testing.T) {
+	t.Parallel()
 	adapter := agenticadapter.New(nil)
 	require.NotNil(t, adapter)
 }
 
 func TestAdapter_NewWorkflow_NotNil(t *testing.T) {
+	t.Parallel()
 	adapter := agenticadapter.New(nil)
 	wf := adapter.NewWorkflow("test-wf", "test workflow", nil)
 	require.NotNil(t, wf)
 }
 
 func TestAdapter_ExecuteWorkflow_ReturnsState(t *testing.T) {
+	t.Parallel()
 	adapter := agenticadapter.New(nil)
 	ctx := context.Background()
 	state, err := adapter.ExecuteWorkflow(ctx, "test-wf", map[string]any{"key": "value"})
@@ -29,6 +32,7 @@ func TestAdapter_ExecuteWorkflow_ReturnsState(t *testing.T) {
 }
 
 func TestAdapter_ExecuteWorkflow_WithNilParams(t *testing.T) {
+	t.Parallel()
 	adapter := agenticadapter.New(nil)
 	ctx := context.Background()
 	state, err := adapter.ExecuteWorkflow(ctx, "test-wf", nil)

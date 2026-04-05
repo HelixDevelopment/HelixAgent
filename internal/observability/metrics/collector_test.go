@@ -23,6 +23,7 @@ func newTestCollector(t *testing.T) *Collector {
 }
 
 func TestNewCollector(t *testing.T) {
+	t.Parallel()
 	t.Run("creates collector with all metrics", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -34,6 +35,7 @@ func TestNewCollector(t *testing.T) {
 	})
 
 	t.Run("metrics are registered with prometheus", func(t *testing.T) {
+			t.Parallel()
 		// This test verifies metrics can be collected
 		c := newTestCollector(t)
 
@@ -46,6 +48,7 @@ func TestNewCollector(t *testing.T) {
 	})
 
 	t.Run("returns handler for metrics endpoint", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		handler := c.Handler()
@@ -54,6 +57,7 @@ func TestNewCollector(t *testing.T) {
 }
 
 func TestCollector_RequestDuration(t *testing.T) {
+	t.Parallel()
 	t.Run("records request duration", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -67,6 +71,7 @@ func TestCollector_RequestDuration(t *testing.T) {
 	})
 
 	t.Run("handles different status codes", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		statuses := []string{"200", "201", "400", "401", "403", "404", "500", "503"}
@@ -78,6 +83,7 @@ func TestCollector_RequestDuration(t *testing.T) {
 	})
 
 	t.Run("handles different HTTP methods", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
@@ -90,6 +96,7 @@ func TestCollector_RequestDuration(t *testing.T) {
 }
 
 func TestCollector_ProviderLatency(t *testing.T) {
+	t.Parallel()
 	t.Run("records provider latency", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -102,6 +109,7 @@ func TestCollector_ProviderLatency(t *testing.T) {
 	})
 
 	t.Run("handles multiple providers", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		providers := []string{
@@ -118,6 +126,7 @@ func TestCollector_ProviderLatency(t *testing.T) {
 }
 
 func TestCollector_CacheMetrics(t *testing.T) {
+	t.Parallel()
 	t.Run("records cache hits", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -130,6 +139,7 @@ func TestCollector_CacheMetrics(t *testing.T) {
 	})
 
 	t.Run("records cache misses", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		// Record cache misses
@@ -141,6 +151,7 @@ func TestCollector_CacheMetrics(t *testing.T) {
 	})
 
 	t.Run("calculates hit ratio", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		// Simulate 80% hit rate
@@ -158,6 +169,7 @@ func TestCollector_CacheMetrics(t *testing.T) {
 }
 
 func TestCollector_Handler(t *testing.T) {
+	t.Parallel()
 	t.Run("exposes metrics via HTTP", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -184,6 +196,7 @@ func TestCollector_Handler(t *testing.T) {
 	})
 
 	t.Run("returns prometheus format", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
@@ -200,6 +213,7 @@ func TestCollector_Handler(t *testing.T) {
 	})
 
 	t.Run("includes all registered metrics", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		// Record all metric types
@@ -224,6 +238,7 @@ func TestCollector_Handler(t *testing.T) {
 }
 
 func TestCollector_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	t.Run("handles concurrent metric recording", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -262,6 +277,7 @@ func TestCollector_ConcurrentAccess(t *testing.T) {
 }
 
 func TestCollector_MetricLabels(t *testing.T) {
+	t.Parallel()
 	t.Run("validates label counts", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -283,6 +299,7 @@ func TestCollector_MetricLabels(t *testing.T) {
 }
 
 func TestCollector_ObservationValues(t *testing.T) {
+	t.Parallel()
 	t.Run("handles various observation values", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -303,6 +320,7 @@ func TestCollector_ObservationValues(t *testing.T) {
 }
 
 func TestCollector_HistogramBuckets(t *testing.T) {
+	t.Parallel()
 	t.Run("uses correct buckets for request duration", func(t *testing.T) {
 		c := newTestCollector(t)
 
@@ -317,6 +335,7 @@ func TestCollector_HistogramBuckets(t *testing.T) {
 	})
 
 	t.Run("uses correct buckets for provider latency", func(t *testing.T) {
+			t.Parallel()
 		c := newTestCollector(t)
 
 		// Record values in different buckets

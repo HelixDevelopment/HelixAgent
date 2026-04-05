@@ -150,6 +150,7 @@ func setupCogneeHandlerTestServer() (*httptest.Server, *CogneeAPIHandler) {
 // =====================================================
 
 func TestCogneeAPIHandler_Cognify_WithDatasetName(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -174,6 +175,7 @@ func TestCogneeAPIHandler_Cognify_WithDatasetName(t *testing.T) {
 }
 
 func TestCogneeAPIHandler_Cognify_EmptyBody(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -189,6 +191,7 @@ func TestCogneeAPIHandler_Cognify_EmptyBody(t *testing.T) {
 }
 
 func TestCogneeAPIHandler_Cognify_DatasetsArray(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -217,6 +220,7 @@ func TestCogneeAPIHandler_Cognify_DatasetsArray(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_GetInsights_WithDatasetName(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -244,6 +248,7 @@ func TestCogneeAPIHandler_GetInsights_WithDatasetName(t *testing.T) {
 }
 
 func TestCogneeAPIHandler_GetInsights_DatasetsAndDatasetNameBoth(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -271,6 +276,7 @@ func TestCogneeAPIHandler_GetInsights_DatasetsAndDatasetNameBoth(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_GetGraphCompletion_WithDatasetName(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -302,6 +308,7 @@ func TestCogneeAPIHandler_GetGraphCompletion_WithDatasetName(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_VisualizeGraph_WithAllQueryParams(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -322,6 +329,7 @@ func TestCogneeAPIHandler_VisualizeGraph_WithAllQueryParams(t *testing.T) {
 }
 
 func TestCogneeAPIHandler_VisualizeGraph_NoQueryParams(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -339,6 +347,7 @@ func TestCogneeAPIHandler_VisualizeGraph_NoQueryParams(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_Health_ResponseFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -376,6 +385,7 @@ func TestCogneeAPIHandler_Health_ResponseFields(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_Stats_ResponseFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -413,6 +423,7 @@ func TestCogneeAPIHandler_Stats_ResponseFields(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_GetConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -456,6 +467,7 @@ func TestCogneeAPIHandler_GetConfig_AllFields(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_RegisterRoutes_AllRoutes(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -503,6 +515,7 @@ func TestCogneeAPIHandler_RegisterRoutes_AllRoutes(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_ProvideFeedback_AllFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -537,6 +550,7 @@ func TestCogneeAPIHandler_ProvideFeedback_AllFields(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_DeleteDataset_ValidName(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -556,6 +570,7 @@ func TestCogneeAPIHandler_DeleteDataset_ValidName(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_CreateDataset_WithMetadata(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -590,6 +605,7 @@ func TestCogneeAPIHandler_CreateDataset_WithMetadata(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_AddMemory_AllFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 
@@ -625,6 +641,7 @@ func TestCogneeAPIHandler_AddMemory_AllFields(t *testing.T) {
 // =====================================================
 
 func TestCogneeAPIHandler_SearchMemory_ResponseFields(t *testing.T) {
+	t.Parallel()
 	server, handler := setupCogneeHandlerTestServer()
 	defer server.Close()
 

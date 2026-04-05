@@ -15,6 +15,7 @@ import (
 )
 
 func TestDefaultPipelineConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultPipelineConfig()
 	require.NotNil(t, config)
 
@@ -38,6 +39,7 @@ func TestDefaultPipelineConfig(t *testing.T) {
 }
 
 func TestNewPipeline(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		config *PipelineConfig
@@ -58,6 +60,7 @@ func TestNewPipeline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			// Create a minimal service
 			service, err := NewService(DefaultConfig())
 			require.NoError(t, err)
@@ -72,6 +75,7 @@ func TestNewPipeline(t *testing.T) {
 }
 
 func TestPipeline_GetConfig(t *testing.T) {
+	t.Parallel()
 	service, err := NewService(DefaultConfig())
 	require.NoError(t, err)
 
@@ -92,6 +96,7 @@ func TestPipeline_GetConfig(t *testing.T) {
 }
 
 func TestPipeline_SetConfig(t *testing.T) {
+	t.Parallel()
 	service, err := NewService(DefaultConfig())
 	require.NoError(t, err)
 
@@ -118,6 +123,7 @@ func TestPipeline_SetConfig(t *testing.T) {
 }
 
 func TestPipeline_OptimizeRequest_NoServices(t *testing.T) {
+	t.Parallel()
 	// Create a service with all external services disabled
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
@@ -156,6 +162,7 @@ func TestPipeline_OptimizeRequest_NoServices(t *testing.T) {
 }
 
 func TestPipeline_OptimizeRequest_ParallelStages(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
 	config.LlamaIndex.Enabled = false
@@ -187,6 +194,7 @@ func TestPipeline_OptimizeRequest_ParallelStages(t *testing.T) {
 }
 
 func TestPipeline_OptimizeRequest_SequentialStages(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
 	config.LlamaIndex.Enabled = false
@@ -218,6 +226,7 @@ func TestPipeline_OptimizeRequest_SequentialStages(t *testing.T) {
 }
 
 func TestPipeline_OptimizeResponse_NoSchema(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 
@@ -247,6 +256,7 @@ func TestPipeline_OptimizeResponse_NoSchema(t *testing.T) {
 }
 
 func TestPipelineResult_Structure(t *testing.T) {
+	t.Parallel()
 	result := &PipelineResult{
 		CacheHit:         true,
 		CachedResponse:   "cached response",
@@ -276,6 +286,7 @@ func TestPipelineResult_Structure(t *testing.T) {
 }
 
 func TestPipelineStage_Constants(t *testing.T) {
+	t.Parallel()
 	// Test all pipeline stage constants
 	stages := []PipelineStage{
 		StageCacheCheck,
@@ -301,6 +312,7 @@ func TestPipelineStage_Constants(t *testing.T) {
 }
 
 func TestPipelineConfig_AllFields(t *testing.T) {
+	t.Parallel()
 	config := &PipelineConfig{
 		EnableCacheCheck:                true,
 		EnableContextRetrieval:          true,
@@ -331,6 +343,7 @@ func TestPipelineConfig_AllFields(t *testing.T) {
 }
 
 func TestPipeline_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
 	config.LlamaIndex.Enabled = false
@@ -363,6 +376,7 @@ func TestPipeline_ConcurrentAccess(t *testing.T) {
 }
 
 func TestPipeline_BuildOptimizedPrompt(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
 	config.LlamaIndex.Enabled = false
@@ -394,6 +408,7 @@ func TestPipeline_BuildOptimizedPrompt(t *testing.T) {
 }
 
 func TestPipeline_BuildOptimizedPrompt_NoContext(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SGLang.Enabled = false
 	config.LlamaIndex.Enabled = false
@@ -421,6 +436,7 @@ func TestPipeline_BuildOptimizedPrompt_NoContext(t *testing.T) {
 }
 
 func TestPipeline_OptimizeRequest_WithCacheEnabled(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = true
 	config.SemanticCache.MaxEntries = 100
@@ -457,6 +473,7 @@ func TestPipeline_OptimizeRequest_WithCacheEnabled(t *testing.T) {
 }
 
 func TestPipeline_OptimizeRequest_WithEmptyEmbedding(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = true
 	config.SGLang.Enabled = false
@@ -489,6 +506,7 @@ func TestPipeline_OptimizeRequest_WithEmptyEmbedding(t *testing.T) {
 }
 
 func TestPipeline_OptimizeResponse_WithValidation(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 	config.SGLang.Enabled = false
@@ -527,6 +545,7 @@ func TestPipeline_OptimizeResponse_WithValidation(t *testing.T) {
 }
 
 func TestPipeline_OptimizeResponse_WithCacheStore(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = true
 	config.SemanticCache.MaxEntries = 100
@@ -557,6 +576,7 @@ func TestPipeline_OptimizeResponse_WithCacheStore(t *testing.T) {
 }
 
 func TestPipeline_OptimizeResponse_EmptyEmbedding(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = true
 	config.SGLang.Enabled = false
@@ -587,6 +607,7 @@ func TestPipeline_OptimizeResponse_EmptyEmbedding(t *testing.T) {
 }
 
 func TestPipeline_ParallelStages_WithShortPrompt(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 	config.SGLang.Enabled = false
@@ -622,6 +643,7 @@ func TestPipeline_ParallelStages_WithShortPrompt(t *testing.T) {
 }
 
 func TestPipeline_SequentialStages_WithShortPrompt(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 	config.SGLang.Enabled = false
@@ -654,6 +676,7 @@ func TestPipeline_SequentialStages_WithShortPrompt(t *testing.T) {
 }
 
 func TestPipeline_RetrieveContext_NoClient(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 	config.SGLang.Enabled = false
@@ -674,6 +697,7 @@ func TestPipeline_RetrieveContext_NoClient(t *testing.T) {
 }
 
 func TestPipeline_DecomposeTask_NoClient(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = false
 	config.SGLang.Enabled = false
@@ -694,6 +718,7 @@ func TestPipeline_DecomposeTask_NoClient(t *testing.T) {
 }
 
 func TestPipeline_MultipleConcurrentOptimizations(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.SemanticCache.Enabled = true
 	config.SemanticCache.MaxEntries = 100
@@ -745,6 +770,7 @@ func TestPipeline_MultipleConcurrentOptimizations(t *testing.T) {
 }
 
 func TestPipeline_StreamWithPipeline(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.Streaming.Enabled = true
 	config.SemanticCache.Enabled = false
@@ -791,6 +817,7 @@ func TestPipeline_StreamWithPipeline(t *testing.T) {
 }
 
 func TestPipeline_StreamWithPipeline_WithProgress(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.Streaming.Enabled = true
 	config.SemanticCache.Enabled = false
@@ -831,6 +858,7 @@ func TestPipeline_StreamWithPipeline_WithProgress(t *testing.T) {
 }
 
 func TestPipeline_StreamWithPipeline_EmptyStream(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	config.Streaming.Enabled = true
 	config.SemanticCache.Enabled = false
@@ -866,6 +894,7 @@ func TestPipeline_StreamWithPipeline_EmptyStream(t *testing.T) {
 // Tests with mock servers for parallel and sequential stages
 
 func TestPipeline_ParallelStages_WithMockLlamaIndex(t *testing.T) {
+	t.Parallel()
 	// Create mock LlamaIndex server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -919,6 +948,7 @@ func TestPipeline_ParallelStages_WithMockLlamaIndex(t *testing.T) {
 }
 
 func TestPipeline_SequentialStages_WithMockLlamaIndex(t *testing.T) {
+	t.Parallel()
 	// Create mock LlamaIndex server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -971,6 +1001,7 @@ func TestPipeline_SequentialStages_WithMockLlamaIndex(t *testing.T) {
 }
 
 func TestPipeline_ParallelStages_WithMockLangChain(t *testing.T) {
+	t.Parallel()
 	// Create mock LangChain server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -1025,6 +1056,7 @@ func TestPipeline_ParallelStages_WithMockLangChain(t *testing.T) {
 }
 
 func TestPipeline_SequentialStages_WithMockLangChain(t *testing.T) {
+	t.Parallel()
 	// Create mock LangChain server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -1077,6 +1109,7 @@ func TestPipeline_SequentialStages_WithMockLangChain(t *testing.T) {
 }
 
 func TestPipeline_ParallelStages_WithMockSGLang(t *testing.T) {
+	t.Parallel()
 	// Create mock SGLang server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -1122,6 +1155,7 @@ func TestPipeline_ParallelStages_WithMockSGLang(t *testing.T) {
 }
 
 func TestPipeline_SequentialStages_WithMockSGLang(t *testing.T) {
+	t.Parallel()
 	// Create mock SGLang server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -1166,6 +1200,7 @@ func TestPipeline_SequentialStages_WithMockSGLang(t *testing.T) {
 }
 
 func TestPipeline_ParallelStages_AllServicesEnabled(t *testing.T) {
+	t.Parallel()
 	// Create mock servers for all services
 	llamaServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -1248,6 +1283,7 @@ func TestPipeline_ParallelStages_AllServicesEnabled(t *testing.T) {
 }
 
 func TestPipeline_RetrieveContext_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			w.WriteHeader(http.StatusOK)
@@ -1288,6 +1324,7 @@ func TestPipeline_RetrieveContext_WithMockServer(t *testing.T) {
 }
 
 func TestPipeline_DecomposeTask_WithMockServer(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			w.WriteHeader(http.StatusOK)

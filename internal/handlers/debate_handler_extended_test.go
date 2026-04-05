@@ -20,6 +20,7 @@ func init() {
 
 // TestNewDebateHandler_Extended tests handler creation with various configs
 func TestNewDebateHandler_Extended(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
@@ -35,6 +36,7 @@ func TestNewDebateHandler_Extended(t *testing.T) {
 
 // TestNewDebateHandlerWithSkills tests handler creation with skills set via setter
 func TestNewDebateHandlerWithSkills(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
@@ -47,6 +49,7 @@ func TestNewDebateHandlerWithSkills(t *testing.T) {
 
 // TestDebateHandler_SetSkillsIntegration tests setting skills integration
 func TestDebateHandler_SetSkillsIntegration(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewDebateHandler(nil, nil, logger)
 
@@ -56,6 +59,7 @@ func TestDebateHandler_SetSkillsIntegration(t *testing.T) {
 
 // TestDebateHandler_SetOrchestratorIntegration tests setting orchestrator integration
 func TestDebateHandler_SetOrchestratorIntegration(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	handler := NewDebateHandler(nil, nil, logger)
 
@@ -65,6 +69,7 @@ func TestDebateHandler_SetOrchestratorIntegration(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_InvalidJSON tests create with invalid JSON
 func TestDebateHandler_CreateDebate_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -86,6 +91,7 @@ func TestDebateHandler_CreateDebate_InvalidJSON(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_MissingTopic tests create without topic
 func TestDebateHandler_CreateDebate_MissingTopic(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -110,6 +116,7 @@ func TestDebateHandler_CreateDebate_MissingTopic(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_InsufficientParticipants tests create with <2 participants
 func TestDebateHandler_CreateDebate_InsufficientParticipants(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -134,6 +141,7 @@ func TestDebateHandler_CreateDebate_InsufficientParticipants(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_Success tests successful creation
 func TestDebateHandler_CreateDebate_Success(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -166,6 +174,7 @@ func TestDebateHandler_CreateDebate_Success(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_WithDebateID tests creation with provided ID
 func TestDebateHandler_CreateDebate_WithDebateID(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -197,6 +206,7 @@ func TestDebateHandler_CreateDebate_WithDebateID(t *testing.T) {
 
 // TestDebateHandler_CreateDebate_WithAllOptions tests creation with all options
 func TestDebateHandler_CreateDebate_WithAllOptions(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -257,6 +267,7 @@ func TestDebateHandler_CreateDebate_WithAllOptions(t *testing.T) {
 
 // TestDebateHandler_GetDebate_NotFound tests get non-existent debate
 func TestDebateHandler_GetDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -278,6 +289,7 @@ func TestDebateHandler_GetDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebate_Success tests successful get
 func TestDebateHandler_GetDebate_Success(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -321,6 +333,7 @@ func TestDebateHandler_GetDebate_Success(t *testing.T) {
 
 // TestDebateHandler_GetDebateStatus_NotFound tests status of non-existent debate
 func TestDebateHandler_GetDebateStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -337,6 +350,7 @@ func TestDebateHandler_GetDebateStatus_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_NotFound tests results of non-existent debate
 func TestDebateHandler_GetDebateResults_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -353,6 +367,7 @@ func TestDebateHandler_GetDebateResults_NotFound(t *testing.T) {
 
 // TestDebateHandler_GetDebateResults_NotCompleted tests results of incomplete debate
 func TestDebateHandler_GetDebateResults_NotCompleted(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -395,6 +410,7 @@ func TestDebateHandler_GetDebateResults_NotCompleted(t *testing.T) {
 
 // TestDebateHandler_ListDebates_Empty tests listing with no debates
 func TestDebateHandler_ListDebates_Empty(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -417,6 +433,7 @@ func TestDebateHandler_ListDebates_Empty(t *testing.T) {
 
 // TestDebateHandler_ListDebates_WithDebates tests listing with debates
 func TestDebateHandler_ListDebates_WithDebates(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -458,6 +475,7 @@ func TestDebateHandler_ListDebates_WithDebates(t *testing.T) {
 
 // TestDebateHandler_ListDebates_WithStatusFilter tests listing with status filter
 func TestDebateHandler_ListDebates_WithStatusFilter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -492,6 +510,7 @@ func TestDebateHandler_ListDebates_WithStatusFilter(t *testing.T) {
 
 // TestDebateHandler_DeleteDebate_NotFound tests deleting non-existent debate
 func TestDebateHandler_DeleteDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -508,6 +527,7 @@ func TestDebateHandler_DeleteDebate_NotFound(t *testing.T) {
 
 // TestDebateHandler_DeleteDebate_Success tests successful deletion
 func TestDebateHandler_DeleteDebate_Success(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -550,6 +570,7 @@ func TestDebateHandler_DeleteDebate_Success(t *testing.T) {
 
 // TestDebateHandler_RegisterRoutes tests route registration
 func TestDebateHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := NewDebateHandler(nil, nil, logger)
@@ -579,6 +600,7 @@ func TestDebateHandler_RegisterRoutes(t *testing.T) {
 
 // TestCreateDebateRequest_Struct tests request struct fields
 func TestCreateDebateRequest_Struct(t *testing.T) {
+	t.Parallel()
 	req := CreateDebateRequest{
 		DebateID:                  "debate-123",
 		Topic:                     "Test topic",
@@ -604,6 +626,7 @@ func TestCreateDebateRequest_Struct(t *testing.T) {
 
 // TestParticipantConfigRequest_Struct tests participant struct fields
 func TestParticipantConfigRequest_Struct(t *testing.T) {
+	t.Parallel()
 	participant := ParticipantConfigRequest{
 		ParticipantID: "participant-1",
 		Name:          "AI Expert",
@@ -627,6 +650,7 @@ func TestParticipantConfigRequest_Struct(t *testing.T) {
 
 // TestValidationConfigRequest_Struct tests validation config struct fields
 func TestValidationConfigRequest_Struct(t *testing.T) {
+	t.Parallel()
 	config := ValidationConfigRequest{
 		EnableValidation:    true,
 		EnablePolish:        true,
@@ -648,6 +672,7 @@ func TestValidationConfigRequest_Struct(t *testing.T) {
 
 // TestDebateError_Extended tests debateError implementation with various messages
 func TestDebateError_Extended(t *testing.T) {
+	t.Parallel()
 	err := &debateError{message: "test error message"}
 
 	assert.Equal(t, "test error message", err.Error())

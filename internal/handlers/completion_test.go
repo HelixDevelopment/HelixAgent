@@ -19,6 +19,7 @@ import (
 
 // TestCompletionHandler_Complete_Success tests successful completion request
 func TestCompletionHandler_Complete_Success(t *testing.T) {
+	t.Parallel()
 	// Create a simple test that doesn't require mocking
 	// This test focuses on request parsing and response formatting
 
@@ -51,6 +52,7 @@ func TestCompletionHandler_Complete_Success(t *testing.T) {
 
 // TestCompletionHandler_Complete_InvalidRequest tests invalid request handling
 func TestCompletionHandler_Complete_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	// Create invalid request (missing required prompt field)
 	reqBody := map[string]interface{}{
 		"model": "test-model",
@@ -75,6 +77,7 @@ func TestCompletionHandler_Complete_InvalidRequest(t *testing.T) {
 
 // TestConvertToInternalRequest tests conversion from API request to internal request
 func TestConvertToInternalRequest(t *testing.T) {
+	t.Parallel()
 	// Create test handler with nil service (we're only testing conversion)
 	handler := &CompletionHandler{}
 
@@ -118,6 +121,7 @@ func TestConvertToInternalRequest(t *testing.T) {
 
 // TestConvertToInternalRequest_Defaults tests default values
 func TestConvertToInternalRequest_Defaults(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	// Create minimal test request
@@ -141,6 +145,7 @@ func TestConvertToInternalRequest_Defaults(t *testing.T) {
 
 // TestConvertToAPIResponse tests conversion from internal response to API response
 func TestConvertToAPIResponse(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	// Create test response
@@ -177,6 +182,7 @@ func TestConvertToAPIResponse(t *testing.T) {
 
 // TestConvertToChatResponse tests conversion to chat response format
 func TestConvertToChatResponse(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	createdAt := time.Now()
@@ -224,6 +230,7 @@ func TestConvertToChatResponse(t *testing.T) {
 
 // TestSendError tests error response formatting
 func TestSendError(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -245,6 +252,7 @@ func TestSendError(t *testing.T) {
 
 // TestCompletionHandler_Models tests model listing
 func TestCompletionHandler_Models(t *testing.T) {
+	t.Parallel()
 	// This test doesn't require a service since Models() doesn't use it
 	handler := &CompletionHandler{}
 
@@ -283,6 +291,7 @@ func TestCompletionHandler_Models(t *testing.T) {
 
 // TestNewCompletionHandler tests handler creation
 func TestNewCompletionHandler(t *testing.T) {
+	t.Parallel()
 	// Create a mock request service
 	handler := NewCompletionHandler(nil)
 
@@ -292,6 +301,7 @@ func TestNewCompletionHandler(t *testing.T) {
 
 // TestConvertToStreamingResponse tests conversion to streaming response format
 func TestConvertToStreamingResponse(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	createdAt := time.Now()
@@ -335,6 +345,7 @@ func TestConvertToStreamingResponse(t *testing.T) {
 
 // TestConvertToChatStreamingResponse tests conversion to chat streaming response format
 func TestConvertToChatStreamingResponse(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	createdAt := time.Now()
@@ -381,6 +392,7 @@ func TestConvertToChatStreamingResponse(t *testing.T) {
 
 // TestConvertToInternalRequest_WithContextValues tests conversion with context values
 func TestConvertToInternalRequest_WithContextValues(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -403,6 +415,7 @@ func TestConvertToInternalRequest_WithContextValues(t *testing.T) {
 
 // TestConvertToInternalRequest_WithMessages tests conversion with messages
 func TestConvertToInternalRequest_WithMessages(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -427,6 +440,7 @@ func TestConvertToInternalRequest_WithMessages(t *testing.T) {
 
 // TestConvertToInternalRequest_WithToolCalls tests conversion with tool calls
 func TestConvertToInternalRequest_WithToolCalls(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -458,6 +472,7 @@ func TestConvertToInternalRequest_WithToolCalls(t *testing.T) {
 
 // TestCompletionHandler_Models_Direct tests the Models handler directly
 func TestCompletionHandler_Models_Direct(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -496,6 +511,7 @@ func TestCompletionHandler_Models_Direct(t *testing.T) {
 
 // TestCompletionHandler_Complete_InvalidJSON tests Complete with invalid JSON
 func TestCompletionHandler_Complete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -515,6 +531,7 @@ func TestCompletionHandler_Complete_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_InvalidJSON tests CompleteStream with invalid JSON
 func TestCompletionHandler_CompleteStream_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -534,6 +551,7 @@ func TestCompletionHandler_CompleteStream_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_Chat_InvalidJSON tests Chat with invalid JSON
 func TestCompletionHandler_Chat_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -553,6 +571,7 @@ func TestCompletionHandler_Chat_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_InvalidJSON tests ChatStream with invalid JSON
 func TestCompletionHandler_ChatStream_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -572,6 +591,7 @@ func TestCompletionHandler_ChatStream_InvalidJSON(t *testing.T) {
 
 // TestCompletionHandler_Complete_MissingPrompt tests Complete with missing required field
 func TestCompletionHandler_Complete_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	reqBody := map[string]interface{}{
@@ -598,6 +618,7 @@ func TestCompletionHandler_Complete_MissingPrompt(t *testing.T) {
 
 // TestCompletionHandler_Chat_MissingPrompt tests Chat with missing required field
 func TestCompletionHandler_Chat_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	reqBody := map[string]interface{}{
@@ -622,6 +643,7 @@ func TestCompletionHandler_Chat_MissingPrompt(t *testing.T) {
 
 // TestCompletionRequest_Struct tests CompletionRequest struct fields
 func TestCompletionRequest_Struct(t *testing.T) {
+	t.Parallel()
 	req := CompletionRequest{
 		Prompt:         "test prompt",
 		Model:          "test-model",
@@ -655,6 +677,7 @@ func TestCompletionRequest_Struct(t *testing.T) {
 
 // TestCompletionResponse_Struct tests CompletionResponse struct fields
 func TestCompletionResponse_Struct(t *testing.T) {
+	t.Parallel()
 	resp := CompletionResponse{
 		ID:                "test-id",
 		Object:            "text_completion",
@@ -694,6 +717,7 @@ func TestCompletionResponse_Struct(t *testing.T) {
 
 // TestCompletionChoice_Struct tests CompletionChoice struct fields
 func TestCompletionChoice_Struct(t *testing.T) {
+	t.Parallel()
 	choice := CompletionChoice{
 		Index:        0,
 		FinishReason: "stop",
@@ -720,6 +744,7 @@ func TestCompletionChoice_Struct(t *testing.T) {
 
 // TestCompletionUsage_Struct tests CompletionUsage struct fields
 func TestCompletionUsage_Struct(t *testing.T) {
+	t.Parallel()
 	usage := CompletionUsage{
 		PromptTokens:     50,
 		CompletionTokens: 75,
@@ -733,6 +758,7 @@ func TestCompletionUsage_Struct(t *testing.T) {
 
 // TestCompletionLogProbs_Struct tests CompletionLogProbs struct fields
 func TestCompletionLogProbs_Struct(t *testing.T) {
+	t.Parallel()
 	logProbs := CompletionLogProbs{
 		Token:      map[string]float64{"token1": -0.5, "token2": -1.0},
 		TextOffset: 5,
@@ -750,6 +776,7 @@ func TestCompletionLogProbs_Struct(t *testing.T) {
 
 // TestCompletionLogProb_Struct tests CompletionLogProb struct fields
 func TestCompletionLogProb_Struct(t *testing.T) {
+	t.Parallel()
 	logProb := CompletionLogProb{
 		Token:   "test_token",
 		Logprob: -0.25,
@@ -765,6 +792,7 @@ func TestCompletionLogProb_Struct(t *testing.T) {
 
 // TestErrorResponse_Struct tests ErrorResponse struct fields
 func TestErrorResponse_Struct(t *testing.T) {
+	t.Parallel()
 	errResp := ErrorResponse{}
 	errResp.Error.Message = "Test error message"
 	errResp.Error.Type = "invalid_request"
@@ -777,6 +805,7 @@ func TestErrorResponse_Struct(t *testing.T) {
 
 // TestCompletionHandler_SendError_Various tests sendError with various error types
 func TestCompletionHandler_SendError_Various(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	tests := []struct {
@@ -818,6 +847,7 @@ func TestCompletionHandler_SendError_Various(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -837,6 +867,7 @@ func TestCompletionHandler_SendError_Various(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_MissingPrompt tests stream with missing prompt
 func TestCompletionHandler_CompleteStream_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	reqBody := map[string]interface{}{
@@ -861,6 +892,7 @@ func TestCompletionHandler_CompleteStream_MissingPrompt(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_MissingPrompt tests chat stream with missing prompt
 func TestCompletionHandler_ChatStream_MissingPrompt(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	reqBody := map[string]interface{}{
@@ -885,6 +917,7 @@ func TestCompletionHandler_ChatStream_MissingPrompt(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_WithInvalidUserID tests invalid user ID type
 func TestCompletionHandler_ConvertToInternalRequest_WithInvalidUserID(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	req := &CompletionRequest{
@@ -907,6 +940,7 @@ func TestCompletionHandler_ConvertToInternalRequest_WithInvalidUserID(t *testing
 
 // TestCompletionHandler_ConvertToInternalRequest_WithName tests messages with name field
 func TestCompletionHandler_ConvertToInternalRequest_WithName(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	name := "TestUser"
@@ -929,12 +963,14 @@ func TestCompletionHandler_ConvertToInternalRequest_WithName(t *testing.T) {
 
 // TestCompletionHandler_ConvertToAPIResponse_VariousFinishReasons tests response conversion
 func TestCompletionHandler_ConvertToAPIResponse_VariousFinishReasons(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	finishReasons := []string{"stop", "length", "content_filter", "tool_calls", "function_call"}
 
 	for _, reason := range finishReasons {
 		t.Run(reason, func(t *testing.T) {
+				t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "test-id",
 				Content:      "Test response",
@@ -952,6 +988,7 @@ func TestCompletionHandler_ConvertToAPIResponse_VariousFinishReasons(t *testing.
 
 // TestCompletionHandler_ConvertToChatResponse_WithZeroTokens tests zero tokens
 func TestCompletionHandler_ConvertToChatResponse_WithZeroTokens(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -973,6 +1010,7 @@ func TestCompletionHandler_ConvertToChatResponse_WithZeroTokens(t *testing.T) {
 
 // TestCompletionHandler_ConvertToStreamingResponse_LargeResponse tests large response
 func TestCompletionHandler_ConvertToStreamingResponse_LargeResponse(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	// Create a large content response
@@ -1000,6 +1038,7 @@ func TestCompletionHandler_ConvertToStreamingResponse_LargeResponse(t *testing.T
 
 // TestCompletionHandler_ConvertToChatStreamingResponse_WithRole tests role inclusion
 func TestCompletionHandler_ConvertToChatStreamingResponse_WithRole(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	resp := &models.LLMResponse{
@@ -1019,6 +1058,7 @@ func TestCompletionHandler_ConvertToChatStreamingResponse_WithRole(t *testing.T)
 
 // TestCompletionHandler_Complete_EmptyBody tests empty request body
 func TestCompletionHandler_Complete_EmptyBody(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -1038,6 +1078,7 @@ func TestCompletionHandler_Complete_EmptyBody(t *testing.T) {
 
 // TestCompletionHandler_Chat_EmptyBody tests empty chat request body
 func TestCompletionHandler_Chat_EmptyBody(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -1057,6 +1098,7 @@ func TestCompletionHandler_Chat_EmptyBody(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_EmptyBody tests empty stream request body
 func TestCompletionHandler_CompleteStream_EmptyBody(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -1071,6 +1113,7 @@ func TestCompletionHandler_CompleteStream_EmptyBody(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_EmptyBody tests empty chat stream request body
 func TestCompletionHandler_ChatStream_EmptyBody(t *testing.T) {
+	t.Parallel()
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -1085,6 +1128,7 @@ func TestCompletionHandler_ChatStream_EmptyBody(t *testing.T) {
 
 // TestCompletionHandler_Complete_WithRequestService tests Complete with a request service
 func TestCompletionHandler_Complete_WithRequestService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a request service (without providers, will return error)
@@ -1113,6 +1157,7 @@ func TestCompletionHandler_Complete_WithRequestService(t *testing.T) {
 
 // TestCompletionHandler_Chat_WithRequestService tests Chat with a request service
 func TestCompletionHandler_Chat_WithRequestService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a request service (without providers, will return error)
@@ -1147,6 +1192,7 @@ func TestCompletionHandler_Chat_WithRequestService(t *testing.T) {
 
 // TestCompletionHandler_CompleteStream_WithRequestService tests CompleteStream with a request service
 func TestCompletionHandler_CompleteStream_WithRequestService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a request service (without providers, will return error)
@@ -1174,6 +1220,7 @@ func TestCompletionHandler_CompleteStream_WithRequestService(t *testing.T) {
 
 // TestCompletionHandler_ChatStream_WithRequestService tests ChatStream with a request service
 func TestCompletionHandler_ChatStream_WithRequestService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	// Create a request service (without providers, will return error)
@@ -1209,6 +1256,7 @@ func TestCompletionHandler_ChatStream_WithRequestService(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_WithSessionID tests session ID extraction
 func TestCompletionHandler_ConvertToInternalRequest_WithSessionID(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &CompletionHandler{}
@@ -1230,6 +1278,7 @@ func TestCompletionHandler_ConvertToInternalRequest_WithSessionID(t *testing.T) 
 
 // TestCompletionHandler_ConvertToAPIResponse_WithMetadata tests metadata in response
 func TestCompletionHandler_ConvertToAPIResponse_WithMetadata(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &CompletionHandler{}
@@ -1255,6 +1304,7 @@ func TestCompletionHandler_ConvertToAPIResponse_WithMetadata(t *testing.T) {
 
 // TestCompletionHandler_ConvertToChatResponse_FullResponse tests full chat response conversion
 func TestCompletionHandler_ConvertToChatResponse_FullResponse(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &CompletionHandler{}
@@ -1287,6 +1337,7 @@ func TestCompletionHandler_ConvertToChatResponse_FullResponse(t *testing.T) {
 
 // TestCompletionHandler_Complete_NilRequestService tests Complete with nil request service
 func TestCompletionHandler_Complete_NilRequestService(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	handler := &CompletionHandler{} // nil requestService
@@ -1318,6 +1369,7 @@ func TestCompletionHandler_Complete_NilRequestService(t *testing.T) {
 
 // TestCompletionHandler_ConcurrentCompleteRequests tests concurrent Complete requests
 func TestCompletionHandler_ConcurrentCompleteRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1373,6 +1425,7 @@ func TestCompletionHandler_ConcurrentCompleteRequests(t *testing.T) {
 
 // TestCompletionHandler_ConcurrentChatRequests tests concurrent Chat requests
 func TestCompletionHandler_ConcurrentChatRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1427,6 +1480,7 @@ func TestCompletionHandler_ConcurrentChatRequests(t *testing.T) {
 
 // TestCompletionHandler_ConcurrentModelRequests tests concurrent Models requests
 func TestCompletionHandler_ConcurrentModelRequests(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1463,6 +1517,7 @@ func TestCompletionHandler_ConcurrentModelRequests(t *testing.T) {
 
 // TestCompletionHandler_RequestWithSpecialCharacters tests handling of special characters
 func TestCompletionHandler_RequestWithSpecialCharacters(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1481,6 +1536,7 @@ func TestCompletionHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt": tc.prompt,
 				"model":  "test-model",
@@ -1509,6 +1565,7 @@ func TestCompletionHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 // TestCompletionHandler_ExtremeValues tests handling of extreme parameter values
 func TestCompletionHandler_ExtremeValues(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1529,6 +1586,7 @@ func TestCompletionHandler_ExtremeValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt":      "Test extreme values",
 				"model":       "test-model",
@@ -1555,6 +1613,7 @@ func TestCompletionHandler_ExtremeValues(t *testing.T) {
 
 // TestCompletionHandler_LargeMessages tests handling of large message arrays
 func TestCompletionHandler_LargeMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1593,6 +1652,7 @@ func TestCompletionHandler_LargeMessages(t *testing.T) {
 
 // TestCompletionHandler_RequestWithAllOptions tests request with all possible options
 func TestCompletionHandler_RequestWithAllOptions(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1638,6 +1698,7 @@ func TestCompletionHandler_RequestWithAllOptions(t *testing.T) {
 
 // TestCompletionHandler_ConvertToInternalRequest_AllFields tests internal request conversion with all fields
 func TestCompletionHandler_ConvertToInternalRequest_AllFields(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1689,6 +1750,7 @@ func TestCompletionHandler_ConvertToInternalRequest_AllFields(t *testing.T) {
 
 // TestCompletionHandler_ResponseTypes tests different response finish reasons
 func TestCompletionHandler_ResponseTypes(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1707,6 +1769,7 @@ func TestCompletionHandler_ResponseTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("finish_"+tc.finishReason, func(t *testing.T) {
+				t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "test-" + tc.finishReason,
 				Content:      "Response with finish reason: " + tc.finishReason,
@@ -1727,6 +1790,7 @@ func TestCompletionHandler_ResponseTypes(t *testing.T) {
 
 // TestCompletionHandler_StreamingResponseFormat tests streaming response formatting
 func TestCompletionHandler_StreamingResponseFormat(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 
@@ -1757,6 +1821,7 @@ func TestCompletionHandler_StreamingResponseFormat(t *testing.T) {
 
 // TestCompletionHandler_ChatStreamingResponseFormat tests chat streaming response formatting
 func TestCompletionHandler_ChatStreamingResponseFormat(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	handler := &CompletionHandler{}
 

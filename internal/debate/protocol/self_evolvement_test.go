@@ -31,6 +31,7 @@ func (m *mockSelfEvolvementLLM) Complete(
 // ==========================================================================
 
 func TestDefaultSelfEvolvementConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultSelfEvolvementConfig()
 
 	assert.True(t, cfg.Enabled, "default config should be enabled")
@@ -45,6 +46,7 @@ func TestDefaultSelfEvolvementConfig(t *testing.T) {
 // ==========================================================================
 
 func TestNewSelfEvolvementPhase(t *testing.T) {
+	t.Parallel()
 	t.Run("with valid config", func(t *testing.T) {
 		cfg := DefaultSelfEvolvementConfig()
 		mock := &mockSelfEvolvementLLM{}
@@ -58,6 +60,7 @@ func TestNewSelfEvolvementPhase(t *testing.T) {
 	})
 
 	t.Run("zero max iterations defaults to 2", func(t *testing.T) {
+			t.Parallel()
 		cfg := SelfEvolvementConfig{
 			Enabled:       true,
 			MaxIterations: 0,
@@ -69,6 +72,7 @@ func TestNewSelfEvolvementPhase(t *testing.T) {
 	})
 
 	t.Run("negative max iterations defaults to 2", func(t *testing.T) {
+			t.Parallel()
 		cfg := SelfEvolvementConfig{
 			Enabled:       true,
 			MaxIterations: -1,
@@ -80,6 +84,7 @@ func TestNewSelfEvolvementPhase(t *testing.T) {
 	})
 
 	t.Run("zero timeout defaults to 2 minutes", func(t *testing.T) {
+			t.Parallel()
 		cfg := SelfEvolvementConfig{
 			Enabled:       true,
 			MaxIterations: 3,
@@ -96,6 +101,7 @@ func TestNewSelfEvolvementPhase(t *testing.T) {
 // ==========================================================================
 
 func TestSelfEvolvementPhase_Execute_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := SelfEvolvementConfig{
 		Enabled:       false,
 		MaxIterations: 2,
@@ -129,6 +135,7 @@ func TestSelfEvolvementPhase_Execute_Disabled(t *testing.T) {
 // ==========================================================================
 
 func TestSelfEvolvementPhase_Execute_AllPassFirst(t *testing.T) {
+	t.Parallel()
 	cfg := SelfEvolvementConfig{
 		Enabled:       true,
 		MaxIterations: 3,
@@ -184,6 +191,7 @@ func TestSelfEvolvementPhase_Execute_AllPassFirst(t *testing.T) {
 // ==========================================================================
 
 func TestSelfEvolvementPhase_Execute_RefineAfterFailure(t *testing.T) {
+	t.Parallel()
 	cfg := SelfEvolvementConfig{
 		Enabled:       true,
 		MaxIterations: 2,
@@ -244,6 +252,7 @@ func TestSelfEvolvementPhase_Execute_RefineAfterFailure(t *testing.T) {
 // ==========================================================================
 
 func TestSelfEvolvementPhase_ParseSelfTests(t *testing.T) {
+	t.Parallel()
 	phase := NewSelfEvolvementPhase(
 		DefaultSelfEvolvementConfig(), nil,
 	)
@@ -309,6 +318,7 @@ func TestSelfEvolvementPhase_ParseSelfTests(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			results := phase.parseSelfTests(tc.response)
 
 			assert.Len(t, results, tc.expectedCount)
@@ -329,6 +339,7 @@ func TestSelfEvolvementPhase_ParseSelfTests(t *testing.T) {
 // ==========================================================================
 
 func TestSelfEvolvementPhase_ParseRefinedSolution(t *testing.T) {
+	t.Parallel()
 	phase := NewSelfEvolvementPhase(
 		DefaultSelfEvolvementConfig(), nil,
 	)
@@ -369,6 +380,7 @@ func TestSelfEvolvementPhase_ParseRefinedSolution(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			solution, improvement := phase.parseRefinedSolution(
 				tc.response,
 			)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewZAIProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string
@@ -54,6 +55,7 @@ func TestNewZAIProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewZAIProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
 			assert.Equal(t, tt.expected.baseURL, provider.baseURL)
@@ -64,6 +66,7 @@ func TestNewZAIProvider(t *testing.T) {
 }
 
 func TestZAIProvider_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/completions", r.URL.Path)
@@ -126,6 +129,7 @@ func TestZAIProvider_Complete(t *testing.T) {
 }
 
 func TestZAIProvider_Complete_ChatFormat(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/chat/completions", r.URL.Path)
@@ -186,6 +190,7 @@ func TestZAIProvider_Complete_ChatFormat(t *testing.T) {
 }
 
 func TestZAIProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
@@ -217,6 +222,7 @@ func TestZAIProvider_Complete_Error(t *testing.T) {
 }
 
 func TestZAIProvider_Complete_NoChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := ZAIResponse{
 			ID:      "resp-123",
@@ -250,6 +256,7 @@ func TestZAIProvider_Complete_NoChoices(t *testing.T) {
 }
 
 func TestZAIProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	// Create a mock SSE server for streaming responses
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
@@ -352,6 +359,7 @@ func TestZAIProvider_CompleteStream(t *testing.T) {
 }
 
 func TestZAIProvider_CompleteStream_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(ZAIError{
@@ -382,6 +390,7 @@ func TestZAIProvider_CompleteStream_Error(t *testing.T) {
 }
 
 func TestZAIProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		responseStatus int
@@ -401,6 +410,7 @@ func TestZAIProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/models", r.URL.Path)
@@ -422,6 +432,7 @@ func TestZAIProvider_HealthCheck(t *testing.T) {
 }
 
 func TestZAIProvider_HealthCheck_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("test-api-key", "http://invalid-url:1234", "z-ai-base")
 	err := provider.HealthCheck()
 	assert.Error(t, err)
@@ -429,6 +440,7 @@ func TestZAIProvider_HealthCheck_NetworkError(t *testing.T) {
 }
 
 func TestZAIProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("", "", "")
 	caps := provider.GetCapabilities()
 
@@ -453,6 +465,7 @@ func TestZAIProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestZAIProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	// Note: NewZAIProvider sets defaults for baseURL and model,
 	// so only API key validation will fail when not provided
 	tests := []struct {
@@ -507,6 +520,7 @@ func TestZAIProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewZAIProvider(tt.apiKey, tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(nil)
 
@@ -522,9 +536,11 @@ func TestZAIProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestZAIProvider_convertToZAIRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("test-key", "https://api.z.ai/v1", "z-ai-base")
 
 	t.Run("completion format", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			ID:     "test-123",
 			Prompt: "test prompt",
@@ -549,6 +565,7 @@ func TestZAIProvider_convertToZAIRequest(t *testing.T) {
 	})
 
 	t.Run("chat format", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			ID: "test-123",
 			Messages: []models.Message{
@@ -576,9 +593,11 @@ func TestZAIProvider_convertToZAIRequest(t *testing.T) {
 }
 
 func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("test-key", "https://api.z.ai/v1", "z-ai-base")
 
 	t.Run("text completion response", func(t *testing.T) {
+			t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-123",
 			Object:  "text_completion",
@@ -615,6 +634,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 	})
 
 	t.Run("chat completion response", func(t *testing.T) {
+			t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-456",
 			Object:  "chat.completion",
@@ -645,6 +665,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 	})
 
 	t.Run("no content in response", func(t *testing.T) {
+			t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-789",
 			Object:  "text_completion",
@@ -672,6 +693,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 }
 
 func TestZAIProvider_makeRequest(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		request        *ZAIRequest
@@ -755,6 +777,7 @@ func TestZAIProvider_makeRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
@@ -800,6 +823,7 @@ func TestZAIProvider_makeRequest(t *testing.T) {
 }
 
 func TestZAIProvider_makeRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("test-api-key", "https://api.z.ai/v1", "z-ai-base")
 
 	// Create an invalid request that can't be marshaled
@@ -815,6 +839,7 @@ func TestZAIProvider_makeRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestZAIProvider_makeRequest_NetworkError(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("test-api-key", "http://invalid-url:1234", "z-ai-base")
 
 	req := &ZAIRequest{
@@ -828,6 +853,7 @@ func TestZAIProvider_makeRequest_NetworkError(t *testing.T) {
 }
 
 func TestZAIProvider_makeRequest_InvalidResponse(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte("invalid json"))
@@ -910,6 +936,7 @@ func BenchmarkZAIProvider_convertToZAIRequest(b *testing.B) {
 }
 
 func TestZAIProvider_ZhipuErrorCodes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		errorCode     string
@@ -944,6 +971,7 @@ func TestZAIProvider_ZhipuErrorCodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Header().Set("Content-Type", "application/json")
@@ -975,6 +1003,7 @@ func TestZAIProvider_ZhipuErrorCodes(t *testing.T) {
 }
 
 func TestZAIProvider_CurrentGLMModels(t *testing.T) {
+	t.Parallel()
 	provider := NewZAIProvider("", "", "")
 	caps := provider.GetCapabilities()
 
@@ -992,6 +1021,7 @@ func TestZAIProvider_CurrentGLMModels(t *testing.T) {
 }
 
 func TestZAIProvider_RetryLogic(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -1043,6 +1073,7 @@ func TestZAIProvider_RetryLogic(t *testing.T) {
 }
 
 func TestZAIProvider_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Second)
 		w.WriteHeader(http.StatusOK)
@@ -1064,6 +1095,7 @@ func TestZAIProvider_ContextCancellation(t *testing.T) {
 }
 
 func TestZAIProvider_ToolCalls(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := ZAIResponse{
 			ID:      "resp-123",

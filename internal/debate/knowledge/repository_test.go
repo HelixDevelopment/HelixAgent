@@ -101,6 +101,7 @@ func createTestDebateResult() *protocol.DebateResult {
 // =============================================================================
 
 func TestNewDefaultRepository(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 
 	assert.NotNil(t, repo)
@@ -111,6 +112,7 @@ func TestNewDefaultRepository(t *testing.T) {
 }
 
 func TestDefaultSearchOptions(t *testing.T) {
+	t.Parallel()
 	opts := DefaultSearchOptions()
 
 	assert.Equal(t, 0.5, opts.MinScore)
@@ -118,6 +120,7 @@ func TestDefaultSearchOptions(t *testing.T) {
 }
 
 func TestDefaultRepositoryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRepositoryConfig()
 
 	assert.Equal(t, 1000, config.MaxPatterns)
@@ -131,6 +134,7 @@ func TestDefaultRepositoryConfig(t *testing.T) {
 // =============================================================================
 
 func TestRepository_ExtractLessons(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 	result := createTestDebateResult()
@@ -148,6 +152,7 @@ func TestRepository_ExtractLessons(t *testing.T) {
 }
 
 func TestRepository_ExtractLessons_NilResult(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -160,6 +165,7 @@ func TestRepository_ExtractLessons_NilResult(t *testing.T) {
 // =============================================================================
 
 func TestRepository_SearchLessons_Empty(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -173,6 +179,7 @@ func TestRepository_SearchLessons_Empty(t *testing.T) {
 // =============================================================================
 
 func TestRepository_GetRelevantLessons(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -191,6 +198,7 @@ func TestRepository_GetRelevantLessons(t *testing.T) {
 // =============================================================================
 
 func TestRepository_RecordPattern(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -210,6 +218,7 @@ func TestRepository_RecordPattern(t *testing.T) {
 }
 
 func TestRepository_GetPatterns(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -253,6 +262,7 @@ func TestRepository_GetPatterns(t *testing.T) {
 }
 
 func TestRepository_PatternDuplicateDetection(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -285,6 +295,7 @@ func TestRepository_PatternDuplicateDetection(t *testing.T) {
 // =============================================================================
 
 func TestRepository_GetSuccessfulStrategies(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -309,6 +320,7 @@ func TestRepository_GetSuccessfulStrategies(t *testing.T) {
 // =============================================================================
 
 func TestRepository_GetKnowledgeForAgent(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -329,6 +341,7 @@ func TestRepository_GetKnowledgeForAgent(t *testing.T) {
 // =============================================================================
 
 func TestRepository_GetDebateHistory(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -345,6 +358,7 @@ func TestRepository_GetDebateHistory(t *testing.T) {
 }
 
 func TestRepository_GetDebateHistory_Filtered(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -383,6 +397,7 @@ func TestRepository_GetDebateHistory_Filtered(t *testing.T) {
 // =============================================================================
 
 func TestRepository_GetStatistics(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -405,6 +420,7 @@ func TestRepository_GetStatistics(t *testing.T) {
 // =============================================================================
 
 func TestRepository_InferDomainFromTopic(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 
 	testCases := []struct {
@@ -421,6 +437,7 @@ func TestRepository_InferDomainFromTopic(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.topic, func(t *testing.T) {
+				t.Parallel()
 			domain := repo.inferDomainFromTopic(tc.topic)
 			assert.Equal(t, tc.expected, domain)
 		})
@@ -432,6 +449,7 @@ func TestRepository_InferDomainFromTopic(t *testing.T) {
 // =============================================================================
 
 func TestRepository_ConvertDebateResult(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	result := createTestDebateResult()
 
@@ -449,6 +467,7 @@ func TestRepository_ConvertDebateResult(t *testing.T) {
 // =============================================================================
 
 func TestRelevance_Structure(t *testing.T) {
+	t.Parallel()
 	relevance := &Relevance{
 		TopicMatch:   0.8,
 		DomainMatch:  0.9,
@@ -465,6 +484,7 @@ func TestRelevance_Structure(t *testing.T) {
 // =============================================================================
 
 func TestLessonMatch_Structure(t *testing.T) {
+	t.Parallel()
 	match := &LessonMatch{
 		Lesson: &debate.Lesson{
 			ID:    "lesson-1",
@@ -487,6 +507,7 @@ func TestLessonMatch_Structure(t *testing.T) {
 // =============================================================================
 
 func TestPatternTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, PatternType("consensus_building"), PatternTypeConsensusBuilding)
 	assert.Equal(t, PatternType("conflict_resolution"), PatternTypeConflictResolution)
 	assert.Equal(t, PatternType("knowledge_gap"), PatternTypeKnowledgeGap)
@@ -500,6 +521,7 @@ func TestPatternTypes(t *testing.T) {
 // =============================================================================
 
 func TestTruncate(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "short", truncate("short", 10))
 	// "long string here" (16 chars) truncated to 10 chars:
 	// "long st" (7 chars) + "..." (3 chars) = 10 chars
@@ -507,6 +529,7 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestMin(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 5, min(5, 10))
 	assert.Equal(t, 3, min(10, 3))
 	assert.Equal(t, 5, min(5, 5))

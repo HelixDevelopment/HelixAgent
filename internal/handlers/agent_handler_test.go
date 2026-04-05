@@ -16,11 +16,13 @@ func init() {
 }
 
 func TestNewAgentHandler(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 	require.NotNil(t, handler)
 }
 
 func TestAgentHandler_ListAgents(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -48,6 +50,7 @@ func TestAgentHandler_ListAgents(t *testing.T) {
 }
 
 func TestAgentHandler_GetAgent_Found(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -69,6 +72,7 @@ func TestAgentHandler_GetAgent_Found(t *testing.T) {
 }
 
 func TestAgentHandler_GetAgent_NotFound(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -89,6 +93,7 @@ func TestAgentHandler_GetAgent_NotFound(t *testing.T) {
 }
 
 func TestAgentHandler_ListAgentsByProtocol(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -115,6 +120,7 @@ func TestAgentHandler_ListAgentsByProtocol(t *testing.T) {
 }
 
 func TestAgentHandler_ListAgentsByProtocol_NoMatches(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -135,6 +141,7 @@ func TestAgentHandler_ListAgentsByProtocol_NoMatches(t *testing.T) {
 }
 
 func TestAgentHandler_ListAgentsByTool(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -161,6 +168,7 @@ func TestAgentHandler_ListAgentsByTool(t *testing.T) {
 }
 
 func TestAgentHandler_ListAgentsByTool_NoMatches(t *testing.T) {
+	t.Parallel()
 	handler := NewAgentHandler()
 
 	w := httptest.NewRecorder()
@@ -182,6 +190,7 @@ func TestAgentHandler_ListAgentsByTool_NoMatches(t *testing.T) {
 
 // Test AgentResponse struct fields
 func TestAgentResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := AgentResponse{
 		Name:           "TestAgent",
 		Description:    "A test agent",
@@ -209,6 +218,7 @@ func TestAgentResponse_Fields(t *testing.T) {
 }
 
 func TestAgentListResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := AgentListResponse{
 		Agents: []AgentResponse{
 			{Name: "Agent1"},
@@ -224,6 +234,7 @@ func TestAgentListResponse_Fields(t *testing.T) {
 }
 
 func TestAgentResponse_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	resp := AgentResponse{
 		Name:        "TestAgent",
 		Description: "Test description",

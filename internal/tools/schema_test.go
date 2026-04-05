@@ -10,6 +10,7 @@ import (
 
 // TestToolSchemaRegistry verifies all tools are properly registered
 func TestToolSchemaRegistry(t *testing.T) {
+	t.Parallel()
 	// Expected tools count: 9 existing + 12 new = 21 total
 	expectedTools := []string{
 		// Existing tools
@@ -20,6 +21,7 @@ func TestToolSchemaRegistry(t *testing.T) {
 
 	for _, toolName := range expectedTools {
 		t.Run(toolName, func(t *testing.T) {
+				t.Parallel()
 			schema, ok := GetToolSchema(toolName)
 			assert.True(t, ok, "Tool %s should be registered", toolName)
 			assert.NotNil(t, schema, "Tool %s schema should not be nil", toolName)
@@ -33,6 +35,7 @@ func TestToolSchemaRegistry(t *testing.T) {
 
 // TestToolSchemaRequiredFields verifies all tools have required fields defined
 func TestToolSchemaRequiredFields(t *testing.T) {
+	t.Parallel()
 	expectedRequiredFields := map[string][]string{
 		"Bash":       {"command", "description"},
 		"Read":       {"file_path"},
@@ -59,6 +62,7 @@ func TestToolSchemaRequiredFields(t *testing.T) {
 
 	for toolName, expectedFields := range expectedRequiredFields {
 		t.Run(toolName, func(t *testing.T) {
+				t.Parallel()
 			fields := GetRequiredFields(toolName)
 			require.NotNil(t, fields, "Tool %s should have required fields", toolName)
 			assert.ElementsMatch(t, expectedFields, fields,
@@ -69,6 +73,7 @@ func TestToolSchemaRequiredFields(t *testing.T) {
 
 // TestToolSchemaAliases verifies aliases work correctly
 func TestToolSchemaAliases(t *testing.T) {
+	t.Parallel()
 	aliasTests := []struct {
 		alias    string
 		expected string
@@ -105,6 +110,7 @@ func TestToolSchemaAliases(t *testing.T) {
 
 	for _, tc := range aliasTests {
 		t.Run(tc.alias, func(t *testing.T) {
+				t.Parallel()
 			schema, ok := GetToolSchema(tc.alias)
 			assert.True(t, ok, "Alias %s should resolve to a tool", tc.alias)
 			if ok {
@@ -117,6 +123,7 @@ func TestToolSchemaAliases(t *testing.T) {
 
 // TestValidateToolArgs validates tool argument validation
 func TestValidateToolArgs(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name      string
 		toolName  string
@@ -214,6 +221,7 @@ func TestValidateToolArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			err := ValidateToolArgs(tc.toolName, tc.args)
 			if tc.expectErr {
 				assert.Error(t, err, "Expected error for %s", tc.name)
@@ -226,8 +234,10 @@ func TestValidateToolArgs(t *testing.T) {
 
 // TestGenerateOpenAIToolDefinition verifies OpenAI tool definition generation
 func TestGenerateOpenAIToolDefinition(t *testing.T) {
+	t.Parallel()
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
+				t.Parallel()
 			def := GenerateOpenAIToolDefinition(schema)
 
 			// Verify structure
@@ -264,6 +274,7 @@ func TestGenerateOpenAIToolDefinition(t *testing.T) {
 
 // TestGenerateAllToolDefinitions verifies all tool definitions generation
 func TestGenerateAllToolDefinitions(t *testing.T) {
+	t.Parallel()
 	definitions := GenerateAllToolDefinitions()
 
 	// Should have all registered tools
@@ -279,8 +290,10 @@ func TestGenerateAllToolDefinitions(t *testing.T) {
 
 // TestToolSchemaToJSON verifies JSON serialization
 func TestToolSchemaToJSON(t *testing.T) {
+	t.Parallel()
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
+				t.Parallel()
 			jsonStr, err := schema.ToJSON()
 			assert.NoError(t, err, "Tool %s should serialize to JSON", toolName)
 			assert.NotEmpty(t, jsonStr, "Tool %s JSON should not be empty", toolName)
@@ -296,6 +309,7 @@ func TestToolSchemaToJSON(t *testing.T) {
 
 // TestGetAllToolNames verifies all tool names are returned
 func TestGetAllToolNames(t *testing.T) {
+	t.Parallel()
 	names := GetAllToolNames()
 	assert.Len(t, names, len(ToolSchemaRegistry), "Should return all tool names")
 
@@ -308,6 +322,7 @@ func TestGetAllToolNames(t *testing.T) {
 
 // TestGetToolsByCategory verifies category filtering
 func TestGetToolsByCategory(t *testing.T) {
+	t.Parallel()
 	categories := []string{
 		CategoryCore,
 		CategoryFileSystem,
@@ -319,6 +334,7 @@ func TestGetToolsByCategory(t *testing.T) {
 
 	for _, category := range categories {
 		t.Run(category, func(t *testing.T) {
+				t.Parallel()
 			tools := GetToolsByCategory(category)
 			assert.NotEmpty(t, tools, "Category %s should have at least one tool", category)
 
@@ -332,6 +348,7 @@ func TestGetToolsByCategory(t *testing.T) {
 
 // TestToolSchemaCategories verifies all tools have valid categories
 func TestToolSchemaCategories(t *testing.T) {
+	t.Parallel()
 	validCategories := map[string]bool{
 		CategoryCore:           true,
 		CategoryFileSystem:     true,
@@ -343,6 +360,7 @@ func TestToolSchemaCategories(t *testing.T) {
 
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
+				t.Parallel()
 			assert.True(t, validCategories[schema.Category],
 				"Tool %s has invalid category: %s", toolName, schema.Category)
 		})
@@ -351,6 +369,7 @@ func TestToolSchemaCategories(t *testing.T) {
 
 // TestToolParameterTypes verifies all parameters have valid types
 func TestToolParameterTypes(t *testing.T) {
+	t.Parallel()
 	validTypes := map[string]bool{
 		"string":  true,
 		"integer": true,
@@ -362,6 +381,7 @@ func TestToolParameterTypes(t *testing.T) {
 	for toolName, schema := range ToolSchemaRegistry {
 		for paramName, param := range schema.Parameters {
 			t.Run(toolName+"/"+paramName, func(t *testing.T) {
+					t.Parallel()
 				assert.True(t, validTypes[param.Type],
 					"Tool %s parameter %s has invalid type: %s", toolName, paramName, param.Type)
 				assert.NotEmpty(t, param.Description,
@@ -373,10 +393,12 @@ func TestToolParameterTypes(t *testing.T) {
 
 // TestToolEnumParameters verifies enum parameters have valid values
 func TestToolEnumParameters(t *testing.T) {
+	t.Parallel()
 	for toolName, schema := range ToolSchemaRegistry {
 		for paramName, param := range schema.Parameters {
 			if len(param.Enum) > 0 {
 				t.Run(toolName+"/"+paramName, func(t *testing.T) {
+						t.Parallel()
 					assert.Greater(t, len(param.Enum), 1,
 						"Tool %s parameter %s enum should have more than 1 value", toolName, paramName)
 

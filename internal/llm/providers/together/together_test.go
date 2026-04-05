@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	assert.NotNil(t, provider)
 	assert.Equal(t, "test-api-key", provider.apiKey)
@@ -23,6 +24,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestNewProviderWithCustomURL(t *testing.T) {
+	t.Parallel()
 	customURL := "https://custom.together.xyz/v1/chat/completions"
 	provider := NewProvider("test-api-key", customURL, "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo")
 	assert.Equal(t, customURL, provider.baseURL)
@@ -30,6 +32,7 @@ func TestNewProviderWithCustomURL(t *testing.T) {
 }
 
 func TestNewProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -43,6 +46,7 @@ func TestNewProviderWithRetry(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRetryConfig()
 	assert.Equal(t, 3, config.MaxRetries)
 	assert.Equal(t, time.Second, config.InitialDelay)
@@ -51,6 +55,7 @@ func TestDefaultRetryConfig(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -106,6 +111,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestCompleteWithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -173,6 +179,7 @@ func TestCompleteWithTools(t *testing.T) {
 }
 
 func TestCompleteWithDeepSeekR1(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -210,6 +217,7 @@ func TestCompleteWithDeepSeekR1(t *testing.T) {
 }
 
 func TestCompleteAPIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid API key", "type": "invalid_request_error"}}`))
@@ -228,6 +236,7 @@ func TestCompleteAPIError(t *testing.T) {
 }
 
 func TestCompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -272,6 +281,7 @@ func TestCompleteStream(t *testing.T) {
 }
 
 func TestCompleteStreamError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte(`{"error": "Service unavailable"}`))
@@ -290,6 +300,7 @@ func TestCompleteStreamError(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Contains(t, r.Header.Get("Authorization"), "Bearer ")
@@ -312,6 +323,7 @@ func TestHealthCheck(t *testing.T) {
 }
 
 func TestHealthCheckFailure(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -329,6 +341,7 @@ func TestHealthCheckFailure(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	caps := provider.GetCapabilities()
 
@@ -355,6 +368,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string
@@ -366,6 +380,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewProvider(tt.apiKey, "", "")
 			valid, errors := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.expected, valid)
@@ -377,6 +392,7 @@ func TestValidateConfig(t *testing.T) {
 }
 
 func TestConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "meta-llama/Llama-3.3-70B-Instruct-Turbo")
 	req := &models.LLMRequest{
 		ID:     "test-id",
@@ -407,6 +423,7 @@ func TestConvertRequest(t *testing.T) {
 }
 
 func TestConvertRequestDefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	req := &models.LLMRequest{
 		Messages:    []models.Message{{Role: "user", Content: "Test"}},
@@ -418,6 +435,7 @@ func TestConvertRequestDefaultMaxTokens(t *testing.T) {
 }
 
 func TestConvertRequestWithToolChoice(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	req := &models.LLMRequest{
 		Messages: []models.Message{{Role: "user", Content: "Test"}},
@@ -440,6 +458,7 @@ func TestConvertRequestWithToolChoice(t *testing.T) {
 }
 
 func TestConvertResponse(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	req := &models.LLMRequest{ID: "req-123"}
 	startTime := time.Now()
@@ -475,6 +494,7 @@ func TestConvertResponse(t *testing.T) {
 }
 
 func TestConvertResponseWithToolCalls(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	req := &models.LLMRequest{ID: "req-tools"}
 	startTime := time.Now()
@@ -514,6 +534,7 @@ func TestConvertResponseWithToolCalls(t *testing.T) {
 }
 
 func TestConvertResponseEmptyChoices(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	req := &models.LLMRequest{ID: "req-empty"}
 	startTime := time.Now()
@@ -530,6 +551,7 @@ func TestConvertResponseEmptyChoices(t *testing.T) {
 }
 
 func TestCalculateConfidence(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 
 	tests := []struct {
@@ -553,6 +575,7 @@ func TestCalculateConfidence(t *testing.T) {
 }
 
 func TestCalculateBackoff(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 
 	delay1 := provider.calculateBackoff(1)
@@ -572,22 +595,26 @@ func TestCalculateBackoff(t *testing.T) {
 }
 
 func TestGetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "meta-llama/Llama-3.3-70B-Instruct-Turbo")
 	assert.Equal(t, "meta-llama/Llama-3.3-70B-Instruct-Turbo", provider.GetModel())
 }
 
 func TestSetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "meta-llama/Llama-3.3-70B-Instruct-Turbo")
 	provider.SetModel("deepseek-ai/DeepSeek-R1")
 	assert.Equal(t, "deepseek-ai/DeepSeek-R1", provider.GetModel())
 }
 
 func TestGetName(t *testing.T) {
+	t.Parallel()
 	provider := NewProvider("test-api-key", "", "")
 	assert.Equal(t, "together", provider.GetName())
 }
 
 func TestRetryOnServerError(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -621,6 +648,7 @@ func TestRetryOnServerError(t *testing.T) {
 }
 
 func TestRetryOnRateLimiting(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -653,6 +681,7 @@ func TestRetryOnRateLimiting(t *testing.T) {
 }
 
 func TestMaxRetriesExceeded(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -678,6 +707,7 @@ func TestMaxRetriesExceeded(t *testing.T) {
 }
 
 func TestContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
 	}))
@@ -696,6 +726,7 @@ func TestContextCancellation(t *testing.T) {
 }
 
 func TestMultipleModels(t *testing.T) {
+	t.Parallel()
 	testModels := []string{
 		"meta-llama/Llama-3.3-70B-Instruct-Turbo",
 		"Qwen/Qwen2.5-72B-Instruct-Turbo",
@@ -706,6 +737,7 @@ func TestMultipleModels(t *testing.T) {
 
 	for _, model := range testModels {
 		t.Run(model, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req Request
 				_ = json.NewDecoder(r.Body).Decode(&req)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestStallThresholdForCategory_Known(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		category string
 		expected time.Duration
@@ -25,6 +26,7 @@ func TestStallThresholdForCategory_Known(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.category, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected,
 				StallThresholdForCategory(tc.category))
 		})
@@ -32,6 +34,7 @@ func TestStallThresholdForCategory_Known(t *testing.T) {
 }
 
 func TestStallThresholdForCategory_Unknown(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 60*time.Second,
 		StallThresholdForCategory("unknown"))
 	assert.Equal(t, 60*time.Second,
@@ -39,11 +42,13 @@ func TestStallThresholdForCategory_Unknown(t *testing.T) {
 }
 
 func TestCategoryStallThresholds_HasDefault(t *testing.T) {
+	t.Parallel()
 	_, ok := CategoryStallThresholds["default"]
 	assert.True(t, ok, "must have a default category")
 }
 
 func TestCategoryStallThresholds_AllPositive(t *testing.T) {
+	t.Parallel()
 	for cat, dur := range CategoryStallThresholds {
 		assert.True(t, dur > 0,
 			"category %s has non-positive threshold", cat)

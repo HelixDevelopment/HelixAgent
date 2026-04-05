@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewGenericProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		pName   string
@@ -47,6 +48,7 @@ func TestNewGenericProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := NewGenericProvider(tt.pName, tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.pName, provider.name)
@@ -60,6 +62,7 @@ func TestNewGenericProvider(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -110,6 +113,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestCompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -166,6 +170,7 @@ func TestCompleteStream(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -186,6 +191,7 @@ func TestHealthCheck(t *testing.T) {
 }
 
 func TestHealthCheckFailure(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal server error"}`))
@@ -200,6 +206,7 @@ func TestHealthCheckFailure(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("nvidia", "key", "https://api.nvidia.com/v1/chat/completions", "llama-3.1-70b")
 	caps := provider.GetCapabilities()
 
@@ -233,6 +240,7 @@ func TestGetCapabilities(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		apiKey       string
@@ -293,6 +301,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			provider := &Provider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -317,6 +326,7 @@ func TestValidateConfig(t *testing.T) {
 }
 
 func TestConvertRequest(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "default-model")
 	req := &models.LLMRequest{
 		ID: "req-001",
@@ -352,6 +362,7 @@ func TestConvertRequest(t *testing.T) {
 }
 
 func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID: "req-001",
@@ -368,6 +379,7 @@ func TestConvertRequest_DefaultMaxTokens(t *testing.T) {
 }
 
 func TestConvertRequest_MaxTokensCap(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID: "req-001",
@@ -384,6 +396,7 @@ func TestConvertRequest_MaxTokensCap(t *testing.T) {
 }
 
 func TestConvertRequest_NegativeMaxTokens(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID: "req-001",
@@ -400,6 +413,7 @@ func TestConvertRequest_NegativeMaxTokens(t *testing.T) {
 }
 
 func TestConvertRequestWithSystemPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID:     "req-001",
@@ -424,6 +438,7 @@ func TestConvertRequestWithSystemPrompt(t *testing.T) {
 }
 
 func TestCompleteAPIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid model specified", "type": "invalid_request_error", "code": "model_not_found"}}`))
@@ -447,6 +462,7 @@ func TestCompleteAPIError(t *testing.T) {
 }
 
 func TestCompleteTimeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -473,6 +489,7 @@ func TestCompleteTimeout(t *testing.T) {
 }
 
 func TestStreamDone(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -512,6 +529,7 @@ func TestStreamDone(t *testing.T) {
 }
 
 func TestStreamError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -546,6 +564,7 @@ func TestStreamError(t *testing.T) {
 }
 
 func TestStreamAPIError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(`{"error": {"message": "Rate limit exceeded"}}`))
@@ -567,6 +586,7 @@ func TestStreamAPIError(t *testing.T) {
 }
 
 func TestModelOverride(t *testing.T) {
+	t.Parallel()
 	var receivedModel string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -616,6 +636,7 @@ func TestModelOverride(t *testing.T) {
 }
 
 func TestModelOverride_EmptyDoesNotOverride(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "default-model")
 	req := &models.LLMRequest{
 		ID: "req-001",
@@ -632,6 +653,7 @@ func TestModelOverride_EmptyDoesNotOverride(t *testing.T) {
 }
 
 func TestComplete_FinishReasonConfidence(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name               string
 		finishReason       string
@@ -656,6 +678,7 @@ func TestComplete_FinishReasonConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = fmt.Fprintf(w, `{
@@ -686,6 +709,7 @@ func TestComplete_FinishReasonConfidence(t *testing.T) {
 }
 
 func TestComplete_EmptyChoices(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{
@@ -713,6 +737,7 @@ func TestComplete_EmptyChoices(t *testing.T) {
 }
 
 func TestComplete_NoUsage(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{
@@ -741,6 +766,7 @@ func TestComplete_NoUsage(t *testing.T) {
 }
 
 func TestComplete_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{invalid json response`))
@@ -762,6 +788,7 @@ func TestComplete_InvalidJSON(t *testing.T) {
 }
 
 func TestComplete_AuthorizationHeader(t *testing.T) {
+	t.Parallel()
 	var capturedAuth string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -785,6 +812,7 @@ func TestComplete_AuthorizationHeader(t *testing.T) {
 }
 
 func TestHealthCheck_NetworkError(t *testing.T) {
+	t.Parallel()
 	// Use an unreachable address to trigger a network error
 	provider := NewGenericProvider("test-provider", "key", "http://127.0.0.1:1", "model")
 	provider.httpClient.Timeout = 100 * time.Millisecond
@@ -795,6 +823,7 @@ func TestHealthCheck_NetworkError(t *testing.T) {
 }
 
 func TestConvertRequest_EmptyMessages(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID:       "req-empty-msgs",
@@ -811,6 +840,7 @@ func TestConvertRequest_EmptyMessages(t *testing.T) {
 }
 
 func TestConvertRequest_SystemPromptWithNoMessages(t *testing.T) {
+	t.Parallel()
 	provider := NewGenericProvider("test-provider", "key", "https://api.example.com", "model")
 	req := &models.LLMRequest{
 		ID:       "req-sys-only",
@@ -825,6 +855,7 @@ func TestConvertRequest_SystemPromptWithNoMessages(t *testing.T) {
 }
 
 func TestCompleteStream_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(500 * time.Millisecond)
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -850,6 +881,7 @@ func TestCompleteStream_ContextCancellation(t *testing.T) {
 }
 
 func TestStreamSkipsNonDataLines(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -888,6 +920,7 @@ func TestStreamSkipsNonDataLines(t *testing.T) {
 }
 
 func TestStreamSkipsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)

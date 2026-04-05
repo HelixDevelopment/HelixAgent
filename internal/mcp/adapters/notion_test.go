@@ -171,6 +171,7 @@ func (m *MockNotionClient) GetComments(ctx context.Context, pageID string) ([]No
 // Tests
 
 func TestNewNotionAdapter(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{
 		APIKey:  "secret_xxxxx",
 		Timeout: 30 * time.Second,
@@ -186,6 +187,7 @@ func TestNewNotionAdapter(t *testing.T) {
 }
 
 func TestNotionAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -210,6 +212,7 @@ func TestNotionAdapter_ListTools(t *testing.T) {
 }
 
 func TestNotionAdapter_Search(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -225,6 +228,7 @@ func TestNotionAdapter_Search(t *testing.T) {
 }
 
 func TestNotionAdapter_GetPage(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -239,6 +243,7 @@ func TestNotionAdapter_GetPage(t *testing.T) {
 }
 
 func TestNotionAdapter_CreatePage(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -255,6 +260,7 @@ func TestNotionAdapter_CreatePage(t *testing.T) {
 }
 
 func TestNotionAdapter_UpdatePage(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -270,6 +276,7 @@ func TestNotionAdapter_UpdatePage(t *testing.T) {
 }
 
 func TestNotionAdapter_DeletePage(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -284,6 +291,7 @@ func TestNotionAdapter_DeletePage(t *testing.T) {
 }
 
 func TestNotionAdapter_GetDatabase(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -298,6 +306,7 @@ func TestNotionAdapter_GetDatabase(t *testing.T) {
 }
 
 func TestNotionAdapter_QueryDatabase(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -314,6 +323,7 @@ func TestNotionAdapter_QueryDatabase(t *testing.T) {
 }
 
 func TestNotionAdapter_GetBlocks(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -328,6 +338,7 @@ func TestNotionAdapter_GetBlocks(t *testing.T) {
 }
 
 func TestNotionAdapter_AppendBlocks(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -343,6 +354,7 @@ func TestNotionAdapter_AppendBlocks(t *testing.T) {
 }
 
 func TestNotionAdapter_AddComment(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -358,6 +370,7 @@ func TestNotionAdapter_AddComment(t *testing.T) {
 }
 
 func TestNotionAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)
@@ -369,6 +382,7 @@ func TestNotionAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestNotionAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	client.SetError(true)
@@ -387,6 +401,7 @@ func TestNotionAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestNotionPageTypes(t *testing.T) {
+	t.Parallel()
 	page := NotionPage{
 		ID:             "page-abc123",
 		Title:          "My Page",
@@ -406,6 +421,7 @@ func TestNotionPageTypes(t *testing.T) {
 }
 
 func TestNotionDatabaseTypes(t *testing.T) {
+	t.Parallel()
 	database := NotionDatabase{
 		ID:          "db-xyz789",
 		Title:       "Task Database",
@@ -425,6 +441,7 @@ func TestNotionDatabaseTypes(t *testing.T) {
 }
 
 func TestNotionPropertyDefTypes(t *testing.T) {
+	t.Parallel()
 	propDef := NotionPropertyDef{
 		ID:   "prop-123",
 		Name: "Due Date",
@@ -437,6 +454,7 @@ func TestNotionPropertyDefTypes(t *testing.T) {
 }
 
 func TestNotionBlockTypes(t *testing.T) {
+	t.Parallel()
 	block := NotionBlock{
 		ID:      "block-456",
 		Type:    "paragraph",
@@ -452,6 +470,7 @@ func TestNotionBlockTypes(t *testing.T) {
 }
 
 func TestNotionCommentTypes(t *testing.T) {
+	t.Parallel()
 	comment := NotionComment{
 		ID:          "comment-789",
 		Content:     "This is a great idea!",
@@ -465,6 +484,7 @@ func TestNotionCommentTypes(t *testing.T) {
 }
 
 func TestNotionFilterTypes(t *testing.T) {
+	t.Parallel()
 	filter := NotionFilter{
 		Property: "Status",
 		Value:    "In Progress",
@@ -475,6 +495,7 @@ func TestNotionFilterTypes(t *testing.T) {
 }
 
 func TestNotionConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{
 		APIKey:  "secret_xxxxxxxxxxxxxxxxxx",
 		Timeout: 60 * time.Second,
@@ -485,6 +506,7 @@ func TestNotionConfigTypes(t *testing.T) {
 }
 
 func TestNotionAdapter_GetServerInfoCapabilities(t *testing.T) {
+	t.Parallel()
 	config := NotionConfig{}
 	client := NewMockNotionClient()
 	adapter := NewNotionAdapter(config, client)

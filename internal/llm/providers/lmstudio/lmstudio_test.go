@@ -7,12 +7,14 @@ import (
 )
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("http://localhost:1234", "test-model")
 	caps := p.GetCapabilities()
 	assert.NotNil(t, caps)
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		baseURL   string
@@ -52,6 +54,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.baseURL, tt.model)
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -61,6 +64,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("http://localhost:1234", "test-model")
 	assert.NotNil(t, p)
 
@@ -70,6 +74,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("http://localhost:1234", "test-model")
 	err := p.HealthCheck()
 	_ = err

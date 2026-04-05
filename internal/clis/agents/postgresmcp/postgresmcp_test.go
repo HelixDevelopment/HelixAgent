@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewPostgresMCP(t *testing.T) {
+	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
 	
@@ -23,6 +24,7 @@ func TestNewPostgresMCP(t *testing.T) {
 }
 
 func TestPostgresMCPInitialize(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestPostgresMCPInitialize(t *testing.T) {
 }
 
 func TestPostgresMCPInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestPostgresMCPInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestPostgresMCPStartStop(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestPostgresMCPStartStop(t *testing.T) {
 }
 
 func TestPostgresMCPExecute(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -112,6 +117,7 @@ func TestPostgresMCPExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := p.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -124,6 +130,7 @@ func TestPostgresMCPExecute(t *testing.T) {
 }
 
 func TestPostgresMCPCapabilities(t *testing.T) {
+	t.Parallel()
 	p := New()
 	info := p.Info()
 	
@@ -134,6 +141,7 @@ func TestPostgresMCPCapabilities(t *testing.T) {
 }
 
 func TestPostgresMCPIsAvailable(t *testing.T) {
+	t.Parallel()
 	p := New()
 	assert.False(t, p.IsAvailable()) // No connection string initially
 	
@@ -142,6 +150,7 @@ func TestPostgresMCPIsAvailable(t *testing.T) {
 }
 
 func TestPostgresMCPQueryResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	
@@ -159,6 +168,7 @@ func TestPostgresMCPQueryResult(t *testing.T) {
 }
 
 func TestPostgresMCPSchemaResult(t *testing.T) {
+	t.Parallel()
 	p := New()
 	ctx := context.Background()
 	

@@ -28,6 +28,7 @@ func setupPlanningHandler() (*PlanningHandler, *gin.Engine) {
 }
 
 func TestNewPlanningHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewPlanningHandler(logger)
 
@@ -36,6 +37,7 @@ func TestNewPlanningHandler(t *testing.T) {
 }
 
 func TestNewPlanningHandler_NilLogger(t *testing.T) {
+	t.Parallel()
 	h := NewPlanningHandler(nil)
 
 	assert.NotNil(t, h)
@@ -45,6 +47,7 @@ func TestNewPlanningHandler_NilLogger(t *testing.T) {
 // --- HiPlan Tests ---
 
 func TestPlanningHandler_HiPlan_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := HiPlanRequest{
@@ -72,6 +75,7 @@ func TestPlanningHandler_HiPlan_Success(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_WithConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	falseVal := false
@@ -103,6 +107,7 @@ func TestPlanningHandler_HiPlan_WithConfig(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_MilestoneStructure(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := HiPlanRequest{
@@ -133,6 +138,7 @@ func TestPlanningHandler_HiPlan_MilestoneStructure(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -144,6 +150,7 @@ func TestPlanningHandler_HiPlan_BadRequest_EmptyBody(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -156,6 +163,7 @@ func TestPlanningHandler_HiPlan_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_BadRequest_MissingGoal(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	body := []byte(`{"config": {"max_milestones": 5}}`)
@@ -169,6 +177,7 @@ func TestPlanningHandler_HiPlan_BadRequest_MissingGoal(t *testing.T) {
 }
 
 func TestPlanningHandler_HiPlan_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := HiPlanRequest{Goal: "test"}
@@ -186,6 +195,7 @@ func TestPlanningHandler_HiPlan_ContentType(t *testing.T) {
 // --- MCTS Tests ---
 
 func TestPlanningHandler_MCTS_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := MCTSRequest{
@@ -215,6 +225,7 @@ func TestPlanningHandler_MCTS_Success(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	// Use very low iterations to keep test fast
@@ -242,6 +253,7 @@ func TestPlanningHandler_MCTS_DefaultConfig(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_WithFullConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	falseVal := false
@@ -274,6 +286,7 @@ func TestPlanningHandler_MCTS_WithFullConfig(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -285,6 +298,7 @@ func TestPlanningHandler_MCTS_BadRequest_EmptyBody(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -297,6 +311,7 @@ func TestPlanningHandler_MCTS_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_BadRequest_MissingInitialState(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	body := []byte(`{"config": {"max_iterations": 10}}`)
@@ -310,6 +325,7 @@ func TestPlanningHandler_MCTS_BadRequest_MissingInitialState(t *testing.T) {
 }
 
 func TestPlanningHandler_MCTS_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := MCTSRequest{
@@ -330,6 +346,7 @@ func TestPlanningHandler_MCTS_ContentType(t *testing.T) {
 // --- Tree of Thoughts Tests ---
 
 func TestPlanningHandler_ToT_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := ToTRequest{
@@ -361,10 +378,12 @@ func TestPlanningHandler_ToT_Success(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_WithStrategy(t *testing.T) {
+	t.Parallel()
 	strategies := []string{"bfs", "dfs", "beam"}
 
 	for _, strategy := range strategies {
 		t.Run("strategy_"+strategy, func(t *testing.T) {
+				t.Parallel()
 			_, r := setupPlanningHandler()
 
 			reqBody := ToTRequest{
@@ -396,6 +415,7 @@ func TestPlanningHandler_ToT_WithStrategy(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_WithFullConfig(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	trueVal := true
@@ -432,6 +452,7 @@ func TestPlanningHandler_ToT_WithFullConfig(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_SolutionStructure(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := ToTRequest{
@@ -464,6 +485,7 @@ func TestPlanningHandler_ToT_SolutionStructure(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -475,6 +497,7 @@ func TestPlanningHandler_ToT_BadRequest_EmptyBody(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	w := httptest.NewRecorder()
@@ -487,6 +510,7 @@ func TestPlanningHandler_ToT_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_BadRequest_MissingProblem(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	body := []byte(`{"config": {"max_depth": 5}}`)
@@ -500,6 +524,7 @@ func TestPlanningHandler_ToT_BadRequest_MissingProblem(t *testing.T) {
 }
 
 func TestPlanningHandler_ToT_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	reqBody := ToTRequest{
@@ -520,6 +545,7 @@ func TestPlanningHandler_ToT_ContentType(t *testing.T) {
 // --- Route Registration and Method Tests ---
 
 func TestRegisterPlanningRoutes(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	h := NewPlanningHandler(logger)
 	r := gin.New()
@@ -537,6 +563,7 @@ func TestRegisterPlanningRoutes(t *testing.T) {
 }
 
 func TestPlanningHandler_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	_, r := setupPlanningHandler()
 
 	tests := []struct {
@@ -567,6 +594,7 @@ func TestPlanningHandler_MethodNotAllowed(t *testing.T) {
 // --- Request Type Field Tests ---
 
 func TestHiPlanRequest_Fields(t *testing.T) {
+	t.Parallel()
 	trueVal := true
 	req := HiPlanRequest{
 		Goal: "Build something",
@@ -588,6 +616,7 @@ func TestHiPlanRequest_Fields(t *testing.T) {
 }
 
 func TestMCTSRequest_Fields(t *testing.T) {
+	t.Parallel()
 	trueVal := true
 	req := MCTSRequest{
 		InitialState: "start state",
@@ -606,6 +635,7 @@ func TestMCTSRequest_Fields(t *testing.T) {
 }
 
 func TestToTRequest_Fields(t *testing.T) {
+	t.Parallel()
 	falseVal := false
 	req := ToTRequest{
 		Problem: "solve this",
@@ -626,6 +656,7 @@ func TestToTRequest_Fields(t *testing.T) {
 // --- Helper Function Tests ---
 
 func TestTruncate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		maxLen   int

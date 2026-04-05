@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewOpencodeCLI(t *testing.T) {
+	t.Parallel()
 	o := New()
 	require.NotNil(t, o)
 	
@@ -23,6 +24,7 @@ func TestNewOpencodeCLI(t *testing.T) {
 }
 
 func TestOpencodeCLIInitialize(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestOpencodeCLIInitialize(t *testing.T) {
 }
 
 func TestOpencodeCLIInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestOpencodeCLIInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestOpencodeCLIStartStop(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestOpencodeCLIStartStop(t *testing.T) {
 }
 
 func TestOpencodeCLIExecute(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -120,6 +125,7 @@ func TestOpencodeCLIExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := o.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -132,6 +138,7 @@ func TestOpencodeCLIExecute(t *testing.T) {
 }
 
 func TestOpencodeCLICapabilities(t *testing.T) {
+	t.Parallel()
 	o := New()
 	info := o.Info()
 	
@@ -142,11 +149,13 @@ func TestOpencodeCLICapabilities(t *testing.T) {
 }
 
 func TestOpencodeCLIIsAvailable(t *testing.T) {
+	t.Parallel()
 	o := New()
 	assert.True(t, o.IsAvailable())
 }
 
 func TestOpencodeCLIChatResult(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	
@@ -164,6 +173,7 @@ func TestOpencodeCLIChatResult(t *testing.T) {
 }
 
 func TestOpencodeCLIGenerateResult(t *testing.T) {
+	t.Parallel()
 	o := New()
 	ctx := context.Background()
 	

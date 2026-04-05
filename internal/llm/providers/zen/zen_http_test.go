@@ -13,6 +13,7 @@ import (
 
 // TestZenHTTPProvider_DefaultConfig tests default configuration
 func TestZenHTTPProvider_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultZenHTTPConfig()
 
 	assert.Equal(t, "http://localhost:4096", config.BaseURL)
@@ -25,6 +26,7 @@ func TestZenHTTPProvider_DefaultConfig(t *testing.T) {
 
 // TestZenHTTPProvider_NewProvider tests provider creation
 func TestZenHTTPProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		BaseURL:   "http://localhost:5000",
 		Username:  "testuser",
@@ -50,6 +52,7 @@ func TestZenHTTPProvider_NewProvider(t *testing.T) {
 
 // TestZenHTTPProvider_NewProviderWithModel tests model-specific creation
 func TestZenHTTPProvider_NewProviderWithModel(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	assert.NotNil(t, provider)
@@ -58,18 +61,21 @@ func TestZenHTTPProvider_NewProviderWithModel(t *testing.T) {
 
 // TestZenHTTPProvider_GetName tests provider name
 func TestZenHTTPProvider_GetName(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("grok-code")
 	assert.Equal(t, "zen-http", provider.GetName())
 }
 
 // TestZenHTTPProvider_GetProviderType tests provider type
 func TestZenHTTPProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("grok-code")
 	assert.Equal(t, "zen", provider.GetProviderType())
 }
 
 // TestZenHTTPProvider_GetCapabilities tests capabilities
 func TestZenHTTPProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("grok-code")
 	caps := provider.GetCapabilities()
 
@@ -89,6 +95,7 @@ func TestZenHTTPProvider_GetCapabilities(t *testing.T) {
 
 // TestZenHTTPProvider_SetModel tests model setting
 func TestZenHTTPProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("grok-code")
 	assert.Equal(t, "grok-code", provider.GetCurrentModel())
 
@@ -98,6 +105,7 @@ func TestZenHTTPProvider_SetModel(t *testing.T) {
 
 // TestZenHTTPProvider_DefaultValues tests default value application
 func TestZenHTTPProvider_DefaultValues(t *testing.T) {
+	t.Parallel()
 	// Empty config should get defaults
 	config := ZenHTTPConfig{}
 	provider := NewZenHTTPProvider(config)
@@ -110,6 +118,7 @@ func TestZenHTTPProvider_DefaultValues(t *testing.T) {
 
 // TestZenHTTPProvider_URLTrailingSlash tests URL normalization
 func TestZenHTTPProvider_URLTrailingSlash(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		BaseURL: "http://localhost:4096/", // With trailing slash
 	}
@@ -121,6 +130,7 @@ func TestZenHTTPProvider_URLTrailingSlash(t *testing.T) {
 
 // TestZenHTTPProvider_ValidateConfig tests config validation
 func TestZenHTTPProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	valid, errs := provider.ValidateConfig(nil)
@@ -137,6 +147,7 @@ func TestZenHTTPProvider_ValidateConfig(t *testing.T) {
 
 // TestZenHTTPProvider_IsServerRunning tests server check
 func TestZenHTTPProvider_IsServerRunning(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	running := provider.IsServerRunning()
@@ -150,6 +161,7 @@ func TestZenHTTPProvider_IsServerRunning(t *testing.T) {
 
 // TestIsZenHTTPAvailable tests the standalone availability function
 func TestIsZenHTTPAvailable(t *testing.T) {
+	t.Parallel()
 	available := IsZenHTTPAvailable()
 	t.Logf("Zen HTTP available: %v", available)
 
@@ -161,6 +173,7 @@ func TestIsZenHTTPAvailable(t *testing.T) {
 
 // TestCanUseZenHTTP tests the full HTTP usability check
 func TestCanUseZenHTTP(t *testing.T) {
+	t.Parallel()
 	canUse := CanUseZenHTTP()
 	t.Logf("Can use Zen HTTP: %v", canUse)
 
@@ -170,6 +183,7 @@ func TestCanUseZenHTTP(t *testing.T) {
 
 // TestZenHTTPProvider_APITypes tests API type structures
 func TestZenHTTPProvider_APITypes(t *testing.T) {
+	t.Parallel()
 	// Test sessionResponse serialization
 	session := sessionResponse{
 		ID:        "sess-123",
@@ -223,6 +237,7 @@ func TestZenHTTPProvider_APITypes(t *testing.T) {
 
 // TestZenHTTPProvider_Complete_NoPrompt tests error on empty prompt
 func TestZenHTTPProvider_Complete_NoPrompt(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 	provider.autoStart = false // Don't try to start server
 
@@ -243,6 +258,7 @@ func TestZenHTTPProvider_Complete_NoPrompt(t *testing.T) {
 
 // TestZenHTTPProvider_HealthCheck_NotRunning tests health check when server not running
 func TestZenHTTPProvider_HealthCheck_NotRunning(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 	provider.autoStart = false // Don't auto-start
 
@@ -256,6 +272,7 @@ func TestZenHTTPProvider_HealthCheck_NotRunning(t *testing.T) {
 
 // TestZenHTTPProvider_StopServer tests stop server functionality
 func TestZenHTTPProvider_StopServer(t *testing.T) {
+	t.Parallel()
 	provider := &ZenHTTPProvider{
 		model:         "big-pickle",
 		serverStarted: true,
@@ -271,6 +288,7 @@ func TestZenHTTPProvider_StopServer(t *testing.T) {
 
 // TestZenHTTPProvider_SessionManagement tests session ID handling
 func TestZenHTTPProvider_SessionManagement(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	// Initially no session
@@ -283,6 +301,7 @@ func TestZenHTTPProvider_SessionManagement(t *testing.T) {
 
 // TestZenHTTPProvider_MaxConcurrentRequests tests concurrent request limit
 func TestZenHTTPProvider_MaxConcurrentRequests(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 	caps := provider.GetCapabilities()
 
@@ -292,6 +311,7 @@ func TestZenHTTPProvider_MaxConcurrentRequests(t *testing.T) {
 
 // TestZenHTTPProvider_ModelSupportViaCapabilities tests model list via capabilities
 func TestZenHTTPProvider_ModelSupportViaCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 	caps := provider.GetCapabilities()
 
@@ -312,6 +332,7 @@ func TestZenHTTPProvider_ModelSupportViaCapabilities(t *testing.T) {
 
 // Integration test - only runs if OpenCode is installed and server is running
 func TestZenHTTPProvider_Integration_Complete(t *testing.T) {
+	t.Parallel()
 	if !IsOpenCodeInstalled() {
 		t.Skip("OpenCode CLI not installed")
 	}
@@ -344,6 +365,7 @@ func TestZenHTTPProvider_Integration_Complete(t *testing.T) {
 
 // Integration test for health check
 func TestZenHTTPProvider_Integration_HealthCheck(t *testing.T) {
+	t.Parallel()
 	if !IsOpenCodeInstalled() {
 		t.Skip("OpenCode CLI not installed")
 	}
@@ -363,6 +385,7 @@ func TestZenHTTPProvider_Integration_HealthCheck(t *testing.T) {
 
 // TestZenHTTPProvider_CompleteStream tests streaming completion
 func TestZenHTTPProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	if !IsOpenCodeInstalled() {
 		t.Skip("OpenCode CLI not installed")
 	}
@@ -398,6 +421,7 @@ func TestZenHTTPProvider_CompleteStream(t *testing.T) {
 
 // TestZenHTTPProvider_AutoStartDisabled tests behavior with auto-start disabled
 func TestZenHTTPProvider_AutoStartDisabled(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		AutoStart: false,
 		Model:     "big-pickle",
@@ -416,6 +440,7 @@ func TestZenHTTPProvider_AutoStartDisabled(t *testing.T) {
 
 // TestZenHTTPProvider_BasicAuthCredentials tests authentication configuration
 func TestZenHTTPProvider_BasicAuthCredentials(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		Username: "myuser",
 		Password: "mypassword",
@@ -428,6 +453,7 @@ func TestZenHTTPProvider_BasicAuthCredentials(t *testing.T) {
 
 // TestZenHTTPProvider_StartServerWithoutCLI tests server start failure when CLI missing
 func TestZenHTTPProvider_StartServerWithoutCLI(t *testing.T) {
+	t.Parallel()
 	if IsOpenCodeInstalled() {
 		t.Skip("OpenCode is installed - can't test missing CLI scenario")
 	}
@@ -441,6 +467,7 @@ func TestZenHTTPProvider_StartServerWithoutCLI(t *testing.T) {
 
 // TestZenHTTPProvider_MetadataInResponse tests metadata fields in response
 func TestZenHTTPProvider_MetadataInResponse(t *testing.T) {
+	t.Parallel()
 	// Test that response metadata has expected fields
 	expectedMetadataKeys := []string{
 		"source",
@@ -475,6 +502,7 @@ func TestZenHTTPProvider_MetadataInResponse(t *testing.T) {
 
 // TestZenHTTPProvider_Timeout tests timeout configuration
 func TestZenHTTPProvider_Timeout(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		Timeout: 30 * time.Second,
 	}
@@ -487,6 +515,7 @@ func TestZenHTTPProvider_Timeout(t *testing.T) {
 
 // TestZenHTTPProvider_MaxTokens tests max tokens configuration
 func TestZenHTTPProvider_MaxTokens(t *testing.T) {
+	t.Parallel()
 	config := ZenHTTPConfig{
 		MaxTokens: 2048,
 	}

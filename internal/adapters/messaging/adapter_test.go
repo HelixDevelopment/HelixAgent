@@ -14,6 +14,7 @@ import (
 )
 
 func TestBrokerAdapter_Connect(t *testing.T) {
+	t.Parallel()
 	genericBroker := broker.NewInMemoryBroker()
 	adapter := NewBrokerAdapter(genericBroker)
 
@@ -28,6 +29,7 @@ func TestBrokerAdapter_Connect(t *testing.T) {
 }
 
 func TestBrokerAdapter_PublishSubscribe(t *testing.T) {
+	t.Parallel()
 	genericBroker := broker.NewInMemoryBroker()
 	adapter := NewBrokerAdapter(genericBroker)
 
@@ -68,6 +70,7 @@ func TestBrokerAdapter_PublishSubscribe(t *testing.T) {
 }
 
 func TestBrokerAdapter_BrokerType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		genericBroker broker.MessageBroker
@@ -82,6 +85,7 @@ func TestBrokerAdapter_BrokerType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			adapter := NewBrokerAdapter(tt.genericBroker)
 			assert.Equal(t, tt.expectedType, adapter.BrokerType())
 		})
@@ -89,6 +93,7 @@ func TestBrokerAdapter_BrokerType(t *testing.T) {
 }
 
 func TestBrokerAdapter_Metrics(t *testing.T) {
+	t.Parallel()
 	genericBroker := broker.NewInMemoryBroker()
 	adapter := NewBrokerAdapter(genericBroker)
 
@@ -103,6 +108,7 @@ func TestBrokerAdapter_Metrics(t *testing.T) {
 }
 
 func TestBrokerAdapter_Unwrap(t *testing.T) {
+	t.Parallel()
 	genericBroker := broker.NewInMemoryBroker()
 	adapter := NewBrokerAdapter(genericBroker)
 
@@ -111,6 +117,7 @@ func TestBrokerAdapter_Unwrap(t *testing.T) {
 }
 
 func TestSubscriptionAdapter(t *testing.T) {
+	t.Parallel()
 	genericBroker := broker.NewInMemoryBroker()
 	adapter := NewBrokerAdapter(genericBroker)
 

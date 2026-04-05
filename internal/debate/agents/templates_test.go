@@ -14,6 +14,7 @@ import (
 // =============================================================================
 
 func TestNewTemplateRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 	assert.NotNil(t, registry)
 
@@ -23,6 +24,7 @@ func TestNewTemplateRegistry(t *testing.T) {
 }
 
 func TestTemplateRegistry_BuiltInTemplates(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	// Check domain specialist templates
@@ -60,6 +62,7 @@ func TestTemplateRegistry_BuiltInTemplates(t *testing.T) {
 }
 
 func TestTemplateRegistry_Register(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	customTemplate := &AgentTemplate{
@@ -78,6 +81,7 @@ func TestTemplateRegistry_Register(t *testing.T) {
 }
 
 func TestTemplateRegistry_Register_EmptyID(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	customTemplate := &AgentTemplate{
@@ -90,6 +94,7 @@ func TestTemplateRegistry_Register_EmptyID(t *testing.T) {
 }
 
 func TestTemplateRegistry_GetByDomain(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	codeTemplates := registry.GetByDomain(DomainCode)
@@ -101,6 +106,7 @@ func TestTemplateRegistry_GetByDomain(t *testing.T) {
 }
 
 func TestTemplateRegistry_GetByRole(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	criticTemplates := registry.GetByRole(topology.RoleCritic)
@@ -119,6 +125,7 @@ func TestTemplateRegistry_GetByRole(t *testing.T) {
 }
 
 func TestTemplateRegistry_CreateAgent(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	agent, err := registry.CreateAgent("code-specialist", "claude", "claude-3")
@@ -132,6 +139,7 @@ func TestTemplateRegistry_CreateAgent(t *testing.T) {
 }
 
 func TestTemplateRegistry_CreateAgent_NotFound(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 
 	_, err := registry.CreateAgent("nonexistent", "claude", "claude-3")
@@ -143,6 +151,7 @@ func TestTemplateRegistry_CreateAgent_NotFound(t *testing.T) {
 // =============================================================================
 
 func TestAgentTemplate_CreateAgent(t *testing.T) {
+	t.Parallel()
 	template := NewCodeSpecialistTemplate()
 
 	agent, err := template.CreateAgent("deepseek", "deepseek-coder")
@@ -174,6 +183,7 @@ func TestAgentTemplate_CreateAgent(t *testing.T) {
 }
 
 func TestAgentTemplate_GenerateSystemPrompt(t *testing.T) {
+	t.Parallel()
 	template := NewCodeSpecialistTemplate()
 
 	prompt := template.GenerateSystemPrompt("claude", "claude-3-opus")
@@ -189,6 +199,7 @@ func TestAgentTemplate_GenerateSystemPrompt(t *testing.T) {
 // =============================================================================
 
 func TestNewCodeSpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewCodeSpecialistTemplate()
 
 	assert.Equal(t, "code-specialist", template.TemplateID)
@@ -199,6 +210,7 @@ func TestNewCodeSpecialistTemplate(t *testing.T) {
 }
 
 func TestNewSecuritySpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewSecuritySpecialistTemplate()
 
 	assert.Equal(t, "security-specialist", template.TemplateID)
@@ -208,6 +220,7 @@ func TestNewSecuritySpecialistTemplate(t *testing.T) {
 }
 
 func TestNewArchitectureSpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewArchitectureSpecialistTemplate()
 
 	assert.Equal(t, "architecture-specialist", template.TemplateID)
@@ -217,6 +230,7 @@ func TestNewArchitectureSpecialistTemplate(t *testing.T) {
 }
 
 func TestNewDebugSpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewDebugSpecialistTemplate()
 
 	assert.Equal(t, "debug-specialist", template.TemplateID)
@@ -225,6 +239,7 @@ func TestNewDebugSpecialistTemplate(t *testing.T) {
 }
 
 func TestNewOptimizationSpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewOptimizationSpecialistTemplate()
 
 	assert.Equal(t, "optimization-specialist", template.TemplateID)
@@ -234,6 +249,7 @@ func TestNewOptimizationSpecialistTemplate(t *testing.T) {
 }
 
 func TestNewReasoningSpecialistTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewReasoningSpecialistTemplate()
 
 	assert.Equal(t, "reasoning-specialist", template.TemplateID)
@@ -247,6 +263,7 @@ func TestNewReasoningSpecialistTemplate(t *testing.T) {
 // =============================================================================
 
 func TestNewProposerTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewProposerTemplate()
 
 	assert.Equal(t, "role-proposer", template.TemplateID)
@@ -254,6 +271,7 @@ func TestNewProposerTemplate(t *testing.T) {
 }
 
 func TestNewCriticTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewCriticTemplate()
 
 	assert.Equal(t, "role-critic", template.TemplateID)
@@ -261,6 +279,7 @@ func TestNewCriticTemplate(t *testing.T) {
 }
 
 func TestNewReviewerTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewReviewerTemplate()
 
 	assert.Equal(t, "role-reviewer", template.TemplateID)
@@ -268,6 +287,7 @@ func TestNewReviewerTemplate(t *testing.T) {
 }
 
 func TestNewModeratorTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewModeratorTemplate()
 
 	assert.Equal(t, "role-moderator", template.TemplateID)
@@ -275,6 +295,7 @@ func TestNewModeratorTemplate(t *testing.T) {
 }
 
 func TestNewValidatorTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewValidatorTemplate()
 
 	assert.Equal(t, "role-validator", template.TemplateID)
@@ -282,6 +303,7 @@ func TestNewValidatorTemplate(t *testing.T) {
 }
 
 func TestNewRedTeamTemplate(t *testing.T) {
+	t.Parallel()
 	template := NewRedTeamTemplate()
 
 	assert.Equal(t, "role-red-team", template.TemplateID)
@@ -294,11 +316,13 @@ func TestNewRedTeamTemplate(t *testing.T) {
 // =============================================================================
 
 func TestAllTemplates_CreateValidAgents(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 	templates := registry.GetAll()
 
 	for _, template := range templates {
 		t.Run(template.TemplateID, func(t *testing.T) {
+				t.Parallel()
 			agent, err := template.CreateAgent("test-provider", "test-model")
 			require.NoError(t, err)
 			require.NotNil(t, agent)
@@ -316,11 +340,13 @@ func TestAllTemplates_CreateValidAgents(t *testing.T) {
 }
 
 func TestAllTemplates_HaveValidRoleAffinities(t *testing.T) {
+	t.Parallel()
 	registry := NewTemplateRegistry()
 	templates := registry.GetAll()
 
 	for _, template := range templates {
 		t.Run(template.TemplateID, func(t *testing.T) {
+				t.Parallel()
 			agent, err := template.CreateAgent("test", "model")
 			require.NoError(t, err)
 

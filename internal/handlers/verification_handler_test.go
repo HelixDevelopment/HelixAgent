@@ -39,6 +39,7 @@ func setupVerificationHandler() (*VerificationHandler, *gin.Engine) {
 }
 
 func TestNewVerificationHandler(t *testing.T) {
+	t.Parallel()
 	vs := verifier.NewVerificationService(nil)
 	ss, _ := verifier.NewScoringService(nil)
 	hs := verifier.NewHealthService(nil)
@@ -63,6 +64,7 @@ func TestNewVerificationHandler(t *testing.T) {
 }
 
 func TestVerifyModel_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	req := VerifyModelRequest{
@@ -94,6 +96,7 @@ func TestVerifyModel_Success(t *testing.T) {
 }
 
 func TestVerifyModel_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	// Missing required fields
@@ -110,6 +113,7 @@ func TestVerifyModel_BadRequest(t *testing.T) {
 }
 
 func TestVerifyModel_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	body := []byte(`{invalid json}`)
@@ -125,6 +129,7 @@ func TestVerifyModel_InvalidJSON(t *testing.T) {
 }
 
 func TestBatchVerify_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	req := BatchVerifyRequest{
@@ -161,6 +166,7 @@ func TestBatchVerify_Success(t *testing.T) {
 }
 
 func TestBatchVerify_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	body := []byte(`{}`)
@@ -176,6 +182,7 @@ func TestBatchVerify_BadRequest(t *testing.T) {
 }
 
 func TestGetVerificationStatus(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	// The mock service returns a default status for any model
@@ -190,6 +197,7 @@ func TestGetVerificationStatus(t *testing.T) {
 }
 
 func TestGetVerifiedModels(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	w := httptest.NewRecorder()
@@ -207,6 +215,7 @@ func TestGetVerifiedModels(t *testing.T) {
 }
 
 func TestGetVerifiedModels_WithQueryParams(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	w := httptest.NewRecorder()
@@ -219,6 +228,7 @@ func TestGetVerifiedModels_WithQueryParams(t *testing.T) {
 }
 
 func TestTestCodeVisibility_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	req := TestCodeVisibilityRequest{
@@ -248,6 +258,7 @@ func TestTestCodeVisibility_Success(t *testing.T) {
 }
 
 func TestTestCodeVisibility_DefaultLanguage(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	req := TestCodeVisibilityRequest{
@@ -268,6 +279,7 @@ func TestTestCodeVisibility_DefaultLanguage(t *testing.T) {
 }
 
 func TestTestCodeVisibility_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	body := []byte(`{}`)
@@ -283,6 +295,7 @@ func TestTestCodeVisibility_BadRequest(t *testing.T) {
 }
 
 func TestGetVerificationTests(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	w := httptest.NewRecorder()
@@ -318,6 +331,7 @@ func TestGetVerificationTests(t *testing.T) {
 }
 
 func TestReVerifyModel_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	req := ReVerifyModelRequest{
@@ -347,6 +361,7 @@ func TestReVerifyModel_Success(t *testing.T) {
 }
 
 func TestReVerifyModel_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	body := []byte(`{}`)
@@ -362,6 +377,7 @@ func TestReVerifyModel_BadRequest(t *testing.T) {
 }
 
 func TestGetVerificationHealth(t *testing.T) {
+	t.Parallel()
 	_, r := setupVerificationHandler()
 
 	w := httptest.NewRecorder()
@@ -383,6 +399,7 @@ func TestGetVerificationHealth(t *testing.T) {
 }
 
 func TestVerifyModelRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := VerifyModelRequest{
 		ModelID:    "gpt-4",
 		Provider:   "openai",
@@ -409,6 +426,7 @@ func TestVerifyModelRequest_Fields(t *testing.T) {
 }
 
 func TestVerifyModelResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := VerifyModelResponse{
 		ModelID:          "gpt-4",
 		Provider:         "openai",
@@ -437,6 +455,7 @@ func TestVerifyModelResponse_Fields(t *testing.T) {
 }
 
 func TestBatchVerifyRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := BatchVerifyRequest{
 		Models: []struct {
 			ModelID  string `json:"model_id" binding:"required"`
@@ -456,6 +475,7 @@ func TestBatchVerifyRequest_Fields(t *testing.T) {
 }
 
 func TestBatchVerifyResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := BatchVerifyResponse{
 		Results: []VerifyModelResponse{
 			{ModelID: "model1", Verified: true},
@@ -474,6 +494,7 @@ func TestBatchVerifyResponse_Fields(t *testing.T) {
 }
 
 func TestGetVerifiedModelsResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := GetVerifiedModelsResponse{
 		Models: []VerifiedModelInfo{
 			{
@@ -501,6 +522,7 @@ func TestGetVerifiedModelsResponse_Fields(t *testing.T) {
 }
 
 func TestVerifiedModelInfo_Fields(t *testing.T) {
+	t.Parallel()
 	info := VerifiedModelInfo{
 		ModelID:      "gpt-4",
 		ModelName:    "GPT-4",
@@ -520,6 +542,7 @@ func TestVerifiedModelInfo_Fields(t *testing.T) {
 }
 
 func TestTestCodeVisibilityRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := TestCodeVisibilityRequest{
 		ModelID:  "gpt-4",
 		Provider: "openai",
@@ -535,6 +558,7 @@ func TestTestCodeVisibilityRequest_Fields(t *testing.T) {
 }
 
 func TestTestCodeVisibilityResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := TestCodeVisibilityResponse{
 		ModelID:     "gpt-4",
 		Provider:    "openai",
@@ -554,6 +578,7 @@ func TestTestCodeVisibilityResponse_Fields(t *testing.T) {
 }
 
 func TestReVerifyModelRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := ReVerifyModelRequest{
 		ModelID:  "gpt-4",
 		Provider: "openai",
@@ -570,6 +595,7 @@ func TestReVerifyModelRequest_Fields(t *testing.T) {
 }
 
 func TestVerificationHealthResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := VerificationHealthResponse{
 		Status:           "healthy",
 		VerifiedModels:   10,
@@ -591,6 +617,7 @@ func TestVerificationHealthResponse_Fields(t *testing.T) {
 }
 
 func TestRegisterVerificationRoutes(t *testing.T) {
+	t.Parallel()
 	vs := verifier.NewVerificationService(nil)
 	ss, _ := verifier.NewScoringService(nil)
 	hs := verifier.NewHealthService(nil)

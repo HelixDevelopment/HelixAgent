@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewAccumulatedWisdom(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 	require.NotNil(t, w)
 	assert.Equal(t, 0, w.Size())
@@ -18,9 +19,11 @@ func TestNewAccumulatedWisdom(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_Store(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 
 	t.Run("store valid wisdom", func(t *testing.T) {
+			t.Parallel()
 		wisdom := &Wisdom{
 			ID:        "wis-1",
 			Pattern:   "nil pointer check",
@@ -41,12 +44,14 @@ func TestAccumulatedWisdom_Store(t *testing.T) {
 	})
 
 	t.Run("store nil wisdom", func(t *testing.T) {
+			t.Parallel()
 		err := w.Store(nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "must not be nil")
 	})
 
 	t.Run("auto-generate ID", func(t *testing.T) {
+			t.Parallel()
 		wisdom := &Wisdom{
 			Pattern: "test pattern",
 			Domain:  "testing",
@@ -59,6 +64,7 @@ func TestAccumulatedWisdom_Store(t *testing.T) {
 	})
 
 	t.Run("auto-set CreatedAt", func(t *testing.T) {
+			t.Parallel()
 		wisdom := &Wisdom{
 			ID:      "wis-auto-time",
 			Pattern: "time pattern",
@@ -70,6 +76,7 @@ func TestAccumulatedWisdom_Store(t *testing.T) {
 	})
 
 	t.Run("nil tags become empty slice", func(t *testing.T) {
+			t.Parallel()
 		wisdom := &Wisdom{
 			ID:      "wis-nil-tags",
 			Pattern: "tag test",
@@ -83,6 +90,7 @@ func TestAccumulatedWisdom_Store(t *testing.T) {
 	})
 
 	t.Run("domain indexing", func(t *testing.T) {
+			t.Parallel()
 		w2 := NewAccumulatedWisdom()
 
 		_ = w2.Store(&Wisdom{
@@ -110,6 +118,7 @@ func TestAccumulatedWisdom_Store(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
+	t.Parallel()
 	t.Run("empty episodes", func(t *testing.T) {
 		w := NewAccumulatedWisdom()
 		result, err := w.ExtractFromEpisodes([]*Episode{})
@@ -118,6 +127,7 @@ func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
 	})
 
 	t.Run("single episode per cause (no extraction)", func(t *testing.T) {
+			t.Parallel()
 		w := NewAccumulatedWisdom()
 		episodes := []*Episode{
 			{
@@ -145,6 +155,7 @@ func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
 	})
 
 	t.Run("multiple episodes with same cause", func(t *testing.T) {
+			t.Parallel()
 		w := NewAccumulatedWisdom()
 		episodes := []*Episode{
 			{
@@ -204,6 +215,7 @@ func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
 	})
 
 	t.Run("episodes without reflections are skipped", func(t *testing.T) {
+			t.Parallel()
 		w := NewAccumulatedWisdom()
 		episodes := []*Episode{
 			{ID: "ep-1", AgentID: "a", Reflection: nil},
@@ -216,6 +228,7 @@ func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
 	})
 
 	t.Run("episodes with empty root cause are skipped", func(t *testing.T) {
+			t.Parallel()
 		w := NewAccumulatedWisdom()
 		episodes := []*Episode{
 			{
@@ -235,6 +248,7 @@ func TestAccumulatedWisdom_ExtractFromEpisodes(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_GetRelevant(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 
 	wisdoms := []*Wisdom{
@@ -266,6 +280,7 @@ func TestAccumulatedWisdom_GetRelevant(t *testing.T) {
 	}
 
 	t.Run("find relevant by keyword", func(t *testing.T) {
+			t.Parallel()
 		results := w.GetRelevant("nil pointer check in code", 2)
 		require.NotEmpty(t, results)
 		// w1 should be most relevant.
@@ -273,27 +288,32 @@ func TestAccumulatedWisdom_GetRelevant(t *testing.T) {
 	})
 
 	t.Run("find database related", func(t *testing.T) {
+			t.Parallel()
 		results := w.GetRelevant("database timeout issue", 1)
 		require.Len(t, results, 1)
 		assert.Equal(t, "w2", results[0].ID)
 	})
 
 	t.Run("empty query", func(t *testing.T) {
+			t.Parallel()
 		results := w.GetRelevant("", 5)
 		assert.Empty(t, results)
 	})
 
 	t.Run("limit 0", func(t *testing.T) {
+			t.Parallel()
 		results := w.GetRelevant("pointer", 0)
 		assert.Empty(t, results)
 	})
 
 	t.Run("no matches", func(t *testing.T) {
+			t.Parallel()
 		results := w.GetRelevant("kubernetes deployment", 5)
 		assert.Empty(t, results)
 	})
 
 	t.Run("empty wisdom store", func(t *testing.T) {
+			t.Parallel()
 		empty := NewAccumulatedWisdom()
 		results := empty.GetRelevant("pointer", 5)
 		assert.Empty(t, results)
@@ -301,6 +321,7 @@ func TestAccumulatedWisdom_GetRelevant(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 
 	wisdom := &Wisdom{
@@ -312,6 +333,7 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	require.NoError(t, w.Store(wisdom))
 
 	t.Run("record successful usage", func(t *testing.T) {
+			t.Parallel()
 		err := w.RecordUsage("wis-usage", true)
 		require.NoError(t, err)
 
@@ -323,6 +345,7 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	})
 
 	t.Run("record failed usage", func(t *testing.T) {
+			t.Parallel()
 		err := w.RecordUsage("wis-usage", false)
 		require.NoError(t, err)
 
@@ -334,6 +357,7 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	})
 
 	t.Run("record another success", func(t *testing.T) {
+			t.Parallel()
 		err := w.RecordUsage("wis-usage", true)
 		require.NoError(t, err)
 
@@ -344,6 +368,7 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
+			t.Parallel()
 		err := w.RecordUsage("nonexistent", true)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
@@ -351,6 +376,7 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_GetByDomain(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 
 	for i := 0; i < 5; i++ {
@@ -376,6 +402,7 @@ func TestAccumulatedWisdom_GetByDomain(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
 	w := NewAccumulatedWisdom()
 
 	wisdoms := []*Wisdom{
@@ -445,12 +472,14 @@ func TestAccumulatedWisdom_MarshalJSON_UnmarshalJSON(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_UnmarshalJSON_InvalidData(t *testing.T) {
+	t.Parallel()
 	w := &AccumulatedWisdom{}
 	err := json.Unmarshal([]byte(`{bad json`), w)
 	assert.Error(t, err)
 }
 
 func TestAccumulatedWisdom_UnmarshalJSON_NilInsights(t *testing.T) {
+	t.Parallel()
 	w := &AccumulatedWisdom{}
 	err := json.Unmarshal([]byte(`{"insights":null}`), w)
 	require.NoError(t, err)
@@ -460,6 +489,7 @@ func TestAccumulatedWisdom_UnmarshalJSON_NilInsights(t *testing.T) {
 }
 
 func TestAccumulatedWisdom_UnmarshalJSON_NilTagsNormalized(t *testing.T) {
+	t.Parallel()
 	w := &AccumulatedWisdom{}
 	data := `{"insights":[{"id":"w1","pattern":"p1","domain":"code","tags":null}]}`
 	err := json.Unmarshal([]byte(data), w)

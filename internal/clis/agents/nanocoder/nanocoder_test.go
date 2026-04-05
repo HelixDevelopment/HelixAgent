@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewNanocoder(t *testing.T) {
+	t.Parallel()
 	n := New()
 	require.NotNil(t, n)
 	
@@ -23,6 +24,7 @@ func TestNewNanocoder(t *testing.T) {
 }
 
 func TestNanocoderInitialize(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -39,6 +41,7 @@ func TestNanocoderInitialize(t *testing.T) {
 }
 
 func TestNanocoderInitializeWithNilConfig(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -48,6 +51,7 @@ func TestNanocoderInitializeWithNilConfig(t *testing.T) {
 }
 
 func TestNanocoderStartStop(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -64,6 +68,7 @@ func TestNanocoderStartStop(t *testing.T) {
 }
 
 func TestNanocoderExecute(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	
@@ -106,6 +111,7 @@ func TestNanocoderExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := n.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -118,6 +124,7 @@ func TestNanocoderExecute(t *testing.T) {
 }
 
 func TestNanocoderCapabilities(t *testing.T) {
+	t.Parallel()
 	n := New()
 	info := n.Info()
 	
@@ -128,11 +135,13 @@ func TestNanocoderCapabilities(t *testing.T) {
 }
 
 func TestNanocoderIsAvailable(t *testing.T) {
+	t.Parallel()
 	n := New()
 	assert.True(t, n.IsAvailable())
 }
 
 func TestNanocoderGenerateResult(t *testing.T) {
+	t.Parallel()
 	n := New()
 	ctx := context.Background()
 	

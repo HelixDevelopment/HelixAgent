@@ -34,6 +34,7 @@ func (m *MockLLMBackend) CompleteWithHint(ctx context.Context, prompt string, hi
 }
 
 func TestConstrainedGenerator_Generate(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"test@example.com"},
 	}
@@ -50,6 +51,7 @@ func TestConstrainedGenerator_Generate(t *testing.T) {
 }
 
 func TestConstrainedGenerator_GenerateWithRetry(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"invalid", "still invalid", "test@example.com"},
 	}
@@ -71,6 +73,7 @@ func TestConstrainedGenerator_GenerateWithRetry(t *testing.T) {
 }
 
 func TestConstrainedGenerator_GenerateRetryExceeded(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"invalid1", "invalid2", "invalid3"},
 	}
@@ -90,6 +93,7 @@ func TestConstrainedGenerator_GenerateRetryExceeded(t *testing.T) {
 }
 
 func TestConstrainedGenerator_GenerateBackendError(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		shouldErr: true,
 	}
@@ -107,6 +111,7 @@ func TestConstrainedGenerator_GenerateBackendError(t *testing.T) {
 }
 
 func TestConstrainedGenerator_GenerateContextCancelled(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"invalid", "invalid", "invalid"},
 	}
@@ -126,6 +131,7 @@ func TestConstrainedGenerator_GenerateContextCancelled(t *testing.T) {
 }
 
 func TestDefaultGeneratorConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeneratorConfig()
 
 	assert.Equal(t, 3, config.DefaultMaxRetries)
@@ -134,6 +140,7 @@ func TestDefaultGeneratorConfig(t *testing.T) {
 }
 
 func TestGenerationResult(t *testing.T) {
+	t.Parallel()
 	result := &GenerationResult{
 		Output:   "test output",
 		Valid:    true,
@@ -160,6 +167,7 @@ func TestGenerationResult(t *testing.T) {
 }
 
 func TestTemplatedGenerator_GenerateFromTemplate(t *testing.T) {
+	t.Parallel()
 	// Note: Placeholders are sorted alphabetically, so "age" comes before "name"
 	backend := &MockLLMBackend{
 		responses: []string{"30", "John"},
@@ -187,6 +195,7 @@ func TestTemplatedGenerator_GenerateFromTemplate(t *testing.T) {
 }
 
 func TestSelectionGenerator_Select(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Python"},
 	}
@@ -202,6 +211,7 @@ func TestSelectionGenerator_Select(t *testing.T) {
 }
 
 func TestSelectionGenerator_SelectContains(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"I would choose Python for this task"},
 	}
@@ -216,6 +226,7 @@ func TestSelectionGenerator_SelectContains(t *testing.T) {
 }
 
 func TestSelectionGenerator_SelectMultiple(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Python, Go"},
 	}
@@ -232,6 +243,7 @@ func TestSelectionGenerator_SelectMultiple(t *testing.T) {
 }
 
 func TestSelectionGenerator_SelectError(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		shouldErr: true,
 	}
@@ -244,6 +256,7 @@ func TestSelectionGenerator_SelectError(t *testing.T) {
 }
 
 func TestStructuredGenerator_GenerateJSON(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{`{"name": "Test", "value": 42}`},
 	}
@@ -269,6 +282,7 @@ func TestStructuredGenerator_GenerateJSON(t *testing.T) {
 }
 
 func TestStructuredGenerator_GenerateList(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Item 1", "Item 2", "Item 3"},
 	}
@@ -288,6 +302,7 @@ func TestStructuredGenerator_GenerateList(t *testing.T) {
 }
 
 func TestGuidedCompletion_CompleteUntil(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Hello, this is a test output."},
 	}
@@ -309,6 +324,7 @@ func TestGuidedCompletion_CompleteUntil(t *testing.T) {
 }
 
 func TestGuidedCompletion_CompleteWithPrefix(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"Answer: The solution is 42."},
 	}
@@ -323,6 +339,7 @@ func TestGuidedCompletion_CompleteWithPrefix(t *testing.T) {
 }
 
 func TestGuidedCompletion_CompleteWithSuffix(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		responses: []string{"The end result is positive"},
 	}
@@ -336,6 +353,7 @@ func TestGuidedCompletion_CompleteWithSuffix(t *testing.T) {
 }
 
 func TestGuidedCompletion_Error(t *testing.T) {
+	t.Parallel()
 	backend := &MockLLMBackend{
 		shouldErr: true,
 	}

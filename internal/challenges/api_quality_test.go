@@ -12,6 +12,7 @@ import (
 )
 
 func TestAPIQuality_ID(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{
 		BaseChallenge: challenge.NewBaseChallenge(
 			"helix-api-quality",
@@ -25,6 +26,7 @@ func TestAPIQuality_ID(t *testing.T) {
 }
 
 func TestAPIQuality_NoPrompts(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{}
 
 	result, err := c.Execute(context.Background())
@@ -33,6 +35,7 @@ func TestAPIQuality_NoPrompts(t *testing.T) {
 }
 
 func TestAPIQuality_WithBaseURL(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{
 		BaseURL: "http://localhost:8080",
 		Prompts: []TestPrompt{
@@ -52,6 +55,7 @@ func TestAPIQuality_WithBaseURL(t *testing.T) {
 }
 
 func TestAPIQuality_NoBaseURL(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{
 		Prompts: []TestPrompt{
 			{ID: "test1", Prompt: "Hello"},
@@ -64,6 +68,7 @@ func TestAPIQuality_NoBaseURL(t *testing.T) {
 }
 
 func TestAPIQuality_MultiplePrompts(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{
 		BaseURL: "http://localhost:8080",
 		Prompts: []TestPrompt{
@@ -80,6 +85,7 @@ func TestAPIQuality_MultiplePrompts(t *testing.T) {
 }
 
 func TestAPIQuality_MixedResults_NoBaseURL(t *testing.T) {
+	t.Parallel()
 	c := &APIQualityChallenge{
 		Prompts: []TestPrompt{
 			{ID: "p1", Prompt: "Hello"},

@@ -43,4 +43,31 @@ note over H, C
   ACP graceful shutdown
 end note
 
+== Phase 1 Safety Patterns ==
+
+note over H, WG
+  **sync.Once Lazy Loading**
+  Provider initialization via sync.Once
+  ensures goroutine-safe single init.
+  Applied in: provider registry,
+  MCP adapter pool, cache warming.
+end note
+
+note over G, C
+  **Circuit Breaker Cascade**
+  Each provider goroutine checks
+  circuit breaker state before work.
+  Open breaker = early return with
+  fallback to next provider.
+end note
+
+note over H, C
+  **Resource Monitor Guard**
+  Background goroutines check
+  ResourceMonitor before spawning
+  new work. Prevents OOM under
+  high concurrency (GOMAXPROCS
+  limited to 30-40% host resources).
+end note
+
 @enduml

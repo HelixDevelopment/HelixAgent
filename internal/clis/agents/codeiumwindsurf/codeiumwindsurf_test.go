@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	c := New()
 
 	assert.NotNil(t, c)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestCodeiumWindsurf_Initialize(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -41,6 +43,7 @@ func TestCodeiumWindsurf_Initialize(t *testing.T) {
 }
 
 func TestCodeiumWindsurf_Execute(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -126,6 +129,7 @@ func TestCodeiumWindsurf_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := c.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -141,6 +145,7 @@ func TestCodeiumWindsurf_Execute(t *testing.T) {
 }
 
 func TestCodeiumWindsurf_IsAvailable(t *testing.T) {
+	t.Parallel()
 	c := New()
 	assert.False(t, c.IsAvailable())
 
@@ -149,6 +154,7 @@ func TestCodeiumWindsurf_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		APIKey: "test-key",
 		Model:  "test-model",

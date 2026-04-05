@@ -60,6 +60,7 @@ func AssertContains[T comparable](t *testing.T, slice []T, item T) {
 }
 
 func TestLLMRequest_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating a valid LLM request
 	req := &LLMRequest{
 		ID:        "test-request-123",
@@ -106,6 +107,7 @@ func TestLLMRequest_Creation(t *testing.T) {
 }
 
 func TestLLMResponse_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating a valid LLM response
 	resp := &LLMResponse{
 		ID:             "test-response-123",
@@ -138,6 +140,7 @@ func TestLLMResponse_Creation(t *testing.T) {
 }
 
 func TestLLMProvider_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating a valid LLM provider
 	provider := &LLMProvider{
 		ID:           "test-provider-123",
@@ -169,6 +172,7 @@ func TestLLMProvider_Creation(t *testing.T) {
 }
 
 func TestModelParameters_Defaults(t *testing.T) {
+	t.Parallel()
 	// Test ModelParameters with default values
 	params := ModelParameters{
 		Model:            "default-model",
@@ -188,6 +192,7 @@ func TestModelParameters_Defaults(t *testing.T) {
 }
 
 func TestEnsembleConfig_Validation(t *testing.T) {
+	t.Parallel()
 	// Test EnsembleConfig validation
 	config := EnsembleConfig{
 		Strategy:            "confidence_weighted",
@@ -209,6 +214,7 @@ func TestEnsembleConfig_Validation(t *testing.T) {
 }
 
 func TestMessage_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating a message
 	var name *string = nil
 	message := Message{
@@ -225,6 +231,7 @@ func TestMessage_Creation(t *testing.T) {
 }
 
 func TestUserSession_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating a user session
 	now := time.Now()
 	var memoryID *string = nil
@@ -337,6 +344,7 @@ func BenchmarkModelParametersCreation(b *testing.B) {
 }
 
 func TestProviderCapabilities_Creation(t *testing.T) {
+	t.Parallel()
 	// Test creating provider capabilities
 	capabilities := ProviderCapabilities{
 		SupportedModels:         []string{"model1", "model2"},

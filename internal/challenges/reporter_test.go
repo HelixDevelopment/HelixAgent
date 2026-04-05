@@ -14,6 +14,7 @@ import (
 )
 
 func TestReporter_WriteResults_Summary(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := NewReporter(dir)
 
@@ -68,6 +69,7 @@ func TestReporter_WriteResults_Summary(t *testing.T) {
 }
 
 func TestReporter_WriteResults_IndividualFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := NewReporter(dir)
 
@@ -94,6 +96,7 @@ func TestReporter_WriteResults_IndividualFiles(t *testing.T) {
 }
 
 func TestReporter_WriteResults_Empty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := NewReporter(dir)
 
@@ -114,6 +117,7 @@ func TestReporter_WriteResults_Empty(t *testing.T) {
 }
 
 func TestReporter_WriteResults_AllStatuses(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := NewReporter(dir)
 
@@ -151,6 +155,7 @@ func TestReporter_WriteResults_AllStatuses(t *testing.T) {
 }
 
 func TestNewReporter(t *testing.T) {
+	t.Parallel()
 	r := NewReporter("/tmp/test")
 	assert.Equal(t, "/tmp/test", r.baseDir)
 }

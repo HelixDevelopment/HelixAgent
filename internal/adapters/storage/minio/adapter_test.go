@@ -14,6 +14,7 @@ import (
 // ============================================================================
 
 func TestConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.Config{
 		Endpoint:          "localhost:9000",
 		AccessKey:         "minioadmin",
@@ -44,6 +45,7 @@ func TestConfig_Fields(t *testing.T) {
 // ============================================================================
 
 func TestDefaultBucketConfig(t *testing.T) {
+	t.Parallel()
 	cfg := adapter.DefaultBucketConfig("my-bucket")
 	require.NotNil(t, cfg)
 	assert.Equal(t, "my-bucket", cfg.Name)
@@ -53,6 +55,7 @@ func TestDefaultBucketConfig(t *testing.T) {
 }
 
 func TestBucketConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.BucketConfig{
 		Name:          "test-bucket",
 		Region:        "us-east-1",
@@ -71,6 +74,7 @@ func TestBucketConfig_Fields(t *testing.T) {
 // ============================================================================
 
 func TestObjectInfo_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	info := &adapter.ObjectInfo{
 		Key:          "test/key.txt",
@@ -94,6 +98,7 @@ func TestObjectInfo_Fields(t *testing.T) {
 // ============================================================================
 
 func TestBucketInfo_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	info := adapter.BucketInfo{
 		Name:         "my-bucket",
@@ -108,6 +113,7 @@ func TestBucketInfo_Fields(t *testing.T) {
 // ============================================================================
 
 func TestDefaultLifecycleRule(t *testing.T) {
+	t.Parallel()
 	rule := adapter.DefaultLifecycleRule("cleanup-rule", 90)
 	require.NotNil(t, rule)
 	assert.Equal(t, "cleanup-rule", rule.ID)
@@ -116,6 +122,7 @@ func TestDefaultLifecycleRule(t *testing.T) {
 }
 
 func TestLifecycleRule_Fields(t *testing.T) {
+	t.Parallel()
 	rule := &adapter.LifecycleRule{
 		ID:             "my-rule",
 		Prefix:         "logs/",
@@ -135,12 +142,14 @@ func TestLifecycleRule_Fields(t *testing.T) {
 // ============================================================================
 
 func TestWithContentType(t *testing.T) {
+	t.Parallel()
 	// WithContentType should be a valid PutOption (compile-time test)
 	opt := adapter.WithContentType("application/json")
 	assert.NotNil(t, opt)
 }
 
 func TestWithMetadata(t *testing.T) {
+	t.Parallel()
 	meta := map[string]string{"key": "value"}
 	opt := adapter.WithMetadata(meta)
 	assert.NotNil(t, opt)
@@ -151,6 +160,7 @@ func TestWithMetadata(t *testing.T) {
 // ============================================================================
 
 func TestNewClient_InvalidEndpoint(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.Config{
 		Endpoint:  "invalid-host:9999",
 		AccessKey: "access",
@@ -173,6 +183,7 @@ func TestNewClient_InvalidEndpoint(t *testing.T) {
 }
 
 func TestNewClient_NilLogger(t *testing.T) {
+	t.Parallel()
 	cfg := &adapter.Config{
 		Endpoint:  "localhost:9000",
 		AccessKey: "access",

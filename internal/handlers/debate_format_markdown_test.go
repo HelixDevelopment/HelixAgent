@@ -16,6 +16,7 @@ import (
 // ============================================================================
 
 func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
 		members := []*services.DebateTeamMember{
 			{
@@ -34,6 +35,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Contains proper Markdown structure", func(t *testing.T) {
+			t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -60,6 +62,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Includes fallback information", func(t *testing.T) {
+			t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -79,6 +82,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Truncates long topics", func(t *testing.T) {
+			t.Parallel()
 		longTopic := strings.Repeat("x", 100)
 		result := FormatDebateTeamIntroductionMarkdown(longTopic, nil)
 
@@ -89,6 +93,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 }
 
 func TestFormatPhaseHeaderMarkdown(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		phase       services.ValidationPhase
 		expectedStr string
@@ -102,6 +107,7 @@ func TestFormatPhaseHeaderMarkdown(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.phase), func(t *testing.T) {
+				t.Parallel()
 			result := FormatPhaseHeaderMarkdown(tc.phase, 1)
 
 			// Must NOT contain ANSI codes
@@ -117,6 +123,7 @@ func TestFormatPhaseHeaderMarkdown(t *testing.T) {
 }
 
 func TestFormatFinalResponseMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
 		content := "This is the final answer to your question."
 		result := FormatFinalResponseMarkdown(content)
@@ -126,6 +133,7 @@ func TestFormatFinalResponseMarkdown(t *testing.T) {
 	})
 
 	t.Run("Has proper Markdown structure", func(t *testing.T) {
+			t.Parallel()
 		content := "This is the final answer."
 		result := FormatFinalResponseMarkdown(content)
 
@@ -136,6 +144,7 @@ func TestFormatFinalResponseMarkdown(t *testing.T) {
 }
 
 func TestFormatConsensusHeaderMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
 		result := FormatConsensusHeaderMarkdown(0.85)
 
@@ -143,6 +152,7 @@ func TestFormatConsensusHeaderMarkdown(t *testing.T) {
 	})
 
 	t.Run("Shows correct confidence percentage", func(t *testing.T) {
+			t.Parallel()
 		result := FormatConsensusHeaderMarkdown(0.85)
 
 		assert.Contains(t, result, "85.0%")
@@ -151,6 +161,7 @@ func TestFormatConsensusHeaderMarkdown(t *testing.T) {
 }
 
 func TestFormatPhaseContentMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Wraps content in quote blocks", func(t *testing.T) {
 		content := "Line 1\nLine 2\nLine 3"
 		result := FormatPhaseContentMarkdown(content)
@@ -169,6 +180,7 @@ func TestFormatPhaseContentMarkdown(t *testing.T) {
 // ============================================================================
 
 func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
 		members := []*services.DebateTeamMember{
 			{
@@ -184,6 +196,7 @@ func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
 	})
 
 	t.Run("Contains no Markdown", func(t *testing.T) {
+			t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -200,6 +213,7 @@ func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
 	})
 
 	t.Run("Contains plain text content", func(t *testing.T) {
+			t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -222,6 +236,7 @@ func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
 // ============================================================================
 
 func TestStripANSIRegex(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		input    string
@@ -266,6 +281,7 @@ func TestStripANSIRegex(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := StripANSIRegex(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -273,12 +289,14 @@ func TestStripANSIRegex(t *testing.T) {
 }
 
 func TestContainsANSI(t *testing.T) {
+	t.Parallel()
 	t.Run("Detects ANSI codes", func(t *testing.T) {
 		assert.True(t, ContainsANSI("\033[31mRed\033[0m"))
 		assert.True(t, ContainsANSI("\x1b[1mBold\x1b[0m"))
 	})
 
 	t.Run("Returns false for clean text", func(t *testing.T) {
+			t.Parallel()
 		assert.False(t, ContainsANSI("Plain text"))
 		assert.False(t, ContainsANSI("# Markdown Header"))
 		assert.False(t, ContainsANSI("╔══════╗"))
@@ -290,6 +308,7 @@ func TestContainsANSI(t *testing.T) {
 // ============================================================================
 
 func TestStripMarkdown(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		input    string
@@ -329,6 +348,7 @@ func TestStripMarkdown(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := StripMarkdown(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -336,6 +356,7 @@ func TestStripMarkdown(t *testing.T) {
 }
 
 func TestStripAllFormatting(t *testing.T) {
+	t.Parallel()
 	t.Run("Removes both ANSI and Markdown", func(t *testing.T) {
 		input := "\033[1m**Bold and ANSI**\033[0m"
 		result := StripAllFormatting(input)
@@ -351,6 +372,7 @@ func TestStripAllFormatting(t *testing.T) {
 // ============================================================================
 
 func TestDetectOutputFormat(t *testing.T) {
+	t.Parallel()
 	t.Run("Explicit format hints", func(t *testing.T) {
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "", "ansi"))
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "", "terminal"))
@@ -361,12 +383,14 @@ func TestDetectOutputFormat(t *testing.T) {
 	})
 
 	t.Run("Terminal clients get ANSI", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "curl/7.64.1", ""))
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "wget", ""))
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "HTTPie/2.0.0", ""))
 	})
 
 	t.Run("API clients get Markdown", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "OpenCode/1.0", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "Crush/0.1", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "claude-code", ""))
@@ -375,16 +399,19 @@ func TestDetectOutputFormat(t *testing.T) {
 	})
 
 	t.Run("Accept header text/plain", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, OutputFormatPlain, DetectOutputFormat("text/plain", "", ""))
 	})
 
 	t.Run("Default is Markdown", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("application/json", "unknown-client", ""))
 	})
 }
 
 func TestIsTerminalClient(t *testing.T) {
+	t.Parallel()
 	terminalClients := []string{
 		"curl/7.64.1",
 		"Wget/1.20.3",
@@ -396,6 +423,7 @@ func TestIsTerminalClient(t *testing.T) {
 
 	for _, client := range terminalClients {
 		t.Run(client, func(t *testing.T) {
+				t.Parallel()
 			assert.True(t, IsTerminalClient(client), "Should detect %s as terminal client", client)
 		})
 	}
@@ -410,6 +438,7 @@ func TestIsTerminalClient(t *testing.T) {
 
 	for _, client := range nonTerminalClients {
 		t.Run(client, func(t *testing.T) {
+				t.Parallel()
 			assert.False(t, IsTerminalClient(client), "Should not detect %s as terminal client", client)
 		})
 	}
@@ -420,6 +449,7 @@ func TestIsTerminalClient(t *testing.T) {
 // ============================================================================
 
 func TestFormatDebateTeamIntroductionForFormat(t *testing.T) {
+	t.Parallel()
 	members := []*services.DebateTeamMember{
 		{
 			Role:         services.RoleAnalyst,
@@ -429,17 +459,20 @@ func TestFormatDebateTeamIntroductionForFormat(t *testing.T) {
 	}
 
 	t.Run("ANSI format contains ANSI codes", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatANSI, "Test", members)
 		assert.True(t, ContainsANSI(result), "ANSI format should contain ANSI codes")
 	})
 
 	t.Run("Markdown format contains no ANSI codes", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatMarkdown, "Test", members)
 		assert.False(t, ContainsANSI(result), "Markdown format should not contain ANSI codes")
 		assert.Contains(t, result, "#") // Should have Markdown headers
 	})
 
 	t.Run("Plain format contains no ANSI or Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatPlain, "Test", members)
 		assert.False(t, ContainsANSI(result))
 		assert.NotContains(t, result, "#")
@@ -452,6 +485,7 @@ func TestFormatDebateTeamIntroductionForFormat(t *testing.T) {
 // ============================================================================
 
 func TestOutputReadability(t *testing.T) {
+	t.Parallel()
 	members := []*services.DebateTeamMember{
 		{
 			Role:         services.RoleAnalyst,
@@ -466,6 +500,7 @@ func TestOutputReadability(t *testing.T) {
 	}
 
 	t.Run("Markdown output is well-structured", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("What is the meaning of life?", members)
 
 		// Check for proper sections
@@ -487,6 +522,7 @@ func TestOutputReadability(t *testing.T) {
 	})
 
 	t.Run("No garbage characters in output", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("Test", members)
 
 		// Should not contain escape sequences rendered as text
@@ -497,6 +533,7 @@ func TestOutputReadability(t *testing.T) {
 	})
 
 	t.Run("Output has reasonable line lengths", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("Test", members)
 
 		lines := strings.Split(result, "\n")
@@ -516,6 +553,7 @@ func TestOutputReadability(t *testing.T) {
 // ============================================================================
 
 func TestFullDebateOutputFlow(t *testing.T) {
+	t.Parallel()
 	t.Run("Complete Markdown debate output is clean", func(t *testing.T) {
 		members := []*services.DebateTeamMember{
 			{Role: services.RoleAnalyst, ModelName: "claude-3-opus", ProviderName: "anthropic"},
@@ -602,6 +640,7 @@ func BenchmarkContainsANSI(b *testing.B) {
 // ============================================================================
 
 func TestNilMemberHandling(t *testing.T) {
+	t.Parallel()
 	t.Run("Markdown format handles nil members", func(t *testing.T) {
 		members := []*services.DebateTeamMember{nil, nil}
 
@@ -612,6 +651,7 @@ func TestNilMemberHandling(t *testing.T) {
 	})
 
 	t.Run("Plain format handles nil members", func(t *testing.T) {
+			t.Parallel()
 		members := []*services.DebateTeamMember{nil, nil}
 
 		require.NotPanics(t, func() {
@@ -622,6 +662,7 @@ func TestNilMemberHandling(t *testing.T) {
 }
 
 func TestEmptyInputHandling(t *testing.T) {
+	t.Parallel()
 	t.Run("Empty topic", func(t *testing.T) {
 		result := FormatDebateTeamIntroductionMarkdown("", nil)
 		assert.NotEmpty(t, result)
@@ -629,6 +670,7 @@ func TestEmptyInputHandling(t *testing.T) {
 	})
 
 	t.Run("Empty content in FormatFinalResponseMarkdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFinalResponseMarkdown("")
 		assert.Contains(t, result, "## Final Answer")
 	})
@@ -639,6 +681,7 @@ func TestEmptyInputHandling(t *testing.T) {
 // ============================================================================
 
 func TestCategorizeErrorString(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		input    string
@@ -664,6 +707,7 @@ func TestCategorizeErrorString(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			result := categorizeErrorString(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -671,6 +715,7 @@ func TestCategorizeErrorString(t *testing.T) {
 }
 
 func TestGetCategoryIcon(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		category string
 		expected string
@@ -690,6 +735,7 @@ func TestGetCategoryIcon(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.category, func(t *testing.T) {
+				t.Parallel()
 			result := getCategoryIcon(tc.category)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -697,6 +743,7 @@ func TestGetCategoryIcon(t *testing.T) {
 }
 
 func TestFormatFallbackTriggeredMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Contains all required information", func(t *testing.T) {
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
@@ -717,6 +764,7 @@ func TestFormatFallbackTriggeredMarkdown(t *testing.T) {
 	})
 
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
 			"openai", "gpt-4",
@@ -731,6 +779,7 @@ func TestFormatFallbackTriggeredMarkdown(t *testing.T) {
 }
 
 func TestFormatFallbackSuccessMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Shows success message", func(t *testing.T) {
 		result := FormatFallbackSuccessMarkdown(
 			"Proposer",
@@ -747,6 +796,7 @@ func TestFormatFallbackSuccessMarkdown(t *testing.T) {
 }
 
 func TestFormatFallbackFailedMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Shows failure with error", func(t *testing.T) {
 		result := FormatFallbackFailedMarkdown(
 			"Critic",
@@ -766,6 +816,7 @@ func TestFormatFallbackFailedMarkdown(t *testing.T) {
 }
 
 func TestFormatFallbackExhaustedMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Shows exhausted message", func(t *testing.T) {
 		result := FormatFallbackExhaustedMarkdown("Synthesis", 4)
 
@@ -775,6 +826,7 @@ func TestFormatFallbackExhaustedMarkdown(t *testing.T) {
 }
 
 func TestFormatFallbackWithErrorForFormat(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format contains ANSI codes", func(t *testing.T) {
 		result := FormatFallbackWithErrorForFormat(
 			OutputFormatANSI,
@@ -791,6 +843,7 @@ func TestFormatFallbackWithErrorForFormat(t *testing.T) {
 	})
 
 	t.Run("Markdown format is clean", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackWithErrorForFormat(
 			OutputFormatMarkdown,
 			services.RoleAnalyst,
@@ -807,6 +860,7 @@ func TestFormatFallbackWithErrorForFormat(t *testing.T) {
 	})
 
 	t.Run("Plain format has no formatting", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackWithErrorForFormat(
 			OutputFormatPlain,
 			services.RoleAnalyst,
@@ -825,6 +879,7 @@ func TestFormatFallbackWithErrorForFormat(t *testing.T) {
 }
 
 func TestFormatFallbackChainMarkdown(t *testing.T) {
+	t.Parallel()
 	t.Run("Shows complete chain", func(t *testing.T) {
 		chain := []FallbackAttempt{
 			{
@@ -866,12 +921,14 @@ func TestFormatFallbackChainMarkdown(t *testing.T) {
 	})
 
 	t.Run("Empty chain returns empty string", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackChainMarkdown(services.PositionAnalyst, nil)
 		assert.Empty(t, result)
 	})
 }
 
 func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
+	t.Parallel()
 	chain := []FallbackAttempt{
 		{
 			Provider:   "openai",
@@ -891,6 +948,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	}
 
 	t.Run("ANSI format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatANSI,
 			services.PositionAnalyst,
@@ -903,6 +961,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatMarkdown,
 			services.PositionAnalyst,
@@ -916,6 +975,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatPlain,
 			services.PositionAnalyst,
@@ -935,6 +995,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 // ============================================================================
 
 func TestErrorCategoryEdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("Multiple keywords - first match wins", func(t *testing.T) {
 		// "invalid" appears after "timeout" so timeout should match
 		result := categorizeErrorString("request timeout: invalid response")
@@ -942,6 +1003,7 @@ func TestErrorCategoryEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Case insensitivity", func(t *testing.T) {
+			t.Parallel()
 		assert.Equal(t, "rate_limit", categorizeErrorString("RATE LIMIT"))
 		assert.Equal(t, "timeout", categorizeErrorString("TIMEOUT"))
 		assert.Equal(t, "auth", categorizeErrorString("UNAUTHORIZED"))
@@ -953,6 +1015,7 @@ func TestErrorCategoryEdgeCases(t *testing.T) {
 // ============================================================================
 
 func TestFullFallbackErrorReportingFlow(t *testing.T) {
+	t.Parallel()
 	t.Run("Complete fallback sequence in Markdown", func(t *testing.T) {
 		var fullOutput strings.Builder
 
@@ -1008,6 +1071,7 @@ func TestFullFallbackErrorReportingFlow(t *testing.T) {
 // ============================================================================
 
 func TestFormatModelRef(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		provider string
@@ -1072,6 +1136,7 @@ func TestFormatModelRef(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := formatModelRef(tt.provider, tt.model)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1079,6 +1144,7 @@ func TestFormatModelRef(t *testing.T) {
 }
 
 func TestFormatFallbackTriggeredMarkdown_NoDoublePrefix(t *testing.T) {
+	t.Parallel()
 	t.Run("NVIDIA model with org prefix does not double prefix", func(t *testing.T) {
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
@@ -1098,6 +1164,7 @@ func TestFormatFallbackTriggeredMarkdown_NoDoublePrefix(t *testing.T) {
 	})
 
 	t.Run("Standard model displays correctly", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
 			"anthropic", "claude-3-opus",

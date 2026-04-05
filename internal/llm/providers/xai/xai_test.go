@@ -16,6 +16,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "")
 	assert.NotNil(t, p)
 	assert.Equal(t, "xai-test-key", p.apiKey)
@@ -25,6 +26,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestNewProviderWithRegion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		region         string
@@ -47,6 +49,7 @@ func TestNewProviderWithRegion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProviderWithRegion("xai-test-key", "grok-3", tt.region)
 			assert.Equal(t, tt.expectedURL, p.baseURL)
 			assert.Equal(t, tt.expectedRegion, p.region)
@@ -55,6 +58,7 @@ func TestNewProviderWithRegion(t *testing.T) {
 }
 
 func TestNewProviderWithRetry(t *testing.T) {
+	t.Parallel()
 	retryConfig := RetryConfig{
 		MaxRetries:   5,
 		InitialDelay: 2 * time.Second,
@@ -72,6 +76,7 @@ func TestNewProviderWithRetry(t *testing.T) {
 }
 
 func TestProvider_Complete(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Contains(t, r.URL.Path, "/chat/completions")
@@ -118,6 +123,7 @@ func TestProvider_Complete(t *testing.T) {
 }
 
 func TestProvider_Complete_WithTools(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody Request
 		_ = json.NewDecoder(r.Body).Decode(&reqBody)
@@ -190,6 +196,7 @@ func TestProvider_Complete_WithTools(t *testing.T) {
 }
 
 func TestProvider_Complete_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": {"message": "Invalid request"}}`))
@@ -211,6 +218,7 @@ func TestProvider_Complete_Error(t *testing.T) {
 }
 
 func TestProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		flusher, _ := w.(http.Flusher)
@@ -253,6 +261,7 @@ func TestProvider_CompleteStream(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Contains(t, r.URL.Path, "/models")
@@ -267,6 +276,7 @@ func TestProvider_HealthCheck(t *testing.T) {
 }
 
 func TestProvider_HealthCheck_Error(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -279,6 +289,7 @@ func TestProvider_HealthCheck_Error(t *testing.T) {
 }
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewProviderWithRegion("xai-test-key", "grok-3", "eu-west-1")
 	caps := p.GetCapabilities()
 
@@ -296,6 +307,7 @@ func TestProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		apiKey     string
@@ -324,6 +336,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.apiKey, "", "")
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -333,6 +346,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestProvider_ConvertRequest(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "grok-3-beta")
 
 	req := &models.LLMRequest{
@@ -365,6 +379,7 @@ func TestProvider_ConvertRequest(t *testing.T) {
 }
 
 func TestProvider_CalculateConfidence(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "")
 
 	tests := []struct {
@@ -406,6 +421,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)
@@ -414,6 +430,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 }
 
 func TestProvider_CalculateBackoff(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "")
 
 	// First attempt should be around initial delay
@@ -428,6 +445,7 @@ func TestProvider_CalculateBackoff(t *testing.T) {
 }
 
 func TestProvider_SetRegion(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "")
 	assert.Equal(t, "us-east-1", p.region)
 	assert.Equal(t, XAIAPIBaseURL, p.baseURL)
@@ -442,6 +460,7 @@ func TestProvider_SetRegion(t *testing.T) {
 }
 
 func TestProvider_GetSetModel(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "grok-3")
 	assert.Equal(t, "grok-3", p.GetModel())
 
@@ -450,11 +469,13 @@ func TestProvider_GetSetModel(t *testing.T) {
 }
 
 func TestProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := NewProvider("xai-test-key", "", "")
 	assert.Equal(t, "xai", p.GetName())
 }
 
 func TestProvider_Retry(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -495,6 +516,7 @@ func TestProvider_Retry(t *testing.T) {
 }
 
 func TestProvider_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
 		w.WriteHeader(http.StatusOK)
@@ -516,6 +538,7 @@ func TestProvider_ContextCancellation(t *testing.T) {
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRetryConfig()
 	assert.Equal(t, 3, cfg.MaxRetries)
 	assert.Equal(t, 1*time.Second, cfg.InitialDelay)

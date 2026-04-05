@@ -13,11 +13,13 @@ import (
 )
 
 func TestFreeProviderType_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, FreeProviderType("zen"), FreeProviderZen)
 	assert.Equal(t, FreeProviderType("openrouter"), FreeProviderOpenRouter)
 }
 
 func TestDefaultFreeAdapterConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 
 	assert.NotNil(t, cfg)
@@ -32,6 +34,7 @@ func TestDefaultFreeAdapterConfig(t *testing.T) {
 }
 
 func TestNewFreeProviderAdapter(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	require.NotNil(t, adapter)
@@ -45,6 +48,7 @@ func TestNewFreeProviderAdapter(t *testing.T) {
 }
 
 func TestNewFreeProviderAdapter_WithConfig(t *testing.T) {
+	t.Parallel()
 	customConfig := &FreeAdapterConfig{
 		VerificationTimeout:        45 * time.Second,
 		HealthCheckTimeout:         15 * time.Second,
@@ -70,6 +74,7 @@ func TestNewFreeProviderAdapter_WithConfig(t *testing.T) {
 }
 
 func TestFreeAdapterConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &FreeAdapterConfig{
 		VerificationTimeout:        20 * time.Second,
 		HealthCheckTimeout:         5 * time.Second,
@@ -92,6 +97,7 @@ func TestFreeAdapterConfig_Fields(t *testing.T) {
 }
 
 func TestFreeAdapterConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	cfg := &FreeAdapterConfig{}
 
 	assert.Equal(t, time.Duration(0), cfg.VerificationTimeout)
@@ -105,6 +111,7 @@ func TestFreeAdapterConfig_ZeroValue(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetVerifiedModels_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	models := adapter.GetVerifiedModels()
@@ -114,6 +121,7 @@ func TestFreeProviderAdapter_GetVerifiedModels_Empty(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetVerifiedModels_WithModels(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add some verified models manually
@@ -142,6 +150,7 @@ func TestFreeProviderAdapter_GetVerifiedModels_WithModels(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_IsModelVerified_False(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	verified := adapter.IsModelVerified("non-existent-model")
@@ -150,6 +159,7 @@ func TestFreeProviderAdapter_IsModelVerified_False(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_IsModelVerified_True(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add a verified model
@@ -168,6 +178,7 @@ func TestFreeProviderAdapter_IsModelVerified_True(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetHealthStatus_Empty(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	status := adapter.GetHealthStatus()
@@ -177,6 +188,7 @@ func TestFreeProviderAdapter_GetHealthStatus_Empty(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetHealthStatus_WithStatus(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add health status
@@ -193,6 +205,7 @@ func TestFreeProviderAdapter_GetHealthStatus_WithStatus(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_NotVerified(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	score := adapter.calculateModelScore(100*time.Millisecond, false)
@@ -201,6 +214,7 @@ func TestFreeProviderAdapter_CalculateModelScore_NotVerified(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_FastLatency(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -211,6 +225,7 @@ func TestFreeProviderAdapter_CalculateModelScore_FastLatency(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_MediumLatency(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -221,6 +236,7 @@ func TestFreeProviderAdapter_CalculateModelScore_MediumLatency(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_SlowLatency(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -231,6 +247,7 @@ func TestFreeProviderAdapter_CalculateModelScore_SlowLatency(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_VerySlowLatency(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -241,6 +258,7 @@ func TestFreeProviderAdapter_CalculateModelScore_VerySlowLatency(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_ExtremelySlowLatency(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -251,6 +269,7 @@ func TestFreeProviderAdapter_CalculateModelScore_ExtremelySlowLatency(t *testing
 }
 
 func TestFreeProviderAdapter_CalculateModelScore_CappedAtMax(t *testing.T) {
+	t.Parallel()
 	cfg := &FreeAdapterConfig{
 		BaseScore: 6.5,
 		MaxScore:  7.0,
@@ -264,6 +283,7 @@ func TestFreeProviderAdapter_CalculateModelScore_CappedAtMax(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateZenScore_NoModels(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -273,6 +293,7 @@ func TestFreeProviderAdapter_CalculateZenScore_NoModels(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateZenScore_WithModels_HealthPassed(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -290,6 +311,7 @@ func TestFreeProviderAdapter_CalculateZenScore_WithModels_HealthPassed(t *testin
 }
 
 func TestFreeProviderAdapter_CalculateZenScore_WithModels_HealthFailed(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -306,6 +328,7 @@ func TestFreeProviderAdapter_CalculateZenScore_WithModels_HealthFailed(t *testin
 }
 
 func TestFreeProviderAdapter_CalculateOpenRouterScore_NoModels(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -315,6 +338,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore_NoModels(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateOpenRouterScore_OneModel(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -330,6 +354,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore_OneModel(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateOpenRouterScore_MultipleModels(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 	adapter := NewFreeProviderAdapter(nil, cfg)
 
@@ -347,6 +372,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore_MultipleModels(t *testing.
 }
 
 func TestGetModelDisplayName_Known(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		modelID  string
 		expected string
@@ -368,6 +394,7 @@ func TestGetModelDisplayName_Known(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
+				t.Parallel()
 			name := getModelDisplayName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})
@@ -375,6 +402,7 @@ func TestGetModelDisplayName_Known(t *testing.T) {
 }
 
 func TestGetModelDisplayName_Unknown(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		modelID  string
 		expected string
@@ -385,6 +413,7 @@ func TestGetModelDisplayName_Unknown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
+				t.Parallel()
 			name := getModelDisplayName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})
@@ -392,6 +421,7 @@ func TestGetModelDisplayName_Unknown(t *testing.T) {
 }
 
 func TestGetOpenRouterModelName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		modelID  string
 		expected string
@@ -406,6 +436,7 @@ func TestGetOpenRouterModelName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
+				t.Parallel()
 			name := getOpenRouterModelName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})
@@ -413,6 +444,7 @@ func TestGetOpenRouterModelName(t *testing.T) {
 }
 
 func TestConvertCapabilities_Nil(t *testing.T) {
+	t.Parallel()
 	caps := convertCapabilities(nil)
 
 	assert.NotNil(t, caps)
@@ -420,6 +452,7 @@ func TestConvertCapabilities_Nil(t *testing.T) {
 }
 
 func TestConvertCapabilities_Empty(t *testing.T) {
+	t.Parallel()
 	caps := convertCapabilities(&models.ProviderCapabilities{})
 
 	assert.NotNil(t, caps)
@@ -427,6 +460,7 @@ func TestConvertCapabilities_Empty(t *testing.T) {
 }
 
 func TestConvertCapabilities_WithFeatures(t *testing.T) {
+	t.Parallel()
 	caps := convertCapabilities(&models.ProviderCapabilities{
 		SupportedFeatures:       []string{"chat", "completion"},
 		SupportsStreaming:       true,
@@ -446,6 +480,7 @@ func TestConvertCapabilities_WithFeatures(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	done := make(chan bool, 4)
@@ -496,6 +531,7 @@ func TestFreeProviderAdapter_ConcurrentAccess(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_RefreshVerification_UnknownProvider(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	_, err := adapter.RefreshVerification(nil, "unknown", "")

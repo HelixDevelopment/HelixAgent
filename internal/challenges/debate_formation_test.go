@@ -11,6 +11,7 @@ import (
 )
 
 func TestDebateFormation_ID(t *testing.T) {
+	t.Parallel()
 	c := &DebateFormationChallenge{
 		BaseChallenge: challenge.NewBaseChallenge(
 			"helix-debate-formation",
@@ -24,6 +25,7 @@ func TestDebateFormation_ID(t *testing.T) {
 }
 
 func TestDebateFormation_Dependencies(t *testing.T) {
+	t.Parallel()
 	c := &DebateFormationChallenge{
 		BaseChallenge: challenge.NewBaseChallenge(
 			"helix-debate-formation",
@@ -37,6 +39,7 @@ func TestDebateFormation_Dependencies(t *testing.T) {
 }
 
 func TestDebateFormation_EnoughProviders(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "claude", Verified: true, Score: 8.5},
 		{Name: "deepseek", Verified: true, Score: 7.2},
@@ -50,6 +53,7 @@ func TestDebateFormation_EnoughProviders(t *testing.T) {
 }
 
 func TestDebateFormation_InsufficientProviders(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "claude", Verified: true, Score: 8.5},
 		{Name: "failing", Verified: false, Score: 3.0},
@@ -63,6 +67,7 @@ func TestDebateFormation_InsufficientProviders(t *testing.T) {
 }
 
 func TestDebateFormation_CustomGroupSize(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "a", Verified: true, Score: 9.0},
 		{Name: "b", Verified: true, Score: 8.0},
@@ -79,6 +84,7 @@ func TestDebateFormation_CustomGroupSize(t *testing.T) {
 }
 
 func TestDebateFormation_AllUnverified(t *testing.T) {
+	t.Parallel()
 	providers := []ProviderInfo{
 		{Name: "a", Verified: false, Score: 9.0},
 		{Name: "b", Verified: false, Score: 8.0},
@@ -92,6 +98,7 @@ func TestDebateFormation_AllUnverified(t *testing.T) {
 }
 
 func TestDebateFormation_EmptyProviders(t *testing.T) {
+	t.Parallel()
 	c := &DebateFormationChallenge{providers: nil}
 
 	result, err := c.Execute(context.Background())

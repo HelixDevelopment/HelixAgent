@@ -20,6 +20,7 @@ import (
 // =====================================================
 
 func TestDefaultFreeAdapterConfig_Comprehensive(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultFreeAdapterConfig()
 
 	require.NotNil(t, cfg)
@@ -34,6 +35,7 @@ func TestDefaultFreeAdapterConfig_Comprehensive(t *testing.T) {
 }
 
 func TestNewFreeProviderAdapter_Comprehensive(t *testing.T) {
+	t.Parallel()
 	t.Run("with nil config uses default", func(t *testing.T) {
 		adapter := NewFreeProviderAdapter(nil, nil)
 
@@ -47,6 +49,7 @@ func TestNewFreeProviderAdapter_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
+			t.Parallel()
 		customConfig := &FreeAdapterConfig{
 			VerificationTimeout:        60 * time.Second,
 			HealthCheckTimeout:         20 * time.Second,
@@ -68,6 +71,7 @@ func TestNewFreeProviderAdapter_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with verification service", func(t *testing.T) {
+			t.Parallel()
 		verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 		adapter := NewFreeProviderAdapter(verifierSvc, nil)
 
@@ -77,15 +81,18 @@ func TestNewFreeProviderAdapter_Comprehensive(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty initially", func(t *testing.T) {
+			t.Parallel()
 		models := adapter.GetVerifiedModels()
 		assert.NotNil(t, models)
 		assert.Empty(t, models)
 	})
 
 	t.Run("returns copy of models", func(t *testing.T) {
+			t.Parallel()
 		// Add a model manually
 		testModel := &verifier.UnifiedModel{
 			ID:       "test-model",
@@ -110,14 +117,17 @@ func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_IsModelVerified(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("unverified model", func(t *testing.T) {
+			t.Parallel()
 		verified := adapter.IsModelVerified("unknown-model")
 		assert.False(t, verified)
 	})
 
 	t.Run("verified model", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.verifiedModels["test-model"] = &verifier.UnifiedModel{
 			ID:       "test-model",
@@ -131,15 +141,18 @@ func TestFreeProviderAdapter_IsModelVerified(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty initially", func(t *testing.T) {
+			t.Parallel()
 		status := adapter.GetHealthStatus()
 		assert.NotNil(t, status)
 		assert.Empty(t, status)
 	})
 
 	t.Run("returns copy of health status", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.healthStatus["zen"] = true
 		adapter.healthStatus["openrouter"] = false
@@ -159,14 +172,17 @@ func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateZenScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty models returns 0", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateZenScore([]verifier.UnifiedModel{}, true)
 		assert.Equal(t, 0.0, score)
 	})
 
 	t.Run("health check passed bonus", func(t *testing.T) {
+			t.Parallel()
 		models := []verifier.UnifiedModel{
 			{ID: "m1", Latency: 100 * time.Millisecond},
 		}
@@ -178,6 +194,7 @@ func TestFreeProviderAdapter_CalculateZenScore(t *testing.T) {
 	})
 
 	t.Run("fast latency bonus", func(t *testing.T) {
+			t.Parallel()
 		fastModels := []verifier.UnifiedModel{
 			{ID: "m1", Latency: 100 * time.Millisecond},
 		}
@@ -192,6 +209,7 @@ func TestFreeProviderAdapter_CalculateZenScore(t *testing.T) {
 	})
 
 	t.Run("capped at max score", func(t *testing.T) {
+			t.Parallel()
 		// Create many models with fast latency to try to exceed max
 		models := make([]verifier.UnifiedModel, 10)
 		for i := 0; i < 10; i++ {
@@ -204,54 +222,65 @@ func TestFreeProviderAdapter_CalculateZenScore(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_CalculateModelScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("unverified returns 0", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(100*time.Millisecond, false)
 		assert.Equal(t, 0.0, score)
 	})
 
 	t.Run("very fast latency", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(200*time.Millisecond, true)
 		assert.GreaterOrEqual(t, score, adapter.config.BaseScore)
 		assert.LessOrEqual(t, score, adapter.config.MaxScore)
 	})
 
 	t.Run("fast latency", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(400*time.Millisecond, true)
 		assert.GreaterOrEqual(t, score, adapter.config.BaseScore)
 	})
 
 	t.Run("medium latency", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(800*time.Millisecond, true)
 		assert.GreaterOrEqual(t, score, adapter.config.BaseScore)
 	})
 
 	t.Run("slow latency", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(1500*time.Millisecond, true)
 		assert.GreaterOrEqual(t, score, adapter.config.BaseScore)
 	})
 
 	t.Run("very slow latency", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(3*time.Second, true)
 		assert.Equal(t, adapter.config.BaseScore, score)
 	})
 
 	t.Run("capped at max", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateModelScore(100*time.Millisecond, true)
 		assert.LessOrEqual(t, score, adapter.config.MaxScore)
 	})
 }
 
 func TestFreeProviderAdapter_CalculateOpenRouterScore(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty models returns 0", func(t *testing.T) {
+			t.Parallel()
 		score := adapter.calculateOpenRouterScore([]verifier.UnifiedModel{})
 		assert.Equal(t, 0.0, score)
 	})
 
 	t.Run("single model", func(t *testing.T) {
+			t.Parallel()
 		models := []verifier.UnifiedModel{
 			{ID: "m1", Latency: 100 * time.Millisecond},
 		}
@@ -261,6 +290,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore(t *testing.T) {
 	})
 
 	t.Run("two models bonus", func(t *testing.T) {
+			t.Parallel()
 		oneModel := []verifier.UnifiedModel{
 			{ID: "m1", Latency: 100 * time.Millisecond},
 		}
@@ -276,6 +306,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore(t *testing.T) {
 	})
 
 	t.Run("three or more models bonus", func(t *testing.T) {
+			t.Parallel()
 		twoModels := []verifier.UnifiedModel{
 			{ID: "m1", Latency: 100 * time.Millisecond},
 			{ID: "m2", Latency: 100 * time.Millisecond},
@@ -293,6 +324,7 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore(t *testing.T) {
 	})
 
 	t.Run("capped at max score", func(t *testing.T) {
+			t.Parallel()
 		models := make([]verifier.UnifiedModel, 10)
 		for i := 0; i < 10; i++ {
 			models[i] = verifier.UnifiedModel{ID: "m", Latency: 100 * time.Millisecond}
@@ -304,9 +336,11 @@ func TestFreeProviderAdapter_CalculateOpenRouterScore(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_RefreshVerification(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("unknown provider type", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		_, err := adapter.RefreshVerification(ctx, "unknown", "")
 		assert.Error(t, err)
@@ -318,6 +352,7 @@ func TestFreeProviderAdapter_RefreshVerification(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_HelperFunctions(t *testing.T) {
+	t.Parallel()
 	t.Run("getModelDisplayName known models", func(t *testing.T) {
 		// Test with slash separator
 		name := getModelDisplayName("opencode/grok-code")
@@ -325,27 +360,32 @@ func TestFreeProviderAdapter_HelperFunctions(t *testing.T) {
 	})
 
 	t.Run("getModelDisplayName no slash", func(t *testing.T) {
+			t.Parallel()
 		name := getModelDisplayName("simple-model")
 		assert.Equal(t, "simple-model", name)
 	})
 
 	t.Run("getOpenRouterModelName with free suffix", func(t *testing.T) {
+			t.Parallel()
 		name := getOpenRouterModelName("google/gemma-2-9b-it:free")
 		assert.Equal(t, "gemma-2-9b-it (Free)", name)
 	})
 
 	t.Run("getOpenRouterModelName without provider", func(t *testing.T) {
+			t.Parallel()
 		name := getOpenRouterModelName("simple-model:free")
 		assert.Equal(t, "simple-model (Free)", name)
 	})
 
 	t.Run("convertCapabilities nil", func(t *testing.T) {
+			t.Parallel()
 		result := convertCapabilities(nil)
 		assert.NotNil(t, result)
 		assert.Empty(t, result)
 	})
 
 	t.Run("convertCapabilities with features", func(t *testing.T) {
+			t.Parallel()
 		caps := &models.ProviderCapabilities{
 			SupportedFeatures:       []string{"text", "code"},
 			SupportsStreaming:       true,
@@ -367,6 +407,7 @@ func TestFreeProviderAdapter_HelperFunctions(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_ConcurrentAccess_Comprehensive(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	done := make(chan bool, 30)
@@ -399,6 +440,7 @@ func TestFreeProviderAdapter_ConcurrentAccess_Comprehensive(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_verifyOpenRouterFreeModel(t *testing.T) {
+	t.Parallel()
 	t.Run("successful health check", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/models" {
@@ -427,6 +469,7 @@ func TestFreeProviderAdapter_verifyOpenRouterFreeModel(t *testing.T) {
 }
 
 func TestFreeAdapterConfig_Fields_Comprehensive(t *testing.T) {
+	t.Parallel()
 	cfg := &FreeAdapterConfig{
 		VerificationTimeout:        45 * time.Second,
 		HealthCheckTimeout:         15 * time.Second,
@@ -449,11 +492,13 @@ func TestFreeAdapterConfig_Fields_Comprehensive(t *testing.T) {
 }
 
 func TestFreeProviderType_Constants_Comprehensive(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, FreeProviderType("zen"), FreeProviderZen)
 	assert.Equal(t, FreeProviderType("openrouter"), FreeProviderOpenRouter)
 }
 
 func TestFreeProviderAdapter_ConfigShortTimeout(t *testing.T) {
+	t.Parallel()
 	// Test that adapter accepts short timeout configuration
 	adapter := NewFreeProviderAdapter(nil, &FreeAdapterConfig{
 		VerificationTimeout: 100 * time.Millisecond,
@@ -466,6 +511,7 @@ func TestFreeProviderAdapter_ConfigShortTimeout(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_LatencyBonusCalculation(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	latencies := []struct {
@@ -498,9 +544,11 @@ func TestFreeProviderAdapter_LatencyBonusCalculation(t *testing.T) {
 // =====================================================
 
 func TestFreeProviderAdapter_CLIFacadeAvailability(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("checks CLI facade availability", func(t *testing.T) {
+			t.Parallel()
 		// This will return true/false depending on whether opencode is installed
 		available := adapter.IsCLIFacadeAvailable()
 		t.Logf("CLI facade available: %v", available)
@@ -508,6 +556,7 @@ func TestFreeProviderAdapter_CLIFacadeAvailability(t *testing.T) {
 	})
 
 	t.Run("gets CLI facade provider", func(t *testing.T) {
+			t.Parallel()
 		provider := adapter.GetCLIFacadeProvider()
 		// May be nil if opencode is not installed
 		if provider != nil {
@@ -520,14 +569,17 @@ func TestFreeProviderAdapter_CLIFacadeAvailability(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_FailedAPIModels(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("initially empty", func(t *testing.T) {
+			t.Parallel()
 		failed := adapter.GetFailedAPIModels()
 		assert.Empty(t, failed)
 	})
 
 	t.Run("returns copy not reference", func(t *testing.T) {
+			t.Parallel()
 		// Manually add a failed model
 		adapter.mu.Lock()
 		adapter.failedAPIModels["test-model"] = assert.AnError
@@ -546,14 +598,17 @@ func TestFreeProviderAdapter_FailedAPIModels(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("returns false for non-existent model", func(t *testing.T) {
+			t.Parallel()
 		result := adapter.IsModelUsingCLIFacade("non-existent")
 		assert.False(t, result)
 	})
 
 	t.Run("returns false for model without CLI facade metadata", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
 			ID:       "api-model",
@@ -566,6 +621,7 @@ func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
 	})
 
 	t.Run("returns true for model with CLI facade metadata", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.verifiedModels["cli-model"] = &verifier.UnifiedModel{
 			ID: "cli-model",
@@ -581,9 +637,11 @@ func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
 }
 
 func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
+	t.Parallel()
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("returns empty when no CLI models", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
 			ID:       "api-model",
@@ -596,6 +654,7 @@ func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 	})
 
 	t.Run("returns only CLI facade models", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
 			ID:       "api-model",

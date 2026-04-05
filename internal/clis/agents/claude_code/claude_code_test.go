@@ -15,6 +15,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	require.NotNil(t, cc)
 	
@@ -30,6 +31,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestClaudeCode_Initialize(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	tempDir := t.TempDir()
@@ -56,6 +58,7 @@ func TestClaudeCode_Initialize(t *testing.T) {
 }
 
 func TestClaudeCode_StartStop(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -78,6 +81,7 @@ func TestClaudeCode_StartStop(t *testing.T) {
 }
 
 func TestClaudeCode_Execute_Chat(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -98,6 +102,7 @@ func TestClaudeCode_Execute_Chat(t *testing.T) {
 }
 
 func TestClaudeCode_Execute_Bash(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -117,6 +122,7 @@ func TestClaudeCode_Execute_Bash(t *testing.T) {
 }
 
 func TestClaudeCode_Execute_Git(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -140,6 +146,7 @@ func TestClaudeCode_Execute_Git(t *testing.T) {
 }
 
 func TestClaudeCode_Execute_Edit(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -167,6 +174,7 @@ func TestClaudeCode_Execute_Edit(t *testing.T) {
 }
 
 func TestClaudeCode_Execute_UnknownCommand(t *testing.T) {
+	t.Parallel()
 	cc := New()
 	
 	ctx := context.Background()
@@ -180,6 +188,7 @@ func TestClaudeCode_Execute_UnknownCommand(t *testing.T) {
 }
 
 func TestSession(t *testing.T) {
+	t.Parallel()
 	session := NewSession("/tmp/test", &Config{})
 	
 	assert.NotEmpty(t, session.ID)
@@ -205,6 +214,7 @@ func TestSession(t *testing.T) {
 }
 
 func TestSession_IsExpired(t *testing.T) {
+	t.Parallel()
 	session := NewSession("/tmp/test", &Config{})
 	
 	// Not expired with 60 minute timeout
@@ -216,6 +226,7 @@ func TestSession_IsExpired(t *testing.T) {
 }
 
 func TestSessionManager(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		BaseConfig: base.BaseConfig{WorkDir: t.TempDir()},
 		TimeoutMinutes: 60,
@@ -254,6 +265,7 @@ func TestSessionManager(t *testing.T) {
 }
 
 func TestToolExecutor(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	te := NewToolExecutor(tempDir, []string{"read_file", "write_file", "bash"})
 	
@@ -283,6 +295,7 @@ func TestToolExecutor(t *testing.T) {
 }
 
 func TestMCPIntegration(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "mcp.json")
 	
@@ -316,6 +329,7 @@ func TestMCPIntegration(t *testing.T) {
 }
 
 func TestMCPIntegration_CallTool(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "mcp.json")
 	

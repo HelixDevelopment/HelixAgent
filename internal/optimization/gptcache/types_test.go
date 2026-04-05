@@ -7,6 +7,7 @@ import (
 )
 
 func TestCacheRequest(t *testing.T) {
+	t.Parallel()
 	req := &CacheRequest{
 		Query:    "What is the capital of France?",
 		Model:    "gpt-4",
@@ -25,6 +26,7 @@ func TestCacheRequest(t *testing.T) {
 }
 
 func TestCacheResponse(t *testing.T) {
+	t.Parallel()
 	resp := &CacheResponse{
 		Response:   "The capital of France is Paris.",
 		CacheHit:   true,
@@ -39,6 +41,7 @@ func TestCacheResponse(t *testing.T) {
 }
 
 func TestGenerationParameters(t *testing.T) {
+	t.Parallel()
 	params := &GenerationParameters{
 		Temperature:      0.8,
 		MaxTokens:        500,
@@ -59,6 +62,7 @@ func TestGenerationParameters(t *testing.T) {
 }
 
 func TestDefaultQueryNormalizer(t *testing.T) {
+	t.Parallel()
 	normalizer := &DefaultQueryNormalizer{}
 
 	query := "What is AI?"
@@ -68,6 +72,7 @@ func TestDefaultQueryNormalizer(t *testing.T) {
 }
 
 func TestCacheEventTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, CacheEventType("hit"), CacheEventHit)
 	assert.Equal(t, CacheEventType("miss"), CacheEventMiss)
 	assert.Equal(t, CacheEventType("set"), CacheEventSet)
@@ -77,6 +82,7 @@ func TestCacheEventTypes(t *testing.T) {
 }
 
 func TestDefaultCachePolicy(t *testing.T) {
+	t.Parallel()
 	policy := DefaultCachePolicy()
 
 	assert.Equal(t, 5, policy.MinQueryLength)
@@ -86,6 +92,7 @@ func TestDefaultCachePolicy(t *testing.T) {
 }
 
 func TestCachePolicy_ShouldCache(t *testing.T) {
+	t.Parallel()
 	policy := DefaultCachePolicy()
 
 	tests := []struct {
@@ -134,6 +141,7 @@ func TestCachePolicy_ShouldCache(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := &CacheRequest{
 				Query:      tt.query,
 				Parameters: tt.params,
@@ -147,6 +155,7 @@ func TestCachePolicy_ShouldCache(t *testing.T) {
 }
 
 func TestCachePolicy_ExcludedModels(t *testing.T) {
+	t.Parallel()
 	policy := DefaultCachePolicy()
 	policy.ExcludedModels = []string{"gpt-3.5-turbo"}
 
@@ -162,6 +171,7 @@ func TestCachePolicy_ExcludedModels(t *testing.T) {
 }
 
 func TestCachePolicy_ExcludedProviders(t *testing.T) {
+	t.Parallel()
 	policy := DefaultCachePolicy()
 	policy.ExcludedProviders = []string{"test-provider"}
 
@@ -177,6 +187,7 @@ func TestCachePolicy_ExcludedProviders(t *testing.T) {
 }
 
 func TestIndexTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, IndexType("flat"), IndexTypeFlat)
 	assert.Equal(t, IndexType("ivf"), IndexTypeIVF)
 	assert.Equal(t, IndexType("hnsw"), IndexTypeHNSW)
@@ -184,6 +195,7 @@ func TestIndexTypes(t *testing.T) {
 }
 
 func TestDefaultIndexConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultIndexConfig()
 
 	assert.Equal(t, IndexTypeFlat, config.Type)
@@ -194,6 +206,7 @@ func TestDefaultIndexConfig(t *testing.T) {
 }
 
 func TestCacheMetrics(t *testing.T) {
+	t.Parallel()
 	metrics := &CacheMetrics{
 		TotalQueries:      100,
 		CacheHits:         75,
@@ -212,6 +225,7 @@ func TestCacheMetrics(t *testing.T) {
 }
 
 func TestQueryContext(t *testing.T) {
+	t.Parallel()
 	ctx := &QueryContext{
 		ConversationID: "conv-123",
 		SessionID:      "session-456",
@@ -226,6 +240,7 @@ func TestQueryContext(t *testing.T) {
 }
 
 func TestPersistenceConfig(t *testing.T) {
+	t.Parallel()
 	config := &PersistenceConfig{
 		Enabled:     true,
 		Path:        "/tmp/cache",
@@ -238,6 +253,7 @@ func TestPersistenceConfig(t *testing.T) {
 }
 
 func TestClusterConfig(t *testing.T) {
+	t.Parallel()
 	config := &ClusterConfig{
 		Enabled:           true,
 		Nodes:             []string{"node1:8080", "node2:8080"},

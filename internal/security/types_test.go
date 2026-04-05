@@ -20,6 +20,7 @@ func init() {
 // =============================================================================
 
 func TestAttackType_PromptInjectionConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -33,6 +34,7 @@ func TestAttackType_PromptInjectionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -40,6 +42,7 @@ func TestAttackType_PromptInjectionConstants(t *testing.T) {
 }
 
 func TestAttackType_DataExtractionConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -53,12 +56,14 @@ func TestAttackType_DataExtractionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_DenialOfServiceConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -71,12 +76,14 @@ func TestAttackType_DenialOfServiceConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_ContentSafetyConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -91,12 +98,14 @@ func TestAttackType_ContentSafetyConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_SocialEngineeringConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -110,12 +119,14 @@ func TestAttackType_SocialEngineeringConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_CodeInjectionConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -129,12 +140,14 @@ func TestAttackType_CodeInjectionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_BiasAndFairnessConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -147,12 +160,14 @@ func TestAttackType_BiasAndFairnessConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_HallucinationConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -165,12 +180,14 @@ func TestAttackType_HallucinationConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_SupplyChainConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -183,12 +200,14 @@ func TestAttackType_SupplyChainConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_EvasionConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AttackType
@@ -202,12 +221,14 @@ func TestAttackType_EvasionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
 }
 
 func TestAttackType_TotalConstantCount(t *testing.T) {
+	t.Parallel()
 	// Verify all 33 attack type constants exist and are unique
 	allTypes := []AttackType{
 		AttackTypeDirectPromptInjection, AttackTypeIndirectPromptInjection,
@@ -242,6 +263,7 @@ func TestAttackType_TotalConstantCount(t *testing.T) {
 // =============================================================================
 
 func TestOWASPCategory_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    OWASPCategory
@@ -261,6 +283,7 @@ func TestOWASPCategory_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, OWASPCategory(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -268,6 +291,7 @@ func TestOWASPCategory_AllConstants(t *testing.T) {
 }
 
 func TestOWASPCategory_Uniqueness(t *testing.T) {
+	t.Parallel()
 	categories := []OWASPCategory{
 		OWASP_LLM01, OWASP_LLM02, OWASP_LLM03, OWASP_LLM04, OWASP_LLM05,
 		OWASP_LLM06, OWASP_LLM07, OWASP_LLM08, OWASP_LLM09, OWASP_LLM10,
@@ -286,6 +310,7 @@ func TestOWASPCategory_Uniqueness(t *testing.T) {
 // =============================================================================
 
 func TestSeverity_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    Severity
@@ -300,6 +325,7 @@ func TestSeverity_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, Severity(tc.expected), tc.value)
 		})
 	}
@@ -310,6 +336,7 @@ func TestSeverity_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestAttack_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var a Attack
 	assert.Empty(t, a.ID)
 	assert.Empty(t, a.Name)
@@ -323,6 +350,7 @@ func TestAttack_ZeroValue(t *testing.T) {
 }
 
 func TestAttack_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	a := Attack{
 		ID:          "ATK-001",
 		Name:        "Prompt Injection",
@@ -352,6 +380,7 @@ func TestAttack_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestAttackResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var ar AttackResult
 	assert.Empty(t, ar.AttackID)
 	assert.Empty(t, ar.AttackType)
@@ -368,6 +397,7 @@ func TestAttackResult_ZeroValue(t *testing.T) {
 }
 
 func TestAttackResult_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	ar := AttackResult{
 		AttackID:    "ATK-001",
@@ -401,6 +431,7 @@ func TestAttackResult_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestDefaultRedTeamConfig_Values(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultRedTeamConfig()
 	require.NotNil(t, cfg)
 
@@ -424,6 +455,7 @@ func TestDefaultRedTeamConfig_Values(t *testing.T) {
 }
 
 func TestRedTeamConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var cfg RedTeamConfig
 	assert.Nil(t, cfg.AttackTypes)
 	assert.Nil(t, cfg.OWASPCategories)
@@ -435,6 +467,7 @@ func TestRedTeamConfig_ZeroValue(t *testing.T) {
 }
 
 func TestRedTeamConfig_CustomValues(t *testing.T) {
+	t.Parallel()
 	customPayload := Attack{
 		ID:      "custom-1",
 		Name:    "Custom Attack",
@@ -464,6 +497,7 @@ func TestRedTeamConfig_CustomValues(t *testing.T) {
 // =============================================================================
 
 func TestRedTeamReport_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var r RedTeamReport
 	assert.Empty(t, r.ID)
 	assert.True(t, r.StartTime.IsZero())
@@ -480,6 +514,7 @@ func TestRedTeamReport_ZeroValue(t *testing.T) {
 }
 
 func TestRedTeamReport_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	r := RedTeamReport{
 		ID:                "report-1",
@@ -516,6 +551,7 @@ func TestRedTeamReport_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestCategoryScore_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var cs CategoryScore
 	assert.Empty(t, cs.Category)
 	assert.Zero(t, cs.AttacksRun)
@@ -525,6 +561,7 @@ func TestCategoryScore_ZeroValue(t *testing.T) {
 }
 
 func TestCategoryScore_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	cs := CategoryScore{
 		Category:        OWASP_LLM01,
 		AttacksRun:      10,
@@ -545,6 +582,7 @@ func TestCategoryScore_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestGuardrailType_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    GuardrailType
@@ -561,6 +599,7 @@ func TestGuardrailType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, GuardrailType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -572,6 +611,7 @@ func TestGuardrailType_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestGuardrailAction_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    GuardrailAction
@@ -586,6 +626,7 @@ func TestGuardrailAction_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, GuardrailAction(tc.expected), tc.value)
 		})
 	}
@@ -596,6 +637,7 @@ func TestGuardrailAction_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestGuardrailResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var gr GuardrailResult
 	assert.False(t, gr.Triggered)
 	assert.Empty(t, gr.Action)
@@ -607,6 +649,7 @@ func TestGuardrailResult_ZeroValue(t *testing.T) {
 }
 
 func TestGuardrailResult_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	gr := GuardrailResult{
 		Triggered:       true,
 		Action:          GuardrailActionBlock,
@@ -631,6 +674,7 @@ func TestGuardrailResult_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestGuardrailStats_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var gs GuardrailStats
 	assert.Zero(t, gs.TotalChecks)
 	assert.Zero(t, gs.TotalBlocks)
@@ -640,6 +684,7 @@ func TestGuardrailStats_ZeroValue(t *testing.T) {
 }
 
 func TestGuardrailStats_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	gs := GuardrailStats{
 		TotalChecks:   1000,
@@ -665,6 +710,7 @@ func TestGuardrailStats_FullyPopulated(t *testing.T) {
 }
 
 func TestGuardrailStat_Fields(t *testing.T) {
+	t.Parallel()
 	stat := GuardrailStat{
 		Name:          "content_safety",
 		Checks:        250,
@@ -685,6 +731,7 @@ func TestGuardrailStat_Fields(t *testing.T) {
 // =============================================================================
 
 func TestPIIType_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    PIIType
@@ -707,6 +754,7 @@ func TestPIIType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, PIIType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -714,6 +762,7 @@ func TestPIIType_AllConstants(t *testing.T) {
 }
 
 func TestPIIType_Uniqueness(t *testing.T) {
+	t.Parallel()
 	types := []PIIType{
 		PIITypeEmail, PIITypePhone, PIITypeSSN, PIITypeCreditCard,
 		PIITypeName, PIITypeAddress, PIITypeDateOfBirth, PIITypeIPAddress,
@@ -734,6 +783,7 @@ func TestPIIType_Uniqueness(t *testing.T) {
 // =============================================================================
 
 func TestPIIDetection_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var pd PIIDetection
 	assert.Empty(t, pd.Type)
 	assert.Empty(t, pd.Value)
@@ -744,6 +794,7 @@ func TestPIIDetection_ZeroValue(t *testing.T) {
 }
 
 func TestPIIDetection_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	pd := PIIDetection{
 		Type:       PIITypeEmail,
 		Value:      "user@example.com",
@@ -766,6 +817,7 @@ func TestPIIDetection_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestDefaultMCPSecurityConfig_Values(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultMCPSecurityConfig()
 	require.NotNil(t, cfg)
 
@@ -787,6 +839,7 @@ func TestDefaultMCPSecurityConfig_Values(t *testing.T) {
 }
 
 func TestMCPSecurityConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var cfg MCPSecurityConfig
 	assert.False(t, cfg.VerifyServers)
 	assert.Nil(t, cfg.TrustedServers)
@@ -798,6 +851,7 @@ func TestMCPSecurityConfig_ZeroValue(t *testing.T) {
 }
 
 func TestMCPSecurityConfig_CustomValues(t *testing.T) {
+	t.Parallel()
 	cfg := MCPSecurityConfig{
 		VerifyServers:         false,
 		TrustedServers:        []string{"server1", "server2"},
@@ -832,6 +886,7 @@ func TestMCPSecurityConfig_CustomValues(t *testing.T) {
 // =============================================================================
 
 func TestPermissionLevel_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    PermissionLevel
@@ -845,6 +900,7 @@ func TestPermissionLevel_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, PermissionLevel(tc.expected), tc.value)
 		})
 	}
@@ -855,6 +911,7 @@ func TestPermissionLevel_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestSandboxConfig_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var sc SandboxConfig
 	assert.False(t, sc.Enabled)
 	assert.Zero(t, sc.MaxExecutionTime)
@@ -864,6 +921,7 @@ func TestSandboxConfig_ZeroValue(t *testing.T) {
 }
 
 func TestSandboxConfig_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	sc := SandboxConfig{
 		Enabled:          true,
 		MaxExecutionTime: 60 * time.Second,
@@ -884,6 +942,7 @@ func TestSandboxConfig_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestNetworkPolicy_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    NetworkPolicy
@@ -897,6 +956,7 @@ func TestNetworkPolicy_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, NetworkPolicy(tc.expected), tc.value)
 		})
 	}
@@ -907,6 +967,7 @@ func TestNetworkPolicy_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestFilesystemPolicy_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    FilesystemPolicy
@@ -920,6 +981,7 @@ func TestFilesystemPolicy_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, FilesystemPolicy(tc.expected), tc.value)
 		})
 	}
@@ -930,6 +992,7 @@ func TestFilesystemPolicy_AllConstants(t *testing.T) {
 // =============================================================================
 
 func TestAuditEvent_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var ae AuditEvent
 	assert.Empty(t, ae.ID)
 	assert.True(t, ae.Timestamp.IsZero())
@@ -944,6 +1007,7 @@ func TestAuditEvent_ZeroValue(t *testing.T) {
 }
 
 func TestAuditEvent_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	ae := AuditEvent{
 		ID:        "audit-001",
@@ -975,6 +1039,7 @@ func TestAuditEvent_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestAuditEventType_AllConstants(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		value    AuditEventType
@@ -991,6 +1056,7 @@ func TestAuditEventType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, AuditEventType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -998,6 +1064,7 @@ func TestAuditEventType_AllConstants(t *testing.T) {
 }
 
 func TestAuditEventType_Uniqueness(t *testing.T) {
+	t.Parallel()
 	types := []AuditEventType{
 		AuditEventToolCall, AuditEventGuardrailBlock, AuditEventAttackDetected,
 		AuditEventPIIAccess, AuditEventPermissionDeny, AuditEventRateLimit,
@@ -1017,6 +1084,7 @@ func TestAuditEventType_Uniqueness(t *testing.T) {
 // =============================================================================
 
 func TestAuditFilter_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var af AuditFilter
 	assert.Nil(t, af.StartTime)
 	assert.Nil(t, af.EndTime)
@@ -1027,6 +1095,7 @@ func TestAuditFilter_ZeroValue(t *testing.T) {
 }
 
 func TestAuditFilter_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	earlier := now.Add(-24 * time.Hour)
 	af := AuditFilter{
@@ -1051,6 +1120,7 @@ func TestAuditFilter_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestAuditStats_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var as AuditStats
 	assert.Zero(t, as.TotalEvents)
 	assert.Nil(t, as.EventsByType)
@@ -1060,6 +1130,7 @@ func TestAuditStats_ZeroValue(t *testing.T) {
 }
 
 func TestAuditStats_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	as := AuditStats{
 		TotalEvents: 5000,
 		EventsByType: map[AuditEventType]int64{
@@ -1091,6 +1162,7 @@ func TestAuditStats_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestUserAuditStat_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var uas UserAuditStat
 	assert.Empty(t, uas.UserID)
 	assert.Zero(t, uas.Events)
@@ -1099,6 +1171,7 @@ func TestUserAuditStat_ZeroValue(t *testing.T) {
 }
 
 func TestUserAuditStat_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	uas := UserAuditStat{
 		UserID:    "user-abc",
 		Events:    150,
@@ -1117,6 +1190,7 @@ func TestUserAuditStat_FullyPopulated(t *testing.T) {
 // =============================================================================
 
 func TestDefaultRedTeamConfig_IndependentInstances(t *testing.T) {
+	t.Parallel()
 	cfg1 := DefaultRedTeamConfig()
 	cfg2 := DefaultRedTeamConfig()
 
@@ -1129,6 +1203,7 @@ func TestDefaultRedTeamConfig_IndependentInstances(t *testing.T) {
 }
 
 func TestDefaultMCPSecurityConfig_IndependentInstances(t *testing.T) {
+	t.Parallel()
 	cfg1 := DefaultMCPSecurityConfig()
 	cfg2 := DefaultMCPSecurityConfig()
 

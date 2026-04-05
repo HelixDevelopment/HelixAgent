@@ -8,6 +8,7 @@ import (
 )
 
 func TestDefaultChunkConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultChunkConfig()
 
 	assert.Equal(t, 512, config.ChunkSize)
@@ -19,18 +20,21 @@ func TestDefaultChunkConfig(t *testing.T) {
 }
 
 func TestNewDocumentChunker(t *testing.T) {
+	t.Parallel()
 	chunker := NewDocumentChunker(nil)
 	assert.NotNil(t, chunker)
 	assert.NotNil(t, chunker.config)
 }
 
 func TestDocumentChunker_Chunk_Empty(t *testing.T) {
+	t.Parallel()
 	chunker := NewDocumentChunker(nil)
 	chunks := chunker.Chunk("")
 	assert.Nil(t, chunks)
 }
 
 func TestDocumentChunker_Chunk_Simple(t *testing.T) {
+	t.Parallel()
 	config := &ChunkConfig{
 		ChunkSize:    100,
 		ChunkOverlap: 0,
@@ -45,6 +49,7 @@ func TestDocumentChunker_Chunk_Simple(t *testing.T) {
 }
 
 func TestDocumentChunker_Chunk_LargeParagraph(t *testing.T) {
+	t.Parallel()
 	config := &ChunkConfig{
 		ChunkSize:           10,
 		ChunkOverlap:        0,
@@ -65,6 +70,7 @@ func TestDocumentChunker_Chunk_LargeParagraph(t *testing.T) {
 }
 
 func TestDocumentChunker_Chunk_WithOverlap(t *testing.T) {
+	t.Parallel()
 	config := &ChunkConfig{
 		ChunkSize:    10,
 		ChunkOverlap: 3,
@@ -79,6 +85,7 @@ func TestDocumentChunker_Chunk_WithOverlap(t *testing.T) {
 }
 
 func TestDocumentChunker_ChunkWithMetadata(t *testing.T) {
+	t.Parallel()
 	chunker := NewDocumentChunker(nil)
 
 	metadata := map[string]interface{}{
@@ -94,6 +101,7 @@ func TestDocumentChunker_ChunkWithMetadata(t *testing.T) {
 }
 
 func TestChunk(t *testing.T) {
+	t.Parallel()
 	chunk := Chunk{
 		Content:     "Hello world",
 		Index:       0,
@@ -109,6 +117,7 @@ func TestChunk(t *testing.T) {
 }
 
 func TestDefaultRecursiveSplitConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultRecursiveSplitConfig()
 
 	assert.Equal(t, 1000, config.ChunkSize)
@@ -118,6 +127,7 @@ func TestDefaultRecursiveSplitConfig(t *testing.T) {
 }
 
 func TestRecursiveCharacterTextSplitter(t *testing.T) {
+	t.Parallel()
 	splitter := NewRecursiveCharacterTextSplitter(nil)
 
 	text := "First part.\n\nSecond part.\n\nThird part."
@@ -127,6 +137,7 @@ func TestRecursiveCharacterTextSplitter(t *testing.T) {
 }
 
 func TestRecursiveCharacterTextSplitter_LargeText(t *testing.T) {
+	t.Parallel()
 	config := &RecursiveSplitConfig{
 		ChunkSize:    50,
 		ChunkOverlap: 10,
@@ -145,6 +156,7 @@ func TestRecursiveCharacterTextSplitter_LargeText(t *testing.T) {
 }
 
 func TestSentenceSplitter(t *testing.T) {
+	t.Parallel()
 	splitter := NewSentenceSplitter()
 
 	text := "First sentence. Second sentence! Third sentence?"
@@ -157,6 +169,7 @@ func TestSentenceSplitter(t *testing.T) {
 }
 
 func TestSentenceSplitter_Abbreviations(t *testing.T) {
+	t.Parallel()
 	splitter := NewSentenceSplitter()
 
 	// Note: current implementation doesn't handle abbreviations specially
@@ -167,6 +180,7 @@ func TestSentenceSplitter_Abbreviations(t *testing.T) {
 }
 
 func TestSentenceSplitter_NoTerminal(t *testing.T) {
+	t.Parallel()
 	splitter := NewSentenceSplitter()
 
 	text := "This has no terminal punctuation"
@@ -177,6 +191,7 @@ func TestSentenceSplitter_NoTerminal(t *testing.T) {
 }
 
 func TestSimpleTokenizer(t *testing.T) {
+	t.Parallel()
 	tokenizer := &SimpleTokenizer{}
 
 	tokens := tokenizer.Tokenize("Hello World How Are You")
@@ -187,11 +202,13 @@ func TestSimpleTokenizer(t *testing.T) {
 }
 
 func TestNewTokenTextSplitter(t *testing.T) {
+	t.Parallel()
 	splitter := NewTokenTextSplitter(10, 2, nil)
 	assert.NotNil(t, splitter)
 }
 
 func TestTokenTextSplitter_SplitText(t *testing.T) {
+	t.Parallel()
 	splitter := NewTokenTextSplitter(5, 1, nil)
 
 	text := "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10"
@@ -235,6 +252,7 @@ func splitBySpace(s string) []string {
 }
 
 func TestTokenTextSplitter_EmptyText(t *testing.T) {
+	t.Parallel()
 	splitter := NewTokenTextSplitter(10, 2, nil)
 
 	chunks := splitter.SplitText("")
@@ -242,6 +260,7 @@ func TestTokenTextSplitter_EmptyText(t *testing.T) {
 }
 
 func TestMarkdownHeaderTextSplitter(t *testing.T) {
+	t.Parallel()
 	splitter := NewMarkdownHeaderTextSplitter()
 
 	markdown := `# Header 1
@@ -262,6 +281,7 @@ Content under header 3.`
 }
 
 func TestMarkdownChunk(t *testing.T) {
+	t.Parallel()
 	chunk := MarkdownChunk{
 		Content: "Hello world",
 		Metadata: map[string]string{
@@ -274,6 +294,7 @@ func TestMarkdownChunk(t *testing.T) {
 }
 
 func TestMarkdownHeaderTextSplitter_NoHeaders(t *testing.T) {
+	t.Parallel()
 	splitter := NewMarkdownHeaderTextSplitter()
 
 	markdown := "Just some content without headers."
@@ -284,6 +305,7 @@ func TestMarkdownHeaderTextSplitter_NoHeaders(t *testing.T) {
 }
 
 func TestMarkdownHeaderTextSplitter_HeaderHierarchy(t *testing.T) {
+	t.Parallel()
 	splitter := NewMarkdownHeaderTextSplitter()
 
 	markdown := `# Main
@@ -299,6 +321,7 @@ Content 3`
 }
 
 func TestCopyMap(t *testing.T) {
+	t.Parallel()
 	original := map[string]string{
 		"key1": "value1",
 		"key2": "value2",
@@ -314,11 +337,13 @@ func TestCopyMap(t *testing.T) {
 }
 
 func TestCopyMap_Nil(t *testing.T) {
+	t.Parallel()
 	copied := copyMap(nil)
 	assert.Nil(t, copied)
 }
 
 func TestClearLowerHeaders(t *testing.T) {
+	t.Parallel()
 	headers := map[string]string{
 		"Header 1": "Main",
 		"Header 2": "Sub",
@@ -333,6 +358,7 @@ func TestClearLowerHeaders(t *testing.T) {
 }
 
 func TestDocumentChunker_SplitByWords(t *testing.T) {
+	t.Parallel()
 	config := &ChunkConfig{
 		ChunkSize: 5,
 	}
@@ -348,6 +374,7 @@ func TestDocumentChunker_SplitByWords(t *testing.T) {
 }
 
 func TestRecursiveCharacterTextSplitter_CustomLengthFunction(t *testing.T) {
+	t.Parallel()
 	config := &RecursiveSplitConfig{
 		ChunkSize:    20, // 20 characters
 		ChunkOverlap: 5,
@@ -365,6 +392,7 @@ func TestRecursiveCharacterTextSplitter_CustomLengthFunction(t *testing.T) {
 }
 
 func TestRecursiveCharacterTextSplitter_NilLengthFunction(t *testing.T) {
+	t.Parallel()
 	config := &RecursiveSplitConfig{
 		ChunkSize:      100,
 		ChunkOverlap:   10,

@@ -9,6 +9,7 @@ import (
 )
 
 func TestJunieCLIConfig_Default(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieCLIConfig()
 	if config.Timeout != 180*time.Second {
 		t.Errorf("Default timeout should be 180s")
@@ -22,6 +23,7 @@ func TestJunieCLIConfig_Default(t *testing.T) {
 }
 
 func TestDefaultJunieConfig(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieConfig()
 	if config.Timeout != 180*time.Second {
 		t.Errorf("Default timeout should be 180s")
@@ -35,6 +37,7 @@ func TestDefaultJunieConfig(t *testing.T) {
 }
 
 func TestDefaultJunieACPConfig(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieACPConfig()
 	if config.Timeout != 180*time.Second {
 		t.Errorf("Default timeout should be 180s")
@@ -48,6 +51,7 @@ func TestDefaultJunieACPConfig(t *testing.T) {
 }
 
 func TestNewJunieCLIProvider(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieCLIConfig()
 	p := junie.NewJunieCLIProvider(config)
 	if p.GetCurrentModel() == "" {
@@ -56,6 +60,7 @@ func TestNewJunieCLIProvider(t *testing.T) {
 }
 
 func TestNewJunieACPProvider(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieACPConfig()
 	p := junie.NewJunieACPProvider(config)
 	if p.GetCurrentModel() == "" {
@@ -64,6 +69,7 @@ func TestNewJunieACPProvider(t *testing.T) {
 }
 
 func TestNewJunieProvider(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieConfig()
 	p := junie.NewJunieProvider(config)
 	if p.GetCurrentModel() != "sonnet" {
@@ -72,6 +78,7 @@ func TestNewJunieProvider(t *testing.T) {
 }
 
 func TestJunieCLIProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieCLIProvider(junie.DefaultJunieCLIConfig())
 	name := p.GetName()
 	if name != "junie-cli" {
@@ -80,6 +87,7 @@ func TestJunieCLIProvider_GetName(t *testing.T) {
 }
 
 func TestJunieCLIProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieCLIProvider(junie.DefaultJunieCLIConfig())
 	providerType := p.GetProviderType()
 	if providerType != "junie" {
@@ -88,6 +96,7 @@ func TestJunieCLIProvider_GetProviderType(t *testing.T) {
 }
 
 func TestJunieCLIProvider_GetCurrentModel(t *testing.T) {
+	t.Parallel()
 	config := junie.DefaultJunieCLIConfig()
 	config.Model = "opus"
 	p := junie.NewJunieCLIProvider(config)
@@ -98,6 +107,7 @@ func TestJunieCLIProvider_GetCurrentModel(t *testing.T) {
 }
 
 func TestJunieCLIProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieCLIProvider(junie.DefaultJunieCLIConfig())
 	p.SetModel("gemini-pro")
 	if p.GetCurrentModel() != "gemini-pro" {
@@ -106,6 +116,7 @@ func TestJunieCLIProvider_SetModel(t *testing.T) {
 }
 
 func TestJunieACPProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieACPProvider(junie.DefaultJunieACPConfig())
 	name := p.GetName()
 	if name != "junie-acp" {
@@ -114,6 +125,7 @@ func TestJunieACPProvider_GetName(t *testing.T) {
 }
 
 func TestJunieACPProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieACPProvider(junie.DefaultJunieACPConfig())
 	providerType := p.GetProviderType()
 	if providerType != "junie" {
@@ -122,6 +134,7 @@ func TestJunieACPProvider_GetProviderType(t *testing.T) {
 }
 
 func TestJunieProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieProvider(junie.DefaultJunieConfig())
 	name := p.GetName()
 	if name != "junie" {
@@ -130,6 +143,7 @@ func TestJunieProvider_GetName(t *testing.T) {
 }
 
 func TestJunieProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieProvider(junie.DefaultJunieConfig())
 	providerType := p.GetProviderType()
 	if providerType != "junie" {
@@ -138,6 +152,7 @@ func TestJunieProvider_GetProviderType(t *testing.T) {
 }
 
 func TestGetKnownJunieModels(t *testing.T) {
+	t.Parallel()
 	models := junie.GetKnownJunieModels()
 	if len(models) == 0 {
 		t.Errorf("Expected at least one model, got %d", len(models))
@@ -150,6 +165,7 @@ func TestGetKnownJunieModels(t *testing.T) {
 }
 
 func TestGetBYOKModels(t *testing.T) {
+	t.Parallel()
 	byok := junie.GetBYOKModels()
 	if len(byok) == 0 {
 		t.Errorf("Expected at least one provider, got %d", len(byok))
@@ -162,6 +178,7 @@ func TestGetBYOKModels(t *testing.T) {
 }
 
 func TestIsJunieInstalled(t *testing.T) {
+	t.Parallel()
 	installed := junie.IsJunieInstalled()
 	if installed {
 		t.Logf("Junie should be installed: %v", installed)
@@ -169,6 +186,7 @@ func TestIsJunieInstalled(t *testing.T) {
 }
 
 func TestIsJunieAuthenticated(t *testing.T) {
+	t.Parallel()
 	authenticated := junie.IsJunieAuthenticated()
 	if authenticated {
 		t.Logf("Junie should be authenticated: %v", authenticated)
@@ -176,6 +194,7 @@ func TestIsJunieAuthenticated(t *testing.T) {
 }
 
 func TestJunieProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieProvider(junie.DefaultJunieConfig())
 	caps := p.GetCapabilities()
 	if len(caps.SupportedModels) == 0 {
@@ -190,6 +209,7 @@ func TestJunieProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestJunieProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	p := junie.NewJunieProvider(junie.DefaultJunieConfig())
 	valid, issues := p.ValidateConfig(nil)
 	if junie.IsJunieInstalled() && (os.Getenv("JUNIE_API_KEY") != "" || junie.IsJunieAuthenticated()) {

@@ -69,6 +69,7 @@ func (m *mockFormatter) HealthCheck(ctx context.Context) error {
 }
 
 func TestFormatterRegistry_Register(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -105,6 +106,7 @@ func TestFormatterRegistry_Register(t *testing.T) {
 }
 
 func TestFormatterRegistry_Register_Duplicate(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -134,6 +136,7 @@ func TestFormatterRegistry_Register_Duplicate(t *testing.T) {
 }
 
 func TestFormatterRegistry_Unregister(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -168,6 +171,7 @@ func TestFormatterRegistry_Unregister(t *testing.T) {
 }
 
 func TestFormatterRegistry_GetByLanguage(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -216,6 +220,7 @@ func TestFormatterRegistry_GetByLanguage(t *testing.T) {
 }
 
 func TestFormatterRegistry_DetectLanguageFromPath(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -249,6 +254,7 @@ func TestFormatterRegistry_DetectLanguageFromPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
+				t.Parallel()
 			language := registry.DetectLanguageFromPath(tc.path)
 			assert.Equal(t, tc.expected, language, "Failed for path: %s", tc.path)
 		})
@@ -256,6 +262,7 @@ func TestFormatterRegistry_DetectLanguageFromPath(t *testing.T) {
 }
 
 func TestFormatterRegistry_HealthCheckAll(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -304,6 +311,7 @@ func TestFormatterRegistry_HealthCheckAll(t *testing.T) {
 }
 
 func TestFormatterRegistry_ListByType(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
@@ -346,6 +354,7 @@ func TestFormatterRegistry_ListByType(t *testing.T) {
 }
 
 func TestFormatterRegistry_GetPreferredFormatter(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 

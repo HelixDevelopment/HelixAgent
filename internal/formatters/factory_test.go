@@ -17,11 +17,13 @@ func newTestFactory() *FormatterFactory {
 }
 
 func TestNewFormatterFactory(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 	assert.NotNil(t, f)
 }
 
 func TestFormatterFactory_Create_Native(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	_, err := f.Create(&FormatterMetadata{
@@ -34,6 +36,7 @@ func TestFormatterFactory_Create_Native(t *testing.T) {
 }
 
 func TestFormatterFactory_Create_Service(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	_, err := f.Create(&FormatterMetadata{
@@ -46,6 +49,7 @@ func TestFormatterFactory_Create_Service(t *testing.T) {
 }
 
 func TestFormatterFactory_Create_Builtin(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	_, err := f.Create(&FormatterMetadata{
@@ -58,6 +62,7 @@ func TestFormatterFactory_Create_Builtin(t *testing.T) {
 }
 
 func TestFormatterFactory_Create_Unified(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	_, err := f.Create(&FormatterMetadata{
@@ -70,6 +75,7 @@ func TestFormatterFactory_Create_Unified(t *testing.T) {
 }
 
 func TestFormatterFactory_Create_UnknownType(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	_, err := f.Create(&FormatterMetadata{
@@ -82,6 +88,7 @@ func TestFormatterFactory_Create_UnknownType(t *testing.T) {
 }
 
 func TestFormatterFactory_CreateAll(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	metadataList := []*FormatterMetadata{
@@ -98,6 +105,7 @@ func TestFormatterFactory_CreateAll(t *testing.T) {
 }
 
 func TestFormatterFactory_CreateAll_Empty(t *testing.T) {
+	t.Parallel()
 	f := newTestFactory()
 
 	formatters, errors := f.CreateAll([]*FormatterMetadata{})

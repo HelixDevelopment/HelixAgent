@@ -112,6 +112,7 @@ func setupRAGRouter(handler *RAGHandler) *gin.Engine {
 }
 
 func TestNewRAGHandler(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.pipeline)
@@ -120,6 +121,7 @@ func TestNewRAGHandler(t *testing.T) {
 }
 
 func TestNewRAGHandler_NilPipeline(t *testing.T) {
+	t.Parallel()
 	handler := NewRAGHandler(RAGHandlerConfig{
 		Pipeline: nil,
 		Logger:   logrus.New(),
@@ -131,6 +133,7 @@ func TestNewRAGHandler_NilPipeline(t *testing.T) {
 }
 
 func TestRAGHandler_Health(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -148,6 +151,7 @@ func TestRAGHandler_Health(t *testing.T) {
 }
 
 func TestRAGHandler_Health_NilPipeline(t *testing.T) {
+	t.Parallel()
 	handler := NewRAGHandler(RAGHandlerConfig{Logger: logrus.New()})
 	router := setupRAGRouter(handler)
 
@@ -159,6 +163,7 @@ func TestRAGHandler_Health_NilPipeline(t *testing.T) {
 }
 
 func TestRAGHandler_ChunkDocument(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -185,6 +190,7 @@ func TestRAGHandler_ChunkDocument(t *testing.T) {
 }
 
 func TestRAGHandler_ChunkDocument_MissingContent(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -202,6 +208,7 @@ func TestRAGHandler_ChunkDocument_MissingContent(t *testing.T) {
 }
 
 func TestRAGHandler_ExpandQuery(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -227,6 +234,7 @@ func TestRAGHandler_ExpandQuery(t *testing.T) {
 }
 
 func TestRAGHandler_ExpandQuery_MissingQuery(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -242,6 +250,7 @@ func TestRAGHandler_ExpandQuery_MissingQuery(t *testing.T) {
 }
 
 func TestRAGHandler_IngestDocument(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -266,6 +275,7 @@ func TestRAGHandler_IngestDocument(t *testing.T) {
 }
 
 func TestRAGHandler_IngestDocuments_Batch(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -287,6 +297,7 @@ func TestRAGHandler_IngestDocuments_Batch(t *testing.T) {
 }
 
 func TestRAGHandler_Search(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -306,6 +317,7 @@ func TestRAGHandler_Search(t *testing.T) {
 }
 
 func TestRAGHandler_Search_MissingQuery(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -323,6 +335,7 @@ func TestRAGHandler_Search_MissingQuery(t *testing.T) {
 }
 
 func TestRAGHandler_HybridSearch(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -344,6 +357,7 @@ func TestRAGHandler_HybridSearch(t *testing.T) {
 }
 
 func TestRAGHandler_SearchWithExpansion(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -363,6 +377,7 @@ func TestRAGHandler_SearchWithExpansion(t *testing.T) {
 }
 
 func TestRAGHandler_ReRank(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -390,6 +405,7 @@ func TestRAGHandler_ReRank(t *testing.T) {
 }
 
 func TestRAGHandler_CompressContext(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -424,6 +440,7 @@ func TestRAGHandler_CompressContext(t *testing.T) {
 }
 
 func TestRAGHandler_DeleteDocument(t *testing.T) {
+	t.Parallel()
 	handler := createTestRAGHandler()
 	router := setupRAGRouter(handler)
 
@@ -436,6 +453,7 @@ func TestRAGHandler_DeleteDocument(t *testing.T) {
 }
 
 func TestRAGHandler_Stats_NilPipeline(t *testing.T) {
+	t.Parallel()
 	handler := NewRAGHandler(RAGHandlerConfig{Logger: logrus.New()})
 	router := setupRAGRouter(handler)
 
@@ -447,6 +465,7 @@ func TestRAGHandler_Stats_NilPipeline(t *testing.T) {
 }
 
 func TestRAGHandler_ExpandQuery_NilAdvancedRAG(t *testing.T) {
+	t.Parallel()
 	handler := NewRAGHandler(RAGHandlerConfig{Logger: logrus.New()})
 	router := setupRAGRouter(handler)
 

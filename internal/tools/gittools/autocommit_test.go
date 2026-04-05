@@ -39,6 +39,7 @@ func createTestFile(t *testing.T, dir, name, content string) string {
 }
 
 func TestAutoCommit_IsGitRepo(t *testing.T) {
+	t.Parallel()
 	// Non-git directory
 	tempDir := t.TempDir()
 	ac := NewAutoCommit(tempDir, DefaultAutoCommitConfig(), nil)
@@ -51,6 +52,7 @@ func TestAutoCommit_IsGitRepo(t *testing.T) {
 }
 
 func TestAutoCommit_GetChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -70,6 +72,7 @@ func TestAutoCommit_GetChanges(t *testing.T) {
 }
 
 func TestAutoCommit_StageAll(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -90,6 +93,7 @@ func TestAutoCommit_StageAll(t *testing.T) {
 }
 
 func TestAutoCommit_GenerateCommitMessage_SingleFile(t *testing.T) {
+	t.Parallel()
 	ac := NewAutoCommit("/tmp", DefaultAutoCommitConfig(), nil)
 	
 	changes := []Change{
@@ -102,6 +106,7 @@ func TestAutoCommit_GenerateCommitMessage_SingleFile(t *testing.T) {
 }
 
 func TestAutoCommit_GenerateCommitMessage_MultipleFiles(t *testing.T) {
+	t.Parallel()
 	ac := NewAutoCommit("/tmp", DefaultAutoCommitConfig(), nil)
 	
 	changes := []Change{
@@ -116,6 +121,7 @@ func TestAutoCommit_GenerateCommitMessage_MultipleFiles(t *testing.T) {
 }
 
 func TestAutoCommit_GenerateCommitMessage_ConventionalCommits(t *testing.T) {
+	t.Parallel()
 	config := DefaultAutoCommitConfig()
 	config.ConventionalCommits = true
 	ac := NewAutoCommit("/tmp", config, nil)
@@ -143,6 +149,7 @@ func TestAutoCommit_GenerateCommitMessage_ConventionalCommits(t *testing.T) {
 }
 
 func TestAutoCommit_determineScope(t *testing.T) {
+	t.Parallel()
 	ac := NewAutoCommit("/tmp", DefaultAutoCommitConfig(), nil)
 	
 	// Single directory
@@ -164,6 +171,7 @@ func TestAutoCommit_determineScope(t *testing.T) {
 }
 
 func TestAutoCommit_determineChangeType(t *testing.T) {
+	t.Parallel()
 	ac := NewAutoCommit("/tmp", DefaultAutoCommitConfig(), nil)
 	
 	// Only added -> feat
@@ -184,6 +192,7 @@ func TestAutoCommit_determineChangeType(t *testing.T) {
 }
 
 func TestAutoCommit_generateDescription(t *testing.T) {
+	t.Parallel()
 	ac := NewAutoCommit("/tmp", DefaultAutoCommitConfig(), nil)
 	
 	// Single file added
@@ -211,6 +220,7 @@ func TestAutoCommit_generateDescription(t *testing.T) {
 }
 
 func TestAutoCommit_CommitChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -234,6 +244,7 @@ func TestAutoCommit_CommitChanges(t *testing.T) {
 }
 
 func TestAutoCommit_CommitChanges_NoChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -244,6 +255,7 @@ func TestAutoCommit_CommitChanges_NoChanges(t *testing.T) {
 }
 
 func TestAutoCommit_CommitChanges_NotGitRepo(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -254,6 +266,7 @@ func TestAutoCommit_CommitChanges_NotGitRepo(t *testing.T) {
 }
 
 func TestAutoCommit_CommitChanges_AutoGenerate(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	config := DefaultAutoCommitConfig()
 	config.GenerateMessage = true
@@ -278,6 +291,7 @@ func TestAutoCommit_CommitChanges_AutoGenerate(t *testing.T) {
 }
 
 func TestAutoCommit_GetLastCommitHash(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -293,6 +307,7 @@ func TestAutoCommit_GetLastCommitHash(t *testing.T) {
 }
 
 func TestAutoCommit_GetCurrentBranch(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -303,6 +318,7 @@ func TestAutoCommit_GetCurrentBranch(t *testing.T) {
 }
 
 func TestAutoCommit_CreateAndSwitchBranch(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -328,6 +344,7 @@ func TestAutoCommit_CreateAndSwitchBranch(t *testing.T) {
 }
 
 func TestAutoCommit_Stash(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -360,6 +377,7 @@ func TestAutoCommit_Stash(t *testing.T) {
 }
 
 func TestAutoCommit_HasUncommittedChanges(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	
@@ -372,6 +390,7 @@ func TestAutoCommit_HasUncommittedChanges(t *testing.T) {
 }
 
 func TestAutoCommit_GetDiff(t *testing.T) {
+	t.Parallel()
 	dir := setupTestRepo(t)
 	ac := NewAutoCommit(dir, DefaultAutoCommitConfig(), nil)
 	

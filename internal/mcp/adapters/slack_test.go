@@ -209,12 +209,14 @@ func (m *MockSlackClient) GetConversationHistory(ctx context.Context, channel st
 // Tests
 
 func TestDefaultSlackConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 
 	assert.Equal(t, 30*time.Second, config.Timeout)
 }
 
 func TestNewSlackAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -227,6 +229,7 @@ func TestNewSlackAdapter(t *testing.T) {
 }
 
 func TestSlackAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -251,6 +254,7 @@ func TestSlackAdapter_ListTools(t *testing.T) {
 }
 
 func TestSlackAdapter_PostMessage(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -267,6 +271,7 @@ func TestSlackAdapter_PostMessage(t *testing.T) {
 }
 
 func TestSlackAdapter_PostMessageWithThread(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -283,6 +288,7 @@ func TestSlackAdapter_PostMessageWithThread(t *testing.T) {
 }
 
 func TestSlackAdapter_UpdateMessage(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -299,6 +305,7 @@ func TestSlackAdapter_UpdateMessage(t *testing.T) {
 }
 
 func TestSlackAdapter_DeleteMessage(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -314,6 +321,7 @@ func TestSlackAdapter_DeleteMessage(t *testing.T) {
 }
 
 func TestSlackAdapter_ListChannels(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -329,6 +337,7 @@ func TestSlackAdapter_ListChannels(t *testing.T) {
 }
 
 func TestSlackAdapter_CreateChannel(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -344,6 +353,7 @@ func TestSlackAdapter_CreateChannel(t *testing.T) {
 }
 
 func TestSlackAdapter_ArchiveChannel(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -358,6 +368,7 @@ func TestSlackAdapter_ArchiveChannel(t *testing.T) {
 }
 
 func TestSlackAdapter_InviteToChannel(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -373,6 +384,7 @@ func TestSlackAdapter_InviteToChannel(t *testing.T) {
 }
 
 func TestSlackAdapter_ListUsers(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -387,6 +399,7 @@ func TestSlackAdapter_ListUsers(t *testing.T) {
 }
 
 func TestSlackAdapter_AddReaction(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -403,6 +416,7 @@ func TestSlackAdapter_AddReaction(t *testing.T) {
 }
 
 func TestSlackAdapter_UploadFile(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -419,6 +433,7 @@ func TestSlackAdapter_UploadFile(t *testing.T) {
 }
 
 func TestSlackAdapter_SearchMessages(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -434,6 +449,7 @@ func TestSlackAdapter_SearchMessages(t *testing.T) {
 }
 
 func TestSlackAdapter_GetHistory(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -449,6 +465,7 @@ func TestSlackAdapter_GetHistory(t *testing.T) {
 }
 
 func TestSlackAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -460,6 +477,7 @@ func TestSlackAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestSlackAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	client.SetError(true)
@@ -476,6 +494,7 @@ func TestSlackAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestSlackMessageTypes(t *testing.T) {
+	t.Parallel()
 	message := SlackMessage{
 		TS:       "1234567890.000001",
 		Text:     "Hello, everyone!",
@@ -494,6 +513,7 @@ func TestSlackMessageTypes(t *testing.T) {
 }
 
 func TestSlackChannelTypes(t *testing.T) {
+	t.Parallel()
 	channel := SlackChannel{
 		ID:         "C123",
 		Name:       "dev-team",
@@ -513,6 +533,7 @@ func TestSlackChannelTypes(t *testing.T) {
 }
 
 func TestSlackUserTypes(t *testing.T) {
+	t.Parallel()
 	user := SlackUser{
 		ID:       "U456",
 		Name:     "jsmith",
@@ -531,6 +552,7 @@ func TestSlackUserTypes(t *testing.T) {
 }
 
 func TestSlackFileTypes(t *testing.T) {
+	t.Parallel()
 	file := SlackFile{
 		ID:       "F789",
 		Name:     "document.pdf",
@@ -546,6 +568,7 @@ func TestSlackFileTypes(t *testing.T) {
 }
 
 func TestReactionTypes(t *testing.T) {
+	t.Parallel()
 	reaction := Reaction{
 		Name:  "rocket",
 		Count: 3,
@@ -558,6 +581,7 @@ func TestReactionTypes(t *testing.T) {
 }
 
 func TestMessageOptionsTypes(t *testing.T) {
+	t.Parallel()
 	options := MessageOptions{
 		ThreadTS:       "1234567890.000001",
 		ReplyBroadcast: true,
@@ -577,6 +601,7 @@ func TestMessageOptionsTypes(t *testing.T) {
 }
 
 func TestBlockTypes(t *testing.T) {
+	t.Parallel()
 	block := Block{
 		Type: "section",
 		Text: &TextObject{
@@ -591,6 +616,7 @@ func TestBlockTypes(t *testing.T) {
 }
 
 func TestAttachmentTypes(t *testing.T) {
+	t.Parallel()
 	attachment := Attachment{
 		Color:  "good",
 		Title:  "Success",
@@ -604,6 +630,7 @@ func TestAttachmentTypes(t *testing.T) {
 }
 
 func TestSlackConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := SlackConfig{
 		BotToken: "xoxb-xxxxxxxxxxxx",
 		AppToken: "xapp-xxxxxxxxxxxx",
@@ -618,6 +645,7 @@ func TestSlackConfigTypes(t *testing.T) {
 }
 
 func TestSlackAdapter_GetServerInfoCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultSlackConfig()
 	client := NewMockSlackClient()
 	adapter := NewSlackAdapter(config, client)
@@ -632,6 +660,7 @@ func TestSlackAdapter_GetServerInfoCapabilities(t *testing.T) {
 }
 
 func TestTruncateFunction(t *testing.T) {
+	t.Parallel()
 	// Test short string (no truncation)
 	short := "Hello"
 	assert.Equal(t, "Hello", truncate(short, 10))

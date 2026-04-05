@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	c := New()
 
 	assert.NotNil(t, c)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestCursor_Initialize(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestCursor_Initialize(t *testing.T) {
 }
 
 func TestCursor_Execute(t *testing.T) {
+	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -164,6 +167,7 @@ func TestCursor_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := c.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -179,6 +183,7 @@ func TestCursor_Execute(t *testing.T) {
 }
 
 func TestCursor_IsAvailable(t *testing.T) {
+	t.Parallel()
 	c := New()
 	// By default, AIProvider is set so it should be available
 	assert.True(t, c.IsAvailable())
@@ -190,6 +195,7 @@ func TestCursor_IsAvailable(t *testing.T) {
 }
 
 func TestChatSession(t *testing.T) {
+	t.Parallel()
 	session := ChatSession{
 		ID:     "1",
 		Name:   "Test Session",
@@ -205,6 +211,7 @@ func TestChatSession(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
+	t.Parallel()
 	msg := Message{
 		Role:    "user",
 		Content: "Hello",
@@ -214,6 +221,7 @@ func TestMessage(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		EditorPath:    "/usr/bin/cursor",
 		AIProvider:    "anthropic",

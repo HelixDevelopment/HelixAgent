@@ -187,6 +187,7 @@ func (m *MockBrowserClient) Close(ctx context.Context) error {
 // Tests
 
 func TestDefaultPuppeteerConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 
 	assert.True(t, config.Headless)
@@ -196,6 +197,7 @@ func TestDefaultPuppeteerConfig(t *testing.T) {
 }
 
 func TestNewPuppeteerAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -208,6 +210,7 @@ func TestNewPuppeteerAdapter(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -227,6 +230,7 @@ func TestPuppeteerAdapter_ListTools(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Navigate(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -242,6 +246,7 @@ func TestPuppeteerAdapter_Navigate(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Screenshot(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -258,6 +263,7 @@ func TestPuppeteerAdapter_Screenshot(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_PDF(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -274,6 +280,7 @@ func TestPuppeteerAdapter_PDF(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Click(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -288,6 +295,7 @@ func TestPuppeteerAdapter_Click(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Type(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -303,6 +311,7 @@ func TestPuppeteerAdapter_Type(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Select(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -318,6 +327,7 @@ func TestPuppeteerAdapter_Select(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Evaluate(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -332,6 +342,7 @@ func TestPuppeteerAdapter_Evaluate(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_WaitForSelector(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -347,6 +358,7 @@ func TestPuppeteerAdapter_WaitForSelector(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_GetContent(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -359,6 +371,7 @@ func TestPuppeteerAdapter_GetContent(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_GetTitle(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -371,6 +384,7 @@ func TestPuppeteerAdapter_GetTitle(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Scroll(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -386,6 +400,7 @@ func TestPuppeteerAdapter_Scroll(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_Hover(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -400,6 +415,7 @@ func TestPuppeteerAdapter_Hover(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_SetCookie(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -416,6 +432,7 @@ func TestPuppeteerAdapter_SetCookie(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_ClearCookies(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -428,6 +445,7 @@ func TestPuppeteerAdapter_ClearCookies(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -439,6 +457,7 @@ func TestPuppeteerAdapter_InvalidTool(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	browser.SetError(true)
@@ -457,6 +476,7 @@ func TestPuppeteerAdapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestScreenshotOptionsTypes(t *testing.T) {
+	t.Parallel()
 	options := ScreenshotOptions{
 		FullPage: true,
 		Type:     "jpeg",
@@ -477,6 +497,7 @@ func TestScreenshotOptionsTypes(t *testing.T) {
 }
 
 func TestPDFOptionsTypes(t *testing.T) {
+	t.Parallel()
 	options := PDFOptions{
 		Format:          "Letter",
 		PrintBackground: true,
@@ -495,6 +516,7 @@ func TestPDFOptionsTypes(t *testing.T) {
 }
 
 func TestClipTypes(t *testing.T) {
+	t.Parallel()
 	clip := Clip{
 		X:      50,
 		Y:      100,
@@ -509,6 +531,7 @@ func TestClipTypes(t *testing.T) {
 }
 
 func TestCookieTypes(t *testing.T) {
+	t.Parallel()
 	cookie := Cookie{
 		Name:     "session_id",
 		Value:    "abc123xyz",
@@ -529,6 +552,7 @@ func TestCookieTypes(t *testing.T) {
 }
 
 func TestPuppeteerConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := PuppeteerConfig{
 		Headless:       false,
 		DefaultTimeout: 60 * time.Second,
@@ -547,6 +571,7 @@ func TestPuppeteerConfigTypes(t *testing.T) {
 }
 
 func TestFormatCookies(t *testing.T) {
+	t.Parallel()
 	cookies := []Cookie{
 		{Name: "session", Value: "abc123", Domain: "example.com"},
 		{Name: "prefs", Value: "dark_mode", Domain: "example.com"},
@@ -559,6 +584,7 @@ func TestFormatCookies(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_GetServerInfoCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)
@@ -572,6 +598,7 @@ func TestPuppeteerAdapter_GetServerInfoCapabilities(t *testing.T) {
 }
 
 func TestPuppeteerAdapter_ScreenshotJPEG(t *testing.T) {
+	t.Parallel()
 	config := DefaultPuppeteerConfig()
 	browser := NewMockBrowserClient()
 	adapter := NewPuppeteerAdapter(config, browser)

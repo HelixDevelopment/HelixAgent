@@ -44,6 +44,7 @@ func setupEnsembleHandlerTest(t *testing.T) (*EnsembleHandler, *gin.Engine) {
 }
 
 func TestCreateTeam(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	reqBody := CreateTeamRequest{
@@ -78,6 +79,7 @@ func TestCreateTeam(t *testing.T) {
 }
 
 func TestCreateTeam_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/ensemble/teams", bytes.NewBufferString("invalid"))
@@ -90,6 +92,7 @@ func TestCreateTeam_InvalidRequest(t *testing.T) {
 }
 
 func TestListTeams(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create some teams
@@ -121,6 +124,7 @@ func TestListTeams(t *testing.T) {
 }
 
 func TestGetTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
@@ -147,6 +151,7 @@ func TestGetTeam(t *testing.T) {
 }
 
 func TestGetTeam_NotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/ensemble/teams/nonexistent", nil)
@@ -158,6 +163,7 @@ func TestGetTeam_NotFound(t *testing.T) {
 }
 
 func TestUpdateTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
@@ -190,6 +196,7 @@ func TestUpdateTeam(t *testing.T) {
 }
 
 func TestUpdateTeam_NotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	reqBody := UpdateTeamRequest{Name: "Updated"}
@@ -204,6 +211,7 @@ func TestUpdateTeam_NotFound(t *testing.T) {
 }
 
 func TestDeleteTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
@@ -227,6 +235,7 @@ func TestDeleteTeam(t *testing.T) {
 }
 
 func TestDeleteTeam_NotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/ensemble/teams/nonexistent", nil)
@@ -238,6 +247,7 @@ func TestDeleteTeam_NotFound(t *testing.T) {
 }
 
 func TestAddAgentToTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
@@ -270,6 +280,7 @@ func TestAddAgentToTeam(t *testing.T) {
 }
 
 func TestAddAgentToTeam_NotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	agent := AgentDefinition{Name: "New Agent"}
@@ -284,6 +295,7 @@ func TestAddAgentToTeam_NotFound(t *testing.T) {
 }
 
 func TestRemoveAgentFromTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with agents
@@ -311,6 +323,7 @@ func TestRemoveAgentFromTeam(t *testing.T) {
 }
 
 func TestRemoveAgentFromTeam_TeamNotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/ensemble/teams/nonexistent/agents/agent1", nil)
@@ -322,6 +335,7 @@ func TestRemoveAgentFromTeam_TeamNotFound(t *testing.T) {
 }
 
 func TestRemoveAgentFromTeam_AgentNotFound(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
@@ -340,6 +354,7 @@ func TestRemoveAgentFromTeam_AgentNotFound(t *testing.T) {
 }
 
 func TestExecuteTeam(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with agents
@@ -383,6 +398,7 @@ func TestExecuteTeam(t *testing.T) {
 }
 
 func TestExecuteTeam_NotFound(t *testing.T) {
+	t.Parallel()
 	_, router := setupEnsembleHandlerTest(t)
 
 	reqBody := TeamExecutionRequest{Task: "Test task"}
@@ -397,6 +413,7 @@ func TestExecuteTeam_NotFound(t *testing.T) {
 }
 
 func TestExecuteTeam_NoAgents(t *testing.T) {
+	t.Parallel()
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with no agents
@@ -418,6 +435,7 @@ func TestExecuteTeam_NoAgents(t *testing.T) {
 }
 
 func TestDefaultTeamConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultTeamConfig()
 
 	assert.Equal(t, 4, config.MaxParallel)
@@ -427,6 +445,7 @@ func TestDefaultTeamConfig(t *testing.T) {
 }
 
 func TestCalculateConsensus(t *testing.T) {
+	t.Parallel()
 	handler, _ := setupEnsembleHandlerTest(t)
 
 	tests := []struct {
@@ -465,6 +484,7 @@ func TestCalculateConsensus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			consensus, confidence, reached := handler.calculateConsensus(tt.results, tt.threshold)
 			assert.Equal(t, tt.wantReach, reached)
 			if tt.wantReach {
@@ -476,6 +496,7 @@ func TestCalculateConsensus(t *testing.T) {
 }
 
 func TestGenerateTeamID(t *testing.T) {
+	t.Parallel()
 	id1 := generateTeamID()
 	id2 := generateTeamID()
 

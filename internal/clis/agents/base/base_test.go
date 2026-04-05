@@ -12,6 +12,7 @@ import (
 )
 
 func TestBaseIntegration(t *testing.T) {
+	t.Parallel()
 	info := agents.AgentInfo{
 		Type:        "test",
 		Name:        "Test Agent",
@@ -26,6 +27,7 @@ func TestBaseIntegration(t *testing.T) {
 	bi := NewBaseIntegration(info)
 
 	t.Run("Info", func(t *testing.T) {
+			t.Parallel()
 		got := bi.Info()
 		if got.Name != info.Name {
 			t.Errorf("Info().Name = %q, want %q", got.Name, info.Name)
@@ -36,12 +38,14 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("IsAvailable", func(t *testing.T) {
+			t.Parallel()
 		// Base implementation checks if command with agent type exists
 		// Result depends on system, so we just check it doesn't panic
 		_ = bi.IsAvailable()
 	})
 
 	t.Run("Initialize", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		config := &BaseConfig{
 			WorkDir: t.TempDir(),
@@ -57,6 +61,7 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("Start", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		
 		if err := bi.Start(ctx); err != nil {
@@ -69,6 +74,7 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("Stop", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		
 		if err := bi.Stop(ctx); err != nil {
@@ -81,6 +87,7 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("Health", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		
 		// Before start, health check should fail
@@ -96,6 +103,7 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("ExecuteCommand", func(t *testing.T) {
+			t.Parallel()
 		ctx := context.Background()
 		
 		// Use a simple command that doesn't depend on working directory
@@ -111,6 +119,7 @@ func TestBaseIntegration(t *testing.T) {
 	})
 
 	t.Run("WorkDirCreation", func(t *testing.T) {
+			t.Parallel()
 		bi2 := NewBaseIntegration(info)
 		ctx := context.Background()
 		
@@ -131,6 +140,7 @@ func TestBaseIntegration(t *testing.T) {
 }
 
 func TestBaseIntegrationWithTempDir(t *testing.T) {
+	t.Parallel()
 	info := agents.AgentInfo{
 		Type:        "test",
 		Name:        "Test Agent",
@@ -162,6 +172,7 @@ func TestBaseIntegrationWithTempDir(t *testing.T) {
 }
 
 func TestBaseConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  *BaseConfig
@@ -185,6 +196,7 @@ func TestBaseConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			info := agents.AgentInfo{
 				Type: "test",
 				Name: "Test",
@@ -201,6 +213,7 @@ func TestBaseConfigValidation(t *testing.T) {
 }
 
 func TestBaseIntegrationConcurrency(t *testing.T) {
+	t.Parallel()
 	info := agents.AgentInfo{
 		Type: "test",
 		Name: "Test",
@@ -236,6 +249,7 @@ func TestBaseIntegrationConcurrency(t *testing.T) {
 }
 
 func TestAgentInfoValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		info    agents.AgentInfo
@@ -266,6 +280,7 @@ func TestAgentInfoValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			bi := NewBaseIntegration(tt.info)
 			if bi.info.Type != tt.info.Type {
 				t.Errorf("info.Type = %q, want %q", bi.info.Type, tt.info.Type)
@@ -275,6 +290,7 @@ func TestAgentInfoValidation(t *testing.T) {
 }
 
 func TestFileOperations(t *testing.T) {
+	t.Parallel()
 	info := agents.AgentInfo{
 		Type: "test",
 		Name: "Test",
@@ -290,6 +306,7 @@ func TestFileOperations(t *testing.T) {
 	}
 
 	t.Run("Write and Read File", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "test.txt")
 		content := []byte("test content")
 		
@@ -308,6 +325,7 @@ func TestFileOperations(t *testing.T) {
 	})
 
 	t.Run("File Permissions", func(t *testing.T) {
+			t.Parallel()
 		testFile := filepath.Join(tempDir, "perms.txt")
 		content := []byte("content")
 		
@@ -328,6 +346,7 @@ func TestFileOperations(t *testing.T) {
 }
 
 func TestContextCancellation(t *testing.T) {
+	t.Parallel()
 	info := agents.AgentInfo{
 		Type: "test",
 		Name: "Test",

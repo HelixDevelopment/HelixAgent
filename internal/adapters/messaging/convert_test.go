@@ -12,6 +12,7 @@ import (
 )
 
 func TestInternalToGenericMessage(t *testing.T) {
+	t.Parallel()
 	internal := messaging.NewMessage("test-type", []byte("test payload"))
 	internal.ID = "msg-123"
 	internal.TraceID = "trace-456"
@@ -32,11 +33,13 @@ func TestInternalToGenericMessage(t *testing.T) {
 }
 
 func TestInternalToGenericMessage_Nil(t *testing.T) {
+	t.Parallel()
 	result := InternalToGenericMessage(nil)
 	assert.Nil(t, result)
 }
 
 func TestGenericToInternalMessage(t *testing.T) {
+	t.Parallel()
 	generic := broker.NewMessage("test-topic", []byte("test payload"))
 	generic.ID = "msg-123"
 	generic.SetHeader("x-trace-id", "trace-456")
@@ -57,11 +60,13 @@ func TestGenericToInternalMessage(t *testing.T) {
 }
 
 func TestGenericToInternalMessage_Nil(t *testing.T) {
+	t.Parallel()
 	result := GenericToInternalMessage(nil)
 	assert.Nil(t, result)
 }
 
 func TestBrokerTypeConversion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		internal messaging.BrokerType
 		generic  broker.BrokerType
@@ -73,6 +78,7 @@ func TestBrokerTypeConversion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.internal), func(t *testing.T) {
+				t.Parallel()
 			// Internal to Generic
 			assert.Equal(t, tt.generic, InternalToGenericBrokerType(tt.internal))
 
@@ -83,6 +89,7 @@ func TestBrokerTypeConversion(t *testing.T) {
 }
 
 func TestBrokerTypeConversion_Unknown(t *testing.T) {
+	t.Parallel()
 	// Unknown internal type should map to InMemory
 	result := InternalToGenericBrokerType(messaging.BrokerType("unknown"))
 	assert.Equal(t, broker.BrokerTypeInMemory, result)
@@ -93,6 +100,7 @@ func TestBrokerTypeConversion_Unknown(t *testing.T) {
 }
 
 func TestErrorConversion(t *testing.T) {
+	t.Parallel()
 	internalErr := messaging.NewBrokerError(
 		messaging.ErrCodeConnectionFailed,
 		"test error message",
@@ -110,11 +118,13 @@ func TestErrorConversion(t *testing.T) {
 }
 
 func TestErrorConversion_Nil(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, InternalToGenericError(nil))
 	assert.Nil(t, GenericToInternalError(nil))
 }
 
 func TestMessageBatch(t *testing.T) {
+	t.Parallel()
 	internal := []*messaging.Message{
 		messaging.NewMessage("type1", []byte("payload1")),
 		messaging.NewMessage("type2", []byte("payload2")),
@@ -127,6 +137,7 @@ func TestMessageBatch(t *testing.T) {
 }
 
 func TestInternalMessageBatch(t *testing.T) {
+	t.Parallel()
 	generic := []*broker.Message{
 		broker.NewMessage("topic1", []byte("payload1")),
 		broker.NewMessage("topic2", []byte("payload2")),
@@ -139,6 +150,7 @@ func TestInternalMessageBatch(t *testing.T) {
 }
 
 func TestTimestampHelpers(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	millis := TimestampToMillis(now)
 	recovered := MillisToTimestamp(millis)

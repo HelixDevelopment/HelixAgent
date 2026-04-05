@@ -54,6 +54,7 @@ func gitAvailable() bool {
 }
 
 func TestNewGitTool_ValidRepo(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -76,6 +77,7 @@ func TestNewGitTool_ValidRepo(t *testing.T) {
 }
 
 func TestNewGitTool_ValidRepo_CustomWorktreeDir(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -93,6 +95,7 @@ func TestNewGitTool_ValidRepo_CustomWorktreeDir(t *testing.T) {
 }
 
 func TestNewGitTool_InvalidRepo(t *testing.T) {
+	t.Parallel()
 	tool, err := NewGitTool(GitToolConfig{
 		RepoDir: "/nonexistent/path/does/not/exist",
 	})
@@ -102,6 +105,7 @@ func TestNewGitTool_InvalidRepo(t *testing.T) {
 }
 
 func TestNewGitTool_EmptyRepoDir(t *testing.T) {
+	t.Parallel()
 	tool, err := NewGitTool(GitToolConfig{})
 	assert.Error(t, err)
 	assert.Nil(t, tool)
@@ -109,6 +113,7 @@ func TestNewGitTool_EmptyRepoDir(t *testing.T) {
 }
 
 func TestNewGitTool_NotGitRepo(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	tool, err := NewGitTool(GitToolConfig{
@@ -120,6 +125,7 @@ func TestNewGitTool_NotGitRepo(t *testing.T) {
 }
 
 func TestGitTool_CreateWorktree(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -150,6 +156,7 @@ func TestGitTool_CreateWorktree(t *testing.T) {
 }
 
 func TestGitTool_CreateWorktree_EmptySessionID(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -166,6 +173,7 @@ func TestGitTool_CreateWorktree_EmptySessionID(t *testing.T) {
 }
 
 func TestGitTool_CreateWorktree_DuplicateSessionID(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -191,6 +199,7 @@ func TestGitTool_CreateWorktree_DuplicateSessionID(t *testing.T) {
 }
 
 func TestGitTool_CommitSnapshot(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -224,6 +233,7 @@ func TestGitTool_CommitSnapshot(t *testing.T) {
 }
 
 func TestGitTool_CommitSnapshot_SubDirectory(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -254,6 +264,7 @@ func TestGitTool_CommitSnapshot_SubDirectory(t *testing.T) {
 }
 
 func TestGitTool_CommitSnapshot_ValidationErrors(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -308,6 +319,7 @@ func TestGitTool_CommitSnapshot_ValidationErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			snap, snapErr := tool.CommitSnapshot(
 				ctx, tc.worktreeDir, tc.code, tc.filename, tc.message,
 			)
@@ -319,6 +331,7 @@ func TestGitTool_CommitSnapshot_ValidationErrors(t *testing.T) {
 }
 
 func TestGitTool_Cleanup(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -345,6 +358,7 @@ func TestGitTool_Cleanup(t *testing.T) {
 }
 
 func TestGitTool_Cleanup_EmptyDir(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -359,6 +373,7 @@ func TestGitTool_Cleanup_EmptyDir(t *testing.T) {
 }
 
 func TestGitTool_ListWorktrees(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -396,6 +411,7 @@ func TestGitTool_ListWorktrees(t *testing.T) {
 }
 
 func TestGitTool_CleanupAll(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -420,6 +436,7 @@ func TestGitTool_CleanupAll(t *testing.T) {
 }
 
 func TestGitTool_CreateDiff(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -454,6 +471,7 @@ func TestGitTool_CreateDiff(t *testing.T) {
 }
 
 func TestGitTool_CreateDiff_ValidationErrors(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}
@@ -476,6 +494,7 @@ func TestGitTool_CreateDiff_ValidationErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			_, diffErr := tool.CreateDiff(
 				context.Background(), tc.wtDir, tc.from, tc.to,
 			)
@@ -486,6 +505,7 @@ func TestGitTool_CreateDiff_ValidationErrors(t *testing.T) {
 }
 
 func TestGitTool_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	if !gitAvailable() {
 		t.Skip("git not available")
 	}

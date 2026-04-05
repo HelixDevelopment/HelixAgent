@@ -30,6 +30,7 @@ func (m *mockDehallucationLLM) Complete(
 // ==========================================================================
 
 func TestDefaultDehallucationConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultDehallucationConfig()
 
 	assert.True(t, cfg.Enabled, "default config should be enabled")
@@ -44,6 +45,7 @@ func TestDefaultDehallucationConfig(t *testing.T) {
 // ==========================================================================
 
 func TestNewDehallucationPhase(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultDehallucationConfig()
 	mock := &mockDehallucationLLM{}
 
@@ -62,6 +64,7 @@ func TestNewDehallucationPhase(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_Execute_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := DehallucationConfig{
 		Enabled:                false,
 		MaxClarificationRounds: 3,
@@ -90,6 +93,7 @@ func TestDehallucationPhase_Execute_Disabled(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_Execute_WithMockLLM(t *testing.T) {
+	t.Parallel()
 	cfg := DehallucationConfig{
 		Enabled:                true,
 		MaxClarificationRounds: 3,
@@ -131,6 +135,7 @@ func TestDehallucationPhase_Execute_WithMockLLM(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_Execute_HighInitialConfidence(t *testing.T) {
+	t.Parallel()
 	cfg := DehallucationConfig{
 		Enabled:                true,
 		MaxClarificationRounds: 3,
@@ -165,6 +170,7 @@ func TestDehallucationPhase_Execute_HighInitialConfidence(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_ParseClarifications(t *testing.T) {
+	t.Parallel()
 	phase := NewDehallucationPhase(DefaultDehallucationConfig(), nil)
 
 	tests := []struct {
@@ -260,6 +266,7 @@ func TestDehallucationPhase_ParseClarifications(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			questions, conf := phase.parseClarifications(tc.response)
 
 			assert.Len(t, questions, tc.expectedCount)
@@ -279,6 +286,7 @@ func TestDehallucationPhase_ParseClarifications(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_ParseAnswer(t *testing.T) {
+	t.Parallel()
 	phase := NewDehallucationPhase(DefaultDehallucationConfig(), nil)
 
 	tests := []struct {
@@ -336,6 +344,7 @@ func TestDehallucationPhase_ParseAnswer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			answer := phase.parseAnswer(tc.response)
 
 			require.NotNil(t, answer)
@@ -351,14 +360,17 @@ func TestDehallucationPhase_ParseAnswer(t *testing.T) {
 // ==========================================================================
 
 func TestDehallucationPhase_BuildClarifiedTask(t *testing.T) {
+	t.Parallel()
 	phase := NewDehallucationPhase(DefaultDehallucationConfig(), nil)
 
 	t.Run("no responses returns original task", func(t *testing.T) {
+			t.Parallel()
 		result := phase.buildClarifiedTask("original task", nil)
 		assert.Equal(t, "original task", result)
 	})
 
 	t.Run("empty responses returns original task", func(t *testing.T) {
+			t.Parallel()
 		result := phase.buildClarifiedTask(
 			"original task", []ClarificationResponse{},
 		)
@@ -366,6 +378,7 @@ func TestDehallucationPhase_BuildClarifiedTask(t *testing.T) {
 	})
 
 	t.Run("responses appended to task", func(t *testing.T) {
+			t.Parallel()
 		responses := []ClarificationResponse{
 			{
 				Answer:     "Use Go with Gin",

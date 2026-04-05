@@ -36,6 +36,7 @@ func newTestRelationship(id, sourceID, targetID, relType string) *memory.Relatio
 // --- NewEntityIntegration tests ---
 
 func TestEntityIntegration_New_Enabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	logger := newTestLogger()
 
@@ -47,6 +48,7 @@ func TestEntityIntegration_New_Enabled(t *testing.T) {
 }
 
 func TestEntityIntegration_New_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	logger := newTestLogger()
 
@@ -58,6 +60,7 @@ func TestEntityIntegration_New_Disabled(t *testing.T) {
 // --- PublishEntityCreated tests ---
 
 func TestEntityIntegration_PublishEntityCreated_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -76,6 +79,7 @@ func TestEntityIntegration_PublishEntityCreated_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityCreated_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -87,6 +91,7 @@ func TestEntityIntegration_PublishEntityCreated_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityCreated_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("connection lost")
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
@@ -101,6 +106,7 @@ func TestEntityIntegration_PublishEntityCreated_BrokerError(t *testing.T) {
 // --- PublishEntityUpdated tests ---
 
 func TestEntityIntegration_PublishEntityUpdated_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -117,6 +123,7 @@ func TestEntityIntegration_PublishEntityUpdated_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityUpdated_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -128,6 +135,7 @@ func TestEntityIntegration_PublishEntityUpdated_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityUpdated_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("write timeout")
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
@@ -142,6 +150,7 @@ func TestEntityIntegration_PublishEntityUpdated_BrokerError(t *testing.T) {
 // --- PublishRelationshipCreated tests ---
 
 func TestEntityIntegration_PublishRelationshipCreated_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -161,6 +170,7 @@ func TestEntityIntegration_PublishRelationshipCreated_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishRelationshipCreated_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -172,6 +182,7 @@ func TestEntityIntegration_PublishRelationshipCreated_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishRelationshipCreated_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("broker unavailable")
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
@@ -186,6 +197,7 @@ func TestEntityIntegration_PublishRelationshipCreated_BrokerError(t *testing.T) 
 // --- PublishEntitiesBatch tests ---
 
 func TestEntityIntegration_PublishEntitiesBatch_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -208,6 +220,7 @@ func TestEntityIntegration_PublishEntitiesBatch_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntitiesBatch_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -221,6 +234,7 @@ func TestEntityIntegration_PublishEntitiesBatch_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntitiesBatch_EmptySlice(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -230,6 +244,7 @@ func TestEntityIntegration_PublishEntitiesBatch_EmptySlice(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntitiesBatch_PartialBrokerError(t *testing.T) {
+	t.Parallel()
 	// Batch continues on error, always returns nil
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("publish error")
@@ -245,6 +260,7 @@ func TestEntityIntegration_PublishEntitiesBatch_PartialBrokerError(t *testing.T)
 }
 
 func TestEntityIntegration_PublishEntitiesBatch_NilSlice(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -256,6 +272,7 @@ func TestEntityIntegration_PublishEntitiesBatch_NilSlice(t *testing.T) {
 // --- PublishRelationshipsBatch tests ---
 
 func TestEntityIntegration_PublishRelationshipsBatch_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -282,6 +299,7 @@ func TestEntityIntegration_PublishRelationshipsBatch_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishRelationshipsBatch_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -295,6 +313,7 @@ func TestEntityIntegration_PublishRelationshipsBatch_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishRelationshipsBatch_EmptySlice(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -304,6 +323,7 @@ func TestEntityIntegration_PublishRelationshipsBatch_EmptySlice(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishRelationshipsBatch_PartialBrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("publish failed")
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
@@ -322,6 +342,7 @@ func TestEntityIntegration_PublishRelationshipsBatch_PartialBrokerError(t *testi
 // --- PublishEntityMerge tests ---
 
 func TestEntityIntegration_PublishEntityMerge_Success(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -341,6 +362,7 @@ func TestEntityIntegration_PublishEntityMerge_Success(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityMerge_Disabled(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), false)
 
@@ -353,6 +375,7 @@ func TestEntityIntegration_PublishEntityMerge_Disabled(t *testing.T) {
 }
 
 func TestEntityIntegration_PublishEntityMerge_BrokerError(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("merge publish failed")
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
@@ -368,6 +391,7 @@ func TestEntityIntegration_PublishEntityMerge_BrokerError(t *testing.T) {
 // --- Entity with properties tests ---
 
 func TestEntityIntegration_PublishEntityCreated_WithProperties(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 
@@ -396,6 +420,7 @@ func TestEntityIntegration_PublishEntityCreated_WithProperties(t *testing.T) {
 // --- Relationship with properties tests ---
 
 func TestEntityIntegration_PublishRelationshipCreated_WithProperties(t *testing.T) {
+	t.Parallel()
 	broker := newMockBroker()
 	ei := NewEntityIntegration(broker, newTestLogger(), true)
 

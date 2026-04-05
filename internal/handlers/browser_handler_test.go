@@ -28,6 +28,7 @@ func setupBrowserRouter() (*BrowserHandler, *gin.Engine) {
 // --- Constructor -------------------------------------------------------
 
 func TestNewBrowserHandler(t *testing.T) {
+	t.Parallel()
 	h := NewBrowserHandler(nil)
 	assert.NotNil(t, h)
 }
@@ -35,6 +36,7 @@ func TestNewBrowserHandler(t *testing.T) {
 // --- Navigate ----------------------------------------------------------
 
 func TestBrowserHandler_Navigate_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/navigate", bytes.NewBufferString("{bad"))
@@ -46,6 +48,7 @@ func TestBrowserHandler_Navigate_InvalidJSON(t *testing.T) {
 }
 
 func TestBrowserHandler_Navigate_MissingURL(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	body, _ := json.Marshal(map[string]interface{}{})
@@ -65,6 +68,7 @@ func TestBrowserHandler_Navigate_MissingURL(t *testing.T) {
 // --- Click -------------------------------------------------------------
 
 func TestBrowserHandler_Click_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/click", bytes.NewBufferString("not json"))
@@ -76,6 +80,7 @@ func TestBrowserHandler_Click_InvalidJSON(t *testing.T) {
 }
 
 func TestBrowserHandler_Click_MissingSelector(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	body, _ := json.Marshal(map[string]interface{}{})
@@ -95,6 +100,7 @@ func TestBrowserHandler_Click_MissingSelector(t *testing.T) {
 // --- Type --------------------------------------------------------------
 
 func TestBrowserHandler_Type_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/type", bytes.NewBufferString("{bad"))
@@ -106,6 +112,7 @@ func TestBrowserHandler_Type_InvalidJSON(t *testing.T) {
 }
 
 func TestBrowserHandler_Type_MissingFields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		body    TypeRequest
@@ -125,6 +132,7 @@ func TestBrowserHandler_Type_MissingFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			_, router := setupBrowserRouter()
 
 			body, _ := json.Marshal(tt.body)
@@ -146,6 +154,7 @@ func TestBrowserHandler_Type_MissingFields(t *testing.T) {
 // --- Screenshot --------------------------------------------------------
 
 func TestBrowserHandler_Screenshot_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/screenshot", bytes.NewBufferString("bad"))
@@ -159,6 +168,7 @@ func TestBrowserHandler_Screenshot_InvalidJSON(t *testing.T) {
 // --- Extract -----------------------------------------------------------
 
 func TestBrowserHandler_Extract_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/extract", bytes.NewBufferString("bad"))
@@ -170,6 +180,7 @@ func TestBrowserHandler_Extract_InvalidJSON(t *testing.T) {
 }
 
 func TestBrowserHandler_Extract_MissingSelector(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	body, _ := json.Marshal(map[string]interface{}{})
@@ -189,6 +200,7 @@ func TestBrowserHandler_Extract_MissingSelector(t *testing.T) {
 // --- Evaluate ----------------------------------------------------------
 
 func TestBrowserHandler_Evaluate_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/browser/evaluate", bytes.NewBufferString("nope"))
@@ -200,6 +212,7 @@ func TestBrowserHandler_Evaluate_InvalidJSON(t *testing.T) {
 }
 
 func TestBrowserHandler_Evaluate_MissingScript(t *testing.T) {
+	t.Parallel()
 	_, router := setupBrowserRouter()
 
 	body, _ := json.Marshal(map[string]interface{}{})
@@ -219,6 +232,7 @@ func TestBrowserHandler_Evaluate_MissingScript(t *testing.T) {
 // --- Request type JSON round-trips -------------------------------------
 
 func TestNavigateRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := NavigateRequest{
 		URL:     "https://example.com",
 		WaitFor: "#main",
@@ -233,6 +247,7 @@ func TestNavigateRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestClickRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ClickRequest{Selector: "#btn", Button: "left"}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -243,6 +258,7 @@ func TestClickRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestTypeRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := TypeRequest{Selector: "#input", Text: "hello", Clear: true}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -253,6 +269,7 @@ func TestTypeRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestScreenshotRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ScreenshotRequest{Selector: "#hero", FullPage: true}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -263,6 +280,7 @@ func TestScreenshotRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestExtractRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ExtractRequest{Selector: "h1", Type: "text", Attribute: ""}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -273,6 +291,7 @@ func TestExtractRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestEvaluateRequest_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := EvaluateRequest{Script: "return 1+1"}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -283,6 +302,7 @@ func TestEvaluateRequest_JSONRoundTrip(t *testing.T) {
 }
 
 func TestNavigateResponse_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := NavigateResponse{Success: true, URL: "https://example.com", Title: "Example"}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -293,6 +313,7 @@ func TestNavigateResponse_JSONRoundTrip(t *testing.T) {
 }
 
 func TestExtractResponse_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
 	orig := ExtractResponse{Content: "Hello World", Selector: "h1"}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
@@ -305,6 +326,7 @@ func TestExtractResponse_JSONRoundTrip(t *testing.T) {
 // --- RegisterRoutes verification ---------------------------------------
 
 func TestBrowserHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	handler := NewBrowserHandler(nil)
 	router := gin.New()
 	handler.RegisterRoutes(router)

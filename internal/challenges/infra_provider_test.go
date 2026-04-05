@@ -29,6 +29,7 @@ func (m *mockChecker) CheckWithRetry(
 }
 
 func TestHelixInfraProvider_EnsureRunning_Success(t *testing.T) {
+	t.Parallel()
 	booter := &mockBooter{
 		results: []BootResult{
 			{Name: "postgresql", Status: "running"},
@@ -41,6 +42,7 @@ func TestHelixInfraProvider_EnsureRunning_Success(t *testing.T) {
 }
 
 func TestHelixInfraProvider_EnsureRunning_Failure(t *testing.T) {
+	t.Parallel()
 	booter := &mockBooter{
 		results: []BootResult{
 			{
@@ -58,6 +60,7 @@ func TestHelixInfraProvider_EnsureRunning_Failure(t *testing.T) {
 }
 
 func TestHelixInfraProvider_EnsureRunning_NilBooter(t *testing.T) {
+	t.Parallel()
 	p := NewHelixInfraProvider(nil, nil)
 
 	err := p.EnsureRunning(context.Background(), "postgresql")
@@ -66,6 +69,7 @@ func TestHelixInfraProvider_EnsureRunning_NilBooter(t *testing.T) {
 }
 
 func TestHelixInfraProvider_HealthCheck_Success(t *testing.T) {
+	t.Parallel()
 	checker := &mockChecker{err: nil}
 	p := NewHelixInfraProvider(nil, checker)
 
@@ -74,6 +78,7 @@ func TestHelixInfraProvider_HealthCheck_Success(t *testing.T) {
 }
 
 func TestHelixInfraProvider_HealthCheck_Failure(t *testing.T) {
+	t.Parallel()
 	checker := &mockChecker{err: errors.New("unhealthy")}
 	p := NewHelixInfraProvider(nil, checker)
 
@@ -82,6 +87,7 @@ func TestHelixInfraProvider_HealthCheck_Failure(t *testing.T) {
 }
 
 func TestHelixInfraProvider_HealthCheck_NilChecker(t *testing.T) {
+	t.Parallel()
 	p := NewHelixInfraProvider(nil, nil)
 
 	err := p.HealthCheck(context.Background(), "redis")
@@ -90,12 +96,14 @@ func TestHelixInfraProvider_HealthCheck_NilChecker(t *testing.T) {
 }
 
 func TestHelixInfraProvider_Release(t *testing.T) {
+	t.Parallel()
 	p := NewHelixInfraProvider(nil, nil)
 	err := p.Release(context.Background(), "test")
 	require.NoError(t, err)
 }
 
 func TestHelixInfraProvider_Shutdown(t *testing.T) {
+	t.Parallel()
 	booter := &mockBooter{err: nil}
 	p := NewHelixInfraProvider(booter, nil)
 
@@ -104,12 +112,14 @@ func TestHelixInfraProvider_Shutdown(t *testing.T) {
 }
 
 func TestHelixInfraProvider_Shutdown_NilBooter(t *testing.T) {
+	t.Parallel()
 	p := NewHelixInfraProvider(nil, nil)
 	err := p.Shutdown(context.Background())
 	require.NoError(t, err)
 }
 
 func TestHelixInfraProvider_Shutdown_Error(t *testing.T) {
+	t.Parallel()
 	booter := &mockBooter{err: errors.New("shutdown failed")}
 	p := NewHelixInfraProvider(booter, nil)
 

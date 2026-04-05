@@ -8,6 +8,7 @@ import (
 )
 
 func TestStreamStates(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, StreamState("pending"), StreamStatePending)
 	assert.Equal(t, StreamState("active"), StreamStateActive)
 	assert.Equal(t, StreamState("paused"), StreamStatePaused)
@@ -17,6 +18,7 @@ func TestStreamStates(t *testing.T) {
 }
 
 func TestStreamMetadata(t *testing.T) {
+	t.Parallel()
 	metadata := &StreamMetadata{
 		ID:              "stream-123",
 		CreatedAt:       time.Now(),
@@ -35,6 +37,7 @@ func TestStreamMetadata(t *testing.T) {
 }
 
 func TestStreamEventTypes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, StreamEventType("start"), EventTypeStart)
 	assert.Equal(t, StreamEventType("chunk"), EventTypeChunk)
 	assert.Equal(t, StreamEventType("progress"), EventTypeProgress)
@@ -46,6 +49,7 @@ func TestStreamEventTypes(t *testing.T) {
 }
 
 func TestStreamEvent(t *testing.T) {
+	t.Parallel()
 	event := &StreamEvent{
 		Type:      EventTypeChunk,
 		Timestamp: time.Now(),
@@ -59,6 +63,7 @@ func TestStreamEvent(t *testing.T) {
 }
 
 func TestDefaultStreamOptions(t *testing.T) {
+	t.Parallel()
 	options := DefaultStreamOptions()
 
 	assert.Equal(t, BufferTypeWord, options.BufferType)
@@ -71,6 +76,7 @@ func TestDefaultStreamOptions(t *testing.T) {
 }
 
 func TestStreamMetrics(t *testing.T) {
+	t.Parallel()
 	metrics := &StreamMetrics{
 		TotalChunks:           100,
 		TotalTokens:           500,
@@ -90,6 +96,7 @@ func TestStreamMetrics(t *testing.T) {
 }
 
 func TestStreamMetrics_ZeroDuration(t *testing.T) {
+	t.Parallel()
 	metrics := &StreamMetrics{
 		TotalTokens: 100,
 		DurationMs:  0,
@@ -101,6 +108,7 @@ func TestStreamMetrics_ZeroDuration(t *testing.T) {
 }
 
 func TestChunkInfo(t *testing.T) {
+	t.Parallel()
 	chunk := &ChunkInfo{
 		Index:          0,
 		Content:        "Hello world",
@@ -117,6 +125,7 @@ func TestChunkInfo(t *testing.T) {
 }
 
 func TestStreamResult(t *testing.T) {
+	t.Parallel()
 	result := &StreamResult{
 		Success:     true,
 		FullContent: "Hello world",
@@ -133,6 +142,7 @@ func TestStreamResult(t *testing.T) {
 }
 
 func TestBaseStreamHandler(t *testing.T) {
+	t.Parallel()
 	handler := &BaseStreamHandler{}
 
 	// These should not panic
@@ -144,6 +154,7 @@ func TestBaseStreamHandler(t *testing.T) {
 }
 
 func TestIdentityTransformer(t *testing.T) {
+	t.Parallel()
 	transformer := &IdentityTransformer{}
 
 	assert.Equal(t, "test", transformer.Transform("test"))
@@ -154,6 +165,7 @@ func TestIdentityTransformer(t *testing.T) {
 }
 
 func TestTrimTransformer(t *testing.T) {
+	t.Parallel()
 	transformer := &TrimTransformer{}
 
 	// TrimTransformer doesn't trim individual chunks
@@ -166,6 +178,7 @@ func TestTrimTransformer(t *testing.T) {
 }
 
 func TestFilterTransformer(t *testing.T) {
+	t.Parallel()
 	transformer := &FilterTransformer{
 		FilterFunc: func(s string) bool {
 			return s == "filter_me"
@@ -181,12 +194,14 @@ func TestFilterTransformer(t *testing.T) {
 }
 
 func TestFilterTransformer_NilFunc(t *testing.T) {
+	t.Parallel()
 	transformer := &FilterTransformer{}
 
 	assert.Equal(t, "test", transformer.Transform("test"))
 }
 
 func TestStreamPipeline(t *testing.T) {
+	t.Parallel()
 	pipeline := NewStreamPipeline(
 		&IdentityTransformer{},
 		&FilterTransformer{
@@ -205,6 +220,7 @@ func TestStreamPipeline(t *testing.T) {
 }
 
 func TestBackpressureStrategies(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, BackpressureStrategy("block"), BackpressureBlock)
 	assert.Equal(t, BackpressureStrategy("buffer"), BackpressureBuffer)
 	assert.Equal(t, BackpressureStrategy("drop"), BackpressureDrop)
@@ -212,6 +228,7 @@ func TestBackpressureStrategies(t *testing.T) {
 }
 
 func TestDefaultBackpressureConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultBackpressureConfig()
 
 	assert.Equal(t, BackpressureBlock, config.Strategy)
@@ -220,6 +237,7 @@ func TestDefaultBackpressureConfig(t *testing.T) {
 }
 
 func TestStreamError(t *testing.T) {
+	t.Parallel()
 	err := &StreamError{
 		Code:        ErrorCodeTimeout,
 		Message:     "Operation timed out",
@@ -235,6 +253,7 @@ func TestStreamError(t *testing.T) {
 }
 
 func TestStreamErrorCodes(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, StreamErrorCode("timeout"), ErrorCodeTimeout)
 	assert.Equal(t, StreamErrorCode("cancelled"), ErrorCodeCancelled)
 	assert.Equal(t, StreamErrorCode("connection"), ErrorCodeConnection)
@@ -244,6 +263,7 @@ func TestStreamErrorCodes(t *testing.T) {
 }
 
 func TestDefaultReconnectionStrategy(t *testing.T) {
+	t.Parallel()
 	strategy := DefaultReconnectionStrategy()
 
 	assert.True(t, strategy.Enabled)
@@ -254,6 +274,7 @@ func TestDefaultReconnectionStrategy(t *testing.T) {
 }
 
 func TestDefaultStreamCapabilities(t *testing.T) {
+	t.Parallel()
 	caps := DefaultStreamCapabilities()
 
 	assert.True(t, caps.SupportsProgress)
@@ -266,6 +287,7 @@ func TestDefaultStreamCapabilities(t *testing.T) {
 }
 
 func TestStreamOptions(t *testing.T) {
+	t.Parallel()
 	options := &StreamOptions{
 		BufferType:               BufferTypeSentence,
 		BufferSize:               1024,
@@ -285,6 +307,7 @@ func TestStreamOptions(t *testing.T) {
 }
 
 func TestStreamResult_Failed(t *testing.T) {
+	t.Parallel()
 	result := &StreamResult{
 		Success: false,
 		Error:   "Connection lost",
@@ -295,6 +318,7 @@ func TestStreamResult_Failed(t *testing.T) {
 }
 
 func TestReconnectionStrategy(t *testing.T) {
+	t.Parallel()
 	strategy := &ReconnectionStrategy{
 		Enabled:           true,
 		MaxAttempts:       5,
@@ -310,6 +334,7 @@ func TestReconnectionStrategy(t *testing.T) {
 }
 
 func TestStreamCapabilities(t *testing.T) {
+	t.Parallel()
 	caps := &StreamCapabilities{
 		SupportsProgress:     true,
 		SupportsRateLimit:    true,

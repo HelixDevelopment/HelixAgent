@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewTool(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	tool := NewTool("/base/path", logger)
 	
@@ -22,11 +23,13 @@ func TestNewTool(t *testing.T) {
 }
 
 func TestTool_Name(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	assert.Equal(t, "EditBlock", tool.Name())
 }
 
 func TestTool_Description(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	desc := tool.Description()
 	assert.Contains(t, desc, "search/replace")
@@ -34,6 +37,7 @@ func TestTool_Description(t *testing.T) {
 }
 
 func TestTool_Schema(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	schema := tool.Schema()
 	
@@ -55,6 +59,7 @@ func TestTool_Schema(t *testing.T) {
 }
 
 func TestTool_Execute(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -81,6 +86,7 @@ func TestTool_Execute(t *testing.T) {
 }
 
 func TestTool_Execute_DryRun(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -107,6 +113,7 @@ func TestTool_Execute_DryRun(t *testing.T) {
 }
 
 func TestTool_Execute_MissingFilePath(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	ctx := context.Background()
 	
@@ -121,6 +128,7 @@ func TestTool_Execute_MissingFilePath(t *testing.T) {
 }
 
 func TestTool_Execute_MissingSearch(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	ctx := context.Background()
 	
@@ -135,6 +143,7 @@ func TestTool_Execute_MissingSearch(t *testing.T) {
 }
 
 func TestTool_Execute_MissingReplace(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	ctx := context.Background()
 	
@@ -149,6 +158,7 @@ func TestTool_Execute_MissingReplace(t *testing.T) {
 }
 
 func TestTool_Execute_FileNotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	tool := NewTool(tempDir, logrus.New())
 	ctx := context.Background()
@@ -169,6 +179,7 @@ func TestTool_Execute_FileNotFound(t *testing.T) {
 }
 
 func TestTool_Execute_SearchNotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -189,6 +200,7 @@ func TestTool_Execute_SearchNotFound(t *testing.T) {
 }
 
 func TestTool_Apply(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -207,6 +219,7 @@ func TestTool_Apply(t *testing.T) {
 }
 
 func TestTool_Preview(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -227,6 +240,7 @@ func TestTool_Preview(t *testing.T) {
 }
 
 func TestTool_ApplyFromText(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -252,6 +266,7 @@ new content
 }
 
 func TestTool_ApplyFromText_NoBlocks(t *testing.T) {
+	t.Parallel()
 	tool := NewTool("/tmp", logrus.New())
 	ctx := context.Background()
 	
@@ -261,6 +276,7 @@ func TestTool_ApplyFromText_NoBlocks(t *testing.T) {
 }
 
 func TestTool_BatchApply(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -286,6 +302,7 @@ func TestTool_BatchApply(t *testing.T) {
 }
 
 func TestTool_FindSimilar(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -305,6 +322,7 @@ line5`
 }
 
 func TestCalculateSimilarity(t *testing.T) {
+	t.Parallel()
 	// Exact match
 	assert.Equal(t, 1.0, calculateSimilarity(
 		[]string{"line1", "line2"},
@@ -331,6 +349,7 @@ func TestCalculateSimilarity(t *testing.T) {
 }
 
 func TestTool_Execute_InvalidDryRunType(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -357,6 +376,7 @@ func TestTool_Execute_InvalidDryRunType(t *testing.T) {
 }
 
 func TestTool_ConcurrentExecution(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	
 	testFile := filepath.Join(tempDir, "test.txt")

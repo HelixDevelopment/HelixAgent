@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewAider(t *testing.T) {
+	t.Parallel()
 	a := New()
 	
 	if a == nil {
@@ -29,6 +30,7 @@ func TestNewAider(t *testing.T) {
 }
 
 func TestAiderInitialize(t *testing.T) {
+	t.Parallel()
 	a := New()
 	ctx := context.Background()
 	
@@ -52,6 +54,7 @@ func TestAiderInitialize(t *testing.T) {
 }
 
 func TestAiderStartStop(t *testing.T) {
+	t.Parallel()
 	a := New()
 	ctx := context.Background()
 	
@@ -80,6 +83,7 @@ func TestAiderStartStop(t *testing.T) {
 }
 
 func TestAiderExecute(t *testing.T) {
+	t.Parallel()
 	a := New()
 	ctx := context.Background()
 	
@@ -138,6 +142,7 @@ func TestAiderExecute(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := a.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -151,6 +156,7 @@ func TestAiderExecute(t *testing.T) {
 }
 
 func TestAiderCapabilities(t *testing.T) {
+	t.Parallel()
 	a := New()
 	info := a.Info()
 	
@@ -181,6 +187,7 @@ func TestAiderCapabilities(t *testing.T) {
 }
 
 func TestAiderHealth(t *testing.T) {
+	t.Parallel()
 	a := New()
 	ctx := context.Background()
 	
@@ -199,6 +206,7 @@ func TestAiderHealth(t *testing.T) {
 }
 
 func TestAiderRepoMap(t *testing.T) {
+	t.Parallel()
 	a := New()
 	ctx := context.Background()
 	
@@ -238,6 +246,7 @@ func Hello() string {
 }
 
 func TestAiderConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  *Config
@@ -267,6 +276,7 @@ func TestAiderConfigValidation(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			a := New()
 			ctx := context.Background()
 			err := a.Initialize(ctx, tt.config)

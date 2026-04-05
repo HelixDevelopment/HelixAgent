@@ -11,6 +11,7 @@ import (
 )
 
 func TestRegistry_Discover(t *testing.T) {
+	t.Parallel()
 	// Create temp directory with test tools
 	tmpDir := t.TempDir()
 	
@@ -58,6 +59,7 @@ eval "$(argc --argc-eval "$0" "$@")"
 }
 
 func TestBashTool_ToMCPTool(t *testing.T) {
+	t.Parallel()
 	tool := &BashTool{
 		Name:        "test_tool",
 		Description: "A test tool",
@@ -82,6 +84,7 @@ func TestBashTool_ToMCPTool(t *testing.T) {
 }
 
 func TestRegistry_Execute(t *testing.T) {
+	t.Parallel()
 	t.Skip("Requires argc tool to be installed")
 	// Create temp directory with executable test tool
 	tmpDir := t.TempDir()
@@ -130,6 +133,7 @@ eval "$(argc --argc-eval "$0" "$@")"
 }
 
 func TestRegistry_Execute_MissingTool(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry("/tmp")
 	
 	ctx := context.Background()
@@ -140,6 +144,7 @@ func TestRegistry_Execute_MissingTool(t *testing.T) {
 }
 
 func TestRegistry_Execute_MissingRequiredParam(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	
 	testTool := `#!/usr/bin/env bash
@@ -170,6 +175,7 @@ eval "$(argc --argc-eval "$0" "$@")"`
 }
 
 func TestRegistry_Get(t *testing.T) {
+	t.Parallel()
 	registry := NewRegistry("/tmp")
 	
 	// Add test tool

@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewRepoMap(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test/path", logger)
 
@@ -24,6 +25,7 @@ func TestNewRepoMap(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	assert.Equal(t, int64(1024*1024), config.MaxFileSize)
@@ -34,6 +36,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestDetectLanguage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		ext      string
 		path     string
@@ -60,6 +63,7 @@ func TestDetectLanguage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+				t.Parallel()
 			result := detectLanguage(tt.ext, tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -67,6 +71,7 @@ func TestDetectLanguage(t *testing.T) {
 }
 
 func TestIsTestFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		language string
@@ -86,6 +91,7 @@ func TestIsTestFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+				t.Parallel()
 			result := isTestFile(tt.path, tt.language)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -93,6 +99,7 @@ func TestIsTestFile(t *testing.T) {
 }
 
 func TestIsBinary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected bool
@@ -109,6 +116,7 @@ func TestIsBinary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+				t.Parallel()
 			result := isBinary(tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -116,6 +124,7 @@ func TestIsBinary(t *testing.T) {
 }
 
 func TestShouldIgnore(t *testing.T) {
+	t.Parallel()
 	rm := NewRepoMap("/test", logrus.New())
 	patterns := []string{"node_modules", ".git", "*.tmp"}
 
@@ -132,6 +141,7 @@ func TestShouldIgnore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+				t.Parallel()
 			result := rm.shouldIgnore(tt.path, patterns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -139,6 +149,7 @@ func TestShouldIgnore(t *testing.T) {
 }
 
 func TestRepoMap_Map(t *testing.T) {
+	t.Parallel()
 	// Create temp directory with test files
 	tmpDir := t.TempDir()
 
@@ -193,6 +204,7 @@ class MyClass:
 }
 
 func TestRepoMap_GetFiles(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Files = []FileInfo{
@@ -205,6 +217,7 @@ func TestRepoMap_GetFiles(t *testing.T) {
 }
 
 func TestRepoMap_GetSymbols(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Symbols = []Symbol{
@@ -218,6 +231,7 @@ func TestRepoMap_GetSymbols(t *testing.T) {
 }
 
 func TestRepoMap_GetSymbolsByType(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Symbols = []Symbol{
@@ -234,6 +248,7 @@ func TestRepoMap_GetSymbolsByType(t *testing.T) {
 }
 
 func TestRepoMap_GetSymbolsInFile(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Symbols = []Symbol{
@@ -250,6 +265,7 @@ func TestRepoMap_GetSymbolsInFile(t *testing.T) {
 }
 
 func TestRepoMap_FindSymbol(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Symbols = []Symbol{
@@ -269,6 +285,7 @@ func TestRepoMap_FindSymbol(t *testing.T) {
 }
 
 func TestRepoMap_GetSummary(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	rm := NewRepoMap("/test", logger)
 	rm.Files = []FileInfo{
@@ -294,6 +311,7 @@ func TestRepoMap_GetSummary(t *testing.T) {
 }
 
 func TestExtractGoSymbols(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.go")
 
@@ -355,6 +373,7 @@ type MyType string
 }
 
 func TestExtractPythonSymbols(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.py")
 
@@ -393,6 +412,7 @@ MAX_SIZE = 100
 }
 
 func TestExtractJSSymbols(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.js")
 
@@ -432,6 +452,7 @@ const constant = 42;
 }
 
 func TestIsExported(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		expected bool
@@ -445,6 +466,7 @@ func TestIsExported(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := isExported(tt.name)
 			assert.Equal(t, tt.expected, result)
 		})

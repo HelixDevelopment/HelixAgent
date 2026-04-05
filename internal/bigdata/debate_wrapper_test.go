@@ -21,6 +21,7 @@ func newTestLogger() *logrus.Logger {
 }
 
 func TestDebateServiceWrapper_NewDebateServiceWrapper_ReturnsValidInstance(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -34,6 +35,7 @@ func TestDebateServiceWrapper_NewDebateServiceWrapper_ReturnsValidInstance(t *te
 }
 
 func TestDebateServiceWrapper_NewDebateServiceWrapper_WithBigDataEnabled(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, true)
 
@@ -42,6 +44,7 @@ func TestDebateServiceWrapper_NewDebateServiceWrapper_WithBigDataEnabled(t *test
 }
 
 func TestDebateServiceWrapper_RecordProviderCall_BigDataDisabled(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 	ctx := context.Background()
@@ -54,6 +57,7 @@ func TestDebateServiceWrapper_RecordProviderCall_BigDataDisabled(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_RecordProviderCall_BigDataEnabledNilAnalytics(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, true)
 	ctx := context.Background()
@@ -66,6 +70,7 @@ func TestDebateServiceWrapper_RecordProviderCall_BigDataEnabledNilAnalytics(t *t
 }
 
 func TestDebateServiceWrapper_RecordDebateRound_BigDataDisabled(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 	ctx := context.Background()
@@ -78,6 +83,7 @@ func TestDebateServiceWrapper_RecordDebateRound_BigDataDisabled(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_RecordDebateRound_BigDataEnabledNilAnalytics(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, true)
 	ctx := context.Background()
@@ -90,6 +96,7 @@ func TestDebateServiceWrapper_RecordDebateRound_BigDataEnabledNilAnalytics(t *te
 }
 
 func TestDebateServiceWrapper_ExtractProviderFromWinner_WithSlash(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -108,6 +115,7 @@ func TestDebateServiceWrapper_ExtractProviderFromWinner_WithSlash(t *testing.T) 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := wrapper.extractProviderFromWinner(tt.winner)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -115,6 +123,7 @@ func TestDebateServiceWrapper_ExtractProviderFromWinner_WithSlash(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_ExtractModelFromWinner_WithSlash(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -133,6 +142,7 @@ func TestDebateServiceWrapper_ExtractModelFromWinner_WithSlash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := wrapper.extractModelFromWinner(tt.winner)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -140,6 +150,7 @@ func TestDebateServiceWrapper_ExtractModelFromWinner_WithSlash(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_DetermineOutcome_Error(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -151,6 +162,7 @@ func TestDebateServiceWrapper_DetermineOutcome_Error(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_DetermineOutcome_Abandoned(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -162,6 +174,7 @@ func TestDebateServiceWrapper_DetermineOutcome_Abandoned(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_DetermineOutcome_Successful(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -173,6 +186,7 @@ func TestDebateServiceWrapper_DetermineOutcome_Successful(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_CalculateTotalTokens_Empty(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -181,6 +195,7 @@ func TestDebateServiceWrapper_CalculateTotalTokens_Empty(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_CalculateTotalTokens_WithParticipants(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -199,6 +214,7 @@ func TestDebateServiceWrapper_CalculateTotalTokens_WithParticipants(t *testing.T
 }
 
 func TestDebateServiceWrapper_ConvertParticipants_Empty(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -207,6 +223,7 @@ func TestDebateServiceWrapper_ConvertParticipants_Empty(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_ConvertParticipants_WithData(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -252,6 +269,7 @@ func TestDebateServiceWrapper_ConvertParticipants_WithData(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_ConvertParticipants_NoMetadataTokens(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -274,6 +292,7 @@ func TestDebateServiceWrapper_ConvertParticipants_NoMetadataTokens(t *testing.T)
 }
 
 func TestDebateServiceWrapper_ConvertParticipants_EmptyWinnerName(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -293,6 +312,7 @@ func TestDebateServiceWrapper_ConvertParticipants_EmptyWinnerName(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_RunDebate_NilDebateService(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	// bigData disabled: passthrough to debateService.ConductDebate which is nil
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
@@ -310,6 +330,7 @@ func TestDebateServiceWrapper_RunDebate_NilDebateService(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_DetermineOutcome_ErrorTakesPrecedence(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	wrapper := NewDebateServiceWrapper(nil, nil, nil, nil, logger, false)
 
@@ -324,6 +345,7 @@ func TestDebateServiceWrapper_DetermineOutcome_ErrorTakesPrecedence(t *testing.T
 // --- RecordProviderCall with real analytics integration ---
 
 func TestDebateServiceWrapper_RecordProviderCall_WithAnalytics(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	analytics := NewAnalyticsIntegration(broker, logger, true)
@@ -343,6 +365,7 @@ func TestDebateServiceWrapper_RecordProviderCall_WithAnalytics(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_RecordProviderCall_WithAnalyticsFailure(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	analytics := NewAnalyticsIntegration(broker, logger, true)
@@ -360,6 +383,7 @@ func TestDebateServiceWrapper_RecordProviderCall_WithAnalyticsFailure(t *testing
 }
 
 func TestDebateServiceWrapper_RecordProviderCall_WithAnalyticsBrokerError(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("broker down")
@@ -378,6 +402,7 @@ func TestDebateServiceWrapper_RecordProviderCall_WithAnalyticsBrokerError(t *tes
 // --- RecordDebateRound with real analytics integration ---
 
 func TestDebateServiceWrapper_RecordDebateRound_WithAnalytics(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	analytics := NewAnalyticsIntegration(broker, logger, true)
@@ -396,6 +421,7 @@ func TestDebateServiceWrapper_RecordDebateRound_WithAnalytics(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_RecordDebateRound_WithAnalyticsBrokerError(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("publish error")
@@ -414,6 +440,7 @@ func TestDebateServiceWrapper_RecordDebateRound_WithAnalyticsBrokerError(t *test
 // --- publishDebateCompletion tests ---
 
 func TestDebateServiceWrapper_PublishDebateCompletion_Success(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	debateIntegration := NewDebateIntegration(nil, broker, logger)
@@ -478,6 +505,7 @@ func TestDebateServiceWrapper_PublishDebateCompletion_Success(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_PublishDebateCompletion_NoConsensus(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	debateIntegration := NewDebateIntegration(nil, broker, logger)
@@ -507,6 +535,7 @@ func TestDebateServiceWrapper_PublishDebateCompletion_NoConsensus(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_PublishDebateCompletion_WithError(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	debateIntegration := NewDebateIntegration(nil, broker, logger)
@@ -536,6 +565,7 @@ func TestDebateServiceWrapper_PublishDebateCompletion_WithError(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_PublishDebateCompletion_NoMetadata(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	debateIntegration := NewDebateIntegration(nil, broker, logger)
@@ -561,6 +591,7 @@ func TestDebateServiceWrapper_PublishDebateCompletion_NoMetadata(t *testing.T) {
 }
 
 func TestDebateServiceWrapper_PublishDebateCompletion_BrokerError(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	broker.publishErr = fmt.Errorf("kafka unavailable")
@@ -587,6 +618,7 @@ func TestDebateServiceWrapper_PublishDebateCompletion_BrokerError(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabledNoConversationID(t *testing.T) {
+	t.Parallel()
 	// When bigData enabled but no conversation_id in metadata, it should skip
 	// context loading and proceed to ConductDebate.
 	logger := newTestLogger()
@@ -605,6 +637,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabledNoConversationID(t *testin
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabledNilMetadata(t *testing.T) {
+	t.Parallel()
 	// When metadata is nil, the type assertion should return empty string
 	// for conversation_id. ConductDebate will be called.
 	logger := newTestLogger()
@@ -624,6 +657,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabledNilMetadata(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabledWithConversationID(t *testing.T) {
+	t.Parallel()
 	// When bigData enabled and conversation_id exists, it tries GetConversationContext.
 	// With nil debateIntegration, this will panic since it calls
 	// debateIntegration.GetConversationContext which dereferences nil.
@@ -650,6 +684,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabledWithConversationID(t *test
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabledGetContextFails(t *testing.T) {
+	t.Parallel()
 	// Use a real InfiniteContextEngine so GetConversationContext doesn't panic
 	// but instead returns an error (Kafka unavailable). RunDebate should log
 	// a warning and continue to ConductDebate (which panics because debateService is nil).
@@ -680,6 +715,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabledGetContextFails(t *testing
 }
 
 func TestDebateServiceWrapper_RunDebate_ConductDebateReturnsError(t *testing.T) {
+	t.Parallel()
 	// Use a real DebateService without provider registry so ConductDebate
 	// returns an error (not a panic). This tests the error path at lines 76-77.
 	logger := newTestLogger()
@@ -698,6 +734,7 @@ func TestDebateServiceWrapper_RunDebate_ConductDebateReturnsError(t *testing.T) 
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabled_ConductDebateError(t *testing.T) {
+	t.Parallel()
 	// With bigData enabled but no conversation_id, it skips context loading
 	// and proceeds to ConductDebate which returns an error.
 	logger := newTestLogger()
@@ -716,6 +753,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabled_ConductDebateError(t *tes
 }
 
 func TestDebateServiceWrapper_RunDebate_BigDataEnabled_ContextFailsThenDebateError(t *testing.T) {
+	t.Parallel()
 	// With bigData enabled, conversation_id set, context fetch fails (Kafka),
 	// then ConductDebate returns error (no provider registry). This tests
 	// the full "fail gracefully + continue" path without panics.
@@ -748,6 +786,7 @@ func TestDebateServiceWrapper_RunDebate_BigDataEnabled_ContextFailsThenDebateErr
 }
 
 func TestDebateServiceWrapper_PublishDebateCompletion_ConsensusWithVotingWinner(t *testing.T) {
+	t.Parallel()
 	logger := newTestLogger()
 	broker := newMockBroker()
 	debateIntegration := NewDebateIntegration(nil, broker, logger)

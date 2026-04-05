@@ -13,12 +13,14 @@ import (
 )
 
 func TestAdapter_New_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	require.NotNil(t, adapter)
 }
 
 func TestAdapter_DefaultHiPlanConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultHiPlanConfig()
@@ -27,6 +29,7 @@ func TestAdapter_DefaultHiPlanConfig(t *testing.T) {
 }
 
 func TestAdapter_DefaultMCTSConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultMCTSConfig()
@@ -34,6 +37,7 @@ func TestAdapter_DefaultMCTSConfig(t *testing.T) {
 }
 
 func TestAdapter_DefaultTreeOfThoughtsConfig(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultTreeOfThoughtsConfig()
@@ -42,6 +46,7 @@ func TestAdapter_DefaultTreeOfThoughtsConfig(t *testing.T) {
 }
 
 func TestAdapter_NewHiPlan_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultHiPlanConfig()
@@ -54,6 +59,7 @@ func TestAdapter_NewHiPlan_ReturnsNonNil(t *testing.T) {
 }
 
 func TestAdapter_NewMCTS_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultMCTSConfig()
@@ -67,6 +73,7 @@ func TestAdapter_NewMCTS_ReturnsNonNil(t *testing.T) {
 }
 
 func TestAdapter_NewTreeOfThoughts_ReturnsNonNil(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := planningadapter.New(logger)
 	config := adapter.DefaultTreeOfThoughtsConfig()

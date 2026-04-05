@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	config := &ClientConfig{
 		BaseURL: "http://localhost:8011",
 		Timeout: 30 * time.Second,
@@ -25,12 +26,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClient_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	client := NewClient(nil)
 	assert.NotNil(t, client)
 	assert.Equal(t, "http://localhost:8011", client.baseURL)
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 	assert.NotNil(t, config)
 	assert.Equal(t, "http://localhost:8011", config.BaseURL)
@@ -38,6 +41,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestClient_Decompose(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/decompose", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
@@ -79,6 +83,7 @@ func TestClient_Decompose(t *testing.T) {
 }
 
 func TestClient_ExecuteChain(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/chain", r.URL.Path)
 
@@ -112,6 +117,7 @@ func TestClient_ExecuteChain(t *testing.T) {
 }
 
 func TestClient_RunReActAgent(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/react", r.URL.Path)
 
@@ -150,6 +156,7 @@ func TestClient_RunReActAgent(t *testing.T) {
 }
 
 func TestClient_Summarize(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/summarize", r.URL.Path)
 
@@ -174,6 +181,7 @@ func TestClient_Summarize(t *testing.T) {
 }
 
 func TestClient_Transform(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/transform", r.URL.Path)
 
@@ -197,6 +205,7 @@ func TestClient_Transform(t *testing.T) {
 }
 
 func TestClient_Health(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/health", r.URL.Path)
 		assert.Equal(t, "GET", r.Method)
@@ -222,6 +231,7 @@ func TestClient_Health(t *testing.T) {
 }
 
 func TestClient_IsAvailable(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			resp := &HealthResponse{Status: "healthy"}
@@ -240,6 +250,7 @@ func TestClient_IsAvailable(t *testing.T) {
 }
 
 func TestClient_IsAvailable_Unhealthy(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -252,6 +263,7 @@ func TestClient_IsAvailable_Unhealthy(t *testing.T) {
 }
 
 func TestClient_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error": "internal error"}`))
@@ -266,6 +278,7 @@ func TestClient_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_Timeout(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -282,6 +295,7 @@ func TestClient_Timeout(t *testing.T) {
 }
 
 func TestClient_Decompose_WithContext(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req DecomposeRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -309,6 +323,7 @@ func TestClient_Decompose_WithContext(t *testing.T) {
 }
 
 func TestClient_ExecuteChain_WithVariables(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ChainRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)

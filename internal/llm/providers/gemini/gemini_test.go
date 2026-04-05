@@ -45,6 +45,7 @@ func buildPromptFromRequest(req *models.LLMRequest) string {
 // ==============================================================================
 
 func TestNewGeminiProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		apiKey  string
@@ -73,6 +74,7 @@ func TestNewGeminiProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			got := NewGeminiProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.NotNil(t, got)
 
@@ -96,6 +98,7 @@ func TestNewGeminiProvider(t *testing.T) {
 }
 
 func TestNewGeminiUnifiedProvider(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeminiUnifiedConfig()
 	config.APIKey = "test-key"
 	config.Model = "gemini-2.5-pro"
@@ -109,6 +112,7 @@ func TestNewGeminiUnifiedProvider(t *testing.T) {
 }
 
 func TestDefaultGeminiUnifiedConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultGeminiUnifiedConfig()
 	assert.Equal(t, GeminiDefaultModel, config.Model)
 	assert.Equal(t, 180*time.Second, config.Timeout)
@@ -117,16 +121,19 @@ func TestDefaultGeminiUnifiedConfig(t *testing.T) {
 }
 
 func TestGeminiUnifiedProvider_GetName(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiProvider("key", "", "")
 	assert.Equal(t, "gemini", p.GetName())
 }
 
 func TestGeminiUnifiedProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiProvider("key", "", "")
 	assert.Equal(t, "gemini", p.GetProviderType())
 }
 
 func TestGeminiUnifiedProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiProvider("key", "", "gemini-2.5-flash")
 	assert.Equal(t, "gemini-2.5-flash", p.GetCurrentModel())
 
@@ -135,6 +142,7 @@ func TestGeminiUnifiedProvider_SetModel(t *testing.T) {
 }
 
 func TestGeminiUnifiedProvider_GetAvailableAccessMethods(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiProvider("test-key", "", "")
 	methods := p.GetAvailableAccessMethods()
 	// Should at least have API when key is provided
@@ -142,6 +150,7 @@ func TestGeminiUnifiedProvider_GetAvailableAccessMethods(t *testing.T) {
 }
 
 func TestGeminiUnifiedProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	p := NewGeminiProvider("test-key", "", "")
 	caps := p.GetCapabilities()
 
@@ -176,6 +185,7 @@ func TestGeminiUnifiedProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestGeminiUnifiedProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	t.Run("valid with API key", func(t *testing.T) {
 		p := NewGeminiProvider("test-key", "", "")
 		valid, issues := p.ValidateConfig(nil)
@@ -184,6 +194,7 @@ func TestGeminiUnifiedProvider_ValidateConfig(t *testing.T) {
 	})
 
 	t.Run("without key uses CLI or env fallback", func(t *testing.T) {
+			t.Parallel()
 		// This test is environment-dependent: if GEMINI_API_KEY is set in env
 		// or Gemini CLI is installed, validation will pass
 		config := GeminiUnifiedConfig{
@@ -206,6 +217,7 @@ func TestGeminiUnifiedProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestGeminiProviderInfo(t *testing.T) {
+	t.Parallel()
 	info := GetGeminiProviderInfo()
 	assert.Equal(t, "gemini", info["id"])
 	assert.Equal(t, "Gemini (Google)", info["name"])
@@ -220,6 +232,7 @@ func TestGeminiProviderInfo(t *testing.T) {
 }
 
 func TestGetAllGeminiModels(t *testing.T) {
+	t.Parallel()
 	models := getAllGeminiModels()
 	assert.GreaterOrEqual(t, len(models), 7)
 	assert.Contains(t, models, "gemini-2.0-flash")
@@ -231,6 +244,7 @@ func TestGetAllGeminiModels(t *testing.T) {
 }
 
 func TestBuildPromptFromRequest(t *testing.T) {
+	t.Parallel()
 	t.Run("from messages", func(t *testing.T) {
 		req := &models.LLMRequest{
 			Messages: []models.Message{
@@ -246,6 +260,7 @@ func TestBuildPromptFromRequest(t *testing.T) {
 	})
 
 	t.Run("from prompt field", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "Direct prompt",
 		}
@@ -254,6 +269,7 @@ func TestBuildPromptFromRequest(t *testing.T) {
 	})
 
 	t.Run("empty request", func(t *testing.T) {
+			t.Parallel()
 		req := &models.LLMRequest{}
 		prompt := buildPromptFromRequest(req)
 		assert.Empty(t, prompt)
@@ -261,6 +277,7 @@ func TestBuildPromptFromRequest(t *testing.T) {
 }
 
 func TestGeminiAllModelsComprehensive(t *testing.T) {
+	t.Parallel()
 	t.Run("returns all expected models", func(t *testing.T) {
 		allModels := getAllGeminiModels()
 
@@ -282,6 +299,7 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("model names follow gemini pattern", func(t *testing.T) {
+			t.Parallel()
 		allModels := getAllGeminiModels()
 
 		for _, model := range allModels {
@@ -292,6 +310,7 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("no duplicate models", func(t *testing.T) {
+			t.Parallel()
 		allModels := getAllGeminiModels()
 		seen := make(map[string]bool, len(allModels))
 
@@ -303,18 +322,21 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("embedding model is included", func(t *testing.T) {
+			t.Parallel()
 		allModels := getAllGeminiModels()
 		assert.Contains(t, allModels, "gemini-embedding-001",
 			"embedding model should be present")
 	})
 
 	t.Run("minimum model count", func(t *testing.T) {
+			t.Parallel()
 		allModels := getAllGeminiModels()
 		assert.GreaterOrEqual(t, len(allModels), 7,
 			"should have at least 7 models")
 	})
 
 	t.Run("thinking models are subset of all models", func(t *testing.T) {
+			t.Parallel()
 		allModels := getAllGeminiModels()
 		allModelSet := make(map[string]bool, len(allModels))
 		for _, m := range allModels {
@@ -329,6 +351,7 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 }
 
 func TestGeminiUnifiedProvider_FallbackChain(t *testing.T) {
+	t.Parallel()
 	t.Run("reports all methods failed when API returns error", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -372,6 +395,7 @@ func TestGeminiUnifiedProvider_FallbackChain(t *testing.T) {
 	})
 
 	t.Run("API-only mode fails gracefully", func(t *testing.T) {
+			t.Parallel()
 		config := GeminiUnifiedConfig{
 			APIKey:          "bad-key",
 			BaseURL:         "http://localhost:1/v1beta/models/%s:generateContent",

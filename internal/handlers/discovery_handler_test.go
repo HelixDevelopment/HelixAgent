@@ -31,6 +31,7 @@ func setupDiscoveryHandler() (*DiscoveryHandler, *gin.Engine) {
 }
 
 func TestNewDiscoveryHandler(t *testing.T) {
+	t.Parallel()
 	vs := verifier.NewVerificationService(nil)
 	ss, _ := verifier.NewScoringService(nil)
 	hs := verifier.NewHealthService(nil)
@@ -43,6 +44,7 @@ func TestNewDiscoveryHandler(t *testing.T) {
 }
 
 func TestNewDiscoveryHandler_NilService(t *testing.T) {
+	t.Parallel()
 	h := NewDiscoveryHandler(nil)
 
 	assert.NotNil(t, h)
@@ -50,6 +52,7 @@ func TestNewDiscoveryHandler_NilService(t *testing.T) {
 }
 
 func TestGetDiscoveredModels_EmptyList(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -68,6 +71,7 @@ func TestGetDiscoveredModels_EmptyList(t *testing.T) {
 }
 
 func TestGetDiscoveredModels_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -86,6 +90,7 @@ func TestGetDiscoveredModels_ResponseFormat(t *testing.T) {
 }
 
 func TestGetSelectedModels_EmptyList(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -105,6 +110,7 @@ func TestGetSelectedModels_EmptyList(t *testing.T) {
 }
 
 func TestGetSelectedModels_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -123,6 +129,7 @@ func TestGetSelectedModels_ResponseFormat(t *testing.T) {
 }
 
 func TestGetDiscoveryStats_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -140,6 +147,7 @@ func TestGetDiscoveryStats_Success(t *testing.T) {
 }
 
 func TestGetDiscoveryStats_StatsFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -158,6 +166,7 @@ func TestGetDiscoveryStats_StatsFormat(t *testing.T) {
 }
 
 func TestGetDiscoveryStats_DescriptionFormat(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -178,6 +187,7 @@ func TestGetDiscoveryStats_DescriptionFormat(t *testing.T) {
 }
 
 func TestTriggerDiscovery_Success(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	reqBody := TriggerDiscoveryRequest{
@@ -210,6 +220,7 @@ func TestTriggerDiscovery_Success(t *testing.T) {
 }
 
 func TestTriggerDiscovery_MultipleProviders(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	reqBody := TriggerDiscoveryRequest{
@@ -240,6 +251,7 @@ func TestTriggerDiscovery_MultipleProviders(t *testing.T) {
 }
 
 func TestTriggerDiscovery_WithBaseURL(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	reqBody := TriggerDiscoveryRequest{
@@ -262,6 +274,7 @@ func TestTriggerDiscovery_WithBaseURL(t *testing.T) {
 }
 
 func TestTriggerDiscovery_BadRequest_EmptyBody(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -273,6 +286,7 @@ func TestTriggerDiscovery_BadRequest_EmptyBody(t *testing.T) {
 }
 
 func TestTriggerDiscovery_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -284,6 +298,7 @@ func TestTriggerDiscovery_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestTriggerDiscovery_WithMissingName(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	// Note: Gin binding with nested struct fields may not enforce required on nested fields
@@ -300,6 +315,7 @@ func TestTriggerDiscovery_WithMissingName(t *testing.T) {
 }
 
 func TestTriggerDiscovery_WithMissingAPIKey(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	// Note: Gin binding with nested struct fields may not enforce required on nested fields
@@ -316,6 +332,7 @@ func TestTriggerDiscovery_WithMissingAPIKey(t *testing.T) {
 }
 
 func TestGetEnsembleModels_EmptyList(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -336,6 +353,7 @@ func TestGetEnsembleModels_EmptyList(t *testing.T) {
 }
 
 func TestGetEnsembleModels_HowItWorksSteps(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -354,6 +372,7 @@ func TestGetEnsembleModels_HowItWorksSteps(t *testing.T) {
 }
 
 func TestGetModelForDebate_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -370,6 +389,7 @@ func TestGetModelForDebate_NotFound(t *testing.T) {
 }
 
 func TestGetModelForDebate_EmptyModelID(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -383,6 +403,7 @@ func TestGetModelForDebate_EmptyModelID(t *testing.T) {
 }
 
 func TestRegisterDiscoveryRoutes(t *testing.T) {
+	t.Parallel()
 	vs := verifier.NewVerificationService(nil)
 	ss, _ := verifier.NewScoringService(nil)
 	hs := verifier.NewHealthService(nil)
@@ -404,6 +425,7 @@ func TestRegisterDiscoveryRoutes(t *testing.T) {
 }
 
 func TestDiscoveredModelResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := DiscoveredModelResponse{
 		ModelID:      "gpt-4",
 		ModelName:    "GPT-4",
@@ -427,6 +449,7 @@ func TestDiscoveredModelResponse_Fields(t *testing.T) {
 }
 
 func TestSelectedModelResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := SelectedModelResponse{
 		ModelID:      "gpt-4",
 		ModelName:    "GPT-4",
@@ -449,6 +472,7 @@ func TestSelectedModelResponse_Fields(t *testing.T) {
 }
 
 func TestTriggerDiscoveryRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := TriggerDiscoveryRequest{
 		Providers: []struct {
 			Name    string `json:"name" binding:"required"`
@@ -468,6 +492,7 @@ func TestTriggerDiscoveryRequest_Fields(t *testing.T) {
 }
 
 func TestFormatPercent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    float64
 		expected string
@@ -487,6 +512,7 @@ func TestFormatPercent(t *testing.T) {
 }
 
 func TestGetRecommendationsForModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		modelID          string
 		provider         string
@@ -510,6 +536,7 @@ func TestGetRecommendationsForModel(t *testing.T) {
 }
 
 func TestGetRecommendationsForModel_HighScore(t *testing.T) {
+	t.Parallel()
 	result := getRecommendationsForModel("claude-opus-4", "claude", 9.5, true)
 
 	assert.Contains(t, result, "complex reasoning")
@@ -518,6 +545,7 @@ func TestGetRecommendationsForModel_HighScore(t *testing.T) {
 }
 
 func TestGetRecommendationsForModel_CodeVisible(t *testing.T) {
+	t.Parallel()
 	result := getRecommendationsForModel("deepseek-coder", "deepseek", 8.5, true)
 
 	assert.Contains(t, result, "code generation")
@@ -525,6 +553,7 @@ func TestGetRecommendationsForModel_CodeVisible(t *testing.T) {
 }
 
 func TestGetRecommendationsForModel_LowScore(t *testing.T) {
+	t.Parallel()
 	result := getRecommendationsForModel("generic-model", "unknown", 6.5, false)
 
 	assert.Contains(t, result, "general tasks")
@@ -532,6 +561,7 @@ func TestGetRecommendationsForModel_LowScore(t *testing.T) {
 }
 
 func TestGetRecommendationsForModel_ModelPatterns(t *testing.T) {
+	t.Parallel()
 	// Test opus model pattern
 	result := getRecommendationsForModel("claude-opus-4", "claude", 9.0, true)
 	assert.Contains(t, result, "long-form content")
@@ -550,6 +580,7 @@ func TestGetRecommendationsForModel_ModelPatterns(t *testing.T) {
 }
 
 func TestGetDiscoveredModels_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -561,6 +592,7 @@ func TestGetDiscoveredModels_ContentType(t *testing.T) {
 }
 
 func TestGetSelectedModels_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -572,6 +604,7 @@ func TestGetSelectedModels_ContentType(t *testing.T) {
 }
 
 func TestGetDiscoveryStats_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -583,6 +616,7 @@ func TestGetDiscoveryStats_ContentType(t *testing.T) {
 }
 
 func TestGetEnsembleModels_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -594,6 +628,7 @@ func TestGetEnsembleModels_ContentType(t *testing.T) {
 }
 
 func TestTriggerDiscovery_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	reqBody := TriggerDiscoveryRequest{
@@ -617,6 +652,7 @@ func TestTriggerDiscovery_ContentType(t *testing.T) {
 }
 
 func TestGetModelForDebate_ContentType(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	w := httptest.NewRecorder()
@@ -628,6 +664,7 @@ func TestGetModelForDebate_ContentType(t *testing.T) {
 }
 
 func TestDiscoveryRoutes_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	_, r := setupDiscoveryHandler()
 
 	tests := []struct {

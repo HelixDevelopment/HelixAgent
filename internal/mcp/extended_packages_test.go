@@ -12,12 +12,14 @@ import (
 // ============================================================================
 
 func TestExtendedMCPPackages(t *testing.T) {
+	t.Parallel()
 	t.Run("ExtendedMCPPackages is not empty", func(t *testing.T) {
 		assert.NotEmpty(t, ExtendedMCPPackages)
 		assert.GreaterOrEqual(t, len(ExtendedMCPPackages), 30, "Should have at least 30 packages")
 	})
 
 	t.Run("All packages have required fields", func(t *testing.T) {
+			t.Parallel()
 		for _, pkg := range ExtendedMCPPackages {
 			assert.NotEmpty(t, pkg.Name, "Package name should not be empty")
 			assert.NotEmpty(t, pkg.NPM, "NPM field should not be empty")
@@ -27,6 +29,7 @@ func TestExtendedMCPPackages(t *testing.T) {
 	})
 
 	t.Run("Package categories are valid", func(t *testing.T) {
+			t.Parallel()
 		validCategories := map[MCPPackageCategory]bool{
 			CategoryCore:     true,
 			CategoryVectorDB: true,
@@ -49,6 +52,7 @@ func TestExtendedMCPPackages(t *testing.T) {
 // ============================================================================
 
 func TestGetPackagesByCategory(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns core packages", func(t *testing.T) {
 		packages := GetPackagesByCategory(CategoryCore)
 		assert.NotEmpty(t, packages)
@@ -59,6 +63,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns vectordb packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategoryVectorDB)
 		assert.NotEmpty(t, packages)
 
@@ -76,6 +81,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns design packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategoryDesign)
 		assert.NotEmpty(t, packages)
 
@@ -93,6 +99,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns image packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategoryImage)
 		assert.NotEmpty(t, packages)
 
@@ -102,6 +109,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns dev packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategoryDev)
 		assert.NotEmpty(t, packages)
 
@@ -119,6 +127,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns search packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategorySearch)
 		assert.NotEmpty(t, packages)
 
@@ -128,6 +137,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns cloud packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategoryCloud)
 		assert.NotEmpty(t, packages)
 
@@ -137,6 +147,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 	})
 
 	t.Run("Returns empty for invalid category", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(MCPPackageCategory("invalid"))
 		assert.Empty(t, packages)
 	})
@@ -147,6 +158,7 @@ func TestGetPackagesByCategory(t *testing.T) {
 // ============================================================================
 
 func TestGetCorePackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns only core packages", func(t *testing.T) {
 		packages := GetCorePackages()
 		assert.NotEmpty(t, packages)
@@ -157,6 +169,7 @@ func TestGetCorePackages(t *testing.T) {
 	})
 
 	t.Run("Contains essential packages", func(t *testing.T) {
+			t.Parallel()
 		packages := GetCorePackages()
 		names := make(map[string]bool)
 		for _, pkg := range packages {
@@ -171,6 +184,7 @@ func TestGetCorePackages(t *testing.T) {
 }
 
 func TestGetVectorDBPackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns only vectordb packages", func(t *testing.T) {
 		packages := GetVectorDBPackages()
 		assert.NotEmpty(t, packages)
@@ -181,6 +195,7 @@ func TestGetVectorDBPackages(t *testing.T) {
 	})
 
 	t.Run("Contains expected vector databases", func(t *testing.T) {
+			t.Parallel()
 		packages := GetVectorDBPackages()
 		names := make(map[string]bool)
 		for _, pkg := range packages {
@@ -194,6 +209,7 @@ func TestGetVectorDBPackages(t *testing.T) {
 }
 
 func TestGetDesignPackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns only design packages", func(t *testing.T) {
 		packages := GetDesignPackages()
 		assert.NotEmpty(t, packages)
@@ -204,6 +220,7 @@ func TestGetDesignPackages(t *testing.T) {
 	})
 
 	t.Run("Contains expected design tools", func(t *testing.T) {
+			t.Parallel()
 		packages := GetDesignPackages()
 		names := make(map[string]bool)
 		for _, pkg := range packages {
@@ -216,6 +233,7 @@ func TestGetDesignPackages(t *testing.T) {
 }
 
 func TestGetImagePackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns only image packages", func(t *testing.T) {
 		packages := GetImagePackages()
 		assert.NotEmpty(t, packages)
@@ -226,6 +244,7 @@ func TestGetImagePackages(t *testing.T) {
 	})
 
 	t.Run("Contains expected image tools", func(t *testing.T) {
+			t.Parallel()
 		packages := GetImagePackages()
 		names := make(map[string]bool)
 		for _, pkg := range packages {
@@ -238,12 +257,14 @@ func TestGetImagePackages(t *testing.T) {
 }
 
 func TestGetAllExtendedPackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns all packages", func(t *testing.T) {
 		packages := GetAllExtendedPackages()
 		assert.Equal(t, ExtendedMCPPackages, packages)
 	})
 
 	t.Run("Contains packages from all categories", func(t *testing.T) {
+			t.Parallel()
 		packages := GetAllExtendedPackages()
 		categories := make(map[MCPPackageCategory]bool)
 
@@ -266,6 +287,7 @@ func TestGetAllExtendedPackages(t *testing.T) {
 // ============================================================================
 
 func TestFilterAvailablePackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Returns packages with no env requirements", func(t *testing.T) {
 		// Ensure no env vars are set for this test
 		_ = os.Unsetenv("CHROMA_URL")
@@ -282,6 +304,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Returns packages when env vars are set", func(t *testing.T) {
+			t.Parallel()
 		// Set an env var for a package that requires it
 		t.Setenv("CHROMA_URL", "http://localhost:8000")
 
@@ -299,6 +322,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Excludes packages with missing env vars", func(t *testing.T) {
+			t.Parallel()
 		// Make sure the env var is NOT set
 		_ = os.Unsetenv("FIGMA_ACCESS_TOKEN")
 
@@ -316,6 +340,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Handles packages with multiple required env vars", func(t *testing.T) {
+			t.Parallel()
 		// S3 requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 		_ = os.Unsetenv("AWS_ACCESS_KEY_ID")
 		_ = os.Unsetenv("AWS_SECRET_ACCESS_KEY")
@@ -359,16 +384,19 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Returns empty list for empty input", func(t *testing.T) {
+			t.Parallel()
 		packages := FilterAvailablePackages([]MCPPackage{})
 		assert.Empty(t, packages)
 	})
 
 	t.Run("Returns nil for nil input", func(t *testing.T) {
+			t.Parallel()
 		packages := FilterAvailablePackages(nil)
 		assert.Nil(t, packages)
 	})
 
 	t.Run("Works with custom packages", func(t *testing.T) {
+			t.Parallel()
 		customPackages := []MCPPackage{
 			{Name: "no-env", NPM: "pkg1", Description: "No env", Category: CategoryCore},
 			{Name: "with-env", NPM: "pkg2", Description: "With env", Category: CategoryCore, RequiresEnv: []string{"CUSTOM_VAR"}},
@@ -390,6 +418,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 // ============================================================================
 
 func TestMCPPackageCategory(t *testing.T) {
+	t.Parallel()
 	t.Run("Category constants are defined correctly", func(t *testing.T) {
 		assert.Equal(t, MCPPackageCategory("core"), CategoryCore)
 		assert.Equal(t, MCPPackageCategory("vectordb"), CategoryVectorDB)
@@ -406,6 +435,7 @@ func TestMCPPackageCategory(t *testing.T) {
 // ============================================================================
 
 func TestMCPPackageExtended(t *testing.T) {
+	t.Parallel()
 	t.Run("Struct fields work correctly", func(t *testing.T) {
 		extended := MCPPackageExtended{
 			MCPPackage: MCPPackage{
@@ -431,6 +461,7 @@ func TestMCPPackageExtended(t *testing.T) {
 // ============================================================================
 
 func TestPackageRequiresEnv(t *testing.T) {
+	t.Parallel()
 	t.Run("VectorDB packages require env vars", func(t *testing.T) {
 		packages := GetVectorDBPackages()
 		for _, pkg := range packages {
@@ -440,6 +471,7 @@ func TestPackageRequiresEnv(t *testing.T) {
 	})
 
 	t.Run("Design packages require env vars", func(t *testing.T) {
+			t.Parallel()
 		packages := GetDesignPackages()
 		for _, pkg := range packages {
 			if pkg.Name != "imagesorcery" { // Local tool
@@ -450,6 +482,7 @@ func TestPackageRequiresEnv(t *testing.T) {
 	})
 
 	t.Run("Some core packages have no env requirements", func(t *testing.T) {
+			t.Parallel()
 		packages := GetCorePackages()
 		var noEnvCount int
 		for _, pkg := range packages {
@@ -466,6 +499,7 @@ func TestPackageRequiresEnv(t *testing.T) {
 // ============================================================================
 
 func TestSpecificPackages(t *testing.T) {
+	t.Parallel()
 	t.Run("Filesystem package exists", func(t *testing.T) {
 		packages := GetCorePackages()
 		var found bool
@@ -482,6 +516,7 @@ func TestSpecificPackages(t *testing.T) {
 	})
 
 	t.Run("GitHub package exists", func(t *testing.T) {
+			t.Parallel()
 		packages := GetCorePackages()
 		var found bool
 		for _, pkg := range packages {
@@ -495,6 +530,7 @@ func TestSpecificPackages(t *testing.T) {
 	})
 
 	t.Run("Chroma package has correct URL env var", func(t *testing.T) {
+			t.Parallel()
 		packages := GetVectorDBPackages()
 		for _, pkg := range packages {
 			if pkg.Name == "chroma" {
@@ -505,6 +541,7 @@ func TestSpecificPackages(t *testing.T) {
 	})
 
 	t.Run("Qdrant package has correct URL env var", func(t *testing.T) {
+			t.Parallel()
 		packages := GetVectorDBPackages()
 		for _, pkg := range packages {
 			if pkg.Name == "qdrant" {
@@ -515,6 +552,7 @@ func TestSpecificPackages(t *testing.T) {
 	})
 
 	t.Run("Figma package requires access token", func(t *testing.T) {
+			t.Parallel()
 		packages := GetDesignPackages()
 		for _, pkg := range packages {
 			if pkg.Name == "figma" {
@@ -525,6 +563,7 @@ func TestSpecificPackages(t *testing.T) {
 	})
 
 	t.Run("Brave search requires API key", func(t *testing.T) {
+			t.Parallel()
 		packages := GetPackagesByCategory(CategorySearch)
 		for _, pkg := range packages {
 			if pkg.Name == "brave-search" {

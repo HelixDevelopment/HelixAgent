@@ -63,20 +63,24 @@ func createTestMembers() []*services.DebateTeamMember {
 // ============================================================================
 
 func TestJSONFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 	assert.Equal(t, "json", f.Name())
 }
 
 func TestJSONFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 	assert.Equal(t, "application/json", f.ContentType())
 }
 
 func TestJSONFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 	members := createTestMembers()
 
 	t.Run("Produces valid JSON", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		var intro JSONDebateIntroduction
@@ -90,6 +94,7 @@ func TestJSONFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains team members with correct structure", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		var intro JSONDebateIntroduction
@@ -105,6 +110,7 @@ func TestJSONFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Handles nil members", func(t *testing.T) {
+			t.Parallel()
 		membersWithNil := []*services.DebateTeamMember{nil, members[0], nil}
 		result := f.FormatDebateTeamIntroduction("Test", membersWithNil)
 
@@ -116,6 +122,7 @@ func TestJSONFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestJSONFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 
 	testCases := []struct {
@@ -130,6 +137,7 @@ func TestJSONFormatter_FormatPhaseHeader(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.phase), func(t *testing.T) {
+				t.Parallel()
 			result := f.FormatPhaseHeader(tc.phase, tc.phaseNum)
 
 			var header JSONPhaseHeader
@@ -145,9 +153,11 @@ func TestJSONFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestJSONFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 
 	t.Run("Produces valid JSON", func(t *testing.T) {
+			t.Parallel()
 		content := "This is the phase content with multiple lines\nand special characters: \"quotes\" and {braces}"
 		result := f.FormatPhaseContent(content)
 
@@ -161,9 +171,11 @@ func TestJSONFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestJSONFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 
 	t.Run("Produces valid JSON", func(t *testing.T) {
+			t.Parallel()
 		content := "This is the final answer."
 		result := f.FormatFinalResponse(content)
 
@@ -178,9 +190,11 @@ func TestJSONFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestJSONFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewJSONFormatter()
 
 	t.Run("Produces valid JSON with all fields", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleAnalyst,
 			"openai", "gpt-4",
@@ -209,20 +223,24 @@ func TestJSONFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestYAMLFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 	assert.Equal(t, "yaml", f.Name())
 }
 
 func TestYAMLFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 	assert.Equal(t, "application/x-yaml", f.ContentType())
 }
 
 func TestYAMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 	members := createTestMembers()
 
 	t.Run("Produces valid YAML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		// Remove YAML document separator for parsing
@@ -238,11 +256,13 @@ func TestYAMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Starts with YAML document separator", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 		assert.True(t, strings.HasPrefix(result, "---\n"))
 	})
 
 	t.Run("Contains fallback information", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 		assert.Contains(t, result, "fallback:")
 		assert.Contains(t, result, "gpt-4")
@@ -250,9 +270,11 @@ func TestYAMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestYAMLFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 
 	t.Run("Produces valid YAML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseInitialResponse, 1)
 		result = strings.TrimPrefix(result, "---\n")
 
@@ -266,9 +288,11 @@ func TestYAMLFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestYAMLFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 
 	t.Run("Produces valid YAML", func(t *testing.T) {
+			t.Parallel()
 		content := "Multiline content\nwith multiple lines"
 		result := f.FormatPhaseContent(content)
 
@@ -281,9 +305,11 @@ func TestYAMLFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestYAMLFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 
 	t.Run("Produces valid YAML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("Final answer here")
 		result = strings.TrimPrefix(result, "---\n")
 
@@ -297,9 +323,11 @@ func TestYAMLFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestYAMLFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewYAMLFormatter()
 
 	t.Run("Produces valid YAML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleCritic,
 			"google", "gemini",
@@ -324,20 +352,24 @@ func TestYAMLFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestHTMLFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 	assert.Equal(t, "html", f.Name())
 }
 
 func TestHTMLFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 	assert.Equal(t, "text/html", f.ContentType())
 }
 
 func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 	members := createTestMembers()
 
 	t.Run("Contains HTML structure", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "<style>")
@@ -351,6 +383,7 @@ func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Escapes HTML special characters", func(t *testing.T) {
+			t.Parallel()
 		membersWithSpecial := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -365,6 +398,7 @@ func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains role-specific CSS classes", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		assert.Contains(t, result, `class="role-analyst"`)
@@ -372,6 +406,7 @@ func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Handles long topics", func(t *testing.T) {
+			t.Parallel()
 		longTopic := strings.Repeat("x", 150)
 		result := f.FormatDebateTeamIntroduction(longTopic, members)
 
@@ -379,6 +414,7 @@ func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Without styles", func(t *testing.T) {
+			t.Parallel()
 		f := &HTMLFormatter{IncludeStyles: false}
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
@@ -387,9 +423,11 @@ func TestHTMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestHTMLFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 
 	t.Run("Contains proper HTML structure", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseValidation, 2)
 
 		assert.Contains(t, result, `<div class="phase-header">`)
@@ -400,9 +438,11 @@ func TestHTMLFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestHTMLFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 
 	t.Run("Escapes HTML in content", func(t *testing.T) {
+			t.Parallel()
 		content := "<p>Content with HTML</p>"
 		result := f.FormatPhaseContent(content)
 
@@ -412,9 +452,11 @@ func TestHTMLFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestHTMLFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 
 	t.Run("Contains final response styling", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("The final answer")
 
 		assert.Contains(t, result, `<div class="final-response">`)
@@ -424,9 +466,11 @@ func TestHTMLFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestHTMLFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewHTMLFormatter()
 
 	t.Run("Contains fallback styling", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleAnalyst,
 			"openai", "gpt-4",
@@ -447,20 +491,24 @@ func TestHTMLFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestXMLFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 	assert.Equal(t, "xml", f.Name())
 }
 
 func TestXMLFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 	assert.Equal(t, "application/xml", f.ContentType())
 }
 
 func TestXMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 	members := createTestMembers()
 
 	t.Run("Produces valid XML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		var intro XMLDebateIntroduction
@@ -473,11 +521,13 @@ func TestXMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains XML declaration", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 		assert.True(t, strings.HasPrefix(result, "<?xml"))
 	})
 
 	t.Run("Contains position attributes", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 		assert.Contains(t, result, `position="1"`)
 		assert.Contains(t, result, `position="2"`)
@@ -485,9 +535,11 @@ func TestXMLFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestXMLFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 
 	t.Run("Produces valid XML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhasePolishImprove, 3)
 
 		var header XMLPhaseHeader
@@ -500,9 +552,11 @@ func TestXMLFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestXMLFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 
 	t.Run("Produces valid XML", func(t *testing.T) {
+			t.Parallel()
 		content := "Content with <special> & characters"
 		result := f.FormatPhaseContent(content)
 
@@ -515,9 +569,11 @@ func TestXMLFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestXMLFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 
 	t.Run("Produces valid XML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("Final answer")
 
 		var resp XMLFinalResponse
@@ -529,9 +585,11 @@ func TestXMLFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestXMLFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewXMLFormatter()
 
 	t.Run("Produces valid XML", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleMediator,
 			"deepseek", "deepseek-chat",
@@ -556,32 +614,38 @@ func TestXMLFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestCSVFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 	assert.Equal(t, "csv", f.Name())
 }
 
 func TestCSVFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 	assert.Equal(t, "text/csv", f.ContentType())
 }
 
 func TestCSVFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 	members := createTestMembers()
 
 	t.Run("Contains CSV header", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "Position,Role,Model,Provider,Fallback_Model,Fallback_Provider")
 	})
 
 	t.Run("Contains comment with topic", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "# Topic: What is AI?")
 	})
 
 	t.Run("Contains team data rows", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		assert.Contains(t, result, "1,analyst,claude-opus-4-5,anthropic,gpt-4,openai")
@@ -589,6 +653,7 @@ func TestCSVFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Custom delimiter", func(t *testing.T) {
+			t.Parallel()
 		f := &CSVFormatter{Delimiter: ';'}
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
@@ -597,9 +662,11 @@ func TestCSVFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestCSVFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 
 	t.Run("Contains header and data row", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseValidation, 2)
 
 		assert.Contains(t, result, "Phase_Type,Phase_Num,Icon,Timestamp")
@@ -608,9 +675,11 @@ func TestCSVFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestCSVFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 
 	t.Run("Properly escapes content", func(t *testing.T) {
+			t.Parallel()
 		content := `Content with "quotes" and, commas`
 		result := f.FormatPhaseContent(content)
 
@@ -620,9 +689,11 @@ func TestCSVFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestCSVFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 
 	t.Run("Contains type indicator", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("Final answer")
 
 		assert.Contains(t, result, "Type,Content,Timestamp")
@@ -631,9 +702,11 @@ func TestCSVFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestCSVFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewCSVFormatter()
 
 	t.Run("Contains all fallback fields", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleSynthesis,
 			"mistral", "mistral-large",
@@ -652,20 +725,24 @@ func TestCSVFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestRTFFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 	assert.Equal(t, "rtf", f.Name())
 }
 
 func TestRTFFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 	assert.Equal(t, "application/rtf", f.ContentType())
 }
 
 func TestRTFFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 	members := createTestMembers()
 
 	t.Run("Contains RTF header", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.True(t, strings.HasPrefix(result, "{\\rtf1"))
@@ -674,6 +751,7 @@ func TestRTFFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains title and topic", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "HelixAgent AI Debate Ensemble")
@@ -681,6 +759,7 @@ func TestRTFFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains team members", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		assert.Contains(t, result, "Analyst")
@@ -688,6 +767,7 @@ func TestRTFFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Escapes RTF special characters", func(t *testing.T) {
+			t.Parallel()
 		membersWithSpecial := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -703,9 +783,11 @@ func TestRTFFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestRTFFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 
 	t.Run("Contains RTF structure", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseInitialResponse, 1)
 
 		assert.True(t, strings.HasPrefix(result, "{\\rtf1"))
@@ -715,9 +797,11 @@ func TestRTFFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestRTFFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 
 	t.Run("Contains content", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseContent("Test content")
 
 		assert.True(t, strings.HasPrefix(result, "{\\rtf1"))
@@ -726,9 +810,11 @@ func TestRTFFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestRTFFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 
 	t.Run("Contains final answer heading", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("Final answer here")
 
 		assert.True(t, strings.HasPrefix(result, "{\\rtf1"))
@@ -738,9 +824,11 @@ func TestRTFFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestRTFFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewRTFFormatter()
 
 	t.Run("Contains fallback information", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleProposer,
 			"google", "gemini",
@@ -761,26 +849,31 @@ func TestRTFFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestTerminalFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 	assert.Equal(t, "terminal", f.Name())
 }
 
 func TestTerminalFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 	assert.Equal(t, "text/plain", f.ContentType())
 }
 
 func TestTerminalFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 	members := createTestMembers()
 
 	t.Run("Contains ANSI codes", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.True(t, ContainsANSI(result))
 	})
 
 	t.Run("Contains header elements", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "HELIXAGENT AI DEBATE ENSEMBLE")
@@ -788,6 +881,7 @@ func TestTerminalFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains team information", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		assert.Contains(t, result, "Analyst")
@@ -796,6 +890,7 @@ func TestTerminalFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("With 256 colors enabled", func(t *testing.T) {
+			t.Parallel()
 		f := &TerminalFormatter{Use256Colors: true}
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
@@ -804,9 +899,11 @@ func TestTerminalFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestTerminalFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 
 	t.Run("Contains ANSI formatting", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseValidation, 2)
 
 		assert.True(t, ContainsANSI(result))
@@ -816,9 +913,11 @@ func TestTerminalFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestTerminalFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 
 	t.Run("Applies dim formatting", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseContent("Test content")
 
 		assert.Contains(t, result, ANSIDim)
@@ -827,9 +926,11 @@ func TestTerminalFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestTerminalFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 
 	t.Run("Contains final answer header", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("The answer")
 
 		assert.True(t, ContainsANSI(result))
@@ -839,9 +940,11 @@ func TestTerminalFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestTerminalFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewTerminalFormatter()
 
 	t.Run("Contains colored fallback info", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleCritic,
 			"deepseek", "deepseek-chat",
@@ -862,20 +965,24 @@ func TestTerminalFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestCompactFormatter_Name(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 	assert.Equal(t, "compact", f.Name())
 }
 
 func TestCompactFormatter_ContentType(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 	assert.Equal(t, "text/plain", f.ContentType())
 }
 
 func TestCompactFormatter_FormatDebateTeamIntroduction(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 	members := createTestMembers()
 
 	t.Run("Uses compact format", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("What is AI?", members)
 
 		assert.Contains(t, result, "DEBATE:")
@@ -884,6 +991,7 @@ func TestCompactFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Contains abbreviated team info", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatDebateTeamIntroduction("Test", members)
 
 		assert.Contains(t, result, "analyst=claude-opus-4-5")
@@ -891,6 +999,7 @@ func TestCompactFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Truncates long topics", func(t *testing.T) {
+			t.Parallel()
 		longTopic := strings.Repeat("x", 100)
 		result := f.FormatDebateTeamIntroduction(longTopic, members)
 
@@ -899,9 +1008,11 @@ func TestCompactFormatter_FormatDebateTeamIntroduction(t *testing.T) {
 }
 
 func TestCompactFormatter_FormatPhaseHeader(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 
 	t.Run("Uses compact notation", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatPhaseHeader(services.PhaseInitialResponse, 1)
 
 		assert.Equal(t, "[P1:initial_response]", result)
@@ -909,9 +1020,11 @@ func TestCompactFormatter_FormatPhaseHeader(t *testing.T) {
 }
 
 func TestCompactFormatter_FormatPhaseContent(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 
 	t.Run("Removes excessive whitespace", func(t *testing.T) {
+			t.Parallel()
 		content := "Line 1\n\n\nLine 2  with  spaces"
 		result := f.FormatPhaseContent(content)
 
@@ -920,6 +1033,7 @@ func TestCompactFormatter_FormatPhaseContent(t *testing.T) {
 	})
 
 	t.Run("Trims content", func(t *testing.T) {
+			t.Parallel()
 		content := "  content with spaces  "
 		result := f.FormatPhaseContent(content)
 
@@ -928,9 +1042,11 @@ func TestCompactFormatter_FormatPhaseContent(t *testing.T) {
 }
 
 func TestCompactFormatter_FormatFinalResponse(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 
 	t.Run("Uses compact prefix", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFinalResponse("Answer")
 
 		assert.True(t, strings.HasPrefix(result, "[FINAL]"))
@@ -939,9 +1055,11 @@ func TestCompactFormatter_FormatFinalResponse(t *testing.T) {
 }
 
 func TestCompactFormatter_FormatFallbackIndicator(t *testing.T) {
+	t.Parallel()
 	f := NewCompactFormatter()
 
 	t.Run("Uses compact notation", func(t *testing.T) {
+			t.Parallel()
 		result := f.FormatFallbackIndicator(
 			services.RoleAnalyst,
 			"openai", "gpt-4",
@@ -962,9 +1080,11 @@ func TestCompactFormatter_FormatFallbackIndicator(t *testing.T) {
 // ============================================================================
 
 func TestFormatterRegistry_NewFormatterRegistry(t *testing.T) {
+	t.Parallel()
 	registry := NewFormatterRegistry()
 
 	t.Run("Contains all formatters", func(t *testing.T) {
+			t.Parallel()
 		formats := registry.List()
 
 		assert.Contains(t, formats, "json")
@@ -979,9 +1099,11 @@ func TestFormatterRegistry_NewFormatterRegistry(t *testing.T) {
 }
 
 func TestFormatterRegistry_Get(t *testing.T) {
+	t.Parallel()
 	registry := NewFormatterRegistry()
 
 	t.Run("Returns correct formatter", func(t *testing.T) {
+			t.Parallel()
 		jsonFormatter := registry.Get(OutputFormatJSON)
 		assert.NotNil(t, jsonFormatter)
 		assert.Equal(t, "json", jsonFormatter.Name())
@@ -992,29 +1114,35 @@ func TestFormatterRegistry_Get(t *testing.T) {
 	})
 
 	t.Run("Returns nil for unknown format", func(t *testing.T) {
+			t.Parallel()
 		formatter := registry.Get(OutputFormat("unknown"))
 		assert.Nil(t, formatter)
 	})
 }
 
 func TestFormatterRegistry_GetOrDefault(t *testing.T) {
+	t.Parallel()
 	registry := NewFormatterRegistry()
 
 	t.Run("Returns requested formatter when available", func(t *testing.T) {
+			t.Parallel()
 		formatter := registry.GetOrDefault(OutputFormatJSON, OutputFormatMarkdown)
 		assert.Equal(t, "json", formatter.Name())
 	})
 
 	t.Run("Returns default when requested not available", func(t *testing.T) {
+			t.Parallel()
 		formatter := registry.GetOrDefault(OutputFormat("unknown"), OutputFormatJSON)
 		assert.Equal(t, "json", formatter.Name())
 	})
 }
 
 func TestFormatterRegistry_Register(t *testing.T) {
+	t.Parallel()
 	registry := NewFormatterRegistry()
 
 	t.Run("Can register custom formatter", func(t *testing.T) {
+			t.Parallel()
 		customFormatter := NewCompactFormatter()
 		registry.Register(OutputFormat("custom"), customFormatter)
 
@@ -1029,6 +1157,7 @@ func TestFormatterRegistry_Register(t *testing.T) {
 // ============================================================================
 
 func TestFormatDebateIntroductionForFormat(t *testing.T) {
+	t.Parallel()
 	members := createTestMembers()
 
 	testCases := []struct {
@@ -1050,6 +1179,7 @@ func TestFormatDebateIntroductionForFormat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format), func(t *testing.T) {
+				t.Parallel()
 			result := FormatDebateIntroductionForFormat(tc.format, "Test", members)
 			assert.Contains(t, result, tc.contains)
 		})
@@ -1057,6 +1187,7 @@ func TestFormatDebateIntroductionForFormat(t *testing.T) {
 }
 
 func TestFormatPhaseHeaderForAllFormats(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		format   OutputFormat
 		contains string
@@ -1073,6 +1204,7 @@ func TestFormatPhaseHeaderForAllFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format), func(t *testing.T) {
+				t.Parallel()
 			result := FormatPhaseHeaderForAllFormats(tc.format, services.PhaseInitialResponse, 1)
 			assert.Contains(t, result, tc.contains)
 		})
@@ -1080,6 +1212,7 @@ func TestFormatPhaseHeaderForAllFormats(t *testing.T) {
 }
 
 func TestFormatFinalResponseForAllFormats(t *testing.T) {
+	t.Parallel()
 	content := "Final answer content"
 
 	testCases := []struct {
@@ -1098,6 +1231,7 @@ func TestFormatFinalResponseForAllFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format), func(t *testing.T) {
+				t.Parallel()
 			result := FormatFinalResponseForAllFormats(tc.format, content)
 			assert.Contains(t, result, tc.contains)
 		})
@@ -1105,6 +1239,7 @@ func TestFormatFinalResponseForAllFormats(t *testing.T) {
 }
 
 func TestFormatFallbackIndicatorForAllFormats(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		format   OutputFormat
 		contains string
@@ -1121,6 +1256,7 @@ func TestFormatFallbackIndicatorForAllFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format), func(t *testing.T) {
+				t.Parallel()
 			result := FormatFallbackIndicatorForAllFormats(
 				tc.format,
 				services.RoleAnalyst,
@@ -1139,6 +1275,7 @@ func TestFormatFallbackIndicatorForAllFormats(t *testing.T) {
 // ============================================================================
 
 func TestFormatters_EmptyInput(t *testing.T) {
+	t.Parallel()
 	formatters := []OutputFormatter{
 		NewJSONFormatter(),
 		NewYAMLFormatter(),
@@ -1152,16 +1289,19 @@ func TestFormatters_EmptyInput(t *testing.T) {
 
 	for _, f := range formatters {
 		t.Run(f.Name()+"_EmptyTopic", func(t *testing.T) {
+				t.Parallel()
 			result := f.FormatDebateTeamIntroduction("", nil)
 			assert.NotEmpty(t, result)
 		})
 
 		t.Run(f.Name()+"_EmptyContent", func(t *testing.T) {
+				t.Parallel()
 			result := f.FormatPhaseContent("")
 			assert.NotPanics(t, func() { _ = result })
 		})
 
 		t.Run(f.Name()+"_EmptyFinalResponse", func(t *testing.T) {
+				t.Parallel()
 			result := f.FormatFinalResponse("")
 			assert.NotEmpty(t, result)
 		})
@@ -1169,6 +1309,7 @@ func TestFormatters_EmptyInput(t *testing.T) {
 }
 
 func TestFormatters_NilMembers(t *testing.T) {
+	t.Parallel()
 	formatters := []OutputFormatter{
 		NewJSONFormatter(),
 		NewYAMLFormatter(),
@@ -1182,6 +1323,7 @@ func TestFormatters_NilMembers(t *testing.T) {
 
 	for _, f := range formatters {
 		t.Run(f.Name()+"_NilMembers", func(t *testing.T) {
+				t.Parallel()
 			require.NotPanics(t, func() {
 				result := f.FormatDebateTeamIntroduction("Test", nil)
 				assert.NotEmpty(t, result)
@@ -1189,6 +1331,7 @@ func TestFormatters_NilMembers(t *testing.T) {
 		})
 
 		t.Run(f.Name()+"_MixedNilMembers", func(t *testing.T) {
+				t.Parallel()
 			members := []*services.DebateTeamMember{
 				nil,
 				{
@@ -1207,6 +1350,7 @@ func TestFormatters_NilMembers(t *testing.T) {
 }
 
 func TestFormatters_SpecialCharacters(t *testing.T) {
+	t.Parallel()
 	specialContent := `Content with special characters: <>&"'` + "`" + `\n\t{}`
 
 	formatters := []OutputFormatter{
@@ -1222,6 +1366,7 @@ func TestFormatters_SpecialCharacters(t *testing.T) {
 
 	for _, f := range formatters {
 		t.Run(f.Name()+"_SpecialChars", func(t *testing.T) {
+				t.Parallel()
 			require.NotPanics(t, func() {
 				result := f.FormatPhaseContent(specialContent)
 				assert.NotEmpty(t, result)
@@ -1231,6 +1376,7 @@ func TestFormatters_SpecialCharacters(t *testing.T) {
 }
 
 func TestFormatters_LongContent(t *testing.T) {
+	t.Parallel()
 	longContent := strings.Repeat("x", 10000)
 
 	formatters := []OutputFormatter{
@@ -1246,6 +1392,7 @@ func TestFormatters_LongContent(t *testing.T) {
 
 	for _, f := range formatters {
 		t.Run(f.Name()+"_LongContent", func(t *testing.T) {
+				t.Parallel()
 			require.NotPanics(t, func() {
 				result := f.FormatPhaseContent(longContent)
 				assert.NotEmpty(t, result)
@@ -1355,6 +1502,7 @@ func BenchmarkFormatterRegistry_Get(b *testing.B) {
 // ============================================================================
 
 func TestOutputFormatterInterface(t *testing.T) {
+	t.Parallel()
 	// Ensure all formatters implement the interface
 	var _ OutputFormatter = (*JSONFormatter)(nil)
 	var _ OutputFormatter = (*YAMLFormatter)(nil)
@@ -1371,6 +1519,7 @@ func TestOutputFormatterInterface(t *testing.T) {
 // ============================================================================
 
 func TestGetPhaseIcon(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		phase    services.ValidationPhase
 		expected string
@@ -1384,6 +1533,7 @@ func TestGetPhaseIcon(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.phase), func(t *testing.T) {
+				t.Parallel()
 			result := getPhaseIcon(tc.phase)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -1391,6 +1541,7 @@ func TestGetPhaseIcon(t *testing.T) {
 }
 
 func TestEscapeRTF(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		expected string
@@ -1403,6 +1554,7 @@ func TestEscapeRTF(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+				t.Parallel()
 			result := escapeRTF(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -1414,9 +1566,11 @@ func TestEscapeRTF(t *testing.T) {
 // ============================================================================
 
 func TestFormatDebateTeamIntroductionMarkdown_AdditionalEdgeCases(t *testing.T) {
+	t.Parallel()
 	members := createTestMembers()
 
 	t.Run("Handles all nil members", func(t *testing.T) {
+			t.Parallel()
 		membersAllNil := []*services.DebateTeamMember{nil, nil, nil}
 		result := FormatDebateTeamIntroductionMarkdown("Test", membersAllNil)
 		assert.Contains(t, result, "# HelixAgent AI Debate Ensemble")
@@ -1424,17 +1578,20 @@ func TestFormatDebateTeamIntroductionMarkdown_AdditionalEdgeCases(t *testing.T) 
 	})
 
 	t.Run("Empty topic", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("", members)
 		assert.Contains(t, result, "**Topic:**")
 	})
 
 	t.Run("Special characters in topic", func(t *testing.T) {
+			t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("Test <script>alert(1)</script>", members)
 		assert.Contains(t, result, "Test <script>")
 	})
 }
 
 func TestFormatFallbackChainMarkdown_AdditionalCases(t *testing.T) {
+	t.Parallel()
 	t.Run("Single failure chain", func(t *testing.T) {
 		chain := []FallbackAttempt{
 			{Provider: "openai", Model: "gpt-4", Duration: 500 * time.Millisecond, Success: false, Error: "rate limit"},
@@ -1445,6 +1602,7 @@ func TestFormatFallbackChainMarkdown_AdditionalCases(t *testing.T) {
 	})
 
 	t.Run("Chain with no errors", func(t *testing.T) {
+			t.Parallel()
 		chain := []FallbackAttempt{
 			{Provider: "openai", Model: "gpt-4", Duration: 500 * time.Millisecond, Success: true, Error: ""},
 		}
@@ -1458,6 +1616,7 @@ func TestFormatFallbackChainMarkdown_AdditionalCases(t *testing.T) {
 // ============================================================================
 
 func TestFormatOutput_Extended(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format returns as-is", func(t *testing.T) {
 		input := "test content"
 		result := FormatOutput(OutputFormatANSI, input)
@@ -1465,12 +1624,14 @@ func TestFormatOutput_Extended(t *testing.T) {
 	})
 
 	t.Run("Markdown format strips ANSI", func(t *testing.T) {
+			t.Parallel()
 		input := ANSIBold + "test" + ANSIReset
 		result := FormatOutput(OutputFormatMarkdown, input)
 		assert.NotContains(t, result, "\033")
 	})
 
 	t.Run("Plain format strips all formatting", func(t *testing.T) {
+			t.Parallel()
 		input := ANSIBold + "**test**" + ANSIReset
 		result := FormatOutput(OutputFormatPlain, input)
 		assert.NotContains(t, result, "\033")
@@ -1478,6 +1639,7 @@ func TestFormatOutput_Extended(t *testing.T) {
 	})
 
 	t.Run("Unknown format returns as-is", func(t *testing.T) {
+			t.Parallel()
 		input := "test content"
 		result := FormatOutput(OutputFormat("unknown"), input)
 		assert.Equal(t, input, result)
@@ -1485,57 +1647,67 @@ func TestFormatOutput_Extended(t *testing.T) {
 }
 
 func TestFormatConsensusHeaderSimpleMarkdown_Extended(t *testing.T) {
+	t.Parallel()
 	result := FormatConsensusHeaderSimpleMarkdown()
 	assert.Contains(t, result, "## Consensus")
 	assert.Contains(t, result, "---")
 }
 
 func TestFormatConsensusHeaderForFormat_Extended(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format", func(t *testing.T) {
 		result := FormatConsensusHeaderForFormat(OutputFormatANSI)
 		assert.Contains(t, result, "CONSENSUS")
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatConsensusHeaderForFormat(OutputFormatMarkdown)
 		assert.Contains(t, result, "## Consensus")
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatConsensusHeaderForFormat(OutputFormatPlain)
 		assert.Contains(t, result, "=== CONSENSUS ===")
 	})
 
 	t.Run("Unknown format uses Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatConsensusHeaderForFormat(OutputFormat("unknown"))
 		assert.Contains(t, result, "## Consensus")
 	})
 }
 
 func TestFormatRequestIndicatorForFormat_Extended(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format", func(t *testing.T) {
 		result := FormatRequestIndicatorForFormat(OutputFormatANSI, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3")
 		assert.True(t, ContainsANSI(result) || strings.Contains(result, "anthropic"))
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatRequestIndicatorForFormat(OutputFormatMarkdown, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3")
 		assert.Contains(t, result, "**[Analyst]**")
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatRequestIndicatorForFormat(OutputFormatPlain, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3")
 		assert.Contains(t, result, "[Analyst]")
 		assert.NotContains(t, result, "**")
 	})
 
 	t.Run("Unknown format uses Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatRequestIndicatorForFormat(OutputFormat("unknown"), services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3")
 		assert.Contains(t, result, "**[Analyst]**")
 	})
 }
 
 func TestFormatResponseIndicatorSimpleMarkdown_Extended(t *testing.T) {
+	t.Parallel()
 	result := FormatResponseIndicatorSimpleMarkdown(services.RoleAnalyst, 500*time.Millisecond)
 	assert.Contains(t, result, "**[Analyst]**")
 	assert.Contains(t, result, "Response received")
@@ -1543,74 +1715,88 @@ func TestFormatResponseIndicatorSimpleMarkdown_Extended(t *testing.T) {
 }
 
 func TestFormatResponseIndicatorForFormat_Extended(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format", func(t *testing.T) {
 		result := FormatResponseIndicatorForFormat(OutputFormatANSI, services.PositionAnalyst, services.RoleAnalyst, 500*time.Millisecond)
 		assert.True(t, ContainsANSI(result) || strings.Contains(result, "Analyst"))
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatResponseIndicatorForFormat(OutputFormatMarkdown, services.PositionAnalyst, services.RoleAnalyst, 500*time.Millisecond)
 		assert.Contains(t, result, "**[Analyst]**")
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatResponseIndicatorForFormat(OutputFormatPlain, services.PositionAnalyst, services.RoleAnalyst, 500*time.Millisecond)
 		assert.Contains(t, result, "[Analyst]")
 	})
 
 	t.Run("Unknown format uses Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatResponseIndicatorForFormat(OutputFormat("unknown"), services.PositionAnalyst, services.RoleAnalyst, 500*time.Millisecond)
 		assert.Contains(t, result, "**[Analyst]**")
 	})
 }
 
 func TestFormatFallbackIndicatorSimpleMarkdown_Extended(t *testing.T) {
+	t.Parallel()
 	result := FormatFallbackIndicatorSimpleMarkdown(services.RoleAnalyst, "anthropic", "claude-3", 500*time.Millisecond)
 	assert.Contains(t, result, "**[Analyst]**")
 	assert.Contains(t, result, "Fallback to anthropic")
 }
 
 func TestFormatPhaseContentForFormat_Extended(t *testing.T) {
+	t.Parallel()
 	content := "Test content"
 
 	t.Run("ANSI format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatPhaseContentForFormat(OutputFormatANSI, content)
 		assert.True(t, ContainsANSI(result) || strings.Contains(result, content))
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatPhaseContentForFormat(OutputFormatMarkdown, content)
 		assert.Contains(t, result, "> ")
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatPhaseContentForFormat(OutputFormatPlain, content)
 		assert.Equal(t, content, result)
 	})
 
 	t.Run("Unknown format uses Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatPhaseContentForFormat(OutputFormat("unknown"), content)
 		assert.Contains(t, result, "> ")
 	})
 }
 
 func TestFormatFallbackIndicatorForFormat_Extended(t *testing.T) {
+	t.Parallel()
 	t.Run("ANSI format", func(t *testing.T) {
 		result := FormatFallbackIndicatorForFormat(OutputFormatANSI, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3", 500*time.Millisecond)
 		assert.True(t, ContainsANSI(result) || strings.Contains(result, "Fallback"))
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackIndicatorForFormat(OutputFormatMarkdown, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3", 500*time.Millisecond)
 		assert.Contains(t, result, "**[Analyst]**")
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackIndicatorForFormat(OutputFormatPlain, services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3", 500*time.Millisecond)
 		assert.Contains(t, result, "[Analyst]")
 	})
 
 	t.Run("Unknown format uses Markdown", func(t *testing.T) {
+			t.Parallel()
 		result := FormatFallbackIndicatorForFormat(OutputFormat("unknown"), services.PositionAnalyst, services.RoleAnalyst, "anthropic", "claude-3", 500*time.Millisecond)
 		assert.Contains(t, result, "**[Analyst]**")
 	})
@@ -1621,6 +1807,7 @@ func TestFormatFallbackIndicatorForFormat_Extended(t *testing.T) {
 // ============================================================================
 
 func TestGetPhaseDisplayName_Formatters(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		phase    services.ValidationPhase
 		expected string
@@ -1634,6 +1821,7 @@ func TestGetPhaseDisplayName_Formatters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(string(tc.phase), func(t *testing.T) {
+				t.Parallel()
 			result := getPhaseDisplayName(tc.phase)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -1645,6 +1833,7 @@ func TestGetPhaseDisplayName_Formatters(t *testing.T) {
 // ============================================================================
 
 func TestGetRoleName_Formatters(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		role     services.DebateRole
 		expected string
@@ -1659,6 +1848,7 @@ func TestGetRoleName_Formatters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(string(tc.role), func(t *testing.T) {
+				t.Parallel()
 			result := getRoleName(tc.role)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -1670,6 +1860,7 @@ func TestGetRoleName_Formatters(t *testing.T) {
 // ============================================================================
 
 func TestGetRoleColor_Formatters(t *testing.T) {
+	t.Parallel()
 	tests := []services.DebateRole{
 		services.RoleAnalyst,
 		services.RoleProposer,
@@ -1680,6 +1871,7 @@ func TestGetRoleColor_Formatters(t *testing.T) {
 
 	for _, role := range tests {
 		t.Run(string(role), func(t *testing.T) {
+				t.Parallel()
 			result := getRoleColor(role)
 			assert.True(t, ContainsANSI(result), "Role color should contain ANSI codes")
 		})
@@ -1691,6 +1883,7 @@ func TestGetRoleColor_Formatters(t *testing.T) {
 // ============================================================================
 
 func TestFormatDuration_Formatters(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		duration time.Duration
 		expected string
@@ -1705,6 +1898,7 @@ func TestFormatDuration_Formatters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.expected, func(t *testing.T) {
+				t.Parallel()
 			result := formatDuration(tc.duration)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -1716,6 +1910,7 @@ func TestFormatDuration_Formatters(t *testing.T) {
 // ============================================================================
 
 func TestFallbackAttempt_Formatters(t *testing.T) {
+	t.Parallel()
 	attempt := FallbackAttempt{
 		Provider: "openai",
 		Model:    "gpt-4",

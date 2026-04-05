@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewQwenCode(t *testing.T) {
+	t.Parallel()
 	q := New()
 
 	if q == nil {
@@ -31,6 +32,7 @@ func TestNewQwenCode(t *testing.T) {
 }
 
 func TestQwenCodeInitialize(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -58,6 +60,7 @@ func TestQwenCodeInitialize(t *testing.T) {
 }
 
 func TestQwenCodeStartStop(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -86,6 +89,7 @@ func TestQwenCodeStartStop(t *testing.T) {
 }
 
 func TestQwenCodeExecute(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -152,6 +156,7 @@ func TestQwenCodeExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := q.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -165,6 +170,7 @@ func TestQwenCodeExecute(t *testing.T) {
 }
 
 func TestQwenCodeGenerate(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -195,6 +201,7 @@ func TestQwenCodeGenerate(t *testing.T) {
 }
 
 func TestQwenCodeChat(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -221,6 +228,7 @@ func TestQwenCodeChat(t *testing.T) {
 }
 
 func TestQwenCodeComplete(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -247,6 +255,7 @@ func TestQwenCodeComplete(t *testing.T) {
 }
 
 func TestQwenCodeStatus(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -275,6 +284,7 @@ func TestQwenCodeStatus(t *testing.T) {
 }
 
 func TestQwenCodeCapabilities(t *testing.T) {
+	t.Parallel()
 	q := New()
 	info := q.Info()
 
@@ -299,6 +309,7 @@ func TestQwenCodeCapabilities(t *testing.T) {
 }
 
 func TestQwenCodeHealth(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -317,6 +328,7 @@ func TestQwenCodeHealth(t *testing.T) {
 }
 
 func TestQwenCodeIsAvailable(t *testing.T) {
+	t.Parallel()
 	q := New()
 	ctx := context.Background()
 
@@ -337,6 +349,7 @@ func TestQwenCodeIsAvailable(t *testing.T) {
 }
 
 func TestQwenCodeConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  *Config
@@ -367,6 +380,7 @@ func TestQwenCodeConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			q := New()
 			ctx := context.Background()
 			err := q.Initialize(ctx, tt.config)

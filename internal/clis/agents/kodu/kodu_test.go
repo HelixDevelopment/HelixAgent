@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	k := New()
 
 	assert.NotNil(t, k)
@@ -26,6 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestKodu_Initialize(t *testing.T) {
+	t.Parallel()
 	k := New()
 	ctx := context.Background()
 
@@ -43,6 +45,7 @@ func TestKodu_Initialize(t *testing.T) {
 }
 
 func TestKodu_Execute(t *testing.T) {
+	t.Parallel()
 	k := New()
 	ctx := context.Background()
 
@@ -151,6 +154,7 @@ func TestKodu_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := k.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -166,6 +170,7 @@ func TestKodu_Execute(t *testing.T) {
 }
 
 func TestKodu_IsAvailable(t *testing.T) {
+	t.Parallel()
 	k := New()
 	// Availability depends on the presence of 'kodu' command in PATH
 	// Result may vary by system
@@ -173,6 +178,7 @@ func TestKodu_IsAvailable(t *testing.T) {
 }
 
 func TestSymbol(t *testing.T) {
+	t.Parallel()
 	symbol := Symbol{
 		Name:    "TestFunc",
 		Type:    "func",
@@ -186,6 +192,7 @@ func TestSymbol(t *testing.T) {
 }
 
 func TestRelation(t *testing.T) {
+	t.Parallel()
 	relation := Relation{
 		From: "FuncA",
 		To:   "FuncB",
@@ -197,6 +204,7 @@ func TestRelation(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		Model:         "claude-haiku",
 		ContextWindow: 100000,

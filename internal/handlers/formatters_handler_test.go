@@ -206,6 +206,7 @@ func setupEmptyFormattersHandler() (*FormattersHandler, *gin.Engine) {
 // ============================================================================
 
 func TestNewFormattersHandler(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	regConfig := &formatters.RegistryConfig{}
 	registry := formatters.NewFormatterRegistry(regConfig, logger)
@@ -227,6 +228,7 @@ func TestNewFormattersHandler(t *testing.T) {
 // ============================================================================
 
 func TestFormatCodeRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := FormatCodeRequest{
 		Content:    "package main",
 		Language:   "go",
@@ -254,6 +256,7 @@ func TestFormatCodeRequest_Fields(t *testing.T) {
 }
 
 func TestFormatCodeResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := FormatCodeResponse{
 		Success:          true,
 		Content:          "formatted code",
@@ -276,6 +279,7 @@ func TestFormatCodeResponse_Fields(t *testing.T) {
 }
 
 func TestFormatCodeResponse_JSONSerialization(t *testing.T) {
+	t.Parallel()
 	resp := FormatCodeResponse{
 		Success:          true,
 		Content:          "package main\n",
@@ -299,6 +303,7 @@ func TestFormatCodeResponse_JSONSerialization(t *testing.T) {
 }
 
 func TestFormatBatchRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := FormatBatchRequest{
 		Requests: []FormatCodeRequest{
 			{Content: "code1", Language: "go"},
@@ -310,6 +315,7 @@ func TestFormatBatchRequest_Fields(t *testing.T) {
 }
 
 func TestFormatBatchResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := FormatBatchResponse{
 		Results: []FormatCodeResponse{
 			{Success: true, FormatterName: "gofmt"},
@@ -321,6 +327,7 @@ func TestFormatBatchResponse_Fields(t *testing.T) {
 }
 
 func TestCheckCodeRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := CheckCodeRequest{
 		Content:   "package main",
 		Language:  "go",
@@ -335,6 +342,7 @@ func TestCheckCodeRequest_Fields(t *testing.T) {
 }
 
 func TestCheckCodeResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := CheckCodeResponse{
 		Formatted:     true,
 		FormatterName: "gofmt",
@@ -347,6 +355,7 @@ func TestCheckCodeResponse_Fields(t *testing.T) {
 }
 
 func TestFormatterMetadataResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := FormatterMetadataResponse{
 		Name:            "gofmt",
 		Type:            "native",
@@ -376,6 +385,7 @@ func TestFormatterMetadataResponse_Fields(t *testing.T) {
 }
 
 func TestDetectFormatterRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := DetectFormatterRequest{
 		FilePath: "main.go",
 		Content:  "package main",
@@ -386,6 +396,7 @@ func TestDetectFormatterRequest_Fields(t *testing.T) {
 }
 
 func TestDetectFormatterResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := DetectFormatterResponse{
 		Language: "go",
 		Formatters: []DetectedFormatterResponse{
@@ -400,6 +411,7 @@ func TestDetectFormatterResponse_Fields(t *testing.T) {
 }
 
 func TestDetectedFormatterResponse_Fields(t *testing.T) {
+	t.Parallel()
 	resp := DetectedFormatterResponse{
 		Name:     "prettier",
 		Type:     "service",
@@ -414,6 +426,7 @@ func TestDetectedFormatterResponse_Fields(t *testing.T) {
 }
 
 func TestValidateConfigRequest_Fields(t *testing.T) {
+	t.Parallel()
 	req := ValidateConfigRequest{
 		Formatter: "gofmt",
 		Config:    map[string]interface{}{"indent": 4},
@@ -424,6 +437,7 @@ func TestValidateConfigRequest_Fields(t *testing.T) {
 }
 
 func TestValidateConfigResponse_Fields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		resp   ValidateConfigResponse
@@ -446,6 +460,7 @@ func TestValidateConfigResponse_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.valid, tt.resp.Valid)
 			assert.Len(t, tt.resp.Errors, tt.errors)
 		})
@@ -457,6 +472,7 @@ func TestValidateConfigResponse_Fields(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_FormatCode_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(FormatCodeRequest{
@@ -483,6 +499,7 @@ func TestFormattersHandler_FormatCode_Success(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCode_Python(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(FormatCodeRequest{
@@ -506,6 +523,7 @@ func TestFormattersHandler_FormatCode_Python(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCode_BadRequest_MissingContent(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body := []byte(`{"language":"go"}`)
@@ -519,6 +537,7 @@ func TestFormattersHandler_FormatCode_BadRequest_MissingContent(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCode_BadRequest_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -530,6 +549,7 @@ func TestFormattersHandler_FormatCode_BadRequest_InvalidJSON(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCode_UnsupportedLanguage(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(FormatCodeRequest{
@@ -551,6 +571,7 @@ func TestFormattersHandler_FormatCode_UnsupportedLanguage(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_FormatCodeBatch_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(FormatBatchRequest{
@@ -577,6 +598,7 @@ func TestFormattersHandler_FormatCodeBatch_Success(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCodeBatch_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -592,6 +614,7 @@ func TestFormattersHandler_FormatCodeBatch_BadRequest(t *testing.T) {
 }
 
 func TestFormattersHandler_FormatCodeBatch_BadRequest_MissingRequests(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body := []byte(`{}`)
@@ -609,6 +632,7 @@ func TestFormattersHandler_FormatCodeBatch_BadRequest_MissingRequests(t *testing
 // ============================================================================
 
 func TestFormattersHandler_CheckCode_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(CheckCodeRequest{
@@ -631,6 +655,7 @@ func TestFormattersHandler_CheckCode_Success(t *testing.T) {
 }
 
 func TestFormattersHandler_CheckCode_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -646,6 +671,7 @@ func TestFormattersHandler_CheckCode_BadRequest(t *testing.T) {
 }
 
 func TestFormattersHandler_CheckCode_BadRequest_MissingContent(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body := []byte(`{"language":"go"}`)
@@ -663,6 +689,7 @@ func TestFormattersHandler_CheckCode_BadRequest_MissingContent(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_ListFormatters_All(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -682,6 +709,7 @@ func TestFormattersHandler_ListFormatters_All(t *testing.T) {
 }
 
 func TestFormattersHandler_ListFormatters_ByType(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -699,6 +727,7 @@ func TestFormattersHandler_ListFormatters_ByType(t *testing.T) {
 }
 
 func TestFormattersHandler_ListFormatters_ByLanguage(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -716,6 +745,7 @@ func TestFormattersHandler_ListFormatters_ByLanguage(t *testing.T) {
 }
 
 func TestFormattersHandler_ListFormatters_ByTypeAndLanguage(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -733,6 +763,7 @@ func TestFormattersHandler_ListFormatters_ByTypeAndLanguage(t *testing.T) {
 }
 
 func TestFormattersHandler_ListFormatters_Empty(t *testing.T) {
+	t.Parallel()
 	_, r := setupEmptyFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -749,6 +780,7 @@ func TestFormattersHandler_ListFormatters_Empty(t *testing.T) {
 }
 
 func TestFormattersHandler_ListFormatters_NonexistentLanguage(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -769,6 +801,7 @@ func TestFormattersHandler_ListFormatters_NonexistentLanguage(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_GetFormatter_Success(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -792,6 +825,7 @@ func TestFormattersHandler_GetFormatter_Success(t *testing.T) {
 }
 
 func TestFormattersHandler_GetFormatter_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -808,6 +842,7 @@ func TestFormattersHandler_GetFormatter_NotFound(t *testing.T) {
 }
 
 func TestFormattersHandler_GetFormatter_ServiceFormatter(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -832,6 +867,7 @@ func TestFormattersHandler_GetFormatter_ServiceFormatter(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_HealthCheckFormatter_Healthy(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -849,6 +885,7 @@ func TestFormattersHandler_HealthCheckFormatter_Healthy(t *testing.T) {
 }
 
 func TestFormattersHandler_HealthCheckFormatter_NotFound(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -863,6 +900,7 @@ func TestFormattersHandler_HealthCheckFormatter_NotFound(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_DetectFormatter_Go(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -883,6 +921,7 @@ func TestFormattersHandler_DetectFormatter_Go(t *testing.T) {
 }
 
 func TestFormattersHandler_DetectFormatter_Python(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -901,6 +940,7 @@ func TestFormattersHandler_DetectFormatter_Python(t *testing.T) {
 }
 
 func TestFormattersHandler_DetectFormatter_JavaScript(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -918,6 +958,7 @@ func TestFormattersHandler_DetectFormatter_JavaScript(t *testing.T) {
 }
 
 func TestFormattersHandler_DetectFormatter_MissingFilePath(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -934,6 +975,7 @@ func TestFormattersHandler_DetectFormatter_MissingFilePath(t *testing.T) {
 }
 
 func TestFormattersHandler_DetectFormatter_UnknownExtension(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -948,6 +990,7 @@ func TestFormattersHandler_DetectFormatter_UnknownExtension(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_ValidateConfig_Valid(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(ValidateConfigRequest{
@@ -975,6 +1018,7 @@ func TestFormattersHandler_ValidateConfig_Valid(t *testing.T) {
 }
 
 func TestFormattersHandler_ValidateConfig_Invalid(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
@@ -1025,6 +1069,7 @@ func TestFormattersHandler_ValidateConfig_Invalid(t *testing.T) {
 }
 
 func TestFormattersHandler_ValidateConfig_FormatterNotFound(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	body, _ := json.Marshal(ValidateConfigRequest{
@@ -1045,6 +1090,7 @@ func TestFormattersHandler_ValidateConfig_FormatterNotFound(t *testing.T) {
 }
 
 func TestFormattersHandler_ValidateConfig_BadRequest(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	w := httptest.NewRecorder()
@@ -1060,6 +1106,7 @@ func TestFormattersHandler_ValidateConfig_BadRequest(t *testing.T) {
 }
 
 func TestFormattersHandler_ValidateConfig_BadRequest_MissingFields(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	tests := []struct {
@@ -1073,6 +1120,7 @@ func TestFormattersHandler_ValidateConfig_BadRequest_MissingFields(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"POST",
@@ -1092,6 +1140,7 @@ func TestFormattersHandler_ValidateConfig_BadRequest_MissingFields(t *testing.T)
 // ============================================================================
 
 func TestFormattersHandler_HealthCheckAll_AllHealthy(t *testing.T) {
+	t.Parallel()
 	h, _, _ := setupFormattersHandler()
 
 	// Use HealthCheckAll directly since it's not registered on a standard route
@@ -1115,6 +1164,7 @@ func TestFormattersHandler_HealthCheckAll_AllHealthy(t *testing.T) {
 }
 
 func TestFormattersHandler_HealthCheckAll_Empty(t *testing.T) {
+	t.Parallel()
 	h, _, _ := func() (*FormattersHandler, *gin.Engine, *formatters.FormatterRegistry) {
 		logger := logrus.New()
 		logger.SetLevel(logrus.ErrorLevel)
@@ -1152,6 +1202,7 @@ func TestFormattersHandler_HealthCheckAll_Empty(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_RegisterRoutes(t *testing.T) {
+	t.Parallel()
 	h, _, _ := setupFormattersHandler()
 
 	r := gin.New()
@@ -1200,6 +1251,7 @@ func TestFormattersHandler_RegisterRoutes(t *testing.T) {
 // ============================================================================
 
 func TestFormattersHandler_ResponseContentType(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupFormattersHandler()
 
 	routes := []struct {
@@ -1214,6 +1266,7 @@ func TestFormattersHandler_ResponseContentType(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
+				t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if route.body != "" {

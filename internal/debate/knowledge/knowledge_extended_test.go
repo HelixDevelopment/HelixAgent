@@ -25,6 +25,7 @@ import (
 // =============================================================================
 
 func TestNewCrossDebateLearner_WithCustomConfig(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	config.MinDebatesForPattern = 5
@@ -38,6 +39,7 @@ func TestNewCrossDebateLearner_WithCustomConfig(t *testing.T) {
 }
 
 func TestNewCrossDebateLearner_WithDisabledKnowledgeGraph(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	config.EnableKnowledgeGraph = false
@@ -49,6 +51,7 @@ func TestNewCrossDebateLearner_WithDisabledKnowledgeGraph(t *testing.T) {
 }
 
 func TestCrossDebateLearner_LearnFromDebate_SuccessfulWithLessons(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	config.StrategySuccessThreshold = 0.5
@@ -108,6 +111,7 @@ func TestCrossDebateLearner_LearnFromDebate_SuccessfulWithLessons(t *testing.T) 
 }
 
 func TestCrossDebateLearner_GetRecommendations_WithMatchingStrategy(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	learner := NewCrossDebateLearner(repo, config)
@@ -138,6 +142,7 @@ func TestCrossDebateLearner_GetRecommendations_WithMatchingStrategy(t *testing.T
 }
 
 func TestCrossDebateLearner_ApplyDecay_WithPatterns(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	config := DefaultLearningConfig()
 	config.LearningDecayRate = 0.1
@@ -167,6 +172,7 @@ func TestCrossDebateLearner_ApplyDecay_WithPatterns(t *testing.T) {
 }
 
 func TestCalculateLearningQuality_AllScenarios(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	learner := NewCrossDebateLearner(repo, DefaultLearningConfig())
 
@@ -213,6 +219,7 @@ func TestCalculateLearningQuality_AllScenarios(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			score := learner.calculateLearningQuality(tc.outcome)
 			assert.GreaterOrEqual(t, score, tc.minScore)
 			assert.LessOrEqual(t, score, tc.maxScore)
@@ -225,6 +232,7 @@ func TestCalculateLearningQuality_AllScenarios(t *testing.T) {
 // =============================================================================
 
 func TestPatternAnalyzer_Analyze_AllDetectors(t *testing.T) {
+	t.Parallel()
 	analyzer := NewPatternAnalyzer()
 
 	// Create a result that triggers multiple pattern types
@@ -255,6 +263,7 @@ func TestPatternAnalyzer_Analyze_AllDetectors(t *testing.T) {
 }
 
 func TestConsensusPatternDetector_LowConsensus(t *testing.T) {
+	t.Parallel()
 	detector := &ConsensusPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -277,6 +286,7 @@ func TestConsensusPatternDetector_LowConsensus(t *testing.T) {
 }
 
 func TestConflictPatternDetector_ManyDisagreements(t *testing.T) {
+	t.Parallel()
 	detector := &ConflictPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -293,6 +303,7 @@ func TestConflictPatternDetector_ManyDisagreements(t *testing.T) {
 }
 
 func TestExpertisePatternDetector_MultipleExperts(t *testing.T) {
+	t.Parallel()
 	detector := &ExpertisePatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -316,6 +327,7 @@ func TestExpertisePatternDetector_MultipleExperts(t *testing.T) {
 }
 
 func TestFailurePatternDetector_AllLowConsensus(t *testing.T) {
+	t.Parallel()
 	detector := &FailurePatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -335,6 +347,7 @@ func TestFailurePatternDetector_AllLowConsensus(t *testing.T) {
 }
 
 func TestOptimizationPatternDetector_AllOptimizations(t *testing.T) {
+	t.Parallel()
 	detector := &OptimizationPatternDetector{}
 
 	result := &protocol.DebateResult{
@@ -370,6 +383,7 @@ func TestOptimizationPatternDetector_AllOptimizations(t *testing.T) {
 // =============================================================================
 
 func TestStrategySynthesizer_Synthesize_Complete(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 
 	result := &protocol.DebateResult{
@@ -418,6 +432,7 @@ func TestStrategySynthesizer_Synthesize_Complete(t *testing.T) {
 }
 
 func TestStrategySynthesizer_Synthesize_LowConsensus(t *testing.T) {
+	t.Parallel()
 	synthesizer := NewStrategySynthesizer()
 
 	result := &protocol.DebateResult{
@@ -439,6 +454,7 @@ func TestStrategySynthesizer_Synthesize_LowConsensus(t *testing.T) {
 // =============================================================================
 
 func TestKnowledgeGraph_AddDebate_Complete(t *testing.T) {
+	t.Parallel()
 	kg := NewKnowledgeGraph(1000)
 
 	result := &protocol.DebateResult{
@@ -491,6 +507,7 @@ func TestKnowledgeGraph_AddDebate_Complete(t *testing.T) {
 }
 
 func TestKnowledgeGraph_GetRoleAdvice_MultipleHighWeight(t *testing.T) {
+	t.Parallel()
 	kg := NewKnowledgeGraph(1000)
 
 	// Add multiple high-weight lesson nodes
@@ -521,6 +538,7 @@ func TestKnowledgeGraph_GetRoleAdvice_MultipleHighWeight(t *testing.T) {
 }
 
 func TestKnowledgeGraph_TrimIfNecessary_LargeGraph(t *testing.T) {
+	t.Parallel()
 	kg := NewKnowledgeGraph(10)
 
 	// Add many nodes
@@ -542,6 +560,7 @@ func TestKnowledgeGraph_TrimIfNecessary_LargeGraph(t *testing.T) {
 }
 
 func TestKnowledgeGraph_GetConnections_Complex(t *testing.T) {
+	t.Parallel()
 	kg := NewKnowledgeGraph(1000)
 
 	// Add nodes and edges
@@ -563,6 +582,7 @@ func TestKnowledgeGraph_GetConnections_Complex(t *testing.T) {
 // =============================================================================
 
 func TestRepository_ExtractLessons_NilResult_Extended(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -571,6 +591,7 @@ func TestRepository_ExtractLessons_NilResult_Extended(t *testing.T) {
 }
 
 func TestRepository_ApplyLesson_NonExistent(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -579,6 +600,7 @@ func TestRepository_ApplyLesson_NonExistent(t *testing.T) {
 }
 
 func TestRepository_RecordOutcome_NonExistent(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -587,6 +609,7 @@ func TestRepository_RecordOutcome_NonExistent(t *testing.T) {
 }
 
 func TestRepository_GetPatterns_WithAllFilters(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -633,6 +656,7 @@ func TestRepository_GetPatterns_WithAllFilters(t *testing.T) {
 }
 
 func TestRepository_GetSuccessfulStrategies_WithDomain(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -657,6 +681,7 @@ func TestRepository_GetSuccessfulStrategies_WithDomain(t *testing.T) {
 }
 
 func TestRepository_GetDebateHistory_WithFilters(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 	ctx := context.Background()
 
@@ -694,6 +719,7 @@ func TestRepository_GetDebateHistory_WithFilters(t *testing.T) {
 }
 
 func TestRepository_InferDomainFromTopic_AllDomains(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 
 	testCases := []struct {
@@ -717,6 +743,7 @@ func TestRepository_InferDomainFromTopic_AllDomains(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.topic, func(t *testing.T) {
+				t.Parallel()
 			domain := repo.inferDomainFromTopic(tc.topic)
 			assert.Equal(t, tc.expected, domain)
 		})
@@ -724,6 +751,7 @@ func TestRepository_InferDomainFromTopic_AllDomains(t *testing.T) {
 }
 
 func TestRepository_GenerateDomainInsights_AllDomains(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 
 	// Test domains that have specific insights
@@ -737,6 +765,7 @@ func TestRepository_GenerateDomainInsights_AllDomains(t *testing.T) {
 
 	for _, domain := range domainsWithInsights {
 		t.Run(string(domain), func(t *testing.T) {
+				t.Parallel()
 			insights := repo.generateDomainInsights(domain, []*LessonMatch{})
 			assert.NotEmpty(t, insights)
 		})
@@ -744,6 +773,7 @@ func TestRepository_GenerateDomainInsights_AllDomains(t *testing.T) {
 
 	// General domain may not have specific insights without lessons
 	t.Run("general", func(t *testing.T) {
+			t.Parallel()
 		insights := repo.generateDomainInsights(agents.DomainGeneral, []*LessonMatch{})
 		// General domain might be empty without matching lessons
 		assert.NotNil(t, insights)
@@ -751,6 +781,7 @@ func TestRepository_GenerateDomainInsights_AllDomains(t *testing.T) {
 }
 
 func TestRepository_GenerateRoleGuidance_AllRoles(t *testing.T) {
+	t.Parallel()
 	repo := createTestRepository()
 
 	roles := []topology.AgentRole{
@@ -764,6 +795,7 @@ func TestRepository_GenerateRoleGuidance_AllRoles(t *testing.T) {
 
 	for _, role := range roles {
 		t.Run(string(role), func(t *testing.T) {
+				t.Parallel()
 			guidance := repo.generateRoleGuidance(role, agents.DomainCode)
 			assert.NotEmpty(t, guidance)
 		})
@@ -775,6 +807,7 @@ func TestRepository_GenerateRoleGuidance_AllRoles(t *testing.T) {
 // =============================================================================
 
 func TestSearchOptions_Default(t *testing.T) {
+	t.Parallel()
 	opts := DefaultSearchOptions()
 
 	assert.Equal(t, 0.5, opts.MinScore)
@@ -782,6 +815,7 @@ func TestSearchOptions_Default(t *testing.T) {
 }
 
 func TestLessonMatch_AllFields(t *testing.T) {
+	t.Parallel()
 	match := &LessonMatch{
 		Lesson:    &debate.Lesson{ID: "lesson-1"},
 		Score:     0.85,
@@ -800,6 +834,7 @@ func TestLessonMatch_AllFields(t *testing.T) {
 }
 
 func TestLessonApplication_AllFields(t *testing.T) {
+	t.Parallel()
 	app := &LessonApplication{
 		ID:        "app-1",
 		LessonID:  "lesson-1",
@@ -821,6 +856,7 @@ func TestLessonApplication_AllFields(t *testing.T) {
 }
 
 func TestDebatePattern_AllFields(t *testing.T) {
+	t.Parallel()
 	pattern := &DebatePattern{
 		ID:          "pattern-1",
 		Name:        "Test Pattern",
@@ -846,6 +882,7 @@ func TestDebatePattern_AllFields(t *testing.T) {
 }
 
 func TestStrategy_AllFields(t *testing.T) {
+	t.Parallel()
 	strategy := &Strategy{
 		ID:           "strategy-1",
 		Name:         "Test Strategy",
@@ -869,6 +906,7 @@ func TestStrategy_AllFields(t *testing.T) {
 }
 
 func TestRepositoryStatistics_AllFields(t *testing.T) {
+	t.Parallel()
 	stats := &RepositoryStatistics{
 		TotalLessons:        100,
 		TotalPatterns:       50,
@@ -891,12 +929,14 @@ func TestRepositoryStatistics_AllFields(t *testing.T) {
 // =============================================================================
 
 func TestTruncate_Extended(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "hello", truncate("hello", 10))
 	assert.Equal(t, "hel...", truncate("hello world", 6))
 	assert.Equal(t, "", truncate("", 10))
 }
 
 func TestContainsAny_EdgeCases_Extended(t *testing.T) {
+	t.Parallel()
 	assert.True(t, containsAny("SECURITY", "security")) // Case insensitive
 	assert.False(t, containsAny("", "security"))        // Empty string
 	assert.False(t, containsAny("hello", "foo", "bar")) // No match
@@ -904,6 +944,7 @@ func TestContainsAny_EdgeCases_Extended(t *testing.T) {
 }
 
 func TestMin_Extended(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 3, min(3, 5))
 	assert.Equal(t, 3, min(5, 3))
 	assert.Equal(t, 3, min(3, 3))

@@ -110,11 +110,13 @@ func createTestMetadata() *database.ModelMetadata {
 }
 
 func TestModelMetadataHandler_ListModels(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?page=1&limit=20", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -130,6 +132,7 @@ func TestModelMetadataHandler_ListModels(t *testing.T) {
 	})
 
 	t.Run("DefaultPagination", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -139,11 +142,13 @@ func TestModelMetadataHandler_ListModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModel(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata/:id", (&MockMetadataService{}).GetModel)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/claude-3-sonnet-20240229", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -158,6 +163,7 @@ func TestModelMetadataHandler_GetModel(t *testing.T) {
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
+			t.Parallel()
 		router.GET("/v1/models/not-found/:id", func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
 		})
@@ -171,11 +177,13 @@ func TestModelMetadataHandler_GetModel(t *testing.T) {
 }
 
 func TestModelMetadataHandler_CompareModels(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata/compare", (&MockMetadataService{}).CompareModels)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/compare?ids=model-1,model-2", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -190,11 +198,13 @@ func TestModelMetadataHandler_CompareModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata/capability/:capability", (&MockMetadataService{}).GetModelsByCapability)
 
 	t.Run("Success_Vision", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/vision", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -208,6 +218,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("Success_FunctionCalling", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/function_calling", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -216,6 +227,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("Success_Streaming", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/streaming", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -224,6 +236,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("Success_JSONMode", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/json_mode", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -232,6 +245,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("Success_CodeGeneration", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/code_generation", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -240,6 +254,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("Success_Reasoning", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/capability/reasoning", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -248,6 +263,7 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	})
 
 	t.Run("InvalidCapability", func(t *testing.T) {
+			t.Parallel()
 		router.GET("/v1/models/invalid/capability/:capability", func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid capability"})
 		})
@@ -261,11 +277,13 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetProviderModels(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/providers/:provider_id/models/metadata", (&MockMetadataService{}).GetProviderModels)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/providers/anthropic/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -280,6 +298,7 @@ func TestModelMetadataHandler_GetProviderModels(t *testing.T) {
 	})
 
 	t.Run("MissingProviderID", func(t *testing.T) {
+			t.Parallel()
 		router.GET("/v1/providers/nomodels/models/metadata", func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "No models found"})
 		})
@@ -293,11 +312,13 @@ func TestModelMetadataHandler_GetProviderModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_RefreshModels(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.POST("/v1/admin/models/metadata/refresh", (&MockMetadataService{}).RefreshModels)
 
 	t.Run("FullRefresh", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("POST", "/v1/admin/models/metadata/refresh", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -312,6 +333,7 @@ func TestModelMetadataHandler_RefreshModels(t *testing.T) {
 	})
 
 	t.Run("ProviderRefresh", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("POST", "/v1/admin/models/metadata/refresh?provider=anthropic", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -321,11 +343,13 @@ func TestModelMetadataHandler_RefreshModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetRefreshStatus(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/admin/models/metadata/refresh/status", (&MockMetadataService{}).GetRefreshStatus)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/admin/models/metadata/refresh/status", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -339,6 +363,7 @@ func TestModelMetadataHandler_GetRefreshStatus(t *testing.T) {
 	})
 
 	t.Run("WithLimit", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/admin/models/metadata/refresh/status?limit=5", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -348,11 +373,13 @@ func TestModelMetadataHandler_GetRefreshStatus(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModelBenchmarks(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata/:id/benchmarks", (&MockMetadataService{}).GetModelBenchmarks)
 
 	t.Run("Success", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/claude-3-sonnet-20240229/benchmarks", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -366,6 +393,7 @@ func TestModelMetadataHandler_GetModelBenchmarks(t *testing.T) {
 	})
 
 	t.Run("MissingModelID", func(t *testing.T) {
+			t.Parallel()
 		router.GET("/v1/models/nobenchmarks/benchmarks", func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
 		})
@@ -379,12 +407,14 @@ func TestModelMetadataHandler_GetModelBenchmarks(t *testing.T) {
 }
 
 func TestModelMetadataHandler_ResponseFormat(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata/:id", (&MockMetadataService{}).GetModel)
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("ContentType", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata/claude-3-sonnet-20240229", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -393,6 +423,7 @@ func TestModelMetadataHandler_ResponseFormat(t *testing.T) {
 	})
 
 	t.Run("ValidJSON", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?page=1&limit=20", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -406,12 +437,14 @@ func TestModelMetadataHandler_ResponseFormat(t *testing.T) {
 }
 
 func TestModelMetadataHandler_HTTPMethods(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 	router.POST("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("MethodNotAllowed", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("PUT", "/v1/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -420,6 +453,7 @@ func TestModelMetadataHandler_HTTPMethods(t *testing.T) {
 	})
 
 	t.Run("MethodAllowed_GET", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -428,6 +462,7 @@ func TestModelMetadataHandler_HTTPMethods(t *testing.T) {
 	})
 
 	t.Run("MethodAllowed_POST", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("POST", "/v1/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -437,6 +472,7 @@ func TestModelMetadataHandler_HTTPMethods(t *testing.T) {
 }
 
 func TestModelMetadataHandler_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
@@ -453,6 +489,7 @@ func TestModelMetadataHandler_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("BadRequest", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/error/bad-request", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -466,6 +503,7 @@ func TestModelMetadataHandler_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/error/not-found", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -474,6 +512,7 @@ func TestModelMetadataHandler_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("InternalError", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/error/internal", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -483,11 +522,13 @@ func TestModelMetadataHandler_ErrorHandling(t *testing.T) {
 }
 
 func TestModelMetadataHandler_QueryParameters(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("PageParameter", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?page=2&limit=10", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -496,6 +537,7 @@ func TestModelMetadataHandler_QueryParameters(t *testing.T) {
 	})
 
 	t.Run("ProviderParameter", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?provider=anthropic", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -504,6 +546,7 @@ func TestModelMetadataHandler_QueryParameters(t *testing.T) {
 	})
 
 	t.Run("TypeParameter", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?type=chat", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -512,6 +555,7 @@ func TestModelMetadataHandler_QueryParameters(t *testing.T) {
 	})
 
 	t.Run("SearchParameter", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?search=claude", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -521,11 +565,13 @@ func TestModelMetadataHandler_QueryParameters(t *testing.T) {
 }
 
 func TestModelMetadataHandler_ResponseStructures(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("ListModelsResponse", func(t *testing.T) {
+			t.Parallel()
 		req, _ := http.NewRequest("GET", "/v1/models/metadata?page=1&limit=20", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -544,11 +590,13 @@ func TestModelMetadataHandler_ResponseStructures(t *testing.T) {
 }
 
 func TestModelMetadataHandler_Concurrency(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/v1/models/metadata", (&MockMetadataService{}).ListModels)
 
 	t.Run("ConcurrentRequests", func(t *testing.T) {
+			t.Parallel()
 		done := make(chan bool, 10)
 
 		for i := 0; i < 10; i++ {
@@ -571,6 +619,7 @@ func TestModelMetadataHandler_Concurrency(t *testing.T) {
 // Tests for actual ModelMetadataHandler struct
 
 func TestNewModelMetadataHandler(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	assert.NotNil(t, handler)
@@ -578,6 +627,7 @@ func TestNewModelMetadataHandler(t *testing.T) {
 }
 
 func TestModelMetadataHandler_ListModels_InvalidQuery(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -590,6 +640,7 @@ func TestModelMetadataHandler_ListModels_InvalidQuery(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModel_MissingID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -608,6 +659,7 @@ func TestModelMetadataHandler_GetModel_MissingID(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModelBenchmarks_MissingID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -626,6 +678,7 @@ func TestModelMetadataHandler_GetModelBenchmarks_MissingID(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModelBenchmarks_NoRepository(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -644,9 +697,11 @@ func TestModelMetadataHandler_GetModelBenchmarks_NoRepository(t *testing.T) {
 }
 
 func TestModelMetadataHandler_CompareModels_TooFewModels(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	t.Run("one model", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/models/metadata/compare?ids=model1", nil)
@@ -662,6 +717,7 @@ func TestModelMetadataHandler_CompareModels_TooFewModels(t *testing.T) {
 	})
 
 	t.Run("no models", func(t *testing.T) {
+			t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/models/metadata/compare", nil)
@@ -673,6 +729,7 @@ func TestModelMetadataHandler_CompareModels_TooFewModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_CompareModels_TooManyModels(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -691,6 +748,7 @@ func TestModelMetadataHandler_CompareModels_TooManyModels(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetProviderModels_MissingID(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -709,6 +767,7 @@ func TestModelMetadataHandler_GetProviderModels_MissingID(t *testing.T) {
 }
 
 func TestModelMetadataHandler_GetModelsByCapability_MissingCapability(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -727,6 +786,7 @@ func TestModelMetadataHandler_GetModelsByCapability_MissingCapability(t *testing
 }
 
 func TestModelMetadataHandler_GetModelsByCapability_InvalidCapability(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -745,6 +805,7 @@ func TestModelMetadataHandler_GetModelsByCapability_InvalidCapability(t *testing
 }
 
 func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities(t *testing.T) {
+	t.Parallel()
 	// Test that valid capabilities are recognized by checking the validCapabilities map
 	// We can't call the actual handler without a service, so just test the validation
 
@@ -764,32 +825,38 @@ func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities(t *testing
 }
 
 func TestModelMetadataHandler_GetRefreshStatus_LimitParsing(t *testing.T) {
+	t.Parallel()
 	// Verify limit parsing logic by testing with strconv directly
 	// The handler's limit parsing uses strconv.Atoi
 
 	t.Run("valid limit", func(t *testing.T) {
+			t.Parallel()
 		limit, err := strconv.Atoi("10")
 		assert.NoError(t, err)
 		assert.Equal(t, 10, limit)
 	})
 
 	t.Run("invalid limit string", func(t *testing.T) {
+			t.Parallel()
 		_, err := strconv.Atoi("abc")
 		assert.Error(t, err)
 	})
 
 	t.Run("limit boundary 1", func(t *testing.T) {
+			t.Parallel()
 		limit, _ := strconv.Atoi("1")
 		assert.True(t, limit >= 1)
 	})
 
 	t.Run("limit boundary 100", func(t *testing.T) {
+			t.Parallel()
 		limit, _ := strconv.Atoi("100")
 		assert.True(t, limit <= 100)
 	})
 }
 
 func TestModelMetadataHandler_ListModels_InvalidLimitFormat(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()
@@ -803,6 +870,7 @@ func TestModelMetadataHandler_ListModels_InvalidLimitFormat(t *testing.T) {
 }
 
 func TestModelMetadataHandler_ListModels_InvalidPageFormat(t *testing.T) {
+	t.Parallel()
 	handler := NewModelMetadataHandler(nil)
 
 	w := httptest.NewRecorder()

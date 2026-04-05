@@ -1,0 +1,19 @@
+graph TD
+    SC[Source Code] --> GS[gosec]
+    SC --> ST[staticcheck]
+    SC --> SN[Snyk]
+    SC --> SQ[SonarQube]
+    SC --> TR[Trivy]
+    SC --> SE[Semgrep]
+
+    GS --> R[Reports]
+    ST --> R
+    SN --> R
+    SQ --> R
+    TR --> R
+    SE --> R
+
+    R --> T{Triage}
+    T -->|Critical/High| FX[Fix Code]
+    T -->|Medium| EV[Evaluate]
+    T -->|Low| DOC[Document]

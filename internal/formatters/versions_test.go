@@ -10,6 +10,7 @@ import (
 )
 
 func TestVersionsManifest_GetVersion_Native(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{
 		Native: map[string]VersionInfo{
 			"black": {Version: "26.1a1", Commit: "abc123", GitRef: "v26.1a1"},
@@ -24,6 +25,7 @@ func TestVersionsManifest_GetVersion_Native(t *testing.T) {
 }
 
 func TestVersionsManifest_GetVersion_Service(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{
 		Service: map[string]VersionInfo{
 			"sqlfluff": {Version: "3.4.1"},
@@ -36,6 +38,7 @@ func TestVersionsManifest_GetVersion_Service(t *testing.T) {
 }
 
 func TestVersionsManifest_GetVersion_Builtin(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{
 		Builtin: map[string]VersionInfo{
 			"gofmt": {Version: "1.22.0"},
@@ -48,6 +51,7 @@ func TestVersionsManifest_GetVersion_Builtin(t *testing.T) {
 }
 
 func TestVersionsManifest_GetVersion_NotFound(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{
 		Native: map[string]VersionInfo{},
 	}
@@ -57,6 +61,7 @@ func TestVersionsManifest_GetVersion_NotFound(t *testing.T) {
 }
 
 func TestVersionsManifest_GetVersion_UnknownType(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 
 	_, ok := m.GetVersion("test", FormatterType("custom"))
@@ -64,6 +69,7 @@ func TestVersionsManifest_GetVersion_UnknownType(t *testing.T) {
 }
 
 func TestVersionsManifest_SetVersion_Native(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	m.SetVersion("black", FormatterTypeNative, VersionInfo{Version: "26.1a1"})
 
@@ -73,6 +79,7 @@ func TestVersionsManifest_SetVersion_Native(t *testing.T) {
 }
 
 func TestVersionsManifest_SetVersion_Service(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	m.SetVersion("sqlfluff", FormatterTypeService, VersionInfo{Version: "3.4.1"})
 
@@ -82,6 +89,7 @@ func TestVersionsManifest_SetVersion_Service(t *testing.T) {
 }
 
 func TestVersionsManifest_SetVersion_Builtin(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	m.SetVersion("gofmt", FormatterTypeBuiltin, VersionInfo{Version: "1.22.0"})
 
@@ -91,6 +99,7 @@ func TestVersionsManifest_SetVersion_Builtin(t *testing.T) {
 }
 
 func TestVersionsManifest_SetVersion_UnknownType(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	// Should not panic, just do nothing
 	m.SetVersion("test", FormatterType("custom"), VersionInfo{Version: "1.0"})
@@ -100,6 +109,7 @@ func TestVersionsManifest_SetVersion_UnknownType(t *testing.T) {
 }
 
 func TestVersionsManifest_SetVersion_InitializesNilMap(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	assert.Nil(t, m.Native)
 
@@ -109,6 +119,7 @@ func TestVersionsManifest_SetVersion_InitializesNilMap(t *testing.T) {
 }
 
 func TestVersionsManifest_AllVersions(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{
 		Native:  map[string]VersionInfo{"black": {Version: "26.1a1"}},
 		Service: map[string]VersionInfo{"sqlfluff": {Version: "3.4.1"}},
@@ -123,12 +134,14 @@ func TestVersionsManifest_AllVersions(t *testing.T) {
 }
 
 func TestVersionsManifest_AllVersions_Empty(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	all := m.AllVersions()
 	assert.Empty(t, all)
 }
 
 func TestVersionsManifest_Count(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		manifest *VersionsManifest
@@ -159,12 +172,14 @@ func TestVersionsManifest_Count(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tc.expected, tc.manifest.Count())
 		})
 	}
 }
 
 func TestLoadVersionsManifest(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "versions.yaml")
 
@@ -195,12 +210,14 @@ builtin:
 }
 
 func TestLoadVersionsManifest_FileNotFound(t *testing.T) {
+	t.Parallel()
 	_, err := LoadVersionsManifest("/nonexistent/versions.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read versions manifest")
 }
 
 func TestLoadVersionsManifest_InvalidYAML(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "bad.yaml")
 
@@ -213,6 +230,7 @@ func TestLoadVersionsManifest_InvalidYAML(t *testing.T) {
 }
 
 func TestSaveVersionsManifest(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "versions.yaml")
 
@@ -236,6 +254,7 @@ func TestSaveVersionsManifest(t *testing.T) {
 }
 
 func TestSaveVersionsManifest_InvalidPath(t *testing.T) {
+	t.Parallel()
 	m := &VersionsManifest{}
 	err := SaveVersionsManifest(m, "/nonexistent/dir/versions.yaml")
 	assert.Error(t, err)

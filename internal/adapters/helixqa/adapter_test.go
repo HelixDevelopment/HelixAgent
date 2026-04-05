@@ -14,17 +14,20 @@ import (
 )
 
 func TestAdapter_New_NilLogger(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	require.NotNil(t, adapter, "New with nil logger should return non-nil adapter")
 }
 
 func TestAdapter_New_WithLogger(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	adapter := helixqaadapter.New(logger)
 	require.NotNil(t, adapter)
 }
 
 func TestAdapter_Initialize_DefaultPath(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test-memory.db")
@@ -40,12 +43,14 @@ func TestAdapter_Initialize_DefaultPath(t *testing.T) {
 }
 
 func TestAdapter_Close_BeforeInit(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	err := adapter.Close()
 	assert.NoError(t, err, "Close before init should be a no-op")
 }
 
 func TestAdapter_Close_Multiple(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 
@@ -58,6 +63,7 @@ func TestAdapter_Close_Multiple(t *testing.T) {
 }
 
 func TestAdapter_GetFindings_BeforeInit(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, err := adapter.GetFindings("open")
 	assert.Error(t, err, "GetFindings before init should fail")
@@ -65,6 +71,7 @@ func TestAdapter_GetFindings_BeforeInit(t *testing.T) {
 }
 
 func TestAdapter_GetFinding_BeforeInit(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, err := adapter.GetFinding("HELIX-001")
 	assert.Error(t, err, "GetFinding before init should fail")
@@ -72,12 +79,14 @@ func TestAdapter_GetFinding_BeforeInit(t *testing.T) {
 }
 
 func TestAdapter_UpdateFindingStatus_BeforeInit(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	err := adapter.UpdateFindingStatus("HELIX-001", "fixed")
 	assert.Error(t, err, "UpdateFindingStatus before init should fail")
 }
 
 func TestAdapter_GetFindings_EmptyStore(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	require.NoError(t, adapter.Initialize(dbPath))
@@ -89,6 +98,7 @@ func TestAdapter_GetFindings_EmptyStore(t *testing.T) {
 }
 
 func TestAdapter_GetFindings_DefaultStatus(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	require.NoError(t, adapter.Initialize(dbPath))
@@ -101,6 +111,7 @@ func TestAdapter_GetFindings_DefaultStatus(t *testing.T) {
 }
 
 func TestAdapter_SupportedPlatforms(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	platforms := adapter.SupportedPlatforms()
 
@@ -112,6 +123,7 @@ func TestAdapter_SupportedPlatforms(t *testing.T) {
 }
 
 func TestAdapter_DiscoverCredentials_EmptyRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, err := adapter.DiscoverCredentials("")
 	assert.Error(t, err, "empty root should fail")
@@ -119,12 +131,14 @@ func TestAdapter_DiscoverCredentials_EmptyRoot(t *testing.T) {
 }
 
 func TestAdapter_DiscoverCredentials_InvalidRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, err := adapter.DiscoverCredentials("/nonexistent/path/xyz")
 	assert.Error(t, err, "nonexistent root should fail")
 }
 
 func TestAdapter_DiscoverCredentials_ValidRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	tmpDir := t.TempDir()
 
@@ -139,6 +153,7 @@ func TestAdapter_DiscoverCredentials_ValidRoot(t *testing.T) {
 }
 
 func TestAdapter_DiscoverKnowledge_EmptyRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	_, err := adapter.DiscoverKnowledge("")
 	assert.Error(t, err)
@@ -146,6 +161,7 @@ func TestAdapter_DiscoverKnowledge_EmptyRoot(t *testing.T) {
 }
 
 func TestAdapter_DiscoverKnowledge_ValidRoot(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	tmpDir := t.TempDir()
 
@@ -164,6 +180,7 @@ func TestAdapter_DiscoverKnowledge_ValidRoot(t *testing.T) {
 }
 
 func TestAdapter_RunAutonomousSession_NilConfig(t *testing.T) {
+	t.Parallel()
 	adapter := helixqaadapter.New(nil)
 	ctx := context.Background()
 	_, err := adapter.RunAutonomousSession(ctx, nil)
@@ -172,6 +189,7 @@ func TestAdapter_RunAutonomousSession_NilConfig(t *testing.T) {
 }
 
 func TestAdapter_RunAutonomousSession_EmptyProject(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping live pipeline test in short mode")
 	}
@@ -198,6 +216,7 @@ func TestAdapter_RunAutonomousSession_EmptyProject(t *testing.T) {
 }
 
 func TestSessionStatus_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, helixqaadapter.SessionStatus("pending"),
 		helixqaadapter.StatusPending)
 	assert.Equal(t, helixqaadapter.SessionStatus("running"),

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewInMemoryAuditLogger(t *testing.T) {
+	t.Parallel()
 	t.Run("with default values", func(t *testing.T) {
 		logger := NewInMemoryAuditLogger(0, nil)
 
@@ -20,6 +21,7 @@ func TestNewInMemoryAuditLogger(t *testing.T) {
 	})
 
 	t.Run("with custom values", func(t *testing.T) {
+			t.Parallel()
 		customLogger := logrus.New()
 		logger := NewInMemoryAuditLogger(5000, customLogger)
 
@@ -29,10 +31,12 @@ func TestNewInMemoryAuditLogger(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Log(t *testing.T) {
+	t.Parallel()
 	logger := NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
 	t.Run("logs event successfully", func(t *testing.T) {
+			t.Parallel()
 		event := &AuditEvent{
 			EventType: AuditEventToolCall,
 			Action:    "test-action",
@@ -49,6 +53,7 @@ func TestInMemoryAuditLogger_Log(t *testing.T) {
 	})
 
 	t.Run("preserves existing ID and timestamp", func(t *testing.T) {
+			t.Parallel()
 		now := time.Now().Add(-1 * time.Hour)
 		event := &AuditEvent{
 			ID:        "custom-id",
@@ -64,6 +69,7 @@ func TestInMemoryAuditLogger_Log(t *testing.T) {
 	})
 
 	t.Run("enforces max events limit", func(t *testing.T) {
+			t.Parallel()
 		smallLogger := NewInMemoryAuditLogger(10, nil)
 
 		// Add more events than the limit
@@ -82,6 +88,7 @@ func TestInMemoryAuditLogger_Log(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_Query(t *testing.T) {
+	t.Parallel()
 	logger := NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -100,6 +107,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	}
 
 	t.Run("filter by user ID", func(t *testing.T) {
+			t.Parallel()
 		results, err := logger.Query(ctx, &AuditFilter{UserID: "user1"})
 
 		require.NoError(t, err)
@@ -110,6 +118,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	})
 
 	t.Run("filter by event types", func(t *testing.T) {
+			t.Parallel()
 		results, err := logger.Query(ctx, &AuditFilter{
 			EventTypes: []AuditEventType{AuditEventToolCall},
 		})
@@ -119,6 +128,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	})
 
 	t.Run("filter by time range", func(t *testing.T) {
+			t.Parallel()
 		start := now.Add(-4 * time.Hour)
 		end := now.Add(-30 * time.Minute)
 		results, err := logger.Query(ctx, &AuditFilter{
@@ -131,6 +141,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	})
 
 	t.Run("filter by minimum risk", func(t *testing.T) {
+			t.Parallel()
 		results, err := logger.Query(ctx, &AuditFilter{MinRisk: SeverityHigh})
 
 		require.NoError(t, err)
@@ -138,6 +149,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	})
 
 	t.Run("with limit", func(t *testing.T) {
+			t.Parallel()
 		results, err := logger.Query(ctx, &AuditFilter{Limit: 2})
 
 		require.NoError(t, err)
@@ -145,6 +157,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 	})
 
 	t.Run("returns results sorted by timestamp (newest first)", func(t *testing.T) {
+			t.Parallel()
 		results, err := logger.Query(ctx, &AuditFilter{})
 
 		require.NoError(t, err)
@@ -157,6 +170,7 @@ func TestInMemoryAuditLogger_Query(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_GetStats(t *testing.T) {
+	t.Parallel()
 	logger := NewInMemoryAuditLogger(100, nil)
 	ctx := context.Background()
 
@@ -174,6 +188,7 @@ func TestInMemoryAuditLogger_GetStats(t *testing.T) {
 	}
 
 	t.Run("returns correct statistics", func(t *testing.T) {
+			t.Parallel()
 		since := time.Now().Add(-1 * time.Hour)
 		stats, err := logger.GetStats(ctx, since)
 
@@ -185,6 +200,7 @@ func TestInMemoryAuditLogger_GetStats(t *testing.T) {
 	})
 
 	t.Run("calculates user stats correctly", func(t *testing.T) {
+			t.Parallel()
 		since := time.Now().Add(-1 * time.Hour)
 		stats, err := logger.GetStats(ctx, since)
 
@@ -205,6 +221,7 @@ func TestInMemoryAuditLogger_GetStats(t *testing.T) {
 	})
 
 	t.Run("limits top users to 10", func(t *testing.T) {
+			t.Parallel()
 		// Add events for many users
 		for i := 0; i < 20; i++ {
 			err := logger.Log(ctx, &AuditEvent{
@@ -223,6 +240,7 @@ func TestInMemoryAuditLogger_GetStats(t *testing.T) {
 }
 
 func TestInMemoryAuditLogger_isRiskAtLeast(t *testing.T) {
+	t.Parallel()
 	logger := NewInMemoryAuditLogger(100, nil)
 
 	tests := []struct {
@@ -242,6 +260,7 @@ func TestInMemoryAuditLogger_isRiskAtLeast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.actual)+"_vs_"+string(tt.minimum), func(t *testing.T) {
+				t.Parallel()
 			result := logger.isRiskAtLeast(tt.actual, tt.minimum)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -249,6 +268,7 @@ func TestInMemoryAuditLogger_isRiskAtLeast(t *testing.T) {
 }
 
 func TestFileAuditLogger(t *testing.T) {
+	t.Parallel()
 	t.Run("creates and logs to file", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "audit_test_*.log")
 		require.NoError(t, err)
@@ -274,6 +294,7 @@ func TestFileAuditLogger(t *testing.T) {
 	})
 
 	t.Run("query returns error", func(t *testing.T) {
+			t.Parallel()
 		tmpFile, err := os.CreateTemp("", "audit_test_*.log")
 		require.NoError(t, err)
 		_ = tmpFile.Close()
@@ -289,6 +310,7 @@ func TestFileAuditLogger(t *testing.T) {
 	})
 
 	t.Run("get stats returns error", func(t *testing.T) {
+			t.Parallel()
 		tmpFile, err := os.CreateTemp("", "audit_test_*.log")
 		require.NoError(t, err)
 		_ = tmpFile.Close()
@@ -304,15 +326,18 @@ func TestFileAuditLogger(t *testing.T) {
 	})
 
 	t.Run("fails on invalid file path", func(t *testing.T) {
+			t.Parallel()
 		_, err := NewFileAuditLogger("/nonexistent/path/audit.log", nil)
 		assert.Error(t, err)
 	})
 }
 
 func TestCompositeAuditLogger(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("logs to all loggers", func(t *testing.T) {
+			t.Parallel()
 		logger1 := NewInMemoryAuditLogger(100, nil)
 		logger2 := NewInMemoryAuditLogger(100, nil)
 
@@ -335,6 +360,7 @@ func TestCompositeAuditLogger(t *testing.T) {
 	})
 
 	t.Run("add logger", func(t *testing.T) {
+			t.Parallel()
 		composite := NewCompositeAuditLogger()
 		logger := NewInMemoryAuditLogger(100, nil)
 
@@ -349,6 +375,7 @@ func TestCompositeAuditLogger(t *testing.T) {
 	})
 
 	t.Run("query returns from first supporting logger", func(t *testing.T) {
+			t.Parallel()
 		logger := NewInMemoryAuditLogger(100, nil)
 		composite := NewCompositeAuditLogger(logger)
 
@@ -361,6 +388,7 @@ func TestCompositeAuditLogger(t *testing.T) {
 	})
 
 	t.Run("get stats returns from first supporting logger", func(t *testing.T) {
+			t.Parallel()
 		logger := NewInMemoryAuditLogger(100, nil)
 		composite := NewCompositeAuditLogger(logger)
 
@@ -373,6 +401,7 @@ func TestCompositeAuditLogger(t *testing.T) {
 	})
 
 	t.Run("query returns error when no logger supports it", func(t *testing.T) {
+			t.Parallel()
 		composite := NewCompositeAuditLogger()
 
 		_, err := composite.Query(ctx, &AuditFilter{})
@@ -380,6 +409,7 @@ func TestCompositeAuditLogger(t *testing.T) {
 	})
 
 	t.Run("get stats returns error when no logger supports it", func(t *testing.T) {
+			t.Parallel()
 		composite := NewCompositeAuditLogger()
 
 		_, err := composite.GetStats(ctx, time.Now())

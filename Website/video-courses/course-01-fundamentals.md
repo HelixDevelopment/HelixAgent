@@ -23,7 +23,7 @@ Welcome to the HelixAgent Fundamentals course. I'm excited to introduce you to H
 HelixAgent is written in Go 1.23+ and provides a unified interface for working with multiple AI providers. Instead of managing separate integrations for each AI service, HelixAgent acts as your intelligent orchestrator, combining responses from multiple models using sophisticated aggregation strategies.
 
 #### Key Points to Cover:
-- Unified interface for 7+ LLM providers
+- Unified interface for 43+ LLM providers
 - Ensemble orchestration capabilities
 - OpenAI-compatible API design
 - Written in Go for high performance
@@ -33,7 +33,7 @@ HelixAgent is written in Go 1.23+ and provides a unified interface for working w
 ```
 HELIXAGENT AT A GLANCE
 - Multi-LLM Orchestration Platform
-- 7 Supported Providers:
+- 43 Supported Providers (including):
   - Claude (Anthropic)
   - DeepSeek
   - Gemini (Google)
@@ -466,7 +466,7 @@ Narration: "Notice that the response includes additional metadata like provider_
 
 #### Narration Script:
 
-HelixAgent supports seven LLM providers out of the box. Each provider has its own strengths, and HelixAgent makes it easy to configure and use them together. Let's look at how to set up each provider.
+HelixAgent supports forty-three LLM providers out of the box. Each provider has its own strengths, and HelixAgent makes it easy to configure and use them together. Let's look at how to set up each provider.
 
 #### Provider Setup Overview:
 

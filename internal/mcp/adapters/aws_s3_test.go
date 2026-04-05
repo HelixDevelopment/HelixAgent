@@ -118,6 +118,7 @@ func (m *MockS3Client) DeleteBucket(ctx context.Context, bucket string) error {
 // Tests
 
 func TestDefaultAWSS3Config(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 
 	assert.Equal(t, "us-east-1", config.Region)
@@ -125,6 +126,7 @@ func TestDefaultAWSS3Config(t *testing.T) {
 }
 
 func TestNewAWSS3Adapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -137,6 +139,7 @@ func TestNewAWSS3Adapter(t *testing.T) {
 }
 
 func TestAWSS3Adapter_ListTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -154,6 +157,7 @@ func TestAWSS3Adapter_ListTools(t *testing.T) {
 }
 
 func TestAWSS3Adapter_ListBuckets(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -167,6 +171,7 @@ func TestAWSS3Adapter_ListBuckets(t *testing.T) {
 }
 
 func TestAWSS3Adapter_ListObjects(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -183,6 +188,7 @@ func TestAWSS3Adapter_ListObjects(t *testing.T) {
 }
 
 func TestAWSS3Adapter_GetObject(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -198,6 +204,7 @@ func TestAWSS3Adapter_GetObject(t *testing.T) {
 }
 
 func TestAWSS3Adapter_PutObject(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -215,6 +222,7 @@ func TestAWSS3Adapter_PutObject(t *testing.T) {
 }
 
 func TestAWSS3Adapter_DeleteObject(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -230,6 +238,7 @@ func TestAWSS3Adapter_DeleteObject(t *testing.T) {
 }
 
 func TestAWSS3Adapter_CopyObject(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -247,6 +256,7 @@ func TestAWSS3Adapter_CopyObject(t *testing.T) {
 }
 
 func TestAWSS3Adapter_GetObjectMetadata(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -262,6 +272,7 @@ func TestAWSS3Adapter_GetObjectMetadata(t *testing.T) {
 }
 
 func TestAWSS3Adapter_CreateBucket(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -276,6 +287,7 @@ func TestAWSS3Adapter_CreateBucket(t *testing.T) {
 }
 
 func TestAWSS3Adapter_DeleteBucket(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -290,6 +302,7 @@ func TestAWSS3Adapter_DeleteBucket(t *testing.T) {
 }
 
 func TestAWSS3Adapter_InvalidTool(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	adapter := NewAWSS3Adapter(config, client)
@@ -301,6 +314,7 @@ func TestAWSS3Adapter_InvalidTool(t *testing.T) {
 }
 
 func TestAWSS3Adapter_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	config := DefaultAWSS3Config()
 	client := NewMockS3Client()
 	client.SetError(true)
@@ -317,6 +331,7 @@ func TestAWSS3Adapter_ErrorHandling(t *testing.T) {
 // Type tests
 
 func TestS3BucketTypes(t *testing.T) {
+	t.Parallel()
 	bucket := S3Bucket{
 		Name:         "my-test-bucket",
 		CreationDate: time.Now(),
@@ -327,6 +342,7 @@ func TestS3BucketTypes(t *testing.T) {
 }
 
 func TestS3ObjectTypes(t *testing.T) {
+	t.Parallel()
 	object := S3Object{
 		Key:          "folder/document.pdf",
 		Size:         1024000,
@@ -341,6 +357,7 @@ func TestS3ObjectTypes(t *testing.T) {
 }
 
 func TestS3ObjectMetadataTypes(t *testing.T) {
+	t.Parallel()
 	metadata := S3ObjectMetadata{
 		ContentType:   "application/pdf",
 		ContentLength: 1024000,
@@ -358,6 +375,7 @@ func TestS3ObjectMetadataTypes(t *testing.T) {
 }
 
 func TestAWSS3ConfigTypes(t *testing.T) {
+	t.Parallel()
 	config := AWSS3Config{
 		Region:          "eu-west-1",
 		AccessKeyID:     "AKIAIOSFODNN7EXAMPLE",
@@ -374,6 +392,7 @@ func TestAWSS3ConfigTypes(t *testing.T) {
 }
 
 func TestS3ObjectWithPrefixFiltering(t *testing.T) {
+	t.Parallel()
 	client := NewMockS3Client()
 
 	ctx := context.Background()
@@ -387,6 +406,7 @@ func TestS3ObjectWithPrefixFiltering(t *testing.T) {
 }
 
 func TestS3ObjectWithMaxKeysLimit(t *testing.T) {
+	t.Parallel()
 	client := NewMockS3Client()
 
 	ctx := context.Background()

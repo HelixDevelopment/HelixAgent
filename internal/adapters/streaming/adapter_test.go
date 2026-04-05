@@ -16,6 +16,7 @@ import (
 )
 
 func TestDefaultSSEConfig(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultSSEConfig()
 
 	assert.NotNil(t, config)
@@ -25,6 +26,7 @@ func TestDefaultSSEConfig(t *testing.T) {
 }
 
 func TestDefaultWebSocketConfig(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultWebSocketConfig()
 
 	assert.NotNil(t, config)
@@ -35,6 +37,7 @@ func TestDefaultWebSocketConfig(t *testing.T) {
 }
 
 func TestDefaultWebhookConfig(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultWebhookConfig()
 
 	assert.NotNil(t, config)
@@ -45,6 +48,7 @@ func TestDefaultWebhookConfig(t *testing.T) {
 }
 
 func TestNewSSEBroker(t *testing.T) {
+	t.Parallel()
 	config := &genericsse.Config{
 		BufferSize:        50,
 		HeartbeatInterval: 15 * time.Second,
@@ -59,6 +63,7 @@ func TestNewSSEBroker(t *testing.T) {
 }
 
 func TestNewSSEBrokerWithDefaultConfig(t *testing.T) {
+	t.Parallel()
 	broker := adapter.NewSSEBroker(nil)
 	require.NotNil(t, broker)
 	defer broker.Close()
@@ -67,6 +72,7 @@ func TestNewSSEBrokerWithDefaultConfig(t *testing.T) {
 }
 
 func TestNewSSEEvent(t *testing.T) {
+	t.Parallel()
 	event := adapter.NewSSEEvent("test_event", []byte(`{"data":"test"}`))
 
 	assert.Equal(t, "test_event", event.Type)
@@ -75,6 +81,7 @@ func TestNewSSEEvent(t *testing.T) {
 }
 
 func TestNewSSEEventWithID(t *testing.T) {
+	t.Parallel()
 	event := adapter.NewSSEEventWithID("event-123", "test_event", []byte(`{"data":"test"}`))
 
 	assert.Equal(t, "event-123", event.ID)
@@ -83,6 +90,7 @@ func TestNewSSEEventWithID(t *testing.T) {
 }
 
 func TestNewWebSocketHub(t *testing.T) {
+	t.Parallel()
 	config := &genericws.Config{
 		ReadBufferSize:  2048,
 		WriteBufferSize: 2048,
@@ -99,6 +107,7 @@ func TestNewWebSocketHub(t *testing.T) {
 }
 
 func TestNewWebSocketHubWithDefaultConfig(t *testing.T) {
+	t.Parallel()
 	hub := adapter.NewWebSocketHub(nil)
 	require.NotNil(t, hub)
 	defer hub.Close()
@@ -107,6 +116,7 @@ func TestNewWebSocketHubWithDefaultConfig(t *testing.T) {
 }
 
 func TestNewWebhookDispatcher(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultWebhookConfig()
 	dispatcher := adapter.NewWebhookDispatcher(config)
 
@@ -118,6 +128,7 @@ func TestNewWebhookDispatcher(t *testing.T) {
 }
 
 func TestNewWebhookRegistry(t *testing.T) {
+	t.Parallel()
 	registry := adapter.NewWebhookRegistry()
 
 	require.NotNil(t, registry)
@@ -125,6 +136,7 @@ func TestNewWebhookRegistry(t *testing.T) {
 }
 
 func TestWebhookSigning(t *testing.T) {
+	t.Parallel()
 	payload := []byte(`{"event":"test","data":"hello"}`)
 	secret := "test-secret-key"
 
@@ -147,6 +159,7 @@ func TestWebhookSigning(t *testing.T) {
 }
 
 func TestSSEManagerAdapter(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultSSEConfig()
 	manager := adapter.NewSSEManagerAdapter(config)
 	require.NotNil(t, manager)
@@ -161,6 +174,7 @@ func TestSSEManagerAdapter(t *testing.T) {
 }
 
 func TestSSEManagerAdapterHTTPHandler(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultSSEConfig()
 	manager := adapter.NewSSEManagerAdapter(config)
 	require.NotNil(t, manager)
@@ -175,6 +189,7 @@ func TestSSEManagerAdapterHTTPHandler(t *testing.T) {
 }
 
 func TestWebSocketServerAdapter(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultWebSocketConfig()
 	server := adapter.NewWebSocketServerAdapter(config)
 	require.NotNil(t, server)
@@ -194,6 +209,7 @@ func TestWebSocketServerAdapter(t *testing.T) {
 }
 
 func TestWebhookDispatcherAdapter(t *testing.T) {
+	t.Parallel()
 	config := adapter.DefaultWebhookConfig()
 	dispatcherAdapter := adapter.NewWebhookDispatcherAdapter(config)
 	require.NotNil(t, dispatcherAdapter)
@@ -236,6 +252,7 @@ func TestWebhookDispatcherAdapter(t *testing.T) {
 }
 
 func TestWebhookDispatcherAdapterDispatch(t *testing.T) {
+	t.Parallel()
 	// Create a test server to receive webhooks
 	var receivedPayload []byte
 	server := httptest.NewServer(nil)
@@ -270,6 +287,7 @@ func TestWebhookDispatcherAdapterDispatch(t *testing.T) {
 }
 
 func TestTransportFactory(t *testing.T) {
+	t.Parallel()
 	factory := adapter.NewTransportFactory()
 	require.NotNil(t, factory)
 
@@ -280,6 +298,7 @@ func TestTransportFactory(t *testing.T) {
 }
 
 func TestNewGRPCConfig(t *testing.T) {
+	t.Parallel()
 	config := adapter.NewGRPCConfig()
 
 	assert.NotNil(t, config)
@@ -290,6 +309,7 @@ func TestNewGRPCConfig(t *testing.T) {
 }
 
 func TestNewGRPCHealthServer(t *testing.T) {
+	t.Parallel()
 	healthServer := adapter.NewGRPCHealthServer()
 	require.NotNil(t, healthServer)
 }

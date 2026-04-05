@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultValidationConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultValidationConfig()
 
 	if config.MaxBodySize != 10*1024*1024 {
@@ -32,6 +33,7 @@ func TestDefaultValidationConfig(t *testing.T) {
 }
 
 func TestValidationErrors_Add(t *testing.T) {
+	t.Parallel()
 	errs := &ValidationErrors{}
 
 	errs.Add("field1", "error1", nil)
@@ -47,6 +49,7 @@ func TestValidationErrors_Add(t *testing.T) {
 }
 
 func TestValidationErrors_Error(t *testing.T) {
+	t.Parallel()
 	errs := &ValidationErrors{}
 	errs.Add("temperature", "must be between 0 and 2", 3.0)
 	errs.Add("max_tokens", "must be positive", -1)
@@ -61,6 +64,7 @@ func TestValidationErrors_Error(t *testing.T) {
 }
 
 func TestValidator_BodySizeMiddleware(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := ValidationConfig{
@@ -85,6 +89,7 @@ func TestValidator_BodySizeMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body := strings.Repeat("x", tt.bodySize)
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -100,6 +105,7 @@ func TestValidator_BodySizeMiddleware(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_ValidRequest(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -130,6 +136,7 @@ func TestValidator_ValidateCompletionMiddleware_ValidRequest(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_InvalidTemperature(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -164,6 +171,7 @@ func TestValidator_ValidateCompletionMiddleware_InvalidTemperature(t *testing.T)
 }
 
 func TestValidator_ValidateCompletionMiddleware_InvalidMaxTokens(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -192,6 +200,7 @@ func TestValidator_ValidateCompletionMiddleware_InvalidMaxTokens(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_InvalidRole(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -220,6 +229,7 @@ func TestValidator_ValidateCompletionMiddleware_InvalidRole(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -241,6 +251,7 @@ func TestValidator_ValidateCompletionMiddleware_InvalidJSON(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_MissingPromptAndMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -267,6 +278,7 @@ func TestValidator_ValidateCompletionMiddleware_MissingPromptAndMessages(t *test
 }
 
 func TestValidator_ValidateCompletionMiddleware_ValidMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -296,6 +308,7 @@ func TestValidator_ValidateCompletionMiddleware_ValidMessages(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_TooManyStopSequences(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultValidationConfig()
@@ -325,6 +338,7 @@ func TestValidator_ValidateCompletionMiddleware_TooManyStopSequences(t *testing.
 }
 
 func TestRequireJSON(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -346,6 +360,7 @@ func TestRequireJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(`{"test": true}`))
 			req.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
@@ -359,6 +374,7 @@ func TestRequireJSON(t *testing.T) {
 }
 
 func TestRequireJSON_GetRequest(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -378,6 +394,7 @@ func TestRequireJSON_GetRequest(t *testing.T) {
 }
 
 func TestValidator_SanitizeInputMiddleware(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -409,6 +426,7 @@ func TestValidator_SanitizeInputMiddleware(t *testing.T) {
 }
 
 func TestNewDefaultValidator(t *testing.T) {
+	t.Parallel()
 	validator := NewDefaultValidator()
 	if validator == nil {
 		t.Fatal("Expected validator instance")
@@ -421,6 +439,7 @@ func TestNewDefaultValidator(t *testing.T) {
 }
 
 func TestValidator_GetConfig(t *testing.T) {
+	t.Parallel()
 	config := ValidationConfig{
 		MaxBodySize:     1000,
 		MaxPromptLength: 500,
@@ -437,6 +456,7 @@ func TestValidator_GetConfig(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_TopP(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -461,6 +481,7 @@ func TestValidator_ValidateCompletionMiddleware_TopP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			body := CompletionValidationRequest{
 				Prompt: "Hello",
 				TopP:   &tt.topP,
@@ -480,6 +501,7 @@ func TestValidator_ValidateCompletionMiddleware_TopP(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_MaxTokensExceedsLimit(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultValidationConfig()
@@ -510,6 +532,7 @@ func TestValidator_ValidateCompletionMiddleware_MaxTokensExceedsLimit(t *testing
 }
 
 func TestValidator_ValidateCompletionMiddleware_PromptExceedsMaxLength(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultValidationConfig()
@@ -538,6 +561,7 @@ func TestValidator_ValidateCompletionMiddleware_PromptExceedsMaxLength(t *testin
 }
 
 func TestValidator_ValidateCompletionMiddleware_TooManyMessages(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	config := DefaultValidationConfig()
@@ -572,6 +596,7 @@ func TestValidator_ValidateCompletionMiddleware_TooManyMessages(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_EmptyRole(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -600,6 +625,7 @@ func TestValidator_ValidateCompletionMiddleware_EmptyRole(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_MissingContent(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -628,6 +654,7 @@ func TestValidator_ValidateCompletionMiddleware_MissingContent(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_AssistantEmptyContentAllowed(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -657,6 +684,7 @@ func TestValidator_ValidateCompletionMiddleware_AssistantEmptyContentAllowed(t *
 }
 
 func TestValidator_ValidateCompletionMiddleware_JSONTypeError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -687,6 +715,7 @@ func TestValidator_ValidateCompletionMiddleware_JSONTypeError(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_JSONSyntaxError(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -711,6 +740,7 @@ func TestValidator_ValidateCompletionMiddleware_JSONSyntaxError(t *testing.T) {
 }
 
 func TestValidationErrors_Empty(t *testing.T) {
+	t.Parallel()
 	errs := &ValidationErrors{}
 
 	if errs.HasErrors() {
@@ -724,6 +754,7 @@ func TestValidationErrors_Empty(t *testing.T) {
 }
 
 func TestRequireContentType(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -744,6 +775,7 @@ func TestRequireContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(`{}`))
 			req.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
@@ -757,6 +789,7 @@ func TestRequireContentType(t *testing.T) {
 }
 
 func TestValidator_SanitizeInputMiddleware_PreservesValidContent(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -792,6 +825,7 @@ func TestValidator_SanitizeInputMiddleware_PreservesValidContent(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_FunctionRole(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()
@@ -821,6 +855,7 @@ func TestValidator_ValidateCompletionMiddleware_FunctionRole(t *testing.T) {
 }
 
 func TestValidator_ValidateCompletionMiddleware_ToolRole(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	validator := NewDefaultValidator()

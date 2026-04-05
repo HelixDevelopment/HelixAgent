@@ -12,11 +12,13 @@ import (
 // =============================================================================
 
 func TestNewCharacterBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 	assert.NotNil(t, buf)
 }
 
 func TestCharacterBuffer_Add(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 
 	result := buf.Add("hello")
@@ -24,6 +26,7 @@ func TestCharacterBuffer_Add(t *testing.T) {
 }
 
 func TestCharacterBuffer_Add_Empty(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 
 	result := buf.Add("")
@@ -31,6 +34,7 @@ func TestCharacterBuffer_Add_Empty(t *testing.T) {
 }
 
 func TestCharacterBuffer_Add_Unicode(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 
 	result := buf.Add("abc")
@@ -41,16 +45,19 @@ func TestCharacterBuffer_Add_Unicode(t *testing.T) {
 }
 
 func TestCharacterBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 	assert.Equal(t, "", buf.Flush())
 }
 
 func TestCharacterBuffer_Reset_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewCharacterBuffer()
 	buf.Reset() // Should not panic
 }
 
 func TestCharacterBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*CharacterBuffer)(nil)
 }
 
@@ -59,17 +66,20 @@ func TestCharacterBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewWordBuffer_DefaultDelimiter_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 	assert.NotNil(t, buf)
 	assert.Equal(t, " ", buf.delimiter)
 }
 
 func TestNewWordBuffer_CustomDelimiter_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer(",")
 	assert.Equal(t, ",", buf.delimiter)
 }
 
 func TestWordBuffer_Add_CompleteWords(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 
 	result := buf.Add("hello world ")
@@ -77,6 +87,7 @@ func TestWordBuffer_Add_CompleteWords(t *testing.T) {
 }
 
 func TestWordBuffer_Add_PartialWord(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 
 	// No delimiter at end means partial word stays in buffer
@@ -89,6 +100,7 @@ func TestWordBuffer_Add_PartialWord(t *testing.T) {
 }
 
 func TestWordBuffer_Add_CustomDelimiter(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer(",")
 
 	result := buf.Add("a,b,c,")
@@ -96,6 +108,7 @@ func TestWordBuffer_Add_CustomDelimiter(t *testing.T) {
 }
 
 func TestWordBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 	buf.Add("incomplete")
 
@@ -104,11 +117,13 @@ func TestWordBuffer_Flush(t *testing.T) {
 }
 
 func TestWordBuffer_Flush_Empty(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 	assert.Equal(t, "", buf.Flush())
 }
 
 func TestWordBuffer_Reset(t *testing.T) {
+	t.Parallel()
 	buf := NewWordBuffer("")
 	buf.Add("some text")
 	buf.Reset()
@@ -117,6 +132,7 @@ func TestWordBuffer_Reset(t *testing.T) {
 }
 
 func TestWordBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*WordBuffer)(nil)
 }
 
@@ -125,11 +141,13 @@ func TestWordBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewSentenceBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 	assert.NotNil(t, buf)
 }
 
 func TestSentenceBuffer_Add_CompleteSentence(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 
 	result := buf.Add("Hello world. ")
@@ -137,6 +155,7 @@ func TestSentenceBuffer_Add_CompleteSentence(t *testing.T) {
 }
 
 func TestSentenceBuffer_Add_MultipleSentences(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 
 	result := buf.Add("First. Second! Third? ")
@@ -147,6 +166,7 @@ func TestSentenceBuffer_Add_MultipleSentences(t *testing.T) {
 }
 
 func TestSentenceBuffer_Add_PartialSentence(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 
 	result := buf.Add("Hello world")
@@ -158,6 +178,7 @@ func TestSentenceBuffer_Add_PartialSentence(t *testing.T) {
 }
 
 func TestSentenceBuffer_Add_PeriodInMiddle(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 
 	// "3.14" has a period but not followed by space at the end
@@ -167,6 +188,7 @@ func TestSentenceBuffer_Add_PeriodInMiddle(t *testing.T) {
 }
 
 func TestSentenceBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 	buf.Add("Incomplete sentence")
 
@@ -175,6 +197,7 @@ func TestSentenceBuffer_Flush(t *testing.T) {
 }
 
 func TestSentenceBuffer_Reset(t *testing.T) {
+	t.Parallel()
 	buf := NewSentenceBuffer()
 	buf.Add("Some content")
 	buf.Reset()
@@ -183,6 +206,7 @@ func TestSentenceBuffer_Reset(t *testing.T) {
 }
 
 func TestSentenceBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*SentenceBuffer)(nil)
 }
 
@@ -191,11 +215,13 @@ func TestSentenceBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewLineBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 	assert.NotNil(t, buf)
 }
 
 func TestLineBuffer_Add_CompleteLine(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 
 	result := buf.Add("Hello\n")
@@ -203,6 +229,7 @@ func TestLineBuffer_Add_CompleteLine(t *testing.T) {
 }
 
 func TestLineBuffer_Add_MultipleLines(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 
 	result := buf.Add("Line 1\nLine 2\nLine 3\n")
@@ -213,6 +240,7 @@ func TestLineBuffer_Add_MultipleLines(t *testing.T) {
 }
 
 func TestLineBuffer_Add_PartialLine(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 
 	result := buf.Add("partial")
@@ -224,6 +252,7 @@ func TestLineBuffer_Add_PartialLine(t *testing.T) {
 }
 
 func TestLineBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 	buf.Add("no newline")
 
@@ -232,11 +261,13 @@ func TestLineBuffer_Flush(t *testing.T) {
 }
 
 func TestLineBuffer_Flush_Empty(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 	assert.Equal(t, "", buf.Flush())
 }
 
 func TestLineBuffer_Reset(t *testing.T) {
+	t.Parallel()
 	buf := NewLineBuffer()
 	buf.Add("some content")
 	buf.Reset()
@@ -245,6 +276,7 @@ func TestLineBuffer_Reset(t *testing.T) {
 }
 
 func TestLineBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*LineBuffer)(nil)
 }
 
@@ -253,11 +285,13 @@ func TestLineBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewParagraphBuffer(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 	assert.NotNil(t, buf)
 }
 
 func TestParagraphBuffer_Add_CompleteParagraph(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 
 	result := buf.Add("First paragraph.\n\n")
@@ -266,6 +300,7 @@ func TestParagraphBuffer_Add_CompleteParagraph(t *testing.T) {
 }
 
 func TestParagraphBuffer_Add_MultipleParagraphs(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 
 	result := buf.Add("Para 1.\n\nPara 2.\n\n")
@@ -275,6 +310,7 @@ func TestParagraphBuffer_Add_MultipleParagraphs(t *testing.T) {
 }
 
 func TestParagraphBuffer_Add_PartialParagraph(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 
 	result := buf.Add("No double newline yet")
@@ -286,6 +322,7 @@ func TestParagraphBuffer_Add_PartialParagraph(t *testing.T) {
 }
 
 func TestParagraphBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 	buf.Add("Incomplete paragraph")
 
@@ -294,6 +331,7 @@ func TestParagraphBuffer_Flush(t *testing.T) {
 }
 
 func TestParagraphBuffer_Reset_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewParagraphBuffer()
 	buf.Add("content")
 	buf.Reset()
@@ -302,6 +340,7 @@ func TestParagraphBuffer_Reset_Dedicated(t *testing.T) {
 }
 
 func TestParagraphBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*ParagraphBuffer)(nil)
 }
 
@@ -310,21 +349,25 @@ func TestParagraphBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewTokenBuffer_DefaultThreshold_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(0)
 	assert.Equal(t, 5, buf.threshold)
 }
 
 func TestNewTokenBuffer_NegativeThreshold(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(-1)
 	assert.Equal(t, 5, buf.threshold)
 }
 
 func TestNewTokenBuffer_CustomThreshold_Dedicated(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(10)
 	assert.Equal(t, 10, buf.threshold)
 }
 
 func TestTokenBuffer_Add_BelowThreshold(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(5)
 
 	result := buf.Add("one two")
@@ -332,6 +375,7 @@ func TestTokenBuffer_Add_BelowThreshold(t *testing.T) {
 }
 
 func TestTokenBuffer_Add_AtThreshold(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(3)
 
 	result := buf.Add("one two three")
@@ -340,6 +384,7 @@ func TestTokenBuffer_Add_AtThreshold(t *testing.T) {
 }
 
 func TestTokenBuffer_Add_AccumulateToThreshold(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(3)
 
 	result := buf.Add("one ")
@@ -354,6 +399,7 @@ func TestTokenBuffer_Add_AccumulateToThreshold(t *testing.T) {
 }
 
 func TestTokenBuffer_Flush(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(10)
 	buf.Add("partial content")
 
@@ -365,6 +411,7 @@ func TestTokenBuffer_Flush(t *testing.T) {
 }
 
 func TestTokenBuffer_Reset(t *testing.T) {
+	t.Parallel()
 	buf := NewTokenBuffer(5)
 	buf.Add("some words here")
 	buf.Reset()
@@ -374,6 +421,7 @@ func TestTokenBuffer_Reset(t *testing.T) {
 }
 
 func TestTokenBuffer_ImplementsBuffer(t *testing.T) {
+	t.Parallel()
 	var _ Buffer = (*TokenBuffer)(nil)
 }
 
@@ -382,6 +430,7 @@ func TestTokenBuffer_ImplementsBuffer(t *testing.T) {
 // =============================================================================
 
 func TestNewBuffer_Character(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeCharacter)
 	require.NotNil(t, buf)
 	_, ok := buf.(*CharacterBuffer)
@@ -389,6 +438,7 @@ func TestNewBuffer_Character(t *testing.T) {
 }
 
 func TestNewBuffer_Word(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeWord)
 	require.NotNil(t, buf)
 	_, ok := buf.(*WordBuffer)
@@ -396,6 +446,7 @@ func TestNewBuffer_Word(t *testing.T) {
 }
 
 func TestNewBuffer_Word_WithDelimiter(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeWord, ",")
 	require.NotNil(t, buf)
 	wb, ok := buf.(*WordBuffer)
@@ -404,6 +455,7 @@ func TestNewBuffer_Word_WithDelimiter(t *testing.T) {
 }
 
 func TestNewBuffer_Sentence(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeSentence)
 	require.NotNil(t, buf)
 	_, ok := buf.(*SentenceBuffer)
@@ -411,6 +463,7 @@ func TestNewBuffer_Sentence(t *testing.T) {
 }
 
 func TestNewBuffer_Line(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeLine)
 	require.NotNil(t, buf)
 	_, ok := buf.(*LineBuffer)
@@ -418,6 +471,7 @@ func TestNewBuffer_Line(t *testing.T) {
 }
 
 func TestNewBuffer_Paragraph(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeParagraph)
 	require.NotNil(t, buf)
 	_, ok := buf.(*ParagraphBuffer)
@@ -425,6 +479,7 @@ func TestNewBuffer_Paragraph(t *testing.T) {
 }
 
 func TestNewBuffer_Token(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeToken)
 	require.NotNil(t, buf)
 	tb, ok := buf.(*TokenBuffer)
@@ -433,6 +488,7 @@ func TestNewBuffer_Token(t *testing.T) {
 }
 
 func TestNewBuffer_Token_WithThreshold(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferTypeToken, 10)
 	require.NotNil(t, buf)
 	tb, ok := buf.(*TokenBuffer)
@@ -441,6 +497,7 @@ func TestNewBuffer_Token_WithThreshold(t *testing.T) {
 }
 
 func TestNewBuffer_Unknown(t *testing.T) {
+	t.Parallel()
 	buf := NewBuffer(BufferType("unknown"))
 	require.NotNil(t, buf)
 	// Should default to WordBuffer
@@ -453,6 +510,7 @@ func TestNewBuffer_Unknown(t *testing.T) {
 // =============================================================================
 
 func TestBufferType_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, BufferType("character"), BufferTypeCharacter)
 	assert.Equal(t, BufferType("word"), BufferTypeWord)
 	assert.Equal(t, BufferType("sentence"), BufferTypeSentence)
@@ -466,6 +524,7 @@ func TestBufferType_Constants(t *testing.T) {
 // =============================================================================
 
 func TestCountTokens(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -480,6 +539,7 @@ func TestCountTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			assert.Equal(t, tt.expected, countTokens(tt.input))
 		})
 	}

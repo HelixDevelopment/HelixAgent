@@ -90,6 +90,7 @@ func TestIntegration_DetectRuntime_ActualContainerRuntime(
 }
 
 func TestIntegration_RuntimeAvailable_RealSystem(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -132,6 +133,7 @@ func TestIntegration_HealthCheckHTTP_KnownEndpoint(
 }
 
 func TestIntegration_HealthCheckHTTP_NonOKStatus(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -152,6 +154,7 @@ func TestIntegration_HealthCheckHTTP_NonOKStatus(t *testing.T) {
 }
 
 func TestIntegration_HealthCheckHTTP_Unreachable(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -168,6 +171,7 @@ func TestIntegration_HealthCheckHTTP_Unreachable(t *testing.T) {
 }
 
 func TestIntegration_HealthCheckTCP_KnownPort(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -201,6 +205,7 @@ func TestIntegration_HealthCheckTCP_KnownPort(t *testing.T) {
 }
 
 func TestIntegration_HealthCheckTCP_ClosedPort(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -247,6 +252,7 @@ func TestIntegration_ComposeStatus_NonExistentFile(
 }
 
 func TestIntegration_Shutdown_FreshAdapter(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}

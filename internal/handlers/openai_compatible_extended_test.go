@@ -20,6 +20,7 @@ func init() {
 
 // TestNewUnifiedHandler_Extended tests handler creation with various configs
 func TestNewUnifiedHandler_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	assert.NotNil(t, handler)
@@ -28,6 +29,7 @@ func TestNewUnifiedHandler_Extended(t *testing.T) {
 
 // TestUnifiedHandler_SetDebateTeamConfig_Extended tests setting debate team config
 func TestUnifiedHandler_SetDebateTeamConfig_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	// Create a minimal config for testing
@@ -41,6 +43,7 @@ func TestUnifiedHandler_SetDebateTeamConfig_Extended(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_InvalidJSON_Extended tests invalid JSON
 func TestUnifiedHandler_ChatCompletions_InvalidJSON_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	w := httptest.NewRecorder()
@@ -55,6 +58,7 @@ func TestUnifiedHandler_ChatCompletions_InvalidJSON_Extended(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_EmptyMessages_Extended tests empty messages array
 func TestUnifiedHandler_ChatCompletions_EmptyMessages_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	reqBody := map[string]interface{}{
@@ -76,6 +80,7 @@ func TestUnifiedHandler_ChatCompletions_EmptyMessages_Extended(t *testing.T) {
 
 // TestUnifiedHandler_Completions_InvalidJSON_Extended tests invalid JSON for completions
 func TestUnifiedHandler_Completions_InvalidJSON_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	w := httptest.NewRecorder()
@@ -90,6 +95,7 @@ func TestUnifiedHandler_Completions_InvalidJSON_Extended(t *testing.T) {
 
 // TestUnifiedHandler_Completions_EmptyPrompt_Extended tests empty prompt
 func TestUnifiedHandler_Completions_EmptyPrompt_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	reqBody := map[string]interface{}{
@@ -111,6 +117,7 @@ func TestUnifiedHandler_Completions_EmptyPrompt_Extended(t *testing.T) {
 
 // TestUnifiedHandler_Models_Extended tests models endpoint
 func TestUnifiedHandler_Models_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	w := httptest.NewRecorder()
@@ -129,6 +136,7 @@ func TestUnifiedHandler_Models_Extended(t *testing.T) {
 
 // TestUnifiedHandler_ChatCompletions_WithAllParameters_Extended tests with all params
 func TestUnifiedHandler_ChatCompletions_WithAllParameters_Extended(t *testing.T) {
+	t.Parallel()
 	handler := NewUnifiedHandler(nil, nil)
 
 	reqBody := map[string]interface{}{
@@ -160,6 +168,7 @@ func TestUnifiedHandler_ChatCompletions_WithAllParameters_Extended(t *testing.T)
 
 // TestExtractSymbolName_Extended tests symbol name extraction with edge cases
 func TestExtractSymbolName_Extended(t *testing.T) {
+	t.Parallel()
 	// Test the helper function behavior with various inputs
 	tests := []struct {
 		input    string
@@ -173,6 +182,7 @@ func TestExtractSymbolName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := extractSymbolName(tt.input)
 			if tt.expected != "" && tt.expected != "   " {
 				assert.NotEmpty(t, result)
@@ -183,6 +193,7 @@ func TestExtractSymbolName_Extended(t *testing.T) {
 
 // TestConvertXMLCodeToMarkdown_Extended tests XML to markdown conversion
 func TestConvertXMLCodeToMarkdown_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -195,6 +206,7 @@ func TestConvertXMLCodeToMarkdown_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := convertXMLCodeToMarkdown(tt.input)
 			if tt.expected != "" {
 				assert.Contains(t, result, tt.expected)
@@ -205,6 +217,7 @@ func TestConvertXMLCodeToMarkdown_Extended(t *testing.T) {
 
 // TestStripUnparsedToolTags_Extended tests stripping unparsed tool tags
 func TestStripUnparsedToolTags_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -217,6 +230,7 @@ func TestStripUnparsedToolTags_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+				t.Parallel()
 			result := stripUnparsedToolTags(tt.input)
 			if tt.expected == "" {
 				assert.Empty(t, result)
@@ -229,6 +243,7 @@ func TestStripUnparsedToolTags_Extended(t *testing.T) {
 
 // TestGenerateAgentsContent tests AGENTS.md content generation
 func TestGenerateAgentsContent(t *testing.T) {
+	t.Parallel()
 	result := generateAgentsContent("some context")
 	assert.Contains(t, result, "AGENTS.md")
 	assert.Contains(t, result, "AI coding agents")
@@ -237,6 +252,7 @@ func TestGenerateAgentsContent(t *testing.T) {
 
 // TestGenerateReadmeContent tests README.md content generation
 func TestGenerateReadmeContent(t *testing.T) {
+	t.Parallel()
 	result := generateReadmeContent("some context")
 	assert.Contains(t, result, "README")
 	assert.Contains(t, result, "Installation")
@@ -245,6 +261,7 @@ func TestGenerateReadmeContent(t *testing.T) {
 
 // TestGenerateTestingPlanContent tests testing plan content generation
 func TestGenerateTestingPlanContent(t *testing.T) {
+	t.Parallel()
 	result := generateTestingPlanContent("some context")
 	assert.Contains(t, result, "Testing Plan")
 	assert.Contains(t, result, "Unit Tests")
@@ -254,6 +271,7 @@ func TestGenerateTestingPlanContent(t *testing.T) {
 
 // TestGenerateChangelogContent tests changelog content generation
 func TestGenerateChangelogContent(t *testing.T) {
+	t.Parallel()
 	result := generateChangelogContent("some context")
 	assert.Contains(t, result, "Changelog")
 	assert.Contains(t, result, "Unreleased")
@@ -263,6 +281,7 @@ func TestGenerateChangelogContent(t *testing.T) {
 
 // TestExtractContentForFile tests file content extraction
 func TestExtractContentForFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		context  string
@@ -309,6 +328,7 @@ func TestExtractContentForFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractContentForFile(tt.context, tt.fileName)
 			assert.Contains(t, result, tt.expected)
 		})
@@ -317,6 +337,7 @@ func TestExtractContentForFile(t *testing.T) {
 
 // TestExtractToolArguments_Extended tests tool argument extraction
 func TestExtractToolArguments_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		toolName string
@@ -345,6 +366,7 @@ func TestExtractToolArguments_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractToolArguments(tt.toolName, tt.content)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -355,6 +377,7 @@ func TestExtractToolArguments_Extended(t *testing.T) {
 
 // TestCleanSynthesisForFile_Extended tests synthesis cleaning for files
 func TestCleanSynthesisForFile_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -374,6 +397,7 @@ func TestCleanSynthesisForFile_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := cleanSynthesisForFile(tt.input)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -384,6 +408,7 @@ func TestCleanSynthesisForFile_Extended(t *testing.T) {
 
 // TestGetParam_Extended tests the getParam helper function
 func TestGetParam_Extended(t *testing.T) {
+	t.Parallel()
 	params := map[string]string{
 		"file_path": "/test/path",
 		"content":   "test content",
@@ -419,6 +444,7 @@ func TestGetParam_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := getParam(params, tt.keys...)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -427,6 +453,7 @@ func TestGetParam_Extended(t *testing.T) {
 
 // TestContainsAny_Extended tests the containsAny helper function
 func TestContainsAny_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		text     string
@@ -461,6 +488,7 @@ func TestContainsAny_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := containsAny(tt.text, tt.patterns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -469,6 +497,7 @@ func TestContainsAny_Extended(t *testing.T) {
 
 // TestGenerateToolCallID_Extended tests the generateToolCallID helper function
 func TestGenerateToolCallID_Extended(t *testing.T) {
+	t.Parallel()
 	ids := make(map[string]bool)
 	for i := 0; i < 10; i++ {
 		id := generateToolCallID()
@@ -482,6 +511,7 @@ func TestGenerateToolCallID_Extended(t *testing.T) {
 
 // TestEscapeJSONString_Extended tests the escapeJSONString helper function
 func TestEscapeJSONString_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -506,6 +536,7 @@ func TestEscapeJSONString_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := escapeJSONString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -514,6 +545,7 @@ func TestEscapeJSONString_Extended(t *testing.T) {
 
 // TestSanitizeDisplayContent_Extended tests the sanitizeDisplayContent helper function
 func TestSanitizeDisplayContent_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -538,6 +570,7 @@ func TestSanitizeDisplayContent_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := sanitizeDisplayContent(tt.input)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -548,6 +581,7 @@ func TestSanitizeDisplayContent_Extended(t *testing.T) {
 
 // TestExtractFilePath_Extended tests the extractFilePath helper function
 func TestExtractFilePath_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -572,6 +606,7 @@ func TestExtractFilePath_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result := extractFilePath(tt.input)
 			if tt.expected != "" {
 				assert.Contains(t, result, tt.expected)
@@ -582,6 +617,7 @@ func TestExtractFilePath_Extended(t *testing.T) {
 
 // TestParseEmbeddedFunctionCalls_Extended tests parsing embedded function calls
 func TestParseEmbeddedFunctionCalls_Extended(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		input       string
@@ -601,6 +637,7 @@ func TestParseEmbeddedFunctionCalls_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			calls := parseEmbeddedFunctionCalls(tt.input)
 			if tt.expectCalls {
 				assert.NotEmpty(t, calls)
@@ -613,6 +650,7 @@ func TestParseEmbeddedFunctionCalls_Extended(t *testing.T) {
 
 // TestGenerateAgentsMDContent_Extended tests AGENTS.md content generation
 func TestGenerateAgentsMDContent_Extended(t *testing.T) {
+	t.Parallel()
 	result := generateAgentsMDContent("synthesis content", "test topic")
 	assert.NotEmpty(t, result)
 	assert.Contains(t, result, "AGENTS")

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	h := New()
 
 	assert.NotNil(t, h)
@@ -25,6 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestHoneycomb_Initialize(t *testing.T) {
+	t.Parallel()
 	h := New()
 	ctx := context.Background()
 
@@ -42,6 +44,7 @@ func TestHoneycomb_Initialize(t *testing.T) {
 }
 
 func TestHoneycomb_Execute(t *testing.T) {
+	t.Parallel()
 	h := New()
 	ctx := context.Background()
 
@@ -152,6 +155,7 @@ func TestHoneycomb_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := h.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -167,6 +171,7 @@ func TestHoneycomb_Execute(t *testing.T) {
 }
 
 func TestHoneycomb_IsAvailable(t *testing.T) {
+	t.Parallel()
 	h := New()
 	assert.False(t, h.IsAvailable())
 
@@ -175,6 +180,7 @@ func TestHoneycomb_IsAvailable(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	t.Parallel()
 	config := &Config{
 		APIKey:  "test-key",
 		Dataset: "my-dataset",

@@ -14,6 +14,7 @@ import (
 
 // TestQwenACPProvider_DefaultConfig tests default configuration
 func TestQwenACPProvider_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultQwenACPConfig()
 
 	assert.Equal(t, "qwen-turbo", config.Model)
@@ -24,6 +25,7 @@ func TestQwenACPProvider_DefaultConfig(t *testing.T) {
 
 // TestQwenACPProvider_NewProvider tests provider creation
 func TestQwenACPProvider_NewProvider(t *testing.T) {
+	t.Parallel()
 	config := QwenACPConfig{
 		Model:     "qwen-max",
 		Timeout:   60 * time.Second,
@@ -43,6 +45,7 @@ func TestQwenACPProvider_NewProvider(t *testing.T) {
 
 // TestQwenACPProvider_NewProviderWithModel tests model-specific creation
 func TestQwenACPProvider_NewProviderWithModel(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-turbo")
 
 	assert.NotNil(t, provider)
@@ -51,18 +54,21 @@ func TestQwenACPProvider_NewProviderWithModel(t *testing.T) {
 
 // TestQwenACPProvider_GetName tests provider name
 func TestQwenACPProvider_GetName(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen-acp", provider.GetName())
 }
 
 // TestQwenACPProvider_GetProviderType tests provider type
 func TestQwenACPProvider_GetProviderType(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen", provider.GetProviderType())
 }
 
 // TestQwenACPProvider_GetCapabilities tests capabilities
 func TestQwenACPProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 	caps := provider.GetCapabilities()
 
@@ -81,6 +87,7 @@ func TestQwenACPProvider_GetCapabilities(t *testing.T) {
 
 // TestQwenACPProvider_SetModel tests model setting
 func TestQwenACPProvider_SetModel(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 	assert.Equal(t, "qwen-plus", provider.GetCurrentModel())
 
@@ -90,6 +97,7 @@ func TestQwenACPProvider_SetModel(t *testing.T) {
 
 // TestQwenACPProvider_IsAvailable tests availability check
 func TestQwenACPProvider_IsAvailable(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 
 	available := provider.IsAvailable()
@@ -103,6 +111,7 @@ func TestQwenACPProvider_IsAvailable(t *testing.T) {
 
 // TestQwenACPProvider_ValidateConfig tests config validation
 func TestQwenACPProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	provider := NewQwenACPProviderWithModel("qwen-plus")
 
 	valid, errs := provider.ValidateConfig(nil)
@@ -119,6 +128,7 @@ func TestQwenACPProvider_ValidateConfig(t *testing.T) {
 
 // TestIsQwenACPAvailable tests the standalone availability function
 func TestIsQwenACPAvailable(t *testing.T) {
+	t.Parallel()
 	available := IsQwenACPAvailable()
 	t.Logf("Qwen ACP available (standalone): %v", available)
 
@@ -130,6 +140,7 @@ func TestIsQwenACPAvailable(t *testing.T) {
 
 // TestCanUseQwenACP tests the full ACP usability check
 func TestCanUseQwenACP(t *testing.T) {
+	t.Parallel()
 	canUse := CanUseQwenACP()
 	t.Logf("Can use Qwen ACP: %v", canUse)
 
@@ -142,6 +153,7 @@ func TestCanUseQwenACP(t *testing.T) {
 // TestQwenACPProvider_Complete_NoPrompt tests the prompt validation logic
 // This test verifies that an empty prompt returns an error
 func TestQwenACPProvider_Complete_NoPrompt(t *testing.T) {
+	t.Parallel()
 	// Create a provider with start error set (simulates ACP not available)
 	provider := &QwenACPProvider{
 		model:       "qwen-plus",
@@ -171,6 +183,7 @@ func TestQwenACPProvider_Complete_NoPrompt(t *testing.T) {
 
 // TestQwenACPProvider_Complete_NotStarted tests error when ACP cannot start
 func TestQwenACPProvider_Complete_NotStarted(t *testing.T) {
+	t.Parallel()
 	// This test checks that a provider that can't start returns an error
 	provider := &QwenACPProvider{
 		model:       "qwen-plus",
@@ -199,6 +212,7 @@ func TestQwenACPProvider_Complete_NotStarted(t *testing.T) {
 
 // TestQwenACPProvider_DefaultConfigValues tests default config values with zero initialization
 func TestQwenACPProvider_DefaultConfigValues(t *testing.T) {
+	t.Parallel()
 	// Test that zero values get proper defaults
 	config := QwenACPConfig{
 		Model: "qwen-turbo",
@@ -214,6 +228,7 @@ func TestQwenACPProvider_DefaultConfigValues(t *testing.T) {
 
 // TestQwenACPProvider_ACPMessageTypes tests ACP message type structures
 func TestQwenACPProvider_ACPMessageTypes(t *testing.T) {
+	t.Parallel()
 	// Test acpRequest serialization
 	req := acpRequest{
 		JSONRPC: "2.0",
@@ -244,6 +259,7 @@ func TestQwenACPProvider_ACPMessageTypes(t *testing.T) {
 
 // TestQwenACPProvider_PromptRequestSerialization tests prompt request structure
 func TestQwenACPProvider_PromptRequestSerialization(t *testing.T) {
+	t.Parallel()
 	req := promptRequest{
 		SessionID: "test-session-123",
 		Prompt: []contentBlock{
@@ -260,6 +276,7 @@ func TestQwenACPProvider_PromptRequestSerialization(t *testing.T) {
 
 // TestQwenACPProvider_PromptResponseDeserialization tests prompt response parsing
 func TestQwenACPProvider_PromptResponseDeserialization(t *testing.T) {
+	t.Parallel()
 	responseJSON := `{
 		"stopReason": "stop",
 		"result": [
@@ -278,6 +295,7 @@ func TestQwenACPProvider_PromptResponseDeserialization(t *testing.T) {
 
 // TestQwenACPProvider_InitializeRequest tests initialize request structure
 func TestQwenACPProvider_InitializeRequest(t *testing.T) {
+	t.Parallel()
 	req := initializeRequest{
 		ClientCapabilities: clientCapabilities{
 			FileSystem: true,
@@ -291,6 +309,7 @@ func TestQwenACPProvider_InitializeRequest(t *testing.T) {
 
 // TestQwenACPProvider_InitializeResponse tests initialize response parsing
 func TestQwenACPProvider_InitializeResponse(t *testing.T) {
+	t.Parallel()
 	responseJSON := `{
 		"protocolVersion": 1,
 		"agentInfo": {
@@ -325,6 +344,7 @@ func TestQwenACPProvider_InitializeResponse(t *testing.T) {
 
 // TestQwenACPProvider_SessionResponse tests session response parsing
 func TestQwenACPProvider_SessionResponse(t *testing.T) {
+	t.Parallel()
 	responseJSON := `{"sessionId": "sess-12345-abcde"}`
 
 	var resp newSessionResponse
@@ -335,6 +355,7 @@ func TestQwenACPProvider_SessionResponse(t *testing.T) {
 
 // TestQwenACPProvider_ErrorResponse tests error response handling
 func TestQwenACPProvider_ErrorResponse(t *testing.T) {
+	t.Parallel()
 	responseJSON := `{
 		"jsonrpc": "2.0",
 		"id": 1,
@@ -354,6 +375,7 @@ func TestQwenACPProvider_ErrorResponse(t *testing.T) {
 
 // TestQwenACPProvider_NotificationHandling tests notification message structure
 func TestQwenACPProvider_NotificationHandling(t *testing.T) {
+	t.Parallel()
 	notificationJSON := `{
 		"jsonrpc": "2.0",
 		"method": "session/update",
@@ -371,6 +393,7 @@ func TestQwenACPProvider_NotificationHandling(t *testing.T) {
 
 // TestQwenACPProvider_Stop tests stop functionality
 func TestQwenACPProvider_Stop(t *testing.T) {
+	t.Parallel()
 	provider := &QwenACPProvider{
 		model:     "qwen-plus",
 		isRunning: true,
@@ -388,6 +411,7 @@ func TestQwenACPProvider_Stop(t *testing.T) {
 
 // TestQwenACPProvider_MultipleContentBlocks tests response with multiple content blocks
 func TestQwenACPProvider_MultipleContentBlocks(t *testing.T) {
+	t.Parallel()
 	responseJSON := `{
 		"stopReason": "stop",
 		"result": [
@@ -414,6 +438,7 @@ func TestQwenACPProvider_MultipleContentBlocks(t *testing.T) {
 
 // TestQwenACPProvider_HealthCheck_Unavailable tests health check when not available
 func TestQwenACPProvider_HealthCheck_Unavailable(t *testing.T) {
+	t.Parallel()
 	if IsQwenCodeInstalled() {
 		t.Skip("Skipping - Qwen CLI is installed")
 	}
@@ -427,6 +452,7 @@ func TestQwenACPProvider_HealthCheck_Unavailable(t *testing.T) {
 
 // Integration test - only runs if Qwen CLI is installed and authenticated
 func TestQwenACPProvider_Integration_Complete(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -463,6 +489,7 @@ func TestQwenACPProvider_Integration_Complete(t *testing.T) {
 
 // Integration test for health check
 func TestQwenACPProvider_Integration_HealthCheck(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -490,6 +517,7 @@ func TestQwenACPProvider_Integration_HealthCheck(t *testing.T) {
 
 // TestQwenACPProvider_CompleteStream tests streaming completion
 func TestQwenACPProvider_CompleteStream(t *testing.T) {
+	t.Parallel()
 	if !IsQwenCodeInstalled() {
 		t.Skip("Qwen Code CLI not installed")
 	}
@@ -527,5 +555,6 @@ func TestQwenACPProvider_CompleteStream(t *testing.T) {
 
 // TestQwenACPProvider_Constants tests ACP protocol constants
 func TestQwenACPProvider_Constants(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1, acpProtocolVersion, "ACP protocol version should be 1")
 }

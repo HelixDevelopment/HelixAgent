@@ -19,6 +19,7 @@ import (
 // =====================================================
 
 func TestDefaultOAuthAdapterConfig_Comprehensive(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultOAuthAdapterConfig()
 
 	require.NotNil(t, cfg)
@@ -34,6 +35,7 @@ func TestDefaultOAuthAdapterConfig_Comprehensive(t *testing.T) {
 }
 
 func TestNewOAuthAdapter_Comprehensive(t *testing.T) {
+	t.Parallel()
 	t.Run("with nil verifier and logger", func(t *testing.T) {
 		adapter := NewOAuthAdapter(nil, nil)
 
@@ -45,6 +47,7 @@ func TestNewOAuthAdapter_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with provided verifier", func(t *testing.T) {
+			t.Parallel()
 		verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 		logger := logrus.New()
 		logger.SetLevel(logrus.WarnLevel)
@@ -58,6 +61,7 @@ func TestNewOAuthAdapter_Comprehensive(t *testing.T) {
 }
 
 func TestNewOAuthAdapterWithConfig_Comprehensive(t *testing.T) {
+	t.Parallel()
 	t.Run("with custom config", func(t *testing.T) {
 		customConfig := &OAuthAdapterConfig{
 			RefreshThresholdMins:       5,
@@ -81,6 +85,7 @@ func TestNewOAuthAdapterWithConfig_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with nil config uses default", func(t *testing.T) {
+			t.Parallel()
 		adapter := NewOAuthAdapterWithConfig(nil, nil, nil)
 
 		require.NotNil(t, adapter)
@@ -90,6 +95,7 @@ func TestNewOAuthAdapterWithConfig_Comprehensive(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetClaudeToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 	testExpiry := time.Now().Add(time.Hour)
 
@@ -106,6 +112,7 @@ func TestOAuthAdapter_GetClaudeToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_GetQwenToken(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 	testExpiry := time.Now().Add(time.Hour)
 
@@ -122,14 +129,17 @@ func TestOAuthAdapter_GetQwenToken(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("no token", func(t *testing.T) {
+			t.Parallel()
 		valid := adapter.IsClaudeTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -140,6 +150,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(-time.Hour)
@@ -150,6 +161,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	})
 
 	t.Run("empty token with future expiry", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = ""
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -161,14 +173,17 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 }
 
 func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("no token", func(t *testing.T) {
+			t.Parallel()
 		valid := adapter.IsQwenTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(time.Hour)
@@ -179,6 +194,7 @@ func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
+			t.Parallel()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(-time.Hour)
@@ -190,6 +206,7 @@ func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 }
 
 func TestOAuthAdapter_VerifyClaudeOAuth(t *testing.T) {
+	t.Parallel()
 	// Create verification service for the adapter
 	verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 	verifierSvc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -218,6 +235,7 @@ func TestOAuthAdapter_VerifyClaudeOAuth(t *testing.T) {
 }
 
 func TestOAuthAdapter_VerifyQwenOAuth(t *testing.T) {
+	t.Parallel()
 	// Create verification service for the adapter
 	verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 	verifierSvc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
@@ -246,6 +264,7 @@ func TestOAuthAdapter_VerifyQwenOAuth(t *testing.T) {
 }
 
 func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
+	t.Parallel()
 	t.Run("token not near expiry", func(t *testing.T) {
 		adapter := NewOAuthAdapter(nil, nil)
 
@@ -263,6 +282,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
 	})
 
 	t.Run("token near expiry", func(t *testing.T) {
+			t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		// Set token with near expiry
@@ -280,6 +300,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
 	})
 
 	t.Run("unknown provider type", func(t *testing.T) {
+			t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		ctx := context.Background()
@@ -291,6 +312,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
 }
 
 func TestOAuthAdapter_RefreshTokenIfNeeded_Qwen(t *testing.T) {
+	t.Parallel()
 	t.Run("token not near expiry", func(t *testing.T) {
 		adapter := NewOAuthAdapter(nil, nil)
 
@@ -308,6 +330,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Qwen(t *testing.T) {
 	})
 
 	t.Run("token near expiry with credentials", func(t *testing.T) {
+			t.Parallel()
 		// Check if Qwen credentials exist before running test
 		credReader := oauth_credentials.NewOAuthCredentialReader()
 		_, err := credReader.ReadQwenCredentials()
@@ -338,6 +361,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Qwen(t *testing.T) {
 }
 
 func TestOAuthAdapter_StartBackgroundRefresh(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	// Set tokens with future expiry to avoid refresh attempts
@@ -361,6 +385,7 @@ func TestOAuthAdapter_StartBackgroundRefresh(t *testing.T) {
 }
 
 func TestOAuthAdapter_ConcurrentAccess_Comprehensive(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	done := make(chan bool, 20)
@@ -387,6 +412,7 @@ func TestOAuthAdapter_ConcurrentAccess_Comprehensive(t *testing.T) {
 }
 
 func TestOAuthAdapterConfig_Fields_Comprehensive(t *testing.T) {
+	t.Parallel()
 	cfg := &OAuthAdapterConfig{
 		RefreshThresholdMins:       15,
 		TrustOnVerificationFailure: true,
@@ -409,9 +435,11 @@ func TestOAuthAdapterConfig_Fields_Comprehensive(t *testing.T) {
 }
 
 func TestOAuthAdapter_TokenState(t *testing.T) {
+	t.Parallel()
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("initial state", func(t *testing.T) {
+			t.Parallel()
 		token, expiry := adapter.GetClaudeToken()
 		assert.Empty(t, token)
 		assert.True(t, expiry.IsZero())
@@ -422,6 +450,7 @@ func TestOAuthAdapter_TokenState(t *testing.T) {
 	})
 
 	t.Run("after setting tokens", func(t *testing.T) {
+			t.Parallel()
 		now := time.Now()
 		claudeExpiry := now.Add(time.Hour)
 		qwenExpiry := now.Add(2 * time.Hour)
@@ -444,6 +473,7 @@ func TestOAuthAdapter_TokenState(t *testing.T) {
 }
 
 func TestOAuthAdapter_WithVerificationService(t *testing.T) {
+	t.Parallel()
 	verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 	verifierSvc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 		return "Yes, I can see your code", nil
@@ -456,6 +486,7 @@ func TestOAuthAdapter_WithVerificationService(t *testing.T) {
 }
 
 func TestOAuthAdapter_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("refresh threshold exactly at boundary", func(t *testing.T) {
 		adapter := NewOAuthAdapter(nil, nil)
 		adapter.config.RefreshThresholdMins = 10
@@ -475,6 +506,7 @@ func TestOAuthAdapter_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("token expiry in past", func(t *testing.T) {
+			t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		adapter.mu.Lock()
@@ -487,6 +519,7 @@ func TestOAuthAdapter_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("zero expiry time", func(t *testing.T) {
+			t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		adapter.mu.Lock()

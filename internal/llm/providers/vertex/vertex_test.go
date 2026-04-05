@@ -7,6 +7,7 @@ import (
 )
 
 func TestProvider_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	cfg := Config{
 		ProjectID: "test-project",
 		Location:  "us-central1",
@@ -19,6 +20,7 @@ func TestProvider_GetCapabilities(t *testing.T) {
 }
 
 func TestProvider_ValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		config    Config
@@ -79,6 +81,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			p := NewProvider(tt.config)
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -88,6 +91,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 }
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel()
 	cfg := Config{
 		ProjectID: "test-project",
 		Location:  "us-central1",
@@ -107,6 +111,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider_HealthCheck(t *testing.T) {
+	t.Parallel()
 	cfg := Config{
 		ProjectID: "test-project",
 		Location:  "us-central1",

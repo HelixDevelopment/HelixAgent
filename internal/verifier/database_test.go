@@ -6,6 +6,7 @@ import (
 )
 
 func TestNewDatabaseBridgeWithPool_NilPool(t *testing.T) {
+	t.Parallel()
 	bridge := NewDatabaseBridgeWithPool(nil)
 	if bridge == nil {
 		t.Fatal("NewDatabaseBridgeWithPool returned nil")
@@ -16,6 +17,7 @@ func TestNewDatabaseBridgeWithPool_NilPool(t *testing.T) {
 }
 
 func TestDatabaseBridge_Close_NilPool(t *testing.T) {
+	t.Parallel()
 	bridge := NewDatabaseBridgeWithPool(nil)
 
 	// Should not panic and return nil
@@ -26,6 +28,7 @@ func TestDatabaseBridge_Close_NilPool(t *testing.T) {
 }
 
 func TestDatabaseBridge_GetPool_NilPool(t *testing.T) {
+	t.Parallel()
 	bridge := NewDatabaseBridgeWithPool(nil)
 
 	pool := bridge.GetPool()
@@ -35,6 +38,7 @@ func TestDatabaseBridge_GetPool_NilPool(t *testing.T) {
 }
 
 func TestVerificationResult_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	result := &VerificationResult{
 		ID:                     123,
@@ -85,6 +89,7 @@ func TestVerificationResult_Fields(t *testing.T) {
 }
 
 func TestVerificationScore_Fields(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	score := &VerificationScore{
 		ID:              456,
@@ -122,6 +127,7 @@ func TestVerificationScore_Fields(t *testing.T) {
 }
 
 func TestVerificationResult_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var result VerificationResult
 
 	if result.ID != 0 {
@@ -139,6 +145,7 @@ func TestVerificationResult_ZeroValue(t *testing.T) {
 }
 
 func TestVerificationScore_ZeroValue(t *testing.T) {
+	t.Parallel()
 	var score VerificationScore
 
 	if score.ID != 0 {
@@ -153,6 +160,7 @@ func TestVerificationScore_ZeroValue(t *testing.T) {
 }
 
 func TestPostgresConfig_Fields(t *testing.T) {
+	t.Parallel()
 	cfg := &PostgresConfig{
 		Host:     "localhost",
 		Port:     5432,
@@ -183,6 +191,7 @@ func TestPostgresConfig_Fields(t *testing.T) {
 }
 
 func TestDatabaseBridge_Methods_Exist(t *testing.T) {
+	t.Parallel()
 	bridge := NewDatabaseBridgeWithPool(nil)
 
 	// Verify all expected methods exist (compile-time check)
@@ -192,6 +201,7 @@ func TestDatabaseBridge_Methods_Exist(t *testing.T) {
 }
 
 func TestVerificationResult_Capabilities(t *testing.T) {
+	t.Parallel()
 	result := &VerificationResult{
 		SupportsCodeGeneration: true,
 		SupportsCodeCompletion: true,
@@ -218,6 +228,7 @@ func TestVerificationResult_Capabilities(t *testing.T) {
 }
 
 func TestVerificationResult_Scores(t *testing.T) {
+	t.Parallel()
 	result := &VerificationResult{
 		OverallScore:          90.0,
 		CodeCapabilityScore:   85.0,
@@ -237,6 +248,7 @@ func TestVerificationResult_Scores(t *testing.T) {
 }
 
 func TestVerificationResult_LatencyMetrics(t *testing.T) {
+	t.Parallel()
 	result := &VerificationResult{
 		AvgLatencyMs:  100,
 		P95LatencyMs:  250,

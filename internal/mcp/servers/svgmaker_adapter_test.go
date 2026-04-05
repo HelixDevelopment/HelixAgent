@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewSVGMakerAdapter(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, nil)
 
@@ -21,6 +22,7 @@ func TestNewSVGMakerAdapter(t *testing.T) {
 }
 
 func TestDefaultSVGMakerAdapterConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 
 	assert.Equal(t, 800, config.DefaultWidth)
@@ -33,6 +35,7 @@ func TestDefaultSVGMakerAdapterConfig(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_Initialize(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -42,6 +45,7 @@ func TestSVGMakerAdapter_Initialize(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_Health(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -59,6 +63,7 @@ func TestSVGMakerAdapter_Health(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -95,6 +100,7 @@ func TestSVGMakerAdapter_CreateSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG_DefaultDimensions(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -115,6 +121,7 @@ func TestSVGMakerAdapter_CreateSVG_DefaultDimensions(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG_MaxDimensions(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -132,6 +139,7 @@ func TestSVGMakerAdapter_CreateSVG_MaxDimensions(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG_AllElementTypes(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -173,6 +181,7 @@ func TestSVGMakerAdapter_CreateSVG_AllElementTypes(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG_WithDefs(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -216,6 +225,7 @@ func TestSVGMakerAdapter_CreateSVG_WithDefs(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateRectangle(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -235,6 +245,7 @@ func TestSVGMakerAdapter_CreateRectangle(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateCircle(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -252,6 +263,7 @@ func TestSVGMakerAdapter_CreateCircle(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateLine(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -269,6 +281,7 @@ func TestSVGMakerAdapter_CreateLine(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateText(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -285,6 +298,7 @@ func TestSVGMakerAdapter_CreateText(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreatePath(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -299,6 +313,7 @@ func TestSVGMakerAdapter_CreatePath(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateBarChart(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -323,6 +338,7 @@ func TestSVGMakerAdapter_CreateBarChart(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateBarChart_EmptyData(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -337,6 +353,7 @@ func TestSVGMakerAdapter_CreateBarChart_EmptyData(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreatePieChart(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -362,6 +379,7 @@ func TestSVGMakerAdapter_CreatePieChart(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ValidateSVG(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -388,6 +406,7 @@ func TestSVGMakerAdapter_ValidateSVG(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_GetMCPTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -411,6 +430,7 @@ func TestSVGMakerAdapter_GetMCPTools(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_Rectangle(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -435,6 +455,7 @@ func TestSVGMakerAdapter_ExecuteTool_Rectangle(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_BarChart(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -458,6 +479,7 @@ func TestSVGMakerAdapter_ExecuteTool_BarChart(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_Validate(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -475,6 +497,7 @@ func TestSVGMakerAdapter_ExecuteTool_Validate(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_Unknown(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -487,6 +510,7 @@ func TestSVGMakerAdapter_ExecuteTool_Unknown(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -496,6 +520,7 @@ func TestSVGMakerAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_Close(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -509,6 +534,7 @@ func TestSVGMakerAdapter_Close(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_GetCapabilities(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -522,6 +548,7 @@ func TestSVGMakerAdapter_GetCapabilities(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_EscapeXML(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -541,6 +568,7 @@ func TestSVGMakerAdapter_EscapeXML(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_CreateSVG_NotInitialized(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -551,6 +579,7 @@ func TestSVGMakerAdapter_CreateSVG_NotInitialized(t *testing.T) {
 }
 
 func TestSVGMakerAdapter_ExecuteTool_AllTools(t *testing.T) {
+	t.Parallel()
 	config := DefaultSVGMakerAdapterConfig()
 	adapter := NewSVGMakerAdapter(config, logrus.New())
 
@@ -599,6 +628,7 @@ func TestSVGMakerAdapter_ExecuteTool_AllTools(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
 			result, err := adapter.ExecuteTool(context.Background(), tt.name, tt.params)
 			require.NoError(t, err)
 			require.NotNil(t, result)

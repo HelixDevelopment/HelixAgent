@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	assert.NotNil(t, manager)
 	assert.NotNil(t, manager.agents)
@@ -25,6 +26,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestManager_Create(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -45,6 +47,7 @@ func TestManager_Create(t *testing.T) {
 }
 
 func TestManager_Get(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -63,6 +66,7 @@ func TestManager_Get(t *testing.T) {
 }
 
 func TestManager_List(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -83,6 +87,7 @@ func TestManager_List(t *testing.T) {
 }
 
 func TestManager_Update(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -105,6 +110,7 @@ func TestManager_Update(t *testing.T) {
 }
 
 func TestManager_Delete(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -124,6 +130,7 @@ func TestManager_Delete(t *testing.T) {
 }
 
 func TestManager_Execute(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -145,6 +152,7 @@ func TestManager_Execute(t *testing.T) {
 }
 
 func TestManager_Execute_NonExistentAgent(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -154,6 +162,7 @@ func TestManager_Execute_NonExistentAgent(t *testing.T) {
 }
 
 func TestManager_ExecuteAsync(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -181,6 +190,7 @@ func TestManager_ExecuteAsync(t *testing.T) {
 }
 
 func TestManager_GetTask(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -200,6 +210,7 @@ func TestManager_GetTask(t *testing.T) {
 }
 
 func TestManager_CancelTask(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -227,6 +238,7 @@ func TestManager_CancelTask(t *testing.T) {
 }
 
 func TestManager_CreateAgent(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -244,6 +256,7 @@ func TestManager_CreateAgent(t *testing.T) {
 }
 
 func TestManager_CreateAgent_Explore(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -270,6 +283,7 @@ func TestManager_CreateAgent_Explore(t *testing.T) {
 }
 
 func TestManager_CreateAgent_Plan(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -297,6 +311,7 @@ func TestManager_CreateAgent_Plan(t *testing.T) {
 }
 
 func TestManager_CreateAgent_General(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -324,6 +339,7 @@ func TestManager_CreateAgent_General(t *testing.T) {
 }
 
 func TestManager_SendMessage(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -356,6 +372,7 @@ func TestManager_SendMessage(t *testing.T) {
 }
 
 func TestManager_Shutdown(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -373,6 +390,7 @@ func TestManager_Shutdown(t *testing.T) {
 }
 
 func TestManager_ConcurrentOperations(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -396,6 +414,7 @@ func TestManager_ConcurrentOperations(t *testing.T) {
 }
 
 func TestDefaultSubAgents(t *testing.T) {
+	t.Parallel()
 	agents := DefaultSubAgents()
 	require.Len(t, agents, 3)
 
@@ -417,6 +436,7 @@ func TestDefaultSubAgents(t *testing.T) {
 }
 
 func TestAgentWrapper(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(nil)
 	ctx := context.Background()
 
@@ -459,6 +479,7 @@ func TestAgentWrapper(t *testing.T) {
 }
 
 func TestManager_Integration(t *testing.T) {
+	t.Parallel()
 	manager := NewManager(&Config{
 		ProviderType: "test",
 		APIKey:       "test-key",

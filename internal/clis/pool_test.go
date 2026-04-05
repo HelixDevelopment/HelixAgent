@@ -4,6 +4,7 @@ package clis
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -503,6 +504,70 @@ func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
 		atomic.LoadInt64(&acquireSuccesses),
 		atomic.LoadInt64(&acquireErrors),
 		maxObserved)
+}
+
+func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping goroutine leak test in short mode")
+	}
+
+	// Force GC and let background goroutines from previous tests settle.
+	runtime.GC()
+	time.Sleep(200 * time.Millisecond)
+	baseline := runtime.NumGoroutine()
+
+	config := PoolConfig{
+		MinIdle:     0,
+		MaxIdle:     5,
+		MaxActive:   10,
+		MaxLifetime: 10 * time.Millisecond, // very short so cleanup triggers termination
+	}
+
+	var factoryCounter int64
+	factory := func() (*AgentInstance, error) {
+		id := atomic.AddInt64(&factoryCounter, 1)
+		return &AgentInstance{
+			ID:        fmt.Sprintf("leak-test-%d", id),
+			Type:      TypeAider,
+			UpdatedAt: time.Now(),
+		}, nil
+	}
+
+	pool := NewInstancePool(TypeAider, config, factory)
+
+	ctx := context.Background()
+
+	// Acquire and release several instances so they enter the idle pool.
+	for i := 0; i < 5; i++ {
+		inst, err := pool.Acquire(ctx)
+		require.NoError(t, err)
+		err = pool.Release(inst)
+		require.NoError(t, err)
+	}
+
+	// Wait for instances to expire past maxLifetime.
+	time.Sleep(50 * time.Millisecond)
+
+	// Manually trigger cleanup which spawns tracked terminate goroutines.
+	pool.cleanupExpired()
+
+	// Close waits for all tracked goroutines via wg.Wait().
+	err := pool.Close()
+	require.NoError(t, err)
+
+	// Allow any remaining goroutines to wind down.
+	time.Sleep(500 * time.Millisecond)
+	runtime.GC()
+
+	after := runtime.NumGoroutine()
+	delta := after - baseline
+
+	// The goroutine count should return to near-baseline. A tolerance of ±5
+	// accounts for runtime internals (GC, finalizers, etc.).
+	assert.LessOrEqual(t, delta, 5,
+		"goroutine leak detected: baseline=%d, after=%d, delta=%d", baseline, after, delta)
+
+	t.Logf("Goroutine count: baseline=%d, after_close=%d, delta=%d", baseline, after, delta)
 }
 
 // Benchmarks

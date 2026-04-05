@@ -315,23 +315,36 @@ func (p *InstancePool) maintenanceLoop() {
 
 // cleanupExpired removes instances that have exceeded max lifetime.
 func (p *InstancePool) cleanupExpired() {
+	// Collect expired instances under lock, then terminate outside the lock
+	// so that terminateInstance can safely acquire p.mu, and we can track
+	// the goroutines with p.wg to prevent leaks on Close().
 	p.mu.Lock()
-	defer p.mu.Unlock()
-	
+
 	now := time.Now()
 	var kept []*AgentInstance
-	
+	var expired []*AgentInstance
+
 	for _, inst := range p.idle {
 		if now.Sub(inst.UpdatedAt) > p.maxLifetime {
-			// Instance expired, terminate asynchronously
-			go p.terminateInstance(inst)
+			expired = append(expired, inst)
 			atomic.AddUint64(&p.evicts, 1)
 		} else {
 			kept = append(kept, inst)
 		}
 	}
-	
+
 	p.idle = kept
+	p.mu.Unlock()
+
+	// Terminate expired instances outside the lock with goroutine tracking.
+	for _, inst := range expired {
+		inst := inst // capture loop variable
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			p.terminateInstance(inst)
+		}()
+	}
 }
 
 // ensureMinIdle ensures minimum number of idle instances.
@@ -339,11 +352,11 @@ func (p *InstancePool) ensureMinIdle() {
 	p.mu.Lock()
 	currentIdle := len(p.idle)
 	p.mu.Unlock()
-	
+
 	if currentIdle >= p.minIdle {
 		return
 	}
-	
+
 	needed := p.minIdle - currentIdle
 	for i := 0; i < needed; i++ {
 		select {
@@ -351,12 +364,15 @@ func (p *InstancePool) ensureMinIdle() {
 			return
 		default:
 		}
-		
+
+		// factory() is called outside the lock to avoid blocking
+		// other pool operations during instance creation (D1 prevention).
 		inst, err := p.factory()
 		if err != nil {
 			continue
 		}
-		
+
+		var overflow *AgentInstance
 		p.mu.Lock()
 		if len(p.idle) < p.maxIdle {
 			p.idle = append(p.idle, inst)
@@ -365,39 +381,49 @@ func (p *InstancePool) ensureMinIdle() {
 			default:
 			}
 		} else {
-			// Pool full, terminate new instance
-			go p.terminateInstance(inst)
+			// Pool full — record for termination outside the lock.
+			overflow = inst
 		}
 		p.mu.Unlock()
+
+		// Terminate overflow outside the lock with goroutine tracking.
+		if overflow != nil {
+			p.wg.Add(1)
+			go func() {
+				defer p.wg.Done()
+				p.terminateInstance(overflow)
+			}()
+		}
 	}
 }
 
 // prewarm pre-warms the pool to minIdle.
 func (p *InstancePool) prewarm() {
 	defer p.wg.Done()
-	
+
 	for {
 		p.mu.Lock()
 		currentIdle := len(p.idle)
 		p.mu.Unlock()
-		
+
 		if currentIdle >= p.minIdle {
 			return
 		}
-		
+
 		select {
 		case <-p.ctx.Done():
 			return
 		default:
 		}
-		
+
 		inst, err := p.factory()
 		if err != nil {
 			// Retry after delay
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		
+
+		var overflow *AgentInstance
 		p.mu.Lock()
 		if len(p.idle) < p.maxIdle {
 			p.idle = append(p.idle, inst)
@@ -406,9 +432,18 @@ func (p *InstancePool) prewarm() {
 			default:
 			}
 		} else {
-			go p.terminateInstance(inst)
+			overflow = inst
 		}
 		p.mu.Unlock()
+
+		// Terminate overflow outside the lock with goroutine tracking.
+		if overflow != nil {
+			p.wg.Add(1)
+			go func() {
+				defer p.wg.Done()
+				p.terminateInstance(overflow)
+			}()
+		}
 	}
 }
 

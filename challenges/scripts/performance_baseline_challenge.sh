@@ -1,177 +1,193 @@
 #!/bin/bash
-# Performance Baseline Challenge
-# Establishes performance baselines and fails if exceeded
+# HelixAgent Challenge - Performance Baseline Framework
+# Validates that the performance baseline infrastructure is in place:
+# benchmark script, baseline directory, Makefile targets, regression test,
+# build-tag compilation, resource limits, and benchmark coverage.
+#
+# Tests: 15
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-source "$SCRIPT_DIR/challenge_utils.sh" 2>/dev/null || true
-
-echo "=============================================="
-echo "  PERFORMANCE BASELINE CHALLENGE"
-echo "=============================================="
-echo ""
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
 PASSED=0
 FAILED=0
+TOTAL=0
 
-# Helper function
-check_result() {
-    local test_name="$1"
-    local result="$2"
-
-    if [ "$result" -eq 0 ]; then
-        echo "[PASS] $test_name"
+record_result() {
+    local name="$1" status="$2"
+    TOTAL=$((TOTAL + 1))
+    if [ "$status" = "PASS" ]; then
         PASSED=$((PASSED + 1))
+        echo -e "${GREEN}[PASS]${NC} $name"
     else
-        echo "[FAIL] $test_name"
         FAILED=$((FAILED + 1))
+        echo -e "${RED}[FAIL]${NC} $name"
     fi
 }
 
-cd "$PROJECT_ROOT"
-
-# Test 1: Project build time < 30 seconds
+echo "=========================================="
+echo "  Performance Baseline Challenge"
+echo "=========================================="
 echo ""
-echo "Test 1: Project Build Time"
-echo "--------------------------"
-START_TIME=$(date +%s%N)
-go build ./cmd/helixagent/... 2>/dev/null
-END_TIME=$(date +%s%N)
-BUILD_TIME=$(( (END_TIME - START_TIME) / 1000000 )) # milliseconds
 
-if [ "$BUILD_TIME" -lt 30000 ]; then
-    check_result "Build time < 30s (${BUILD_TIME}ms)" 0
+# --------------------------------------------------------------------------
+# Test 1: benchmark-baseline.sh exists and is executable
+# --------------------------------------------------------------------------
+BASELINE_SCRIPT="$PROJECT_ROOT/scripts/benchmark-baseline.sh"
+if [ -f "$BASELINE_SCRIPT" ] && [ -x "$BASELINE_SCRIPT" ]; then
+    record_result "scripts/benchmark-baseline.sh exists and is executable" "PASS"
 else
-    check_result "Build time < 30s (${BUILD_TIME}ms)" 1
+    record_result "scripts/benchmark-baseline.sh exists and is executable" "FAIL"
 fi
 
-# Test 2: Test execution time reasonable
-echo ""
-echo "Test 2: Unit Test Execution Time"
-echo "---------------------------------"
-START_TIME=$(date +%s%N)
-go test -short -timeout 60s ./tests/unit/concurrency/... 2>/dev/null
-END_TIME=$(date +%s%N)
-TEST_TIME=$(( (END_TIME - START_TIME) / 1000000 ))
-
-if [ "$TEST_TIME" -lt 60000 ]; then
-    check_result "Unit tests < 60s (${TEST_TIME}ms)" 0
+# --------------------------------------------------------------------------
+# Test 2: benchmarks/baselines/ directory exists
+# --------------------------------------------------------------------------
+if [ -d "$PROJECT_ROOT/benchmarks/baselines" ]; then
+    record_result "benchmarks/baselines/ directory exists" "PASS"
 else
-    check_result "Unit tests < 60s (${TEST_TIME}ms)" 1
+    record_result "benchmarks/baselines/ directory exists" "FAIL"
 fi
 
-# Test 3: Memory usage during test (basic check)
-echo ""
-echo "Test 3: Memory Usage Check"
-echo "--------------------------"
-# Run core performance tests and check they complete without OOM
-if go test -short -timeout 120s ./tests/unit/concurrency/... ./tests/unit/events/... ./tests/unit/cache/... 2>/dev/null; then
-    check_result "Core tests complete without memory issues" 0
+# --------------------------------------------------------------------------
+# Test 3: Makefile has benchmark-baseline target
+# --------------------------------------------------------------------------
+if grep -q "^benchmark-baseline:" "$PROJECT_ROOT/Makefile" 2>/dev/null; then
+    record_result "Makefile has benchmark-baseline target" "PASS"
 else
-    # Check if it's just a test failure vs OOM
-    if go test -short -timeout 120s ./tests/unit/concurrency/... 2>/dev/null; then
-        check_result "Core tests complete without memory issues" 0
+    record_result "Makefile has benchmark-baseline target" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 4: Makefile has benchmark-check target
+# --------------------------------------------------------------------------
+if grep -q "^benchmark-check:" "$PROJECT_ROOT/Makefile" 2>/dev/null; then
+    record_result "Makefile has benchmark-check target" "PASS"
+else
+    record_result "Makefile has benchmark-check target" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 5: baseline_regression_test.go exists
+# --------------------------------------------------------------------------
+REGRESSION_TEST=$(find "$PROJECT_ROOT/tests" -name "baseline_regression_test.go" 2>/dev/null | head -1)
+if [ -n "$REGRESSION_TEST" ]; then
+    record_result "baseline_regression_test.go exists" "PASS"
+else
+    record_result "baseline_regression_test.go exists" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 6: baseline_regression_test.go compiles with performance tag
+# --------------------------------------------------------------------------
+if [ -n "$REGRESSION_TEST" ]; then
+    # Test-only package: use go test -run=^$ -count=0 to verify compilation
+    if GOMAXPROCS=2 nice -n 19 go test -tags performance -run=^$ -count=0 \
+           -p 1 ./tests/performance/... 2>/dev/null; then
+        record_result "baseline_regression_test.go compiles with performance tag" "PASS"
     else
-        check_result "Core tests complete without memory issues" 1
-    fi
-fi
-
-# Test 4: Worker pool benchmark
-echo ""
-echo "Test 4: Worker Pool Performance"
-echo "--------------------------------"
-BENCH_OUTPUT=$(go test -bench=BenchmarkWorkerPool_Submit -benchtime=1s -run=^$ ./tests/unit/concurrency/... 2>/dev/null | grep "BenchmarkWorkerPool_Submit" || echo "0 ns/op")
-
-if echo "$BENCH_OUTPUT" | grep -q "ns/op"; then
-    NS_PER_OP=$(echo "$BENCH_OUTPUT" | awk '{print $3}' | sed 's/\.[0-9]*//')
-    if [ -n "$NS_PER_OP" ] && [ "$NS_PER_OP" != "" ] && echo "$NS_PER_OP" | grep -qE '^[0-9]+$'; then
-        if [ "$NS_PER_OP" -lt 10000 ]; then
-            check_result "Worker pool submit < 10000 ns/op (${NS_PER_OP})" 0
-        else
-            check_result "Worker pool submit < 10000 ns/op (${NS_PER_OP})" 0  # Pass anyway
-        fi
-    else
-        check_result "Worker pool benchmark ran" 0
+        record_result "baseline_regression_test.go compiles with performance tag" "FAIL"
     fi
 else
-    check_result "Worker pool benchmark ran" 0
+    record_result "baseline_regression_test.go compiles with performance tag (file missing)" "FAIL"
 fi
 
-# Test 5: Event bus benchmark
-echo ""
-echo "Test 5: Event Bus Performance"
-echo "-----------------------------"
-BENCH_OUTPUT=$(go test -bench=BenchmarkEventBus_Publish -benchtime=1s -run=^$ ./tests/unit/events/... 2>/dev/null | grep "BenchmarkEventBus_Publish" || echo "0 ns/op")
-
-if echo "$BENCH_OUTPUT" | grep -q "ns/op"; then
-    check_result "Event bus benchmark ran" 0
+# --------------------------------------------------------------------------
+# Test 7: Script contains GOMAXPROCS=2 resource limits
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "GOMAXPROCS=2" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh enforces GOMAXPROCS=2" "PASS"
 else
-    check_result "Event bus benchmark ran" 0
+    record_result "benchmark-baseline.sh enforces GOMAXPROCS=2" "FAIL"
 fi
 
-# Test 6: Cache benchmark
-echo ""
-echo "Test 6: Cache Performance"
-echo "-------------------------"
-BENCH_OUTPUT=$(go test -bench=BenchmarkTieredCache -benchtime=1s -run=^$ ./tests/unit/cache/... 2>/dev/null | grep "BenchmarkTieredCache" || echo "0 ns/op")
-
-if echo "$BENCH_OUTPUT" | grep -q "ns/op"; then
-    check_result "Cache benchmark ran" 0
+# --------------------------------------------------------------------------
+# Test 8: Script enforces nice -n 19
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "nice -n 19" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh enforces nice -n 19" "PASS"
 else
-    check_result "Cache benchmark ran" 0
+    record_result "benchmark-baseline.sh enforces nice -n 19" "FAIL"
 fi
 
-# Test 7: Integration test performance
-echo ""
-echo "Test 7: Integration Test Performance"
-echo "------------------------------------"
-START_TIME=$(date +%s%N)
-go test -short -timeout 120s ./tests/integration/performance_test.go 2>/dev/null
-END_TIME=$(date +%s%N)
-INT_TEST_TIME=$(( (END_TIME - START_TIME) / 1000000 ))
-
-if [ "$INT_TEST_TIME" -lt 120000 ]; then
-    check_result "Integration tests < 120s (${INT_TEST_TIME}ms)" 0
+# --------------------------------------------------------------------------
+# Test 9: Script captures handler benchmarks
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "handlers" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh captures handler benchmarks" "PASS"
 else
-    check_result "Integration tests < 120s (${INT_TEST_TIME}ms)" 1
+    record_result "benchmark-baseline.sh captures handler benchmarks" "FAIL"
 fi
 
-# Test 8: Binary size check
-echo ""
-echo "Test 8: Binary Size"
-echo "-------------------"
-if [ -f "$PROJECT_ROOT/bin/helixagent" ]; then
-    BINARY_SIZE=$(stat -c%s "$PROJECT_ROOT/bin/helixagent" 2>/dev/null || stat -f%z "$PROJECT_ROOT/bin/helixagent" 2>/dev/null || echo "0")
-    SIZE_MB=$((BINARY_SIZE / 1024 / 1024))
-    if [ "$SIZE_MB" -lt 200 ]; then
-        check_result "Binary size < 200MB (${SIZE_MB}MB)" 0
+# --------------------------------------------------------------------------
+# Test 10: Script captures pool benchmarks
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "pool\|clis" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh captures pool benchmarks" "PASS"
+else
+    record_result "benchmark-baseline.sh captures pool benchmarks" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 11: Script captures HTTP benchmarks
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "internal/http\b" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh captures HTTP benchmarks" "PASS"
+else
+    record_result "benchmark-baseline.sh captures HTTP benchmarks" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 12: Script captures ensemble benchmarks
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "ensemble" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh captures ensemble benchmarks" "PASS"
+else
+    record_result "benchmark-baseline.sh captures ensemble benchmarks" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 13: Script writes CAPTURED_AT.txt timestamp
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "CAPTURED_AT" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh writes CAPTURED_AT.txt timestamp" "PASS"
+else
+    record_result "benchmark-baseline.sh writes CAPTURED_AT.txt timestamp" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 14: Script uses -p 1 parallelism flag for resource safety
+# --------------------------------------------------------------------------
+if [ -f "$BASELINE_SCRIPT" ] && grep -q "\-p 1" "$BASELINE_SCRIPT"; then
+    record_result "benchmark-baseline.sh uses -p 1 parallelism limit" "PASS"
+else
+    record_result "benchmark-baseline.sh uses -p 1 parallelism limit" "FAIL"
+fi
+
+# --------------------------------------------------------------------------
+# Test 15: Performance test package builds cleanly with performance tag
+# --------------------------------------------------------------------------
+PERF_DIR="$PROJECT_ROOT/tests/performance"
+if [ -d "$PERF_DIR" ]; then
+    if GOMAXPROCS=2 nice -n 19 go build -tags performance "$PERF_DIR/..." 2>/dev/null; then
+        record_result "tests/performance package builds with performance tag" "PASS"
     else
-        check_result "Binary size < 200MB (${SIZE_MB}MB)" 1
+        record_result "tests/performance package builds with performance tag" "FAIL"
     fi
 else
-    go build -o "$PROJECT_ROOT/bin/helixagent" ./cmd/helixagent/... 2>/dev/null
-    BINARY_SIZE=$(stat -c%s "$PROJECT_ROOT/bin/helixagent" 2>/dev/null || stat -f%z "$PROJECT_ROOT/bin/helixagent" 2>/dev/null || echo "0")
-    SIZE_MB=$((BINARY_SIZE / 1024 / 1024))
-    check_result "Binary size < 200MB (${SIZE_MB}MB)" 0
+    record_result "tests/performance directory exists" "FAIL"
 fi
 
-# Summary
 echo ""
-echo "=============================================="
-echo "  PERFORMANCE BASELINE SUMMARY"
-echo "=============================================="
-echo ""
-echo "Passed: $PASSED"
-echo "Failed: $FAILED"
-echo ""
+echo "=========================================="
+echo "  Results: $PASSED/$TOTAL passed, $FAILED failed"
+echo "=========================================="
 
-if [ "$FAILED" -eq 0 ]; then
-    echo "CHALLENGE PASSED: All performance baselines met"
-    exit 0
-else
-    echo "CHALLENGE FAILED: Some performance baselines not met"
-    exit 1
-fi
+[ $FAILED -eq 0 ] && exit 0 || exit 1

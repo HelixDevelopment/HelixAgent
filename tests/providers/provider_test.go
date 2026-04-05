@@ -369,14 +369,21 @@ type TestResult struct {
 	Errors          int
 }
 
-// BenchmarkProvider benchmarks a specific provider
-func BenchmarkProvider(b *testing.B, provider ProviderTestConfig, model ModelTestConfig) {
-	if os.Getenv(provider.APIKeyEnv) == "" {
-		b.Skipf("Skipping: %s not set", provider.APIKeyEnv)
-	}
-	
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Benchmark implementation
+// BenchmarkProvider benchmarks every configured provider/model pair as sub-benchmarks.
+// Only pairs whose API key environment variable is set are executed; the rest are skipped.
+func BenchmarkProvider(b *testing.B) {
+	providers := GetTestProviders()
+	for _, provider := range providers {
+		if os.Getenv(provider.APIKeyEnv) == "" {
+			continue
+		}
+		for _, model := range provider.Models {
+			b.Run(fmt.Sprintf("%s/%s", provider.Name, model.Name), func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					// Benchmark implementation
+				}
+			})
+		}
 	}
 }

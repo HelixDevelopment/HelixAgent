@@ -1,0 +1,156 @@
+{
+  "dashboard": {
+    "title": "Ensemble Performance",
+    "uid": "ensemble-performance",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Debate Duration",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(debate_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(debate_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(debate_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "label": "seconds", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Voting Latency",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(ensemble_voting_duration_seconds_bucket[5m])) by (le, strategy))",
+            "legendFormat": "p95 {{strategy}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(ensemble_voting_duration_seconds_bucket[5m])) by (le, strategy))",
+            "legendFormat": "p50 {{strategy}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "label": "seconds", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Consensus Rate",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "100 * sum(rate(debate_consensus_reached_total[5m])) / sum(rate(debate_sessions_total[5m]))",
+            "legendFormat": "Consensus %",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "background"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 50 },
+                { "color": "green", "value": 80 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Active Debates",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 8, "y": 8 },
+        "targets": [
+          {
+            "expr": "debate_sessions_active",
+            "legendFormat": "Active",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 5,
+        "type": "stat",
+        "title": "Debates Completed (5m)",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 16, "y": 8 },
+        "targets": [
+          {
+            "expr": "sum(increase(debate_sessions_total[5m]))",
+            "legendFormat": "Completed",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 6,
+        "type": "graph",
+        "title": "Provider Contribution Breakdown",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+        "targets": [
+          {
+            "expr": "sum(rate(debate_provider_responses_total[5m])) by (provider)",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "responses/s", "show": true },
+          { "show": false }
+        ],
+        "stack": true,
+        "fill": 5
+      }
+    ]
+  }
+}

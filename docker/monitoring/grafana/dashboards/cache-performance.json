@@ -1,0 +1,172 @@
+{
+  "dashboard": {
+    "title": "Cache Performance",
+    "uid": "cache-performance",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "gauge",
+        "title": "Cache Hit Ratio",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "100 * sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))",
+            "legendFormat": "Hit Ratio %",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 60 },
+                { "color": "green", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Cache Hit / Miss Rate",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[5m])",
+            "legendFormat": "hits/s {{cache}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(cache_misses_total[5m])",
+            "legendFormat": "misses/s {{cache}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "label": "ops/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "graph",
+        "title": "Eviction Count",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "rate(cache_evictions_total[5m])",
+            "legendFormat": "evictions/s {{cache}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "evictions/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 4,
+        "type": "graph",
+        "title": "Cache Memory Usage",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "cache_memory_bytes",
+            "legendFormat": "{{cache}} memory",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "bytes", "show": true },
+          { "show": false }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "bytes" }
+        }
+      },
+      {
+        "id": 5,
+        "type": "stat",
+        "title": "Cache Items",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "cache_items_total",
+            "legendFormat": "{{cache}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "horizontal",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 6,
+        "type": "stat",
+        "title": "Redis Connected Clients",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 8, "y": 16 },
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "clients",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 7,
+        "type": "stat",
+        "title": "Redis Memory Used",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 16, "y": 16 },
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "used",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": { "unit": "bytes" }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "dashboard": {
+    "title": "MCP Adapters",
+    "uid": "mcp-adapters",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Per-Adapter Request Count",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "sum(rate(mcp_adapter_requests_total[5m])) by (adapter)",
+            "legendFormat": "{{adapter}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "req/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Per-Adapter Latency (p95)",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mcp_adapter_request_duration_seconds_bucket[5m])) by (le, adapter))",
+            "legendFormat": "p95 {{adapter}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(mcp_adapter_request_duration_seconds_bucket[5m])) by (le, adapter))",
+            "legendFormat": "p50 {{adapter}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "label": "seconds", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "graph",
+        "title": "Per-Adapter Error Rate",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(mcp_adapter_errors_total[5m])) by (adapter)",
+            "legendFormat": "{{adapter}} errors/s",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "errors/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Active MCP Connections",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "mcp_adapter_active_connections",
+            "legendFormat": "{{adapter}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "horizontal",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 5,
+        "type": "graph",
+        "title": "MCP Tool Invocations",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "sum(rate(mcp_tool_invocations_total[5m])) by (tool, adapter)",
+            "legendFormat": "{{adapter}}/{{tool}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "invocations/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 6,
+        "type": "gauge",
+        "title": "Adapter Success Rate",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+        "targets": [
+          {
+            "expr": "100 * (1 - sum(rate(mcp_adapter_errors_total[5m])) by (adapter) / sum(rate(mcp_adapter_requests_total[5m])) by (adapter))",
+            "legendFormat": "{{adapter}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "horizontal",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 90 },
+                { "color": "green", "value": 99 }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "dashboard": {
+    "title": "Provider Health",
+    "uid": "provider-health",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Per-Provider Availability",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "provider_availability",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "available (1=yes)", "show": true, "min": 0, "max": 1 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Per-Provider Response Time",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(provider_request_duration_seconds_bucket[5m])) by (le, provider))",
+            "legendFormat": "p95 {{provider}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(provider_request_duration_seconds_bucket[5m])) by (le, provider))",
+            "legendFormat": "p50 {{provider}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "label": "seconds", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Circuit Breaker State",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "provider_circuit_breaker_state",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "horizontal",
+          "textMode": "auto",
+          "colorMode": "background"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              { "type": "value", "value": "0", "result": { "text": "Closed", "color": "green" } },
+              { "type": "value", "value": "1", "result": { "text": "Half-Open", "color": "yellow" } },
+              { "type": "value", "value": "2", "result": { "text": "Open", "color": "red" } }
+            ]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "type": "graph",
+        "title": "Fallback Chain Usage",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "rate(provider_fallback_total[5m])",
+            "legendFormat": "{{provider}} fallbacks/s",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "fallbacks/s", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 5,
+        "type": "gauge",
+        "title": "Provider Scores",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+        "targets": [
+          {
+            "expr": "provider_verification_score",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "horizontal",
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 10,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 5 },
+                { "color": "green", "value": 7 }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

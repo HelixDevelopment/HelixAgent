@@ -1,0 +1,179 @@
+{
+  "dashboard": {
+    "title": "Resource Utilization",
+    "uid": "resource-utilization",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Goroutine Count",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "go_goroutines",
+            "legendFormat": "goroutines",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "goroutines", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Heap Memory Allocated",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "go_memstats_heap_alloc_bytes",
+            "legendFormat": "heap alloc",
+            "refId": "A"
+          },
+          {
+            "expr": "go_memstats_heap_inuse_bytes",
+            "legendFormat": "heap in-use",
+            "refId": "B"
+          },
+          {
+            "expr": "go_memstats_heap_sys_bytes",
+            "legendFormat": "heap sys",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "label": "bytes", "show": true },
+          { "show": false }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "bytes" }
+        }
+      },
+      {
+        "id": 3,
+        "type": "graph",
+        "title": "GC Pause Duration",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(go_gc_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(go_gc_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(go_gc_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "label": "seconds", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 4,
+        "type": "graph",
+        "title": "CPU Usage",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[1m])",
+            "legendFormat": "CPU seconds/s",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "label": "CPU cores", "show": true },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 5,
+        "type": "stat",
+        "title": "Open File Descriptors",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "process_open_fds",
+            "legendFormat": "open fds",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 500 },
+                { "color": "red", "value": 1000 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "type": "stat",
+        "title": "Max File Descriptors",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 8, "y": 16 },
+        "targets": [
+          {
+            "expr": "process_max_fds",
+            "legendFormat": "max fds",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 7,
+        "type": "stat",
+        "title": "GC Cycles (5m)",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 4, "w": 8, "x": 16, "y": 16 },
+        "targets": [
+          {
+            "expr": "increase(go_gc_duration_seconds_count[5m])",
+            "legendFormat": "GC cycles",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": { "calcs": ["lastNotNull"] },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      }
+    ]
+  }
+}

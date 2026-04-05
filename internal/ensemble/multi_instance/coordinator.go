@@ -17,6 +17,14 @@ import (
 )
 
 // Coordinator manages multiple agent instances for ensemble execution.
+//
+// Lock ordering (MUST be followed to prevent deadlocks):
+//  1. Coordinator.mu (outermost)
+//  2. EnsembleSession.mu
+//  3. WorkerPool.mu
+//  4. EventBus.mu (innermost)
+//
+// Never acquire a higher-numbered lock while holding a lower-numbered lock.
 type Coordinator struct {
 	db          *sql.DB
 	logger      *log.Logger

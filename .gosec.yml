@@ -129,6 +129,87 @@ exclude:
     line: 221
     rules:
       - G115
+  # New LLM providers with G404 jitter (math/rand appropriate for non-security jitter)
+  - paths:
+      - internal/llm/providers/hyperbolic/hyperbolic.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/kilo/kilo.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/kimi/kimi.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/modal/modal.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/nia/nia.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/nlpcloud/nlpcloud.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/novita/novita.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/nvidia/nvidia.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/publicai/publicai.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/sambanova/sambanova.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/sarvam/sarvam.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/siliconflow/siliconflow.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/upstage/upstage.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/vulavula/vulavula.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/zhipu/zhipu.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/cloudflare/cloudflare.go
+    rules:
+      - G404
+  - paths:
+      - internal/llm/providers/codestral/codestral.go
+    rules:
+      - G404
+  - paths:
+      - internal/transport/http3_client.go
+    rules:
+      - G404
+  - paths:
+      - internal/streaming/kafka_writer.go
+    rules:
+      - G404
+  - paths:
+      - internal/services/debate_performance_optimizer.go
+    rules:
+      - G404
 
 # Exclude directories
 exclude-dirs:

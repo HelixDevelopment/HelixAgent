@@ -176,10 +176,8 @@ func (m *MCTS) Search(ctx context.Context, initialState interface{}) (*MCTSResul
 
 	// Main MCTS loop
 	for m.iterations < m.config.MaxIterations {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			break
-		default:
 		}
 
 		m.iterations++

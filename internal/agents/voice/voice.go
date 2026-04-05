@@ -155,7 +155,7 @@ func (s *Service) ProcessCommand(text string) (*CommandResult, error) {
 	command, ok := s.commands[cmd]
 	if !ok {
 		// Try aliases
-		if aliased, ok := s.aliases[cmd]; ok {
+		if aliased, found := s.aliases[cmd]; found {
 			command, ok = s.commands[aliased]
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -24,7 +23,6 @@ type LSPClient struct {
 	serverArgs  []string
 	
 	// Connection
-	conn   net.Conn
 	server *jsonrpc2.Conn
 	
 	// State

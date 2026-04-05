@@ -57,10 +57,9 @@ type WorkerPool struct {
 
 // Worker represents a single worker.
 type Worker struct {
-	id       int
-	pool     *WorkerPool
-	instance *clis.AgentInstance
-	quit     chan struct{}
+	id   int
+	pool *WorkerPool
+	quit chan struct{}
 }
 
 // TaskResult represents the result of a task execution.

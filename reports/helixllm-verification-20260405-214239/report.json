@@ -1,0 +1,24 @@
+{
+  "test_run": {
+    "timestamp": "2026-04-05T21:42:43+03:00",
+    "test_suite": "LLMsVerifier HelixLLM Validation",
+    "version": "1.0.0"
+  },
+  "summary": {
+    "total_tests": 28,
+    "passed": 25,
+    "failed": 0,
+    "skipped": 3,
+    "total_score": 250,
+    "max_score": 285,
+    "score_percentage": 87,
+    "final_grade": "A (Very Good)",
+    "success_rate": "89.3%"
+  },
+  "configuration": {
+    "use_helix_llm": "true",
+    "helix_llm_endpoint": "https://localhost:8443",
+    "helix_llm_tls_skip_verify": true
+  },
+  "results": [{"test":"Submodule Directory Exists","status":"passed","score":10,"max_score":10,"duration_ms":1,"critical":true},{"test":"Submodule Has Internal Structure","status":"passed","score":5,"max_score":5,"duration_ms":1,"critical":true},{"test":"Submodule Has Deployment Config","status":"passed","score":5,"max_score":5,"duration_ms":1,"critical":false},{"test":"Gitmodules Entry Exists","status":"passed","score":10,"max_score":10,"duration_ms":1,"critical":true},{"test":"Documentation Exists","status":"passed","score":5,"max_score":5,"duration_ms":0,"critical":false},{"test":"PostgreSQL Container Running","status":"passed","score":10,"max_score":10,"duration_ms":310,"critical":true},{"test":"PostgreSQL Healthy","status":"passed","score":10,"max_score":10,"duration_ms":1419,"critical":true},{"test":"Redis Container Running","status":"passed","score":10,"max_score":10,"duration_ms":198,"critical":true},{"test":"Redis Responding","status":"passed","score":10,"max_score":10,"duration_ms":412,"critical":true},{"test":"Qdrant Container Running","status":"passed","score":10,"max_score":10,"duration_ms":188,"critical":true},{"test":"Qdrant Health Endpoint","status":"passed","score":10,"max_score":10,"duration_ms":5,"critical":true},{"test":"Kafka Container Running","status":"passed","score":5,"max_score":5,"duration_ms":283,"critical":false},{"test":"Provider Implementation Exists","status":"passed","score":15,"max_score":15,"duration_ms":1,"critical":true},{"test":"Provider Compiles","status":"passed","score":20,"max_score":20,"duration_ms":43,"critical":true},{"test":"Provider Registered in Registry","status":"passed","score":15,"max_score":15,"duration_ms":1,"critical":true},{"test":"Adapter Implementation Exists","status":"passed","score":10,"max_score":10,"duration_ms":1,"critical":true},{"test":"Adapter Compiles","status":"passed","score":15,"max_score":15,"duration_ms":55,"critical":true},{"test":"Environment Variable Configured","status":"passed","score":10,"max_score":10,"duration_ms":1,"critical":true},{"test":"Docker Compose File Exists","status":"passed","score":10,"max_score":10,"duration_ms":1,"critical":true},{"test":"Docker Compose Valid Syntax","status":"passed","score":5,"max_score":5,"duration_ms":134,"critical":false},{"test":"Feature Flags Configured","status":"passed","score":5,"max_score":5,"duration_ms":1,"critical":false},{"test":"Health Endpoint Available","status":"passed","score":15,"max_score":15,"duration_ms":13,"critical":false},{"test":"Models List Endpoint","status":"passed","score":10,"max_score":10,"duration_ms":12,"critical":false},{"test":"Chat Completion Endpoint","status":"failed","score":0,"max_score":20,"duration_ms":11,"exit_code":1,"output":" ","critical":false},{"test":"Embeddings Endpoint","status":"passed","score":15,"max_score":15,"duration_ms":14,"critical":false},{"test":"Health Response Time","status":"skipped","score":0,"max_score":10},{"test":"TLS Configuration Present","status":"passed","score":5,"max_score":5,"duration_ms":1,"critical":false},{"test":"Environment File Protected","status":"failed","score":0,"max_score":5,"duration_ms":1,"exit_code":1,"output":" ","critical":false}]
+}

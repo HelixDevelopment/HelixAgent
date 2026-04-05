@@ -423,7 +423,7 @@ func TestFeature(t *testing.T) {
 ### Mock Usage
 - **Unit Tests**: Mocks/stubs allowed
 - **Integration/E2E Tests**: Use real services, NO mocks
-- **Production Code**: NO mocks, stubs, or TODO implementations allowed
+- **Production Code**: NO mocks, stubs, placeholder classes, or TODO implementations allowed
 
 ### Test Coverage Requirements
 - **Core Logic**: 95%+ coverage
@@ -596,7 +596,7 @@ make fmt vet lint  # MUST run before committing
 3. **Containerization** - All services in containers. Auto boot-up via HelixAgent binary.
 4. **Configuration via HelixAgent Only** - CLI agent configs generated ONLY by `./bin/helixagent --generate-agent-config=<name>`.
 5. **Real Data** - Beyond unit tests, use actual API calls, real databases, live services.
-6. **No Mocks in Production** - Mocks, stubs, TODO implementations FORBIDDEN in production.
+6. **No Mocks in Production** - Mocks, stubs, placeholder classes, TODO implementations FORBIDDEN in production.
 7. **Resource Limits** - ALL tests limited to 30-40% host resources: `GOMAXPROCS=2 nice -n 19 ionice -c 3`.
 8. **No CI/CD** - No automated pipelines, no Git hooks. All manual or Makefile-driven.
 

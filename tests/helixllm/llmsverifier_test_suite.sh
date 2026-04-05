@@ -2,7 +2,7 @@
 # LLMsVerifier Test Suite for HelixLLM
 # Comprehensive validation, verification, testing and scoring
 
-set -euo pipefail
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"

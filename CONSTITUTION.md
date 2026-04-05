@@ -4,7 +4,7 @@
 **Created:** 2026-02-10
 **Updated:** 2026-03-16
 
-Constitution with 28 rules (28 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 4, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
+Constitution with 29 rules (29 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 5, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
 
 ## Architecture
 
@@ -15,6 +15,12 @@ Constitution with 28 rules (28 mandatory) across categories: Quality: 2, Safety:
 Identify all parts and functionalities that can be extracted as separate modules (libraries) and reused in various projects. Perform additional work to make each module fully decoupled and independent. Each module must be a separate project with its own CLAUDE.md, AGENTS.md, README.md, docs/, tests, and challenges.
 
 ## Testing
+
+### No Mocks or Stubs in Production **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-002a
+
+**NO mocks, stubs, placeholder classes, or TODO implementations in production code.** Production code MUST use real implementations only. Mocks and stubs are permitted EXCLUSIVELY in unit test files (`*_test.go`). Integration tests, E2E tests, and all production code MUST use real services, real databases, real API calls, and real data. Placeholder classes, unimplemented interfaces, and stubbed methods are STRICTLY FORBIDDEN in production code.
 
 ### 100% Test Coverage **[MANDATORY]** (Priority: 1)
 

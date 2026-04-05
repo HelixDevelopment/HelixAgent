@@ -570,6 +570,74 @@ func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
 	t.Logf("Goroutine count: baseline=%d, after_close=%d, delta=%d", baseline, after, delta)
 }
 
+func TestInstancePool_EnsureMinIdle_NoDeadlock(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping deadlock test in short mode")
+	}
+
+	// Create a pool with a slow factory (100ms per instance).
+	// If ensureMinIdle held the lock during factory(), every concurrent Acquire()
+	// would block on the same lock, causing a deadlock-like hang that exceeds the
+	// 10-second deadline below.
+	config := PoolConfig{
+		MinIdle:     3,
+		MaxIdle:     5,
+		MaxActive:   10,
+		MaxLifetime: time.Hour,
+	}
+
+	var factoryCounter int64
+	factory := func() (*AgentInstance, error) {
+		// Simulate slow instance creation (e.g., process spawn, network call).
+		time.Sleep(100 * time.Millisecond)
+		id := atomic.AddInt64(&factoryCounter, 1)
+		return &AgentInstance{
+			ID:        fmt.Sprintf("minIdle-noDeadlock-%d", id),
+			Type:      TypeAider,
+			UpdatedAt: time.Now(),
+		}, nil
+	}
+
+	pool := NewInstancePool(TypeAider, config, factory)
+	defer pool.Close()
+
+	// While ensureMinIdle is filling idle slots (slow factory), concurrently
+	// call Acquire to prove the lock is not held during factory().
+	// All acquisitions must complete within 10 seconds; a deadlock would hang.
+	const numAcquirers = 5
+	done := make(chan struct{}, numAcquirers)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for i := 0; i < numAcquirers; i++ {
+		go func() {
+			inst, err := pool.Acquire(ctx)
+			if err == nil {
+				time.Sleep(20 * time.Millisecond)
+				pool.Release(inst)
+			}
+			done <- struct{}{}
+		}()
+	}
+
+	// Also manually trigger ensureMinIdle to race with the acquirers.
+	go func() {
+		pool.ensureMinIdle()
+		done <- struct{}{}
+	}()
+
+	total := numAcquirers + 1
+	for i := 0; i < total; i++ {
+		select {
+		case <-done:
+			// goroutine completed successfully
+		case <-ctx.Done():
+			t.Fatal("deadlock detected: pool operations did not complete within 10 seconds")
+		}
+	}
+}
+
 // Benchmarks
 
 func BenchmarkInstancePool_AcquireRelease(b *testing.B) {

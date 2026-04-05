@@ -30,6 +30,9 @@ type WorkerPool struct {
 	// Result queue
 	resultQueue chan *TaskResult
 
+	// Per-task result channels for SubmitAsync callers
+	pendingResults sync.Map // taskID -> chan *TaskResult
+
 	// Workers
 	workers []*Worker
 
@@ -169,12 +172,27 @@ func (wp *WorkerPool) Submit(ctx context.Context, task *clis.Task) error {
 	}
 }
 
-// SubmitAsync submits a task asynchronously.
+// SubmitAsync submits a task asynchronously and returns a channel that
+// will receive exactly one TaskResult when the task completes.
+// The result is delivered directly via a per-task channel — no polling
+// of resultQueue, so no result loss or contention.
 func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 	resultCh := make(chan *TaskResult, 1)
 
 	go func() {
 		defer close(resultCh)
+
+		// Set task ID early so we can register the pending channel
+		if task.ID == "" {
+			task.ID = uuid.New().String()
+		}
+
+		// Register an internal per-task delivery channel before submitting.
+		// Workers will find this and send the result here directly,
+		// bypassing the shared resultQueue entirely.
+		deliveryCh := make(chan *TaskResult, 1)
+		wp.pendingResults.Store(task.ID, deliveryCh)
+		defer wp.pendingResults.Delete(task.ID)
 
 		if err := wp.Submit(wp.ctx, task); err != nil {
 			resultCh <- &TaskResult{
@@ -182,30 +200,25 @@ func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 				Success: false,
 				Error:   err,
 			}
-			// Return immediately since task was not submitted
 			return
 		}
 
-		// Wait for result
-		for {
-			select {
-			case result := <-wp.resultQueue:
-				if result.TaskID == task.ID {
-					resultCh <- result
-					return
-				}
-				// Not our result, put it back
-				select {
-				case wp.resultQueue <- result:
-				default:
-				}
-			case <-time.After(30 * time.Second):
-				resultCh <- &TaskResult{
-					TaskID:  task.ID,
-					Success: false,
-					Error:   fmt.Errorf("timeout waiting for result"),
-				}
-				return
+		// Wait for the worker to deliver the result via deliverResult,
+		// or for the pool context to be cancelled (shutdown).
+		select {
+		case result := <-deliveryCh:
+			resultCh <- result
+		case <-wp.ctx.Done():
+			resultCh <- &TaskResult{
+				TaskID:  task.ID,
+				Success: false,
+				Error:   fmt.Errorf("worker pool stopped"),
+			}
+		case <-time.After(30 * time.Second):
+			resultCh <- &TaskResult{
+				TaskID:  task.ID,
+				Success: false,
+				Error:   fmt.Errorf("timeout waiting for result"),
 			}
 		}
 	}()
@@ -331,7 +344,10 @@ func (wp *WorkerPool) GetStats() map[string]interface{} {
 	}
 }
 
-// Stop shuts down the worker pool.
+// Stop shuts down the worker pool gracefully.
+// It signals all goroutines to stop via context cancellation, waits for
+// them to finish, and only then closes channels — ensuring no goroutine
+// writes to a closed channel.
 func (wp *WorkerPool) Stop() error {
 	wp.mu.Lock()
 	if !wp.running {
@@ -341,18 +357,26 @@ func (wp *WorkerPool) Stop() error {
 	wp.running = false
 	wp.mu.Unlock()
 
-	// Signal cancellation
+	// Step 1: Signal all goroutines to stop via context cancellation.
+	// Workers, collectResults, and maintenanceLoop all select on ctx.Done().
 	wp.cancel()
 
-	// Signal all workers to quit
+	// Step 2: Signal workers via quit channels as a secondary signal.
 	for _, worker := range wp.workers {
-		close(worker.quit)
+		select {
+		case <-worker.quit:
+			// Already closed
+		default:
+			close(worker.quit)
+		}
 	}
 
-	// Wait for all goroutines
+	// Step 3: Wait for ALL goroutines (workers, collectResults,
+	// maintenanceLoop) to exit. At this point no goroutine is reading
+	// from or writing to taskQueue/resultQueue.
 	wp.wg.Wait()
 
-	// Close channels
+	// Step 4: Now safe to close channels — no writers remain.
 	close(wp.taskQueue)
 	close(wp.resultQueue)
 
@@ -446,6 +470,13 @@ func (w *Worker) run() {
 				return // Channel closed
 			}
 
+			// Check context before executing
+			select {
+			case <-w.pool.ctx.Done():
+				return
+			default:
+			}
+
 			// Check if task was cancelled
 			if task.Status == clis.TaskStatusCancelled {
 				continue
@@ -454,12 +485,9 @@ func (w *Worker) run() {
 			// Execute task
 			result := w.execute(task)
 
-			// Send result
-			select {
-			case w.pool.resultQueue <- result:
-			case <-w.pool.ctx.Done():
-				return
-			}
+			// Deliver result: prefer per-task channel (SubmitAsync),
+			// fall back to shared resultQueue.
+			w.pool.deliverResult(result)
 
 			// Update metrics
 			if result.Success {
@@ -473,6 +501,39 @@ func (w *Worker) run() {
 
 		case <-w.pool.ctx.Done():
 			return
+		}
+	}
+}
+
+// deliverResult sends a task result to the per-task channel if one was
+// registered by SubmitAsync, otherwise to the shared resultQueue.
+// It never blocks: if the shared resultQueue is full, the result is
+// dropped (logged) rather than blocking the worker during shutdown.
+func (wp *WorkerPool) deliverResult(result *TaskResult) {
+	// Check for a per-task delivery channel (registered by SubmitAsync)
+	if ch, ok := wp.pendingResults.Load(result.TaskID); ok {
+		if deliveryCh, ok := ch.(chan *TaskResult); ok {
+			select {
+			case deliveryCh <- result:
+				return
+			default:
+				// Channel already has a result or was closed; skip
+			}
+		}
+	}
+
+	// Fall back to the shared resultQueue (non-blocking)
+	select {
+	case wp.resultQueue <- result:
+	case <-wp.ctx.Done():
+		// Pool is shutting down; discard result
+	default:
+		// resultQueue full; discard to avoid blocking worker
+		if wp.logger != nil {
+			wp.logger.Printf(
+				"Warning: resultQueue full, discarding result for task %s",
+				result.TaskID,
+			)
 		}
 	}
 }
@@ -579,10 +640,36 @@ func (w *Worker) executeCodeReview(task *clis.Task) (interface{}, error) {
 func (wp *WorkerPool) collectResults() {
 	defer wp.wg.Done()
 
-	for result := range wp.resultQueue {
-		// Could trigger callbacks here
-		if wp.logger != nil && !result.Success {
-			wp.logger.Printf("Task %s failed: %v", result.TaskID, result.Error)
+	for {
+		select {
+		case result, ok := <-wp.resultQueue:
+			if !ok {
+				return // Channel closed
+			}
+			// Could trigger callbacks here
+			if wp.logger != nil && !result.Success {
+				wp.logger.Printf(
+					"Task %s failed: %v", result.TaskID, result.Error,
+				)
+			}
+		case <-wp.ctx.Done():
+			// Drain any remaining results before exiting
+			for {
+				select {
+				case result, ok := <-wp.resultQueue:
+					if !ok {
+						return
+					}
+					if wp.logger != nil && !result.Success {
+						wp.logger.Printf(
+							"Task %s failed: %v",
+							result.TaskID, result.Error,
+						)
+					}
+				default:
+					return
+				}
+			}
 		}
 	}
 }

@@ -32,17 +32,6 @@ type ProtocolSSEHandler struct {
 // NewProtocolSSEHandler creates a new protocol SSE handler
 func NewProtocolSSEHandler(
 	mcpHandler *MCPHandler,
-	lspHandler *LSPHandler,
-	embeddingHandler *EmbeddingHandler,
-	cogneeHandler *CogneeAPIHandler,
-	logger *logrus.Logger,
-) *ProtocolSSEHandler {
-	return NewProtocolSSEHandlerWithACP(mcpHandler, nil, lspHandler, embeddingHandler, cogneeHandler, logger)
-}
-
-// NewProtocolSSEHandlerWithACP creates a new protocol SSE handler with ACP handler
-func NewProtocolSSEHandlerWithACP(
-	mcpHandler *MCPHandler,
 	acpHandler *ACPHandler,
 	lspHandler *LSPHandler,
 	embeddingHandler *EmbeddingHandler,

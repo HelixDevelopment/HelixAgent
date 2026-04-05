@@ -33,12 +33,12 @@ func TestNewDebateHandler_Extended(t *testing.T) {
 	assert.Nil(t, handler.skillsIntegration)
 }
 
-// TestNewDebateHandlerWithSkills tests handler creation with skills
+// TestNewDebateHandlerWithSkills tests handler creation with skills set via setter
 func TestNewDebateHandlerWithSkills(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
-	handler := NewDebateHandlerWithSkills(nil, nil, nil, logger)
+	handler := NewDebateHandler(nil, nil, logger)
 
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.activeDebates)

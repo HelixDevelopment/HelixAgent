@@ -887,13 +887,14 @@ func TestDebateHandlerUnit_GetDebateAudit_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// TestDebateHandler_NewDebateHandlerWithSkills tests handler creation with skills
+// TestDebateHandlerUnit_NewDebateHandlerWithSkills tests handler creation with skills via setter
 func TestDebateHandlerUnit_NewDebateHandlerWithSkills(t *testing.T) {
 	logger := logrus.New()
 	skillsService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
 	skillsIntegration := skills.NewIntegration(skillsService)
 
-	handler := NewDebateHandlerWithSkills(nil, nil, skillsIntegration, logger)
+	handler := NewDebateHandler(nil, nil, logger)
+	handler.SetSkillsIntegration(skillsIntegration)
 
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.activeDebates)
@@ -975,7 +976,8 @@ func TestDebateHandlerUnit_CreateDebate_WithSkillsIntegration(t *testing.T) {
 	skillsService := skills.NewService(&skills.SkillConfig{MinConfidence: 0.5})
 	skillsIntegration := skills.NewIntegration(skillsService)
 
-	handler := NewDebateHandlerWithSkills(nil, nil, skillsIntegration, logger)
+	handler := NewDebateHandler(nil, nil, logger)
+	handler.SetSkillsIntegration(skillsIntegration)
 
 	router := gin.New()
 	v1 := router.Group("/v1")

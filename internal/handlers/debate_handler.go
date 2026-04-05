@@ -53,17 +53,6 @@ func NewDebateHandler(debateService *services.DebateService, advancedDebate *ser
 	}
 }
 
-// NewDebateHandlerWithSkills creates a debate handler with Skills integration
-func NewDebateHandlerWithSkills(debateService *services.DebateService, advancedDebate *services.AdvancedDebateService, skillsIntegration *skills.Integration, logger *logrus.Logger) *DebateHandler {
-	return &DebateHandler{
-		debateService:     debateService,
-		advancedDebate:    advancedDebate,
-		skillsIntegration: skillsIntegration,
-		logger:            logger,
-		activeDebates:     make(map[string]*debateState),
-	}
-}
-
 // SetSkillsIntegration sets the Skills integration for the handler
 func (h *DebateHandler) SetSkillsIntegration(integration *skills.Integration) {
 	h.skillsIntegration = integration

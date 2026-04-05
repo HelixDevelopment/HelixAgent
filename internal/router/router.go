@@ -340,7 +340,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 	protocolHandler := handlers.NewProtocolHandler(protocolManager, logger)
 
 	// Initialize Protocol SSE handler for MCP/ACP/LSP/Embeddings/Vision/Cognee
-	protocolSSEHandler := handlers.NewProtocolSSEHandlerWithACP(
+	protocolSSEHandler := handlers.NewProtocolSSEHandler(
 		mcpHandler,
 		acpHandler,
 		lspHandler,

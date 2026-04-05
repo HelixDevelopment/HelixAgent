@@ -16,7 +16,7 @@ import (
 // TestNewProtocolSSEHandler tests handler creation
 func TestNewProtocolSSEHandler(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.clients)
@@ -28,7 +28,7 @@ func TestProtocolSSEHandler_RegisterSSERoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	router := gin.New()
 	group := router.Group("/v1")
@@ -77,7 +77,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -120,7 +120,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_ToolsList(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -156,7 +156,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_ToolsCall(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -190,7 +190,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_Ping(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -222,7 +222,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_UnknownMethod(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -256,7 +256,7 @@ func TestProtocolSSEHandler_HandleMCPMessage_ParseError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -282,7 +282,7 @@ func TestProtocolSSEHandler_HandleACPMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -315,7 +315,7 @@ func TestProtocolSSEHandler_HandleLSPMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -348,7 +348,7 @@ func TestProtocolSSEHandler_HandleEmbeddingsMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -381,7 +381,7 @@ func TestProtocolSSEHandler_HandleVisionMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -414,7 +414,7 @@ func TestProtocolSSEHandler_HandleCogneeMessage_Initialize(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -445,7 +445,7 @@ func TestProtocolSSEHandler_HandleCogneeMessage_Initialize(t *testing.T) {
 // TestProtocolSSEHandler_GetMCPCapabilities tests MCP capabilities
 func TestProtocolSSEHandler_GetMCPCapabilities(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	caps := handler.getMCPCapabilities()
 
@@ -460,7 +460,7 @@ func TestProtocolSSEHandler_GetMCPCapabilities(t *testing.T) {
 // TestProtocolSSEHandler_GetACPCapabilities tests ACP capabilities
 func TestProtocolSSEHandler_GetACPCapabilities(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	caps := handler.getACPCapabilities()
 
@@ -472,7 +472,7 @@ func TestProtocolSSEHandler_GetACPCapabilities(t *testing.T) {
 // TestProtocolSSEHandler_GetLSPCapabilities tests LSP capabilities
 func TestProtocolSSEHandler_GetLSPCapabilities(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	caps := handler.getLSPCapabilities()
 
@@ -484,7 +484,7 @@ func TestProtocolSSEHandler_GetLSPCapabilities(t *testing.T) {
 // TestProtocolSSEHandler_GetMCPTools tests MCP tools list
 func TestProtocolSSEHandler_GetMCPTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getMCPTools()
 
@@ -504,7 +504,7 @@ func TestProtocolSSEHandler_GetMCPTools(t *testing.T) {
 // TestProtocolSSEHandler_GetACPTools tests ACP tools list
 func TestProtocolSSEHandler_GetACPTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getACPTools()
 
@@ -522,7 +522,7 @@ func TestProtocolSSEHandler_GetACPTools(t *testing.T) {
 // TestProtocolSSEHandler_GetLSPTools tests LSP tools list
 func TestProtocolSSEHandler_GetLSPTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getLSPTools()
 
@@ -542,7 +542,7 @@ func TestProtocolSSEHandler_GetLSPTools(t *testing.T) {
 // TestProtocolSSEHandler_GetEmbeddingsTools tests Embeddings tools list
 func TestProtocolSSEHandler_GetEmbeddingsTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getEmbeddingsTools()
 
@@ -560,7 +560,7 @@ func TestProtocolSSEHandler_GetEmbeddingsTools(t *testing.T) {
 // TestProtocolSSEHandler_GetVisionTools tests Vision tools list
 func TestProtocolSSEHandler_GetVisionTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getVisionTools()
 
@@ -578,7 +578,7 @@ func TestProtocolSSEHandler_GetVisionTools(t *testing.T) {
 // TestProtocolSSEHandler_GetCogneeTools tests Cognee tools list
 func TestProtocolSSEHandler_GetCogneeTools(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	tools := handler.getCogneeTools()
 
@@ -597,7 +597,7 @@ func TestProtocolSSEHandler_GetCogneeTools(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteMCPTool tests MCP tool execution
 func TestProtocolSSEHandler_ExecuteMCPTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	result, err := handler.executeMCPTool("mcp_get_capabilities", nil)
 
@@ -609,7 +609,7 @@ func TestProtocolSSEHandler_ExecuteMCPTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteMCPTool_ListProviders tests listing providers
 func TestProtocolSSEHandler_ExecuteMCPTool_ListProviders(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	result, err := handler.executeMCPTool("mcp_list_providers", nil)
 
@@ -621,7 +621,7 @@ func TestProtocolSSEHandler_ExecuteMCPTool_ListProviders(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteMCPTool_UnknownTool tests unknown tool error
 func TestProtocolSSEHandler_ExecuteMCPTool_UnknownTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	_, err := handler.executeMCPTool("unknown_tool", nil)
 
@@ -632,7 +632,7 @@ func TestProtocolSSEHandler_ExecuteMCPTool_UnknownTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteACPTool tests ACP tool execution
 func TestProtocolSSEHandler_ExecuteACPTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	result, err := handler.executeACPTool("acp_list_agents", nil)
 
@@ -643,7 +643,7 @@ func TestProtocolSSEHandler_ExecuteACPTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteACPTool_SendMessage tests ACP send message
 func TestProtocolSSEHandler_ExecuteACPTool_SendMessage(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"agent_id": "test-agent",
@@ -660,7 +660,7 @@ func TestProtocolSSEHandler_ExecuteACPTool_SendMessage(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteLSPTool tests LSP tool execution
 func TestProtocolSSEHandler_ExecuteLSPTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	result, err := handler.executeLSPTool("lsp_list_servers", nil)
 
@@ -671,7 +671,7 @@ func TestProtocolSSEHandler_ExecuteLSPTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteLSPTool_GetDiagnostics tests LSP diagnostics
 func TestProtocolSSEHandler_ExecuteLSPTool_GetDiagnostics(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"file_path": "/test/file.go",
@@ -687,7 +687,7 @@ func TestProtocolSSEHandler_ExecuteLSPTool_GetDiagnostics(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteEmbeddingsTool tests Embeddings tool execution
 func TestProtocolSSEHandler_ExecuteEmbeddingsTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"text": "Hello, world!",
@@ -702,7 +702,7 @@ func TestProtocolSSEHandler_ExecuteEmbeddingsTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteEmbeddingsTool_Search tests Embeddings search
 func TestProtocolSSEHandler_ExecuteEmbeddingsTool_Search(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"query": "test query",
@@ -717,7 +717,7 @@ func TestProtocolSSEHandler_ExecuteEmbeddingsTool_Search(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteVisionTool tests Vision tool execution
 func TestProtocolSSEHandler_ExecuteVisionTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"image_url": "https://example.com/image.png",
@@ -732,7 +732,7 @@ func TestProtocolSSEHandler_ExecuteVisionTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteVisionTool_OCR tests Vision OCR
 func TestProtocolSSEHandler_ExecuteVisionTool_OCR(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"image_url": "https://example.com/document.png",
@@ -747,7 +747,7 @@ func TestProtocolSSEHandler_ExecuteVisionTool_OCR(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteCogneeTool tests Cognee tool execution
 func TestProtocolSSEHandler_ExecuteCogneeTool(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"content": "Test content for knowledge graph",
@@ -762,7 +762,7 @@ func TestProtocolSSEHandler_ExecuteCogneeTool(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteCogneeTool_Search tests Cognee search
 func TestProtocolSSEHandler_ExecuteCogneeTool_Search(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	args := map[string]interface{}{
 		"query": "test search",
@@ -777,7 +777,7 @@ func TestProtocolSSEHandler_ExecuteCogneeTool_Search(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteCogneeTool_Visualize tests Cognee visualize
 func TestProtocolSSEHandler_ExecuteCogneeTool_Visualize(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	result, err := handler.executeCogneeTool("cognee_visualize", nil)
 
@@ -790,7 +790,7 @@ func TestProtocolSSEHandler_HandlePromptsList(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -823,7 +823,7 @@ func TestProtocolSSEHandler_HandleResourcesList(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -856,7 +856,7 @@ func TestProtocolSSEHandler_HandleInitialized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -882,7 +882,7 @@ func TestProtocolSSEHandler_ToolsCall_InvalidParams(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	msg := JSONRPCMessage{
 		JSONRPC: "2.0",
@@ -914,7 +914,7 @@ func TestProtocolSSEHandler_ToolsCall_InvalidParams(t *testing.T) {
 // TestProtocolSSEHandler_ExecuteToolForProtocol_UnknownProtocol tests unknown protocol error
 func TestProtocolSSEHandler_ExecuteToolForProtocol_UnknownProtocol(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	_, err := handler.executeToolForProtocol(nil, "unknown", "tool", nil)
 
@@ -925,7 +925,7 @@ func TestProtocolSSEHandler_ExecuteToolForProtocol_UnknownProtocol(t *testing.T)
 // TestProtocolSSEHandler_GetCapabilitiesForProtocol tests capabilities retrieval for all protocols
 func TestProtocolSSEHandler_GetCapabilitiesForProtocol(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	// Test valid protocols
 	validProtocols := []string{"mcp", "acp", "lsp", "embeddings", "vision", "cognee"}
@@ -945,7 +945,7 @@ func TestProtocolSSEHandler_GetCapabilitiesForProtocol(t *testing.T) {
 // TestProtocolSSEHandler_GetToolsForProtocol tests tools retrieval for all protocols
 func TestProtocolSSEHandler_GetToolsForProtocol(t *testing.T) {
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	testCases := []struct {
 		protocol    string
@@ -1093,7 +1093,7 @@ func TestProtocolSSEHandler_AllProtocols_ToolsCallExecution(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	testCases := []struct {
 		protocol  string
@@ -1150,7 +1150,7 @@ func TestProtocolSSEHandler_ConcurrentAccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := logrus.New()
-	handler := NewProtocolSSEHandler(nil, nil, nil, nil, logger)
+	handler := NewProtocolSSEHandler(nil, nil, nil, nil, nil, logger)
 
 	// Test concurrent tool list requests
 	done := make(chan bool, 10)

@@ -200,7 +200,7 @@ services:
       - "9301:9000"
     environment:
       - MCP_COMMAND=npx -y mcp-server-qdrant
-      - QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
+      - QDRANT_URL=${QDRANT_URL:-http://localhost:6335}
 
   mcp-chroma:
     <<: *common-config

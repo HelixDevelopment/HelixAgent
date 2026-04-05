@@ -227,7 +227,7 @@ services:
     ports:
       - "9301:9000"
     environment:
-      - QDRANT_URL=http://mcp-qdrant-backend:6333
+      - QDRANT_URL=http://mcp-qdrant-backend:6335
     depends_on:
       - mcp-qdrant-backend
     restart: unless-stopped
@@ -236,8 +236,8 @@ services:
     image: qdrant/qdrant:latest
     container_name: helixagent-mcp-qdrant-backend
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6335:6333"
+      - "6336:6334"
     volumes:
       - mcp-qdrant-data:/qdrant/storage
     restart: unless-stopped

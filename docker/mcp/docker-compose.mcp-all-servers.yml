@@ -282,7 +282,7 @@ services:
     ports:
       - "9301:9000"
     environment:
-      - QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
+      - QDRANT_URL=${QDRANT_URL:-http://localhost:6335}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]

@@ -779,6 +779,12 @@ func runStartupVerification(logger *logrus.Logger) (*verifier.StartupResult, *ve
 		logger = logrus.New()
 	}
 
+	// Check if verifier is disabled via environment variable
+	if os.Getenv("LLM_VERIFIER_DISABLED") == "true" {
+		logger.Info("LLMsVerifier startup verification disabled via LLM_VERIFIER_DISABLED environment variable")
+		return nil, nil
+	}
+
 	logger.Info("╔══════════════════════════════════════════════════════════════════╗")
 	logger.Info("║         UNIFIED PROVIDER STARTUP VERIFICATION                     ║")
 	logger.Info("║     LLMsVerifier as Single Source of Truth for ALL Providers     ║")

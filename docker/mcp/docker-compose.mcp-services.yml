@@ -91,8 +91,8 @@ services:
     image: qdrant/qdrant:latest
     container_name: helixagent-mcp-qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6335:6333"
+      - "6336:6334"
     volumes:
       - mcp_qdrant_data:/qdrant/storage
     healthcheck:

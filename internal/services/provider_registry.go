@@ -440,6 +440,12 @@ func (r *ProviderRegistry) initAutoDiscovery(logger *logrus.Logger) {
 // initScoreAdapter initializes the LLMsVerifier score adapter and connects it to the ensemble
 // This is the central point where LLMsVerifier becomes the heart of all provider validation
 func (r *ProviderRegistry) initScoreAdapter(logger *logrus.Logger) {
+	// Check if verifier is disabled via environment variable
+	if os.Getenv("LLM_VERIFIER_DISABLED") == "true" {
+		logger.Info("LLMsVerifier disabled via LLM_VERIFIER_DISABLED environment variable")
+		return
+	}
+
 	// Create LLMsVerifier configuration with defaults
 	verifierCfg := verifier.DefaultConfig()
 	verifierCfg.Enabled = true

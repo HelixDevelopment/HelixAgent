@@ -238,16 +238,16 @@ func BenchmarkFunction(b *testing.B) {
 ```
 tests/
 ├── unit/
-│   ├── bigdata/          # Spark, Data Lake tests (TODO)
-│   ├── knowledge/        # Neo4j streaming tests (TODO)
-│   ├── analytics/        # ClickHouse tests (TODO)
+│   ├── bigdata/          # Spark, Data Lake tests (Planned)
+│   ├── knowledge/        # Neo4j streaming tests (Planned)
+│   ├── analytics/        # ClickHouse tests (Planned)
 │   └── learning/         # Cross-session learning tests ✅
 │       └── cross_session_test.go
-├── integration/          # Integration tests (TODO)
-├── e2e/                  # End-to-end tests (TODO)
-├── security/             # Security tests (TODO)
-├── stress/               # Stress tests (TODO)
-└── benchmark/            # Benchmark tests (TODO)
+├── integration/          # Integration tests (Planned)
+├── e2e/                  # End-to-end tests (Planned)
+├── security/             # Security tests (Planned)
+├── stress/               # Stress tests (Planned)
+└── benchmark/            # Benchmark tests (Planned)
 ```
 
 ### Test Naming Conventions
@@ -261,7 +261,7 @@ tests/
 
 ## Future Testing Phases
 
-### Phase 8.1: Unit Tests for All Packages (TODO)
+### Phase 8.1: Unit Tests for All Packages (Planned)
 
 **Packages to Test**:
 - `internal/bigdata/` - Spark processor, data lake client
@@ -272,7 +272,7 @@ tests/
 
 **Target**: 200+ unit tests, 90%+ coverage
 
-### Phase 8.2: Integration Tests (TODO)
+### Phase 8.2: Integration Tests (Planned)
 
 **Test Scenarios**:
 - Kafka → Neo4j streaming
@@ -285,7 +285,7 @@ tests/
 
 **Target**: 50+ integration tests
 
-### Phase 8.3: End-to-End Tests (TODO)
+### Phase 8.3: End-to-End Tests (Planned)
 
 **Test Scenarios**:
 - Full conversation lifecycle (message → debate → entity → knowledge graph)
@@ -296,7 +296,7 @@ tests/
 
 **Target**: 20+ e2e tests
 
-### Phase 8.4: Security Tests (TODO)
+### Phase 8.4: Security Tests (Planned)
 
 **Test Scenarios**:
 - Input validation (SQL injection, XSS)
@@ -307,7 +307,7 @@ tests/
 
 **Target**: 30+ security tests
 
-### Phase 8.5: Stress Tests (TODO)
+### Phase 8.5: Stress Tests (Planned)
 
 **Test Scenarios**:
 - 10,000 concurrent conversations

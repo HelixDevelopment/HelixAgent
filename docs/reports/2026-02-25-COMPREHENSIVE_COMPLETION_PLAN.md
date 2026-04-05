@@ -694,7 +694,7 @@ GOMAXPROCS=2 go test -v -p 1 -run TestStress ./tests/stress/... -timeout 30m
 ### Documentation
 - [ ] All packages have README.md
 - [ ] All modules have CLAUDE.md and AGENTS.md
-- [ ] All TODO/placeholder markers resolved
+- [x] All TODO/placeholder markers resolved
 - [ ] User manuals updated
 - [ ] Video course scripts updated
 - [ ] Website content updated

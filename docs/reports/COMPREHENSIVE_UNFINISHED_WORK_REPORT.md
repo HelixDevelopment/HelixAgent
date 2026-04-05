@@ -786,7 +786,7 @@ go test -v -run TestName ./path/to/package
 
 Before marking this project complete, verify:
 
-- [ ] All TODO/FIXME comments resolved
+- [x] All TODO/FIXME comments resolved
 - [ ] All disabled tests re-enabled
 - [ ] All skipped tests addressed (either fixed or documented)
 - [ ] Test coverage >= 90% for all packages

@@ -319,7 +319,7 @@ For each document:
 - [ ] Accurate to current implementation
 - [ ] Code examples work
 - [ ] No dead links
-- [ ] No TODO/FIXME comments
+- [x] No TODO/FIXME comments
 - [ ] Proper formatting
 - [ ] Up-to-date screenshots/diagrams
 

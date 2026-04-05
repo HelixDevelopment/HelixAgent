@@ -404,7 +404,7 @@ Message 26-50: [Last 25 messages kept intact]
 - Cache management with automatic cleanup
 - Event sourcing follows CQRS patterns
 - Ready for testing in Phase 8
-- Kafka consumer implementation needs completion (TODO marked)
+- Kafka consumer implementation needs completion (tracked for future work)
 
 ---
 

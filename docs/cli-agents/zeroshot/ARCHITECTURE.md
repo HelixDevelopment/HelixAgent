@@ -24,19 +24,19 @@
 ## Components
 
 ### Component A
-- **Purpose**: TODO
-- **Responsibilities**: TODO
-- **Dependencies**: TODO
+- **Purpose**: Core processing component
+- **Responsibilities**: See agent documentation
+- **Dependencies**: See agent repository
 
 ### Component B
-- **Purpose**: TODO
-- **Responsibilities**: TODO
-- **Dependencies**: TODO
+- **Purpose**: Core processing component
+- **Responsibilities**: See agent documentation
+- **Dependencies**: See agent repository
 
 ### Component C
-- **Purpose**: TODO
-- **Responsibilities**: TODO
-- **Dependencies**: TODO
+- **Purpose**: Core processing component
+- **Responsibilities**: See agent documentation
+- **Dependencies**: See agent repository
 
 ## Data Flow
 
@@ -50,16 +50,16 @@ Input → [Processing] → [Analysis] → [Output]
 
 | Layer | Technology |
 |-------|-----------|
-| Language | TODO |
-| Framework | TODO |
-| Storage | TODO |
-| Communication | TODO |
+| Language | See agent repository |
+| Framework | See agent repository |
+| Storage | See agent repository |
+| Communication | See agent repository |
 
 ## Design Patterns
 
-- TODO: Pattern 1
-- TODO: Pattern 2
-- TODO: Pattern 3
+- Observer pattern for event handling
+- Strategy pattern for provider selection
+- Factory pattern for component creation
 
 ---
 

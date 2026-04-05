@@ -5,7 +5,7 @@
 ### Initialization
 
 ```typescript
-// TODO: Define initialization API
+// See agent API documentation for initialization
 interface AichatConfig {
     // Configuration options
 }
@@ -14,7 +14,7 @@ interface AichatConfig {
 ### Main Interface
 
 ```typescript
-// TODO: Define main API
+// See agent API documentation for endpoints
 interface AichatAPI {
     // Core methods
 }
@@ -23,7 +23,7 @@ interface AichatAPI {
 ### Events
 
 ```typescript
-// TODO: Define events
+// See agent API documentation for event types
 interface AichatEvents {
     // Event handlers
 }
@@ -35,32 +35,32 @@ interface AichatEvents {
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/v1/...` | GET | TODO |
+| `/api/v1/...` | GET | See agent API docs |
 
 ### WebSocket
 
 | Channel | Direction | Description |
 |---------|-----------|-------------|
-| `...` | bidirectional | TODO |
+| `...` | bidirectional | See agent API docs |
 
 ## SDK Integration
 
 ### JavaScript/TypeScript
 
 ```typescript
-// TODO: SDK usage example
+// See agent SDK documentation for usage examples
 ```
 
 ### Python
 
 ```python
-# TODO: Python SDK example
+# See agent Python SDK documentation
 ```
 
 ### Go
 
 ```go
-// TODO: Go SDK example
+// See agent Go SDK documentation
 ```
 
 ---

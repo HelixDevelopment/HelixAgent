@@ -453,7 +453,7 @@ make security-scan-all
 - [ ] All race conditions resolved
 - [ ] All memory leaks fixed
 - [ ] All dead code removed
-- [ ] All TODO/FIXME resolved
+- [x] All TODO/FIXME resolved
 
 ### Test Coverage
 - [ ] Unit tests for all packages

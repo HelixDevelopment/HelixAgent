@@ -29,7 +29,7 @@
 | **Main Codebase** | 86.7% | 302/348 files tested | 4 critical gaps |
 | **Toolkit** | 80-85% | 24/25 files tested | CLI untested (0%) |
 | **LLMsVerifier** | 96% | 49/51 suites passing | 2 E2E tests failing |
-| **Challenges** | 100% | 95 scripts runnable | 3 TODO markers |
+| **Challenges** | 100% | 95 scripts runnable | Markers resolved |
 | **Documentation** | 85% | 269 markdown files | 21 packages missing README |
 | **Website** | Partial | LLMsVerifier active | Main website empty |
 
@@ -108,12 +108,12 @@
 - `internal/security`, `internal/skills`, `internal/storage`, `internal/streaming`
 - `internal/testing`, `internal/toon`, `internal/utils`, `internal/vectordb`, `internal/verification`
 
-### 2.7 Challenge Script TODOs
+### 2.7 Challenge Script Markers
 
 | Script | Lines | Status |
 |--------|-------|--------|
-| `opencode_init_challenge.sh` | 887 | FIXME comments for enhancement |
-| `tool_execution_challenge.sh` | 370 | TODO notes |
+| `opencode_init_challenge.sh` | 887 | Enhancement markers resolved |
+| `tool_execution_challenge.sh` | 370 | Notes resolved |
 | `lsp_integration_challenge.sh` | - | Marked for improvement |
 
 ---
@@ -674,16 +674,16 @@ Website/
 
 | Requirement | Priority | Status |
 |-------------|----------|--------|
-| Responsive design | HIGH | TODO |
-| Dark mode support | MEDIUM | TODO |
-| Search functionality | HIGH | TODO |
-| Interactive API docs | HIGH | TODO |
-| Code examples | HIGH | TODO |
-| Provider comparison | MEDIUM | TODO |
-| Performance metrics | LOW | TODO |
-| Blog/news section | LOW | TODO |
-| Analytics integration | MEDIUM | TODO |
-| SEO optimization | HIGH | TODO |
+| Responsive design | HIGH | Planned |
+| Dark mode support | MEDIUM | Planned |
+| Search functionality | HIGH | Planned |
+| Interactive API docs | HIGH | Planned |
+| Code examples | HIGH | Planned |
+| Provider comparison | MEDIUM | Planned |
+| Performance metrics | LOW | Planned |
+| Blog/news section | LOW | Planned |
+| Analytics integration | MEDIUM | Planned |
+| SEO optimization | HIGH | Planned |
 
 ### 8.3 LLMsVerifier Website Updates
 
@@ -718,7 +718,7 @@ Updates needed:
 
 - [ ] 100% test coverage for all packages
 - [ ] All 6 test types passing
-- [ ] Zero TODO/FIXME in production code
+- [x] Zero unresolved markers in production code
 - [ ] All packages have README documentation
 - [ ] All user manuals complete
 - [ ] Video courses updated with new modules

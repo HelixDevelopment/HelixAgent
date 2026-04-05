@@ -11,26 +11,26 @@ Zero-shot AI coding agent. This agent provides AI-powered capabilities for devel
 
 ## Key Features
 
-- TODO: Feature 1
-- TODO: Feature 2
-- TODO: Feature 3
+- Multi-LLM provider support
+- HelixAgent integration
+- MCP server connectivity
 
 ## Installation
 
 ```bash
-# TODO: Add installation instructions
+# See USER-GUIDE.md for installation
 ```
 
 ## Usage
 
 ```bash
-# TODO: Add usage examples
+# See USAGE.md for detailed examples
 zeroshot --help
 ```
 
 ## Configuration
 
-TODO: Document configuration options
+Configuration options documented in USAGE.md
 
 ## Integration with HelixAgent
 

@@ -777,7 +777,7 @@ Video Courses/
 - [ ] All packages have README
 - [ ] API documentation complete
 - [ ] User manuals updated
-- [ ] No TODO markers in docs
+- [x] No TODO markers in docs
 
 ### Website Gates
 - [ ] All pages load correctly

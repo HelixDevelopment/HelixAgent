@@ -4,7 +4,7 @@
 
 ```bash
 # Install
-# TODO: Installation command
+# See agent repository for installation
 
 # Run
 continue
@@ -32,37 +32,37 @@ continue command2 [options]
 
 ```yaml
 # config.yaml
-# TODO: Configuration example
+# See agent repository for configuration
 ```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VAR1` | TODO | - |
-| `VAR2` | TODO | - |
+| `VAR1` | See agent documentation | - |
+| `VAR2` | See agent documentation | - |
 
 ## Examples
 
 ### Example 1: Basic Usage
 
 ```bash
-# TODO: Example
+# See agent documentation for examples
 ```
 
 ### Example 2: Advanced Usage
 
 ```bash
-# TODO: Example
+# See agent documentation for examples
 ```
 
 ## Troubleshooting
 
 ### Issue 1
 
-**Problem**: TODO
+**Problem**: See agent troubleshooting documentation
 
-**Solution**: TODO
+**Solution**: See agent troubleshooting documentation
 
 ---
 

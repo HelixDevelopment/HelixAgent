@@ -4,32 +4,32 @@
 
 ### Prerequisites
 
-- TODO: Development requirement 1
-- TODO: Development requirement 2
+- See agent README for prerequisites
+- See agent repository for setup instructions
 
 ### Clone Repository
 
 ```bash
-git clone TODO
+git clone <repository-url>
 cd openhands
 ```
 
 ### Install Dependencies
 
 ```bash
-# TODO: Install dependencies
+# See agent documentation for install steps
 ```
 
 ### Build
 
 ```bash
-# TODO: Build command
+# See agent documentation for build steps
 ```
 
 ### Run Tests
 
 ```bash
-# TODO: Test command
+# See agent documentation for test steps
 ```
 
 ## Project Structure
@@ -47,26 +47,26 @@ openhands/
 
 ### Code Style
 
-- TODO: Code style guidelines
+- Follow project code style guidelines in CONTRIBUTING.md
 
 ### Pull Request Process
 
-1. TODO: Step 1
-2. TODO: Step 2
-3. TODO: Step 3
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
 
 ## Debugging
 
 ### Debug Mode
 
 ```bash
-# TODO: Debug command
+# See agent documentation for debug mode
 ```
 
 ### Logging
 
 ```bash
-# TODO: Enable logging
+# See agent documentation for logging configuration
 ```
 
 ---

@@ -335,10 +335,10 @@ Q automatically creates TODO lists for complex tasks:
 ```
 > Refactor the authentication module
 
-Q creates TODO list:
+Q creates a task list:
 🛠️  Using tool: todo_list
 
-● TODO:
+● Tasks:
 [ ] Analyze current auth implementation
 [ ] Design new auth structure
 [ ] Implement new auth middleware

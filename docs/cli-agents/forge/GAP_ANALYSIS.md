@@ -517,7 +517,7 @@ The repository contains skills that could be expanded:
 
 ### Template Improvements
 
-Several templates have TODO opportunities:
+Several templates have improvement opportunities:
 
 1. **System prompts** - Add more specialized prompts
 2. **Partial templates** - Create more reusable components

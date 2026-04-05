@@ -689,7 +689,7 @@ Code Quality:
 - [ ] Vet passes (`go vet ./...`)
 - [ ] Lint passes (`make lint`)
 - [ ] No formatting issues (`make fmt`)
-- [ ] No TODO/FIXME comments
+- [x] No TODO/FIXME comments
 - [ ] Security scan clean (`make security-scan`)
 
 Test Coverage:

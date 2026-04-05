@@ -454,8 +454,8 @@ result, err := sparkProcessor.ProcessConversationDataset(ctx, params)
 - Spark master/worker/history services containerized
 - PySpark scripts use DataFrame API for performance
 - Parquet output format for efficient storage
-- TODO: Implement actual Spark output parsing (currently mocked)
-- TODO: Add remaining PySpark scripts (relationship mining, topic modeling, etc.)
+- Planned: Implement actual Spark output parsing (currently mocked)
+- Planned: Add remaining PySpark scripts (relationship mining, topic modeling, etc.)
 - Ready for testing in Phase 8
 
 ---

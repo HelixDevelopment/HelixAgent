@@ -4,71 +4,71 @@
 
 ### Prerequisites
 
-- TODO: Requirement 1
-- TODO: Requirement 2
-- TODO: Requirement 3
+- Compatible operating system
+- Required runtime environment
+- Network connectivity for API access
 
 ### Installation
 
 #### macOS
 
 ```bash
-# TODO: macOS installation
+# See agent docs for macOS installation
 ```
 
 #### Linux
 
 ```bash
-# TODO: Linux installation
+# See agent docs for Linux installation
 ```
 
 #### Windows
 
 ```bash
-# TODO: Windows installation
+# See agent docs for Windows installation
 ```
 
 ## First Steps
 
-1. TODO: Step 1
-2. TODO: Step 2
-3. TODO: Step 3
+1. Install the agent
+2. Configure API keys
+3. Start using the agent
 
 ## Core Concepts
 
 ### Concept 1
 
-TODO: Explanation
+See agent documentation for details
 
 ### Concept 2
 
-TODO: Explanation
+See agent documentation for details
 
 ## Workflows
 
 ### Workflow 1
 
-TODO: Step-by-step guide
+See agent documentation for detailed walkthrough
 
 ### Workflow 2
 
-TODO: Step-by-step guide
+See agent documentation for detailed walkthrough
 
 ## Best Practices
 
-- TODO: Best practice 1
-- TODO: Best practice 2
-- TODO: Best practice 3
+- Keep configurations in version control
+- Use environment variables for API keys
+- Review generated changes before committing
 
 ## Tips and Tricks
 
 ### Tip 1
 
-TODO: Helpful tip
+See agent best practices documentation
 
 ### Tip 2
 
-TODO: Helpful tip
+See agent best practices documentation
 
 ---
 

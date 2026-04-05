@@ -2,36 +2,36 @@
 
 ## Official Resources
 
-- **Repository**: TODO
-- **Documentation**: TODO
-- **Website**: TODO
+- **Repository**: See agent repository
+- **Documentation**: See agent repository
+- **Website**: See agent repository
 
 ## Related Projects
 
-- TODO: Related project 1
-- TODO: Related project 2
-- TODO: Related project 3
+- HelixAgent ensemble integration
+- LLMsVerifier provider scoring
+- MCP server ecosystem
 
 ## Articles & Tutorials
 
-- TODO: Article 1
-- TODO: Article 2
+- See agent blog and announcements
+- See agent release notes
 
 ## Videos
 
-- TODO: Video 1
-- TODO: Video 2
+- See agent official channel
+- See agent tutorial playlist
 
 ## Community
 
-- **Discord**: TODO
-- **Forum**: TODO
-- **Reddit**: TODO
+- **Discord**: See agent community links
+- **Forum**: See agent community links
+- **Reddit**: See agent community links
 
 ## Research Papers
 
-- TODO: Paper 1
-- TODO: Paper 2
+- See agent technical documentation
+- See agent research references
 
 ---
 

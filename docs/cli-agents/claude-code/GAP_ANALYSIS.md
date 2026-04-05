@@ -264,7 +264,7 @@ The repository contains automation scripts that could be expanded:
 
 ### Plugin Improvements
 
-Several plugins have TODO opportunities:
+Several plugins have improvement opportunities:
 
 1. **code-review plugin**: Add more specialized reviewers
 2. **feature-dev plugin**: Expand workflow templates

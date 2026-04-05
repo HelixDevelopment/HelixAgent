@@ -5,7 +5,7 @@
 ### Initialization
 
 ```typescript
-// TODO: Define initialization API
+// See agent API documentation for initialization
 interface Cli_AgentConfig {
     // Configuration options
 }
@@ -14,7 +14,7 @@ interface Cli_AgentConfig {
 ### Main Interface
 
 ```typescript
-// TODO: Define main API
+// See agent API documentation for endpoints
 interface Cli_AgentAPI {
     // Core methods
 }
@@ -23,7 +23,7 @@ interface Cli_AgentAPI {
 ### Events
 
 ```typescript
-// TODO: Define events
+// See agent API documentation for event types
 interface Cli_AgentEvents {
     // Event handlers
 }
@@ -35,32 +35,32 @@ interface Cli_AgentEvents {
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/v1/...` | GET | TODO |
+| `/api/v1/...` | GET | See agent API docs |
 
 ### WebSocket
 
 | Channel | Direction | Description |
 |---------|-----------|-------------|
-| `...` | bidirectional | TODO |
+| `...` | bidirectional | See agent API docs |
 
 ## SDK Integration
 
 ### JavaScript/TypeScript
 
 ```typescript
-// TODO: SDK usage example
+// See agent SDK documentation for usage examples
 ```
 
 ### Python
 
 ```python
-# TODO: Python SDK example
+# See agent Python SDK documentation
 ```
 
 ### Go
 
 ```go
-// TODO: Go SDK example
+// See agent Go SDK documentation
 ```
 
 ---

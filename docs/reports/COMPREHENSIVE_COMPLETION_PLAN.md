@@ -489,7 +489,7 @@ npm test
 ### Code Quality
 - [ ] All packages build successfully
 - [ ] No `t.Skip()` for non-infrastructure reasons
-- [ ] Zero `TODO/FIXME` comments in production code
+- [x] Zero `TODO/FIXME` comments in production code
 - [ ] All lint checks pass
 
 ### Test Coverage

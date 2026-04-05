@@ -98,8 +98,6 @@ services:
         condition: service_healthy
       helixllm-qdrant:
         condition: service_healthy
-      helixllm-kafka:
-        condition: service_started
       helixllm-llamacpp:
         condition: service_healthy
     networks:
@@ -169,7 +167,7 @@ services:
 
   # HelixLLM Kafka for messaging
   helixllm-kafka:
-    image: bitnami/kafka:latest
+    image: docker.io/bitnami/kafka:3.9.0
     container_name: helixagent-helixllm-kafka
     ports:
       - "${HELIX_LLM_KAFKA_PORT:-9093}:9092"

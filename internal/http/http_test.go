@@ -181,6 +181,44 @@ func TestHTTPClientPool_GetClient_Concurrent(t *testing.T) {
 	}
 }
 
+// TestHTTPClientPool_GetClient_ConcurrentRace verifies the double-check locking
+// in GetClient under the race detector: 100 goroutines all request the same
+// host and MUST receive the identical *http.Client instance.  Run with -race.
+func TestHTTPClientPool_GetClient_ConcurrentRace(t *testing.T) {
+	const goroutines = 100
+	const host = "race-test.example.com"
+
+	pool := NewHTTPClientPool(nil)
+
+	// ready acts as a starting gun so all goroutines hit GetClient at once.
+	ready := make(chan struct{})
+	results := make([]*http.Client, goroutines)
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			<-ready // wait for the gun
+			results[idx] = pool.GetClient(host)
+		}(i)
+	}
+
+	close(ready) // fire all goroutines simultaneously
+	wg.Wait()
+
+	// Every goroutine must have received the exact same pointer.
+	require.NotNil(t, results[0], "first client must not be nil")
+	for i := 1; i < goroutines; i++ {
+		assert.Same(t, results[0], results[i],
+			"goroutine %d got a different *http.Client instance", i)
+	}
+
+	// Pool must contain exactly one entry for the host.
+	assert.Equal(t, 1, pool.ClientCount(),
+		"pool must hold exactly one client for a single host")
+}
+
 func TestHTTPClientPool_GetClientForURL(t *testing.T) {
 	pool := NewHTTPClientPool(nil)
 

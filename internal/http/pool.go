@@ -166,9 +166,12 @@ func (p *HTTPClientPool) GetClient(host string) *http.Client {
 		return client
 	}
 
-	// Create new client with shared transport
+	// Create new client with a cloned transport for per-host isolation.
+	// Clone() copies TLS config and dial settings but gives each host its
+	// own idle-connection pool, preventing one host's connection state from
+	// leaking into another's.
 	client = &http.Client{
-		Transport: p.transport,
+		Transport: p.transport.Clone(),
 		Timeout:   p.config.ResponseHeaderTimeout + p.config.DialTimeout,
 	}
 

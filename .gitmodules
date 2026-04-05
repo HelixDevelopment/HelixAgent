@@ -454,3 +454,6 @@
 [submodule "cli_agents/continueagent"]
 	path = cli_agents/continueagent
 	url = git@github.com:continuedev/continue.git
+[submodule "HelixLLM"]
+	path = HelixLLM
+	url = git@github.com:HelixDevelopment/HelixLLM.git

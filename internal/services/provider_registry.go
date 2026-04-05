@@ -29,6 +29,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/lmstudio"
 	"dev.helix.agent/internal/llm/providers/fireworks"
 	"dev.helix.agent/internal/llm/providers/gemini"
+	"dev.helix.agent/internal/llm/providers/helixllm"
 	"dev.helix.agent/internal/llm/providers/githubmodels"
 	"dev.helix.agent/internal/llm/providers/groq"
 	"dev.helix.agent/internal/llm/providers/huggingface"
@@ -741,6 +742,23 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 		}
 	}
 	r.storeProviderConfig(geminiConfig)
+
+	// HelixLLM provider (submodule)
+	helixllmConfig := cfg.Providers["helixllm"]
+	if helixllmConfig == nil {
+		helixllmConfig = &ProviderConfig{
+			Name:    "helixllm",
+			Type:    "helixllm",
+			Enabled: os.Getenv("USE_HELIX_LLM") == "true",
+			Models: []ModelConfig{{
+				ID:      "helixllm-default",
+				Name:    "HelixLLM Default",
+				Enabled: true,
+				Weight:  1.0,
+			}},
+		}
+	}
+	r.storeProviderConfig(helixllmConfig)
 
 	// Qwen provider
 	qwenConfig := cfg.Providers["qwen"]
@@ -1576,6 +1594,23 @@ func (r *ProviderRegistry) createProviderFromConfig(cfg ProviderConfig) (llm.LLM
 			return provider, nil
 		}
 		return nil, fmt.Errorf("Gemini provider not available: disabled")
+
+	case "helixllm":
+		if cfg.Enabled {
+			config := helixllm.Config{
+				Endpoint:      getEnv("HELIX_LLM_ENDPOINT", "https://localhost:8443"),
+				APIKey:        cfg.APIKey,
+				Model:         model,
+				TLSSkipVerify: os.Getenv("HELIX_LLM_TLS_SKIP_VERIFY") == "true",
+			}
+			if baseURL != "" {
+				config.Endpoint = baseURL
+			}
+			provider := helixllm.NewProvider(config)
+			logrus.WithField("provider", cfg.Name).Info("Created HelixLLM provider")
+			return provider, nil
+		}
+		return nil, fmt.Errorf("HelixLLM provider not available: disabled (set USE_HELIX_LLM=true to enable)")
 
 	case "qwen":
 		// Try API key first (direct API access), then ACP, then CLI proxy for OAuth

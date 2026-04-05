@@ -49,12 +49,12 @@ services:
       # Vector database
       HELIX_VECTOR_DB: ${HELIX_LLM_VECTOR_DB:-qdrant}
       
-      # LLM configuration
-      HELIX_LLM_LOCAL_MODEL: ${HELIX_LLM_LOCAL_MODEL:-Llama-3.1-8B-Instruct-Q4_K_M}
-      HELIX_LLM_LOCAL_RPC_PORT: ${HELIX_LLM_LOCAL_RPC_PORT:-50052}
+      # LLM configuration (connected to local llama.cpp)
+      HELIX_LLM_LOCAL_MODEL: ${HELIX_LLM_LOCAL_MODEL:-llama-3.1-8b}
+      HELIX_LLM_LOCAL_RPC_PORT: ${HELIX_LLM_LOCAL_RPC_PORT:-8081}
       HELIX_LLM_OPENAI_KEY: ${HELIX_LLM_OPENAI_KEY:-}
       HELIX_LLM_ANTHROPIC_KEY: ${HELIX_LLM_ANTHROPIC_KEY:-}
-      HELIX_LLM_DEFAULT_PROVIDER: ${HELIX_LLM_DEFAULT_PROVIDER:-local}
+      HELIX_LLM_DEFAULT_PROVIDER: ${HELIX_LLM_DEFAULT_PROVIDER:-llamacpp}
       
       # Knowledge/RAG configuration
       HELIX_EMBEDDING_PROVIDER: ${HELIX_LLM_EMBEDDING_PROVIDER:-local}
@@ -101,6 +101,8 @@ services:
         condition: service_healthy
       helixllm-kafka:
         condition: service_started
+      helixllm-llamacpp:
+        condition: service_healthy
     networks:
       - helixagent-network
     restart: unless-stopped
@@ -186,34 +188,45 @@ services:
       - helixagent-network
     restart: unless-stopped
 
-  # Optional: Local LLM Inference via llama.cpp
+  # Local LLM Inference via llama.cpp (built from source with optimizations)
   helixllm-llamacpp:
-    image: ghcr.io/ggml-org/llama.cpp:server
+    build:
+      context: ./HelixLLM
+      dockerfile: container/Containerfile.llamacpp
     container_name: helixagent-helixllm-llamacpp
     ports:
       - "${HELIX_LLM_LLAMACPP_PORT:-8081}:8080"
+    environment:
+      # Model download configuration
+      MODEL_URL: ${HELIX_LLM_MODEL_URL:-https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf}
+      MODEL_PATH: /models/model.gguf
+      # llama.cpp server configuration
+      LLAMA_HOST: 0.0.0.0
+      LLAMA_PORT: 8080
+      LLAMA_CTX_SIZE: ${HELIX_LLM_CTX_SIZE:-8192}
+      LLAMA_THREADS: ${HELIX_LLM_THREADS:-4}
+      LLAMA_THREADS_BATCH: ${HELIX_LLM_THREADS_BATCH:-4}
+      LLAMA_BATCH_SIZE: ${HELIX_LLM_BATCH_SIZE:-2048}
+      LLAMA_N_PREDICT: ${HELIX_LLM_N_PREDICT:--1}
+      LLAMA_PARALLEL: ${HELIX_LLM_PARALLEL:-1}
     volumes:
       - helixllm_models:/models
-    command: >
-      --host 0.0.0.0
-      --port 8080
-      --model /models/${HELIX_LLM_LOCAL_MODEL:-Llama-3.1-8B-Instruct-Q4_K_M.gguf}
-      --ctx-size 8192
-      --n-gpu-layers 0
-      --threads 4
     networks:
       - helixagent-network
     deploy:
       resources:
         limits:
           memory: 8G
+          cpus: '4'
         reservations:
           memory: 4G
+          cpus: '2'
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     profiles:
       - local-llm

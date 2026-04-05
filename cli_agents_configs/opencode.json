@@ -17,6 +17,23 @@
           }
         }
       }
+    },
+    "helixllm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "HelixLLM",
+      "options": {
+        "baseURL": "https://localhost:8443/v1",
+        "apiKey": "<YOUR_HELIXLLM_API_KEY>"
+      },
+      "models": {
+        "model.gguf": {
+          "name": "HelixLLM Local Model (Qwen2.5-1.5B)",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        }
+      }
     }
   },
   "agent": {
@@ -118,6 +135,30 @@
     "helixagent-vision": {
       "type": "remote",
       "url": "http://localhost:7061/v1/vision"
+    },
+    "helixllm-acp": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/agents/coordinate"
+    },
+    "helixllm-embeddings": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/embeddings"
+    },
+    "helixllm-knowledge": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/knowledge/query"
+    },
+    "helixllm-lsp": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/lsp/health"
+    },
+    "helixllm-mcp": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/agents/tools"
+    },
+    "helixllm-memory": {
+      "type": "remote",
+      "url": "https://localhost:8443/v1/agents/memory/recall"
     },
     "memory": {
       "type": "local",

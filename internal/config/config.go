@@ -331,7 +331,7 @@ func Load() *Config {
 			User:           getEnv("DB_USER", "helixagent"),
 			Password:       getEnv("DB_PASSWORD", "secret"),
 			Name:           getEnv("DB_NAME", "helixagent_db"),
-			SSLMode:        getEnv("DB_SSLMODE", "disable"),
+			SSLMode:        getEnvWithFallback("DB_SSLMODE", "DB_SSL_MODE", "disable"),
 			MaxConnections: getIntEnv("DB_MAX_CONNECTIONS", 20),
 			ConnTimeout:    getDurationEnv("DB_CONN_TIMEOUT", 10*time.Second),
 			PoolSize:       getIntEnv("DB_POOL_SIZE", 10),
@@ -400,13 +400,13 @@ func Load() *Config {
 			LockoutDuration:  getDurationEnv("LOCKOUT_DURATION", 15*time.Minute),
 			RateLimiting: RateLimitConfig{
 				Enabled:  getBoolEnv("RATE_LIMITING_ENABLED", true),
-				Requests: getIntEnv("RATE_LIMIT_REQUESTS", 100),
+				Requests: getIntEnvWithFallback("RATE_LIMIT_REQUESTS", "RATE_LIMIT_RPM", 100),
 				Window:   getDurationEnv("RATE_LIMIT_WINDOW", time.Minute),
 				Strategy: getEnv("RATE_LIMIT_STRATEGY", "sliding_window"),
 			},
 			CORS: CORSConfig{
 				Enabled:          getBoolEnv("CORS_ENABLED", true),
-				AllowedOrigins:   getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"*"}),
+				AllowedOrigins:   getEnvSliceWithFallback("CORS_ALLOWED_ORIGINS", "ALLOWED_ORIGINS", []string{"*"}),
 				AllowedMethods:   getEnvSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
 				AllowedHeaders:   getEnvSlice("CORS_ALLOWED_HEADERS", []string{"*"}),
 				MaxAge:           getDurationEnv("CORS_MAX_AGE", time.Hour),
@@ -948,6 +948,44 @@ func getFloatEnv(key string, defaultValue float64) float64 {
 
 func getEnvSlice(key string, defaultValue []string) []string {
 	if value := os.Getenv(key); value != "" {
+		return strings.Split(value, ",")
+	}
+	return defaultValue
+}
+
+// getEnvWithFallback reads the primary key, falling back to an alternate key.
+func getEnvWithFallback(primary, fallback, defaultValue string) string {
+	if value := os.Getenv(primary); value != "" {
+		return value
+	}
+	if value := os.Getenv(fallback); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getIntEnvWithFallback reads an int from the primary key, falling back to an alternate key.
+func getIntEnvWithFallback(primary, fallback string, defaultValue int) int {
+	if value := os.Getenv(primary); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	if value := os.Getenv(fallback); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// getEnvSliceWithFallback reads a comma-separated slice from the primary key,
+// falling back to an alternate key.
+func getEnvSliceWithFallback(primary, fallback string, defaultValue []string) []string {
+	if value := os.Getenv(primary); value != "" {
+		return strings.Split(value, ",")
+	}
+	if value := os.Getenv(fallback); value != "" {
 		return strings.Split(value, ",")
 	}
 	return defaultValue

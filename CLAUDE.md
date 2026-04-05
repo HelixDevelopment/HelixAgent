@@ -455,6 +455,22 @@ CI_RESOURCE_LIMIT=medium make ci-all  # Medium resource limits (default: low)
 ./challenges/scripts/concurrency_fixes_validation_challenge.sh     # 15 tests
 ./challenges/scripts/security_scan_validation_challenge.sh         # 10 tests
 ./challenges/scripts/documentation_completeness_validation_challenge.sh  # 12 tests
+./challenges/scripts/output_pipeline_challenge.sh                       # 11 tests
+./challenges/scripts/container_lazy_loading_challenge.sh                # 13 tests
+./challenges/scripts/ensemble_handler_challenge.sh                      # 16 tests
+./challenges/scripts/browser_handler_challenge.sh                       # 11 tests
+./challenges/scripts/search_handler_challenge.sh                        # 13 tests
+./challenges/scripts/fuzz_test_validation_challenge.sh                  # 16 tests
+./challenges/scripts/feature_flag_challenge.sh                          # 13 tests
+./challenges/scripts/env_var_completeness_challenge.sh                  # 22 tests
+./challenges/scripts/safety_regression_challenge.sh                     # 16 tests
+./challenges/scripts/test_type_completeness_challenge.sh                # 21 tests
+./challenges/scripts/performance_baseline_challenge.sh                  # 16 tests
+./challenges/scripts/stress_resilience_challenge.sh                     # 21 tests
+./challenges/scripts/security_scan_results_challenge.sh                 # 17 tests
+./challenges/scripts/grafana_dashboard_content_challenge.sh             # 7 tests
+./challenges/scripts/lazy_loading_comprehensive_challenge.sh            # 16 tests
+./challenges/scripts/brotli_compression_challenge.sh                    # 11 tests
 # Go-native userflow challenges (22): run with --run-challenges=userflow
 ```
 
@@ -467,7 +483,7 @@ make verifier-verify MODEL=gpt-4 PROVIDER=openai
 
 ## Protocol Endpoints
 
-MCP `/v1/mcp` | ACP `/v1/acp` | LSP `/v1/lsp` | Embeddings `/v1/embeddings` | Vision `/v1/vision` | Cognee `/v1/cognee` (optional) | Startup `/v1/startup/verification` | BigData `/v1/bigdata/health` | Tasks `/v1/tasks` | Discovery `/v1/discovery` | Scoring `/v1/scoring` | Verification `/v1/verification` | Health `/v1/health` | Agentic `/v1/agentic/workflows` | Planning `/v1/planning/{hiplan,mcts,tot}` | LLMOps `/v1/llmops/{experiments,evaluate,prompts}` | Benchmark `/v1/benchmark/{run,results}` | QA `/v1/qa/{sessions,findings,platforms,discover}` | GraphQL `/v1/graphql` (feature-flagged, `GRAPHQL_ENABLED=true`)
+MCP `/v1/mcp` | ACP `/v1/acp` | LSP `/v1/lsp` | Embeddings `/v1/embeddings` | Vision `/v1/vision` | Cognee `/v1/cognee` (optional) | Startup `/v1/startup/verification` | BigData `/v1/bigdata/health` | Tasks `/v1/tasks` | Discovery `/v1/discovery` | Scoring `/v1/scoring` | Verification `/v1/verification` | Health `/v1/health` | Agentic `/v1/agentic/workflows` | Planning `/v1/planning/{hiplan,mcts,tot}` | LLMOps `/v1/llmops/{experiments,evaluate,prompts}` | Benchmark `/v1/benchmark/{run,results}` | QA `/v1/qa/{sessions,findings,platforms,discover}` | Ensemble `/v1/ensemble/{sessions,teams}` | Completion `/v1/completion/*` | GraphQL `/v1/graphql` (feature-flagged, `GRAPHQL_ENABLED=true`)
 
 Fallback: routes to strongest LLM by score, falls back on failure.
 

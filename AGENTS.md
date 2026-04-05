@@ -488,7 +488,10 @@ CONSTITUTION_WATCHER_ENABLED=false
 | `/v1/completions` | POST | Single completion |
 | `/v1/chat/completions` | POST | Chat completions (OpenAI-compatible) |
 | `/v1/completions/stream` | POST | Streaming completions |
+| `/v1/completion/*` | POST | Completion pipeline endpoints |
 | `/v1/ensemble/completions` | POST | Ensemble completions |
+| `/v1/ensemble/sessions` | GET/POST | Ensemble session management |
+| `/v1/ensemble/teams` | GET/POST | Ensemble team management |
 
 ### Protocol Endpoints
 | Endpoint | Description |
@@ -505,6 +508,31 @@ CONSTITUTION_WATCHER_ENABLED=false
 | `/v1/llmops/{experiments,evaluate,prompts}` | LLMOps |
 | `/v1/benchmark/{run,results}` | Benchmarking |
 | `/v1/qa/{sessions,findings,platforms,discover}` | QA automation |
+| `/v1/ensemble/{sessions,teams}` | Ensemble session and team management |
+| `/v1/completion/*` | Completion pipeline endpoints |
+
+## Challenge Scripts
+
+```bash
+./challenges/scripts/run_all_challenges.sh                              # All challenges
+# Phase 1-3 new challenges:
+./challenges/scripts/output_pipeline_challenge.sh                       # 11 tests
+./challenges/scripts/container_lazy_loading_challenge.sh                # 13 tests
+./challenges/scripts/ensemble_handler_challenge.sh                      # 16 tests
+./challenges/scripts/browser_handler_challenge.sh                       # 11 tests
+./challenges/scripts/search_handler_challenge.sh                        # 13 tests
+./challenges/scripts/fuzz_test_validation_challenge.sh                  # 16 tests
+./challenges/scripts/feature_flag_challenge.sh                          # 13 tests
+./challenges/scripts/env_var_completeness_challenge.sh                  # 22 tests
+./challenges/scripts/safety_regression_challenge.sh                     # 16 tests
+./challenges/scripts/test_type_completeness_challenge.sh                # 21 tests
+./challenges/scripts/performance_baseline_challenge.sh                  # 16 tests
+./challenges/scripts/stress_resilience_challenge.sh                     # 21 tests
+./challenges/scripts/security_scan_results_challenge.sh                 # 17 tests
+./challenges/scripts/grafana_dashboard_content_challenge.sh             # 7 tests
+./challenges/scripts/lazy_loading_comprehensive_challenge.sh            # 16 tests
+./challenges/scripts/brotli_compression_challenge.sh                    # 11 tests
+```
 
 ## Adding New Components
 

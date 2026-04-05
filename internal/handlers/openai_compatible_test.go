@@ -19,6 +19,7 @@ import (
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -6726,5 +6727,93 @@ func TestDebateDialogueGatingConditions(t *testing.T) {
 			gated := h.showDebateDialogue && h.dialogueFormatter != nil && tt.config
 			assert.Equal(t, tt.expected, gated)
 		})
+	}
+}
+
+// TestProcessWithComprehensiveStream_ChannelClosesOnContextCancel verifies that
+// the stream channel returned by processWithComprehensiveStream is always closed
+// when the goroutine exits, including on context cancellation.
+//
+// The method uses a minimal DebateService (logger only, no comprehensive system),
+// which causes StreamDebate to return an error immediately. This exercises the
+// defer close(streamChan) path and proves the channel drains promptly.
+func TestProcessWithComprehensiveStream_ChannelClosesOnContextCancel(t *testing.T) {
+	// Build a handler with a minimal DebateService that returns an error instantly.
+	// IsComprehensiveSystemEnabled() returns false on a zero-valued service, so
+	// StreamDebate returns ("comprehensive streaming debate system is not enabled")
+	// immediately — the goroutine exits, defer close(streamChan) fires.
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel) // suppress noise in tests
+	svc := services.NewDebateService(logger)
+
+	handler := &UnifiedHandler{
+		debateService: svc,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately before calling the method
+
+	req := &models.LLMRequest{
+		Prompt: "test topic",
+	}
+	openaiReq := &OpenAIChatRequest{Model: "helixagent-debate"}
+
+	ch, err := handler.processWithComprehensiveStream(ctx, req, openaiReq)
+	require.NoError(t, err, "processWithComprehensiveStream must not return an error synchronously")
+	require.NotNil(t, ch, "returned channel must not be nil")
+
+	// The channel must close within 5 seconds — drain any buffered items first.
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case _, open := <-ch:
+			if !open {
+				// Channel closed cleanly — test passes.
+				return
+			}
+			// Drain buffered responses and keep waiting for close.
+		case <-deadline:
+			t.Fatal("stream channel was not closed within 5 seconds after context cancellation")
+		}
+	}
+}
+
+// TestProcessWithComprehensiveStream_GoroutinePatternCtxDone verifies that the
+// goroutine pattern used in processWithComprehensiveStream (defer close + ctx.Done
+// select) exits promptly when the context is cancelled while the goroutine is
+// blocked sending to the channel.
+func TestProcessWithComprehensiveStream_GoroutinePatternCtxDone(t *testing.T) {
+	// Replicate the exact goroutine pattern from processWithComprehensiveStream
+	// to verify the ctx.Done() escape hatch works even with a full buffer.
+	streamChan := make(chan *models.LLMResponse, 1) // tiny buffer to force blocking
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		defer close(streamChan)
+		for i := 0; i < 100; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			case streamChan <- &models.LLMResponse{Content: "chunk"}:
+			}
+		}
+	}()
+
+	// Let it send one item, then cancel.
+	<-streamChan
+	cancel()
+
+	// Channel must close within 5 seconds.
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case _, open := <-streamChan:
+			if !open {
+				return
+			}
+		case <-deadline:
+			t.Fatal("goroutine did not exit within 5 seconds after context cancellation")
+		}
 	}
 }

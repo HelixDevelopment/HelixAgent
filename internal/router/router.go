@@ -1068,6 +1068,27 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		protocolSSEHandler.SetRAGHandler(ragHandler)
 		logger.Info("RAG endpoints registered at /v1/rag/*")
 
+		// Ensemble session/team management endpoints
+		ensembleHandler := handlers.NewEnsembleHandler(nil, logger)
+		ensembleHandler.RegisterRoutes(protected)
+		logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/*")
+
+		// Completion endpoints (skills-enhanced completion with intent routing)
+		completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())
+		completionHandler.SetSkillsIntegration(skillsIntegration)
+		if intentRouter != nil {
+			completionHandler.SetIntentBasedRouter(intentRouter)
+		}
+		completionGroup := protected.Group("/completion")
+		{
+			completionGroup.POST("", completionHandler.Complete)
+			completionGroup.POST("/stream", completionHandler.CompleteStream)
+			completionGroup.POST("/chat", completionHandler.Chat)
+			completionGroup.POST("/chat/stream", completionHandler.ChatStream)
+			completionGroup.GET("/models", completionHandler.Models)
+		}
+		logger.Info("Completion endpoints registered at /v1/completion/*")
+
 		// ACP (Agent Communication Protocol) endpoints
 		// Using acpHandler already created earlier
 		acpHandler.RegisterRoutes(protected)

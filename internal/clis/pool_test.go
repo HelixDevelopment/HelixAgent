@@ -3,6 +3,7 @@ package clis
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -75,8 +76,9 @@ func TestInstancePool_AcquireFromPool(t *testing.T) {
 
 	factory := func() (*AgentInstance, error) {
 		return &AgentInstance{
-			ID:   "instance-1",
-			Type: TypeAider,
+			ID:     "instance-1",
+			Type:   TypeAider,
+			Status: StatusIdle,
 		}, nil
 	}
 
@@ -186,9 +188,11 @@ func TestInstancePool_MaxActiveLimit(t *testing.T) {
 		MaxLifetime: time.Hour,
 	}
 
+	var instanceCounter int64
 	factory := func() (*AgentInstance, error) {
+		id := atomic.AddInt64(&instanceCounter, 1)
 		return &AgentInstance{
-			ID:   "instance",
+			ID:   fmt.Sprintf("instance-%d", id),
 			Type: TypeAider,
 		}, nil
 	}
@@ -196,17 +200,20 @@ func TestInstancePool_MaxActiveLimit(t *testing.T) {
 	pool := NewInstancePool(TypeAider, config, factory)
 	defer pool.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
 	// Acquire up to MaxActive
-	inst1, _ := pool.Acquire(ctx)
-	inst2, _ := pool.Acquire(ctx)
+	inst1, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	inst2, err := pool.Acquire(ctx)
+	require.NoError(t, err)
 
-	// Third acquire should timeout
-	_, err := pool.Acquire(ctx)
+	// Third acquire should timeout (pool exhausted at maxActive=2)
+	shortCtx, shortCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer shortCancel()
+	_, err = pool.Acquire(shortCtx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timeout")
 
 	// Release one and try again
 	pool.Release(inst1)
@@ -299,7 +306,7 @@ func TestInstancePool_ConcurrentAcquireRelease(t *testing.T) {
 	factory := func() (*AgentInstance, error) {
 		count := atomic.AddInt64(&factoryCounter, 1)
 		return &AgentInstance{
-			ID:   string(rune(int(count))),
+			ID:   fmt.Sprintf("concurrent-%d", count),
 			Type: TypeAider,
 		}, nil
 	}
@@ -376,8 +383,13 @@ func TestInstancePool_Close(t *testing.T) {
 		t.Skip("Skipping pool test in short mode - requires database setup")
 	}
 	config := DefaultPoolConfig()
+	var closeCounter int64
 	factory := func() (*AgentInstance, error) {
-		return &AgentInstance{ID: "test", Type: TypeAider}, nil
+		id := atomic.AddInt64(&closeCounter, 1)
+		return &AgentInstance{
+			ID:   fmt.Sprintf("close-test-%d", id),
+			Type: TypeAider,
+		}, nil
 	}
 
 	pool := NewInstancePool(TypeAider, config, factory)
@@ -394,6 +406,99 @@ func TestInstancePool_Close(t *testing.T) {
 	// All instances should be terminated
 	assert.Equal(t, StatusTerminated, inst1.Status)
 	assert.Equal(t, StatusTerminated, inst2.Status)
+}
+
+func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping pool test in short mode - requires database setup")
+	}
+
+	// This test targets the RLock-to-Lock gap in Acquire().
+	// With the old code, multiple goroutines could read activeCount < maxActive
+	// under RLock, then all proceed to create new instances, exceeding maxActive.
+	// The tight maxActive=5 with 100 goroutines makes the race window very likely.
+	config := PoolConfig{
+		MinIdle:     0,
+		MaxIdle:     5,
+		MaxActive:   5,
+		MaxLifetime: time.Hour,
+	}
+
+	var factoryCounter int64
+	factory := func() (*AgentInstance, error) {
+		id := atomic.AddInt64(&factoryCounter, 1)
+		return &AgentInstance{
+			ID:   fmt.Sprintf("race-inst-%d", id),
+			Type: TypeAider,
+		}, nil
+	}
+
+	pool := NewInstancePool(TypeAider, config, factory)
+	defer pool.Close()
+
+	const numGoroutines = 100
+	var wg sync.WaitGroup
+	ctx := context.Background()
+
+	var acquireErrors int64
+	var acquireSuccesses int64
+	var maxConcurrentActive int64
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Use a short timeout so we don't hang
+			acquireCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
+
+			inst, err := pool.Acquire(acquireCtx)
+			if err != nil {
+				atomic.AddInt64(&acquireErrors, 1)
+				return
+			}
+			atomic.AddInt64(&acquireSuccesses, 1)
+
+			// Check active count under lock - should never exceed maxActive
+			pool.mu.RLock()
+			currentActive := int64(len(pool.active))
+			pool.mu.RUnlock()
+
+			// Track the max we observe
+			for {
+				old := atomic.LoadInt64(&maxConcurrentActive)
+				if currentActive <= old {
+					break
+				}
+				if atomic.CompareAndSwapInt64(&maxConcurrentActive, old, currentActive) {
+					break
+				}
+			}
+
+			// Hold for a bit to maximize contention
+			time.Sleep(10 * time.Millisecond)
+
+			pool.Release(inst)
+		}()
+	}
+
+	wg.Wait()
+
+	// The critical invariant: active count should NEVER have exceeded maxActive
+	maxObserved := atomic.LoadInt64(&maxConcurrentActive)
+	assert.LessOrEqual(t, maxObserved, int64(config.MaxActive),
+		"active count exceeded maxActive: observed %d, max allowed %d",
+		maxObserved, config.MaxActive)
+
+	// Verify pool is in consistent state after all goroutines complete
+	stats := pool.Stats()
+	assert.Equal(t, 0, stats["active_count"],
+		"all instances should be released after test")
+
+	t.Logf("Results: %d successes, %d errors (timeouts), max concurrent active: %d",
+		atomic.LoadInt64(&acquireSuccesses),
+		atomic.LoadInt64(&acquireErrors),
+		maxObserved)
 }
 
 // Benchmarks

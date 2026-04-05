@@ -94,20 +94,30 @@ func NewInstancePool(
 
 // Acquire gets an instance from the pool.
 func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
-	// Try to get from idle channel first (non-blocking)
+	// Try to get from idle channel first (non-blocking, channel is thread-safe)
 	select {
 	case inst := <-p.idleCh:
 		atomic.AddUint64(&p.hits, 1)
 		p.mu.Lock()
+		// Remove from idle slice if present (channel and slice can be out of sync)
+		for i, idleInst := range p.idle {
+			if idleInst.ID == inst.ID {
+				p.idle = append(p.idle[:i], p.idle[i+1:]...)
+				break
+			}
+		}
 		p.active[inst.ID] = inst
 		p.mu.Unlock()
 		return inst, nil
 	default:
-		// No idle instance available
+		// No idle instance available on channel
 	}
-	
-	// Try to get from idle slice
+
+	// Single lock for check-and-modify on idle slice AND active count check.
+	// This eliminates the RLock-to-Lock gap that allowed races.
 	p.mu.Lock()
+
+	// Try idle slice under the same lock
 	if len(p.idle) > 0 {
 		inst := p.idle[len(p.idle)-1]
 		p.idle = p.idle[:len(p.idle)-1]
@@ -116,19 +126,22 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 		atomic.AddUint64(&p.hits, 1)
 		return inst, nil
 	}
-	p.mu.Unlock()
-	
-	// Check if we can create new
-	p.mu.RLock()
-	activeCount := len(p.active)
-	p.mu.RUnlock()
-	
-	if activeCount >= p.maxActive {
+
+	// Check if we can create a new instance. If yes, reserve the slot
+	// by using a placeholder so other goroutines see the correct active count.
+	if len(p.active) >= p.maxActive {
+		p.mu.Unlock()
 		// Pool exhausted, wait for one to become available
 		select {
 		case inst := <-p.idleCh:
 			atomic.AddUint64(&p.hits, 1)
 			p.mu.Lock()
+			for i, idleInst := range p.idle {
+				if idleInst.ID == inst.ID {
+					p.idle = append(p.idle[:i], p.idle[i+1:]...)
+					break
+				}
+			}
 			p.active[inst.ID] = inst
 			p.mu.Unlock()
 			return inst, nil
@@ -138,18 +151,31 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 			return nil, fmt.Errorf("pool exhausted, timeout waiting for instance")
 		}
 	}
-	
-	// Create new instance
+
+	// Reserve a slot with a placeholder key so concurrent goroutines see
+	// the updated active count. We use a unique placeholder that cannot
+	// collide with real instance IDs.
+	placeholderID := fmt.Sprintf("__placeholder_%d__", time.Now().UnixNano())
+	p.active[placeholderID] = nil
+	p.mu.Unlock()
+
+	// Create instance OUTSIDE the lock to avoid holding it during I/O
 	atomic.AddUint64(&p.misses, 1)
 	inst, err := p.factory()
 	if err != nil {
+		// Remove the placeholder on failure
+		p.mu.Lock()
+		delete(p.active, placeholderID)
+		p.mu.Unlock()
 		return nil, fmt.Errorf("factory error: %w", err)
 	}
-	
+
+	// Swap placeholder for real instance
 	p.mu.Lock()
+	delete(p.active, placeholderID)
 	p.active[inst.ID] = inst
 	p.mu.Unlock()
-	
+
 	return inst, nil
 }
 

@@ -14,10 +14,11 @@ type InstancePool struct {
 	agentType AgentType
 
 	// Pool configuration
-	minIdle   int
-	maxIdle   int
-	maxActive int
-	maxLifetime time.Duration
+	minIdle        int
+	maxIdle        int
+	maxActive      int
+	maxLifetime    time.Duration
+	acquireTimeout time.Duration
 
 	// Idle instances available for use
 	idle []*AgentInstance
@@ -46,19 +47,23 @@ type InstancePool struct {
 
 // PoolConfig contains pool configuration.
 type PoolConfig struct {
-	MinIdle     int
-	MaxIdle     int
-	MaxActive   int
-	MaxLifetime time.Duration
+	MinIdle        int
+	MaxIdle        int
+	MaxActive      int
+	MaxLifetime    time.Duration
+	// AcquireTimeout is the maximum time to wait when the pool is exhausted.
+	// Defaults to 30 seconds if zero.
+	AcquireTimeout time.Duration
 }
 
 // DefaultPoolConfig returns default pool configuration.
 func DefaultPoolConfig() PoolConfig {
 	return PoolConfig{
-		MinIdle:     2,
-		MaxIdle:     10,
-		MaxActive:   50,
-		MaxLifetime: 1 * time.Hour,
+		MinIdle:        2,
+		MaxIdle:        10,
+		MaxActive:      50,
+		MaxLifetime:    1 * time.Hour,
+		AcquireTimeout: 30 * time.Second,
 	}
 }
 
@@ -70,18 +75,24 @@ func NewInstancePool(
 ) *InstancePool {
 	ctx, cancel := context.WithCancel(context.Background())
 	
+	acquireTimeout := config.AcquireTimeout
+	if acquireTimeout <= 0 {
+		acquireTimeout = 30 * time.Second
+	}
+
 	pool := &InstancePool{
-		agentType:   agentType,
-		minIdle:     config.MinIdle,
-		maxIdle:     config.MaxIdle,
-		maxActive:   config.MaxActive,
-		maxLifetime: config.MaxLifetime,
-		idle:        make([]*AgentInstance, 0, config.MaxIdle),
-		idleCh:      make(chan *AgentInstance, config.MaxIdle),
-		active:      make(map[string]*AgentInstance),
-		factory:     factory,
-		ctx:         ctx,
-		cancel:      cancel,
+		agentType:      agentType,
+		minIdle:        config.MinIdle,
+		maxIdle:        config.MaxIdle,
+		maxActive:      config.MaxActive,
+		maxLifetime:    config.MaxLifetime,
+		acquireTimeout: acquireTimeout,
+		idle:           make([]*AgentInstance, 0, config.MaxIdle),
+		idleCh:         make(chan *AgentInstance, config.MaxIdle),
+		active:         make(map[string]*AgentInstance),
+		factory:        factory,
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 	
 	// Start maintenance goroutine
@@ -150,7 +161,7 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 			return inst, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(30 * time.Second):
+		case <-time.After(p.acquireTimeout):
 			return nil, fmt.Errorf("pool exhausted, timeout waiting for instance")
 		}
 	}

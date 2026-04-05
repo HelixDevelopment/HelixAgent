@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1809,6 +1810,16 @@ func run(appCfg *AppConfig) error {
 }
 
 func main() {
+	// Respect container CPU limits via GOMAXPROCS env var.
+	// Go reads GOMAXPROCS automatically from the environment, but we log
+	// the effective value so operators can confirm resource limits are applied.
+	if v := os.Getenv("GOMAXPROCS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			runtime.GOMAXPROCS(n)
+		}
+	}
+	logrus.WithField("gomaxprocs", runtime.GOMAXPROCS(0)).Info("CPU parallelism configured")
+
 	// Load environment variables from .env file (if present)
 	// This allows API keys and configuration to be loaded automatically
 	if err := godotenv.Load(); err != nil {

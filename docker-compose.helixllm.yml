@@ -91,7 +91,6 @@ services:
     volumes:
       - helixllm_certs:/certs:ro
       - helixllm_models:/models
-      - ./HelixLLM/certs:/certs:ro
     depends_on:
       helixllm-postgres:
         condition: service_healthy

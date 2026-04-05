@@ -4,28 +4,33 @@ package clis
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 // EventBus provides pub/sub event routing between agent instances.
 type EventBus struct {
 	// Subscribers by event type
 	subscribers map[EventType][]*Subscription
-	
+
 	// Wildcard subscribers (receive all events)
 	wildcards []*Subscription
-	
+
 	// Topic-based subscribers
 	topics map[string][]*Subscription
-	
+
 	mu sync.RWMutex
-	
+
 	// Event channel for async publishing
 	eventCh chan *Event
-	
+
 	// Control
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	// Close safety: prevent send-on-closed-channel panic
+	closed    atomic.Bool
+	closeOnce sync.Once
 }
 
 // Subscription represents an event subscription.
@@ -200,11 +205,16 @@ func (eb *EventBus) dispatch(event *Event) {
 
 // sendToSub sends an event to a subscriber, respecting filters.
 func (eb *EventBus) sendToSub(sub *Subscription, event *Event) {
+	// Bail out if bus is closed — channels may already be closed.
+	if eb.closed.Load() {
+		return
+	}
+
 	// Apply filter if present
 	if sub.Filter != nil && !sub.Filter(event) {
 		return
 	}
-	
+
 	select {
 	case sub.Ch <- event:
 		// Event sent
@@ -230,30 +240,37 @@ func (eb *EventBus) dispatchLoop() {
 	}
 }
 
-// Close shuts down the event bus.
+// Close shuts down the event bus. It is safe to call multiple times.
 func (eb *EventBus) Close() error {
-	eb.cancel()
-	
-	// Close all subscriber channels
-	eb.mu.Lock()
-	for _, subs := range eb.subscribers {
-		for _, sub := range subs {
+	eb.closeOnce.Do(func() {
+		// 1. Signal closed — sendToSub will bail out immediately.
+		eb.closed.Store(true)
+
+		// 2. Cancel context so dispatchLoop's select sees ctx.Done().
+		eb.cancel()
+
+		// 3. Wait for dispatchLoop to exit. This guarantees no goroutine
+		//    is inside dispatch()/sendToSub() when we close channels below.
+		eb.wg.Wait()
+
+		// 4. Now safe to close all subscriber channels under lock.
+		eb.mu.Lock()
+		for _, subs := range eb.subscribers {
+			for _, sub := range subs {
+				close(sub.Ch)
+			}
+		}
+		for _, subs := range eb.topics {
+			for _, sub := range subs {
+				close(sub.Ch)
+			}
+		}
+		for _, sub := range eb.wildcards {
 			close(sub.Ch)
 		}
-	}
-	for _, subs := range eb.topics {
-		for _, sub := range subs {
-			close(sub.Ch)
-		}
-	}
-	for _, sub := range eb.wildcards {
-		close(sub.Ch)
-	}
-	eb.mu.Unlock()
-	
-	// Wait for dispatcher to finish
-	eb.wg.Wait()
-	
+		eb.mu.Unlock()
+	})
+
 	return nil
 }
 

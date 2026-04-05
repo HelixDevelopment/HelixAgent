@@ -436,10 +436,12 @@ func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
 	wg.Wait()
 	time.Sleep(300 * time.Millisecond)
 
-	// Verify all subscribers received all events
+	// Verify all subscribers received all events.
+	// Use atomic.LoadInt64 on the slice element directly (range copies the
+	// value non-atomically, which races with the consumer goroutines).
 	totalEvents := int64(numPublishers * eventsPerPublisher)
-	for i, counter := range counters {
-		count := atomic.LoadInt64(&counter)
+	for i := range counters {
+		count := atomic.LoadInt64(&counters[i])
 		assert.Equal(t, totalEvents, count, "Subscriber %d received wrong count", i)
 	}
 }
@@ -483,6 +485,103 @@ func TestEventBus_Close(t *testing.T) {
 	assert.False(t, ok1, "Sub1 channel should be closed")
 	assert.False(t, ok2, "Sub2 channel should be closed")
 	assert.False(t, ok3, "Sub3 channel should be closed")
+}
+
+func TestEventBus_Close_NoPanicDuringDispatch(t *testing.T) {
+	// This test verifies that closing the EventBus while events are being
+	// published does not cause a panic (send on closed channel).
+	// We run multiple iterations to increase the chance of hitting the race.
+	for iter := 0; iter < 10; iter++ {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Panic during close while dispatching (iter %d): %v", iter, r)
+				}
+			}()
+
+			eb := NewEventBus()
+
+			// Create several subscribers to increase contention
+			const numSubs = 5
+			for i := 0; i < numSubs; i++ {
+				eb.Subscribe(EventTypeStatus, 100)
+				eb.SubscribeTopic("stress-topic", 100)
+				eb.SubscribeWildcard(100)
+			}
+
+			// Publish 1000 events rapidly in a background goroutine
+			var pubWg sync.WaitGroup
+			pubWg.Add(1)
+			go func() {
+				defer pubWg.Done()
+				for i := 0; i < 1000; i++ {
+					eb.Publish(&Event{
+						ID:        uuid.New(),
+						Type:      EventTypeStatus,
+						Metadata:  map[string]interface{}{"topic": "stress-topic"},
+						Timestamp: time.Now(),
+					})
+					// Also test synchronous publish path
+					eb.PublishSync(&Event{
+						ID:        uuid.New(),
+						Type:      EventTypeStatus,
+						Metadata:  map[string]interface{}{"topic": "stress-topic"},
+						Timestamp: time.Now(),
+					})
+				}
+			}()
+
+			// Let some events flow, then close while publishing is in progress
+			time.Sleep(time.Millisecond)
+			err := eb.Close()
+			assert.NoError(t, err)
+
+			// Wait for publisher goroutine to finish (it may still be running)
+			pubWg.Wait()
+		}()
+	}
+}
+
+func TestEventBus_Close_Idempotent(t *testing.T) {
+	eb := NewEventBus()
+	eb.Subscribe(EventTypeStatus, 10)
+
+	// Calling Close multiple times must not panic
+	err1 := eb.Close()
+	assert.NoError(t, err1)
+
+	err2 := eb.Close()
+	assert.NoError(t, err2)
+
+	err3 := eb.Close()
+	assert.NoError(t, err3)
+}
+
+func TestEventBus_PublishAfterClose(t *testing.T) {
+	eb := NewEventBus()
+	sub := eb.Subscribe(EventTypeStatus, 10)
+	_ = sub
+
+	err := eb.Close()
+	assert.NoError(t, err)
+
+	// Publishing after close should not panic
+	assert.NotPanics(t, func() {
+		eb.Publish(&Event{
+			ID:        uuid.New(),
+			Type:      EventTypeStatus,
+			Timestamp: time.Now(),
+		})
+	})
+
+	// Synchronous publish after close should not panic
+	assert.NotPanics(t, func() {
+		eb.PublishSync(&Event{
+			ID:        uuid.New(),
+			Type:      EventTypeStatus,
+			Timestamp: time.Now(),
+		})
+	})
 }
 
 // Benchmarks

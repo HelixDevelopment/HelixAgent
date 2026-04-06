@@ -2178,6 +2178,23 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 
 	baseURL := fmt.Sprintf("http://%s:%s", host, port)
 
+	// Get HelixLLM configuration from environment or .env file
+	envVarsAll := loadEnvVars()
+	helixLLMEndpoint := os.Getenv("HELIX_LLM_ENDPOINT")
+	if helixLLMEndpoint == "" {
+		if val, ok := envVarsAll["HELIX_LLM_ENDPOINT"]; ok && val != "" {
+			helixLLMEndpoint = val
+		} else {
+			helixLLMEndpoint = "http://localhost:8443"
+		}
+	}
+	helixLLMAPIKey := os.Getenv("HELIX_LLM_API_KEY")
+	if helixLLMAPIKey == "" {
+		if val, ok := envVarsAll["HELIX_LLM_API_KEY"]; ok && val != "" {
+			helixLLMAPIKey = val
+		}
+	}
+
 	var jsonData []byte
 	var err error
 
@@ -2187,7 +2204,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	config := OpenCodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		Provider: map[string]OpenCodeProviderDefNew{
-			// HelixAgent as OpenAI-compatible provider
+			// HelixAgent as OpenAI-compatible provider (AI Debate Ensemble)
 			"helixagent": {
 				NPM:  "@ai-sdk/openai-compatible",
 				Name: "HelixAgent",
@@ -2198,6 +2215,24 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				Models: map[string]OpenCodeModelDefNew{
 					"helixagent-debate": {
 						Name: "HelixAgent AI Debate Ensemble",
+						Limit: &OpenCodeModelLimit{
+							Context: 128000,
+							Output:  8192,
+						},
+					},
+				},
+			},
+			// HelixLLM as OpenAI-compatible provider (direct LLM access with RAG/agents)
+			"helixllm": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "HelixLLM",
+				Options: &OpenCodeProviderOptionsNew{
+					BaseURL: helixLLMEndpoint + "/v1",
+					APIKey:  helixLLMAPIKey,
+				},
+				Models: map[string]OpenCodeModelDefNew{
+					"helixllm-default": {
+						Name: "HelixLLM Default",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,
@@ -2226,7 +2261,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				MaxTokens: 4096,
 			},
 		},
-		MCP:          getMCPServers(baseURL, *workingMCPsOnly),
+		MCP:          getMCPServersWithHelixLLM(baseURL, helixLLMEndpoint, *workingMCPsOnly),
 		Plugin:       []string{"opencode-agent-skills@0.6.5"},
 		Instructions: []string{"CLAUDE.md", "opencode.md"},
 		TUI:          &OpenCodeTUIDef{Theme: "opencode"},
@@ -2280,16 +2315,58 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 // If useLocalMCPServers is true, uses local Docker-based MCP servers on TCP ports
 // If workingOnly is true, only MCPs with all dependencies met are returned
 func getMCPServers(baseURL string, workingOnly bool) map[string]OpenCodeMCPServerDefNew {
+	return getMCPServersWithHelixLLM(baseURL, "", workingOnly)
+}
+
+// getMCPServersWithHelixLLM returns MCP configurations including HelixLLM endpoints
+func getMCPServersWithHelixLLM(baseURL string, helixLLMBaseURL string, workingOnly bool) map[string]OpenCodeMCPServerDefNew {
 	if *useContainerMCPs {
 		return buildContainerizedMCPs(baseURL)
 	}
 	if *useLocalMCPServers {
 		return buildLocalDockerMCPServers(baseURL)
 	}
+
+	var mcps map[string]OpenCodeMCPServerDefNew
 	if workingOnly {
-		return buildWorkingMCPsOnly(baseURL)
+		mcps = buildWorkingMCPsOnly(baseURL)
+	} else {
+		mcps = buildOpenCodeMCPServersNew(baseURL)
 	}
-	return buildOpenCodeMCPServersNew(baseURL)
+
+	// Add HelixLLM endpoints if configured
+	if helixLLMBaseURL != "" {
+		mcps["helixllm-chat"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/v1/chat/completions",
+		}
+		mcps["helixllm-embeddings"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/v1/embeddings",
+		}
+		mcps["helixllm-models"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/v1/models",
+		}
+		mcps["helixllm-agents"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/v1/agents/chat",
+		}
+		mcps["helixllm-agents-tools"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/v1/agents/tools",
+		}
+		mcps["helixllm-knowledge"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/internal/knowledge/query",
+		}
+		mcps["helixllm-health"] = OpenCodeMCPServerDefNew{
+			Type: "remote",
+			URL:  helixLLMBaseURL + "/internal/health",
+		}
+	}
+
+	return mcps
 }
 
 // buildContainerizedMCPs builds MCP configurations using HTTP SSE container endpoints
@@ -4044,11 +4121,37 @@ func handleGenerateAgentConfig(appCfg *AppConfig) error {
 
 	agentType := cliagents.AgentType(appCfg.GenerateAgentConfig)
 
-	// Create generator with HelixAgent settings
+	// Load environment variables for HelixLLM configuration
+	agentEnvVars := loadEnvVars()
+
+	// Get HelixLLM endpoint from env
+	helixLLMHost := "localhost"
+	helixLLMPort := 8443
+	helixLLMAPIKey := ""
+	if val, ok := agentEnvVars["HELIX_LLM_ENDPOINT"]; ok && val != "" {
+		// Parse host from endpoint URL (e.g., "http://localhost:8443")
+		helixLLMHost = "localhost" // default
+		helixLLMPort = 8443       // default
+	}
+	if val := os.Getenv("HELIX_LLM_ENDPOINT"); val != "" {
+		_ = val // already set defaults
+	}
+	if val, ok := agentEnvVars["HELIX_LLM_API_KEY"]; ok && val != "" {
+		helixLLMAPIKey = val
+	}
+
+	// Build MCP server list: default + HelixLLM endpoints
+	mcpServers := cliagents.DefaultMCPServers()
+	mcpServers = append(mcpServers, cliagents.HelixLLMMCPServers(helixLLMHost, helixLLMPort)...)
+
+	// Create generator with HelixAgent + HelixLLM settings
 	config := &cliagents.GeneratorConfig{
 		HelixAgentHost: "localhost",
 		HelixAgentPort: 7061,
-		MCPServers:     cliagents.DefaultMCPServers(),
+		HelixLLMHost:   helixLLMHost,
+		HelixLLMPort:   helixLLMPort,
+		HelixLLMAPIKey: helixLLMAPIKey,
+		MCPServers:     mcpServers,
 		IncludeScores:  true,
 	}
 	generator := cliagents.NewUnifiedGenerator(config)

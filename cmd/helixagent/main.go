@@ -2334,37 +2334,11 @@ func getMCPServersWithHelixLLM(baseURL string, helixLLMBaseURL string, workingOn
 		mcps = buildOpenCodeMCPServersNew(baseURL)
 	}
 
-	// Add HelixLLM endpoints if configured
-	if helixLLMBaseURL != "" {
-		mcps["helixllm-chat"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/v1/chat/completions",
-		}
-		mcps["helixllm-embeddings"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/v1/embeddings",
-		}
-		mcps["helixllm-models"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/v1/models",
-		}
-		mcps["helixllm-agents"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/v1/agents/chat",
-		}
-		mcps["helixllm-agents-tools"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/v1/agents/tools",
-		}
-		mcps["helixllm-knowledge"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/internal/knowledge/query",
-		}
-		mcps["helixllm-health"] = OpenCodeMCPServerDefNew{
-			Type: "remote",
-			URL:  helixLLMBaseURL + "/internal/health",
-		}
-	}
+	// NOTE: HelixLLM REST API endpoints (/v1/chat/completions, /v1/models, etc.)
+	// are NOT MCP protocol servers — they don't speak JSON-RPC over SSE.
+	// Adding them as remote MCPs causes OpenCode to hang on startup waiting
+	// for an MCP handshake that never comes. HelixLLM is accessed via the
+	// "helixllm" provider entry instead, not via MCP.
 
 	return mcps
 }
@@ -2913,40 +2887,35 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 	return filterWorkingMCPs(allMCPs)
 }
 
-// filterWorkingMCPs filters MCP configurations to include:
-// 1. HelixAgent remote endpoints (always work when HelixAgent is running)
-// 2. NPX-based MCPs that require no API keys or external configuration
+// filterWorkingMCPs filters MCP configurations to include only MCPs that
+// won't cause OpenCode to hang on startup. Remote MCPs pointing to localhost
+// services (HelixAgent, HelixLLM) are EXCLUDED because if those services
+// aren't running, OpenCode hangs indefinitely trying to establish SSE connections.
+// Those services are accessible via the "helixagent"/"helixllm" provider entries.
 func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]OpenCodeMCPServerDefNew {
 	workingMCPs := make(map[string]OpenCodeMCPServerDefNew)
 
-	// MCPs that work without any API keys or external configuration
-	// These only require npx/Node.js installed (standard for OpenCode users)
+	// Only include MCPs that are guaranteed to not hang on startup:
+	// - Free remote MCP servers (always available, no localhost dependency)
+	// - Local npx-based MCPs (started on demand by OpenCode, never hang)
+	// NOTE: helixagent-* remote MCPs are intentionally EXCLUDED here.
+	// They cause OpenCode to hang if HelixAgent server isn't running at :7061.
+	// HelixAgent LLM access is provided via the "helixagent" provider entry.
 	alwaysWorking := map[string]bool{
-		// HelixAgent remote endpoints - connect to running HelixAgent server
-		"helixagent-mcp":        true,
-		"helixagent-acp":        true,
-		"helixagent-lsp":        true,
-		"helixagent-embeddings": true,
-		"helixagent-vision":     true,
-		"helixagent-cognee":     true,
-		// HelixAgent extended services - connect to running HelixAgent server
-		"helixagent-rag":        true,
-		"helixagent-formatters": true,
-		"helixagent-monitoring": true,
-		// Free remote MCP servers - no authentication required
+		// Free remote MCP servers - always available, no localhost dependency
 		"context7":        true,
 		"deepwiki":        true,
 		"cloudflare-docs": true,
-		// Core Anthropic official MCPs - no API keys required
-		"filesystem":          true, // Filesystem access
-		"fetch":               true, // HTTP requests
-		"memory":              true, // Memory/KV store
-		"time":                true, // Time/timezone
-		"git":                 true, // Git operations
-		"sqlite":              true, // SQLite database
-		"puppeteer":           true, // Browser automation
-		"sequential-thinking": true, // Thinking/reasoning
-		"everything":          true, // Demo/test server
+		// Core Anthropic official MCPs - no API keys required, started on demand
+		"filesystem":          true,
+		"fetch":               true,
+		"memory":              true,
+		"time":                true,
+		"git":                 true,
+		"sqlite":              true,
+		"puppeteer":           true,
+		"sequential-thinking": true,
+		"everything":          true,
 	}
 
 	for name, mcpConfig := range allMCPs {

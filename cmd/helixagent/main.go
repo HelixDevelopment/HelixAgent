@@ -2893,18 +2893,10 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 	workingMCPs := make(map[string]OpenCodeMCPServerDefNew)
 
 	// MCPs that always work — no external dependencies beyond npx/Node.js
+	// NOTE: helixagent-* remote MCPs are EXCLUDED — tested and confirmed
+	// 8/9 endpoints timeout (only /v1/formatters responds). They are not
+	// functional MCP protocol servers and cause OpenCode to hang on startup.
 	alwaysWorking := map[string]bool{
-		// HelixAgent remote MCP protocol endpoints (real MCP servers at :7061)
-		// These speak JSON-RPC over SSE — they work when HelixAgent is running
-		"helixagent-mcp":        true,
-		"helixagent-acp":        true,
-		"helixagent-lsp":        true,
-		"helixagent-embeddings": true,
-		"helixagent-vision":     true,
-		"helixagent-cognee":     true,
-		"helixagent-rag":        true,
-		"helixagent-formatters": true,
-		"helixagent-monitoring": true,
 		// Free remote MCP servers — always available, no auth required
 		"context7":        true,
 		"deepwiki":        true,

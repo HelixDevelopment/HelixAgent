@@ -2887,26 +2887,32 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 	return filterWorkingMCPs(allMCPs)
 }
 
-// filterWorkingMCPs filters MCP configurations to include only MCPs that
-// won't cause OpenCode to hang on startup. Remote MCPs pointing to localhost
-// services (HelixAgent, HelixLLM) are EXCLUDED because if those services
-// aren't running, OpenCode hangs indefinitely trying to establish SSE connections.
-// Those services are accessible via the "helixagent"/"helixllm" provider entries.
+// filterWorkingMCPs filters MCP configurations to include MCPs that have
+// all their dependencies met (API keys set, services available).
+// NOTE: HelixLLM REST endpoints (/v1/chat/completions, /v1/models, etc.)
+// are NOT MCP protocol servers and must NEVER be added as remote MCPs —
+// they don't speak JSON-RPC over SSE and cause OpenCode to hang.
 func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]OpenCodeMCPServerDefNew {
 	workingMCPs := make(map[string]OpenCodeMCPServerDefNew)
 
-	// Only include MCPs that are guaranteed to not hang on startup:
-	// - Free remote MCP servers (always available, no localhost dependency)
-	// - Local npx-based MCPs (started on demand by OpenCode, never hang)
-	// NOTE: helixagent-* remote MCPs are intentionally EXCLUDED here.
-	// They cause OpenCode to hang if HelixAgent server isn't running at :7061.
-	// HelixAgent LLM access is provided via the "helixagent" provider entry.
+	// MCPs that always work — no external dependencies beyond npx/Node.js
 	alwaysWorking := map[string]bool{
-		// Free remote MCP servers - always available, no localhost dependency
+		// HelixAgent remote MCP protocol endpoints (real MCP servers at :7061)
+		// These speak JSON-RPC over SSE — they work when HelixAgent is running
+		"helixagent-mcp":        true,
+		"helixagent-acp":        true,
+		"helixagent-lsp":        true,
+		"helixagent-embeddings": true,
+		"helixagent-vision":     true,
+		"helixagent-cognee":     true,
+		"helixagent-rag":        true,
+		"helixagent-formatters": true,
+		"helixagent-monitoring": true,
+		// Free remote MCP servers — always available, no auth required
 		"context7":        true,
 		"deepwiki":        true,
 		"cloudflare-docs": true,
-		// Core Anthropic official MCPs - no API keys required, started on demand
+		// Core local MCPs — started on demand by OpenCode via npx, never hang
 		"filesystem":          true,
 		"fetch":               true,
 		"memory":              true,
@@ -2916,11 +2922,33 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 		"puppeteer":           true,
 		"sequential-thinking": true,
 		"everything":          true,
+		"postgres":            true,
+	}
+
+	// MCPs that require specific env vars — only include if the key is set
+	envDependent := map[string]string{
+		"github":       "GITHUB_TOKEN",
+		"gitlab":       "GITLAB_TOKEN",
+		"brave-search": "BRAVE_API_KEY",
+		"slack":        "SLACK_BOT_TOKEN",
+		"sentry":       "SENTRY_AUTH_TOKEN",
+		"linear":       "LINEAR_API_KEY",
+		"notion":       "NOTION_API_KEY",
+		"huggingface":  "HUGGINGFACE_API_KEY",
+		"replicate":    "REPLICATE_API_TOKEN",
+		"exa":          "EXA_API_KEY",
 	}
 
 	for name, mcpConfig := range allMCPs {
 		if alwaysWorking[name] {
 			workingMCPs[name] = mcpConfig
+			continue
+		}
+		// Check env-dependent MCPs
+		if envVar, ok := envDependent[name]; ok {
+			if os.Getenv(envVar) != "" {
+				workingMCPs[name] = mcpConfig
+			}
 		}
 	}
 

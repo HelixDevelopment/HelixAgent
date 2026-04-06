@@ -45,7 +45,7 @@ HelixLLM is an enterprise-grade distributed LLM system that provides OpenAI-comp
 
 ### Software Requirements
 
-- **Go**: 1.25+ (for HelixAgent)
+- **Go**: 1.25.3+ (for HelixAgent)
 - **Git**: 2.30+
 - **Make**: GNU Make
 
@@ -155,23 +155,7 @@ HelixAgent will:
 3. Register HelixLLM as a provider
 4. Begin accepting requests
 
-### Option 2: Manual Infrastructure Start
-
-Start infrastructure containers only:
-
-```bash
-podman-compose -f docker-compose.helixllm-infra.yml up -d
-```
-
-Then build and run HelixLLM:
-
-```bash
-cd HelixLLM
-make build
-./bin/helixllm
-```
-
-### Option 3: Development Mode
+### Option 2: Development Mode
 
 For development with auto-reload:
 
@@ -179,6 +163,8 @@ For development with auto-reload:
 cd HelixLLM
 make dev
 ```
+
+**Note:** Do not start HelixLLM infrastructure containers manually with `podman-compose` or `docker-compose`. The HelixAgent binary is the sole orchestrator for all containers, including HelixLLM infrastructure. When `USE_HELIX_LLM=true`, running `./bin/helixagent` handles everything automatically.
 
 ---
 
@@ -298,15 +284,16 @@ print(response.choices[0].message.content)
 
 **Solution:**
 ```bash
-# Check container status
+# Check container status (inspection only)
 podman ps -a
 
-# View logs
+# View logs (inspection only)
 podman logs helixagent-helixllm-postgres
 podman logs helixagent-helixllm-redis
 
-# Restart infrastructure
-podman-compose -f docker-compose.helixllm-infra.yml restart
+# Restart by restarting HelixAgent (do not use podman-compose directly)
+pkill helixagent
+./bin/helixagent
 ```
 
 ### Issue: Provider Not Registered
@@ -446,7 +433,7 @@ pkill helixllm
 ### Essential Commands
 
 ```bash
-# Start everything
+# Start everything (containers managed automatically)
 USE_HELIX_LLM=true ./bin/helixagent
 
 # Run tests
@@ -456,11 +443,10 @@ USE_HELIX_LLM=true ./bin/helixagent
 curl -k https://localhost:8443/internal/health
 
 # View logs
-tail -f helixagent-*.log
+tail -f /tmp/helixagent-server.log
 
-# Stop all
+# Stop HelixAgent (containers stop with it)
 pkill helixagent
-podman-compose -f docker-compose.helixllm-infra.yml down
 ```
 
 ### Key URLs
@@ -474,4 +460,4 @@ podman-compose -f docker-compose.helixllm-infra.yml down
 
 ---
 
-*Last Updated: April 5, 2026*
+*Last Updated: April 6, 2026*

@@ -137,7 +137,8 @@ The `complete_schema.sql` file merges all of these into one executable script.
 | 17 | `planning_sessions.sql` | — | AI planning algorithm results |
 | 18 | `llmops_experiments.sql` | — | LLMOps experiments & prompt versions |
 | 19 | `relationships.sql` | — | Documentation only (no DDL) |
-| 20 | `002_performance_and_security.sql` | 002 | Feature flags, perf baselines, security scans, benchmark runs |
+| 20 | `../001_cli_agents_fusion.sql` | 001 | CLI agent instances, tasks, repo maps, git ops, tools, memory |
+| 21 | `../002_performance_and_security.sql` | 002 | Feature flags, perf baselines, security scans, benchmark runs |
 | — | `clickhouse_analytics.sql` | — | ClickHouse only (separate engine) |
 
 > `complete_schema.sql` is the authoritative single-file reference and can be

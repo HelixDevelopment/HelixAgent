@@ -51,7 +51,7 @@
 | Property | Value |
 |----------|-------|
 | Module path | `digital.vasic.planning` |
-| Go version | 1.24+ |
+| Go version | 1.25+ |
 | Source directory | `Planning/` |
 | HelixAgent adapter | `internal/adapters/planning/adapter.go` |
 | Package | `planning` |

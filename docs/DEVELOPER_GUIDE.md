@@ -67,7 +67,7 @@ This guide provides comprehensive information for developers working on HelixAge
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | 1.24+ | Primary language |
+| Go | 1.25.3+ | Primary language |
 | Docker | 24+ | Containerization |
 | Make | Any | Build automation |
 | golangci-lint | 1.55+ | Code linting |
@@ -76,8 +76,8 @@ This guide provides comprehensive information for developers working on HelixAge
 ### Environment Setup
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-org/HelixAgent.git
+# 1. Clone repository (SSH only - HTTPS is forbidden)
+git clone --recurse-submodules git@github.com:vasic-digital/HelixAgent.git
 cd HelixAgent
 
 # 2. Install Go dependencies
@@ -95,8 +95,8 @@ cp .env.example .env
 # etc.
 
 # 6. Verify setup
-make test
 make build
+make test-unit
 ```
 
 ### IDE Configuration
@@ -300,7 +300,7 @@ func (h *ToolHandler) HandleNewTool(ctx context.Context, params map[string]inter
    /          \  Unit Tests (many)
   /------------\
         +
-   Challenge Tests (45 challenges, 100% pass rate)
+   Challenge Tests (70+ challenges, 100% pass rate)
 ```
 
 ### Test Commands
@@ -316,13 +316,8 @@ make test-security         # Security penetration tests
 make test-stress           # Stress/load tests
 make test-chaos            # Chaos/challenge tests
 
-# Challenge validation (45 challenges)
+# Challenge validation (70+ challenges)
 ./challenges/scripts/run_all_challenges.sh
-
-# Specific challenge categories
-./challenges/scripts/rags_challenge.sh      # 147/147 tests
-./challenges/scripts/mcps_challenge.sh      # 9 sections
-./challenges/scripts/skills_challenge.sh    # Full suite
 ```
 
 ### Unit Tests
@@ -384,16 +379,24 @@ echo "PASS: Test completed"
 
 ### Test Infrastructure
 
+**Important:** Infrastructure containers must be running before executing integration, E2E, or challenge tests.
+
 ```bash
-# Start test containers (PostgreSQL, Redis, Mock LLM)
+# Start test containers (PostgreSQL:15432, Redis:16379, Mock LLM:18081)
 make test-infra-start
+# Or for Podman rootless fallback:
+make test-infra-direct-start
 
 # Run tests with infrastructure
-DB_HOST=localhost DB_PORT=15432 go test ./...
+DB_HOST=localhost DB_PORT=15432 DB_USER=helixagent DB_PASSWORD=helixagent123 DB_NAME=helixagent_db \
+REDIS_HOST=localhost REDIS_PORT=16379 REDIS_PASSWORD=helixagent123 \
+go test -v ./path/to/package
+
+# All tests with infrastructure managed automatically
+make test-with-infra
 
 # Stop and clean up
 make test-infra-stop
-make test-infra-clean
 ```
 
 ### Mocking
@@ -614,33 +617,37 @@ Swagger UI available at `/swagger/index.html` when running in development mode.
 
 ## Challenge System
 
-HelixAgent includes a comprehensive challenge validation system with **45 challenges** achieving **100% pass rate**.
+HelixAgent includes a comprehensive challenge validation system with **70+ challenges** achieving **100% pass rate**.
 
 ### Running Challenges
 
 ```bash
-# Run all 45 challenges
+# Run all 70+ challenges
 ./challenges/scripts/run_all_challenges.sh
 
 # Run specific challenge categories
-./challenges/scripts/rags_challenge.sh               # RAG system (147/147 tests)
-./challenges/scripts/mcps_challenge.sh               # MCP integration (9 sections)
-./challenges/scripts/skills_challenge.sh             # Skills validation
-./challenges/scripts/semantic_intent_challenge.sh    # Intent detection (19 tests)
-./challenges/scripts/unified_verification_challenge.sh
-./challenges/scripts/debate_team_dynamic_selection_challenge.sh
+./challenges/scripts/semantic_intent_challenge.sh                # Intent detection (19 tests)
+./challenges/scripts/unified_verification_challenge.sh           # Verification (15 tests)
+./challenges/scripts/debate_team_dynamic_selection_challenge.sh  # Debate team (12 tests)
+./challenges/scripts/helixmemory_challenge.sh                    # Memory system (80+ tests)
+./challenges/scripts/helixspecifier_challenge.sh                 # SpecKit (138 tests)
+./challenges/scripts/full_system_boot_challenge.sh               # Full boot (53 tests)
 ```
 
 ### Challenge Categories
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| RAGS | 147 | RAG hybrid retrieval, reranking, Qdrant |
-| MCPS | 9 sections | MCP protocol, tool search, adapters |
-| SKILLS | Full suite | Skill execution with real-result validation |
 | Semantic Intent | 19 | Zero-hardcoding intent detection |
-| AI Debate | Various | Multi-LLM consensus building |
-| Security | Various | Penetration testing, input validation |
+| AI Debate | 200+ | Debate orchestrator, reflexion, adversarial, voting, persistence |
+| HelixMemory | 80+ | Unified cognitive memory engine |
+| HelixSpecifier | 138 | Spec-driven development workflow |
+| Provider | 40+ | Provider verification, URL consistency |
+| CLI Agents | 60+ | Config generation, MCP server validation |
+| Security | 55+ | Snyk, SonarQube, security scanning |
+| System Boot | 53 | Full system boot and container orchestration |
+| Release Build | 25 | Container-based build system |
+| Userflow | 30+ | Browser, API, gRPC userflow testing |
 
 ### Writing New Challenges
 

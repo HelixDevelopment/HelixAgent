@@ -108,16 +108,21 @@ func (p *Promptfoo) Initialize(ctx context.Context, config interface{}) error {
 // loadSuites loads test suites
 func (p *Promptfoo) loadSuites() error {
 	suitesPath := filepath.Join(p.GetWorkDir(), "suites.json")
-	
+
 	if _, err := os.Stat(suitesPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(suitesPath)
 	if err != nil {
 		return fmt.Errorf("read suites: %w", err)
 	}
-	
+
+	// Handle empty file gracefully
+	if len(data) == 0 {
+		return nil
+	}
+
 	return json.Unmarshal(data, &p.suites)
 }
 

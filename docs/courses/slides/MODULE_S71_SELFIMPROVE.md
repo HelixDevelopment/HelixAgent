@@ -57,7 +57,7 @@
 | Property | Value |
 |----------|-------|
 | Module path | `digital.vasic.selfimprove` |
-| Go version | 1.24+ |
+| Go version | 1.25+ |
 | Source directory | `SelfImprove/` |
 | HelixAgent adapter | `internal/adapters/selfimprove/adapter.go` |
 | Package | `selfimprove` |

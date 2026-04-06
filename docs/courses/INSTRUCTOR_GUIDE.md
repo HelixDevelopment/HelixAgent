@@ -7,10 +7,10 @@ This guide provides instructors with everything needed to deliver the HelixAgent
 ## Course Structure
 
 ### Duration
-- Total: 14+ hours
-- 14 modules (including 3 new advanced modules)
-- 8 lab exercises (including 3 new challenge labs)
-- 5 certification levels
+- Total: 20+ hours
+- 19 modules (plus 2 advanced AI/ML sections S7.1/S7.2)
+- 22 lab exercises
+- 7 certification levels
 
 ### Delivery Options
 1. **Self-paced online**: Video modules + labs
@@ -299,7 +299,7 @@ make test-integration
    - MCPS (MCP Server Integration Validation)
    - SKILLS (Skills Integration Validation)
 2. Strict Real-Result Validation (no FALSE SUCCESSES)
-3. 20+ CLI Agent testing across all endpoints
+3. 48 CLI Agent testing across all endpoints
 
 **Demo Script**:
 ```bash
@@ -370,7 +370,7 @@ curl http://localhost:7061/v1/mcp/stats | jq
 **This is an ADVANCED module - extends Module 6**
 
 **Preparation**:
-- Have all 10 LLM providers configured
+- Have multiple LLM providers configured (at least 3-5 recommended)
 - Understand LLMsVerifier scoring
 - Prepare multi-pass validation examples
 
@@ -406,6 +406,119 @@ curl -X POST http://localhost:7061/v1/debates \
 1. Draw the 25 LLM team configuration
 2. Map the 4 validation phases
 3. Calculate weighted scores for providers
+
+---
+
+### Module 15: HelixLLM and AgenticEnsemble (90 min)
+
+**Preparation**:
+- Have HelixLLM submodule available
+- Understand dual-mode architecture (Reason vs Execute)
+- Prepare AgenticEnsemble demos
+
+**Demo Script**:
+```bash
+# Show provider list including HelixLLM
+curl http://localhost:7061/v1/providers/status | jq '.[] | select(.name == "helixllm")'
+
+# Submit reasoning task (Reason mode)
+curl -X POST http://localhost:7061/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Explain microservices vs monolith tradeoffs"}]}'
+
+# Submit multi-step task (Execute mode)
+curl -X POST http://localhost:7061/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Create a test plan for user authentication covering unit, integration, and security tests"}]}'
+```
+
+**Key Teaching Points**:
+1. HelixLLM is a self-hosted LLM provider with RAG
+2. AgenticEnsemble Reason mode = debate + iterative tools
+3. AgenticEnsemble Execute mode = decompose + dispatch + verify
+4. Graceful degradation when subsystems are unavailable
+
+---
+
+### Module 16: HTTP/3 and Brotli Compression (60 min)
+
+**Preparation**:
+- Understand QUIC transport advantages
+- Prepare compression comparison examples
+
+**Demo Script**:
+```bash
+# Compare Brotli vs gzip sizes
+echo "=== Brotli ==="
+curl -s -H "Accept-Encoding: br" http://localhost:7061/v1/models \
+  -o /dev/null -w "Size: %{size_download} bytes\n"
+
+echo "=== gzip ==="
+curl -s -H "Accept-Encoding: gzip" http://localhost:7061/v1/models \
+  -o /dev/null -w "Size: %{size_download} bytes\n"
+
+echo "=== Uncompressed ==="
+curl -s -H "Accept-Encoding: identity" http://localhost:7061/v1/models \
+  -o /dev/null -w "Size: %{size_download} bytes\n"
+```
+
+---
+
+### Module 17: Remote Container Distribution (60 min)
+
+**CRITICAL: Emphasize the constitution requirement -- NO manual container manipulation**
+
+**Preparation**:
+- Have `Containers/.env` ready with examples
+- Understand BootManager flow
+
+**Demo Script**:
+```bash
+# Show Containers/.env
+cat Containers/.env
+
+# Start HelixAgent and observe auto-orchestration
+./bin/helixagent 2>&1 | head -50
+
+# Verify health checks
+curl http://localhost:7061/health | python3 -m json.tool
+```
+
+---
+
+### Module 18: HelixMemory (75 min)
+
+**Preparation**:
+- HelixMemory is active by default (no build tags needed)
+- Prepare memory store/recall demos
+
+**Demo Script**:
+```bash
+# Check memory metrics
+curl -s http://localhost:7061/metrics | grep helixmemory
+
+# Run HelixMemory challenge
+./challenges/scripts/helixmemory_challenge.sh
+```
+
+---
+
+### Module 19: HelixSpecifier (75 min)
+
+**Preparation**:
+- HelixSpecifier is active by default
+- Prepare refactoring task to trigger full pipeline
+
+**Demo Script**:
+```bash
+# Trigger auto-activation with a large-scope task
+curl -X POST http://localhost:7061/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Refactor the authentication module to support OAuth2 and SAML"}]}'
+
+# Run HelixSpecifier challenge
+./challenges/scripts/helixspecifier_challenge.sh
+```
 
 ---
 
@@ -466,7 +579,7 @@ cat challenges/results/*/test_results.csv
   - Adapter search not finding expected adapters
 - **Success Criteria**: Search queries return valid tool matches
 
-### Lab 8: Multi-Pass Validation Debate (NEW)
+### Lab 8: Multi-Pass Validation Debate
 - **Duration**: 75 min
 - **Key Checkpoint**: 4-phase validation completes successfully
 - **Common Issues**:
@@ -474,6 +587,46 @@ cat challenges/results/*/test_results.csv
   - Low confidence scores
   - Provider fallback issues
 - **Success Criteria**: Overall confidence > 0.8
+
+### Lab 18: HelixLLM and AgenticEnsemble (NEW)
+- **Duration**: 45 min
+- **Key Checkpoint**: Both Reason and Execute modes producing valid responses
+- **Common Issues**:
+  - HelixLLM endpoint not reachable (check TLS config)
+  - AgenticEnsemble falling back to Reason mode (check planner dependency)
+- **Success Criteria**: AgenticEnsemble challenge passes
+
+### Lab 19: HTTP/3 and Brotli (NEW)
+- **Duration**: 30 min
+- **Key Checkpoint**: Brotli compression active, size smaller than gzip
+- **Common Issues**:
+  - Accept-Encoding header not sent correctly
+  - curl version lacking HTTP/3 support
+- **Success Criteria**: Brotli challenge passes (11 tests)
+
+### Lab 20: Remote Containers (NEW)
+- **Duration**: 30 min
+- **Key Checkpoint**: Boot sequence completes with health checks passing
+- **Common Issues**:
+  - Using project root `.env` instead of `Containers/.env`
+  - Missing SSH key configuration for remote mode
+- **Success Criteria**: All required services healthy
+
+### Lab 21: HelixMemory (NEW)
+- **Duration**: 30 min
+- **Key Checkpoint**: Memory store/recall working, Prometheus metrics visible
+- **Common Issues**:
+  - Memory backends not reachable (check infrastructure)
+  - Circuit breakers tripping (expected if backends are down)
+- **Success Criteria**: HelixMemory challenge passes (80+ tests)
+
+### Lab 22: HelixSpecifier (NEW)
+- **Duration**: 30 min
+- **Key Checkpoint**: 7-phase pipeline triggered for refactoring task
+- **Common Issues**:
+  - Auto-activation not triggering (task granularity too small)
+  - Phase cache directory not writable
+- **Success Criteria**: HelixSpecifier challenge passes (138 tests)
 
 ---
 
@@ -541,6 +694,13 @@ docker-compose logs helixagent
 | 12 | 35 | ~2.5 min | 90 min |
 | 13 | 24 | ~2.5 min | 60 min |
 | 14 | 35 | ~2.5 min | 90 min |
+| 15 | 14 | ~6 min | 90 min |
+| 16 | 11 | ~5.5 min | 60 min |
+| 17 | 12 | ~5 min | 60 min |
+| 18 | 12 | ~6 min | 75 min |
+| 19 | 13 | ~6 min | 75 min |
+| S7.1 | 30 | ~5 min | 150 min |
+| S7.2 | 20 | ~3 min | 60 min |
 
 ---
 
@@ -581,7 +741,7 @@ docker-compose logs helixagent
 - Lab 5 completion
 - Production deployment review
 
-### Level 5: Challenge Expert (NEW)
+### Level 5: Challenge Expert
 - Quiz Modules 12-14 (80%+)
 - Labs 6-8 completion
 - **Special Requirements**:
@@ -590,6 +750,26 @@ docker-compose logs helixagent
   - 100% pass rate on SKILLS challenge
   - Demonstration of MCP Tool Search integration
   - Multi-pass validation debate with >0.8 confidence
+
+### Level 6: AI/ML Systems Architect
+- Quiz Modules S7.1-S7.2 (80%+)
+- Labs 9-15 completion
+- **Special Requirements**:
+  - Complete Agentic workflow with 4+ nodes
+  - LLMOps A/B experiment documented
+  - SelfRefinementLoop >20% improvement
+  - Planning algorithm execution verified
+  - Benchmark comparison with p-value analysis
+
+### Level 7: Platform Architect
+- Quiz Modules 15-19 (80%+)
+- Labs 18-22 completion
+- **Special Requirements**:
+  - HelixLLM provider configured and AgenticEnsemble verified
+  - HTTP/3 and Brotli compression verified
+  - Container orchestration flow understood
+  - HelixMemory integrated with 2+ backends
+  - HelixSpecifier 7-phase workflow with DebateFunc
 
 ---
 
@@ -614,6 +794,6 @@ Use Google Forms or similar for collection.
 
 ---
 
-*Instructor Guide Version: 2.0.0*
-*Last Updated: January 2026*
-*New Content: Modules 12-14 (Challenge System, MCP Tool Search, Advanced AI Debate)*
+*Instructor Guide Version: 3.0.0*
+*Last Updated: April 2026*
+*New Content: Modules 15-19 (HelixLLM/AgenticEnsemble, HTTP/3/Brotli, Remote Containers, HelixMemory, HelixSpecifier)*

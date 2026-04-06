@@ -62,7 +62,7 @@ Graph-Based (resilient):
 | Property | Value |
 |----------|-------|
 | Module path | `digital.vasic.agentic` |
-| Go version | 1.24+ |
+| Go version | 1.25+ |
 | Source directory | `Agentic/` |
 | HelixAgent adapter | `internal/adapters/agentic/adapter.go` |
 | Package | `agentic` |

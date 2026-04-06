@@ -46,7 +46,9 @@
 - Combines responses from multiple language models
 - Uses intelligent aggregation strategies
 - Provides OpenAI-compatible APIs
-- Supports 7 LLM providers out of the box
+- Supports 43 LLM providers with dynamic provider selection
+- Features AgenticEnsemble dual-mode operation (Reason + Execute)
+- Communicates via HTTP/3 (QUIC) with Brotli compression
 
 *Visual: Hub and spoke diagram with HelixAgent at center*
 
@@ -54,7 +56,7 @@
 
 ## Slide 5: Supported LLM Providers
 
-**7 Providers Ready to Use:**
+**43 Providers Ready to Use (highlights):**
 
 | Provider | Specialty |
 |----------|-----------|
@@ -64,7 +66,12 @@
 | Qwen (Alibaba) | Multilingual |
 | Ollama | Local/Private Deployment |
 | OpenRouter | Meta-Provider Access |
-| ZAI | Specialized Tasks |
+| HelixLLM | Local AI Ensemble + RAG |
+| Groq / Cerebras | Ultra-fast Inference |
+| Cohere / AI21 | Enterprise NLP |
+| OpenAI / xAI | GPT Models, Grok |
+
+*Plus 33 more: Chutes, Cloudflare, Codestral, Fireworks, GitHub Models, HuggingFace, Hyperbolic, Junie, Kilo, Kimi, KimiCode, Mistral, Modal, Nia, NLPCloud, Novita, Nvidia, Perplexity, PublicAI, Replicate, SambaNova, Sarvam, SiliconFlow, Together, Upstage, Venice, VulaVula, ZAI, Zen, Zhipu, and generic OpenAI-compatible*
 
 ---
 
@@ -85,13 +92,17 @@
 
 **Feature Highlights:**
 
-- Multi-provider orchestration
-- Ensemble voting strategies
-- AI Debate System
+- 43 LLM provider orchestration with dynamic selection
+- Ensemble voting strategies (6 methods including Borda Count, Condorcet)
+- AI Debate System with 8-phase protocol and 4 topologies
+- AgenticEnsemble: dual-mode Reason + Execute
+- HelixLLM local AI ensemble provider
 - Hot-reloadable plugin architecture
-- MCP/LSP/ACP protocol support
-- Semantic caching and optimization
-- Comprehensive monitoring
+- MCP/LSP/ACP protocol support (45+ MCP adapters, 60+ containerized servers)
+- HTTP/3 (QUIC) transport with Brotli compression
+- HelixMemory cognitive engine and HelixSpecifier spec-driven development
+- Semantic caching, RAG, and optimization
+- Comprehensive monitoring with OpenTelemetry
 
 ---
 
@@ -200,12 +211,14 @@ type LLMProvider interface {
 
 | Component | Technology |
 |-----------|------------|
-| Framework | Gin v1.11.0 |
-| Database | PostgreSQL 15 |
+| Framework | Gin v1.12.0 |
+| Language | Go 1.25.3 |
+| Database | PostgreSQL 15 (pgx/v5) |
 | Cache | Redis 7 |
+| Transport | HTTP/3 (QUIC) + Brotli |
 | Testing | testify v1.11.1 |
-| Monitoring | Prometheus, Grafana |
-| Container | Docker, Podman |
+| Monitoring | Prometheus, Grafana, OpenTelemetry |
+| Container | Docker, Podman, K8s |
 
 ---
 
@@ -282,11 +295,14 @@ Time: 20 minutes
 **Key Takeaways:**
 
 - HelixAgent solves multi-provider AI orchestration
-- 7 LLM providers supported out of the box
-- Ensemble voting improves response quality
-- AI Debate enables complex reasoning
-- Protocol support (MCP, LSP, ACP) for extensibility
-- Enterprise-ready with security and monitoring
+- 43 LLM providers with dynamic selection via LLMsVerifier
+- Ensemble voting (6 methods) improves response quality
+- AI Debate with 8-phase protocol enables complex reasoning
+- AgenticEnsemble provides dual-mode Reason + Execute
+- HTTP/3 (QUIC) transport with Brotli compression
+- HelixMemory cognitive engine and HelixSpecifier for spec-driven development
+- Protocol support (MCP, LSP, ACP) with 60+ containerized servers
+- Enterprise-ready with security, monitoring, and remote container distribution
 
 **Next: Module 2 - Installation and Setup**
 

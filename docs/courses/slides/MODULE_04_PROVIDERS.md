@@ -52,7 +52,7 @@ type LLMProvider interface {
 
 ## Slide 4: Supported Providers Overview
 
-**7 Providers Available:**
+**43 Providers Available (key providers shown):**
 
 | Provider | Best For | Cost Tier |
 |----------|----------|-----------|
@@ -61,8 +61,15 @@ type LLMProvider interface {
 | Gemini | Multimodal, Scientific | Medium |
 | Qwen | Multilingual | Low-Medium |
 | Ollama | Private, Local | Free |
-| OpenRouter | Provider Access | Varies |
-| ZAI | Specialized | Medium |
+| OpenRouter | Meta-Provider Access | Varies |
+| HelixLLM | Local AI Ensemble + RAG | Free (self-hosted) |
+| Groq / Cerebras | Ultra-fast Inference | Low |
+| Cohere / AI21 | Enterprise NLP | Medium |
+| OpenAI / xAI | GPT, Grok Models | Medium-High |
+
+*Plus 33 more: Chutes, Cloudflare, Codestral, Fireworks, GitHub Models, HuggingFace, Hyperbolic, Junie, Kilo, Kimi, KimiCode, Mistral, Modal, Nia, NLPCloud, Novita, Nvidia, Perplexity, PublicAI, Replicate, SambaNova, Sarvam, SiliconFlow, Together, Upstage, Venice, VulaVula, ZAI, Zen, Zhipu, and generic OpenAI-compatible*
+
+*All providers implement the same `LLMProvider` interface. Dynamic selection via LLMsVerifier scores.*
 
 ---
 
@@ -476,12 +483,14 @@ Time: 30 minutes
 
 **Key Takeaways:**
 
-- 7 providers with distinct capabilities
-- LLMProvider interface for consistency
+- 43 providers with distinct capabilities and dynamic selection
+- LLMProvider interface for consistency across all providers
+- 3-tier dynamic model discovery (Provider API, models.dev, hardcoded fallback)
+- HelixLLM as a local AI ensemble provider with RAG
 - Fallback chains for reliability
-- Health monitoring essential
-- Choose providers based on use case
-- Cost optimization through routing
+- Health monitoring and LLMsVerifier scoring essential
+- Choose providers based on use case and verification scores
+- Cost optimization through intelligent routing
 
 **Next: Module 5 - Ensemble Strategies**
 

@@ -85,7 +85,7 @@ HelixAgent's functionality is decomposed into **41 independent Go modules**, eac
 | 23 | Optimization | `digital.vasic.optimization` | `Optimization/` | 6 | Integration |
 | 24 | Plugins | `digital.vasic.plugins` | `Plugins/` | 5 | Integration |
 | 25 | Containers | `digital.vasic.containers` | `Containers/` | 12 | Pre-existing |
-| 26 | Challenges | `digital.vasic.challenges` | `Challenges/` | 15 | Pre-existing |
+| 26 | Challenges | `digital.vasic.challenges` | `Challenges/` | 16 | Pre-existing |
 | 27 | Agentic | `digital.vasic.agentic` | `Agentic/` | 1 | AI/ML |
 | 28 | LLMOps | `digital.vasic.llmops` | `LLMOps/` | 1 | AI/ML |
 | 29 | SelfImprove | `digital.vasic.selfimprove` | `SelfImprove/` | 1 | AI/ML |
@@ -96,13 +96,13 @@ HelixAgent's functionality is decomposed into **41 independent Go modules**, eac
 | 34 | HelixSpecifier | `digital.vasic.helixspecifier` | `HelixSpecifier/` | 27 | Specification |
 | 35 | BuildCheck | `digital.vasic.buildcheck` | `BuildCheck/` | 1 | Pre-existing |
 | 36 | DocProcessor | `digital.vasic.docprocessor` | `DocProcessor/` | 6 | Pre-existing |
-| 37 | HelixQA | `digital.vasic.helixqa` | `HelixQA/` | 11 | Pre-existing |
+| 37 | HelixQA | `digital.vasic.helixqa` | `HelixQA/` | 22 | Pre-existing |
 | 38 | LLMOrchestrator | `digital.vasic.llmorchestrator` | `LLMOrchestrator/` | 6 | Pre-existing |
 | 39 | VisionEngine | `digital.vasic.visionengine` | `VisionEngine/` | 5 | Pre-existing |
 | 40 | LLMsVerifier | `digital.vasic.llmsverifier` | `LLMsVerifier/` | 10+ | Pre-existing |
 | 41 | MCP-Servers | N/A (collection) | `MCP-Servers/` | N/A | Pre-existing |
 
-**Total: 41 modules, 168+ packages**
+**Total: 41 modules, 179+ packages**
 
 ---
 
@@ -528,7 +528,7 @@ Generic container orchestration framework. 12 packages covering runtime abstract
 
 ### Challenges (`digital.vasic.challenges`)
 
-Generic challenge framework. 15 packages covering challenge interface, assertion engine (19 evaluators), registry with dependency ordering, runner (sequential/parallel/pipeline), reporting (MD/JSON/HTML), structured logging, env management, live monitoring, metrics, plugin system v2.0.0, Panoptic integration (vision, recorder, testgen, error-analyzer adapters), and AI test generation/vision/recorded-flow challenge templates.
+Generic challenge framework. 16 packages covering challenge interface, assertion engine (19 evaluators), registry with dependency ordering, runner (sequential/parallel/pipeline), reporting (MD/JSON/HTML), structured logging, env management, live monitoring, metrics, plugin system v2.0.0, Panoptic integration (vision, recorder, testgen, error-analyzer adapters), and AI test generation/vision/recorded-flow challenge templates.
 
 ### BuildCheck (`digital.vasic.buildcheck`)
 

@@ -394,120 +394,117 @@ make fmt && make vet && make lint
 
 ---
 
-## Slide 21: GitHub Actions Workflow
+## Slide 21: Manual CI via Makefile
 
-**Basic CI Configuration:**
+**All CI/CD runs manually via Makefile (NO automated pipelines per constitution):**
 
-```yaml
-name: CI
+```bash
+# Five-phase container-based CI system
+make ci-all              # All five phases + report aggregation
+make ci-go               # Phase 1: Go builds + all tests
+make ci-mobile           # Phase 2: Flutter/RN + Android
+make ci-web              # Phase 3: Angular + Playwright
+make ci-desktop          # Phase 4: Electron/Tauri
+make ci-integration      # Phase 5: Full-stack integration
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+# Pre-commit/pre-push validation (manual, no git hooks)
+make ci-pre-commit       # fmt, vet, fallback lint
+make ci-pre-push         # includes unit tests
+make ci-validate-all     # All validation checks
 
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-      - run: make lint
-
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-      - run: make test-coverage
+# Resource control
+CI_RESOURCE_LIMIT=low make ci-all   # 30% host resources (default)
+CI_RESOURCE_LIMIT=medium make ci-all # 50% host resources
 ```
 
 ---
 
-## Slide 22: Docker Build in CI
+## Slide 22: Container-Based Release Builds
 
-**Building and Pushing Images:**
+**All release builds run inside containers for reproducibility:**
 
-```yaml
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
+```bash
+# Build release binaries for all 7 apps, all 5 platforms
+make release-all
 
-      - name: Build Docker image
-        run: make docker-build
+# Build specific app
+make release              # helixagent only
+make release-api          # API server only
 
-      - name: Push to registry
-        run: |
-          docker login -u ${{ secrets.DOCKER_USER }} \
-            -p ${{ secrets.DOCKER_PASS }}
-          docker push helixagent/helixagent:latest
+# Build Docker/Podman images
+make docker-build         # Build Docker image
+make container-build      # Auto-detect runtime
+
+# Release info and change detection
+make release-info         # Show version codes and source hashes
+make release-force        # Force rebuild (ignore change detection)
+make release-clean        # Clean release artifacts
+
+# 7 Apps x 5 Platforms = 35 binaries
+# Apps: helixagent, api, grpc-server, cognee-mock,
+#       sanity-check, mcp-bridge, generate-constitution
+# Platforms: linux/amd64, linux/arm64, darwin/amd64,
+#            darwin/arm64, windows/amd64
 ```
 
 ---
 
 ## Slide 23: Quality Gates
 
-**Enforcing Quality:**
+**Enforcing Quality via Makefile:**
 
-```yaml
-  quality-gate:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Check coverage
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | \
-            grep total | awk '{print $3}')
-          if [ ${COVERAGE%\%} -lt 60 ]; then
-            echo "Coverage below 60%"
-            exit 1
-          fi
+```bash
+# All-in-one validation (recommended before any release)
+make ci-validate-all
 
-      - name: Check lint
-        run: |
-          ISSUES=$(make lint 2>&1 | grep -c "^")
-          if [ $ISSUES -gt 0 ]; then
-            echo "Lint issues found"
-            exit 1
-          fi
+# Individual quality checks
+make fmt                  # Format code
+make vet                  # Static analysis
+make lint                 # golangci-lint
+make security-scan        # gosec
+
+# Coverage gate
+make test-coverage
+# Thresholds defined in ci/thresholds.json
+
+# Challenge validation (real-world use case tests)
+./challenges/scripts/run_all_challenges.sh
+
+# 6-layer false positive prevention:
+# 1. Exit codes  2. Test counts  3. Coverage gates
+# 4. Artifact integrity  5. Integration liveness
+# 6. Report cross-validation
 ```
 
 ---
 
-## Slide 24: Deployment Automation
+## Slide 24: Deployment via Container Orchestration
 
-**Automated Deployment:**
+**HelixAgent automatic container deployment:**
 
-```yaml
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [build, quality-gate]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Deploy to staging
-        run: |
-          kubectl set image deployment/helixagent \
-            helixagent=helixagent/helixagent:${{ github.sha }}
+```bash
+# Build the binary
+make build
 
-      - name: Run smoke tests
-        run: |
-          ./scripts/smoke-test.sh
+# Run HelixAgent - ALL container orchestration is automatic
+./bin/helixagent
+# Step 1: Reads Containers/.env for configuration
+# Step 2: Auto-detects Docker/Podman runtime
+# Step 3: Starts all required containers (local or remote)
+# Step 4: Health checks all services
+# Step 5: Fails boot if required services are unhealthy
 
-      - name: Deploy to production
-        if: success()
-        run: |
-          kubectl --context=production set image \
-            deployment/helixagent \
-            helixagent=helixagent/helixagent:${{ github.sha }}
+# Remote distribution (configured in Containers/.env)
+# CONTAINERS_REMOTE_ENABLED=true
+# CONTAINERS_REMOTE_HOST_1=user@remote-host
+# All containers deployed to remote hosts via SSH
+
+# After code changes: rebuild and redeploy
+make docker-build         # Rebuild affected images
+./bin/helixagent          # Automatic restart with new images
 ```
+
+**IMPORTANT: Never start containers manually. HelixAgent handles all orchestration.**
 
 ---
 
@@ -579,7 +576,7 @@ Explain the test pyramid concept. Most tests should be unit tests because they'r
 Demonstrate starting the test infrastructure. Show how Docker containers simulate external dependencies.
 
 ### Slide 21 Notes
-Walk through each step of the GitHub Actions workflow. Explain how stages depend on each other.
+Walk through the five-phase CI system and Makefile targets. Explain how phases depend on each other and how resource limits protect the host system.
 
 ### Slide 28 Notes
 Celebrate course completion! Remind participants about certification options and next steps for continued learning.

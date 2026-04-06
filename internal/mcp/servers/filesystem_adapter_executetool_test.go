@@ -17,9 +17,7 @@ import (
 
 func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_execute_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	// Create test structure
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -296,9 +294,7 @@ func TestFilesystemAdapter_ExecuteTool_AllTools(t *testing.T) {
 
 func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_execute_error_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	config := FilesystemAdapterConfig{
 		AllowedPaths: []string{tempDir},
@@ -395,9 +391,7 @@ func TestFilesystemAdapter_ExecuteTool_ErrorCases(t *testing.T) {
 
 func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_permission_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	t.Run("CreateDirectory when not allowed", func(t *testing.T) {
 			t.Parallel()
@@ -467,9 +461,7 @@ func TestFilesystemAdapter_ExecuteTool_Permissions(t *testing.T) {
 
 func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_path_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	config := FilesystemAdapterConfig{
 		AllowedPaths: []string{tempDir},
@@ -520,9 +512,7 @@ func TestFilesystemAdapter_ExecuteTool_PathValidation(t *testing.T) {
 
 func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_edge_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	config := FilesystemAdapterConfig{
 		AllowedPaths:   []string{tempDir},
@@ -625,9 +615,7 @@ func TestFilesystemAdapter_ExecuteTool_EdgeCases(t *testing.T) {
 
 func TestFilesystemAdapter_ExecuteTool_NotInitialized(t *testing.T) {
 	t.Parallel()
-	tempDir, err := os.MkdirTemp("", "fs_not_init_test")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	tempDir := t.TempDir()
 
 	config := FilesystemAdapterConfig{
 		AllowedPaths:   []string{tempDir},

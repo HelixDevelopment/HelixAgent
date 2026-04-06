@@ -15,12 +15,8 @@ import (
 
 // Helper function to set up a test git repo
 func setupTestGitRepo(t *testing.T) (string, func()) {
-	tempDir, err := os.MkdirTemp("", "git-adapter-exe-test-*")
-	require.NoError(t, err)
-
-	cleanup := func() {
-		_ = os.RemoveAll(tempDir)
-	}
+	t.Helper()
+	tempDir := t.TempDir()
 
 	// Initialize git repo
 	cmd := exec.Command("git", "init")
@@ -48,7 +44,8 @@ func setupTestGitRepo(t *testing.T) (string, func()) {
 	cmd.Dir = tempDir
 	require.NoError(t, cmd.Run())
 
-	return tempDir, cleanup
+	// Return no-op cleanup since t.TempDir() handles cleanup
+	return tempDir, func() {}
 }
 
 // ============================================================================
@@ -76,7 +73,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("git_status via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_status", map[string]interface{}{
 			"repo_path": tempDir,
 		})
@@ -89,7 +85,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_log via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_log", map[string]interface{}{
 			"repo_path": tempDir,
 			"limit":     float64(10),
@@ -104,7 +99,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_log with since and until", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_log", map[string]interface{}{
 			"repo_path": tempDir,
 			"limit":     float64(10),
@@ -116,7 +110,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_diff via ExecuteTool - no changes", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_diff", map[string]interface{}{
 			"repo_path": tempDir,
 		})
@@ -129,7 +122,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_diff with modified file", func(t *testing.T) {
-			t.Parallel()
 		testFile := filepath.Join(tempDir, "test.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("modified content"), 0644))
 
@@ -147,7 +139,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_diff with base and target", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_diff", map[string]interface{}{
 			"repo_path": tempDir,
 			"base":      "HEAD~0",
@@ -158,7 +149,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_diff with specific files", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_diff", map[string]interface{}{
 			"repo_path": tempDir,
 			"files":     []interface{}{"test.txt"},
@@ -168,7 +158,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_diff with staged option", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_diff", map[string]interface{}{
 			"repo_path": tempDir,
 			"staged":    true,
@@ -178,7 +167,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_add via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		newFile := filepath.Join(tempDir, "new_file.txt")
 		require.NoError(t, os.WriteFile(newFile, []byte("new content"), 0644))
 
@@ -191,7 +179,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_add with all option", func(t *testing.T) {
-			t.Parallel()
 		anotherFile := filepath.Join(tempDir, "another.txt")
 		require.NoError(t, os.WriteFile(anotherFile, []byte("another"), 0644))
 
@@ -204,7 +191,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_commit via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_commit", map[string]interface{}{
 			"repo_path": tempDir,
 			"message":   "Test commit via ExecuteTool",
@@ -218,7 +204,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_branch list via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_branch", map[string]interface{}{
 			"repo_path": tempDir,
 		})
@@ -233,7 +218,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_branch create via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_branch", map[string]interface{}{
 			"repo_path": tempDir,
 			"name":      "feature/test-branch",
@@ -250,7 +234,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_branch delete via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_branch", map[string]interface{}{
 			"repo_path": tempDir,
 			"name":      "feature/test-branch",
@@ -266,7 +249,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_checkout via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		// Create a branch first
 		_, err := adapter.ExecuteTool(context.Background(), "git_branch", map[string]interface{}{
 			"repo_path": tempDir,
@@ -290,7 +272,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_checkout with create new branch", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_checkout", map[string]interface{}{
 			"repo_path": tempDir,
 			"ref":       "new-checkout-branch",
@@ -307,7 +288,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_checkout with specific files", func(t *testing.T) {
-			t.Parallel()
 		// Modify a file first
 		testFile := filepath.Join(tempDir, "test.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("modified"), 0644))
@@ -326,7 +306,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_remotes via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		// Add a remote first (ignore error if already exists)
 		cmd := exec.Command("git", "remote", "add", "test-remote", "https://github.com/test/repo.git")
 		cmd.Dir = tempDir
@@ -347,7 +326,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_stash list via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_stash", map[string]interface{}{
 			"repo_path": tempDir,
 			"list":      true,
@@ -357,7 +335,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_stash push via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		// Create unstaged changes
 		testFile := filepath.Join(tempDir, "test.txt")
 		require.NoError(t, os.WriteFile(testFile, []byte("stash this"), 0644))
@@ -371,7 +348,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("git_stash pop via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_stash", map[string]interface{}{
 			"repo_path": tempDir,
 			"pop":       true,
@@ -381,7 +357,6 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	})
 
 	t.Run("unknown tool returns error", func(t *testing.T) {
-			t.Parallel()
 		_, err := adapter.ExecuteTool(context.Background(), "git_unknown", map[string]interface{}{
 			"repo_path": tempDir,
 		})
@@ -402,9 +377,7 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	}
 
 	// Create a bare repo to act as remote
-	bareDir, err := os.MkdirTemp("", "git-bare-*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(bareDir) }()
+	bareDir := t.TempDir()
 
 	cmd := exec.Command("git", "init", "--bare")
 	cmd.Dir = bareDir
@@ -426,11 +399,10 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	config.AllowRemoteOperations = true
 	adapter := NewGitAdapter(config, logrus.New())
 
-	err = adapter.Initialize(context.Background())
+	err := adapter.Initialize(context.Background())
 	require.NoError(t, err)
 
 	t.Run("git_push via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		// First push needs -u
 		result, err := adapter.ExecuteTool(context.Background(), "git_push", map[string]interface{}{
 			"repo_path":    workDir,
@@ -443,7 +415,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_fetch via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_fetch", map[string]interface{}{
 			"repo_path": workDir,
 			"remote":    "origin",
@@ -453,7 +424,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_fetch with prune", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_fetch", map[string]interface{}{
 			"repo_path": workDir,
 			"remote":    "origin",
@@ -464,7 +434,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_fetch all remotes", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_fetch", map[string]interface{}{
 			"repo_path": workDir,
 			"all":       true,
@@ -474,7 +443,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_pull via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_pull", map[string]interface{}{
 			"repo_path": workDir,
 			"remote":    "origin",
@@ -485,7 +453,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_pull with rebase", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_pull", map[string]interface{}{
 			"repo_path": workDir,
 			"remote":    "origin",
@@ -497,7 +464,6 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	})
 
 	t.Run("git_push with force (when allowed)", func(t *testing.T) {
-			t.Parallel()
 		result, err := adapter.ExecuteTool(context.Background(), "git_push", map[string]interface{}{
 			"repo_path": workDir,
 			"remote":    "origin",
@@ -521,9 +487,7 @@ func TestGitAdapter_Clone(t *testing.T) {
 	}
 
 	// Create a bare repo to clone from
-	bareDir, err := os.MkdirTemp("", "git-bare-clone-*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(bareDir) }()
+	bareDir := t.TempDir()
 
 	cmd := exec.Command("git", "init", "--bare")
 	cmd.Dir = bareDir
@@ -542,20 +506,17 @@ func TestGitAdapter_Clone(t *testing.T) {
 	require.NoError(t, cmd.Run())
 
 	// Clone destination
-	cloneDir, err := os.MkdirTemp("", "git-clone-*")
-	require.NoError(t, err)
-	defer func() { _ = os.RemoveAll(cloneDir) }()
+	cloneDir := t.TempDir()
 
 	config := DefaultGitAdapterConfig()
 	config.AllowedPaths = []string{cloneDir, bareDir}
 	config.AllowRemoteOperations = true
 	adapter := NewGitAdapter(config, logrus.New())
 
-	err = adapter.Initialize(context.Background())
+	err := adapter.Initialize(context.Background())
 	require.NoError(t, err)
 
 	t.Run("Clone via adapter method", func(t *testing.T) {
-			t.Parallel()
 		destPath := filepath.Join(cloneDir, "cloned_repo")
 		err := adapter.Clone(context.Background(), bareDir, destPath, false, 0)
 		require.NoError(t, err)
@@ -566,7 +527,6 @@ func TestGitAdapter_Clone(t *testing.T) {
 	})
 
 	t.Run("Clone via ExecuteTool", func(t *testing.T) {
-			t.Parallel()
 		destPath := filepath.Join(cloneDir, "cloned_repo_2")
 		result, err := adapter.ExecuteTool(context.Background(), "git_clone", map[string]interface{}{
 			"url":       bareDir,
@@ -581,7 +541,6 @@ func TestGitAdapter_Clone(t *testing.T) {
 	})
 
 	t.Run("Clone with branch", func(t *testing.T) {
-			t.Parallel()
 		destPath := filepath.Join(cloneDir, "cloned_repo_branch")
 		result, err := adapter.ExecuteTool(context.Background(), "git_clone", map[string]interface{}{
 			"url":       bareDir,
@@ -592,7 +551,6 @@ func TestGitAdapter_Clone(t *testing.T) {
 	})
 
 	t.Run("Clone with depth (shallow)", func(t *testing.T) {
-			t.Parallel()
 		destPath := filepath.Join(cloneDir, "cloned_repo_shallow")
 		result, err := adapter.ExecuteTool(context.Background(), "git_clone", map[string]interface{}{
 			"url":       bareDir,
@@ -605,14 +563,12 @@ func TestGitAdapter_Clone(t *testing.T) {
 	})
 
 	t.Run("Clone shallow option", func(t *testing.T) {
-			t.Parallel()
 		destPath := filepath.Join(cloneDir, "cloned_repo_shallow_opt")
 		err := adapter.Clone(context.Background(), bareDir, destPath, true, 0)
 		require.NoError(t, err)
 	})
 
 	t.Run("Clone destination not allowed", func(t *testing.T) {
-			t.Parallel()
 		destPath := "/not/allowed/path"
 		err := adapter.Clone(context.Background(), bareDir, destPath, false, 0)
 		assert.Error(t, err)
@@ -620,7 +576,6 @@ func TestGitAdapter_Clone(t *testing.T) {
 	})
 
 	t.Run("Clone when remote operations not allowed", func(t *testing.T) {
-			t.Parallel()
 		restrictedConfig := DefaultGitAdapterConfig()
 		restrictedConfig.AllowedPaths = []string{cloneDir}
 		restrictedConfig.AllowRemoteOperations = false
@@ -658,7 +613,6 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Push when not allowed", func(t *testing.T) {
-			t.Parallel()
 		_, err := adapter.ExecuteTool(context.Background(), "git_push", map[string]interface{}{
 			"repo_path": tempDir,
 			"remote":    "origin",
@@ -669,7 +623,6 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	})
 
 	t.Run("Force push when not allowed", func(t *testing.T) {
-			t.Parallel()
 		config.AllowPush = true // Enable push but not force
 		adapter2 := NewGitAdapter(config, logrus.New())
 		_ = adapter2.Initialize(context.Background())
@@ -685,7 +638,6 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	})
 
 	t.Run("Commit without message", func(t *testing.T) {
-			t.Parallel()
 		_, err := adapter.ExecuteTool(context.Background(), "git_commit", map[string]interface{}{
 			"repo_path": tempDir,
 		})
@@ -694,7 +646,6 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	})
 
 	t.Run("Amend when not allowed", func(t *testing.T) {
-			t.Parallel()
 		_, err := adapter.ExecuteTool(context.Background(), "git_commit", map[string]interface{}{
 			"repo_path": tempDir,
 			"message":   "test",
@@ -705,7 +656,6 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	})
 
 	t.Run("Status in non-git directory", func(t *testing.T) {
-			t.Parallel()
 		nonGitDir, _ := os.MkdirTemp("", "non-git-*")
 		defer func() { _ = os.RemoveAll(nonGitDir) }()
 
@@ -758,7 +708,6 @@ func TestGitAdapter_ConcurrentAccess(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Concurrent status requests", func(t *testing.T) {
-			t.Parallel()
 		done := make(chan bool, 10)
 
 		for i := 0; i < 10; i++ {
@@ -777,7 +726,6 @@ func TestGitAdapter_ConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("Concurrent log requests", func(t *testing.T) {
-			t.Parallel()
 		done := make(chan bool, 10)
 
 		for i := 0; i < 10; i++ {
@@ -820,7 +768,6 @@ func TestGitAdapter_ContextTimeout(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Operation with expired context", func(t *testing.T) {
-			t.Parallel()
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 		defer cancel()
 		time.Sleep(1 * time.Millisecond) // Ensure context expires

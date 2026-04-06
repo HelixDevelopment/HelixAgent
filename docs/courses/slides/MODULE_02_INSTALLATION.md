@@ -32,7 +32,7 @@
 
 | Requirement | Minimum Version |
 |-------------|-----------------|
-| Go | 1.23+ |
+| Go | 1.25+ |
 | Docker | 20.10+ |
 | Docker Compose | 2.0+ |
 | Git | 2.30+ |
@@ -43,7 +43,7 @@
 
 ## Slide 4: Go Installation
 
-**Installing Go 1.23+:**
+**Installing Go 1.25+:**
 
 ```bash
 # Linux (using package manager)
@@ -55,7 +55,7 @@ brew install go
 
 # Verify installation
 go version
-# Expected: go version go1.23.x ...
+# Expected: go version go1.25.x ...
 ```
 
 *Download from https://go.dev/dl/ for latest version*
@@ -418,7 +418,7 @@ curl -X POST http://localhost:7061/v1/completion \
 **Key Takeaways:**
 
 - Docker is the fastest way to get started
-- Go 1.23+ required for source installation
+- Go 1.25+ required for source installation
 - Core services: PostgreSQL, Redis, HelixAgent
 - Multiple profiles for different use cases
 - Health endpoints for verification

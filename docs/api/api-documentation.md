@@ -101,16 +101,79 @@ For production deployments, we recommend using API keys from provider consoles i
 | `/v1/providers` | GET | Bearer Token | Detailed provider info |
 | `/v1/providers/:name/health` | GET | Bearer Token | Provider-specific health |
 | `/v1/admin/health/all` | GET | Admin Token | Comprehensive system health |
-| `/mcp/capabilities` | GET | Bearer Token | MCP server capabilities |
-| `/mcp/tools` | GET | Bearer Token | Available MCP tools |
-| `/mcp/tools/call` | POST | Bearer Token | Execute MCP tool |
-| `/mcp/prompts` | GET | Bearer Token | Available MCP prompts |
-| `/mcp/resources` | GET | Bearer Token | Available MCP resources |
+| `/v1/mcp/capabilities` | GET | Bearer Token | MCP server capabilities |
+| `/v1/mcp/tools` | GET | Bearer Token | Available MCP tools |
+| `/v1/mcp/tools/call` | POST | Bearer Token | Execute MCP tool |
+| `/v1/mcp/tools/search` | GET/POST | Bearer Token | Search MCP tools |
+| `/v1/mcp/tools/suggestions` | GET | Bearer Token | Tool suggestions |
+| `/v1/mcp/prompts` | GET | Bearer Token | Available MCP prompts |
+| `/v1/mcp/resources` | GET | Bearer Token | Available MCP resources |
+| `/v1/mcp/adapters/search` | GET/POST | Bearer Token | Search MCP adapters |
+| `/v1/mcp/categories` | GET | Bearer Token | Tool categories |
+| `/v1/mcp/stats` | GET | Bearer Token | MCP usage statistics |
 | `/v1/debates` | POST | Bearer Token | Create AI debate |
 | `/v1/debates/{id}` | GET | Bearer Token | Get debate information |
 | `/v1/debates/{id}/status` | GET | Bearer Token | Get debate status |
 | `/v1/debates/{id}/results` | GET | Bearer Token | Get debate results |
-| `/v1/debates/{id}/report` | GET | Bearer Token | Generate debate report |
+| `/v1/debates/{id}/approve` | POST | Bearer Token | Approve debate gate |
+| `/v1/debates/{id}/reject` | POST | Bearer Token | Reject debate gate |
+| `/v1/debates/{id}/gates` | GET | Bearer Token | Get approval gates |
+| `/v1/debates/{id}/audit` | GET | Bearer Token | Get audit trail |
+| `/v1/debates/team` | GET | None | Get debate team config |
+| `/v1/debates/orchestrator/status` | GET | Bearer Token | Orchestrator status |
+| `/v1/acp/health` | GET | None | ACP service health |
+| `/v1/acp/agents` | GET | None | List ACP agents |
+| `/v1/acp/execute` | POST | None | Execute agent task |
+| `/v1/acp/rpc` | POST | None | JSON-RPC 2.0 endpoint |
+| `/v1/lsp/servers` | GET | Bearer Token | List LSP servers |
+| `/v1/lsp/execute` | POST | Bearer Token | Execute LSP request |
+| `/v1/lsp/sync` | POST | Bearer Token | Sync LSP servers |
+| `/v1/lsp/stats` | GET | Bearer Token | LSP statistics |
+| `/v1/vision/health` | GET | None | Vision service health |
+| `/v1/vision/capabilities` | GET | None | Vision capabilities |
+| `/v1/vision/analyze` | POST | None | Analyze image |
+| `/v1/vision/ocr` | POST | None | OCR extraction |
+| `/v1/vision/detect` | POST | None | Object detection |
+| `/v1/cognee/health` | GET | None | Cognee service health |
+| `/v1/cognee/memory` | POST | None | Add to knowledge graph |
+| `/v1/cognee/search` | POST | None | Search knowledge graph |
+| `/v1/cognee/cognify` | POST | None | Cognify content |
+| `/v1/rag/health` | GET | Bearer Token | RAG system health |
+| `/v1/rag/documents` | POST | Bearer Token | Ingest document |
+| `/v1/rag/search` | POST | Bearer Token | Search documents |
+| `/v1/rag/search/hybrid` | POST | Bearer Token | Hybrid search |
+| `/v1/embeddings/generate` | POST | Bearer Token | Generate embeddings |
+| `/v1/embeddings/search` | POST | Bearer Token | Vector search |
+| `/v1/protocols/execute` | POST | Bearer Token | Execute protocol request |
+| `/v1/protocols/servers` | GET | Bearer Token | List protocol servers |
+| `/v1/sessions` | POST/GET | Bearer Token | Session management |
+| `/v1/agents` | GET | Bearer Token | CLI agent registry |
+| `/v1/features` | GET | None | Feature flags |
+| `/v1/format` | POST | None | Format code |
+| `/v1/formatters` | GET | None | List formatters |
+| `/v1/agentic/workflows` | POST/GET | Bearer Token | Agentic workflows |
+| `/v1/planning/hiplan` | POST | Bearer Token | Hierarchical planning |
+| `/v1/planning/mcts` | POST | Bearer Token | Monte Carlo Tree Search |
+| `/v1/planning/tot` | POST | Bearer Token | Tree of Thoughts |
+| `/v1/llmops/experiments` | POST/GET | Bearer Token | A/B experiments |
+| `/v1/llmops/evaluate` | POST | Bearer Token | Continuous evaluation |
+| `/v1/llmops/prompts` | POST/GET | Bearer Token | Prompt versioning |
+| `/v1/benchmark/run` | POST | Bearer Token | Start benchmark |
+| `/v1/benchmark/results` | GET | Bearer Token | Benchmark results |
+| `/v1/discovery/models` | GET | Bearer Token | Discovered models |
+| `/v1/scoring/model/{id}` | GET | Bearer Token | Model score |
+| `/v1/scoring/top` | GET | Bearer Token | Top models |
+| `/v1/verification/model` | POST | Bearer Token | Verify model |
+| `/v1/verification/status` | GET | Bearer Token | Verification status |
+| `/v1/tasks` | POST/GET | None | Background tasks |
+| `/v1/search/semantic` | POST | Bearer Token | Semantic code search |
+| `/v1/templates` | GET | Bearer Token | Prompt templates |
+| `/v1/checkpoints` | POST/GET | Bearer Token | Workspace snapshots |
+| `/v1/browser/navigate` | POST | Bearer Token | Browser automation |
+| `/v1/skills` | GET | Bearer Token | Skill registry |
+| `/v1/qa/sessions` | POST | Bearer Token | Start QA session |
+| `/v1/graphql` | POST | Bearer Token | GraphQL (feature-flagged) |
+| `/v1/startup/verification` | GET | None | Startup status |
 
 ## Available Models
 

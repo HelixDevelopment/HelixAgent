@@ -6,10 +6,21 @@ This directory contains all PostgreSQL schema definitions for HelixAgent.
 
 ```
 sql/
-└── schema/          # Individual schema files (apply in numbered order)
+├── 001_cli_agents_fusion.sql        # CLI agent instances, tasks, repo maps, git ops, tools, memory
+├── 002_performance_and_security.sql  # Feature flags, performance baselines, security scans, benchmarks
+├── schema/                           # Individual schema files (apply in numbered order)
+├── README.md                         # This file
+└── SCHEMA_GUIDE.md                   # ER diagram, migration order, naming conventions
 ```
 
-## Schema Files
+## Migration Files (top-level)
+
+| File | Description |
+|------|-------------|
+| `001_cli_agents_fusion.sql` | CLI agent instances, tasks, repo maps, symbols, git operations, diffs, terminal sessions, tool use log, project memory, browser sessions, sandbox environments, task plans |
+| `002_performance_and_security.sql` | Feature flags, performance baselines, security scan history, benchmark runs |
+
+## Schema Files (schema/)
 
 | File | Description |
 |------|-------------|

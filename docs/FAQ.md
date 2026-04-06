@@ -227,3 +227,91 @@ See [Security Scanning Guide](security/scanning-guide.md) for details.
 ### How do I report a vulnerability?
 
 See [Vulnerability Disclosure Policy](security/vulnerability-disclosure.md). Do not open public GitHub issues for security vulnerabilities.
+
+---
+
+## Feature Flags
+
+### How do I enable GraphQL?
+
+Set `GRAPHQL_ENABLED=true` in your `.env` file. The GraphQL endpoint will be available at `/v1/graphql`.
+
+### How do I enable pprof for memory profiling?
+
+Set `ENABLE_PPROF=true` in your `.env` file. Profiling endpoints will be available at `/debug/pprof/*`. Do not enable this in production.
+
+### How do I disable startup verification for faster development?
+
+Set `LLM_VERIFIER_DISABLED=true` in your `.env` file. This skips the LLMsVerifier 8-test pipeline that normally runs on startup (takes 1-2 minutes).
+
+### What is the Constitution Watcher?
+
+When `CONSTITUTION_WATCHER_ENABLED=true`, HelixAgent monitors the project for changes (new modules, documentation changes, structure changes) and automatically updates the Constitution. The check interval defaults to 5 minutes (`CONSTITUTION_WATCHER_CHECK_INTERVAL=5m`).
+
+---
+
+## Networking
+
+### Does HelixAgent support HTTP/3?
+
+Yes. HelixAgent uses HTTP/3 (QUIC) as its primary transport protocol with HTTP/2 as fallback. Compression uses Brotli (primary) with gzip fallback. The HTTP/3 stack is built on `quic-go/quic-go` with `andybalholm/brotli` for compression.
+
+### What ports does HelixAgent use?
+
+| Port | Service |
+|------|---------|
+| 7061 | Main API (HTTP/3 + HTTP/2 fallback) |
+| 15432 | PostgreSQL (test infrastructure) |
+| 16379 | Redis (test infrastructure) |
+| 18081 | Mock LLM (test infrastructure) |
+| 9101-9999 | MCP servers |
+| 9210-9300 | Code formatter services |
+| 9090 | Prometheus metrics |
+
+---
+
+## Container Orchestration
+
+### Why can't I start containers manually?
+
+HelixAgent's Containers module manages the entire container lifecycle. Manual container manipulation (docker/podman start/stop/compose) can cause state inconsistencies. Always use `./bin/helixagent` to start everything. The binary reads `Containers/.env` and orchestrates all containers automatically.
+
+### How do I distribute containers to a remote host?
+
+Edit `Containers/.env`:
+
+```bash
+CONTAINERS_REMOTE_ENABLED=true
+CONTAINERS_REMOTE_HOST_1_NAME=myhost
+CONTAINERS_REMOTE_HOST_1_ADDRESS=myhost.local
+CONTAINERS_REMOTE_HOST_1_PORT=22
+CONTAINERS_REMOTE_HOST_1_USER=myuser
+CONTAINERS_REMOTE_HOST_1_RUNTIME=podman
+```
+
+Then run `./bin/helixagent`. All containers will be distributed to the remote host. SSH key-based authentication is required.
+
+### What scheduling strategies are available for remote distribution?
+
+Five strategies: `resource_aware` (default, places containers based on available resources), `round_robin`, `affinity` (co-locate related services), `spread` (distribute evenly), `bin_pack` (maximize utilization per host).
+
+---
+
+## CLI Agents
+
+### How do I generate a CLI agent config?
+
+```bash
+# Build first
+make build
+
+# Generate config for a specific agent
+./bin/helixagent --generate-agent-config=opencode
+./bin/helixagent --generate-agent-config=crush
+```
+
+The binary is the sole authority for config generation. Never create CLI agent configs manually.
+
+### How many CLI agents are supported?
+
+48 agents including 4 custom (OpenCode, Crush, KiloCode, HelixCode) and 44 generic. All agents include 15+ MCP servers, 10+ plugins, and 8+ skills.

@@ -62,7 +62,7 @@
 | Property | Value |
 |----------|-------|
 | Module path | `digital.vasic.llmops` |
-| Go version | 1.24+ |
+| Go version | 1.25+ |
 | Source directory | `LLMOps/` |
 | HelixAgent adapter | `internal/adapters/llmops/adapter.go` |
 | Package | `llmops` |

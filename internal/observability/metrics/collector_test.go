@@ -10,16 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newTestCollector creates a collector with automatic cleanup
+// newTestCollector creates a collector with its own isolated registry
+// to avoid conflicts when tests run in parallel
 func newTestCollector(t *testing.T) *Collector {
-	c := NewCollector()
-	t.Cleanup(func() {
-		prometheus.Unregister(c.RequestDuration)
-		prometheus.Unregister(c.ProviderLatency)
-		prometheus.Unregister(c.CacheHits)
-		prometheus.Unregister(c.CacheMisses)
-	})
-	return c
+	t.Helper()
+	registry := prometheus.NewRegistry()
+	return NewCollectorWithRegistry(registry)
 }
 
 func TestNewCollector(t *testing.T) {
@@ -198,6 +194,9 @@ func TestCollector_Handler(t *testing.T) {
 	t.Run("returns prometheus format", func(t *testing.T) {
 			t.Parallel()
 		c := newTestCollector(t)
+
+		// Record at least one metric so the handler output is non-empty
+		c.RequestDuration.WithLabelValues("GET", "/test", "200").Observe(0.1)
 
 		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 		w := httptest.NewRecorder()

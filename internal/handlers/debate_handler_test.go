@@ -593,7 +593,8 @@ func TestDebateRouteRegistration(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
-				t.Parallel()
+			// Not parallel: subtests share handler.activeDebates map and DELETE
+			// removes entries that other subtests need to read.
 			// Re-create the debate for DELETE test (since it gets deleted)
 			if route.method == http.MethodDelete {
 				handler.mu.Lock()

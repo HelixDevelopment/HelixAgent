@@ -335,7 +335,7 @@ database:
 
 ```dockerfile
 # Use non-root user
-FROM golang:1.23-alpine
+FROM golang:1.25-alpine
 RUN adduser -D -g '' appuser
 USER appuser
 

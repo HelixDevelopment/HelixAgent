@@ -6,30 +6,32 @@ Thank you for your interest in contributing to HelixAgent!
 
 ### Prerequisites
 
-- Go 1.24+
-- Docker or Podman
+- Go 1.25.3+
+- Docker or Podman (for container orchestration)
 - golangci-lint
 - gosec
 
 ### Getting Started
 
 ```bash
-# Clone the repository
-git clone git@github.com:anomaly/helixagent.git
-cd helixagent
+# Clone the repository (SSH only - HTTPS is forbidden)
+git clone --recurse-submodules git@github.com:vasic-digital/HelixAgent.git
+cd HelixAgent
 
 # Install development tools
 make install-deps
 
-# Start infrastructure
-make test-infra-start
-
 # Build the project
 make build
 
-# Run tests
-make test
+# Run unit tests (no infrastructure needed)
+make test-unit
+
+# Run with auto container orchestration
+./bin/helixagent
 ```
+
+**Note:** HelixAgent automatically manages all infrastructure containers on startup. Do not start containers manually. For isolated test runs requiring infrastructure, use `make test-infra-start`.
 
 ## Code Style
 
@@ -124,4 +126,4 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 ## Contact
 
-- GitHub Issues: https://github.com/anomaly/helixagent/issues
+- GitHub Issues: https://github.com/vasic-digital/HelixAgent/issues

@@ -293,7 +293,7 @@ reports/helixllm-verification-<timestamp>/
 
 ### Schedule Automated Testing
 
-Add to crontab for daily testing:
+Add to crontab for periodic testing:
 ```bash
 # Edit crontab
 crontab -e
@@ -302,38 +302,19 @@ crontab -e
 0 2 * * * cd /path/to/HelixAgent && ./tests/helixllm/llmsverifier_test_suite.sh >> /var/log/helixllm-tests.log 2>&1
 ```
 
-### CI/CD Integration
+### Manual Execution via Makefile
 
-```yaml
-# .github/workflows/helixllm-tests.yml
-name: HelixLLM Tests
+**Note:** This project does not use CI/CD pipelines (no GitHub Actions, GitLab CI, etc.). All builds and tests are run manually via Makefile targets or scripts.
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM
+```bash
+# Run full HelixLLM test suite
+./tests/helixllm/llmsverifier_test_suite.sh
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      
-      - name: Run LLMsVerifier Tests
-        run: |
-          export USE_HELIX_LLM=true
-          ./tests/helixllm/llmsverifier_test_suite.sh
-      
-      - name: Upload Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: reports/helixllm-verification-*/
+# Run challenge verification
+./challenges/scripts/helixllm_integration_challenge.sh
+
+# Run with verbose output
+VERBOSE=true ./tests/helixllm/llmsverifier_test_suite.sh
 ```
 
 ---
@@ -426,4 +407,4 @@ For issues or questions:
 
 ---
 
-*Last Updated: April 5, 2026*
+*Last Updated: April 6, 2026*

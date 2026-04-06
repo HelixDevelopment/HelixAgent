@@ -3,9 +3,9 @@
 ## Course Overview
 
 **Title**: "Mastering HelixAgent: Multi-Provider AI Orchestration"
-**Duration**: 14+ hours across 14 comprehensive modules
+**Duration**: 20+ hours across 20 comprehensive modules
 **Target Audience**: Developers, DevOps engineers, AI engineers, and technical decision-makers
-**Prerequisites**: Basic programming knowledge, familiarity with REST APIs, Go 1.24+ for development modules
+**Prerequisites**: Basic programming knowledge, familiarity with REST APIs, Go 1.25+ for development modules
 **Skill Level**: Beginner to Advanced
 
 ---
@@ -16,18 +16,23 @@ Upon completion of this course, participants will be able to:
 
 1. Understand the architecture and design principles of HelixAgent
 2. Install, configure, and deploy HelixAgent in various environments
-3. Integrate 10 LLM providers (Claude, Gemini, DeepSeek, Qwen, Ollama, OpenRouter, ZAI, Zen, Mistral, Cerebras)
+3. Integrate 43 LLM providers (Claude, DeepSeek, Gemini, Mistral, OpenRouter, Qwen, ZAI, Zen, Cerebras, Ollama, AI21, Anthropic, Cohere, Fireworks, GitHub Models, Groq, HuggingFace, OpenAI, Perplexity, Replicate, Together, Venice, xAI, Junie, Cloudflare, Codestral, Hyperbolic, Kilo, Kimi, KimiCode, Modal, Nia, NLPCloud, Novita, Nvidia, PublicAI, SambaNova, Sarvam, SiliconFlow, Upstage, VulaVula, Zhipu, HelixLLM)
 4. Implement ensemble voting strategies for improved AI responses
 5. Configure and utilize the AI Debate System with 25 LLMs for complex problem-solving
 6. Develop custom plugins for extended functionality
 7. Integrate MCP/LSP/ACP protocols for enhanced capabilities
 8. Apply LLM optimization techniques for better performance
 9. Implement security best practices for production deployments
-10. Set up comprehensive testing and CI/CD pipelines
-11. **NEW**: Run and interpret RAGS, MCPS, and SKILLS challenges
-12. **NEW**: Implement MCP Tool Search and discovery
-13. **NEW**: Configure multi-pass validation for AI debates
-14. **NEW**: Integrate with 20+ CLI agents
+10. Set up comprehensive testing and quality validation
+11. Run and interpret RAGS, MCPS, and SKILLS challenges
+12. Implement MCP Tool Search and discovery
+13. Configure multi-pass validation for AI debates
+14. Integrate with 48 CLI agents
+15. Configure HelixLLM as a provider and AgenticEnsemble dual-mode operation
+16. Deploy containers to remote hosts via automatic container distribution
+17. Configure HTTP/3 (QUIC) transport with Brotli compression
+18. Leverage HelixMemory unified cognitive memory engine
+19. Apply HelixSpecifier spec-driven development workflows
 
 ---
 
@@ -85,7 +90,7 @@ Upon completion of this course, participants will be able to:
 
 #### 2.1 Environment Prerequisites (15 min)
 - System requirements overview
-- Go 1.23+ installation and verification
+- Go 1.25+ installation and verification
 - Docker and Docker Compose setup
 - Git configuration
 - IDE recommendations (VS Code, GoLand)
@@ -218,7 +223,15 @@ Upon completion of this course, participants will be able to:
 - Ollama local model setup and advantages
 - OpenRouter as a meta-provider
 - ZAI integration
+- HelixLLM as a local AI ensemble provider
 - Provider selection guidelines
+
+#### 4.7 43 Provider Ecosystem Overview (15 min)
+- Complete provider catalog: AI21, Anthropic, Cerebras, Chutes, Claude, Cloudflare, Codestral, Cohere, DeepSeek, Fireworks, Gemini, GitHub Models, Groq, HelixLLM, HuggingFace, Hyperbolic, Junie, Kilo, Kimi, KimiCode, LMStudio, Mistral, Modal, Nia, NLPCloud, Novita, Nvidia, Ollama, OpenAI, OpenRouter, Perplexity, PublicAI, Qwen, Replicate, SambaNova, Sarvam, SiliconFlow, Together, Upstage, Venice, VulaVula, xAI, ZAI, Zen, Zhipu
+- Generic OpenAI-compatible provider for unlisted providers
+- Dynamic provider selection via LLMsVerifier verification scores
+- 3-tier dynamic model discovery (Provider API, models.dev, hardcoded fallback)
+- OAuth/CLI proxy providers (Claude, Qwen, Zen, Gemini, Junie)
 
 #### 4.6 Building Fallback Chains (15 min)
 - Designing reliable fallback strategies
@@ -556,16 +569,17 @@ Upon completion of this course, participants will be able to:
 - Integration test best practices
 - Performance testing guidelines
 
-#### 11.4 CI/CD Pipeline Setup (20 min)
-- GitHub Actions configuration
-- Pipeline stages:
-  - Linting and formatting
-  - Unit testing
-  - Integration testing
-  - Security scanning
-  - Docker image building
-  - Deployment automation
-- Quality gates and approvals
+#### 11.4 Manual CI/CD and Quality Validation (20 min)
+- Manual CI/CD via Makefile targets (NO automated pipelines per project constitution)
+- Five-phase container-based CI system:
+  - Phase 1: Go builds + all tests + integration services
+  - Phase 2: Mobile (Flutter/RN + Android)
+  - Phase 3: Web (Angular + Playwright + Lighthouse)
+  - Phase 4: Desktop (Electron/Tauri)
+  - Phase 5: Full-stack integration
+- Quality gates: `make ci-validate-all`
+- Container-based builds for reproducibility: `make release-all`
+- Resource limits: `CI_RESOURCE_LIMIT` (low/medium/high)
 
 ### Hands-On Lab
 - Run all test suites
@@ -581,7 +595,7 @@ Upon completion of this course, participants will be able to:
 - Master the HelixAgent Challenge System
 - Run RAGS, MCPS, and SKILLS challenges
 - Understand strict real-result validation
-- Validate system integration across 20+ CLI agents
+- Validate system integration across 48 CLI agents
 
 ### Videos
 
@@ -786,20 +800,20 @@ Upon completion of this course, participants will be able to:
   - Mesh (parallel)
   - Star (hub-spoke)
   - Chain (sequential)
-- Phase-based protocol:
-  - Proposal -> Critique -> Review -> Synthesis
-- Learning system and cross-debate knowledge
+  - Tree (hierarchical)
+- 8-phase protocol:
+  - Dehallucination, SelfEvolvement, Proposal, Critique, Review, Optimization, Adversarial, Convergence
+- 6 voting methods: Weighted (MiniMax), Majority, Borda Count, Condorcet, Plurality, Unanimous
+- Reflexion framework: episodic memory, verbal reflection, retry-and-learn loop
+- Cross-debate learning and knowledge repository
 
-#### 14.4 Integration with 20+ CLI Agents (15 min)
-- CLI agent registry (20 agents):
-  - OpenCode, Crush, HelixCode, Kiro
-  - Aider, ClaudeCode, Cline, CodenameGoose
-  - DeepSeekCLI, Forge, GeminiCLI, GPTEngineer
-  - KiloCode, MistralCode, OllamaCode, Plandex
-  - QwenCode, AmazonQ, CursorAI, Windsurf
-- Agent-specific configurations
-- X-CLI-Agent header support
-- User-Agent pattern matching
+#### 14.4 Integration with 48 CLI Agents (15 min)
+- CLI agent registry (48 agents):
+  - 4 custom: OpenCode, Crush, KiloCode, HelixCode
+  - 44 generic agents including: Aider, ClaudeCode, Cline, CodenameGoose, DeepSeekCLI, Forge, GeminiCLI, GPTEngineer, MistralCode, OllamaCode, Plandex, QwenCode, AmazonQ, CursorAI, Windsurf, and more
+- Agent-specific configurations generated via HelixAgent binary
+- X-CLI-Agent header support and User-Agent pattern matching
+- 15+ MCP servers per agent, 10+ plugins, 8+ skills
 
 ### Hands-On Lab
 - Configure a 25 LLM debate team
@@ -841,7 +855,7 @@ Upon completion of this course, participants will be able to:
 ### Prerequisites
 
 - Modules 1-3 completed (HelixAgent basics, configuration)
-- Go 1.24+ development environment
+- Go 1.25+ development environment
 - Familiarity with Go interfaces and context.Context
 - HelixAgent running locally with at least one LLM provider configured
 - Understanding of Module 7 (Plugin Architecture) recommended
@@ -1102,6 +1116,333 @@ curl http://localhost:7061/v1/benchmark/reports/latest | jq '.ranking'
 
 ---
 
+## Module 15: HelixLLM and AgenticEnsemble (90 minutes)
+
+### Prerequisites
+
+- Modules 1-6 completed
+- Understanding of ensemble strategies and AI debate
+- HelixAgent running with at least one LLM provider configured
+
+### Learning Objectives
+
+Upon completion of this section, participants will be able to:
+
+1. Configure HelixLLM as a first-class LLM provider within HelixAgent
+2. Understand the AgenticEnsemble dual-mode architecture (Reason vs Execute)
+3. Implement tool-augmented reasoning through iterative tool resolution
+4. Configure autonomous execution with task decomposition and verification
+5. Integrate HelixLLM's RAG capabilities with HelixAgent's ensemble
+
+### Estimated Duration: 90 minutes (3 x 30-minute videos)
+
+---
+
+#### 15.1 HelixLLM Provider Integration (30 min)
+
+**Module**: `internal/llm/providers/helixllm/` | **Adapter**: `internal/adapters/helixllm/`
+
+**Topics**:
+- HelixLLM as a local AI ensemble provider with OpenAI-compatible API
+- Configuration: `HELIX_LLM_ENDPOINT`, `HELIX_LLM_API_KEY`, `HELIX_LLM_MODEL`
+- TLS configuration and health checks
+- Embedding generation via HelixLLM
+- RAG-augmented completions
+- HelixLLM submodule architecture: agents, shared config, analytics, events
+
+**Live Demo**: Configure HelixLLM and make a completion request through HelixAgent
+
+---
+
+#### 15.2 AgenticEnsemble Architecture (30 min)
+
+**Source**: `internal/services/agentic_ensemble.go`
+
+**Topics**:
+- Dual-mode operation: Reason mode vs Execute mode
+- Reason mode: debate service augmented with iterative tool resolution
+- Execute mode: task decomposition, agent worker pool, result verification
+- Intent classification for automatic mode selection
+- IterativeToolExecutor: multi-step tool calls within a single request
+- ExecutionPlanner: task decomposition and parallel dispatch
+- VerificationDebate: multi-LLM verification of execution results
+- Graceful degradation when subsystems are unavailable
+
+**Live Demo**: Submit a complex coding task and observe dual-mode routing
+
+---
+
+#### 15.3 AgenticEnsemble in Practice (30 min)
+
+**Topics**:
+- Configuring AgenticEnsemble via API
+- Tool registry integration for agentic tool loops
+- Autonomous task execution pipeline
+- Verification and quality assurance through debate
+- Performance optimization: parallel execution, caching, early termination
+- Integration with HelixLLM as the backend provider
+
+**Challenge**: `./challenges/scripts/agentic_ensemble_challenge.sh`
+
+### Hands-On Lab: AgenticEnsemble Pipeline
+
+**Duration**: 45 minutes | **Difficulty**: Advanced
+
+**Objective**: Build a pipeline that:
+1. Configures HelixLLM as a provider
+2. Submits a task requiring tool use (Reason mode)
+3. Submits a multi-step task (Execute mode)
+4. Verifies results through the verification debate
+5. Compares output quality between modes
+
+---
+
+## Module 16: HTTP/3 (QUIC) and Brotli Compression (60 minutes)
+
+### Learning Objectives
+
+Upon completion of this section, participants will be able to:
+
+1. Understand HTTP/3 (QUIC) transport advantages over HTTP/2
+2. Configure HelixAgent's HTTP/3 client and server
+3. Implement Brotli compression with gzip fallback
+4. Verify QUIC transport and compression in production
+
+### Estimated Duration: 60 minutes (2 x 30-minute videos)
+
+---
+
+#### 16.1 HTTP/3 (QUIC) Transport (30 min)
+
+**Topics**:
+- Why HTTP/3: reduced latency, connection migration, multiplexing without head-of-line blocking
+- `quic-go/quic-go` library integration
+- HTTP/3 as primary transport, HTTP/2 as fallback
+- TLS 1.3 requirement for QUIC
+- Client pool adapter: `internal/adapters/http/`
+- Server-side QUIC listener configuration
+- Health check verification over QUIC
+
+---
+
+#### 16.2 Brotli Compression (30 min)
+
+**Topics**:
+- Brotli vs gzip: compression ratio and speed tradeoffs
+- `andybalholm/brotli` library integration
+- Compression priority: Brotli (primary) then gzip (fallback)
+- Content-Encoding negotiation
+- Middleware configuration for response compression
+- Measuring compression savings in production
+
+**Challenge**: `./challenges/scripts/brotli_compression_challenge.sh`
+
+### Hands-On Lab: HTTP/3 and Compression Verification
+
+**Duration**: 30 minutes | **Difficulty**: Intermediate
+
+**Objective**:
+1. Verify QUIC transport is active via connection metadata
+2. Test Brotli compression on API responses
+3. Measure latency improvement vs HTTP/2
+4. Verify fallback behavior when QUIC is unavailable
+
+---
+
+## Module 17: Remote Container Distribution (60 minutes)
+
+### Learning Objectives
+
+Upon completion of this section, participants will be able to:
+
+1. Configure remote container distribution via `Containers/.env`
+2. Understand the mandatory container orchestration flow
+3. Deploy all services to remote hosts automatically
+4. Verify health checks against remote endpoints
+
+### Estimated Duration: 60 minutes (2 x 30-minute videos)
+
+---
+
+#### 17.1 Container Orchestration Flow (30 min)
+
+**Topics**:
+- Centralized container management via `digital.vasic.containers` module
+- Container adapter: `internal/adapters/containers/adapter.go`
+- BootManager service lifecycle: compose up, health check, strict mode
+- `Containers/.env` configuration (NOT project root `.env`)
+- `CONTAINERS_REMOTE_ENABLED=true` for remote distribution
+- `CONTAINERS_REMOTE_HOST_*` variables for multi-host deployment
+- Runtime auto-detection: Docker vs Podman
+- No manual container starts (constitution requirement)
+
+---
+
+#### 17.2 Remote Distribution in Practice (30 min)
+
+**Topics**:
+- SSH-based remote deployment (key-based auth, no interactive prompts)
+- Health checks against remote endpoints (TCP/HTTP)
+- Required vs optional services: boot failure in strict mode
+- Service overrides: `SVC_<SERVICE>_<FIELD>` environment variables
+- Mandatory container rebuild after code changes
+- Monitoring distributed containers
+
+**Key Files**: `Containers/.env`, `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`
+
+**Challenge**: `./challenges/scripts/container_lazy_loading_challenge.sh`
+
+### Hands-On Lab: Remote Container Deployment
+
+**Duration**: 30 minutes | **Difficulty**: Advanced
+
+**Objective**:
+1. Configure `Containers/.env` for remote distribution
+2. Boot HelixAgent and observe automatic container deployment
+3. Verify health checks against remote endpoints
+4. Test failover behavior when a remote service is unavailable
+
+---
+
+## Module 18: HelixMemory Cognitive Engine (75 minutes)
+
+### Learning Objectives
+
+Upon completion of this section, participants will be able to:
+
+1. Understand the HelixMemory 3-stage fusion pipeline
+2. Configure Mem0, Cognee, Letta, and Graphiti memory backends
+3. Integrate HelixMemory with the AI debate ensemble
+4. Use circuit breakers and Prometheus metrics for memory operations
+
+### Estimated Duration: 75 minutes (3 x 25-minute videos)
+
+---
+
+#### 18.1 HelixMemory Architecture (25 min)
+
+**Module**: `digital.vasic.helixmemory` | **Source**: `HelixMemory/`
+
+**Topics**:
+- Unified cognitive memory engine for HelixAgent and AI debate
+- 4 memory backends orchestrated through fusion:
+  - Mem0: fact-based memory
+  - Cognee: knowledge graphs
+  - Letta: stateful agent runtime
+  - Graphiti: temporal knowledge graph
+- 3-stage fusion pipeline
+- 12 power features
+- Active by default; opt out with `-tags nohelixmemory`
+- Infrastructure bridge for backend connectivity
+
+---
+
+#### 18.2 Memory Configuration and Integration (25 min)
+
+**Topics**:
+- Configuring memory backends (endpoints, credentials)
+- Circuit breakers for memory backend failures
+- Prometheus metrics for memory operations
+- Memory scopes: session, user, global
+- Entity graph and semantic search
+- Memory consolidation and retention policies
+
+---
+
+#### 18.3 HelixMemory in AI Debate (25 min)
+
+**Topics**:
+- Cross-debate learning through memory
+- Episodic memory for debate reflexion
+- Knowledge graph enrichment from debate outcomes
+- Temporal context for improved reasoning
+- Memory-augmented consensus building
+
+**Challenge**: `./challenges/scripts/helixmemory_challenge.sh` (80+ tests)
+
+### Hands-On Lab: Cognitive Memory Pipeline
+
+**Duration**: 30 minutes | **Difficulty**: Advanced
+
+**Objective**:
+1. Configure HelixMemory with at least 2 backends
+2. Store and retrieve facts through the memory API
+3. Observe memory enrichment during an AI debate
+4. Query the knowledge graph for cross-session insights
+
+---
+
+## Module 19: HelixSpecifier Spec-Driven Development (75 minutes)
+
+### Learning Objectives
+
+Upon completion of this section, participants will be able to:
+
+1. Understand the 3-pillar architecture (SpecKit + Superpowers + GSD)
+2. Configure auto-activation based on work granularity detection
+3. Execute the 7-phase SpecKit development flow
+4. Integrate HelixSpecifier with AI debate via DebateFunc injection
+
+### Estimated Duration: 75 minutes (3 x 25-minute videos)
+
+---
+
+#### 19.1 HelixSpecifier Architecture (25 min)
+
+**Module**: `digital.vasic.helixspecifier` | **Source**: `HelixSpecifier/`
+
+**Topics**:
+- Spec-Driven Development Fusion Engine
+- 3-pillar architecture:
+  - SpecKit: 7-phase SDD (Constitution, Specify, Clarify, Plan, Tasks, Analyze, Implement)
+  - Superpowers: TDD and subagent coordination
+  - GSD: milestone-driven execution
+- Adaptive ceremony scaling based on effort classification
+- 5 granularity levels: single action, small creation, big creation, whole functionality, refactoring
+- Auto-activation for large changes based on WorkGranularity detection
+- Phase caching for resumption (`.speckit/cache/`)
+- 27 packages, 835+ tests
+
+---
+
+#### 19.2 SpecKit 7-Phase Flow (25 min)
+
+**Topics**:
+- Phase 1: Constitution alignment
+- Phase 2: Specification authoring
+- Phase 3: Clarification and disambiguation
+- Phase 4: Planning and decomposition
+- Phase 5: Task generation
+- Phase 6: Analysis and risk assessment
+- Phase 7: Implementation guidance
+- Spec memory for cross-session context
+- Intent classifier for automatic phase selection
+
+---
+
+#### 19.3 DebateFunc Integration and 3-Pillar Fusion (25 min)
+
+**Topics**:
+- DebateFunc injection: real multi-LLM debate within spec workflow
+- 3-pillar fusion: combining SpecKit + Superpowers + GSD outputs
+- CLI agent adapters for agent-specific spec generation
+- 10 power features overview
+- Configuration via SpecKit orchestrator
+
+**Challenge**: `./challenges/scripts/helixspecifier_challenge.sh` (138 tests)
+
+### Hands-On Lab: Spec-Driven Development Workflow
+
+**Duration**: 30 minutes | **Difficulty**: Advanced
+
+**Objective**:
+1. Trigger HelixSpecifier auto-activation with a refactoring task
+2. Walk through the 7-phase flow
+3. Observe DebateFunc integration with live multi-LLM debate
+4. Review generated specification and implementation plan
+
+---
+
 ## Certification Path
 
 ### Level 1: HelixAgent Fundamentals
@@ -1124,7 +1465,7 @@ curl http://localhost:7061/v1/benchmark/reports/latest | jq '.ranking'
 - Security and CI/CD mastery
 - Assessment: Full production deployment review
 
-### Level 5: Challenge Expert (NEW)
+### Level 5: Challenge Expert
 - Modules 12-14
 - Challenge system mastery and advanced AI debate
 - Assessment: 100% pass rate on all challenge scripts
@@ -1134,7 +1475,7 @@ curl http://localhost:7061/v1/benchmark/reports/latest | jq '.ranking'
   - Demonstrate MCP Tool Search integration
   - Document strict validation methodology
 
-### Level 6: AI/ML Systems Architect (NEW)
+### Level 6: AI/ML Systems Architect
 - Modules S7.1-S7.2
 - Advanced AI/ML extracted module mastery
 - Assessment: End-to-end AI agent system implementation
@@ -1145,6 +1486,18 @@ curl http://localhost:7061/v1/benchmark/reports/latest | jq '.ranking'
   - Run HiPlan or MCTS on a real planning task and verify output
   - Complete Benchmark comparison of at least 2 providers on HumanEval with p-value analysis
   - Pass all 5 module challenge scripts with 100% test pass rate
+
+### Level 7: Platform Architect
+- Modules 15-19
+- Full platform mastery: HelixLLM, AgenticEnsemble, HTTP/3, remote distribution, cognitive memory, spec-driven development
+- Assessment: Complete platform deployment with all advanced features
+- Requirements:
+  - Configure HelixLLM provider and demonstrate AgenticEnsemble dual-mode operation
+  - Verify HTTP/3 (QUIC) transport with Brotli compression
+  - Deploy services to remote hosts via container distribution
+  - Integrate HelixMemory with at least 2 memory backends
+  - Execute a HelixSpecifier 7-phase workflow with DebateFunc integration
+  - Pass all related challenge scripts with 100% test pass rate
 
 ---
 
@@ -1165,7 +1518,7 @@ curl http://localhost:7061/v1/benchmark/reports/latest | jq '.ranking'
 
 ---
 
-*Course Version: 4.0.0*
-*Last Updated: February 2026*
-*Total Duration: 16.5+ hours*
-*Modules: 14 + 2 advanced AI/ML sections (S7.1, S7.2) = 5 new modules covered*
+*Course Version: 5.0.0*
+*Last Updated: April 2026*
+*Total Duration: 20+ hours*
+*Modules: 19 + 2 advanced AI/ML sections (S7.1, S7.2) = 7 certification levels*

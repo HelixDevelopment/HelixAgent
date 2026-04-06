@@ -1,6 +1,6 @@
 # Provider Configuration Guide
 
-HelixAgent supports 20+ LLM providers. This guide explains how to configure each.
+HelixAgent supports 43 LLM providers with dynamic selection based on real-time verification scores. This guide explains how to configure each.
 
 ## Quick Reference
 
@@ -8,6 +8,7 @@ HelixAgent supports 20+ LLM providers. This guide explains how to configure each
 |----------|---------------------|--------|----------|
 | OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4o-mini | Tools, Vision, Streaming |
 | Anthropic | `ANTHROPIC_API_KEY` | Claude 3.5 Sonnet, Haiku | Tools, Vision, 200K context |
+| Claude (OAuth) | `CLAUDE_USE_OAUTH_CREDENTIALS` | Claude CLI proxy | Session continuity |
 | DeepSeek | `DEEPSEEK_API_KEY` | DeepSeek-V3, R1 | Tools, Reasoning, 64K context |
 | Groq | `GROQ_API_KEY` | Llama 3.1/3.2, Mixtral | Tools, Vision, 800+ tok/s |
 | Mistral | `MISTRAL_API_KEY` | Mistral Small/Large | Tools, Agents |
@@ -18,6 +19,36 @@ HelixAgent supports 20+ LLM providers. This guide explains how to configure each
 | Fireworks | `FIREWORKS_API_KEY` | Llama, Mixtral | Fast inference |
 | Cerebras | `CEREBRAS_API_KEY` | Llama 3.1 | Wafer-scale speed |
 | xAI | `XAI_API_KEY` | Grok 2, Grok 3 | Real-time |
+| OpenRouter | `OPENROUTER_API_KEY` | Multi-provider routing | Aggregated access |
+| Qwen | `QWEN_API_KEY` | Qwen models | ACP/CLI proxy |
+| ZAI (Zhipu) | `ZAI_API_KEY` | GLM-4 | International API |
+| Zen | `OPENCODE_API_KEY` | OpenCode models | HTTP server mode |
+| Ollama | `OLLAMA_HOST` | Local models | Local inference |
+| AI21 | `AI21_API_KEY` | Jamba | Mamba architecture |
+| Chutes | `CHUTES_API_KEY` | Various | GPU inference |
+| Cloudflare | `CLOUDFLARE_API_KEY` | Workers AI | Edge inference |
+| Codestral | `CODESTRAL_API_KEY` | Codestral | Code completion |
+| GitHub Models | `GITHUB_TOKEN` | Various | GitHub-hosted |
+| HuggingFace | `HUGGINGFACE_API_KEY` | Various | Open source models |
+| Hyperbolic | `HYPERBOLIC_API_KEY` | Various | Efficient inference |
+| Junie | `JUNIE_API_KEY` | Junie | CLI/ACP proxy |
+| Kilo | `KILO_API_KEY` | Various | Fast inference |
+| Kimi | `KIMI_API_KEY` | Moonshot | Chinese/English |
+| KimiCode | `KIMICODE_API_KEY` | Kimi Code | Code-focused |
+| Modal | `MODAL_API_KEY` | Various | Serverless |
+| Nia | `NIA_API_KEY` | Various | Efficient inference |
+| NLPCloud | `NLPCLOUD_API_KEY` | Various | NLP-optimized |
+| Novita | `NOVITA_API_KEY` | Various | AI infrastructure |
+| Nvidia | `NVIDIA_API_KEY` | Various | GPU-optimized |
+| PublicAI | `PUBLICAI_API_KEY` | Various | Public API |
+| Replicate | `REPLICATE_API_KEY` | Various | Model hosting |
+| SambaNova | `SAMBANOVA_API_KEY` | Various | Chip-optimized |
+| Sarvam | `SARVAM_API_KEY` | Various | Indic languages |
+| SiliconFlow | `SILICONFLOW_API_KEY` | Various | Efficient inference |
+| Upstage | `UPSTAGE_API_KEY` | Solar | Document AI |
+| Venice | `VENICE_API_KEY` | Various | Privacy-focused |
+| VulaVula | `VULAVULA_API_KEY` | Various | African languages |
+| Zhipu | `ZHIPU_API_KEY` | GLM | Chinese AI |
 
 ## Configuration
 
@@ -94,28 +125,42 @@ Recommended models:
 
 ## Provider Selection
 
-HelixAgent automatically selects the best available provider. Priority order:
+HelixAgent uses LLMsVerifier to dynamically select the best providers on startup. The 8-test verification pipeline scores each provider across 5 weighted dimensions:
 
-1. Groq (speed)
-2. OpenAI (reliability)
-3. Anthropic (quality)
-4. DeepSeek (reasoning)
-5. Others (fallback)
+- **ResponseSpeed** (25%) - How fast the provider responds
+- **CostEffectiveness** (25%) - Cost per token value
+- **ModelEfficiency** (20%) - Output quality per resource
+- **Capability** (20%) - Feature support (tools, vision, etc.)
+- **Recency** (10%) - Model freshness
 
-Override with:
+Providers scoring below 5.0 are excluded. The top-scoring providers form the debate team. OAuth-based providers receive a +0.5 bonus. Free-tier providers score 6.0-7.0.
 
 ```bash
-export DEFAULT_PROVIDER="anthropic"
+# Check startup verification results
+curl http://localhost:7061/v1/startup/verification
+
+# Run verification for a specific provider
+make verifier-verify MODEL=gpt-4 PROVIDER=openai
 ```
+
+## OAuth/CLI Proxy Providers
+
+Some providers use CLI proxies when direct API access is restricted:
+
+- **Claude**: `claude -p --output-format json` (set `CLAUDE_USE_OAUTH_CREDENTIALS=true`)
+- **Qwen**: ACP via `qwen --acp` (set `QWEN_USE_OAUTH_CREDENTIALS=true`)
+- **Zen**: HTTP server `opencode serve :4096` (uses `OPENCODE_API_KEY`)
+- **Gemini**: `gemini -p --output-format json` (CLI mode when no `GEMINI_API_KEY`)
+- **Junie**: `junie --acp` (uses `JUNIE_API_KEY`)
 
 ## Testing Provider Setup
 
 ```bash
-# Test all configured providers
-make test-providers
+# Check provider health
+curl http://localhost:7061/v1/monitoring/status
 
-# Test specific provider
-go test -v ./tests/providers/openai_test.go
+# Verify specific provider
+make verifier-verify MODEL=gpt-4 PROVIDER=openai
 ```
 
 ## Troubleshooting

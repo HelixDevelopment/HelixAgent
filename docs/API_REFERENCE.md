@@ -1,5 +1,8 @@
 # HelixAgent API Reference
 
+> **Full API documentation:** See [docs/api/API_REFERENCE.md](api/API_REFERENCE.md) for the
+> comprehensive reference with all endpoints, request/response examples, and detailed descriptions.
+
 ## Base URL
 
 ```
@@ -14,7 +17,7 @@ Most endpoints require Bearer token authentication:
 Authorization: Bearer <your-jwt-token>
 ```
 
-## Endpoints
+## Endpoints Overview
 
 ### Health
 
@@ -300,6 +303,54 @@ Call an MCP tool.
   "arguments": {"path": "/tmp/test.txt"}
 }
 ```
+
+### Additional Endpoint Groups
+
+The following endpoint groups are fully documented in [docs/api/API_REFERENCE.md](api/API_REFERENCE.md):
+
+| Group | Base Path | Description |
+|-------|-----------|-------------|
+| Authentication | `/v1/auth/*` | Register, login, refresh, logout |
+| Sessions | `/v1/sessions/*` | Conversation session management |
+| Features | `/v1/features/*` | Feature flags and agent capabilities |
+| Agents | `/v1/agents/*` | CLI agent registry (48 agents) |
+| Ensemble | `/v1/ensemble/*` | Multi-provider ensemble sessions and teams |
+| Completion | `/v1/completion/*` | Skills-enhanced completion with intent routing |
+| Agentic | `/v1/agentic/workflows/*` | Graph-based workflow orchestration |
+| Planning | `/v1/planning/*` | HiPlan, MCTS, Tree of Thoughts |
+| LLMOps | `/v1/llmops/*` | A/B experiments, evaluation, prompts |
+| Benchmark | `/v1/benchmark/*` | SWE-bench, HumanEval, MMLU |
+| Discovery | `/v1/discovery/*` | 3-tier dynamic model discovery |
+| Scoring | `/v1/scoring/*` | 5-component weighted scoring |
+| Verification | `/v1/verification/*` | 8-test verification pipeline |
+| Health Monitoring | `/v1/health/*` | Provider health, circuit breakers, latency |
+| Monitoring | `/v1/monitoring/*` | OAuth, concurrency, fallback chain |
+| Cognee | `/v1/cognee/*` | Knowledge graph, memory, cognification |
+| RAG | `/v1/rag/*` | Document ingestion, hybrid search, reranking |
+| Embeddings | `/v1/embeddings/*` | Generate, search, batch index |
+| MCP | `/v1/mcp/*` | MCP tools, prompts, resources, search |
+| ACP | `/v1/acp/*` | Agent Communication Protocol |
+| LSP | `/v1/lsp/*` | Language Server Protocol integration |
+| Vision | `/v1/vision/*` | Image analysis, OCR, detection |
+| Protocols | `/v1/protocols/*` | Unified protocol management |
+| Formatters | `/v1/format*`, `/v1/formatters*` | Code formatting (32+ languages) |
+| Search | `/v1/search/*` | Semantic code search |
+| Templates | `/v1/templates/*` | Reusable prompt templates |
+| Checkpoints | `/v1/checkpoints/*` | Workspace snapshots |
+| Browser | `/v1/browser/*` | Playwright web automation |
+| Skills | `/v1/skills/*` | Skill registry |
+| Tasks | `/v1/tasks/*` | Background task management |
+| Webhooks | `/v1/webhooks/*` | Webhook management |
+| QA | `/v1/qa/*` | HelixQA autonomous testing |
+| Debates | `/v1/debates/*` | AI debate ensemble |
+| GraphQL | `/v1/graphql` | GraphQL (feature-flagged) |
+| Model Metadata | `/v1/models/metadata/*` | Models.dev integration |
+| Startup | `/v1/startup/verification` | Startup verification status |
+| BigData | `/v1/bigdata/components` | BigData component status |
+| Metrics | `/metrics` | Prometheus metrics |
+| Debug | `/debug/pprof/*` | pprof profiling (when enabled) |
+
+---
 
 ## Error Responses
 

@@ -85,7 +85,7 @@ func (s *SQLiteAdapter) Initialize(ctx context.Context) error {
 
 	var dsn string
 	if s.config.InMemory {
-		dsn = "file::memory:?cache=shared"
+		dsn = ":memory:"
 	} else {
 		if s.config.DatabasePath == "" {
 			return fmt.Errorf("database path is required for file-based SQLite")

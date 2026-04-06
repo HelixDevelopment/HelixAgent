@@ -9,7 +9,9 @@ This document provides a complete reference of all features, providers, protocol
   - [1.2 High-Quality Specialized (Tier 2)](#12-high-quality-specialized-tier-2)
   - [1.3 Fast Inference (Tier 3)](#13-fast-inference-tier-3)
   - [1.4 Alternative Providers (Tier 4)](#14-alternative-providers-tier-4)
-  - [1.5 Aggregators & Local (Tier 5-7)](#15-aggregators--local-tier-5-7)
+  - [1.5 Cloud & Inference Providers (Tier 5)](#15-cloud--inference-providers-tier-5)
+  - [1.6 Specialized Providers (Tier 6)](#16-specialized-providers-tier-6)
+  - [1.7 Aggregators, Local & Self-Hosted (Tier 7-8)](#17-aggregators-local--self-hosted-tier-7-8)
 - [2. Embedding Providers](#2-embedding-providers)
   - [2.1 Core Providers](#21-core-providers)
   - [2.2 Extended Providers](#22-extended-providers)
@@ -38,13 +40,18 @@ This document provides a complete reference of all features, providers, protocol
   - [5.17 Skills Registry](#517-skills-registry)
   - [5.18 Tools Registry](#518-tools-registry)
   - [5.19 Agents Registry](#519-agents-registry)
+  - [5.20 HelixLLM Integration](#520-helixllm-integration)
+  - [5.21 AgenticEnsemble](#521-agenticensemble)
+  - [5.22 HelixMemory](#522-helixmemory)
+  - [5.23 HelixSpecifier](#523-helixspecifier)
+  - [5.24 HTTP/3 (QUIC) with Brotli Compression](#524-http3-quic-with-brotli-compression)
 - [6. Summary Statistics](#6-summary-statistics)
 
 ---
 
 ## 1. LLM Providers
 
-HelixAgent supports **21 LLM providers** with automatic discovery and dynamic selection based on LLMsVerifier scores.
+HelixAgent supports **48 LLM providers** with automatic discovery and dynamic selection based on LLMsVerifier scores.
 
 ### 1.1 Premium Providers (Tier 1)
 
@@ -82,24 +89,64 @@ HelixAgent supports **21 LLM providers** with automatic discovery and dynamic se
 | **Replicate** | `meta/llama-2-70b-chat` | Async prediction, Webhooks | API Key | 7 |
 | **Hugging Face** | `Meta-Llama-3-8B-Instruct` | Standard/Pro modes, Cache control | API Key | 8 |
 
-### 1.5 Aggregators & Local (Tier 5-7)
+### 1.5 Cloud & Inference Providers (Tier 5)
+
+| Provider | Default Model | Capabilities | Authentication | Priority |
+|----------|---------------|--------------|----------------|----------|
+| **Cloudflare** | `@cf/meta/llama-3-8b-instruct` | Workers AI, Streaming | API Key | 6 |
+| **Codestral** | `codestral-latest` | Code-specialized, Streaming | API Key | 6 |
+| **NVIDIA** | `meta/llama3-70b-instruct` | NIM, Streaming, Tools | API Key | 6 |
+| **Hyperbolic** | `meta-llama/Llama-3-70b-chat-hf` | Streaming | API Key | 7 |
+| **SiliconFlow** | `deepseek-ai/DeepSeek-V2-Chat` | Streaming | API Key | 7 |
+| **Novita** | `meta-llama/llama-3-70b-instruct` | Streaming | API Key | 7 |
+| **SambaNova** | `Meta-Llama-3-70B-Instruct` | Streaming, Fast inference | API Key | 7 |
+| **Upstage** | `solar-pro` | Streaming | API Key | 7 |
+| **Sarvam** | `sarvam-2b-v0.5` | Streaming, Indian languages | API Key | 8 |
+| **PublicAI** | `llama-3-70b` | Streaming | API Key | 8 |
+
+### 1.6 Specialized Providers (Tier 6)
+
+| Provider | Default Model | Capabilities | Authentication | Priority |
+|----------|---------------|--------------|----------------|----------|
+| **Kimi (Moonshot)** | `moonshot-v1-8k` | Streaming, Long context | API Key | 7 |
+| **KimiCode** | `moonshot-v1-code` | Code-specialized, Streaming | API Key | 7 |
+| **Kilo** | `kilo-v1` | Streaming | API Key | 7 |
+| **Modal** | `meta-llama/Llama-3-70b-chat-hf` | Serverless, Streaming | API Key | 7 |
+| **Nia** | `nia-v1` | Streaming | API Key | 8 |
+| **NLPCloud** | `chatdolphin` | Streaming, Tools | API Key | 8 |
+| **VulaVula** | `vulavula-chat` | Streaming, African languages | API Key | 8 |
+| **Zhipu (GLM)** | `glm-4` | Streaming, Tools | API Key | 7 |
+| **Venice** | `llama-3.1-405b` | Privacy-focused, Streaming | API Key | 7 |
+| **Junie** | `junie-v1` | Streaming, CLI/ACP mode | API Key / OAuth2 | 6 |
+
+### 1.7 Aggregators, Local & Self-Hosted (Tier 7-8)
 
 | Provider | Default Model | Capabilities | Authentication | Priority |
 |----------|---------------|--------------|----------------|----------|
 | **OpenRouter** | `anthropic/claude-3.5-sonnet` | 150+ models, Streaming, Tools | API Key | 10 |
 | **Zen (OpenCode)** | `grok-code` (free) | Anonymous access, Streaming, Tools | Optional API Key | 4 |
 | **Ollama** | `llama3.2` | Local execution, Streaming | None (local) | 20 |
+| **LM Studio** | `local-model` | Local execution, OpenAI-compatible | None (local) | 20 |
+| **Azure OpenAI** | `gpt-4o` | Enterprise, Streaming, Tools | API Key | 5 |
+| **Vertex AI** | `gemini-pro` | Google Cloud, Streaming | Service Account | 5 |
+| **HelixLLM** | `helixllm-default` | Self-hosted, RAG, OpenAI-compatible | API Key | 3 |
+| **Anthropic CU** | `claude-sonnet-4-5-20250929` | Computer Use integration | API Key | 5 |
+| **GitHub Models** | `gpt-4o` | GitHub-hosted, Streaming, Tools | GitHub Token | 6 |
 
-**Note**: Ollama is DEPRECATED (score: 5.0) - only used as last resort fallback.
+**Note**: Ollama and LM Studio are local-only providers (score: 5.0) - used as fallback.
 
 ### Provider Authentication Methods
 
 | Method | Providers | Storage |
 |--------|-----------|---------|
-| **API Key** | All except OAuth providers | Environment variables |
-| **OAuth2** | Claude, Qwen | CLI credential files |
+| **API Key** | Most providers (AI21, Anthropic, Cerebras, Chutes, Cloudflare, Codestral, Cohere, DeepSeek, Fireworks, Groq, HuggingFace, Hyperbolic, Kilo, Kimi, KimiCode, Mistral, Modal, Nia, NLPCloud, Novita, NVIDIA, OpenAI, OpenRouter, Perplexity, PublicAI, Replicate, SambaNova, Sarvam, SiliconFlow, Together, Upstage, Venice, VulaVula, xAI, ZAI, Zhipu) | Environment variables |
+| **OAuth2** | Claude, Qwen, Junie | CLI credential files |
+| **Service Account** | Vertex AI, AWS Bedrock | Service account JSON / SigV4 |
+| **GitHub Token** | GitHub Models | GitHub PAT |
+| **Azure AD** | Azure OpenAI | API Key or Azure AD |
 | **Anonymous** | Zen (free models) | Device-ID header |
-| **None** | Ollama | Local only |
+| **None** | Ollama, LM Studio | Local only |
+| **Self-hosted** | HelixLLM | API Key (optional) |
 
 ---
 
@@ -136,7 +183,7 @@ HelixAgent supports **13 embedding providers** with 40+ models.
 
 ### 3.1 MCP (Model Context Protocol)
 
-**Total: 35 implementations (19 adapters + 16 servers)**
+**Total: 79+ implementations (19 adapters + 60+ containerized servers)**
 
 #### MCP Adapters (External Service Integrations)
 
@@ -216,8 +263,15 @@ HelixAgent supports **13 embedding providers** with 40+ models.
 |--------|-------------|
 | **Purpose** | Multi-round debate between LLM providers with consensus voting |
 | **Participants** | 25 LLMs (5 positions x 5 per position) |
-| **Topologies** | Mesh, Star, Chain |
-| **Phases** | Proposal -> Critique -> Review -> Synthesis |
+| **Topologies** | Mesh, Star, Chain, Tree |
+| **Phases** | 8-phase protocol: Dehallucination → SelfEvolvement → Proposal → Critique → Review → Optimization → Adversarial → Convergence |
+| **Voting** | 6 methods: Weighted (MiniMax), Majority, Borda Count, Condorcet, Plurality, Unanimous |
+| **Reflexion** | Episodic memory, verbal reflection, retry-and-learn loop, cross-session wisdom |
+| **Adversarial** | Red/Blue team multi-round attack-defend cycles |
+| **Approval Gates** | Configurable human-in-the-loop with REST API (approve/reject/gates endpoints) |
+| **Performance** | Parallel execution, response caching with TTL, early termination on consensus |
+| **Persistence** | PostgreSQL tables (debate_sessions, debate_turns, code_versions) |
+| **Provenance** | Full reproducibility tracking with 14 event types, JSON export |
 | **Learning** | Cross-debate lesson extraction and application |
 | **Activation** | `POST /v1/debates` |
 
@@ -419,7 +473,63 @@ HelixAgent supports **13 embedding providers** with 40+ models.
 
 **Location**: `internal/agents/`
 
-**18 Agents**: OpenCode, Crush, HelixCode, Kiro, Aider, ClaudeCode, Cline, CodenameGoose, DeepSeekCLI, Forge, GeminiCLI, GPTEngineer, KiloCode, MistralCode, OllamaCode, Plandex, QwenCode, AmazonQ
+**48 Agents**: OpenCode, Crush, HelixCode, Kiro, Aider, ClaudeCode, Cline, CodenameGoose, DeepSeekCLI, Forge, GeminiCLI, GPTEngineer, KiloCode, MistralCode, OllamaCode, Plandex, QwenCode, AmazonQ, AgentDeck, Bridle, CheshireCat, ClaudePlugins, ClaudeSquad, Codai, Codex, CodexSkills, Conduit, Emdash, FauxPilot, GetShitDone, GitHubCopilotCLI, GitHubSpecKit, GitMCP, GPTME, MobileAgent, MultiagentCoding, Nanocoder, Noi, Octogen, OpenHands, PostgresMCP, Shai, SnowCLI, TaskWeaver, UIUXProMax, VTCode, Warp, Continue
+
+### 5.20 HelixLLM Integration
+
+**Location**: `internal/llm/providers/helixllm/`, `HelixLLM/` (submodule)
+
+| Feature | Description |
+|---------|-------------|
+| **Self-hosted LLM** | OpenAI-compatible API with RAG capabilities |
+| **First-class provider** | Registered in provider registry, participates in ensemble and debate |
+| **TLS** | HTTPS endpoint with configurable TLS verification |
+| **Endpoints** | Chat completions, embeddings, models, health check |
+
+### 5.21 AgenticEnsemble
+
+**Location**: `internal/services/agentic_ensemble.go`
+
+| Feature | Description |
+|---------|-------------|
+| **Mode Classification** | Automatic routing: single-provider, ensemble, tool-augmented debate, agentic loop |
+| **Tool-Augmented Debate** | Combines debate orchestration with tool calling for grounded reasoning |
+| **Agentic Execution Loop** | Plan-execute-verify cycle: task decomposition → layered execution → result verification → synthesis |
+| **Task Planning** | Decomposes complex queries into parallel/sequential task layers |
+| **Result Verification** | LLM-based verification of task execution results |
+
+### 5.22 HelixMemory
+
+**Location**: `HelixMemory/` (submodule), `internal/adapters/memory/factory_helixmemory.go`
+
+| Feature | Description |
+|---------|-------------|
+| **Unified Memory** | Fuses Mem0, Cognee, Letta, and Graphiti into single engine |
+| **3-Stage Fusion** | Collect → Dedup → Rerank pipeline with weighted scoring |
+| **12 Power Features** | Codebase DNA, procedural memory, mesh, temporal, debate, context window, cross-project, MCP bridge, code gen, confidence, quality loop, snapshots |
+| **Circuit Breakers** | Fault tolerance for each memory backend |
+| **Active by default** | Opt out with `-tags nohelixmemory` |
+
+### 5.23 HelixSpecifier
+
+**Location**: `HelixSpecifier/` (submodule), `internal/adapters/specifier/adapter.go`
+
+| Feature | Description |
+|---------|-------------|
+| **Spec-Driven Development** | 3-pillar architecture: SpecKit + Superpowers + GSD |
+| **7-Phase SDD** | Constitution → Specify → Clarify → Plan → Tasks → Analyze → Implement |
+| **Adaptive Ceremony** | Scales ceremony based on work granularity (5 levels) |
+| **Intent Classification** | Signal-based request analysis for effort classification |
+| **Active by default** | Opt out with `-tags nohelixspecifier` |
+
+### 5.24 HTTP/3 (QUIC) with Brotli Compression
+
+| Feature | Description |
+|---------|-------------|
+| **Primary Transport** | HTTP/3 (QUIC) via `quic-go/quic-go` |
+| **Fallback** | HTTP/2 when HTTP/3 is unavailable |
+| **Compression** | Brotli (primary, via `andybalholm/brotli`) → gzip (fallback) |
+| **Scope** | All HTTP clients and servers prefer HTTP/3 |
 
 ---
 
@@ -427,18 +537,21 @@ HelixAgent supports **13 embedding providers** with 40+ models.
 
 | Category | Count |
 |----------|-------|
-| **LLM Providers** | 21 |
-| **Embedding Providers** | 13 |
-| **MCP Implementations** | 35 (19 adapters + 16 servers) |
+| **LLM Providers** | 48 |
+| **Embedding Providers** | 13 (6 core + 7 extended) |
+| **MCP Implementations** | 79+ (19 adapters + 60+ containerized servers) |
 | **LSP Language Servers** | 10 |
 | **ACP Components** | 2 |
 | **Vector Databases** | 4 |
 | **Tools** | 21 |
-| **CLI Agents** | 18 |
+| **CLI Agents** | 48 |
+| **Extracted Modules** | 41 |
 | **Power Features** | 24+ major systems |
 | **Security Attack Patterns** | 40+ |
 | **Debate Participants** | 25 LLMs |
+| **Debate Voting Methods** | 6 |
 | **Benchmarks Supported** | 7 |
+| **Code Formatters** | 32+ |
 
 ---
 
@@ -455,11 +568,27 @@ HelixAgent supports **13 embedding providers** with 40+ models.
 | `/v1/lsp/ws` | LSP | LSP WebSocket |
 | `/v1/acp` | ACP | Agent Communication Protocol |
 | `/v1/rag/*` | HelixAgent | RAG operations |
-| `/v1/cognee` | HelixAgent | Knowledge graph |
+| `/v1/cognee` | HelixAgent | Knowledge graph (optional) |
 | `/v1/vision` | HelixAgent | Image analysis |
 | `/v1/tasks` | HelixAgent | Background tasks |
 | `/v1/monitoring/*` | HelixAgent | Monitoring endpoints |
+| `/v1/startup/verification` | HelixAgent | Startup verification status |
+| `/v1/bigdata/health` | HelixAgent | BigData health |
+| `/v1/discovery` | HelixAgent | Dynamic model discovery |
+| `/v1/scoring` | HelixAgent | Provider scoring |
+| `/v1/verification` | HelixAgent | Provider verification |
+| `/v1/health` | HelixAgent | Health check |
+| `/v1/agentic/workflows` | HelixAgent | Agentic workflow orchestration |
+| `/v1/planning/{hiplan,mcts,tot}` | HelixAgent | AI planning algorithms |
+| `/v1/llmops/{experiments,evaluate,prompts}` | HelixAgent | LLM operations |
+| `/v1/benchmark/{run,results}` | HelixAgent | Benchmarking |
+| `/v1/qa/{sessions,findings,platforms,discover}` | HelixAgent | QA orchestration |
+| `/v1/ensemble/{sessions,teams}` | HelixAgent | Ensemble management |
+| `/v1/completion/*` | HelixAgent | Completion endpoints |
+| `/v1/format` | HelixAgent | Code formatting |
+| `/v1/formatters` | HelixAgent | Formatter registry |
+| `/v1/graphql` | HelixAgent | GraphQL (feature-flagged, `GRAPHQL_ENABLED=true`) |
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-04-06*

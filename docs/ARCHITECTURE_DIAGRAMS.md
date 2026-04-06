@@ -48,24 +48,31 @@
 │                                     │                                        │
 │                                     ▼                                        │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    PROVIDER LAYER (22 Providers)                     │   │
+│  │                    PROVIDER LAYER (48 Providers)                     │   │
 │  ├─────────────────────────────────────────────────────────────────────┤   │
 │  │                                                                      │   │
 │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
 │  │  │OpenAI  │ │Claude  │ │Gemini  │ │Mistral │ │DeepSeek│          │   │
 │  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
 │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
-│  │  │Groq    │ │Cohere  │ │Ollama  │ │Together│ │Replicate│          │   │
+│  │  │Groq    │ │Cohere  │ │Ollama  │ │Together│ │Replicate│         │   │
 │  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
 │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
-│  │  │Cloudflare│ │NVIDIA  │ │Fireworks│ │Vulavula│ │Zhipu   │          │   │
+│  │  │Cloudflare│ │NVIDIA  │ │Fireworks│ │Vulavula│ │Zhipu  │         │   │
 │  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
 │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
-│  │  │Kimi    │ │Hyperbolic│ │Siliconflow│ │Novita  │ │Upstage │          │   │
+│  │  │Kimi    │ │Hyperbolic│ │Siliconflow│ │Novita │ │Upstage│        │   │
 │  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
-│  │  ┌────────┐ ┌────────┐                                              │   │
-│  │  │Sambanova│ │Sarvam  │                                              │   │
-│  │  └────────┘ └────────┘                                              │   │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
+│  │  │Sambanova│ │Sarvam  │ │HelixLLM│ │Venice  │ │Junie   │         │   │
+│  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐          │   │
+│  │  │Azure   │ │Vertex  │ │LMStudio│ │GitHub  │ │Anthropic│         │   │
+│  │  │OpenAI  │ │   AI   │ │        │ │Models  │ │  CU    │          │   │
+│  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘          │   │
+│  │  + AI21, Cerebras, Chutes, Codestral, HuggingFace, Kilo,          │   │
+│  │    KimiCode, Modal, Nia, NLPCloud, OpenRouter, Perplexity,         │   │
+│  │    PublicAI, Qwen, xAI, ZAI, Zen (48 total)                       │   │
 │  │                                                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                     │                                        │
@@ -76,7 +83,7 @@
 │  │                                                                      │   │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │   │
 │  │  │     MCP      │  │     LSP      │  │     ACP      │              │   │
-│  │  │   (45+       │  │  (Language   │  │   (Agent     │              │   │
+│  │  │   (60+       │  │  (Language   │  │   (Agent     │              │   │
 │  │  │   Servers)   │  │   Servers)   │  │   Comm)      │              │   │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘              │   │
 │  │                                                                      │   │
@@ -381,7 +388,7 @@
 │  ├─────────────────────────────────────────────────────────────────────┤   │
 │  │                                                                      │   │
 │  │   Request ──▶ PostgreSQL ──▶ Cache ──▶ LLM ──▶ Response ──▶ Log    │   │
-│  │   (users,    (llm_requests,  (Redis)   (22      (llm_       (Click- │   │
+│  │   (users,    (llm_requests,  (Redis)   (48      (llm_       (Click- │   │
 │  │    sessions)  llm_responses)           providers) responses) House) │   │
 │  │                                                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
@@ -425,5 +432,5 @@
 
 ---
 
-**Last Updated:** February 27, 2026  
-**Architecture Version:** 2.0
+**Last Updated:** April 6, 2026  
+**Architecture Version:** 2.1

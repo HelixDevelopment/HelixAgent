@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"dev.helix.agent/internal/clis/agents/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +33,9 @@ func TestGPTR_Initialize(t *testing.T) {
 	ctx := context.Background()
 
 	config := &Config{
+		BaseConfig: base.BaseConfig{
+			WorkDir: t.TempDir(),
+		},
 		Model:     "gpt-4-turbo",
 		MaxTokens: 8192,
 		Timeout:   120,
@@ -49,7 +53,11 @@ func TestGPTR_Execute(t *testing.T) {
 	g := New()
 	ctx := context.Background()
 
-	err := g.Initialize(ctx, nil)
+	err := g.Initialize(ctx, &Config{
+		BaseConfig: base.BaseConfig{
+			WorkDir: t.TempDir(),
+		},
+	})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -139,7 +147,11 @@ func TestGPTR_ExecuteWithCreatedTask(t *testing.T) {
 	g := New()
 	ctx := context.Background()
 
-	err := g.Initialize(ctx, nil)
+	err := g.Initialize(ctx, &Config{
+		BaseConfig: base.BaseConfig{
+			WorkDir: t.TempDir(),
+		},
+	})
 	require.NoError(t, err)
 
 	// Create a task first

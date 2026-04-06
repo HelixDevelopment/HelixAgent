@@ -389,25 +389,31 @@ func TestTreeTopology_BroadcastMessage(t *testing.T) {
 
 	t.Run("broadcast from root succeeds", func(t *testing.T) {
 			t.Parallel()
+		subCtx, subCancel := context.WithCancel(context.Background())
+		defer subCancel()
+
 		msg := &Message{
 			FromAgent:   "architect-1",
 			Content:     "test broadcast",
 			MessageType: MessageTypeProposal,
 		}
 
-		err := tt.BroadcastMessage(ctx, msg)
+		err := tt.BroadcastMessage(subCtx, msg)
 		require.NoError(t, err)
 		assert.NotEmpty(t, msg.ID, "broadcast should assign an ID")
 	})
 
 	t.Run("broadcast on nil root fails", func(t *testing.T) {
 			t.Parallel()
+		subCtx, subCancel := context.WithCancel(context.Background())
+		defer subCancel()
+
 		emptyTree := NewTreeTopology(config)
 		msg := &Message{
 			FromAgent: "nobody",
 			Content:   "fail",
 		}
-		err := emptyTree.BroadcastMessage(ctx, msg)
+		err := emptyTree.BroadcastMessage(subCtx, msg)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no root")
 	})

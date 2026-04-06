@@ -21,8 +21,27 @@ Complete API documentation for HelixAgent and LLMsVerifier.
 15. [Protocol Management API](#protocol-management-api)
 16. [Monitoring Endpoints](#monitoring-endpoints)
 17. [Debates Team API](#debates-team-api)
-18. [LLMsVerifier Capability Detection API](#llmsverifier-capability-detection-api)
-19. [QA API](#qa-api)
+18. [Ensemble API](#ensemble-api)
+19. [Completion API](#completion-api)
+20. [Agentic Workflows API](#agentic-workflows-api)
+21. [Planning API](#planning-api)
+22. [LLMOps API](#llmops-api)
+23. [Benchmark API](#benchmark-api)
+24. [Discovery API](#discovery-api)
+25. [Scoring API](#scoring-api)
+26. [Verification API](#verification-api)
+27. [Health Monitoring API](#health-monitoring-api)
+28. [Cognee API](#cognee-api)
+29. [Vision API](#vision-api)
+30. [Search API](#search-api)
+31. [Templates API](#templates-api)
+32. [Checkpoints API](#checkpoints-api)
+33. [Browser Automation API](#browser-automation-api)
+34. [Skills API](#skills-api)
+35. [GraphQL API](#graphql-api)
+36. [QA API](#qa-api)
+37. [Startup and Infrastructure](#startup-and-infrastructure)
+38. [LLMsVerifier Capability Detection API](#llmsverifier-capability-detection-api)
 
 ---
 
@@ -257,6 +276,74 @@ List all debates.
 }
 ```
 
+### GET /v1/debates/:id/results
+
+Get final debate results.
+
+**Response:**
+```json
+{
+  "id": "debate-abc123",
+  "consensus": "The debate concluded that...",
+  "confidence": 0.92,
+  "voting_method": "condorcet",
+  "participants_agreed": 4,
+  "participants_total": 5
+}
+```
+
+### POST /v1/debates/:id/approve
+
+Approve a debate at an approval gate (when approval gates are enabled).
+
+**Response:**
+```json
+{
+  "id": "debate-abc123",
+  "gate": "phase_3",
+  "approved": true,
+  "approved_at": "2026-04-06T10:35:00Z"
+}
+```
+
+### POST /v1/debates/:id/reject
+
+Reject a debate at an approval gate.
+
+### GET /v1/debates/:id/gates
+
+Get approval gate status for a debate.
+
+**Response:**
+```json
+{
+  "debate_id": "debate-abc123",
+  "gates": [
+    {"phase": "proposal", "status": "approved", "approved_at": "2026-04-06T10:31:00Z"},
+    {"phase": "critique", "status": "pending"}
+  ]
+}
+```
+
+### GET /v1/debates/:id/audit
+
+Get full audit trail for a debate (provenance tracking).
+
+**Response:**
+```json
+{
+  "debate_id": "debate-abc123",
+  "events": [
+    {"type": "session_started", "timestamp": "2026-04-06T10:30:00Z"},
+    {"type": "phase_completed", "phase": "dehallucination", "timestamp": "2026-04-06T10:31:00Z"},
+    {"type": "phase_completed", "phase": "proposal", "timestamp": "2026-04-06T10:32:00Z"},
+    {"type": "vote_cast", "participant": "claude", "timestamp": "2026-04-06T10:34:00Z"},
+    {"type": "consensus_reached", "timestamp": "2026-04-06T10:35:00Z"}
+  ],
+  "total_events": 14
+}
+```
+
 ### DELETE /v1/debates/:id
 
 Delete a debate.
@@ -273,24 +360,30 @@ Delete a debate.
 
 ## Protocol APIs
 
+All protocol endpoints support two access modes:
+1. **SSE mode** (GET) -- establishes a Server-Sent Events connection for real-time streaming
+2. **Message mode** (POST) -- sends a single JSON-RPC or protocol-specific message
+
+These SSE/message pairs are registered at the `/v1` level for each protocol.
+
 ### MCP (Model Context Protocol)
 
 #### GET /v1/mcp
 
-SSE endpoint for MCP connection.
+SSE endpoint for MCP connection (StreamableHTTP).
 
 **Response (SSE):**
 ```
 event: endpoint
-data: {"uri": "http://localhost:7061/v1/mcp/message"}
+data: {"uri": "http://localhost:7061/v1/mcp"}
 
 event: heartbeat
-data: {"timestamp": "2025-01-14T10:30:00Z"}
+data: {"timestamp": "2026-04-06T10:30:00Z"}
 ```
 
-#### POST /v1/mcp/message
+#### POST /v1/mcp
 
-Send MCP message.
+Send MCP message (StreamableHTTP POST mode).
 
 **Request:**
 ```json
@@ -318,6 +411,10 @@ Send MCP message.
 
 ### ACP (Agent Communication Protocol)
 
+#### GET /v1/acp
+
+SSE endpoint for ACP connection.
+
 #### POST /v1/acp
 
 Send ACP message.
@@ -337,6 +434,10 @@ Send ACP message.
 
 ### LSP (Language Server Protocol)
 
+#### GET /v1/lsp
+
+SSE endpoint for LSP connection.
+
 #### POST /v1/lsp
 
 Send LSP request.
@@ -354,11 +455,25 @@ Send LSP request.
 }
 ```
 
+### Embeddings
+
+#### GET /v1/embeddings
+
+SSE endpoint for embeddings connection.
+
+#### POST /v1/embeddings
+
+Send embeddings request via protocol message.
+
 ### Vision
+
+#### GET /v1/vision
+
+SSE endpoint for vision connection.
 
 #### POST /v1/vision
 
-Analyze images.
+Analyze images via protocol message.
 
 **Request:**
 ```json
@@ -378,9 +493,29 @@ Analyze images.
 
 ### Cognee
 
-#### POST /v1/cognee/add
+#### GET /v1/cognee
 
-Add content to knowledge graph.
+SSE endpoint for Cognee knowledge graph connection.
+
+#### POST /v1/cognee
+
+Send Cognee request via protocol message.
+
+### RAG
+
+#### GET /v1/rag
+
+SSE endpoint for RAG connection.
+
+#### POST /v1/rag
+
+Send RAG request via protocol message.
+
+### Cognee
+
+#### POST /v1/cognee/memory
+
+Add content to knowledge graph memory.
 
 **Request:**
 ```json
@@ -404,6 +539,8 @@ Search knowledge graph.
   "limit": 10
 }
 ```
+
+See [Cognee API](#cognee-api) below for full endpoint reference.
 
 ---
 
@@ -480,6 +617,63 @@ Cancel a running task.
   "status": "cancelled"
 }
 ```
+
+### GET /v1/tasks
+
+List all tasks.
+
+### GET /v1/tasks/queue/stats
+
+Get task queue statistics.
+
+### GET /v1/tasks/events
+
+Poll for task events (SSE long-poll).
+
+### GET /v1/tasks/:id
+
+Get task details.
+
+### GET /v1/tasks/:id/logs
+
+Get task logs.
+
+### GET /v1/tasks/:id/resources
+
+Get task resource usage (CPU, memory, I/O).
+
+### POST /v1/tasks/:id/pause
+
+Pause a running task.
+
+### POST /v1/tasks/:id/resume
+
+Resume a paused task.
+
+### DELETE /v1/tasks/:id
+
+Delete a task.
+
+### POST /v1/webhooks
+
+Register a webhook for task events.
+
+**Request:**
+```json
+{
+  "url": "https://example.com/webhook",
+  "events": ["task.completed", "task.failed"],
+  "secret": "webhook-secret-123"
+}
+```
+
+### GET /v1/webhooks
+
+List registered webhooks.
+
+### DELETE /v1/webhooks/:id
+
+Delete a webhook.
 
 ### GET /v1/tasks/:id/analyze
 
@@ -786,6 +980,20 @@ Discover and verify available providers.
 }
 ```
 
+### POST /v1/providers/rediscover
+
+Re-discover providers (clears cache and rediscovers from scratch).
+
+**Response:**
+```json
+{
+  "rediscovered": 10,
+  "new_providers": 1,
+  "removed_providers": 0,
+  "providers": [...]
+}
+```
+
 ### GET /v1/providers/best
 
 Get best providers ranked by verification score.
@@ -833,6 +1041,14 @@ Update provider configuration.
 
 Remove a provider.
 
+### GET /v1/providers/:id/verification
+
+Get verification status for a specific provider.
+
+### POST /v1/providers/:id/verify
+
+Trigger verification for a specific provider.
+
 ### GET /v1/providers/:id/health
 
 Check provider health status.
@@ -840,10 +1056,13 @@ Check provider health status.
 **Response:**
 ```json
 {
-  "id": "claude",
+  "provider": "claude",
   "healthy": true,
-  "latency_ms": 245,
-  "last_check": "2025-01-14T10:30:00Z"
+  "circuit_breaker": {
+    "state": "closed",
+    "failure_count": 0,
+    "last_failure": null
+  }
 }
 ```
 
@@ -1397,7 +1616,7 @@ Get LSP usage statistics.
 
 ## Protocol Management API
 
-### POST /v1/protocol/execute
+### POST /v1/protocols/execute
 
 Execute a unified protocol request.
 
@@ -1410,19 +1629,19 @@ Execute a unified protocol request.
 }
 ```
 
-### GET /v1/protocol/servers
+### GET /v1/protocols/servers
 
 List all protocol servers.
 
-### GET /v1/protocol/metrics
+### GET /v1/protocols/metrics
 
 Get protocol usage metrics.
 
-### POST /v1/protocol/refresh
+### POST /v1/protocols/refresh
 
 Refresh all protocol connections.
 
-### POST /v1/protocol/configure
+### POST /v1/protocols/configure
 
 Configure protocol settings.
 
@@ -1644,6 +1863,43 @@ Validate the current fallback chain configuration.
 }
 ```
 
+### GET /v1/monitoring/concurrency
+
+Get concurrency monitoring status.
+
+**Response:**
+```json
+{
+  "active_requests": 15,
+  "max_concurrent": 100,
+  "utilization_pct": 15.0,
+  "per_provider": {
+    "claude": {"active": 5, "max": 20},
+    "deepseek": {"active": 3, "max": 20}
+  }
+}
+```
+
+### GET /v1/monitoring/concurrency/alerts
+
+Get concurrency alert statistics.
+
+### GET /v1/monitoring/concurrency/alerts/dead-letter
+
+Get dead-letter concurrency alerts.
+
+### POST /v1/monitoring/concurrency/alerts/dead-letter/:key/retry
+
+Retry a dead-letter alert.
+
+### GET /v1/monitoring/concurrency/alerts/retry-queue
+
+Get alerts in the retry queue.
+
+### POST /v1/monitoring/concurrency/alerts/retry-queue/:key/cancel
+
+Cancel a retry attempt.
+
 ---
 
 ## Debates Team API
@@ -1673,6 +1929,1434 @@ Get current AI Debate team configuration.
   "verified_at": "2025-01-14T10:00:00Z"
 }
 ```
+
+---
+
+## Ensemble API
+
+### POST /v1/ensemble/completions
+
+Run an ensemble completion (forces multi-provider ensemble mode).
+
+**Request:**
+```json
+{
+  "model": "helixagent-debate",
+  "messages": [
+    {"role": "user", "content": "Compare REST vs GraphQL architectures."}
+  ],
+  "ensemble_config": {
+    "strategy": "confidence_weighted",
+    "min_providers": 2,
+    "confidence_threshold": 0.8,
+    "fallback_to_best": true,
+    "timeout": 30
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": "ensemble-20250406120000",
+  "object": "ensemble.completion",
+  "created": 1743940800,
+  "model": "claude",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "REST and GraphQL differ in several key ways..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 150,
+    "total_tokens": 162
+  },
+  "ensemble": {
+    "voting_method": "confidence_weighted",
+    "responses_count": 3,
+    "scores": {"claude": 9.2, "deepseek": 8.8, "gemini": 8.5},
+    "selected_provider": "claude",
+    "selection_score": 9.2
+  }
+}
+```
+
+### POST /v1/ensemble/sessions
+
+Create an ensemble session.
+
+**Request:**
+```json
+{
+  "strategy": "confidence_weighted",
+  "participants": {
+    "primary": {"provider": "claude", "model": "claude-3-opus"},
+    "critiques": [{"provider": "deepseek", "model": "deepseek-chat"}],
+    "verifiers": [{"provider": "gemini", "model": "gemini-pro"}]
+  }
+}
+```
+
+### GET /v1/ensemble/sessions
+
+List ensemble sessions.
+
+### GET /v1/ensemble/sessions/:id
+
+Get session details.
+
+### POST /v1/ensemble/sessions/:id/execute
+
+Execute a session.
+
+### POST /v1/ensemble/sessions/:id/cancel
+
+Cancel a running session.
+
+### POST /v1/ensemble/teams
+
+Create a team of LLM providers for ensemble operations.
+
+**Request:**
+```json
+{
+  "name": "code-review-team",
+  "agents": [
+    {"provider": "claude", "model": "claude-3-opus", "role": "reviewer"},
+    {"provider": "deepseek", "model": "deepseek-coder", "role": "analyzer"}
+  ]
+}
+```
+
+### GET /v1/ensemble/teams
+
+List all teams.
+
+### GET /v1/ensemble/teams/:id
+
+Get team details.
+
+### PUT /v1/ensemble/teams/:id
+
+Update a team.
+
+### DELETE /v1/ensemble/teams/:id
+
+Delete a team.
+
+### POST /v1/ensemble/teams/:id/agents
+
+Add an agent to a team.
+
+### DELETE /v1/ensemble/teams/:id/agents/:agentId
+
+Remove an agent from a team.
+
+### POST /v1/ensemble/teams/:id/execute
+
+Execute a task with the team.
+
+---
+
+## Completion API
+
+Skills-enhanced completion endpoints with intent-based routing.
+
+### POST /v1/completion
+
+Run a single completion.
+
+**Request:**
+```json
+{
+  "prompt": "Explain the observer pattern in Go.",
+  "model": "helixagent-debate",
+  "temperature": 0.7,
+  "max_tokens": 2048
+}
+```
+
+**Response:**
+```json
+{
+  "id": "compl-abc123",
+  "object": "text_completion",
+  "created": 1743940800,
+  "model": "helixagent-debate",
+  "choices": [
+    {
+      "index": 0,
+      "message": {"role": "assistant", "content": "The observer pattern..."},
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 200,
+    "total_tokens": 210
+  }
+}
+```
+
+### POST /v1/completion/stream
+
+Run a streaming completion.
+
+### POST /v1/completion/chat
+
+Run a chat-style completion with message history.
+
+**Request:**
+```json
+{
+  "messages": [
+    {"role": "system", "content": "You are a Go expert."},
+    {"role": "user", "content": "How do I use channels?"}
+  ],
+  "model": "helixagent-debate",
+  "stream": false
+}
+```
+
+### POST /v1/completion/chat/stream
+
+Run a streaming chat completion.
+
+### GET /v1/completion/models
+
+List models available for completion.
+
+---
+
+## Agentic Workflows API
+
+Graph-based agentic workflow orchestration.
+
+### POST /v1/agentic/workflows
+
+Create and execute a workflow.
+
+**Request:**
+```json
+{
+  "name": "code-review-pipeline",
+  "description": "Automated code review workflow",
+  "nodes": [
+    {"id": "analyze", "name": "Code Analysis", "type": "llm"},
+    {"id": "review", "name": "Review", "type": "llm"},
+    {"id": "report", "name": "Generate Report", "type": "llm"}
+  ],
+  "edges": [
+    {"from": "analyze", "to": "review"},
+    {"from": "review", "to": "report"}
+  ],
+  "entry_point": "analyze",
+  "end_nodes": ["report"],
+  "config": {
+    "max_iterations": 10,
+    "timeout_seconds": 300,
+    "enable_checkpoints": true,
+    "enable_self_correction": true,
+    "max_retries": 3
+  },
+  "input": {
+    "query": "Review this Go function for best practices",
+    "context": {"file_path": "/path/to/file.go"}
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": "wf-abc123",
+  "name": "code-review-pipeline",
+  "status": "completed",
+  "nodes_count": 3,
+  "edges_count": 2,
+  "entry_point": "analyze",
+  "end_nodes": ["report"],
+  "history": [
+    {"node_id": "analyze", "status": "completed", "duration_ms": 1200},
+    {"node_id": "review", "status": "completed", "duration_ms": 950},
+    {"node_id": "report", "status": "completed", "duration_ms": 800}
+  ]
+}
+```
+
+### GET /v1/agentic/workflows/:id
+
+Get workflow status and results.
+
+---
+
+## Planning API
+
+AI planning algorithms: Hierarchical Planning (HiPlan), Monte Carlo Tree Search (MCTS), and Tree of Thoughts (ToT).
+
+### POST /v1/planning/hiplan
+
+Execute hierarchical planning.
+
+**Request:**
+```json
+{
+  "goal": "Refactor the authentication system to support OAuth 2.0",
+  "config": {
+    "max_milestones": 5,
+    "max_steps_per_milestone": 10,
+    "enable_parallel_milestones": true,
+    "max_parallel_milestones": 3,
+    "enable_adaptive_planning": true,
+    "timeout_seconds": 600
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "plan_id": "plan-abc123",
+  "goal": "Refactor the authentication system to support OAuth 2.0",
+  "state": "completed",
+  "progress": 100.0,
+  "milestones": [
+    {
+      "id": "m1",
+      "name": "Design OAuth flow",
+      "state": "completed",
+      "priority": 1,
+      "progress": 100.0,
+      "steps_count": 4
+    },
+    {
+      "id": "m2",
+      "name": "Implement token management",
+      "state": "completed",
+      "priority": 2,
+      "progress": 100.0,
+      "steps_count": 6
+    }
+  ],
+  "duration_ms": 5200,
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### POST /v1/planning/mcts
+
+Run Monte Carlo Tree Search planning.
+
+**Request:**
+```json
+{
+  "goal": "Find optimal database migration strategy",
+  "config": {
+    "max_iterations": 1000,
+    "exploration_weight": 1.414,
+    "max_depth": 10,
+    "timeout_seconds": 120
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "search_id": "mcts-abc123",
+  "goal": "Find optimal database migration strategy",
+  "state": "completed",
+  "best_path": ["analyze_schema", "create_migration", "test_rollback", "apply"],
+  "best_score": 0.92,
+  "iterations_run": 500,
+  "nodes_explored": 1250,
+  "duration_ms": 3400,
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### POST /v1/planning/tot
+
+Run Tree of Thoughts reasoning.
+
+**Request:**
+```json
+{
+  "goal": "Design a scalable caching strategy",
+  "config": {
+    "branching_factor": 3,
+    "max_depth": 5,
+    "evaluation_strategy": "vote",
+    "timeout_seconds": 180
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "tree_id": "tot-abc123",
+  "goal": "Design a scalable caching strategy",
+  "state": "completed",
+  "best_thought_path": [
+    {"depth": 0, "thought": "Consider cache layers..."},
+    {"depth": 1, "thought": "L1: in-memory, L2: Redis..."},
+    {"depth": 2, "thought": "TTL policies per data type..."}
+  ],
+  "best_score": 0.88,
+  "thoughts_generated": 45,
+  "thoughts_evaluated": 45,
+  "duration_ms": 4100,
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### POST /v1/planning/plan-mode/enter
+
+Enter plan mode (from Claude Code integration).
+
+### POST /v1/planning/plan-mode/:id/exit
+
+Exit plan mode for a session.
+
+### GET /v1/planning/plan-mode/:id/status
+
+Get plan mode status.
+
+### POST /v1/planning/plan-mode/:id/verify
+
+Verify a plan before execution.
+
+### POST /v1/planning/plan-mode/:id/execute
+
+Start plan execution.
+
+### PUT /v1/planning/plan-mode/:id/tasks/:taskId
+
+Update a specific task within a plan.
+
+---
+
+## LLMOps API
+
+LLM operations management: A/B experiments, continuous evaluation, and prompt versioning.
+
+### POST /v1/llmops/experiments
+
+Create an A/B experiment.
+
+**Request:**
+```json
+{
+  "name": "prompt-optimization-v2",
+  "description": "Compare original vs optimized prompt",
+  "variants": [
+    {"name": "control", "model": "claude-3-opus", "prompt_template": "..."},
+    {"name": "optimized", "model": "claude-3-opus", "prompt_template": "..."}
+  ],
+  "traffic_split": {"control": 0.5, "optimized": 0.5},
+  "metrics": ["latency", "quality_score", "token_usage"],
+  "target_metric": "quality_score"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "exp-abc123",
+  "name": "prompt-optimization-v2",
+  "status": "running",
+  "variants": [...],
+  "traffic_split": {"control": 0.5, "optimized": 0.5},
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### GET /v1/llmops/experiments
+
+List all experiments.
+
+**Response:**
+```json
+{
+  "experiments": [
+    {"id": "exp-abc123", "name": "prompt-optimization-v2", "status": "running"},
+    {"id": "exp-def456", "name": "model-comparison", "status": "completed", "winner": "variant_b"}
+  ],
+  "total": 2
+}
+```
+
+### GET /v1/llmops/experiments/:id
+
+Get experiment details with results.
+
+### POST /v1/llmops/evaluate
+
+Run a continuous evaluation.
+
+**Request:**
+```json
+{
+  "name": "weekly-quality-check",
+  "dataset": "golden-test-set",
+  "prompt_name": "code-review-v2",
+  "prompt_version": "1.3.0",
+  "model_name": "claude-3-opus",
+  "metrics": ["accuracy", "relevance", "coherence"]
+}
+```
+
+**Response:**
+```json
+{
+  "id": "eval-abc123",
+  "name": "weekly-quality-check",
+  "status": "completed",
+  "dataset": "golden-test-set",
+  "results": {
+    "accuracy": 0.94,
+    "relevance": 0.91,
+    "coherence": 0.96
+  },
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### GET /v1/llmops/prompts
+
+List prompt versions.
+
+### POST /v1/llmops/prompts
+
+Create a new prompt version.
+
+**Request:**
+```json
+{
+  "name": "code-review",
+  "version": "1.4.0",
+  "template": "Review the following code for {{language}} best practices:\n\n{{code}}",
+  "variables": ["language", "code"],
+  "metadata": {"author": "team-ai", "change_log": "Added language-specific rules"}
+}
+```
+
+---
+
+## Benchmark API
+
+LLM benchmarking: SWE-bench, HumanEval, MMLU, and custom benchmarks.
+
+### POST /v1/benchmark/run
+
+Start a benchmark suite.
+
+**Request:**
+```json
+{
+  "name": "provider-comparison-q1",
+  "benchmark_type": "humaneval",
+  "provider_name": "claude",
+  "model_name": "claude-3-opus",
+  "config": {
+    "sample_size": 100,
+    "timeout_per_task": 60,
+    "parallel_workers": 4
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": "bench-abc123",
+  "name": "provider-comparison-q1",
+  "benchmark_type": "humaneval",
+  "provider_name": "claude",
+  "model_name": "claude-3-opus",
+  "status": "running",
+  "created_at": "2026-04-06T10:30:00Z"
+}
+```
+
+### GET /v1/benchmark/results
+
+List benchmark results.
+
+**Response:**
+```json
+{
+  "runs": [
+    {
+      "id": "bench-abc123",
+      "name": "provider-comparison-q1",
+      "benchmark_type": "humaneval",
+      "provider_name": "claude",
+      "status": "completed",
+      "summary": {
+        "pass_rate": 0.842,
+        "avg_latency_ms": 2500,
+        "total_tokens": 150000
+      }
+    }
+  ],
+  "total": 1
+}
+```
+
+### GET /v1/benchmark/results/:id
+
+Get specific benchmark result with detailed metrics.
+
+---
+
+## Discovery API
+
+Dynamic model discovery with 3-tier fallback (Provider API, models.dev, hardcoded).
+
+### GET /v1/discovery/models
+
+Get all discovered models across providers.
+
+**Response:**
+```json
+{
+  "models": [
+    {
+      "model_id": "claude-3-opus",
+      "model_name": "Claude 3 Opus",
+      "provider": "anthropic",
+      "verified": true,
+      "code_visible": true,
+      "overall_score": 9.2,
+      "discovered_at": "2026-04-06T10:00:00Z",
+      "capabilities": ["vision", "function_calling", "streaming"]
+    }
+  ],
+  "total": 150
+}
+```
+
+### GET /v1/discovery/models/selected
+
+Get models selected for the debate team.
+
+### GET /v1/discovery/stats
+
+Get discovery statistics.
+
+**Response:**
+```json
+{
+  "total_models_discovered": 150,
+  "providers_queried": 43,
+  "tier1_hits": 120,
+  "tier2_hits": 25,
+  "tier3_fallbacks": 5,
+  "last_discovery": "2026-04-06T10:00:00Z"
+}
+```
+
+### POST /v1/discovery/trigger
+
+Trigger a fresh model discovery cycle.
+
+### GET /v1/discovery/ensemble
+
+Get models available for ensemble operations.
+
+### GET /v1/discovery/debate-model
+
+Get the best model for debate based on current scores.
+
+---
+
+## Scoring API
+
+Provider and model scoring with weighted 5-component pipeline.
+
+### GET /v1/scoring/model/:model_id
+
+Get score for a specific model.
+
+**Response:**
+```json
+{
+  "model_id": "claude-3-opus",
+  "model_name": "Claude 3 Opus",
+  "overall_score": 9.2,
+  "score_suffix": "/10",
+  "components": {
+    "speed_score": 8.5,
+    "cost_score": 7.8,
+    "efficiency_score": 9.0,
+    "capability_score": 9.8,
+    "recency_score": 9.5
+  },
+  "calculated_at": "2026-04-06T10:00:00Z"
+}
+```
+
+### POST /v1/scoring/batch
+
+Batch calculate scores for multiple models.
+
+### GET /v1/scoring/top
+
+Get top-scored models.
+
+**Query Parameters:**
+- `limit` (optional): Number of models (default: 10)
+- `provider` (optional): Filter by provider
+
+### GET /v1/scoring/range
+
+Get models within a score range.
+
+**Query Parameters:**
+- `min`: Minimum score
+- `max`: Maximum score
+
+### GET /v1/scoring/weights
+
+Get current scoring weights.
+
+**Response:**
+```json
+{
+  "response_speed": 0.25,
+  "cost_effectiveness": 0.25,
+  "model_efficiency": 0.20,
+  "capability": 0.20,
+  "recency": 0.10
+}
+```
+
+### PUT /v1/scoring/weights
+
+Update scoring weights.
+
+### GET /v1/scoring/model/:model_id/detail
+
+Get detailed model name with score information.
+
+### POST /v1/scoring/cache/invalidate
+
+Invalidate the scoring cache.
+
+### POST /v1/scoring/compare
+
+Compare scores between models.
+
+**Request:**
+```json
+{
+  "models": ["claude-3-opus", "gpt-4", "gemini-pro"]
+}
+```
+
+---
+
+## Verification API
+
+Model verification with 8-test pipeline.
+
+### POST /v1/verification/model
+
+Verify a single model.
+
+**Request:**
+```json
+{
+  "model_id": "claude-3-opus",
+  "provider": "anthropic"
+}
+```
+
+### POST /v1/verification/batch
+
+Batch verify multiple models.
+
+### GET /v1/verification/status
+
+Get overall verification status.
+
+**Response:**
+```json
+{
+  "total_models": 150,
+  "verified": 120,
+  "failed": 15,
+  "pending": 15,
+  "last_run": "2026-04-06T10:00:00Z"
+}
+```
+
+### GET /v1/verification/models
+
+Get all verified models.
+
+### POST /v1/verification/model/:model_id/reverify
+
+Re-verify a specific model.
+
+### GET /v1/verification/tests
+
+Get available verification tests.
+
+### GET /v1/verification/health
+
+Get verification system health.
+
+### POST /v1/verification/code-visibility
+
+Test code visibility for a model.
+
+---
+
+## Health Monitoring API
+
+Extended health monitoring for providers, circuit breakers, and latency tracking.
+
+### GET /v1/health/providers
+
+Get health status of all providers.
+
+**Response:**
+```json
+{
+  "providers": [
+    {
+      "provider_id": "claude",
+      "healthy": true,
+      "latency_ms": 245,
+      "last_check": "2026-04-06T10:30:00Z"
+    }
+  ],
+  "total": 10,
+  "healthy": 9
+}
+```
+
+### GET /v1/health/providers/healthy
+
+Get only healthy providers.
+
+### GET /v1/health/providers/fastest
+
+Get the fastest responding provider.
+
+### GET /v1/health/provider/:provider_id
+
+Get health for a specific provider.
+
+### GET /v1/health/provider/:provider_id/latency
+
+Get latency history for a provider.
+
+### GET /v1/health/provider/:provider_id/available
+
+Check if a provider is available.
+
+### GET /v1/health/circuit-breakers
+
+Get circuit breaker status for all providers.
+
+### POST /v1/health/provider/:provider_id/success
+
+Record a successful request for a provider.
+
+### POST /v1/health/provider/:provider_id/failure
+
+Record a failed request for a provider.
+
+### POST /v1/health/provider
+
+Register a new provider for health monitoring.
+
+### DELETE /v1/health/provider/:provider_id
+
+Remove a provider from health monitoring.
+
+### GET /v1/health/status
+
+Get overall health service status.
+
+---
+
+## Cognee API
+
+Comprehensive knowledge graph integration with memory, cognify, insights, and dataset management.
+
+### GET /v1/cognee/health
+
+Check Cognee service health.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "cognee",
+  "version": "1.0.0",
+  "timestamp": 1743940800
+}
+```
+
+### GET /v1/cognee/stats
+
+Get Cognee usage statistics.
+
+### GET /v1/cognee/config
+
+Get current Cognee configuration.
+
+### POST /v1/cognee/start
+
+Ensure Cognee service is running.
+
+### POST /v1/cognee/memory
+
+Add content to Cognee memory.
+
+**Request:**
+```json
+{
+  "content": "Important information about our project architecture...",
+  "metadata": {
+    "source": "architecture.md",
+    "tags": ["architecture", "design"]
+  }
+}
+```
+
+### POST /v1/cognee/search
+
+Search Cognee knowledge graph.
+
+**Request:**
+```json
+{
+  "query": "What is the project architecture?",
+  "limit": 10
+}
+```
+
+### POST /v1/cognee/cognify
+
+Process content through Cognee's cognification pipeline.
+
+### POST /v1/cognee/insights
+
+Get insights from the knowledge graph.
+
+### POST /v1/cognee/graph/complete
+
+Get graph completion suggestions.
+
+### GET /v1/cognee/visualize
+
+Visualize the knowledge graph.
+
+### POST /v1/cognee/code
+
+Process code through Cognee's code intelligence.
+
+### POST /v1/cognee/datasets
+
+Create a new dataset.
+
+### GET /v1/cognee/datasets
+
+List all datasets.
+
+### DELETE /v1/cognee/datasets/:name
+
+Delete a dataset.
+
+### POST /v1/cognee/feedback
+
+Provide feedback to improve knowledge quality.
+
+---
+
+## Vision API
+
+Image analysis with multiple capabilities: OCR, object detection, captioning, classification.
+
+### GET /v1/vision/health
+
+Check vision service health.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "vision",
+  "version": "1.0.0",
+  "capabilities": ["analyze", "ocr", "detect", "caption", "describe", "classify"]
+}
+```
+
+### GET /v1/vision/capabilities
+
+List all vision capabilities.
+
+### GET /v1/vision/:capability/status
+
+Get status of a specific capability.
+
+### POST /v1/vision/analyze
+
+General image analysis.
+
+**Request:**
+```json
+{
+  "image": "data:image/png;base64,...",
+  "prompt": "Describe what you see in this image"
+}
+```
+
+**Response:**
+```json
+{
+  "analysis": "The image shows a flowchart diagram...",
+  "confidence": 0.95,
+  "provider": "claude"
+}
+```
+
+### POST /v1/vision/ocr
+
+Extract text from images.
+
+### POST /v1/vision/detect
+
+Detect objects in images.
+
+### POST /v1/vision/caption
+
+Generate captions for images.
+
+### POST /v1/vision/describe
+
+Generate detailed descriptions.
+
+### POST /v1/vision/classify
+
+Classify image contents.
+
+### POST /v1/vision/:capability
+
+Generic capability endpoint (routes by capability field).
+
+---
+
+## Search API
+
+Vector-based semantic code search with ChromaDB/Qdrant backends.
+
+### POST /v1/search/semantic
+
+Perform semantic code search.
+
+**Request:**
+```json
+{
+  "query": "How does the circuit breaker pattern work?",
+  "language": "go",
+  "file_pattern": "*.go",
+  "top_k": 10,
+  "min_score": 0.7,
+  "filters": {
+    "path_prefix": "internal/"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "file_path": "internal/services/circuit_breaker.go",
+      "content": "func (cb *CircuitBreaker) Execute(...",
+      "score": 0.94,
+      "line_start": 45,
+      "line_end": 78
+    }
+  ],
+  "total_found": 5,
+  "query_time_ms": 120
+}
+```
+
+### POST /v1/search/index
+
+Trigger code indexing.
+
+**Response:**
+```json
+{
+  "files_indexed": 1250,
+  "chunks_created": 8500,
+  "duration_ms": 15000,
+  "errors": []
+}
+```
+
+---
+
+## Templates API
+
+Reusable prompt templates with Git integration.
+
+### GET /v1/templates
+
+List all templates.
+
+**Response:**
+```json
+{
+  "templates": [
+    {
+      "id": "code-review",
+      "name": "Code Review",
+      "description": "Standard code review template",
+      "variables": ["language", "file_path"]
+    }
+  ]
+}
+```
+
+### GET /v1/templates/:id
+
+Get a specific template.
+
+### POST /v1/templates/apply
+
+Apply a template with variable substitution.
+
+**Request:**
+```json
+{
+  "template_id": "code-review",
+  "variables": {
+    "language": "Go",
+    "file_path": "internal/handlers/router.go"
+  }
+}
+```
+
+---
+
+## Checkpoints API
+
+Workspace snapshots with Git state capture for safe experimentation.
+
+### GET /v1/checkpoints
+
+List all checkpoints.
+
+**Response:**
+```json
+{
+  "checkpoints": [
+    {
+      "id": "cp-abc123",
+      "name": "before-refactor",
+      "description": "State before auth refactoring",
+      "created_at": "2026-04-06T10:30:00Z",
+      "git_ref": "abc1234",
+      "git_branch": "feat/auth-refactor",
+      "tags": ["safe-point"],
+      "file_count": 45
+    }
+  ]
+}
+```
+
+### POST /v1/checkpoints
+
+Create a new checkpoint.
+
+**Request:**
+```json
+{
+  "name": "before-refactor",
+  "description": "State before auth refactoring",
+  "tags": ["safe-point"]
+}
+```
+
+**Response:**
+```json
+{
+  "id": "cp-abc123",
+  "name": "before-refactor",
+  "created_at": "2026-04-06T10:30:00Z",
+  "git_ref": "abc1234",
+  "git_branch": "feat/auth-refactor",
+  "file_count": 45
+}
+```
+
+### POST /v1/checkpoints/:id/restore
+
+Restore workspace to a checkpoint.
+
+### DELETE /v1/checkpoints/:id
+
+Delete a checkpoint.
+
+---
+
+## Browser Automation API
+
+Playwright-based web automation for testing and scraping.
+
+### POST /v1/browser/navigate
+
+Navigate to a URL.
+
+**Request:**
+```json
+{
+  "url": "https://example.com",
+  "wait_for": "networkidle",
+  "timeout": 30
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "url": "https://example.com",
+  "title": "Example Domain"
+}
+```
+
+### POST /v1/browser/click
+
+Click an element.
+
+**Request:**
+```json
+{
+  "selector": "button#submit",
+  "button": "left"
+}
+```
+
+### POST /v1/browser/type
+
+Type text into an element.
+
+**Request:**
+```json
+{
+  "selector": "input#search",
+  "text": "HelixAgent API",
+  "clear": true
+}
+```
+
+### POST /v1/browser/screenshot
+
+Take a screenshot.
+
+**Request:**
+```json
+{
+  "selector": "#main-content",
+  "full_page": false
+}
+```
+
+### POST /v1/browser/extract
+
+Extract content from the page.
+
+### POST /v1/browser/evaluate
+
+Evaluate JavaScript in the browser context.
+
+---
+
+## Skills API
+
+Skill registry for enhanced LLM completions.
+
+### GET /v1/skills
+
+List all available skills.
+
+**Response:**
+```json
+{
+  "skills": [
+    {
+      "name": "code-review",
+      "description": "Automated code review with best practices",
+      "category": "development",
+      "tags": ["code", "review", "quality"],
+      "version": "1.0.0"
+    }
+  ],
+  "total": 25
+}
+```
+
+### GET /v1/skills/categories
+
+List skill categories.
+
+**Response:**
+```json
+{
+  "categories": ["development", "testing", "documentation", "security", "devops"]
+}
+```
+
+### GET /v1/skills/:category
+
+Get skills in a specific category.
+
+### POST /v1/skills/match
+
+Match skills to a query.
+
+**Request:**
+```json
+{
+  "query": "I need to review this code for security issues",
+  "limit": 5
+}
+```
+
+**Response:**
+```json
+{
+  "matches": [
+    {"name": "security-review", "relevance": 0.95},
+    {"name": "code-review", "relevance": 0.82}
+  ]
+}
+```
+
+---
+
+## GraphQL API
+
+Feature-flagged GraphQL endpoint (requires `GRAPHQL_ENABLED=true`).
+
+### POST /v1/graphql
+
+Execute a GraphQL query.
+
+**Request:**
+```json
+{
+  "query": "{ providers { name status score models { id name } } }",
+  "variables": {}
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "providers": [
+      {
+        "name": "claude",
+        "status": "verified",
+        "score": 9.2,
+        "models": [
+          {"id": "claude-3-opus", "name": "Claude 3 Opus"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Startup and Infrastructure
+
+### GET /v1/startup/verification
+
+Get startup verification results.
+
+**Response:**
+```json
+{
+  "status": "completed",
+  "providers_verified": 10,
+  "providers_failed": 2,
+  "debate_team_ready": true,
+  "duration_ms": 45000,
+  "timestamp": "2026-04-06T10:00:00Z"
+}
+```
+
+### GET /v1/bigdata/components
+
+Get BigData component status (when BigData features are enabled).
+
+**Response:**
+```json
+{
+  "components": {
+    "neo4j": {"enabled": true, "status": "connected"},
+    "clickhouse": {"enabled": true, "status": "connected"},
+    "kafka": {"enabled": false, "status": "disabled"}
+  }
+}
+```
+
+### GET /v1/debates/orchestrator/status
+
+Get NEW debate orchestrator framework status.
+
+**Response:**
+```json
+{
+  "framework": "new_debate_orchestrator",
+  "documentation_compliance": "docs/requests/debate requirements",
+  "target_agents": 15,
+  "statistics": {
+    "agent_count": 12,
+    "sessions_completed": 45,
+    "avg_duration_ms": 8500
+  }
+}
+```
+
+### Debug Endpoints (ENABLE_PPROF=true)
+
+When `ENABLE_PPROF=true` is set, the following debug endpoints are available:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/debug/pprof/` | pprof index |
+| `GET` | `/debug/pprof/cmdline` | Command line arguments |
+| `GET` | `/debug/pprof/profile` | CPU profile |
+| `GET` | `/debug/pprof/symbol` | Symbol lookup |
+| `GET` | `/debug/pprof/trace` | Execution trace |
+| `GET` | `/debug/pprof/goroutine` | Goroutine profile |
+| `GET` | `/debug/pprof/heap` | Heap profile |
+| `GET` | `/debug/pprof/threadcreate` | Thread creation profile |
+| `GET` | `/debug/pprof/block` | Block profile |
+| `GET` | `/debug/pprof/mutex` | Mutex contention profile |
 
 ---
 

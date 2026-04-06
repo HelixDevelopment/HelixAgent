@@ -17,7 +17,32 @@
 7. [Embeddings Endpoints](#embeddings-endpoints)
 8. [Memory Endpoints](#memory-endpoints)
 9. [RAG Endpoints](#rag-endpoints)
-10. [Error Handling](#error-handling)
+10. [LSP Endpoints](#lsp-endpoints)
+11. [ACP Endpoints](#acp-endpoints)
+12. [Vision Endpoints](#vision-endpoints)
+13. [Formatters Endpoints](#formatters-endpoints)
+14. [Ensemble Endpoints](#ensemble-endpoints)
+15. [Completion Endpoints](#completion-endpoints)
+16. [Agentic Workflow Endpoints](#agentic-workflow-endpoints)
+17. [Planning Endpoints](#planning-endpoints)
+18. [LLMOps Endpoints](#llmops-endpoints)
+19. [Benchmark Endpoints](#benchmark-endpoints)
+20. [Discovery Endpoints](#discovery-endpoints)
+21. [Scoring Endpoints](#scoring-endpoints)
+22. [Verification Endpoints](#verification-endpoints)
+23. [Health Monitoring Endpoints](#health-monitoring-endpoints)
+24. [Cognee Endpoints](#cognee-endpoints)
+25. [Search Endpoints](#search-endpoints)
+26. [Templates Endpoints](#templates-endpoints)
+27. [Checkpoints Endpoints](#checkpoints-endpoints)
+28. [Browser Automation Endpoints](#browser-automation-endpoints)
+29. [Skills Endpoints](#skills-endpoints)
+30. [QA Endpoints](#qa-endpoints)
+31. [Background Tasks Endpoints](#background-tasks-endpoints)
+32. [Sessions Endpoints](#sessions-endpoints)
+33. [Features Endpoints](#features-endpoints)
+34. [GraphQL Endpoint](#graphql-endpoint)
+35. [Error Handling](#error-handling)
 
 ---
 
@@ -368,9 +393,17 @@ data: [DONE]
 
 ## RAG Endpoints
 
+### Health
+
+**GET** `/v1/rag/health`
+
+### Stats
+
+**GET** `/v1/rag/stats`
+
 ### Ingest Document
 
-**POST** `/v1/rag/ingest`
+**POST** `/v1/rag/documents`
 
 **Request Body:**
 
@@ -378,10 +411,17 @@ data: [DONE]
 {
   "content": "string",
   "metadata": {},
-  "chunk_size": 512,
-  "chunk_overlap": 50
+  "chunk_strategy": "semantic"
 }
 ```
+
+### Batch Ingest
+
+**POST** `/v1/rag/documents/batch`
+
+### Delete Document
+
+**DELETE** `/v1/rag/documents/{id}`
 
 ### Search Documents
 
@@ -392,24 +432,46 @@ data: [DONE]
 ```json
 {
   "query": "string",
-  "top_k": 10,
+  "limit": 10,
+  "threshold": 0.7,
   "filters": {}
 }
 ```
 
 ### Hybrid Search
 
-**POST** `/v1/rag/hybrid-search`
+**POST** `/v1/rag/search/hybrid`
 
 **Request Body:**
 
 ```json
 {
   "query": "string",
-  "alpha": 0.7,
-  "top_k": 10
+  "dense_weight": 0.7,
+  "sparse_weight": 0.3,
+  "limit": 10
 }
 ```
+
+### Search with Query Expansion
+
+**POST** `/v1/rag/search/expanded`
+
+### ReRank Results
+
+**POST** `/v1/rag/rerank`
+
+### Compress Context
+
+**POST** `/v1/rag/compress`
+
+### Expand Query
+
+**POST** `/v1/rag/expand`
+
+### Chunk Document
+
+**POST** `/v1/rag/chunk`
 
 ---
 
@@ -498,6 +560,379 @@ data: [DONE]
 ### List Formatters
 
 **GET** `/v1/formatters`
+
+### Batch Format
+
+**POST** `/v1/format/batch`
+
+### Check Code Style
+
+**POST** `/v1/format/check`
+
+### Detect Formatter
+
+**GET** `/v1/formatters/detect`
+
+### Get Formatter Details
+
+**GET** `/v1/formatters/{name}`
+
+### Formatter Health
+
+**GET** `/v1/formatters/{name}/health`
+
+### Validate Config
+
+**POST** `/v1/formatters/{name}/validate-config`
+
+---
+
+## Ensemble Endpoints
+
+### Ensemble Completions
+
+**POST** `/v1/ensemble/completions`
+
+Forces multi-provider ensemble mode with voting.
+
+### Create Session
+
+**POST** `/v1/ensemble/sessions`
+
+### List Sessions
+
+**GET** `/v1/ensemble/sessions`
+
+### Get Session
+
+**GET** `/v1/ensemble/sessions/{id}`
+
+### Execute Session
+
+**POST** `/v1/ensemble/sessions/{id}/execute`
+
+### Cancel Session
+
+**POST** `/v1/ensemble/sessions/{id}/cancel`
+
+### Team CRUD
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/ensemble/teams` | Create team |
+| `GET` | `/v1/ensemble/teams` | List teams |
+| `GET` | `/v1/ensemble/teams/{id}` | Get team |
+| `PUT` | `/v1/ensemble/teams/{id}` | Update team |
+| `DELETE` | `/v1/ensemble/teams/{id}` | Delete team |
+| `POST` | `/v1/ensemble/teams/{id}/agents` | Add agent |
+| `DELETE` | `/v1/ensemble/teams/{id}/agents/{agentId}` | Remove agent |
+| `POST` | `/v1/ensemble/teams/{id}/execute` | Execute team |
+
+---
+
+## Completion Endpoints
+
+Skills-enhanced completions with intent-based routing.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/completion` | Single completion |
+| `POST` | `/v1/completion/stream` | Streaming completion |
+| `POST` | `/v1/completion/chat` | Chat completion |
+| `POST` | `/v1/completion/chat/stream` | Streaming chat |
+| `GET` | `/v1/completion/models` | List models |
+
+---
+
+## Agentic Workflow Endpoints
+
+Graph-based workflow orchestration.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/agentic/workflows` | Create and execute workflow |
+| `GET` | `/v1/agentic/workflows/{id}` | Get workflow status |
+
+---
+
+## Planning Endpoints
+
+AI planning algorithms: HiPlan, MCTS, Tree of Thoughts.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/planning/hiplan` | Hierarchical planning |
+| `POST` | `/v1/planning/mcts` | Monte Carlo Tree Search |
+| `POST` | `/v1/planning/tot` | Tree of Thoughts |
+| `POST` | `/v1/planning/plan-mode/enter` | Enter plan mode |
+| `POST` | `/v1/planning/plan-mode/{id}/exit` | Exit plan mode |
+| `GET` | `/v1/planning/plan-mode/{id}/status` | Plan mode status |
+| `POST` | `/v1/planning/plan-mode/{id}/verify` | Verify plan |
+| `POST` | `/v1/planning/plan-mode/{id}/execute` | Execute plan |
+| `PUT` | `/v1/planning/plan-mode/{id}/tasks/{taskId}` | Update task |
+
+---
+
+## LLMOps Endpoints
+
+A/B experiments, continuous evaluation, prompt versioning.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/llmops/experiments` | Create experiment |
+| `GET` | `/v1/llmops/experiments` | List experiments |
+| `GET` | `/v1/llmops/experiments/{id}` | Get experiment |
+| `POST` | `/v1/llmops/evaluate` | Run evaluation |
+| `GET` | `/v1/llmops/prompts` | List prompt versions |
+| `POST` | `/v1/llmops/prompts` | Create prompt version |
+
+---
+
+## Benchmark Endpoints
+
+LLM benchmarking: SWE-bench, HumanEval, MMLU.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/benchmark/run` | Start benchmark |
+| `GET` | `/v1/benchmark/results` | List results |
+| `GET` | `/v1/benchmark/results/{id}` | Get result |
+
+---
+
+## Discovery Endpoints
+
+Dynamic 3-tier model discovery.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/discovery/models` | Discovered models |
+| `GET` | `/v1/discovery/models/selected` | Selected models |
+| `GET` | `/v1/discovery/stats` | Discovery statistics |
+| `POST` | `/v1/discovery/trigger` | Trigger discovery |
+| `GET` | `/v1/discovery/ensemble` | Ensemble models |
+| `GET` | `/v1/discovery/debate-model` | Best debate model |
+
+---
+
+## Scoring Endpoints
+
+5-component weighted scoring pipeline.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/scoring/model/{model_id}` | Get model score |
+| `POST` | `/v1/scoring/batch` | Batch scoring |
+| `GET` | `/v1/scoring/top` | Top models |
+| `GET` | `/v1/scoring/range` | Models by score range |
+| `GET` | `/v1/scoring/weights` | Get scoring weights |
+| `PUT` | `/v1/scoring/weights` | Update weights |
+| `GET` | `/v1/scoring/model/{model_id}/detail` | Detailed score |
+| `POST` | `/v1/scoring/cache/invalidate` | Invalidate cache |
+| `POST` | `/v1/scoring/compare` | Compare models |
+
+---
+
+## Verification Endpoints
+
+8-test verification pipeline.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/verification/model` | Verify model |
+| `POST` | `/v1/verification/batch` | Batch verify |
+| `GET` | `/v1/verification/status` | Verification status |
+| `GET` | `/v1/verification/models` | Verified models |
+| `POST` | `/v1/verification/model/{model_id}/reverify` | Re-verify |
+| `GET` | `/v1/verification/tests` | Available tests |
+| `GET` | `/v1/verification/health` | System health |
+| `POST` | `/v1/verification/code-visibility` | Code visibility test |
+
+---
+
+## Health Monitoring Endpoints
+
+Extended provider health, latency tracking, circuit breakers.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/health/providers` | All providers health |
+| `GET` | `/v1/health/providers/healthy` | Healthy providers |
+| `GET` | `/v1/health/providers/fastest` | Fastest provider |
+| `GET` | `/v1/health/provider/{id}` | Provider health |
+| `GET` | `/v1/health/provider/{id}/latency` | Provider latency |
+| `GET` | `/v1/health/provider/{id}/available` | Provider availability |
+| `GET` | `/v1/health/circuit-breakers` | Circuit breaker status |
+| `POST` | `/v1/health/provider/{id}/success` | Record success |
+| `POST` | `/v1/health/provider/{id}/failure` | Record failure |
+| `POST` | `/v1/health/provider` | Add provider |
+| `DELETE` | `/v1/health/provider/{id}` | Remove provider |
+| `GET` | `/v1/health/status` | Service status |
+
+---
+
+## Cognee Endpoints
+
+Knowledge graph with memory, cognification, insights, and datasets.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/cognee/health` | Service health |
+| `GET` | `/v1/cognee/stats` | Usage statistics |
+| `GET` | `/v1/cognee/config` | Configuration |
+| `POST` | `/v1/cognee/start` | Ensure running |
+| `POST` | `/v1/cognee/memory` | Add memory |
+| `POST` | `/v1/cognee/search` | Search knowledge |
+| `POST` | `/v1/cognee/cognify` | Cognify content |
+| `POST` | `/v1/cognee/insights` | Get insights |
+| `POST` | `/v1/cognee/graph/complete` | Graph completion |
+| `GET` | `/v1/cognee/visualize` | Visualize graph |
+| `POST` | `/v1/cognee/code` | Code intelligence |
+| `POST` | `/v1/cognee/datasets` | Create dataset |
+| `GET` | `/v1/cognee/datasets` | List datasets |
+| `DELETE` | `/v1/cognee/datasets/{name}` | Delete dataset |
+| `POST` | `/v1/cognee/feedback` | Provide feedback |
+
+---
+
+## Search Endpoints
+
+Vector-based semantic code search.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/search/semantic` | Semantic search |
+| `POST` | `/v1/search/index` | Trigger indexing |
+
+---
+
+## Templates Endpoints
+
+Reusable prompt templates.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/templates` | List templates |
+| `GET` | `/v1/templates/{id}` | Get template |
+| `POST` | `/v1/templates/apply` | Apply template |
+
+---
+
+## Checkpoints Endpoints
+
+Workspace snapshots with Git state capture.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/checkpoints` | List checkpoints |
+| `POST` | `/v1/checkpoints` | Create checkpoint |
+| `POST` | `/v1/checkpoints/{id}/restore` | Restore checkpoint |
+| `DELETE` | `/v1/checkpoints/{id}` | Delete checkpoint |
+
+---
+
+## Browser Automation Endpoints
+
+Playwright-based web automation.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/browser/navigate` | Navigate to URL |
+| `POST` | `/v1/browser/click` | Click element |
+| `POST` | `/v1/browser/type` | Type text |
+| `POST` | `/v1/browser/screenshot` | Take screenshot |
+| `POST` | `/v1/browser/extract` | Extract content |
+| `POST` | `/v1/browser/evaluate` | Evaluate JavaScript |
+
+---
+
+## Skills Endpoints
+
+Skill registry for enhanced completions.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/skills` | List skills |
+| `GET` | `/v1/skills/categories` | List categories |
+| `GET` | `/v1/skills/{category}` | Skills by category |
+| `POST` | `/v1/skills/match` | Match skills to query |
+
+---
+
+## QA Endpoints
+
+HelixQA autonomous QA pipeline.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/qa/sessions` | Start QA session |
+| `GET` | `/v1/qa/findings` | List findings |
+| `GET` | `/v1/qa/findings/{id}` | Get finding |
+| `PUT` | `/v1/qa/findings/{id}` | Update finding |
+| `GET` | `/v1/qa/platforms` | List platforms |
+| `POST` | `/v1/qa/discover` | Discover knowledge |
+
+---
+
+## Background Tasks Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/tasks` | Create task |
+| `GET` | `/v1/tasks` | List tasks |
+| `GET` | `/v1/tasks/queue/stats` | Queue statistics |
+| `GET` | `/v1/tasks/events` | Poll events |
+| `GET` | `/v1/tasks/{id}` | Get task |
+| `GET` | `/v1/tasks/{id}/status` | Task status |
+| `GET` | `/v1/tasks/{id}/logs` | Task logs |
+| `GET` | `/v1/tasks/{id}/resources` | Resource usage |
+| `GET` | `/v1/tasks/{id}/events` | Task events (SSE) |
+| `GET` | `/v1/tasks/{id}/analyze` | Stuck detection |
+| `POST` | `/v1/tasks/{id}/pause` | Pause task |
+| `POST` | `/v1/tasks/{id}/resume` | Resume task |
+| `POST` | `/v1/tasks/{id}/cancel` | Cancel task |
+| `DELETE` | `/v1/tasks/{id}` | Delete task |
+| `POST` | `/v1/webhooks` | Register webhook |
+| `GET` | `/v1/webhooks` | List webhooks |
+| `DELETE` | `/v1/webhooks/{id}` | Delete webhook |
+
+---
+
+## Sessions Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/sessions` | Create session |
+| `GET` | `/v1/sessions` | List sessions |
+| `GET` | `/v1/sessions/{id}` | Get session |
+| `DELETE` | `/v1/sessions/{id}` | Terminate session |
+
+---
+
+## Features Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/features` | Enabled features |
+| `GET` | `/v1/features/available` | All features |
+| `GET` | `/v1/features/agents` | Agent capabilities |
+
+---
+
+## GraphQL Endpoint
+
+Feature-flagged (requires `GRAPHQL_ENABLED=true`).
+
+**POST** `/v1/graphql`
+
+**Request Body:**
+
+```json
+{
+  "query": "{ providers { name status score } }",
+  "variables": {}
+}
+```
 
 ---
 

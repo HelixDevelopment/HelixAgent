@@ -224,16 +224,44 @@ ORDER BY round;
 
 ## Repository API
 
-The Go repository layer (`internal/debate/knowledge/repository.go`) provides a programmatic interface over these tables. Key operations:
+The Go repository layer provides programmatic interfaces over these tables:
+
+### Debate Persistence Repositories (`internal/database/`)
+
+- **`DebateSessionRepository`** -- CRUD operations for `debate_sessions` (Insert, GetByID, GetByDebateID, UpdateStatus, UpdateOutcome, ListByStatus, ListActive, Delete).
+- **`DebateTurnRepository`** -- CRUD operations for `debate_turns` (Insert, GetByID, ListBySession, ListBySessionAndRound, ListBySessionAndPhase, ListByAgent, GetReflections, Delete, DeleteBySession).
+- **`CodeVersionRepository`** -- CRUD operations for `code_versions` (Insert, GetByID, GetLatestBySession, ListBySession, GetBySessionAndVersion, GetNextVersionNumber, Delete, DeleteBySession).
+- **`DebateLogRepository`** -- Append-only logging for `debate_logs` with retention policy (Insert, GetByDebateID, GetByParticipantIdentifier, CleanupExpiredLogs, StartCleanupWorker).
+
+### Knowledge Repository (`internal/debate/knowledge/`)
 
 - **`ExtractLessons(ctx, result)`** -- Extracts and persists lessons from a completed debate.
 - **`SearchLessons(ctx, query, options)`** -- Full-text search over lesson content.
 - **`GetDebateHistory(ctx, filter)`** -- Retrieves debate history with filtering by domain, success, consensus, and date range.
 - **`GetStatistics(ctx)`** -- Aggregate statistics: total lessons, patterns, strategies, success rates.
 
+## Go Code vs SQL Schema Notes
+
+The Go repository `CreateTable` methods serve as runtime fallbacks for environments where the SQL schema files have not been applied. There are minor type differences between the Go runtime DDL and the authoritative SQL schema files:
+
+| Column | SQL Schema File | Go CreateTable (runtime fallback) | Notes |
+|--------|-----------------|-----------------------------------|-------|
+| `debate_sessions.id` | `UUID DEFAULT gen_random_uuid()` | `VARCHAR(255)` | Go code provides caller-generated IDs |
+| `debate_sessions.topology_type` | `VARCHAR(50)` | `VARCHAR(100)` | Go uses wider column |
+| `debate_sessions.coordination_protocol` | `VARCHAR(50)` | `VARCHAR(100)` | Go uses wider column |
+| `debate_sessions.outcome` | `JSONB DEFAULT '{}'` | `TEXT` | Go scans as string regardless |
+| `debate_sessions.config` | `JSONB DEFAULT '{}'` | `JSONB` (no default) | Minor default difference |
+
+The SQL schema files under `sql/schema/` are the canonical reference. The Go `CreateTable` methods are compatible at runtime because PostgreSQL implicitly handles type coercion between VARCHAR/UUID and TEXT/JSONB for the operations performed by the repository.
+
 ## Related Files
 
-- `sql/schema/debate_sessions.sql` -- Session table DDL
-- `sql/schema/debate_turns.sql` -- Turn table DDL
-- `sql/schema/code_versions.sql` -- Code version table DDL
-- `internal/debate/knowledge/repository.go` -- Go repository implementation
+- `sql/schema/debate_sessions.sql` -- Session table DDL (authoritative)
+- `sql/schema/debate_turns.sql` -- Turn table DDL (authoritative)
+- `sql/schema/code_versions.sql` -- Code version table DDL (authoritative)
+- `sql/schema/debate_system.sql` -- Debate logs table DDL (authoritative)
+- `internal/database/debate_session_repository.go` -- Session repository
+- `internal/database/debate_turn_repository.go` -- Turn repository
+- `internal/database/code_version_repository.go` -- Code version repository
+- `internal/database/debate_log_repository.go` -- Debate log repository
+- `internal/debate/knowledge/repository.go` -- Knowledge extraction repository

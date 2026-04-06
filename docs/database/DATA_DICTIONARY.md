@@ -1115,3 +1115,514 @@ All foreign key relationships across the PostgreSQL schema:
 - `debate_logs.session_id` -- string-based session reference
 - `protocol_metrics.server_id` -- logical reference to `mcp_servers.id`, `lsp_servers.id`, or `acp_servers.id`
 - `background_tasks.user_id` / `background_tasks.session_id` -- logical user/session references
+
+---
+
+## 9. Agentic Workflows
+
+### agentic_workflows
+
+Graph-based workflow definitions with execution state and results. Defined in `sql/schema/agentic_workflows.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(64) | NO | -- | Primary key (workflow identifier) |
+| name | VARCHAR(255) | NO | -- | Workflow name |
+| status | VARCHAR(32) | NO | `'pending'` | Lifecycle state |
+| entry_point | VARCHAR(64) | NO | -- | Entry node identifier |
+| config | JSONB | YES | -- | Workflow configuration |
+| input | JSONB | YES | -- | Workflow input data |
+| result | JSONB | YES | -- | Workflow output/result |
+| error | TEXT | YES | -- | Error details if failed |
+| nodes_executed | INTEGER | YES | `0` | Count of executed nodes |
+| execution_time_ms | BIGINT | YES | `0` | Total execution time (ms) |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification timestamp |
+| completed_at | TIMESTAMPTZ | YES | -- | Completion timestamp |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_workflows_status | status | Filter by state |
+| idx_workflows_created | created_at DESC | Chronological listing |
+
+---
+
+### agentic_workflow_nodes
+
+Individual nodes within a workflow graph.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(64) | NO | -- | Primary key (node identifier) |
+| workflow_id | VARCHAR(64) | NO | -- | FK to `agentic_workflows(id)` |
+| name | VARCHAR(255) | NO | -- | Node name |
+| type | VARCHAR(32) | NO | -- | Node type |
+| config | JSONB | YES | -- | Node configuration |
+| status | VARCHAR(32) | NO | `'pending'` | Node execution status |
+| result | JSONB | YES | -- | Node output/result |
+| error | TEXT | YES | -- | Error details if failed |
+| started_at | TIMESTAMPTZ | YES | -- | Execution start time |
+| completed_at | TIMESTAMPTZ | YES | -- | Execution completion time |
+| execution_time_ms | BIGINT | YES | `0` | Node execution time (ms) |
+
+**Foreign keys:**
+| Column | References | On Delete |
+|--------|-----------|-----------|
+| workflow_id | agentic_workflows(id) | CASCADE |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_workflow_nodes_wf | workflow_id | Nodes by workflow |
+
+---
+
+### agentic_workflow_edges
+
+Edges (connections) between workflow nodes with optional conditions.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| workflow_id | VARCHAR(64) | NO | -- | FK to `agentic_workflows(id)` |
+| from_node | VARCHAR(64) | NO | -- | Source node identifier |
+| to_node | VARCHAR(64) | NO | -- | Target node identifier |
+| condition | JSONB | YES | -- | Edge transition condition |
+
+**Foreign keys:**
+| Column | References | On Delete |
+|--------|-----------|-----------|
+| workflow_id | agentic_workflows(id) | CASCADE |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_workflow_edges_wf | workflow_id | Edges by workflow |
+
+---
+
+## 10. LLMOps
+
+### llmops_experiments
+
+A/B experiments for LLM provider comparison. Defined in `sql/schema/llmops_experiments.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(64) | NO | -- | Primary key |
+| name | VARCHAR(255) | NO | -- | Experiment name |
+| description | TEXT | YES | -- | Experiment description |
+| status | VARCHAR(32) | NO | `'created'` | `created`, `running`, `completed`, `failed` |
+| variants | JSONB | NO | -- | Experiment variant definitions |
+| metrics | JSONB | YES | -- | Collected metrics |
+| config | JSONB | YES | -- | Experiment configuration |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification timestamp |
+| started_at | TIMESTAMPTZ | YES | -- | Experiment start time |
+| completed_at | TIMESTAMPTZ | YES | -- | Experiment completion time |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_experiments_status | status | Filter by state |
+| idx_experiments_name | name | Lookup by name |
+
+---
+
+### llmops_evaluations
+
+LLM evaluation runs against datasets.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(64) | NO | -- | Primary key |
+| name | VARCHAR(255) | NO | -- | Evaluation name |
+| dataset | VARCHAR(255) | NO | -- | Dataset identifier |
+| status | VARCHAR(32) | NO | `'pending'` | Evaluation status |
+| metrics | JSONB | YES | -- | Evaluation metrics |
+| results | JSONB | YES | -- | Evaluation results |
+| config | JSONB | YES | -- | Evaluation configuration |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| completed_at | TIMESTAMPTZ | YES | -- | Evaluation completion time |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_evaluations_dataset | dataset | Filter by dataset |
+
+---
+
+### llmops_prompt_versions
+
+Versioned prompt templates.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| name | VARCHAR(255) | NO | -- | Prompt name |
+| version | VARCHAR(32) | NO | -- | Version identifier |
+| content | TEXT | NO | -- | Prompt template content |
+| metadata | JSONB | YES | -- | Additional metadata |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+
+**Unique constraints:** `(name, version)`
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_prompts_name | name | Lookup by name |
+
+---
+
+## 11. Planning
+
+### planning_sessions
+
+HiPlan, MCTS, and Tree of Thoughts planning results. Defined in `sql/schema/planning_sessions.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(64) | NO | -- | Primary key |
+| algorithm | VARCHAR(32) | NO | -- | `hiplan`, `mcts`, `tot` |
+| status | VARCHAR(32) | NO | `'pending'` | Execution status |
+| input | JSONB | NO | -- | Planning input data |
+| config | JSONB | YES | -- | Algorithm configuration |
+| result | JSONB | YES | -- | Planning output/result |
+| error | TEXT | YES | -- | Error details if failed |
+| execution_time_ms | BIGINT | YES | `0` | Execution time (ms) |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| completed_at | TIMESTAMPTZ | YES | -- | Completion timestamp |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_planning_algorithm | algorithm | Filter by algorithm |
+| idx_planning_status | status | Filter by state |
+| idx_planning_created | created_at DESC | Chronological listing |
+
+---
+
+### planning_hiplan_milestones
+
+Milestones within a HiPlan hierarchical planning session.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| session_id | VARCHAR(64) | NO | -- | FK to `planning_sessions(id)` |
+| name | VARCHAR(255) | NO | -- | Milestone name |
+| description | TEXT | YES | -- | Milestone description |
+| order_index | INTEGER | NO | -- | Execution order |
+| status | VARCHAR(32) | NO | `'pending'` | Milestone status |
+| steps | JSONB | YES | -- | Steps within this milestone |
+
+**Foreign keys:**
+| Column | References | On Delete |
+|--------|-----------|-----------|
+| session_id | planning_sessions(id) | CASCADE |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_milestones_session | session_id | Milestones by session |
+
+---
+
+### planning_mcts_nodes
+
+Monte Carlo Tree Search nodes for MCTS planning sessions.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| session_id | VARCHAR(64) | NO | -- | FK to `planning_sessions(id)` |
+| parent_id | INTEGER | YES | -- | Self-referencing FK (tree structure) |
+| action | VARCHAR(255) | YES | -- | Action taken to reach this node |
+| state | JSONB | YES | -- | Node state |
+| visits | INTEGER | YES | `0` | Visit count (UCT exploration) |
+| reward | DOUBLE PRECISION | YES | `0` | Accumulated reward |
+| depth | INTEGER | YES | `0` | Tree depth |
+
+**Foreign keys:**
+| Column | References | On Delete |
+|--------|-----------|-----------|
+| session_id | planning_sessions(id) | CASCADE |
+| parent_id | planning_mcts_nodes(id) | -- |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_mcts_nodes_session | session_id | Nodes by session |
+
+---
+
+## 12. Performance & Security
+
+### feature_flags
+
+Feature flag management for runtime feature toggling. Defined in `sql/002_performance_and_security.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| name | VARCHAR(255) | NO | -- | Unique flag name |
+| enabled | BOOLEAN | NO | `false` | Whether feature is enabled |
+| description | TEXT | YES | -- | Flag description |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification timestamp |
+
+**Unique constraints:** `name`
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_feature_flags_name | name | Lookup by name |
+
+---
+
+### performance_baselines
+
+Performance benchmark baselines for regression detection.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| metric_name | VARCHAR(255) | NO | -- | Benchmark metric name |
+| package_name | VARCHAR(255) | NO | -- | Go package path |
+| baseline_ns | BIGINT | NO | -- | Baseline time in nanoseconds |
+| baseline_allocs | BIGINT | YES | -- | Baseline allocation count |
+| baseline_bytes | BIGINT | YES | -- | Baseline bytes allocated |
+| captured_at | TIMESTAMPTZ | YES | `NOW()` | When baseline was captured |
+
+**Unique constraints:** `(metric_name, package_name)`
+
+---
+
+### security_scan_history
+
+Security scan result history for Snyk/SonarQube.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | SERIAL | NO | auto-increment | Primary key |
+| tool_name | VARCHAR(100) | NO | -- | Scanner tool (`snyk`, `sonarqube`, `gosec`) |
+| scan_type | VARCHAR(50) | NO | -- | Scan type identifier |
+| findings_critical | INTEGER | YES | `0` | Critical severity findings |
+| findings_high | INTEGER | YES | `0` | High severity findings |
+| findings_medium | INTEGER | YES | `0` | Medium severity findings |
+| findings_low | INTEGER | YES | `0` | Low severity findings |
+| findings_info | INTEGER | YES | `0` | Informational findings |
+| scan_duration_ms | BIGINT | YES | -- | Scan duration in milliseconds |
+| report_path | TEXT | YES | -- | Path to full report |
+| scanned_at | TIMESTAMPTZ | YES | `NOW()` | Scan execution timestamp |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_security_scans_tool | tool_name | Filter by tool |
+
+---
+
+### benchmark_runs
+
+Benchmark run results for provider comparison (SWE-bench, HumanEval, MMLU).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | VARCHAR(100) | NO | -- | Primary key |
+| benchmark_type | VARCHAR(50) | NO | -- | `swe_bench`, `human_eval`, `mmlu`, `custom` |
+| provider_name | VARCHAR(100) | NO | -- | LLM provider name |
+| model_name | VARCHAR(100) | YES | -- | Specific model used |
+| status | VARCHAR(20) | NO | `'pending'` | `pending`, `running`, `completed`, `failed` |
+| pass_rate | REAL | YES | -- | Overall pass rate |
+| average_score | REAL | YES | -- | Average score across tasks |
+| average_latency_ns | BIGINT | YES | -- | Average latency in nanoseconds |
+| total_tasks | INTEGER | YES | -- | Total tasks in benchmark |
+| passed_tasks | INTEGER | YES | -- | Number of tasks passed |
+| failed_tasks | INTEGER | YES | -- | Number of tasks failed |
+| config | JSONB | YES | -- | Run configuration |
+| summary | JSONB | YES | -- | Result summary |
+| started_at | TIMESTAMPTZ | YES | -- | Run start time |
+| ended_at | TIMESTAMPTZ | YES | -- | Run end time |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_benchmark_runs_type | benchmark_type | Filter by type |
+| idx_benchmark_runs_provider | provider_name | Filter by provider |
+
+---
+
+## 13. CLI Agent Fusion
+
+Tables defined in `sql/001_cli_agents_fusion.sql` for managing CLI agent instances, tasks, repository data, and tool use.
+
+### cli_agent_instances
+
+CLI agent instance registry. Each instance represents a running CLI agent (aider, claude_code, codex, cline, etc.).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| type | VARCHAR(50) | NO | -- | Agent type (aider, claude_code, codex, cline, openhands, kiro, continue) |
+| status | VARCHAR(20) | NO | `'idle'` | Instance status |
+| config | JSONB | NO | `'{}'` | Instance configuration |
+| session_id | UUID | YES | -- | FK to `sessions(id)` |
+| user_id | UUID | YES | -- | FK to `users(id)` |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification (auto-trigger) |
+| last_heartbeat | TIMESTAMPTZ | YES | -- | Last heartbeat timestamp |
+| metadata | JSONB | YES | `'{}'` | Additional metadata |
+
+**Indexes:**
+| Index | Column(s) | Notes |
+|-------|-----------|-------|
+| idx_cli_agent_instances_session | session_id | Instances by session |
+| idx_cli_agent_instances_user | user_id | Instances by user |
+| idx_cli_agent_instances_type | type | Filter by agent type |
+| idx_cli_agent_instances_status | status | Filter by status |
+
+---
+
+### cli_agent_tasks
+
+Tasks assigned to CLI agent instances.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| instance_id | UUID | YES | -- | FK to `cli_agent_instances(id)` |
+| parent_task_id | UUID | YES | -- | Self-referencing FK for task hierarchies |
+| type | VARCHAR(50) | NO | -- | Task type (repo_map, diff_apply, git_commit, tool_use, browser_action) |
+| status | VARCHAR(20) | NO | `'pending'` | Task status |
+| priority | INTEGER | YES | `5` | Priority (1-10, lower is higher) |
+| input | JSONB | NO | `'{}'` | Task input data |
+| output | JSONB | YES | -- | Task output data |
+| error | TEXT | YES | -- | Error details |
+| started_at | TIMESTAMPTZ | YES | -- | Execution start time |
+| completed_at | TIMESTAMPTZ | YES | -- | Execution completion time |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification (auto-trigger) |
+| duration_ms | INTEGER | YES | -- | Execution duration (ms) |
+| retry_count | INTEGER | YES | `0` | Current retry count |
+| max_retries | INTEGER | YES | `3` | Maximum retry attempts |
+
+**Foreign keys:**
+| Column | References | On Delete |
+|--------|-----------|-----------|
+| instance_id | cli_agent_instances(id) | CASCADE |
+| parent_task_id | cli_agent_tasks(id) | SET NULL |
+
+---
+
+### repo_maps
+
+Repository structure maps with symbol data for CLI agents.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| instance_id | UUID | YES | -- | FK to `cli_agent_instances(id)` |
+| repository_path | TEXT | NO | -- | Repository filesystem path |
+| git_commit_hash | VARCHAR(40) | YES | -- | Git commit at map creation |
+| symbols | JSONB | NO | `'[]'` | Array of symbols with metadata |
+| file_structure | JSONB | NO | `'{}'` | Repository file structure |
+| map_tokens | INTEGER | YES | `1024` | Token budget for map |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| updated_at | TIMESTAMPTZ | YES | `NOW()` | Last modification timestamp |
+| last_accessed_at | TIMESTAMPTZ | YES | -- | Last access timestamp |
+| access_count | INTEGER | YES | `0` | Access count |
+
+---
+
+### repo_symbols
+
+Individual repository symbols for efficient semantic search via pgvector.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| repo_map_id | UUID | YES | -- | FK to `repo_maps(id)` |
+| name | VARCHAR(255) | NO | -- | Symbol name |
+| type | VARCHAR(50) | NO | -- | Symbol type (function, class, variable, method) |
+| file_path | TEXT | NO | -- | File path containing the symbol |
+| line_start | INTEGER | YES | -- | Start line number |
+| line_end | INTEGER | YES | -- | End line number |
+| signature | TEXT | YES | -- | Symbol signature |
+| documentation | TEXT | YES | -- | Symbol documentation |
+| embedding | VECTOR(1536) | YES | -- | Semantic embedding for search |
+| relevance_score | FLOAT | YES | -- | Relevance score |
+| references_count | INTEGER | YES | `0` | Reference count |
+| metadata | JSONB | YES | `'{}'` | Additional metadata |
+
+---
+
+### git_operations
+
+Git operation log for CLI agent actions.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| instance_id | UUID | YES | -- | FK to `cli_agent_instances(id)` |
+| operation | VARCHAR(50) | NO | -- | Operation type (commit, diff, merge, branch) |
+| repository_path | TEXT | NO | -- | Repository filesystem path |
+| commit_hash | VARCHAR(40) | YES | -- | Commit hash |
+| parent_hash | VARCHAR(40) | YES | -- | Parent commit hash |
+| message | TEXT | YES | -- | Commit message |
+| author_name | VARCHAR(255) | YES | -- | Author name |
+| author_email | VARCHAR(255) | YES | -- | Author email |
+| files_changed | JSONB | YES | `'[]'` | Changed files array |
+| diff_content | TEXT | YES | -- | Diff content |
+| attribution | VARCHAR(255) | YES | -- | Attribution (HelixAgent or user) |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+
+---
+
+### tool_use_log
+
+Tool invocation log for CLI agent actions with optional approval workflow.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| instance_id | UUID | YES | -- | FK to `cli_agent_instances(id)` |
+| task_id | UUID | YES | -- | FK to `cli_agent_tasks(id)` |
+| tool_name | VARCHAR(100) | NO | -- | Tool name |
+| arguments | JSONB | NO | -- | Tool arguments |
+| result | JSONB | YES | -- | Tool result |
+| error | TEXT | YES | -- | Error details |
+| status | VARCHAR(20) | NO | `'running'` | Execution status |
+| started_at | TIMESTAMPTZ | YES | `NOW()` | Start time |
+| completed_at | TIMESTAMPTZ | YES | -- | Completion time |
+| duration_ms | INTEGER | YES | -- | Duration (ms) |
+| required_approval | BOOLEAN | YES | `false` | Whether approval was required |
+| approved_by | UUID | YES | -- | FK to `users(id)` |
+| approved_at | TIMESTAMPTZ | YES | -- | Approval timestamp |
+
+---
+
+### project_memory
+
+Per-project memory entries with semantic embeddings for retrieval.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | `gen_random_uuid()` | Primary key |
+| project_id | UUID | NO | -- | Project identifier |
+| instance_id | UUID | YES | -- | FK to `cli_agent_instances(id)` |
+| entry_type | VARCHAR(50) | NO | -- | Entry type (code, conversation, decision, error, insight) |
+| content | TEXT | NO | -- | Memory content |
+| embedding | VECTOR(1536) | YES | -- | Semantic embedding |
+| metadata | JSONB | YES | `'{}'` | Additional metadata |
+| importance_score | FLOAT | YES | `0.5` | Importance score for retrieval |
+| created_at | TIMESTAMPTZ | YES | `NOW()` | Row creation timestamp |
+| accessed_at | TIMESTAMPTZ | YES | -- | Last access timestamp |
+| access_count | INTEGER | YES | `0` | Access count |
+| expires_at | TIMESTAMPTZ | YES | -- | Optional expiration |
+
+---
+
+Additional CLI agent fusion tables: `diff_applications`, `terminal_sessions`, `browser_sessions`, `sandbox_environments`, `task_plans`. See `sql/001_cli_agents_fusion.sql` for full definitions.

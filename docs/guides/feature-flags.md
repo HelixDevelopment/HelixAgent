@@ -11,7 +11,48 @@ HelixAgent supports 18+ CLI agents with varying capabilities. The feature flags 
 3. **Automatic Detection**: Agent capabilities are detected from User-Agent headers
 4. **Validation**: Feature combinations are validated to prevent conflicts
 
-## Available Features
+## Environment Variable Feature Flags
+
+These feature flags are configured via environment variables in `.env` and control server-level behavior at startup. They are distinct from the per-request feature flags described in later sections.
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `GRAPHQL_ENABLED` | `false` | Enable GraphQL endpoint at `/v1/graphql` |
+| `ENABLE_PPROF` | `false` | Enable pprof profiling endpoints (`/debug/pprof/*`) |
+| `COGNEE_ENABLED` | `false` | Enable Cognee knowledge graph integration (replaced by Mem0 as primary memory) |
+| `CONSTITUTION_WATCHER_ENABLED` | `false` | Enable background Constitution auto-update watcher (checks every 5 minutes by default) |
+| `CONSTITUTION_WATCHER_CHECK_INTERVAL` | `5m` | Check interval for Constitution watcher |
+| `USE_HELIX_LLM` | `true` | Enable HelixLLM submodule integration and container management |
+| `LLM_VERIFIER_DISABLED` | `false` | Skip LLMsVerifier startup verification pipeline (useful for development) |
+| `BIGDATA_ENABLE_INFINITE_CONTEXT` | `true` | Enable infinite context via event sourcing |
+| `BIGDATA_ENABLE_DISTRIBUTED_MEMORY` | `false` | Enable distributed memory system |
+| `BIGDATA_ENABLE_KNOWLEDGE_GRAPH` | `false` | Enable knowledge graph streaming |
+| `BIGDATA_ENABLE_ANALYTICS` | `false` | Enable ClickHouse analytics |
+| `BIGDATA_ENABLE_CROSS_LEARNING` | `true` | Enable cross-debate learning |
+| `PROMETHEUS_ENABLED` | `true` | Enable Prometheus metrics endpoint |
+| `DEBUG_ENABLED` | `false` | Enable debug mode |
+
+### Usage Examples
+
+```bash
+# Enable GraphQL in .env
+GRAPHQL_ENABLED=true
+
+# Enable pprof for memory profiling
+ENABLE_PPROF=true
+
+# Disable startup verification for faster development
+LLM_VERIFIER_DISABLED=true
+
+# Enable Constitution auto-update
+CONSTITUTION_WATCHER_ENABLED=true
+```
+
+---
+
+## Per-Request Feature Flags
+
+The following features can be toggled per-request via HTTP headers or query parameters, based on CLI agent capabilities.
 
 ### Transport Features
 
@@ -69,7 +110,7 @@ HelixAgent supports 18+ CLI agents with varying capabilities. The feature flags 
 
 Individual feature headers:
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "X-Feature-GraphQL: true" \
   -H "X-Feature-TOON: true" \
@@ -78,7 +119,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 Compact feature header:
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "X-Features: graphql,toon,-sse,brotli=true" \
   -d '{"messages": [{"role": "user", "content": "Hello"}]}'
@@ -88,12 +129,12 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 Individual query parameters:
 ```bash
-curl "http://localhost:8080/v1/chat/completions?graphql=true&toon=true"
+curl "http://localhost:7061/v1/chat/completions?graphql=true&toon=true"
 ```
 
 Compact features parameter:
 ```bash
-curl "http://localhost:8080/v1/chat/completions?features=graphql,toon,!sse"
+curl "http://localhost:7061/v1/chat/completions?features=graphql,toon,!sse"
 ```
 
 ### Feature Values

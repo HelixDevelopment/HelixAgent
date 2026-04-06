@@ -287,7 +287,7 @@ func TestGetAllExtendedPackages(t *testing.T) {
 // ============================================================================
 
 func TestFilterAvailablePackages(t *testing.T) {
-	t.Parallel()
+	// Note: cannot use t.Parallel() because subtests use t.Setenv() and os.Unsetenv()
 	t.Run("Returns packages with no env requirements", func(t *testing.T) {
 		// Ensure no env vars are set for this test
 		_ = os.Unsetenv("CHROMA_URL")
@@ -304,7 +304,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Returns packages when env vars are set", func(t *testing.T) {
-			t.Parallel()
+		// Note: cannot use t.Parallel() with t.Setenv()
 		// Set an env var for a package that requires it
 		t.Setenv("CHROMA_URL", "http://localhost:8000")
 
@@ -322,7 +322,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Excludes packages with missing env vars", func(t *testing.T) {
-			t.Parallel()
+		// Note: cannot use t.Parallel() with os.Unsetenv (modifies global env state)
 		// Make sure the env var is NOT set
 		_ = os.Unsetenv("FIGMA_ACCESS_TOKEN")
 
@@ -340,7 +340,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Handles packages with multiple required env vars", func(t *testing.T) {
-			t.Parallel()
+		// Note: cannot use t.Parallel() with t.Setenv()
 		// S3 requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 		_ = os.Unsetenv("AWS_ACCESS_KEY_ID")
 		_ = os.Unsetenv("AWS_SECRET_ACCESS_KEY")
@@ -396,7 +396,7 @@ func TestFilterAvailablePackages(t *testing.T) {
 	})
 
 	t.Run("Works with custom packages", func(t *testing.T) {
-			t.Parallel()
+		// Note: cannot use t.Parallel() with t.Setenv()
 		customPackages := []MCPPackage{
 			{Name: "no-env", NPM: "pkg1", Description: "No env", Category: CategoryCore},
 			{Name: "with-env", NPM: "pkg2", Description: "With env", Category: CategoryCore, RequiresEnv: []string{"CUSTOM_VAR"}},

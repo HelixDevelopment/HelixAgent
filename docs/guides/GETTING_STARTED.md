@@ -2,21 +2,28 @@
 
 ## Quick Start
 
-### 1. Installation
+### 1. Prerequisites
+
+- Go 1.25.3+
+- Docker or Podman (for automatic container orchestration)
+- At least one LLM provider API key
+- 4 GB RAM minimum (8 GB recommended for full stack)
+
+### 2. Installation
 
 ```bash
-# Clone the repository
-git clone git@github.com:vasic-digital/HelixAgent.git
+# Clone the repository (SSH only - HTTPS is forbidden)
+git clone --recurse-submodules git@github.com:vasic-digital/HelixAgent.git
 cd HelixAgent
+
+# Install development tools
+make install-deps
 
 # Build the main binary
 make build
-
-# Or build all applications
-make build-all
 ```
 
-### 2. Configuration
+### 3. Configuration
 
 Copy the example environment file and configure your API keys:
 
@@ -33,29 +40,35 @@ ANTHROPIC_API_KEY=sk-ant-...
 DEEPSEEK_API_KEY=sk-...
 GROQ_API_KEY=gsk_...
 
-# Optional: Additional providers
+# Optional: Additional providers (43 total supported)
 MISTRAL_API_KEY=...
 COHERE_API_KEY=...
 PERPLEXITY_API_KEY=...
 GEMINI_API_KEY=...
 ```
 
-### 3. Run HelixAgent
+### 4. Run HelixAgent
 
 ```bash
-# Start with auto-container management
+# Build and run - containers start automatically
+make build
 ./bin/helixagent
 
 # The service will be available at http://localhost:7061
 ```
 
+**Important:** HelixAgent automatically orchestrates all required containers (PostgreSQL, Redis, ChromaDB, MCP servers, etc.) on startup based on `Containers/.env`. Do **not** start containers manually with `docker-compose` or `podman-compose`. The binary is the sole orchestrator.
+
 ## First API Call
 
-Test the installation:
+Test the installation (wait for startup verification to complete, typically 1-2 minutes):
 
 ```bash
 # Health check
-curl http://localhost:7061/health
+curl http://localhost:7061/v1/health
+
+# Monitoring status
+curl http://localhost:7061/v1/monitoring/status
 
 # List available models
 curl http://localhost:7061/v1/models
@@ -64,52 +77,43 @@ curl http://localhost:7061/v1/models
 curl -X POST http://localhost:7061/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "helixagent-debate",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
-```
 
-## Examples
-
-### Basic Chat
-
-```bash
-cd examples
-go run basic_chat.go
-```
-
-### Streaming
-
-```bash
-go run streaming.go
-```
-
-### Tool Calling
-
-```bash
-go run tool_calling.go
+# Startup verification results
+curl http://localhost:7061/v1/startup/verification
 ```
 
 ## Running Tests
 
+**Important:** Infrastructure containers must be running before executing tests. HelixAgent manages these automatically during normal operation, but for isolated test runs use `make test-infra-start` (or `make test-infra-direct-start` for Podman rootless fallback).
+
 ```bash
-# Unit tests only (fast)
+# Unit tests only (fast, no infrastructure needed)
 make test-unit
 
-# Integration tests (requires API keys)
+# Start test infrastructure (PostgreSQL:15432, Redis:16379, Mock LLM:18081)
+make test-infra-start
+
+# Integration tests (requires running infrastructure)
 make test-integration
 
-# All tests
-make test
+# All tests with infrastructure
+make test-with-infra
 
-# Test specific provider
-export OPENAI_API_KEY=sk-...
-go test -v ./tests/providers/openai_test.go
+# Single test
+go test -v -run TestName ./path/to/package
+
+# Stop test infrastructure
+make test-infra-stop
 ```
 
 ## Next Steps
 
-- [API Reference](API_REFERENCE.md)
-- [Provider Configuration](PROVIDERS.md)
-- [Examples](../examples/)
-- [Architecture](../ARCHITECTURE.md)
+- [Configuration Guide](configuration-guide.md) - All environment variables and settings
+- [Provider Configuration](PROVIDERS.md) - Configure 43 LLM providers
+- [Feature Flags](feature-flags.md) - Toggle features like GraphQL, pprof, etc.
+- [Deployment Guide](deployment-guide.md) - Production deployment and remote containers
+- [Developer Guide](../DEVELOPER_GUIDE.md) - Contributing and architecture
+- [FAQ](../FAQ.md) - Common questions and troubleshooting

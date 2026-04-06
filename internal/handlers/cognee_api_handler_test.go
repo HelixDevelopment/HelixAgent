@@ -178,7 +178,7 @@ func TestCogneeAPIHandler_AddMemory(t *testing.T) {
 	handler := NewCogneeAPIHandler(cogneeService, logger)
 
 	t.Run("successful add", func(t *testing.T) {
-			t.Parallel()
+		// Not parallel: subtest uses test server closed by parent's defer.
 		body := map[string]interface{}{
 			"content": "Test memory content",
 			"dataset": "default",
@@ -197,7 +197,6 @@ func TestCogneeAPIHandler_AddMemory(t *testing.T) {
 	})
 
 	t.Run("missing content", func(t *testing.T) {
-			t.Parallel()
 		body := map[string]interface{}{
 			"dataset": "default",
 		}
@@ -317,7 +316,7 @@ func TestCogneeAPIHandler_ProcessCode(t *testing.T) {
 	handler := NewCogneeAPIHandler(cogneeService, logger)
 
 	t.Run("successful code processing", func(t *testing.T) {
-			t.Parallel()
+		// Not parallel: subtest uses test server closed by parent's defer.
 		body := map[string]interface{}{
 			"code":     "func main() { println(\"hello\") }",
 			"language": "go",
@@ -336,7 +335,6 @@ func TestCogneeAPIHandler_ProcessCode(t *testing.T) {
 	})
 
 	t.Run("missing code", func(t *testing.T) {
-			t.Parallel()
 		body := map[string]interface{}{
 			"language": "go",
 		}
@@ -1528,7 +1526,7 @@ func TestCogneeAPIHandler_RequestWithSpecialContent(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			// Not parallel: subtest uses test server closed by parent's defer.
 			body := map[string]interface{}{
 				"content": tc.content,
 				"dataset": "test",
@@ -1662,7 +1660,7 @@ func TestCogneeAPIHandler_ProcessCodeAllLanguages(t *testing.T) {
 
 	for _, lang := range languages {
 		t.Run(lang.name, func(t *testing.T) {
-				t.Parallel()
+			// Not parallel: subtest uses test server closed by parent's defer.
 			body := map[string]interface{}{
 				"code":     lang.code,
 				"language": lang.name,

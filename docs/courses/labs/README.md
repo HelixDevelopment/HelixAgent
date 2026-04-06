@@ -13,14 +13,28 @@ Hands-on lab exercises for the HelixAgent training course.
 | [Lab 5: Production Deployment](LAB_05_PRODUCTION_DEPLOYMENT.md) | 10-11 | 120 min | Advanced | |
 | [Lab 6: Challenge Scripts](LAB_06_CHALLENGE_SCRIPTS.md) | 12 | 90 min | Intermediate | NEW |
 | [Lab 7: MCP Tool Search](LAB_07_MCP_TOOL_SEARCH.md) | 13 | 60 min | Intermediate | NEW |
-| [Lab 8: Multi-Pass Validation](LAB_08_MULTIPASS_VALIDATION.md) | 14 | 75 min | Advanced | NEW |
+| [Lab 8: Multi-Pass Validation](LAB_08_MULTIPASS_VALIDATION.md) | 14 | 75 min | Advanced | |
+| [Lab 9: Agentic Workflows](LAB_09_AGENTIC_WORKFLOWS.md) | S7.1 | 45 min | Advanced | |
+| [Lab 10: LLMOps Evaluation](LAB_10_LLMOPS_EVALUATION.md) | S7.1 | 30 min | Advanced | |
+| [Lab 11: SelfImprove RLHF](LAB_11_SELFIMPROVE_RLHF.md) | S7.1 | 30 min | Advanced | |
+| [Lab 12: Planning Algorithms](LAB_12_PLANNING_ALGORITHMS.md) | S7.2 | 30 min | Advanced | |
+| [Lab 13: Benchmark Evaluation](LAB_13_BENCHMARK_EVALUATION.md) | S7.2 | 30 min | Advanced | |
+| [Lab 14: Agentic Workflows (Ext)](LAB_14_agentic_workflows.md) | S7.1 | 30 min | Advanced | |
+| [Lab 15: LLMOps Experiments](LAB_15_llmops_experiments.md) | S7.1 | 30 min | Advanced | |
+| [Lab 16: Stress Testing](LAB_16_stress_testing.md) | 11 | 30 min | Advanced | |
+| [Lab 17: Security Scanning](LAB_17_security_scanning.md) | 10 | 45 min | Advanced | |
+| [Lab 18: HelixLLM and AgenticEnsemble](LAB_18_helixllm_agentic_ensemble.md) | 15 | 45 min | Advanced | NEW |
+| [Lab 19: HTTP/3 and Brotli](LAB_19_http3_brotli.md) | 16 | 30 min | Intermediate | NEW |
+| [Lab 20: Remote Containers](LAB_20_remote_containers.md) | 17 | 30 min | Advanced | NEW |
+| [Lab 21: HelixMemory](LAB_21_helixmemory.md) | 18 | 30 min | Advanced | NEW |
+| [Lab 22: HelixSpecifier](LAB_22_helixspecifier.md) | 19 | 30 min | Advanced | NEW |
 
 ## Prerequisites
 
 Before starting the labs, ensure you have:
 
 - [ ] Git installed
-- [ ] Go 1.24+ installed (for source builds)
+- [ ] Go 1.25+ installed (for source builds)
 - [ ] Docker and Docker Compose (recommended)
 - [ ] Text editor (VS Code recommended)
 - [ ] Terminal access
@@ -85,11 +99,39 @@ Track your progress through the labs:
   - [ ] Adapter search working
   - [ ] Discovery workflow created
 
-- [ ] Lab 8: Multi-Pass Validation (NEW)
+- [ ] Lab 8: Multi-Pass Validation
   - [ ] 4-phase debate completed
   - [ ] Phase indicators observed
   - [ ] Confidence >0.8 achieved
   - [ ] Configuration tuned
+
+- [ ] Lab 18: HelixLLM and AgenticEnsemble (NEW)
+  - [ ] HelixLLM configured as provider
+  - [ ] Reason mode tested
+  - [ ] Execute mode tested
+  - [ ] AgenticEnsemble challenge passed
+
+- [ ] Lab 19: HTTP/3 and Brotli (NEW)
+  - [ ] Brotli compression verified
+  - [ ] Compression size comparison done
+  - [ ] Brotli challenge passed
+
+- [ ] Lab 20: Remote Containers (NEW)
+  - [ ] Container orchestration flow observed
+  - [ ] Service overrides tested
+  - [ ] Health checks verified
+
+- [ ] Lab 21: HelixMemory (NEW)
+  - [ ] Memory store and recall tested
+  - [ ] Cross-session context verified
+  - [ ] Prometheus metrics checked
+  - [ ] HelixMemory challenge passed
+
+- [ ] Lab 22: HelixSpecifier (NEW)
+  - [ ] Auto-activation triggered
+  - [ ] Adaptive ceremony observed
+  - [ ] Spec cache verified
+  - [ ] HelixSpecifier challenge passed
 
 ## Lab Files
 
@@ -109,7 +151,9 @@ Each lab contains:
 | Level 2: Provider Expert | Labs 1-3 |
 | Level 3: Advanced | Labs 1-4 |
 | Level 4: Master | Labs 1-5 |
-| Level 5: Challenge Expert | All labs (1-8) |
+| Level 5: Challenge Expert | Labs 1-8 |
+| Level 6: AI/ML Systems Architect | Labs 1-8, 9-15 |
+| Level 7: Platform Architect | All labs (1-22) |
 
 ### Level 5 Special Requirements
 - 100% pass rate on RAGS challenge
@@ -117,6 +161,13 @@ Each lab contains:
 - 100% pass rate on SKILLS challenge
 - MCP Tool Search integration demonstration
 - Multi-pass validation debate with >0.8 confidence
+
+### Level 7 Special Requirements
+- HelixLLM provider configured and AgenticEnsemble dual-mode verified
+- HTTP/3 (QUIC) transport and Brotli compression verified
+- Remote container distribution configured
+- HelixMemory integrated with 2+ backends
+- HelixSpecifier 7-phase workflow executed with DebateFunc
 
 ## Support
 
@@ -138,6 +189,6 @@ To improve the labs:
 
 ---
 
-*Labs Version: 2.0.0*
-*Last Updated: January 2026*
-*New Labs: 6 (Challenge Scripts), 7 (MCP Tool Search), 8 (Multi-Pass Validation)*
+*Labs Version: 3.0.0*
+*Last Updated: April 2026*
+*New Labs: 18 (HelixLLM/AgenticEnsemble), 19 (HTTP/3/Brotli), 20 (Remote Containers), 21 (HelixMemory), 22 (HelixSpecifier)*

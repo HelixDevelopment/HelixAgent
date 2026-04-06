@@ -333,7 +333,6 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	require.NoError(t, w.Store(wisdom))
 
 	t.Run("record successful usage", func(t *testing.T) {
-			t.Parallel()
 		err := w.RecordUsage("wis-usage", true)
 		require.NoError(t, err)
 
@@ -345,7 +344,6 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	})
 
 	t.Run("record failed usage", func(t *testing.T) {
-			t.Parallel()
 		err := w.RecordUsage("wis-usage", false)
 		require.NoError(t, err)
 
@@ -357,7 +355,6 @@ func TestAccumulatedWisdom_RecordUsage(t *testing.T) {
 	})
 
 	t.Run("record another success", func(t *testing.T) {
-			t.Parallel()
 		err := w.RecordUsage("wis-usage", true)
 		require.NoError(t, err)
 

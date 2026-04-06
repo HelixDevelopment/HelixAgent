@@ -27,8 +27,8 @@ Create a `.env` file in the project root:
 
 ```bash
 # Server Configuration
-PORT=8080
-ENVIRONMENT=development  # development, staging, production
+PORT=7061
+GIN_MODE=release        # release, debug
 LOG_LEVEL=info          # debug, info, warn, error
 
 # Security
@@ -39,23 +39,55 @@ HELIXAGENT_API_KEY=your-super-secret-api-key-here
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=helixagent
-DB_PASSWORD=password
+DB_PASSWORD=helixagent123
 DB_NAME=helixagent_db
 DB_SSL_MODE=disable
 
-# Redis (Optional, for caching)
+# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=
+REDIS_PASSWORD=helixagent123
 REDIS_DB=0
 
-# LLM Provider API Keys
-CLAUDE_API_KEY=sk-ant-api03-your-claude-key-here
-DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# Feature Flags
+GRAPHQL_ENABLED=false                   # GraphQL endpoint at /v1/graphql
+ENABLE_PPROF=false                      # pprof profiling endpoints
+COGNEE_ENABLED=false                    # Cognee knowledge graph (replaced by Mem0)
+CONSTITUTION_WATCHER_ENABLED=false      # Auto-update Constitution on changes
+USE_HELIX_LLM=true                      # HelixLLM submodule integration
+LLM_VERIFIER_DISABLED=false             # Skip startup verification
+
+# BigData Features
+BIGDATA_ENABLE_INFINITE_CONTEXT=true
+BIGDATA_ENABLE_DISTRIBUTED_MEMORY=false
+BIGDATA_ENABLE_KNOWLEDGE_GRAPH=false
+BIGDATA_ENABLE_ANALYTICS=false
+BIGDATA_ENABLE_CROSS_LEARNING=true
+
+# Monitoring
+PROMETHEUS_ENABLED=true
+PROMETHEUS_PORT=9090
+JAEGER_ENDPOINT=http://localhost:14268/api/traces
+
+# Rate Limiting
+RATE_LIMIT_RPM=60
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+
+# LLM Provider API Keys (at least one required)
+OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+DEEPSEEK_API_KEY=sk-your-deepseek-key
 GEMINI_API_KEY=your-gemini-api-key-here
-QWEN_API_KEY=your-qwen-key-here
-ZAI_API_KEY=your-zai-key-here
+GROQ_API_KEY=gsk-your-groq-key
+MISTRAL_API_KEY=your-mistral-key
+COHERE_API_KEY=your-cohere-key
+PERPLEXITY_API_KEY=pplx-your-perplexity-key
 OPENROUTER_API_KEY=sk-or-your-openrouter-key-here
+ZAI_API_KEY=your-zai-key-here
+
+# Search Providers
+TAVILY_API_KEY=tvly-your-tavily-key
+EXA_API_KEY=your-exa-key
 ```
 
 ---
@@ -425,7 +457,7 @@ services:
     ports:
       - "8080:7061"
     environment:
-      - PORT=8080
+      - PORT=7061
       - ENVIRONMENT=production
       - DB_HOST=postgres
       - DB_PORT=5432

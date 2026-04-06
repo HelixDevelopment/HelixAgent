@@ -132,7 +132,6 @@ func TestGitHubSpark_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
 			result, err := g.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -168,7 +167,6 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Now test edit
 	t.Run("edit existing spark", func(t *testing.T) {
-			t.Parallel()
 		result, err := g.Execute(ctx, "edit", map[string]interface{}{
 			"spark_id": sparkID,
 			"prompt":   "Add feature",
@@ -180,7 +178,6 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Test publish
 	t.Run("publish existing spark", func(t *testing.T) {
-			t.Parallel()
 		result, err := g.Execute(ctx, "publish", map[string]interface{}{
 			"spark_id": sparkID,
 		})
@@ -191,7 +188,6 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 
 	// Test share
 	t.Run("share existing spark", func(t *testing.T) {
-			t.Parallel()
 		result, err := g.Execute(ctx, "share", map[string]interface{}{
 			"spark_id": sparkID,
 		})

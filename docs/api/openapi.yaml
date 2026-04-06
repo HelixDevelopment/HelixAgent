@@ -15,7 +15,7 @@ info:
 servers:
   - url: https://api.helixagent.ai/v1
     description: Production server
-  - url: http://localhost:8080/v1
+  - url: http://localhost:7061/v1
     description: Development server
 
 security:
@@ -1570,6 +1570,1116 @@ paths:
       responses:
         '200':
           description: Provider deleted
+
+  /v1/completion:
+    post:
+      summary: Single completion
+      description: Run a skills-enhanced completion with intent-based routing
+      operationId: complete
+      tags:
+        - Completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletionRequest'
+      responses:
+        '200':
+          description: Completion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResponse'
+
+  /v1/completion/stream:
+    post:
+      summary: Streaming completion
+      operationId: completeStream
+      tags:
+        - Completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletionRequest'
+      responses:
+        '200':
+          description: SSE stream
+
+  /v1/completion/chat:
+    post:
+      summary: Chat-style completion
+      operationId: chatComplete
+      tags:
+        - Completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Chat completion result
+
+  /v1/completion/chat/stream:
+    post:
+      summary: Streaming chat completion
+      operationId: chatCompleteStream
+      tags:
+        - Completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: SSE stream
+
+  /v1/completion/models:
+    get:
+      summary: List completion models
+      operationId: listCompletionModels
+      tags:
+        - Completion
+      responses:
+        '200':
+          description: Available models
+
+  /v1/agentic/workflows:
+    post:
+      summary: Create and execute workflow
+      description: Graph-based agentic workflow orchestration
+      operationId: createWorkflow
+      tags:
+        - Agentic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - nodes
+                - entry_point
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                nodes:
+                  type: array
+                  items:
+                    type: object
+                edges:
+                  type: array
+                  items:
+                    type: object
+                entry_point:
+                  type: string
+                end_nodes:
+                  type: array
+                  items:
+                    type: string
+                config:
+                  type: object
+                input:
+                  type: object
+      responses:
+        '200':
+          description: Workflow result
+        '400':
+          description: Invalid request
+
+  /v1/agentic/workflows/{id}:
+    get:
+      summary: Get workflow status
+      operationId: getWorkflow
+      tags:
+        - Agentic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow status
+
+  /v1/planning/hiplan:
+    post:
+      summary: Hierarchical planning
+      description: Execute hierarchical planning for a given goal
+      operationId: createHiPlan
+      tags:
+        - Planning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - goal
+              properties:
+                goal:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '200':
+          description: Plan result
+
+  /v1/planning/mcts:
+    post:
+      summary: Monte Carlo Tree Search
+      description: Run MCTS planning for decision optimization
+      operationId: runMCTS
+      tags:
+        - Planning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - goal
+              properties:
+                goal:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '200':
+          description: MCTS result
+
+  /v1/planning/tot:
+    post:
+      summary: Tree of Thoughts
+      description: Run Tree of Thoughts reasoning
+      operationId: runToT
+      tags:
+        - Planning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - goal
+              properties:
+                goal:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '200':
+          description: ToT result
+
+  /v1/llmops/experiments:
+    post:
+      summary: Create A/B experiment
+      operationId: createExperiment
+      tags:
+        - LLMOps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - variants
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                variants:
+                  type: array
+                  items:
+                    type: object
+                traffic_split:
+                  type: object
+                metrics:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Experiment created
+    get:
+      summary: List experiments
+      operationId: listExperiments
+      tags:
+        - LLMOps
+      responses:
+        '200':
+          description: List of experiments
+
+  /v1/llmops/experiments/{id}:
+    get:
+      summary: Get experiment details
+      operationId: getExperiment
+      tags:
+        - LLMOps
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Experiment details
+
+  /v1/llmops/evaluate:
+    post:
+      summary: Run continuous evaluation
+      operationId: createEvaluation
+      tags:
+        - LLMOps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - dataset
+              properties:
+                name:
+                  type: string
+                dataset:
+                  type: string
+                metrics:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Evaluation started
+
+  /v1/llmops/prompts:
+    get:
+      summary: List prompt versions
+      operationId: listPrompts
+      tags:
+        - LLMOps
+      responses:
+        '200':
+          description: Prompt versions
+    post:
+      summary: Create prompt version
+      operationId: createPromptVersion
+      tags:
+        - LLMOps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Prompt version created
+
+  /v1/benchmark/run:
+    post:
+      summary: Start benchmark suite
+      description: Run SWE-bench, HumanEval, MMLU, or custom benchmarks
+      operationId: startBenchmark
+      tags:
+        - Benchmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - benchmark_type
+              properties:
+                name:
+                  type: string
+                benchmark_type:
+                  type: string
+                  enum: [swe_bench, humaneval, mmlu, custom]
+                provider_name:
+                  type: string
+                model_name:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '201':
+          description: Benchmark started
+
+  /v1/benchmark/results:
+    get:
+      summary: List benchmark results
+      operationId: listBenchmarkResults
+      tags:
+        - Benchmark
+      responses:
+        '200':
+          description: Benchmark results
+
+  /v1/benchmark/results/{id}:
+    get:
+      summary: Get specific benchmark result
+      operationId: getBenchmarkResult
+      tags:
+        - Benchmark
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Benchmark result details
+
+  /v1/discovery/models:
+    get:
+      summary: Get discovered models
+      description: Returns all models discovered via 3-tier discovery
+      operationId: getDiscoveredModels
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Discovered models
+
+  /v1/discovery/models/selected:
+    get:
+      summary: Get selected models
+      operationId: getSelectedModels
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Selected models
+
+  /v1/discovery/stats:
+    get:
+      summary: Get discovery statistics
+      operationId: getDiscoveryStats
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Discovery statistics
+
+  /v1/discovery/trigger:
+    post:
+      summary: Trigger model discovery
+      operationId: triggerDiscovery
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Discovery triggered
+
+  /v1/discovery/ensemble:
+    get:
+      summary: Get ensemble models
+      operationId: getEnsembleModels
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Ensemble models
+
+  /v1/discovery/debate-model:
+    get:
+      summary: Get best debate model
+      operationId: getModelForDebate
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: Best debate model
+
+  /v1/scoring/model/{model_id}:
+    get:
+      summary: Get model score
+      description: Returns the 5-component weighted score for a model
+      operationId: getModelScore
+      tags:
+        - Scoring
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model score
+
+  /v1/scoring/top:
+    get:
+      summary: Get top-scored models
+      operationId: getTopModels
+      tags:
+        - Scoring
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Top models
+
+  /v1/scoring/weights:
+    get:
+      summary: Get scoring weights
+      operationId: getScoringWeights
+      tags:
+        - Scoring
+      responses:
+        '200':
+          description: Current scoring weights
+    put:
+      summary: Update scoring weights
+      operationId: updateScoringWeights
+      tags:
+        - Scoring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Weights updated
+
+  /v1/verification/model:
+    post:
+      summary: Verify a model
+      description: Run 8-test verification pipeline on a model
+      operationId: verifyModel
+      tags:
+        - Verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model_id
+              properties:
+                model_id:
+                  type: string
+                provider:
+                  type: string
+      responses:
+        '200':
+          description: Verification result
+
+  /v1/verification/status:
+    get:
+      summary: Get verification status
+      operationId: getVerificationStatus
+      tags:
+        - Verification
+      responses:
+        '200':
+          description: Verification status
+
+  /v1/verification/models:
+    get:
+      summary: Get verified models
+      operationId: getVerifiedModels
+      tags:
+        - Verification
+      responses:
+        '200':
+          description: List of verified models
+
+  /v1/rag/health:
+    get:
+      summary: RAG system health
+      operationId: ragHealth
+      tags:
+        - RAG
+      responses:
+        '200':
+          description: RAG health status
+
+  /v1/rag/documents:
+    post:
+      summary: Ingest document
+      operationId: ingestDocument
+      tags:
+        - RAG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                metadata:
+                  type: object
+                chunk_strategy:
+                  type: string
+      responses:
+        '200':
+          description: Document ingested
+
+  /v1/rag/search:
+    post:
+      summary: Search documents
+      operationId: ragSearch
+      tags:
+        - RAG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+                threshold:
+                  type: number
+                filters:
+                  type: object
+      responses:
+        '200':
+          description: Search results
+
+  /v1/rag/search/hybrid:
+    post:
+      summary: Hybrid search
+      operationId: ragHybridSearch
+      tags:
+        - RAG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                dense_weight:
+                  type: number
+                sparse_weight:
+                  type: number
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: Hybrid search results
+
+  /v1/search/semantic:
+    post:
+      summary: Semantic code search
+      operationId: semanticSearch
+      tags:
+        - Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                language:
+                  type: string
+                file_pattern:
+                  type: string
+                top_k:
+                  type: integer
+                min_score:
+                  type: number
+      responses:
+        '200':
+          description: Search results
+
+  /v1/search/index:
+    post:
+      summary: Trigger code indexing
+      operationId: triggerIndex
+      tags:
+        - Search
+      responses:
+        '200':
+          description: Indexing result
+
+  /v1/templates:
+    get:
+      summary: List templates
+      operationId: listTemplates
+      tags:
+        - Templates
+      responses:
+        '200':
+          description: Template list
+
+  /v1/templates/{id}:
+    get:
+      summary: Get template
+      operationId: getTemplate
+      tags:
+        - Templates
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template details
+
+  /v1/templates/apply:
+    post:
+      summary: Apply template
+      operationId: applyTemplate
+      tags:
+        - Templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - template_id
+              properties:
+                template_id:
+                  type: string
+                variables:
+                  type: object
+      responses:
+        '200':
+          description: Template applied
+
+  /v1/checkpoints:
+    get:
+      summary: List checkpoints
+      operationId: listCheckpoints
+      tags:
+        - Checkpoints
+      responses:
+        '200':
+          description: Checkpoint list
+    post:
+      summary: Create checkpoint
+      operationId: createCheckpoint
+      tags:
+        - Checkpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Checkpoint created
+
+  /v1/checkpoints/{id}/restore:
+    post:
+      summary: Restore checkpoint
+      operationId: restoreCheckpoint
+      tags:
+        - Checkpoints
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Checkpoint restored
+
+  /v1/browser/navigate:
+    post:
+      summary: Navigate to URL
+      operationId: browserNavigate
+      tags:
+        - Browser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                wait_for:
+                  type: string
+                timeout:
+                  type: integer
+      responses:
+        '200':
+          description: Navigation result
+
+  /v1/browser/screenshot:
+    post:
+      summary: Take screenshot
+      operationId: browserScreenshot
+      tags:
+        - Browser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                selector:
+                  type: string
+                full_page:
+                  type: boolean
+      responses:
+        '200':
+          description: Screenshot data
+
+  /v1/skills:
+    get:
+      summary: List skills
+      operationId: listSkills
+      tags:
+        - Skills
+      responses:
+        '200':
+          description: Skill list
+
+  /v1/skills/categories:
+    get:
+      summary: List skill categories
+      operationId: listSkillCategories
+      tags:
+        - Skills
+      responses:
+        '200':
+          description: Categories
+
+  /v1/skills/match:
+    post:
+      summary: Match skills to query
+      operationId: matchSkills
+      tags:
+        - Skills
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: Matched skills
+
+  /v1/qa/sessions:
+    post:
+      summary: Start QA session
+      description: Start an autonomous QA session across platforms
+      operationId: startQASession
+      tags:
+        - QA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_root
+              properties:
+                project_root:
+                  type: string
+                platforms:
+                  type: array
+                  items:
+                    type: string
+                web_url:
+                  type: string
+                output_dir:
+                  type: string
+      responses:
+        '200':
+          description: QA session result
+
+  /v1/qa/findings:
+    get:
+      summary: List QA findings
+      operationId: listFindings
+      tags:
+        - QA
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, fixed, verified]
+      responses:
+        '200':
+          description: List of findings
+
+  /v1/qa/platforms:
+    get:
+      summary: List QA platforms
+      operationId: listPlatforms
+      tags:
+        - QA
+      responses:
+        '200':
+          description: Supported platforms
+
+  /v1/features:
+    get:
+      summary: Get enabled features
+      operationId: getFeatures
+      tags:
+        - Features
+      security: []
+      responses:
+        '200':
+          description: Feature flags
+
+  /v1/features/available:
+    get:
+      summary: Get all available features
+      operationId: getAvailableFeatures
+      tags:
+        - Features
+      security: []
+      responses:
+        '200':
+          description: All features
+
+  /v1/features/agents:
+    get:
+      summary: Get agent capabilities
+      operationId: getAgentCapabilities
+      tags:
+        - Features
+      security: []
+      responses:
+        '200':
+          description: Agent feature matrix
+
+  /v1/graphql:
+    post:
+      summary: GraphQL endpoint
+      description: Feature-flagged GraphQL endpoint (requires GRAPHQL_ENABLED=true)
+      operationId: graphql
+      tags:
+        - GraphQL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                variables:
+                  type: object
+      responses:
+        '200':
+          description: GraphQL response
+
+  /v1/monitoring/concurrency:
+    get:
+      summary: Get concurrency status
+      operationId: getConcurrencyStatus
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Concurrency monitoring data
+
+  /v1/monitoring/concurrency/alerts:
+    get:
+      summary: Get concurrency alerts
+      operationId: getConcurrencyAlerts
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Alert statistics
+
+  /v1/startup/verification:
+    get:
+      summary: Get startup verification results
+      operationId: getStartupVerification
+      tags:
+        - Monitoring
+      security: []
+      responses:
+        '200':
+          description: Startup verification status
+
+  /v1/tasks:
+    post:
+      summary: Create background task
+      operationId: createTask
+      tags:
+        - Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                command:
+                  type: string
+                working_dir:
+                  type: string
+                priority:
+                  type: string
+      responses:
+        '201':
+          description: Task created
+    get:
+      summary: List tasks
+      operationId: listTasks
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: Task list
+
+  /v1/tasks/{id}:
+    get:
+      summary: Get task details
+      operationId: getTask
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task details
+    delete:
+      summary: Delete task
+      operationId: deleteTask
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task deleted
+
+  /v1/tasks/{id}/cancel:
+    post:
+      summary: Cancel task
+      operationId: cancelTask
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task cancelled
+
+  /v1/webhooks:
+    post:
+      summary: Register webhook
+      operationId: registerWebhook
+      tags:
+        - Webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Webhook registered
+    get:
+      summary: List webhooks
+      operationId: listWebhooks
+      tags:
+        - Webhooks
+      responses:
+        '200':
+          description: Webhook list
 
 components:
   securitySchemes:

@@ -9,7 +9,11 @@ This document provides practical examples for using the HelixAgent API with vari
 4. [Ensemble Configuration Examples](#ensemble-configuration-examples)
 5. [Provider Management Examples](#provider-management-examples)
 6. [Monitoring Examples](#monitoring-examples)
-7. [Integration Examples](#integration-examples)
+7. [Protocol Examples](#protocol-examples)
+8. [Planning and Agentic Examples](#planning-and-agentic-examples)
+9. [RAG and Search Examples](#rag-and-search-examples)
+10. [LLMOps and Benchmark Examples](#llmops-and-benchmark-examples)
+11. [Integration Examples](#integration-examples)
 
 ## Quick Start
 
@@ -259,6 +263,367 @@ curl http://localhost:7061/metrics | grep 'helixagent_requests_total{' | awk '{p
 
 # Get average response time
 curl http://localhost:7061/metrics | grep 'helixagent_request_duration_seconds_sum' | awk '{print $2}'
+```
+
+## Protocol Examples
+
+### MCP Tool Call
+
+```bash
+# List available MCP tools
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/mcp/tools
+
+# Call an MCP tool
+curl -X POST http://localhost:7061/v1/mcp/tools/call \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Read",
+    "arguments": {
+      "file_path": "/path/to/file.go"
+    }
+  }'
+
+# Search MCP tools
+curl "http://localhost:7061/v1/mcp/tools/search?q=file" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### ACP Agent Communication
+
+```bash
+# List ACP agents
+curl http://localhost:7061/v1/acp/agents
+
+# Execute agent task
+curl -X POST http://localhost:7061/v1/acp/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "code-analyzer",
+    "task": "analyze",
+    "payload": {"file": "/path/to/file.go"}
+  }'
+
+# JSON-RPC 2.0 call
+curl -X POST http://localhost:7061/v1/acp/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "agent/execute",
+    "params": {"task": "analyze"},
+    "id": 1
+  }'
+```
+
+### LSP Integration
+
+```bash
+# List LSP servers
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/lsp/servers
+
+# Execute LSP request (go to definition)
+curl -X POST http://localhost:7061/v1/lsp/execute \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "go",
+    "method": "textDocument/definition",
+    "params": {
+      "textDocument": {"uri": "file:///path/to/file.go"},
+      "position": {"line": 10, "character": 5}
+    }
+  }'
+```
+
+### Vision Analysis
+
+```bash
+# Analyze an image
+curl -X POST http://localhost:7061/v1/vision/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "data:image/png;base64,iVBOR...",
+    "prompt": "Describe the UI elements in this screenshot"
+  }'
+
+# OCR extraction
+curl -X POST http://localhost:7061/v1/vision/ocr \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "data:image/png;base64,iVBOR..."
+  }'
+```
+
+### Cognee Knowledge Graph
+
+```bash
+# Add to knowledge graph
+curl -X POST http://localhost:7061/v1/cognee/memory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "The authentication system uses JWT tokens with refresh capability.",
+    "metadata": {"source": "auth.md", "tags": ["auth", "jwt"]}
+  }'
+
+# Search knowledge
+curl -X POST http://localhost:7061/v1/cognee/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How does authentication work?",
+    "limit": 5
+  }'
+```
+
+## Planning and Agentic Examples
+
+### Hierarchical Planning (HiPlan)
+
+```bash
+curl -X POST http://localhost:7061/v1/planning/hiplan \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Migrate database from PostgreSQL 12 to 15",
+    "config": {
+      "max_milestones": 5,
+      "max_steps_per_milestone": 8,
+      "enable_parallel_milestones": true,
+      "timeout_seconds": 300
+    }
+  }'
+```
+
+### Monte Carlo Tree Search (MCTS)
+
+```bash
+curl -X POST http://localhost:7061/v1/planning/mcts \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Optimize API response time from 500ms to under 100ms",
+    "config": {
+      "max_iterations": 500,
+      "exploration_weight": 1.414,
+      "max_depth": 8,
+      "timeout_seconds": 120
+    }
+  }'
+```
+
+### Tree of Thoughts (ToT)
+
+```bash
+curl -X POST http://localhost:7061/v1/planning/tot \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Design a caching strategy for the recommendation engine",
+    "config": {
+      "branching_factor": 3,
+      "max_depth": 5,
+      "evaluation_strategy": "vote",
+      "timeout_seconds": 180
+    }
+  }'
+```
+
+### Agentic Workflow
+
+```bash
+curl -X POST http://localhost:7061/v1/agentic/workflows \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "code-review-pipeline",
+    "nodes": [
+      {"id": "analyze", "name": "Static Analysis", "type": "llm"},
+      {"id": "review", "name": "Code Review", "type": "llm"},
+      {"id": "report", "name": "Report Generation", "type": "llm"}
+    ],
+    "edges": [
+      {"from": "analyze", "to": "review"},
+      {"from": "review", "to": "report"}
+    ],
+    "entry_point": "analyze",
+    "end_nodes": ["report"],
+    "input": {
+      "query": "Review this Go function for best practices"
+    }
+  }'
+```
+
+## RAG and Search Examples
+
+### Document Ingestion
+
+```bash
+# Ingest a single document
+curl -X POST http://localhost:7061/v1/rag/documents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "The circuit breaker pattern prevents cascading failures...",
+    "metadata": {
+      "source": "architecture.md",
+      "type": "documentation",
+      "tags": ["patterns", "resilience"]
+    },
+    "chunk_strategy": "semantic"
+  }'
+```
+
+### RAG Search
+
+```bash
+# Basic search
+curl -X POST http://localhost:7061/v1/rag/search \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How does the circuit breaker work?",
+    "limit": 10,
+    "threshold": 0.7
+  }'
+
+# Hybrid search
+curl -X POST http://localhost:7061/v1/rag/search/hybrid \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "circuit breaker pattern implementation",
+    "dense_weight": 0.7,
+    "sparse_weight": 0.3,
+    "limit": 10
+  }'
+```
+
+### Semantic Code Search
+
+```bash
+curl -X POST http://localhost:7061/v1/search/semantic \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "error handling middleware",
+    "language": "go",
+    "file_pattern": "*.go",
+    "top_k": 10,
+    "min_score": 0.7
+  }'
+```
+
+### Embeddings
+
+```bash
+# Generate embeddings
+curl -X POST http://localhost:7061/v1/embeddings/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": ["How does authentication work?", "What is JWT?"],
+    "model": "bge-m3"
+  }'
+```
+
+## LLMOps and Benchmark Examples
+
+### Create A/B Experiment
+
+```bash
+curl -X POST http://localhost:7061/v1/llmops/experiments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "prompt-v2-test",
+    "description": "Compare v1 vs v2 prompt templates",
+    "variants": [
+      {"name": "control", "model": "claude-3-opus", "prompt_template": "Original prompt..."},
+      {"name": "optimized", "model": "claude-3-opus", "prompt_template": "Improved prompt..."}
+    ],
+    "traffic_split": {"control": 0.5, "optimized": 0.5},
+    "metrics": ["quality_score", "latency"],
+    "target_metric": "quality_score"
+  }'
+
+# List experiments
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/llmops/experiments
+```
+
+### Run Benchmark
+
+```bash
+# Start a HumanEval benchmark
+curl -X POST http://localhost:7061/v1/benchmark/run \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "claude-humaneval-q2",
+    "benchmark_type": "humaneval",
+    "provider_name": "claude",
+    "model_name": "claude-3-opus"
+  }'
+
+# Check results
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/benchmark/results
+```
+
+### Discovery and Scoring
+
+```bash
+# Get discovered models
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/discovery/models
+
+# Get top-scored models
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:7061/v1/scoring/top?limit=5"
+
+# Get specific model score
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7061/v1/scoring/model/claude-3-opus
+```
+
+### QA Session
+
+```bash
+# Start a web QA session
+curl -X POST http://localhost:7061/v1/qa/sessions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_root": "/home/user/myapp",
+    "platforms": ["web"],
+    "web_url": "http://localhost:3000",
+    "output_dir": "/tmp/qa-run"
+  }'
+
+# List findings
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:7061/v1/qa/findings?status=open"
+```
+
+### Background Tasks
+
+```bash
+# Create a task
+curl -X POST http://localhost:7061/v1/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "command",
+    "command": "make build",
+    "working_dir": "/home/user/project",
+    "priority": "high"
+  }'
+
+# Check task status
+curl http://localhost:7061/v1/tasks/task-xyz789/status
+
+# Analyze for stuck detection
+curl http://localhost:7061/v1/tasks/task-xyz789/analyze
 ```
 
 ## Integration Examples

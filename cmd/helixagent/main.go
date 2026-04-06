@@ -2569,9 +2569,8 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"},
 		},
 		"postgres": {
-			Type:        "local",
-			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-postgres"},
-			Environment: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:5432/helixagent_db"},
+			Type:    "local",
+			Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://helixagent:helixagent123@localhost:15432/helixagent_db"},
 		},
 		"puppeteer": {
 			Type:    "local",
@@ -2861,11 +2860,9 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-llamaindex"},
 			Environment: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"},
 		},
-		"huggingface": {
-			Type:        "local",
-			Command:     []string{"npx", "-y", "mcp-server-huggingface"},
-			Environment: map[string]string{"HUGGINGFACE_API_KEY": "{env:HUGGINGFACE_API_KEY}"},
-		},
+		// NOTE: No official huggingface MCP server npm package exists.
+		// "mcp-server-huggingface" is NOT on npm. HuggingFace access is via
+		// the huggingface provider or @huggingface/mcp-client (client, not server).
 		"replicate": {
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-replicate"},
@@ -2934,7 +2931,7 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 		"sentry":       "SENTRY_AUTH_TOKEN",
 		"linear":       "LINEAR_API_KEY",
 		"notion":       "NOTION_API_KEY",
-		"huggingface":  "HUGGINGFACE_API_KEY",
+		// NOTE: huggingface MCP removed — npm package "mcp-server-huggingface" does not exist
 		"replicate":    "REPLICATE_API_TOKEN",
 		"exa":          "EXA_API_KEY",
 	}
@@ -3801,7 +3798,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		// AI/ML Integration MCPs - LOCAL
 		"langchain":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-langchain"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
 		"llamaindex":       {Type: "local", Command: []string{"npx", "-y", "mcp-server-llamaindex"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
-		"huggingface":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-huggingface"}, Env: map[string]string{"HUGGINGFACE_API_KEY": "{env:HUGGINGFACE_API_KEY}"}, Enabled: true},
+		// NOTE: huggingface MCP removed — npm package does not exist
 		"replicate":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-replicate"}, Env: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"}, Enabled: true},
 		"stable-diffusion": {Type: "local", Command: []string{"npx", "-y", "mcp-server-stable-diffusion"}, Env: map[string]string{"STABILITY_API_KEY": "{env:STABILITY_API_KEY}"}, Enabled: true},
 	}

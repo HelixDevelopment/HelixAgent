@@ -2185,7 +2185,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		if val, ok := envVarsAll["HELIX_LLM_ENDPOINT"]; ok && val != "" {
 			helixLLMEndpoint = val
 		} else {
-			helixLLMEndpoint = "http://localhost:8443"
+			helixLLMEndpoint = "https://localhost:8443"
 		}
 	}
 	helixLLMAPIKey := os.Getenv("HELIX_LLM_API_KEY")

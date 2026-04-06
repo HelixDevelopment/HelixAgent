@@ -1,4 +1,9 @@
 .env
+
+.opencode
+.opencode/*
+.opencode/*.*
+
 GIT_PUSH_SUMMARY.txt
 
 # Built binaries

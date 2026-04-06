@@ -82,7 +82,7 @@ else
 fi
 
 # Test HelixLLM HTTPS health
-HEALTH=$(curl -sk --max-time 5 https://localhost:8443/internal/health 2>/dev/null)
+HEALTH=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 5 https://localhost:8443/internal/health 2>/dev/null)
 if echo "$HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='healthy'" 2>/dev/null; then
     pass "HelixLLM is healthy at https://localhost:8443"
 else
@@ -91,7 +91,7 @@ else
 fi
 
 # Test HelixLLM models endpoint
-MODELS=$(curl -sk --max-time 5 https://localhost:8443/v1/models 2>/dev/null)
+MODELS=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 5 https://localhost:8443/v1/models 2>/dev/null)
 if echo "$MODELS" | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d.get('data',[]))>0" 2>/dev/null; then
     pass "HelixLLM has models available"
 else
@@ -99,7 +99,7 @@ else
 fi
 
 # Test HelixLLM chat completion (NOT a false positive — validate actual content)
-CHAT_RESPONSE=$(curl -sk --max-time 15 -X POST https://localhost:8443/v1/chat/completions \
+CHAT_RESPONSE=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 15 -X POST https://localhost:8443/v1/chat/completions \
     -H "Content-Type: application/json" \
     -d '{"model":"helixllm-default","messages":[{"role":"user","content":"What is 2+2? Reply with just the number."}],"max_tokens":10}' 2>/dev/null)
 CHAT_CONTENT=$(echo "$CHAT_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])" 2>/dev/null)
@@ -276,7 +276,7 @@ for test_case in "${TESTS[@]}"; do
     PROMPT="${test_case%%|*}"
     EXPECTED="${test_case##*|}"
 
-    RESPONSE=$(curl -sk --max-time 15 -X POST https://localhost:8443/v1/chat/completions \
+    RESPONSE=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 15 -X POST https://localhost:8443/v1/chat/completions \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"helixllm-default\",\"messages\":[{\"role\":\"user\",\"content\":\"$PROMPT\"}],\"max_tokens\":20}" 2>/dev/null)
 

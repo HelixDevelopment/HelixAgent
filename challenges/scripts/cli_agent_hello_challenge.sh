@@ -62,7 +62,7 @@ echo -e "${BLUE}============================================================${NC
 #===============================================================================
 section "Prerequisite: HelixLLM Connectivity"
 
-HEALTH=$(curl -sk --max-time 5 https://localhost:8443/internal/health 2>/dev/null)
+HEALTH=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 5 https://localhost:8443/internal/health 2>/dev/null)
 if echo "$HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='healthy'" 2>/dev/null; then
     pass "HelixLLM healthy at https://localhost:8443"
 else
@@ -117,7 +117,7 @@ for key in ['provider', 'providers', 'additionalProviders', 'additional_provider
     fi
 
     # Send hello request using the agent's configured HelixLLM endpoint
-    RESPONSE=$(curl -sk --max-time 15 -X POST "${AGENT_URL}/chat/completions" \
+    RESPONSE=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 15 -X POST "${AGENT_URL}/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{"model":"helixllm-default","messages":[{"role":"user","content":"Hello! Please reply with a friendly greeting in one sentence."}],"max_tokens":30}' 2>/dev/null)
 

@@ -2688,7 +2688,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// =============================================================================
 		"docker": {
 			Type:    "local",
-			Command: []string{"npx", "-y", "@modelcontextprotocol/server-docker"},
+			Command: []string{"npx", "-y", "mcp-server-docker"},
 		},
 		"kubernetes": {
 			Type:        "local",
@@ -2873,6 +2873,27 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-stable-diffusion"},
 			Environment: map[string]string{"STABILITY_API_KEY": "{env:STABILITY_API_KEY}"},
 		},
+
+		// =============================================================================
+		// Utility MCPs - LOCAL (no API keys required, all verified working)
+		// =============================================================================
+		"shell": {
+			Type:    "local",
+			Command: []string{"npx", "-y", "mcp-shell-server"},
+		},
+		"markdown": {
+			Type:    "local",
+			Command: []string{"npx", "-y", "mcp-server-markdown"},
+		},
+		"tavily": {
+			Type:        "local",
+			Command:     []string{"npx", "-y", "tavily-mcp"},
+			Environment: map[string]string{"TAVILY_API_KEY": "{env:TAVILY_API_KEY}"},
+		},
+		"commands": {
+			Type:    "local",
+			Command: []string{"npx", "-y", "mcp-server-commands"},
+		},
 	}
 
 	// If not filtering, return all MCPs
@@ -2912,6 +2933,13 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 		"sequential-thinking": true,
 		"everything":          true,
 		"postgres":            true,
+		// Additional verified MCPs — all tested with MCP protocol handshake + valid schemas
+		"docker":   true, // mcp-server-docker: 1 tool, valid schemas
+		"notion":   true, // @notionhq/notion-mcp-server: 22 tools, valid schemas
+		"shell":    true, // mcp-shell-server: 1 tool, valid schemas
+		"markdown": true, // mcp-server-markdown: 6 tools, valid schemas
+		"tavily":   true, // tavily-mcp: 5 tools, valid schemas (search/extract/crawl/map/research)
+		"commands": true, // mcp-server-commands: 1 tool, valid schemas (run_process)
 	}
 
 	// MCPs that require specific env vars — only include if the key is set

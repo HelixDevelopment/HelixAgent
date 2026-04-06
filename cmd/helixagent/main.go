@@ -2604,11 +2604,11 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-github"},
 			Environment: map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"},
 		},
-		"gitlab": {
-			Type:        "local",
-			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-gitlab"},
-			Environment: map[string]string{"GITLAB_PERSONAL_ACCESS_TOKEN": "{env:GITLAB_TOKEN}"},
-		},
+		// NOTE: @modelcontextprotocol/server-gitlab has broken tool schemas upstream
+		// (all inputSchema are empty: {"$schema":"http://json-schema.org/draft-07/schema#"})
+		// in ALL versions (0.5.1, 0.6.2, 2025.4.25). OpenCode rejects these with
+		// "Failed to get tools". Disabled until upstream fixes the schemas.
+		// GitLab API access is available via GitLab token in environment.
 		"sentry": {
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
@@ -2917,7 +2917,7 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 	// MCPs that require specific env vars — only include if the key is set
 	envDependent := map[string]string{
 		"github":       "GITHUB_TOKEN",
-		"gitlab":       "GITLAB_TOKEN",
+		// "gitlab" removed — upstream @modelcontextprotocol/server-gitlab has broken tool schemas
 		"brave-search": "BRAVE_API_KEY",
 		"slack":        "SLACK_BOT_TOKEN",
 		"sentry":       "SENTRY_AUTH_TOKEN",

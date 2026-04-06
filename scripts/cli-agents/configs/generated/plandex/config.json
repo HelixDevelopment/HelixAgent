@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "agent": "plandex",
-  "generated_at": "2026-02-27T19:20:55+03:00",
+  "generated_at": "2026-04-06T02:25:37+03:00",
   "helix_agent": {
     "enabled": true,
     "url": "http://localhost:7061",

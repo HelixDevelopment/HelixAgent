@@ -1,11 +1,11 @@
 #!/bin/bash
 # HelixAgent Challenge: CLI Agent "Hello" Request via HelixLLM
-# Sends a "hello" chat completion request to HelixLLM (https://localhost:8443)
+# Sends a "hello" chat completion request to HelixLLM (https://thinker.local:8443)
 # using each of the 48 CLI agent configs, validates response is real (not error,
 # not empty, not false positive).
 #
 # Prerequisites:
-#   - HelixLLM running at https://localhost:8443
+#   - HelixLLM running at https://thinker.local:8443
 #   - SSL_CERT_FILE set to CA bundle trusting HelixLLM's self-signed cert
 #   - helixagent binary built at bin/helixagent
 
@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 BINARY="$PROJECT_ROOT/bin/helixagent"
 TMP_DIR="/tmp/helixagent-hello-challenge-$$"
-HELIXLLM_URL="https://localhost:8443/v1/chat/completions"
+HELIXLLM_URL="https://thinker.local:8443/v1/chat/completions"
 
 # Ensure TLS works
 export SSL_CERT_FILE="${SSL_CERT_FILE:-/home/milosvasic/.helixagent/ca-bundle.pem}"
@@ -62,9 +62,9 @@ echo -e "${BLUE}============================================================${NC
 #===============================================================================
 section "Prerequisite: HelixLLM Connectivity"
 
-HEALTH=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 5 https://localhost:8443/internal/health 2>/dev/null)
+HEALTH=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 5 https://thinker.local:8443/internal/health 2>/dev/null)
 if echo "$HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='healthy'" 2>/dev/null; then
-    pass "HelixLLM healthy at https://localhost:8443"
+    pass "HelixLLM healthy at https://thinker.local:8443"
 else
     fail "HelixLLM not healthy — cannot proceed"
     echo -e "${RED}Aborting: HelixLLM must be running${NC}"
@@ -72,7 +72,7 @@ else
 fi
 
 # Verify TLS cert is trusted (not just -k skip)
-CERT_TEST=$(SSL_CERT_FILE="$SSL_CERT_FILE" curl -s --max-time 5 https://localhost:8443/internal/health 2>&1)
+CERT_TEST=$(SSL_CERT_FILE="$SSL_CERT_FILE" curl -s --max-time 5 https://thinker.local:8443/internal/health 2>&1)
 if echo "$CERT_TEST" | grep -q "healthy"; then
     pass "TLS cert trusted via SSL_CERT_FILE"
 else
@@ -119,7 +119,7 @@ for key in ['provider', 'providers', 'additionalProviders', 'additional_provider
     # Send hello request using the agent's configured HelixLLM endpoint
     RESPONSE=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 15 -X POST "${AGENT_URL}/chat/completions" \
         -H "Content-Type: application/json" \
-        -d '{"model":"helixllm-default","messages":[{"role":"user","content":"Hello! Please reply with a friendly greeting in one sentence."}],"max_tokens":30}' 2>/dev/null)
+        -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"Hello! Please reply with a friendly greeting in one sentence."}],"max_tokens":30}' 2>/dev/null)
 
     # Validate response — check for real content, not error, not empty
     VALIDATION=$(echo "$RESPONSE" | python3 -c "

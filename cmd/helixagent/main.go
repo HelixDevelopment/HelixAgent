@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -4229,17 +4230,19 @@ func handleGenerateAgentConfig(appCfg *AppConfig) error {
 	// Load environment variables for HelixLLM configuration
 	agentEnvVars := loadEnvVars()
 
-	// Get HelixLLM endpoint from env
+	// Get HelixLLM endpoint from env — parse host and port from URL
 	helixLLMHost := "localhost"
 	helixLLMPort := 8443
 	helixLLMAPIKey := ""
 	if val, ok := agentEnvVars["HELIX_LLM_ENDPOINT"]; ok && val != "" {
-		// Parse host from endpoint URL (e.g., "http://localhost:8443")
-		helixLLMHost = "localhost" // default
-		helixLLMPort = 8443       // default
-	}
-	if val := os.Getenv("HELIX_LLM_ENDPOINT"); val != "" {
-		_ = val // already set defaults
+		if u, err := url.Parse(val); err == nil {
+			helixLLMHost = u.Hostname()
+			if p := u.Port(); p != "" {
+				if pp, err := strconv.Atoi(p); err == nil {
+					helixLLMPort = pp
+				}
+			}
+		}
 	}
 	if val, ok := agentEnvVars["HELIX_LLM_API_KEY"]; ok && val != "" {
 		helixLLMAPIKey = val

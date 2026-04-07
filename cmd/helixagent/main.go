@@ -2324,14 +2324,14 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				},
 				Models: map[string]OpenCodeModelDefNew{
 					"model.gguf": {
-						Name: "HelixLLM Local (llama.cpp)",
+						Name: "HelixLLM",
 						Limit: &OpenCodeModelLimit{
 							Context: 8192,
 							Output:  4096,
 						},
 					},
 					"deepseek-chat": {
-						Name: "HelixLLM with DeepSeek Chat (fallback)",
+						Name: "HelixLLM (DeepSeek fallback)",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,

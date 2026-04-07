@@ -1381,6 +1381,12 @@ func run(appCfg *AppConfig) error {
 		"redis_enabled":      cfg.Services.Redis.Enabled,
 	}).Debug("Service configuration loaded")
 
+	// Auto-configure HelixLLM TLS cert trust.
+	// HelixLLM uses self-signed TLS certs with SANs. CLI agents (OpenCode etc.)
+	// and Go/Node.js HTTP clients need SSL_CERT_FILE / NODE_EXTRA_CA_CERTS
+	// to trust the cert. This creates a combined CA bundle automatically.
+	configureHelixLLMTLS(logger)
+
 	// Initialize the centralized container adapter (Containers module).
 	// Uses NewAdapterFromConfig to auto-load Containers/.env for
 	// remote distribution, bootstrap SSH key auth, and configure
@@ -1874,6 +1880,91 @@ func main() {
 }
 
 // generateSecureAPIKey generates a cryptographically secure API key
+// configureHelixLLMTLS auto-configures TLS cert trust for HelixLLM's self-signed cert.
+// Creates a combined CA bundle (system CAs + HelixLLM cert) and sets SSL_CERT_FILE
+// and NODE_EXTRA_CA_CERTS env vars so Go and Node.js HTTP clients trust the cert.
+// Also writes ~/.config/environment.d/helixllm-tls.conf for systemd user sessions.
+func configureHelixLLMTLS(logger *logrus.Logger) {
+	certPath := filepath.Join("HelixLLM", "certs", "cert.pem")
+	if _, err := os.Stat(certPath); os.IsNotExist(err) {
+		logger.Debug("HelixLLM cert not found, skipping TLS auto-configuration")
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.WithError(err).Warn("Failed to get home directory for TLS config")
+		return
+	}
+
+	helixDir := filepath.Join(homeDir, ".helixagent")
+	if err := os.MkdirAll(helixDir, 0755); err != nil {
+		logger.WithError(err).Warn("Failed to create ~/.helixagent directory")
+		return
+	}
+
+	bundlePath := filepath.Join(helixDir, "ca-bundle.pem")
+
+	// Find system CA bundle
+	systemCAPaths := []string{
+		"/var/lib/ssl/cert.pem",
+		"/etc/ssl/certs/ca-certificates.crt",
+		"/etc/pki/tls/certs/ca-bundle.crt",
+		"/etc/ssl/cert.pem",
+	}
+	var systemCAPath string
+	for _, p := range systemCAPaths {
+		if _, err := os.Stat(p); err == nil {
+			systemCAPath = p
+			break
+		}
+	}
+
+	if systemCAPath == "" {
+		logger.Warn("No system CA bundle found, skipping TLS auto-configuration")
+		return
+	}
+
+	// Read both certs
+	systemCA, err := os.ReadFile(systemCAPath)
+	if err != nil {
+		logger.WithError(err).Warn("Failed to read system CA bundle")
+		return
+	}
+	helixCert, err := os.ReadFile(certPath)
+	if err != nil {
+		logger.WithError(err).Warn("Failed to read HelixLLM cert")
+		return
+	}
+
+	// Write combined bundle
+	combined := append(systemCA, '\n')
+	combined = append(combined, helixCert...)
+	if err := os.WriteFile(bundlePath, combined, 0644); err != nil {
+		logger.WithError(err).Warn("Failed to write combined CA bundle")
+		return
+	}
+
+	absCertPath, _ := filepath.Abs(certPath)
+
+	// Set env vars for current process
+	os.Setenv("SSL_CERT_FILE", bundlePath)
+	os.Setenv("NODE_EXTRA_CA_CERTS", absCertPath)
+
+	// Write systemd environment.d config for user sessions
+	envDir := filepath.Join(homeDir, ".config", "environment.d")
+	os.MkdirAll(envDir, 0755)
+	envConf := fmt.Sprintf("SSL_CERT_FILE=%s\nNODE_EXTRA_CA_CERTS=%s\n", bundlePath, absCertPath)
+	os.WriteFile(filepath.Join(envDir, "helixllm-tls.conf"), []byte(envConf), 0644)
+
+	logger.WithFields(logrus.Fields{
+		"bundle":             bundlePath,
+		"cert":               absCertPath,
+		"ssl_cert_file":      bundlePath,
+		"node_extra_ca_certs": absCertPath,
+	}).Info("HelixLLM TLS cert trust auto-configured")
+}
+
 func generateSecureAPIKey() (string, error) {
 	bytes := make([]byte, 32) // 256 bits
 	if _, err := rand.Read(bytes); err != nil {

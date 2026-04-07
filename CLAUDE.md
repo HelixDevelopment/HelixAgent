@@ -325,6 +325,11 @@ BigData components configured via `BIGDATA_ENABLE_*` env vars. Missing deps (Neo
 
 **SpecKit Configuration**: Auto-activation threshold configured via `WorkGranularity` detection. Triggered for `GranularityBigCreation`, `GranularityWholeFunctionality`, `GranularityRefactoring`. Phase caching enabled by default, stored in `.speckit/cache/`.
 
+**HelixLLM TLS Configuration**: HelixLLM requires HTTPS (TLS 1.3) with self-signed certificates. The cert MUST have Subject Alternative Names (SANs) — legacy CN-only certs are rejected by Go 1.15+. Cert location: `HelixLLM/certs/cert.pem` (regenerated with SANs: `DNS:localhost,IP:127.0.0.1,IP:::1`). For CLI agents and tools to trust the cert, these env vars MUST be set system-wide:
+- `SSL_CERT_FILE=~/.helixagent/ca-bundle.pem` (combined system CAs + HelixLLM cert, for Go binaries)
+- `NODE_EXTRA_CA_CERTS=<project>/HelixLLM/certs/cert.pem` (for Node.js/Bun runtimes)
+Set via `~/.config/environment.d/helixllm-tls.conf` (systemd sessions), `~/.profile` (login shells), `~/.bashrc` (interactive shells). The combined CA bundle is created by: `cat /var/lib/ssl/cert.pem HelixLLM/certs/cert.pem > ~/.helixagent/ca-bundle.pem`. HelixAgent boot MUST auto-configure these env vars and regenerate the CA bundle if the cert changes. **NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests** — all TLS verification must use proper cert trust.
+
 ## Adding a New LLM Provider
 
 1. Create `internal/llm/providers/<name>/<name>.go` implementing `LLMProvider`

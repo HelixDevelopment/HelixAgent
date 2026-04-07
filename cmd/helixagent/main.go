@@ -2323,8 +2323,8 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 					APIKey:  helixLLMAPIKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{
-					"helixllm-default": {
-						Name: "HelixLLM Default",
+					"deepseek-chat": {
+						Name: "DeepSeek Chat (via HelixLLM)",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,

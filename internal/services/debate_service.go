@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	stdctx "context"
 	"fmt"
 	"math"
 	"os"
@@ -49,8 +50,9 @@ type DebateService struct {
 	logRepository    DebateLogRepository                    // Optional: for persistent logging
 	teamConfig       *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
 	commLogger       *DebateCommLogger                      // Retrofit-like communication logger
-	mu               sync.Mutex                             // Protects intentCache
+	mu               sync.Mutex                             // Protects intentCache and codeIntentCache
 	intentCache      map[string]*IntentClassificationResult // Cache for intent classification
+	codeIntentCache  map[string]bool                        // Cache for code generation intent results
 
 	// NEW: Integrated AI Debate Features (100% Implementation)
 	testGenerator       *testing.LLMTestCaseGenerator            // Test-Driven Debate: Adversarial test generation
@@ -691,6 +693,14 @@ func (ds *DebateService) ConductDebate(
 	}
 
 	// NEW: Select specialized role based on task intent
+	// Inject configurable role keywords into metadata so selectSpecializedRole
+	// picks them up without requiring a signature change.
+	if len(config.RoleKeywords) > 0 {
+		if config.Metadata == nil {
+			config.Metadata = make(map[string]any)
+		}
+		config.Metadata["role_keywords"] = config.RoleKeywords
+	}
 	specializedRole := ds.selectSpecializedRole(ctx, config.Topic, config.Metadata)
 	if specializedRole != "" {
 		ds.logger.Infof("[Specialized Role] Selected role: %s for task", specializedRole)
@@ -3235,31 +3245,13 @@ func (ds *DebateService) StreamDebateWithMultiPassValidation(
 // - Specialized Role Routing (Generator, Refactorer, PerformanceAnalyzer, etc.)
 // ============================================================================
 
-// detectCodeGenerationIntent detects if the debate topic involves code generation
+// detectCodeGenerationIntent detects if the debate topic involves code generation.
+// It delegates to the LLM-based enhancedIntentClassifier and caches results per
+// topic string so the same topic is never classified twice in one debate session.
+// On any classification error the function conservatively returns false (not code)
+// to avoid false-positive test-driven debate activation.
 func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[string]interface{}) bool {
-	topicLower := strings.ToLower(topic)
-
-	// Code generation keywords with word boundary awareness
-	codeKeywords := []string{
-		"write", "code", "implement",
-		"script", "class", "method", "algorithm", "refactor",
-		"debug", "fix bug", "optimize", "create", "develop", "build",
-		"python", "javascript", "go", "java", "rust", "c++",
-	}
-
-	// Check for keywords with special handling for "function" to avoid "functional"
-	for _, keyword := range codeKeywords {
-		if strings.Contains(topicLower, keyword) {
-			return true
-		}
-	}
-
-	// Special check for "function" to avoid matching "functional"
-	if strings.Contains(topicLower, "function ") || strings.Contains(topicLower, "function(") {
-		return true
-	}
-
-	// Check context for language hints
+	// Fast path: explicit context hints override classification
 	if context != nil {
 		if lang, ok := context["language"].(string); ok && lang != "" {
 			return true
@@ -3269,6 +3261,62 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 		}
 	}
 
+	// Check cache (protected by ds.mu which also guards intentCache)
+	ds.mu.Lock()
+	if ds.codeIntentCache == nil {
+		ds.codeIntentCache = make(map[string]bool)
+	}
+	if cached, ok := ds.codeIntentCache[topic]; ok {
+		ds.mu.Unlock()
+		return cached
+	}
+	ds.mu.Unlock()
+
+	// Use LLM-based enhanced intent classifier when available
+	if ds.enhancedIntentClassifier != nil {
+		ctx, cancel := stdctx.WithTimeout(stdctx.Background(), 15*time.Second)
+		defer cancel()
+
+		// Build codebase context from metadata
+		codebaseCtx := make(map[string]interface{})
+		if context != nil {
+			for k, v := range context {
+				codebaseCtx[k] = v
+			}
+		}
+
+		result, err := ds.enhancedIntentClassifier.ClassifyEnhancedIntent(
+			ctx, topic, "", codebaseCtx,
+		)
+		if err != nil {
+			ds.logger.WithError(err).Warn(
+				"[Code Intent] LLM classification failed, assuming non-code topic",
+			)
+			ds.mu.Lock()
+			ds.codeIntentCache[topic] = false
+			ds.mu.Unlock()
+			return false
+		}
+
+		// Code-related action types indicate a code generation debate
+		isCode := result.ActionType == ActionCreation ||
+			result.ActionType == ActionDebugging ||
+			result.ActionType == ActionFixing ||
+			result.ActionType == ActionRefactoring
+
+		ds.logger.WithFields(logrus.Fields{
+			"topic":       topic,
+			"action_type": result.ActionType,
+			"is_code":     isCode,
+		}).Debug("[Code Intent] LLM classification result")
+
+		ds.mu.Lock()
+		ds.codeIntentCache[topic] = isCode
+		ds.mu.Unlock()
+		return isCode
+	}
+
+	// No classifier available — conservatively assume not code
 	return false
 }
 
@@ -3637,14 +3685,12 @@ func (ds *DebateService) enrichDebateContext(
 	return enriched, nil
 }
 
-// selectSpecializedRole determines which specialized role should handle the task
-func (ds *DebateService) selectSpecializedRole(ctx context.Context, topic string, context map[string]interface{}) string {
-	topicLower := strings.ToLower(topic)
-	words := strings.Fields(topicLower)
-
-	// Map keywords to specialized roles
-	// Keywords starting with "~" require whole-word matching to avoid substring false positives
-	roleKeywords := map[string][]string{
+// DefaultRoleKeywords returns the built-in keyword-to-role mapping used by
+// selectSpecializedRole when no custom mapping is supplied via DebateConfig.
+// Keywords prefixed with "~" require whole-word matching to avoid substring
+// false positives (e.g. "~code" won't match "codebase").
+func DefaultRoleKeywords() map[string][]string {
+	return map[string][]string{
 		"generator":            {"write", "create", "implement", "build", "develop", "~code"},
 		"refactorer":           {"refactor", "improve", "restructure", "clean", "optimize code"},
 		"performance_analyzer": {"performance", "optimize", "speed up", "faster", "efficiency", "benchmark"},
@@ -3654,6 +3700,25 @@ func (ds *DebateService) selectSpecializedRole(ctx context.Context, topic string
 		"reviewer":             {"review", "analyze", "check", "validate", "assess"},
 		"tester":               {"test", "testing", "unit test", "integration test", "coverage"},
 		"documenter":           {"document", "documentation", "doc", "readme", "comment"},
+	}
+}
+
+// selectSpecializedRole determines which specialized role should handle the task.
+// When the context map contains a "role_keywords" entry of type map[string][]string
+// it is used instead of the built-in defaults, allowing per-debate customisation.
+func (ds *DebateService) selectSpecializedRole(ctx context.Context, topic string, context map[string]interface{}) string {
+	topicLower := strings.ToLower(topic)
+	words := strings.Fields(topicLower)
+
+	// Use caller-supplied mapping when provided, otherwise fall back to defaults
+	var roleKeywords map[string][]string
+	if context != nil {
+		if rk, ok := context["role_keywords"].(map[string][]string); ok && len(rk) > 0 {
+			roleKeywords = rk
+		}
+	}
+	if len(roleKeywords) == 0 {
+		roleKeywords = DefaultRoleKeywords()
 	}
 
 	// Score each role

@@ -86,6 +86,11 @@ type DebateConfig struct {
 	Strategy     string              `json:"strategy"`
 	EnableCognee bool                `json:"enable_cognee"`
 	Metadata     map[string]any      `json:"metadata,omitempty"`
+	// RoleKeywords allows overriding the default keyword-to-role mapping for
+	// specialized role selection. Keys are role names (e.g. "generator",
+	// "debugger"), values are keyword slices. Keywords prefixed with "~"
+	// require whole-word matching. When nil, built-in defaults are used.
+	RoleKeywords map[string][]string `json:"role_keywords,omitempty"`
 }
 
 // ParticipantConfig represents a participant configuration

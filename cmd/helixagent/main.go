@@ -2362,7 +2362,9 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		},
 		MCP:          getMCPServersWithHelixLLM(baseURL, helixLLMEndpoint, *workingMCPsOnly),
 		Plugin:       []string{"opencode-agent-skills@0.6.5"},
-		Instructions: []string{"CLAUDE.md", "opencode.md"},
+		// NOTE: Instructions removed — CLAUDE.md (~15K tokens) exceeds local model's
+		// 16K context when combined with conversation history and tools.
+		// OpenCode reads CLAUDE.md automatically from project root when present.
 		TUI:          &OpenCodeTUIDef{Theme: "opencode"},
 	}
 

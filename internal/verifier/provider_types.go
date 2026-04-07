@@ -498,6 +498,17 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 	},
 
 	// Tier 6: Self-hosted
+	"helixllm": {
+		Type:        "helixllm",
+		DisplayName: "HelixLLM (Local LLM)",
+		AuthType:    AuthTypeLocal,
+		Tier:        6,
+		Priority:    25,
+		EnvVars:     []string{"HELIX_LLM_ENDPOINT", "USE_HELIX_LLM"},
+		BaseURL:     "https://localhost:8443",
+		Models:      []string{"model.gguf"},
+		Free:        true,
+	},
 	"ollama": {
 		Type:        "ollama",
 		DisplayName: "Ollama (Local)",

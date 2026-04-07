@@ -4,6 +4,7 @@ package verifier
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -420,6 +421,34 @@ func (sv *StartupVerifier) discoverOAuthProviders(ctx context.Context) []*Provid
 		}
 	}
 
+	// HelixLLM discovery (self-hosted via llama.cpp) — in main discoverProviders
+	if os.Getenv("USE_HELIX_LLM") == "true" {
+		helixLLMURL := os.Getenv("HELIX_LLM_ENDPOINT")
+		if helixLLMURL == "" {
+			helixLLMURL = "https://localhost:8443"
+		}
+
+		helixLLMModels := sv.checkHelixLLMHealth(helixLLMURL)
+		if len(helixLLMModels) > 0 {
+			providers = append(providers, &ProviderDiscoveryResult{
+				ID:          "helixllm",
+				Type:        "helixllm",
+				AuthType:    AuthTypeLocal,
+				Discovered:  true,
+				Source:      "auto",
+				Credentials: "Local",
+				BaseURL:     helixLLMURL,
+				Models:      helixLLMModels,
+			})
+			sv.log.WithFields(logrus.Fields{
+				"url":    helixLLMURL,
+				"models": helixLLMModels,
+			}).Info("HelixLLM discovered with available models")
+		} else {
+			sv.log.WithField("url", helixLLMURL).Warn("HelixLLM enabled but not reachable or no models available")
+		}
+	}
+
 	return providers
 }
 
@@ -529,6 +558,57 @@ func (sv *StartupVerifier) checkOllamaHealth(baseURL string) []string {
 	for _, m := range tagsResp.Models {
 		if m.Name != "" {
 			models = append(models, m.Name)
+		}
+	}
+
+	return models
+}
+
+// checkHelixLLMHealth checks if HelixLLM is running and returns available models
+func (sv *StartupVerifier) checkHelixLLMHealth(baseURL string) []string {
+	modelsURL := strings.TrimSuffix(baseURL, "/") + "/v1/models"
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // self-signed cert
+			},
+		},
+	}
+
+	resp, err := client.Get(modelsURL)
+	if err != nil {
+		sv.log.WithError(err).Warn("Failed to connect to HelixLLM")
+		return nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		sv.log.WithField("status", resp.StatusCode).Debug("HelixLLM returned non-OK status")
+		return nil
+	}
+
+	var modelsResp struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
+		sv.log.WithError(err).Debug("Failed to decode HelixLLM models response")
+		return []string{"model.gguf"}
+	}
+
+	if len(modelsResp.Data) == 0 {
+		sv.log.Debug("HelixLLM running but no models listed")
+		return []string{"model.gguf"}
+	}
+
+	models := make([]string, 0, len(modelsResp.Data))
+	for _, m := range modelsResp.Data {
+		if m.ID != "" {
+			models = append(models, m.ID)
 		}
 	}
 

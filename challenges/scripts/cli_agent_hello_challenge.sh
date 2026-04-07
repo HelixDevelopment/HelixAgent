@@ -119,7 +119,7 @@ for key in ['provider', 'providers', 'additionalProviders', 'additional_provider
     # Send hello request using the agent's configured HelixLLM endpoint
     RESPONSE=$(curl -s --cacert "$PROJECT_ROOT/HelixLLM/certs/cert.pem" --max-time 15 -X POST "${AGENT_URL}/chat/completions" \
         -H "Content-Type: application/json" \
-        -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"Hello! Please reply with a friendly greeting in one sentence."}],"max_tokens":30}' 2>/dev/null)
+        -d '{"model":"model.gguf","messages":[{"role":"user","content":"Hello! Please reply with a friendly greeting in one sentence."}],"max_tokens":30}' 2>/dev/null)
 
     # Validate response — check for real content, not error, not empty
     VALIDATION=$(echo "$RESPONSE" | python3 -c "

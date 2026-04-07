@@ -2314,17 +2314,17 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 					},
 				},
 			},
-			// HelixLLM as OpenAI-compatible provider (direct LLM access with RAG/agents)
+			// HelixLLM under HelixAgent group (direct LLM access with RAG/agents)
 			"helixllm": {
 				NPM:  "@ai-sdk/openai-compatible",
-				Name: "HelixLLM",
+				Name: "HelixAgent",
 				Options: &OpenCodeProviderOptionsNew{
 					BaseURL: helixLLMEndpoint + "/v1",
 					APIKey:  helixLLMAPIKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{
 					"deepseek-chat": {
-						Name: "DeepSeek Chat (via HelixLLM)",
+						Name: "HelixLLM with DeepSeek Chat",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,

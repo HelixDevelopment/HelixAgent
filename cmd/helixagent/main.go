@@ -2344,19 +2344,19 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		// NOTE: Model selection is done per-agent, not at top level
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/model.gguf",
 				MaxTokens: 8192,
 			},
 			"task": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/model.gguf",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/model.gguf",
 				MaxTokens: 80,
 			},
 			"summarizer": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/model.gguf",
 				MaxTokens: 4096,
 			},
 		},

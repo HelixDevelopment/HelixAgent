@@ -27,6 +27,7 @@ const (
 type ActionType string
 
 const (
+	ActionConversation ActionType = "conversation" // Chat, greetings, questions — no code work
 	ActionCreation     ActionType = "creation"     // Building something new
 	ActionDebugging    ActionType = "debugging"    // Finding problems
 	ActionFixing       ActionType = "fixing"       // Resolving issues
@@ -186,23 +187,32 @@ Be precise and confident in your classification.`, userMessage, conversationCont
 
 // getEnhancedSystemPrompt returns the system prompt for enhanced classification
 func (eic *EnhancedIntentClassifier) getEnhancedSystemPrompt() string {
-	return `You are an expert intent classifier for software development requests. Your role is to:
+	return `You are an expert intent classifier. Your role is to determine whether a user message requires software development work or is a simple conversational interaction.
 
-1. Accurately classify the user's intent (confirmation, refusal, question, request, clarification, unclear)
-2. Determine the granularity/scale of work (single action, small creation, big creation, whole functionality, refactoring)
-3. Identify the type of action (creation, debugging, fixing, improvements, single operation, refactoring, analysis)
+CRITICAL: Many messages are simple greetings, questions, or chat — these must NOT be classified as development work.
+
+1. Classify the user's intent: conversation, question, confirmation, refusal, request, clarification, unclear
+2. Determine granularity/scale: single_action (includes all conversational/question messages), small_creation, big_creation, whole_functionality, refactoring
+3. Identify action type: conversation (chat/greeting/question), creation, debugging, fixing, improvements, single_operation, refactoring, analysis
 4. Assess whether existing code is being modified or new code is being created
 5. Estimate the scope of work
+
+IMPORTANT RULES:
+- Greetings ("hello", "hi", "hey"), simple questions ("do you see my codebase?", "what is X?", "how does Y work?"), and general chat MUST be classified as: intent="question" or intent="conversation", granularity="single_action", action_type="conversation"
+- Only classify as big_creation/whole_functionality/refactoring when the user EXPLICITLY requests building, creating, or restructuring substantial code
+- When in doubt, prefer lower granularity — single_action or small_creation
+- Short messages (under 100 characters) are almost always single_action
 
 You MUST respond with ONLY valid JSON - no markdown, no explanations, just the JSON object.
 
 Be analytical and precise. Consider:
+- Simple questions, greetings, and chat → granularity: single_action, action_type: conversation
 - Keywords like "build", "create", "implement" suggest creation
 - Keywords like "debug", "investigate", "find" suggest debugging
 - Keywords like "fix", "resolve", "correct" suggest fixing
 - Keywords like "improve", "enhance", "optimize" suggest improvements
 - Keywords like "refactor", "restructure", "migrate" suggest refactoring
-- Scale indicators like "small", "entire", "complete", "whole" affect granularity
+- Scale indicators like "entire", "complete", "whole" affect granularity
 - Context about existing code affects has_existing_code
 
 Always provide your best assessment with confidence scores.`
@@ -250,6 +260,14 @@ func (eic *EnhancedIntentClassifier) shouldUseSpecKit(result *EnhancedIntentResu
 	// 1. Whole functionality creation
 	// 2. Major refactoring
 	// 3. Big creation with high complexity
+
+	// Never trigger SpecKit for conversational/question/single-action messages
+	if result.ActionType == ActionConversation || result.ActionType == ActionAnalysis {
+		return false
+	}
+	if result.Granularity == GranularitySingleAction {
+		return false
+	}
 
 	if result.Granularity == GranularityWholeFunctionality {
 		return true

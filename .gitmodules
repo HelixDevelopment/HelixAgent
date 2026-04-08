@@ -457,3 +457,7 @@
 [submodule "HelixLLM"]
 	path = HelixLLM
 	url = git@github.com:HelixDevelopment/HelixLLM.git
+[submodule "cli_agents/HelixCode"]
+	path = cli_agents/HelixCode
+	url = git@github.com:HelixDevelopment/HelixCode.git
+	branch = main

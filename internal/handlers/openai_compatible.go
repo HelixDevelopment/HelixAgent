@@ -2263,6 +2263,17 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 }
 
 func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (*services.EnsembleResult, error) {
+	// Smart routing: Layer 1 — tools present → direct provider
+	if len(req.Tools) > 0 {
+		logrus.WithField("tool_count", len(req.Tools)).
+			Info("[Smart Routing] Tools detected — routing to direct provider")
+		result, err := h.processWithDirectProvider(ctx, req, openaiReq)
+		if err == nil {
+			return result, nil
+		}
+		logrus.WithError(err).Warn("[Smart Routing] Direct provider failed, falling back to ensemble")
+	}
+
 	// DEBUG: Log entry point
 	logrus.WithFields(logrus.Fields{
 		"agentic_ensemble_set": h.agenticEnsemble != nil,
@@ -2325,7 +2336,133 @@ func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LL
 	return ensembleService.RunEnsemble(ctx, req)
 }
 
+// processWithDirectProvider routes a request to a single provider instead of the
+// multi-round debate ensemble. Used for tool-calling requests where deterministic
+// single-provider execution is required.
+func (h *UnifiedHandler) processWithDirectProvider(
+	ctx context.Context,
+	req *models.LLMRequest,
+	openaiReq *OpenAIChatRequest,
+) (*services.EnsembleResult, error) {
+	if h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available for direct routing")
+	}
+
+	// Try HelixLLM first when configured as primary local inference
+	if os.Getenv("USE_HELIX_LLM") == "true" {
+		provider, err := h.providerRegistry.GetProvider("helixllm")
+		if err == nil {
+			response, provErr := provider.Complete(ctx, req)
+			if provErr == nil {
+				logrus.Info("[Direct Provider] HelixLLM responded successfully")
+				return &services.EnsembleResult{
+					Responses:    []*models.LLMResponse{response},
+					Selected:     response,
+					VotingMethod: "direct_provider",
+					Scores:       map[string]float64{response.ID: 1.0},
+					Metadata: map[string]any{
+						"provider":    "helixllm",
+						"route":       "direct",
+						"tools_count": len(req.Tools),
+					},
+				}, nil
+			}
+			logrus.WithError(provErr).Warn("[Direct Provider] HelixLLM failed, trying cloud providers")
+		}
+	}
+
+	// Fallback: iterate providers ordered by verification score (highest first)
+	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
+	for _, name := range providerNames {
+		if name == "helixllm" {
+			continue // already tried or disabled
+		}
+		provider, err := h.providerRegistry.GetProvider(name)
+		if err != nil {
+			continue
+		}
+		response, err := provider.Complete(ctx, req)
+		if err == nil {
+			logrus.WithField("provider", name).Info("[Direct Provider] Cloud provider responded")
+			return &services.EnsembleResult{
+				Responses:    []*models.LLMResponse{response},
+				Selected:     response,
+				VotingMethod: "direct_provider",
+				Scores:       map[string]float64{response.ID: 1.0},
+				Metadata: map[string]any{
+					"provider":    name,
+					"route":       "direct_fallback",
+					"tools_count": len(req.Tools),
+				},
+			}, nil
+		}
+		logrus.WithError(err).WithField("provider", name).
+			Debug("[Direct Provider] Provider failed, trying next")
+	}
+
+	return nil, fmt.Errorf("no direct provider available for tool-calling request")
+}
+
+// processWithDirectProviderStream routes a streaming request to a single provider
+// instead of the debate ensemble. Used for tool-calling requests.
+func (h *UnifiedHandler) processWithDirectProviderStream(
+	ctx context.Context,
+	req *models.LLMRequest,
+	openaiReq *OpenAIChatRequest,
+) (<-chan *models.LLMResponse, error) {
+	if h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available for direct streaming")
+	}
+
+	// Try HelixLLM first when configured as primary local inference
+	if os.Getenv("USE_HELIX_LLM") == "true" {
+		provider, err := h.providerRegistry.GetProvider("helixllm")
+		if err == nil {
+			streamChan, provErr := provider.CompleteStream(ctx, req)
+			if provErr == nil {
+				logrus.Info("[Direct Provider Stream] HelixLLM streaming")
+				return streamChan, nil
+			}
+			logrus.WithError(provErr).
+				Warn("[Direct Provider Stream] HelixLLM failed, trying cloud providers")
+		}
+	}
+
+	// Fallback: iterate providers ordered by verification score (highest first)
+	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
+	for _, name := range providerNames {
+		if name == "helixllm" {
+			continue
+		}
+		provider, err := h.providerRegistry.GetProvider(name)
+		if err != nil {
+			continue
+		}
+		streamChan, err := provider.CompleteStream(ctx, req)
+		if err == nil {
+			logrus.WithField("provider", name).
+				Info("[Direct Provider Stream] Cloud provider streaming")
+			return streamChan, nil
+		}
+		logrus.WithError(err).WithField("provider", name).
+			Debug("[Direct Provider Stream] Provider failed, trying next")
+	}
+
+	return nil, fmt.Errorf("no direct provider available for streaming tool-calling request")
+}
+
 func (h *UnifiedHandler) processWithEnsembleStream(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (<-chan *models.LLMResponse, error) {
+	// Smart routing: Layer 1 — tools present → direct provider stream
+	if len(req.Tools) > 0 {
+		logrus.WithField("tool_count", len(req.Tools)).
+			Info("[Smart Routing] Tools detected — routing to direct provider stream")
+		streamChan, err := h.processWithDirectProviderStream(ctx, req, openaiReq)
+		if err == nil {
+			return streamChan, nil
+		}
+		logrus.WithError(err).Warn("[Smart Routing] Direct provider stream failed, falling back to ensemble")
+	}
+
 	// Check if comprehensive debate streaming is available
 	if h.debateService != nil && h.debateService.IsComprehensiveSystemEnabled() {
 		logrus.Info("[Comprehensive Streaming] Using comprehensive multi-agent debate system")

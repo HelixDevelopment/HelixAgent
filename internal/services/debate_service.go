@@ -585,6 +585,11 @@ func (ds *DebateService) GetCommLogger() *DebateCommLogger {
 	return ds.commLogger
 }
 
+// GetEnhancedIntentClassifier returns the intent classifier for external routing decisions.
+func (ds *DebateService) GetEnhancedIntentClassifier() *EnhancedIntentClassifier {
+	return ds.enhancedIntentClassifier
+}
+
 // SetCLIAgent sets the CLI agent for communication logging color support
 func (ds *DebateService) SetCLIAgent(agent string) {
 	if ds.commLogger != nil {

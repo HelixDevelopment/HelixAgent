@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"dev.helix.agent/internal/llm"
+	"dev.helix.agent/internal/models"
 )
 
 // DebateStatus represents the current status of a debate
@@ -91,6 +92,11 @@ type DebateConfig struct {
 	// "debugger"), values are keyword slices. Keywords prefixed with "~"
 	// require whole-word matching. When nil, built-in defaults are used.
 	RoleKeywords map[string][]string `json:"role_keywords,omitempty"`
+	// Tools available for debate participants to call (OpenAI function-calling format).
+	// Populated from the original OpenAI-compatible request so that each participant
+	// LLM can emit tool_calls (e.g. read_file, write_file) back to the caller.
+	Tools      []models.Tool `json:"tools,omitempty"`
+	ToolChoice interface{}   `json:"tool_choice,omitempty"`
 }
 
 // ParticipantConfig represents a participant configuration

@@ -1215,6 +1215,12 @@ func (ds *DebateService) getParticipantResponse(
 		},
 	}
 
+	// Forward tools from the debate config so participants can emit tool_calls
+	if len(config.Tools) > 0 {
+		llmRequest.Tools = config.Tools
+		llmRequest.ToolChoice = config.ToolChoice
+	}
+
 	// Log request (Retrofit-like): [A: Claude Opus 4.5] <--- Sending request...
 	if ds.commLogger != nil {
 		ds.commLogger.LogRequest(participant.Role, participant.LLMProvider, participant.LLMModel, len(prompt), round)

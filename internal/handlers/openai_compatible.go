@@ -2212,7 +2212,7 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 		logrus.WithField("tool_count", len(req.Tools)).Debug("Passing tools to LLM request")
 	}
 
-	return &models.LLMRequest{
+	llmReq := &models.LLMRequest{
 		ID:        requestID,
 		SessionID: sessionID,
 		UserID:    userID,
@@ -2242,6 +2242,24 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 		CreatedAt:      time.Now(),
 		RequestType:    "openai_chat",
 	}
+
+	// Populate Tools field directly on LLMRequest so that debate participants
+	// and ensemble paths can forward tools without digging into ProviderSpecific.
+	if len(req.Tools) > 0 {
+		for _, t := range req.Tools {
+			llmReq.Tools = append(llmReq.Tools, models.Tool{
+				Type: t.Type,
+				Function: models.ToolFunction{
+					Name:        t.Function.Name,
+					Description: t.Function.Description,
+					Parameters:  t.Function.Parameters,
+				},
+			})
+		}
+		llmReq.ToolChoice = req.ToolChoice
+	}
+
+	return llmReq
 }
 
 func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (*services.EnsembleResult, error) {
@@ -2576,6 +2594,8 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 		EnableCognee: false,
 		Strategy:     "collaborative",
 		Participants: participants,
+		Tools:        req.Tools,
+		ToolChoice:   req.ToolChoice,
 	}
 
 	// Run the debate using the debate service (uses the configured 25 LLM team)

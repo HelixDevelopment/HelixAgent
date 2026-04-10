@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -553,28 +554,48 @@ var (
 
 // verifyServicesHealthWithConfig performs basic health checks on critical services using provided config
 func verifyServicesHealthWithConfig(services []string, logger *logrus.Logger, cfg *ContainerConfig) error {
-	var errors []string
+	type healthResult struct {
+		service string
+		err     error
+	}
+
+	results := make(chan healthResult, len(services))
+	var wg sync.WaitGroup
 
 	for _, service := range services {
-		switch service {
-		case "postgres":
-			if err := postgresHealthChecker(); err != nil {
-				errors = append(errors, fmt.Sprintf("postgres: %v", err))
+		svc := service
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var err error
+			switch svc {
+			case "postgres":
+				err = postgresHealthChecker()
+			case "redis":
+				err = redisHealthChecker()
+			case "cognee":
+				err = checkCogneeHealthWithConfig(cfg)
+			case "chromadb":
+				err = checkChromaDBHealthWithConfig(cfg)
+			default:
+				err = fmt.Errorf("unknown service")
 			}
-		case "redis":
-			if err := redisHealthChecker(); err != nil {
-				errors = append(errors, fmt.Sprintf("redis: %v", err))
-			}
-		case "cognee":
-			if err := checkCogneeHealthWithConfig(cfg); err != nil {
-				errors = append(errors, fmt.Sprintf("cognee: %v", err))
-			}
-		case "chromadb":
-			if err := checkChromaDBHealthWithConfig(cfg); err != nil {
-				errors = append(errors, fmt.Sprintf("chromadb: %v", err))
-			}
-		default:
-			errors = append(errors, fmt.Sprintf("%s: unknown service", service))
+			results <- healthResult{service: svc, err: err}
+		}()
+	}
+
+	// Close results channel when all checks complete
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var errors []string
+	for result := range results {
+		if result.err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", result.service, result.err))
+		} else {
+			logger.WithField("service", result.service).Debug("Health check passed")
 		}
 	}
 

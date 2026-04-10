@@ -138,7 +138,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	// Ensure directories exist
-	if err := os.MkdirAll(s.config.LogPath, 0755); err != nil {
+	if err := os.MkdirAll(s.config.LogPath, 0750); err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 

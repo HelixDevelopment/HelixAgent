@@ -21,6 +21,7 @@ import (
 	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/middleware"
 	"dev.helix.agent/internal/models"
+	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/modelsdev"
 	"dev.helix.agent/internal/search"
 	"dev.helix.agent/internal/search/indexer"
@@ -174,6 +175,10 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 	// Concurrency limiter to prevent thundering herd (default: 100 in-flight)
 	r.Use(middleware.ConcurrencyLimiter(100))
+
+	// Per-handler Prometheus metrics (duration histogram, request counter, error counter)
+	httpMetrics := httpmetrics.NewHTTPMetrics()
+	r.Use(httpMetrics.Middleware())
 
 	// Add pprof debugging endpoints if enabled
 	if os.Getenv("ENABLE_PPROF") == "true" {

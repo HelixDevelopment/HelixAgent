@@ -191,7 +191,7 @@ func (d *Dreamer) Start(ctx context.Context) error {
 	}
 	
 	// Ensure memory directory exists
-	if err := os.MkdirAll(d.config.MemoryDir, 0755); err != nil {
+	if err := os.MkdirAll(d.config.MemoryDir, 0750); err != nil {
 		return fmt.Errorf("failed to create memory directory: %w", err)
 	}
 	

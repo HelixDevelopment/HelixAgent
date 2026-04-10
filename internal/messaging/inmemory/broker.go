@@ -21,6 +21,7 @@ type Broker struct {
 	config      *Config
 	subscribers map[string][]subscriberEntry
 	notifyCh    map[string]chan struct{} // Per-topic notification channels
+	wg          sync.WaitGroup           // Tracks consumeLoop goroutines
 }
 
 // subscriberEntry holds a subscriber and its options.
@@ -84,21 +85,27 @@ func (b *Broker) Connect(ctx context.Context) error {
 // Close closes the broker.
 func (b *Broker) Close(ctx context.Context) error {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 
 	if !b.connected {
+		b.mu.Unlock()
 		return nil
 	}
 
 	close(b.stopCh)
 	b.connected = false
 	b.metrics.RecordDisconnection()
+	b.mu.Unlock()
 
+	// Wait for all consumeLoop goroutines to finish
+	b.wg.Wait()
+
+	b.mu.Lock()
 	// Clear all queues, topics, and notification channels
 	b.queues = make(map[string]*Queue)
 	b.topics = make(map[string]*Topic)
 	b.subscribers = make(map[string][]subscriberEntry)
 	b.notifyCh = make(map[string]chan struct{})
+	b.mu.Unlock()
 
 	return nil
 }
@@ -235,7 +242,8 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 		active: true,
 	}
 
-	// Start consuming in background
+	// Start consuming in background with WaitGroup tracking
+	b.wg.Add(1)
 	go b.consumeLoop(ctx, topic, entry, sub)
 
 	return sub, nil
@@ -243,6 +251,8 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 
 // consumeLoop continuously consumes messages from a queue.
 func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriberEntry, sub *Subscription) {
+	defer b.wg.Done()
+
 	// Get the notification channel for this topic
 	b.mu.RLock()
 	notifyCh := b.notifyCh[topic]

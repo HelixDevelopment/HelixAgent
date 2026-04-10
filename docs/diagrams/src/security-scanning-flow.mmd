@@ -1,0 +1,114 @@
+flowchart TB
+    subgraph MakeTargets["Make Targets (Entry Points)"]
+        MSA["make security-scan"]
+        MSALL["make security-scan-all"]
+        MSSnyk["make security-scan-snyk"]
+        MSSonar["make security-scan-sonarqube"]
+        MSTrivy["make security-scan-trivy"]
+        MSGosec["make security-scan-gosec"]
+        MSSemgrep["make security-scan-semgrep"]
+        MSKICS["make security-scan-kics"]
+        MSGrype["make security-scan-grype"]
+    end
+
+    Script["scripts/security-scan.sh"]
+    MSA --> Script
+    MSALL --> Script
+    MSSnyk --> Script
+    MSSonar --> Script
+    MSTrivy --> Script
+    MSGosec --> Script
+
+    subgraph RuntimeDetection["Container Runtime Detection"]
+        DetectRuntime{"detect_runtime()"}
+        Docker["Docker"]
+        Podman["Podman"]
+        DetectRuntime -->|"docker info"| Docker
+        DetectRuntime -->|"podman"| Podman
+    end
+
+    Script --> DetectRuntime
+
+    subgraph ComposeLayer["docker-compose.security.yml"]
+        SonarContainer["SonarQube Container\nsonarqube:community"]
+        SonarDB["SonarQube PostgreSQL\npostgres:15-alpine"]
+        SonarContainer --- SonarDB
+    end
+
+    subgraph Scanners["7 Security Scanners"]
+        Snyk["Snyk\nDependency vulnerabilities\nSBOM generation"]
+        SonarQube["SonarQube\nCode quality + SAST\nBug/smell/vulnerability"]
+        Gosec["Gosec\nGo-specific security\nSQL injection, crypto, etc."]
+        Trivy["Trivy\nContainer + filesystem\nCVE scanning"]
+        Semgrep["Semgrep\nPattern-based SAST\nreturntocorp/semgrep"]
+        KICS["KICS\nInfra-as-Code scanning\ncheckmarx/kics"]
+        Grype["Grype\nDependency CVE matching\nanchore/grype"]
+    end
+
+    Script --> Snyk
+    Script --> Gosec
+    Script --> Trivy
+    MSSemgrep --> Semgrep
+    MSKICS --> KICS
+    MSGrype --> Grype
+    MSSonar --> ComposeLayer
+    ComposeLayer --> SonarQube
+
+    subgraph SourceInputs["Source Inputs"]
+        GoSource["Go Source Code\ninternal/, cmd/, pkg/"]
+        GoMod["go.mod / go.sum\nDependency manifest"]
+        Dockerfiles["Dockerfiles\ndocker/, Containerfile.*"]
+        ComposeFiles["Compose Files\ndocker-compose.*.yml"]
+        IaCFiles["IaC Files\nK8s manifests, configs/"]
+    end
+
+    GoSource --> Gosec
+    GoSource --> SonarQube
+    GoSource --> Semgrep
+    GoMod --> Snyk
+    GoMod --> Trivy
+    GoMod --> Grype
+    Dockerfiles --> Trivy
+    Dockerfiles --> KICS
+    ComposeFiles --> KICS
+    IaCFiles --> KICS
+
+    subgraph Reports["reports/security/"]
+        SnykReport["snyk-report.json"]
+        SonarReport["SonarQube Dashboard\nlocalhost:9000"]
+        GosecReport["gosec-report.json\ngosec-report.html"]
+        TrivyReport["trivy-report.json"]
+        SemgrepReport["semgrep-report.json"]
+        KICSReport["results.json"]
+        GrypeReport["grype-report.json"]
+    end
+
+    Snyk --> SnykReport
+    SonarQube --> SonarReport
+    Gosec --> GosecReport
+    Trivy --> TrivyReport
+    Semgrep --> SemgrepReport
+    KICS --> KICSReport
+    Grype --> GrypeReport
+
+    subgraph Aggregation["Finding Aggregation"]
+        MakeReport["make security-report"]
+        Consolidated["consolidated-report.md"]
+        Triage{"Severity Triage"}
+        Critical["Critical/High\nImmediate fix required"]
+        Medium["Medium\nEvaluate and schedule"]
+        Low["Low/Info\nDocument and monitor"]
+    end
+
+    SnykReport --> MakeReport
+    SonarReport --> MakeReport
+    GosecReport --> MakeReport
+    TrivyReport --> MakeReport
+    SemgrepReport --> MakeReport
+    KICSReport --> MakeReport
+    GrypeReport --> MakeReport
+    MakeReport --> Consolidated
+    Consolidated --> Triage
+    Triage -->|"Critical/High"| Critical
+    Triage -->|"Medium"| Medium
+    Triage -->|"Low/Info"| Low

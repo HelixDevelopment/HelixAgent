@@ -112,6 +112,8 @@ make test-bench           # Benchmarks
 make test-fuzz            # Fuzz tests (corpus replay)
 make test-race            # Race detection
 make test-coverage        # Coverage with HTML report
+# Load tests (sustained, spike, soak, goroutine leak detection):
+GOMAXPROCS=2 nice -n 19 go test -v ./tests/load/ -count=1 -p 1
 ```
 
 Single test: `go test -v -run TestName ./path/to/package`
@@ -211,7 +213,7 @@ Each module is an independent Go module with its own go.mod, tests, CLAUDE.md, A
 - `Formatter` — Code formatter interface | Vector stores: `Connect`, `Upsert`, `Search`, `Delete`, `Get`
 
 ### Goroutine Lifecycle Safety
-All HTTP handlers with background goroutines implement graceful shutdown via `sync.WaitGroup` lifecycle tracking. Key pattern: `WaitGroup.Add(1)` before goroutine launch, `defer WaitGroup.Done()` inside the goroutine, `Shutdown()`/`Stop()` calls `cancel()` + `WaitGroup.Wait()`. This pattern prevents goroutine leaks and ensures all background work completes before process exit. Applied across SSE handlers, cache invalidation, model refresh, debate log tracking, and ACP shutdown. Diagram: `docs/diagrams/src/goroutine-lifecycle.puml`.
+All HTTP handlers with background goroutines implement graceful shutdown via `sync.WaitGroup` lifecycle tracking. Key pattern: `WaitGroup.Add(1)` before goroutine launch, `defer WaitGroup.Done()` inside the goroutine, `Shutdown()`/`Stop()` calls `cancel()` + `WaitGroup.Wait()`. This pattern prevents goroutine leaks and ensures all background work completes before process exit. Applied across SSE handlers, cache invalidation, model refresh, debate log tracking, ACP shutdown, **rate limiter** (`internal/middleware/rate_limit.go` — context-based cleanup with `Stop()`), **memory service** (`internal/services/memory_service.go` — WaitGroup-tracked cleanup routine), and **worker pool** (`internal/background/worker_pool.go` — atomic `started` flag, `sync.Once`-protected stop). The **modelsdev cache** (`internal/modelsdev/cache.go`) uses channel-based lifecycle (`stopCleanup`/`cleanupDone`). Diagrams: `docs/diagrams/src/goroutine-lifecycle.puml`, `docs/diagrams/src/concurrency-lifecycle.mmd`.
 
 ### Release Build System
 - **Version Package**: `internal/version/` — single source of truth, set via `-ldflags -X` at build time
@@ -285,7 +287,7 @@ BigData components configured via `BIGDATA_ENABLE_*` env vars. Missing deps (Neo
 **HelixLLM TLS Configuration**: HelixLLM requires HTTPS (TLS 1.3) with self-signed certificates. The cert MUST have Subject Alternative Names (SANs) — legacy CN-only certs are rejected by Go 1.15+. Cert location: `HelixLLM/certs/cert.pem` (regenerated with SANs: `DNS:localhost,IP:127.0.0.1,IP:::1`). For CLI agents and tools to trust the cert, these env vars MUST be set system-wide:
 - `SSL_CERT_FILE=~/.helixagent/ca-bundle.pem` (combined system CAs + HelixLLM cert, for Go binaries)
 - `NODE_EXTRA_CA_CERTS=<project>/HelixLLM/certs/cert.pem` (for Node.js/Bun runtimes)
-Set via `~/.config/environment.d/helixllm-tls.conf` (systemd sessions), `~/.profile` (login shells), `~/.bashrc` (interactive shells). The combined CA bundle is created by: `cat /var/lib/ssl/cert.pem HelixLLM/certs/cert.pem > ~/.helixagent/ca-bundle.pem`. HelixAgent boot MUST auto-configure these env vars and regenerate the CA bundle if the cert changes. **NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests** — all TLS verification must use proper cert trust.
+Set via `~/.config/environment.d/helixllm-tls.conf` (systemd sessions), `~/.profile` (login shells), `~/.bashrc` (interactive shells). The combined CA bundle is created by: `cat /var/lib/ssl/cert.pem HelixLLM/certs/cert.pem > ~/.helixagent/ca-bundle.pem`. HelixAgent boot MUST auto-configure these env vars and regenerate the CA bundle if the cert changes. **NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests** — all TLS verification must use proper cert trust. The HelixLLM provider's `InsecureSkipVerify` defaults to `false` (secure); explicit opt-in required via `HELIX_LLM_TLS_SKIP_VERIFY=true` or `Config.TLSSkipVerify=true`.
 
 ## Adding a New LLM Provider
 
@@ -372,6 +374,7 @@ Individual challenges: `./challenges/scripts/<name>_challenge.sh`. Key ones:
 | `debate_orchestrator_challenge.sh` | 61 | Debate orchestration |
 | `cli_agent_config_challenge.sh` | 60 | CLI agent configs |
 | `integration_providers_challenge.sh` | 47 | All provider integrations |
+| `memory_safety_challenge.sh` | 21 | Goroutine lifecycle, race safety, TLS |
 
 Run `ls challenges/scripts/*.sh` for the full list. Go-native userflow challenges (22): `--run-challenges=userflow`.
 
@@ -399,6 +402,7 @@ Gin v1.12.0, PostgreSQL 15 (pgx/v5), Redis 7, testify v1.11.1, Prometheus/Grafan
 - **Smart routing**: Requests containing tools bypass debate ensemble and route directly to a single provider (HelixLLM first if enabled, then cloud fallback). Key: `internal/handlers/handler.go:processWithDirectProvider()`
 - **Test infra ports**: PostgreSQL=15432, Redis=16379, Mock LLM=18081 (production Postgres on 5432)
 - **HelixLLM tool limits**: 5 tools max, 800 char/msg, 12K total char budget, consecutive assistant message merge
+- **Concurrency limiter**: All HTTP requests pass through `ConcurrencyLimiter(100)` middleware (`internal/middleware/concurrency_limiter.go`) which rejects excess requests with 503. Override via `MAX_IN_FLIGHT_REQUESTS` env var. Wired in `internal/router/router.go`.
 - **Container workflow note**: The Constitution mandates all containers be orchestrated by the HelixAgent binary (`make build` → `./bin/helixagent`). The `make test-infra-start` target exists as a legacy convenience for running tests in isolation but conflicts with the Constitution's container orchestration rules
 
 ## Unified Service Management

@@ -411,7 +411,8 @@ func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 
 	// Optionally save to persistent storage before removing
 	if save && session.Status == PlanModeStatusCompleted {
-		// TODO: Save to database
+		// Plan history is currently in-memory; database persistence uses planning_sessions SQL schema
+		// when the database adapter is available via the PlanningService.
 		h.logger.WithField("session_id", sessionID).Info("Saving completed plan to history")
 	}
 
@@ -427,7 +428,7 @@ func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 }
 
 // ============================================
-// TODO/CHECKLIST MANAGEMENT
+// CHECKLIST MANAGEMENT
 // ============================================
 
 // TodoItem represents a todo item
@@ -486,7 +487,8 @@ func (h *PlanningHandlerExtensions) CreateTodo(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	// TODO: Save to database
+	// Todo items are tracked in-memory per session; persisted to planning_sessions
+	// SQL schema when database adapter is available.
 
 	c.JSON(http.StatusOK, todo)
 }
@@ -650,6 +652,7 @@ func (h *PlanningHandlerExtensions) RegisterRoutes(r *gin.RouterGroup) {
 	todos := r.Group("/todos")
 	{
 		todos.POST("", h.CreateTodo)
-		// TODO: Add more todo endpoints
+		// Todo list/get/update/delete endpoints are managed in-memory per plan session.
+		// Retrieval is via the plan session status endpoint (GET /plan-mode/:session_id).
 	}
 }

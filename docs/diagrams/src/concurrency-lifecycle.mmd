@@ -1,0 +1,143 @@
+sequenceDiagram
+    autonumber
+
+    participant Main as Main / Boot
+    participant RL as RateLimiter
+    participant RLCleanup as RL Cleanup Goroutine
+    participant WP as AdaptiveWorkerPool
+    participant WPScale as WP scalingLoop
+    participant WPStuck as WP stuckDetectionLoop
+    participant WPHeart as WP heartbeatMonitorLoop
+    participant Worker as Worker Goroutines
+    participant MS as MemoryService
+    participant MSCleanup as MS Cleanup Goroutine
+    participant Ctx as context.Context
+    participant WG as sync.WaitGroup
+
+    rect rgb(235, 245, 255)
+        Note over Main, WG: RateLimiter Goroutine Lifecycle
+        Main->>RL: NewRateLimiter(cacheService)
+        RL->>Ctx: context.WithCancel(Background)
+        RL->>WG: wg.Add(1)
+        RL->>RLCleanup: go cleanupExpiredBuckets()
+        activate RLCleanup
+        RLCleanup->>RLCleanup: defer wg.Done()
+        RLCleanup->>RLCleanup: ticker = NewTicker(5m)
+
+        loop Every 5 minutes
+            RLCleanup->>RLCleanup: select ctx.Done() / ticker.C
+            Note right of RLCleanup: Lock buckets map<br/>Remove entries idle > 10m<br/>Unlock
+        end
+
+        Note over Main, WG: Shutdown
+        Main->>RL: Stop()
+        RL->>Ctx: cancel()
+        Ctx-->>RLCleanup: ctx.Done() fires
+        RLCleanup->>WG: wg.Done()
+        deactivate RLCleanup
+        RL->>WG: wg.Wait() returns
+    end
+
+    rect rgb(245, 235, 255)
+        Note over Main, WG: Worker Pool Goroutine Lifecycle
+        Main->>WP: NewAdaptiveWorkerPool(config, ...)
+        WP->>Ctx: context.WithCancel(Background)
+        Main->>WP: Start(ctx)
+        WP->>WP: atomic.Store(started, 1)
+
+        par Spawn MinWorkers
+            loop i = 0..MinWorkers-1
+                WP->>Worker: spawnWorker()
+                activate Worker
+                Worker->>Worker: poll queue / execute tasks
+            end
+        and Start scaling monitor
+            WP->>WG: wg.Add(1)
+            WP->>WPScale: go scalingLoop()
+            activate WPScale
+            WPScale->>WPScale: defer wg.Done()
+            WPScale->>WPScale: ticker = NewTicker(ScaleInterval=30s)
+        and Start stuck detector
+            WP->>WG: wg.Add(1)
+            WP->>WPStuck: go stuckDetectionLoop()
+            activate WPStuck
+            WPStuck->>WPStuck: defer wg.Done()
+            WPStuck->>WPStuck: ticker = NewTicker(30s)
+        and Start heartbeat monitor
+            WP->>WG: wg.Add(1)
+            WP->>WPHeart: go heartbeatMonitorLoop()
+            activate WPHeart
+            WPHeart->>WPHeart: defer wg.Done()
+            WPHeart->>WPHeart: ticker = NewTicker(HeartbeatInterval)
+        end
+
+        loop Scaling cycle
+            WPScale->>WPScale: select ctx.Done() / ticker.C
+            WPScale->>WP: checkAndScale()
+            Note right of WPScale: Load > ScaleUpThreshold(0.7)<br/>-> spawnWorker()<br/>Load < ScaleDownThreshold(0.3)<br/>-> remove idle worker
+            opt Scale up
+                WP->>Worker: spawnWorker()
+                activate Worker
+            end
+            opt Scale down
+                WP->>Worker: signalStop() via sync.Once
+                Worker->>Worker: stopChan closed
+                deactivate Worker
+            end
+        end
+
+        Note over Main, WG: Shutdown
+        Main->>WP: Stop(gracePeriod)
+        WP->>Ctx: cancel()
+        Ctx-->>WPScale: ctx.Done() fires
+        WPScale->>WG: wg.Done()
+        deactivate WPScale
+        Ctx-->>WPStuck: ctx.Done() fires
+        WPStuck->>WG: wg.Done()
+        deactivate WPStuck
+        Ctx-->>WPHeart: ctx.Done() fires
+        WPHeart->>WG: wg.Done()
+        deactivate WPHeart
+
+        par Signal all workers
+            WP->>Worker: signalStop() for each worker
+            Worker->>Worker: finish current task
+            deactivate Worker
+        end
+
+        WP->>WG: wg.Wait() with timeout
+        Note right of WP: select done / time.After(gracePeriod)
+        WP->>WP: atomic.Store(started, 0)
+    end
+
+    rect rgb(235, 255, 235)
+        Note over Main, WG: MemoryService Goroutine Lifecycle
+        Main->>MS: NewMemoryServiceWithOptions(cfg, ttl, interval)
+        MS->>MS: stopCh = make(chan struct{})
+        MS->>WG: wg.Add(1)
+        MS->>MSCleanup: go cleanupRoutine()
+        activate MSCleanup
+        MSCleanup->>MSCleanup: defer wg.Done()
+        MSCleanup->>MSCleanup: ticker = NewTicker(cleanupInterval=1m)
+
+        loop Every cleanupInterval
+            MSCleanup->>MSCleanup: select stopCh / ticker.C
+            Note right of MSCleanup: RWLock cache map<br/>Remove expired entries<br/>Track CleanupStats
+        end
+
+        Note over Main, WG: Shutdown
+        Main->>MS: Stop()
+        MS->>MS: Lock, set stopped=true
+        MS->>MS: close(stopCh)
+        MS->>MS: Unlock
+        MSCleanup->>MSCleanup: stopCh received
+        MSCleanup->>WG: wg.Done()
+        deactivate MSCleanup
+        MS->>WG: wg.Wait() returns
+    end
+
+    rect rgb(255, 245, 235)
+        Note over Main, WG: WaitGroup Tracking Pattern (Summary)
+        Note over Main, Ctx: 1. wg.Add(1) BEFORE goroutine launch<br/>2. defer wg.Done() INSIDE goroutine<br/>3. Goroutine selects on ctx.Done() or stopCh<br/>4. Shutdown calls cancel() or close(stopCh)<br/>5. Shutdown blocks on wg.Wait()
+        Note over Ctx, WG: Context Cancellation Propagation:<br/>context.WithCancel(Background) at construction<br/>cancel() at shutdown propagates to all children<br/>All goroutines exit their select loops<br/>WaitGroup reaches zero, shutdown completes
+    end

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"sync"
@@ -19,6 +20,10 @@ type RateLimiter struct {
 	defaultCfg *RateLimitConfig
 	// In-memory storage for rate limit tracking
 	buckets map[string]*tokenBucket
+	// Lifecycle management for cleanup goroutine
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // tokenBucket implements a simple token bucket for rate limiting
@@ -47,10 +52,13 @@ type RateLimitResult struct {
 
 // NewRateLimiter creates a new rate limiter
 func NewRateLimiter(cacheService *cache.CacheService) *RateLimiter {
+	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		cache:   cacheService,
 		limits:  make(map[string]*RateLimitConfig),
 		buckets: make(map[string]*tokenBucket),
+		ctx:     ctx,
+		cancel:  cancel,
 		defaultCfg: &RateLimitConfig{
 			Requests: 100,
 			Window:   time.Minute,
@@ -58,7 +66,8 @@ func NewRateLimiter(cacheService *cache.CacheService) *RateLimiter {
 		},
 	}
 
-	// Start cleanup goroutine for expired buckets
+	// Start cleanup goroutine for expired buckets with lifecycle tracking
+	rl.wg.Add(1)
 	go rl.cleanupExpiredBuckets()
 
 	return rl
@@ -66,41 +75,58 @@ func NewRateLimiter(cacheService *cache.CacheService) *RateLimiter {
 
 // NewRateLimiterWithConfig creates a rate limiter with custom default config
 func NewRateLimiterWithConfig(cacheService *cache.CacheService, defaultConfig *RateLimitConfig) *RateLimiter {
+	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		cache:      cacheService,
 		limits:     make(map[string]*RateLimitConfig),
 		buckets:    make(map[string]*tokenBucket),
 		defaultCfg: defaultConfig,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 
 	if rl.defaultCfg.KeyFunc == nil {
 		rl.defaultCfg.KeyFunc = defaultKeyFunc
 	}
 
-	// Start cleanup goroutine for expired buckets
+	// Start cleanup goroutine for expired buckets with lifecycle tracking
+	rl.wg.Add(1)
 	go rl.cleanupExpiredBuckets()
 
 	return rl
 }
 
-// cleanupExpiredBuckets periodically removes stale token buckets
+// cleanupExpiredBuckets periodically removes stale token buckets.
+// Exits when the RateLimiter context is cancelled via Stop().
 func (rl *RateLimiter) cleanupExpiredBuckets() {
+	defer rl.wg.Done()
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for key, bucket := range rl.buckets {
-			bucket.mu.Lock()
-			// Remove buckets that haven't been used in 10 minutes
-			if now.Sub(bucket.lastRefill) > 10*time.Minute {
-				delete(rl.buckets, key)
+	for {
+		select {
+		case <-rl.ctx.Done():
+			return
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for key, bucket := range rl.buckets {
+				bucket.mu.Lock()
+				// Remove buckets that haven't been used in 10 minutes
+				if now.Sub(bucket.lastRefill) > 10*time.Minute {
+					delete(rl.buckets, key)
+				}
+				bucket.mu.Unlock()
 			}
-			bucket.mu.Unlock()
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
 	}
+}
+
+// Stop gracefully stops the rate limiter cleanup goroutine and waits for it to finish.
+func (rl *RateLimiter) Stop() {
+	rl.cancel()
+	rl.wg.Wait()
 }
 
 // AddLimit adds a rate limit for a specific path

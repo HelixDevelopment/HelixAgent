@@ -86,7 +86,7 @@ func initServiceOrchestrator(logger *logrus.Logger) error {
 
 	globalSvcOrchestrator.AddService(orchestrator.Service{
 		Name:        "monitoring",
-		ComposeFile: "docker/monitoring/docker-compose.monitoring.yml",
+		ComposeFile: "docker/monitoring/docker-compose.yml",
 		Description: "Prometheus, Grafana, Alertmanager stack",
 	})
 

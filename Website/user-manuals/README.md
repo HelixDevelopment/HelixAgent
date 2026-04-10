@@ -101,6 +101,28 @@ Welcome to the HelixAgent user manual collection. These guides will help you get
 - Lifecycle management
 - Testing and distribution
 
+### 45. Security Scanning Guide
+- All 7 security scanners (Snyk, SonarQube, Gosec, Trivy, Semgrep, KICS, Grype)
+- Running scanners via Makefile targets
+- Using docker-compose.security.yml profiles
+- Reading and interpreting scan reports
+- Fixing common findings
+
+### 46. Performance Optimization Guide
+- Lazy loading and lazy initialization patterns
+- Semaphore-based concurrency limiting
+- sync.Pool buffer reuse
+- Prometheus metrics instrumentation
+- HTTP/3 QUIC performance
+- Worker pool tuning
+
+### 47. Stress Testing Guide
+- Running stress tests with resource limits
+- Sustained load, spike, and soak testing
+- Memory leak and goroutine leak detection
+- Circuit breaker testing
+- Database pool exhaustion testing
+
 ## Quick Links
 
 - [API Documentation](/docs/api)

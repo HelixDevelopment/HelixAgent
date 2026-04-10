@@ -4,7 +4,7 @@ Documentation and content for the HelixAgent project website.
 
 ## Structure
 
-- `user-manuals/` — Step-by-step user guides (43 manuals)
+- `user-manuals/` — Step-by-step user guides (47 manuals)
 - `video-courses/` — Video course content and scripts (84+ courses)
 - `scripts/` — Build and validation scripts
 - `styles/` — Website stylesheet assets
@@ -39,8 +39,8 @@ Comprehensive guides covering:
 - Agentic workflows, LLMOps, planning algorithms
 - Module-specific guides (DocProcessor, HelixQA, LLMOrchestrator, VisionEngine, etc.)
 
-Current manuals: 01 through 43 (`user-manuals/01-getting-started.md` through
-`user-manuals/43-agentic-ensemble-guide.md`).
+Current manuals: 01 through 47 (`user-manuals/01-getting-started.md` through
+`user-manuals/47-stress-testing-guide.md`).
 
 ## Video Courses
 
@@ -126,7 +126,7 @@ Course files use two naming conventions:
 - Follow standard Markdown formatting
 - Preserve ALL existing content when updating files
 - Add new content at the end of existing files, never remove
-- Number new manuals sequentially (next: 44 — `44-<topic>.md`)
+- Number new manuals sequentially (next: 48 — `48-<topic>.md`)
 - Number new video courses sequentially (next: 85)
 - Keep user manuals practical with real examples and curl commands
 - Cross-reference related manuals and courses where relevant

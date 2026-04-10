@@ -172,6 +172,9 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		}
 	})
 
+	// Concurrency limiter to prevent thundering herd (default: 100 in-flight)
+	r.Use(middleware.ConcurrencyLimiter(100))
+
 	// Add pprof debugging endpoints if enabled
 	if os.Getenv("ENABLE_PPROF") == "true" {
 		// Register pprof handlers

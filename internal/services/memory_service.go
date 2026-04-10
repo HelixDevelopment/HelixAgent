@@ -41,6 +41,7 @@ type MemoryService struct {
 	lastCleanupStats *CleanupStats
 	stopCh           chan struct{}
 	stopped          bool
+	wg               sync.WaitGroup
 }
 
 // DefaultCleanupInterval is the default interval for cache cleanup
@@ -65,6 +66,7 @@ func NewMemoryServiceWithOptions(cfg *config.Config, ttl, cleanupInterval time.D
 			stopCh:          make(chan struct{}),
 		}
 		// Start background cleanup even for disabled service (for when cache is still used)
+		ms.wg.Add(1)
 		go ms.cleanupRoutine()
 		return ms
 	}
@@ -81,7 +83,8 @@ func NewMemoryServiceWithOptions(cfg *config.Config, ttl, cleanupInterval time.D
 		stopCh:          make(chan struct{}),
 	}
 
-	// Start background cleanup goroutine
+	// Start background cleanup goroutine with lifecycle tracking
+	ms.wg.Add(1)
 	go ms.cleanupRoutine()
 
 	return ms
@@ -490,8 +493,10 @@ func (m *MemoryService) CacheCleanup() *CleanupStats {
 	return stats
 }
 
-// cleanupRoutine runs periodic cache cleanup in the background
+// cleanupRoutine runs periodic cache cleanup in the background.
+// Exits when stopCh is closed via Stop().
 func (m *MemoryService) cleanupRoutine() {
+	defer m.wg.Done()
 	ticker := time.NewTicker(m.cleanupInterval)
 	defer ticker.Stop()
 
@@ -505,16 +510,17 @@ func (m *MemoryService) cleanupRoutine() {
 	}
 }
 
-// Stop stops the background cleanup goroutine gracefully
+// Stop stops the background cleanup goroutine gracefully and waits for it to finish.
 func (m *MemoryService) Stop() {
 	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
-
 	if m.stopped {
+		m.cacheMu.Unlock()
 		return
 	}
 	m.stopped = true
 	close(m.stopCh)
+	m.cacheMu.Unlock()
+	m.wg.Wait()
 }
 
 // getCachedSources retrieves cached sources if they exist and haven't expired

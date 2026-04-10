@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -665,4 +667,118 @@ func BenchmarkDefaultKeyFunc(b *testing.B) {
 		router.ServeHTTP(w, req)
 	}
 	_ = key
+}
+
+// --- Lifecycle tests ---
+
+func TestRateLimiter_GracefulShutdown(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiter(nil)
+	if rl == nil {
+		t.Fatal("Expected rate limiter instance")
+	}
+
+	// Stop should not panic and should terminate cleanup goroutine
+	done := make(chan struct{})
+	go func() {
+		rl.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Stop completed successfully
+	case <-time.After(5 * time.Second):
+		t.Fatal("Stop() did not complete within 5 seconds — goroutine leak")
+	}
+}
+
+func TestRateLimiter_StopIdempotent(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiter(nil)
+
+	// Calling Stop multiple times should not panic
+	rl.Stop()
+	// Second call should be safe (context already cancelled, wg already done)
+}
+
+func TestRateLimiterWithConfig_GracefulShutdown(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiterWithConfig(nil, &RateLimitConfig{
+		Requests: 10,
+		Window:   time.Minute,
+		KeyFunc:  defaultKeyFunc,
+	})
+
+	done := make(chan struct{})
+	go func() {
+		rl.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// OK
+	case <-time.After(5 * time.Second):
+		t.Fatal("Stop() did not complete within 5 seconds — goroutine leak")
+	}
+}
+
+func TestRateLimiter_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		Redis: config.RedisConfig{
+			Host: "localhost",
+			Port: "6379",
+		},
+	}
+
+	cacheService, _ := cache.NewCacheService(cfg)
+	rl := NewRateLimiterWithConfig(cacheService, &RateLimitConfig{
+		Requests: 1000,
+		Window:   time.Minute,
+		KeyFunc:  defaultKeyFunc,
+	})
+	defer rl.Stop()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			key := fmt.Sprintf("client-%d", n%10)
+			_, _ = rl.checkLimit(key, rl.defaultCfg)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func TestRateLimiter_ConcurrentAddLimit(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiter(nil)
+	defer rl.Stop()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			path := fmt.Sprintf("/api/v%d/resource", n)
+			rl.AddLimit(path, &RateLimitConfig{
+				Requests: n + 1,
+				Window:   time.Minute,
+				KeyFunc:  defaultKeyFunc,
+			})
+		}(i)
+	}
+	wg.Wait()
+
+	// Verify limits were added
+	for i := 0; i < 50; i++ {
+		path := fmt.Sprintf("/api/v%d/resource", i)
+		cfg := rl.getConfig(path)
+		if cfg == nil {
+			t.Errorf("Expected config for %s", path)
+		}
+	}
 }

@@ -291,7 +291,7 @@ func TestNewAdaptiveWorkerPool(t *testing.T) {
 		assert.NotNil(t, pool)
 		assert.NotNil(t, pool.config)
 		assert.Equal(t, 2, pool.config.MinWorkers)
-		assert.False(t, pool.started)
+		assert.False(t, pool.IsStarted())
 	})
 
 	t.Run("Creates pool with custom config", func(t *testing.T) {
@@ -405,7 +405,7 @@ func TestAdaptiveWorkerPool_StartStop(t *testing.T) {
 		err := pool.Start(context.Background())
 
 		require.NoError(t, err)
-		assert.True(t, pool.started)
+		assert.True(t, pool.IsStarted())
 
 		// Give workers time to start
 		time.Sleep(100 * time.Millisecond)
@@ -457,7 +457,7 @@ func TestAdaptiveWorkerPool_StartStop(t *testing.T) {
 		err := pool.Stop(time.Second)
 
 		assert.NoError(t, err)
-		assert.False(t, pool.started)
+		assert.False(t, pool.IsStarted())
 	})
 }
 

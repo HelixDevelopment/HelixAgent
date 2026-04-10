@@ -21,7 +21,7 @@ user manuals, video courses, build scripts, styles, and static assets.
 
 ```
 Website/
-  user-manuals/     # Step-by-step guides (01-43)
+  user-manuals/     # Step-by-step guides (01-47)
   video-courses/    # Video course content (course-*, video-course-*, courses-*/)
   scripts/          # Build and validation scripts
   styles/           # Stylesheet assets
@@ -44,8 +44,8 @@ Website/
 
 ### User Manuals (`user-manuals/`)
 
-- Sequential numbering: `NN-<topic-slug>.md` (e.g., `44-helix-memory-guide.md`)
-- Next manual number: **44**
+- Sequential numbering: `NN-<topic-slug>.md` (e.g., `48-helix-memory-guide.md`)
+- Next manual number: **48**
 - Each manual must include: overview, prerequisites, step-by-step instructions,
   real curl/command examples, troubleshooting section
 - Always use live API endpoints (`http://localhost:7061/v1/...`)

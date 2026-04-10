@@ -839,6 +839,7 @@ func TestMemoryService_StopCleanupRoutine(t *testing.T) {
 	}
 
 	// Start cleanup routine and stop immediately (tests idempotency)
+	ms.wg.Add(1)
 	go ms.cleanupRoutine()
 	ms.Stop()
 
@@ -867,7 +868,8 @@ func TestMemoryService_BackgroundCleanup(t *testing.T) {
 	// Add a valid entry
 	ms.cache["will-stay"] = makeCacheEntry([]models.MemorySource{{Content: "staying"}}, 1*time.Hour)
 
-	// Start cleanup routine
+	// Start cleanup routine with WaitGroup tracking
+	ms.wg.Add(1)
 	go ms.cleanupRoutine()
 
 	// Wait for cleanup to run (cleanupInterval is 50ms)
@@ -962,7 +964,8 @@ func TestMemoryService_ConcurrentAccess(t *testing.T) {
 		stopCh:          make(chan struct{}),
 	}
 
-	// Start cleanup routine
+	// Start cleanup routine with WaitGroup tracking
+	ms.wg.Add(1)
 	go ms.cleanupRoutine()
 	defer ms.Stop()
 

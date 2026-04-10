@@ -268,9 +268,11 @@ EOF
     # Run sonar-scanner
     local sonar_token="${SONAR_TOKEN:-}"
     if [ -z "$sonar_token" ]; then
-        # Try to generate token with default admin credentials
-        echo -e "${YELLOW}No SONAR_TOKEN set, generating token with default credentials${NC}"
-        sonar_token=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate" -d "name=scan-${TIMESTAMP}" 2>/dev/null | jq -r '.token // empty')
+        # Try to generate token with admin credentials from env (fallback to default)
+        local sonar_user="${SONARQUBE_ADMIN_USER:-admin}"
+        local sonar_pass="${SONARQUBE_ADMIN_PASSWORD:-admin}"
+        echo -e "${YELLOW}No SONAR_TOKEN set, generating token with admin credentials${NC}"
+        sonar_token=$(curl -s -u "${sonar_user}:${sonar_pass}" -X POST "http://localhost:9000/api/user_tokens/generate" -d "name=scan-${TIMESTAMP}" 2>/dev/null | jq -r '.token // empty')
         if [ -z "$sonar_token" ]; then
             echo -e "${RED}Failed to generate SonarQube token. Please set SONAR_TOKEN environment variable.${NC}"
             return 1

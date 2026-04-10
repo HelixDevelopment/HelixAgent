@@ -1,0 +1,112 @@
+flowchart TB
+    subgraph ClientRequest["HTTP Request Ingress"]
+        Client["Client Request\nHTTP/3 QUIC primary\nHTTP/2 fallback"]
+    end
+
+    subgraph MiddlewareChain["Middleware Chain (Gin)"]
+        direction TB
+        Compression["Compression Middleware\nBrotli primary / gzip fallback\nsync.Pool writer reuse"]
+        ConcurrencyLimiter["ConcurrencyLimiter\nchan semaphore (maxInFlight)\nMAX_IN_FLIGHT_REQUESTS env\n503 on capacity"]
+        RateLimiter["RateLimiter\nToken bucket per key (IP/User/APIKey)\nX-RateLimit-* headers\n429 on exhaustion"]
+        Auth["Auth Middleware\nJWT validation"]
+        CORS["CORS Middleware"]
+        Handler["Route Handler\nChat / Completion / Ensemble / Debate"]
+    end
+
+    Client --> Compression
+    Compression --> ConcurrencyLimiter
+    ConcurrencyLimiter --> RateLimiter
+    RateLimiter --> Auth
+    Auth --> CORS
+    CORS --> Handler
+
+    subgraph SyncPoolReuse["sync.Pool Buffer Reuse"]
+        BrotliPool["brotliWriterPool\nsync.Pool\nGet() -> brotli.Writer\nPut() on response end"]
+        GzipPool["gzipWriterPool\nsync.Pool\nGet() -> gzip.Writer\nPut() on response end"]
+    end
+
+    Compression -.->|"Accept-Encoding: br"| BrotliPool
+    Compression -.->|"Accept-Encoding: gzip"| GzipPool
+
+    subgraph PrometheusMetrics["Prometheus Metrics Collection Points"]
+        direction TB
+
+        subgraph ConcurrencyMetrics["Concurrency Metrics"]
+            ActiveRequests["helixagent_concurrency_active_requests\nGaugeVec per provider"]
+            SemAvailable["helixagent_concurrency_semaphore_available\nGaugeVec per provider"]
+            SemTotal["helixagent_concurrency_semaphore_total\nGaugeVec per provider"]
+            SemAcquired["helixagent_concurrency_semaphore_acquired\nGaugeVec per provider"]
+            AcqTimeouts["helixagent_concurrency_acquisition_timeouts_total\nCounterVec per provider"]
+        end
+
+        subgraph WorkerMetrics["Worker Pool Metrics"]
+            WorkersActive["helixagent_background_workers_active\nGauge"]
+            WorkersTotal["helixagent_background_workers_total\nGauge"]
+            ScalingEvents["helixagent_background_scaling_events\nCounterVec"]
+            TasksTotal["helixagent_background_tasks_total\nCounterVec by type/status"]
+            TaskDuration["helixagent_background_task_duration\nHistogramVec"]
+            QueueDepth["helixagent_background_queue_depth\nGaugeVec"]
+        end
+
+        subgraph ResourceMetrics["Resource Metrics"]
+            TaskCPU["helixagent_background_task_cpu_percent\nGaugeVec"]
+            TaskMem["helixagent_background_task_memory_bytes\nGaugeVec"]
+            TaskIO["helixagent_background_task_io_*_bytes\nGaugeVec (read/write)"]
+            TaskNet["helixagent_background_task_net_*\nGaugeVec (sent/recv)"]
+        end
+
+        subgraph AlertMetrics["Alert Manager Metrics"]
+            AlertTotal["helixagent_concurrency_alert_total\nCounterVec"]
+            CircuitState["helixagent_concurrency_alert_circuit_breaker_state\nGaugeVec"]
+            RateLimitHits["helixagent_concurrency_alert_rate_limit_hits\nCounterVec"]
+            EscalationLevel["helixagent_concurrency_alert_escalation_level\nGaugeVec"]
+        end
+    end
+
+    ConcurrencyLimiter -.->|"record"| ActiveRequests
+    ConcurrencyLimiter -.->|"record"| SemAvailable
+    RateLimiter -.->|"record"| AcqTimeouts
+
+    subgraph WorkerPool["AdaptiveWorkerPool"]
+        WPStart["Start()\nSpawn MinWorkers"]
+        ScalingLoop["scalingLoop()\n30s interval\ncheckAndScale()"]
+        StuckLoop["stuckDetectionLoop()\n30s interval"]
+        HeartbeatLoop["heartbeatMonitorLoop()\nHeartbeatInterval"]
+        Workers["Worker goroutines\npoll queue -> execute"]
+    end
+
+    Handler -.->|"enqueue task"| WorkerPool
+    WPStart --> Workers
+    WPStart --> ScalingLoop
+    WPStart --> StuckLoop
+    WPStart --> HeartbeatLoop
+    Workers -.->|"export"| WorkersActive
+    Workers -.->|"export"| TasksTotal
+    Workers -.->|"export"| TaskDuration
+    ScalingLoop -.->|"export"| ScalingEvents
+
+    subgraph HealthChecks["Health Check Parallelization"]
+        CheckAll["CheckAllNonBlocking()"]
+        BatchTimeout["context.WithTimeout\nDefaultHealthCheckTimeout=30s"]
+        Semaphore["chan semaphore\nMaxConcurrentChecks=10"]
+        WG["sync.WaitGroup\nper-endpoint goroutines"]
+        TCPCheck["checkTCP()"]
+        HTTPCheck["checkHTTP()"]
+        Results["map[string]*HealthCheckResult\nsync.Mutex protected"]
+    end
+
+    CheckAll --> BatchTimeout
+    BatchTimeout --> Semaphore
+    Semaphore --> WG
+    WG -->|"goroutine per service"| TCPCheck
+    WG -->|"goroutine per service"| HTTPCheck
+    TCPCheck --> Results
+    HTTPCheck --> Results
+
+    subgraph Scrape["Prometheus Scrape"]
+        PrometheusServer["Prometheus Server\n/metrics endpoint"]
+        Grafana["Grafana Dashboards"]
+    end
+
+    PrometheusMetrics -.->|"scrape"| PrometheusServer
+    PrometheusServer --> Grafana

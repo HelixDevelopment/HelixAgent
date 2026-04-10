@@ -76,7 +76,7 @@ type AdaptiveWorkerPool struct {
 	wg     sync.WaitGroup
 
 	scaling int32 // 1 if scaling in progress
-	started bool
+	started int32 // 0=not started, 1=started — use atomic operations
 
 	extractedPool *extractedbackground.AdaptiveWorkerPool // delegates to extracted module
 }
@@ -266,7 +266,7 @@ func (wp *AdaptiveWorkerPool) RegisterExecutor(taskType string, executor TaskExe
 
 // Start initializes and starts the worker pool
 func (wp *AdaptiveWorkerPool) Start(ctx context.Context) error {
-	if wp.started {
+	if atomic.LoadInt32(&wp.started) == 1 {
 		return fmt.Errorf("worker pool already started")
 	}
 
@@ -300,7 +300,7 @@ func (wp *AdaptiveWorkerPool) Start(ctx context.Context) error {
 		go wp.heartbeatMonitorLoop()
 	}
 
-	wp.started = true
+	atomic.StoreInt32(&wp.started, 1)
 	return nil
 }
 
@@ -338,8 +338,13 @@ func (wp *AdaptiveWorkerPool) Stop(gracePeriod time.Duration) error {
 		}
 	}
 
-	wp.started = false
+	atomic.StoreInt32(&wp.started, 0)
 	return nil
+}
+
+// IsStarted returns whether the worker pool is currently running (thread-safe).
+func (wp *AdaptiveWorkerPool) IsStarted() bool {
+	return atomic.LoadInt32(&wp.started) == 1
 }
 
 // GetWorkerCount returns the current number of workers

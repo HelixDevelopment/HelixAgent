@@ -190,64 +190,19 @@ make monitoring-reset-circuits / force-health-check
 
 Each module is an independent Go module with its own go.mod, tests, CLAUDE.md, AGENTS.md, README.md, and docs/. All use `replace` directives in the root go.mod for local development. See `docs/MODULES.md` for the full catalog.
 
-**Foundation (Phase 1 — zero dependencies):**
-- **EventBus** (`EventBus/`, `digital.vasic.eventbus`) — Pub/sub event system: bus, event types, filtering, middleware chain. 4 packages.
-- **Concurrency** (`Concurrency/`, `digital.vasic.concurrency`) — Worker pools, priority queues, rate limiters (token bucket/sliding window), circuit breakers, semaphores, resource monitoring. 6 packages.
-- **Observability** (`Observability/`, `digital.vasic.observability`) — OpenTelemetry tracing, Prometheus metrics, structured logging, health checks, ClickHouse analytics. 5 packages.
-- **Auth** (`Auth/`, `digital.vasic.auth`) — JWT, API key, OAuth authentication; HTTP middleware; token management. 5 packages.
-- **Storage** (`Storage/`, `digital.vasic.storage`) — Object storage abstraction: S3/MinIO, local filesystem, cloud providers. 4 packages.
-- **Streaming** (`Streaming/`, `digital.vasic.streaming`) — SSE, WebSocket, gRPC streaming, webhooks, HTTP client, transport abstraction. 6 packages.
+**8 phases, 41+ modules** (each has its own go.mod, CLAUDE.md, AGENTS.md, README.md, docs/, tests):
 
-**Infrastructure (Phase 2 — zero module dependencies, complex):**
-- **Security** (`Security/`, `digital.vasic.security`) — Guardrails engine, PII detection/redaction, content filtering, policy enforcement, vulnerability scanning. 5 packages.
-- **VectorDB** (`VectorDB/`, `digital.vasic.vectordb`) — Unified vector store: Qdrant, Pinecone, Milvus, pgvector adapters; similarity search, collection management. 5 packages.
-- **Embeddings** (`Embeddings/`, `digital.vasic.embeddings`) — 6 embedding providers (OpenAI, Cohere, Voyage, Jina, Google, Bedrock); batch embedding. 7 packages.
-- **Database** (`Database/`, `digital.vasic.database`) — PostgreSQL (pgx), SQLite, connection pooling, migrations, repository pattern, query builder. 7 packages.
-- **Cache** (`Cache/`, `digital.vasic.cache`) — Redis + in-memory caching, distributed cache, TTL policies, cache warming. 5 packages.
-
-**Services (Phase 3):**
-- **Messaging** (`Messaging/`, `digital.vasic.messaging`) — Kafka + RabbitMQ: unified broker, producer/consumer, dead letter queues, retry policies. 5 packages.
-- **Formatters** (`Formatters/`, `digital.vasic.formatters`) — Code formatter framework: native/service/built-in formatters, registry, executor, caching. 6 packages.
-- **MCP** (`MCP_Module/`, `digital.vasic.mcp`) — Model Context Protocol: adapter framework, client/server, config generation, registry, JSON-RPC protocol. 6 packages.
-
-**Integration (Phase 4):**
-- **RAG** (`RAG/`, `digital.vasic.rag`) — Retrieval-Augmented Generation: chunking, retrieval, reranking, hybrid search, pipeline composition. 5 packages.
-- **Memory** (`Memory/`, `digital.vasic.memory`) — Mem0-style memory: entity graph, semantic search, memory scopes, consolidation. 4 packages.
-- **Optimization** (`Optimization/`, `digital.vasic.optimization`) — GPT-Cache, Outlines structured output, streaming optimization, SGLang, prompt optimization. 6 packages.
-- **Plugins** (`Plugins/`, `digital.vasic.plugins`) — Plugin system: interface + lifecycle, registry, dynamic loading, sandboxing, structured output parsing. 5 packages.
-
-**AI/ML (Phase 5):**
-- **Agentic** (`Agentic/`, `digital.vasic.agentic`) — Graph-based agentic workflow orchestration: multi-step execution, conditional branching, state management. 1 package.
-- **LLMOps** (`LLMOps/`, `digital.vasic.llmops`) — LLM operations: continuous evaluation, A/B experiment management, dataset management, prompt versioning. 1 package (5 files).
-- **SelfImprove** (`SelfImprove/`, `digital.vasic.selfimprove`) — AI self-improvement: reward modelling, RLHF feedback integration, optimizer, dimension-weighted scoring. 1 package (5 files).
-- **Planning** (`Planning/`, `digital.vasic.planning`) — AI planning algorithms: hierarchical planning (HiPlan), Monte Carlo Tree Search (MCTS), Tree of Thoughts. 1 package (3 files).
-- **Benchmark** (`Benchmark/`, `digital.vasic.benchmark`) — LLM benchmarking: SWE-bench, HumanEval, MMLU and custom benchmarks; leaderboard, provider comparison. 1 package (3 files).
-
-**Cognitive (Phase 6 — unified memory fusion):**
-- **HelixMemory** (`HelixMemory/`, `digital.vasic.helixmemory`) — **DEFAULT** unified cognitive memory engine for HelixAgent and AI debate ensemble. Orchestrates Mem0 (facts), Cognee (knowledge graphs), Letta (stateful agent runtime), Graphiti (temporal graph) through 3-stage fusion pipeline. 12 power features, circuit breakers, Prometheus metrics, infra bridge. Active by default; opt out with `-tags nohelixmemory`. 12+ packages.
-
-**Specification (Phase 7 — spec-driven development):**
-- **HelixSpecifier** (`HelixSpecifier/`, `digital.vasic.helixspecifier`) — Spec-Driven Development Fusion Engine: 3-pillar architecture (SpecKit 7-phase SDD, Superpowers TDD/subagents, GSD milestones), adaptive ceremony scaling, effort classification, CLI agent adapters, 10 power features, spec memory, DebateFunc injection for real multi-LLM debate, 3-pillar fusion (SpecKit + Superpowers + GSD), intent classifier. 27 packages (21 core + 6 test suites). 835+ tests (unit, integration, E2E, security, stress, benchmark, automation). Active by default; opt out with `-tags nohelixspecifier`.
-
-**Core Abstractions (Phase 8 — shared types and interfaces):**
-- **LLMProvider** (`LLMProvider/`, `digital.vasic.llmprovider`) — Core LLM provider interface and utilities: circuit breakers, health monitoring, retry logic, lazy loading patterns.
-- **Models** (`Models/`, `digital.vasic.models`) — Core data types and structures for AI/LLM applications, agent systems, and related services.
-- **ToolSchema** (`ToolSchema/`, `digital.vasic.toolschema`) — Tool schema definition, validation, and execution: unified interface for AI agent tool systems with safety and validation.
-- **SkillRegistry** (`SkillRegistry/`, `digital.vasic.skillregistry`) — CLI agent skill registration and management: skill definitions, capabilities, configuration templates, multi-agent coordination.
-- **BackgroundTasks** (`BackgroundTasks/`, `digital.vasic.background`) — Background task processing: persistence, resource monitoring, stuck detection, event publishing.
-- **ConversationContext** (`ConversationContext/`, `digital.vasic.conversation`) — Conversation context management: compression, infinite context via event sourcing, Kafka replay, LLM-based summarization.
-- **DebateOrchestrator** (`DebateOrchestrator/`, `digital.vasic.debate`) — Multi-agent AI debate framework: consensus-building, Reflexion, adversarial dynamics, dehallucination, self-evolvement, 8-phase protocol.
-- **BuildCheck** (`BuildCheck/`, `digital.vasic.buildcheck`) — Content-based change detection for container image builds: SHA256 hash comparison, rebuild determination.
-
-**Pre-existing:**
-- **Containers** (`Containers/`, `digital.vasic.containers`) — Generic container orchestration: runtime abstraction (Docker/Podman/K8s), health checking, compose orchestration, lifecycle management. 12 packages.
-- **Challenges** (`Challenges/`, `digital.vasic.challenges`) — Generic challenge framework: assertion engine (19 evaluators), registry, runner, reporting, monitoring, metrics, plugin system v2.0.0, userflow testing (21 adapters across 8 interfaces: browser/mobile/desktop/API/gRPC/WebSocket/build), Panoptic vision/recorder/testgen/error-analyzer adapters, AI test generation challenges. 16 packages.
-- **DocProcessor** (`DocProcessor/`, `digital.vasic.docprocessor`) — Documentation processing, feature map extraction, and coverage tracking: parser, feature map indexing, coverage reports, diff detection. 6 packages.
-- **HelixQA** (`HelixQA/`, `digital.vasic.helixqa`) — QA orchestration framework: autonomous LLM-driven testing, crash detection, evidence collection, ticket generation, quality monitoring, multi-device parallel QA, credential discovery, Playwright web testing, vision analysis. 22 packages.
-- **LLMOrchestrator** (`LLMOrchestrator/`, `digital.vasic.llmorchestrator`) — CLI agent management with hybrid pipe+file protocol: lifecycle management, circuit breakers, agent registry, request routing. 6 packages.
-- **VisionEngine** (`VisionEngine/`, `digital.vasic.visionengine`) — Computer vision and UI analysis: NavigationGraph, LLM vision providers (GPT-4V, Gemini Vision, Claude), UI element detection, remote vision pool (Ollama/llama.cpp multi-instance). 6 packages.
-- **LLMsVerifier** (`LLMsVerifier/`, `digital.vasic.llmsverifier`) — Provider accuracy verification, 5-component scoring pipeline, 3-tier subscription detection, unified CLI agent config generator (48 agents). 10+ packages.
-- **MCP-Servers** (`MCP-Servers/`, collection) — 60+ containerized MCP server implementations: filesystem, memory, sequential-thinking, database, vision, embeddings, RAG, formatters, monitoring.
+| Phase | Modules |
+|-------|---------|
+| 1. Foundation | EventBus, Concurrency, Observability, Auth, Storage, Streaming |
+| 2. Infrastructure | Security, VectorDB, Embeddings, Database, Cache |
+| 3. Services | Messaging, Formatters, MCP (`MCP_Module/`) |
+| 4. Integration | RAG, Memory, Optimization, Plugins |
+| 5. AI/ML | Agentic, LLMOps, SelfImprove, Planning, Benchmark |
+| 6. Cognitive | HelixMemory (default on; opt out: `-tags nohelixmemory`) |
+| 7. Specification | HelixSpecifier (default on; opt out: `-tags nohelixspecifier`) |
+| 8. Core Abstractions | LLMProvider, Models, ToolSchema, SkillRegistry, BackgroundTasks, ConversationContext, DebateOrchestrator, BuildCheck |
+| Pre-existing | Containers, Challenges, DocProcessor, HelixQA, LLMOrchestrator, VisionEngine, LLMsVerifier, MCP-Servers |
 
 ### Key Interfaces
 - `LLMProvider` — Provider contract (Complete, CompleteStream, HealthCheck, GetCapabilities, ValidateConfig)
@@ -399,87 +354,26 @@ CI_RESOURCE_LIMIT=medium make ci-all  # Medium resource limits (default: low)
 
 ## Challenges
 
-**IMPORTANT:** Infrastructure containers MUST be running before executing challenges. Start with `make test-infra-start` or `make test-infra-direct-start`.
+**IMPORTANT:** Infrastructure containers MUST be running before executing challenges.
 
 ```bash
-./challenges/scripts/run_all_challenges.sh                       # All challenges
-./challenges/scripts/release_build_challenge.sh                  # 25 tests
-./challenges/scripts/unified_verification_challenge.sh           # 15 tests
-./challenges/scripts/llms_reevaluation_challenge.sh              # 26 tests
-./challenges/scripts/debate_team_dynamic_selection_challenge.sh  # 12 tests
-./challenges/scripts/semantic_intent_challenge.sh                # 19 tests
-./challenges/scripts/fallback_mechanism_challenge.sh             # 17 tests
-./challenges/scripts/integration_providers_challenge.sh          # 47 tests
-./challenges/scripts/all_agents_e2e_challenge.sh                 # 102 tests
-./challenges/scripts/full_system_boot_challenge.sh               # 53 tests
-./challenges/scripts/cli_proxy_challenge.sh                      # 50 tests
-./challenges/scripts/grpc_service_challenge.sh                   # 9 tests
-./challenges/scripts/bigdata_comprehensive_challenge.sh          # 23 tests
-./challenges/scripts/memory_system_challenge.sh                  # 14 tests
-./challenges/scripts/mem0_migration_challenge.sh                 # Mem0 migration verification
-./challenges/scripts/security_scanning_challenge.sh              # 10 tests
-./challenges/scripts/constitution_watcher_challenge.sh           # 12 tests
-./challenges/scripts/speckit_auto_activation_challenge.sh        # 15 tests
-./challenges/scripts/verification_failure_reasons_challenge.sh   # 15 tests
-./challenges/scripts/subscription_detection_challenge.sh        # 20 tests
-./challenges/scripts/provider_comprehensive_challenge.sh        # 40 tests
-./challenges/scripts/provider_url_consistency_challenge.sh      # 20 tests
-./challenges/scripts/cli_agent_config_challenge.sh              # 60 tests
-./challenges/scripts/debate_reflexion_challenge.sh              # 12 tests
-./challenges/scripts/debate_adversarial_dynamics_challenge.sh   # 10 tests
-./challenges/scripts/debate_tree_topology_challenge.sh          # 10 tests
-./challenges/scripts/debate_dehallucination_challenge.sh        # 10 tests
-./challenges/scripts/debate_self_evolvement_challenge.sh        # 10 tests
-./challenges/scripts/debate_condorcet_voting_challenge.sh       # 10 tests
-./challenges/scripts/debate_approval_gate_challenge.sh          # 12 tests
-./challenges/scripts/debate_persistence_challenge.sh            # 13 tests
-./challenges/scripts/debate_benchmark_integration_challenge.sh  # 10 tests
-./challenges/scripts/debate_provenance_audit_challenge.sh       # 12 tests
-./challenges/scripts/debate_deadlock_detection_challenge.sh     # 8 tests
-./challenges/scripts/debate_git_integration_challenge.sh        # 11 tests
-./challenges/scripts/debate_orchestrator_challenge.sh           # 61 tests
-./challenges/scripts/debate_performance_optimizer_challenge.sh   # 36 tests
-./challenges/scripts/helixmemory_challenge.sh                   # 80+ tests
-./challenges/scripts/helixspecifier_challenge.sh                # 138 tests
-./challenges/scripts/userflow_comprehensive_challenge.sh        # 30+ tests (shell)
-./challenges/scripts/ci_container_build_challenge.sh            # 87 tests
-./challenges/scripts/goroutine_lifecycle_challenge.sh           # Goroutine lifecycle validation
-./challenges/scripts/adapter_coverage_challenge.sh              # Adapter test coverage validation
-./challenges/scripts/race_condition_challenge.sh                # Race condition detection
-./challenges/scripts/router_completeness_challenge.sh           # Router handler registration validation
-./challenges/scripts/resource_limits_challenge.sh               # Test resource limit enforcement
-./challenges/scripts/documentation_completeness_challenge.sh    # Documentation sync validation
-./challenges/scripts/snyk_automated_scanning_challenge.sh       # 38 tests - Snyk containerized scanning
-./challenges/scripts/sonarqube_automated_scanning_challenge.sh  # 45 tests - SonarQube containerized scanning
-./challenges/scripts/pprof_memory_profiling_challenge.sh        # Memory leak detection via pprof
-./challenges/scripts/coverage_gate_challenge.sh                 # Coverage threshold enforcement
-./challenges/scripts/lazy_loading_validation_challenge.sh       # sync.Once lazy loading validation
-./challenges/scripts/monitoring_dashboard_challenge.sh          # Prometheus metrics and dashboard validation
-./challenges/scripts/dead_code_elimination_challenge.sh        # 15 tests
-./challenges/scripts/concurrency_safety_comprehensive_challenge.sh  # 20 tests
-./challenges/scripts/new_endpoints_challenge.sh                # 12 tests
-./challenges/scripts/helixqa_integration_challenge.sh          # 50 tests
-./challenges/scripts/concurrency_fixes_validation_challenge.sh     # 15 tests
-./challenges/scripts/security_scan_validation_challenge.sh         # 10 tests
-./challenges/scripts/documentation_completeness_validation_challenge.sh  # 12 tests
-./challenges/scripts/output_pipeline_challenge.sh                       # 11 tests
-./challenges/scripts/container_lazy_loading_challenge.sh                # 13 tests
-./challenges/scripts/ensemble_handler_challenge.sh                      # 16 tests
-./challenges/scripts/browser_handler_challenge.sh                       # 11 tests
-./challenges/scripts/search_handler_challenge.sh                        # 13 tests
-./challenges/scripts/fuzz_test_validation_challenge.sh                  # 16 tests
-./challenges/scripts/feature_flag_challenge.sh                          # 13 tests
-./challenges/scripts/env_var_completeness_challenge.sh                  # 22 tests
-./challenges/scripts/safety_regression_challenge.sh                     # 16 tests
-./challenges/scripts/test_type_completeness_challenge.sh                # 21 tests
-./challenges/scripts/performance_baseline_challenge.sh                  # 16 tests
-./challenges/scripts/stress_resilience_challenge.sh                     # 21 tests
-./challenges/scripts/security_scan_results_challenge.sh                 # 17 tests
-./challenges/scripts/grafana_dashboard_content_challenge.sh             # 7 tests
-./challenges/scripts/lazy_loading_comprehensive_challenge.sh            # 16 tests
-./challenges/scripts/brotli_compression_challenge.sh                    # 11 tests
-# Go-native userflow challenges (22): run with --run-challenges=userflow
+./challenges/scripts/run_all_challenges.sh    # Run ALL challenges (~70+ scripts)
 ```
+
+Individual challenges: `./challenges/scripts/<name>_challenge.sh`. Key ones:
+
+| Challenge | Tests | Validates |
+|-----------|-------|-----------|
+| `full_system_boot_challenge.sh` | 53 | Full system boot |
+| `helixspecifier_challenge.sh` | 138 | HelixSpecifier |
+| `all_agents_e2e_challenge.sh` | 102 | All 48 CLI agents E2E |
+| `ci_container_build_challenge.sh` | 87 | CI container builds |
+| `helixmemory_challenge.sh` | 80+ | HelixMemory |
+| `debate_orchestrator_challenge.sh` | 61 | Debate orchestration |
+| `cli_agent_config_challenge.sh` | 60 | CLI agent configs |
+| `integration_providers_challenge.sh` | 47 | All provider integrations |
+
+Run `ls challenges/scripts/*.sh` for the full list. Go-native userflow challenges (22): `--run-challenges=userflow`.
 
 ## LLMsVerifier
 
@@ -497,6 +391,15 @@ Fallback: routes to strongest LLM by score, falls back on failure.
 ## Technology Stack
 
 Gin v1.12.0, PostgreSQL 15 (pgx/v5), Redis 7, testify v1.11.1, Prometheus/Grafana, OpenTelemetry. Supports Docker and Podman (`./scripts/container-runtime.sh`).
+
+## Operational Notes
+
+- **Default port**: HelixAgent serves on `http://localhost:7061/v1`
+- **Vendor directory**: Uses `vendor/` for builds. After updating submodules (especially `LLMsVerifier/llm-verifier/pkg/cliagents/`), MUST run `go mod vendor` before rebuilding the main binary
+- **Smart routing**: Requests containing tools bypass debate ensemble and route directly to a single provider (HelixLLM first if enabled, then cloud fallback). Key: `internal/handlers/handler.go:processWithDirectProvider()`
+- **Test infra ports**: PostgreSQL=15432, Redis=16379, Mock LLM=18081 (production Postgres on 5432)
+- **HelixLLM tool limits**: 5 tools max, 800 char/msg, 12K total char budget, consecutive assistant message merge
+- **Container workflow note**: The Constitution mandates all containers be orchestrated by the HelixAgent binary (`make build` → `./bin/helixagent`). The `make test-infra-start` target exists as a legacy convenience for running tests in isolation but conflicts with the Constitution's container orchestration rules
 
 ## Unified Service Management
 

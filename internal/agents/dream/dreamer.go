@@ -17,10 +17,10 @@ import (
 
 // DreamerConfig configures the Dream system
 type DreamerConfig struct {
-	Enabled          bool          `json:"enabled"`
-	MemoryDir        string        `json:"memory_dir"`
-	TimeThreshold    time.Duration `json:"time_threshold"`    // 24 hours
-	MinSessions      int           `json:"min_sessions"`      // 5 sessions
+	Enabled               bool          `json:"enabled"`
+	MemoryDir             string        `json:"memory_dir"`
+	TimeThreshold         time.Duration `json:"time_threshold"` // 24 hours
+	MinSessions           int           `json:"min_sessions"`   // 5 sessions
 	ConsolidationInterval time.Duration `json:"consolidation_interval"`
 }
 
@@ -54,21 +54,21 @@ const (
 type DreamState string
 
 const (
-	DreamStatePending    DreamState = "pending"
-	DreamStateRunning    DreamState = "running"
-	DreamStateCompleted  DreamState = "completed"
-	DreamStateFailed     DreamState = "failed"
-	DreamStateCancelled  DreamState = "cancelled"
+	DreamStatePending   DreamState = "pending"
+	DreamStateRunning   DreamState = "running"
+	DreamStateCompleted DreamState = "completed"
+	DreamStateFailed    DreamState = "failed"
+	DreamStateCancelled DreamState = "cancelled"
 )
 
 // DreamTrigger represents the three-gate trigger system
 type DreamTrigger struct {
-	LastDreamTime    time.Time     `json:"last_dream_time"`
-	SessionCount     int           `json:"session_count"`
-	SessionsSinceDream int         `json:"sessions_since_dream"`
-	TimeThreshold    time.Duration `json:"time_threshold"`
-	MinSessions      int           `json:"min_sessions"`
-	Locked           bool          `json:"locked"`
+	LastDreamTime      time.Time     `json:"last_dream_time"`
+	SessionCount       int           `json:"session_count"`
+	SessionsSinceDream int           `json:"sessions_since_dream"`
+	TimeThreshold      time.Duration `json:"time_threshold"`
+	MinSessions        int           `json:"min_sessions"`
+	Locked             bool          `json:"locked"`
 }
 
 // DreamSession represents a complete dream session
@@ -87,11 +87,11 @@ type DreamSession struct {
 
 // PhaseResult represents the result of a dream phase
 type PhaseResult struct {
-	Phase     DreamPhase    `json:"phase"`
-	StartedAt time.Time     `json:"started_at"`
-	EndedAt   *time.Time    `json:"ended_at,omitempty"`
-	Success   bool          `json:"success"`
-	Details   string        `json:"details,omitempty"`
+	Phase     DreamPhase `json:"phase"`
+	StartedAt time.Time  `json:"started_at"`
+	EndedAt   *time.Time `json:"ended_at,omitempty"`
+	Success   bool       `json:"success"`
+	Details   string     `json:"details,omitempty"`
 }
 
 // MemoryEntry represents a consolidated memory
@@ -112,9 +112,9 @@ type MemoryEntry struct {
 
 // MEMORY.md structure
 type MemoryIndex struct {
-	Version     string         `json:"version"`
-	LastUpdated time.Time      `json:"last_updated"`
-	Categories  []string       `json:"categories"`
+	Version     string          `json:"version"`
+	LastUpdated time.Time       `json:"last_updated"`
+	Categories  []string        `json:"categories"`
 	Entries     []MemorySummary `json:"entries"`
 }
 
@@ -127,35 +127,35 @@ type MemorySummary struct {
 
 // Dreamer is the memory consolidation engine
 type Dreamer struct {
-	config    DreamerConfig
-	logger    *logrus.Logger
-	trigger   DreamTrigger
-	sessions  []DreamSession
-	memories  map[string]MemoryEntry
-	current   *DreamSession
-	mu        sync.RWMutex
-	running   bool
-	stopCh    chan struct{}
-	
+	config   DreamerConfig
+	logger   *logrus.Logger
+	trigger  DreamTrigger
+	sessions []DreamSession
+	memories map[string]MemoryEntry
+	current  *DreamSession
+	mu       sync.RWMutex
+	running  bool
+	stopCh   chan struct{}
+
 	// Callbacks
-	onPhaseStart   func(DreamPhase)
-	onPhaseEnd     func(DreamPhase, bool, string)
-	onMemoryAdded  func(MemoryEntry)
+	onPhaseStart    func(DreamPhase)
+	onPhaseEnd      func(DreamPhase, bool, string)
+	onMemoryAdded   func(MemoryEntry)
 	onMemoryUpdated func(MemoryEntry)
 }
 
 // NewDreamer creates a new Dream system
 func NewDreamer(config DreamerConfig, logger *logrus.Logger) *Dreamer {
 	return &Dreamer{
-		config:   config,
-		logger:   logger,
-		trigger:  DreamTrigger{
+		config: config,
+		logger: logger,
+		trigger: DreamTrigger{
 			TimeThreshold: config.TimeThreshold,
 			MinSessions:   config.MinSessions,
 		},
-		sessions:  make([]DreamSession, 0),
-		memories:  make(map[string]MemoryEntry),
-		stopCh:    make(chan struct{}),
+		sessions:        make([]DreamSession, 0),
+		memories:        make(map[string]MemoryEntry),
+		stopCh:          make(chan struct{}),
 		onPhaseStart:    func(p DreamPhase) {},
 		onPhaseEnd:      func(p DreamPhase, success bool, details string) {},
 		onMemoryAdded:   func(m MemoryEntry) {},
@@ -180,27 +180,27 @@ func (d *Dreamer) SetCallbacks(
 func (d *Dreamer) Start(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	if d.running {
 		return fmt.Errorf("Dreamer already running")
 	}
-	
+
 	if !d.config.Enabled {
 		d.logger.Info("Dream system is disabled")
 		return nil
 	}
-	
+
 	// Ensure memory directory exists
 	if err := os.MkdirAll(d.config.MemoryDir, 0750); err != nil {
 		return fmt.Errorf("failed to create memory directory: %w", err)
 	}
-	
+
 	// Load existing memories
 	d.loadMemories()
-	
+
 	d.running = true
 	go d.run(ctx)
-	
+
 	d.logger.Info("Dream system started")
 	return nil
 }
@@ -209,17 +209,17 @@ func (d *Dreamer) Start(ctx context.Context) error {
 func (d *Dreamer) Stop() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	if !d.running {
 		return nil
 	}
-	
+
 	close(d.stopCh)
 	d.running = false
-	
+
 	// Save memories
 	d.saveMemories()
-	
+
 	d.logger.Info("Dream system stopped")
 	return nil
 }
@@ -235,7 +235,7 @@ func (d *Dreamer) IsRunning() bool {
 func (d *Dreamer) run(ctx context.Context) {
 	ticker := time.NewTicker(d.config.ConsolidationInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-d.stopCh:
@@ -258,22 +258,22 @@ func (d *Dreamer) run(ctx context.Context) {
 func (d *Dreamer) ShouldDream() bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	// Time Gate: 24 hours since last dream
 	if time.Since(d.trigger.LastDreamTime) < d.trigger.TimeThreshold {
 		return false
 	}
-	
+
 	// Session Gate: Minimum 5 sessions since last dream
 	if d.trigger.SessionsSinceDream < d.trigger.MinSessions {
 		return false
 	}
-	
+
 	// Lock Gate: Not already dreaming
 	if d.trigger.Locked {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -281,7 +281,7 @@ func (d *Dreamer) ShouldDream() bool {
 func (d *Dreamer) RecordSession() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	d.trigger.SessionCount++
 	d.trigger.SessionsSinceDream++
 }
@@ -289,57 +289,57 @@ func (d *Dreamer) RecordSession() {
 // Dream initiates a dream session
 func (d *Dreamer) Dream(ctx context.Context) (*DreamSession, error) {
 	d.mu.Lock()
-	
+
 	// Acquire lock
 	if d.trigger.Locked {
 		d.mu.Unlock()
 		return nil, fmt.Errorf("dream already in progress")
 	}
 	d.trigger.Locked = true
-	
+
 	// Create session
 	session := &DreamSession{
-		ID:           generateDreamID(),
-		StartedAt:    time.Now(),
-		State:        DreamStateRunning,
-		CurrentPhase: PhaseOrientation,
-		Phases:       make([]PhaseResult, 0),
-		NewMemories:  make([]MemoryEntry, 0),
+		ID:              generateDreamID(),
+		StartedAt:       time.Now(),
+		State:           DreamStateRunning,
+		CurrentPhase:    PhaseOrientation,
+		Phases:          make([]PhaseResult, 0),
+		NewMemories:     make([]MemoryEntry, 0),
 		UpdatedMemories: make([]MemoryEntry, 0),
 		RemovedMemories: make([]string, 0),
-		Metadata:     make(map[string]interface{}),
+		Metadata:        make(map[string]interface{}),
 	}
 	d.current = session
 	d.mu.Unlock()
-	
+
 	d.logger.Infof("Starting dream session %s", session.ID)
-	
+
 	// Execute phases
 	d.executePhase(ctx, session, PhaseOrientation, d.orientationPhase)
 	d.executePhase(ctx, session, PhaseGather, d.gatherPhase)
 	d.executePhase(ctx, session, PhaseConsolidate, d.consolidationPhase)
 	d.executePhase(ctx, session, PhaseCleanup, d.cleanupPhase)
-	
+
 	// Complete session
 	d.mu.Lock()
 	session.State = DreamStateCompleted
 	now := time.Now()
 	session.CompletedAt = &now
 	d.sessions = append(d.sessions, *session)
-	
+
 	// Update trigger
 	d.trigger.LastDreamTime = now
 	d.trigger.SessionsSinceDream = 0
 	d.trigger.Locked = false
-	
+
 	d.current = nil
 	d.mu.Unlock()
-	
+
 	d.logger.Infof("Dream session %s completed", session.ID)
-	
+
 	// Save memories
 	d.saveMemories()
-	
+
 	return session, nil
 }
 
@@ -352,23 +352,23 @@ func (d *Dreamer) executePhase(ctx context.Context, session *DreamSession, phase
 		StartedAt: time.Now(),
 	}
 	d.mu.Unlock()
-	
+
 	d.onPhaseStart(phase)
 	d.logger.Debugf("Dream phase: %s", phase)
-	
+
 	err := fn(ctx, session)
-	
+
 	now := time.Now()
 	phaseResult.EndedAt = &now
 	phaseResult.Success = err == nil
 	if err != nil {
 		phaseResult.Details = err.Error()
 	}
-	
+
 	d.mu.Lock()
 	session.Phases = append(session.Phases, phaseResult)
 	d.mu.Unlock()
-	
+
 	d.onPhaseEnd(phase, phaseResult.Success, phaseResult.Details)
 }
 
@@ -380,25 +380,25 @@ func (d *Dreamer) orientationPhase(ctx context.Context, session *DreamSession) e
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	
+
 	session.Metadata["memory_md_size"] = len(content)
-	
+
 	// List memory directory
 	entries, err := os.ReadDir(d.config.MemoryDir)
 	if err != nil {
 		return err
 	}
-	
+
 	var memoryFiles []string
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
 			memoryFiles = append(memoryFiles, entry.Name())
 		}
 	}
-	
+
 	session.Metadata["memory_file_count"] = len(memoryFiles)
 	d.logger.Debugf("Found %d memory files", len(memoryFiles))
-	
+
 	return nil
 }
 
@@ -408,10 +408,10 @@ func (d *Dreamer) gatherPhase(ctx context.Context, session *DreamSession) error 
 	// - Daily logs from KAIROS
 	// - Drifting memories (unsaved observations)
 	// - Transcript search
-	
+
 	// For now, this is a placeholder that would integrate with other systems
 	d.logger.Debug("Gathering fresh signals")
-	
+
 	return nil
 }
 
@@ -419,7 +419,7 @@ func (d *Dreamer) gatherPhase(ctx context.Context, session *DreamSession) error 
 func (d *Dreamer) consolidationPhase(ctx context.Context, session *DreamSession) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	// Process gathered information and create/update memories
 	// This would:
 	// - Extract patterns from sessions
@@ -427,9 +427,9 @@ func (d *Dreamer) consolidationPhase(ctx context.Context, session *DreamSession)
 	// - Update existing memories with new information
 	// - Translate relative dates to absolute
 	// - Remove disproven facts
-	
+
 	d.logger.Debug("Consolidating memories")
-	
+
 	return nil
 }
 
@@ -437,7 +437,7 @@ func (d *Dreamer) consolidationPhase(ctx context.Context, session *DreamSession)
 func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error {
 	// Keep MEMORY.md within 200 lines (~25KB)
 	memoryMdPath := filepath.Join(d.config.MemoryDir, "MEMORY.md")
-	
+
 	content, err := os.ReadFile(memoryMdPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -445,21 +445,24 @@ func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error
 		}
 		return err
 	}
-	
+
 	lines := strings.Split(string(content), "\n")
 	if len(lines) > 200 {
 		// Remove stale pointers and resolve contradictions
 		// For now, just trim to last 200 lines
 		lines = lines[len(lines)-200:]
 		newContent := strings.Join(lines, "\n")
-		
+
+		// #nosec G703 -- memoryMdPath is the dreamer's own internal state
+		// file, derived from a dreamer-controlled directory, never from
+		// user or LLM input.
 		if err := os.WriteFile(memoryMdPath, []byte(newContent), 0644); err != nil {
 			return err
 		}
-		
+
 		d.logger.Debug("Trimmed MEMORY.md to 200 lines")
 	}
-	
+
 	return nil
 }
 
@@ -467,17 +470,17 @@ func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error
 func (d *Dreamer) AddMemory(entry MemoryEntry) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	if entry.ID == "" {
 		entry.ID = generateMemoryID()
 	}
-	
+
 	entry.CreatedAt = time.Now()
 	entry.UpdatedAt = entry.CreatedAt
-	
+
 	d.memories[entry.ID] = entry
 	d.onMemoryAdded(entry)
-	
+
 	return nil
 }
 
@@ -485,12 +488,12 @@ func (d *Dreamer) AddMemory(entry MemoryEntry) error {
 func (d *Dreamer) UpdateMemory(id string, updates map[string]interface{}) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	memory, exists := d.memories[id]
 	if !exists {
 		return fmt.Errorf("memory not found: %s", id)
 	}
-	
+
 	// Apply updates
 	if content, ok := updates["content"].(string); ok {
 		memory.Content = content
@@ -501,11 +504,11 @@ func (d *Dreamer) UpdateMemory(id string, updates map[string]interface{}) error 
 	if tags, ok := updates["tags"].([]string); ok {
 		memory.Tags = tags
 	}
-	
+
 	memory.UpdatedAt = time.Now()
 	d.memories[id] = memory
 	d.onMemoryUpdated(memory)
-	
+
 	return nil
 }
 
@@ -513,7 +516,7 @@ func (d *Dreamer) UpdateMemory(id string, updates map[string]interface{}) error 
 func (d *Dreamer) GetMemory(id string) (MemoryEntry, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	memory, exists := d.memories[id]
 	return memory, exists
 }
@@ -522,14 +525,14 @@ func (d *Dreamer) GetMemory(id string) (MemoryEntry, bool) {
 func (d *Dreamer) GetMemoriesByCategory(category string) []MemoryEntry {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	var result []MemoryEntry
 	for _, memory := range d.memories {
 		if memory.Category == category {
 			result = append(result, memory)
 		}
 	}
-	
+
 	return result
 }
 
@@ -537,12 +540,12 @@ func (d *Dreamer) GetMemoriesByCategory(category string) []MemoryEntry {
 func (d *Dreamer) GetAllMemories() []MemoryEntry {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	result := make([]MemoryEntry, 0, len(d.memories))
 	for _, memory := range d.memories {
 		result = append(result, memory)
 	}
-	
+
 	return result
 }
 
@@ -550,11 +553,11 @@ func (d *Dreamer) GetAllMemories() []MemoryEntry {
 func (d *Dreamer) GetCurrentSession() *DreamSession {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	if d.current == nil {
 		return nil
 	}
-	
+
 	session := *d.current
 	return &session
 }
@@ -563,7 +566,7 @@ func (d *Dreamer) GetCurrentSession() *DreamSession {
 func (d *Dreamer) GetSessions() []DreamSession {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	result := make([]DreamSession, len(d.sessions))
 	copy(result, d.sessions)
 	return result
@@ -575,26 +578,26 @@ func (d *Dreamer) loadMemories() {
 	if err != nil {
 		return
 	}
-	
+
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		
+
 		path := filepath.Join(d.config.MemoryDir, entry.Name())
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
 		}
-		
+
 		var memory MemoryEntry
 		if err := json.Unmarshal(data, &memory); err != nil {
 			continue
 		}
-		
+
 		d.memories[memory.ID] = memory
 	}
-	
+
 	d.logger.Infof("Loaded %d memories", len(d.memories))
 }
 
@@ -602,15 +605,15 @@ func (d *Dreamer) loadMemories() {
 func (d *Dreamer) saveMemories() {
 	for id, memory := range d.memories {
 		path := filepath.Join(d.config.MemoryDir, fmt.Sprintf("%s.json", id))
-		
+
 		data, err := json.MarshalIndent(memory, "", "  ")
 		if err != nil {
 			continue
 		}
-		
+
 		os.WriteFile(path, data, 0644)
 	}
-	
+
 	// Update MEMORY.md index
 	d.updateMemoryIndex()
 }
@@ -623,7 +626,7 @@ func (d *Dreamer) updateMemoryIndex() {
 		Categories:  []string{"pattern", "fact", "preference", "project"},
 		Entries:     make([]MemorySummary, 0, len(d.memories)),
 	}
-	
+
 	for _, memory := range d.memories {
 		index.Entries = append(index.Entries, MemorySummary{
 			ID:       memory.ID,
@@ -632,24 +635,24 @@ func (d *Dreamer) updateMemoryIndex() {
 			Tags:     memory.Tags,
 		})
 	}
-	
+
 	// Generate markdown content
 	var content strings.Builder
 	content.WriteString("# HelixAgent Memory\n\n")
 	content.WriteString(fmt.Sprintf("Last Updated: %s\n\n", index.LastUpdated.Format(time.RFC3339)))
-	
+
 	for _, category := range index.Categories {
 		content.WriteString(fmt.Sprintf("## %s\n\n", strings.Title(category)))
-		
+
 		for _, entry := range index.Entries {
 			if entry.Category == category {
 				content.WriteString(fmt.Sprintf("- **%s** (%s)\n", entry.Title, strings.Join(entry.Tags, ", ")))
 			}
 		}
-		
+
 		content.WriteString("\n")
 	}
-	
+
 	memoryMdPath := filepath.Join(d.config.MemoryDir, "MEMORY.md")
 	os.WriteFile(memoryMdPath, []byte(content.String()), 0644)
 }

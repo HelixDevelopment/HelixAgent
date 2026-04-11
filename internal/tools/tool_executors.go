@@ -23,22 +23,76 @@ type ToolExecutor interface {
 
 // ToolExecutionResult represents the result of tool execution
 type ToolExecutionResult struct {
-	Success    bool                   `json:"success"`
-	Output     string                 `json:"output,omitempty"`
-	Error      string                 `json:"error,omitempty"`
-	Data       map[string]interface{} `json:"data,omitempty"`
-	DurationMs int64                  `json:"duration_ms"`
-	StartedAt  time.Time              `json:"started_at"`
-	CompletedAt time.Time             `json:"completed_at"`
+	Success     bool                   `json:"success"`
+	Output      string                 `json:"output,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+	Data        map[string]interface{} `json:"data,omitempty"`
+	DurationMs  int64                  `json:"duration_ms"`
+	StartedAt   time.Time              `json:"started_at"`
+	CompletedAt time.Time              `json:"completed_at"`
 }
 
 // DefaultToolExecutor provides execution for built-in tools
 // This EXTENDS HelixAgent with CLI agent capabilities
 type DefaultToolExecutor struct {
-	logger       *logrus.Logger
-	workingDir   string
-	envVars      map[string]string
+	logger        *logrus.Logger
+	workingDir    string
+	envVars       map[string]string
 	maxOutputSize int
+}
+
+// resolveInWorkingDir cleans the supplied path and, if not absolute,
+// roots it at workingDir. It then verifies that the resulting absolute
+// path stays within workingDir — rejecting any attempt to escape via
+// `..` traversal, symlink tricks, or absolute paths outside the sandbox.
+// Returns the cleaned, validated absolute path or an error.
+//
+// This is the sole allowed entry point for any filesystem write/read
+// that comes from LLM tool call arguments.
+func (e *DefaultToolExecutor) resolveInWorkingDir(p string) (string, error) {
+	if p == "" {
+		return "", fmt.Errorf("path is required")
+	}
+	base := filepath.Clean(e.workingDir)
+	if base == "" || base == "." {
+		// No working dir configured — refuse to operate on anything
+		// outside the current directory rather than opening the whole
+		// filesystem.
+		return "", fmt.Errorf("tool executor has no working directory configured")
+	}
+	var abs string
+	if filepath.IsAbs(p) {
+		abs = filepath.Clean(p)
+	} else {
+		abs = filepath.Clean(filepath.Join(base, p))
+	}
+	// Resolve symlinks so attackers can't use a symlinked workingDir
+	// entry to escape. If the file doesn't exist yet (common for
+	// WriteFile creating a new file), resolve its parent instead and
+	// keep the original basename.
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return "", fmt.Errorf("resolve path: %w", err)
+		}
+		parent, errP := filepath.EvalSymlinks(filepath.Dir(abs))
+		if errP != nil {
+			// Parent also missing — fall back to the cleaned abs; the
+			// containment check below is still sound against `..` escapes.
+			resolved = abs
+		} else {
+			resolved = filepath.Join(parent, filepath.Base(abs))
+		}
+	}
+	resolvedBase, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		resolvedBase = base
+	}
+	rel, err := filepath.Rel(resolvedBase, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path %q escapes working directory", p)
+	}
+	return resolved, nil
 }
 
 // NewDefaultToolExecutor creates a new default tool executor
@@ -64,7 +118,7 @@ func (e *DefaultToolExecutor) CanExecute(toolName string) bool {
 // Execute runs a tool with the given arguments
 func (e *DefaultToolExecutor) Execute(ctx context.Context, toolName string, args map[string]interface{}) (*ToolExecutionResult, error) {
 	startTime := time.Now()
-	
+
 	schema, exists := GetToolSchema(toolName)
 	if !exists {
 		return nil, fmt.Errorf("unknown tool: %s", toolName)
@@ -142,10 +196,14 @@ func (e *DefaultToolExecutor) executeSearchReplace(ctx context.Context, args map
 		return &ToolExecutionResult{Success: false, Error: "file_path is required"}, nil
 	}
 
-	// Resolve to absolute path
-	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Join(e.workingDir, filePath)
+	// G703 containment: resolve + validate path stays within workingDir.
+	// Any escape (../../, absolute path outside the sandbox, symlink
+	// games) fails here before any filesystem side effect.
+	resolved, pathErr := e.resolveInWorkingDir(filePath)
+	if pathErr != nil {
+		return &ToolExecutionResult{Success: false, Error: pathErr.Error()}, nil
 	}
+	filePath = resolved
 
 	// Check if file exists
 	_, err := os.Stat(filePath)
@@ -158,11 +216,11 @@ func (e *DefaultToolExecutor) executeSearchReplace(ctx context.Context, args map
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return &ToolExecutionResult{Success: false, Error: fmt.Sprintf("failed to create directory: %v", err)}, nil
 			}
-			
+
 			if err := os.WriteFile(filePath, []byte(replaceBlock), 0644); err != nil {
 				return &ToolExecutionResult{Success: false, Error: fmt.Sprintf("failed to create file: %v", err)}, nil
 			}
-			
+
 			return &ToolExecutionResult{
 				Success: true,
 				Output:  fmt.Sprintf("Created new file: %s", filePath),
@@ -172,7 +230,7 @@ func (e *DefaultToolExecutor) executeSearchReplace(ctx context.Context, args map
 				},
 			}, nil
 		}
-		
+
 		return &ToolExecutionResult{Success: false, Error: fmt.Sprintf("file does not exist: %s", filePath)}, nil
 	}
 
@@ -210,9 +268,9 @@ func (e *DefaultToolExecutor) executeSearchReplace(ctx context.Context, args map
 		Success: true,
 		Output:  fmt.Sprintf("Applied SEARCH/REPLACE to %s", filePath),
 		Data: map[string]interface{}{
-			"file_path":   filePath,
-			"action":      "modified",
-			"diff":        diff,
+			"file_path":    filePath,
+			"action":       "modified",
+			"diff":         diff,
 			"line_changes": countLineChanges(contentStr, newContent),
 		},
 	}, nil
@@ -230,7 +288,7 @@ func (e *DefaultToolExecutor) executeRepoMap(ctx context.Context, args map[strin
 
 	// Use existing search infrastructure
 	// This would integrate with internal/search
-	
+
 	// For now, return a basic implementation
 	result := &ToolExecutionResult{
 		Success: true,
@@ -254,10 +312,16 @@ func (e *DefaultToolExecutor) executeRepoMap(ctx context.Context, args map[strin
 // executeBasicFileTool handles Read, Write, Edit
 func (e *DefaultToolExecutor) executeBasicFileTool(ctx context.Context, toolName string, args map[string]interface{}) (*ToolExecutionResult, error) {
 	filePath := getStringArg(args, "file_path")
-	
-	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Join(e.workingDir, filePath)
+
+	// G703 containment: the Read/Write/Edit tools accept LLM-supplied
+	// paths; route them through the sandbox check so attempts to
+	// access files outside the working directory are rejected before
+	// any filesystem side effect.
+	resolved, pathErr := e.resolveInWorkingDir(filePath)
+	if pathErr != nil {
+		return &ToolExecutionResult{Success: false, Error: pathErr.Error()}, nil
 	}
+	filePath = resolved
 
 	switch toolName {
 	case "Read":
@@ -265,11 +329,11 @@ func (e *DefaultToolExecutor) executeBasicFileTool(ctx context.Context, toolName
 		if err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		// Handle offset and limit
 		offset := getIntArg(args, "offset", 0)
 		limit := getIntArg(args, "limit", 0)
-		
+
 		lines := strings.Split(string(content), "\n")
 		if offset > 0 {
 			if offset < len(lines) {
@@ -281,36 +345,36 @@ func (e *DefaultToolExecutor) executeBasicFileTool(ctx context.Context, toolName
 		if limit > 0 && limit < len(lines) {
 			lines = lines[:limit]
 		}
-		
+
 		return &ToolExecutionResult{
 			Success: true,
 			Output:  strings.Join(lines, "\n"),
 			Data: map[string]interface{}{
-				"file_path": filePath,
-				"total_lines": len(strings.Split(string(content), "\n")),
+				"file_path":     filePath,
+				"total_lines":   len(strings.Split(string(content), "\n")),
 				"showing_lines": len(lines),
-				"offset": offset,
+				"offset":        offset,
 			},
 		}, nil
 
 	case "Write":
 		content := getStringArg(args, "content")
-		
+
 		// Ensure directory exists
 		dir := filepath.Dir(filePath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		return &ToolExecutionResult{
 			Success: true,
 			Output:  fmt.Sprintf("Wrote %d bytes to %s", len(content), filePath),
 			Data: map[string]interface{}{
-				"file_path": filePath,
+				"file_path":     filePath,
 				"bytes_written": len(content),
 			},
 		}, nil
@@ -319,34 +383,34 @@ func (e *DefaultToolExecutor) executeBasicFileTool(ctx context.Context, toolName
 		oldString := getStringArg(args, "old_string")
 		newString := getStringArg(args, "new_string")
 		replaceAll := getBoolArg(args, "replace_all")
-		
+
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		contentStr := string(content)
-		
+
 		count := 1
 		if replaceAll {
 			count = -1
 		}
-		
+
 		newContent := strings.Replace(contentStr, oldString, newString, count)
-		
+
 		if newContent == contentStr {
 			return &ToolExecutionResult{Success: false, Error: "old_string not found in file"}, nil
 		}
-		
+
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		return &ToolExecutionResult{
 			Success: true,
 			Output:  fmt.Sprintf("Edited %s", filePath),
 			Data: map[string]interface{}{
-				"file_path": filePath,
+				"file_path":    filePath,
 				"replacements": countReplacements(contentStr, newContent),
 			},
 		}, nil
@@ -361,16 +425,16 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 	case "Glob":
 		pattern := getStringArg(args, "pattern")
 		path := getStringArg(args, "path")
-		
+
 		if path == "" {
 			path = e.workingDir
 		}
-		
+
 		matches, err := filepath.Glob(filepath.Join(path, pattern))
 		if err != nil {
 			return &ToolExecutionResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		return &ToolExecutionResult{
 			Success: true,
 			Output:  fmt.Sprintf("Found %d matches", len(matches)),
@@ -389,11 +453,11 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 		if outputMode == "" {
 			outputMode = "content"
 		}
-		
+
 		if path == "" {
 			path = e.workingDir
 		}
-		
+
 		// Use ripgrep if available, otherwise fallback to grep
 		var cmd *exec.Cmd
 		if _, err := exec.LookPath("rg"); err == nil {
@@ -411,7 +475,7 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 			cmdArgs = append(cmdArgs, path)
 			cmd = exec.CommandContext(ctx, "grep", cmdArgs...)
 		}
-		
+
 		output, err := cmd.CombinedOutput()
 		if err != nil && len(output) == 0 {
 			// No matches is not an error
@@ -425,7 +489,7 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 				},
 			}, nil
 		}
-		
+
 		lines := strings.Split(string(output), "\n")
 		var matches []map[string]string
 		for _, line := range lines {
@@ -444,7 +508,7 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 				matches = append(matches, match)
 			}
 		}
-		
+
 		result := &ToolExecutionResult{
 			Success: true,
 			Data: map[string]interface{}{
@@ -453,7 +517,7 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 				"count":   len(matches),
 			},
 		}
-		
+
 		if outputMode == "content" {
 			result.Output = string(output)
 		} else if outputMode == "files_with_matches" {
@@ -465,7 +529,7 @@ func (e *DefaultToolExecutor) executeSearchTool(ctx context.Context, toolName st
 		} else if outputMode == "count" {
 			result.Output = fmt.Sprintf("%d", len(matches))
 		}
-		
+
 		return result, nil
 	}
 
@@ -501,17 +565,17 @@ func (e *DefaultToolExecutor) executeGit(ctx context.Context, args map[string]in
 
 	cmdArgs := []string{operation}
 	cmdArgs = append(cmdArgs, arguments...)
-	
+
 	cmd := exec.CommandContext(ctx, "git", cmdArgs...)
 	cmd.Dir = workingDir
-	
+
 	// Set environment
 	for k, v := range e.envVars {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	output, err := cmd.CombinedOutput()
-	
+
 	result := &ToolExecutionResult{
 		Success: err == nil,
 		Output:  string(output),
@@ -521,11 +585,11 @@ func (e *DefaultToolExecutor) executeGit(ctx context.Context, args map[string]in
 			"working_dir": workingDir,
 		},
 	}
-	
+
 	if err != nil {
 		result.Error = err.Error()
 	}
-	
+
 	return result, nil
 }
 
@@ -533,7 +597,7 @@ func (e *DefaultToolExecutor) executeGitCommit(ctx context.Context, args map[str
 	message := getStringArg(args, "message")
 	attribution := getStringArg(args, "attribution")
 	conventional := getBoolArg(args, "conventional")
-	
+
 	// Format message if conventional commits
 	if conventional && !strings.HasPrefix(message, "feat:") && !strings.HasPrefix(message, "fix:") {
 		// Try to infer type from message
@@ -543,17 +607,17 @@ func (e *DefaultToolExecutor) executeGitCommit(ctx context.Context, args map[str
 			message = "feat: " + message
 		}
 	}
-	
+
 	// Add attribution trailer
 	if attribution != "" {
 		message = message + fmt.Sprintf("\n\nCo-authored-by: %s", attribution)
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
 	cmd.Dir = e.workingDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	// Get commit hash
 	var commitHash string
 	if err == nil {
@@ -562,14 +626,19 @@ func (e *DefaultToolExecutor) executeGitCommit(ctx context.Context, args map[str
 		hash, _ := hashCmd.Output()
 		commitHash = strings.TrimSpace(string(hash))
 	}
-	
+
 	return &ToolExecutionResult{
 		Success: err == nil,
 		Output:  string(output),
-		Error:   func() string { if err != nil { return err.Error() }; return "" }(),
+		Error: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
 		Data: map[string]interface{}{
-			"commit_hash": commitHash,
-			"attribution": attribution,
+			"commit_hash":  commitHash,
+			"attribution":  attribution,
 			"conventional": conventional,
 		},
 	}, nil
@@ -583,9 +652,9 @@ func (e *DefaultToolExecutor) executeDiff(ctx context.Context, args map[string]i
 	}
 	compareWith := getStringArg(args, "compare_with")
 	contextLines := getIntArg(args, "context_lines", 3)
-	
+
 	cmdArgs := []string{"diff", fmt.Sprintf("--unified=%d", contextLines)}
-	
+
 	switch mode {
 	case "staged":
 		cmdArgs = []string{"diff", "--staged"}
@@ -600,20 +669,25 @@ func (e *DefaultToolExecutor) executeDiff(ctx context.Context, args map[string]i
 			cmdArgs = []string{"diff", compareWith}
 		}
 	}
-	
+
 	if filePath != "" {
 		cmdArgs = append(cmdArgs, "--", filePath)
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", cmdArgs...)
 	cmd.Dir = e.workingDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	return &ToolExecutionResult{
 		Success: true, // git diff returns exit code 1 when there are differences
 		Output:  string(output),
-		Error:   func() string { if err != nil && len(output) == 0 { return err.Error() }; return "" }(),
+		Error: func() string {
+			if err != nil && len(output) == 0 {
+				return err.Error()
+			}
+			return ""
+		}(),
 		Data: map[string]interface{}{
 			"mode":         mode,
 			"compare_with": compareWith,
@@ -643,28 +717,38 @@ func (e *DefaultToolExecutor) executeBash(ctx context.Context, args map[string]i
 	command := getStringArg(args, "command")
 	timeout := getIntArg(args, "timeout", 120000) // 120 seconds default
 	description := getStringArg(args, "description")
-	
+
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Millisecond)
 	defer cancel()
-	
+
 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
 	cmd.Dir = e.workingDir
-	
+
 	// Set environment
 	for k, v := range e.envVars {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	return &ToolExecutionResult{
 		Success: err == nil,
 		Output:  string(output),
-		Error:   func() string { if err != nil { return err.Error() }; return "" }(),
+		Error: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
 		Data: map[string]interface{}{
 			"command":     command,
 			"description": description,
-			"exit_code":   func() int { if cmd.ProcessState != nil { return cmd.ProcessState.ExitCode() }; return -1 }(),
+			"exit_code": func() int {
+				if cmd.ProcessState != nil {
+					return cmd.ProcessState.ExitCode()
+				}
+				return -1
+			}(),
 		},
 	}, nil
 }
@@ -672,27 +756,32 @@ func (e *DefaultToolExecutor) executeBash(ctx context.Context, args map[string]i
 func (e *DefaultToolExecutor) executePython(ctx context.Context, args map[string]interface{}) (*ToolExecutionResult, error) {
 	code := getStringArg(args, "code")
 	packages := getStringSliceArg(args, "packages")
-	
+
 	// Check if python is available
 	if _, err := exec.LookPath("python3"); err != nil {
 		return &ToolExecutionResult{Success: false, Error: "python3 not available"}, nil
 	}
-	
+
 	// Install required packages
 	for _, pkg := range packages {
 		installCmd := exec.CommandContext(ctx, "pip3", "install", "-q", pkg)
 		installCmd.CombinedOutput()
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "python3", "-c", code)
 	cmd.Dir = e.workingDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	return &ToolExecutionResult{
 		Success: err == nil,
 		Output:  string(output),
-		Error:   func() string { if err != nil { return err.Error() }; return "" }(),
+		Error: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
 		Data: map[string]interface{}{
 			"packages_installed": len(packages),
 		},
@@ -704,7 +793,7 @@ func (e *DefaultToolExecutor) executeApprovalRequest(ctx context.Context, args m
 	toolName := getStringArg(args, "tool_name")
 	riskLevel := getStringArg(args, "risk_level")
 	description := getStringArg(args, "description")
-	
+
 	return &ToolExecutionResult{
 		Success: true,
 		Output:  fmt.Sprintf("Approval requested for %s (%s risk)", toolName, riskLevel),
@@ -792,17 +881,17 @@ func generateDiff(filePath string, oldContent, newContent string) string {
 	// Simple diff generation
 	oldLines := strings.Split(oldContent, "\n")
 	newLines := strings.Split(newContent, "\n")
-	
+
 	var diff strings.Builder
 	diff.WriteString(fmt.Sprintf("--- %s\n", filePath))
 	diff.WriteString(fmt.Sprintf("+++ %s\n", filePath))
-	
+
 	// Very basic line-by-line diff
 	maxLines := len(oldLines)
 	if len(newLines) > maxLines {
 		maxLines = len(newLines)
 	}
-	
+
 	for i := 0; i < maxLines; i++ {
 		oldLine := ""
 		newLine := ""
@@ -812,7 +901,7 @@ func generateDiff(filePath string, oldContent, newContent string) string {
 		if i < len(newLines) {
 			newLine = newLines[i]
 		}
-		
+
 		if oldLine != newLine {
 			if oldLine != "" {
 				diff.WriteString(fmt.Sprintf("-%s\n", oldLine))
@@ -822,14 +911,14 @@ func generateDiff(filePath string, oldContent, newContent string) string {
 			}
 		}
 	}
-	
+
 	return diff.String()
 }
 
 func countLineChanges(oldContent, newContent string) map[string]int {
 	oldLines := strings.Split(oldContent, "\n")
 	newLines := strings.Split(newContent, "\n")
-	
+
 	return map[string]int{
 		"removed": len(oldLines) - len(newLines),
 		"added":   len(newLines) - len(oldLines),
@@ -840,14 +929,14 @@ func countReplacements(oldContent, newContent string) int {
 	// Count approximate replacements
 	oldLines := strings.Split(oldContent, "\n")
 	newLines := strings.Split(newContent, "\n")
-	
+
 	changes := 0
 	for i := 0; i < len(oldLines) && i < len(newLines); i++ {
 		if oldLines[i] != newLines[i] {
 			changes++
 		}
 	}
-	
+
 	return changes
 }
 

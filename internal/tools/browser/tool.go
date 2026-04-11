@@ -112,8 +112,12 @@ func (t *Tool) Execute(ctx context.Context, input map[string]interface{}) (*Tool
 		timeout = int(to)
 	}
 
-	// Update browser timeout
-	t.browser.timeout = time.Duration(timeout) * time.Second
+	// Apply the per-call timeout via context rather than mutating the
+	// shared t.browser.timeout field — the previous approach was a
+	// data race when Tool.Execute was called from multiple goroutines
+	// (TestTool_ConcurrentExecution detects this under -race).
+	callCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancel()
 
 	// Create action
 	action := Action{
@@ -123,7 +127,7 @@ func (t *Tool) Execute(ctx context.Context, input map[string]interface{}) (*Tool
 	}
 
 	// Execute
-	result, err := t.browser.Execute(ctx, action)
+	result, err := t.browser.Execute(callCtx, action)
 	if err != nil {
 		return &ToolResult{
 			Success: false,
@@ -174,5 +178,3 @@ func (t *Tool) Screenshot(ctx context.Context, url string) (*ToolResult, error) 
 		"url":    url,
 	})
 }
-
-

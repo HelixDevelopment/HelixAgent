@@ -167,8 +167,11 @@ func (ds *DocumentationSync) syncToFile(filePath, sectionName, newContent string
 		updatedContent = before + ds.wrapSection(sectionName, newContent) + after
 	}
 
-	// Write updated content
-	// #nosec G306 -- documentation files (AGENTS.md, CLAUDE.md) are intentionally world-readable
+	// Write updated content.
+	// #nosec G306 G703 -- filePath is supplied by the constitution_watcher
+	// from a fixed allow-list of project-root docs (AGENTS.md, CLAUDE.md,
+	// CONSTITUTION.md); never from user input. Files are intentionally
+	// world-readable.
 	if err := os.WriteFile(filePath, []byte(updatedContent), 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}

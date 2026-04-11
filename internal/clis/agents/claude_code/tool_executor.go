@@ -12,7 +12,7 @@ import (
 
 // ToolExecutor handles tool execution for Claude Code
 type ToolExecutor struct {
-	workDir     string
+	workDir      string
 	allowedTools map[string]bool
 }
 
@@ -22,7 +22,7 @@ func NewToolExecutor(workDir string, allowedTools []string) *ToolExecutor {
 	for _, t := range allowedTools {
 		tools[t] = true
 	}
-	
+
 	return &ToolExecutor{
 		workDir:      workDir,
 		allowedTools: tools,
@@ -80,38 +80,38 @@ func (te *ToolExecutor) readFile(ctx context.Context, params map[string]interfac
 	if !ok || filePath == "" {
 		return &ToolResult{Success: false, Error: "file_path required"}, nil
 	}
-	
+
 	// Sanitize path
 	filePath = te.sanitizePath(filePath)
-	
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	return &ToolResult{Success: true, Output: string(content)}, nil
 }
 
 func (te *ToolExecutor) writeFile(ctx context.Context, params map[string]interface{}) (*ToolResult, error) {
 	filePath, _ := params["file_path"].(string)
 	content, _ := params["content"].(string)
-	
+
 	if filePath == "" {
 		return &ToolResult{Success: false, Error: "file_path required"}, nil
 	}
-	
+
 	filePath = te.sanitizePath(filePath)
-	
+
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	return &ToolResult{Success: true, Output: fmt.Sprintf("Wrote %d bytes to %s", len(content), filePath)}, nil
 }
 
@@ -119,27 +119,27 @@ func (te *ToolExecutor) editFile(ctx context.Context, params map[string]interfac
 	filePath, _ := params["file_path"].(string)
 	oldStr, _ := params["old_string"].(string)
 	newStr, _ := params["new_string"].(string)
-	
+
 	if filePath == "" || oldStr == "" {
 		return &ToolResult{Success: false, Error: "file_path and old_string required"}, nil
 	}
-	
+
 	filePath = te.sanitizePath(filePath)
-	
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	newContent := strings.Replace(string(content), oldStr, newStr, 1)
 	if newContent == string(content) {
 		return &ToolResult{Success: false, Error: "old_string not found in file"}, nil
 	}
-	
+
 	if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	return &ToolResult{Success: true, Output: fmt.Sprintf("Edited %s", filePath)}, nil
 }
 
@@ -148,15 +148,15 @@ func (te *ToolExecutor) bash(ctx context.Context, params map[string]interface{})
 	if command == "" {
 		return &ToolResult{Success: false, Error: "command required"}, nil
 	}
-	
+
 	// Security: block dangerous commands
 	if te.isDangerousCommand(command) {
 		return &ToolResult{Success: false, Error: "dangerous command blocked"}, nil
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
 	cmd.Dir = te.workDir
-	
+
 	output, err := cmd.CombinedOutput()
 	result := &ToolResult{
 		Success: err == nil,
@@ -165,23 +165,23 @@ func (te *ToolExecutor) bash(ctx context.Context, params map[string]interface{})
 	if err != nil {
 		result.Error = err.Error()
 	}
-	
+
 	return result, nil
 }
 
 func (te *ToolExecutor) search(ctx context.Context, params map[string]interface{}) (*ToolResult, error) {
 	pattern, _ := params["pattern"].(string)
 	path, _ := params["path"].(string)
-	
+
 	if pattern == "" {
 		return &ToolResult{Success: false, Error: "pattern required"}, nil
 	}
-	
+
 	if path == "" {
 		path = te.workDir
 	}
 	path = te.sanitizePath(path)
-	
+
 	// Use ripgrep if available, fall back to grep
 	var cmd *exec.Cmd
 	if _, err := exec.LookPath("rg"); err == nil {
@@ -189,13 +189,13 @@ func (te *ToolExecutor) search(ctx context.Context, params map[string]interface{
 	} else {
 		cmd = exec.CommandContext(ctx, "grep", "-rn", "-i", pattern, path)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	result := &ToolResult{
 		Success: err == nil || len(output) > 0,
 		Output:  string(output),
 	}
-	
+
 	return result, nil
 }
 
@@ -205,19 +205,19 @@ func (te *ToolExecutor) view(ctx context.Context, params map[string]interface{})
 		path = te.workDir
 	}
 	path = te.sanitizePath(path)
-	
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return &ToolResult{Success: false, Error: err.Error()}, nil
 	}
-	
+
 	if info.IsDir() {
 		// List directory
 		entries, err := os.ReadDir(path)
 		if err != nil {
 			return &ToolResult{Success: false, Error: err.Error()}, nil
 		}
-		
+
 		var output strings.Builder
 		for _, entry := range entries {
 			prefix := "  "
@@ -228,7 +228,7 @@ func (te *ToolExecutor) view(ctx context.Context, params map[string]interface{})
 		}
 		return &ToolResult{Success: true, Output: output.String()}, nil
 	}
-	
+
 	// Show file info
 	return &ToolResult{
 		Success: true,
@@ -241,15 +241,15 @@ func (te *ToolExecutor) git(ctx context.Context, params map[string]interface{}) 
 	if subcommand == "" {
 		subcommand = "status"
 	}
-	
+
 	args := []string{subcommand}
 	if extraArgs, ok := params["args"].([]string); ok {
 		args = append(args, extraArgs...)
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = te.workDir
-	
+
 	output, err := cmd.CombinedOutput()
 	result := &ToolResult{
 		Success: err == nil,
@@ -258,15 +258,54 @@ func (te *ToolExecutor) git(ctx context.Context, params map[string]interface{}) 
 	if err != nil {
 		result.Error = err.Error()
 	}
-	
+
 	return result, nil
 }
 
+// sanitizePath resolves path against te.workDir and enforces that the
+// final absolute path stays within the sandbox. Returns an empty
+// string on escape so callers detect the rejection without needing a
+// second return value (the old contract). An empty return always
+// causes the subsequent os.ReadFile/os.WriteFile to fail with a clear
+// "no such file or directory" rather than touching random files.
+//
+// This is the G703 fix for the 2026-04-11 gosec triage. The prior
+// implementation accepted any absolute path unchanged and joined any
+// relative path to workDir without a containment check, so an LLM tool
+// call with file_path="../../../etc/passwd" would write outside the
+// sandbox.
 func (te *ToolExecutor) sanitizePath(path string) string {
-	if filepath.IsAbs(path) {
-		return path
+	if path == "" || te.workDir == "" {
+		return ""
 	}
-	return filepath.Join(te.workDir, path)
+	base := filepath.Clean(te.workDir)
+	var abs string
+	if filepath.IsAbs(path) {
+		abs = filepath.Clean(path)
+	} else {
+		abs = filepath.Clean(filepath.Join(base, path))
+	}
+	// Resolve the base (and the path itself if it exists) so symlink
+	// tricks cannot escape. A missing leaf is expected for Write, so
+	// fall back to resolving the parent.
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		parent, errP := filepath.EvalSymlinks(filepath.Dir(abs))
+		if errP != nil {
+			resolved = abs
+		} else {
+			resolved = filepath.Join(parent, filepath.Base(abs))
+		}
+	}
+	resolvedBase, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		resolvedBase = base
+	}
+	rel, err := filepath.Rel(resolvedBase, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return ""
+	}
+	return resolved
 }
 
 func (te *ToolExecutor) isDangerousCommand(command string) bool {
@@ -277,7 +316,7 @@ func (te *ToolExecutor) isDangerousCommand(command string) bool {
 		"dd if=/dev/zero",
 		":(){ :|:& };:", // fork bomb
 	}
-	
+
 	for _, d := range dangerous {
 		if strings.Contains(command, d) {
 			return true

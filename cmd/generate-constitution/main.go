@@ -75,6 +75,9 @@ func main() {
 	// Generate validation report
 	report := documentationSync.GenerateConstitutionReport(projectRoot, constitution)
 	reportPath := filepath.Join(projectRoot, "CONSTITUTION_REPORT.md")
+	// #nosec G703 -- reportPath is always projectRoot/CONSTITUTION_REPORT.md,
+	// rooted at the operator-supplied projectRoot CLI arg; never from LLM or
+	// HTTP input.
 	if err := os.WriteFile(reportPath, []byte(report), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to save Constitution report: %v\n", err)
 	} else {

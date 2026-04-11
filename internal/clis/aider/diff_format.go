@@ -38,8 +38,8 @@ type ParseResult struct {
 
 // ValidationResult contains validation results.
 type ValidationResult struct {
-	Valid   bool
-	Errors  []ValidationError
+	Valid  bool
+	Errors []ValidationError
 }
 
 // ValidationError represents a validation error.
@@ -55,34 +55,34 @@ func (df *DiffFormat) ParseEditBlocks(text string) (*ParseResult, error) {
 		Blocks: make([]*EditBlock, 0),
 		Errors: make([]error, 0),
 	}
-	
+
 	// Pattern for file path
 	filePattern := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(df.FENCE) + `\s*(\S+)$`)
-	
+
 	// Pattern for SEARCH/REPLACE blocks
 	searchReplacePattern := regexp.MustCompile(
-		`(?s)` + 
-		`^<<<<<<< SEARCH\n` +
-		`(.*?)\n` +
-		`=======\n` +
-		`(.*?)\n` +
-		`>>>>>>> REPLACE$`,
+		`(?s)` +
+			`^<<<<<<< SEARCH\n` +
+			`(.*?)\n` +
+			`=======\n` +
+			`(.*?)\n` +
+			`>>>>>>> REPLACE$`,
 	)
-	
+
 	// Find all file markers
 	fileMatches := filePattern.FindAllStringSubmatchIndex(text, -1)
-	
+
 	if len(fileMatches) == 0 {
 		// Try without file markers - assume single file context
 		return df.parseBlocksWithoutFiles(text)
 	}
-	
+
 	// Parse blocks for each file
 	for i, match := range fileMatches {
 		fileStart := match[2]
 		fileEnd := match[3]
 		file := strings.TrimSpace(text[fileStart:fileEnd])
-		
+
 		// Determine the section for this file
 		sectionStart := match[1]
 		var sectionEnd int
@@ -91,9 +91,9 @@ func (df *DiffFormat) ParseEditBlocks(text string) (*ParseResult, error) {
 		} else {
 			sectionEnd = len(text)
 		}
-		
+
 		section := text[sectionStart:sectionEnd]
-		
+
 		// Find SEARCH/REPLACE blocks in this section
 		blocks := searchReplacePattern.FindAllStringSubmatch(section, -1)
 		for _, block := range blocks {
@@ -106,7 +106,7 @@ func (df *DiffFormat) ParseEditBlocks(text string) (*ParseResult, error) {
 			}
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -116,17 +116,17 @@ func (df *DiffFormat) parseBlocksWithoutFiles(text string) (*ParseResult, error)
 		Blocks: make([]*EditBlock, 0),
 		Errors: make([]error, 0),
 	}
-	
+
 	// Pattern for SEARCH/REPLACE blocks
 	searchReplacePattern := regexp.MustCompile(
-		`(?s)` + 
-		`^<<<<<<< SEARCH\n` +
-		`(.*?)\n` +
-		`=======\n` +
-		`(.*?)\n` +
-		`>>>>>>> REPLACE$`,
+		`(?s)` +
+			`^<<<<<<< SEARCH\n` +
+			`(.*?)\n` +
+			`=======\n` +
+			`(.*?)\n` +
+			`>>>>>>> REPLACE$`,
 	)
-	
+
 	blocks := searchReplacePattern.FindAllStringSubmatch(text, -1)
 	for _, block := range blocks {
 		if len(block) >= 3 {
@@ -137,7 +137,7 @@ func (df *DiffFormat) parseBlocksWithoutFiles(text string) (*ParseResult, error)
 			})
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -147,7 +147,7 @@ func (df *DiffFormat) ValidateEditBlocks(blocks []*EditBlock, baseDir string) *V
 		Valid:  true,
 		Errors: make([]ValidationError, 0),
 	}
-	
+
 	for i, block := range blocks {
 		if block.File == "" {
 			result.Valid = false
@@ -157,9 +157,22 @@ func (df *DiffFormat) ValidateEditBlocks(blocks []*EditBlock, baseDir string) *V
 			})
 			continue
 		}
-		
-		filePath := filepath.Join(baseDir, block.File)
-		
+
+		// G703 containment: validate the block path stays under baseDir
+		// before any filesystem access.
+		filePath := filepath.Clean(filepath.Join(baseDir, block.File))
+		cleanedBase := filepath.Clean(baseDir)
+		rel, relErr := filepath.Rel(cleanedBase, filePath)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				BlockIndex: i,
+				File:       block.File,
+				Message:    "path escapes base directory",
+			})
+			continue
+		}
+
 		// Check file exists
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			result.Valid = false
@@ -170,7 +183,7 @@ func (df *DiffFormat) ValidateEditBlocks(blocks []*EditBlock, baseDir string) *V
 			})
 			continue
 		}
-		
+
 		// Read file content
 		content, err := os.ReadFile(filePath)
 		if err != nil {
@@ -182,7 +195,7 @@ func (df *DiffFormat) ValidateEditBlocks(blocks []*EditBlock, baseDir string) *V
 			})
 			continue
 		}
-		
+
 		// Check search text exists
 		if !strings.Contains(string(content), block.Search) {
 			result.Valid = false
@@ -193,7 +206,7 @@ func (df *DiffFormat) ValidateEditBlocks(blocks []*EditBlock, baseDir string) *V
 			})
 		}
 	}
-	
+
 	return result
 }
 
@@ -208,21 +221,35 @@ func (df *DiffFormat) ApplyEditBlocks(
 		Failed:      make([]*FailedBlock, 0),
 		FilesEdited: make(map[string]bool),
 	}
-	
+
 	// Group blocks by file
 	byFile := make(map[string][]*EditBlock)
 	for _, block := range blocks {
 		byFile[block.File] = append(byFile[block.File], block)
 	}
-	
+
 	// Apply blocks file by file
 	for file, fileBlocks := range byFile {
-		filePath := filepath.Join(baseDir, file)
-		
+		// G703 containment: edit-block file paths come from LLM-generated
+		// diffs. Clean and validate that the resolved target stays under
+		// baseDir before any filesystem side effect.
+		filePath := filepath.Clean(filepath.Join(baseDir, file))
+		cleanedBase := filepath.Clean(baseDir)
+		rel, relErr := filepath.Rel(cleanedBase, filePath)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			for _, block := range fileBlocks {
+				result.Failed = append(result.Failed, &FailedBlock{
+					Block: block,
+					Error: fmt.Errorf("path %q escapes base directory", file),
+				})
+			}
+			continue
+		}
+
 		// Read or create file
 		var content []byte
 		var err error
-		
+
 		if _, statErr := os.Stat(filePath); os.IsNotExist(statErr) {
 			if createIfMissing {
 				// Create parent directories
@@ -258,10 +285,10 @@ func (df *DiffFormat) ApplyEditBlocks(
 				continue
 			}
 		}
-		
+
 		// Apply blocks sequentially
 		contentStr := string(content)
-		
+
 		for _, block := range fileBlocks {
 			if !strings.Contains(contentStr, block.Search) {
 				result.Failed = append(result.Failed, &FailedBlock{
@@ -270,7 +297,7 @@ func (df *DiffFormat) ApplyEditBlocks(
 				})
 				continue
 			}
-			
+
 			// Apply replacement (first occurrence only)
 			newContent := strings.Replace(contentStr, block.Search, block.Replace, 1)
 			if newContent == contentStr {
@@ -280,7 +307,7 @@ func (df *DiffFormat) ApplyEditBlocks(
 				})
 				continue
 			}
-			
+
 			contentStr = newContent
 			result.Applied = append(result.Applied, &AppliedBlock{
 				Block:    block,
@@ -288,7 +315,7 @@ func (df *DiffFormat) ApplyEditBlocks(
 				NewLines: strings.Count(block.Replace, "\n"),
 			})
 		}
-		
+
 		// Write back if any blocks applied
 		if len(result.Applied) > 0 {
 			if err := os.WriteFile(filePath, []byte(contentStr), 0644); err != nil {
@@ -300,11 +327,11 @@ func (df *DiffFormat) ApplyEditBlocks(
 				}
 				continue
 			}
-			
+
 			result.FilesEdited[file] = true
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -331,24 +358,24 @@ type FailedBlock struct {
 // FormatEditBlock formats an edit block as text.
 func (df *DiffFormat) FormatEditBlock(file, search, replace string) string {
 	var builder strings.Builder
-	
+
 	if file != "" {
 		builder.WriteString(df.FENCE)
 		builder.WriteString(file)
 		builder.WriteString("\n")
 	}
-	
+
 	builder.WriteString("<<<<<<< SEARCH\n")
 	builder.WriteString(search)
 	builder.WriteString("\n=======\n")
 	builder.WriteString(replace)
 	builder.WriteString("\n>>>>>>> REPLACE\n")
-	
+
 	if file != "" {
 		builder.WriteString(df.FENCE)
 		builder.WriteString("\n")
 	}
-	
+
 	return builder.String()
 }
 
@@ -356,38 +383,38 @@ func (df *DiffFormat) FormatEditBlock(file, search, replace string) string {
 func (df *DiffFormat) FindBestMatch(content, search string) (string, float64) {
 	// This implements fuzzy matching similar to Aider
 	// Returns the best matching substring and similarity score
-	
+
 	// Normalize whitespace
 	content = normalizeWhitespace(content)
 	search = normalizeWhitespace(search)
-	
+
 	// If exact match exists, return it
 	if strings.Contains(content, search) {
 		return search, 1.0
 	}
-	
+
 	// Try line-by-line fuzzy matching
 	contentLines := strings.Split(content, "\n")
 	searchLines := strings.Split(search, "\n")
-	
+
 	if len(searchLines) == 0 {
 		return "", 0.0
 	}
-	
+
 	bestMatch := ""
 	bestScore := 0.0
-	
+
 	// Sliding window over content
 	for i := 0; i <= len(contentLines)-len(searchLines); i++ {
 		window := strings.Join(contentLines[i:i+len(searchLines)], "\n")
 		score := similarityScore(window, search)
-		
+
 		if score > bestScore {
 			bestScore = score
 			bestMatch = window
 		}
 	}
-	
+
 	return bestMatch, bestScore
 }
 
@@ -399,11 +426,11 @@ func similarityScore(s1, s2 string) float64 {
 	if len(s2) > maxLen {
 		maxLen = len(s2)
 	}
-	
+
 	if maxLen == 0 {
 		return 1.0
 	}
-	
+
 	return 1.0 - float64(distance)/float64(maxLen)
 }
 
@@ -415,13 +442,13 @@ func levenshteinDistance(s1, s2 string) int {
 	if len(s2) == 0 {
 		return len(s1)
 	}
-	
+
 	// Create matrix
 	matrix := make([][]int, len(s1)+1)
 	for i := range matrix {
 		matrix[i] = make([]int, len(s2)+1)
 	}
-	
+
 	// Initialize
 	for i := 0; i <= len(s1); i++ {
 		matrix[i][0] = i
@@ -429,7 +456,7 @@ func levenshteinDistance(s1, s2 string) int {
 	for j := 0; j <= len(s2); j++ {
 		matrix[0][j] = j
 	}
-	
+
 	// Fill matrix
 	for i := 1; i <= len(s1); i++ {
 		for j := 1; j <= len(s2); j++ {
@@ -437,15 +464,15 @@ func levenshteinDistance(s1, s2 string) int {
 			if s1[i-1] != s2[j-1] {
 				cost = 1
 			}
-			
+
 			deletion := matrix[i-1][j] + 1
 			insertion := matrix[i][j-1] + 1
 			substitution := matrix[i-1][j-1] + cost
-			
+
 			matrix[i][j] = min(deletion, min(insertion, substitution))
 		}
 	}
-	
+
 	return matrix[len(s1)][len(s2)]
 }
 

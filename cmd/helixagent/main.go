@@ -73,7 +73,7 @@ import (
 	"dev.helix.agent/internal/verifier"
 	appversion "dev.helix.agent/internal/version"
 	"digital.vasic.llmsverifier/pkg/cliagents"
-	
+
 	"dev.helix.agent/internal/containers"
 )
 
@@ -1737,9 +1737,9 @@ func run(appCfg *AppConfig) error {
 		TLSCertFile:    "", // Auto-generate self-signed cert
 		TLSKeyFile:     "",
 		MaxConnections: 1000,
-		IdleTimeout:    0,                  // Disabled: SSE streams have long gaps between chunks during debate
+		IdleTimeout:    0, // Disabled: SSE streams have long gaps between chunks during debate
 		ReadTimeout:    30 * time.Second,
-		WriteTimeout:   600 * time.Second,  // 10 minutes: debate responses can be very large
+		WriteTimeout:   600 * time.Second, // 10 minutes: debate responses can be very large
 	}
 	http3Server, err := transport.NewHTTP3Server(r, http3Config)
 	if err != nil {
@@ -1962,6 +1962,9 @@ func configureHelixLLMTLS(logger *logrus.Logger) {
 	// Write combined bundle
 	combined := append(systemCA, '\n')
 	combined = append(combined, helixCert...)
+	// #nosec G703 -- bundlePath is derived from the user's $HOME/.helixagent/
+	// directory under operator control; never from LLM or HTTP input. Writing
+	// the bundle there is the documented secure-default workflow in CLAUDE.md.
 	if err := os.WriteFile(bundlePath, combined, 0644); err != nil {
 		logger.WithError(err).Warn("Failed to write combined CA bundle")
 		return
@@ -1980,9 +1983,9 @@ func configureHelixLLMTLS(logger *logrus.Logger) {
 	os.WriteFile(filepath.Join(envDir, "helixllm-tls.conf"), []byte(envConf), 0644)
 
 	logger.WithFields(logrus.Fields{
-		"bundle":             bundlePath,
-		"cert":               absCertPath,
-		"ssl_cert_file":      bundlePath,
+		"bundle":              bundlePath,
+		"cert":                absCertPath,
+		"ssl_cert_file":       bundlePath,
 		"node_extra_ca_certs": absCertPath,
 	}).Info("HelixLLM TLS cert trust auto-configured")
 }
@@ -2381,12 +2384,12 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				MaxTokens: 4096,
 			},
 		},
-		MCP:          getMCPServersWithHelixLLM(baseURL, helixLLMEndpoint, *workingMCPsOnly),
-		Plugin:       []string{"opencode-agent-skills@0.6.5"},
+		MCP:    getMCPServersWithHelixLLM(baseURL, helixLLMEndpoint, *workingMCPsOnly),
+		Plugin: []string{"opencode-agent-skills@0.6.5"},
 		// NOTE: Instructions removed — CLAUDE.md (~15K tokens) exceeds local model's
 		// 16K context when combined with conversation history and tools.
 		// OpenCode reads CLAUDE.md automatically from project root when present.
-		TUI:          &OpenCodeTUIDef{Theme: "opencode"},
+		TUI: &OpenCodeTUIDef{Theme: "opencode"},
 	}
 
 	// Expand environment variables in entire configuration
@@ -3066,7 +3069,7 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 
 	// MCPs that require specific env vars — only include if the key is set
 	envDependent := map[string]string{
-		"github":       "GITHUB_TOKEN",
+		"github": "GITHUB_TOKEN",
 		// "gitlab" removed — upstream @modelcontextprotocol/server-gitlab has broken tool schemas
 		"brave-search": "BRAVE_API_KEY",
 		"slack":        "SLACK_BOT_TOKEN",
@@ -3074,8 +3077,8 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 		"linear":       "LINEAR_API_KEY",
 		"notion":       "NOTION_API_KEY",
 		// NOTE: huggingface MCP removed — npm package "mcp-server-huggingface" does not exist
-		"replicate":    "REPLICATE_API_TOKEN",
-		"exa":          "EXA_API_KEY",
+		"replicate": "REPLICATE_API_TOKEN",
+		"exa":       "EXA_API_KEY",
 	}
 
 	for name, mcpConfig := range allMCPs {
@@ -3938,8 +3941,8 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"circleci":   {Type: "local", Command: []string{"npx", "-y", "mcp-server-circleci"}, Env: map[string]string{"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}"}, Enabled: true},
 
 		// AI/ML Integration MCPs - LOCAL
-		"langchain":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-langchain"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
-		"llamaindex":       {Type: "local", Command: []string{"npx", "-y", "mcp-server-llamaindex"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
+		"langchain":  {Type: "local", Command: []string{"npx", "-y", "mcp-server-langchain"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
+		"llamaindex": {Type: "local", Command: []string{"npx", "-y", "mcp-server-llamaindex"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
 		// NOTE: huggingface MCP removed — npm package does not exist
 		"replicate":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-replicate"}, Env: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"}, Enabled: true},
 		"stable-diffusion": {Type: "local", Command: []string{"npx", "-y", "mcp-server-stable-diffusion"}, Env: map[string]string{"STABILITY_API_KEY": "{env:STABILITY_API_KEY}"}, Enabled: true},

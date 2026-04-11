@@ -65,7 +65,10 @@ func (e *EditBlock) Apply(basePath string) (*Result, error) {
 		}, nil
 	}
 
-	// Write back
+	// Write back.
+	// #nosec G703 -- fullPath has been validated above (lines 42-45) to
+	// live under basePath via filepath.Clean + prefix check; any escape
+	// returns early before reaching here.
 	if err := os.WriteFile(fullPath, []byte(newContent), 0644); err != nil {
 		return nil, fmt.Errorf("write file: %w", err)
 	}

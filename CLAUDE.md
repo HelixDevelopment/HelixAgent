@@ -196,7 +196,23 @@ Each module is an independent Go module with its own go.mod, tests, CLAUDE.md, A
 - `Formatter` — Code formatter interface | Vector stores: `Connect`, `Upsert`, `Search`, `Delete`, `Get`
 
 ### Goroutine Lifecycle Safety
-All HTTP handlers with background goroutines implement graceful shutdown via `sync.WaitGroup` lifecycle tracking. Key pattern: `WaitGroup.Add(1)` before goroutine launch, `defer WaitGroup.Done()` inside the goroutine, `Shutdown()`/`Stop()` calls `cancel()` + `WaitGroup.Wait()`. This pattern prevents goroutine leaks and ensures all background work completes before process exit. Applied across SSE handlers, cache invalidation, model refresh, debate log tracking, ACP shutdown, **rate limiter** (`internal/middleware/rate_limit.go` — context-based cleanup with `Stop()`), **memory service** (`internal/services/memory_service.go` — WaitGroup-tracked cleanup routine), and **worker pool** (`internal/background/worker_pool.go` — atomic `started` flag, `sync.Once`-protected stop). The **modelsdev cache** (`internal/modelsdev/cache.go`) uses channel-based lifecycle (`stopCleanup`/`cleanupDone`). Diagrams: `docs/diagrams/src/goroutine-lifecycle.puml`, `docs/diagrams/src/concurrency-lifecycle.mmd`.
+All HTTP handlers with background goroutines implement graceful shutdown via `sync.WaitGroup` lifecycle tracking. Key pattern: `WaitGroup.Add(1)` before goroutine launch, `defer WaitGroup.Done()` inside the goroutine, `Shutdown()`/`Stop()` calls `cancel()` + `WaitGroup.Wait()`. This pattern prevents goroutine leaks and ensures all background work completes before process exit. Applied across SSE handlers, cache invalidation, model refresh, debate log tracking, ACP shutdown, **rate limiter** (`internal/middleware/rate_limit.go` — context-based cleanup with `Stop()`), **memory service** (`internal/services/memory_service.go` — WaitGroup-tracked cleanup routine), and **worker pool** (`internal/background/worker_pool.go` — atomic `started` flag, `sync.Once`-protected stop). The **modelsdev cache** (`internal/modelsdev/cache.go`) uses channel-based lifecycle (`stopCleanup`/`cleanupDone`).
+
+**Phase-3 hot-path memory-safety (added 2026-04-11):**
+- **Ensemble worker pool** (`internal/ensemble/background/worker_pool.go`): `pendingResults` sync.Map has an atomic `pendingCount` + `DefaultMaxPendingResults=10_000` admission cap. `SubmitAsync` synchronously rejects with `tasks_rejected` counter increment when the cap is hit — no task is queued, no worker is touched. The per-call `time.NewTimer`/`Stop` pattern replaced a leaky `time.After(30s)` that pinned a timer on the runtime heap per call.
+- **Guardrail pipeline** (`internal/security/guardrails.go`): `stat.Checks`/`stat.Triggers` increments now use `atomic.AddInt64` (previous code raced under parallel guardrail execution). `byGuardrail` sync.Map has `MaxGuardrailStatsKeys=1024` admission control; overflow increments `byGuardrailDropped` rather than growing the map unbounded.
+- **Provider cache** (`internal/cache/provider_cache.go`): three manual `Lock()`/`Unlock()` blocks in `trackProviderHit/Miss/Set` collapsed into a single `getOrCreateStats` helper that uses `defer mu.Unlock()` for panic safety.
+- **Cache service** (`internal/cache/cache_service.go`): `InvalidateUserCache` critical section wrapped in an IIFE with `defer c.userKeysMu.Unlock()` for panic safety.
+
+**Phase-3 observability wiring:**
+- New Prometheus gauges exported via `internal/observability/metrics/phase3_gauges.go` + `phase3_source.go` (decoupled contributor-singleton pattern, no domain→observability cycles): `helixagent_ensemble_pending_results{,_cap}`, `helixagent_ensemble_tasks_rejected_total`, `helixagent_guardrails_stats_keys`, `helixagent_guardrails_stats_dropped_total`.
+- Grafana dashboard: `docker/monitoring/grafana/dashboards/phase3-memory-safety.json` (8 panels covering pending depth, utilisation, rejection rate, guardrail key count, drops, and four named operator states).
+- Env-gated SLI test: `tests/monitoring/phase3_sli_live_test.go` scrapes `HELIX_MONITOR_URL` when set and asserts all 5 gauges are within idle thresholds.
+
+**Global request body limit middleware (added 2026-04-11):**
+- `internal/middleware/body_limit.go` — `DefaultMaxRequestBodySize = 10 MiB`, wired as the second middleware in `internal/router/router.go` after `ConcurrencyLimiter(100)`. Content-Length fast path rejects over-sized declared payloads with 413; `http.MaxBytesReader` bounds the actual read so chunked/lying clients are also caught. Override via `MAX_REQUEST_BODY_BYTES` env var; zero or negative cap disables enforcement for endpoints that stream large uploads.
+
+Diagrams: `docs/diagrams/src/goroutine-lifecycle.puml`, `docs/diagrams/src/concurrency-lifecycle.mmd`.
 
 ### Release Build System
 - **Version Package**: `internal/version/` — single source of truth, set via `-ldflags -X` at build time

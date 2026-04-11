@@ -33,7 +33,7 @@ See also:
 | `operations/` | Runbooks, on-call procedures |
 | `runbooks/` | Named incident runbooks |
 | `monitoring/` | Metrics, dashboards, alert wiring |
-| `observability/` | OpenTelemetry, tracing, logging |
+| `observability/` | OpenTelemetry, tracing, logging. See `observability/PHASE3_METRICS.md` for the memory-safety gauge wiring added 2026-04-11. |
 
 ## Feature-specific docs
 

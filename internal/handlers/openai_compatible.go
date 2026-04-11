@@ -2684,6 +2684,23 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 				}
 			}
 
+			// Refuse to return 200 OK with empty message.content from the
+			// orchestrator path too — matches the debate-service path at
+			// the bottom of this function. A 200 + empty body is
+			// indistinguishable from a silent failure to every OpenAI
+			// client downstream.
+			if strings.TrimSpace(finalContent) == "" {
+				logrus.WithFields(logrus.Fields{
+					"phases":       len(debateResp.Phases),
+					"participants": len(debateResp.Participants),
+				}).Warn("[CODE PATH] NEW orchestrator returned empty content — surfacing as provider error")
+				return nil, fmt.Errorf(
+					"debate orchestrator produced no content (phases=%d, participants=%d) — all providers failed or returned empty",
+					len(debateResp.Phases),
+					len(debateResp.Participants),
+				)
+			}
+
 			finalResponse := &models.LLMResponse{
 				ID:           debateResp.ID,
 				Content:      finalContent,

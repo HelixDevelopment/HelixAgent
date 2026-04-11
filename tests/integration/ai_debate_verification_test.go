@@ -14,8 +14,18 @@ import (
 )
 
 // TestAIDebate_TeamInitializationWithVerifiedProviders tests that the debate team
-// initializes correctly using only verified providers
+// initializes correctly using only verified providers.
+//
+// Skipped in -short mode because a full LLMsVerifier pipeline run touches 33
+// live providers serially and routinely exceeds 5 minutes even when every
+// provider is healthy. The matching smoke path is covered by the startup
+// verifier unit tests and the live HelixAgent binary's own boot-time
+// verification — we do not need to re-run it inside the integration package.
 func TestAIDebate_TeamInitializationWithVerifiedProviders(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping full provider verification in -short mode (see test comment)")
+	}
+
 	hasAPIKey := os.Getenv("CLAUDE_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != "" ||
 		os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("OPENROUTER_API_KEY") != ""
 	if !hasAPIKey {

@@ -69,6 +69,9 @@ func TestProviderVerification_StartupVerifierCreation(t *testing.T) {
 // TestProviderVerification_ModelVerificationLifecycle tests the full lifecycle
 // of model verification including discovery, verification, and scoring
 func TestProviderVerification_ModelVerificationLifecycle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+	}
 	testutil.RequireAPIKey(t, "deepseek")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -114,6 +117,9 @@ func TestProviderVerification_ModelVerificationLifecycle(t *testing.T) {
 // TestProviderVerification_VerifiedModelsCanBeUsed tests that verified models
 // can actually be used for LLM calls
 func TestProviderVerification_VerifiedModelsCanBeUsed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+	}
 	testutil.RequireAPIKey(t, "deepseek")
 
 	ctx := context.Background()
@@ -153,6 +159,9 @@ func TestProviderVerification_VerifiedModelsCanBeUsed(t *testing.T) {
 // TestProviderVerification_FailedProvidersHaveReasons tests that failed providers
 // have proper error messages and failure reasons
 func TestProviderVerification_FailedProvidersHaveReasons(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+	}
 	testutil.RequireAPIKey(t, "deepseek")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -189,6 +198,9 @@ func TestProviderVerification_FailedProvidersHaveReasons(t *testing.T) {
 // TestProviderVerification_DebateTeamUsesVerifiedProviders tests that the debate team
 // configuration uses only verified providers
 func TestProviderVerification_DebateTeamUsesVerifiedProviders(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+	}
 	testutil.RequireAPIKey(t, "deepseek")
 
 	ctx := context.Background()

@@ -2775,14 +2775,45 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 	} else if debateResult.BestResponse != nil {
 		// Use the best response
 		finalContent = debateResult.BestResponse.Content
+		if finalContent == "" {
+			finalContent = debateResult.BestResponse.Response
+		}
 		confidence = debateResult.BestResponse.Confidence
-	} else if len(debateResult.AllResponses) > 0 {
-		finalContent = debateResult.AllResponses[0].Content
-		confidence = debateResult.AllResponses[0].Confidence
+	}
+	if finalContent == "" && len(debateResult.AllResponses) > 0 {
+		// Scan every response for the first non-empty body — prior code only
+		// read index 0, which would be empty whenever the strongest provider
+		// failed first and only weaker providers produced content.
+		for i := range debateResult.AllResponses {
+			r := debateResult.AllResponses[i]
+			candidate := r.Content
+			if candidate == "" {
+				candidate = r.Response
+			}
+			if candidate != "" {
+				finalContent = candidate
+				confidence = r.Confidence
+				break
+			}
+		}
 	}
 
 	if confidence == 0 {
 		confidence = debateResult.QualityScore
+	}
+
+	// Refuse to return a 200 OK with an empty content body. Every upstream
+	// client (OpenCode, curl, OpenAI SDKs) treats an empty message.content
+	// as a successful but useless completion, which masks provider failures
+	// behind a false-positive. Returning an error here lets the client's
+	// transient-failure / retry path fire.
+	if strings.TrimSpace(finalContent) == "" {
+		return nil, fmt.Errorf(
+			"debate ensemble produced no content (participants=%d, responses=%d, rounds=%d) — all providers failed or returned empty",
+			len(debateResult.Participants),
+			len(debateResult.AllResponses),
+			debateResult.TotalRounds,
+		)
 	}
 
 	finalResponse := &models.LLMResponse{

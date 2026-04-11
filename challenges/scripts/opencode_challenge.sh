@@ -815,7 +815,7 @@ CLI_TEST_ASSERTIONS[1]="contains:4"
 CLI_TEST_CATEGORIES[1]="math"
 
 CLI_TEST_PROMPTS[2]="Write a hello world function in Go."
-CLI_TEST_ASSERTIONS[2]="contains:func,contains:Hello"
+CLI_TEST_ASSERTIONS[2]="contains:func;contains:Hello"
 CLI_TEST_CATEGORIES[2]="code_generation"
 
 CLI_TEST_PROMPTS[3]="What is the capital of France?"
@@ -827,7 +827,7 @@ CLI_TEST_ASSERTIONS[4]="contains_any:red,blue,yellow,green"
 CLI_TEST_CATEGORIES[4]="factual"
 
 CLI_TEST_PROMPTS[5]="Write a Python function to check if a number is prime."
-CLI_TEST_ASSERTIONS[5]="contains:def,contains:return"
+CLI_TEST_ASSERTIONS[5]="contains:def;contains:return"
 CLI_TEST_CATEGORIES[5]="code_generation"
 
 CLI_TEST_PROMPTS[6]="Explain what a REST API is in one sentence."
@@ -839,7 +839,7 @@ CLI_TEST_ASSERTIONS[7]="contains:120"
 CLI_TEST_CATEGORIES[7]="math"
 
 CLI_TEST_PROMPTS[8]="Write a SQL query to select all users from a users table."
-CLI_TEST_ASSERTIONS[8]="contains:SELECT,contains:FROM,contains:users"
+CLI_TEST_ASSERTIONS[8]="contains:SELECT;contains:FROM;contains:users"
 CLI_TEST_CATEGORIES[8]="code_generation"
 
 CLI_TEST_PROMPTS[9]="What is the Go programming language commonly used for?"
@@ -851,7 +851,7 @@ CLI_TEST_ASSERTIONS[10]="contains_any:bubble,quick,merge,insertion,selection,hea
 CLI_TEST_CATEGORIES[10]="knowledge"
 
 CLI_TEST_PROMPTS[11]="Write a TypeScript interface for a User with name and email fields."
-CLI_TEST_ASSERTIONS[11]="contains:interface,contains:name,contains:email"
+CLI_TEST_ASSERTIONS[11]="contains:interface;contains:name;contains:email"
 CLI_TEST_CATEGORIES[11]="code_generation"
 
 CLI_TEST_PROMPTS[12]="What is the time complexity of binary search?"
@@ -871,7 +871,7 @@ CLI_TEST_ASSERTIONS[15]="contains_any:container,virtualization,application,deplo
 CLI_TEST_CATEGORIES[15]="explanation"
 
 CLI_TEST_PROMPTS[16]="Write a JSON object with name and age fields."
-CLI_TEST_ASSERTIONS[16]="contains:name,contains:age,contains:{,contains:}"
+CLI_TEST_ASSERTIONS[16]="contains:name;contains:age;contains:{;contains:}"
 CLI_TEST_CATEGORIES[16]="code_generation"
 
 CLI_TEST_PROMPTS[17]="What is the square root of 144?"
@@ -891,7 +891,7 @@ CLI_TEST_ASSERTIONS[20]="contains:200"
 CLI_TEST_CATEGORIES[20]="knowledge"
 
 CLI_TEST_PROMPTS[21]="Write a Go struct for a Book with title and author."
-CLI_TEST_ASSERTIONS[21]="contains:type,contains:struct,contains_any:Title,title,contains_any:Author,author"
+CLI_TEST_ASSERTIONS[21]="contains:type;contains:struct;contains_any:Title,title;contains_any:Author,author"
 CLI_TEST_CATEGORIES[21]="code_generation"
 
 CLI_TEST_PROMPTS[22]="What is Kubernetes used for?"
@@ -903,7 +903,7 @@ CLI_TEST_ASSERTIONS[23]="contains:120"
 CLI_TEST_CATEGORIES[23]="math"
 
 CLI_TEST_PROMPTS[24]="Write a Python list comprehension to get squares of numbers 1 to 5."
-CLI_TEST_ASSERTIONS[24]="contains:for,contains:in,contains:range"
+CLI_TEST_ASSERTIONS[24]="contains:for;contains:in;contains:range"
 CLI_TEST_CATEGORIES[24]="code_generation"
 
 CLI_TEST_PROMPTS[25]="What does SOLID stand for in software design?"
@@ -915,8 +915,10 @@ evaluate_assertion() {
     local response="$1"
     local assertion="$2"
 
-    # Handle multiple assertions separated by comma
-    IFS=',' read -ra ASSERTIONS <<< "$assertion"
+    # Multiple assertions are separated by semicolons because commas
+    # are already used inside contains_any values (e.g. contains_any:red,blue).
+    # Older assertions using ',' between clauses have been migrated above.
+    IFS=';' read -ra ASSERTIONS <<< "$assertion"
 
     for assert in "${ASSERTIONS[@]}"; do
         local type="${assert%%:*}"

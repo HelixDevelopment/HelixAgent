@@ -6,6 +6,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -121,10 +122,42 @@ func newContainerHarness() (*ContainerHarness, error) {
 
 // BootAllServices starts all required services using the container adapter.
 // This ensures tests have access to real containers, not mocks.
+//
+// The harness is a no-op in any of these situations, which match the
+// container-orchestration rule from CLAUDE.md ("the HelixAgent binary
+// orchestrates all containers"):
+//   - HELIX_SKIP_CONTAINER_HARNESS is set (explicit opt-out)
+//   - CONTAINERS_REMOTE_ENABLED=true in Containers/.env
+//     (all containers live on remote hosts; a local ComposeUp would
+//     duplicate them and almost certainly fail)
+//   - HelixAgent's own health endpoint is reachable on :7061
+//     (the binary is already running, which means it has already
+//     booted every required container via its own adapter)
 func (h *ContainerHarness) BootAllServices() error {
 	h.Logger.Info("╔══════════════════════════════════════════════════════════════════╗")
 	h.Logger.Info("║       CONTAINER TEST HARNESS - Booting Real Services             ║")
 	h.Logger.Info("╚══════════════════════════════════════════════════════════════════╝")
+
+	if v := os.Getenv("HELIX_SKIP_CONTAINER_HARNESS"); v != "" && v != "0" && v != "false" {
+		h.Logger.Info("HELIX_SKIP_CONTAINER_HARNESS set — trusting caller to provide services")
+		return nil
+	}
+
+	if isRemoteContainersEnabled(h.projectRoot) {
+		h.Logger.Info(
+			"Containers/.env has CONTAINERS_REMOTE_ENABLED=true — skipping local ComposeUp " +
+				"(containers are orchestrated on remote hosts, per CLAUDE.md)",
+		)
+		return nil
+	}
+
+	if helixAgentPortOpen() {
+		h.Logger.Info(
+			"HelixAgent already reachable on :7061 — skipping duplicate ComposeUp " +
+				"(the running binary already booted all required containers)",
+		)
+		return nil
+	}
 
 	// Check container runtime availability
 	if !h.Adapter.RuntimeAvailable(h.ctx) {
@@ -136,7 +169,7 @@ func (h *ContainerHarness) BootAllServices() error {
 
 	// Start services via compose
 	composeFile := "docker-compose.yml"
-	
+
 	h.Logger.WithFields(logrus.Fields{
 		"compose_file": composeFile,
 		"profile":      "default",
@@ -156,6 +189,42 @@ func (h *ContainerHarness) BootAllServices() error {
 
 	h.Logger.Info("✓ All container services are healthy and ready for tests")
 	return nil
+}
+
+// isRemoteContainersEnabled returns true when Containers/.env has
+// CONTAINERS_REMOTE_ENABLED=true, matching the top-level HelixAgent
+// container-orchestration gate in internal/config.
+func isRemoteContainersEnabled(projectRoot string) bool {
+	envPath := filepath.Join(projectRoot, "Containers", ".env")
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "CONTAINERS_REMOTE_ENABLED=") {
+			v := strings.TrimPrefix(line, "CONTAINERS_REMOTE_ENABLED=")
+			v = strings.Trim(v, `"'`)
+			return v == "true" || v == "1" || v == "yes"
+		}
+	}
+	return false
+}
+
+// helixAgentPortOpen does a 2-second TCP probe against HelixAgent's
+// default port. Used as a positive signal that the full container
+// fleet is already up (since HelixAgent refuses to bind :7061 until
+// its own health-check harness has cleared every required service).
+func helixAgentPortOpen() bool {
+	conn, err := net.DialTimeout("tcp", "localhost:7061", 2*time.Second)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
 
 // waitForServicesHealthy waits for all required services to pass health checks
@@ -243,10 +312,28 @@ func (h *ContainerHarness) GetServiceURLWithMode(service string, useTestPorts bo
 	}
 }
 
-// Cleanup stops all container services
+// Cleanup stops all container services. When the boot path was a
+// no-op (caller already running HelixAgent / remote-enabled mode),
+// cleanup is also a no-op — tearing down containers we did not
+// start would kill the user's live environment.
 func (h *ContainerHarness) Cleanup() error {
+	if os.Getenv("HELIX_SKIP_CONTAINER_HARNESS") != "" {
+		h.cancel()
+		return nil
+	}
+	if isRemoteContainersEnabled(h.projectRoot) {
+		h.Logger.Info("CONTAINERS_REMOTE_ENABLED=true — skipping local ComposeDown (remote containers owned by HelixAgent binary)")
+		h.cancel()
+		return nil
+	}
+	if helixAgentPortOpen() {
+		h.Logger.Info("HelixAgent still running on :7061 — skipping ComposeDown (not our containers to stop)")
+		h.cancel()
+		return nil
+	}
+
 	h.Logger.Info("Cleaning up container services...")
-	
+
 	composeFile := "docker-compose.yml"
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()

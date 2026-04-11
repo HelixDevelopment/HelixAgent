@@ -81,8 +81,13 @@ func (te *ToolExecutor) readFile(ctx context.Context, params map[string]interfac
 		return &ToolResult{Success: false, Error: "file_path required"}, nil
 	}
 
-	// Sanitize path
+	// Sanitize path. Empty return means the path escapes workDir —
+	// fail loudly rather than falling through to os.ReadFile and
+	// producing a cryptic "no such file or directory" error.
 	filePath = te.sanitizePath(filePath)
+	if filePath == "" {
+		return &ToolResult{Success: false, Error: "path escapes working directory"}, nil
+	}
 
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -101,6 +106,9 @@ func (te *ToolExecutor) writeFile(ctx context.Context, params map[string]interfa
 	}
 
 	filePath = te.sanitizePath(filePath)
+	if filePath == "" {
+		return &ToolResult{Success: false, Error: "path escapes working directory"}, nil
+	}
 
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
@@ -125,6 +133,9 @@ func (te *ToolExecutor) editFile(ctx context.Context, params map[string]interfac
 	}
 
 	filePath = te.sanitizePath(filePath)
+	if filePath == "" {
+		return &ToolResult{Success: false, Error: "path escapes working directory"}, nil
+	}
 
 	content, err := os.ReadFile(filePath)
 	if err != nil {

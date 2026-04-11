@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -188,11 +189,21 @@ func RequireFullInfra(t *testing.T) {
 	RequireMockLLM(t)
 }
 
-// RequireEnv skips if the given environment variable is not set.
+// RequireEnv skips if the given environment variable is unset, empty,
+// or contains an obvious unsubstituted placeholder like "$ApiKey_…" or
+// "<YOUR_KEY>". Treating placeholders as "missing" is important for
+// .env files that rely on shell-style interpolation that godotenv does
+// not perform — without this guard, every downstream test would hit
+// the API with a literal "$VarName" token and fail with a 401 that
+// looks like a real regression.
 func RequireEnv(t *testing.T, envVar string) {
 	t.Helper()
-	if os.Getenv(envVar) == "" {
+	v := os.Getenv(envVar)
+	if v == "" {
 		t.Skipf("Environment variable %s not set", envVar)
+	}
+	if strings.HasPrefix(v, "$") || strings.HasPrefix(v, "<") {
+		t.Skipf("Environment variable %s looks like an unsubstituted placeholder (%q)", envVar, v)
 	}
 }
 

@@ -99,7 +99,10 @@ echo "=========================================="
 start_compose "docker-compose.yml" "Core Services (PostgreSQL, Redis, Cognee, ChromaDB)"
 wait_for_health "helixagent-postgres" 30
 wait_for_health "helixagent-redis" 30
-wait_for_health "helixagent-cognee" 60
+# Cognee is OPTIONAL (COGNEE_ENABLED defaults off per CLAUDE.md) — do not
+# fail the entire boot on its absence. The `|| true` suppresses the
+# set -e propagation so Phase 2+ can still run when Cognee isn't wired.
+wait_for_health "helixagent-cognee" 10 || echo -e "${YELLOW}  Note: Cognee not available (optional service, COGNEE_ENABLED defaults off)${NC}"
 
 # Phase 2: Messaging & Queuing
 echo ""
@@ -117,9 +120,9 @@ echo "=========================================="
 echo "PHASE 3: Monitoring & Observability"
 echo "=========================================="
 
-start_compose "docker-compose.monitoring.yml" "Monitoring Services (Prometheus, Grafana, Loki)"
-wait_for_health "helixagent-prometheus" 30
-wait_for_health "helixagent-grafana" 30
+start_compose "docker-compose.monitoring.yml" "Monitoring Services (Prometheus, Grafana, Loki)" || echo -e "${YELLOW}  Note: monitoring stack not available${NC}"
+wait_for_health "helixagent-prometheus" 15 || echo -e "${YELLOW}  Note: Prometheus not reachable, skipping${NC}"
+wait_for_health "helixagent-grafana" 15 || echo -e "${YELLOW}  Note: Grafana not reachable, skipping${NC}"
 
 # Phase 4: Protocol Servers
 echo ""

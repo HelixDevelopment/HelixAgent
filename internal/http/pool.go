@@ -224,6 +224,7 @@ func (p *HTTPClientPool) DoWithContext(ctx context.Context, req *http.Request) (
 			reqCopy.Body = body
 		}
 
+		//nolint:gosec // G704: pooled HTTP client forwarding an already-validated outbound request; SSRF defence applies at the adapter construction layer
 		resp, err = client.Do(reqCopy)
 
 		// Check if we should retry

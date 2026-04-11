@@ -115,6 +115,7 @@ func (s *ModelMetadataService) GetModel(ctx context.Context, modelID string) (*d
 	}
 
 	// Store in cache (async to not block the request)
+	//nolint:gosec // G118: fire-and-forget cache warmup, intentionally decoupled from the request context so the write survives client disconnect
 	go func() {
 		ctx := context.Background()
 		if err := s.cache.Set(ctx, modelID, metadata); err != nil {
@@ -137,6 +138,7 @@ func (s *ModelMetadataService) ListModels(ctx context.Context, providerID string
 	}
 
 	// Store in cache (async to not block the request)
+	//nolint:gosec // G118: fire-and-forget bulk cache warmup, intentionally decoupled from the request context
 	go func(models []*database.ModelMetadata) {
 		ctx := context.Background()
 		cacheEntries := make(map[string]*database.ModelMetadata)
@@ -164,6 +166,7 @@ func (s *ModelMetadataService) SearchModels(ctx context.Context, query string, p
 	}
 
 	// Store in cache (async to not block the request)
+	//nolint:gosec // G118: fire-and-forget bulk cache warmup, intentionally decoupled from the request context
 	go func(models []*database.ModelMetadata) {
 		ctx := context.Background()
 		cacheEntries := make(map[string]*database.ModelMetadata)
@@ -391,6 +394,7 @@ func (s *ModelMetadataService) refreshProviderModels(ctx context.Context, provid
 			_ = s.storeBenchmarks(ctx, modelInfo.ID, modelInfo.Performance.Benchmarks) //nolint:errcheck
 		}
 
+		//nolint:gosec // G118: per-model cache warmup, intentionally decoupled from the outer request context
 		go func(modelID string, metadata *database.ModelMetadata) {
 			ctx := context.Background()
 			if err := s.cache.Set(ctx, modelID, metadata); err != nil {

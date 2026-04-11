@@ -150,6 +150,7 @@ func (c *QUICClient) Do(req *http.Request) (*http.Response, error) {
 
 	// Fallback to HTTP/2 if enabled
 	if c.config.EnableH2Fallback && c.h2Client != nil {
+		//nolint:gosec // G704: HTTP/2 fallback for outbound provider call — URL is caller-supplied via the same gated adapter layer as the primary QUIC path
 		resp, err = c.h2Client.Do(req)
 		if err == nil {
 			atomic.AddInt64(&c.metrics.FallbackRequests, 1)
@@ -281,6 +282,7 @@ func NewHTTP3ProviderTransport(config *QUICConfig) (*HTTP3ProviderTransport, err
 // RoundTrip implements http.RoundTripper for provider calls
 func (t *HTTP3ProviderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Try QUIC first
+	//nolint:gosec // G704: transport-level forward of an already-validated outbound request; SSRF defence applies at the adapter construction layer
 	resp, err := t.quicClient.Do(req)
 	if err != nil && isQUICError(err) {
 		// Fallback to HTTP/2 or HTTP/1.1

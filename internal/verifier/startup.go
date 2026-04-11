@@ -523,6 +523,7 @@ func (sv *StartupVerifier) checkOllamaHealth(baseURL string) []string {
 		Timeout: 5 * time.Second,
 	}
 
+	//nolint:gosec // G704: outbound to configured Ollama provider URL from the verifier — intentional; SSRF defence applies only to user-supplied URLs
 	resp, err := client.Get(tagsURL)
 	if err != nil {
 		sv.log.WithError(err).Debug("Failed to connect to Ollama")
@@ -577,6 +578,7 @@ func (sv *StartupVerifier) checkHelixLLMHealth(baseURL string) []string {
 		},
 	}
 
+	//nolint:gosec // G704: outbound to configured HelixLLM provider URL from the verifier — intentional; SSRF defence applies only to user-supplied URLs
 	resp, err := client.Get(modelsURL)
 	if err != nil {
 		sv.log.WithError(err).Warn("Failed to connect to HelixLLM")

@@ -45,6 +45,7 @@ func (l *LifecycleManager) StartPlugin(ctx context.Context, name string) error {
 	l.running[name] = cancel
 
 	// Start plugin monitoring in background
+	//nolint:gosec // G118: long-lived plugin monitor uses its own scoped context, intentionally decoupled from the caller
 	go l.monitorPlugin(pluginCtx, plugin)
 
 	utils.GetLogger().Infof("Started plugin %s", name)

@@ -41,7 +41,7 @@ type DebateService struct {
 	logger           *logrus.Logger
 	providerRegistry *ProviderRegistry
 	cogneeService    *CogneeService
-	memoryAdapter    interface {                            // HelixMemory unified memory (default)
+	memoryAdapter    interface { // HelixMemory unified memory (default)
 		Add(ctx context.Context, memory *helixmem.Memory) error
 		Get(ctx context.Context, id string) (*helixmem.Memory, error)
 		Search(ctx context.Context, query string, opts *helixmem.SearchOptions) ([]*helixmem.Memory, error)
@@ -2129,6 +2129,7 @@ func (ds *DebateService) analyzeWithHelixMemory(ctx context.Context, content str
 	sentiment := ds.analyzeSentiment(content)
 
 	// Store debate analysis result in HelixMemory for future reference
+	//nolint:gosec // G118: persistent store of a completed debate, intentionally decoupled from the request context so client disconnect does not lose the memory
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {

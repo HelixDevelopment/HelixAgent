@@ -366,6 +366,7 @@ func (c *MultiLevelCache) Set(ctx context.Context, modelID string, metadata *dat
 	}
 
 	// Set in Redis cache (background)
+	//nolint:gosec // G118: background cache writeback, intentionally decoupled from the request context
 	go func() {
 		ctx := context.Background()
 		if err := c.redisCache.Set(ctx, modelID, metadata); err != nil {
@@ -463,6 +464,7 @@ func (c *MultiLevelCache) SetBulk(ctx context.Context, models map[string]*databa
 	}
 
 	// Set in Redis cache (background)
+	//nolint:gosec // G118: background bulk cache writeback, intentionally decoupled from the request context
 	go func() {
 		ctx := context.Background()
 		if err := c.redisCache.SetBulk(ctx, models); err != nil {

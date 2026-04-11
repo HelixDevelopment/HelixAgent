@@ -425,6 +425,7 @@ func (s *CogneeService) IsHealthy(ctx context.Context) bool {
 
 		if !hasToken {
 			// Try to get auth token in background
+			//nolint:gosec // G118: background Cognee auth retry, intentionally decoupled from the triggering request
 			go func() {
 				if err := s.authenticate(context.Background()); err != nil {
 					s.logger.WithError(err).Warn("Failed to authenticate with Cognee")
@@ -627,6 +628,7 @@ func (s *CogneeService) AddMemory(ctx context.Context, content, dataset, content
 	}
 
 	// Phase 2: Best-effort enrichment via memify (non-blocking)
+	//nolint:gosec // G118: best-effort enrichment with its own 30s timeout, intentionally decoupled from the caller context
 	go func() {
 		enrichCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -1063,6 +1065,7 @@ func (s *CogneeService) ProcessResponse(ctx context.Context, req *models.LLMRequ
 
 	// Auto-cognify if enabled (with timeout to prevent hanging goroutines)
 	if s.config.AutoCognify {
+		//nolint:gosec // G118: auto-cognify with its own 60s timeout, intentionally decoupled from the caller context
 		go func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()

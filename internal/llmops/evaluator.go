@@ -559,6 +559,7 @@ func (e *InMemoryContinuousEvaluator) ScheduleRun(ctx context.Context, run *Eval
 	e.mu.Unlock()
 
 	// Start scheduler (simplified - in production use proper cron library)
+	//nolint:gosec // G118: scheduler loop owns its own lifecycle, intentionally decoupled from the caller context
 	go e.runScheduler(run.ID)
 
 	return nil

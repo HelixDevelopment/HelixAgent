@@ -161,6 +161,7 @@ func (p *CogneeEnhancedProvider) Complete(ctx context.Context, req *models.LLMRe
 
 	// Store the response in Cognee (with timeout to prevent hanging goroutines)
 	if p.config.StoreAfterResponse && p.cogneeService != nil && p.cogneeService.IsReady() {
+		//nolint:gosec // G118: post-response persistence with its own 30s timeout, intentionally decoupled from the request context so client disconnect does not lose the record
 		go func() {
 			storeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()

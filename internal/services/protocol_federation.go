@@ -149,6 +149,7 @@ func (d *ProtocolDiscovery) Start(ctx context.Context) error {
 	}
 
 	// Start periodic discovery
+	//nolint:gosec // G118: long-lived maintenance loop, intentionally decoupled from the caller's context
 	go d.periodicDiscovery()
 
 	return nil

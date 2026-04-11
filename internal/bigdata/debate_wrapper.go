@@ -81,6 +81,7 @@ func (dsw *DebateServiceWrapper) RunDebate(ctx context.Context, config *services
 
 	// Publish completion event to big data pipeline
 	if dsw.enableBigData {
+		//nolint:gosec // G118: fire-and-forget bigdata publish, intentionally decoupled from the debate request context
 		go dsw.publishDebateCompletion(context.Background(), config, result, duration)
 	}
 

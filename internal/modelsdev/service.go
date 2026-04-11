@@ -103,6 +103,7 @@ func (s *Service) Start(ctx context.Context) error {
 
 	// Start background refresh if configured
 	if s.config.AutoRefresh {
+		//nolint:gosec // G118: long-lived refresh loop, intentionally decoupled from the caller context
 		go s.backgroundRefreshLoop()
 	}
 

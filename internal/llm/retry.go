@@ -210,6 +210,7 @@ func (c *RetryableHTTPClient) Do(ctx context.Context, req *http.Request) (*http.
 	result, err := ExecuteWithRetry(ctx, c.config, func() (*http.Response, error) {
 		// Clone the request for each attempt (body needs to be re-readable)
 		clonedReq := req.Clone(ctx)
+		//nolint:gosec // G704: retry wrapper for LLM provider calls — URL is supplied by the provider adapter, not the end user; SSRF defence applies at the adapter construction layer
 		return c.client.Do(clonedReq)
 	})
 

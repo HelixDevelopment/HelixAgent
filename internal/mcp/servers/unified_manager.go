@@ -148,6 +148,7 @@ func (m *UnifiedServerManager) Initialize(ctx context.Context) error {
 	}
 
 	// Start health check goroutine
+	//nolint:gosec // G118: long-lived health-check loop, intentionally decoupled from the caller context
 	go m.healthCheckLoop()
 
 	return nil

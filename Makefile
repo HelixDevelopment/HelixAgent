@@ -1657,9 +1657,12 @@ test-category:
 # =============================================================================
 
 ## Run all challenges
-.PHONY: test-challenges
-test-challenges:
-	@echo "Running all challenges..."
+## Run the Go-based challenge bank under ./tests/challenges/
+## (distinct from `make test-challenges`, which runs the shell-script
+## performance challenges under ./challenges/scripts/).
+.PHONY: test-challenges-go
+test-challenges-go:
+	@echo "Running Go challenge bank (./tests/challenges/)..."
 	@GOMAXPROCS=2 go test -v ./tests/challenges/... -timeout 4h
 
 ## Run challenges for specific provider
@@ -1802,13 +1805,17 @@ test-codebase:
 # =============================================================================
 
 ## Run full integration tests
-.PHONY: test-integration-full
-test-integration-full:
-	@echo "Running full integration tests..."
-	@go test -v ./... -run "Integration" -timeout 6h
+## Run the repo-wide long-form integration sweep (6h budget). Distinct
+## from `make test-integration-full`, which runs the targeted
+## tests/integration/ suite against the FULL infrastructure (600s).
+.PHONY: test-integration-long
+test-integration-long:
+	@echo "Running long-form integration tests (6h budget)..."
+	@GOMAXPROCS=2 nice -n 19 go test -v ./... -run "Integration" -timeout 6h
 
-## Run smoke tests
-.PHONY: test-smoke
-test-smoke:
-	@echo "Running smoke tests..."
-	@go test -v -short ./tests/providers/... -run "TestShortRequest" -timeout 10m
+## NOTE: `test-smoke` was removed in the 2026-04-11 dead-code sweep —
+## it referenced tests/providers/ which was a stranded leftover from
+## an earlier API refactor (see commit 2b90d313 "refactor: remove
+## dead code and tests that reference removed APIs"). A replacement
+## smoke-test target against the current provider registry can be
+## added here if needed.

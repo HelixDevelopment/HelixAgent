@@ -23,25 +23,32 @@ type mockAdversarialLLM struct {
 }
 
 func (m *mockAdversarialLLM) Complete(ctx context.Context, prompt string) (string, error) {
-	// Detect whether this is an attack or defense prompt.
-	if containsStr(prompt, "Red Team") || containsStr(prompt, "vulnerabilities") {
+	// Detect whether this is an attack or defense prompt. The defense
+	// prompt also contains the word "vulnerabilities" (in the
+	// "Vulnerabilities found:" section echoed back to the LLM), so
+	// the mock must key on the unique "Blue Team" / "Red Team" role
+	// markers rather than a content keyword.
+	switch {
+	case containsStr(prompt, "Blue Team"):
+		if m.defenseCall < len(m.defenseResponses) {
+			resp := m.defenseResponses[m.defenseCall]
+			m.defenseCall++
+			return resp, nil
+		}
+		m.defenseCall++
+		return "", fmt.Errorf("no more defense responses")
+	case containsStr(prompt, "Red Team"):
 		if m.attackCall < len(m.attackResponses) {
 			resp := m.attackResponses[m.attackCall]
 			m.attackCall++
 			return resp, nil
 		}
 		m.attackCall++
-		// Return empty to trigger fallback
 		return "", fmt.Errorf("no more attack responses")
 	}
-
-	if m.defenseCall < len(m.defenseResponses) {
-		resp := m.defenseResponses[m.defenseCall]
-		m.defenseCall++
-		return resp, nil
-	}
-	m.defenseCall++
-	return "", fmt.Errorf("no more defense responses")
+	// Unknown prompt — fall back to empty to exercise the protocol's
+	// deterministic fallback path.
+	return "", fmt.Errorf("unknown prompt type")
 }
 
 // containsStr is a simple helper to avoid importing strings in tests.

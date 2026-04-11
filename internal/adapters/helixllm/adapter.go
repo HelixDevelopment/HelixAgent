@@ -13,8 +13,8 @@ import (
 	"os"
 	"time"
 
-	"digital.vasic.containers/pkg/compose"
 	containeradapter "dev.helix.agent/internal/adapters/containers"
+	"digital.vasic.containers/pkg/compose"
 )
 
 const (
@@ -56,9 +56,13 @@ func NewAdapter(cfg Config) (*Adapter, error) {
 		cfg.Enabled = getEnvBool("USE_HELIX_LLM", true)
 	}
 
+	// Secure-by-default: match the behaviour already implemented in
+	// internal/llm/providers/helixllm/provider.go and documented in
+	// CLAUDE.md. The previous `true` default contradicted the spec and
+	// caused G402 to fire on the baseline scan.
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: cfg.TLSSkipVerify || getEnvBool("HELIX_LLM_TLS_SKIP_VERIFY", true),
+			InsecureSkipVerify: cfg.TLSSkipVerify || getEnvBool("HELIX_LLM_TLS_SKIP_VERIFY", false), //nolint:gosec // G402: opt-in via config or env; default is secure
 		},
 	}
 

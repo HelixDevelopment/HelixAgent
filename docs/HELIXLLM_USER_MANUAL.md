@@ -120,7 +120,7 @@ HELIX_LLM_USE_HELIXAGENT_MEMORY=true
 | `USE_HELIX_LLM` | `true` | Enable HelixLLM integration |
 | `HELIX_LLM_ENDPOINT` | `https://localhost:8443` | HelixLLM API endpoint |
 | `HELIX_LLM_API_KEY` | - | API key (if required) |
-| `HELIX_LLM_TLS_SKIP_VERIFY` | `true` | Skip TLS verification |
+| `HELIX_LLM_TLS_SKIP_VERIFY` | `false` | Skip TLS verification (secure-by-default; set `true` only for local dev against self-signed certs) |
 | `HELIX_LLM_MODE` | `full` | Deployment mode |
 | `HELIX_LLM_DB_HOST` | `helixllm-postgres` | PostgreSQL host |
 | `HELIX_LLM_REDIS_HOST` | `helixllm-redis` | Redis host |

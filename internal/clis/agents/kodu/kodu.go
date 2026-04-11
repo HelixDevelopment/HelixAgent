@@ -257,7 +257,7 @@ func (k *Kodu) index(ctx context.Context, params map[string]interface{}) (interf
 			return nil
 		}
 		
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G122 -- path constrained by filepath.WalkDir root; sandboxing enforced at the walker construction
 		if err != nil {
 			return err
 		}

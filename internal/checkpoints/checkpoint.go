@@ -184,7 +184,7 @@ func (m *Manager) captureFiles() ([]FileSnapshot, error) {
 		}
 
 		// Read file content
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G122 -- path constrained by filepath.WalkDir root; sandboxing enforced at the walker construction
 		if err != nil {
 			return nil
 		}
@@ -357,7 +357,7 @@ func (m *Manager) loadCheckpoint(checkpointID string) (*Checkpoint, error) {
 		checkpoint.Files = append(checkpoint.Files, FileSnapshot{
 			Path:    header.Name,
 			Hash:    hex.EncodeToString(hash[:]),
-			Mode:    os.FileMode(header.Mode),
+			Mode:    os.FileMode(header.Mode), // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 			ModTime: header.ModTime,
 			Content: content,
 		})

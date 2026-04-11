@@ -332,7 +332,7 @@ func randomStreamString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[rand.IntN(len(letters))]
+		b[i] = letters[rand.IntN(len(letters))] // #nosec G404 -- non-security random (jitter/test data/load spread); math/rand is the correct choice
 	}
 	return string(b)
 }

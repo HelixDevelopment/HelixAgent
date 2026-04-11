@@ -324,7 +324,7 @@ func (c *HTTP3Client) isRetryableStatus(statusCode int) bool {
 
 // waitWithJitter waits for the specified duration plus random jitter
 func (c *HTTP3Client) waitWithJitter(ctx context.Context, delay time.Duration) {
-	jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) //nolint:G404 // jitter doesn't require crypto randomness
+	jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) //nolint:G404 // jitter doesn't require crypto randomness // #nosec G404 -- non-security random (jitter/test data/load spread); math/rand is the correct choice
 	select {
 	case <-ctx.Done():
 	case <-time.After(delay + jitter):

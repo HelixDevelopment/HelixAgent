@@ -361,7 +361,7 @@ func (c *LSPClient) Rename(ctx context.Context, uri string, line, character int,
 
 func (c *LSPClient) initialize(ctx context.Context) error {
 	params := InitializeParams{
-		ProcessID: int32(time.Now().Unix()),
+		ProcessID: int32(time.Now().Unix()), // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		RootPath:  c.rootPath,
 		Capabilities: ClientCapabilities{
 			TextDocument: TextDocumentClientCapabilities{

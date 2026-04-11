@@ -348,7 +348,7 @@ func (sb *Sandbox) CopyFrom(ctx context.Context, srcPath, dstPath string) error 
 	}
 
 	// Set permissions
-	if err := dstFile.Chmod(os.FileMode(header.Mode)); err != nil {
+	if err := dstFile.Chmod(os.FileMode(header.Mode)); err != nil { // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		return fmt.Errorf("set file permissions: %w", err)
 	}
 

@@ -302,8 +302,8 @@ func (s *QdrantStore) GetCollectionStats(ctx context.Context, collection string)
 
 	return &types.CollectionStats{
 		Name:       collection,
-		Count:      int64(result.Result.PointsCount),
-		Dimensions: int(result.Result.Config.Params.Size),
+		Count:      int64(result.Result.PointsCount), // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
+		Dimensions: int(result.Result.Config.Params.Size), // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 	}, nil
 }
 

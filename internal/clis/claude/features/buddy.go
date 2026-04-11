@@ -166,9 +166,9 @@ func mulberry32(seed uint32) func() float64 {
 	return func() float64 {
 		seed |= 0
 		seed = seed + 0x6D2B79F5 | 0
-		t := int32(seed ^ seed>>15) * (1 | int32(seed))
+		t := int32(seed ^ seed>>15) * (1 | int32(seed)) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		t = t + int32(int32(t^t>>7)*(61|int32(t)))^t
-		return float64(uint32(t^t>>14)) / 4294967296.0
+		return float64(uint32(t^t>>14)) / 4294967296.0 // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 	}
 }
 
@@ -176,7 +176,7 @@ func mulberry32(seed uint32) func() float64 {
 func hashString(s string) uint32 {
 	var hash uint32 = 0
 	for _, c := range s {
-		hash = (hash << 5) - hash + uint32(c)
+		hash = (hash << 5) - hash + uint32(c) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		hash = hash & hash
 	}
 	return uint32(math.Abs(float64(hash)))

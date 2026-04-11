@@ -375,7 +375,7 @@ func (p *NLPCloudProvider) makeAPICall(ctx context.Context, req NLPCloudChatRequ
 		if err != nil {
 			lastErr = fmt.Errorf("HTTP request failed: %w", err)
 			if attempt < p.retryConfig.MaxRetries {
-				jitter := time.Duration(rand.Float64() * 0.1 * float64(delay))
+				jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) // #nosec G404 -- non-security random (jitter/test data/load spread); math/rand is the correct choice
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -394,7 +394,7 @@ func (p *NLPCloudProvider) makeAPICall(ctx context.Context, req NLPCloudChatRequ
 			if attempt < p.retryConfig.MaxRetries {
 				_ = resp.Body.Close()
 				lastErr = fmt.Errorf("HTTP %d: retryable error", resp.StatusCode)
-				jitter := time.Duration(rand.Float64() * 0.1 * float64(delay))
+				jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) // #nosec G404 -- non-security random (jitter/test data/load spread); math/rand is the correct choice
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()

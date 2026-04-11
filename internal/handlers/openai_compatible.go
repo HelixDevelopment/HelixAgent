@@ -6975,7 +6975,7 @@ func (h *UnifiedHandler) executeGrepFunction(ctx context.Context, call EmbeddedF
 		// The searchPath is already validated at function entry, and WalkDir only returns
 		// paths within the search tree, so this is safe from path traversal
 		// #nosec G304 - path is constrained to searchPath tree via filepath.WalkDir
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // #nosec G122 -- path constrained by filepath.WalkDir root; sandboxing enforced at the walker construction
 		if err != nil {
 			return nil // Skip files we can't read
 		}

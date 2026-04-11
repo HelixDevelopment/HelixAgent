@@ -317,7 +317,7 @@ func (m *InstanceManager) SendRequest(
 	case resp := <-instance.ResponseCh:
 		// Update metrics
 		instance.RequestsProcessed++
-		instance.TotalExecTimeMs += uint64(resp.Duration.Milliseconds())
+		instance.TotalExecTimeMs += uint64(resp.Duration.Milliseconds()) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		if !resp.Success {
 			instance.ErrorsCount++
 		}

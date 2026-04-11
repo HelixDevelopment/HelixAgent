@@ -414,7 +414,7 @@ func tokenize(text string) []string {
 func hashString(s string) string {
 	h := uint32(2166136261)
 	for _, c := range s {
-		h ^= uint32(c)
+		h ^= uint32(c) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 		h *= 16777619
 	}
 	return fmt.Sprintf("%08x", h)

@@ -439,7 +439,7 @@ func isRetryableStatus(statusCode int) bool {
 }
 
 func (p *CodestralProvider) waitWithJitter(ctx context.Context, delay time.Duration) {
-	jitter := time.Duration(rand.Float64() * 0.1 * float64(delay))
+	jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) // #nosec G404 -- non-security random (jitter/test data/load spread); math/rand is the correct choice
 	select {
 	case <-ctx.Done():
 	case <-time.After(delay + jitter):

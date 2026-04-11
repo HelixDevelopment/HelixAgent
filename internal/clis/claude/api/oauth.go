@@ -12,7 +12,7 @@ import (
 )
 
 // OAuthConfig holds OAuth configuration
- type OAuthConfig struct {
+type OAuthConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
@@ -25,14 +25,14 @@ import (
 var (
 	// ConsoleOAuthConfig for API key creation
 	ConsoleOAuthConfig = OAuthConfig{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-		AuthURL: "https://platform.claude.com/oauth/authorize",
+		AuthURL:  "https://platform.claude.com/oauth/authorize",
 		TokenURL: "https://platform.claude.com/v1/oauth/token",
 		Scopes:   []string{"org:create_api_key", "user:profile"},
 	}
-	
+
 	// ClaudeAIOAuthConfig for Claude.ai integration
 	ClaudeAIOAuthConfig = OAuthConfig{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-		AuthURL: "https://claude.com/cai/oauth/authorize",
+		AuthURL:  "https://claude.com/cai/oauth/authorize",
 		TokenURL: "https://platform.claude.com/v1/oauth/token",
 		Scopes: []string{
 			"user:profile",
@@ -54,7 +54,7 @@ type TokenResponse struct {
 }
 
 // TokenInfo holds token information with expiration tracking
- type TokenInfo struct {
+type TokenInfo struct {
 	TokenResponse
 	AcquiredAt time.Time
 }
@@ -75,11 +75,11 @@ func (c *Client) ExchangeAuthorizationCode(ctx context.Context, config OAuthConf
 	data.Set("code", code)
 	data.Set("client_id", config.ClientID)
 	data.Set("redirect_uri", config.RedirectURI)
-	
+
 	if config.ClientSecret != "" {
 		data.Set("client_secret", config.ClientSecret)
 	}
-	
+
 	return c.doTokenRequest(ctx, config.TokenURL, data)
 }
 
@@ -89,11 +89,11 @@ func (c *Client) RefreshToken(ctx context.Context, config OAuthConfig, refreshTo
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", refreshToken)
 	data.Set("client_id", config.ClientID)
-	
+
 	if config.ClientSecret != "" {
 		data.Set("client_secret", config.ClientSecret)
 	}
-	
+
 	return c.doTokenRequest(ctx, config.TokenURL, data)
 }
 
@@ -103,24 +103,24 @@ func (c *Client) doTokenRequest(ctx context.Context, tokenURL string, data url.V
 	if err != nil {
 		return nil, fmt.Errorf("create token request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute token request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var tokenResp TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("decode token response: %w", err)
 	}
-	
+
 	return &TokenInfo{
 		TokenResponse: tokenResp,
 		AcquiredAt:    time.Now(),
@@ -135,7 +135,7 @@ func BuildAuthorizationURL(config OAuthConfig, state string) string {
 	params.Set("response_type", "code")
 	params.Set("scope", strings.Join(config.Scopes, " "))
 	params.Set("state", state)
-	
+
 	return config.AuthURL + "?" + params.Encode()
 }
 
@@ -146,18 +146,18 @@ func (c *Client) CreateAPIKey(ctx context.Context) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return "", handleErrorResponse(resp)
 	}
-	
+
 	var result struct {
 		APIKey string `json:"api_key"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return result.APIKey, nil
 }
 
@@ -168,16 +168,16 @@ func (c *Client) GetUserRoles(ctx context.Context) (*UserRoles, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result UserRoles
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -207,30 +207,30 @@ func (c *Client) StartDeviceCodeFlow(ctx context.Context, config OAuthConfig) (*
 	data := url.Values{}
 	data.Set("client_id", config.ClientID)
 	data.Set("scope", strings.Join(config.Scopes, " "))
-	
+
 	deviceURL := "https://platform.claude.com/v1/oauth/device/code"
 	req, err := http.NewRequestWithContext(ctx, "POST", deviceURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("create device code request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute device code request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result DeviceCodeFlow
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode device code response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -240,6 +240,6 @@ func (c *Client) PollDeviceCode(ctx context.Context, config OAuthConfig, deviceC
 	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 	data.Set("device_code", deviceCode)
 	data.Set("client_id", config.ClientID)
-	
+
 	return c.doTokenRequest(ctx, config.TokenURL, data)
 }

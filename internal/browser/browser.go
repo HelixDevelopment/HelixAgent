@@ -11,9 +11,9 @@ import (
 
 // Manager manages browser instances
 type Manager struct {
-	pool      *Pool
-	config    Config
-	mu        sync.Mutex
+	pool   *Pool
+	config Config
+	mu     sync.Mutex
 }
 
 // Config holds browser configuration
@@ -58,13 +58,13 @@ func (m *Manager) Execute(ctx context.Context, actions []Action) (*ActionResult,
 	defer m.pool.Release(instance)
 
 	result := &ActionResult{}
-	
+
 	for _, action := range actions {
 		if err := action.Execute(ctx, instance.Page); err != nil {
 			result.Error = err
 			return result, nil
 		}
-		
+
 		// Update result based on action type
 		switch a := action.(type) {
 		case *ScreenshotAction:
@@ -90,7 +90,7 @@ func (m *Manager) Execute(ctx context.Context, actions []Action) (*ActionResult,
 	result.URL = instance.Page.URL()
 	result.Title, _ = instance.Page.Title()
 	result.Success = true
-	
+
 	return result, nil
 }
 

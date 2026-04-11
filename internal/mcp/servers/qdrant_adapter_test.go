@@ -43,7 +43,7 @@ func TestNewQdrantAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewQdrantAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -79,7 +79,7 @@ func TestQdrantAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -121,7 +121,7 @@ func TestQdrantAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -180,7 +180,7 @@ func TestQdrantAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -252,7 +252,7 @@ func TestQdrantAdapter_CreateCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -297,7 +297,7 @@ func TestQdrantAdapter_DeleteCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -343,7 +343,7 @@ func TestQdrantAdapter_CollectionExists(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -400,7 +400,7 @@ func TestQdrantAdapter_GetCollectionInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -456,7 +456,7 @@ func TestQdrantAdapter_UpsertPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -504,7 +504,7 @@ func TestQdrantAdapter_DeletePoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -605,7 +605,7 @@ func TestQdrantAdapter_Search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -698,7 +698,7 @@ func TestQdrantAdapter_SearchBatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -766,7 +766,7 @@ func TestQdrantAdapter_GetPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -826,7 +826,7 @@ func TestQdrantAdapter_CountPoints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -923,7 +923,7 @@ func TestQdrantAdapter_Scroll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 

@@ -238,7 +238,7 @@ func TestVisionHandler_GetCapabilityStatus_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"GET",
@@ -623,7 +623,7 @@ func TestVisionHandler_HandleCapability_RoutesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(VisionRequest{
 				ImageURL: "https://example.com/test.png",
 			})
@@ -793,7 +793,7 @@ func TestVisionHandler_ProcessImage_URLContentTypeDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(VisionRequest{ImageURL: tt.url})
 
 			w := httptest.NewRecorder()
@@ -904,7 +904,7 @@ func TestVisionHandler_ResponseContentType(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.method+" "+ep.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if ep.body != "" {
@@ -966,7 +966,7 @@ func TestVisionHandler_AllEndpoints_BadRequest(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"POST",

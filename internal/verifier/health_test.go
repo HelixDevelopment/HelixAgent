@@ -20,7 +20,7 @@ func TestCircuitState_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := tt.state.String()
 			if result != tt.expected {
 				t.Errorf("CircuitState.String() = %s, want %s", result, tt.expected)
@@ -932,7 +932,7 @@ func TestCircuitState_AllStates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := tt.state.String()
 			if result != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, result)

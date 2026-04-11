@@ -62,7 +62,7 @@ func TestAttackTypeConstants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, adapter.AttackType(tt.value), tt.constant)
 		})
 	}
@@ -379,7 +379,7 @@ func TestSeverityToExternal_AllValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.input), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := adapter.SeverityToExternal(tt.input)
 			// Just verify it returns a non-empty value
 			assert.NotEmpty(t, string(result))

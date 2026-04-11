@@ -14,13 +14,13 @@ import (
 )
 
 // Kiro provides Kiro CLI integration
- type Kiro struct {
+type Kiro struct {
 	*base.BaseIntegration
 	config *Config
 }
 
 // Config holds Kiro configuration
- type Config struct {
+type Config struct {
 	base.BaseConfig
 	MemoryDir     string
 	ContextWindow int
@@ -28,7 +28,7 @@ import (
 }
 
 // New creates a new Kiro integration
- func New() *Kiro {
+func New() *Kiro {
 	info := agents.AgentInfo{
 		Type:        agents.TypeKiro,
 		Name:        "Kiro",
@@ -45,7 +45,7 @@ import (
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Kiro{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -63,20 +63,20 @@ func (k *Kiro) Initialize(ctx context.Context, config interface{}) error {
 	if err := k.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		k.config = cfg
 	}
-	
+
 	// Set up memory directory
 	if k.config.MemoryDir == "" {
 		home, _ := os.UserHomeDir()
 		k.config.MemoryDir = filepath.Join(home, ".kiro", "memories")
 	}
-	
+
 	// Create memory directory
 	os.MkdirAll(k.config.MemoryDir, 0755)
-	
+
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (k *Kiro) Execute(ctx context.Context, command string, params map[string]in
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "remember":
 		return k.remember(ctx, params)
@@ -108,23 +108,23 @@ func (k *Kiro) remember(ctx context.Context, params map[string]interface{}) (int
 	if content == "" {
 		return nil, fmt.Errorf("content required")
 	}
-	
+
 	tag, _ := params["tag"].(string)
-	
+
 	args := []string{"remember", content}
 	if tag != "" {
 		args = append(args, "--tag", tag)
 	}
-	
+
 	output, err := k.ExecuteCommand(ctx, "kiro", args...)
 	if err != nil {
 		return nil, fmt.Errorf("kiro remember failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
-		"stored":  true,
-		"tag":     tag,
-		"output":  string(output),
+		"stored": true,
+		"tag":    tag,
+		"output": string(output),
 	}, nil
 }
 
@@ -134,19 +134,19 @@ func (k *Kiro) recall(ctx context.Context, params map[string]interface{}) (inter
 	if query == "" {
 		return nil, fmt.Errorf("query required")
 	}
-	
+
 	args := []string{"recall", query}
-	
+
 	limit, ok := params["limit"].(int)
 	if ok && limit > 0 {
 		args = append(args, "--limit", fmt.Sprintf("%d", limit))
 	}
-	
+
 	output, err := k.ExecuteCommand(ctx, "kiro", args...)
 	if err != nil {
 		return nil, fmt.Errorf("kiro recall failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"query":    query,
 		"memories": string(output),
@@ -159,14 +159,14 @@ func (k *Kiro) getContext(ctx context.Context, params map[string]interface{}) (i
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	args := []string{"context", task}
-	
+
 	output, err := k.ExecuteCommand(ctx, "kiro", args...)
 	if err != nil {
 		return nil, fmt.Errorf("kiro context failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"task":    task,
 		"context": string(output),
@@ -179,7 +179,7 @@ func (k *Kiro) sync(ctx context.Context, params map[string]interface{}) (interfa
 	if err != nil {
 		return nil, fmt.Errorf("kiro sync failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"synced": true,
 		"output": string(output),

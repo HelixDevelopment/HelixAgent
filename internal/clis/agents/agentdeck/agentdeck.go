@@ -69,7 +69,7 @@ func New() *AgentDeck {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &AgentDeck{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -90,39 +90,39 @@ func (a *AgentDeck) Initialize(ctx context.Context, config interface{}) error {
 	if err := a.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		a.config = cfg
 	}
-	
+
 	if a.config.WorkspaceDir == "" {
 		a.config.WorkspaceDir = a.GetWorkDir()
 	}
-	
+
 	return a.loadConfig()
 }
 
 // loadConfig loads agent configuration
 func (a *AgentDeck) loadConfig() error {
 	configPath := filepath.Join(a.config.WorkspaceDir, "deck.json")
-	
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return a.createDefaultConfig()
 	}
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
-	
+
 	var config struct {
 		Agents []DeckAgent `json:"agents"`
 	}
-	
+
 	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("parse config: %w", err)
 	}
-	
+
 	a.agents = config.Agents
 	return nil
 }
@@ -141,7 +141,9 @@ func (a *AgentDeck) createDefaultConfig() error {
 // saveConfig saves configuration
 func (a *AgentDeck) saveConfig() error {
 	configPath := filepath.Join(a.config.WorkspaceDir, "deck.json")
-	data, err := json.MarshalIndent(struct{ Agents []DeckAgent `json:"agents"` }{Agents: a.agents}, "", "  ")
+	data, err := json.MarshalIndent(struct {
+		Agents []DeckAgent `json:"agents"`
+	}{Agents: a.agents}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
@@ -155,7 +157,7 @@ func (a *AgentDeck) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "orchestrate":
 		return a.orchestrate(ctx, params)
@@ -180,14 +182,14 @@ func (a *AgentDeck) orchestrate(ctx context.Context, params map[string]interface
 	if task == "" {
 		return nil, fmt.Errorf("task description required")
 	}
-	
+
 	mode, _ := params["mode"].(string)
 	if mode == "" {
 		mode = a.config.OrchestrationMode
 	}
-	
+
 	plan := a.createOrchestrationPlan(task, mode)
-	
+
 	return map[string]interface{}{
 		"task":   task,
 		"mode":   mode,
@@ -214,11 +216,11 @@ func (a *AgentDeck) createOrchestrationPlan(task string, mode string) map[string
 func (a *AgentDeck) addAgent(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	agentType, _ := params["type"].(string)
-	
+
 	if name == "" || agentType == "" {
 		return nil, fmt.Errorf("name and type required")
 	}
-	
+
 	agent := DeckAgent{
 		ID:     fmt.Sprintf("%s-%d", agentType, len(a.agents)+1),
 		Name:   name,
@@ -226,13 +228,13 @@ func (a *AgentDeck) addAgent(ctx context.Context, params map[string]interface{})
 		Config: params,
 		Status: "idle",
 	}
-	
+
 	a.agents = append(a.agents, agent)
-	
+
 	if err := a.saveConfig(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{"agent": agent, "status": "added"}, nil
 }
 
@@ -242,7 +244,7 @@ func (a *AgentDeck) removeAgent(ctx context.Context, params map[string]interface
 	if agentID == "" {
 		return nil, fmt.Errorf("agent id required")
 	}
-	
+
 	for i, agent := range a.agents {
 		if agent.ID == agentID {
 			a.agents = append(a.agents[:i], a.agents[i+1:]...)
@@ -252,7 +254,7 @@ func (a *AgentDeck) removeAgent(ctx context.Context, params map[string]interface
 			return map[string]interface{}{"agent_id": agentID, "status": "removed"}, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("agent not found: %s", agentID)
 }
 
@@ -265,20 +267,20 @@ func (a *AgentDeck) listAgents(ctx context.Context) (interface{}, error) {
 func (a *AgentDeck) assignTask(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	description, _ := params["description"].(string)
 	agentIDs, _ := params["agent_ids"].([]string)
-	
+
 	if description == "" || len(agentIDs) == 0 {
 		return nil, fmt.Errorf("description and agent_ids required")
 	}
-	
+
 	task := Task{
 		ID:          fmt.Sprintf("task-%d", len(a.tasks)+1),
 		Description: description,
 		AgentIDs:    agentIDs,
 		Status:      "pending",
 	}
-	
+
 	a.tasks = append(a.tasks, task)
-	
+
 	return map[string]interface{}{"task": task, "status": "assigned"}, nil
 }
 

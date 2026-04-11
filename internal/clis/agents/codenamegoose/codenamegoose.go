@@ -39,7 +39,7 @@ func New() *CodenameGoose {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &CodenameGoose{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -57,11 +57,11 @@ func (c *CodenameGoose) Initialize(ctx context.Context, config interface{}) erro
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -72,7 +72,7 @@ func (c *CodenameGoose) Execute(ctx context.Context, command string, params map[
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "run":
 		return c.run(ctx, params)
@@ -91,7 +91,7 @@ func (c *CodenameGoose) run(ctx context.Context, params map[string]interface{}) 
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt":   prompt,
 		"result":   fmt.Sprintf("Goose result: %s", prompt),
@@ -107,7 +107,7 @@ func (c *CodenameGoose) configure(ctx context.Context, params map[string]interfa
 	if model, ok := params["model"].(string); ok {
 		c.config.Model = model
 	}
-	
+
 	return map[string]interface{}{
 		"provider": c.config.Provider,
 		"model":    c.config.Model,

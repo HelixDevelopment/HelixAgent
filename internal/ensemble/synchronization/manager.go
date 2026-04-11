@@ -41,9 +41,9 @@ type DistributedLock struct {
 	TTL      time.Duration
 
 	// Local state
-	held       bool
-	renewStop  chan struct{}
-	mu         sync.Mutex
+	held      bool
+	renewStop chan struct{}
+	mu        sync.Mutex
 }
 
 // CRDT is the interface for conflict-free replicated data types.
@@ -422,7 +422,7 @@ func (sm *SyncManager) cleanupLoop() {
 
 // GCounter is a grow-only counter CRDT.
 type GCounter struct {
-	Key_   string         `json:"key"`
+	Key_   string           `json:"key"`
 	Values map[string]int64 `json:"values"`
 }
 

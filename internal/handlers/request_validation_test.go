@@ -22,7 +22,7 @@ func TestValidateRequestID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			trimmed := strings.TrimSpace(tt.requestID)
 			isValid := len(trimmed) > 0 && len(trimmed) <= 128
 			assert.Equal(t, tt.valid, isValid)
@@ -45,7 +45,7 @@ func TestValidateModelName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			isValid := len(tt.model) > 0 && len(tt.model) <= 64
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -68,7 +68,7 @@ func TestValidateMaxTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			isValid := tt.maxTokens >= 0 && tt.maxTokens <= 32000
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -91,7 +91,7 @@ func TestValidateTemperature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			isValid := tt.temperature >= 0.0 && tt.temperature <= 1.0
 			assert.Equal(t, tt.valid, isValid)
 		})
@@ -114,7 +114,7 @@ func TestValidateTopP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			isValid := tt.topP >= 0.0 && tt.topP <= 1.0
 			assert.Equal(t, tt.valid, isValid)
 		})

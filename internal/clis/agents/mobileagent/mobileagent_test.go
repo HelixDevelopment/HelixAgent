@@ -15,7 +15,7 @@ func TestNewMobileAgent(t *testing.T) {
 	t.Parallel()
 	m := New()
 	require.NotNil(t, m)
-	
+
 	info := m.Info()
 	assert.Equal(t, agents.TypeMobileAgent, info.Type)
 	assert.Equal(t, "Mobile Agent", info.Name)
@@ -27,14 +27,14 @@ func TestMobileAgentInitialize(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		Platform: "ios",
 	}
-	
+
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, "ios", m.config.Platform)
@@ -44,7 +44,7 @@ func TestMobileAgentInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "flutter", m.config.Platform) // Default value
@@ -54,14 +54,14 @@ func TestMobileAgentStartStop(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = m.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, m.IsStarted())
-	
+
 	err = m.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, m.IsStarted())
@@ -71,10 +71,10 @@ func TestMobileAgentExecute(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -114,10 +114,10 @@ func TestMobileAgentExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := m.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -133,7 +133,7 @@ func TestMobileAgentCapabilities(t *testing.T) {
 	t.Parallel()
 	m := New()
 	info := m.Info()
-	
+
 	expectedCaps := []string{"mobile_dev", "ios", "android", "flutter"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -150,22 +150,22 @@ func TestMobileAgentGenerateResult(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		Platform: "android",
 	}
-	
+
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
-	
+
 	result, err := m.Execute(ctx, "generate", map[string]interface{}{
 		"prompt": "Create a list view",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "android", resultMap["platform"])

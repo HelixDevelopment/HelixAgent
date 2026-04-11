@@ -16,8 +16,8 @@ import (
 // ClaudeSquad provides Claude Squad integration
 type ClaudeSquad struct {
 	*base.BaseIntegration
-	config  *Config
-	squads  []Squad
+	config *Config
+	squads []Squad
 }
 
 // Config holds configuration
@@ -28,10 +28,10 @@ type Config struct {
 
 // Squad represents a squad
 type Squad struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Agents  []string `json:"agents"`
-	Status  string   `json:"status"`
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Agents []string `json:"agents"`
+	Status string   `json:"status"`
 }
 
 // New creates a new Claude Squad integration
@@ -50,7 +50,7 @@ func New() *ClaudeSquad {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &ClaudeSquad{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -68,27 +68,27 @@ func (c *ClaudeSquad) Initialize(ctx context.Context, config interface{}) error 
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return c.loadSquads()
 }
 
 // loadSquads loads squads
 func (c *ClaudeSquad) loadSquads() error {
 	squadsPath := filepath.Join(c.GetWorkDir(), "squads.json")
-	
+
 	if _, err := os.Stat(squadsPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(squadsPath)
 	if err != nil {
 		return fmt.Errorf("read squads: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &c.squads)
 }
 
@@ -109,7 +109,7 @@ func (c *ClaudeSquad) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "create":
 		return c.create(ctx, params)
@@ -130,20 +130,20 @@ func (c *ClaudeSquad) create(ctx context.Context, params map[string]interface{})
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	squad := Squad{
 		ID:     fmt.Sprintf("squad-%d", len(c.squads)+1),
 		Name:   name,
 		Agents: []string{},
 		Status: "created",
 	}
-	
+
 	c.squads = append(c.squads, squad)
-	
+
 	if err := c.saveSquads(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"squad":  squad,
 		"status": "created",
@@ -154,22 +154,22 @@ func (c *ClaudeSquad) create(ctx context.Context, params map[string]interface{})
 func (c *ClaudeSquad) addAgent(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	squadID, _ := params["squad_id"].(string)
 	agent, _ := params["agent"].(string)
-	
+
 	if squadID == "" || agent == "" {
 		return nil, fmt.Errorf("squad_id and agent required")
 	}
-	
+
 	for i := range c.squads {
 		if c.squads[i].ID == squadID {
 			c.squads[i].Agents = append(c.squads[i].Agents, agent)
 			break
 		}
 	}
-	
+
 	if err := c.saveSquads(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"squad_id": squadID,
 		"agent":    agent,
@@ -181,11 +181,11 @@ func (c *ClaudeSquad) addAgent(ctx context.Context, params map[string]interface{
 func (c *ClaudeSquad) assignTask(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	squadID, _ := params["squad_id"].(string)
 	task, _ := params["task"].(string)
-	
+
 	if squadID == "" || task == "" {
 		return nil, fmt.Errorf("squad_id and task required")
 	}
-	
+
 	return map[string]interface{}{
 		"squad_id": squadID,
 		"task":     task,

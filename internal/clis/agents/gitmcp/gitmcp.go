@@ -38,7 +38,7 @@ func New() *GitMCP {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GitMCP{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -54,11 +54,11 @@ func (g *GitMCP) Initialize(ctx context.Context, config interface{}) error {
 	if err := g.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		g.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -69,7 +69,7 @@ func (g *GitMCP) Execute(ctx context.Context, command string, params map[string]
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "commit":
 		return g.commit(ctx, params)
@@ -88,7 +88,7 @@ func (g *GitMCP) commit(ctx context.Context, params map[string]interface{}) (int
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message": message,
 		"commit":  "abc123",
@@ -102,7 +102,7 @@ func (g *GitMCP) branch(ctx context.Context, params map[string]interface{}) (int
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	return map[string]interface{}{
 		"branch": name,
 		"status": "created",

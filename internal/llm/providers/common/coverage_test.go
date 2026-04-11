@@ -42,7 +42,7 @@ func TestProviderConfig_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := &ProviderConfig{
 				APIKey:  tt.apiKey,
 				BaseURL: tt.baseURL,
@@ -91,7 +91,7 @@ func TestRetryConfig_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := &RetryConfig{
 				MaxRetries: tt.maxRetries,
 				Backoff:    tt.backoff,

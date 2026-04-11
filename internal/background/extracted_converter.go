@@ -214,4 +214,3 @@ func convertToInternalWorkerStatus(extracted *extractedbackground.WorkerStatus) 
 		AvgTaskDuration: extracted.AvgTaskDuration,
 	}
 }
-

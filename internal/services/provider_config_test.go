@@ -25,8 +25,8 @@ func TestProviderConfig_DefaultValues(t *testing.T) {
 
 func TestProviderConfig_TimeoutAndRetries(t *testing.T) {
 	tests := []struct {
-		name      string
-		timeout   time.Duration
+		name       string
+		timeout    time.Duration
 		maxRetries int
 	}{
 		{

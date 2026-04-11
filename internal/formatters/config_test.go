@@ -55,7 +55,7 @@ func TestDefaultConfig_Preferences(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.language, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			pref, ok := cfg.Preferences[tc.language]
 			assert.True(t, ok, "no preference for %s", tc.language)
 			assert.Equal(t, tc.formatter, pref)
@@ -263,7 +263,7 @@ func TestMatchesPattern(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, matchesPattern(tc.filePath, tc.pattern))
 		})
 	}

@@ -349,7 +349,7 @@ func TestEnsembleHandler_ExecuteAgent_AllTypes(t *testing.T) {
 
 	for _, at := range agentTypes {
 		t.Run(string(at), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agent := AgentDefinition{
 				ID:   "test-agent",
 				Name: "Test",
@@ -448,19 +448,19 @@ func TestEnsembleHandler_RegisterRoutes(t *testing.T) {
 
 	routes := router.Routes()
 	expected := map[string]bool{
-		"POST:/v1/ensemble/sessions":               true,
-		"GET:/v1/ensemble/sessions":                true,
-		"GET:/v1/ensemble/sessions/:id":            true,
-		"POST:/v1/ensemble/sessions/:id/execute":   true,
-		"POST:/v1/ensemble/sessions/:id/cancel":    true,
-		"POST:/v1/ensemble/teams":                  true,
-		"GET:/v1/ensemble/teams":                   true,
-		"GET:/v1/ensemble/teams/:id":               true,
-		"PUT:/v1/ensemble/teams/:id":               true,
-		"DELETE:/v1/ensemble/teams/:id":             true,
-		"POST:/v1/ensemble/teams/:id/agents":       true,
+		"POST:/v1/ensemble/sessions":                    true,
+		"GET:/v1/ensemble/sessions":                     true,
+		"GET:/v1/ensemble/sessions/:id":                 true,
+		"POST:/v1/ensemble/sessions/:id/execute":        true,
+		"POST:/v1/ensemble/sessions/:id/cancel":         true,
+		"POST:/v1/ensemble/teams":                       true,
+		"GET:/v1/ensemble/teams":                        true,
+		"GET:/v1/ensemble/teams/:id":                    true,
+		"PUT:/v1/ensemble/teams/:id":                    true,
+		"DELETE:/v1/ensemble/teams/:id":                 true,
+		"POST:/v1/ensemble/teams/:id/agents":            true,
 		"DELETE:/v1/ensemble/teams/:id/agents/:agentId": true,
-		"POST:/v1/ensemble/teams/:id/execute":      true,
+		"POST:/v1/ensemble/teams/:id/execute":           true,
 	}
 
 	for _, r := range routes {

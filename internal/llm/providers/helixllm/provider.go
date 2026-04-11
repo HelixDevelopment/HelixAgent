@@ -166,8 +166,8 @@ func (p *Provider) Complete(ctx context.Context, req *models.LLMRequest) (*model
 		Content:    chatResp.Choices[0].Message.Content,
 		TokensUsed: chatResp.Usage.TotalTokens,
 		Metadata: map[string]interface{}{
-			"model":        chatResp.Model,
-			"provider":     "helixllm",
+			"model":             chatResp.Model,
+			"provider":          "helixllm",
 			"prompt_tokens":     chatResp.Usage.PromptTokens,
 			"completion_tokens": chatResp.Usage.CompletionTokens,
 		},

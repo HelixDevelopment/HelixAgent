@@ -400,7 +400,7 @@ func TestEnsembleUnit_RunEnsemble_WithPreferredProviders(t *testing.T) {
 }
 
 func TestEnsembleUnit_RunEnsemble_NoSuitableProviders(t *testing.T) {
-	
+
 	service := NewEnsembleService("confidence_weighted", 30*time.Second)
 	ctx := context.Background()
 
@@ -629,9 +629,9 @@ func TestEnsembleUnit_ConfidenceWeightedStrategy_ApplyQualityWeights(t *testing.
 	strategy := &ConfidenceWeightedStrategy{}
 
 	tests := []struct {
-		name     string
-		resp     *models.LLMResponse
-		baseScore float64
+		name        string
+		resp        *models.LLMResponse
+		baseScore   float64
 		expectedMin float64
 		expectedMax float64
 	}{
@@ -856,9 +856,9 @@ func TestEnsembleUnit_ConfidenceWeightedVoting(t *testing.T) {
 	service := NewEnsembleService("confidence_weighted", 30*time.Second)
 
 	tests := []struct {
-		name     string
-		responses []*models.LLMResponse
-		config   *models.EnsembleConfig
+		name       string
+		responses  []*models.LLMResponse
+		config     *models.EnsembleConfig
 		expectedID string
 	}{
 		{
@@ -915,9 +915,9 @@ func TestEnsembleUnit_MajorityVoting(t *testing.T) {
 	service := NewEnsembleService("majority_vote", 30*time.Second)
 
 	tests := []struct {
-		name     string
+		name      string
 		responses []*models.LLMResponse
-		config   *models.EnsembleConfig
+		config    *models.EnsembleConfig
 	}{
 		{
 			name: "true majority",
@@ -967,8 +967,8 @@ func TestEnsembleUnit_SelectBestResponse(t *testing.T) {
 	service := NewEnsembleService("confidence_weighted", 30*time.Second)
 
 	tests := []struct {
-		name     string
-		responses []*models.LLMResponse
+		name       string
+		responses  []*models.LLMResponse
 		expectedID string
 	}{
 		{

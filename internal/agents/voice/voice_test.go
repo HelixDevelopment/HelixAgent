@@ -180,9 +180,9 @@ func TestService_parseCommand(t *testing.T) {
 	svc := NewService(nil)
 
 	tests := []struct {
-		input       string
-		expectCmd   string
-		expectArgs  []string
+		input      string
+		expectCmd  string
+		expectArgs []string
 	}{
 		{"status", "status", []string{}},
 		{"run test", "run", []string{"test"}},

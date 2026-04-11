@@ -18,8 +18,8 @@ import (
 // Kodu provides Kodu agent integration
 type Kodu struct {
 	*base.BaseIntegration
-	config    *Config
-	context   *Context
+	config  *Config
+	context *Context
 }
 
 // Config holds Kodu configuration
@@ -39,18 +39,18 @@ type Context struct {
 
 // Symbol represents a code symbol
 type Symbol struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"` // "func", "type", "var"
-	File     string `json:"file"`
-	Line     int    `json:"line"`
-	Package  string `json:"package"`
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "func", "type", "var"
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+	Package string `json:"package"`
 }
 
 // Relation represents a relationship between symbols
 type Relation struct {
-	From      string `json:"from"`
-	To        string `json:"to"`
-	Type      string `json:"type"` // "calls", "uses", "implements"
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"` // "calls", "uses", "implements"
 }
 
 // New creates a new Kodu integration
@@ -72,7 +72,7 @@ func New() *Kodu {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Kodu{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -96,27 +96,27 @@ func (k *Kodu) Initialize(ctx context.Context, config interface{}) error {
 	if err := k.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		k.config = cfg
 	}
-	
+
 	return k.loadContext()
 }
 
 // loadContext loads semantic context
 func (k *Kodu) loadContext() error {
 	contextPath := filepath.Join(k.GetWorkDir(), "context.json")
-	
+
 	if _, err := os.Stat(contextPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(contextPath)
 	if err != nil {
 		return fmt.Errorf("read context: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &k.context)
 }
 
@@ -137,7 +137,7 @@ func (k *Kodu) Execute(ctx context.Context, command string, params map[string]in
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "ask":
 		return k.ask(ctx, params)
@@ -164,15 +164,15 @@ func (k *Kodu) ask(ctx context.Context, params map[string]interface{}) (interfac
 	if question == "" {
 		return nil, fmt.Errorf("question required")
 	}
-	
+
 	// Use semantic context to provide answer
 	relevantSymbols := k.findRelevantSymbols(question)
-	
+
 	return map[string]interface{}{
-		"question": question,
-		"answer":   fmt.Sprintf("Based on the codebase: %s", question),
+		"question":         question,
+		"answer":           fmt.Sprintf("Based on the codebase: %s", question),
 		"relevant_symbols": relevantSymbols,
-		"model":    k.config.Model,
+		"model":            k.config.Model,
 	}, nil
 }
 
@@ -182,9 +182,9 @@ func (k *Kodu) search(ctx context.Context, params map[string]interface{}) (inter
 	if query == "" {
 		return nil, fmt.Errorf("query required")
 	}
-	
+
 	results := make([]map[string]interface{}, 0)
-	
+
 	// Semantic search through codebase
 	for file, content := range k.context.Codebase {
 		if strings.Contains(strings.ToLower(content), strings.ToLower(query)) {
@@ -195,7 +195,7 @@ func (k *Kodu) search(ctx context.Context, params map[string]interface{}) (inter
 			})
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"query":   query,
 		"results": results,
@@ -209,12 +209,12 @@ func (k *Kodu) explain(ctx context.Context, params map[string]interface{}) (inte
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	content, exists := k.context.Codebase[file]
 	if !exists {
 		return nil, fmt.Errorf("file not in context: %s", file)
 	}
-	
+
 	return map[string]interface{}{
 		"file":        file,
 		"content":     content,
@@ -226,11 +226,11 @@ func (k *Kodu) explain(ctx context.Context, params map[string]interface{}) (inte
 func (k *Kodu) refactor(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	file, _ := params["file"].(string)
 	instruction, _ := params["instruction"].(string)
-	
+
 	if file == "" || instruction == "" {
 		return nil, fmt.Errorf("file and instruction required")
 	}
-	
+
 	return map[string]interface{}{
 		"file":        file,
 		"instruction": instruction,
@@ -246,38 +246,38 @@ func (k *Kodu) index(ctx context.Context, params map[string]interface{}) (interf
 	if directory == "" {
 		directory = "."
 	}
-	
+
 	// Index files
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		
+
 		content, err := os.ReadFile(path) // #nosec G122 -- path constrained by filepath.WalkDir root; sandboxing enforced at the walker construction
 		if err != nil {
 			return err
 		}
-		
+
 		k.context.Codebase[path] = string(content)
-		
+
 		// Extract symbols (simplified)
 		k.extractSymbols(path, string(content))
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("indexing failed: %w", err)
 	}
-	
+
 	if err := k.saveContext(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"directory": directory,
 		"files":     len(k.context.Codebase),
@@ -292,7 +292,7 @@ func (k *Kodu) navigate(ctx context.Context, params map[string]interface{}) (int
 	if symbol == "" {
 		return nil, fmt.Errorf("symbol required")
 	}
-	
+
 	for _, s := range k.context.Symbols {
 		if s.Name == symbol {
 			return map[string]interface{}{
@@ -301,7 +301,7 @@ func (k *Kodu) navigate(ctx context.Context, params map[string]interface{}) (int
 			}, nil
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"symbol": symbol,
 		"found":  false,
@@ -314,14 +314,14 @@ func (k *Kodu) relations(ctx context.Context, params map[string]interface{}) (in
 	if symbol == "" {
 		return nil, fmt.Errorf("symbol required")
 	}
-	
+
 	relations := make([]Relation, 0)
 	for _, r := range k.context.Relations {
 		if r.From == symbol || r.To == symbol {
 			relations = append(relations, r)
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"symbol":    symbol,
 		"relations": relations,
@@ -333,13 +333,13 @@ func (k *Kodu) relations(ctx context.Context, params map[string]interface{}) (in
 func (k *Kodu) findRelevantSymbols(query string) []Symbol {
 	relevant := make([]Symbol, 0)
 	queryLower := strings.ToLower(query)
-	
+
 	for _, symbol := range k.context.Symbols {
 		if strings.Contains(strings.ToLower(symbol.Name), queryLower) {
 			relevant = append(relevant, symbol)
 		}
 	}
-	
+
 	return relevant
 }
 
@@ -349,7 +349,7 @@ func (k *Kodu) extractSnippet(content, query string) string {
 	if idx == -1 {
 		return ""
 	}
-	
+
 	start := idx - 50
 	if start < 0 {
 		start = 0
@@ -358,7 +358,7 @@ func (k *Kodu) extractSnippet(content, query string) string {
 	if end > len(content) {
 		end = len(content)
 	}
-	
+
 	return content[start:end]
 }
 

@@ -729,7 +729,7 @@ func TestCompletionHandlerUnit_SendCategorizedError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -1127,7 +1127,7 @@ func TestCompletionHandlerUnit_Stream_WithVariousFinishReasons(t *testing.T) {
 
 	for _, reason := range finishReasons {
 		t.Run("finish_reason_"+reason, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			gin.SetMode(gin.TestMode)
 
 			ensemble := services.NewEnsembleService("best_of_n", 30*time.Second)
@@ -1251,7 +1251,7 @@ func TestCompletionHandlerUnit_ConvertToInternalRequest_InvalidUserIDType(t *tes
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Set("user_id", 12345) // Invalid type
+	c.Set("user_id", 12345)   // Invalid type
 	c.Set("session_id", true) // Invalid type
 
 	internalReq := handler.convertToInternalRequest(req, c)

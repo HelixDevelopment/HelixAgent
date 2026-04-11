@@ -128,9 +128,13 @@ func (p *longStreamProvider) CompleteStream(_ context.Context, _ *models.LLMRequ
 	return ch, nil
 }
 
-func (p *longStreamProvider) HealthCheck() error                                      { return nil }
-func (p *longStreamProvider) GetCapabilities() *models.ProviderCapabilities            { return &models.ProviderCapabilities{} }
-func (p *longStreamProvider) ValidateConfig(_ map[string]interface{}) (bool, []string) { return true, nil }
+func (p *longStreamProvider) HealthCheck() error { return nil }
+func (p *longStreamProvider) GetCapabilities() *models.ProviderCapabilities {
+	return &models.ProviderCapabilities{}
+}
+func (p *longStreamProvider) ValidateConfig(_ map[string]interface{}) (bool, []string) {
+	return true, nil
+}
 
 // TestCircuitBreaker_CompleteStream_ContextCancelNoLeak verifies that when the
 // caller cancels the context mid-stream, the forwarding goroutine exits
@@ -199,9 +203,13 @@ func (p *alwaysFailingProvider) Complete(_ context.Context, _ *models.LLMRequest
 func (p *alwaysFailingProvider) CompleteStream(_ context.Context, _ *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 	return nil, errors.New("always fails")
 }
-func (p *alwaysFailingProvider) HealthCheck() error                                      { return nil }
-func (p *alwaysFailingProvider) GetCapabilities() *models.ProviderCapabilities           { return &models.ProviderCapabilities{} }
-func (p *alwaysFailingProvider) ValidateConfig(_ map[string]interface{}) (bool, []string) { return true, nil }
+func (p *alwaysFailingProvider) HealthCheck() error { return nil }
+func (p *alwaysFailingProvider) GetCapabilities() *models.ProviderCapabilities {
+	return &models.ProviderCapabilities{}
+}
+func (p *alwaysFailingProvider) ValidateConfig(_ map[string]interface{}) (bool, []string) {
+	return true, nil
+}
 
 // TestCircuitBreaker_NotifyListeners_NoGoroutineLeak verifies that after
 // a listener is notified on state change (closed → open), the notification

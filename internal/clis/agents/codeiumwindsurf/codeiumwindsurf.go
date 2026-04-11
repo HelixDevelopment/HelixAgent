@@ -19,8 +19,8 @@ type CodeiumWindsurf struct {
 // Config holds Codeium Windsurf configuration
 type Config struct {
 	base.BaseConfig
-	APIKey      string
-	Model       string
+	APIKey string
+	Model  string
 }
 
 // New creates a new Codeium Windsurf integration
@@ -40,7 +40,7 @@ func New() *CodeiumWindsurf {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &CodeiumWindsurf{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -57,11 +57,11 @@ func (c *CodeiumWindsurf) Initialize(ctx context.Context, config interface{}) er
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -72,7 +72,7 @@ func (c *CodeiumWindsurf) Execute(ctx context.Context, command string, params ma
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "complete":
 		return c.complete(ctx, params)
@@ -90,7 +90,7 @@ func (c *CodeiumWindsurf) Execute(ctx context.Context, command string, params ma
 // complete generates completion
 func (c *CodeiumWindsurf) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
-	
+
 	return map[string]interface{}{
 		"prefix":     prefix,
 		"completion": "// Codeium completion",
@@ -103,7 +103,7 @@ func (c *CodeiumWindsurf) chat(ctx context.Context, params map[string]interface{
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message":  message,
 		"response": fmt.Sprintf("Codeium: %s", message),
@@ -116,11 +116,11 @@ func (c *CodeiumWindsurf) cascade(ctx context.Context, params map[string]interfa
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
-		"prompt":   prompt,
-		"result":   fmt.Sprintf("Cascade result for: %s", prompt),
-		"files":    []string{"generated.go"},
+		"prompt": prompt,
+		"result": fmt.Sprintf("Cascade result for: %s", prompt),
+		"files":  []string{"generated.go"},
 	}, nil
 }
 

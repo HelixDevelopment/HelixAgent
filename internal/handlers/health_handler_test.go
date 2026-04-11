@@ -432,7 +432,7 @@ func TestAddProvider_BadRequest_MissingFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/api/v1/verifier/health/providers", bytes.NewBuffer([]byte(tt.body)))
 			req.Header.Set("Content-Type", "application/json")

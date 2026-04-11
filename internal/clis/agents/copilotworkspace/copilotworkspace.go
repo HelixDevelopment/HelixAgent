@@ -16,16 +16,16 @@ import (
 // CopilotWorkspace provides GitHub Copilot Workspace integration
 type CopilotWorkspace struct {
 	*base.BaseIntegration
-	config   *Config
-	tasks    []Task
+	config *Config
+	tasks  []Task
 }
 
 // Config holds Copilot Workspace configuration
 type Config struct {
 	base.BaseConfig
-	GitHubToken  string
-	Repository   string
-	AutoPR       bool
+	GitHubToken string
+	Repository  string
+	AutoPR      bool
 }
 
 // Task represents a development task
@@ -57,7 +57,7 @@ func New() *CopilotWorkspace {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &CopilotWorkspace{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -75,27 +75,27 @@ func (c *CopilotWorkspace) Initialize(ctx context.Context, config interface{}) e
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return c.loadTasks()
 }
 
 // loadTasks loads tasks
 func (c *CopilotWorkspace) loadTasks() error {
 	tasksPath := filepath.Join(c.GetWorkDir(), "tasks.json")
-	
+
 	if _, err := os.Stat(tasksPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(tasksPath)
 	if err != nil {
 		return fmt.Errorf("read tasks: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &c.tasks)
 }
 
@@ -116,7 +116,7 @@ func (c *CopilotWorkspace) Execute(ctx context.Context, command string, params m
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "create_task":
 		return c.createTask(ctx, params)
@@ -139,11 +139,11 @@ func (c *CopilotWorkspace) Execute(ctx context.Context, command string, params m
 func (c *CopilotWorkspace) createTask(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	title, _ := params["title"].(string)
 	description, _ := params["description"].(string)
-	
+
 	if title == "" {
 		return nil, fmt.Errorf("title required")
 	}
-	
+
 	task := Task{
 		ID:          fmt.Sprintf("task-%d", len(c.tasks)+1),
 		Title:       title,
@@ -152,13 +152,13 @@ func (c *CopilotWorkspace) createTask(ctx context.Context, params map[string]int
 		Files:       []string{},
 		Branch:      fmt.Sprintf("cw/%s", title),
 	}
-	
+
 	c.tasks = append(c.tasks, task)
-	
+
 	if err := c.saveTasks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"task":   task,
 		"status": "created",
@@ -171,7 +171,7 @@ func (c *CopilotWorkspace) plan(ctx context.Context, params map[string]interface
 	if taskID == "" {
 		return nil, fmt.Errorf("task_id required")
 	}
-	
+
 	var task *Task
 	for i := range c.tasks {
 		if c.tasks[i].ID == taskID {
@@ -179,11 +179,11 @@ func (c *CopilotWorkspace) plan(ctx context.Context, params map[string]interface
 			break
 		}
 	}
-	
+
 	if task == nil {
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
-	
+
 	plan := []map[string]interface{}{
 		{"step": 1, "action": "Analyze requirements", "status": "pending"},
 		{"step": 2, "action": "Design solution", "status": "pending"},
@@ -191,7 +191,7 @@ func (c *CopilotWorkspace) plan(ctx context.Context, params map[string]interface
 		{"step": 4, "action": "Add tests", "status": "pending"},
 		{"step": 5, "action": "Review", "status": "pending"},
 	}
-	
+
 	return map[string]interface{}{
 		"task": task,
 		"plan": plan,
@@ -204,7 +204,7 @@ func (c *CopilotWorkspace) implement(ctx context.Context, params map[string]inte
 	if taskID == "" {
 		return nil, fmt.Errorf("task_id required")
 	}
-	
+
 	var task *Task
 	for i := range c.tasks {
 		if c.tasks[i].ID == taskID {
@@ -212,18 +212,18 @@ func (c *CopilotWorkspace) implement(ctx context.Context, params map[string]inte
 			break
 		}
 	}
-	
+
 	if task == nil {
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
-	
+
 	task.Status = "implementing"
 	task.Files = []string{"src/main.go", "src/utils.go"}
-	
+
 	if err := c.saveTasks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"task":    task,
 		"changes": []string{"Added feature implementation"},
@@ -237,7 +237,7 @@ func (c *CopilotWorkspace) review(ctx context.Context, params map[string]interfa
 	if taskID == "" {
 		return nil, fmt.Errorf("task_id required")
 	}
-	
+
 	return map[string]interface{}{
 		"task_id": taskID,
 		"review":  "Code review completed",
@@ -252,7 +252,7 @@ func (c *CopilotWorkspace) submit(ctx context.Context, params map[string]interfa
 	if taskID == "" {
 		return nil, fmt.Errorf("task_id required")
 	}
-	
+
 	var task *Task
 	for i := range c.tasks {
 		if c.tasks[i].ID == taskID {
@@ -260,21 +260,21 @@ func (c *CopilotWorkspace) submit(ctx context.Context, params map[string]interfa
 			break
 		}
 	}
-	
+
 	if task == nil {
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
-	
+
 	task.Status = "submitted"
-	
+
 	if err := c.saveTasks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
-		"task":    task,
-		"pr_url":  fmt.Sprintf("https://github.com/%s/pull/1", c.config.Repository),
-		"status":  "submitted",
+		"task":   task,
+		"pr_url": fmt.Sprintf("https://github.com/%s/pull/1", c.config.Repository),
+		"status": "submitted",
 	}, nil
 }
 

@@ -63,7 +63,7 @@ func TestDetectLanguage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := detectLanguage(tt.ext, tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -91,7 +91,7 @@ func TestIsTestFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isTestFile(tt.path, tt.language)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -116,7 +116,7 @@ func TestIsBinary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isBinary(tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -141,7 +141,7 @@ func TestShouldIgnore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := rm.shouldIgnore(tt.path, patterns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -190,7 +190,7 @@ class MyClass:
 	require.NoError(t, err)
 
 	// Verify results
-	assert.Len(t, rm.Files, 2) // Should ignore node_modules
+	assert.Len(t, rm.Files, 2)                   // Should ignore node_modules
 	assert.GreaterOrEqual(t, len(rm.Symbols), 4) // 2 Go funcs + 1 Python func + 1 class
 
 	// Check languages
@@ -466,7 +466,7 @@ func TestIsExported(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isExported(tt.name)
 			assert.Equal(t, tt.expected, result)
 		})

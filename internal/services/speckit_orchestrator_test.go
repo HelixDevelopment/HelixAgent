@@ -602,4 +602,3 @@ func TestSpecKitOrchestrator_FlowResumption(t *testing.T) {
 		assert.Error(t, err, "Should not be able to load cleared cache")
 	})
 }
-

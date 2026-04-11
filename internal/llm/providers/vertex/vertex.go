@@ -16,11 +16,11 @@ import (
 
 // Provider implements LLMProvider for Google Vertex AI
 type Provider struct {
-	projectID  string
-	location   string
-	model      string
-	apiKey     string
-	client     *http.Client
+	projectID string
+	location  string
+	model     string
+	apiKey    string
+	client    *http.Client
 }
 
 // Config holds provider configuration

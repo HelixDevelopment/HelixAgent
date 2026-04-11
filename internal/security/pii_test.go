@@ -41,7 +41,7 @@ func TestRegexPIIDetector_DetectEmail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			detections, err := detector.Detect(context.Background(), tt.input)
 			require.NoError(t, err)
 
@@ -84,7 +84,7 @@ func TestRegexPIIDetector_DetectPhone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			detections, err := detector.Detect(context.Background(), tt.input)
 			require.NoError(t, err)
 
@@ -127,7 +127,7 @@ func TestRegexPIIDetector_DetectSSN(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			detections, err := detector.Detect(context.Background(), tt.input)
 			require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func TestRegexPIIDetector_DetectCreditCard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			detections, err := detector.Detect(context.Background(), tt.input)
 			require.NoError(t, err)
 
@@ -213,7 +213,7 @@ func TestRegexPIIDetector_DetectAPIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			detections, err := detector.Detect(context.Background(), tt.input)
 			require.NoError(t, err)
 
@@ -256,7 +256,7 @@ func TestRegexPIIDetector_Mask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			masked, detections, err := detector.Mask(context.Background(), tt.input)
 			require.NoError(t, err)
 			require.NotEmpty(t, detections)
@@ -309,7 +309,7 @@ func TestLuhnValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := detector.validateLuhn(tt.number)
 			assert.Equal(t, tt.valid, result)
 		})
@@ -322,14 +322,14 @@ func TestPIIGuardrail(t *testing.T) {
 	guardrail := NewPIIGuardrail(detector, GuardrailActionWarn, nil)
 
 	t.Run("No PII", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result, err := guardrail.Check(context.Background(), "Hello world", nil)
 		require.NoError(t, err)
 		assert.False(t, result.Triggered)
 	})
 
 	t.Run("Contains PII", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result, err := guardrail.Check(context.Background(), "Email: test@example.com", nil)
 		require.NoError(t, err)
 		assert.True(t, result.Triggered)
@@ -337,7 +337,7 @@ func TestPIIGuardrail(t *testing.T) {
 	})
 
 	t.Run("Modify action masks PII", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		modifyGuardrail := NewPIIGuardrail(detector, GuardrailActionModify, nil)
 		result, err := modifyGuardrail.Check(context.Background(), "Email: test@example.com", nil)
 		require.NoError(t, err)

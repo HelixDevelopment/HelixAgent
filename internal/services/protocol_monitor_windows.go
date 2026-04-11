@@ -10,7 +10,7 @@ import (
 // collectDiskUsage gets disk usage for the root filesystem (Windows implementation)
 func collectDiskUsage() float64 {
 	var freeBytesAvailable, totalNumberOfBytes, totalNumberOfFreeBytes uint64
-	
+
 	err := windows.GetDiskFreeSpaceEx(
 		windows.StringToUTF16Ptr("C:\\"),
 		&freeBytesAvailable,

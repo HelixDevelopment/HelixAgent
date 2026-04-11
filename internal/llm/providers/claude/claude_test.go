@@ -49,7 +49,7 @@ func TestNewClaudeProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewClaudeProvider(tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
@@ -207,7 +207,7 @@ func TestClaudeProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -354,7 +354,7 @@ func TestClaudeProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := &ClaudeProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -558,7 +558,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}
@@ -699,7 +699,7 @@ func TestClaudeProvider_CalculateConfidence_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -986,7 +986,7 @@ func TestClaudeProvider_ToolChoice_AllFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var capturedToolChoice interface{}
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1043,7 +1043,7 @@ func TestClaudeProvider_GetAuthType(t *testing.T) {
 	})
 
 	t.Run("explicit API key auth type", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := &ClaudeProvider{
 			apiKey:   "test-key",
 			authType: AuthTypeAPIKey,
@@ -1052,7 +1052,7 @@ func TestClaudeProvider_GetAuthType(t *testing.T) {
 	})
 
 	t.Run("OAuth auth type", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := &ClaudeProvider{
 			authType: AuthTypeOAuth,
 		}
@@ -1117,7 +1117,7 @@ func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - unauthorized", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		mockResp := &http.Response{
 			StatusCode: http.StatusUnauthorized,
 			Body:       http.NoBody,
@@ -1138,7 +1138,7 @@ func TestClaudeProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - network error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := &ClaudeProvider{
 			apiKey:   "test-key",
 			baseURL:  ClaudeAPIURL,
@@ -1172,7 +1172,7 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.retryable, isAuthRetryableStatus(tt.statusCode))
 		})
 	}

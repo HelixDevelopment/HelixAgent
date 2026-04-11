@@ -33,9 +33,9 @@ func BrowserTools() []ToolDefinition {
 						"description": "CSS selector",
 					},
 					"button": map[string]interface{}{
-						"type":        "string",
-						"enum":        []string{"left", "right", "middle"},
-						"default":     "left",
+						"type":    "string",
+						"enum":    []string{"left", "right", "middle"},
+						"default": "left",
 					},
 				},
 				"required": []string{"selector"},
@@ -56,8 +56,8 @@ func BrowserTools() []ToolDefinition {
 						"description": "Text to type",
 					},
 					"clear": map[string]interface{}{
-						"type":        "boolean",
-						"default":     true,
+						"type":    "boolean",
+						"default": true,
 					},
 				},
 				"required": []string{"selector", "text"},
@@ -74,8 +74,8 @@ func BrowserTools() []ToolDefinition {
 						"description": "CSS selector (empty for full page)",
 					},
 					"full_page": map[string]interface{}{
-						"type":        "boolean",
-						"default":     false,
+						"type":    "boolean",
+						"default": false,
 					},
 				},
 			},
@@ -91,9 +91,9 @@ func BrowserTools() []ToolDefinition {
 						"description": "CSS selector",
 					},
 					"type": map[string]interface{}{
-						"type":        "string",
-						"enum":        []string{"text", "html", "innerText"},
-						"default":     "text",
+						"type":    "string",
+						"enum":    []string{"text", "html", "innerText"},
+						"default": "text",
 					},
 				},
 				"required": []string{"selector"},
@@ -106,8 +106,8 @@ func BrowserTools() []ToolDefinition {
 				"type": "object",
 				"properties": map[string]interface{}{
 					"direction": map[string]interface{}{
-						"type":        "string",
-						"enum":        []string{"up", "down", "left", "right"},
+						"type": "string",
+						"enum": []string{"up", "down", "left", "right"},
 					},
 					"amount": map[string]interface{}{
 						"type":        "integer",
@@ -138,8 +138,8 @@ func BrowserTools() []ToolDefinition {
 				"type": "object",
 				"properties": map[string]interface{}{
 					"type": map[string]interface{}{
-						"type":        "string",
-						"enum":        []string{"selector", "timeout", "navigation", "load"},
+						"type": "string",
+						"enum": []string{"selector", "timeout", "navigation", "load"},
 					},
 					"selector": map[string]interface{}{
 						"type": "string",

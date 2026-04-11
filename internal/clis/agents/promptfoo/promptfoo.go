@@ -16,25 +16,25 @@ import (
 // Promptfoo provides Promptfoo integration
 type Promptfoo struct {
 	*base.BaseIntegration
-	config   *Config
-	suites   []TestSuite
+	config *Config
+	suites []TestSuite
 }
 
 // Config holds Promptfoo configuration
 type Config struct {
 	base.BaseConfig
-	OutputFormat string
+	OutputFormat   string
 	MaxConcurrency int
 }
 
 // TestSuite represents a test suite
 type TestSuite struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
 	Prompts     []Prompt `json:"prompts"`
 	Tests       []Test   `json:"tests"`
-	Status      string `json:"status"`
+	Status      string   `json:"status"`
 }
 
 // Prompt represents a prompt
@@ -54,9 +54,9 @@ type Test struct {
 
 // Assertion represents a test assertion
 type Assertion struct {
-	Type    string `json:"type"`
-	Value   string `json:"value"`
-	Weight  float64 `json:"weight"`
+	Type   string  `json:"type"`
+	Value  string  `json:"value"`
+	Weight float64 `json:"weight"`
 }
 
 // New creates a new Promptfoo integration
@@ -78,7 +78,7 @@ func New() *Promptfoo {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Promptfoo{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -97,11 +97,11 @@ func (p *Promptfoo) Initialize(ctx context.Context, config interface{}) error {
 	if err := p.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		p.config = cfg
 	}
-	
+
 	return p.loadSuites()
 }
 
@@ -143,7 +143,7 @@ func (p *Promptfoo) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "init":
 		return p.init(ctx, params)
@@ -170,7 +170,7 @@ func (p *Promptfoo) init(ctx context.Context, params map[string]interface{}) (in
 	if name == "" {
 		name = "promptfoo-project"
 	}
-	
+
 	return map[string]interface{}{
 		"name": name,
 		"files": []string{
@@ -188,16 +188,16 @@ func (p *Promptfoo) eval(ctx context.Context, params map[string]interface{}) (in
 	if configPath == "" {
 		configPath = "promptfooconfig.yaml"
 	}
-	
+
 	// Run evaluation
 	results := map[string]interface{}{
-		"config": configPath,
+		"config":    configPath,
 		"tests_run": 10,
 		"passed":    8,
 		"failed":    2,
 		"score":     0.8,
 	}
-	
+
 	return results, nil
 }
 
@@ -207,9 +207,9 @@ func (p *Promptfoo) createSuite(ctx context.Context, params map[string]interface
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	description, _ := params["description"].(string)
-	
+
 	suite := TestSuite{
 		ID:          fmt.Sprintf("suite-%d", len(p.suites)+1),
 		Name:        name,
@@ -218,13 +218,13 @@ func (p *Promptfoo) createSuite(ctx context.Context, params map[string]interface
 		Tests:       []Test{},
 		Status:      "created",
 	}
-	
+
 	p.suites = append(p.suites, suite)
-	
+
 	if err := p.saveSuites(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"suite":  suite,
 		"status": "created",
@@ -237,7 +237,7 @@ func (p *Promptfoo) addTest(ctx context.Context, params map[string]interface{}) 
 	if suiteID == "" {
 		return nil, fmt.Errorf("suite_id required")
 	}
-	
+
 	var suite *TestSuite
 	for i := range p.suites {
 		if p.suites[i].ID == suiteID {
@@ -245,27 +245,27 @@ func (p *Promptfoo) addTest(ctx context.Context, params map[string]interface{}) 
 			break
 		}
 	}
-	
+
 	if suite == nil {
 		return nil, fmt.Errorf("suite not found: %s", suiteID)
 	}
-	
+
 	vars, _ := params["vars"].(map[string]interface{})
 	expected, _ := params["expected"].(string)
-	
+
 	test := Test{
 		ID:       fmt.Sprintf("test-%d", len(suite.Tests)+1),
 		Vars:     vars,
 		Expected: expected,
 		Assert:   []Assertion{},
 	}
-	
+
 	suite.Tests = append(suite.Tests, test)
-	
+
 	if err := p.saveSuites(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"test":   test,
 		"suite":  suite,
@@ -279,7 +279,7 @@ func (p *Promptfoo) runSuite(ctx context.Context, params map[string]interface{})
 	if suiteID == "" {
 		return nil, fmt.Errorf("suite_id required")
 	}
-	
+
 	var suite *TestSuite
 	for i := range p.suites {
 		if p.suites[i].ID == suiteID {
@@ -287,11 +287,11 @@ func (p *Promptfoo) runSuite(ctx context.Context, params map[string]interface{})
 			break
 		}
 	}
-	
+
 	if suite == nil {
 		return nil, fmt.Errorf("suite not found: %s", suiteID)
 	}
-	
+
 	// Run tests
 	results := make([]map[string]interface{}, 0, len(suite.Tests))
 	for _, test := range suite.Tests {
@@ -301,7 +301,7 @@ func (p *Promptfoo) runSuite(ctx context.Context, params map[string]interface{})
 			"score":   1.0,
 		})
 	}
-	
+
 	return map[string]interface{}{
 		"suite":   suite,
 		"results": results,

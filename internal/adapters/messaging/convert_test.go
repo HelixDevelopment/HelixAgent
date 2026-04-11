@@ -78,7 +78,7 @@ func TestBrokerTypeConversion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.internal), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Internal to Generic
 			assert.Equal(t, tt.generic, InternalToGenericBrokerType(tt.internal))
 

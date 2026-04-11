@@ -27,7 +27,7 @@ func TestNavigationAction_DefaultTimeout(t *testing.T) {
 		URL:     "https://example.com",
 		Timeout: 0, // Should use default in Execute
 	}
-	
+
 	assert.Equal(t, time.Duration(0), action.Timeout)
 }
 
@@ -50,11 +50,11 @@ func TestClickAction_Struct(t *testing.T) {
 func TestClickAction_DefaultValues(t *testing.T) {
 	action := ClickAction{
 		Selector:   "#button",
-		Button:     "",       // Should default to left
-		ClickCount: 0,        // Should default to 1
-		Timeout:    0,        // Will use default in Execute
+		Button:     "", // Should default to left
+		ClickCount: 0,  // Should default to 1
+		Timeout:    0,  // Will use default in Execute
 	}
-	
+
 	assert.Empty(t, action.Button)
 	assert.Equal(t, 0, action.ClickCount)
 	assert.Equal(t, time.Duration(0), action.Timeout)
@@ -69,7 +69,7 @@ func TestClickAction_DifferentButtons(t *testing.T) {
 		{"right button", "right"},
 		{"middle button", "middle"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			action := ClickAction{
@@ -103,7 +103,7 @@ func TestTypeAction_NoClear(t *testing.T) {
 		Text:     "append text",
 		Clear:    false,
 	}
-	
+
 	assert.False(t, action.Clear)
 }
 
@@ -113,7 +113,7 @@ func TestTypeAction_NoDelay(t *testing.T) {
 		Text:     "fast type",
 		Delay:    0,
 	}
-	
+
 	assert.Equal(t, time.Duration(0), action.Delay)
 }
 
@@ -137,7 +137,7 @@ func TestScreenshotAction_Defaults(t *testing.T) {
 	action := ScreenshotAction{
 		// No fields set - using defaults
 	}
-	
+
 	assert.Empty(t, action.Selector)
 	assert.False(t, action.FullPage)
 	assert.Empty(t, action.Format)
@@ -146,7 +146,7 @@ func TestScreenshotAction_Defaults(t *testing.T) {
 
 func TestScreenshotAction_Formats(t *testing.T) {
 	formats := []string{"png", "jpeg", "webp"}
-	
+
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {
 			action := ScreenshotAction{
@@ -173,7 +173,7 @@ func TestScrollAction_Struct(t *testing.T) {
 
 func TestScrollAction_Directions(t *testing.T) {
 	directions := []string{"up", "down", "left", "right"}
-	
+
 	for _, dir := range directions {
 		t.Run(dir, func(t *testing.T) {
 			action := ScrollAction{
@@ -190,7 +190,7 @@ func TestScrollAction_DefaultAmount(t *testing.T) {
 		Direction: "down",
 		Amount:    0, // Should use default (500) in Execute
 	}
-	
+
 	assert.Equal(t, 0, action.Amount)
 }
 
@@ -200,7 +200,7 @@ func TestScrollAction_PageScroll(t *testing.T) {
 		Amount:    300,
 		Selector:  "", // Empty selector = page scroll
 	}
-	
+
 	assert.Empty(t, action.Selector)
 }
 
@@ -220,7 +220,7 @@ func TestExtractAction_Struct(t *testing.T) {
 
 func TestExtractAction_Types(t *testing.T) {
 	types := []string{"text", "html", "value", "attribute"}
-	
+
 	for _, extractType := range types {
 		t.Run(extractType, func(t *testing.T) {
 			action := ExtractAction{
@@ -248,11 +248,11 @@ func TestEvaluateAction_ComplexScript(t *testing.T) {
 		const elements = document.querySelectorAll('.item');
 		return Array.from(elements).map(e => e.textContent);
 	`
-	
+
 	action := EvaluateAction{
 		Script: script,
 	}
-	
+
 	assert.Contains(t, action.Script, "querySelectorAll")
 }
 
@@ -272,7 +272,7 @@ func TestWaitAction_Struct(t *testing.T) {
 
 func TestWaitAction_Types(t *testing.T) {
 	tests := []struct {
-		name string
+		name     string
 		waitType string
 		selector string
 	}{
@@ -281,7 +281,7 @@ func TestWaitAction_Types(t *testing.T) {
 		{"navigation", "navigation", ""},
 		{"load", "load", ""},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			action := WaitAction{
@@ -300,7 +300,7 @@ func TestWaitAction_DefaultTimeout(t *testing.T) {
 		Selector: "#content",
 		// Timeout is 0, should default to 5 seconds in Execute
 	}
-	
+
 	assert.Equal(t, time.Duration(0), action.Timeout)
 }
 
@@ -340,19 +340,19 @@ func TestActionResult_Struct(t *testing.T) {
 
 func TestActionResult_Error(t *testing.T) {
 	result := ActionResult{
-		Success:   false,
-		Error:     assert.AnError,
+		Success:    false,
+		Error:      assert.AnError,
 		Screenshot: nil,
-		Extracted: nil,
+		Extracted:  nil,
 	}
-	
+
 	assert.False(t, result.Success)
 	assert.Error(t, result.Error)
 }
 
 func TestActionResult_Empty(t *testing.T) {
 	result := ActionResult{}
-	
+
 	assert.False(t, result.Success)
 	assert.Nil(t, result.Screenshot)
 	assert.Nil(t, result.Extracted)
@@ -379,7 +379,7 @@ func TestScreenshotResult_Struct(t *testing.T) {
 
 func TestScreenshotResult_Empty(t *testing.T) {
 	result := ScreenshotResult{}
-	
+
 	assert.Nil(t, result.Data)
 	assert.Empty(t, result.Format)
 	assert.Equal(t, 0, result.Width)
@@ -396,7 +396,7 @@ func TestScreenshotResult_DifferentSizes(t *testing.T) {
 		{3840, 2160},
 		{800, 600},
 	}
-	
+
 	for _, size := range sizes {
 		t.Run(fmt.Sprintf("%dx%d", size.width, size.height), func(t *testing.T) {
 			result := ScreenshotResult{
@@ -425,7 +425,7 @@ func TestExtractResult_Struct(t *testing.T) {
 
 func TestExtractResult_Empty(t *testing.T) {
 	result := ExtractResult{}
-	
+
 	assert.Empty(t, result.Selector)
 	assert.Empty(t, result.Content)
 	assert.Equal(t, 0, result.Count)
@@ -437,7 +437,7 @@ func TestExtractResult_SingleElement(t *testing.T) {
 		Content:  "Page Title",
 		Count:    1,
 	}
-	
+
 	assert.Equal(t, 1, result.Count)
 }
 
@@ -447,7 +447,7 @@ func TestExtractResult_MultipleElements(t *testing.T) {
 		Content:  "Item 1, Item 2, Item 3",
 		Count:    3,
 	}
-	
+
 	assert.Equal(t, 3, result.Count)
 }
 
@@ -479,7 +479,7 @@ func TestEvaluateResult_DifferentTypes(t *testing.T) {
 		{"object", map[string]string{"a": "b"}, "object"},
 		{"null", nil, "null"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := EvaluateResult{
@@ -494,7 +494,7 @@ func TestEvaluateResult_DifferentTypes(t *testing.T) {
 
 func TestEvaluateResult_Empty(t *testing.T) {
 	result := EvaluateResult{}
-	
+
 	assert.Nil(t, result.Result)
 	assert.Empty(t, result.Type)
 }
@@ -526,7 +526,7 @@ func TestScrollAction_AllDirections(t *testing.T) {
 		"left":  {"left", 300},
 		"right": {"right", 300},
 	}
-	
+
 	for name, tc := range directions {
 		t.Run(name, func(t *testing.T) {
 			action := ScrollAction{
@@ -541,7 +541,7 @@ func TestScrollAction_AllDirections(t *testing.T) {
 
 func TestWaitAction_AllTypes(t *testing.T) {
 	waitTypes := []string{"selector", "timeout", "navigation", "load"}
-	
+
 	for _, wt := range waitTypes {
 		t.Run(wt, func(t *testing.T) {
 			action := WaitAction{
@@ -555,7 +555,7 @@ func TestWaitAction_AllTypes(t *testing.T) {
 
 func TestScreenshotAction_QualityRange(t *testing.T) {
 	qualities := []int{0, 50, 75, 90, 100}
-	
+
 	for _, q := range qualities {
 		t.Run(fmt.Sprintf("quality_%d", q), func(t *testing.T) {
 			action := ScreenshotAction{
@@ -575,7 +575,7 @@ func TestNavigationAction_URLVariations(t *testing.T) {
 		"about:blank",
 		"data:text/html,<html></html>",
 	}
-	
+
 	for _, url := range urls {
 		t.Run(url[:10], func(t *testing.T) {
 			action := NavigationAction{
@@ -591,14 +591,12 @@ func TestNavigationAction_URLVariations(t *testing.T) {
 func TestAction_FieldMutability(t *testing.T) {
 	// Test that action fields can be modified
 	action := NavigationAction{}
-	
+
 	action.URL = "https://example.com"
 	action.WaitFor = "#content"
 	action.Timeout = 30 * time.Second
-	
+
 	assert.Equal(t, "https://example.com", action.URL)
 	assert.Equal(t, "#content", action.WaitFor)
 	assert.Equal(t, 30*time.Second, action.Timeout)
 }
-
-

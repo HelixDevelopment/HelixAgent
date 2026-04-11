@@ -17,27 +17,27 @@ import (
 // GPTR provides GPTR integration
 type GPTR struct {
 	*base.BaseIntegration
-	config   *Config
-	tasksMu  sync.RWMutex
-	tasks    []Task
+	config  *Config
+	tasksMu sync.RWMutex
+	tasks   []Task
 }
 
 // Config holds GPTR configuration
 type Config struct {
 	base.BaseConfig
-	Model      string
-	MaxTokens  int
-	Timeout    int
+	Model     string
+	MaxTokens int
+	Timeout   int
 }
 
 // Task represents a task
 type Task struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Prompt      string   `json:"prompt"`
-	Status      string   `json:"status"`
-	Result      string   `json:"result"`
-	Tools       []string `json:"tools"`
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Prompt string   `json:"prompt"`
+	Status string   `json:"status"`
+	Result string   `json:"result"`
+	Tools  []string `json:"tools"`
 }
 
 // New creates a new GPTR integration
@@ -58,7 +58,7 @@ func New() *GPTR {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GPTR{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -131,7 +131,7 @@ func (g *GPTR) Execute(ctx context.Context, command string, params map[string]in
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "run":
 		return g.run(ctx, params)
@@ -152,10 +152,10 @@ func (g *GPTR) run(ctx context.Context, params map[string]interface{}) (interfac
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	// Execute task
 	result := fmt.Sprintf("Result for: %s", prompt)
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"result": result,

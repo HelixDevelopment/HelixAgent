@@ -73,8 +73,8 @@ func TestCreateTeam(t *testing.T) {
 		{
 			name: "valid team creation",
 			reqBody: map[string]interface{}{
-				"name":     "Test Team",
-				"leader_id": "leader-123",
+				"name":       "Test Team",
+				"leader_id":  "leader-123",
 				"member_ids": []string{"member-1", "member-2"},
 			},
 			wantStatus: http.StatusCreated,
@@ -114,7 +114,7 @@ func TestCreateTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/teams", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -175,7 +175,7 @@ func TestGetTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/teams/"+tt.teamID, nil)
 			w := httptest.NewRecorder()
 
@@ -238,7 +238,7 @@ func TestListTeams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/teams"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -304,7 +304,7 @@ func TestUpdateTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/ensemble/teams/"+tt.teamID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -356,7 +356,7 @@ func TestDeleteTeam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			url := "/api/v1/ensemble/teams/" + tt.teamID
 			if tt.force {
 				url += "?force=true"
@@ -423,7 +423,7 @@ func TestCreateTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/tasks", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -451,9 +451,9 @@ func TestGetTask(t *testing.T) {
 	// Create a test task
 	handler.taskMu.Lock()
 	handler.tasks["test-task"] = &Task{
-		ID:      "test-task",
-		Title:   "Test Task",
-		Status:  AgentTaskStatusPending,
+		ID:        "test-task",
+		Title:     "Test Task",
+		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
 	}
 	handler.taskMu.Unlock()
@@ -480,7 +480,7 @@ func TestGetTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/tasks/"+tt.taskID, nil)
 			w := httptest.NewRecorder()
 
@@ -555,7 +555,7 @@ func TestListTasks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/tasks"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -577,9 +577,9 @@ func TestUpdateTask(t *testing.T) {
 	// Create a test task
 	handler.taskMu.Lock()
 	handler.tasks["test-task"] = &Task{
-		ID:      "test-task",
-		Title:   "Original Title",
-		Status:  AgentTaskStatusPending,
+		ID:        "test-task",
+		Title:     "Original Title",
+		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
 	}
 	handler.taskMu.Unlock()
@@ -618,7 +618,7 @@ func TestUpdateTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/ensemble/tasks/"+tt.taskID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -673,7 +673,7 @@ func TestStopTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/tasks/"+tt.taskID+"/stop", nil)
 			w := httptest.NewRecorder()
 
@@ -730,7 +730,7 @@ func TestSendMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/ensemble/messages", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -825,7 +825,7 @@ func TestEnterPlanMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/enter", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -883,7 +883,7 @@ func TestGetPlanStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/planning/plan-mode/"+tt.sessionID, nil)
 			w := httptest.NewRecorder()
 
@@ -944,7 +944,7 @@ func TestUpdatePlan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/planning/plan-mode/"+tt.sessionID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -997,7 +997,7 @@ func TestPausePlan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/"+tt.sessionID+"/pause", nil)
 			w := httptest.NewRecorder()
 
@@ -1048,7 +1048,7 @@ func TestExitPlanMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			url := "/api/v1/planning/plan-mode/" + tt.sessionID + "/exit"
 			if tt.save {
 				url += "?save=true"
@@ -1092,7 +1092,7 @@ func TestCreateTodo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/todos", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")

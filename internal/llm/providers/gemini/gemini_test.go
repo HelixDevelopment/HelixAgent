@@ -74,7 +74,7 @@ func TestNewGeminiProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := NewGeminiProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.NotNil(t, got)
 
@@ -194,7 +194,7 @@ func TestGeminiUnifiedProvider_ValidateConfig(t *testing.T) {
 	})
 
 	t.Run("without key uses CLI or env fallback", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// This test is environment-dependent: if GEMINI_API_KEY is set in env
 		// or Gemini CLI is installed, validation will pass
 		config := GeminiUnifiedConfig{
@@ -260,7 +260,7 @@ func TestBuildPromptFromRequest(t *testing.T) {
 	})
 
 	t.Run("from prompt field", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "Direct prompt",
 		}
@@ -269,7 +269,7 @@ func TestBuildPromptFromRequest(t *testing.T) {
 	})
 
 	t.Run("empty request", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{}
 		prompt := buildPromptFromRequest(req)
 		assert.Empty(t, prompt)
@@ -299,7 +299,7 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("model names follow gemini pattern", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		allModels := getAllGeminiModels()
 
 		for _, model := range allModels {
@@ -310,7 +310,7 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("no duplicate models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		allModels := getAllGeminiModels()
 		seen := make(map[string]bool, len(allModels))
 
@@ -322,21 +322,21 @@ func TestGeminiAllModelsComprehensive(t *testing.T) {
 	})
 
 	t.Run("embedding model is included", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		allModels := getAllGeminiModels()
 		assert.Contains(t, allModels, "gemini-embedding-001",
 			"embedding model should be present")
 	})
 
 	t.Run("minimum model count", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		allModels := getAllGeminiModels()
 		assert.GreaterOrEqual(t, len(allModels), 7,
 			"should have at least 7 models")
 	})
 
 	t.Run("thinking models are subset of all models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		allModels := getAllGeminiModels()
 		allModelSet := make(map[string]bool, len(allModels))
 		for _, m := range allModels {
@@ -395,7 +395,7 @@ func TestGeminiUnifiedProvider_FallbackChain(t *testing.T) {
 	})
 
 	t.Run("API-only mode fails gracefully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := GeminiUnifiedConfig{
 			APIKey:          "bad-key",
 			BaseURL:         "http://localhost:1/v1beta/models/%s:generateContent",

@@ -383,7 +383,7 @@ func TestPlanningHandler_ToT_WithStrategy(t *testing.T) {
 
 	for _, strategy := range strategies {
 		t.Run("strategy_"+strategy, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			_, r := setupPlanningHandler()
 
 			reqBody := ToTRequest{

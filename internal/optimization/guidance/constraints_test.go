@@ -866,7 +866,7 @@ func TestConstraint_Hints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			hint := tt.constraint.Hint()
 			assert.Contains(t, hint, tt.contains)
 		})
@@ -890,7 +890,7 @@ func TestConstraint_Descriptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			desc := tt.constraint.Description()
 			assert.NotEmpty(t, desc)
 		})

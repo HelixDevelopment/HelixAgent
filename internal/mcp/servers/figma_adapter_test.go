@@ -39,7 +39,7 @@ func TestNewFigmaAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewFigmaAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedToken, adapter.apiToken)
@@ -82,7 +82,7 @@ func TestFigmaAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -127,7 +127,7 @@ func TestFigmaAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -195,7 +195,7 @@ func TestFigmaAdapter_GetFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -266,7 +266,7 @@ func TestFigmaAdapter_GetFileNodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -362,7 +362,7 @@ func TestFigmaAdapter_GetImages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -425,7 +425,7 @@ func TestFigmaAdapter_GetComments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -505,7 +505,7 @@ func TestFigmaAdapter_PostComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -559,7 +559,7 @@ func TestFigmaAdapter_GetTeamProjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -613,7 +613,7 @@ func TestFigmaAdapter_GetProjectFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -668,7 +668,7 @@ func TestFigmaAdapter_GetFileComponents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -723,7 +723,7 @@ func TestFigmaAdapter_GetFileStyles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -814,7 +814,7 @@ func TestJoinIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := joinIDs(tt.ids)
 			assert.Equal(t, tt.expected, result)
 		})

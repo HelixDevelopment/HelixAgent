@@ -49,11 +49,11 @@ const (
 type TaskStatus string
 
 const (
-	TaskPending    TaskStatus = "pending"
-	TaskRunning    TaskStatus = "running"
-	TaskCompleted  TaskStatus = "completed"
-	TaskFailed     TaskStatus = "failed"
-	TaskCancelled  TaskStatus = "cancelled"
+	TaskPending   TaskStatus = "pending"
+	TaskRunning   TaskStatus = "running"
+	TaskCompleted TaskStatus = "completed"
+	TaskFailed    TaskStatus = "failed"
+	TaskCancelled TaskStatus = "cancelled"
 )
 
 // Config holds the manager configuration
@@ -80,8 +80,8 @@ type Task struct {
 
 // TaskResult contains the result of a task execution
 type TaskResult struct {
-	Result      ExploreResult
-	Error       error
+	Result ExploreResult
+	Error  error
 }
 
 // ExploreResult contains discoveries from an exploration task

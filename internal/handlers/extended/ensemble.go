@@ -21,36 +21,36 @@ import (
 
 // Team represents a team of agents (inspired by claude-code-source Team tools)
 type AgentTeam struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description,omitempty"`
-	LeaderID    string            `json:"leader_id"`
-	MemberIDs   []string          `json:"member_ids"`
-	Config      AgentTeamConfig  `json:"config"`
-	Status      TeamStatus        `json:"status"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	LeaderID    string          `json:"leader_id"`
+	MemberIDs   []string        `json:"member_ids"`
+	Config      AgentTeamConfig `json:"config"`
+	Status      TeamStatus      `json:"status"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 	mu          sync.RWMutex
 }
 
 // TeamConfig holds team configuration
 type AgentTeamConfig struct {
-	MaxMembers        int               `json:"max_members"`
-	CoordinationMode  string            `json:"coordination_mode"` // hierarchical, democratic, leader_follower
-	DecisionStrategy  string            `json:"decision_strategy"` // consensus, majority, leader_decides
-	AutoLoadBalance   bool              `json:"auto_load_balance"`
-	FallbackEnabled   bool              `json:"fallback_enabled"`
-	SharedContext     map[string]string `json:"shared_context"`
+	MaxMembers       int               `json:"max_members"`
+	CoordinationMode string            `json:"coordination_mode"` // hierarchical, democratic, leader_follower
+	DecisionStrategy string            `json:"decision_strategy"` // consensus, majority, leader_decides
+	AutoLoadBalance  bool              `json:"auto_load_balance"`
+	FallbackEnabled  bool              `json:"fallback_enabled"`
+	SharedContext    map[string]string `json:"shared_context"`
 }
 
 // TeamStatus represents team status
 type TeamStatus string
 
 const (
-	TeamStatusActive    TeamStatus = "active"
-	TeamStatusInactive  TeamStatus = "inactive"
-	TeamStatusBusy      TeamStatus = "busy"
-	TeamStatusError     TeamStatus = "error"
+	TeamStatusActive   TeamStatus = "active"
+	TeamStatusInactive TeamStatus = "inactive"
+	TeamStatusBusy     TeamStatus = "busy"
+	TeamStatusError    TeamStatus = "error"
 )
 
 // Type aliases for backward compatibility
@@ -64,23 +64,23 @@ type TaskStatus = AgentTaskStatus
 
 // Task represents a task assigned to agents (inspired by claude-code-source Task tools)
 type Task struct {
-	ID           string         `json:"id"`
-	TeamID       string         `json:"team_id,omitempty"`
-	AssigneeID   string         `json:"assignee_id,omitempty"`
-	CreatorID    string         `json:"creator_id"`
-	Title        string         `json:"title"`
-	Description  string         `json:"description"`
-	Type         string         `json:"type"` // code_review, implementation, research, testing, documentation
-	Status       AgentTaskStatus     `json:"status"`
-	Priority     TaskPriority   `json:"priority"`
-	Dependencies []string       `json:"dependencies"` // Task IDs
-	Subtasks     []Subtask      `json:"subtasks"`
-	Result       *TaskResult    `json:"result,omitempty"`
-	CreatedAt    time.Time      `json:"created_at"`
-	StartedAt    *time.Time     `json:"started_at,omitempty"`
-	CompletedAt  *time.Time     `json:"completed_at,omitempty"`
-	Deadline     *time.Time     `json:"deadline,omitempty"`
-	Metadata     TaskMetadata   `json:"metadata"`
+	ID           string          `json:"id"`
+	TeamID       string          `json:"team_id,omitempty"`
+	AssigneeID   string          `json:"assignee_id,omitempty"`
+	CreatorID    string          `json:"creator_id"`
+	Title        string          `json:"title"`
+	Description  string          `json:"description"`
+	Type         string          `json:"type"` // code_review, implementation, research, testing, documentation
+	Status       AgentTaskStatus `json:"status"`
+	Priority     TaskPriority    `json:"priority"`
+	Dependencies []string        `json:"dependencies"` // Task IDs
+	Subtasks     []Subtask       `json:"subtasks"`
+	Result       *TaskResult     `json:"result,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
+	StartedAt    *time.Time      `json:"started_at,omitempty"`
+	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
+	Deadline     *time.Time      `json:"deadline,omitempty"`
+	Metadata     TaskMetadata    `json:"metadata"`
 	mu           sync.RWMutex
 }
 
@@ -88,13 +88,13 @@ type Task struct {
 type AgentTaskStatus string
 
 const (
-	AgentTaskStatusPending     AgentTaskStatus = "pending"
-	AgentTaskStatusAssigned    AgentTaskStatus = "assigned"
-	AgentTaskStatusInProgress  AgentTaskStatus = "in_progress"
-	AgentTaskStatusReview      AgentTaskStatus = "review"
-	AgentTaskStatusCompleted   AgentTaskStatus = "completed"
-	AgentTaskStatusFailed      AgentTaskStatus = "failed"
-	AgentTaskStatusCancelled   AgentTaskStatus = "cancelled"
+	AgentTaskStatusPending    AgentTaskStatus = "pending"
+	AgentTaskStatusAssigned   AgentTaskStatus = "assigned"
+	AgentTaskStatusInProgress AgentTaskStatus = "in_progress"
+	AgentTaskStatusReview     AgentTaskStatus = "review"
+	AgentTaskStatusCompleted  AgentTaskStatus = "completed"
+	AgentTaskStatusFailed     AgentTaskStatus = "failed"
+	AgentTaskStatusCancelled  AgentTaskStatus = "cancelled"
 )
 
 // TaskStatus constants for backward compatibility
@@ -120,20 +120,20 @@ const (
 
 // Subtask represents a subtask
 type Subtask struct {
-	ID          string     `json:"id"`
-	Title       string     `json:"title"`
-	Status      string     `json:"status"`
-	AssigneeID  string     `json:"assignee_id,omitempty"`
-	Result      string     `json:"result,omitempty"`
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+	AssigneeID string `json:"assignee_id,omitempty"`
+	Result     string `json:"result,omitempty"`
 }
 
 // TaskResult represents task execution result
 type TaskResult struct {
-	Success     bool              `json:"success"`
-	Output      string            `json:"output,omitempty"`
-	Artifacts   []TaskArtifact    `json:"artifacts,omitempty"`
-	Metrics     TaskMetrics       `json:"metrics"`
-	CompletedAt time.Time         `json:"completed_at"`
+	Success     bool           `json:"success"`
+	Output      string         `json:"output,omitempty"`
+	Artifacts   []TaskArtifact `json:"artifacts,omitempty"`
+	Metrics     TaskMetrics    `json:"metrics"`
+	CompletedAt time.Time      `json:"completed_at"`
 }
 
 // TaskArtifact represents a task artifact
@@ -146,10 +146,10 @@ type TaskArtifact struct {
 
 // TaskMetrics represents task execution metrics
 type TaskMetrics struct {
-	DurationMs     int64   `json:"duration_ms"`
-	TokensUsed     int     `json:"tokens_used"`
-	CostEstimate   float64 `json:"cost_estimate"`
-	QualityScore   float64 `json:"quality_score"`
+	DurationMs   int64   `json:"duration_ms"`
+	TokensUsed   int     `json:"tokens_used"`
+	CostEstimate float64 `json:"cost_estimate"`
+	QualityScore float64 `json:"quality_score"`
 }
 
 // TaskMetadata represents task metadata
@@ -162,28 +162,28 @@ type TaskMetadata struct {
 
 // AgentMessage represents a message between agents
 type AgentMessage struct {
-	ID         string    `json:"id"`
-	FromID     string    `json:"from_id"`
-	ToID       string    `json:"to_id,omitempty"` // Empty = broadcast
-	TeamID     string    `json:"team_id,omitempty"`
-	Type       string    `json:"type"` // request, response, broadcast, direct
-	Content    string    `json:"content"`
-	Priority   string    `json:"priority"`
-	Timestamp  time.Time `json:"timestamp"`
-	ReadBy     []string  `json:"read_by"`
+	ID        string    `json:"id"`
+	FromID    string    `json:"from_id"`
+	ToID      string    `json:"to_id,omitempty"` // Empty = broadcast
+	TeamID    string    `json:"team_id,omitempty"`
+	Type      string    `json:"type"` // request, response, broadcast, direct
+	Content   string    `json:"content"`
+	Priority  string    `json:"priority"`
+	Timestamp time.Time `json:"timestamp"`
+	ReadBy    []string  `json:"read_by"`
 }
 
 // EnsembleHandlerExtensions EXTENDS the existing EnsembleHandler
 // with team and task management capabilities from claude-code-source
 type EnsembleHandlerExtensions struct {
-	coordinator    *multi_instance.Coordinator
-	teams          map[string]*Team
-	teamMu         sync.RWMutex
-	tasks          map[string]*Task
-	taskMu         sync.RWMutex
-	messages       map[string][]AgentMessage
-	messageMu      sync.RWMutex
-	logger         *logrus.Logger
+	coordinator *multi_instance.Coordinator
+	teams       map[string]*Team
+	teamMu      sync.RWMutex
+	tasks       map[string]*Task
+	taskMu      sync.RWMutex
+	messages    map[string][]AgentMessage
+	messageMu   sync.RWMutex
+	logger      *logrus.Logger
 }
 
 // NewEnsembleHandlerExtensions creates new ensemble handler extensions
@@ -206,11 +206,11 @@ func NewEnsembleHandlerExtensions(coordinator *multi_instance.Coordinator, logge
 
 // CreateTeamRequest represents a team creation request
 type CreateAgentTeamRequest struct {
-	Name        string            `json:"name" binding:"required"`
-	Description string            `json:"description,omitempty"`
-	LeaderID    string            `json:"leader_id" binding:"required"`
-	MemberIDs   []string          `json:"member_ids,omitempty"`
-	Config      *TeamConfig       `json:"config,omitempty"`
+	Name        string      `json:"name" binding:"required"`
+	Description string      `json:"description,omitempty"`
+	LeaderID    string      `json:"leader_id" binding:"required"`
+	MemberIDs   []string    `json:"member_ids,omitempty"`
+	Config      *TeamConfig `json:"config,omitempty"`
 }
 
 // CreateTeam godoc
@@ -258,9 +258,9 @@ func (h *EnsembleHandlerExtensions) CreateTeam(c *gin.Context) {
 	h.teamMu.Unlock()
 
 	h.logger.WithFields(logrus.Fields{
-		"team_id":    team.ID,
-		"team_name":  team.Name,
-		"leader_id":  team.LeaderID,
+		"team_id":      team.ID,
+		"team_name":    team.Name,
+		"leader_id":    team.LeaderID,
 		"member_count": len(team.MemberIDs),
 	}).Info("Created agent team")
 
@@ -432,8 +432,8 @@ func (h *EnsembleHandlerExtensions) DeleteTeam(c *gin.Context) {
 	}).Info("Deleted agent team")
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "team deleted",
-		"team_id":  teamID,
+		"message":   "team deleted",
+		"team_id":   teamID,
 		"team_name": team.Name,
 	})
 }
@@ -444,15 +444,15 @@ func (h *EnsembleHandlerExtensions) DeleteTeam(c *gin.Context) {
 
 // CreateTaskRequest represents a task creation request
 type CreateAgentTaskRequest struct {
-	TeamID       string            `json:"team_id,omitempty"`
-	AssigneeID   string            `json:"assignee_id,omitempty"`
-	Title        string            `json:"title" binding:"required"`
-	Description  string            `json:"description,omitempty"`
-	Type         string            `json:"type" binding:"required"` // code_review, implementation, research, testing, documentation
-	Priority     string            `json:"priority,omitempty"`      // low, medium, high, critical
-	Dependencies []string          `json:"dependencies,omitempty"`
-	Deadline     *time.Time        `json:"deadline,omitempty"`
-	Metadata     *TaskMetadata     `json:"metadata,omitempty"`
+	TeamID       string        `json:"team_id,omitempty"`
+	AssigneeID   string        `json:"assignee_id,omitempty"`
+	Title        string        `json:"title" binding:"required"`
+	Description  string        `json:"description,omitempty"`
+	Type         string        `json:"type" binding:"required"` // code_review, implementation, research, testing, documentation
+	Priority     string        `json:"priority,omitempty"`      // low, medium, high, critical
+	Dependencies []string      `json:"dependencies,omitempty"`
+	Deadline     *time.Time    `json:"deadline,omitempty"`
+	Metadata     *TaskMetadata `json:"metadata,omitempty"`
 }
 
 // CreateTask godoc
@@ -596,13 +596,13 @@ func (h *EnsembleHandlerExtensions) ListTasks(c *gin.Context) {
 
 // UpdateTaskRequest represents a task update request
 type UpdateAgentTaskRequest struct {
-	Title        string   `json:"title,omitempty"`
-	Description  string   `json:"description,omitempty"`
-	AssigneeID   string   `json:"assignee_id,omitempty"`
-	Status       string   `json:"status,omitempty"`
-	Priority     string   `json:"priority,omitempty"`
-	Subtasks     []Subtask `json:"subtasks,omitempty"`
-	Result       *TaskResult `json:"result,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	Description string      `json:"description,omitempty"`
+	AssigneeID  string      `json:"assignee_id,omitempty"`
+	Status      string      `json:"status,omitempty"`
+	Priority    string      `json:"priority,omitempty"`
+	Subtasks    []Subtask   `json:"subtasks,omitempty"`
+	Result      *TaskResult `json:"result,omitempty"`
 }
 
 // UpdateTask godoc
@@ -647,14 +647,14 @@ func (h *EnsembleHandlerExtensions) UpdateTask(c *gin.Context) {
 	if req.Status != "" {
 		oldStatus := task.Status
 		task.Status = TaskStatus(req.Status)
-		
+
 		// Update timestamps based on status changes
 		if task.Status == AgentTaskStatusInProgress && oldStatus != AgentTaskStatusInProgress {
 			now := time.Now()
 			task.StartedAt = &now
 		}
-		if (task.Status == AgentTaskStatusCompleted || task.Status == AgentTaskStatusFailed) && 
-		   oldStatus != AgentTaskStatusCompleted && oldStatus != AgentTaskStatusFailed {
+		if (task.Status == AgentTaskStatusCompleted || task.Status == AgentTaskStatusFailed) &&
+			oldStatus != AgentTaskStatusCompleted && oldStatus != AgentTaskStatusFailed {
 			now := time.Now()
 			task.CompletedAt = &now
 		}
@@ -715,7 +715,7 @@ func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 	h.taskMu.Unlock()
 
 	h.logger.WithFields(logrus.Fields{
-		"task_id": taskID,
+		"task_id":    taskID,
 		"task_title": task.Title,
 	}).Info("Stopped task")
 

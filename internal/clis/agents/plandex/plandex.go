@@ -38,7 +38,7 @@ func New() *Plandex {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Plandex{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (p *Plandex) Initialize(ctx context.Context, config interface{}) error {
 	if err := p.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		p.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (p *Plandex) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "plan":
 		return p.plan(ctx, params)
@@ -89,7 +89,7 @@ func (p *Plandex) plan(ctx context.Context, params map[string]interface{}) (inte
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	return map[string]interface{}{
 		"task": task,
 		"plan": []string{
@@ -106,7 +106,7 @@ func (p *Plandex) execute(ctx context.Context, params map[string]interface{}) (i
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	return map[string]interface{}{
 		"task":   task,
 		"result": fmt.Sprintf("Executed: %s", task),

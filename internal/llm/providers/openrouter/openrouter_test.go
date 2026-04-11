@@ -47,7 +47,7 @@ func TestNewSimpleOpenRouterProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := NewSimpleOpenRouterProvider(tt.apiKey)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -93,7 +93,7 @@ func TestNewSimpleOpenRouterProviderWithBaseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := NewSimpleOpenRouterProviderWithBaseURL(tt.apiKey, tt.baseURL)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -391,7 +391,7 @@ func TestSimpleOpenRouterProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewSimpleOpenRouterProvider(tt.apiKey)
 			err := provider.HealthCheck()
 			if tt.wantErr {
@@ -471,7 +471,7 @@ func TestSimpleOpenRouterProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewSimpleOpenRouterProvider(tt.apiKey)
 			valid, errs := provider.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -606,7 +606,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -630,7 +630,7 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isAuthRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -865,7 +865,7 @@ func TestSimpleOpenRouterProvider_Complete_MaxTokensCapping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var reqBody struct {
 					MaxTokens int `json:"max_tokens"`
@@ -1109,7 +1109,7 @@ func TestSimpleOpenRouterProvider_Complete_WithFinishReason(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				response := map[string]interface{}{
 					"id": "chatcmpl-finish",
@@ -1287,7 +1287,7 @@ func TestSimpleOpenRouterProvider_HealthCheck_WithServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/models", r.URL.Path)

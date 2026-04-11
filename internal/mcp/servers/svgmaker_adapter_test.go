@@ -628,7 +628,7 @@ func TestSVGMakerAdapter_ExecuteTool_AllTools(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := adapter.ExecuteTool(context.Background(), tt.name, tt.params)
 			require.NoError(t, err)
 			require.NotNil(t, result)

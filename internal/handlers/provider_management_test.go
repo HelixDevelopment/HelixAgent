@@ -39,7 +39,7 @@ func TestProviderManagementHandler_AddProvider_Validation(t *testing.T) {
 	handler := NewProviderManagementHandler(registry, logger)
 
 	t.Run("returns error for missing required fields", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -53,7 +53,7 @@ func TestProviderManagementHandler_AddProvider_Validation(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -66,7 +66,7 @@ func TestProviderManagementHandler_AddProvider_Validation(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid provider type", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -93,13 +93,13 @@ func TestProviderManagementHandler_AddProvider_Validation(t *testing.T) {
 	})
 
 	t.Run("accepts valid provider types", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// DYNAMIC: Test provider types that exist in providerMappings
 		validTypes := []string{"deepseek", "claude", "gemini", "qwen", "ollama", "openrouter", "mistral"}
 
 		for _, providerType := range validTypes {
 			t.Run(providerType, func(t *testing.T) {
-					t.Parallel()
+				t.Parallel()
 				// Create new handler for each test to avoid conflicts
 				localRegistry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 				localHandler := NewProviderManagementHandler(localRegistry, logger)
@@ -139,7 +139,7 @@ func TestProviderManagementHandler_GetProvider(t *testing.T) {
 	handler := NewProviderManagementHandler(registry, logger)
 
 	t.Run("returns 404 for non-existent provider", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
@@ -164,7 +164,7 @@ func TestProviderManagementHandler_UpdateProvider(t *testing.T) {
 	handler := NewProviderManagementHandler(registry, logger)
 
 	t.Run("returns 404 for non-existent provider", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
@@ -182,7 +182,7 @@ func TestProviderManagementHandler_UpdateProvider(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "test-provider"}}
@@ -203,7 +203,7 @@ func TestProviderManagementHandler_DeleteProvider(t *testing.T) {
 	handler := NewProviderManagementHandler(registry, logger)
 
 	t.Run("returns 404 for non-existent provider", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
@@ -215,7 +215,7 @@ func TestProviderManagementHandler_DeleteProvider(t *testing.T) {
 	})
 
 	t.Run("returns 404 for non-existent provider with force", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
@@ -595,7 +595,7 @@ func TestProviderManagementHandler_DeleteProvider_ForceParamVariations(t *testin
 
 	for _, forceVal := range forceValues {
 		t.Run("force="+forceVal, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "id", Value: "non-existent"}}
@@ -622,7 +622,7 @@ func TestProviderManagementHandler_AddProvider_AllProviderTypes(t *testing.T) {
 
 	for i, providerType := range providerTypes {
 		t.Run(providerType, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
 			handler := NewProviderManagementHandler(registry, logger)
 
@@ -691,7 +691,7 @@ func TestProviderManagementHandler_GetProvider_VariousIDs(t *testing.T) {
 
 	for _, id := range testIDs {
 		t.Run(id, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "id", Value: id}}

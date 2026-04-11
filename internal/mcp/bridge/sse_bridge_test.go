@@ -147,7 +147,7 @@ func TestSSEBridgeState_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.state.String())
 		})
 	}
@@ -174,7 +174,7 @@ func TestNewSSEBridge(t *testing.T) {
 	})
 
 	t.Run("Returns error for empty command", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{},
 		}
@@ -186,7 +186,7 @@ func TestNewSSEBridge(t *testing.T) {
 	})
 
 	t.Run("Applies default values", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 		}
@@ -198,7 +198,7 @@ func TestNewSSEBridge(t *testing.T) {
 	})
 
 	t.Run("Creates default logger if not provided", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 		}
@@ -209,7 +209,7 @@ func TestNewSSEBridge(t *testing.T) {
 	})
 
 	t.Run("Uses provided logger", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		logger := createTestLogger()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
@@ -233,7 +233,7 @@ func TestSSEBridge_Start(t *testing.T) {
 	}
 
 	t.Run("Starts successfully with mock MCP server", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -255,7 +255,7 @@ func TestSSEBridge_Start(t *testing.T) {
 	})
 
 	t.Run("Cannot start twice", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -278,7 +278,7 @@ func TestSSEBridge_Start(t *testing.T) {
 	})
 
 	t.Run("Fails with non-existent command", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"/nonexistent/command"},
 			Address: ":0",
@@ -301,7 +301,7 @@ func TestSSEBridge_Shutdown(t *testing.T) {
 	}
 
 	t.Run("Shuts down gracefully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -324,7 +324,7 @@ func TestSSEBridge_Shutdown(t *testing.T) {
 	})
 
 	t.Run("Can be called multiple times", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -359,7 +359,7 @@ func TestSSEBridge_HandleHealth(t *testing.T) {
 	}
 
 	t.Run("Returns healthy status when running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -395,7 +395,7 @@ func TestSSEBridge_HandleHealth(t *testing.T) {
 	})
 
 	t.Run("Returns unhealthy when not running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -413,7 +413,7 @@ func TestSSEBridge_HandleHealth(t *testing.T) {
 	})
 
 	t.Run("Rejects non-GET requests", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -438,7 +438,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	}
 
 	t.Run("Sends request to MCP process and receives response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -477,7 +477,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Handles notification (no ID)", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -508,7 +508,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Rejects non-POST requests", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -541,7 +541,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Rejects invalid JSON", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -576,7 +576,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Rejects invalid JSON-RPC version", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -611,7 +611,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Rejects empty method", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -646,7 +646,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 	})
 
 	t.Run("Rejects when bridge not running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Address: ":0",
@@ -679,7 +679,7 @@ func TestSSEBridge_HandleSSE(t *testing.T) {
 	}
 
 	t.Run("Establishes SSE connection", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -748,7 +748,7 @@ func TestSSEBridge_HandleSSE(t *testing.T) {
 	})
 
 	t.Run("Rejects non-GET requests", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -774,7 +774,7 @@ func TestSSEBridge_HandleSSE(t *testing.T) {
 	})
 
 	t.Run("Rejects when bridge not running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Address: ":0",
@@ -820,7 +820,7 @@ func TestSSEBridge_SendRequest(t *testing.T) {
 	}
 
 	t.Run("Sends request and receives response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -849,7 +849,7 @@ func TestSSEBridge_SendRequest(t *testing.T) {
 	})
 
 	t.Run("Returns error when bridge not running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -873,7 +873,7 @@ func TestSSEBridge_SendNotification(t *testing.T) {
 	}
 
 	t.Run("Sends notification successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -897,7 +897,7 @@ func TestSSEBridge_SendNotification(t *testing.T) {
 	})
 
 	t.Run("Returns error when bridge not running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := SSEBridgeConfig{
 			Command: []string{"echo"},
 			Logger:  createTestLogger(),
@@ -923,7 +923,7 @@ func TestSSEBridge_Metrics(t *testing.T) {
 	}
 
 	t.Run("Tracks request metrics", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -981,7 +981,7 @@ func TestJSONRPCRequest(t *testing.T) {
 	})
 
 	t.Run("Unmarshals correctly", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		data := `{"jsonrpc":"2.0","id":42,"method":"tools/list","params":{}}`
 		var req JSONRPCRequest
 		err := json.Unmarshal([]byte(data), &req)
@@ -1010,7 +1010,7 @@ func TestJSONRPCResponse(t *testing.T) {
 	})
 
 	t.Run("Marshals error response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      1,
@@ -1039,7 +1039,7 @@ func TestSSEBridge_EdgeCases(t *testing.T) {
 	}
 
 	t.Run("Handles large request body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -1077,7 +1077,7 @@ func TestSSEBridge_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Handles concurrent requests", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -1125,7 +1125,7 @@ func TestSSEBridge_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Handles process restart callback", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createFailingMCPServer(t, dir)
 
@@ -1162,7 +1162,7 @@ func TestSSEBridge_Environment(t *testing.T) {
 	}
 
 	t.Run("Passes environment variables to process", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 
 		// Create a script that outputs an environment variable
@@ -1223,7 +1223,7 @@ func TestSSEBridge_WorkingDirectory(t *testing.T) {
 	}
 
 	t.Run("Sets working directory for process", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		workDir := createTempDir(t)
 
@@ -1406,7 +1406,7 @@ func TestJSONRPCErrorCodes(t *testing.T) {
 	})
 
 	t.Run("Server error codes are defined", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, -32000, JSONRPCServerError)
 		assert.Equal(t, -32001, JSONRPCProcessNotReady)
 		assert.Equal(t, -32002, JSONRPCProcessClosed)
@@ -1449,7 +1449,7 @@ func TestSSEBridge_LargeResponseHandling(t *testing.T) {
 	}
 
 	t.Run("Handles large responses from MCP server", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 
 		// Create a script that outputs a large response
@@ -1508,7 +1508,7 @@ func TestSSEBridge_ConcurrentWrites(t *testing.T) {
 	}
 
 	t.Run("Handles concurrent writes to stdin safely", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -1571,7 +1571,7 @@ func TestSSEBridge_Broadcast(t *testing.T) {
 	}
 
 	t.Run("Broadcasts responses to all SSE clients", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 
@@ -1648,7 +1648,7 @@ func TestSSEBridge_InitializationTimeout(t *testing.T) {
 	}
 
 	t.Run("Fails on initialization timeout", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 
 		// Create a script that never responds to initialize
@@ -1690,7 +1690,7 @@ func TestSSEBridge_StderrHandling(t *testing.T) {
 	}
 
 	t.Run("Logs stderr output from MCP process", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 
 		// Create a script that outputs to stderr
@@ -1753,7 +1753,7 @@ func TestSSEBridge_HealthCheckDetails(t *testing.T) {
 	}
 
 	t.Run("Returns detailed health information", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		dir := createTempDir(t)
 		scriptPath := createMockMCPServer(t, dir)
 

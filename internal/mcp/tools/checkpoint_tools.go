@@ -44,7 +44,7 @@ func CheckpointTools() []ToolDefinition {
 			Name:        "checkpoint_list",
 			Description: "List all checkpoints",
 			InputSchema: map[string]interface{}{
-				"type": "object",
+				"type":       "object",
 				"properties": map[string]interface{}{},
 			},
 		},

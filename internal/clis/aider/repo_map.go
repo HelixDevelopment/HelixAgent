@@ -11,29 +11,29 @@ import (
 	"sync"
 
 	"github.com/go-enry/go-enry/v2"
+	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/golang"
 	"github.com/smacker/go-tree-sitter/python"
 	"github.com/smacker/go-tree-sitter/typescript/tsx"
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // RepoMap provides AST-based repository understanding.
 // Ported from Aider's repo_map.py
 type RepoMap struct {
-	rootDir     string
-	mapTokens   int
-	
+	rootDir   string
+	mapTokens int
+
 	// Parsers by language
-	parsers     map[string]*sitter.Parser
-	
+	parsers map[string]*sitter.Parser
+
 	// Query strings by language
-	queries     map[string]string
-	
+	queries map[string]string
+
 	// Cache
 	symbolCache *SymbolCache
 	fileCache   *FileCache
-	
+
 	// File filtering
 	ignorePatterns []string
 }
@@ -41,14 +41,14 @@ type RepoMap struct {
 // Symbol represents a code symbol (function, class, etc.).
 type Symbol struct {
 	Name       string
-	Type       string      // "function", "class", "method", "variable", etc.
+	Type       string // "function", "class", "method", "variable", etc.
 	File       string
 	Line       uint32
 	Column     uint32
 	Language   string
-	Signature  string      // Function signature or class definition
+	Signature  string // Function signature or class definition
 	Docstring  string
-	References []string    // Files that reference this symbol
+	References []string // Files that reference this symbol
 }
 
 // RankedSymbol is a symbol with a relevance score.
@@ -62,7 +62,7 @@ type RepoContext struct {
 	Symbols    []*RankedSymbol
 	Files      []string
 	TokenCount int
-	Content    string  // Formatted content within token budget
+	Content    string // Formatted content within token budget
 }
 
 // SymbolCache caches symbol information.
@@ -79,9 +79,9 @@ type FileCache struct {
 
 // FileInfo contains cached file information.
 type FileInfo struct {
-	Content   []byte
-	Modified  int64
-	Language  string
+	Content  []byte
+	Modified int64
+	Language string
 }
 
 // NewRepoMap creates a new RepoMap.
@@ -98,10 +98,10 @@ func NewRepoMap(rootDir string, mapTokens int) *RepoMap {
 			".venv", "venv", "*.min.js", "*.min.css",
 		},
 	}
-	
+
 	// Initialize parsers
 	rm.initParsers()
-	
+
 	return rm
 }
 
@@ -116,7 +116,7 @@ func (rm *RepoMap) GetRankedTags(
 	if err != nil {
 		return nil, fmt.Errorf("find matching files: %w", err)
 	}
-	
+
 	// 2. Extract symbols from files
 	allSymbols := make([]*Symbol, 0)
 	for _, file := range files {
@@ -126,16 +126,16 @@ func (rm *RepoMap) GetRankedTags(
 		}
 		allSymbols = append(allSymbols, symbols...)
 	}
-	
+
 	// 3. Build reference graph
 	graph := rm.buildReferenceGraph(allSymbols)
-	
+
 	// 4. Rank symbols
 	ranked := rm.rankSymbols(allSymbols, graph, query, mentionedFiles)
-	
+
 	// 5. Format for LLM within token budget
 	content := rm.formatForLLM(ranked, rm.mapTokens)
-	
+
 	return &RepoContext{
 		Symbols:    ranked,
 		Files:      files,
@@ -147,7 +147,7 @@ func (rm *RepoMap) GetRankedTags(
 // findMatchingFiles finds files relevant to the query.
 func (rm *RepoMap) findMatchingFiles(ctx context.Context, query string) ([]string, error) {
 	var matches []string
-	
+
 	// Strategy 1: Direct file mention in query
 	allFiles := rm.listAllFiles()
 	for _, file := range allFiles {
@@ -156,7 +156,7 @@ func (rm *RepoMap) findMatchingFiles(ctx context.Context, query string) ([]strin
 			matches = append(matches, file)
 		}
 	}
-	
+
 	// Strategy 2: Fuzzy filename matching
 	queryLower := strings.ToLower(query)
 	for _, file := range allFiles {
@@ -167,17 +167,17 @@ func (rm *RepoMap) findMatchingFiles(ctx context.Context, query string) ([]strin
 			matches = append(matches, file)
 		}
 	}
-	
+
 	// Strategy 3: Recent git changes (if available)
 	recentFiles := rm.getRecentlyChangedFiles()
 	matches = append(matches, recentFiles...)
-	
+
 	// Deduplicate and limit
 	matches = uniqueStrings(matches)
 	if len(matches) > 100 {
 		matches = matches[:100]
 	}
-	
+
 	return matches, nil
 }
 
@@ -187,61 +187,61 @@ func (rm *RepoMap) extractSymbols(ctx context.Context, file string) ([]*Symbol, 
 	if cached := rm.symbolCache.Get(file); cached != nil {
 		return cached, nil
 	}
-	
+
 	// Read file
 	content, err := rm.readFile(file)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Detect language
 	lang := rm.detectLanguage(file, content)
 	if lang == "" {
 		return nil, fmt.Errorf("unsupported language")
 	}
-	
+
 	// Get parser
 	parser, ok := rm.parsers[lang]
 	if !ok {
 		return nil, fmt.Errorf("no parser for language: %s", lang)
 	}
-	
+
 	// Parse
 	tree := parser.Parse(nil, content)
 	if tree == nil {
 		return nil, fmt.Errorf("parse failed")
 	}
 	defer tree.Close()
-	
+
 	// Query for definitions
 	queryStr := rm.queries[lang]
 	if queryStr == "" {
 		return nil, fmt.Errorf("no query for language: %s", lang)
 	}
-	
+
 	query, err := sitter.NewQuery([]byte(queryStr), rm.getLanguage(lang))
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer query.Close()
-	
+
 	// Execute query
 	cursor := sitter.NewQueryCursor()
 	defer cursor.Close()
 	cursor.Exec(query, tree.RootNode())
-	
+
 	symbols := make([]*Symbol, 0)
-	
+
 	for {
 		match, ok := cursor.NextMatch()
 		if !ok {
 			break
 		}
-		
+
 		for _, capture := range match.Captures {
 			node := capture.Node
 			captureName := query.CaptureNameForId(capture.Index)
-			
+
 			symbol := &Symbol{
 				Name:     node.Content(content),
 				Type:     rm.mapCaptureType(captureName),
@@ -250,18 +250,18 @@ func (rm *RepoMap) extractSymbols(ctx context.Context, file string) ([]*Symbol, 
 				Column:   node.StartPoint().Column,
 				Language: lang,
 			}
-			
+
 			// Extract signature/docstring
 			symbol.Signature = rm.extractSignature(node, content)
 			symbol.Docstring = rm.extractDocstring(node, content)
-			
+
 			symbols = append(symbols, symbol)
 		}
 	}
-	
+
 	// Cache results
 	rm.symbolCache.Set(file, symbols)
-	
+
 	return symbols, nil
 }
 
@@ -273,58 +273,58 @@ func (rm *RepoMap) rankSymbols(
 	mentionedFiles []string,
 ) []*RankedSymbol {
 	ranked := make([]*RankedSymbol, 0, len(symbols))
-	
+
 	queryLower := strings.ToLower(query)
-	
+
 	for _, sym := range symbols {
 		score := 0.0
-		
+
 		// Factor 1: Distance from mentioned files
 		if len(mentionedFiles) > 0 {
 			minDist := graph.MinDistance(sym.File, mentionedFiles)
 			score += 1.0 / (1.0 + float64(minDist))
 		}
-		
+
 		// Factor 2: Symbol type weight
 		typeWeights := map[string]float64{
-			"class":    1.0,
+			"class":     1.0,
 			"interface": 0.95,
-			"function": 0.9,
-			"method":   0.85,
-			"struct":   0.9,
-			"enum":     0.8,
-			"variable": 0.5,
-			"const":    0.6,
+			"function":  0.9,
+			"method":    0.85,
+			"struct":    0.9,
+			"enum":      0.8,
+			"variable":  0.5,
+			"const":     0.6,
 		}
 		if weight, ok := typeWeights[sym.Type]; ok {
 			score += weight
 		}
-		
+
 		// Factor 3: Name similarity to query
 		nameLower := strings.ToLower(sym.Name)
 		nameScore := fuzzyScore(nameLower, queryLower)
 		score += nameScore * 0.5
-		
+
 		// Factor 4: Reference count (popularity)
 		refCount := graph.ReferenceCount(sym)
 		score += minFloat(float64(refCount)/10.0, 0.5)
-		
+
 		// Factor 5: Definition vs reference
 		if sym.File == "" {
 			score *= 0.5 // Penalize unresolved symbols
 		}
-		
+
 		ranked = append(ranked, &RankedSymbol{
 			Symbol: sym,
 			Score:  score,
 		})
 	}
-	
+
 	// Sort by score descending
 	sort.Slice(ranked, func(i, j int) bool {
 		return ranked[i].Score > ranked[j].Score
 	})
-	
+
 	return ranked
 }
 
@@ -332,30 +332,30 @@ func (rm *RepoMap) rankSymbols(
 func (rm *RepoMap) formatForLLM(ranked []*RankedSymbol, maxTokens int) string {
 	var builder strings.Builder
 	usedTokens := 0
-	
+
 	for _, rs := range ranked {
 		sym := rs.Symbol
-		
+
 		// Format symbol
 		line := fmt.Sprintf("%s:%d: %s %s",
 			sym.File, sym.Line, sym.Type, sym.Name)
-		
+
 		if sym.Signature != "" {
 			line += " " + sym.Signature
 		}
-		
+
 		// Estimate tokens (rough approximation: 1 token ≈ 4 chars)
 		tokens := len(line) / 4
-		
+
 		if usedTokens+tokens > maxTokens {
 			break
 		}
-		
+
 		builder.WriteString(line)
 		builder.WriteString("\n")
 		usedTokens += tokens
 	}
-	
+
 	return builder.String()
 }
 
@@ -363,7 +363,7 @@ func (rm *RepoMap) formatForLLM(ranked []*RankedSymbol, maxTokens int) string {
 type ReferenceGraph struct {
 	// File -> referenced files
 	edges map[string]map[string]int
-	
+
 	// Symbol -> referencing files
 	refs map[string][]string
 }
@@ -374,32 +374,32 @@ func (rm *RepoMap) buildReferenceGraph(symbols []*Symbol) *ReferenceGraph {
 		edges: make(map[string]map[string]int),
 		refs:  make(map[string][]string),
 	}
-	
+
 	// Build symbol location index
 	symbolLocs := make(map[string]string) // name -> file
 	for _, sym := range symbols {
 		symbolLocs[sym.Name] = sym.File
 	}
-	
+
 	// Find references (simplified - would need import analysis)
 	for _, sym := range symbols {
 		// Track references
 		key := fmt.Sprintf("%s:%s", sym.File, sym.Name)
 		graph.refs[key] = sym.References
 	}
-	
+
 	return graph
 }
 
 // MinDistance returns minimum distance between files.
 func (g *ReferenceGraph) MinDistance(file string, targets []string) int {
 	minDist := -1
-	
+
 	for _, target := range targets {
 		if file == target {
 			return 0
 		}
-		
+
 		// Check direct edges
 		if edges, ok := g.edges[file]; ok {
 			if count, ok := edges[target]; ok && count > 0 {
@@ -409,7 +409,7 @@ func (g *ReferenceGraph) MinDistance(file string, targets []string) int {
 			}
 		}
 	}
-	
+
 	if minDist == -1 {
 		return 10 // Large default distance
 	}
@@ -435,7 +435,7 @@ func (rm *RepoMap) initParsers() {
 		(var_declaration (var_spec name: (identifier) @variable))
 		(const_declaration (const_spec name: (identifier) @const))
 	`
-	
+
 	// Python
 	rm.parsers["python"] = sitter.NewParser()
 	rm.parsers["python"].SetLanguage(python.GetLanguage())
@@ -444,7 +444,7 @@ func (rm *RepoMap) initParsers() {
 		(class_definition name: (identifier) @class)
 		(assignment left: (identifier) @variable)
 	`
-	
+
 	// JavaScript - temporarily disabled due to import conflict
 	// rm.parsers["javascript"] = sitter.NewParser()
 	// rm.parsers["javascript"].SetLanguage(javascript.GetLanguage())
@@ -454,12 +454,12 @@ func (rm *RepoMap) initParsers() {
 		(class_declaration name: (identifier) @class)
 		(lexical_declaration (variable_declarator name: (identifier) @variable))
 	`
-	
+
 	// TypeScript
 	rm.parsers["typescript"] = sitter.NewParser()
 	rm.parsers["typescript"].SetLanguage(typescript.GetLanguage())
 	rm.queries["typescript"] = rm.queries["javascript"]
-	
+
 	// TSX
 	rm.parsers["tsx"] = sitter.NewParser()
 	rm.parsers["tsx"].SetLanguage(tsx.GetLanguage())
@@ -493,7 +493,7 @@ func (rm *RepoMap) mapCaptureType(captureName string) string {
 		"variable": "variable",
 		"const":    "const",
 	}
-	
+
 	if t, ok := mapping[captureName]; ok {
 		return t
 	}
@@ -506,7 +506,7 @@ func (rm *RepoMap) extractSignature(node *sitter.Node, content []byte) string {
 	if parent == nil {
 		return ""
 	}
-	
+
 	// Get the full declaration
 	return parent.Content(content)
 }
@@ -523,7 +523,7 @@ func (rm *RepoMap) detectLanguage(file string, content []byte) string {
 	if lang == "" {
 		lang, _ = enry.GetLanguageByContent(file, content)
 	}
-	
+
 	// Normalize language names
 	lang = strings.ToLower(lang)
 	switch lang {
@@ -544,12 +544,12 @@ func (rm *RepoMap) detectLanguage(file string, content []byte) string {
 
 func (rm *RepoMap) listAllFiles() []string {
 	var files []string
-	
+
 	filepath.Walk(rm.rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
-		
+
 		// Check ignore patterns
 		for _, pattern := range rm.ignorePatterns {
 			if matched, _ := filepath.Match(pattern, info.Name()); matched {
@@ -559,23 +559,23 @@ func (rm *RepoMap) listAllFiles() []string {
 				return nil
 			}
 		}
-		
+
 		// Skip directories
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		// Check if file is relevant (has extension)
 		if filepath.Ext(path) == "" {
 			return nil
 		}
-		
+
 		relPath, _ := filepath.Rel(rm.rootDir, path)
 		files = append(files, relPath)
-		
+
 		return nil
 	})
-	
+
 	return files
 }
 
@@ -584,27 +584,27 @@ func (rm *RepoMap) readFile(file string) ([]byte, error) {
 	if cached := rm.fileCache.Get(file); cached != nil {
 		return cached.Content, nil
 	}
-	
+
 	// Read from disk
 	path := filepath.Join(rm.rootDir, file)
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Cache
 	info, _ := os.Stat(path)
 	var modTime int64
 	if info != nil {
 		modTime = info.ModTime().Unix()
 	}
-	
+
 	rm.fileCache.Set(file, &FileInfo{
 		Content:  content,
 		Modified: modTime,
 		Language: rm.detectLanguage(file, content),
 	})
-	
+
 	return content, nil
 }
 
@@ -655,14 +655,14 @@ func fuzzyScore(s1, s2 string) float64 {
 	if len(words) == 0 {
 		return 0
 	}
-	
+
 	matches := 0
 	for _, word := range words {
 		if strings.Contains(s1, word) {
 			matches++
 		}
 	}
-	
+
 	return float64(matches) / float64(len(words))
 }
 

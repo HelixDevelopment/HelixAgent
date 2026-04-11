@@ -96,7 +96,7 @@ func TestAddMemory(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -116,7 +116,7 @@ func TestAddMemory(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -184,7 +184,7 @@ func TestSearchMemory(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -230,7 +230,7 @@ func TestCognify(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -286,7 +286,7 @@ func TestSearchInsights(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -304,7 +304,7 @@ func TestSearchInsights(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -357,7 +357,7 @@ func TestSearchGraphCompletion(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -375,7 +375,7 @@ func TestSearchGraphCompletion(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -434,7 +434,7 @@ func TestProcessCodePipeline(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -452,7 +452,7 @@ func TestProcessCodePipeline(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -512,7 +512,7 @@ func TestCreateDataset(t *testing.T) {
 	})
 
 	t.Run("creation fails", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}))
@@ -563,7 +563,7 @@ func TestListDatasets(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -581,7 +581,7 @@ func TestListDatasets(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -635,7 +635,7 @@ func TestVisualizeGraph(t *testing.T) {
 	})
 
 	t.Run("server error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
@@ -653,7 +653,7 @@ func TestVisualizeGraph(t *testing.T) {
 	})
 
 	t.Run("without api key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusOK)
@@ -700,7 +700,7 @@ func TestDeleteData(t *testing.T) {
 	})
 
 	t.Run("delete fails", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
@@ -736,7 +736,7 @@ func TestTestConnection(t *testing.T) {
 	})
 
 	t.Run("connection failed", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		client := &Client{
 			baseURL: "http://localhost:9999", // Non-existent URL
 			client:  &http.Client{Timeout: 1 * time.Second},
@@ -747,7 +747,7 @@ func TestTestConnection(t *testing.T) {
 	})
 
 	t.Run("server returns error status", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
@@ -781,7 +781,7 @@ func TestAutoContainerize(t *testing.T) {
 	})
 
 	t.Run("not running and docker not available", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		client := &Client{
 			baseURL: "http://localhost:9999",
 			client:  &http.Client{Timeout: 1 * time.Second},

@@ -14,7 +14,7 @@ import (
 )
 
 // KAIROS implements the Always-On Assistant feature
- type KAIROS struct {
+type KAIROS struct {
 	client      *api.Client
 	enabled     bool
 	mu          sync.RWMutex
@@ -27,7 +27,7 @@ import (
 }
 
 // KAIROSTool represents an exclusive KAIROS tool
- type KAIROSTool string
+type KAIROSTool string
 
 const (
 	ToolSendUserFile     KAIROSTool = "send_user_file"
@@ -36,14 +36,14 @@ const (
 )
 
 // TickPrompt represents a tick event sent to KAIROS
- type TickPrompt struct {
+type TickPrompt struct {
 	Type      string           `json:"type"`
 	Timestamp int64            `json:"timestamp"`
 	Context   *ObservedContext `json:"context"`
 }
 
 // ObservedContext represents context observed by KAIROS
- type ObservedContext struct {
+type ObservedContext struct {
 	ActiveFiles    []string          `json:"active_files,omitempty"`
 	RecentCommands []string          `json:"recent_commands,omitempty"`
 	SystemState    map[string]string `json:"system_state,omitempty"`
@@ -51,7 +51,7 @@ const (
 }
 
 // Notification represents a notification
- type Notification struct {
+type Notification struct {
 	ID        string    `json:"id"`
 	Type      string    `json:"type"`
 	Title     string    `json:"title"`
@@ -60,7 +60,7 @@ const (
 }
 
 // NewKAIROS creates a new KAIROS instance
- func NewKAIROS(client *api.Client) *KAIROS {
+func NewKAIROS(client *api.Client) *KAIROS {
 	return &KAIROS{
 		client:      client,
 		enabled:     true,
@@ -75,22 +75,22 @@ const (
 func (k *KAIROS) Start() error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	
+
 	if !k.enabled {
 		return nil
 	}
-	
+
 	// Create log directory
 	if err := os.MkdirAll(k.logDir, 0755); err != nil {
 		return fmt.Errorf("create log directory: %w", err)
 	}
-	
+
 	// Start ticker for periodic ticks
 	k.ticker = time.NewTicker(30 * time.Second)
-	
+
 	k.wg.Add(1)
 	go k.run()
-	
+
 	log.Println("[KAIROS] Always-on assistant started")
 	return nil
 }
@@ -99,21 +99,21 @@ func (k *KAIROS) Start() error {
 func (k *KAIROS) Stop() {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	
+
 	if k.ticker != nil {
 		k.ticker.Stop()
 	}
-	
+
 	close(k.stopCh)
 	k.wg.Wait()
-	
+
 	log.Println("[KAIROS] Always-on assistant stopped")
 }
 
 // run is the main KAIROS loop
 func (k *KAIROS) run() {
 	defer k.wg.Done()
-	
+
 	for {
 		select {
 		case <-k.stopCh:
@@ -128,18 +128,18 @@ func (k *KAIROS) run() {
 func (k *KAIROS) tick() {
 	ctx, cancel := context.WithTimeout(context.Background(), k.blockBudget)
 	defer cancel()
-	
+
 	// Observe current context
 	observed := k.observeContext()
-	
+
 	// Log observation
 	if err := k.logObservation(observed); err != nil {
 		log.Printf("[KAIROS] Failed to log observation: %v", err)
 	}
-	
+
 	// Decide whether to act
 	shouldAct := k.decideAction(observed)
-	
+
 	if shouldAct {
 		// Act within blocking budget
 		if err := k.act(ctx, observed); err != nil {
@@ -155,7 +155,7 @@ func (k *KAIROS) observeContext() *ObservedContext {
 	// - Recent terminal commands
 	// - System notifications
 	// - Git status
-	
+
 	return &ObservedContext{
 		ActiveFiles:    []string{},
 		RecentCommands: []string{},
@@ -172,10 +172,10 @@ func (k *KAIROS) decideAction(ctx *ObservedContext) bool {
 			return true
 		}
 	}
-	
+
 	// Check for long-running processes
 	// In real implementation, check if processes need attention
-	
+
 	// Default: don't act too frequently
 	return false
 }
@@ -184,18 +184,18 @@ func (k *KAIROS) decideAction(ctx *ObservedContext) bool {
 func (k *KAIROS) act(ctx context.Context, observed *ObservedContext) error {
 	// Actions are brief by design
 	start := time.Now()
-	
+
 	// Example action: Send notification about important event
 	if len(observed.Notifications) > 0 {
 		notif := observed.Notifications[0]
 		return k.sendNotification(ctx, &notif)
 	}
-	
+
 	elapsed := time.Since(start)
 	if elapsed > k.blockBudget {
 		log.Printf("[KAIROS] Warning: Action exceeded blocking budget (%v > %v)", elapsed, k.blockBudget)
 	}
-	
+
 	return nil
 }
 
@@ -205,7 +205,7 @@ func (k *KAIROS) sendNotification(ctx context.Context, notif *Notification) erro
 	// - Use desktop notifications
 	// - Send to connected devices
 	// - Update status bar
-	
+
 	log.Printf("[KAIROS] Notification: %s - %s", notif.Title, notif.Message)
 	return nil
 }
@@ -213,12 +213,12 @@ func (k *KAIROS) sendNotification(ctx context.Context, notif *Notification) erro
 // SendUserFile sends a file to the user (KAIROS exclusive tool)
 func (k *KAIROS) SendUserFile(ctx context.Context, filePath string, message string) error {
 	log.Printf("[KAIROS] Sending file to user: %s", filePath)
-	
+
 	// In real implementation:
 	// - Copy file to accessible location
 	// - Send notification with link
 	// - Log the action
-	
+
 	return k.logAction("send_user_file", map[string]string{
 		"file":    filePath,
 		"message": message,
@@ -228,7 +228,7 @@ func (k *KAIROS) SendUserFile(ctx context.Context, filePath string, message stri
 // PushNotification pushes a notification to user's device
 func (k *KAIROS) PushNotification(ctx context.Context, title, message string) error {
 	log.Printf("[KAIROS] Push notification: %s - %s", title, message)
-	
+
 	return k.logAction("push_notification", map[string]string{
 		"title":   title,
 		"message": message,
@@ -238,7 +238,7 @@ func (k *KAIROS) PushNotification(ctx context.Context, title, message string) er
 // SubscribePR subscribes to pull request activity
 func (k *KAIROS) SubscribePR(ctx context.Context, repo string, prNumber int) error {
 	log.Printf("[KAIROS] Subscribing to PR: %s#%d", repo, prNumber)
-	
+
 	return k.logAction("subscribe_pr", map[string]string{
 		"repo": repo,
 		"pr":   fmt.Sprintf("%d", prNumber),
@@ -249,13 +249,13 @@ func (k *KAIROS) SubscribePR(ctx context.Context, repo string, prNumber int) err
 func (k *KAIROS) logObservation(ctx *ObservedContext) error {
 	date := time.Now().Format("2006-01-02")
 	logFile := filepath.Join(k.logDir, fmt.Sprintf("kairos-%s.log", date))
-	
+
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	
+
 	entry := fmt.Sprintf("[%s] Observation: %+v\n", time.Now().Format(time.RFC3339), ctx)
 	_, err = f.WriteString(entry)
 	return err
@@ -265,14 +265,14 @@ func (k *KAIROS) logObservation(ctx *ObservedContext) error {
 func (k *KAIROS) logAction(action string, details map[string]string) error {
 	date := time.Now().Format("2006-01-02")
 	logFile := filepath.Join(k.logDir, fmt.Sprintf("kairos-%s.log", date))
-	
+
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	
-	entry := fmt.Sprintf("[%s] Action: %s, Details: %+v\n", 
+
+	entry := fmt.Sprintf("[%s] Action: %s, Details: %+v\n",
 		time.Now().Format(time.RFC3339), action, details)
 	_, err = f.WriteString(entry)
 	return err
@@ -282,7 +282,7 @@ func (k *KAIROS) logAction(action string, details map[string]string) error {
 func (k *KAIROS) GetDailyLog() (string, error) {
 	date := time.Now().Format("2006-01-02")
 	logFile := filepath.Join(k.logDir, fmt.Sprintf("kairos-%s.log", date))
-	
+
 	data, err := os.ReadFile(logFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -290,7 +290,7 @@ func (k *KAIROS) GetDailyLog() (string, error) {
 		}
 		return "", err
 	}
-	
+
 	return string(data), nil
 }
 

@@ -52,8 +52,8 @@ func TestRegistryConfig_MaxRetries(t *testing.T) {
 func TestRegistryConfig_Ensemble(t *testing.T) {
 	t.Run("configures ensemble", func(t *testing.T) {
 		ensembleConfig := &models.EnsembleConfig{
-			Strategy:           "confidence_weighted",
-			MinProviders:       2,
+			Strategy:            "confidence_weighted",
+			MinProviders:        2,
 			ConfidenceThreshold: 0.7,
 		}
 

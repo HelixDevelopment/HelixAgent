@@ -19,9 +19,9 @@ type Honeycomb struct {
 // Config holds Honeycomb configuration
 type Config struct {
 	base.BaseConfig
-	APIKey     string
-	Dataset    string
-	Service    string
+	APIKey  string
+	Dataset string
+	Service string
 }
 
 // New creates a new Honeycomb integration
@@ -42,7 +42,7 @@ func New() *Honeycomb {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Honeycomb{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -60,11 +60,11 @@ func (h *Honeycomb) Initialize(ctx context.Context, config interface{}) error {
 	if err := h.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		h.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -75,7 +75,7 @@ func (h *Honeycomb) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "query":
 		return h.query(ctx, params)
@@ -98,7 +98,7 @@ func (h *Honeycomb) query(ctx context.Context, params map[string]interface{}) (i
 	if query == "" {
 		return nil, fmt.Errorf("query required")
 	}
-	
+
 	return map[string]interface{}{
 		"query":   query,
 		"results": []map[string]interface{}{},
@@ -112,9 +112,9 @@ func (h *Honeycomb) analyze(ctx context.Context, params map[string]interface{}) 
 	if metric == "" {
 		metric = "duration"
 	}
-	
+
 	return map[string]interface{}{
-		"metric":  metric,
+		"metric":   metric,
 		"analysis": fmt.Sprintf("AI analysis of %s", metric),
 		"insights": []string{
 			"Performance is within normal range",
@@ -129,7 +129,7 @@ func (h *Honeycomb) trace(ctx context.Context, params map[string]interface{}) (i
 	if traceID == "" {
 		return nil, fmt.Errorf("trace_id required")
 	}
-	
+
 	return map[string]interface{}{
 		"trace_id": traceID,
 		"spans": []map[string]interface{}{
@@ -145,7 +145,7 @@ func (h *Honeycomb) alert(ctx context.Context, params map[string]interface{}) (i
 	if condition == "" {
 		return nil, fmt.Errorf("condition required")
 	}
-	
+
 	return map[string]interface{}{
 		"condition": condition,
 		"alert":     "Alert configured",

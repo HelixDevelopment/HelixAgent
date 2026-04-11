@@ -91,7 +91,7 @@ func TestMaxFunction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := max(tc.a, tc.b)
 			if got != tc.want {
 				t.Errorf("max(%d, %d) = %d, want %d", tc.a, tc.b, got, tc.want)
@@ -231,7 +231,7 @@ func TestGetConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := limiter.getConfig(tc.path)
 			if config == nil {
 				t.Fatal("Expected configuration")
@@ -342,7 +342,7 @@ func TestKeyFuncs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			router := gin.New()
 			var actualKey string
 
@@ -546,7 +546,7 @@ func TestMinFunction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := min(tc.a, tc.b)
 			if got != tc.want {
 				t.Errorf("min(%d, %d) = %d, want %d", tc.a, tc.b, got, tc.want)

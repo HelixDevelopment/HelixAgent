@@ -21,7 +21,7 @@ func TestToolSchemaRegistry(t *testing.T) {
 
 	for _, toolName := range expectedTools {
 		t.Run(toolName, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			schema, ok := GetToolSchema(toolName)
 			assert.True(t, ok, "Tool %s should be registered", toolName)
 			assert.NotNil(t, schema, "Tool %s schema should not be nil", toolName)
@@ -62,7 +62,7 @@ func TestToolSchemaRequiredFields(t *testing.T) {
 
 	for toolName, expectedFields := range expectedRequiredFields {
 		t.Run(toolName, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			fields := GetRequiredFields(toolName)
 			require.NotNil(t, fields, "Tool %s should have required fields", toolName)
 			assert.ElementsMatch(t, expectedFields, fields,
@@ -110,7 +110,7 @@ func TestToolSchemaAliases(t *testing.T) {
 
 	for _, tc := range aliasTests {
 		t.Run(tc.alias, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			schema, ok := GetToolSchema(tc.alias)
 			assert.True(t, ok, "Alias %s should resolve to a tool", tc.alias)
 			if ok {
@@ -221,7 +221,7 @@ func TestValidateToolArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			err := ValidateToolArgs(tc.toolName, tc.args)
 			if tc.expectErr {
 				assert.Error(t, err, "Expected error for %s", tc.name)
@@ -237,7 +237,7 @@ func TestGenerateOpenAIToolDefinition(t *testing.T) {
 	t.Parallel()
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			def := GenerateOpenAIToolDefinition(schema)
 
 			// Verify structure
@@ -293,7 +293,7 @@ func TestToolSchemaToJSON(t *testing.T) {
 	t.Parallel()
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			jsonStr, err := schema.ToJSON()
 			assert.NoError(t, err, "Tool %s should serialize to JSON", toolName)
 			assert.NotEmpty(t, jsonStr, "Tool %s JSON should not be empty", toolName)
@@ -334,7 +334,7 @@ func TestGetToolsByCategory(t *testing.T) {
 
 	for _, category := range categories {
 		t.Run(category, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			tools := GetToolsByCategory(category)
 			assert.NotEmpty(t, tools, "Category %s should have at least one tool", category)
 
@@ -360,7 +360,7 @@ func TestToolSchemaCategories(t *testing.T) {
 
 	for toolName, schema := range ToolSchemaRegistry {
 		t.Run(toolName, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, validCategories[schema.Category],
 				"Tool %s has invalid category: %s", toolName, schema.Category)
 		})
@@ -381,7 +381,7 @@ func TestToolParameterTypes(t *testing.T) {
 	for toolName, schema := range ToolSchemaRegistry {
 		for paramName, param := range schema.Parameters {
 			t.Run(toolName+"/"+paramName, func(t *testing.T) {
-					t.Parallel()
+				t.Parallel()
 				assert.True(t, validTypes[param.Type],
 					"Tool %s parameter %s has invalid type: %s", toolName, paramName, param.Type)
 				assert.NotEmpty(t, param.Description,
@@ -398,7 +398,7 @@ func TestToolEnumParameters(t *testing.T) {
 		for paramName, param := range schema.Parameters {
 			if len(param.Enum) > 0 {
 				t.Run(toolName+"/"+paramName, func(t *testing.T) {
-						t.Parallel()
+					t.Parallel()
 					assert.Greater(t, len(param.Enum), 1,
 						"Tool %s parameter %s enum should have more than 1 value", toolName, paramName)
 

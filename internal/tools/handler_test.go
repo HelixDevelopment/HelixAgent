@@ -53,7 +53,7 @@ func TestToolRegistry_Get_CaseInsensitive(t *testing.T) {
 	testCases := []string{"git", "Git", "GIT", "gIt"}
 	for _, tc := range testCases {
 		t.Run(tc, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			h, ok := registry.Get(tc)
 			assert.True(t, ok, "Should find handler for %s", tc)
 			if ok {
@@ -98,7 +98,7 @@ func TestGetDefaultToolRegistry(t *testing.T) {
 
 	for _, name := range expectedHandlers {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			h, ok := GetDefaultToolRegistry().Get(name)
 			assert.True(t, ok, "GetDefaultToolRegistry() should have %s handler", name)
 			assert.NotNil(t, h)
@@ -239,7 +239,7 @@ func TestGitHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedOperation, args["operation"])
 			assert.NotEmpty(t, args["description"])
@@ -285,7 +285,7 @@ func TestTestHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedTestType, args["test_type"])
 			assert.Equal(t, tc.expectedCoverage, args["coverage"])
@@ -568,7 +568,7 @@ func TestPRHandler_GenerateDefaultArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedAction, args["action"])
 			assert.NotEmpty(t, args["description"])
@@ -857,7 +857,7 @@ func TestGitHandler_GenerateDefaultArgs_AllOperations(t *testing.T) {
 
 	for context, expectedOp := range operations {
 		t.Run(context, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := handler.GenerateDefaultArgs(context)
 			assert.Equal(t, expectedOp, args["operation"])
 		})
@@ -881,7 +881,7 @@ func TestTestHandler_GenerateDefaultArgs_AllTestTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.context, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := handler.GenerateDefaultArgs(tc.context)
 			assert.Equal(t, tc.expectedType, args["test_type"])
 			assert.Equal(t, tc.expectedPath, args["test_path"])
@@ -987,7 +987,7 @@ func TestAllHandlers_ImplementInterface(t *testing.T) {
 
 	for _, h := range handlers {
 		t.Run(h.Name(), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Verify Name() returns non-empty
 			assert.NotEmpty(t, h.Name())
 
@@ -1048,7 +1048,7 @@ func TestDiffHandler_Execute_Modes(t *testing.T) {
 	modes := []string{"working", "staged", "commit", "branch"}
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, _ := handler.Execute(ctx, map[string]interface{}{
 				"mode":          mode,
 				"compare_with":  "main",

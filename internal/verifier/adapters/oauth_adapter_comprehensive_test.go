@@ -47,7 +47,7 @@ func TestNewOAuthAdapter_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with provided verifier", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		verifierSvc := verifier.NewVerificationService(&verifier.Config{})
 		logger := logrus.New()
 		logger.SetLevel(logrus.WarnLevel)
@@ -85,7 +85,7 @@ func TestNewOAuthAdapterWithConfig_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("with nil config uses default", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter := NewOAuthAdapterWithConfig(nil, nil, nil)
 
 		require.NotNil(t, adapter)
@@ -133,13 +133,13 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("no token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		valid := adapter.IsClaudeTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -150,7 +150,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(-time.Hour)
@@ -161,7 +161,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	})
 
 	t.Run("empty token with future expiry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter.mu.Lock()
 		adapter.claudeToken = ""
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -177,13 +177,13 @@ func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("no token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		valid := adapter.IsQwenTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(time.Hour)
@@ -194,7 +194,7 @@ func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(-time.Hour)
@@ -282,7 +282,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
 	})
 
 	t.Run("token near expiry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		// Set token with near expiry
@@ -300,7 +300,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Claude(t *testing.T) {
 	})
 
 	t.Run("unknown provider type", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		ctx := context.Background()
@@ -330,7 +330,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Qwen(t *testing.T) {
 	})
 
 	t.Run("token near expiry with credentials", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Check if Qwen credentials exist before running test
 		credReader := oauth_credentials.NewOAuthCredentialReader()
 		_, err := credReader.ReadQwenCredentials()
@@ -439,7 +439,7 @@ func TestOAuthAdapter_TokenState(t *testing.T) {
 	adapter := NewOAuthAdapter(nil, nil)
 
 	t.Run("initial state", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, expiry := adapter.GetClaudeToken()
 		assert.Empty(t, token)
 		assert.True(t, expiry.IsZero())
@@ -450,7 +450,7 @@ func TestOAuthAdapter_TokenState(t *testing.T) {
 	})
 
 	t.Run("after setting tokens", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		now := time.Now()
 		claudeExpiry := now.Add(time.Hour)
 		qwenExpiry := now.Add(2 * time.Hour)
@@ -506,7 +506,7 @@ func TestOAuthAdapter_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("token expiry in past", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		adapter.mu.Lock()
@@ -519,7 +519,7 @@ func TestOAuthAdapter_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("zero expiry time", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		adapter := NewOAuthAdapter(nil, nil)
 
 		adapter.mu.Lock()

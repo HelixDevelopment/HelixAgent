@@ -38,7 +38,7 @@ func New() *GPTEngineer {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GPTEngineer{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (g *GPTEngineer) Initialize(ctx context.Context, config interface{}) error 
 	if err := g.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		g.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (g *GPTEngineer) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return g.generate(ctx, params)
@@ -89,7 +89,7 @@ func (g *GPTEngineer) generate(ctx context.Context, params map[string]interface{
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"files": []string{
@@ -107,7 +107,7 @@ func (g *GPTEngineer) improve(ctx context.Context, params map[string]interface{}
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	return map[string]interface{}{
 		"file":   file,
 		"status": "improved",

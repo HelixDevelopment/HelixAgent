@@ -30,12 +30,12 @@ type WebSearchOptions struct {
 
 // WebSearchResult contains search results
 type WebSearchResult struct {
-	Query       string        `json:"query"`
-	Answer      string        `json:"answer,omitempty"`
-	Results     []SearchItem  `json:"results"`
-	TotalCount  int           `json:"total_count"`
-	Provider    string        `json:"provider"`
-	SearchTime  time.Duration `json:"search_time"`
+	Query      string        `json:"query"`
+	Answer     string        `json:"answer,omitempty"`
+	Results    []SearchItem  `json:"results"`
+	TotalCount int           `json:"total_count"`
+	Provider   string        `json:"provider"`
+	SearchTime time.Duration `json:"search_time"`
 }
 
 // SearchItem represents a single search result
@@ -74,7 +74,7 @@ func (p *TavilyProvider) Name() string {
 // Search performs a web search using Tavily
 func (p *TavilyProvider) Search(ctx context.Context, query string, options WebSearchOptions) (*WebSearchResult, error) {
 	start := time.Now()
-	
+
 	type request struct {
 		APIKey        string `json:"api_key"`
 		Query         string `json:"query"`
@@ -83,7 +83,7 @@ func (p *TavilyProvider) Search(ctx context.Context, query string, options WebSe
 		MaxResults    int    `json:"max_results,omitempty"`
 		Days          int    `json:"days,omitempty"`
 	}
-	
+
 	type response struct {
 		Query   string `json:"query"`
 		Answer  string `json:"answer,omitempty"`
@@ -94,7 +94,7 @@ func (p *TavilyProvider) Search(ctx context.Context, query string, options WebSe
 			Score   float64 `json:"score"`
 		} `json:"results"`
 	}
-	
+
 	reqBody := request{
 		APIKey:        p.apiKey,
 		Query:         query,
@@ -103,38 +103,38 @@ func (p *TavilyProvider) Search(ctx context.Context, query string, options WebSe
 		MaxResults:    options.Limit,
 		Days:          options.RecencyDays,
 	}
-	
+
 	if reqBody.MaxResults == 0 {
 		reqBody.MaxResults = 5
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.tavily.com/search", bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("search request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("search API returned status %d", resp.StatusCode)
 	}
-	
+
 	var searchResp response
 	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	results := make([]SearchItem, 0, len(searchResp.Results))
 	for _, r := range searchResp.Results {
 		results = append(results, SearchItem{
@@ -145,14 +145,14 @@ func (p *TavilyProvider) Search(ctx context.Context, query string, options WebSe
 			Score:   r.Score,
 		})
 	}
-	
+
 	p.logger.Info("Web search completed",
 		zap.String("provider", "tavily"),
 		zap.String("query", query),
 		zap.Int("results", len(results)),
 		zap.Duration("duration", time.Since(start)),
 	)
-	
+
 	return &WebSearchResult{
 		Query:      query,
 		Answer:     searchResp.Answer,
@@ -189,7 +189,7 @@ func (p *PerplexityProvider) Name() string {
 // Search performs a web search using Perplexity
 func (p *PerplexityProvider) Search(ctx context.Context, query string, options WebSearchOptions) (*WebSearchResult, error) {
 	start := time.Now()
-	
+
 	type request struct {
 		Model    string `json:"model"`
 		Messages []struct {
@@ -197,7 +197,7 @@ func (p *PerplexityProvider) Search(ctx context.Context, query string, options W
 			Content string `json:"content"`
 		} `json:"messages"`
 	}
-	
+
 	type response struct {
 		Choices []struct {
 			Message struct {
@@ -209,7 +209,7 @@ func (p *PerplexityProvider) Search(ctx context.Context, query string, options W
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	
+
 	reqBody := request{
 		Model: "sonar-pro",
 		Messages: []struct {
@@ -219,39 +219,39 @@ func (p *PerplexityProvider) Search(ctx context.Context, query string, options W
 			{Role: "user", Content: query},
 		},
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.perplexity.ai/chat/completions", bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	
+
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("search request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("search API returned status %d", resp.StatusCode)
 	}
-	
+
 	var searchResp response
 	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	if len(searchResp.Choices) == 0 {
 		return nil, fmt.Errorf("no results from Perplexity")
 	}
-	
+
 	results := make([]SearchItem, 0)
 	for _, citation := range searchResp.Choices[0].Message.Citations {
 		results = append(results, SearchItem{
@@ -259,14 +259,14 @@ func (p *PerplexityProvider) Search(ctx context.Context, query string, options W
 			URL:   citation.URL,
 		})
 	}
-	
+
 	p.logger.Info("Web search completed",
 		zap.String("provider", "perplexity"),
 		zap.String("query", query),
 		zap.Int("results", len(results)),
 		zap.Duration("duration", time.Since(start)),
 	)
-	
+
 	return &WebSearchResult{
 		Query:      query,
 		Answer:     searchResp.Choices[0].Message.Content,

@@ -39,7 +39,7 @@ func New() *OllamaCode {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &OllamaCode{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -57,11 +57,11 @@ func (o *OllamaCode) Initialize(ctx context.Context, config interface{}) error {
 	if err := o.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		o.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -72,7 +72,7 @@ func (o *OllamaCode) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return o.generate(ctx, params)
@@ -89,7 +89,7 @@ func (o *OllamaCode) generate(ctx context.Context, params map[string]interface{}
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"code":   fmt.Sprintf("// Ollama local\n// %s", prompt),

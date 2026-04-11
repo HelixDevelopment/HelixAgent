@@ -17,11 +17,11 @@ import (
 
 // Browser provides browser automation capabilities
 type Browser struct {
-	logger     *logrus.Logger
-	userAgent  string
-	timeout    time.Duration
-	headless   bool
-	viewport   Viewport
+	logger    *logrus.Logger
+	userAgent string
+	timeout   time.Duration
+	headless  bool
+	viewport  Viewport
 }
 
 // Viewport defines browser window size
@@ -70,22 +70,22 @@ func NewBrowser(config Config, logger *logrus.Logger) *Browser {
 
 // Action represents a browser action
 type Action struct {
-	Type    string                 `json:"type"` // navigate, click, type, screenshot, scroll, extract
-	URL     string                 `json:"url,omitempty"`
-	Selector string                `json:"selector,omitempty"`
-	Text    string                 `json:"text,omitempty"`
-	Params  map[string]interface{} `json:"params,omitempty"`
+	Type     string                 `json:"type"` // navigate, click, type, screenshot, scroll, extract
+	URL      string                 `json:"url,omitempty"`
+	Selector string                 `json:"selector,omitempty"`
+	Text     string                 `json:"text,omitempty"`
+	Params   map[string]interface{} `json:"params,omitempty"`
 }
 
 // Result represents the result of a browser action
 type Result struct {
-	Success   bool                   `json:"success"`
-	URL       string                 `json:"url,omitempty"`
-	Title     string                 `json:"title,omitempty"`
-	Content   string                 `json:"content,omitempty"`
-	Screenshot string                `json:"screenshot,omitempty"` // base64 encoded
-	Error     string                 `json:"error,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Success    bool                   `json:"success"`
+	URL        string                 `json:"url,omitempty"`
+	Title      string                 `json:"title,omitempty"`
+	Content    string                 `json:"content,omitempty"`
+	Screenshot string                 `json:"screenshot,omitempty"` // base64 encoded
+	Error      string                 `json:"error,omitempty"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Execute performs a browser action
@@ -155,12 +155,12 @@ func (b *Browser) navigate(ctx context.Context, urlStr string) (*Result, error) 
 	title := extractTitle(string(body))
 
 	return &Result{
-		Success:  true,
-		URL:      resp.Request.URL.String(),
-		Title:    title,
-		Content:  truncate(string(body), 5000),
+		Success: true,
+		URL:     resp.Request.URL.String(),
+		Title:   title,
+		Content: truncate(string(body), 5000),
 		Metadata: map[string]interface{}{
-			"status_code": resp.StatusCode,
+			"status_code":  resp.StatusCode,
 			"content_type": resp.Header.Get("Content-Type"),
 		},
 	}, nil
@@ -211,12 +211,12 @@ func extractTitle(html string) string {
 	// In production, use a proper HTML parser
 	start := strings.Index(html, "<title>")
 	end := strings.Index(html, "</title>")
-	
+
 	if start != -1 && end != -1 && end > start {
 		title := html[start+7 : end]
 		return strings.TrimSpace(title)
 	}
-	
+
 	// Try h1
 	start = strings.Index(html, "<h1")
 	if start != -1 {
@@ -226,7 +226,7 @@ func extractTitle(html string) string {
 			return strings.TrimSpace(stripTags(html[start+endTag+1 : start+closeTag]))
 		}
 	}
-	
+
 	return ""
 }
 
@@ -234,7 +234,7 @@ func extractTitle(html string) string {
 func extractBySelector(html, selector string) string {
 	// Very simplified extraction
 	// In production, use goquery or similar
-	
+
 	// Handle common selectors
 	switch selector {
 	case "title":
@@ -258,7 +258,7 @@ func extractBySelector(html, selector string) string {
 			}
 		}
 	}
-	
+
 	return ""
 }
 
@@ -266,7 +266,7 @@ func extractBySelector(html, selector string) string {
 func stripTags(html string) string {
 	var result strings.Builder
 	inTag := false
-	
+
 	for _, r := range html {
 		switch r {
 		case '<':
@@ -279,7 +279,7 @@ func stripTags(html string) string {
 			}
 		}
 	}
-	
+
 	return strings.TrimSpace(result.String())
 }
 

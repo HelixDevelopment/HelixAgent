@@ -39,7 +39,7 @@ func New() *Conduit {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Conduit{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (c *Conduit) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (c *Conduit) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "connect":
 		return c.connect(ctx, params)
@@ -89,9 +89,9 @@ func (c *Conduit) connect(ctx context.Context, params map[string]interface{}) (i
 	if endpoint == "" {
 		return nil, fmt.Errorf("endpoint required")
 	}
-	
+
 	c.config.Endpoint = endpoint
-	
+
 	return map[string]interface{}{
 		"endpoint": endpoint,
 		"status":   "connected",
@@ -104,7 +104,7 @@ func (c *Conduit) send(ctx context.Context, params map[string]interface{}) (inte
 	if data == "" {
 		return nil, fmt.Errorf("data required")
 	}
-	
+
 	return map[string]interface{}{
 		"data":   data,
 		"status": "sent",

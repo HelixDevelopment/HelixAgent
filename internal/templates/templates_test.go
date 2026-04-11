@@ -14,10 +14,10 @@ import (
 
 func TestContextTemplate_Validate(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		template ContextTemplate
-		wantErr bool
-		errMsg  string
+		wantErr  bool
+		errMsg   string
 	}{
 		{
 			name: "valid template",
@@ -154,21 +154,21 @@ func TestContextTemplate_GetPrompt(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
+		name       string
 		promptName string
-		wantNil  bool
-		wantName string
+		wantNil    bool
+		wantName   string
 	}{
 		{
-			name:     "existing prompt",
+			name:       "existing prompt",
 			promptName: "prompt1",
-			wantNil:  false,
-			wantName: "prompt1",
+			wantNil:    false,
+			wantName:   "prompt1",
 		},
 		{
-			name:     "non-existent prompt",
+			name:       "non-existent prompt",
 			promptName: "nonexistent",
-			wantNil:  true,
+			wantNil:    true,
 		},
 	}
 
@@ -189,7 +189,7 @@ func TestContextTemplate_GetPrompt(t *testing.T) {
 
 func TestDefaultManagerConfig(t *testing.T) {
 	config := DefaultManagerConfig()
-	
+
 	assert.NotEmpty(t, config.TemplatesDir)
 	assert.Contains(t, config.TemplatesDir, ".helixagent")
 	assert.Contains(t, config.TemplatesDir, "templates")
@@ -199,22 +199,22 @@ func TestDefaultManagerConfig(t *testing.T) {
 func TestNewManager(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	config := ManagerConfig{
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-	
+
 	assert.Equal(t, tempDir, manager.templatesDir)
 	assert.NotNil(t, manager.templates)
-	
+
 	// Verify built-in templates were loaded
 	assert.NotEmpty(t, manager.templates)
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -223,20 +223,20 @@ func TestNewManager_CreateDirectory(t *testing.T) {
 	// Use a non-existent subdirectory
 	tempDir := t.TempDir()
 	nonExistentDir := filepath.Join(tempDir, "subdir", "templates")
-	
+
 	config := ManagerConfig{
 		TemplatesDir: nonExistentDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-	
+
 	// Verify directory was created
 	_, err = os.Stat(nonExistentDir)
 	assert.NoError(t, err)
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -247,14 +247,14 @@ func TestManager_Create(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
-		name      string
-		template  ContextTemplate
-		wantErr   bool
+		name        string
+		template    ContextTemplate
+		wantErr     bool
 		errContains string
 	}{
 		{
@@ -295,7 +295,7 @@ func TestManager_Create(t *testing.T) {
 			errContains: "already exists",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := manager.Create(&tt.template)
@@ -310,7 +310,7 @@ func TestManager_Create(t *testing.T) {
 			}
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -321,10 +321,10 @@ func TestManager_Get(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Add a test template
 	testTemplate := &ContextTemplate{
 		APIVersion: "v1",
@@ -336,26 +336,26 @@ func TestManager_Get(t *testing.T) {
 	}
 	err = manager.Create(testTemplate)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
-		name     string
+		name       string
 		templateID string
-		wantErr  bool
-		errMsg   string
+		wantErr    bool
+		errMsg     string
 	}{
 		{
-			name:     "existing template",
+			name:       "existing template",
 			templateID: "test-get",
-			wantErr:  false,
+			wantErr:    false,
 		},
 		{
-			name:     "non-existent template",
+			name:       "non-existent template",
 			templateID: "non-existent",
-			wantErr:  true,
-			errMsg:   "not found",
+			wantErr:    true,
+			errMsg:     "not found",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			template, err := manager.Get(tt.templateID)
@@ -370,7 +370,7 @@ func TestManager_Get(t *testing.T) {
 			}
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -381,10 +381,10 @@ func TestManager_GetTemplate(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Add a test template
 	testTemplate := &ContextTemplate{
 		APIVersion: "v1",
@@ -396,13 +396,13 @@ func TestManager_GetTemplate(t *testing.T) {
 	}
 	err = manager.Create(testTemplate)
 	require.NoError(t, err)
-	
+
 	// Test that GetTemplate is an alias for Get
 	template, err := manager.GetTemplate("test-alias")
 	assert.NoError(t, err)
 	assert.NotNil(t, template)
 	assert.Equal(t, "test-alias", template.Metadata.ID)
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -413,10 +413,10 @@ func TestManager_Update(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Create a test template
 	testTemplate := &ContextTemplate{
 		APIVersion: "v1",
@@ -429,15 +429,15 @@ func TestManager_Update(t *testing.T) {
 	}
 	err = manager.Create(testTemplate)
 	require.NoError(t, err)
-	
+
 	originalUpdatedAt := testTemplate.Metadata.UpdatedAt
 	time.Sleep(10 * time.Millisecond) // Ensure time difference
-	
+
 	tests := []struct {
-		name      string
-		template  ContextTemplate
-		wantErr   bool
-		errMsg    string
+		name     string
+		template ContextTemplate
+		wantErr  bool
+		errMsg   string
 	}{
 		{
 			name: "valid update",
@@ -478,7 +478,7 @@ func TestManager_Update(t *testing.T) {
 			errMsg:  "not found",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := manager.Update(&tt.template)
@@ -489,14 +489,14 @@ func TestManager_Update(t *testing.T) {
 				assert.NoError(t, err)
 				// Verify UpdatedAt was updated
 				assert.True(t, tt.template.Metadata.UpdatedAt.After(originalUpdatedAt))
-				
+
 				// Verify changes were persisted
 				updated, _ := manager.Get(tt.template.Metadata.ID)
 				assert.Equal(t, "Updated Name", updated.Metadata.Name)
 			}
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -507,10 +507,10 @@ func TestManager_Delete(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Create a test template
 	testTemplate := &ContextTemplate{
 		APIVersion: "v1",
@@ -522,29 +522,29 @@ func TestManager_Delete(t *testing.T) {
 	}
 	err = manager.Create(testTemplate)
 	require.NoError(t, err)
-	
+
 	// Verify template exists
 	_, err = manager.Get("test-delete")
 	assert.NoError(t, err)
-	
+
 	// Delete the template
 	err = manager.Delete("test-delete")
 	assert.NoError(t, err)
-	
+
 	// Verify template no longer exists
 	_, err = manager.Get("test-delete")
 	assert.Error(t, err)
-	
+
 	// Verify file was deleted
 	path := filepath.Join(tempDir, "test-delete.yaml")
 	_, err = os.Stat(path)
 	assert.True(t, os.IsNotExist(err))
-	
+
 	// Test deleting non-existent template
 	err = manager.Delete("non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -555,10 +555,10 @@ func TestManager_List(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Create some test templates
 	templates := []*ContextTemplate{
 		{
@@ -578,18 +578,18 @@ func TestManager_List(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tmpl := range templates {
 		err := manager.Create(tmpl)
 		require.NoError(t, err)
 	}
-	
+
 	// List templates
 	list := manager.List()
-	
+
 	// Should include built-in templates + our templates
 	assert.GreaterOrEqual(t, len(list), 2)
-	
+
 	// Verify our templates are in the list
 	ids := make(map[string]bool)
 	for _, tmpl := range list {
@@ -597,7 +597,7 @@ func TestManager_List(t *testing.T) {
 	}
 	assert.True(t, ids["template-1"])
 	assert.True(t, ids["template-2"])
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -608,10 +608,10 @@ func TestManager_ListByTag(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Create templates with different tags
 	templates := []*ContextTemplate{
 		{
@@ -641,12 +641,12 @@ func TestManager_ListByTag(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tmpl := range templates {
 		err := manager.Create(tmpl)
 		require.NoError(t, err)
 	}
-	
+
 	tests := []struct {
 		name    string
 		tag     string
@@ -668,12 +668,12 @@ func TestManager_ListByTag(t *testing.T) {
 			wantIDs: []string{},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			list := manager.ListByTag(tt.tag)
 			assert.Len(t, list, len(tt.wantIDs))
-			
+
 			ids := make(map[string]bool)
 			for _, tmpl := range list {
 				ids[tmpl.Metadata.ID] = true
@@ -683,7 +683,7 @@ func TestManager_ListByTag(t *testing.T) {
 			}
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -694,10 +694,10 @@ func TestManager_ApplyTemplate(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Create a template with variables
 	testTemplate := &ContextTemplate{
 		APIVersion: "v1",
@@ -715,19 +715,19 @@ func TestManager_ApplyTemplate(t *testing.T) {
 	}
 	err = manager.Create(testTemplate)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
-		name      string
+		name        string
 		templateID  string
-		vars      map[string]string
-		wantErr   bool
+		vars        map[string]string
+		wantErr     bool
 		errContains string
 	}{
 		{
-			name:     "valid application",
+			name:       "valid application",
 			templateID: "test-apply",
-			vars:     map[string]string{"name": "World"},
-			wantErr:  false,
+			vars:       map[string]string{"name": "World"},
+			wantErr:    false,
 		},
 		{
 			name:        "non-existent template",
@@ -737,7 +737,7 @@ func TestManager_ApplyTemplate(t *testing.T) {
 			errContains: "not found",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, err := manager.ApplyTemplate(tt.templateID, tt.vars)
@@ -750,7 +750,7 @@ func TestManager_ApplyTemplate(t *testing.T) {
 			}
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -763,13 +763,13 @@ func TestBuiltInTemplates(t *testing.T) {
 		TemplatesDir: tempDir,
 		MaxTemplates: 10,
 	}
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Test that built-in templates exist
 	builtInIDs := []string{"onboarding", "bug-fix", "code-review", "feature-dev"}
-	
+
 	for _, id := range builtInIDs {
 		t.Run(id, func(t *testing.T) {
 			template, err := manager.Get(id)
@@ -780,7 +780,7 @@ func TestBuiltInTemplates(t *testing.T) {
 			assert.NotEmpty(t, template.Spec.Instructions)
 		})
 	}
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }
@@ -793,13 +793,13 @@ func TestManager_Alias(t *testing.T) {
 	config := DefaultManagerConfig()
 	tempDir := t.TempDir()
 	config.TemplatesDir = tempDir
-	
+
 	manager, err := NewManager(config)
 	require.NoError(t, err)
-	
+
 	// Manager should work as expected
 	assert.NotNil(t, manager)
-	
+
 	// Cleanup
 	os.RemoveAll(tempDir)
 }

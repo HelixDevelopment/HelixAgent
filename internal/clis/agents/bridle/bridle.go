@@ -25,40 +25,40 @@ type Bridle struct {
 // Config holds Bridle configuration
 type Config struct {
 	base.BaseConfig
-	StrictMode      bool
-	AutoApprove     bool
-	MaxRetries      int
-	Timeout         int
-	WorkspaceDir    string
+	StrictMode   bool
+	AutoApprove  bool
+	MaxRetries   int
+	Timeout      int
+	WorkspaceDir string
 }
 
 // Workflow represents a Bridle workflow
 type Workflow struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Steps       []Step   `json:"steps"`
-	Status      string   `json:"status"`
-	CreatedAt   string   `json:"created_at"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Steps     []Step `json:"steps"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
 }
 
 // Step represents a workflow step
 type Step struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Action      string                 `json:"action"`
-	Params      map[string]interface{} `json:"params"`
-	Guardrails  []string               `json:"guardrails"`
-	Status      string                 `json:"status"`
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Action     string                 `json:"action"`
+	Params     map[string]interface{} `json:"params"`
+	Guardrails []string               `json:"guardrails"`
+	Status     string                 `json:"status"`
 }
 
 // Guardrail represents a safety guardrail
 type Guardrail struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"` // "safety", "quality", "compliance"
-	Rule        string `json:"rule"`
-	Action      string `json:"action"` // "block", "warn", "log"
-	Enabled     bool   `json:"enabled"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "safety", "quality", "compliance"
+	Rule    string `json:"rule"`
+	Action  string `json:"action"` // "block", "warn", "log"
+	Enabled bool   `json:"enabled"`
 }
 
 // New creates a new Bridle integration
@@ -80,17 +80,17 @@ func New() *Bridle {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Bridle{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
 			BaseConfig: base.BaseConfig{
 				AutoStart: true,
 			},
-			StrictMode:   true,
-			AutoApprove:  false,
-			MaxRetries:   3,
-			Timeout:      300,
+			StrictMode:  true,
+			AutoApprove: false,
+			MaxRetries:  3,
+			Timeout:     300,
 		},
 		workflows:  make([]Workflow, 0),
 		guardrails: make([]Guardrail, 0),
@@ -102,40 +102,40 @@ func (b *Bridle) Initialize(ctx context.Context, config interface{}) error {
 	if err := b.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		b.config = cfg
 	}
-	
+
 	if b.config.WorkspaceDir == "" {
 		b.config.WorkspaceDir = b.GetWorkDir()
 	}
-	
+
 	return b.loadConfig()
 }
 
 // loadConfig loads configuration
 func (b *Bridle) loadConfig() error {
 	configPath := filepath.Join(b.config.WorkspaceDir, "bridle.json")
-	
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return b.createDefaultConfig()
 	}
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
-	
+
 	var config struct {
 		Workflows  []Workflow  `json:"workflows"`
 		Guardrails []Guardrail `json:"guardrails"`
 	}
-	
+
 	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("parse config: %w", err)
 	}
-	
+
 	b.workflows = config.Workflows
 	b.guardrails = config.Guardrails
 	return nil
@@ -171,7 +171,7 @@ func (b *Bridle) Execute(ctx context.Context, command string, params map[string]
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "run_workflow":
 		return b.runWorkflow(ctx, params)
@@ -196,7 +196,7 @@ func (b *Bridle) runWorkflow(ctx context.Context, params map[string]interface{})
 	if workflowID == "" {
 		return nil, fmt.Errorf("workflow_id required")
 	}
-	
+
 	// Find workflow
 	var workflow *Workflow
 	for i := range b.workflows {
@@ -205,32 +205,32 @@ func (b *Bridle) runWorkflow(ctx context.Context, params map[string]interface{})
 			break
 		}
 	}
-	
+
 	if workflow == nil {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
-	
+
 	// Execute workflow with guardrails
 	results := make([]map[string]interface{}, 0, len(workflow.Steps))
-	
+
 	for _, step := range workflow.Steps {
 		// Check guardrails
 		violations := b.checkGuardrails(step)
-		
+
 		result := map[string]interface{}{
 			"step_id":    step.ID,
 			"step_name":  step.Name,
 			"status":     "completed",
 			"violations": violations,
 		}
-		
+
 		if len(violations) > 0 && b.config.StrictMode {
 			result["status"] = "blocked"
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	return map[string]interface{}{
 		"workflow_id": workflowID,
 		"results":     results,
@@ -241,7 +241,7 @@ func (b *Bridle) runWorkflow(ctx context.Context, params map[string]interface{})
 // checkGuardrails checks guardrails for a step
 func (b *Bridle) checkGuardrails(step Step) []string {
 	violations := make([]string, 0)
-	
+
 	for _, guardrailID := range step.Guardrails {
 		for _, guardrail := range b.guardrails {
 			if guardrail.ID == guardrailID && guardrail.Enabled {
@@ -252,7 +252,7 @@ func (b *Bridle) checkGuardrails(step Step) []string {
 			}
 		}
 	}
-	
+
 	return violations
 }
 
@@ -262,10 +262,10 @@ func (b *Bridle) createWorkflow(ctx context.Context, params map[string]interface
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	stepsData, _ := params["steps"].([]interface{})
 	steps := make([]Step, 0, len(stepsData))
-	
+
 	for i, stepData := range stepsData {
 		if stepMap, ok := stepData.(map[string]interface{}); ok {
 			step := Step{
@@ -278,20 +278,20 @@ func (b *Bridle) createWorkflow(ctx context.Context, params map[string]interface
 			steps = append(steps, step)
 		}
 	}
-	
+
 	workflow := Workflow{
 		ID:     fmt.Sprintf("workflow-%d", len(b.workflows)+1),
 		Name:   name,
 		Steps:  steps,
 		Status: "created",
 	}
-	
+
 	b.workflows = append(b.workflows, workflow)
-	
+
 	if err := b.saveConfig(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{"workflow": workflow, "status": "created"}, nil
 }
 
@@ -301,11 +301,11 @@ func (b *Bridle) addGuardrail(ctx context.Context, params map[string]interface{}
 	guardrailType, _ := params["type"].(string)
 	rule, _ := params["rule"].(string)
 	action, _ := params["action"].(string)
-	
+
 	if name == "" || guardrailType == "" || rule == "" {
 		return nil, fmt.Errorf("name, type, and rule required")
 	}
-	
+
 	guardrail := Guardrail{
 		ID:      fmt.Sprintf("guardrail-%d", len(b.guardrails)+1),
 		Name:    name,
@@ -314,13 +314,13 @@ func (b *Bridle) addGuardrail(ctx context.Context, params map[string]interface{}
 		Action:  action,
 		Enabled: true,
 	}
-	
+
 	b.guardrails = append(b.guardrails, guardrail)
-	
+
 	if err := b.saveConfig(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{"guardrail": guardrail, "status": "added"}, nil
 }
 
@@ -330,15 +330,15 @@ func (b *Bridle) checkCompliance(ctx context.Context, params map[string]interfac
 	if content == "" {
 		return nil, fmt.Errorf("content required")
 	}
-	
+
 	violations := make([]string, 0)
 	passed := make([]string, 0)
-	
+
 	for _, guardrail := range b.guardrails {
 		if !guardrail.Enabled {
 			continue
 		}
-		
+
 		// Simplified compliance check
 		if guardrail.Type == "safety" {
 			violations = append(violations, guardrail.Name)
@@ -346,7 +346,7 @@ func (b *Bridle) checkCompliance(ctx context.Context, params map[string]interfac
 			passed = append(passed, guardrail.Name)
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"content":    content,
 		"violations": violations,
@@ -369,11 +369,11 @@ func (b *Bridle) validate(ctx context.Context, params map[string]interface{}) (i
 	if input == "" {
 		return nil, fmt.Errorf("input required")
 	}
-	
+
 	// Run validation
 	isValid := true
 	messages := make([]string, 0)
-	
+
 	for _, guardrail := range b.guardrails {
 		if guardrail.Enabled && guardrail.Action == "block" {
 			// Simplified validation
@@ -381,7 +381,7 @@ func (b *Bridle) validate(ctx context.Context, params map[string]interface{}) (i
 			messages = append(messages, fmt.Sprintf("Failed: %s", guardrail.Name))
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"input":    input,
 		"valid":    isValid,

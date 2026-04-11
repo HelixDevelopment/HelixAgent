@@ -361,7 +361,7 @@ func TestClaudeCLIProvider_ParseJSONResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, sessionID, metadata := provider.parseJSONResponse(tt.input)
 
 			assert.Equal(t, tt.expectedResult, result)
@@ -533,7 +533,7 @@ func TestParseModelsOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := parseModelsOutput(tt.input)
 			if tt.expected == nil {
 				assert.Empty(t, result)

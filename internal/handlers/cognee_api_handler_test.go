@@ -222,7 +222,7 @@ func TestCogneeAPIHandler_SearchMemory(t *testing.T) {
 	handler := NewCogneeAPIHandler(cogneeService, logger)
 
 	t.Run("successful search", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := map[string]interface{}{
 			"query":   "test query",
 			"dataset": "default",
@@ -241,7 +241,7 @@ func TestCogneeAPIHandler_SearchMemory(t *testing.T) {
 	})
 
 	t.Run("missing query", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := map[string]interface{}{
 			"dataset": "default",
 		}
@@ -537,7 +537,6 @@ func BenchmarkCogneeAPIHandler_SearchMemory(b *testing.B) {
 	}
 }
 
-
 func TestCogneeAPIHandler_GetConfig(t *testing.T) {
 	t.Parallel()
 	server, cogneeService := setupCogneeTestServer()
@@ -573,7 +572,7 @@ func TestCogneeAPIHandler_DeleteDataset(t *testing.T) {
 	handler := NewCogneeAPIHandler(cogneeService, logger)
 
 	t.Run("delete existing dataset", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/cognee/datasets/test-dataset", nil)
@@ -586,7 +585,7 @@ func TestCogneeAPIHandler_DeleteDataset(t *testing.T) {
 	})
 
 	t.Run("delete with empty name", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("DELETE", "/cognee/datasets/", nil)
@@ -607,7 +606,7 @@ func TestCogneeAPIHandler_GetGraphCompletion(t *testing.T) {
 	handler := NewCogneeAPIHandler(cogneeService, logger)
 
 	t.Run("successful graph completion", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := map[string]interface{}{
 			"query":   "test graph query",
 			"dataset": "default",
@@ -625,7 +624,7 @@ func TestCogneeAPIHandler_GetGraphCompletion(t *testing.T) {
 	})
 
 	t.Run("missing query", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := map[string]interface{}{
 			"dataset": "default",
 		}
@@ -667,7 +666,7 @@ func TestCogneeAPIHandler_Cognify_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -685,7 +684,7 @@ func TestCogneeAPIHandler_Cognify_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Create server that returns error for cognify
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/cognify" {
@@ -727,7 +726,7 @@ func TestCogneeAPIHandler_GetInsights_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -744,7 +743,7 @@ func TestCogneeAPIHandler_GetInsights_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("missing required query field", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -764,7 +763,7 @@ func TestCogneeAPIHandler_GetInsights_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/insights" {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -805,7 +804,7 @@ func TestCogneeAPIHandler_CreateDataset_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -822,7 +821,7 @@ func TestCogneeAPIHandler_CreateDataset_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("missing required name field", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -842,7 +841,7 @@ func TestCogneeAPIHandler_CreateDataset_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/datasets" && r.Method == "POST" {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -882,7 +881,7 @@ func TestCogneeAPIHandler_ListDatasets_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/datasets" && r.Method == "GET" {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -918,7 +917,7 @@ func TestCogneeAPIHandler_ProvideFeedback_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -935,7 +934,7 @@ func TestCogneeAPIHandler_ProvideFeedback_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("missing required fields", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -955,7 +954,7 @@ func TestCogneeAPIHandler_ProvideFeedback_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("successful with all required fields", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1024,7 +1023,7 @@ func TestCogneeAPIHandler_AddMemory_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1041,7 +1040,7 @@ func TestCogneeAPIHandler_AddMemory_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/add" {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -1081,7 +1080,7 @@ func TestCogneeAPIHandler_SearchMemory_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1098,7 +1097,7 @@ func TestCogneeAPIHandler_SearchMemory_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("successful search with dataset", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1129,7 +1128,7 @@ func TestCogneeAPIHandler_ProcessCode_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1146,7 +1145,7 @@ func TestCogneeAPIHandler_ProcessCode_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("service returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/v1/code-pipeline/index" {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -1284,7 +1283,7 @@ func TestCogneeAPIHandler_GetGraphCompletion_ErrorPaths(t *testing.T) {
 	logger.SetLevel(logrus.PanicLevel)
 
 	t.Run("invalid JSON body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1301,7 +1300,7 @@ func TestCogneeAPIHandler_GetGraphCompletion_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("missing required query", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server, cogneeService := setupCogneeTestServer()
 		defer server.Close()
 
@@ -1320,7 +1319,6 @@ func TestCogneeAPIHandler_GetGraphCompletion_ErrorPaths(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
-
 
 // =====================================================
 // CONCURRENT REQUEST HANDLING TESTS
@@ -1615,7 +1613,7 @@ func TestCogneeAPIHandler_SearchWithVariousLimits(t *testing.T) {
 
 	for _, limit := range limits {
 		t.Run(strconv.Itoa(limit), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body := map[string]interface{}{
 				"query":   "test query",
 				"dataset": "default",
@@ -1719,7 +1717,7 @@ func TestCogneeAPIHandler_FeedbackVariousScores(t *testing.T) {
 
 	for _, score := range scores {
 		t.Run(strconv.FormatFloat(score, 'f', 2, 64), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body := map[string]interface{}{
 				"query_id":  "test-query-" + strconv.FormatFloat(score, 'f', 2, 64),
 				"query":     "test query",

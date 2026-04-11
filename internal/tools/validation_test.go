@@ -33,7 +33,7 @@ func TestValidatePath_ValidPaths(t *testing.T) {
 
 	for _, tc := range validPaths {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, ValidatePath(tc.path), "Path %q should be valid", tc.path)
 		})
 	}
@@ -55,7 +55,7 @@ func TestValidatePath_TraversalAttack(t *testing.T) {
 
 	for _, tc := range traversalPaths {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, ValidatePath(tc.path), "Path %q should be invalid (traversal)", tc.path)
 		})
 	}
@@ -75,7 +75,7 @@ func TestValidatePath_EmbeddedTraversalCleaned(t *testing.T) {
 
 	for _, tc := range cleanablePaths {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// These paths clean to absolute paths with no remaining "..",
 			// so ValidatePath accepts them — document actual behavior.
 			result := ValidatePath(tc.path)
@@ -107,7 +107,7 @@ func TestValidatePath_ShellMetacharacters(t *testing.T) {
 
 	for _, tc := range dangerousPaths {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, ValidatePath(tc.path), "Path %q should be invalid (metacharacter)", tc.path)
 		})
 	}
@@ -140,7 +140,7 @@ func TestValidateSymbol_ValidSymbols(t *testing.T) {
 
 	for _, tc := range validSymbols {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, ValidateSymbol(tc.symbol), "Symbol %q should be valid", tc.symbol)
 		})
 	}
@@ -164,7 +164,7 @@ func TestValidateSymbol_InvalidSymbols(t *testing.T) {
 
 	for _, tc := range invalidSymbols {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, ValidateSymbol(tc.symbol), "Symbol %q should be invalid", tc.symbol)
 		})
 	}
@@ -200,7 +200,7 @@ func TestSanitizePath_ValidPath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, ok := SanitizePath(tc.input)
 			assert.True(t, ok, "Path %q should be valid", tc.input)
 			assert.Equal(t, tc.expected, result)
@@ -223,7 +223,7 @@ func TestSanitizePath_InvalidPath(t *testing.T) {
 
 	for _, tc := range invalidPaths {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, ok := SanitizePath(tc.path)
 			assert.False(t, ok, "Path %q should be invalid", tc.path)
 			assert.Empty(t, result)
@@ -261,7 +261,7 @@ func TestValidateGitRef_ValidRefs(t *testing.T) {
 
 	for _, tc := range validRefs {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, ValidateGitRef(tc.ref), "Git ref %q should be valid", tc.ref)
 		})
 	}
@@ -287,7 +287,7 @@ func TestValidateGitRef_InvalidRefs(t *testing.T) {
 
 	for _, tc := range invalidRefs {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, ValidateGitRef(tc.ref), "Git ref %q should be invalid", tc.ref)
 		})
 	}
@@ -329,7 +329,7 @@ func TestValidateCommandArg_ValidArgs(t *testing.T) {
 
 	for _, tc := range validArgs {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, ValidateCommandArg(tc.arg), "Arg %q should be valid", tc.arg)
 		})
 	}
@@ -359,7 +359,7 @@ func TestValidateCommandArg_DangerousArgs(t *testing.T) {
 
 	for _, tc := range dangerousArgs {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, ValidateCommandArg(tc.arg), "Arg %q should be invalid (dangerous)", tc.arg)
 		})
 	}

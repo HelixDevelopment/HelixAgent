@@ -141,7 +141,7 @@ func TestCachePolicy_ShouldCache(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := &CacheRequest{
 				Query:      tt.query,
 				Parameters: tt.params,

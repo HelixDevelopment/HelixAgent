@@ -531,7 +531,7 @@ func TestIsChatModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.want, IsChatModel(tt.modelID), "IsChatModel(%q)", tt.modelID)
 		})
 	}

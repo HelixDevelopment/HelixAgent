@@ -182,7 +182,7 @@ func TestTabnineExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := tn.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -251,7 +251,7 @@ func TestTabnineCompleteLanguages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.language, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := tn.Execute(ctx, "complete", map[string]interface{}{
 				"prefix":   tt.prefix,
 				"language": tt.language,
@@ -341,10 +341,10 @@ func TestTabnineConfigure(t *testing.T) {
 	}
 
 	result, err := tn.Execute(ctx, "configure", map[string]interface{}{
-		"local_mode":     true,
-		"model_type":     "local",
-		"team_mode":      true,
-		"privacy_level":  "enterprise",
+		"local_mode":    true,
+		"model_type":    "local",
+		"team_mode":     true,
+		"privacy_level": "enterprise",
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -483,7 +483,7 @@ func TestTabnineIsAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			tn := New()
 			ctx := context.Background()
 			_ = tn.Initialize(ctx, tt.config)
@@ -530,7 +530,7 @@ func TestTabnineConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			tn := New()
 			ctx := context.Background()
 			err := tn.Initialize(ctx, tt.config)

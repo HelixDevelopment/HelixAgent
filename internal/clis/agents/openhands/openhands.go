@@ -14,13 +14,13 @@ import (
 )
 
 // OpenHands provides OpenHands CLI integration
- type OpenHands struct {
+type OpenHands struct {
 	*base.BaseIntegration
 	config *Config
 }
 
 // Config holds OpenHands configuration
- type Config struct {
+type Config struct {
 	base.BaseConfig
 	SandboxType   string // "docker", "local", "none"
 	WorkspaceDir  string
@@ -31,7 +31,7 @@ import (
 }
 
 // New creates a new OpenHands integration
- func New() *OpenHands {
+func New() *OpenHands {
 	info := agents.AgentInfo{
 		Type:        agents.TypeOpenHands,
 		Name:        "OpenHands",
@@ -51,7 +51,7 @@ import (
 		IsEnabled: true,
 		Priority:  1,
 	}
-	
+
 	return &OpenHands{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -74,16 +74,16 @@ func (o *OpenHands) Initialize(ctx context.Context, config interface{}) error {
 	if err := o.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		o.config = cfg
 	}
-	
+
 	// Set default workspace
 	if o.config.WorkspaceDir == "" {
 		o.config.WorkspaceDir = o.GetWorkDir()
 	}
-	
+
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (o *OpenHands) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "start_task":
 		return o.startTask(ctx, params)
@@ -115,22 +115,22 @@ func (o *OpenHands) startTask(ctx context.Context, params map[string]interface{}
 	if task == "" {
 		return nil, fmt.Errorf("task description required")
 	}
-	
+
 	// Create task file
 	taskFile := filepath.Join(o.GetWorkDir(), "task.txt")
 	if err := os.WriteFile(taskFile, []byte(task), 0644); err != nil {
 		return nil, fmt.Errorf("write task file: %w", err)
 	}
-	
+
 	// Build command args
 	args := o.buildArgs()
 	args = append(args, "-t", task)
-	
+
 	output, err := o.ExecuteCommand(ctx, "openhands", args...)
 	if err != nil {
 		return nil, fmt.Errorf("openhands task failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"task":     task,
 		"response": string(output),
@@ -141,17 +141,17 @@ func (o *OpenHands) startTask(ctx context.Context, params map[string]interface{}
 // run runs OpenHands with a specific configuration
 func (o *OpenHands) run(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	args := o.buildArgs()
-	
+
 	// Add any additional params
 	if evalFile, ok := params["eval_file"].(string); ok {
 		args = append(args, "-e", evalFile)
 	}
-	
+
 	output, err := o.ExecuteCommand(ctx, "openhands", args...)
 	if err != nil {
 		return nil, fmt.Errorf("openhands run failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"response": string(output),
 		"success":  true,
@@ -164,14 +164,14 @@ func (o *OpenHands) eval(ctx context.Context, params map[string]interface{}) (in
 	if evalFile == "" {
 		return nil, fmt.Errorf("eval file required")
 	}
-	
+
 	args := []string{"eval", "-f", evalFile}
-	
+
 	output, err := o.ExecuteCommand(ctx, "openhands", args...)
 	if err != nil {
 		return nil, fmt.Errorf("openhands eval failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"response": string(output),
 		"success":  true,
@@ -184,17 +184,17 @@ func (o *OpenHands) sandboxCmd(ctx context.Context, params map[string]interface{
 	if sandboxCmd == "" {
 		return nil, fmt.Errorf("sandbox command required")
 	}
-	
+
 	// Execute in sandbox
 	output, err := o.executeInSandbox(ctx, sandboxCmd)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox execution failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
-		"command":  sandboxCmd,
-		"output":   string(output),
-		"success":  true,
+		"command": sandboxCmd,
+		"output":  string(output),
+		"success": true,
 	}, nil
 }
 
@@ -219,34 +219,34 @@ func (o *OpenHands) executeInDocker(ctx context.Context, cmd string) ([]byte, er
 		"openhands/sandbox:latest",
 		"sh", "-c", cmd,
 	}
-	
+
 	return exec.CommandContext(ctx, "docker", dockerArgs...).CombinedOutput()
 }
 
 // buildArgs builds command-line arguments
 func (o *OpenHands) buildArgs() []string {
 	var args []string
-	
+
 	if o.config.LLMModel != "" {
 		args = append(args, "-m", o.config.LLMModel)
 	}
-	
+
 	if o.config.AgentName != "" {
 		args = append(args, "-a", o.config.AgentName)
 	}
-	
+
 	if o.config.WorkspaceDir != "" {
 		args = append(args, "-w", o.config.WorkspaceDir)
 	}
-	
+
 	if o.config.MaxIterations > 0 {
 		args = append(args, "-i", fmt.Sprintf("%d", o.config.MaxIterations))
 	}
-	
+
 	if o.config.AutoConfirm {
 		args = append(args, "--auto-confirm")
 	}
-	
+
 	return args
 }
 
@@ -261,16 +261,16 @@ func (o *OpenHands) SetupSandbox(ctx context.Context) error {
 	if o.config.SandboxType != "docker" {
 		return nil
 	}
-	
+
 	// Check if Docker is available
 	if _, err := exec.LookPath("docker"); err != nil {
 		return fmt.Errorf("docker not available")
 	}
-	
+
 	// Check if sandbox image exists
 	cmd := exec.CommandContext(ctx, "docker", "images", "-q", "openhands/sandbox:latest")
 	output, _ := cmd.Output()
-	
+
 	if len(output) == 0 {
 		// Pull sandbox image
 		pullCmd := exec.CommandContext(ctx, "docker", "pull", "openhands/sandbox:latest")
@@ -278,16 +278,16 @@ func (o *OpenHands) SetupSandbox(ctx context.Context) error {
 			return fmt.Errorf("failed to pull sandbox image: %w\n%s", err, string(output))
 		}
 	}
-	
+
 	return nil
 }
 
 // GetSandboxStatus returns the sandbox status
 func (o *OpenHands) GetSandboxStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"type":       o.config.SandboxType,
-		"workspace":  o.config.WorkspaceDir,
-		"available":  o.IsAvailable(),
+		"type":      o.config.SandboxType,
+		"workspace": o.config.WorkspaceDir,
+		"available": o.IsAvailable(),
 	}
 }
 

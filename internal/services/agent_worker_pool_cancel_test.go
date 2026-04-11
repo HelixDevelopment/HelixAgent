@@ -40,7 +40,10 @@ func TestAgentWorkerPool_Shutdown_NoPanic(t *testing.T) {
 	}, noopCompleteFunc, nil, 1)
 	assert.NoError(t, err)
 	// Drain in background
-	go func() { for range ch {} }()
+	go func() {
+		for range ch {
+		}
+	}()
 	pool.Shutdown()
 	time.Sleep(200 * time.Millisecond)
 	// If we reach here without panic, test passes

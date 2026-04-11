@@ -10,34 +10,34 @@ import (
 )
 
 // Strategy defines the interface for Claude Code execution strategies
- type Strategy interface {
+type Strategy interface {
 	// Name returns the strategy name
 	Name() string
-	
+
 	// Description returns a description of the strategy
 	Description() string
-	
+
 	// Start starts the strategy
 	Start(ctx context.Context) error
-	
+
 	// Stop stops the strategy
 	Stop(ctx context.Context) error
-	
+
 	// CreateMessage creates a message
 	CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error)
-	
+
 	// CreateMessageStream creates a streaming message
 	CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error)
-	
+
 	// SupportsFeature checks if a feature is supported
 	SupportsFeature(feature string) bool
-	
+
 	// GetFeatures returns all supported features
 	GetFeatures() []string
 }
 
 // Config holds strategy configuration
- type Config struct {
+type Config struct {
 	Type         string
 	APIKey       string
 	OAuthToken   string
@@ -47,14 +47,14 @@ import (
 
 // Available strategies
 const (
-	TypeStandard = "standard"  // Basic API integration
-	TypeFull     = "full"      // Full API + all features (DEFAULT)
-	TypeOAuth    = "oauth"     // OAuth-based authentication
-	TypeAPIKey   = "api_key"   // API key authentication
+	TypeStandard = "standard" // Basic API integration
+	TypeFull     = "full"     // Full API + all features (DEFAULT)
+	TypeOAuth    = "oauth"    // OAuth-based authentication
+	TypeAPIKey   = "api_key"  // API key authentication
 )
 
 // New creates a new strategy based on type
- func New(strategyType string, client *api.Client, config interface{}) (Strategy, error) {
+func New(strategyType string, client *api.Client, config interface{}) (Strategy, error) {
 	switch strategyType {
 	case TypeStandard:
 		return NewStandardStrategy(client), nil
@@ -70,7 +70,7 @@ const (
 }
 
 // BaseStrategy provides common strategy functionality
- type BaseStrategy struct {
+type BaseStrategy struct {
 	name        string
 	description string
 	client      *api.Client
@@ -78,17 +78,17 @@ const (
 }
 
 // Name returns the strategy name
- func (b *BaseStrategy) Name() string {
+func (b *BaseStrategy) Name() string {
 	return b.name
 }
 
 // Description returns the strategy description
- func (b *BaseStrategy) Description() string {
+func (b *BaseStrategy) Description() string {
 	return b.description
 }
 
 // SupportsFeature checks if a feature is supported
- func (b *BaseStrategy) SupportsFeature(feature string) bool {
+func (b *BaseStrategy) SupportsFeature(feature string) bool {
 	for _, f := range b.features {
 		if f == feature {
 			return true
@@ -98,17 +98,17 @@ const (
 }
 
 // GetFeatures returns all supported features
- func (b *BaseStrategy) GetFeatures() []string {
+func (b *BaseStrategy) GetFeatures() []string {
 	return b.features
 }
 
 // StandardStrategy provides basic API integration
- type StandardStrategy struct {
+type StandardStrategy struct {
 	BaseStrategy
 }
 
 // NewStandardStrategy creates a new standard strategy
- func NewStandardStrategy(client *api.Client) *StandardStrategy {
+func NewStandardStrategy(client *api.Client) *StandardStrategy {
 	return &StandardStrategy{
 		BaseStrategy: BaseStrategy{
 			name:        TypeStandard,
@@ -124,32 +124,32 @@ const (
 }
 
 // Start starts the standard strategy
- func (s *StandardStrategy) Start(ctx context.Context) error {
+func (s *StandardStrategy) Start(ctx context.Context) error {
 	return nil
 }
 
 // Stop stops the standard strategy
- func (s *StandardStrategy) Stop(ctx context.Context) error {
+func (s *StandardStrategy) Stop(ctx context.Context) error {
 	return nil
 }
 
 // CreateMessage creates a message
- func (s *StandardStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
+func (s *StandardStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
 	return s.client.CreateMessage(ctx, req)
 }
 
 // CreateMessageStream creates a streaming message
- func (s *StandardStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
+func (s *StandardStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
 	return s.client.CreateMessageStream(ctx, req)
 }
 
 // FullStrategy provides full API integration with all features (DEFAULT)
- type FullStrategy struct {
+type FullStrategy struct {
 	BaseStrategy
 }
 
 // NewFullStrategy creates a new full strategy
- func NewFullStrategy(client *api.Client) *FullStrategy {
+func NewFullStrategy(client *api.Client) *FullStrategy {
 	return &FullStrategy{
 		BaseStrategy: BaseStrategy{
 			name:        TypeFull,
@@ -184,34 +184,34 @@ const (
 }
 
 // Start starts the full strategy
- func (s *FullStrategy) Start(ctx context.Context) error {
+func (s *FullStrategy) Start(ctx context.Context) error {
 	// Full strategy performs additional initialization
 	return nil
 }
 
 // Stop stops the full strategy
- func (s *FullStrategy) Stop(ctx context.Context) error {
+func (s *FullStrategy) Stop(ctx context.Context) error {
 	return nil
 }
 
 // CreateMessage creates a message with all features enabled
- func (s *FullStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
+func (s *FullStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
 	// Full strategy can add additional processing
 	return s.client.CreateMessage(ctx, req)
 }
 
 // CreateMessageStream creates a streaming message with full features
- func (s *FullStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
+func (s *FullStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
 	return s.client.CreateMessageStream(ctx, req)
 }
 
 // OAuthStrategy provides OAuth-specific optimizations
- type OAuthStrategy struct {
+type OAuthStrategy struct {
 	BaseStrategy
 }
 
 // NewOAuthStrategy creates a new OAuth strategy
- func NewOAuthStrategy(client *api.Client) *OAuthStrategy {
+func NewOAuthStrategy(client *api.Client) *OAuthStrategy {
 	return &OAuthStrategy{
 		BaseStrategy: BaseStrategy{
 			name:        TypeOAuth,
@@ -235,32 +235,32 @@ const (
 }
 
 // Start starts the OAuth strategy
- func (s *OAuthStrategy) Start(ctx context.Context) error {
+func (s *OAuthStrategy) Start(ctx context.Context) error {
 	return nil
 }
 
 // Stop stops the OAuth strategy
- func (s *OAuthStrategy) Stop(ctx context.Context) error {
+func (s *OAuthStrategy) Stop(ctx context.Context) error {
 	return nil
 }
 
 // CreateMessage creates a message
- func (s *OAuthStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
+func (s *OAuthStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
 	return s.client.CreateMessage(ctx, req)
 }
 
 // CreateMessageStream creates a streaming message
- func (s *OAuthStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
+func (s *OAuthStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
 	return s.client.CreateMessageStream(ctx, req)
 }
 
 // APIKeyStrategy provides API key authentication strategy
- type APIKeyStrategy struct {
+type APIKeyStrategy struct {
 	BaseStrategy
 }
 
 // NewAPIKeyStrategy creates a new API key strategy
- func NewAPIKeyStrategy(client *api.Client) *APIKeyStrategy {
+func NewAPIKeyStrategy(client *api.Client) *APIKeyStrategy {
 	return &APIKeyStrategy{
 		BaseStrategy: BaseStrategy{
 			name:        TypeAPIKey,
@@ -277,27 +277,27 @@ const (
 }
 
 // Start starts the API key strategy
- func (s *APIKeyStrategy) Start(ctx context.Context) error {
+func (s *APIKeyStrategy) Start(ctx context.Context) error {
 	return nil
 }
 
 // Stop stops the API key strategy
- func (s *APIKeyStrategy) Stop(ctx context.Context) error {
+func (s *APIKeyStrategy) Stop(ctx context.Context) error {
 	return nil
 }
 
 // CreateMessage creates a message
- func (s *APIKeyStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
+func (s *APIKeyStrategy) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
 	return s.client.CreateMessage(ctx, req)
 }
 
 // CreateMessageStream creates a streaming message
- func (s *APIKeyStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
+func (s *APIKeyStrategy) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
 	return s.client.CreateMessageStream(ctx, req)
 }
 
 // StrategyInfo holds information about available strategies
- type StrategyInfo struct {
+type StrategyInfo struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Features    []string `json:"features"`
@@ -305,7 +305,7 @@ const (
 }
 
 // GetAvailableStrategies returns information about all available strategies
- func GetAvailableStrategies() []StrategyInfo {
+func GetAvailableStrategies() []StrategyInfo {
 	return []StrategyInfo{
 		{
 			Name:        TypeFull,
@@ -342,12 +342,12 @@ const (
 }
 
 // GetDefaultStrategy returns the default strategy name
- func GetDefaultStrategy() string {
+func GetDefaultStrategy() string {
 	return TypeFull
 }
 
 // IsValidStrategy checks if a strategy type is valid
- func IsValidStrategy(strategyType string) bool {
+func IsValidStrategy(strategyType string) bool {
 	switch strategyType {
 	case TypeStandard, TypeFull, TypeOAuth, TypeAPIKey:
 		return true

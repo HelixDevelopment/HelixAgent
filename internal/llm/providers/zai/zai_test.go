@@ -55,7 +55,7 @@ func TestNewZAIProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewZAIProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
 			assert.Equal(t, tt.expected.baseURL, provider.baseURL)
@@ -410,7 +410,7 @@ func TestZAIProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/models", r.URL.Path)
@@ -520,7 +520,7 @@ func TestZAIProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewZAIProvider(tt.apiKey, tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(nil)
 
@@ -540,7 +540,7 @@ func TestZAIProvider_convertToZAIRequest(t *testing.T) {
 	provider := NewZAIProvider("test-key", "https://api.z.ai/v1", "z-ai-base")
 
 	t.Run("completion format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			ID:     "test-123",
 			Prompt: "test prompt",
@@ -565,7 +565,7 @@ func TestZAIProvider_convertToZAIRequest(t *testing.T) {
 	})
 
 	t.Run("chat format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			ID: "test-123",
 			Messages: []models.Message{
@@ -597,7 +597,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 	provider := NewZAIProvider("test-key", "https://api.z.ai/v1", "z-ai-base")
 
 	t.Run("text completion response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-123",
 			Object:  "text_completion",
@@ -634,7 +634,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 	})
 
 	t.Run("chat completion response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-456",
 			Object:  "chat.completion",
@@ -665,7 +665,7 @@ func TestZAIProvider_convertFromZAIResponse(t *testing.T) {
 	})
 
 	t.Run("no content in response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		zaiResp := &ZAIResponse{
 			ID:      "resp-789",
 			Object:  "text_completion",
@@ -777,7 +777,7 @@ func TestZAIProvider_makeRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
@@ -971,7 +971,7 @@ func TestZAIProvider_ZhipuErrorCodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Header().Set("Content-Type", "application/json")

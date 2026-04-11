@@ -293,7 +293,7 @@ func TestSchemaValidator_Formats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			schema := &JSONSchema{Type: "string", Format: tt.format}
 			validator, err := NewSchemaValidator(schema)
 			require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestExtractJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractJSON(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -371,7 +371,7 @@ func TestFindMatchingBrace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := findMatchingBrace(tt.input, '{', '}')
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1347,7 +1347,7 @@ func TestExtractJSON_MoreCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractJSON(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1371,7 +1371,7 @@ func TestFindMatchingBrace_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := findMatchingBrace(tt.input, tt.open, tt.close)
 			assert.Equal(t, tt.expected, result)
 		})

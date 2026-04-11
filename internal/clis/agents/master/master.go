@@ -6,7 +6,7 @@ import (
 	"context"
 	"log"
 	"sync"
-	
+
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/aider"
 	"dev.helix.agent/internal/clis/agents/amazonq"
@@ -20,28 +20,28 @@ import (
 )
 
 // MasterIntegration manages all CLI agent integrations
- type MasterIntegration struct {
+type MasterIntegration struct {
 	registry *agents.Registry
 	started  bool
 }
 
 // NewMasterIntegration creates a new master integration
- func NewMasterIntegration() (*MasterIntegration, error) {
+func NewMasterIntegration() (*MasterIntegration, error) {
 	m := &MasterIntegration{
 		registry: agents.GetGlobalRegistry(),
 	}
-	
+
 	if err := m.registerAllAgents(); err != nil {
 		return nil, err
 	}
-	
+
 	return m, nil
 }
 
 // registerAllAgents registers all 47 CLI agent integrations
 func (m *MasterIntegration) registerAllAgents() error {
 	log.Println("[Master] Registering all CLI agents...")
-	
+
 	// Priority 1: Major agents (fully implemented)
 	agentList := []agents.AgentIntegration{
 		aider.New(),
@@ -54,7 +54,7 @@ func (m *MasterIntegration) registerAllAgents() error {
 		continueagent.New(),
 		claudeCode.New(),
 	}
-	
+
 	for _, agent := range agentList {
 		info := agent.Info()
 		if err := m.registry.Register(agent); err != nil {
@@ -63,11 +63,11 @@ func (m *MasterIntegration) registerAllAgents() error {
 			log.Printf("[Master] Registered: %s (%s)", info.Name, info.Type)
 		}
 	}
-	
+
 	// Log summary
 	stats := m.registry.GetStats()
 	log.Printf("[Master] Registered %d agents", stats["total"])
-	
+
 	return nil
 }
 
@@ -76,19 +76,19 @@ func (m *MasterIntegration) Start(ctx context.Context) error {
 	if m.started {
 		return nil
 	}
-	
+
 	log.Println("[Master] Starting all CLI agents...")
-	
+
 	errs := m.registry.StartAll(ctx)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Printf("[Master] Start error: %v", err)
 		}
 	}
-	
+
 	m.started = true
 	log.Println("[Master] All agents started")
-	
+
 	return nil
 }
 
@@ -97,19 +97,19 @@ func (m *MasterIntegration) Stop(ctx context.Context) error {
 	if !m.started {
 		return nil
 	}
-	
+
 	log.Println("[Master] Stopping all CLI agents...")
-	
+
 	errs := m.registry.StopAll(ctx)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Printf("[Master] Stop error: %v", err)
 		}
 	}
-	
+
 	m.started = false
 	log.Println("[Master] All agents stopped")
-	
+
 	return nil
 }
 
@@ -154,13 +154,13 @@ func (m *MasterIntegration) GetStats() map[string]interface{} {
 }
 
 // Singleton instance
- var (
+var (
 	masterInstance *MasterIntegration
 	masterOnce     sync.Once
 )
 
 // GetMaster returns the singleton master integration
- func GetMaster() *MasterIntegration {
+func GetMaster() *MasterIntegration {
 	var err error
 	masterOnce.Do(func() {
 		masterInstance, err = NewMasterIntegration()

@@ -27,7 +27,7 @@ func TestNewSSEManager(t *testing.T) {
 	logger := testLogger()
 
 	t.Run("with default config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		manager := NewSSEManager(nil, logger)
 		require.NotNil(t, manager)
 
@@ -41,7 +41,7 @@ func TestNewSSEManager(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &SSEConfig{
 			HeartbeatInterval: 10 * time.Second,
 			BufferSize:        50,
@@ -79,7 +79,7 @@ func TestSSEManager_RegisterClient(t *testing.T) {
 	defer func() { _ = manager.Stop() }()
 
 	t.Run("register single client", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		clientChan := make(chan []byte, 10)
 		err := manager.RegisterClient("task-1", clientChan)
 		assert.NoError(t, err)
@@ -89,7 +89,7 @@ func TestSSEManager_RegisterClient(t *testing.T) {
 	})
 
 	t.Run("register multiple clients for same task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		clientChan2 := make(chan []byte, 10)
 		clientChan3 := make(chan []byte, 10)
 
@@ -104,7 +104,7 @@ func TestSSEManager_RegisterClient(t *testing.T) {
 	})
 
 	t.Run("register clients for different tasks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		clientChan := make(chan []byte, 10)
 		err := manager.RegisterClient("task-2", clientChan)
 		assert.NoError(t, err)
@@ -374,7 +374,7 @@ func TestFormatSSEEvent(t *testing.T) {
 	})
 
 	t.Run("heartbeat event", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		data := []byte(`{"type":"heartbeat"}`)
 		formatted := formatSSEEvent("heartbeat", data)
 
@@ -383,7 +383,7 @@ func TestFormatSSEEvent(t *testing.T) {
 	})
 
 	t.Run("custom event", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		data := []byte(`{"progress":50}`)
 		formatted := formatSSEEvent("progress_update", data)
 
@@ -398,7 +398,7 @@ func TestSSESubscriber(t *testing.T) {
 	clientChan := make(chan []byte, 10)
 
 	t.Run("create new subscriber", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewSSESubscriber("sub-1", "task-1", clientChan)
 
 		assert.Equal(t, "sub-1", subscriber.ID())
@@ -407,7 +407,7 @@ func TestSSESubscriber(t *testing.T) {
 	})
 
 	t.Run("notify subscriber", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewSSESubscriber("sub-1", "task-1", clientChan)
 
 		notification := &TaskNotification{
@@ -429,7 +429,7 @@ func TestSSESubscriber(t *testing.T) {
 	})
 
 	t.Run("close subscriber", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewSSESubscriber("sub-1", "task-1", clientChan)
 
 		err := subscriber.Close()
@@ -585,7 +585,7 @@ func TestSSEManager_Stop_ConcurrentSendersNoPanic(t *testing.T) {
 	logger := testLogger()
 
 	t.Run("concurrent broadcast during stop does not panic", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		manager := NewSSEManager(nil, logger)
 
 		// Register several clients with buffered channels
@@ -637,7 +637,7 @@ func TestSSEManager_Stop_ConcurrentSendersNoPanic(t *testing.T) {
 	})
 
 	t.Run("double stop does not panic", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		manager := NewSSEManager(nil, logger)
 
 		ch := make(chan []byte, 10)
@@ -652,7 +652,7 @@ func TestSSEManager_Stop_ConcurrentSendersNoPanic(t *testing.T) {
 	})
 
 	t.Run("concurrent stops do not panic", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		manager := NewSSEManager(nil, logger)
 
 		ch := make(chan []byte, 10)

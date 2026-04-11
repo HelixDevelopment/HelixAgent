@@ -141,10 +141,10 @@ func TestProviderRegistryUnit_NewProviderRegistry(t *testing.T) {
 
 func TestProviderRegistryUnit_NewProviderRegistry_WithAutoDiscovery(t *testing.T) {
 	cfg := &RegistryConfig{
-		DefaultTimeout:        30 * time.Second,
-		MaxRetries:            3,
-		DisableAutoDiscovery:  false,
-		Providers:             make(map[string]*ProviderConfig),
+		DefaultTimeout:       30 * time.Second,
+		MaxRetries:           3,
+		DisableAutoDiscovery: false,
+		Providers:            make(map[string]*ProviderConfig),
 	}
 
 	registry := NewProviderRegistry(cfg, nil)
@@ -1030,9 +1030,9 @@ func TestProviderRegistryUnit_CircuitBreakerProvider_Complete(t *testing.T) {
 	cb := NewCircuitBreaker(5, 2, 60*time.Second)
 	// Create weighted semaphore
 	weightedSem := semaphore.NewWeighted(10)
-	
+
 	var counter int64
-	
+
 	cbProvider := &circuitBreakerProvider{
 		provider:              mockProvider,
 		circuitBreaker:        cb,

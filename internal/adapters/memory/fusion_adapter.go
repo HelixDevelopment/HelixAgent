@@ -163,9 +163,9 @@ func (a *HelixMemoryFusionAdapter) GetBySession(ctx context.Context, sessionID s
 func (a *HelixMemoryFusionAdapter) AddEntity(ctx context.Context, entity *helixmem.Entity) error {
 	// Store as graph memory in Cognee
 	entry := &types.MemoryEntry{
-		ID:        entity.ID,
-		Content:   fmt.Sprintf("%s: %s (%s)", entity.Name, entity.Type, entity.Properties),
-		Type:      types.MemoryTypeGraph,
+		ID:      entity.ID,
+		Content: fmt.Sprintf("%s: %s (%s)", entity.Name, entity.Type, entity.Properties),
+		Type:    types.MemoryTypeGraph,
 		Metadata: map[string]interface{}{
 			"entity_name": entity.Name,
 			"entity_type": entity.Type,
@@ -199,12 +199,12 @@ func (a *HelixMemoryFusionAdapter) GetEntity(ctx context.Context, id string) (*h
 
 	entry := result.Entries[0]
 	return &helixmem.Entity{
-		ID:        entry.ID,
-		Name:      entry.Metadata["entity_name"].(string),
-		Type:      entry.Metadata["entity_type"].(string),
+		ID:         entry.ID,
+		Name:       entry.Metadata["entity_name"].(string),
+		Type:       entry.Metadata["entity_type"].(string),
 		Properties: entry.Metadata["properties"].(map[string]interface{}),
-		CreatedAt: entry.CreatedAt,
-		UpdatedAt: entry.UpdatedAt,
+		CreatedAt:  entry.CreatedAt,
+		UpdatedAt:  entry.UpdatedAt,
 	}, nil
 }
 
@@ -278,7 +278,7 @@ func (a *HelixMemoryFusionAdapter) GetRelationships(ctx context.Context, entityI
 // Health checks the health of all memory systems.
 func (a *HelixMemoryFusionAdapter) Health(ctx context.Context) map[string]error {
 	results := a.engine.HealthCheck(ctx)
-	
+
 	// Convert to string keys
 	health := make(map[string]error)
 	for source, err := range results {

@@ -51,11 +51,11 @@ func TestMemoryDB_IsMemoryMode_Direct(t *testing.T) {
 func TestMemoryDB_HealthCheck_ClosedBranch(t *testing.T) {
 	t.Parallel()
 	m := NewMemoryDB()
-	
+
 	// Close the database
 	err := m.Close()
 	require.NoError(t, err)
-	
+
 	// Health check should return "memory database closed" error
 	err = m.HealthCheck()
 	assert.Error(t, err)
@@ -71,10 +71,10 @@ func TestInitConnection_WithExistingDeadline(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	err := client.initConnection(ctx)
 	assert.NoError(t, err)
 }
@@ -84,9 +84,9 @@ func TestInitConnection_WithoutDeadline(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	ctx := context.Background()
-	
+
 	err := client.initConnection(ctx)
 	assert.NoError(t, err)
 }
@@ -103,16 +103,16 @@ func TestInitConnection_PoolAssignment(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force connection
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 64-67 (pool assignment path)
 	_ = client.initConnection(context.Background())
-	
+
 	// connectErr should be set
 	assert.NotNil(t, client.connectErr)
 }
@@ -133,13 +133,13 @@ func TestPool_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path (testPG is nil)
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 167 (return c.pool)
 	pool := client.Pool()
 	assert.Nil(t, pool)
@@ -157,13 +157,13 @@ func TestPing_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 194
 	err = client.Ping()
 	assert.Error(t, err)
@@ -181,13 +181,13 @@ func TestHealthCheck_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 207
 	err = client.HealthCheck()
 	assert.Error(t, err)
@@ -205,13 +205,13 @@ func TestExec_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises lines 220-221
 	err = client.Exec("SELECT 1")
 	assert.Error(t, err)
@@ -229,13 +229,13 @@ func TestQuery_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises lines 234-236
 	results, err := client.Query("SELECT 1")
 	assert.Error(t, err)
@@ -254,17 +254,17 @@ func TestQueryRow_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 262
 	row := client.QueryRow("SELECT 1")
 	assert.NotNil(t, row)
-	
+
 	var dest int
 	err = row.Scan(&dest)
 	assert.Error(t, err)
@@ -282,13 +282,13 @@ func TestBegin_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	// This exercises line 273
 	tx, err := client.Begin(context.Background())
 	assert.Error(t, err)
@@ -307,15 +307,15 @@ func TestMigrate_RealPath(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset to force real path
 	client.connectOnce = sync.Once{}
-	
+
 	migrations := []string{"CREATE TABLE test (id INT)"}
-	
+
 	// This exercises line 281
 	err = client.Migrate(context.Background(), migrations)
 	assert.Error(t, err)
@@ -329,7 +329,7 @@ func TestMigrate_RealPath(t *testing.T) {
 func TestNewPostgresDB_ErrorBranch(t *testing.T) {
 	t.Parallel()
 	cfg := &config.Config{}
-	
+
 	// Currently NewClient never returns error
 	pgDB, err := NewPostgresDB(cfg)
 	assert.NoError(t, err)
@@ -342,11 +342,11 @@ func TestNewPostgresDBWithFallback_SuccessBranch(t *testing.T) {
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	pgDB := &PostgresDB{client: client}
-	
+
 	// Verify ping works
 	err := pgDB.Ping()
 	assert.NoError(t, err)
-	
+
 	// This simulates the success path at line 58
 	_ = pgDB
 }
@@ -356,11 +356,11 @@ func TestNewPostgresDBWithFallback_PingSuccess(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	// Verify ping succeeds
 	err := client.Ping()
 	assert.NoError(t, err)
-	
+
 	// This simulates line 58: return db, nil, nil
 	_ = client
 }
@@ -386,9 +386,9 @@ func TestNewPostgresDBWithFallback_FallbackBranch(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	pgDB, memDB, err := NewPostgresDBWithFallback(cfg)
-	
+
 	// Should not error - falls back to MemoryDB
 	assert.NoError(t, err)
 	assert.Nil(t, pgDB)
@@ -407,9 +407,9 @@ func TestNewClientWithFallback_PingFail(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClientWithFallback(cfg)
-	
+
 	// Should fail because ping fails (line 103-104)
 	assert.Error(t, err)
 	assert.Nil(t, client)
@@ -420,7 +420,7 @@ func TestNewClientWithFallback_ReturnClient(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	// This simulates line 102
 	err := client.Ping()
 	assert.NoError(t, err)

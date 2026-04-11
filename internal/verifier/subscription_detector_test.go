@@ -43,7 +43,7 @@ func TestSubscriptionDetector_DetectSubscription_StaticFallback(t *testing.T) {
 
 	for _, tt := range providers {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			info := sd.DetectSubscription(context.Background(), tt.name, "")
 			require.NotNil(t, info)
 			assert.Equal(t, tt.expected, info.Type)
@@ -176,7 +176,7 @@ func TestSubscriptionDetector_InferFromRateLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			sd := NewSubscriptionDetector(logrus.New())
 			info := sd.InferFromRateLimits(tt.provider, tt.rateLimits)
 
@@ -350,7 +350,7 @@ func TestInferSubTypeFromLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := inferSubTypeFromLimits(tt.rl)
 			assert.Equal(t, tt.expected, result)
 		})

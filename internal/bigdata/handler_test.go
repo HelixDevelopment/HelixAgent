@@ -648,7 +648,7 @@ func TestReplayConversationRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))
@@ -692,7 +692,7 @@ func TestSearchKnowledgeGraphRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))
@@ -1473,7 +1473,7 @@ func TestQueryAnalyticsRequest_JSONBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.json))

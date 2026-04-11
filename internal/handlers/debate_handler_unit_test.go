@@ -238,8 +238,8 @@ func TestDebateHandlerUnit_CreateDebate_DefaultValues(t *testing.T) {
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, float64(3), response["max_rounds"])   // default
-	assert.Equal(t, float64(300), response["timeout"])    // default (5 minutes)
+	assert.Equal(t, float64(3), response["max_rounds"]) // default
+	assert.Equal(t, float64(300), response["timeout"])  // default (5 minutes)
 }
 
 // TestDebateHandler_GetDebate_Success tests retrieving a debate successfully
@@ -400,7 +400,7 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.debateID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 
@@ -616,7 +616,7 @@ func TestDebateHandlerUnit_ListDebates_WithStatusFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("status_"+tt.query, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates"+tt.query, nil)
 
@@ -1209,7 +1209,7 @@ func TestDebateHandlerUnit_RegisterRoutes(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+"_"+route.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Just verify route exists - we test functionality elsewhere
 			assert.NotNil(t, router)
 		})

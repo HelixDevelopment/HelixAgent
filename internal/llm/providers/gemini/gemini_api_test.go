@@ -442,7 +442,7 @@ func TestGeminiAPIProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.wantMin)
 			assert.LessOrEqual(t, confidence, tt.wantMax)
@@ -699,7 +699,7 @@ func TestGeminiAPIProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := &GeminiAPIProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -876,7 +876,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}
@@ -896,7 +896,7 @@ func TestIsAuthRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.retryable, isAuthRetryableStatus(tt.statusCode))
 		})
 	}
@@ -1128,7 +1128,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("flash model does not include thinkingConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var reqBody GeminiAPIRequest
 			body, err := io.ReadAll(r.Body)
@@ -1176,7 +1176,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("gemini-3-pro-preview includes thinkingConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-3-pro-preview")
 		geminiReq := provider.convertRequest(&models.LLMRequest{
 			Prompt:      "Test",
@@ -1188,7 +1188,7 @@ func TestGeminiAPIProvider_ExtendedThinking(t *testing.T) {
 	})
 
 	t.Run("gemini-3.1-pro-preview includes thinkingConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-3.1-pro-preview")
 		geminiReq := provider.convertRequest(&models.LLMRequest{
 			Prompt:      "Test",
@@ -1261,7 +1261,7 @@ func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
 	})
 
 	t.Run("googleSearch present alongside user tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-flash")
 
 		req := &models.LLMRequest{
@@ -1291,7 +1291,7 @@ func TestGeminiAPIProvider_GoogleSearchGrounding(t *testing.T) {
 	})
 
 	t.Run("googleSearch only when no user tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-flash")
 
 		req := &models.LLMRequest{
@@ -1371,7 +1371,7 @@ func TestGeminiAPIProvider_ModelAwareMaxTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewGeminiAPIProvider("test-key", "", tt.model)
 			geminiReq := provider.convertRequest(&models.LLMRequest{
 				Prompt: "Test",
@@ -1424,7 +1424,7 @@ func TestGeminiAPIProvider_ThinkingContentExtraction(t *testing.T) {
 	})
 
 	t.Run("no thinking metadata when no thought parts", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.0-flash")
 
 		geminiResp := &GeminiResponse{
@@ -1453,7 +1453,7 @@ func TestGeminiAPIProvider_ThinkingContentExtraction(t *testing.T) {
 	})
 
 	t.Run("multiple thinking parts concatenated", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewGeminiAPIProvider("test-key", "", "gemini-2.5-pro")
 
 		geminiResp := &GeminiResponse{

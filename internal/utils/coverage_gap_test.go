@@ -21,10 +21,10 @@ type mockTestingT struct {
 	message string
 }
 
-func (m *mockTestingT) Helper()                            {}
-func (m *mockTestingT) Fatal(args ...any)                  { m.failed = true }
-func (m *mockTestingT) Fatalf(format string, args ...any)  { m.failed = true }
-func (m *mockTestingT) Errorf(format string, args ...any)  { m.failed = true }
+func (m *mockTestingT) Helper()                           {}
+func (m *mockTestingT) Fatal(args ...any)                 { m.failed = true }
+func (m *mockTestingT) Fatalf(format string, args ...any) { m.failed = true }
+func (m *mockTestingT) Errorf(format string, args ...any) { m.failed = true }
 
 // tHelper is the interface both *testing.T and *mockTestingT satisfy for our
 // assertion helpers.

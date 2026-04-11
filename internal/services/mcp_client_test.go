@@ -24,7 +24,7 @@ func TestNewMCPClient(t *testing.T) {
 
 func TestMCPToolCallRequest(t *testing.T) {
 	req := ToolCallRequest{
-		Name:      "test_tool",
+		Name: "test_tool",
 		Arguments: map[string]interface{}{
 			"arg1": "value1",
 		},

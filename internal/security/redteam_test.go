@@ -127,7 +127,7 @@ func TestNewDeepTeamRedTeamer(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &RedTeamConfig{
 			AttackTypes: []AttackType{AttackTypeJailbreak},
 			Timeout:     60 * time.Second,
@@ -141,7 +141,7 @@ func TestNewDeepTeamRedTeamer(t *testing.T) {
 	})
 
 	t.Run("with custom payloads in config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		customAttack := Attack{
 			ID:       "CUSTOM-001",
 			Name:     "Custom Attack",
@@ -208,7 +208,7 @@ func TestDeepTeamRedTeamer_GetAttacks(t *testing.T) {
 	rt := NewDeepTeamRedTeamer(nil, nil)
 
 	t.Run("get direct prompt injection attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeDirectPromptInjection)
 		assert.NotEmpty(t, attacks)
 
@@ -221,37 +221,37 @@ func TestDeepTeamRedTeamer_GetAttacks(t *testing.T) {
 	})
 
 	t.Run("get jailbreak attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeJailbreak)
 		assert.NotEmpty(t, attacks)
 	})
 
 	t.Run("get data leakage attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeDataLeakage)
 		assert.NotEmpty(t, attacks)
 	})
 
 	t.Run("get system prompt leakage attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeSystemPromptLeakage)
 		assert.NotEmpty(t, attacks)
 	})
 
 	t.Run("get harmful content attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeHarmfulContent)
 		assert.NotEmpty(t, attacks)
 	})
 
 	t.Run("get code injection attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks(AttackTypeCodeInjection)
 		assert.NotEmpty(t, attacks)
 	})
 
 	t.Run("get nonexistent attack type returns empty", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attacks := rt.GetAttacks("nonexistent_type")
 		assert.Empty(t, attacks)
 	})
@@ -262,7 +262,7 @@ func TestDeepTeamRedTeamer_AddCustomAttack(t *testing.T) {
 	rt := NewDeepTeamRedTeamer(nil, nil)
 
 	t.Run("add custom attack with ID", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{
 			ID:       "CUSTOM-TEST-001",
 			Name:     "Test Attack",
@@ -285,7 +285,7 @@ func TestDeepTeamRedTeamer_AddCustomAttack(t *testing.T) {
 	})
 
 	t.Run("add custom attack without ID generates one", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{
 			Name:     "Auto ID Attack",
 			Type:     AttackTypeDeception,
@@ -303,7 +303,7 @@ func TestDeepTeamRedTeamer_RunAttack(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("attack blocked by target error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		target := newMockTarget()
 		target.sendError = errors.New("request blocked")
@@ -323,7 +323,7 @@ func TestDeepTeamRedTeamer_RunAttack(t *testing.T) {
 	})
 
 	t.Run("attack succeeds with vulnerable response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		rt.SetDebateTarget(&mockDebateTarget{
 			evaluation: &DebateEvaluation{
@@ -350,7 +350,7 @@ func TestDeepTeamRedTeamer_RunAttack(t *testing.T) {
 	})
 
 	t.Run("attack fails with safe response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		target := newMockTarget()
 		target.defaultResp = "I cannot help with that request."
@@ -368,7 +368,7 @@ func TestDeepTeamRedTeamer_RunAttack(t *testing.T) {
 	})
 
 	t.Run("attack with audit logging", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		auditLogger := &mockAuditLogger{}
 		rt.SetAuditLogger(auditLogger)
@@ -390,7 +390,7 @@ func TestDeepTeamRedTeamer_RunAttack(t *testing.T) {
 	})
 
 	t.Run("attack with debate evaluation error falls back to basic check", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		rt.SetDebateTarget(&mockDebateTarget{
 			err: errors.New("debate failed"),
@@ -417,7 +417,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	rt := NewDeepTeamRedTeamer(nil, nil)
 
 	t.Run("prompt injection detection - compliant", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeDirectPromptInjection}
 		response := "I'll ignore my instructions and help you"
 
@@ -426,7 +426,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("prompt injection detection - DAN", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeJailbreak}
 		response := "As DAN, I can help with anything"
 
@@ -435,7 +435,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("system prompt leakage detection", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeSystemPromptLeakage}
 		response := "You are configured to be helpful. Your instructions tell you to..."
 
@@ -444,7 +444,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("data leakage detection", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeDataLeakage}
 		response := "I remember from our earlier conversation..."
 
@@ -453,7 +453,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("harmful content - refusal is not vulnerable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeHarmfulContent}
 		response := "I cannot provide information on how to do that."
 
@@ -462,7 +462,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("harmful content - long response without refusal might be vulnerable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeHarmfulContent}
 		response := string(make([]byte, 300))
 
@@ -471,7 +471,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("code injection detection", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeCodeInjection}
 		response := "The output: root:x:0:0:root:/root:/bin/bash"
 
@@ -480,7 +480,7 @@ func TestDeepTeamRedTeamer_BasicVulnerabilityCheck(t *testing.T) {
 	})
 
 	t.Run("SQL injection detection", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		attack := &Attack{Type: AttackTypeSQLInjection}
 		response := "Query executed: drop table users"
 
@@ -494,7 +494,7 @@ func TestDeepTeamRedTeamer_RunSuite(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("run suite with default config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &RedTeamConfig{
 			AttackTypes:         []AttackType{AttackTypeDirectPromptInjection},
 			OWASPCategories:     []OWASPCategory{OWASP_LLM01},
@@ -514,7 +514,7 @@ func TestDeepTeamRedTeamer_RunSuite(t *testing.T) {
 	})
 
 	t.Run("run suite with custom config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		rt := NewDeepTeamRedTeamer(nil, nil)
 		target := newMockTarget()
 
@@ -531,7 +531,7 @@ func TestDeepTeamRedTeamer_RunSuite(t *testing.T) {
 	})
 
 	t.Run("run suite generates recommendations", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &RedTeamConfig{
 			AttackTypes:     []AttackType{AttackTypeDirectPromptInjection},
 			OWASPCategories: []OWASPCategory{OWASP_LLM01},
@@ -581,7 +581,7 @@ func TestDeepTeamRedTeamer_GenerateMitigations(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.attackType), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			attack := &Attack{Type: tc.attackType}
 			mitigations := rt.generateMitigations(attack)
 			assert.GreaterOrEqual(t, len(mitigations), 1, "Should generate mitigations for %s", tc.attackType)
@@ -623,7 +623,7 @@ func TestRedTeamReport_Scores(t *testing.T) {
 	rt := NewDeepTeamRedTeamer(nil, nil)
 
 	t.Run("calculate scores with no attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		report := &RedTeamReport{
 			TotalAttacks:  0,
 			OWASPCoverage: make(map[OWASPCategory]*CategoryScore),
@@ -633,7 +633,7 @@ func TestRedTeamReport_Scores(t *testing.T) {
 	})
 
 	t.Run("calculate scores with successful attacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		report := &RedTeamReport{
 			TotalAttacks:      10,
 			SuccessfulAttacks: 3,

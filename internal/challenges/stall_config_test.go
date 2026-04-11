@@ -26,7 +26,7 @@ func TestStallThresholdForCategory_Known(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.category, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected,
 				StallThresholdForCategory(tc.category))
 		})

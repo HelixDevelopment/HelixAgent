@@ -30,7 +30,7 @@ func TestFormatRequestIndicator(t *testing.T) {
 	})
 
 	t.Run("Handles all debate positions", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		positions := []struct {
 			pos  services.DebateTeamPosition
 			role services.DebateRole
@@ -70,7 +70,7 @@ func TestFormatResponseIndicator(t *testing.T) {
 	})
 
 	t.Run("Formats response with seconds timing", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		indicator := FormatResponseIndicator(
 			services.PositionMediator,
 			services.RoleMediator,
@@ -177,7 +177,7 @@ func TestFormatDebateTeamIntroduction(t *testing.T) {
 	})
 
 	t.Run("Truncates long topics", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		longTopic := strings.Repeat("x", 100)
 		intro := FormatDebateTeamIntroduction(longTopic, nil)
 
@@ -200,7 +200,7 @@ func TestStripANSI(t *testing.T) {
 	})
 
 	t.Run("Removes all common ANSI codes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		colored := ANSIBold + ANSICyan + "Bold Cyan" + ANSIReset +
 			ANSIDim + "Dim" + ANSIReset +
 			ANSIBrightWhite + "Bright" + ANSIReset
@@ -334,7 +334,7 @@ func TestFormatFallbackChainIndicator(t *testing.T) {
 	})
 
 	t.Run("Multiple chained fallbacks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "DeepSeek",
@@ -380,7 +380,7 @@ func TestFormatFallbackChainIndicator(t *testing.T) {
 	})
 
 	t.Run("Empty chain", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		indicator := FormatFallbackChainIndicator(
 			services.PositionAnalyst,
 			services.RoleAnalyst,
@@ -432,7 +432,7 @@ func TestFormatFallbackChainWithContent(t *testing.T) {
 	})
 
 	t.Run("Direct success without fallback", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "Claude",
@@ -461,7 +461,7 @@ func TestFormatFallbackChainWithContent(t *testing.T) {
 	})
 
 	t.Run("Multiple chained fallbacks with content", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chain := []FallbackAttempt{
 			{
 				Provider:   "DeepSeek",
@@ -528,7 +528,7 @@ func TestFormatFallbackReason(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := formatFallbackReason(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -550,7 +550,7 @@ func TestTimingColorIsDarker(t *testing.T) {
 	})
 
 	t.Run("Fallback indicator uses dim timing color", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		indicator := FormatFallbackIndicator(
 			services.PositionAnalyst,
 			services.RoleAnalyst,
@@ -601,7 +601,7 @@ func TestFormatPhaseHeader(t *testing.T) {
 
 	for _, tt := range phases {
 		t.Run(string(tt.phase), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := FormatPhaseHeader(tt.phase, 1)
 			assert.Contains(t, result, "PHASE 1")
 			assert.Contains(t, result, tt.expected)
@@ -634,7 +634,7 @@ func TestGetPhaseDisplayName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.phase), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getPhaseDisplayName(tt.phase)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -658,7 +658,7 @@ func TestGetPositionAvatar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getPositionAvatar(tt.position)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -682,7 +682,7 @@ func TestGetRoleName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.role), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getRoleName(tt.role)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -701,7 +701,7 @@ func TestPhaseIndicators_Extended(t *testing.T) {
 
 	for _, phase := range phases {
 		t.Run(string(phase), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			indicator, ok := PhaseIndicators[phase]
 			assert.True(t, ok, "Phase indicator should exist")
 			assert.NotEmpty(t, indicator.Icon)
@@ -736,7 +736,7 @@ func TestComplexFallbackScenarios(t *testing.T) {
 	})
 
 	t.Run("First provider succeeds immediately", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chain := []FallbackAttempt{
 			{Provider: "DeepSeek", Success: true, Duration: 50 * time.Millisecond, AttemptNum: 1},
 		}

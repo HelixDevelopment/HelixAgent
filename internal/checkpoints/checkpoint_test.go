@@ -13,13 +13,13 @@ import (
 func TestNewManager(t *testing.T) {
 	// Create a temporary directory
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-	
+
 	assert.Equal(t, tempDir, manager.basePath)
-	
+
 	// Verify checkpoints directory was created
 	checkpointsDir := filepath.Join(tempDir, ".checkpoints")
 	_, err = os.Stat(checkpointsDir)
@@ -30,11 +30,11 @@ func TestNewManager_NonExistentPath(t *testing.T) {
 	// Create a temporary directory
 	tempDir := t.TempDir()
 	nonExistentPath := filepath.Join(tempDir, "subdir", "workspace")
-	
+
 	manager, err := NewManager(nonExistentPath)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-	
+
 	// Verify checkpoints directory was created in the non-existent path
 	checkpointsDir := filepath.Join(nonExistentPath, ".checkpoints")
 	_, err = os.Stat(checkpointsDir)
@@ -44,56 +44,56 @@ func TestNewManager_NonExistentPath(t *testing.T) {
 func TestManager_Create(t *testing.T) {
 	// Create a temporary directory with some files
 	tempDir := t.TempDir()
-	
+
 	// Create test files
 	testFiles := map[string]string{
 		"main.go":     "package main",
 		"README.md":   "# Test",
 		"config.yaml": "key: value",
 	}
-	
+
 	for name, content := range testFiles {
 		err := os.WriteFile(filepath.Join(tempDir, name), []byte(content), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
-		name        string
+		name           string
 		checkpointName string
-		description string
-		tags        []string
-		wantErr     bool
+		description    string
+		tags           []string
+		wantErr        bool
 	}{
 		{
-			name:        "simple checkpoint",
+			name:           "simple checkpoint",
 			checkpointName: "test-checkpoint",
-			description: "Test description",
-			tags:        []string{"test", "backup"},
-			wantErr:     false,
+			description:    "Test description",
+			tags:           []string{"test", "backup"},
+			wantErr:        false,
 		},
 		{
-			name:        "checkpoint without tags",
+			name:           "checkpoint without tags",
 			checkpointName: "no-tags",
-			description: "No tags",
-			tags:        nil,
-			wantErr:     false,
+			description:    "No tags",
+			tags:           nil,
+			wantErr:        false,
 		},
 		{
-			name:        "empty name",
+			name:           "empty name",
 			checkpointName: "",
-			description: "",
-			tags:        nil,
-			wantErr:     false,
+			description:    "",
+			tags:           nil,
+			wantErr:        false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkpoint, err := manager.Create(tt.checkpointName, tt.description, tt.tags)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, checkpoint)
@@ -106,7 +106,7 @@ func TestManager_Create(t *testing.T) {
 				assert.Equal(t, tt.tags, checkpoint.Tags)
 				assert.False(t, checkpoint.CreatedAt.IsZero())
 				assert.NotEmpty(t, checkpoint.Files)
-				
+
 				// Verify checkpoint file was created
 				path := manager.checkpointPath(checkpoint.ID)
 				_, err = os.Stat(path)
@@ -120,19 +120,19 @@ func TestManager_Create_SkipsIgnoredFiles(t *testing.T) {
 	t.Skip("Skipping - test needs fixing")
 	// Create a temporary directory with files that should be skipped
 	tempDir := t.TempDir()
-	
+
 	// Create files
 	testFiles := map[string]string{
-		"main.go":                         "package main",
-		".git/config":                     "git config",
-		"node_modules/package/index.js":   "module.exports = {}",
-		"vendor/lib.go":                   "package lib",
-		"build/output":                    "binary",
-		"dist/bundle.js":                  "console.log('bundle')",
-		"target/classes/Main.class":       "class file",
-		"checkpoint.tar.gz":               "should skip",
+		"main.go":                       "package main",
+		".git/config":                   "git config",
+		"node_modules/package/index.js": "module.exports = {}",
+		"vendor/lib.go":                 "package lib",
+		"build/output":                  "binary",
+		"dist/bundle.js":                "console.log('bundle')",
+		"target/classes/Main.class":     "class file",
+		"checkpoint.tar.gz":             "should skip",
 	}
-	
+
 	for name, content := range testFiles {
 		path := filepath.Join(tempDir, name)
 		err := os.MkdirAll(filepath.Dir(path), 0755)
@@ -140,13 +140,13 @@ func TestManager_Create_SkipsIgnoredFiles(t *testing.T) {
 		err = os.WriteFile(path, []byte(content), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	checkpoint, err := manager.Create("test", "Test", nil)
 	require.NoError(t, err)
-	
+
 	// Should only include main.go (not .git, node_modules, vendor, build files, or .tar.gz)
 	assert.Len(t, checkpoint.Files, 1)
 	// The file should be main.go, not any of the skipped files
@@ -156,27 +156,27 @@ func TestManager_Create_SkipsIgnoredFiles(t *testing.T) {
 func TestManager_Restore(t *testing.T) {
 	// Create a temporary directory
 	tempDir := t.TempDir()
-	
+
 	// Create original file
 	originalContent := "original content"
 	err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte(originalContent), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	checkpoint, err := manager.Create("backup", "Backup", nil)
 	require.NoError(t, err)
-	
+
 	// Modify the file
 	err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("modified content"), 0644)
 	require.NoError(t, err)
-	
+
 	// Restore checkpoint
 	err = manager.Restore(checkpoint.ID)
 	require.NoError(t, err)
-	
+
 	// Verify file was restored
 	content, err := os.ReadFile(filepath.Join(tempDir, "test.txt"))
 	require.NoError(t, err)
@@ -185,10 +185,10 @@ func TestManager_Restore(t *testing.T) {
 
 func TestManager_Restore_NonExistent(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	err = manager.Restore("non-existent-checkpoint")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load checkpoint")
@@ -196,26 +196,26 @@ func TestManager_Restore_NonExistent(t *testing.T) {
 
 func TestManager_List(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create a file
 	err := os.WriteFile(filepath.Join(tempDir, "file.txt"), []byte("content"), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create multiple checkpoints
 	checkpoint1, err := manager.Create("checkpoint-1", "First", []string{"tag1"})
 	require.NoError(t, err)
-	
+
 	checkpoint2, err := manager.Create("checkpoint-2", "Second", []string{"tag2"})
 	require.NoError(t, err)
-	
+
 	// List checkpoints
 	checkpoints, err := manager.List()
 	require.NoError(t, err)
 	assert.Len(t, checkpoints, 2)
-	
+
 	// Verify checkpoint IDs
 	ids := make(map[string]bool)
 	for _, cp := range checkpoints {
@@ -227,10 +227,10 @@ func TestManager_List(t *testing.T) {
 
 func TestManager_List_Empty(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	checkpoints, err := manager.List()
 	require.NoError(t, err)
 	assert.Empty(t, checkpoints)
@@ -238,27 +238,27 @@ func TestManager_List_Empty(t *testing.T) {
 
 func TestManager_Delete(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create a file
 	err := os.WriteFile(filepath.Join(tempDir, "file.txt"), []byte("content"), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	checkpoint, err := manager.Create("to-delete", "To be deleted", nil)
 	require.NoError(t, err)
-	
+
 	// Verify checkpoint exists
 	path := manager.checkpointPath(checkpoint.ID)
 	_, err = os.Stat(path)
 	require.NoError(t, err)
-	
+
 	// Delete checkpoint
 	err = manager.Delete(checkpoint.ID)
 	require.NoError(t, err)
-	
+
 	// Verify checkpoint was deleted
 	_, err = os.Stat(path)
 	assert.True(t, os.IsNotExist(err))
@@ -267,10 +267,10 @@ func TestManager_Delete(t *testing.T) {
 func TestManager_Delete_NonExistent(t *testing.T) {
 	t.Skip("Skipping - test needs fixing")
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	err = manager.Delete("non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -293,7 +293,7 @@ func TestCheckpoint_Struct(t *testing.T) {
 		Tags: []string{"tag1", "tag2"},
 		Size: 1024,
 	}
-	
+
 	assert.Equal(t, "test-id", checkpoint.ID)
 	assert.Equal(t, "Test Checkpoint", checkpoint.Name)
 	assert.Equal(t, "Test description", checkpoint.Description)
@@ -309,7 +309,7 @@ func TestCheckpoint_Struct(t *testing.T) {
 func TestFileSnapshot_Struct(t *testing.T) {
 	now := time.Now()
 	content := []byte("test content")
-	
+
 	file := FileSnapshot{
 		Path:    "test.go",
 		Hash:    "abc123def456",
@@ -317,7 +317,7 @@ func TestFileSnapshot_Struct(t *testing.T) {
 		ModTime: now,
 		Content: content,
 	}
-	
+
 	assert.Equal(t, "test.go", file.Path)
 	assert.Equal(t, "abc123def456", file.Hash)
 	assert.Equal(t, os.FileMode(0644), file.Mode)
@@ -328,7 +328,7 @@ func TestFileSnapshot_Struct(t *testing.T) {
 func TestGenerateID(t *testing.T) {
 	id1 := generateID()
 	id2 := generateID()
-	
+
 	assert.NotEmpty(t, id1)
 	assert.NotEmpty(t, id2)
 	assert.NotEqual(t, id1, id2)
@@ -352,7 +352,7 @@ func TestShouldSkipDir(t *testing.T) {
 		{"don't skip src", "/project/src", false},
 		{"don't skip internal", "/project/internal", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := shouldSkipDir(tt.path)
@@ -373,7 +373,7 @@ func TestShouldSkipFile(t *testing.T) {
 		{"don't skip .md", "/project/README.md", false},
 		{"don't skip .yaml", "/project/config.yaml", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := shouldSkipFile(tt.path)
@@ -384,10 +384,10 @@ func TestShouldSkipFile(t *testing.T) {
 
 func TestCheckpointPath(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	path := manager.checkpointPath("test-id")
 	expected := filepath.Join(tempDir, ".checkpoints", "test-id.tar.gz")
 	assert.Equal(t, expected, path)
@@ -395,31 +395,31 @@ func TestCheckpointPath(t *testing.T) {
 
 func TestManager_Restore_DirectoryCreation(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create nested directory structure
 	nestedDir := filepath.Join(tempDir, "nested", "deep", "dir")
 	err := os.MkdirAll(nestedDir, 0755)
 	require.NoError(t, err)
-	
+
 	nestedFile := filepath.Join(nestedDir, "file.txt")
 	err = os.WriteFile(nestedFile, []byte("nested content"), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	checkpoint, err := manager.Create("nested", "Nested test", nil)
 	require.NoError(t, err)
-	
+
 	// Remove the original nested directories
 	err = os.RemoveAll(filepath.Join(tempDir, "nested"))
 	require.NoError(t, err)
-	
+
 	// Restore checkpoint
 	err = manager.Restore(checkpoint.ID)
 	require.NoError(t, err)
-	
+
 	// Verify nested file was restored
 	content, err := os.ReadFile(nestedFile)
 	require.NoError(t, err)
@@ -428,35 +428,35 @@ func TestManager_Restore_DirectoryCreation(t *testing.T) {
 
 func TestManager_Restore_PreservesModTime(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create file with specific modification time
 	filePath := filepath.Join(tempDir, "test.txt")
 	err := os.WriteFile(filePath, []byte("content"), 0644)
 	require.NoError(t, err)
-	
+
 	pastTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 	err = os.Chtimes(filePath, pastTime, pastTime)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	checkpoint, err := manager.Create("test", "Test", nil)
 	require.NoError(t, err)
-	
+
 	// Modify file
 	err = os.WriteFile(filePath, []byte("modified"), 0644)
 	require.NoError(t, err)
-	
+
 	// Restore checkpoint
 	err = manager.Restore(checkpoint.ID)
 	require.NoError(t, err)
-	
+
 	// Verify modification time (approximately, due to tar precision)
 	info, err := os.Stat(filePath)
 	require.NoError(t, err)
-	
+
 	// Tar format stores times with 1-second precision
 	assert.WithinDuration(t, pastTime, info.ModTime(), time.Second)
 }
@@ -464,18 +464,18 @@ func TestManager_Restore_PreservesModTime(t *testing.T) {
 func TestManager_Create_CapturesGitState(t *testing.T) {
 	// Create a temporary directory
 	tempDir := t.TempDir()
-	
+
 	// Create a file
 	err := os.WriteFile(filepath.Join(tempDir, "file.txt"), []byte("content"), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint (without git repo)
 	checkpoint, err := manager.Create("test", "Test", nil)
 	require.NoError(t, err)
-	
+
 	// GitRef and GitBranch should be empty without a git repo
 	assert.Empty(t, checkpoint.GitRef)
 	assert.Empty(t, checkpoint.GitBranch)
@@ -483,22 +483,22 @@ func TestManager_Create_CapturesGitState(t *testing.T) {
 
 func TestManager_CreateAndLoad(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create a file
 	err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test content"), 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	original, err := manager.Create("original", "Original checkpoint", []string{"tag1", "tag2"})
 	require.NoError(t, err)
-	
+
 	// Load checkpoint
 	loaded, err := manager.loadCheckpoint(original.ID)
 	require.NoError(t, err)
-	
+
 	// Verify loaded checkpoint matches original
 	assert.Equal(t, original.ID, loaded.ID)
 	assert.Equal(t, original.Name, loaded.Name)
@@ -509,10 +509,10 @@ func TestManager_CreateAndLoad(t *testing.T) {
 
 func TestManager_SaveAndLoadCheckpoint_Metadata(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	now := time.Now()
 	checkpoint := &Checkpoint{
 		ID:          "test-metadata",
@@ -526,15 +526,15 @@ func TestManager_SaveAndLoadCheckpoint_Metadata(t *testing.T) {
 		Size:        2048,
 		Files:       []FileSnapshot{},
 	}
-	
+
 	// Save checkpoint
 	err = manager.saveCheckpoint(checkpoint)
 	require.NoError(t, err)
-	
+
 	// Load checkpoint
 	loaded, err := manager.loadCheckpoint(checkpoint.ID)
 	require.NoError(t, err)
-	
+
 	// Verify metadata
 	assert.Equal(t, checkpoint.ID, loaded.ID)
 	assert.Equal(t, checkpoint.Name, loaded.Name)
@@ -548,15 +548,15 @@ func TestManager_SaveAndLoadCheckpoint_Metadata(t *testing.T) {
 
 func TestManager_List_InvalidFiles(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create invalid checkpoint file
 	checkpointsDir := filepath.Join(tempDir, ".checkpoints")
 	err = os.WriteFile(filepath.Join(checkpointsDir, "invalid.tar.gz"), []byte("not a valid archive"), 0644)
 	require.NoError(t, err)
-	
+
 	// List should skip invalid files
 	checkpoints, err := manager.List()
 	require.NoError(t, err)
@@ -565,19 +565,19 @@ func TestManager_List_InvalidFiles(t *testing.T) {
 
 func TestFileSnapshot_ContentIntegrity(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create file with binary content
 	binaryContent := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE}
 	err := os.WriteFile(filepath.Join(tempDir, "binary.bin"), binaryContent, 0644)
 	require.NoError(t, err)
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint
 	checkpoint, err := manager.Create("binary", "Binary test", nil)
 	require.NoError(t, err)
-	
+
 	// Verify file content was captured correctly
 	var found bool
 	for _, file := range checkpoint.Files {
@@ -592,17 +592,17 @@ func TestFileSnapshot_ContentIntegrity(t *testing.T) {
 
 func TestManager_List_MultipleCheckpoints(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create multiple files
 	for i := 0; i < 5; i++ {
 		filename := filepath.Join(tempDir, "file%d.txt")
 		err := os.WriteFile(filename, []byte("content"), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create multiple checkpoints
 	for i := 0; i < 3; i++ {
 		_, err := manager.Create(
@@ -612,12 +612,12 @@ func TestManager_List_MultipleCheckpoints(t *testing.T) {
 		)
 		require.NoError(t, err)
 	}
-	
+
 	// List all checkpoints
 	checkpoints, err := manager.List()
 	require.NoError(t, err)
 	assert.Len(t, checkpoints, 3)
-	
+
 	// Verify all checkpoint IDs are unique
 	ids := make(map[string]bool)
 	for _, cp := range checkpoints {
@@ -628,14 +628,14 @@ func TestManager_List_MultipleCheckpoints(t *testing.T) {
 
 func TestManager_Create_FileNotFound(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager, err := NewManager(tempDir)
 	require.NoError(t, err)
-	
+
 	// Create checkpoint without any files
 	checkpoint, err := manager.Create("empty", "Empty checkpoint", nil)
 	require.NoError(t, err)
-	
+
 	// Should have no files
 	assert.Empty(t, checkpoint.Files)
 }
@@ -644,12 +644,12 @@ func TestManager_Create_FileNotFound(t *testing.T) {
 
 func TestManager_Struct(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager := &Manager{
 		basePath: tempDir,
 		repo:     nil,
 	}
-	
+
 	assert.Equal(t, tempDir, manager.basePath)
 	assert.Nil(t, manager.repo)
 }
@@ -666,7 +666,7 @@ func TestCheckpoint_WithFiles(t *testing.T) {
 			{Path: "c.md", Hash: "hash-c"},
 		},
 	}
-	
+
 	assert.Len(t, checkpoint.Files, 3)
 	assert.Equal(t, "a.go", checkpoint.Files[0].Path)
 	assert.Equal(t, "hash-a", checkpoint.Files[0].Hash)

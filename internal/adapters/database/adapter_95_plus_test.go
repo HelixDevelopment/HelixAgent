@@ -51,7 +51,7 @@ func TestPool_TestPGNil_ReturnsNilPool(t *testing.T) {
 }
 
 // ============================================================================
-// Ping Method - Additional Coverage  
+// Ping Method - Additional Coverage
 // ============================================================================
 
 // TestPing_EnsureConnectedFails covers line 188-189

@@ -71,36 +71,36 @@ type AgenticTask struct {
 
 // AgenticResult holds the outcome of a single agent's task execution.
 type AgenticResult struct {
-	TaskID    string          `json:"task_id"`
-	AgentID   string          `json:"agent_id"`
-	Content   string          `json:"content"`
+	TaskID    string                 `json:"task_id"`
+	AgentID   string                 `json:"agent_id"`
+	Content   string                 `json:"content"`
 	ToolCalls []AgenticToolExecution `json:"tool_calls,omitempty"`
-	Duration  time.Duration   `json:"duration"`
-	Error     error           `json:"-"`
+	Duration  time.Duration          `json:"duration"`
+	Error     error                  `json:"-"`
 }
 
 // AgenticToolExecution captures a single tool invocation and its result
 // within the agentic ensemble pipeline.
 type AgenticToolExecution struct {
-	Protocol string        `json:"protocol"`
-	Operation string       `json:"operation"`
-	Input    interface{}   `json:"input,omitempty"`
-	Output   interface{}   `json:"output,omitempty"`
-	Duration time.Duration `json:"duration"`
-	Error    error         `json:"-"`
+	Protocol  string        `json:"protocol"`
+	Operation string        `json:"operation"`
+	Input     interface{}   `json:"input,omitempty"`
+	Output    interface{}   `json:"output,omitempty"`
+	Duration  time.Duration `json:"duration"`
+	Error     error         `json:"-"`
 }
 
 // AgenticEnsembleConfig holds all configuration for the agentic ensemble.
 type AgenticEnsembleConfig struct {
-	MaxConcurrentAgents      int           `json:"max_concurrent_agents"`
-	MaxIterationsPerAgent    int           `json:"max_iterations_per_agent"`
-	MaxToolIterationsPerPhase int          `json:"max_tool_iterations_per_phase"`
-	AgentTimeout             time.Duration `json:"agent_timeout"`
-	GlobalTimeout            time.Duration `json:"global_timeout"`
-	ToolIterationTimeout     time.Duration `json:"tool_iteration_timeout"`
-	EnableVision             bool          `json:"enable_vision"`
-	EnableMemory             bool          `json:"enable_memory"`
-	EnableExecution          bool          `json:"enable_execution"`
+	MaxConcurrentAgents       int           `json:"max_concurrent_agents"`
+	MaxIterationsPerAgent     int           `json:"max_iterations_per_agent"`
+	MaxToolIterationsPerPhase int           `json:"max_tool_iterations_per_phase"`
+	AgentTimeout              time.Duration `json:"agent_timeout"`
+	GlobalTimeout             time.Duration `json:"global_timeout"`
+	ToolIterationTimeout      time.Duration `json:"tool_iteration_timeout"`
+	EnableVision              bool          `json:"enable_vision"`
+	EnableMemory              bool          `json:"enable_memory"`
+	EnableExecution           bool          `json:"enable_execution"`
 }
 
 // DefaultAgenticEnsembleConfig returns the default configuration for the

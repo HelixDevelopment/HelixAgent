@@ -233,7 +233,7 @@ func TestJiraAdapter_GetIssue(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		client := &MockJiraClient{Issues: []JiraIssue{}}
 		config := DefaultJiraConfig()
 		config.BaseURL = "https://test.atlassian.net"

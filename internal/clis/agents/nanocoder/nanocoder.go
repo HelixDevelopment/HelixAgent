@@ -38,7 +38,7 @@ func New() *Nanocoder {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Nanocoder{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (n *Nanocoder) Initialize(ctx context.Context, config interface{}) error {
 	if err := n.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		n.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (n *Nanocoder) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return n.generate(ctx, params)
@@ -87,7 +87,7 @@ func (n *Nanocoder) generate(ctx context.Context, params map[string]interface{})
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"code":   fmt.Sprintf("// Nanocoder\n%s", prompt),

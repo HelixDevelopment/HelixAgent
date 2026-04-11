@@ -66,7 +66,7 @@ func TestEmbeddingModelConfig_JSONSerialization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			data, err := json.Marshal(tt.config)
 			require.NoError(t, err)
 
@@ -112,7 +112,7 @@ func TestEmbeddingModelRegistry_FallbackChainBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			registry := NewEmbeddingModelRegistry(RegistryConfig{
 				FallbackChain: tt.fallbackChain,
 			})
@@ -155,7 +155,7 @@ func TestEmbeddingModelRegistry_DefaultModelSelection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			registry := NewEmbeddingModelRegistry(RegistryConfig{
 				DefaultModel:  tt.defaultModel,
 				FallbackChain: tt.fallbackChain,
@@ -834,7 +834,7 @@ func TestEmbeddingModelRegistry_createModel_AllProviders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			model, err := registry.createModel(tt.config)
 
 			if tt.expectError {
@@ -1113,7 +1113,7 @@ func TestOpenAIEmbeddingModel_HTTPErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_, _ = w.Write([]byte(tt.body))

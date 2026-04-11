@@ -18,11 +18,11 @@ type Resolver struct {
 
 // ResolvedContext contains the expanded context
 type ResolvedContext struct {
-	Files         []ContextFile
-	GitInfo       *GitContext
-	Instructions  string
-	Variables     map[string]string
-	TotalTokens   int
+	Files        []ContextFile
+	GitInfo      *GitContext
+	Instructions string
+	Variables    map[string]string
+	TotalTokens  int
 }
 
 // ContextFile represents a file in the context
@@ -196,7 +196,7 @@ func (r *ResolvedContext) FormatContext() string {
 	if r.GitInfo != nil {
 		sb.WriteString("## Git Context\n\n")
 		sb.WriteString(fmt.Sprintf("Branch: %s\n\n", r.GitInfo.Branch))
-		
+
 		if len(r.GitInfo.RecentCommits) > 0 {
 			sb.WriteString("Recent commits:\n")
 			for _, msg := range r.GitInfo.RecentCommits {

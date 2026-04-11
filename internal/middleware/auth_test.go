@@ -26,7 +26,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("CustomConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := AuthConfig{
 			SecretKey:   "custom-secret-key",
 			TokenExpiry: 2 * time.Hour,
@@ -52,7 +52,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("DefaultTokenExpiryAndIssuer", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := AuthConfig{
 			SecretKey: "test-secret-key",
 		}
@@ -84,7 +84,7 @@ func TestAuthMiddleware_GenerateToken(t *testing.T) {
 	}
 
 	t.Run("ValidTokenGeneration", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate token: %v", err)
@@ -114,7 +114,7 @@ func TestAuthMiddleware_GenerateToken(t *testing.T) {
 	})
 
 	t.Run("DifferentRoles", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("admin123", "adminuser", "admin")
 		if err != nil {
 			t.Fatalf("Failed to generate admin token: %v", err)
@@ -143,7 +143,7 @@ func TestAuthMiddleware_ValidateToken(t *testing.T) {
 	}
 
 	t.Run("ValidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate token: %v", err)
@@ -160,7 +160,7 @@ func TestAuthMiddleware_ValidateToken(t *testing.T) {
 	})
 
 	t.Run("InvalidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		_, err := middleware.validateToken("invalid.token.string")
 		if err == nil {
 			t.Error("Expected error for invalid token, got nil")
@@ -168,7 +168,7 @@ func TestAuthMiddleware_ValidateToken(t *testing.T) {
 	})
 
 	t.Run("WrongSecretKey", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Create token with one middleware
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
@@ -203,7 +203,7 @@ func TestAuthMiddleware_ExtractTokenFromHeader(t *testing.T) {
 	}
 
 	t.Run("ValidBearerToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		authHeader := "Bearer test.token.here"
 		token := middleware.ExtractTokenFromHeader(authHeader)
 
@@ -213,7 +213,7 @@ func TestAuthMiddleware_ExtractTokenFromHeader(t *testing.T) {
 	})
 
 	t.Run("InvalidFormat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		authHeader := "Basic dGVzdDp0ZXN0"
 		token := middleware.ExtractTokenFromHeader(authHeader)
 
@@ -223,7 +223,7 @@ func TestAuthMiddleware_ExtractTokenFromHeader(t *testing.T) {
 	})
 
 	t.Run("EmptyHeader", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token := middleware.ExtractTokenFromHeader("")
 
 		if token != "" {
@@ -232,7 +232,7 @@ func TestAuthMiddleware_ExtractTokenFromHeader(t *testing.T) {
 	})
 
 	t.Run("MalformedHeader", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token := middleware.ExtractTokenFromHeader("Bearer")
 
 		if token != "" {
@@ -253,7 +253,7 @@ func TestAuthMiddleware_RefreshToken(t *testing.T) {
 	}
 
 	t.Run("ValidRefresh", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		originalToken, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate original token: %v", err)
@@ -280,7 +280,7 @@ func TestAuthMiddleware_RefreshToken(t *testing.T) {
 	})
 
 	t.Run("InvalidTokenRefresh", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		_, err := middleware.RefreshToken("invalid.token.string")
 		if err == nil {
 			t.Error("Expected error when refreshing invalid token, got nil")
@@ -314,7 +314,7 @@ func TestAuthMiddleware_Middleware(t *testing.T) {
 	})
 
 	t.Run("MissingAuthHeader", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/protected", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -325,7 +325,7 @@ func TestAuthMiddleware_Middleware(t *testing.T) {
 	})
 
 	t.Run("InvalidAuthFormat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/protected", nil)
 		req.Header.Set("Authorization", "InvalidFormat")
 		w := httptest.NewRecorder()
@@ -337,7 +337,7 @@ func TestAuthMiddleware_Middleware(t *testing.T) {
 	})
 
 	t.Run("ValidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate token: %v", err)
@@ -354,7 +354,7 @@ func TestAuthMiddleware_Middleware(t *testing.T) {
 	})
 
 	t.Run("SkipPath", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/public", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -387,7 +387,7 @@ func TestAuthMiddleware_Optional(t *testing.T) {
 	})
 
 	t.Run("NoAuthHeader", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/optional", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -398,7 +398,7 @@ func TestAuthMiddleware_Optional(t *testing.T) {
 	})
 
 	t.Run("WithValidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate token: %v", err)
@@ -436,7 +436,7 @@ func TestAuthMiddleware_RequireRole(t *testing.T) {
 	})
 
 	t.Run("UserRoleAccessDenied", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("user123", "testuser", "user")
 		if err != nil {
 			t.Fatalf("Failed to generate token: %v", err)
@@ -453,7 +453,7 @@ func TestAuthMiddleware_RequireRole(t *testing.T) {
 	})
 
 	t.Run("AdminRoleAccessGranted", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, err := middleware.GenerateToken("admin123", "adminuser", "admin")
 		if err != nil {
 			t.Fatalf("Failed to generate admin token: %v", err)
@@ -477,7 +477,7 @@ func TestHelperFunctions(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
 	t.Run("GetCurrentUser_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		user := GetCurrentUser(c)
 		if user != nil {
 			t.Errorf("Expected nil user, got %v", user)
@@ -485,7 +485,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("GetUserID_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		userID := GetUserID(c)
 		if userID != "" {
 			t.Errorf("Expected empty user ID, got %s", userID)
@@ -493,7 +493,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("GetUserRole_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		role := GetUserRole(c)
 		if role != "" {
 			t.Errorf("Expected empty role, got %s", role)
@@ -501,7 +501,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("IsAuthenticated_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		authenticated := IsAuthenticated(c)
 		if authenticated {
 			t.Error("Expected false for unauthenticated user")
@@ -509,7 +509,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("HasRole_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		hasRole := HasRole(c, "admin")
 		if hasRole {
 			t.Error("Expected false for user without role")
@@ -517,7 +517,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("IsAdmin_NoUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		isAdmin := IsAdmin(c)
 		if isAdmin {
 			t.Error("Expected false for non-admin user")
@@ -530,7 +530,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("GetCurrentUser_WithClaims", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		claims := &Claims{
 			UserID:   "user123",
@@ -549,7 +549,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("GetCurrentUser_WrongType", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("claims", "not a claims struct")
 
@@ -560,7 +560,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("GetUserID_Valid", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("user_id", "user456")
 
@@ -571,7 +571,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("GetUserID_WrongType", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("user_id", 123) // Not a string
 
@@ -582,7 +582,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("GetUserRole_Valid", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("role", "moderator")
 
@@ -593,7 +593,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("GetUserRole_WrongType", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("role", 123) // Not a string
 
@@ -604,7 +604,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("IsAuthenticated_WithUser", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		claims := &Claims{UserID: "user123"}
 		c.Set("claims", claims)
@@ -615,7 +615,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("HasRole_UserRole", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("role", "editor")
 
@@ -628,7 +628,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("HasRole_AdminHasAllRoles", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("role", "admin")
 
@@ -641,7 +641,7 @@ func TestHelperFunctions_WithUser(t *testing.T) {
 	})
 
 	t.Run("IsAdmin_True", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Set("role", "admin")
 
@@ -672,7 +672,7 @@ func TestAuthMiddleware_RequireAdmin(t *testing.T) {
 	})
 
 	t.Run("AdminAccessGranted", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, _ := middleware.GenerateToken("admin123", "adminuser", "admin")
 		req := httptest.NewRequest("GET", "/admin-only", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -685,7 +685,7 @@ func TestAuthMiddleware_RequireAdmin(t *testing.T) {
 	})
 
 	t.Run("NonAdminAccessDenied", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, _ := middleware.GenerateToken("user123", "testuser", "user")
 		req := httptest.NewRequest("GET", "/admin-only", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -712,7 +712,7 @@ func TestAuthMiddleware_RequireRole_EdgeCases(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("NoRoleInContext", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		router := gin.New()
 		router.GET("/test", middleware.RequireRole("admin"), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "ok"})
@@ -728,7 +728,7 @@ func TestAuthMiddleware_RequireRole_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("InvalidRoleType", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		router := gin.New()
 		router.GET("/test", func(c *gin.Context) {
 			c.Set("role", 123) // Invalid type
@@ -766,7 +766,7 @@ func TestAuthMiddleware_Optional_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("InvalidBearerFormat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/optional", nil)
 		req.Header.Set("Authorization", "Basic invalid")
 		w := httptest.NewRecorder()
@@ -779,7 +779,7 @@ func TestAuthMiddleware_Optional_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("InvalidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/optional", nil)
 		req.Header.Set("Authorization", "Bearer invalid.token.here")
 		w := httptest.NewRecorder()
@@ -792,7 +792,7 @@ func TestAuthMiddleware_Optional_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("SkipPath", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		router2 := gin.New()
 		router2.GET("/public/test", middleware.Optional([]string{"/public"}), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -826,7 +826,7 @@ func TestAuthMiddleware_Middleware_InvalidToken(t *testing.T) {
 	})
 
 	t.Run("ExpiredToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Create middleware with short expiry
 		shortConfig := AuthConfig{
 			SecretKey:   "test-secret-key",
@@ -846,7 +846,7 @@ func TestAuthMiddleware_Middleware_InvalidToken(t *testing.T) {
 	})
 
 	t.Run("MalformedToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("GET", "/protected", nil)
 		req.Header.Set("Authorization", "Bearer not.a.valid.jwt.token")
 		w := httptest.NewRecorder()
@@ -870,7 +870,7 @@ func TestAuthMiddleware_GetAuthInfo(t *testing.T) {
 	}
 
 	t.Run("Unauthenticated", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		info := middleware.GetAuthInfo(c)
 
@@ -880,7 +880,7 @@ func TestAuthMiddleware_GetAuthInfo(t *testing.T) {
 	})
 
 	t.Run("Authenticated", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		// Generate a valid token and extract claims from it
 		token, _ := middleware.GenerateToken("user123", "testuser", "admin")
@@ -937,7 +937,7 @@ func TestAuthMiddleware_Refresh(t *testing.T) {
 	router.POST("/refresh", middleware.Refresh)
 
 	t.Run("MissingToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("POST", "/refresh", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -948,7 +948,7 @@ func TestAuthMiddleware_Refresh(t *testing.T) {
 	})
 
 	t.Run("InvalidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("POST", "/refresh", nil)
 		req.Header.Set("Authorization", "Bearer invalid.token")
 		w := httptest.NewRecorder()
@@ -960,7 +960,7 @@ func TestAuthMiddleware_Refresh(t *testing.T) {
 	})
 
 	t.Run("ValidToken", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		token, _ := middleware.GenerateToken("user123", "testuser", "user")
 		req := httptest.NewRequest("POST", "/refresh", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -987,7 +987,7 @@ func TestAuthMiddleware_Login(t *testing.T) {
 	router.POST("/login", middleware.Login)
 
 	t.Run("InvalidRequestFormat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("POST", "/login", strings.NewReader("invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -999,7 +999,7 @@ func TestAuthMiddleware_Login(t *testing.T) {
 	})
 
 	t.Run("InvalidCredentials_NoUserService", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"username": "testuser", "password": "testpass"}`
 		req := httptest.NewRequest("POST", "/login", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -1013,7 +1013,7 @@ func TestAuthMiddleware_Login(t *testing.T) {
 	})
 
 	t.Run("EmptyUsername", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"username": "", "password": "testpass"}`
 		req := httptest.NewRequest("POST", "/login", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -1026,7 +1026,7 @@ func TestAuthMiddleware_Login(t *testing.T) {
 	})
 
 	t.Run("EmptyPassword", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"username": "testuser", "password": ""}`
 		req := httptest.NewRequest("POST", "/login", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -1053,7 +1053,7 @@ func TestAuthMiddleware_Register(t *testing.T) {
 	router.POST("/register", middleware.Register)
 
 	t.Run("InvalidRequestFormat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := httptest.NewRequest("POST", "/register", strings.NewReader("invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -1065,7 +1065,7 @@ func TestAuthMiddleware_Register(t *testing.T) {
 	})
 
 	t.Run("MissingRequiredFields", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"username": "testuser"}`
 		req := httptest.NewRequest("POST", "/register", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -1087,7 +1087,7 @@ func TestAuthMiddleware_AuthenticateUser(t *testing.T) {
 	middleware, _ := NewAuthMiddleware(config, nil)
 
 	t.Run("NoUserServiceConfigured", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		_, err := middleware.authenticateUser(context.Background(), "testuser", "testpass")
 		if err == nil {
 			t.Error("Expected error when user service is not configured")

@@ -646,4 +646,3 @@ func (e *AgenticEnsemble) buildToolSummary(
 	}
 	return summaries
 }
-

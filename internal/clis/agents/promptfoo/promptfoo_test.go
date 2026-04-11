@@ -15,7 +15,7 @@ func TestNewPromptfoo(t *testing.T) {
 	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
-	
+
 	info := p.Info()
 	assert.Equal(t, agents.TypePromptfoo, info.Type)
 	assert.Equal(t, "Promptfoo", info.Name)
@@ -27,7 +27,7 @@ func TestPromptfooInitialize(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
@@ -35,7 +35,7 @@ func TestPromptfooInitialize(t *testing.T) {
 		OutputFormat:   "yaml",
 		MaxConcurrency: 8,
 	}
-	
+
 	err := p.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, "yaml", p.config.OutputFormat)
@@ -46,25 +46,25 @@ func TestPromptfooInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "json", p.config.OutputFormat) // Default value
-	assert.Equal(t, 4, p.config.MaxConcurrency)     // Default value
+	assert.Equal(t, 4, p.config.MaxConcurrency)    // Default value
 }
 
 func TestPromptfooStartStop(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = p.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, p.IsStarted())
-	
+
 	err = p.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, p.IsStarted())
@@ -74,10 +74,10 @@ func TestPromptfooExecute(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -169,7 +169,7 @@ func TestPromptfooExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := p.Execute(ctx, tt.command, tt.params)
@@ -187,7 +187,7 @@ func TestPromptfooCapabilities(t *testing.T) {
 	t.Parallel()
 	p := New()
 	info := p.Info()
-	
+
 	expectedCaps := []string{"llm_testing", "prompt_evaluation", "regression_testing", "red_teaming", "multi_provider", "benchmarking"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -204,15 +204,15 @@ func TestPromptfooInitResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "init", map[string]interface{}{
 		"name": "my-project",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "my-project", resultMap["name"])
@@ -223,15 +223,15 @@ func TestPromptfooEvalResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "eval", map[string]interface{}{
 		"config": "promptfooconfig.yaml",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "promptfooconfig.yaml", resultMap["config"])
@@ -245,16 +245,16 @@ func TestPromptfooCreateSuiteResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "create_suite", map[string]interface{}{
 		"name":        "Test Suite",
 		"description": "A test suite",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.NotNil(t, resultMap["suite"])

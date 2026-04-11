@@ -229,7 +229,7 @@ func TestHTTP3Client_SetTimeout(t *testing.T) {
 
 func TestHTTP3Client_GetConfig(t *testing.T) {
 	config := &HTTP3ClientConfig{
-		Timeout:  90 * time.Second,
+		Timeout:    90 * time.Second,
 		MaxRetries: 5,
 	}
 	client := NewHTTP3Client(config)

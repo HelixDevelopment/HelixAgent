@@ -39,7 +39,7 @@ func New() *Fauxpilot {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Fauxpilot{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -57,11 +57,11 @@ func (f *Fauxpilot) Initialize(ctx context.Context, config interface{}) error {
 	if err := f.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		f.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -72,7 +72,7 @@ func (f *Fauxpilot) Execute(ctx context.Context, command string, params map[stri
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "complete":
 		return f.complete(ctx, params)
@@ -86,7 +86,7 @@ func (f *Fauxpilot) Execute(ctx context.Context, command string, params map[stri
 // complete generates completion
 func (f *Fauxpilot) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
-	
+
 	return map[string]interface{}{
 		"prefix":     prefix,
 		"completion": "// Fauxpilot completion",

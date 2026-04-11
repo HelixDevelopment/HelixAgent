@@ -18,18 +18,18 @@ const (
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request
 type JSONRPCRequest struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      interface{}     `json:"id"`
-	Method  string          `json:"method"`
-	Params  interface{}     `json:"params,omitempty"`
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
 }
 
 // JSONRPCResponse represents a JSON-RPC 2.0 response
 type JSONRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      interface{}     `json:"id,omitempty"`
-	Result  interface{}     `json:"result,omitempty"`
-	Error   *JSONRPCError   `json:"error,omitempty"`
+	JSONRPC string        `json:"jsonrpc"`
+	ID      interface{}   `json:"id,omitempty"`
+	Result  interface{}   `json:"result,omitempty"`
+	Error   *JSONRPCError `json:"error,omitempty"`
 }
 
 // JSONRPCError represents a JSON-RPC 2.0 error
@@ -75,16 +75,16 @@ type Implementation struct {
 type Capabilities struct {
 	// Experimental features
 	Experimental map[string]interface{} `json:"experimental,omitempty"`
-	
+
 	// Tool capabilities
 	Tools *ToolCapabilities `json:"tools,omitempty"`
-	
+
 	// Resource capabilities
 	Resources *ResourceCapabilities `json:"resources,omitempty"`
-	
+
 	// Prompt capabilities
 	Prompts *PromptCapabilities `json:"prompts,omitempty"`
-	
+
 	// Logging capabilities
 	Logging *LoggingCapabilities `json:"logging,omitempty"`
 }
@@ -99,7 +99,7 @@ type ToolCapabilities struct {
 type ResourceCapabilities struct {
 	// Whether the resource supports subscribing to changes
 	Subscribe bool `json:"subscribe,omitempty"`
-	
+
 	// Whether the resource supports list changes notifications
 	ListChanged bool `json:"listChanged,omitempty"`
 }
@@ -182,13 +182,13 @@ type ToolCallResult struct {
 // Content represents content returned from tool calls
 type Content struct {
 	Type string `json:"type"`
-	
+
 	// For text content
 	Text string `json:"text,omitempty"`
-	
+
 	// For image content
 	Image *ImageContent `json:"image,omitempty"`
-	
+
 	// For embedded resource
 	Resource *EmbeddedResource `json:"resource,omitempty"`
 }
@@ -227,10 +227,10 @@ type Resource struct {
 type ResourceContents struct {
 	URI      string `json:"uri"`
 	MimeType string `json:"mimeType,omitempty"`
-	
+
 	// For text resources
 	Text string `json:"text,omitempty"`
-	
+
 	// For binary resources
 	Blob string `json:"blob,omitempty"` // base64 encoded
 }
@@ -280,8 +280,8 @@ type ResourceListChangedNotification struct{}
 
 // Prompt represents a prompt template
 type Prompt struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
 	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
@@ -371,13 +371,13 @@ type SamplingMessage struct {
 type ModelPreferences struct {
 	// Hints for model selection
 	Hints []ModelHint `json:"hints,omitempty"`
-	
+
 	// Cost priority (0-1, higher = more important)
 	CostPriority float64 `json:"costPriority,omitempty"`
-	
+
 	// Speed priority (0-1, higher = more important)
 	SpeedPriority float64 `json:"speedPriority,omitempty"`
-	
+
 	// Intelligence priority (0-1, higher = more important)
 	IntelligencePriority float64 `json:"intelligencePriority,omitempty"`
 }
@@ -389,10 +389,10 @@ type ModelHint struct {
 
 // CreateMessageResult is the result of sampling
 type CreateMessageResult struct {
-	Role       string  `json:"role"`
-	Content    Content `json:"content"`
-	Model      string  `json:"model,omitempty"`      // Name of model used
-	StopReason string  `json:"stopReason,omitempty"` // "endTurn", "stopSequence", "maxTokens"
+	Role       string          `json:"role"`
+	Content    Content         `json:"content"`
+	Model      string          `json:"model,omitempty"`      // Name of model used
+	StopReason string          `json:"stopReason,omitempty"` // "endTurn", "stopSequence", "maxTokens"
 	Meta       json.RawMessage `json:"_meta,omitempty"`
 }
 
@@ -436,7 +436,7 @@ type ProgressToken interface{}
 // ProgressNotification reports progress for long-running operations
 type ProgressNotification struct {
 	ProgressToken ProgressToken `json:"progressToken"`
-	Progress      float64       `json:"progress"`      // 0-1 or absolute
+	Progress      float64       `json:"progress"`        // 0-1 or absolute
 	Total         float64       `json:"total,omitempty"` // If absolute progress
 }
 
@@ -446,8 +446,8 @@ type ProgressNotification struct {
 
 // CancelledNotification notifies that a request has been cancelled
 type CancelledNotification struct {
-	RequestID interface{}     `json:"requestId"`
-	Reason    string          `json:"reason,omitempty"`
+	RequestID interface{} `json:"requestId"`
+	Reason    string      `json:"reason,omitempty"`
 }
 
 // ============================================================================
@@ -488,10 +488,10 @@ type MCPServerInfo struct {
 type MCPConnectionState string
 
 const (
-	ConnectionStateDisconnected  MCPConnectionState = "disconnected"
-	ConnectionStateConnecting    MCPConnectionState = "connecting"
-	ConnectionStateConnected     MCPConnectionState = "connected"
-	ConnectionStateError         MCPConnectionState = "error"
+	ConnectionStateDisconnected MCPConnectionState = "disconnected"
+	ConnectionStateConnecting   MCPConnectionState = "connecting"
+	ConnectionStateConnected    MCPConnectionState = "connected"
+	ConnectionStateError        MCPConnectionState = "error"
 )
 
 // MCPConnectionStats provides connection statistics
@@ -513,19 +513,19 @@ type MCPRegistry struct {
 
 // MCPConfiguration represents MCP configuration for HelixAgent
 type MCPConfiguration struct {
-	Enabled        bool                       `json:"enabled"`
-	Timeout        int                        `json:"timeout,omitempty"`
-	MaxConcurrent  int                        `json:"maxConcurrent,omitempty"`
-	DefaultServers []string                   `json:"defaultServers,omitempty"`
+	Enabled        bool                        `json:"enabled"`
+	Timeout        int                         `json:"timeout,omitempty"`
+	MaxConcurrent  int                         `json:"maxConcurrent,omitempty"`
+	DefaultServers []string                    `json:"defaultServers,omitempty"`
 	Servers        map[string]*MCPServerConfig `json:"servers"`
 }
 
 // MCPServerConfig represents configuration for a specific MCP server
 type MCPServerConfig struct {
-	Enabled bool              `json:"enabled"`
-	Package string            `json:"package,omitempty"`
-	Command string            `json:"command,omitempty"`
-	Args    []string          `json:"args,omitempty"`
-	Env     map[string]string `json:"env,omitempty"`
+	Enabled bool                   `json:"enabled"`
+	Package string                 `json:"package,omitempty"`
+	Command string                 `json:"command,omitempty"`
+	Args    []string               `json:"args,omitempty"`
+	Env     map[string]string      `json:"env,omitempty"`
 	Config  map[string]interface{} `json:"config,omitempty"`
 }

@@ -53,8 +53,8 @@ type Commit struct {
 
 // AutoCommit handles automatic commit operations
 type AutoCommit struct {
-	config AutoCommitConfig
-	logger *logrus.Logger
+	config   AutoCommitConfig
+	logger   *logrus.Logger
 	basePath string
 }
 
@@ -155,15 +155,15 @@ func (a *AutoCommit) GetChanges() ([]Change, error) {
 
 	var changes []Change
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		if len(line) < 3 {
 			continue
 		}
-		
+
 		status := strings.TrimSpace(line[:2])
 		path := strings.TrimSpace(line[3:])
-		
+
 		var operation string
 		switch status {
 		case "A", "??":
@@ -177,7 +177,7 @@ func (a *AutoCommit) GetChanges() ([]Change, error) {
 		default:
 			operation = "modified"
 		}
-		
+
 		changes = append(changes, Change{
 			Path:      path,
 			Operation: operation,
@@ -230,7 +230,7 @@ func (a *AutoCommit) GenerateCommitMessage(changes []Change) string {
 	// Analyze changes
 	typeCount := make(map[string]int)
 	extCount := make(map[string]int)
-	
+
 	for _, change := range changes {
 		typeCount[change.Operation]++
 		ext := filepath.Ext(change.Path)
@@ -241,13 +241,13 @@ func (a *AutoCommit) GenerateCommitMessage(changes []Change) string {
 
 	// Determine scope
 	scope := a.determineScope(changes)
-	
+
 	// Determine type
 	changeType := a.determineChangeType(typeCount)
-	
+
 	// Build message
 	var msg strings.Builder
-	
+
 	if a.config.ConventionalCommits {
 		msg.WriteString(changeType)
 		if scope != "" {
@@ -257,10 +257,10 @@ func (a *AutoCommit) GenerateCommitMessage(changes []Change) string {
 		}
 		msg.WriteString(": ")
 	}
-	
+
 	// Generate description
 	msg.WriteString(a.generateDescription(changes))
-	
+
 	return msg.String()
 }
 
@@ -270,7 +270,7 @@ func (a *AutoCommit) determineScope(changes []Change) string {
 	if len(changes) == 0 {
 		return ""
 	}
-	
+
 	dirs := make(map[string]int)
 	for _, c := range changes {
 		dir := filepath.Dir(c.Path)
@@ -279,7 +279,7 @@ func (a *AutoCommit) determineScope(changes []Change) string {
 		}
 		dirs[dir]++
 	}
-	
+
 	// Find most common directory
 	var maxCount int
 	var commonDir string
@@ -289,7 +289,7 @@ func (a *AutoCommit) determineScope(changes []Change) string {
 			commonDir = dir
 		}
 	}
-	
+
 	// Return first component of common directory
 	if commonDir != "" && commonDir != "root" {
 		parts := strings.Split(commonDir, string(filepath.Separator))
@@ -297,7 +297,7 @@ func (a *AutoCommit) determineScope(changes []Change) string {
 			return parts[0]
 		}
 	}
-	
+
 	return ""
 }
 
@@ -310,12 +310,12 @@ func (a *AutoCommit) determineChangeType(typeCount map[string]int) string {
 	if typeCount["deleted"] > 0 && typeCount["modified"] == 0 && typeCount["added"] == 0 {
 		return "remove"
 	}
-	
+
 	// Default to chore for mixed changes
 	if typeCount["modified"] > typeCount["added"] {
 		return "fix"
 	}
-	
+
 	return "chore"
 }
 
@@ -324,7 +324,7 @@ func (a *AutoCommit) generateDescription(changes []Change) string {
 	if len(changes) == 1 {
 		change := changes[0]
 		filename := filepath.Base(change.Path)
-		
+
 		switch change.Operation {
 		case "added":
 			return fmt.Sprintf("add %s", filename)
@@ -336,15 +336,15 @@ func (a *AutoCommit) generateDescription(changes []Change) string {
 			return fmt.Sprintf("change %s", filename)
 		}
 	}
-	
+
 	// Multiple files
 	var ops []string
 	typeCount := make(map[string]int)
-	
+
 	for _, change := range changes {
 		typeCount[change.Operation]++
 	}
-	
+
 	if typeCount["added"] > 0 {
 		ops = append(ops, fmt.Sprintf("add %d file(s)", typeCount["added"]))
 	}
@@ -354,7 +354,7 @@ func (a *AutoCommit) generateDescription(changes []Change) string {
 	if typeCount["deleted"] > 0 {
 		ops = append(ops, fmt.Sprintf("remove %d file(s)", typeCount["deleted"]))
 	}
-	
+
 	return strings.Join(ops, ", ")
 }
 
@@ -405,22 +405,22 @@ func (a *AutoCommit) Push(ctx context.Context, remote, branch string) error {
 	if branch == "" {
 		branch = "main"
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", "push", remote, branch)
 	cmd.Dir = a.basePath
-	
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	
+
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("push failed: %w\n%s", err, stderr.String())
 	}
-	
+
 	a.logger.WithFields(logrus.Fields{
 		"remote": remote,
 		"branch": branch,
 	}).Info("Push completed")
-	
+
 	return nil
 }
 
@@ -432,17 +432,17 @@ func (a *AutoCommit) Pull(ctx context.Context, remote, branch string) error {
 	if branch == "" {
 		branch = "main"
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", "pull", remote, branch)
 	cmd.Dir = a.basePath
-	
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	
+
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("pull failed: %w\n%s", err, stderr.String())
 	}
-	
+
 	return nil
 }
 
@@ -450,12 +450,12 @@ func (a *AutoCommit) Pull(ctx context.Context, remote, branch string) error {
 func (a *AutoCommit) CreateBranch(ctx context.Context, branchName string) error {
 	cmd := exec.CommandContext(ctx, "git", "checkout", "-b", branchName)
 	cmd.Dir = a.basePath
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("create branch failed: %w\n%s", err, output)
 	}
-	
+
 	return nil
 }
 
@@ -463,12 +463,12 @@ func (a *AutoCommit) CreateBranch(ctx context.Context, branchName string) error 
 func (a *AutoCommit) SwitchBranch(ctx context.Context, branchName string) error {
 	cmd := exec.CommandContext(ctx, "git", "checkout", branchName)
 	cmd.Dir = a.basePath
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("switch branch failed: %w\n%s", err, output)
 	}
-	
+
 	return nil
 }
 
@@ -476,12 +476,12 @@ func (a *AutoCommit) SwitchBranch(ctx context.Context, branchName string) error 
 func (a *AutoCommit) GetCurrentBranch(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
 	cmd.Dir = a.basePath
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
-	
+
 	return strings.TrimSpace(string(output)), nil
 }
 
@@ -500,15 +500,15 @@ func (a *AutoCommit) Stash(ctx context.Context, message string) error {
 	if message != "" {
 		args = append(args, "-m", message)
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = a.basePath
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("stash failed: %w\n%s", err, output)
 	}
-	
+
 	return nil
 }
 
@@ -516,12 +516,12 @@ func (a *AutoCommit) Stash(ctx context.Context, message string) error {
 func (a *AutoCommit) PopStash(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, "git", "stash", "pop")
 	cmd.Dir = a.basePath
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("stash pop failed: %w\n%s", err, output)
 	}
-	
+
 	return nil
 }
 

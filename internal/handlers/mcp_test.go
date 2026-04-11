@@ -579,7 +579,7 @@ func TestFindUnderscoreIndex_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := findUnderscoreIndex(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})

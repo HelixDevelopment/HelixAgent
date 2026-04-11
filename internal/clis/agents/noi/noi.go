@@ -37,7 +37,7 @@ func New() *Noi {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Noi{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -54,11 +54,11 @@ func (n *Noi) Initialize(ctx context.Context, config interface{}) error {
 	if err := n.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		n.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -69,7 +69,7 @@ func (n *Noi) Execute(ctx context.Context, command string, params map[string]int
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "refactor":
 		return n.refactor(ctx, params)
@@ -86,7 +86,7 @@ func (n *Noi) refactor(ctx context.Context, params map[string]interface{}) (inte
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-	
+
 	return map[string]interface{}{
 		"code":   code,
 		"result": "// Refactored by Noi",

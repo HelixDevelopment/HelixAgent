@@ -28,7 +28,7 @@ func TestTaskStatus_IsTerminal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.status.IsTerminal())
 		})
 	}
@@ -50,7 +50,7 @@ func TestTaskStatus_IsActive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.status.IsActive())
 		})
 	}
@@ -72,7 +72,7 @@ func TestTaskPriority_Weight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.priority), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.priority.Weight())
 		})
 	}

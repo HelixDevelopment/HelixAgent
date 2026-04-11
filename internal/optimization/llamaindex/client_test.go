@@ -822,7 +822,7 @@ func TestClient_QueryAllTransformMethods(t *testing.T) {
 
 	for _, transform := range transforms {
 		t.Run(transform, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req QueryRequest
 				_ = json.NewDecoder(r.Body).Decode(&req)

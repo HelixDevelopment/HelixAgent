@@ -68,7 +68,7 @@ func TestMetrics_RecordValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metrics.RecordValidation(tt.success, tt.duration)
 		})
 	}
@@ -103,7 +103,7 @@ func TestMetrics_RecordStreamComplete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metrics.RecordStreamComplete(tt.duration, tt.tokens)
 		})
 	}
@@ -146,7 +146,7 @@ func TestMetrics_RecordServiceCall(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metrics.RecordServiceCall(tt.service, tt.method, tt.duration, tt.err)
 		})
 	}
@@ -181,7 +181,7 @@ func TestMetrics_SetServiceAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metrics.SetServiceAvailable(tt.service, tt.available)
 		})
 	}
@@ -211,7 +211,7 @@ func TestMetrics_RecordOptimization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metrics.RecordOptimization(tt.isRequest, tt.duration)
 		})
 	}

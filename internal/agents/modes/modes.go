@@ -14,33 +14,33 @@ type AgentMode string
 const (
 	// ModeCode - focused on writing and modifying code
 	ModeCode AgentMode = "code"
-	
+
 	// ModeArchitect - focused on system design and architecture
 	ModeArchitect AgentMode = "architect"
-	
+
 	// ModeAsk - focused on answering questions
 	ModeAsk AgentMode = "ask"
-	
+
 	// ModeDebug - focused on debugging issues
 	ModeDebug AgentMode = "debug"
-	
+
 	// ModeTest - focused on writing tests
 	ModeTest AgentMode = "test"
-	
+
 	// ModeReview - focused on code review
 	ModeReview AgentMode = "review"
 )
 
 // ModeConfig defines configuration for an agent mode
 type ModeConfig struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Prompt      string            `json:"prompt"`
-	Tools       []string          `json:"tools"`
-	Permissions map[string]bool   `json:"permissions"`
-	AutoApprove []string          `json:"auto_approve"`
-	MaxTokens   int               `json:"max_tokens"`
-	Temperature float64           `json:"temperature"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Prompt      string          `json:"prompt"`
+	Tools       []string        `json:"tools"`
+	Permissions map[string]bool `json:"permissions"`
+	AutoApprove []string        `json:"auto_approve"`
+	MaxTokens   int             `json:"max_tokens"`
+	Temperature float64         `json:"temperature"`
 }
 
 // Registry manages agent modes

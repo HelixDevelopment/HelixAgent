@@ -20,7 +20,7 @@ func TestNewClientWithFallback_ReturnsClient(t *testing.T) {
 	// Create client that will succeed with mock
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	// This tests the internal path - we already have a connected mock
 	// In real scenario, Ping() would need to succeed
 	err := client.Ping()
@@ -39,13 +39,13 @@ func TestClient_initConnection_ConnectError(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Force connection with invalid host
 	err = client.initConnection(context.Background())
-	
+
 	// Should have connection error
 	assert.Error(t, err)
 	// connectErr should be set
@@ -57,7 +57,7 @@ func TestClient_Pool_WithTestPG(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	// When using testPG, Pool should return nil
 	pool := client.Pool()
 	assert.Nil(t, pool)
@@ -68,7 +68,7 @@ func TestClient_Ping_WithTestPG(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	err := client.Ping()
 	assert.NoError(t, err)
 	assert.True(t, mock.healthCheckCalled)
@@ -79,7 +79,7 @@ func TestClient_HealthCheck_WithTestPG(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	err := client.HealthCheck()
 	assert.NoError(t, err)
 	assert.True(t, mock.healthCheckCalled)
@@ -90,7 +90,7 @@ func TestClient_Exec_WithTestPG(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
-	
+
 	err := client.Exec("INSERT INTO test VALUES ($1)", "value")
 	assert.NoError(t, err)
 	assert.True(t, mock.execCalled)
@@ -108,13 +108,13 @@ func TestClient_Exec_WithRealPG_ReturnsError(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection
 	client.connectOnce = sync.Once{}
-	
+
 	// Exec should return error from connection
 	err = client.Exec("SELECT 1")
 	assert.Error(t, err)
@@ -126,7 +126,7 @@ func TestClient_Query_WithTestPG(t *testing.T) {
 	mockRows := &mockRows{nextReturns: []bool{true, false}}
 	mock := &mockDatabase{queryRows: mockRows}
 	client := newTestClient(mock)
-	
+
 	results, err := client.Query("SELECT * FROM test")
 	assert.NoError(t, err)
 	assert.True(t, mock.queryCalled)
@@ -139,7 +139,7 @@ func TestClient_QueryRow_WithTestPG(t *testing.T) {
 	mockRow := mockRow{}
 	mock := &mockDatabase{queryRowResult: mockRow}
 	client := newTestClient(mock)
-	
+
 	row := client.QueryRow("SELECT 1")
 	assert.NotNil(t, row)
 	assert.True(t, mock.queryRowCalled)
@@ -151,7 +151,7 @@ func TestClient_Begin_WithTestPG(t *testing.T) {
 	mockTx := &mockTx{}
 	mock := &mockDatabase{beginTx: mockTx}
 	client := newTestClient(mock)
-	
+
 	tx, err := client.Begin(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
@@ -173,13 +173,13 @@ func TestClient_Migrate_Success(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection
 	client.connectOnce = sync.Once{}
-	
+
 	// Migrate should return error from connection
 	err = client.Migrate(context.Background(), []string{"CREATE TABLE test (id INT)"})
 	assert.Error(t, err)
@@ -201,9 +201,9 @@ func TestNewClientWithFallback_NewClientError(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClientWithFallback(cfg)
-	
+
 	// Should fail to connect
 	assert.Error(t, err)
 	assert.Nil(t, client)
@@ -219,7 +219,7 @@ func TestNewPostgresDB_ErrorPath(t *testing.T) {
 	// Since NewClient never returns error, this path is unreachable in practice
 	// But we test it for completeness
 	cfg := &config.Config{}
-	
+
 	pgDB, err := NewPostgresDB(cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, pgDB)
@@ -235,9 +235,9 @@ func TestNewPostgresDBWithFallback_DBError(t *testing.T) {
 	// Since NewPostgresDB only errors if NewClient errors,
 	// and NewClient never returns error, this path is unreachable in practice
 	cfg := &config.Config{}
-	
+
 	pgDB, memDB, err := NewPostgresDBWithFallback(cfg)
-	
+
 	// Should not error, may return either pgDB or memDB
 	assert.NoError(t, err)
 	assert.True(t, pgDB != nil || memDB != nil)
@@ -253,7 +253,7 @@ func TestConnect_ErrorPath_Final(t *testing.T) {
 	// Since NewPostgresDB never returns error, this path is unreachable
 	// But we test the success path
 	db, err := Connect()
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
 }
@@ -273,13 +273,13 @@ func TestClient_Query_WithRealPGQueryError(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection
 	client.connectOnce = sync.Once{}
-	
+
 	// Query should return error from connection
 	results, err := client.Query("SELECT * FROM test")
 	assert.Error(t, err)
@@ -301,13 +301,13 @@ func TestClient_Begin_WithRealPGBeginError(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection
 	client.connectOnce = sync.Once{}
-	
+
 	// Begin should return error from connection
 	tx, err := client.Begin(context.Background())
 	assert.Error(t, err)
@@ -321,11 +321,11 @@ func TestClient_Begin_WithRealPGBeginError(t *testing.T) {
 func TestMemoryDB_HealthCheck_Closed(t *testing.T) {
 	t.Parallel()
 	m := NewMemoryDB()
-	
+
 	// Close the database
 	err := m.Close()
 	assert.NoError(t, err)
-	
+
 	// Health check should fail
 	err = m.HealthCheck()
 	assert.Error(t, err)
@@ -341,7 +341,7 @@ func TestPostgresDB_GetPool_WithMock(t *testing.T) {
 	mock := &mockDatabase{}
 	client := newTestClient(mock)
 	pgDB := &PostgresDB{client: client}
-	
+
 	// GetPool should return nil with mock
 	pool := pgDB.GetPool()
 	assert.Nil(t, pool)

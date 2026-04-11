@@ -21,9 +21,9 @@ type Recognizer interface {
 
 // Command represents a voice command
 type Command struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Patterns    []string          `json:"patterns"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Patterns    []string `json:"patterns"`
 	Action      func(args []string) error
 }
 

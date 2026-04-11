@@ -49,7 +49,7 @@ func TestNewOllamaProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewOllamaProvider(tt.baseURL, tt.model)
 			assert.Equal(t, tt.expected.baseURL, provider.baseURL)
 			assert.Equal(t, tt.expected.model, provider.model)
@@ -258,7 +258,7 @@ func TestOllamaProvider_HealthCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Equal(t, "/api/tags", r.URL.Path)
@@ -349,7 +349,7 @@ func TestOllamaProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewOllamaProvider(tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(nil)
 
@@ -427,7 +427,7 @@ func TestOllamaProvider_makeRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/api/generate", r.URL.Path)

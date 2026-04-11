@@ -39,7 +39,7 @@ func New() *MobileAgent {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &MobileAgent{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -56,11 +56,11 @@ func (m *MobileAgent) Initialize(ctx context.Context, config interface{}) error 
 	if err := m.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		m.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -71,7 +71,7 @@ func (m *MobileAgent) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return m.generate(ctx, params)
@@ -90,7 +90,7 @@ func (m *MobileAgent) generate(ctx context.Context, params map[string]interface{
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt":   prompt,
 		"platform": m.config.Platform,

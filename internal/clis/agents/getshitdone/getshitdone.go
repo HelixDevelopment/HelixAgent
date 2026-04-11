@@ -38,7 +38,7 @@ func New() *GetShitDone {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GetShitDone{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (g *GetShitDone) Initialize(ctx context.Context, config interface{}) error 
 	if err := g.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		g.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (g *GetShitDone) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "execute":
 		return g.execute(ctx, params)
@@ -87,7 +87,7 @@ func (g *GetShitDone) execute(ctx context.Context, params map[string]interface{}
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	return map[string]interface{}{
 		"task":   task,
 		"result": fmt.Sprintf("Executed: %s", task),

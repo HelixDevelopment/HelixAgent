@@ -348,7 +348,7 @@ func TestCreateTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Creates task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		body := CreateTaskRequest{
@@ -380,7 +380,7 @@ func TestCreateTask(t *testing.T) {
 	})
 
 	t.Run("Returns error with invalid request body", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodPost, "/v1/tasks", bytes.NewReader([]byte("invalid json")))
@@ -396,7 +396,7 @@ func TestCreateTask(t *testing.T) {
 	})
 
 	t.Run("Returns error with missing required fields", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		body := CreateTaskRequest{
@@ -418,7 +418,7 @@ func TestCreateTask(t *testing.T) {
 	})
 
 	t.Run("Returns error when queue fails", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, queue := setupTestHandler()
 		queue.enqueueError = errors.New("queue error")
 
@@ -441,7 +441,7 @@ func TestCreateTask(t *testing.T) {
 	})
 
 	t.Run("Handles custom priority", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		body := CreateTaskRequest{
@@ -464,7 +464,7 @@ func TestCreateTask(t *testing.T) {
 	})
 
 	t.Run("Handles task config options", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		body := CreateTaskRequest{
@@ -500,7 +500,7 @@ func TestGetTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -536,7 +536,7 @@ func TestGetTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodGet, "/v1/tasks/non-existent", nil)
@@ -558,7 +558,7 @@ func TestGetTaskStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns status successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		startedAt := time.Now().Add(-5 * time.Minute)
@@ -596,7 +596,7 @@ func TestGetTaskStatus(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodGet, "/v1/tasks/non-existent/status", nil)
@@ -618,7 +618,7 @@ func TestGetTaskLogs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns logs successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		taskID := "test-task-id"
@@ -659,7 +659,7 @@ func TestGetTaskLogs(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodGet, "/v1/tasks/non-existent/logs", nil)
@@ -681,7 +681,7 @@ func TestGetTaskResources(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns resources successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		taskID := "test-task-id"
@@ -721,7 +721,7 @@ func TestPauseTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Pauses task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -751,7 +751,7 @@ func TestPauseTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodPost, "/v1/tasks/non-existent/pause", nil)
@@ -767,7 +767,7 @@ func TestPauseTask(t *testing.T) {
 	})
 
 	t.Run("Returns error if task cannot be paused", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -796,7 +796,7 @@ func TestResumeTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Resumes task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -824,7 +824,7 @@ func TestResumeTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodPost, "/v1/tasks/non-existent/resume", nil)
@@ -840,7 +840,7 @@ func TestResumeTask(t *testing.T) {
 	})
 
 	t.Run("Returns error if task is not paused", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -868,7 +868,7 @@ func TestCancelTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Cancels task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -898,7 +898,7 @@ func TestCancelTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodPost, "/v1/tasks/non-existent/cancel", nil)
@@ -914,7 +914,7 @@ func TestCancelTask(t *testing.T) {
 	})
 
 	t.Run("Returns error if task cannot be cancelled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -943,7 +943,7 @@ func TestDeleteTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Deletes completed task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -965,7 +965,7 @@ func TestDeleteTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodDelete, "/v1/tasks/non-existent", nil)
@@ -981,7 +981,7 @@ func TestDeleteTask(t *testing.T) {
 	})
 
 	t.Run("Returns error if task is still running", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -1003,7 +1003,7 @@ func TestDeleteTask(t *testing.T) {
 	})
 
 	t.Run("Returns error if task is pending", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -1031,7 +1031,7 @@ func TestListTasks(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns all tasks", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		repo.tasks["task-1"] = &models.BackgroundTask{
@@ -1067,7 +1067,7 @@ func TestListTasks(t *testing.T) {
 	})
 
 	t.Run("Filters by status", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		repo.tasks["task-1"] = &models.BackgroundTask{
@@ -1107,7 +1107,7 @@ func TestGetQueueStats(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns queue statistics", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, queue := setupTestHandler()
 		queue.pendingCount = 10
 		queue.runningCount = 5
@@ -1141,7 +1141,7 @@ func TestPollEvents(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Returns 503 when polling not available", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 		handler.pollingStore = nil
 
@@ -1157,7 +1157,7 @@ func TestPollEvents(t *testing.T) {
 	})
 
 	t.Run("Returns events when polling available", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 		logger := logrus.New()
 		logger.SetLevel(logrus.ErrorLevel)
@@ -1181,7 +1181,7 @@ func TestAnalyzeTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Analyzes task successfully", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, repo, _ := setupTestHandler()
 
 		task := &models.BackgroundTask{
@@ -1205,7 +1205,7 @@ func TestAnalyzeTask(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler, _, _ := setupTestHandler()
 
 		req, _ := http.NewRequest(http.MethodGet, "/v1/tasks/non-existent/analyze", nil)
@@ -1285,7 +1285,7 @@ func TestNilIfEmpty(t *testing.T) {
 	})
 
 	t.Run("Returns pointer for non-empty string", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := nilIfEmpty("test")
 		assert.NotNil(t, result)
 		assert.Equal(t, "test", *result)

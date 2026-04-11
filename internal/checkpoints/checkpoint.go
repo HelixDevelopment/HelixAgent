@@ -110,7 +110,7 @@ func (m *Manager) Restore(checkpointID string) error {
 	// Restore files
 	for _, file := range checkpoint.Files {
 		path := filepath.Join(m.basePath, file.Path)
-		
+
 		// Create directory if needed
 		dir := filepath.Dir(path)
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -132,7 +132,7 @@ func (m *Manager) Restore(checkpointID string) error {
 // List returns all checkpoints
 func (m *Manager) List() ([]*Checkpoint, error) {
 	checkpointsDir := filepath.Join(m.basePath, ".checkpoints")
-	
+
 	entries, err := os.ReadDir(checkpointsDir)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (m *Manager) captureFiles() ([]FileSnapshot, error) {
 		hash := sha256.Sum256(content)
 
 		relPath, _ := filepath.Rel(m.basePath, path)
-		
+
 		files = append(files, FileSnapshot{
 			Path:    relPath,
 			Hash:    hex.EncodeToString(hash[:]),
@@ -236,12 +236,12 @@ func (m *Manager) saveCheckpoint(checkpoint *Checkpoint) error {
 		"tags":        checkpoint.Tags,
 		"size":        checkpoint.Size,
 	}
-	
+
 	metaJSON, err := json.Marshal(metadata)
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
-	
+
 	metaHeader := &tar.Header{
 		Name:    ".checkpoint-meta.json",
 		Mode:    0644,

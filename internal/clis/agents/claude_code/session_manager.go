@@ -23,13 +23,13 @@ func NewSessionManager(config *Config) *SessionManager {
 		config:      config,
 		stopCleanup: make(chan struct{}),
 	}
-	
+
 	// Start cleanup goroutine
 	if config.TimeoutMinutes > 0 {
 		sm.cleanupTick = time.NewTicker(1 * time.Minute)
 		go sm.cleanupLoop()
 	}
-	
+
 	return sm
 }
 
@@ -37,7 +37,7 @@ func NewSessionManager(config *Config) *SessionManager {
 func (sm *SessionManager) CreateSession(workDir string) *Session {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	session := NewSession(workDir, sm.config)
 	sm.sessions[session.ID] = session
 	return session
@@ -47,7 +47,7 @@ func (sm *SessionManager) CreateSession(workDir string) *Session {
 func (sm *SessionManager) GetSession(id string) (*Session, bool) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	session, ok := sm.sessions[id]
 	return session, ok
 }
@@ -56,12 +56,12 @@ func (sm *SessionManager) GetSession(id string) (*Session, bool) {
 func (sm *SessionManager) GetOrCreateSession(id, workDir string) *Session {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if session, ok := sm.sessions[id]; ok && session.Active {
 		session.LastActivity = time.Now()
 		return session
 	}
-	
+
 	session := NewSession(workDir, sm.config)
 	sm.sessions[session.ID] = session
 	return session
@@ -71,7 +71,7 @@ func (sm *SessionManager) GetOrCreateSession(id, workDir string) *Session {
 func (sm *SessionManager) EndSession(id string) bool {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if session, ok := sm.sessions[id]; ok {
 		session.Active = false
 		return true
@@ -83,7 +83,7 @@ func (sm *SessionManager) EndSession(id string) bool {
 func (sm *SessionManager) DeleteSession(id string) bool {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if _, ok := sm.sessions[id]; ok {
 		delete(sm.sessions, id)
 		return true
@@ -95,7 +95,7 @@ func (sm *SessionManager) DeleteSession(id string) bool {
 func (sm *SessionManager) ListSessions() []*Session {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	sessions := make([]*Session, 0, len(sm.sessions))
 	for _, session := range sm.sessions {
 		sessions = append(sessions, session)
@@ -107,7 +107,7 @@ func (sm *SessionManager) ListSessions() []*Session {
 func (sm *SessionManager) ListActiveSessions() []*Session {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	var sessions []*Session
 	for _, session := range sm.sessions {
 		if session.Active {
@@ -133,7 +133,7 @@ func (sm *SessionManager) cleanupLoop() {
 func (sm *SessionManager) cleanupExpired() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	for id, session := range sm.sessions {
 		if session.IsExpired(sm.config.TimeoutMinutes) {
 			session.Active = false
@@ -162,7 +162,7 @@ func (sm *SessionManager) GetSessionCount() int {
 func (sm *SessionManager) GetActiveSessionCount() int {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	count := 0
 	for _, session := range sm.sessions {
 		if session.Active {

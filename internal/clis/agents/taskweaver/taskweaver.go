@@ -38,7 +38,7 @@ func New() *Taskweaver {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Taskweaver{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (t *Taskweaver) Initialize(ctx context.Context, config interface{}) error {
 	if err := t.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		t.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (t *Taskweaver) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "chat":
 		return t.chat(ctx, params)
@@ -89,7 +89,7 @@ func (t *Taskweaver) chat(ctx context.Context, params map[string]interface{}) (i
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message":  message,
 		"response": fmt.Sprintf("Taskweaver: %s", message),
@@ -103,7 +103,7 @@ func (t *Taskweaver) code(ctx context.Context, params map[string]interface{}) (i
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"code":   fmt.Sprintf("// Taskweaver\n// %s", prompt),

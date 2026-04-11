@@ -38,7 +38,7 @@ func New() *Superset {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Superset{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (s *Superset) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (s *Superset) Execute(ctx context.Context, command string, params map[strin
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "dashboard":
 		return s.dashboard(ctx, params)
@@ -89,7 +89,7 @@ func (s *Superset) dashboard(ctx context.Context, params map[string]interface{})
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	return map[string]interface{}{
 		"name": name,
 		"url":  fmt.Sprintf("%s/dashboard/%s", s.config.Endpoint, name),
@@ -102,7 +102,7 @@ func (s *Superset) chart(ctx context.Context, params map[string]interface{}) (in
 	if chartType == "" {
 		chartType = "bar"
 	}
-	
+
 	return map[string]interface{}{
 		"type": chartType,
 		"data": "Chart data",

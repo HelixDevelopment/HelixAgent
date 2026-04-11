@@ -126,7 +126,7 @@ func TestFiveRingDefense_Defend(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := defense.Defend(ctx, tc.input)
 			require.NoError(t, err)
 			assert.NotNil(t, result)
@@ -323,7 +323,7 @@ func TestSecureFixAgent_ApplyFix(t *testing.T) {
 	agent := NewSecureFixAgent(config, nil, nil, logger)
 
 	t.Run("Apply validated fix", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		originalCode := `db.Query("SELECT * FROM users WHERE id = " + input)`
 		fix := &SecurityFix{
 			VulnerabilityID: "vuln-1",
@@ -339,7 +339,7 @@ func TestSecureFixAgent_ApplyFix(t *testing.T) {
 	})
 
 	t.Run("Reject unvalidated fix", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		originalCode := `vulnerable code`
 		fix := &SecurityFix{
 			VulnerabilityID: "vuln-2",
@@ -421,7 +421,7 @@ func TestPatternBasedScanner_ScanFile(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Scan non-existent file", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		_, err := scanner.ScanFile(ctx, "/nonexistent/path/file.go")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read file")
@@ -429,7 +429,7 @@ func TestPatternBasedScanner_ScanFile(t *testing.T) {
 
 	// Create a temporary file for testing
 	t.Run("Scan existing file", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		tempFile, err := createTempTestFile("password = \"secret123\"")
 		if err != nil {
 			t.Skip("Cannot create temp file for testing")
@@ -477,7 +477,7 @@ func TestDetectLanguageFromPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := detectLanguageFromPath(tc.path)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -583,7 +583,7 @@ func TestRescanValidator_ValidateFix(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Valid fix removes vulnerability", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		vuln := &Vulnerability{
 			Category: CategorySensitiveData,
 			Title:    "Hardcoded Credentials",
@@ -599,7 +599,7 @@ func TestRescanValidator_ValidateFix(t *testing.T) {
 	})
 
 	t.Run("Invalid fix still has vulnerability", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		vuln := &Vulnerability{
 			Category: CategorySensitiveData,
 			Title:    "Hardcoded Credentials",
@@ -852,7 +852,7 @@ func TestInputSanitizationRing_CheckVariousPatterns(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			passed, msg, err := ring.Check(ctx, tc.input)
 			require.NoError(t, err)
 			assert.Equal(t, tc.shouldPass, passed, "Message: %s", msg)

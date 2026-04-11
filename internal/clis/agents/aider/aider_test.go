@@ -14,16 +14,16 @@ import (
 func TestNewAider(t *testing.T) {
 	t.Parallel()
 	a := New()
-	
+
 	if a == nil {
 		t.Fatal("New() = nil")
 	}
-	
+
 	info := a.Info()
 	if info.Type != agents.TypeAider {
 		t.Errorf("Info().Type = %q, want %q", info.Type, agents.TypeAider)
 	}
-	
+
 	if info.Name != "Aider" {
 		t.Errorf("Info().Name = %q, want %q", info.Name, "Aider")
 	}
@@ -33,7 +33,7 @@ func TestAiderInitialize(t *testing.T) {
 	t.Parallel()
 	a := New()
 	ctx := context.Background()
-	
+
 	tempDir := t.TempDir()
 	config := &Config{
 		BaseConfig: base.BaseConfig{
@@ -42,12 +42,12 @@ func TestAiderInitialize(t *testing.T) {
 		EditorModel:   "gpt-4",
 		ArchitectMode: false,
 	}
-	
+
 	err := a.Initialize(ctx, config)
 	if err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
-	
+
 	if a.config.EditorModel != "gpt-4" {
 		t.Errorf("config.EditorModel = %q, want %q", a.config.EditorModel, "gpt-4")
 	}
@@ -57,26 +57,26 @@ func TestAiderStartStop(t *testing.T) {
 	t.Parallel()
 	a := New()
 	ctx := context.Background()
-	
+
 	err := a.Initialize(ctx, nil)
 	if err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
-	
+
 	err = a.Start(ctx)
 	if err != nil {
 		t.Errorf("Start() error = %v", err)
 	}
-	
+
 	if !a.IsStarted() {
 		t.Error("IsStarted() = false after Start()")
 	}
-	
+
 	err = a.Stop(ctx)
 	if err != nil {
 		t.Errorf("Stop() error = %v", err)
 	}
-	
+
 	if a.IsStarted() {
 		t.Error("IsStarted() = true after Stop()")
 	}
@@ -86,12 +86,12 @@ func TestAiderExecute(t *testing.T) {
 	t.Parallel()
 	a := New()
 	ctx := context.Background()
-	
+
 	err := a.Initialize(ctx, nil)
 	if err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -139,10 +139,10 @@ func TestAiderExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := a.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -159,19 +159,19 @@ func TestAiderCapabilities(t *testing.T) {
 	t.Parallel()
 	a := New()
 	info := a.Info()
-	
+
 	// Just check that we have some capabilities
 	if len(info.Capabilities) == 0 {
 		t.Error("No capabilities found")
 	}
-	
+
 	// Check for some expected capabilities
 	expectedCapabilities := []string{
 		"repo_map",
 		"multi_file_editing",
 		"git_integration",
 	}
-	
+
 	for _, cap := range expectedCapabilities {
 		found := false
 		for _, has := range info.Capabilities {
@@ -190,15 +190,15 @@ func TestAiderHealth(t *testing.T) {
 	t.Parallel()
 	a := New()
 	ctx := context.Background()
-	
+
 	// Before start, health should fail
 	if err := a.Health(ctx); err == nil {
 		t.Error("Health() before Start = nil, want error")
 	}
-	
+
 	_ = a.Initialize(ctx, nil)
 	_ = a.Start(ctx)
-	
+
 	// After start, health should pass
 	if err := a.Health(ctx); err != nil {
 		t.Errorf("Health() after Start error = %v", err)
@@ -209,9 +209,9 @@ func TestAiderRepoMap(t *testing.T) {
 	t.Parallel()
 	a := New()
 	ctx := context.Background()
-	
+
 	tempDir := t.TempDir()
-	
+
 	// Create a test Go file
 	testFile := filepath.Join(tempDir, "test.go")
 	content := `package main
@@ -223,22 +223,22 @@ func Hello() string {
 	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: tempDir,
 		},
 	}
-	
+
 	if err := a.Initialize(ctx, config); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
-	
+
 	// Test repo map command (may fail if aider not in PATH)
 	result, err := a.Execute(ctx, "repo_map", map[string]interface{}{
 		"path": tempDir,
 	})
-	
+
 	// Just verify the command runs without panic
 	// Result depends on whether aider is installed
 	_ = result
@@ -273,10 +273,10 @@ func TestAiderConfigValidation(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			a := New()
 			ctx := context.Background()
 			err := a.Initialize(ctx, tt.config)
@@ -292,7 +292,7 @@ func BenchmarkAiderExecute(b *testing.B) {
 	ctx := context.Background()
 	_ = a.Initialize(ctx, nil)
 	_ = a.Start(ctx)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = a.Execute(ctx, "chat", map[string]interface{}{

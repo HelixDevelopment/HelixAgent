@@ -20,18 +20,18 @@ import (
 
 // PlanModeSession represents an active plan mode session (inspired by claude-code-source)
 type ExtendedPlanModeSession struct {
-	ID              string                 `json:"id"`
-	UserID          string                 `json:"user_id"`
-	Objective       string                 `json:"objective"`
-	Context         []string               `json:"context"`
-	Steps           []PlanStep             `json:"steps"`
-	CurrentStepIdx  int                    `json:"current_step_idx"`
-	Status          PlanModeStatus         `json:"status"`
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
-	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
-	AutoExecute     bool                   `json:"auto_execute"`
-	ExecutionResult *PlanExecutionResult   `json:"execution_result,omitempty"`
+	ID              string               `json:"id"`
+	UserID          string               `json:"user_id"`
+	Objective       string               `json:"objective"`
+	Context         []string             `json:"context"`
+	Steps           []PlanStep           `json:"steps"`
+	CurrentStepIdx  int                  `json:"current_step_idx"`
+	Status          PlanModeStatus       `json:"status"`
+	CreatedAt       time.Time            `json:"created_at"`
+	UpdatedAt       time.Time            `json:"updated_at"`
+	CompletedAt     *time.Time           `json:"completed_at,omitempty"`
+	AutoExecute     bool                 `json:"auto_execute"`
+	ExecutionResult *PlanExecutionResult `json:"execution_result,omitempty"`
 	mu              sync.RWMutex
 }
 
@@ -39,13 +39,13 @@ type ExtendedPlanModeSession struct {
 type PlanModeStatus string
 
 const (
-	PlanModeStatusDraft      PlanModeStatus = "draft"
-	PlanModeStatusPlanning   PlanModeStatus = "planning"
-	PlanModeStatusReview     PlanModeStatus = "review"
-	PlanModeStatusExecuting  PlanModeStatus = "executing"
-	PlanModeStatusPaused     PlanModeStatus = "paused"
-	PlanModeStatusCompleted  PlanModeStatus = "completed"
-	PlanModeStatusFailed     PlanModeStatus = "failed"
+	PlanModeStatusDraft     PlanModeStatus = "draft"
+	PlanModeStatusPlanning  PlanModeStatus = "planning"
+	PlanModeStatusReview    PlanModeStatus = "review"
+	PlanModeStatusExecuting PlanModeStatus = "executing"
+	PlanModeStatusPaused    PlanModeStatus = "paused"
+	PlanModeStatusCompleted PlanModeStatus = "completed"
+	PlanModeStatusFailed    PlanModeStatus = "failed"
 )
 
 // Type aliases for backward compatibility
@@ -96,22 +96,22 @@ type PlanToolCall struct {
 
 // PlanStepResult represents the result of executing a plan step
 type PlanStepResult struct {
-	Success     bool       `json:"success"`
-	Output      string     `json:"output,omitempty"`
-	Error       string     `json:"error,omitempty"`
-	DurationMs  int64      `json:"duration_ms"`
-	CompletedAt time.Time  `json:"completed_at"`
+	Success     bool      `json:"success"`
+	Output      string    `json:"output,omitempty"`
+	Error       string    `json:"error,omitempty"`
+	DurationMs  int64     `json:"duration_ms"`
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 // PlanExecutionResult represents the overall result of plan execution
 type PlanExecutionResult struct {
-	Success      bool          `json:"success"`
-	StepsTotal   int           `json:"steps_total"`
-	StepsCompleted int         `json:"steps_completed"`
-	StepsFailed  int           `json:"steps_failed"`
-	StepsSkipped int           `json:"steps_skipped"`
-	TotalDuration time.Duration `json:"total_duration"`
-	Summary      string        `json:"summary"`
+	Success        bool          `json:"success"`
+	StepsTotal     int           `json:"steps_total"`
+	StepsCompleted int           `json:"steps_completed"`
+	StepsFailed    int           `json:"steps_failed"`
+	StepsSkipped   int           `json:"steps_skipped"`
+	TotalDuration  time.Duration `json:"total_duration"`
+	Summary        string        `json:"summary"`
 }
 
 // PlanningHandlerExtensions provides extended planning functionality
@@ -139,19 +139,19 @@ func NewPlanningHandlerExtensions(logger *logrus.Logger) *PlanningHandlerExtensi
 
 // EnterPlanModeRequest represents a request to enter plan mode
 type ExtendedEnterPlanModeRequest struct {
-	Objective    string   `json:"objective" binding:"required"`
-	Context      []string `json:"context,omitempty"`
-	AutoExecute  bool     `json:"auto_execute,omitempty"`
-	MaxSteps     int      `json:"max_steps,omitempty"`
+	Objective   string   `json:"objective" binding:"required"`
+	Context     []string `json:"context,omitempty"`
+	AutoExecute bool     `json:"auto_execute,omitempty"`
+	MaxSteps    int      `json:"max_steps,omitempty"`
 }
 
 // EnterPlanModeResponse represents the response from entering plan mode
 type EnterPlanModeResponse struct {
-	SessionID   string         `json:"session_id"`
-	Objective   string         `json:"objective"`
-	Status      string         `json:"status"`
-	Steps       []PlanStep     `json:"steps"`
-	Message     string         `json:"message"`
+	SessionID string     `json:"session_id"`
+	Objective string     `json:"objective"`
+	Status    string     `json:"status"`
+	Steps     []PlanStep `json:"steps"`
+	Message   string     `json:"message"`
 }
 
 // EnterPlanMode godoc
@@ -172,13 +172,13 @@ func (h *PlanningHandlerExtensions) EnterPlanMode(c *gin.Context) {
 	}
 
 	session := &PlanModeSession{
-		ID:           uuid.New().String(),
-		Objective:    req.Objective,
-		Context:      req.Context,
-		Status:       PlanModeStatusPlanning,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-		AutoExecute:  req.AutoExecute,
+		ID:             uuid.New().String(),
+		Objective:      req.Objective,
+		Context:        req.Context,
+		Status:         PlanModeStatusPlanning,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		AutoExecute:    req.AutoExecute,
 		CurrentStepIdx: -1,
 	}
 
@@ -235,11 +235,11 @@ type UpdatePlanRequest struct {
 // @Router /api/v1/planning/plan-mode/{session_id} [put]
 func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
-	
+
 	h.sessionsMu.RLock()
 	session, exists := h.sessions[sessionID]
 	h.sessionsMu.RUnlock()
-	
+
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -258,11 +258,11 @@ func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 	if req.Steps != nil {
 		session.Steps = req.Steps
 	}
-	
+
 	if len(req.AddSteps) > 0 {
 		session.Steps = append(session.Steps, req.AddSteps...)
 	}
-	
+
 	if len(req.RemoveSteps) > 0 {
 		stepMap := make(map[string]bool)
 		for _, id := range req.RemoveSteps {
@@ -295,11 +295,11 @@ func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 // @Router /api/v1/planning/plan-mode/{session_id}/execute [post]
 func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
-	
+
 	h.sessionsMu.RLock()
 	session, exists := h.sessions[sessionID]
 	h.sessionsMu.RUnlock()
-	
+
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -313,7 +313,7 @@ func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	session.Status = PlanModeStatusExecuting
 	session.mu.Unlock()
 
@@ -335,11 +335,11 @@ func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 // @Router /api/v1/planning/plan-mode/{session_id} [get]
 func (h *PlanningHandlerExtensions) GetPlanStatus(c *gin.Context) {
 	sessionID := c.Param("session_id")
-	
+
 	h.sessionsMu.RLock()
 	session, exists := h.sessions[sessionID]
 	h.sessionsMu.RUnlock()
-	
+
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -363,11 +363,11 @@ func (h *PlanningHandlerExtensions) GetPlanStatus(c *gin.Context) {
 // @Router /api/v1/planning/plan-mode/{session_id}/pause [post]
 func (h *PlanningHandlerExtensions) PausePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
-	
+
 	h.sessionsMu.RLock()
 	session, exists := h.sessions[sessionID]
 	h.sessionsMu.RUnlock()
-	
+
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -379,7 +379,7 @@ func (h *PlanningHandlerExtensions) PausePlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: "plan is not executing"})
 		return
 	}
-	
+
 	session.Status = PlanModeStatusPaused
 	session.UpdatedAt = time.Now()
 	session.mu.Unlock()
@@ -400,7 +400,7 @@ func (h *PlanningHandlerExtensions) PausePlan(c *gin.Context) {
 func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 	sessionID := c.Param("session_id")
 	save := c.Query("save") == "true"
-	
+
 	h.sessionsMu.Lock()
 	session, exists := h.sessions[sessionID]
 	if !exists {
@@ -515,13 +515,13 @@ func (h *PlanningHandlerExtensions) generatePlanSteps(ctx context.Context, objec
 			EstDuration: 5 * time.Minute,
 		},
 		{
-			ID:          uuid.New().String(),
-			Number:      2,
-			Description: "Design solution approach",
-			Type:        "decision",
-			Status:      PlanStepStatusPending,
+			ID:           uuid.New().String(),
+			Number:       2,
+			Description:  "Design solution approach",
+			Type:         "decision",
+			Status:       PlanStepStatusPending,
 			Dependencies: []string{}, // Would reference step 1 ID
-			EstDuration: 10 * time.Minute,
+			EstDuration:  10 * time.Minute,
 		},
 		{
 			ID:          uuid.New().String(),
@@ -564,14 +564,14 @@ func (h *PlanningHandlerExtensions) executePlanSession(ctx context.Context, sess
 	for i, step := range session.Steps {
 		session.mu.Lock()
 		session.CurrentStepIdx = i
-		
+
 		// Check if paused
 		if session.Status == PlanModeStatusPaused {
 			session.mu.Unlock()
 			h.logger.WithField("session_id", session.ID).Info("Plan execution paused")
 			return
 		}
-		
+
 		step.Status = PlanStepStatusInProgress
 		session.mu.Unlock()
 
@@ -580,14 +580,14 @@ func (h *PlanningHandlerExtensions) executePlanSession(ctx context.Context, sess
 
 		session.mu.Lock()
 		step.Result = stepResult
-		
+
 		if stepResult.Success {
 			step.Status = PlanStepStatusCompleted
 			result.StepsCompleted++
 		} else {
 			step.Status = PlanStepStatusFailed
 			result.StepsFailed++
-			
+
 			// Stop on failure unless configured to continue
 			if !session.AutoExecute {
 				session.Status = PlanModeStatusFailed
@@ -595,7 +595,7 @@ func (h *PlanningHandlerExtensions) executePlanSession(ctx context.Context, sess
 				break
 			}
 		}
-		
+
 		session.UpdatedAt = time.Now()
 		session.mu.Unlock()
 	}
@@ -624,7 +624,7 @@ func (h *PlanningHandlerExtensions) executePlanSession(ctx context.Context, sess
 // executePlanStep executes a single plan step
 func (h *PlanningHandlerExtensions) executePlanStep(ctx context.Context, step *PlanStep) *PlanStepResult {
 	startTime := time.Now()
-	
+
 	// This would integrate with the tool execution system
 	// For now, simulating execution
 	time.Sleep(100 * time.Millisecond)

@@ -880,7 +880,7 @@ func TestCalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)

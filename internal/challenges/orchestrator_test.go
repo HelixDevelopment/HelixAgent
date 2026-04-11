@@ -249,7 +249,7 @@ func TestDetectCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.filename, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected,
 				detectCategory(tc.filename))
 		})

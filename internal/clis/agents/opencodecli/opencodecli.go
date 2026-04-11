@@ -38,7 +38,7 @@ func New() *OpencodeCLI {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &OpencodeCLI{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (o *OpencodeCLI) Initialize(ctx context.Context, config interface{}) error 
 	if err := o.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		o.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (o *OpencodeCLI) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "chat":
 		return o.chat(ctx, params)
@@ -89,7 +89,7 @@ func (o *OpencodeCLI) chat(ctx context.Context, params map[string]interface{}) (
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message":  message,
 		"response": fmt.Sprintf("Opencode: %s", message),
@@ -102,7 +102,7 @@ func (o *OpencodeCLI) generate(ctx context.Context, params map[string]interface{
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"code":   fmt.Sprintf("// Opencode\n// %s", prompt),

@@ -46,7 +46,7 @@ func TestErrorResponse_Format(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			r := setupTestRouter()
 			r.GET("/test", func(c *gin.Context) {
 				c.JSON(tt.statusCode, gin.H{
@@ -73,7 +73,7 @@ func TestHTTPMethods_Supported(t *testing.T) {
 
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			r := setupTestRouter()
 			r.Handle(method, "/test", func(c *gin.Context) {
 				c.Status(http.StatusOK)

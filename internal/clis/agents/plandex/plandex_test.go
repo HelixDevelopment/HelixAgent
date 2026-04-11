@@ -15,7 +15,7 @@ func TestNewPlandex(t *testing.T) {
 	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
-	
+
 	info := p.Info()
 	assert.Equal(t, agents.TypePlandex, info.Type)
 	assert.Equal(t, "Plandex", info.Name)
@@ -27,14 +27,14 @@ func TestPlandexInitialize(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		Mode: "manual",
 	}
-	
+
 	err := p.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, "manual", p.config.Mode)
@@ -44,7 +44,7 @@ func TestPlandexInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "auto", p.config.Mode) // Default value
@@ -54,14 +54,14 @@ func TestPlandexStartStop(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = p.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, p.IsStarted())
-	
+
 	err = p.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, p.IsStarted())
@@ -71,10 +71,10 @@ func TestPlandexExecute(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -122,10 +122,10 @@ func TestPlandexExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := p.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -141,7 +141,7 @@ func TestPlandexCapabilities(t *testing.T) {
 	t.Parallel()
 	p := New()
 	info := p.Info()
-	
+
 	expectedCaps := []string{"task_planning", "execution", "multi_step"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -158,15 +158,15 @@ func TestPlandexPlanResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "plan", map[string]interface{}{
 		"task": "Create microservice",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "Create microservice", resultMap["task"])
@@ -177,22 +177,22 @@ func TestPlandexExecuteResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		Mode: "review",
 	}
-	
+
 	err := p.Initialize(ctx, config)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "execute", map[string]interface{}{
 		"task": "Deploy app",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "Deploy app", resultMap["task"])

@@ -38,7 +38,7 @@ func New() *GPTMe {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GPTMe{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (g *GPTMe) Initialize(ctx context.Context, config interface{}) error {
 	if err := g.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		g.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (g *GPTMe) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "ask":
 		return g.ask(ctx, params)
@@ -89,7 +89,7 @@ func (g *GPTMe) ask(ctx context.Context, params map[string]interface{}) (interfa
 	if question == "" {
 		return nil, fmt.Errorf("question required")
 	}
-	
+
 	return map[string]interface{}{
 		"question": question,
 		"answer":   fmt.Sprintf("GPTMe: %s", question),
@@ -102,7 +102,7 @@ func (g *GPTMe) shell(ctx context.Context, params map[string]interface{}) (inter
 	if cmd == "" {
 		return nil, fmt.Errorf("command required")
 	}
-	
+
 	return map[string]interface{}{
 		"command": cmd,
 		"output":  fmt.Sprintf("Executed: %s", cmd),

@@ -2,12 +2,12 @@ package helixllm
 
 // HealthResponse represents the health check response from HelixLLM
 type HealthResponse struct {
-	Status    string            `json:"status"`
-	Version   string            `json:"version"`
-	Mode      string            `json:"mode"`
-	Uptime    string            `json:"uptime"`
-	Services  map[string]bool   `json:"services"`
-	Timestamp int64             `json:"timestamp"`
+	Status    string          `json:"status"`
+	Version   string          `json:"version"`
+	Mode      string          `json:"mode"`
+	Uptime    string          `json:"uptime"`
+	Services  map[string]bool `json:"services"`
+	Timestamp int64           `json:"timestamp"`
 }
 
 // ChatCompletionRequest represents a chat completion request
@@ -73,18 +73,18 @@ type EmbeddingData struct {
 
 // KnowledgeIngestRequest represents a knowledge ingestion request
 type KnowledgeIngestRequest struct {
-	Collection string   `json:"collection"`
-	Documents  []string `json:"documents"`
+	Collection string                   `json:"collection"`
+	Documents  []string                 `json:"documents"`
 	Metadata   []map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // KnowledgeIngestResponse represents a knowledge ingestion response
 type KnowledgeIngestResponse struct {
-	ID          string `json:"id"`
-	Collection  string `json:"collection"`
-	ChunkCount  int    `json:"chunk_count"`
-	Status      string `json:"status"`
-	DurationMs  int    `json:"duration_ms"`
+	ID         string `json:"id"`
+	Collection string `json:"collection"`
+	ChunkCount int    `json:"chunk_count"`
+	Status     string `json:"status"`
+	DurationMs int    `json:"duration_ms"`
 }
 
 // KnowledgeQueryRequest represents a knowledge query request
@@ -119,8 +119,8 @@ type AgentChatRequest struct {
 
 // AgentChatResponse represents an agent chat response
 type AgentChatResponse struct {
-	SessionID string   `json:"session_id"`
-	Response  string   `json:"response"`
+	SessionID string     `json:"session_id"`
+	Response  string     `json:"response"`
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 	Sources   []string   `json:"sources,omitempty"`
 }
@@ -140,21 +140,21 @@ type ModelsResponse struct {
 
 // ModelInfo represents a single model's information
 type ModelInfo struct {
-	ID         string                 `json:"id"`
-	Object     string                 `json:"object"`
-	Created    int64                  `json:"created"`
-	OwnedBy    string                 `json:"owned_by"`
-	Capabilities map[string]bool      `json:"capabilities,omitempty"`
+	ID           string          `json:"id"`
+	Object       string          `json:"object"`
+	Created      int64           `json:"created"`
+	OwnedBy      string          `json:"owned_by"`
+	Capabilities map[string]bool `json:"capabilities,omitempty"`
 }
 
 // ServiceStatus represents the status of HelixLLM services
 type ServiceStatus struct {
-	Name      string `json:"name"`
-	Status    string `json:"status"`
-	Healthy   bool   `json:"healthy"`
-	Uptime    string `json:"uptime,omitempty"`
-	Image     string `json:"image,omitempty"`
-	Ports     []Port `json:"ports,omitempty"`
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Healthy bool   `json:"healthy"`
+	Uptime  string `json:"uptime,omitempty"`
+	Image   string `json:"image,omitempty"`
+	Ports   []Port `json:"ports,omitempty"`
 }
 
 // Port represents a port mapping

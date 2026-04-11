@@ -529,7 +529,7 @@ func TestCompiledPattern_Match_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, cp.Match(tt.input))
 		})
 	}

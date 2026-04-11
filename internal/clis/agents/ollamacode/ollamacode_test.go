@@ -15,7 +15,7 @@ func TestNewOllamaCode(t *testing.T) {
 	t.Parallel()
 	o := New()
 	require.NotNil(t, o)
-	
+
 	info := o.Info()
 	assert.Equal(t, agents.TypeOllamaCode, info.Type)
 	assert.Equal(t, "Ollama Code", info.Name)
@@ -27,7 +27,7 @@ func TestOllamaCodeInitialize(t *testing.T) {
 	t.Parallel()
 	o := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
@@ -35,7 +35,7 @@ func TestOllamaCodeInitialize(t *testing.T) {
 		Endpoint: "http://custom:11434",
 		Model:    "llama2",
 	}
-	
+
 	err := o.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, "http://custom:11434", o.config.Endpoint)
@@ -46,7 +46,7 @@ func TestOllamaCodeInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	o := New()
 	ctx := context.Background()
-	
+
 	err := o.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "http://localhost:11434", o.config.Endpoint) // Default value
@@ -57,14 +57,14 @@ func TestOllamaCodeStartStop(t *testing.T) {
 	t.Parallel()
 	o := New()
 	ctx := context.Background()
-	
+
 	err := o.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = o.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, o.IsStarted())
-	
+
 	err = o.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, o.IsStarted())
@@ -74,10 +74,10 @@ func TestOllamaCodeExecute(t *testing.T) {
 	t.Parallel()
 	o := New()
 	ctx := context.Background()
-	
+
 	err := o.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -111,10 +111,10 @@ func TestOllamaCodeExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := o.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -130,7 +130,7 @@ func TestOllamaCodeCapabilities(t *testing.T) {
 	t.Parallel()
 	o := New()
 	info := o.Info()
-	
+
 	expectedCaps := []string{"local_llm", "privacy", "code_generation"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -141,7 +141,7 @@ func TestOllamaCodeIsAvailable(t *testing.T) {
 	t.Parallel()
 	o := New()
 	assert.True(t, o.IsAvailable())
-	
+
 	// Test with empty endpoint
 	o.config.Endpoint = ""
 	assert.False(t, o.IsAvailable())
@@ -151,15 +151,15 @@ func TestOllamaCodeGenerateResult(t *testing.T) {
 	t.Parallel()
 	o := New()
 	ctx := context.Background()
-	
+
 	err := o.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := o.Execute(ctx, "generate", map[string]interface{}{
 		"prompt": "Build a struct",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "Build a struct", resultMap["prompt"])

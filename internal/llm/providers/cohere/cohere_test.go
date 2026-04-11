@@ -344,7 +344,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewProvider(tt.apiKey, "", "")
 			valid, errors := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.expected, valid)

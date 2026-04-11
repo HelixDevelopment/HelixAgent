@@ -24,13 +24,13 @@ func NewGitOps(repoPath string) *GitOps {
 
 // Status represents git status.
 type Status struct {
-	Branch          string
-	IsDirty         bool
-	UntrackedFiles  []string
-	ModifiedFiles   []string
-	StagedFiles     []string
-	Ahead           int
-	Behind          int
+	Branch         string
+	IsDirty        bool
+	UntrackedFiles []string
+	ModifiedFiles  []string
+	StagedFiles    []string
+	Ahead          int
+	Behind         int
 }
 
 // GetStatus gets the current git status.
@@ -55,10 +55,10 @@ func (g *GitOps) GetStatus(ctx context.Context) (*Status, error) {
 		if len(line) < 3 {
 			continue
 		}
-		
+
 		statusCode := line[:2]
 		filename := strings.TrimSpace(line[2:])
-		
+
 		if statusCode == "??" {
 			status.UntrackedFiles = append(status.UntrackedFiles, filename)
 		} else if statusCode[0] != ' ' {
@@ -68,12 +68,12 @@ func (g *GitOps) GetStatus(ctx context.Context) (*Status, error) {
 		}
 	}
 
-	status.IsDirty = len(status.UntrackedFiles) > 0 || 
-	                len(status.ModifiedFiles) > 0 || 
-	                len(status.StagedFiles) > 0
+	status.IsDirty = len(status.UntrackedFiles) > 0 ||
+		len(status.ModifiedFiles) > 0 ||
+		len(status.StagedFiles) > 0
 
 	// Get ahead/behind
-	aheadBehind, err := g.runGit(ctx, "rev-list", "--left-right", "--count", 
+	aheadBehind, err := g.runGit(ctx, "rev-list", "--left-right", "--count",
 		fmt.Sprintf("HEAD...origin/%s", status.Branch))
 	if err == nil {
 		parts := strings.Fields(aheadBehind)
@@ -174,7 +174,7 @@ func (g *GitOps) GetCurrentBranch(ctx context.Context) (string, error) {
 // GetRecentCommits returns recent commit history.
 func (g *GitOps) GetRecentCommits(ctx context.Context, n int) ([]*Commit, error) {
 	format := "%H|%an|%ae|%ad|%s"
-	output, err := g.runGit(ctx, "log", fmt.Sprintf("-%d", n), 
+	output, err := g.runGit(ctx, "log", fmt.Sprintf("-%d", n),
 		"--format="+format, "--date=short")
 	if err != nil {
 		return nil, err
@@ -203,11 +203,11 @@ func (g *GitOps) GetRecentCommits(ctx context.Context, n int) ([]*Commit, error)
 
 // Commit represents a git commit.
 type Commit struct {
-	Hash      string
-	Author    string
-	Email     string
-	Date      time.Time
-	Message   string
+	Hash    string
+	Author  string
+	Email   string
+	Date    time.Time
+	Message string
 }
 
 // Push pushes the current branch to origin.
@@ -351,7 +351,7 @@ func (g *GitOps) CreateCommitMessage(ctx context.Context, context string) (strin
 	if context != "" {
 		return fmt.Sprintf("%s: %s", context, strings.Join(parts, ", ")), nil
 	}
-	
+
 	return strings.Join(parts, ", "), nil
 }
 
@@ -368,7 +368,7 @@ func (g *GitOps) parseDiff(diffOutput string) []*Diff {
 			if currentDiff != nil {
 				diffs = append(diffs, currentDiff)
 			}
-			
+
 			// Extract filename
 			parts := strings.Fields(line)
 			if len(parts) >= 4 {
@@ -414,7 +414,7 @@ func (g *GitOps) runGit(ctx context.Context, args ...string) (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %v (stderr: %s)", 
+		return "", fmt.Errorf("git %s: %v (stderr: %s)",
 			strings.Join(args, " "), err, stderr.String())
 	}
 

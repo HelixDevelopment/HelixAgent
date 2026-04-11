@@ -207,7 +207,7 @@ func TestGetProviderInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			info, ok := GetProviderInfo(tt.provider)
 			assert.Equal(t, tt.wantOK, ok)
 			if tt.wantOK {
@@ -234,7 +234,7 @@ func TestIsOAuthProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := IsOAuthProvider(tt.provider)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -258,7 +258,7 @@ func TestIsFreeProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := IsFreeProvider(tt.provider)
 			assert.Equal(t, tt.expected, result)
 		})

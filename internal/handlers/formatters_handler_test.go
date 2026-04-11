@@ -460,7 +460,7 @@ func TestValidateConfigResponse_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.valid, tt.resp.Valid)
 			assert.Len(t, tt.resp.Errors, tt.errors)
 		})
@@ -1120,7 +1120,7 @@ func TestFormattersHandler_ValidateConfig_BadRequest_MissingFields(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(
 				"POST",
@@ -1266,7 +1266,7 @@ func TestFormattersHandler_ResponseContentType(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if route.body != "" {

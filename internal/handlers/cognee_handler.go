@@ -537,4 +537,3 @@ func (h *CogneeAPIHandler) RegisterRoutes(router *gin.RouterGroup) {
 		cognee.POST("/feedback", h.ProvideFeedback)
 	}
 }
-

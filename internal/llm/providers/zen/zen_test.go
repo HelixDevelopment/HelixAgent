@@ -54,7 +54,7 @@ func TestNewZenProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := NewZenProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.NotNil(t, p)
 			assert.Equal(t, tt.apiKey, p.apiKey)
@@ -98,7 +98,7 @@ func TestIsFreeModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isFreeModel(tt.model)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -345,7 +345,7 @@ func TestZenProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := &ZenProvider{
 				apiKey:        tt.apiKey,
 				baseURL:       tt.baseURL,
@@ -515,7 +515,7 @@ func TestZenProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)
@@ -866,7 +866,7 @@ func TestNextDelay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := p.nextDelay(tt.currentDelay)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -930,7 +930,7 @@ func TestZenProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - service unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		mockResp := &http.Response{
 			StatusCode: http.StatusServiceUnavailable,
 			Body:       io.NopCloser(strings.NewReader("")),
@@ -949,7 +949,7 @@ func TestZenProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("failure - network error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		p := &ZenProvider{
 			apiKey:     "test-key",
 			model:      ModelBigPickle,
@@ -962,7 +962,7 @@ func TestZenProvider_HealthCheck_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("with anonymous mode headers", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		respBody := `{"object":"list","data":[{"id":"grok-code"}]}`
 		var capturedHeader string
 
@@ -1019,7 +1019,7 @@ func TestZenProvider_GetAvailableModels_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("error - API error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		mockResp := &http.Response{
 			StatusCode: http.StatusInternalServerError,
 			Body:       io.NopCloser(strings.NewReader("Internal Server Error")),
@@ -1038,7 +1038,7 @@ func TestZenProvider_GetAvailableModels_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("error - network error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		p := &ZenProvider{
 			apiKey:     "test-key",
 			model:      ModelBigPickle,
@@ -1051,7 +1051,7 @@ func TestZenProvider_GetAvailableModels_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("error - invalid JSON", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		mockResp := &http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(strings.NewReader("invalid json")),
@@ -1103,7 +1103,7 @@ func TestZenProvider_GetFreeModels_WithMockTransport(t *testing.T) {
 	})
 
 	t.Run("error - propagates GetAvailableModels error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		p := &ZenProvider{
 			apiKey:     "test-key",
 			model:      ModelBigPickle,

@@ -18,29 +18,29 @@ type Message struct {
 // ContentBlock represents a content block in a message
 type ContentBlock struct {
 	Type string `json:"type"`
-	
+
 	// For text type
 	Text string `json:"text,omitempty"`
-	
+
 	// For image type
 	Source *ImageSource `json:"source,omitempty"`
-	
+
 	// For tool_use type
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Input     json.RawMessage `json:"input,omitempty"`
-	
+	ID    string          `json:"id,omitempty"`
+	Name  string          `json:"name,omitempty"`
+	Input json.RawMessage `json:"input,omitempty"`
+
 	// For tool_result type
-	ToolUseID string `json:"tool_use_id,omitempty"`
+	ToolUseID string      `json:"tool_use_id,omitempty"`
 	Content   interface{} `json:"content,omitempty"`
-	IsError   bool `json:"is_error,omitempty"`
+	IsError   bool        `json:"is_error,omitempty"`
 }
 
 // ImageSource represents an image source
 type ImageSource struct {
-	Type      string `json:"type"` // "base64" or "url"
+	Type      string `json:"type"`                 // "base64" or "url"
 	MediaType string `json:"media_type,omitempty"` // e.g., "image/jpeg"
-	Data      string `json:"data,omitempty"` // base64 encoded
+	Data      string `json:"data,omitempty"`       // base64 encoded
 	URL       string `json:"url,omitempty"`
 }
 
@@ -53,23 +53,23 @@ type Tool struct {
 
 // ToolChoice represents tool choice configuration
 type ToolChoice struct {
-	Type string `json:"type"` // "auto", "any", or "tool"
+	Type string `json:"type"`           // "auto", "any", or "tool"
 	Name string `json:"name,omitempty"` // required if type is "tool"
 }
 
 // MessageRequest represents a request to the Messages API
 type MessageRequest struct {
-	Model       string          `json:"model"`
-	MaxTokens   int             `json:"max_tokens"`
-	Messages    []Message       `json:"messages"`
-	System      string          `json:"system,omitempty"`
-	Tools       []Tool          `json:"tools,omitempty"`
-	ToolChoice  interface{}     `json:"tool_choice,omitempty"` // "auto", "any", or ToolChoice
-	Temperature *float64        `json:"temperature,omitempty"`
-	TopP        *float64        `json:"top_p,omitempty"`
-	TopK        *int            `json:"top_k,omitempty"`
-	Stream      bool            `json:"stream,omitempty"`
-	Metadata    *Metadata       `json:"metadata,omitempty"`
+	Model       string      `json:"model"`
+	MaxTokens   int         `json:"max_tokens"`
+	Messages    []Message   `json:"messages"`
+	System      string      `json:"system,omitempty"`
+	Tools       []Tool      `json:"tools,omitempty"`
+	ToolChoice  interface{} `json:"tool_choice,omitempty"` // "auto", "any", or ToolChoice
+	Temperature *float64    `json:"temperature,omitempty"`
+	TopP        *float64    `json:"top_p,omitempty"`
+	TopK        *int        `json:"top_k,omitempty"`
+	Stream      bool        `json:"stream,omitempty"`
+	Metadata    *Metadata   `json:"metadata,omitempty"`
 }
 
 // Metadata represents request metadata
@@ -97,11 +97,11 @@ type Usage struct {
 
 // StreamEvent represents a streaming event from the Messages API
 type StreamEvent struct {
-	Type         string          `json:"type"`
+	Type         string           `json:"type"`
 	Message      *MessageResponse `json:"message,omitempty"`
-	Index        int             `json:"index,omitempty"`
-	ContentBlock *ContentBlock   `json:"content_block,omitempty"`
-	Delta        *StreamDelta    `json:"delta,omitempty"`
+	Index        int              `json:"index,omitempty"`
+	ContentBlock *ContentBlock    `json:"content_block,omitempty"`
+	Delta        *StreamDelta     `json:"delta,omitempty"`
 }
 
 // StreamDelta represents a delta in a streaming event
@@ -114,10 +114,10 @@ type StreamDelta struct {
 
 // Available Claude models
 const (
-	ModelClaudeOpus4_1      = "claude-opus-4-1-20251001"
-	ModelClaudeSonnet4_5    = "claude-sonnet-4-5-20251001"
-	ModelClaudeSonnet4_6    = "claude-sonnet-4-6-20251001"
-	ModelClaudeHaiku4_5     = "claude-haiku-4-5-20251001"
+	ModelClaudeOpus4_1   = "claude-opus-4-1-20251001"
+	ModelClaudeSonnet4_5 = "claude-sonnet-4-5-20251001"
+	ModelClaudeSonnet4_6 = "claude-sonnet-4-6-20251001"
+	ModelClaudeHaiku4_5  = "claude-haiku-4-5-20251001"
 )
 
 // CreateMessage sends a message request to the Anthropic API
@@ -127,16 +127,16 @@ func (c *Client) CreateMessage(ctx context.Context, req *MessageRequest) (*Messa
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result MessageResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -144,27 +144,27 @@ func (c *Client) CreateMessage(ctx context.Context, req *MessageRequest) (*Messa
 func (c *Client) CreateMessageStream(ctx context.Context, req *MessageRequest) (<-chan StreamEvent, <-chan error) {
 	events := make(chan StreamEvent)
 	errors := make(chan error, 1)
-	
+
 	go func() {
 		defer close(events)
 		defer close(errors)
-		
+
 		req.Stream = true
-		
+
 		resp, err := c.doRequest(ctx, "POST", "/v1/messages", req)
 		if err != nil {
 			errors <- err
 			return
 		}
 		defer resp.Body.Close()
-		
+
 		if resp.StatusCode != 200 {
 			errors <- handleErrorResponse(resp)
 			return
 		}
-		
+
 		reader := NewEventStreamReader(resp.Body)
-		
+
 		for {
 			eventType, data, err := reader.ReadEvent()
 			if err != nil {
@@ -173,18 +173,18 @@ func (c *Client) CreateMessageStream(ctx context.Context, req *MessageRequest) (
 				}
 				return
 			}
-			
+
 			// Skip ping events
 			if eventType == "ping" {
 				continue
 			}
-			
+
 			var event StreamEvent
 			if err := json.Unmarshal(data, &event); err != nil {
 				errors <- fmt.Errorf("unmarshal event: %w", err)
 				return
 			}
-			
+
 			select {
 			case events <- event:
 			case <-ctx.Done():
@@ -192,7 +192,7 @@ func (c *Client) CreateMessageStream(ctx context.Context, req *MessageRequest) (
 			}
 		}
 	}()
-	
+
 	return events, errors
 }
 
@@ -205,7 +205,7 @@ func (c *Client) CreateMessageWithTools(ctx context.Context, model, system strin
 		System:    system,
 		Tools:     tools,
 	}
-	
+
 	return c.CreateMessage(ctx, req)
 }
 
@@ -221,28 +221,28 @@ func (c *Client) SimpleMessage(ctx context.Context, model, userMessage string, m
 			},
 		},
 	}
-	
+
 	return c.CreateMessage(ctx, req)
 }
 
 // CollectStreamContent collects all text content from a streaming response
 func CollectStreamContent(events <-chan StreamEvent, errors <-chan error) (string, error) {
 	var content strings.Builder
-	
+
 	for {
 		select {
 		case event, ok := <-events:
 			if !ok {
 				return content.String(), nil
 			}
-			
+
 			switch event.Type {
 			case "content_block_delta":
 				if event.Delta != nil && event.Delta.Type == "text_delta" {
 					content.WriteString(event.Delta.Text)
 				}
 			}
-			
+
 		case err := <-errors:
 			if err != nil {
 				return content.String(), err
@@ -294,5 +294,3 @@ func CreateToolResultBlock(toolUseID string, content interface{}, isError bool) 
 		IsError:   isError,
 	}
 }
-
-

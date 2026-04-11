@@ -1,8 +1,8 @@
 package containers
 
 import (
-	"github.com/sirupsen/logrus"
 	"digital.vasic.containers/pkg/logging"
+	"github.com/sirupsen/logrus"
 )
 
 // LogrusLogger adapts a logrus.Logger to the containers logging.Logger interface

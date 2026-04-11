@@ -328,7 +328,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 
 	for _, provider := range providers {
 		t.Run("Reset_"+provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -341,7 +341,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 		})
 
 		t.Run("OAuthRefresh_"+provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -353,7 +353,7 @@ func TestMonitoringHandler_MultipleProviderEndpoints(t *testing.T) {
 		})
 
 		t.Run("HealthCheck_"+provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: provider}}
@@ -395,7 +395,7 @@ func TestMonitoringHandler_EmptyProviderParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "provider", Value: ""}}
@@ -484,7 +484,7 @@ func TestMonitoringHandler_ResponseFormats(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.name+"_ValidJSON", func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/test", nil)

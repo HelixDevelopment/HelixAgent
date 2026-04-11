@@ -38,7 +38,7 @@ func New() *Octogen {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Octogen{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (o *Octogen) Initialize(ctx context.Context, config interface{}) error {
 	if err := o.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		o.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (o *Octogen) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return o.generate(ctx, params)
@@ -87,7 +87,7 @@ func (o *Octogen) generate(ctx context.Context, params map[string]interface{}) (
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"code":   fmt.Sprintf("// Octogen multi-model\n// %s", prompt),

@@ -227,7 +227,7 @@ func TestLinearAdapter_GetIssue(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		client := &MockLinearClient{Issues: []LinearIssue{}}
 		adapter := NewLinearAdapter(DefaultLinearConfig(), client)
 

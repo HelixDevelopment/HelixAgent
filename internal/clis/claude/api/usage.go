@@ -10,12 +10,12 @@ import (
 
 // UsageResponse represents usage and rate limit information
 type UsageResponse struct {
-	FiveHour           *UsageWindow `json:"five_hour"`
-	SevenDay           *UsageWindow `json:"seven_day"`
-	SevenDayOAuthApps  *UsageWindow `json:"seven_day_oauth_apps,omitempty"`
-	SevenDayOpus       *UsageWindow `json:"seven_day_opus,omitempty"`
-	SevenDaySonnet     *UsageWindow `json:"seven_day_sonnet,omitempty"`
-	ExtraUsage         *ExtraUsage  `json:"extra_usage,omitempty"`
+	FiveHour          *UsageWindow `json:"five_hour"`
+	SevenDay          *UsageWindow `json:"seven_day"`
+	SevenDayOAuthApps *UsageWindow `json:"seven_day_oauth_apps,omitempty"`
+	SevenDayOpus      *UsageWindow `json:"seven_day_opus,omitempty"`
+	SevenDaySonnet    *UsageWindow `json:"seven_day_sonnet,omitempty"`
+	ExtraUsage        *ExtraUsage  `json:"extra_usage,omitempty"`
 }
 
 // UsageWindow represents a usage window
@@ -26,10 +26,10 @@ type UsageWindow struct {
 
 // ExtraUsage represents extra usage credit information
 type ExtraUsage struct {
-	IsEnabled     bool `json:"is_enabled"`
-	MonthlyLimit  int  `json:"monthly_limit"`
-	UsedCredits   int  `json:"used_credits"`
-	Utilization   int  `json:"utilization"`
+	IsEnabled    bool `json:"is_enabled"`
+	MonthlyLimit int  `json:"monthly_limit"`
+	UsedCredits  int  `json:"used_credits"`
+	Utilization  int  `json:"utilization"`
 }
 
 // GetUsage fetches rate limit and usage information
@@ -39,24 +39,24 @@ func (c *Client) GetUsage(ctx context.Context) (*UsageResponse, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result UsageResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
 // AccountSettings represents user account settings
 type AccountSettings struct {
-	GroveEnabled       bool              `json:"grove_enabled"`
-	GroveNoticeViewedAt *time.Time       `json:"grove_notice_viewed_at,omitempty"`
-	PrivacyPreferences *PrivacyPreferences `json:"privacy_preferences,omitempty"`
+	GroveEnabled        bool                `json:"grove_enabled"`
+	GroveNoticeViewedAt *time.Time          `json:"grove_notice_viewed_at,omitempty"`
+	PrivacyPreferences  *PrivacyPreferences `json:"privacy_preferences,omitempty"`
 }
 
 // PrivacyPreferences represents privacy-related settings
@@ -72,16 +72,16 @@ func (c *Client) GetAccountSettings(ctx context.Context) (*AccountSettings, erro
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result AccountSettings
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -92,11 +92,11 @@ func (c *Client) UpdateAccountSettings(ctx context.Context, settings *AccountSet
 		return err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return handleErrorResponse(resp)
 	}
-	
+
 	return nil
 }
 
@@ -107,20 +107,20 @@ func (c *Client) MarkGroveNoticeViewed(ctx context.Context) error {
 		return err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return handleErrorResponse(resp)
 	}
-	
+
 	return nil
 }
 
 // GroveConfig represents Grove configuration
 type GroveConfig struct {
-	GroveEnabled           bool  `json:"grove_enabled"`
-	DomainExcluded         bool  `json:"domain_excluded"`
-	NoticeIsGracePeriod    bool  `json:"notice_is_grace_period"`
-	NoticeReminderFrequency *int  `json:"notice_reminder_frequency,omitempty"`
+	GroveEnabled            bool `json:"grove_enabled"`
+	DomainExcluded          bool `json:"domain_excluded"`
+	NoticeIsGracePeriod     bool `json:"notice_is_grace_period"`
+	NoticeReminderFrequency *int `json:"notice_reminder_frequency,omitempty"`
 }
 
 // GetGroveConfig gets Grove configuration and eligibility
@@ -130,21 +130,21 @@ func (c *Client) GetGroveConfig(ctx context.Context) (*GroveConfig, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result GroveConfig
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
 // UsageTracker tracks usage across multiple requests
- type UsageTracker struct {
+type UsageTracker struct {
 	TotalInputTokens  int
 	TotalOutputTokens int
 	Requests          int
@@ -152,7 +152,7 @@ func (c *Client) GetGroveConfig(ctx context.Context) (*GroveConfig, error) {
 }
 
 // NewUsageTracker creates a new usage tracker
- func NewUsageTracker() *UsageTracker {
+func NewUsageTracker() *UsageTracker {
 	return &UsageTracker{
 		Windows: make([]UsageWindow, 0),
 	}
@@ -191,28 +191,28 @@ func (t *UsageTracker) CostEstimate(model string) float64 {
 		ModelClaudeSonnet4_6: {Input: 0.003, Output: 0.015},
 		ModelClaudeHaiku4_5:  {Input: 0.00025, Output: 0.00125},
 	}
-	
+
 	prices, ok := pricing[model]
 	if !ok {
 		// Default to sonnet pricing if model not found
 		prices = pricing[ModelClaudeSonnet4_5]
 	}
-	
+
 	inputCost := float64(t.TotalInputTokens) / 1000 * prices.Input
 	outputCost := float64(t.TotalOutputTokens) / 1000 * prices.Output
-	
+
 	return inputCost + outputCost
 }
 
 // RateLimitChecker helps check rate limits before making requests
- type RateLimitChecker struct {
-	usage      *UsageResponse
-	lastCheck  time.Time
+type RateLimitChecker struct {
+	usage         *UsageResponse
+	lastCheck     time.Time
 	checkInterval time.Duration
 }
 
 // NewRateLimitChecker creates a new rate limit checker
- func NewRateLimitChecker() *RateLimitChecker {
+func NewRateLimitChecker() *RateLimitChecker {
 	return &RateLimitChecker{
 		checkInterval: 5 * time.Minute,
 	}
@@ -234,20 +234,20 @@ func (r *RateLimitChecker) IsRateLimited(threshold int) bool {
 	if r.usage == nil {
 		return false
 	}
-	
+
 	windows := []*UsageWindow{
 		r.usage.FiveHour,
 		r.usage.SevenDay,
 		r.usage.SevenDayOpus,
 		r.usage.SevenDaySonnet,
 	}
-	
+
 	for _, window := range windows {
 		if window != nil && window.Utilization >= threshold {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -256,18 +256,18 @@ func (r *RateLimitChecker) GetMostRestrictedWindow() (*UsageWindow, string) {
 	if r.usage == nil {
 		return nil, ""
 	}
-	
+
 	windows := map[string]*UsageWindow{
-		"5-hour":    r.usage.FiveHour,
-		"7-day":     r.usage.SevenDay,
-		"7-day-opus": r.usage.SevenDayOpus,
+		"5-hour":       r.usage.FiveHour,
+		"7-day":        r.usage.SevenDay,
+		"7-day-opus":   r.usage.SevenDayOpus,
 		"7-day-sonnet": r.usage.SevenDaySonnet,
 	}
-	
+
 	var maxUtil int
 	var maxWindow *UsageWindow
 	var maxName string
-	
+
 	for name, window := range windows {
 		if window != nil && window.Utilization > maxUtil {
 			maxUtil = window.Utilization
@@ -275,6 +275,6 @@ func (r *RateLimitChecker) GetMostRestrictedWindow() (*UsageWindow, string) {
 			maxName = name
 		}
 	}
-	
+
 	return maxWindow, maxName
 }

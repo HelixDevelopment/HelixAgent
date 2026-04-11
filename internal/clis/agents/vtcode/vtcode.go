@@ -38,7 +38,7 @@ func New() *VTCode {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &VTCode{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (v *VTCode) Initialize(ctx context.Context, config interface{}) error {
 	if err := v.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		v.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (v *VTCode) Execute(ctx context.Context, command string, params map[string]
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "transcribe":
 		return v.transcribe(ctx, params)
@@ -87,7 +87,7 @@ func (v *VTCode) transcribe(ctx context.Context, params map[string]interface{}) 
 	if audio == "" {
 		return nil, fmt.Errorf("audio required")
 	}
-	
+
 	return map[string]interface{}{
 		"audio":    audio,
 		"code":     "// Voice transcribed code",

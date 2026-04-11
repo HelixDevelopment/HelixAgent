@@ -38,7 +38,7 @@ func New() *MultiAgentCoding {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &MultiAgentCoding{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (m *MultiAgentCoding) Initialize(ctx context.Context, config interface{}) e
 	if err := m.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		m.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (m *MultiAgentCoding) Execute(ctx context.Context, command string, params m
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "collaborate":
 		return m.collaborate(ctx, params)
@@ -87,12 +87,12 @@ func (m *MultiAgentCoding) collaborate(ctx context.Context, params map[string]in
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	return map[string]interface{}{
-		"task":        task,
-		"agents":      m.config.AgentCount,
-		"result":      fmt.Sprintf("Collaborative result for: %s", task),
-		"status":      "completed",
+		"task":   task,
+		"agents": m.config.AgentCount,
+		"result": fmt.Sprintf("Collaborative result for: %s", task),
+		"status": "completed",
 	}, nil
 }
 

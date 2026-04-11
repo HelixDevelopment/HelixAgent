@@ -38,7 +38,7 @@ func TestEnhancedScoringService_CalculateEnhancedScore(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	t.Run("calculates score for model", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		model := &UnifiedModel{
 			ID:       "test-model",
 			Name:     "Test Model",
@@ -71,7 +71,7 @@ func TestEnhancedScoringService_CalculateEnhancedScore(t *testing.T) {
 	})
 
 	t.Run("caches results", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		model := &UnifiedModel{
 			ID:       "cache-test-model",
 			Name:     "Cache Test",
@@ -119,7 +119,7 @@ func TestEnhancedScoringService_CalculateResponseSpeedScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			model := &UnifiedModel{Latency: tt.latency}
 			score := svc.calculateResponseSpeedScore(model)
 			assert.Equal(t, tt.expected, score)
@@ -147,7 +147,7 @@ func TestEnhancedScoringService_CalculateCodeQualityScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			model := &UnifiedModel{
 				ID:          tt.modelID,
 				TestResults: tt.testResults,
@@ -180,7 +180,7 @@ func TestEnhancedScoringService_CalculateReasoningScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			model := &UnifiedModel{ID: tt.modelID}
 			score := svc.calculateReasoningScore(model)
 			assert.GreaterOrEqual(t, score, tt.minExpected, "Score should be at least %f", tt.minExpected)
@@ -213,7 +213,7 @@ func TestEnhancedScoringService_DetermineSpecialization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			model := &UnifiedModel{ID: tt.modelID}
 			specialization := svc.determineSpecialization(model, tt.components)
 			assert.Equal(t, tt.expected, specialization)
@@ -226,7 +226,7 @@ func TestEnhancedScoringService_CalculateConfidenceScore(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	t.Run("verified model gets bonus", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		verifiedModel := &UnifiedModel{Verified: true}
 		unverifiedModel := &UnifiedModel{Verified: false}
 		provider := &UnifiedProvider{Tier: 3}
@@ -238,7 +238,7 @@ func TestEnhancedScoringService_CalculateConfidenceScore(t *testing.T) {
 	})
 
 	t.Run("OAuth provider gets bonus", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		model := &UnifiedModel{Verified: true}
 		oauthProvider := &UnifiedProvider{Tier: 2, AuthType: AuthTypeOAuth}
 		apiKeyProvider := &UnifiedProvider{Tier: 2, AuthType: AuthTypeAPIKey}
@@ -250,7 +250,7 @@ func TestEnhancedScoringService_CalculateConfidenceScore(t *testing.T) {
 	})
 
 	t.Run("test results improve confidence", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		modelWithTests := &UnifiedModel{
 			Verified: true,
 			TestResults: map[string]bool{
@@ -269,7 +269,7 @@ func TestEnhancedScoringService_CalculateConfidenceScore(t *testing.T) {
 	})
 
 	t.Run("confidence is capped at 1.0", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		model := &UnifiedModel{
 			Verified: true,
 			Latency:  100 * time.Millisecond,
@@ -291,13 +291,13 @@ func TestEnhancedScoringService_CalculateDiversityBonus(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	t.Run("first model from provider gets highest bonus", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		bonus := svc.calculateDiversityBonus("new-provider", "model-1")
 		assert.Equal(t, 0.5, bonus)
 	})
 
 	t.Run("bonus decreases with more models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Simulate adding models to cache
 		svc.cache["provider-a:model-1"] = &EnhancedScoringResult{}
 
@@ -339,7 +339,7 @@ func TestEnhancedScoringService_GetTopScoringModels(t *testing.T) {
 	}
 
 	t.Run("returns top models sorted by score", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		top := svc.GetTopScoringModels(2)
 		require.Len(t, top, 2)
 		// Model-2 (9.0 + 0.5 = 9.5) should be first
@@ -347,13 +347,13 @@ func TestEnhancedScoringService_GetTopScoringModels(t *testing.T) {
 	})
 
 	t.Run("respects limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		top := svc.GetTopScoringModels(1)
 		require.Len(t, top, 1)
 	})
 
 	t.Run("handles limit larger than cache", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		top := svc.GetTopScoringModels(100)
 		assert.Len(t, top, 3)
 	})
@@ -376,13 +376,13 @@ func TestEnhancedScoringService_SelectDebateTeamFromScores(t *testing.T) {
 	}
 
 	t.Run("selects up to 12 models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		team := svc.SelectDebateTeamFromScores(5.0)
 		assert.LessOrEqual(t, len(team), 12)
 	})
 
 	t.Run("respects minimum score", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		team := svc.SelectDebateTeamFromScores(7.0)
 		for _, m := range team {
 			assert.GreaterOrEqual(t, m.OverallScore, 7.0)
@@ -390,7 +390,7 @@ func TestEnhancedScoringService_SelectDebateTeamFromScores(t *testing.T) {
 	})
 
 	t.Run("enforces provider diversity", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		team := svc.SelectDebateTeamFromScores(5.0)
 		providerCounts := make(map[string]int)
 		for _, m := range team {
@@ -407,7 +407,7 @@ func TestEnhancedScoringService_CalculateWeightedVote(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	t.Run("selects response with highest weighted vote", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		responses := map[string]string{
 			"model-1": "answer A",
 			"model-2": "answer A",
@@ -425,7 +425,7 @@ func TestEnhancedScoringService_CalculateWeightedVote(t *testing.T) {
 	})
 
 	t.Run("handles missing confidence with default", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		responses := map[string]string{
 			"model-1": "answer A",
 			"model-2": "answer B",
@@ -440,7 +440,7 @@ func TestEnhancedScoringService_CalculateWeightedVote(t *testing.T) {
 	})
 
 	t.Run("handles single response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		responses := map[string]string{
 			"model-1": "only answer",
 		}
@@ -458,7 +458,7 @@ func TestEnhancedScoringService_ComputeWeightedScore(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	t.Run("computes weighted score correctly", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		components := EnhancedScoreComponents{
 			ResponseSpeed:     8.0,
 			ModelEfficiency:   7.0,
@@ -476,7 +476,7 @@ func TestEnhancedScoringService_ComputeWeightedScore(t *testing.T) {
 	})
 
 	t.Run("caps score at 10.0", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		components := EnhancedScoreComponents{
 			ResponseSpeed:     10.0,
 			ModelEfficiency:   10.0,
@@ -492,7 +492,7 @@ func TestEnhancedScoringService_ComputeWeightedScore(t *testing.T) {
 	})
 
 	t.Run("returns non-negative score", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		components := EnhancedScoreComponents{
 			ResponseSpeed:     0.0,
 			ModelEfficiency:   0.0,
@@ -527,7 +527,7 @@ func TestContainsIgnoreCaseEnhanced(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.s+"-"+tt.substr, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := containsIgnoreCase(tt.s, tt.substr)
 			assert.Equal(t, tt.expected, result)
 		})

@@ -22,12 +22,12 @@ import (
 // ServiceIntegration provides integration between the new debate framework
 // and the existing DebateService. It allows gradual migration to the new system.
 type ServiceIntegration struct {
-	orchestrator               *orchestrator.Orchestrator
-	providerRegistry           *services.ProviderRegistry
-	providerBridge             *ProviderRegistryBridge
-	comprehensiveIntegration   *comprehensive.IntegrationManager // Shared pool target
-	logger                     *logrus.Logger
-	config                     ServiceIntegrationConfig
+	orchestrator             *orchestrator.Orchestrator
+	providerRegistry         *services.ProviderRegistry
+	providerBridge           *ProviderRegistryBridge
+	comprehensiveIntegration *comprehensive.IntegrationManager // Shared pool target
+	logger                   *logrus.Logger
+	config                   ServiceIntegrationConfig
 }
 
 // SetComprehensiveIntegration sets the comprehensive IntegrationManager so its

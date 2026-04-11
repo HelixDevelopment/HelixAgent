@@ -84,7 +84,7 @@ func TestConfig_Validate_FixesInvalidSimilarityThreshold(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := DefaultConfig()
 			config.SemanticCache.SimilarityThreshold = tt.threshold
 			err := config.Validate()
@@ -149,7 +149,7 @@ func TestIsComplexTask_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isComplexTask(tt.prompt)
 			assert.Equal(t, tt.expected, result)
 		})

@@ -38,7 +38,7 @@ func New() *Crush {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Crush{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (c *Crush) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (c *Crush) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "test":
 		return c.test(ctx, params)
@@ -89,7 +89,7 @@ func (c *Crush) test(ctx context.Context, params map[string]interface{}) (interf
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-	
+
 	return map[string]interface{}{
 		"code":   code,
 		"tests":  "Generated tests by Crush",
@@ -103,7 +103,7 @@ func (c *Crush) analyze(ctx context.Context, params map[string]interface{}) (int
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-	
+
 	return map[string]interface{}{
 		"code":     code,
 		"analysis": "Bug analysis by Crush",

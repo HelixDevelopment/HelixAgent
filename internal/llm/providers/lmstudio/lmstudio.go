@@ -26,11 +26,11 @@ func NewProvider(baseURL, model string) *Provider {
 	if baseURL == "" {
 		baseURL = "http://localhost:1234"
 	}
-	
+
 	return &Provider{
 		baseURL: baseURL,
 		model:   model,
-			client:  &http.Client{Timeout: 120 * time.Second},
+		client:  &http.Client{Timeout: 120 * time.Second},
 	}
 }
 

@@ -20,7 +20,7 @@ func TestProviderAccessRegistry_Completeness(t *testing.T) {
 
 	for _, provider := range coreProviders {
 		t.Run(provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := GetProviderAccessConfig(provider)
 			require.NotNil(t, config, "provider %s should be in registry", provider)
 			assert.Equal(t, provider, config.ProviderType)
@@ -35,7 +35,7 @@ func TestProviderAccessRegistry_AuthMechanisms(t *testing.T) {
 	t.Parallel()
 	for name, config := range ProviderAccessRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, config.AuthMechanisms,
 				"provider %s should have at least one auth mechanism", name)
 
@@ -52,7 +52,7 @@ func TestProviderAccessRegistry_AvailableTiers(t *testing.T) {
 	t.Parallel()
 	for name, config := range ProviderAccessRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, config.AvailableTiers,
 				"provider %s should have available tiers", name)
 			assert.True(t, config.DefaultSubscription.IsValid(),

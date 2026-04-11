@@ -35,18 +35,18 @@ type EventBus struct {
 
 // Subscription represents an event subscription.
 type Subscription struct {
-	ID       string
+	ID        string
 	EventType EventType
-	Topic    string
-	Ch       chan *Event
-	Filter   func(*Event) bool
-	Once     bool
+	Topic     string
+	Ch        chan *Event
+	Filter    func(*Event) bool
+	Once      bool
 }
 
 // NewEventBus creates a new event bus.
 func NewEventBus() *EventBus {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	eb := &EventBus{
 		subscribers: make(map[EventType][]*Subscription),
 		topics:      make(map[string][]*Subscription),
@@ -54,11 +54,11 @@ func NewEventBus() *EventBus {
 		ctx:         ctx,
 		cancel:      cancel,
 	}
-	
+
 	// Start event dispatcher
 	eb.wg.Add(1)
 	go eb.dispatchLoop()
-	
+
 	return eb
 }
 
@@ -66,15 +66,15 @@ func NewEventBus() *EventBus {
 func (eb *EventBus) Subscribe(eventType EventType, bufferSize int) *Subscription {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-	
+
 	sub := &Subscription{
 		ID:        generateEventID(),
 		EventType: eventType,
 		Ch:        make(chan *Event, bufferSize),
 	}
-	
+
 	eb.subscribers[eventType] = append(eb.subscribers[eventType], sub)
-	
+
 	return sub
 }
 
@@ -82,15 +82,15 @@ func (eb *EventBus) Subscribe(eventType EventType, bufferSize int) *Subscription
 func (eb *EventBus) SubscribeTopic(topic string, bufferSize int) *Subscription {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-	
+
 	sub := &Subscription{
 		ID:    generateEventID(),
 		Topic: topic,
 		Ch:    make(chan *Event, bufferSize),
 	}
-	
+
 	eb.topics[topic] = append(eb.topics[topic], sub)
-	
+
 	return sub
 }
 
@@ -98,14 +98,14 @@ func (eb *EventBus) SubscribeTopic(topic string, bufferSize int) *Subscription {
 func (eb *EventBus) SubscribeWildcard(bufferSize int) *Subscription {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-	
+
 	sub := &Subscription{
 		ID: generateEventID(),
 		Ch: make(chan *Event, bufferSize),
 	}
-	
+
 	eb.wildcards = append(eb.wildcards, sub)
-	
+
 	return sub
 }
 
@@ -124,7 +124,7 @@ func (eb *EventBus) SubscribeFiltered(
 func (eb *EventBus) Unsubscribe(sub *Subscription) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-	
+
 	// Remove from event type subscribers
 	if sub.EventType != "" {
 		subs := eb.subscribers[sub.EventType]
@@ -136,7 +136,7 @@ func (eb *EventBus) Unsubscribe(sub *Subscription) {
 			}
 		}
 	}
-	
+
 	// Remove from topic subscribers
 	if sub.Topic != "" {
 		subs := eb.topics[sub.Topic]
@@ -148,7 +148,7 @@ func (eb *EventBus) Unsubscribe(sub *Subscription) {
 			}
 		}
 	}
-	
+
 	// Remove from wildcards
 	for i, s := range eb.wildcards {
 		if s.ID == sub.ID {
@@ -180,14 +180,14 @@ func (eb *EventBus) PublishSync(event *Event) {
 func (eb *EventBus) dispatch(event *Event) {
 	eb.mu.RLock()
 	defer eb.mu.RUnlock()
-	
+
 	// Send to type-specific subscribers
 	if subs, ok := eb.subscribers[event.Type]; ok {
 		for _, sub := range subs {
 			eb.sendToSub(sub, event)
 		}
 	}
-	
+
 	// Send to topic subscribers
 	if topic, ok := event.Metadata["topic"].(string); ok {
 		if subs, ok := eb.topics[topic]; ok {
@@ -196,7 +196,7 @@ func (eb *EventBus) dispatch(event *Event) {
 			}
 		}
 	}
-	
+
 	// Send to wildcards
 	for _, sub := range eb.wildcards {
 		eb.sendToSub(sub, event)
@@ -229,7 +229,7 @@ func (eb *EventBus) sendToSub(sub *Subscription, event *Event) {
 // dispatchLoop processes events from the queue.
 func (eb *EventBus) dispatchLoop() {
 	defer eb.wg.Done()
-	
+
 	for {
 		select {
 		case event := <-eb.eventCh:
@@ -278,7 +278,7 @@ func (eb *EventBus) Close() error {
 func (eb *EventBus) GetStats() map[string]interface{} {
 	eb.mu.RLock()
 	defer eb.mu.RUnlock()
-	
+
 	totalSubs := 0
 	for _, subs := range eb.subscribers {
 		totalSubs += len(subs)
@@ -287,7 +287,7 @@ func (eb *EventBus) GetStats() map[string]interface{} {
 		totalSubs += len(subs)
 	}
 	totalSubs += len(eb.wildcards)
-	
+
 	return map[string]interface{}{
 		"total_subscriptions": totalSubs,
 		"event_types":         len(eb.subscribers),

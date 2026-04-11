@@ -113,7 +113,7 @@ func TestIsExpired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := adapter.IsExpired(tt.expiresAt)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -153,7 +153,7 @@ func TestNeedsRefresh(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := adapter.NeedsRefresh(tt.expiresAt, threshold)
 			assert.Equal(t, tt.expected, result)
 		})

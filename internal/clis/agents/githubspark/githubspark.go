@@ -16,26 +16,26 @@ import (
 // GitHubSpark provides GitHub Spark integration
 type GitHubSpark struct {
 	*base.BaseIntegration
-	config  *Config
-	sparks  []Spark
+	config *Config
+	sparks []Spark
 }
 
 // Config holds GitHub Spark configuration
 type Config struct {
 	base.BaseConfig
-	GitHubToken  string
-	AutoPublish  bool
+	GitHubToken       string
+	AutoPublish       bool
 	DefaultVisibility string
 }
 
 // Spark represents a Spark app
 type Spark struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Repository  string   `json:"repository"`
-	URL         string   `json:"url"`
-	Status      string   `json:"status"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Repository  string `json:"repository"`
+	URL         string `json:"url"`
+	Status      string `json:"status"`
 }
 
 // New creates a new GitHub Spark integration
@@ -57,7 +57,7 @@ func New() *GitHubSpark {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &GitHubSpark{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -76,27 +76,27 @@ func (g *GitHubSpark) Initialize(ctx context.Context, config interface{}) error 
 	if err := g.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		g.config = cfg
 	}
-	
+
 	return g.loadSparks()
 }
 
 // loadSparks loads spark list
 func (g *GitHubSpark) loadSparks() error {
 	sparksPath := filepath.Join(g.GetWorkDir(), "sparks.json")
-	
+
 	if _, err := os.Stat(sparksPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(sparksPath)
 	if err != nil {
 		return fmt.Errorf("read sparks: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &g.sparks)
 }
 
@@ -117,7 +117,7 @@ func (g *GitHubSpark) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "create":
 		return g.createSpark(ctx, params)
@@ -142,13 +142,13 @@ func (g *GitHubSpark) createSpark(ctx context.Context, params map[string]interfa
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	description, _ := params["description"].(string)
 	template, _ := params["template"].(string)
 	if template == "" {
 		template = "blank"
 	}
-	
+
 	spark := Spark{
 		ID:          fmt.Sprintf("spark-%d", len(g.sparks)+1),
 		Name:        name,
@@ -157,13 +157,13 @@ func (g *GitHubSpark) createSpark(ctx context.Context, params map[string]interfa
 		URL:         fmt.Sprintf("https://spark.github.com/%s", name),
 		Status:      "created",
 	}
-	
+
 	g.sparks = append(g.sparks, spark)
-	
+
 	if err := g.saveSparks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"spark":    spark,
 		"template": template,
@@ -180,11 +180,11 @@ func (g *GitHubSpark) createSpark(ctx context.Context, params map[string]interfa
 func (g *GitHubSpark) editSpark(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	sparkID, _ := params["spark_id"].(string)
 	prompt, _ := params["prompt"].(string)
-	
+
 	if sparkID == "" || prompt == "" {
 		return nil, fmt.Errorf("spark_id and prompt required")
 	}
-	
+
 	var spark *Spark
 	for i := range g.sparks {
 		if g.sparks[i].ID == sparkID {
@@ -192,11 +192,11 @@ func (g *GitHubSpark) editSpark(ctx context.Context, params map[string]interface
 			break
 		}
 	}
-	
+
 	if spark == nil {
 		return nil, fmt.Errorf("spark not found: %s", sparkID)
 	}
-	
+
 	return map[string]interface{}{
 		"spark":   spark,
 		"prompt":  prompt,
@@ -211,7 +211,7 @@ func (g *GitHubSpark) publishSpark(ctx context.Context, params map[string]interf
 	if sparkID == "" {
 		return nil, fmt.Errorf("spark_id required")
 	}
-	
+
 	var spark *Spark
 	for i := range g.sparks {
 		if g.sparks[i].ID == sparkID {
@@ -219,20 +219,20 @@ func (g *GitHubSpark) publishSpark(ctx context.Context, params map[string]interf
 			break
 		}
 	}
-	
+
 	if spark == nil {
 		return nil, fmt.Errorf("spark not found: %s", sparkID)
 	}
-	
+
 	spark.Status = "published"
-	
+
 	if err := g.saveSparks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
-		"spark": spark,
-		"url":   spark.URL,
+		"spark":  spark,
+		"url":    spark.URL,
 		"status": "published",
 	}, nil
 }
@@ -249,11 +249,11 @@ func (g *GitHubSpark) listSparks(ctx context.Context) (interface{}, error) {
 func (g *GitHubSpark) cloneSpark(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	sparkID, _ := params["spark_id"].(string)
 	newName, _ := params["new_name"].(string)
-	
+
 	if sparkID == "" || newName == "" {
 		return nil, fmt.Errorf("spark_id and new_name required")
 	}
-	
+
 	var original *Spark
 	for i := range g.sparks {
 		if g.sparks[i].ID == sparkID {
@@ -261,11 +261,11 @@ func (g *GitHubSpark) cloneSpark(ctx context.Context, params map[string]interfac
 			break
 		}
 	}
-	
+
 	if original == nil {
 		return nil, fmt.Errorf("spark not found: %s", sparkID)
 	}
-	
+
 	newSpark := Spark{
 		ID:          fmt.Sprintf("spark-%d", len(g.sparks)+1),
 		Name:        newName,
@@ -274,13 +274,13 @@ func (g *GitHubSpark) cloneSpark(ctx context.Context, params map[string]interfac
 		URL:         fmt.Sprintf("https://spark.github.com/%s", newName),
 		Status:      "created",
 	}
-	
+
 	g.sparks = append(g.sparks, newSpark)
-	
+
 	if err := g.saveSparks(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"original": original,
 		"clone":    newSpark,
@@ -294,7 +294,7 @@ func (g *GitHubSpark) shareSpark(ctx context.Context, params map[string]interfac
 	if sparkID == "" {
 		return nil, fmt.Errorf("spark_id required")
 	}
-	
+
 	var spark *Spark
 	for i := range g.sparks {
 		if g.sparks[i].ID == sparkID {
@@ -302,14 +302,14 @@ func (g *GitHubSpark) shareSpark(ctx context.Context, params map[string]interfac
 			break
 		}
 	}
-	
+
 	if spark == nil {
 		return nil, fmt.Errorf("spark not found: %s", sparkID)
 	}
-	
+
 	return map[string]interface{}{
-		"spark":    spark,
-		"share_url": spark.URL,
+		"spark":      spark,
+		"share_url":  spark.URL,
 		"embed_code": fmt.Sprintf("<iframe src=\"%s\"></iframe>", spark.URL),
 	}, nil
 }

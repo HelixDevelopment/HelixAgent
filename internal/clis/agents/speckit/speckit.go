@@ -38,7 +38,7 @@ func New() *SpecKit {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &SpecKit{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (s *SpecKit) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (s *SpecKit) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return s.generate(ctx, params)
@@ -87,7 +87,7 @@ func (s *SpecKit) generate(ctx context.Context, params map[string]interface{}) (
 	if requirement == "" {
 		return nil, fmt.Errorf("requirement required")
 	}
-	
+
 	return map[string]interface{}{
 		"requirement": requirement,
 		"spec":        fmt.Sprintf("# Spec for: %s", requirement),

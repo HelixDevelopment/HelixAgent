@@ -15,9 +15,9 @@ type HealthMonitor struct {
 	mu      sync.RWMutex
 
 	// Thresholds
-	failureThreshold    int
-	degradedThreshold   float64
-	recoveryThreshold   float64
+	failureThreshold  int
+	degradedThreshold float64
+	recoveryThreshold float64
 
 	// Window size for health calculations
 	historyWindow time.Duration
@@ -36,7 +36,7 @@ type HealthHistory struct {
 	LastCheck       time.Time
 
 	// State
-	ConsecutiveFailures int
+	ConsecutiveFailures  int
 	ConsecutiveSuccesses int
 }
 
@@ -120,9 +120,9 @@ func (m *HealthMonitor) GetRecommendation(instanceID string) HealthRecommendatio
 	history, ok := m.history[instanceID]
 	if !ok {
 		return HealthRecommendation{
-			CanRoute:    true, // Unknown = allow
-			Weight:      1.0,
-			Reason:      "no health history",
+			CanRoute: true, // Unknown = allow
+			Weight:   1.0,
+			Reason:   "no health history",
 		}
 	}
 
@@ -131,9 +131,9 @@ func (m *HealthMonitor) GetRecommendation(instanceID string) HealthRecommendatio
 	switch status {
 	case clis.HealthHealthy:
 		return HealthRecommendation{
-			CanRoute:    true,
-			Weight:      1.0,
-			Reason:      "healthy",
+			CanRoute: true,
+			Weight:   1.0,
+			Reason:   "healthy",
 		}
 
 	case clis.HealthDegraded:
@@ -143,23 +143,23 @@ func (m *HealthMonitor) GetRecommendation(instanceID string) HealthRecommendatio
 			weight = 0.1
 		}
 		return HealthRecommendation{
-			CanRoute:    true,
-			Weight:      weight,
-			Reason:      "degraded",
+			CanRoute: true,
+			Weight:   weight,
+			Reason:   "degraded",
 		}
 
 	case clis.HealthUnhealthy:
 		return HealthRecommendation{
-			CanRoute:    false,
-			Weight:      0.0,
-			Reason:      "unhealthy",
+			CanRoute: false,
+			Weight:   0.0,
+			Reason:   "unhealthy",
 		}
 
 	default:
 		return HealthRecommendation{
-			CanRoute:    true,
-			Weight:      0.5,
-			Reason:      "unknown health",
+			CanRoute: true,
+			Weight:   0.5,
+			Reason:   "unknown health",
 		}
 	}
 }
@@ -272,10 +272,10 @@ type CircuitBreaker struct {
 	timeout          time.Duration
 
 	// State
-	state         CircuitState
-	failures      int
-	successes     int
-	lastFailure   time.Time
+	state           CircuitState
+	failures        int
+	successes       int
+	lastFailure     time.Time
 	lastStateChange time.Time
 
 	mu sync.RWMutex
@@ -285,9 +285,9 @@ type CircuitBreaker struct {
 type CircuitState int
 
 const (
-	StateClosed CircuitState = iota    // Normal operation
-	StateOpen                          // Failing fast
-	StateHalfOpen                      // Testing recovery
+	StateClosed   CircuitState = iota // Normal operation
+	StateOpen                         // Failing fast
+	StateHalfOpen                     // Testing recovery
 )
 
 // NewCircuitBreaker creates a new circuit breaker.

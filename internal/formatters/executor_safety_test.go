@@ -103,14 +103,14 @@ func TestExecuteBatch_EmptyBatch(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil slice", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		results, err := executor.ExecuteBatch(ctx, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, results)
 	})
 
 	t.Run("empty slice", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		results, err := executor.ExecuteBatch(ctx, []*FormatRequest{})
 		assert.NoError(t, err)
 		assert.Empty(t, results)

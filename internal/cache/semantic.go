@@ -44,7 +44,7 @@ func NewSemanticCache(db *pgxpool.Pool, embedder EmbeddingGenerator, threshold f
 	if ttl == 0 {
 		ttl = 1 * time.Hour
 	}
-	
+
 	return &SemanticCache{
 		db:        db,
 		embedder:  embedder,
@@ -60,7 +60,7 @@ func (c *SemanticCache) Get(ctx context.Context, query string) (*SemanticCacheEn
 	if err != nil {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
-	
+
 	// Search for similar cached queries
 	rows, err := c.db.Query(ctx, `
 		SELECT key, query, embedding, response, metadata, created_at, expires_at, hit_count,
@@ -74,13 +74,13 @@ func (c *SemanticCache) Get(ctx context.Context, query string) (*SemanticCacheEn
 		return nil, fmt.Errorf("query cache: %w", err)
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var entry SemanticCacheEntry
 		var responseJSON []byte
 		var metadataJSON []byte
 		var similarity float64
-		
+
 		err := rows.Scan(
 			&entry.Key, &entry.Query, &entry.Embedding,
 			&responseJSON, &metadataJSON,
@@ -90,28 +90,28 @@ func (c *SemanticCache) Get(ctx context.Context, query string) (*SemanticCacheEn
 		if err != nil {
 			continue
 		}
-		
+
 		// Check similarity threshold
 		if similarity < c.threshold {
 			continue
 		}
-		
+
 		// Parse response
 		if err := json.Unmarshal(responseJSON, &entry.Response); err != nil {
 			continue
 		}
-		
+
 		// Parse metadata
 		if len(metadataJSON) > 0 {
 			json.Unmarshal(metadataJSON, &entry.Metadata)
 		}
-		
+
 		// Update hit count
 		c.incrementHitCount(ctx, entry.Key)
-		
+
 		return &entry, nil
 	}
-	
+
 	return nil, nil
 }
 
@@ -122,19 +122,19 @@ func (c *SemanticCache) Set(ctx context.Context, key, query string, response int
 	if err != nil {
 		return fmt.Errorf("embed query: %w", err)
 	}
-	
+
 	// Serialize response
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		return fmt.Errorf("marshal response: %w", err)
 	}
-	
+
 	// Serialize metadata
 	var metadataJSON []byte
 	if metadata != nil {
 		metadataJSON, _ = json.Marshal(metadata)
 	}
-	
+
 	// Store in database
 	_, err = c.db.Exec(ctx, `
 		INSERT INTO semantic_cache (
@@ -150,11 +150,11 @@ func (c *SemanticCache) Set(ctx context.Context, key, query string, response int
 		    expires_at = EXCLUDED.expires_at,
 		    hit_count = 0
 	`, key, query, embedding, responseJSON, metadataJSON, time.Now().Add(c.ttl))
-	
+
 	if err != nil {
 		return fmt.Errorf("store cache: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -173,7 +173,7 @@ func (c *SemanticCache) Clear(ctx context.Context) error {
 // GetStats returns cache statistics.
 func (c *SemanticCache) GetStats(ctx context.Context) (*CacheStats, error) {
 	var stats CacheStats
-	
+
 	err := c.db.QueryRow(ctx, `
 		SELECT 
 			COUNT(*),
@@ -189,11 +189,11 @@ func (c *SemanticCache) GetStats(ctx context.Context) (*CacheStats, error) {
 		&stats.TotalHits,
 		&stats.AvgHits,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &stats, nil
 }
 
@@ -203,7 +203,7 @@ func (c *SemanticCache) Cleanup(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return result.RowsAffected(), nil
 }
 
@@ -230,21 +230,21 @@ func CosineSimilarity(a, b []float32) float64 {
 	if len(a) != len(b) {
 		return 0
 	}
-	
+
 	var dotProduct float64
 	var normA float64
 	var normB float64
-	
+
 	for i := 0; i < len(a); i++ {
 		dotProduct += float64(a[i] * b[i])
 		normA += float64(a[i] * a[i])
 		normB += float64(b[i] * b[i])
 	}
-	
+
 	if normA == 0 || normB == 0 {
 		return 0
 	}
-	
+
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
@@ -258,14 +258,14 @@ func (e *SimpleEmbedder) Embed(ctx context.Context, text string) ([]float32, err
 	for _, word := range splitWords(text) {
 		words[word]++
 	}
-	
+
 	// Create a simple vector
 	embedding := make([]float32, 100)
 	for word, count := range words {
 		hash := hashString(word) % 100
 		embedding[hash] = float32(count)
 	}
-	
+
 	// Normalize
 	var sum float32
 	for _, v := range embedding {
@@ -277,14 +277,14 @@ func (e *SimpleEmbedder) Embed(ctx context.Context, text string) ([]float32, err
 			embedding[i] *= norm
 		}
 	}
-	
+
 	return embedding, nil
 }
 
 func splitWords(text string) []string {
 	var words []string
 	var current []rune
-	
+
 	for _, r := range text {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
 			current = append(current, r)
@@ -293,11 +293,11 @@ func splitWords(text string) []string {
 			current = nil
 		}
 	}
-	
+
 	if len(current) > 0 {
 		words = append(words, string(current))
 	}
-	
+
 	return words
 }
 

@@ -63,9 +63,9 @@ func (a *ClickAction) Execute(ctx context.Context, page playwright.Page) error {
 	}
 
 	err := page.Click(a.Selector, playwright.PageClickOptions{
-		Button:    button,
+		Button:     button,
 		ClickCount: &count,
-		Timeout:   playwright.Float(float64(a.Timeout.Milliseconds())),
+		Timeout:    playwright.Float(float64(a.Timeout.Milliseconds())),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to click: %w", err)
@@ -104,10 +104,10 @@ func (a *TypeAction) Execute(ctx context.Context, page playwright.Page) error {
 
 // ScreenshotAction captures a screenshot
 type ScreenshotAction struct {
-	Selector  string
-	FullPage  bool
-	Format    string
-	Quality   int
+	Selector string
+	FullPage bool
+	Format   string
+	Quality  int
 }
 
 // Execute implements Action

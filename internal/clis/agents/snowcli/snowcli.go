@@ -39,7 +39,7 @@ func New() *SnowCLI {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &SnowCLI{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -56,11 +56,11 @@ func (s *SnowCLI) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -71,7 +71,7 @@ func (s *SnowCLI) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "query":
 		return s.query(ctx, params)
@@ -88,10 +88,10 @@ func (s *SnowCLI) query(ctx context.Context, params map[string]interface{}) (int
 	if sql == "" {
 		return nil, fmt.Errorf("sql required")
 	}
-	
+
 	return map[string]interface{}{
-		"sql":      sql,
-		"result":   "Query result",
+		"sql":       sql,
+		"result":    "Query result",
 		"warehouse": s.config.Warehouse,
 	}, nil
 }

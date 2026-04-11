@@ -217,7 +217,7 @@ func TestTaskType_Constants(t *testing.T) {
 
 func TestWorker_Struct(t *testing.T) {
 	pool := NewWorkerPool(1)
-	
+
 	worker := &Worker{
 		id:   0,
 		pool: pool,

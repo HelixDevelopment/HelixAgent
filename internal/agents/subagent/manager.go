@@ -13,11 +13,11 @@ import (
 type Manager struct {
 	config Config
 
-	agents     map[string]*SubAgent
-	agentsMu   sync.RWMutex
+	agents   map[string]*SubAgent
+	agentsMu sync.RWMutex
 
-	tasks      map[string]*SubAgentTask
-	tasksMu    sync.RWMutex
+	tasks   map[string]*SubAgentTask
+	tasksMu sync.RWMutex
 
 	agentInstances map[string]*agentInstance
 	instancesMu    sync.RWMutex

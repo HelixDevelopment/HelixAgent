@@ -902,7 +902,7 @@ func TestACPHandler_AllAgentExecutions(t *testing.T) {
 
 	for _, agentID := range agents {
 		t.Run(agentID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			msg := JSONRPCMessage{
 				JSONRPC: "2.0",
 				ID:      agentID,

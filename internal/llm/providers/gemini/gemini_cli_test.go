@@ -45,7 +45,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("SetModel works correctly", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		config.Model = "gemini-2.5-flash"
 		p := NewGeminiCLIProvider(config)
@@ -60,7 +60,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("GetBestAvailableModel returns reasonable default", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		p := NewGeminiCLIProvider(config)
 
@@ -86,7 +86,7 @@ func TestGeminiCLIProvider_SessionTracking(t *testing.T) {
 	})
 
 	t.Run("provider name and type are correct", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultGeminiCLIConfig()
 		p := NewGeminiCLIProvider(config)
 

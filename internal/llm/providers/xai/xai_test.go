@@ -49,7 +49,7 @@ func TestNewProviderWithRegion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := NewProviderWithRegion("xai-test-key", "grok-3", tt.region)
 			assert.Equal(t, tt.expectedURL, p.baseURL)
 			assert.Equal(t, tt.expectedRegion, p.region)
@@ -336,7 +336,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := NewProvider(tt.apiKey, "", "")
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)
@@ -421,7 +421,7 @@ func TestProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			conf := p.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, conf, tt.minConf)
 			assert.LessOrEqual(t, conf, tt.maxConf)

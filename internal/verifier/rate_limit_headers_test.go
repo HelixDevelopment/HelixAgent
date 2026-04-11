@@ -204,7 +204,7 @@ func TestRateLimitHeaderMap_Coverage(t *testing.T) {
 
 	for _, provider := range expectedProviders {
 		t.Run(provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			headers, ok := RateLimitHeaderMap[provider]
 			require.True(t, ok, "provider %s should have rate limit header mapping", provider)
 			require.NotNil(t, headers)

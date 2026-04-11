@@ -74,10 +74,10 @@ type ModelsResponse struct {
 
 // ModelInfo represents a single model's information
 type ModelInfo struct {
-	ID         string            `json:"id"`
-	Object     string            `json:"object"`
-	Created    int64             `json:"created"`
-	OwnedBy    string            `json:"owned_by"`
+	ID           string          `json:"id"`
+	Object       string          `json:"object"`
+	Created      int64           `json:"created"`
+	OwnedBy      string          `json:"owned_by"`
 	Capabilities map[string]bool `json:"capabilities,omitempty"`
 }
 

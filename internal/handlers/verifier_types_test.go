@@ -36,7 +36,7 @@ func TestVerifierErrorResponse_JSONRoundTrip(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			data, err := json.Marshal(tt.input)
 			require.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestVerifierErrorResponse_UnmarshalFromRawJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var resp VerifierErrorResponse
 			err := json.Unmarshal([]byte(tt.jsonStr), &resp)
 			if tt.wantErr {

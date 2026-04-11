@@ -19,7 +19,7 @@ type Warp struct {
 // Config holds configuration
 type Config struct {
 	base.BaseConfig
-	Theme    string
+	Theme     string
 	AIEnabled bool
 }
 
@@ -40,7 +40,7 @@ func New() *Warp {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Warp{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -58,11 +58,11 @@ func (w *Warp) Initialize(ctx context.Context, config interface{}) error {
 	if err := w.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		w.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -73,7 +73,7 @@ func (w *Warp) Execute(ctx context.Context, command string, params map[string]in
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "ai_command":
 		return w.aiCommand(ctx, params)
@@ -92,7 +92,7 @@ func (w *Warp) aiCommand(ctx context.Context, params map[string]interface{}) (in
 	if description == "" {
 		return nil, fmt.Errorf("description required")
 	}
-	
+
 	return map[string]interface{}{
 		"description": description,
 		"command":     fmt.Sprintf("# Warp AI: %s", description),
@@ -106,7 +106,7 @@ func (w *Warp) workflow(ctx context.Context, params map[string]interface{}) (int
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	return map[string]interface{}{
 		"name":     name,
 		"workflow": fmt.Sprintf("Workflow: %s", name),

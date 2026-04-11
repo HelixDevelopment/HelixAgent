@@ -43,7 +43,7 @@ func New() *Supermaven {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Supermaven{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -61,11 +61,11 @@ func (s *Supermaven) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -76,7 +76,7 @@ func (s *Supermaven) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "complete":
 		return s.complete(ctx, params)
@@ -96,14 +96,14 @@ func (s *Supermaven) complete(ctx context.Context, params map[string]interface{}
 	prefix, _ := params["prefix"].(string)
 	suffix, _ := params["suffix"].(string)
 	language, _ := params["language"].(string)
-	
+
 	if language == "" {
 		language = "go"
 	}
-	
+
 	// Generate completion based on context
 	completion := s.generateCompletion(prefix, suffix, language)
-	
+
 	return map[string]interface{}{
 		"prefix":     prefix,
 		"suffix":     suffix,
@@ -121,7 +121,7 @@ func (s *Supermaven) generateCompletion(prefix, suffix, language string) string 
 	if len(lines) > 0 {
 		lastLine = lines[len(lines)-1]
 	}
-	
+
 	switch language {
 	case "go":
 		if strings.HasSuffix(lastLine, "func ") {
@@ -149,7 +149,7 @@ func (s *Supermaven) generateCompletion(prefix, suffix, language string) string 
 // accept accepts a completion
 func (s *Supermaven) accept(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	completion, _ := params["completion"].(string)
-	
+
 	return map[string]interface{}{
 		"accepted":   true,
 		"completion": completion,

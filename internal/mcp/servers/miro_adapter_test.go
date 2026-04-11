@@ -54,7 +54,7 @@ func TestNewMiroAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewMiroAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.want.baseURL, adapter.baseURL)
@@ -99,7 +99,7 @@ func TestMiroAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/users/me", r.URL.Path)
 				assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -158,7 +158,7 @@ func TestMiroAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -230,7 +230,7 @@ func TestMiroAdapter_ListBoards(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/boards")
@@ -294,7 +294,7 @@ func TestMiroAdapter_GetBoard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/boards/"+tt.boardID)
@@ -369,7 +369,7 @@ func TestMiroAdapter_CreateBoard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/boards", r.URL.Path)
@@ -437,7 +437,7 @@ func TestMiroAdapter_UpdateBoard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "PATCH", r.Method)
 				assert.Contains(t, r.URL.Path, "/boards/"+tt.boardID)
@@ -493,7 +493,7 @@ func TestMiroAdapter_DeleteBoard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "DELETE", r.Method)
 				assert.Contains(t, r.URL.Path, "/boards/"+tt.boardID)
@@ -567,7 +567,7 @@ func TestMiroAdapter_GetBoardItems(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/boards/"+tt.boardID+"/items")
@@ -632,7 +632,7 @@ func TestMiroAdapter_GetItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -712,7 +712,7 @@ func TestMiroAdapter_CreateStickyNote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/sticky_notes")
@@ -788,7 +788,7 @@ func TestMiroAdapter_CreateShape(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/shapes")
@@ -856,7 +856,7 @@ func TestMiroAdapter_CreateConnector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/connectors")
@@ -933,7 +933,7 @@ func TestMiroAdapter_CreateFrame(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/frames")
@@ -1014,7 +1014,7 @@ func TestMiroAdapter_CreateText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/texts")
@@ -1074,7 +1074,7 @@ func TestMiroAdapter_DeleteItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "DELETE", r.Method)
 				assert.Contains(t, r.URL.Path, "/items/"+tt.itemID)

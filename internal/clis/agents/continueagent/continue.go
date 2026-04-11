@@ -12,20 +12,20 @@ import (
 )
 
 // Continue provides Continue integration
- type Continue struct {
+type Continue struct {
 	*base.BaseIntegration
 	config *Config
 }
 
 // Config holds Continue configuration
- type Config struct {
+type Config struct {
 	base.BaseConfig
-	ServerURL     string
+	ServerURL      string
 	AllowAnonymous bool
 }
 
 // New creates a new Continue integration
- func New() *Continue {
+func New() *Continue {
 	info := agents.AgentInfo{
 		Type:        agents.TypeContinue,
 		Name:        "Continue",
@@ -44,7 +44,7 @@ import (
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Continue{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -62,11 +62,11 @@ func (c *Continue) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (c *Continue) Execute(ctx context.Context, command string, params map[strin
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "chat":
 		return c.chat(ctx, params)
@@ -98,7 +98,7 @@ func (c *Continue) chat(ctx context.Context, params map[string]interface{}) (int
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message": message,
 		"status":  "sent",
@@ -111,13 +111,13 @@ func (c *Continue) autocomplete(ctx context.Context, params map[string]interface
 	file, _ := params["file"].(string)
 	line, _ := params["line"].(int)
 	col, _ := params["column"].(int)
-	
+
 	return map[string]interface{}{
-		"file":    file,
-		"line":    line,
-		"column":  col,
-		"status":  "requested",
-		"note":    "Continue autocomplete requires IDE extension",
+		"file":   file,
+		"line":   line,
+		"column": col,
+		"status": "requested",
+		"note":   "Continue autocomplete requires IDE extension",
 	}, nil
 }
 
@@ -127,7 +127,7 @@ func (c *Continue) edit(ctx context.Context, params map[string]interface{}) (int
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt": prompt,
 		"status": "sent",
@@ -140,7 +140,7 @@ func (c *Continue) action(ctx context.Context, params map[string]interface{}) (i
 	if action == "" {
 		return nil, fmt.Errorf("action required")
 	}
-	
+
 	return map[string]interface{}{
 		"action": action,
 		"status": "executed",

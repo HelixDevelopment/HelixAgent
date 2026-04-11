@@ -136,7 +136,7 @@ func TestCreateDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.request)
 			req := httptest.NewRequest(http.MethodPost, "/v1/debates", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -192,7 +192,7 @@ func TestGetDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -296,7 +296,7 @@ func TestGetDebateStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 			w := httptest.NewRecorder()
 
@@ -395,7 +395,7 @@ func TestGetDebateResults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/results", nil)
 			w := httptest.NewRecorder()
 
@@ -480,7 +480,7 @@ func TestListDebates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates"+tt.query, nil)
 			w := httptest.NewRecorder()
 
@@ -531,7 +531,7 @@ func TestDeleteDebate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodDelete, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -863,7 +863,7 @@ func TestCreateDebateWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body, _ := json.Marshal(tt.request)
 			req := httptest.NewRequest(http.MethodPost, "/v1/debates", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -999,7 +999,7 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID, nil)
 			w := httptest.NewRecorder()
 
@@ -1103,7 +1103,7 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodGet, "/v1/debates/"+tt.debateID+"/status", nil)
 			w := httptest.NewRecorder()
 

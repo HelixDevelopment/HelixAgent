@@ -304,7 +304,7 @@ func TestScoringService_CalculateScore_DifferentModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := svc.CalculateScore(context.Background(), tt.modelID)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -340,7 +340,7 @@ func TestScoringService_GetTopModels_Limit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			models, err := svc.GetTopModels(context.Background(), tt.limit)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -400,7 +400,7 @@ func TestScoringService_calculateSpeedScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			score := svc.calculateSpeedScore(tt.modelID)
 			if score < tt.minScore || score > tt.maxScore {
 				t.Errorf("expected score in range [%f, %f], got %f", tt.minScore, tt.maxScore, score)
@@ -425,7 +425,7 @@ func TestScoringService_calculateEfficiencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			score := svc.calculateEfficiencyScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("efficiency score out of range: %f", score)
@@ -450,7 +450,7 @@ func TestScoringService_calculateCostScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			score := svc.calculateCostScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("cost score out of range: %f", score)
@@ -475,7 +475,7 @@ func TestScoringService_calculateCapabilityScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			score := svc.calculateCapabilityScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("capability score out of range: %f", score)
@@ -500,7 +500,7 @@ func TestScoringService_calculateRecencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			score := svc.calculateRecencyScore(tt.modelID)
 			if score < 0 || score > 10 {
 				t.Errorf("recency score out of range: %f", score)

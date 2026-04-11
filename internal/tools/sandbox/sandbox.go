@@ -14,24 +14,24 @@ import (
 type Runtime string
 
 const (
-	RuntimeDocker  Runtime = "docker"
-	RuntimePodman  Runtime = "podman"
+	RuntimeDocker   Runtime = "docker"
+	RuntimePodman   Runtime = "podman"
 	RuntimeSeatbelt Runtime = "seatbelt" // macOS only
-	RuntimeNone    Runtime = "none"
+	RuntimeNone     Runtime = "none"
 )
 
 // Config configures the sandbox
 type Config struct {
-	Runtime           Runtime
-	EnableNetwork     bool
-	WorkingDir        string
-	MountReadOnly     []string
-	MountReadWrite    []string
-	EnvVars           map[string]string
-	MemoryLimit       string // e.g., "512m"
-	CPULimit          string // e.g., "1.0"
-	Timeout           time.Duration
-	UserID            string // e.g., "1000:1000"
+	Runtime        Runtime
+	EnableNetwork  bool
+	WorkingDir     string
+	MountReadOnly  []string
+	MountReadWrite []string
+	EnvVars        map[string]string
+	MemoryLimit    string // e.g., "512m"
+	CPULimit       string // e.g., "1.0"
+	Timeout        time.Duration
+	UserID         string // e.g., "1000:1000"
 }
 
 // DefaultConfig returns default sandbox configuration
@@ -353,5 +353,3 @@ func isSeatbeltAvailable() bool {
 	err := cmd.Run()
 	return err == nil
 }
-
-

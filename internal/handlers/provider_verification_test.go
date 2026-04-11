@@ -294,7 +294,7 @@ func TestProviderManagementHandler_ParseIntParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var result int
 			valid, _ := handler.parseIntParam(tt.input, &result)
 
@@ -333,7 +333,7 @@ func TestProviderManagementHandler_VerifyProvider_VariousProviders(t *testing.T)
 
 	for _, provider := range providers {
 		t.Run(provider, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "id", Value: provider}}

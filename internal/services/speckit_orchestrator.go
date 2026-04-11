@@ -1233,4 +1233,3 @@ func readFile(path string) ([]byte, error) {
 func removeDir(dir string) error {
 	return os.RemoveAll(dir)
 }
-

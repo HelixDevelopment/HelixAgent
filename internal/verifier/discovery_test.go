@@ -383,7 +383,7 @@ func TestModelDiscoveryService_getDiscoveryEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			endpoint := svc.getDiscoveryEndpoint(tt.cred)
 			if tt.expectedPrefix == "" && endpoint != "" {
 				t.Errorf("expected empty endpoint for unknown provider, got %s", endpoint)
@@ -422,7 +422,7 @@ func TestModelDiscoveryService_isChatModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := svc.isChatModel(tt.modelID, tt.provider)
 			if result != tt.expected {
 				t.Errorf("isChatModel(%s, %s) = %v, want %v", tt.modelID, tt.provider, result, tt.expected)
@@ -481,7 +481,7 @@ func TestModelDiscoveryService_calculateVoteWeight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			weight := svc.calculateVoteWeight(tt.model)
 			if weight < tt.minWeight || weight > tt.maxWeight {
 				t.Errorf("expected weight in range [%f, %f], got %f", tt.minWeight, tt.maxWeight, weight)
@@ -608,7 +608,7 @@ func TestContainsIgnoreCase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.s+"_"+tt.substr, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := containsIgnoreCase(tt.s, tt.substr)
 			if result != tt.expected {
 				t.Errorf("containsIgnoreCase(%q, %q) = %v, want %v", tt.s, tt.substr, result, tt.expected)

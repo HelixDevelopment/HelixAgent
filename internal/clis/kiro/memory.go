@@ -16,10 +16,10 @@ import (
 type ProjectMemory struct {
 	db        *pgxpool.Pool
 	projectID string
-	
+
 	// Embedding generator
 	embedder EmbeddingGenerator
-	
+
 	// Local cache for hot data
 	shortTerm map[string]*MemoryEntry
 }
@@ -28,8 +28,8 @@ type ProjectMemory struct {
 type MemoryEntry struct {
 	Key        string
 	Value      interface{}
-	Importance float64     // 0.0-1.0
-	Embedding  []float32   // For semantic search
+	Importance float64   // 0.0-1.0
+	Embedding  []float32 // For semantic search
 	Tags       []string
 	Timestamp  time.Time
 }
@@ -64,10 +64,10 @@ func (pm *ProjectMemory) Remember(
 		Tags:       tags,
 		Timestamp:  time.Now(),
 	}
-	
+
 	// Store in short-term memory
 	pm.shortTerm[key] = entry
-	
+
 	// For important memories, persist to database
 	if importance >= 0.3 {
 		// Generate embedding
@@ -76,7 +76,7 @@ func (pm *ProjectMemory) Remember(
 		if err == nil {
 			entry.Embedding = embedding
 		}
-		
+
 		// Persist to database
 		_, err = pm.db.Exec(ctx, `
 			INSERT INTO project_memory (
@@ -90,12 +90,12 @@ func (pm *ProjectMemory) Remember(
 			    updated_at = NOW()`,
 			pm.projectID, key, valueJSON, importance, embedding, tags, entry.Timestamp,
 		)
-		
+
 		if err != nil {
 			return fmt.Errorf("persist memory: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -105,26 +105,26 @@ func (pm *ProjectMemory) Recall(ctx context.Context, key string) (interface{}, e
 	if entry, ok := pm.shortTerm[key]; ok {
 		return entry.Value, nil
 	}
-	
+
 	// Query database
 	var valueJSON []byte
 	err := pm.db.QueryRow(ctx, `
 		SELECT value FROM project_memory
 		WHERE project_id = $1 AND key = $2
 	`, pm.projectID, key).Scan(&valueJSON)
-	
+
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var value interface{}
 	if err := json.Unmarshal(valueJSON, &value); err != nil {
 		return nil, err
 	}
-	
+
 	return value, nil
 }
 
@@ -133,13 +133,13 @@ func (pm *ProjectMemory) Search(ctx context.Context, query string, topK int) ([]
 	if pm.embedder == nil {
 		return nil, fmt.Errorf("embedder not configured")
 	}
-	
+
 	// Generate query embedding
 	queryEmb, err := pm.embedder.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
-	
+
 	// Semantic search using pgvector cosine similarity
 	rows, err := pm.db.Query(ctx, `
 		SELECT key, value, importance, tags, created_at,
@@ -153,25 +153,25 @@ func (pm *ProjectMemory) Search(ctx context.Context, query string, topK int) ([]
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var results []*MemoryEntry
 	for rows.Next() {
 		var entry MemoryEntry
 		var valueJSON []byte
 		var similarity float64
-		
-		if err := rows.Scan(&entry.Key, &valueJSON, &entry.Importance, 
+
+		if err := rows.Scan(&entry.Key, &valueJSON, &entry.Importance,
 			&entry.Tags, &entry.Timestamp, &similarity); err != nil {
 			continue
 		}
-		
+
 		if err := json.Unmarshal(valueJSON, &entry.Value); err != nil {
 			continue
 		}
-		
+
 		results = append(results, &entry)
 	}
-	
+
 	return results, rows.Err()
 }
 
@@ -187,33 +187,33 @@ func (pm *ProjectMemory) SearchByTags(ctx context.Context, tags []string) ([]*Me
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var results []*MemoryEntry
 	for rows.Next() {
 		var entry MemoryEntry
 		var valueJSON []byte
-		
+
 		if err := rows.Scan(&entry.Key, &valueJSON, &entry.Importance,
 			&entry.Tags, &entry.Timestamp); err != nil {
 			continue
 		}
-		
+
 		json.Unmarshal(valueJSON, &entry.Value)
 		results = append(results, &entry)
 	}
-	
+
 	return results, rows.Err()
 }
 
 // Delete removes a memory.
 func (pm *ProjectMemory) Delete(ctx context.Context, key string) error {
 	delete(pm.shortTerm, key)
-	
+
 	_, err := pm.db.Exec(ctx,
 		"DELETE FROM project_memory WHERE project_id = $1 AND key = $2",
 		pm.projectID, key,
 	)
-	
+
 	return err
 }
 
@@ -230,28 +230,28 @@ func (pm *ProjectMemory) GetRecent(ctx context.Context, limit int) ([]*MemoryEnt
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var results []*MemoryEntry
 	for rows.Next() {
 		var entry MemoryEntry
 		var valueJSON []byte
-		
+
 		if err := rows.Scan(&entry.Key, &valueJSON, &entry.Importance,
 			&entry.Tags, &entry.Timestamp); err != nil {
 			continue
 		}
-		
+
 		json.Unmarshal(valueJSON, &entry.Value)
 		results = append(results, &entry)
 	}
-	
+
 	return results, rows.Err()
 }
 
 // Summarize returns a summary of project memory.
 func (pm *ProjectMemory) Summarize(ctx context.Context) (*MemorySummary, error) {
 	var summary MemorySummary
-	
+
 	err := pm.db.QueryRow(ctx, `
 		SELECT 
 			COUNT(*),
@@ -266,11 +266,11 @@ func (pm *ProjectMemory) Summarize(ctx context.Context) (*MemorySummary, error) 
 		&summary.Last7Days,
 		&summary.AvgImportance,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &summary, nil
 }
 
@@ -292,14 +292,14 @@ func (e *SimpleEmbedder) Embed(ctx context.Context, text string) ([]float32, err
 	for _, word := range splitWords(text) {
 		words[word]++
 	}
-	
+
 	// Create a simple vector
 	embedding := make([]float32, 100)
 	for word, count := range words {
 		hash := hashString(word) % 100
 		embedding[hash] = float32(count)
 	}
-	
+
 	// Normalize
 	var sum float32
 	for _, v := range embedding {
@@ -311,7 +311,7 @@ func (e *SimpleEmbedder) Embed(ctx context.Context, text string) ([]float32, err
 			embedding[i] *= norm
 		}
 	}
-	
+
 	return embedding, nil
 }
 
@@ -319,7 +319,7 @@ func splitWords(text string) []string {
 	// Simple word splitting
 	var words []string
 	var current []rune
-	
+
 	for _, r := range text {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
 			current = append(current, r)
@@ -328,11 +328,11 @@ func splitWords(text string) []string {
 			current = nil
 		}
 	}
-	
+
 	if len(current) > 0 {
 		words = append(words, string(current))
 	}
-	
+
 	return words
 }
 

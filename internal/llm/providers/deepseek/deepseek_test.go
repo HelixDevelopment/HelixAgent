@@ -47,7 +47,7 @@ func TestNewDeepSeekProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewDeepSeekProvider(tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.expected.apiKey, provider.apiKey)
@@ -228,7 +228,7 @@ func TestDeepSeekProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -372,7 +372,7 @@ func TestDeepSeekProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := &DeepSeekProvider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -402,7 +402,7 @@ func TestDeepSeekProvider_HealthCheck(t *testing.T) {
 	})
 
 	t.Run("health check timeout", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewDeepSeekProvider("test-key", "", "deepseek-coder")
 		// Set very short timeout to trigger timeout error
 		provider.httpClient.Timeout = 1 * time.Nanosecond
@@ -606,7 +606,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.retryable, isRetryableStatus(tt.statusCode))
 		})
 	}

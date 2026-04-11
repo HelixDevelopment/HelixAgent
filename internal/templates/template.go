@@ -8,10 +8,10 @@ import (
 
 // ContextTemplate represents a context template
 type ContextTemplate struct {
-	APIVersion string            `json:"api_version" yaml:"api_version"`
-	Kind       string            `json:"kind" yaml:"kind"`
-	Metadata   TemplateMetadata  `json:"metadata" yaml:"metadata"`
-	Spec       TemplateSpec      `json:"spec" yaml:"spec"`
+	APIVersion string           `json:"api_version" yaml:"api_version"`
+	Kind       string           `json:"kind" yaml:"kind"`
+	Metadata   TemplateMetadata `json:"metadata" yaml:"metadata"`
+	Spec       TemplateSpec     `json:"spec" yaml:"spec"`
 }
 
 // TemplateMetadata contains template metadata
@@ -51,9 +51,9 @@ type GitContextSpec struct {
 
 // BranchDiffSpec defines branch diff options
 type BranchDiffSpec struct {
-	Enabled   bool   `json:"enabled" yaml:"enabled"`
-	Base      string `json:"base" yaml:"base"`
-	MaxFiles  int    `json:"max_files" yaml:"max_files"`
+	Enabled  bool   `json:"enabled" yaml:"enabled"`
+	Base     string `json:"base" yaml:"base"`
+	MaxFiles int    `json:"max_files" yaml:"max_files"`
 }
 
 // RecentCommitsSpec defines recent commits options
@@ -70,7 +70,7 @@ type RelatedFilesSpec struct {
 
 // DocumentationSpec defines documentation options
 type DocumentationSpec struct {
-	Enabled bool             `json:"enabled" yaml:"enabled"`
+	Enabled bool                  `json:"enabled" yaml:"enabled"`
 	Sources []DocumentationSource `json:"sources" yaml:"sources"`
 }
 

@@ -282,7 +282,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewProvider(tt.apiKey, "", "")
 			valid, errors := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.expected, valid)
@@ -516,7 +516,7 @@ func TestMultipleClaudeModels(t *testing.T) {
 
 	for _, model := range testModels {
 		t.Run(model, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var req Request
 				_ = json.NewDecoder(r.Body).Decode(&req)

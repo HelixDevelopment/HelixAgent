@@ -11,67 +11,67 @@ import (
 
 // BootstrapResponse represents bootstrap configuration
 type BootstrapResponse struct {
-	ClientData           ClientData     `json:"client_data"`
+	ClientData             ClientData    `json:"client_data"`
 	AdditionalModelOptions []ModelOption `json:"additional_model_options,omitempty"`
 }
 
 // ClientData represents client-specific data
 type ClientData struct {
-	FeatureFlags     FeatureFlags `json:"feature_flags"`
-	Announcements    []Announcement `json:"announcements"`
-	MinimumVersion   string         `json:"minimum_version"`
+	FeatureFlags   FeatureFlags   `json:"feature_flags"`
+	Announcements  []Announcement `json:"announcements"`
+	MinimumVersion string         `json:"minimum_version"`
 }
 
 // FeatureFlags represents all available feature flags
 type FeatureFlags struct {
 	// Model and inference flags
-	NewModelsEnabled       bool `json:"new_models_enabled"`
-	ExperimentalFeatures   bool `json:"experimental_features"`
-	Context1MEnabled       bool `json:"context_1m_enabled,omitempty"`
-	InterleavedThinking    bool `json:"interleaved_thinking,omitempty"`
-	StructuredOutputs      bool `json:"structured_outputs,omitempty"`
-	WebSearchEnabled       bool `json:"web_search_enabled,omitempty"`
-	FastModeEnabled        bool `json:"fast_mode_enabled,omitempty"`
-	AFKModeEnabled         bool `json:"afk_mode_enabled,omitempty"`
-	RedactThinking         bool `json:"redact_thinking,omitempty"`
-	
+	NewModelsEnabled     bool `json:"new_models_enabled"`
+	ExperimentalFeatures bool `json:"experimental_features"`
+	Context1MEnabled     bool `json:"context_1m_enabled,omitempty"`
+	InterleavedThinking  bool `json:"interleaved_thinking,omitempty"`
+	StructuredOutputs    bool `json:"structured_outputs,omitempty"`
+	WebSearchEnabled     bool `json:"web_search_enabled,omitempty"`
+	FastModeEnabled      bool `json:"fast_mode_enabled,omitempty"`
+	AFKModeEnabled       bool `json:"afk_mode_enabled,omitempty"`
+	RedactThinking       bool `json:"redact_thinking,omitempty"`
+
 	// Tool and MCP flags
-	MCPEnabled             bool `json:"mcp_enabled,omitempty"`
-	AdvancedToolsEnabled   bool `json:"advanced_tools_enabled,omitempty"`
-	CustomToolsEnabled     bool `json:"custom_tools_enabled,omitempty"`
-	
+	MCPEnabled           bool `json:"mcp_enabled,omitempty"`
+	AdvancedToolsEnabled bool `json:"advanced_tools_enabled,omitempty"`
+	CustomToolsEnabled   bool `json:"custom_tools_enabled,omitempty"`
+
 	// UI and experience flags
-	NewUIEnabled           bool `json:"new_ui_enabled,omitempty"`
-	AnimationsEnabled      bool `json:"animations_enabled,omitempty"`
-	BuddySystemEnabled     bool `json:"buddy_system_enabled,omitempty"`
-	KAIROSEnabled          bool `json:"kairos_enabled,omitempty"`
-	DreamSystemEnabled     bool `json:"dream_system_enabled,omitempty"`
-	
+	NewUIEnabled       bool `json:"new_ui_enabled,omitempty"`
+	AnimationsEnabled  bool `json:"animations_enabled,omitempty"`
+	BuddySystemEnabled bool `json:"buddy_system_enabled,omitempty"`
+	KAIROSEnabled      bool `json:"kairos_enabled,omitempty"`
+	DreamSystemEnabled bool `json:"dream_system_enabled,omitempty"`
+
 	// Billing and subscription flags
-	ExtraUsageEnabled      bool `json:"extra_usage_enabled,omitempty"`
-	GroveEnabled           bool `json:"grove_enabled,omitempty"`
-	TeamFeaturesEnabled    bool `json:"team_features_enabled,omitempty"`
-	EnterpriseFeatures     bool `json:"enterprise_features_enabled,omitempty"`
-	
+	ExtraUsageEnabled   bool `json:"extra_usage_enabled,omitempty"`
+	GroveEnabled        bool `json:"grove_enabled,omitempty"`
+	TeamFeaturesEnabled bool `json:"team_features_enabled,omitempty"`
+	EnterpriseFeatures  bool `json:"enterprise_features_enabled,omitempty"`
+
 	// Security and privacy flags
-	YOLOClassifierEnabled  bool `json:"yolo_classifier_enabled,omitempty"`
-	PermissionSystemV2     bool `json:"permission_system_v2,omitempty"`
-	PrivacyModeEnabled     bool `json:"privacy_mode_enabled,omitempty"`
-	
+	YOLOClassifierEnabled bool `json:"yolo_classifier_enabled,omitempty"`
+	PermissionSystemV2    bool `json:"permission_system_v2,omitempty"`
+	PrivacyModeEnabled    bool `json:"privacy_mode_enabled,omitempty"`
+
 	// Beta features
-	BetaToolsEnabled       bool `json:"beta_tools_enabled,omitempty"`
-	BetaAPIsEnabled        bool `json:"beta_apis_enabled,omitempty"`
-	EarlyAccessFeatures    bool `json:"early_access_features,omitempty"`
+	BetaToolsEnabled    bool `json:"beta_tools_enabled,omitempty"`
+	BetaAPIsEnabled     bool `json:"beta_apis_enabled,omitempty"`
+	EarlyAccessFeatures bool `json:"early_access_features,omitempty"`
 }
 
 // Announcement represents a system announcement
 type Announcement struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"` // "info", "warning", "critical"
-	Title       string    `json:"title"`
-	Message     string    `json:"message"`
-	URL         string    `json:"url,omitempty"`
-	PublishedAt time.Time `json:"published_at"`
+	ID          string     `json:"id"`
+	Type        string     `json:"type"` // "info", "warning", "critical"
+	Title       string     `json:"title"`
+	Message     string     `json:"message"`
+	URL         string     `json:"url,omitempty"`
+	PublishedAt time.Time  `json:"published_at"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
@@ -91,30 +91,30 @@ func (c *Client) GetBootstrap(ctx context.Context) (*BootstrapResponse, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result BootstrapResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
 // BootstrapCache provides caching for bootstrap data
- type BootstrapCache struct {
-	mu         sync.RWMutex
-	data       *BootstrapResponse
-	fetchedAt  time.Time
-	ttl        time.Duration
-	client     *Client
+type BootstrapCache struct {
+	mu        sync.RWMutex
+	data      *BootstrapResponse
+	fetchedAt time.Time
+	ttl       time.Duration
+	client    *Client
 }
 
 // NewBootstrapCache creates a new bootstrap cache
- func NewBootstrapCache(client *Client, ttl time.Duration) *BootstrapCache {
+func NewBootstrapCache(client *Client, ttl time.Duration) *BootstrapCache {
 	return &BootstrapCache{
 		ttl:    ttl,
 		client: client,
@@ -130,23 +130,23 @@ func (c *BootstrapCache) Get(ctx context.Context) (*BootstrapResponse, error) {
 		return data, nil
 	}
 	c.mu.RUnlock()
-	
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	// Double-check after acquiring write lock
 	if c.data != nil && time.Since(c.fetchedAt) < c.ttl {
 		return c.data, nil
 	}
-	
+
 	data, err := c.client.GetBootstrap(ctx)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	c.data = data
 	c.fetchedAt = time.Now()
-	
+
 	return data, nil
 }
 
@@ -172,12 +172,12 @@ func (c *BootstrapCache) LastFetched() time.Time {
 }
 
 // FeatureFlagManager provides convenient access to feature flags
- type FeatureFlagManager struct {
+type FeatureFlagManager struct {
 	cache *BootstrapCache
 }
 
 // NewFeatureFlagManager creates a new feature flag manager
- func NewFeatureFlagManager(cache *BootstrapCache) *FeatureFlagManager {
+func NewFeatureFlagManager(cache *BootstrapCache) *FeatureFlagManager {
 	return &FeatureFlagManager{cache: cache}
 }
 
@@ -196,7 +196,7 @@ func (m *FeatureFlagManager) IsEnabled(ctx context.Context, feature string) (boo
 	if err != nil {
 		return false, err
 	}
-	
+
 	switch feature {
 	case "new_models":
 		return flags.NewModelsEnabled, nil
@@ -235,18 +235,18 @@ func (m *FeatureFlagManager) RequireVersion(ctx context.Context, currentVersion 
 	if err != nil {
 		return err
 	}
-	
+
 	minVersion := bootstrap.ClientData.MinimumVersion
 	if minVersion == "" {
 		return nil
 	}
-	
+
 	// Simple version comparison (can be enhanced with semver library)
 	if currentVersion < minVersion {
-		return fmt.Errorf("version %s is below minimum required version %s", 
+		return fmt.Errorf("version %s is below minimum required version %s",
 			currentVersion, minVersion)
 	}
-	
+
 	return nil
 }
 
@@ -256,7 +256,7 @@ func (m *FeatureFlagManager) GetAnnouncements(ctx context.Context) ([]Announceme
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Filter out expired announcements
 	var active []Announcement
 	now := time.Now()
@@ -265,7 +265,7 @@ func (m *FeatureFlagManager) GetAnnouncements(ctx context.Context) ([]Announceme
 			active = append(active, ann)
 		}
 	}
-	
+
 	return active, nil
 }
 
@@ -284,18 +284,18 @@ func (m *FeatureFlagManager) GetRecommendedModel(ctx context.Context, subscripti
 	if err != nil {
 		return "", err
 	}
-	
+
 	if len(options) == 0 {
 		return ModelClaudeSonnet4_5, nil // Default
 	}
-	
+
 	// Return first non-deprecated option
 	for _, opt := range options {
 		if !opt.Deprecated {
 			return opt.Value, nil
 		}
 	}
-	
+
 	return options[0].Value, nil
 }
 

@@ -19,10 +19,10 @@ type Perplexity struct {
 // Config holds Perplexity configuration
 type Config struct {
 	base.BaseConfig
-	APIKey      string
-	Model       string
-	SearchMode  bool
-	Citations   bool
+	APIKey     string
+	Model      string
+	SearchMode bool
+	Citations  bool
 }
 
 // New creates a new Perplexity integration
@@ -43,7 +43,7 @@ func New() *Perplexity {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Perplexity{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -62,11 +62,11 @@ func (p *Perplexity) Initialize(ctx context.Context, config interface{}) error {
 	if err := p.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		p.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (p *Perplexity) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "search":
 		return p.search(ctx, params)
@@ -100,7 +100,7 @@ func (p *Perplexity) search(ctx context.Context, params map[string]interface{}) 
 	if query == "" {
 		return nil, fmt.Errorf("query required")
 	}
-	
+
 	return map[string]interface{}{
 		"query":     query,
 		"answer":    fmt.Sprintf("Answer to: %s", query),
@@ -116,7 +116,7 @@ func (p *Perplexity) ask(ctx context.Context, params map[string]interface{}) (in
 	if question == "" {
 		return nil, fmt.Errorf("question required")
 	}
-	
+
 	return map[string]interface{}{
 		"question": question,
 		"answer":   fmt.Sprintf("Perplexity: %s", question),
@@ -130,7 +130,7 @@ func (p *Perplexity) code(ctx context.Context, params map[string]interface{}) (i
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt":  prompt,
 		"code":    fmt.Sprintf("// Generated with Perplexity search\n// %s", prompt),
@@ -144,7 +144,7 @@ func (p *Perplexity) research(ctx context.Context, params map[string]interface{}
 	if topic == "" {
 		return nil, fmt.Errorf("topic required")
 	}
-	
+
 	return map[string]interface{}{
 		"topic":    topic,
 		"research": fmt.Sprintf("Research on: %s", topic),

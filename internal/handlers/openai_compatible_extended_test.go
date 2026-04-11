@@ -182,7 +182,7 @@ func TestExtractSymbolName_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractSymbolName(tt.input)
 			if tt.expected != "" && tt.expected != "   " {
 				assert.NotEmpty(t, result)
@@ -206,7 +206,7 @@ func TestConvertXMLCodeToMarkdown_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := convertXMLCodeToMarkdown(tt.input)
 			if tt.expected != "" {
 				assert.Contains(t, result, tt.expected)
@@ -230,7 +230,7 @@ func TestStripUnparsedToolTags_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := stripUnparsedToolTags(tt.input)
 			if tt.expected == "" {
 				assert.Empty(t, result)
@@ -328,7 +328,7 @@ func TestExtractContentForFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractContentForFile(tt.context, tt.fileName)
 			assert.Contains(t, result, tt.expected)
 		})
@@ -366,7 +366,7 @@ func TestExtractToolArguments_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractToolArguments(tt.toolName, tt.content)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -397,7 +397,7 @@ func TestCleanSynthesisForFile_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := cleanSynthesisForFile(tt.input)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -444,7 +444,7 @@ func TestGetParam_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getParam(params, tt.keys...)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -488,7 +488,7 @@ func TestContainsAny_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := containsAny(tt.text, tt.patterns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -536,7 +536,7 @@ func TestEscapeJSONString_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := escapeJSONString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -570,7 +570,7 @@ func TestSanitizeDisplayContent_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := sanitizeDisplayContent(tt.input)
 			if tt.notEmpty {
 				assert.NotEmpty(t, result)
@@ -606,7 +606,7 @@ func TestExtractFilePath_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractFilePath(tt.input)
 			if tt.expected != "" {
 				assert.Contains(t, result, tt.expected)
@@ -637,7 +637,7 @@ func TestParseEmbeddedFunctionCalls_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			calls := parseEmbeddedFunctionCalls(tt.input)
 			if tt.expectCalls {
 				assert.NotEmpty(t, calls)

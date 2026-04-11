@@ -12,23 +12,23 @@ import (
 )
 
 // Cline provides Cline integration
- type Cline struct {
+type Cline struct {
 	*base.BaseIntegration
 	config *Config
 }
 
 // Config holds Cline configuration
- type Config struct {
+type Config struct {
 	base.BaseConfig
-	VSCodePath    string
-	AutoApprove   bool
-	AutoRun       bool
-	BrowserViewport string
+	VSCodePath         string
+	AutoApprove        bool
+	AutoRun            bool
+	BrowserViewport    string
 	CustomInstructions string
 }
 
 // New creates a new Cline integration
- func New() *Cline {
+func New() *Cline {
 	info := agents.AgentInfo{
 		Type:        agents.TypeCline,
 		Name:        "Cline",
@@ -47,7 +47,7 @@ import (
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Cline{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -68,11 +68,11 @@ func (c *Cline) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (c *Cline) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "open":
 		return c.openVSCode(ctx, params)
@@ -101,16 +101,16 @@ func (c *Cline) Execute(ctx context.Context, command string, params map[string]i
 // openVSCode opens VS Code with Cline
 func (c *Cline) openVSCode(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	args := []string{"--extension-id", "saoudrizwan.claude-dev"}
-	
+
 	if folder, ok := params["folder"].(string); ok {
 		args = append(args, folder)
 	}
-	
+
 	output, err := c.ExecuteCommand(ctx, c.config.VSCodePath, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open VS Code: %w\n%s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"opened":  true,
 		"message": "VS Code opened with Cline",
@@ -123,7 +123,7 @@ func (c *Cline) chat(ctx context.Context, params map[string]interface{}) (interf
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	// In real implementation, this would communicate with Cline extension
 	return map[string]interface{}{
 		"message": message,
@@ -138,7 +138,7 @@ func (c *Cline) task(ctx context.Context, params map[string]interface{}) (interf
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	return map[string]interface{}{
 		"task":   task,
 		"status": "queued",
@@ -150,7 +150,7 @@ func (c *Cline) task(ctx context.Context, params map[string]interface{}) (interf
 func (c *Cline) browserAction(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	action, _ := params["action"].(string)
 	url, _ := params["url"].(string)
-	
+
 	return map[string]interface{}{
 		"action": action,
 		"url":    url,

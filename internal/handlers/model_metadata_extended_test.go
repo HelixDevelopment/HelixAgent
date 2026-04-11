@@ -169,7 +169,7 @@ func TestModelMetadataHandler_GetModelsByCapability_ValidCapabilities_Extended(t
 
 	for _, capability := range validCapabilities {
 		t.Run(capability, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "capability", Value: capability}}

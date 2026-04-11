@@ -43,7 +43,7 @@ func TestNewChromaAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewChromaAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -80,7 +80,7 @@ func TestChromaAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -141,7 +141,7 @@ func TestChromaAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -192,7 +192,7 @@ func TestChromaAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -269,7 +269,7 @@ func TestChromaAdapter_CreateCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -316,7 +316,7 @@ func TestChromaAdapter_DeleteCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -378,7 +378,7 @@ func TestChromaAdapter_GetCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -448,7 +448,7 @@ func TestChromaAdapter_AddDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -535,7 +535,7 @@ func TestChromaAdapter_Query(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -584,7 +584,7 @@ func TestChromaAdapter_DeleteDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -653,7 +653,7 @@ func TestChromaAdapter_UpdateDocuments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -710,7 +710,7 @@ func TestChromaAdapter_Count(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 

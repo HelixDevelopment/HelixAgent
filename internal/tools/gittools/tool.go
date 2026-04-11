@@ -16,10 +16,10 @@ type Tool struct {
 
 // ToolResult represents the result of tool execution
 type ToolResult struct {
-	Success bool   `json:"success"`
+	Success bool    `json:"success"`
 	Commit  *Commit `json:"commit,omitempty"`
-	Output  string `json:"output,omitempty"`
-	Error   string `json:"error,omitempty"`
+	Output  string  `json:"output,omitempty"`
+	Error   string  `json:"error,omitempty"`
 }
 
 // NewTool creates a new git tools handler

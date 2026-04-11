@@ -85,7 +85,7 @@ func TestConfigValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := DefaultConfig()
 			tt.modify(config)
 			err := config.Validate()
@@ -106,7 +106,7 @@ func TestNewService(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &Config{
 			Enabled: true,
 			SemanticCache: SemanticCacheConfig{
@@ -128,7 +128,7 @@ func TestNewService(t *testing.T) {
 	})
 
 	t.Run("initializes semantic cache when enabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = true
 
@@ -138,7 +138,7 @@ func TestNewService(t *testing.T) {
 	})
 
 	t.Run("does not initialize semantic cache when disabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = false
 
@@ -148,7 +148,7 @@ func TestNewService(t *testing.T) {
 	})
 
 	t.Run("initializes enhanced streamer when enabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.Streaming.Enabled = true
 
@@ -163,7 +163,7 @@ func TestServiceOptimizeRequest(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns original prompt when no optimizations apply", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = false
 		config.LlamaIndex.Enabled = false
@@ -181,7 +181,7 @@ func TestServiceOptimizeRequest(t *testing.T) {
 	})
 
 	t.Run("returns cache hit when found", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = true
 		// Disable external services
@@ -205,7 +205,7 @@ func TestServiceOptimizeRequest(t *testing.T) {
 	})
 
 	t.Run("increments cache miss counter", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = true
 		config.LlamaIndex.Enabled = false
@@ -231,7 +231,7 @@ func TestServiceOptimizeResponse(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("caches response when semantic cache enabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = true
 
@@ -246,7 +246,7 @@ func TestServiceOptimizeResponse(t *testing.T) {
 	})
 
 	t.Run("validates structured output when schema provided", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.StructuredOutput.Enabled = true
 
@@ -261,7 +261,7 @@ func TestServiceOptimizeResponse(t *testing.T) {
 	})
 
 	t.Run("does not validate when schema is nil", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.StructuredOutput.Enabled = true
 
@@ -279,7 +279,7 @@ func TestServiceStreamEnhanced(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns enhanced stream when streaming enabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.Streaming.Enabled = true
 
@@ -304,7 +304,7 @@ func TestServiceStreamEnhanced(t *testing.T) {
 	})
 
 	t.Run("returns passthrough when streaming disabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.Streaming.Enabled = false
 
@@ -332,7 +332,7 @@ func TestServiceGenerateStructured(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns error when structured output disabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.StructuredOutput.Enabled = false
 
@@ -350,7 +350,7 @@ func TestServiceGenerateStructured(t *testing.T) {
 	})
 
 	t.Run("generates and validates structured output", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.StructuredOutput.Enabled = true
 
@@ -373,7 +373,7 @@ func TestServiceGenerateStructured(t *testing.T) {
 	})
 
 	t.Run("returns validation errors for invalid output", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.StructuredOutput.Enabled = true
 
@@ -411,7 +411,7 @@ func TestServiceGetCacheStats(t *testing.T) {
 	})
 
 	t.Run("returns disabled when cache not enabled", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SemanticCache.Enabled = false
 
@@ -428,7 +428,7 @@ func TestServiceGetServiceStatus(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns empty map when no services configured", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SGLang.Enabled = false
 		config.LlamaIndex.Enabled = false
@@ -456,7 +456,7 @@ func TestServiceIsServiceAvailable(t *testing.T) {
 	})
 
 	t.Run("returns false when service marked unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		svc, err := NewService(config)
 		require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestIsComplexTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.prompt[:min(30, len(tt.prompt))], func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isComplexTask(tt.prompt)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -496,7 +496,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("DecomposeTask returns error when langchain unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.LangChain.Enabled = false
 
@@ -509,7 +509,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("RunReActAgent returns error when langchain unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.LangChain.Enabled = false
 
@@ -522,7 +522,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("QueryDocuments returns error when llamaindex unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.LlamaIndex.Enabled = false
 
@@ -535,7 +535,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("GenerateConstrained returns error when lmql unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.LMQL.Enabled = false
 
@@ -548,7 +548,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("SelectFromOptions returns error when guidance unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.Guidance.Enabled = false
 
@@ -561,7 +561,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("CreateSession returns error when sglang unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SGLang.Enabled = false
 
@@ -574,7 +574,7 @@ func TestServiceExternalServicesUnavailable(t *testing.T) {
 	})
 
 	t.Run("ContinueSession returns error when sglang unavailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := DefaultConfig()
 		config.SGLang.Enabled = false
 
@@ -1449,7 +1449,7 @@ func TestIsComplexTaskWithVariousIndicators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.indicator, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			prompt := basePrefix + "I need to " + tc.indicator + " something complex"
 			result := isComplexTask(prompt)
 			assert.Equal(t, tc.expected, result)

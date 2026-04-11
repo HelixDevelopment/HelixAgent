@@ -52,7 +52,7 @@ func New() *ClaudePlugins {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &ClaudePlugins{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -70,27 +70,27 @@ func (c *ClaudePlugins) Initialize(ctx context.Context, config interface{}) erro
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return c.loadPlugins()
 }
 
 // loadPlugins loads plugins
 func (c *ClaudePlugins) loadPlugins() error {
 	pluginsPath := filepath.Join(c.GetWorkDir(), "plugins.json")
-	
+
 	if _, err := os.Stat(pluginsPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(pluginsPath)
 	if err != nil {
 		return fmt.Errorf("read plugins: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &c.plugins)
 }
 
@@ -111,7 +111,7 @@ func (c *ClaudePlugins) Execute(ctx context.Context, command string, params map[
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "install":
 		return c.install(ctx, params)
@@ -134,7 +134,7 @@ func (c *ClaudePlugins) install(ctx context.Context, params map[string]interface
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	plugin := Plugin{
 		ID:          fmt.Sprintf("plugin-%d", len(c.plugins)+1),
 		Name:        name,
@@ -143,13 +143,13 @@ func (c *ClaudePlugins) install(ctx context.Context, params map[string]interface
 		Enabled:     true,
 		Hooks:       []string{"on_init", "on_message"},
 	}
-	
+
 	c.plugins = append(c.plugins, plugin)
-	
+
 	if err := c.savePlugins(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"plugin": plugin,
 		"status": "installed",
@@ -162,18 +162,18 @@ func (c *ClaudePlugins) uninstall(ctx context.Context, params map[string]interfa
 	if pluginID == "" {
 		return nil, fmt.Errorf("plugin_id required")
 	}
-	
+
 	for i, p := range c.plugins {
 		if p.ID == pluginID {
 			c.plugins = append(c.plugins[:i], c.plugins[i+1:]...)
 			break
 		}
 	}
-	
+
 	if err := c.savePlugins(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"plugin_id": pluginID,
 		"status":    "uninstalled",
@@ -186,18 +186,18 @@ func (c *ClaudePlugins) enable(ctx context.Context, params map[string]interface{
 	if pluginID == "" {
 		return nil, fmt.Errorf("plugin_id required")
 	}
-	
+
 	for i := range c.plugins {
 		if c.plugins[i].ID == pluginID {
 			c.plugins[i].Enabled = true
 			break
 		}
 	}
-	
+
 	if err := c.savePlugins(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"plugin_id": pluginID,
 		"status":    "enabled",
@@ -210,18 +210,18 @@ func (c *ClaudePlugins) disable(ctx context.Context, params map[string]interface
 	if pluginID == "" {
 		return nil, fmt.Errorf("plugin_id required")
 	}
-	
+
 	for i := range c.plugins {
 		if c.plugins[i].ID == pluginID {
 			c.plugins[i].Enabled = false
 			break
 		}
 	}
-	
+
 	if err := c.savePlugins(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"plugin_id": pluginID,
 		"status":    "disabled",

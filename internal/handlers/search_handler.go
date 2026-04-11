@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"dev.helix.agent/internal/search"
+	"github.com/gin-gonic/gin"
 )
 
 // SearchHandler handles search-related HTTP requests
 type SearchHandler struct {
-	searcher  search.Searcher
-	indexer   search.Indexer
+	searcher search.Searcher
+	indexer  search.Indexer
 }
 
 // NewSearchHandler creates a new search handler
@@ -55,37 +55,37 @@ func (h *SearchHandler) SemanticSearch(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	start := time.Now()
-	
+
 	opts := search.SearchOptions{
 		TopK:           req.TopK,
 		MinScore:       req.MinScore,
 		Filters:        req.Filters,
 		IncludeContent: true,
 	}
-	
+
 	if opts.TopK == 0 {
 		opts.TopK = 10
 	}
-	
+
 	// Add language filter if specified
 	if req.Language != "" {
 		opts.Filters["language"] = req.Language
 	}
-	
+
 	results, err := h.searcher.Search(c.Request.Context(), req.Query, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	resp := SearchResponse{
 		Results:    results,
 		TotalFound: len(results),
 		QueryTime:  time.Since(start).Milliseconds(),
 	}
-	
+
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -96,19 +96,19 @@ func (h *SearchHandler) TriggerIndex(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Convert errors to strings
 	errorStrings := make([]string, len(result.Errors))
 	for i, err := range result.Errors {
 		errorStrings[i] = err.Error()
 	}
-	
+
 	resp := IndexResponse{
 		FilesIndexed: result.FilesIndexed,
 		Duration:     result.Duration,
 		Errors:       errorStrings,
 	}
-	
+
 	c.JSON(http.StatusOK, resp)
 }
 

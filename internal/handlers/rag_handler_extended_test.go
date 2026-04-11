@@ -548,7 +548,7 @@ func TestRAGHandler_AllEndpoints_InvalidJSON(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(ep.httpMethod, ep.path, bytes.NewReader([]byte("{invalid json")))
@@ -585,7 +585,7 @@ func TestRAGHandler_AllEndpoints_EmptyBody(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("POST", ep.path, nil)

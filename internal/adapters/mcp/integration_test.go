@@ -18,7 +18,7 @@ func TestClientAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("server config to external config conversion", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		serverConfig := ServerConfig{
 			Name:    "test-server",
 			Command: []string{"node", "server.js"},
@@ -37,7 +37,7 @@ func TestClientAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("transport type constants", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, TransportStdio, TransportStdio)
 		assert.Equal(t, TransportHTTP, TransportHTTP)
 	})
@@ -48,14 +48,14 @@ func TestRegistryAdapter_Integration(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("create new registry adapter", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 		require.NotNil(t, registry)
 		assert.NotNil(t, registry.registry)
 	})
 
 	t.Run("register and get adapter", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 
 		mockAdapter := &mockAdapter{name: "test-adapter"}
@@ -68,7 +68,7 @@ func TestRegistryAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("list registered adapters", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 
 		mockAdapter1 := &mockAdapter{name: "adapter-1"}
@@ -84,7 +84,7 @@ func TestRegistryAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("unregister adapter", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 
 		mockAdapter := &mockAdapter{name: "removable-adapter"}
@@ -98,7 +98,7 @@ func TestRegistryAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("start and stop all adapters", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 
 		mockAdapter1 := &mockAdapter{name: "startable-1"}
@@ -115,7 +115,7 @@ func TestRegistryAdapter_Integration(t *testing.T) {
 	})
 
 	t.Run("health check all adapters", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		registry := NewRegistryAdapter()
 
 		healthyAdapter := &mockAdapter{
@@ -145,13 +145,13 @@ func TestTypeAliases(t *testing.T) {
 	})
 
 	t.Run("resource type alias", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		var resource Resource
 		assert.NotNil(t, resource)
 	})
 
 	t.Run("prompt type alias", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		var prompt Prompt
 		assert.NotNil(t, prompt)
 	})

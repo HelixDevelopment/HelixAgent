@@ -162,7 +162,7 @@ func TestHealthReport_IsHealthy(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			report := &HealthReport{UnhealthyCount: tc.unhealthy}
 			assert.Equal(t, tc.expected, report.IsHealthy())
 		})
@@ -186,7 +186,7 @@ func TestHealthReport_HealthPercentage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			report := &HealthReport{
 				TotalFormatters: tc.total,
 				HealthyCount:    tc.healthy,

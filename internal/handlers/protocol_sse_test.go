@@ -1160,7 +1160,7 @@ func TestProtocolSSEHandler_AllProtocols_ToolsCallExecution(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.protocol, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			params := map[string]interface{}{
 				"name":      tc.tool,
 				"arguments": tc.args,

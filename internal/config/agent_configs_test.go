@@ -222,7 +222,7 @@ func TestConfigGenerator_GenerateConfig_AllTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.agentType), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config, err := gen.GenerateConfig(tt.agentType)
 			if tt.valid {
 				assert.NoError(t, err)
@@ -413,7 +413,7 @@ func TestConfigValidator_ValidateCrushConfig_MCPValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := &CrushConfig{
 				Providers: map[string]CrushProvider{
 					"test": {Type: "openai", BaseURL: "http://test"},
@@ -645,7 +645,7 @@ func TestConfigGenerator_GenerateAndValidate_AllAgents(t *testing.T) {
 
 	for _, agent := range agents {
 		t.Run(string(agent), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Generate config
 			jsonData, err := gen.GenerateJSON(agent)
 			require.NoError(t, err)

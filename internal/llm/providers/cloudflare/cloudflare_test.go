@@ -221,7 +221,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewCloudflareProvider(tt.apiKey, tt.accountID, "", "")
 			valid, errs := provider.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)

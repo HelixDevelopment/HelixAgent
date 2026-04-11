@@ -38,7 +38,7 @@ func New() *KiloCode {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &KiloCode{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (k *KiloCode) Initialize(ctx context.Context, config interface{}) error {
 	if err := k.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		k.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (k *KiloCode) Execute(ctx context.Context, command string, params map[strin
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "complete":
 		return k.complete(ctx, params)
@@ -84,7 +84,7 @@ func (k *KiloCode) Execute(ctx context.Context, command string, params map[strin
 // complete generates completion
 func (k *KiloCode) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
-	
+
 	return map[string]interface{}{
 		"prefix":     prefix,
 		"completion": "// KiloCode completion",

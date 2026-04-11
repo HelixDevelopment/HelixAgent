@@ -46,7 +46,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := &Provider{}
 			valid, errors := p.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -76,7 +76,7 @@ func TestProvider_HealthCheck(t *testing.T) {
 		"gpt-4",
 		"test-api-key",
 	)
-	
+
 	// Health check may fail if Azure is not accessible
 	// This test just verifies the method exists and doesn't panic
 	err := p.HealthCheck()

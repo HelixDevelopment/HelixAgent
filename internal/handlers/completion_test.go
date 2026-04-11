@@ -847,7 +847,7 @@ func TestCompletionHandler_SendError_Various(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -970,7 +970,7 @@ func TestCompletionHandler_ConvertToAPIResponse_VariousFinishReasons(t *testing.
 
 	for _, reason := range finishReasons {
 		t.Run(reason, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "test-id",
 				Content:      "Test response",
@@ -1536,7 +1536,7 @@ func TestCompletionHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt": tc.prompt,
 				"model":  "test-model",
@@ -1586,7 +1586,7 @@ func TestCompletionHandler_ExtremeValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt":      "Test extreme values",
 				"model":       "test-model",
@@ -1769,7 +1769,7 @@ func TestCompletionHandler_ResponseTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("finish_"+tc.finishReason, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "test-" + tc.finishReason,
 				Content:      "Response with finish reason: " + tc.finishReason,

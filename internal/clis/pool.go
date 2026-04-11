@@ -21,7 +21,7 @@ type InstancePool struct {
 	acquireTimeout time.Duration
 
 	// Idle instances available for use
-	idle []*AgentInstance
+	idle   []*AgentInstance
 	idleCh chan *AgentInstance
 
 	// Active instances currently in use
@@ -47,10 +47,10 @@ type InstancePool struct {
 
 // PoolConfig contains pool configuration.
 type PoolConfig struct {
-	MinIdle        int
-	MaxIdle        int
-	MaxActive      int
-	MaxLifetime    time.Duration
+	MinIdle     int
+	MaxIdle     int
+	MaxActive   int
+	MaxLifetime time.Duration
 	// AcquireTimeout is the maximum time to wait when the pool is exhausted.
 	// Defaults to 30 seconds if zero.
 	AcquireTimeout time.Duration
@@ -74,7 +74,7 @@ func NewInstancePool(
 	factory func() (*AgentInstance, error),
 ) *InstancePool {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	acquireTimeout := config.AcquireTimeout
 	if acquireTimeout <= 0 {
 		acquireTimeout = 30 * time.Second
@@ -94,15 +94,15 @@ func NewInstancePool(
 		ctx:            ctx,
 		cancel:         cancel,
 	}
-	
+
 	// Start maintenance goroutine
 	pool.wg.Add(1)
 	go pool.maintenanceLoop()
-	
+
 	// Pre-warm pool to minIdle
 	pool.wg.Add(1)
 	go pool.prewarm()
-	
+
 	return pool
 }
 
@@ -199,35 +199,35 @@ func (p *InstancePool) Release(inst *AgentInstance) error {
 	if inst == nil {
 		return nil
 	}
-	
+
 	// Remove from active
 	p.mu.Lock()
 	delete(p.active, inst.ID)
-	
+
 	// Check if pool is full
 	if len(p.idle) >= p.maxIdle {
 		p.mu.Unlock()
 		// Terminate instance instead of returning to pool
 		return p.terminateInstance(inst)
 	}
-	
+
 	// Reset instance state
 	inst.SessionID = ""
 	inst.TaskID = ""
 	inst.Status = StatusIdle
 	inst.UpdatedAt = time.Now()
-	
+
 	// Add to idle pool
 	p.idle = append(p.idle, inst)
 	p.mu.Unlock()
-	
+
 	// Try to add to channel (non-blocking)
 	select {
 	case p.idleCh <- inst:
 	default:
 		// Channel full, instance is in idle slice
 	}
-	
+
 	return nil
 }
 
@@ -236,10 +236,10 @@ func (p *InstancePool) Invalidate(inst *AgentInstance) error {
 	if inst == nil {
 		return nil
 	}
-	
+
 	p.mu.Lock()
 	delete(p.active, inst.ID)
-	
+
 	// Remove from idle if present
 	for i, idleInst := range p.idle {
 		if idleInst.ID == inst.ID {
@@ -248,7 +248,7 @@ func (p *InstancePool) Invalidate(inst *AgentInstance) error {
 		}
 	}
 	p.mu.Unlock()
-	
+
 	return p.terminateInstance(inst)
 }
 
@@ -256,36 +256,36 @@ func (p *InstancePool) Invalidate(inst *AgentInstance) error {
 func (p *InstancePool) Stats() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	totalHits := atomic.LoadUint64(&p.hits)
 	totalMisses := atomic.LoadUint64(&p.misses)
 	totalRequests := totalHits + totalMisses
-	
+
 	hitRate := float64(0)
 	if totalRequests > 0 {
 		hitRate = float64(totalHits) / float64(totalRequests)
 	}
-	
+
 	return map[string]interface{}{
-		"agent_type":     p.agentType,
-		"idle_count":     len(p.idle),
-		"active_count":   len(p.active),
-		"hits":           totalHits,
-		"misses":         totalMisses,
-		"hit_rate":       hitRate,
-		"evicts":         atomic.LoadUint64(&p.evicts),
-		"max_idle":       p.maxIdle,
-		"max_active":     p.maxActive,
+		"agent_type":   p.agentType,
+		"idle_count":   len(p.idle),
+		"active_count": len(p.active),
+		"hits":         totalHits,
+		"misses":       totalMisses,
+		"hit_rate":     hitRate,
+		"evicts":       atomic.LoadUint64(&p.evicts),
+		"max_idle":     p.maxIdle,
+		"max_active":   p.maxActive,
 	}
 }
 
 // Close shuts down the pool.
 func (p *InstancePool) Close() error {
 	p.cancel()
-	
+
 	// Wait for goroutines
 	p.wg.Wait()
-	
+
 	// Terminate all instances
 	p.mu.Lock()
 	instances := make([]*AgentInstance, 0, len(p.idle)+len(p.active))
@@ -296,23 +296,23 @@ func (p *InstancePool) Close() error {
 	p.idle = p.idle[:0]
 	p.active = make(map[string]*AgentInstance)
 	p.mu.Unlock()
-	
+
 	for _, inst := range instances {
 		p.terminateInstance(inst)
 	}
-	
+
 	close(p.idleCh)
-	
+
 	return nil
 }
 
 // maintenanceLoop performs periodic maintenance.
 func (p *InstancePool) maintenanceLoop() {
 	defer p.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:

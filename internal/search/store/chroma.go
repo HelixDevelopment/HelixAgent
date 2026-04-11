@@ -52,10 +52,10 @@ func (s *ChromaStore) CreateCollection(ctx context.Context, name string, dims in
 	payload := map[string]interface{}{
 		"name": name,
 		"metadata": map[string]interface{}{
-			"dimension":    dims,
-			"hnsw:space":   "cosine",
-			"created_by":   "helixagent",
-			"created_at":   time.Now().Unix(),
+			"dimension":  dims,
+			"hnsw:space": "cosine",
+			"created_by": "helixagent",
+			"created_at": time.Now().Unix(),
 		},
 	}
 
@@ -211,9 +211,9 @@ func (s *ChromaStore) Search(ctx context.Context, collection string, vector []fl
 
 	// Parse response
 	var result struct {
-		IDs       [][]string               `json:"ids"`
-		Distances [][]float32              `json:"distances"`
-		Documents [][]string               `json:"documents"`
+		IDs       [][]string                 `json:"ids"`
+		Distances [][]float32                `json:"distances"`
+		Documents [][]string                 `json:"documents"`
 		Metadatas [][]map[string]interface{} `json:"metadatas"`
 	}
 

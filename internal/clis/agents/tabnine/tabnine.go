@@ -19,11 +19,11 @@ type Tabnine struct {
 // Config holds Tabnine configuration
 type Config struct {
 	base.BaseConfig
-	APIKey          string
-	LocalMode       bool
-	ModelType       string // "local", "cloud", "hybrid"
-	TeamMode        bool
-	PrivacyLevel    string // "local", "team", "enterprise"
+	APIKey       string
+	LocalMode    bool
+	ModelType    string // "local", "cloud", "hybrid"
+	TeamMode     bool
+	PrivacyLevel string // "local", "team", "enterprise"
 }
 
 // New creates a new Tabnine integration
@@ -45,7 +45,7 @@ func New() *Tabnine {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Tabnine{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -65,11 +65,11 @@ func (t *Tabnine) Initialize(ctx context.Context, config interface{}) error {
 	if err := t.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		t.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (t *Tabnine) Execute(ctx context.Context, command string, params map[string
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "complete":
 		return t.complete(ctx, params)
@@ -102,21 +102,21 @@ func (t *Tabnine) complete(ctx context.Context, params map[string]interface{}) (
 	prefix, _ := params["prefix"].(string)
 	suffix, _ := params["suffix"].(string)
 	language, _ := params["language"].(string)
-	
+
 	if language == "" {
 		language = "go"
 	}
-	
+
 	// Generate completion
 	completion := t.generateCompletion(prefix, suffix, language)
-	
+
 	return map[string]interface{}{
-		"prefix":      prefix,
-		"suffix":      suffix,
-		"language":    language,
-		"completion":  completion,
-		"model_type":  t.config.ModelType,
-		"local_mode":  t.config.LocalMode,
+		"prefix":     prefix,
+		"suffix":     suffix,
+		"language":   language,
+		"completion": completion,
+		"model_type": t.config.ModelType,
+		"local_mode": t.config.LocalMode,
 	}, nil
 }
 
@@ -143,7 +143,7 @@ func (t *Tabnine) chat(ctx context.Context, params map[string]interface{}) (inte
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	return map[string]interface{}{
 		"message":  message,
 		"response": fmt.Sprintf("Tabnine: %s", message),
@@ -157,7 +157,7 @@ func (t *Tabnine) review(ctx context.Context, params map[string]interface{}) (in
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-	
+
 	return map[string]interface{}{
 		"code":   code,
 		"review": "Code review by Tabnine",
@@ -192,7 +192,7 @@ func (t *Tabnine) configure(ctx context.Context, params map[string]interface{}) 
 	if privacyLevel, ok := params["privacy_level"].(string); ok {
 		t.config.PrivacyLevel = privacyLevel
 	}
-	
+
 	return map[string]interface{}{
 		"configured":    true,
 		"local_mode":    t.config.LocalMode,

@@ -156,7 +156,7 @@ func TestQwenCodeExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := q.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -380,7 +380,7 @@ func TestQwenCodeConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			q := New()
 			ctx := context.Background()
 			err := q.Initialize(ctx, tt.config)

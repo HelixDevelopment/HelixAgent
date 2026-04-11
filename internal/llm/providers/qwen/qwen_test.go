@@ -71,7 +71,7 @@ func TestNewQwenProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			got := NewQwenProvider(tt.apiKey, tt.baseURL, tt.model)
 			assert.Equal(t, tt.want.apiKey, got.apiKey)
 			assert.Equal(t, tt.want.baseURL, got.baseURL)
@@ -1114,7 +1114,7 @@ func TestQwenProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewQwenProvider(tt.apiKey, tt.baseURL, tt.model)
 			valid, errs := provider.ValidateConfig(tt.config)
 			assert.Equal(t, tt.wantValid, valid)
@@ -1288,7 +1288,7 @@ func TestIsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.retryable, result)
 		})
@@ -1305,7 +1305,7 @@ func TestQwenProvider_NextDelay(t *testing.T) {
 	})
 
 	t.Run("exponential backoff", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		delay1 := provider.nextDelay(100 * time.Millisecond)
 		assert.Equal(t, 200*time.Millisecond, delay1)
 
@@ -1314,7 +1314,7 @@ func TestQwenProvider_NextDelay(t *testing.T) {
 	})
 
 	t.Run("respects max delay", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		delay := provider.nextDelay(800 * time.Millisecond)
 		assert.Equal(t, 1*time.Second, delay) // Capped at MaxDelay
 	})
@@ -1554,7 +1554,7 @@ func TestQwenProvider_WaitWithJitter(t *testing.T) {
 	provider := NewQwenProvider("key", "", "")
 
 	t.Run("respects context cancellation", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
@@ -1567,7 +1567,7 @@ func TestQwenProvider_WaitWithJitter(t *testing.T) {
 	})
 
 	t.Run("waits for duration with jitter", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		ctx := context.Background()
 		delay := 50 * time.Millisecond
 
@@ -1641,7 +1641,7 @@ func TestParseSSELine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			chunk, done, err := parseSSELine([]byte(tt.line))
 
 			if tt.wantError {
@@ -1985,7 +1985,7 @@ func TestConvertToQwenRequest(t *testing.T) {
 	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-max")
 
 	t.Run("with prompt only", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "System prompt",
 			ModelParams: models.ModelParameters{
@@ -2008,7 +2008,7 @@ func TestConvertToQwenRequest(t *testing.T) {
 	})
 
 	t.Run("with messages", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Prompt: "System prompt",
 			Messages: []models.Message{
@@ -2027,7 +2027,7 @@ func TestConvertToQwenRequest(t *testing.T) {
 	})
 
 	t.Run("without prompt", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Messages: []models.Message{
 				{Role: "user", Content: "Hello"},
@@ -2046,7 +2046,7 @@ func TestConvertFromQwenResponse(t *testing.T) {
 	provider := NewQwenProvider("test-key", "https://api.example.com", "qwen-turbo")
 
 	t.Run("successful response", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		qwenResp := &QwenResponse{
 			ID:      "resp-123",
 			Object:  "chat.completion",
@@ -2083,7 +2083,7 @@ func TestConvertFromQwenResponse(t *testing.T) {
 	})
 
 	t.Run("empty choices", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		qwenResp := &QwenResponse{
 			ID:      "resp-empty",
 			Choices: []QwenChoice{},

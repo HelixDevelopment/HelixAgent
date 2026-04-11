@@ -20,26 +20,26 @@ func TestNewResolver(t *testing.T) {
 func TestResolver_Resolve(t *testing.T) {
 	// Create a temporary directory with test files
 	tempDir := t.TempDir()
-	
+
 	// Create test files
 	testFiles := map[string]string{
-		"README.md":     "# Test Project",
-		"main.go":       "package main",
-		"config.yaml":   "key: value",
+		"README.md":   "# Test Project",
+		"main.go":     "package main",
+		"config.yaml": "key: value",
 	}
-	
+
 	for name, content := range testFiles {
 		err := os.WriteFile(filepath.Join(tempDir, name), []byte(content), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	resolver := NewResolver(tempDir)
-	
+
 	tests := []struct {
-		name      string
-		template  ContextTemplate
-		vars      map[string]string
-		wantErr   bool
+		name        string
+		template    ContextTemplate
+		vars        map[string]string
+		wantErr     bool
 		errContains string
 	}{
 		{
@@ -111,7 +111,7 @@ func TestResolver_Resolve(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, err := resolver.Resolve(&tt.template, tt.vars)
@@ -123,7 +123,7 @@ func TestResolver_Resolve(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, ctx)
 				assert.NotNil(t, ctx.Variables)
-				
+
 				if tt.name == "variable substitution" {
 					assert.Equal(t, "Hello World!", ctx.Instructions)
 				}
@@ -138,17 +138,17 @@ func TestResolver_Resolve(t *testing.T) {
 func TestResolver_ResolveFiles(t *testing.T) {
 	// Create a temporary directory with test files
 	tempDir := t.TempDir()
-	
+
 	// Create test files
 	testFiles := map[string]string{
-		"README.md":                "# Test Project",
-		"main.go":                  "package main",
-		"utils.go":                 "package utils",
-		"config.yaml":              "key: value",
-		"docs/guide.md":            "# Guide",
-		"vendor/vendor.go":         "package vendor",
+		"README.md":        "# Test Project",
+		"main.go":          "package main",
+		"utils.go":         "package utils",
+		"config.yaml":      "key: value",
+		"docs/guide.md":    "# Guide",
+		"vendor/vendor.go": "package vendor",
 	}
-	
+
 	for name, content := range testFiles {
 		path := filepath.Join(tempDir, name)
 		err := os.MkdirAll(filepath.Dir(path), 0755)
@@ -156,52 +156,52 @@ func TestResolver_ResolveFiles(t *testing.T) {
 		err = os.WriteFile(path, []byte(content), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	resolver := NewResolver(tempDir)
-	
+
 	tests := []struct {
-		name         string
-		include      []string
-		exclude      []string
+		name          string
+		include       []string
+		exclude       []string
 		wantFileCount int
-		wantFiles    []string
+		wantFiles     []string
 	}{
 		{
-			name:         "include all go files",
-			include:      []string{"*.go"},
-			exclude:      []string{},
+			name:          "include all go files",
+			include:       []string{"*.go"},
+			exclude:       []string{},
 			wantFileCount: 2,
-			wantFiles:    []string{"main.go", "utils.go"},
+			wantFiles:     []string{"main.go", "utils.go"},
 		},
 		{
-			name:         "include markdown files",
-			include:      []string{"*.md"},
-			exclude:      []string{},
+			name:          "include markdown files",
+			include:       []string{"*.md"},
+			exclude:       []string{},
 			wantFileCount: 1,
-			wantFiles:    []string{"README.md"},
+			wantFiles:     []string{"README.md"},
 		},
 		{
-			name:         "include with exclude pattern",
-			include:      []string{"*.go"},
-			exclude:      []string{"utils*"},
+			name:          "include with exclude pattern",
+			include:       []string{"*.go"},
+			exclude:       []string{"utils*"},
 			wantFileCount: 1,
-			wantFiles:    []string{"main.go"},
+			wantFiles:     []string{"main.go"},
 		},
 		{
-			name:         "non-existent pattern",
-			include:      []string{"*.nonexistent"},
-			exclude:      []string{},
+			name:          "non-existent pattern",
+			include:       []string{"*.nonexistent"},
+			exclude:       []string{},
 			wantFileCount: 0,
 		},
 		{
-			name:         "recursive pattern",
-			include:      []string{"**/*.md"},
-			exclude:      []string{},
+			name:          "recursive pattern",
+			include:       []string{"**/*.md"},
+			exclude:       []string{},
 			wantFileCount: 2,
-			wantFiles:    []string{"README.md", "docs/guide.md"},
+			wantFiles:     []string{"README.md", "docs/guide.md"},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			files, err := resolver.resolveFiles(FileSpec{
@@ -210,7 +210,7 @@ func TestResolver_ResolveFiles(t *testing.T) {
 			})
 			assert.NoError(t, err)
 			assert.Len(t, files, tt.wantFileCount)
-			
+
 			for _, wantFile := range tt.wantFiles {
 				found := false
 				for _, file := range files {
@@ -227,7 +227,7 @@ func TestResolver_ResolveFiles(t *testing.T) {
 
 func TestResolver_IsExcluded(t *testing.T) {
 	resolver := NewResolver("/test")
-	
+
 	tests := []struct {
 		name     string
 		path     string
@@ -259,7 +259,7 @@ func TestResolver_IsExcluded(t *testing.T) {
 			want:     false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resolver.isExcluded(tt.path, tt.excludes)
@@ -270,7 +270,7 @@ func TestResolver_IsExcluded(t *testing.T) {
 
 func TestResolver_SubstituteVars(t *testing.T) {
 	resolver := NewResolver("/test")
-	
+
 	tests := []struct {
 		name string
 		text string
@@ -320,7 +320,7 @@ func TestResolver_SubstituteVars(t *testing.T) {
 			want: "Alice says hello to Alice",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resolver.substituteVars(tt.text, tt.vars)
@@ -369,7 +369,7 @@ func TestResolvedContext_FormatContext(t *testing.T) {
 			want: "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.ctx.FormatContext()
@@ -386,7 +386,7 @@ func TestContextFile_Struct(t *testing.T) {
 		Content:    "package main",
 		TokenCount: 100,
 	}
-	
+
 	assert.Equal(t, "test.go", file.Path)
 	assert.Equal(t, "package main", file.Content)
 	assert.Equal(t, 100, file.TokenCount)
@@ -400,7 +400,7 @@ func TestGitContext_Struct(t *testing.T) {
 		RecentCommits: []string{"commit1", "commit2"},
 		ChangedFiles:  []string{"file1.go", "file2.go"},
 	}
-	
+
 	assert.Equal(t, "main", git.Branch)
 	assert.Len(t, git.RecentCommits, 2)
 	assert.Len(t, git.ChangedFiles, 2)
@@ -435,7 +435,7 @@ func TestTemplateSpec_Struct(t *testing.T) {
 			{Name: "prompt1", Template: "Template 1"},
 		},
 	}
-	
+
 	assert.NotNil(t, spec.Files.Include)
 	assert.NotNil(t, spec.Files.Exclude)
 	assert.True(t, spec.GitContext.BranchDiff.Enabled)
@@ -455,7 +455,7 @@ func TestVariableDef_Struct(t *testing.T) {
 		Default:     "default-value",
 		Options:     []string{"option1", "option2"},
 	}
-	
+
 	assert.Equal(t, "test-var", v.Name)
 	assert.Equal(t, "Test variable", v.Description)
 	assert.True(t, v.Required)
@@ -471,7 +471,7 @@ func TestPromptDef_Struct(t *testing.T) {
 		Description: "Test prompt",
 		Template:    "This is a {{type}} template",
 	}
-	
+
 	assert.Equal(t, "test-prompt", p.Name)
 	assert.Equal(t, "Test prompt", p.Description)
 	assert.Equal(t, "This is a {{type}} template", p.Template)
@@ -484,7 +484,7 @@ func TestFileSpec_Struct(t *testing.T) {
 		Include: []string{"*.go", "*.md"},
 		Exclude: []string{"vendor/**", "*_test.go"},
 	}
-	
+
 	assert.Len(t, fs.Include, 2)
 	assert.Len(t, fs.Exclude, 2)
 }
@@ -507,7 +507,7 @@ func TestGitContextSpec_Struct(t *testing.T) {
 			MaxFiles: 20,
 		},
 	}
-	
+
 	assert.True(t, gcs.BranchDiff.Enabled)
 	assert.Equal(t, "main", gcs.BranchDiff.Base)
 	assert.Equal(t, 50, gcs.BranchDiff.MaxFiles)
@@ -525,7 +525,7 @@ func TestDocumentationSpec_Struct(t *testing.T) {
 			{Type: "url", Server: "https://example.com/docs", Query: ""},
 		},
 	}
-	
+
 	assert.True(t, ds.Enabled)
 	assert.Len(t, ds.Sources, 2)
 }
@@ -538,7 +538,7 @@ func TestDocumentationSource_Struct(t *testing.T) {
 		Server: "docs-server",
 		Query:  "search query",
 	}
-	
+
 	assert.Equal(t, "mcp", ds.Type)
 	assert.Equal(t, "docs-server", ds.Server)
 	assert.Equal(t, "search query", ds.Query)
@@ -557,7 +557,7 @@ func TestTemplateMetadata_Struct(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	
+
 	assert.Equal(t, "test-id", tm.ID)
 	assert.Equal(t, "Test Template", tm.Name)
 	assert.Equal(t, "A test template", tm.Description)
@@ -580,7 +580,7 @@ func TestResolvedContext_Struct(t *testing.T) {
 		Variables:    map[string]string{"var1": "value1"},
 		TotalTokens:  1000,
 	}
-	
+
 	assert.Len(t, rc.Files, 1)
 	assert.NotNil(t, rc.GitInfo)
 	assert.Equal(t, "Test instructions", rc.Instructions)
@@ -589,7 +589,6 @@ func TestResolvedContext_Struct(t *testing.T) {
 }
 
 // Helper function for time
-
 
 // Additional tests for FormatContext with different combinations
 
@@ -621,7 +620,7 @@ func TestResolvedContext_FormatContext_Combinations(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.ctx.FormatContext()
@@ -635,7 +634,7 @@ func TestResolvedContext_FormatContext_EmptyFiles(t *testing.T) {
 	ctx := ResolvedContext{
 		Files: []ContextFile{},
 	}
-	
+
 	result := ctx.FormatContext()
 	assert.NotContains(t, result, "## Files")
 }
@@ -644,7 +643,7 @@ func TestResolvedContext_FormatContext_NilGitInfo(t *testing.T) {
 	ctx := ResolvedContext{
 		GitInfo: nil,
 	}
-	
+
 	result := ctx.FormatContext()
 	assert.NotContains(t, result, "## Git Context")
 }
@@ -652,14 +651,14 @@ func TestResolvedContext_FormatContext_NilGitInfo(t *testing.T) {
 func TestResolver_resolveFiles_WithExcludeDir(t *testing.T) {
 	// Create a temporary directory with files in subdirectories
 	tempDir := t.TempDir()
-	
+
 	// Create files in regular and vendor directories
 	files := map[string]string{
-		"src/main.go":     "package main",
-		"vendor/lib.go":   "package lib",
-		"README.md":       "# Test",
+		"src/main.go":   "package main",
+		"vendor/lib.go": "package lib",
+		"README.md":     "# Test",
 	}
-	
+
 	for path, content := range files {
 		fullPath := filepath.Join(tempDir, path)
 		err := os.MkdirAll(filepath.Dir(fullPath), 0755)
@@ -667,15 +666,15 @@ func TestResolver_resolveFiles_WithExcludeDir(t *testing.T) {
 		err = os.WriteFile(fullPath, []byte(content), 0644)
 		require.NoError(t, err)
 	}
-	
+
 	resolver := NewResolver(tempDir)
-	
+
 	// Test with exclusion of vendor directory
 	resolvedFiles, err := resolver.resolveFiles(FileSpec{
 		Include: []string{"**/*.go"},
 		Exclude: []string{"vendor"},
 	})
-	
+
 	assert.NoError(t, err)
 	assert.Len(t, resolvedFiles, 1)
 	assert.Equal(t, "src/main.go", resolvedFiles[0].Path)
@@ -683,39 +682,39 @@ func TestResolver_resolveFiles_WithExcludeDir(t *testing.T) {
 
 func TestResolver_resolveFiles_NoMatches(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create only .txt files
 	err := os.WriteFile(filepath.Join(tempDir, "file.txt"), []byte("text"), 0644)
 	require.NoError(t, err)
-	
+
 	resolver := NewResolver(tempDir)
-	
+
 	// Try to match .go files
 	files, err := resolver.resolveFiles(FileSpec{
 		Include: []string{"*.go"},
 	})
-	
+
 	assert.NoError(t, err)
 	assert.Empty(t, files)
 }
 
 func TestResolver_substituteVars_Complex(t *testing.T) {
 	resolver := NewResolver("/test")
-	
+
 	// Test with special characters
 	text := "Path: {{path}}, Name: {{name}}"
 	vars := map[string]string{
 		"path": "/home/user",
 		"name": "test-file",
 	}
-	
+
 	result := resolver.substituteVars(text, vars)
 	assert.Equal(t, "Path: /home/user, Name: test-file", result)
 }
 
 func TestResolver_substituteVars_Overlapping(t *testing.T) {
 	resolver := NewResolver("/test")
-	
+
 	// Test with overlapping variable names
 	text := "{{a}} {{ab}} {{abc}}"
 	vars := map[string]string{
@@ -723,7 +722,7 @@ func TestResolver_substituteVars_Overlapping(t *testing.T) {
 		"ab":  "2",
 		"abc": "3",
 	}
-	
+
 	result := resolver.substituteVars(text, vars)
 	// Order of replacement may vary, but all should be replaced
 	assert.NotContains(t, result, "{{a}}")
@@ -733,11 +732,11 @@ func TestResolver_substituteVars_Overlapping(t *testing.T) {
 
 func TestResolver_resolveGitContext_InvalidPath(t *testing.T) {
 	resolver := NewResolver("/non/existent/path")
-	
+
 	gitCtx, err := resolver.resolveGitContext(GitContextSpec{
 		RecentCommits: RecentCommitsSpec{Enabled: true, Count: 5},
 	})
-	
+
 	assert.Error(t, err)
 	assert.Nil(t, gitCtx)
 }
@@ -748,7 +747,7 @@ func TestResolvedContext_FormatContext_FileEscaping(t *testing.T) {
 			{Path: "test.go", Content: "```code```"},
 		},
 	}
-	
+
 	result := ctx.FormatContext()
 	// The backticks in content should be handled
 	assert.Contains(t, result, "```")
@@ -762,7 +761,7 @@ func TestBranchDiffSpec_Struct(t *testing.T) {
 		Base:     "main",
 		MaxFiles: 100,
 	}
-	
+
 	assert.True(t, spec.Enabled)
 	assert.Equal(t, "main", spec.Base)
 	assert.Equal(t, 100, spec.MaxFiles)
@@ -774,7 +773,7 @@ func TestRecentCommitsSpec_Struct(t *testing.T) {
 		Enabled: true,
 		Count:   20,
 	}
-	
+
 	assert.True(t, spec.Enabled)
 	assert.Equal(t, 20, spec.Count)
 }
@@ -785,7 +784,7 @@ func TestRelatedFilesSpec_Struct(t *testing.T) {
 		Enabled:  true,
 		MaxFiles: 10,
 	}
-	
+
 	assert.True(t, spec.Enabled)
 	assert.Equal(t, 10, spec.MaxFiles)
 }
@@ -800,7 +799,7 @@ func TestResolvedContext_FormatContext_MultipleFiles(t *testing.T) {
 			{Path: "c.go", Content: "package c"},
 		},
 	}
-	
+
 	result := ctx.FormatContext()
 	assert.Contains(t, result, "### a.go")
 	assert.Contains(t, result, "### b.go")
@@ -816,7 +815,7 @@ func TestResolvedContext_FormatContext_NoInstructions(t *testing.T) {
 			{Path: "test.go", Content: "code"},
 		},
 	}
-	
+
 	result := ctx.FormatContext()
 	assert.NotContains(t, result, "## Instructions")
 	assert.Contains(t, result, "## Files")
@@ -826,11 +825,11 @@ func TestResolvedContext_FormatContext_NoInstructions(t *testing.T) {
 func TestResolver_resolveGitContext_WithRealRepo(t *testing.T) {
 	// Use the current project directory which should have git
 	resolver := NewResolver("/run/media/milosvasic/DATA4TB/Projects/HelixAgent")
-	
+
 	gitCtx, err := resolver.resolveGitContext(GitContextSpec{
 		RecentCommits: RecentCommitsSpec{Enabled: true, Count: 3},
 	})
-	
+
 	// May or may not succeed depending on git availability
 	if err == nil {
 		assert.NotEmpty(t, gitCtx.Branch)
@@ -848,7 +847,7 @@ func TestContextTemplate_EmptyVariables(t *testing.T) {
 			Variables: []VariableDef{},
 		},
 	}
-	
+
 	v := template.GetVariable("any")
 	assert.Nil(t, v)
 }
@@ -863,7 +862,7 @@ func TestContextTemplate_EmptyPrompts(t *testing.T) {
 			Prompts: []PromptDef{},
 		},
 	}
-	
+
 	p := template.GetPrompt("any")
 	assert.Nil(t, p)
 }
@@ -871,7 +870,7 @@ func TestContextTemplate_EmptyPrompts(t *testing.T) {
 // Error handling tests
 func TestResolver_Resolve_InvalidVariableName(t *testing.T) {
 	resolver := NewResolver("/test")
-	
+
 	template := ContextTemplate{
 		Metadata: TemplateMetadata{
 			ID:   "test",
@@ -883,7 +882,7 @@ func TestResolver_Resolve_InvalidVariableName(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Should not error for optional variable
 	ctx, err := resolver.Resolve(&template, map[string]string{})
 	assert.NoError(t, err)
@@ -895,12 +894,12 @@ func TestResolver_Resolve_InvalidVariableName(t *testing.T) {
 func TestResolver_resolveFiles_InvalidPattern(t *testing.T) {
 	tempDir := t.TempDir()
 	resolver := NewResolver(tempDir)
-	
+
 	// Invalid glob pattern should be handled gracefully
 	files, err := resolver.resolveFiles(FileSpec{
 		Include: []string{"[invalid"},
 	})
-	
+
 	// Should return empty without error
 	assert.NoError(t, err)
 	assert.Empty(t, files)
@@ -908,18 +907,18 @@ func TestResolver_resolveFiles_InvalidPattern(t *testing.T) {
 
 func TestResolver_resolveFiles_ReadError(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create a directory that matches but can't be read as file
 	err := os.Mkdir(filepath.Join(tempDir, "subdir"), 0755)
 	require.NoError(t, err)
-	
+
 	resolver := NewResolver(tempDir)
-	
+
 	// Try to read directory as file (will skip due to read error)
 	files, err := resolver.resolveFiles(FileSpec{
 		Include: []string{"*"},
 	})
-	
+
 	// Should not error, but will have no files (subdirs are skipped)
 	assert.NoError(t, err)
 	assert.Empty(t, files)
@@ -932,12 +931,12 @@ func TestContextFile_LargeContent(t *testing.T) {
 	for i := range largeContent {
 		largeContent[i] = byte('a' + (i % 26))
 	}
-	
+
 	file := ContextFile{
 		Path:    "large.txt",
 		Content: string(largeContent),
 	}
-	
+
 	assert.Equal(t, 10000, len(file.Content))
 }
 
@@ -951,12 +950,12 @@ func TestResolvedContext_FormatContext_Large(t *testing.T) {
 			Content: fmt.Sprintf("package file%d", i),
 		}
 	}
-	
+
 	ctx := ResolvedContext{
 		Instructions: "Test with many files",
 		Files:        files,
 	}
-	
+
 	result := ctx.FormatContext()
 	assert.NotEmpty(t, result)
 	assert.Contains(t, result, "file0.go")
@@ -966,18 +965,18 @@ func TestResolvedContext_FormatContext_Large(t *testing.T) {
 // Test file path edge cases
 func TestResolver_resolveFiles_PathTraversal(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	// Create files
 	err := os.WriteFile(filepath.Join(tempDir, "file.txt"), []byte("content"), 0644)
 	require.NoError(t, err)
-	
+
 	// Try path traversal patterns
 	resolver := NewResolver(tempDir)
-	
+
 	files, err := resolver.resolveFiles(FileSpec{
 		Include: []string{"../../*"},
 	})
-	
+
 	// Should handle gracefully
 	assert.NoError(t, err)
 	// No files should match as they go outside root

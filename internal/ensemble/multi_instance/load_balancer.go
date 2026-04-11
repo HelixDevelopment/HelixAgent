@@ -12,10 +12,10 @@ import (
 type LoadBalancer interface {
 	// SelectInstance chooses an instance from the available pool.
 	SelectInstance(instances []*clis.AgentInstance) (*clis.AgentInstance, error)
-	
+
 	// ReportResult reports the result of using an instance.
 	ReportResult(instanceID string, success bool, duration int64)
-	
+
 	// GetStats returns load balancer statistics.
 	GetStats() map[string]interface{}
 }
@@ -37,7 +37,7 @@ func (b *RoundRobinBalancer) SelectInstance(
 	if len(instances) == 0 {
 		return nil, ErrNoInstancesAvailable
 	}
-	
+
 	// Filter to only healthy, active instances
 	var healthy []*clis.AgentInstance
 	for _, inst := range instances {
@@ -45,11 +45,11 @@ func (b *RoundRobinBalancer) SelectInstance(
 			healthy = append(healthy, inst)
 		}
 	}
-	
+
 	if len(healthy) == 0 {
 		return nil, ErrNoHealthyInstances
 	}
-	
+
 	// Round-robin selection
 	idx := atomic.AddUint64(&b.counter, 1) % uint64(len(healthy))
 	return healthy[idx], nil
@@ -88,39 +88,39 @@ func (b *LeastConnectionsBalancer) SelectInstance(
 	if len(instances) == 0 {
 		return nil, ErrNoInstancesAvailable
 	}
-	
+
 	var selected *clis.AgentInstance
 	var minConn int64 = -1
-	
+
 	for _, inst := range instances {
 		if !inst.CanAcceptWork() {
 			continue
 		}
-		
+
 		b.mu.RLock()
 		connPtr, ok := b.connections[inst.ID]
 		b.mu.RUnlock()
-		
+
 		var conn int64
 		if ok {
 			conn = atomic.LoadInt64(connPtr)
 		}
-		
+
 		if minConn == -1 || conn < minConn {
 			minConn = conn
 			selected = inst
 		}
 	}
-	
+
 	if selected == nil {
 		return nil, ErrNoHealthyInstances
 	}
-	
+
 	// Increment connection count
 	b.mu.RLock()
 	connPtr, ok := b.connections[selected.ID]
 	b.mu.RUnlock()
-	
+
 	if !ok {
 		b.mu.Lock()
 		zero := int64(0)
@@ -128,9 +128,9 @@ func (b *LeastConnectionsBalancer) SelectInstance(
 		connPtr = &zero
 		b.mu.Unlock()
 	}
-	
+
 	atomic.AddInt64(connPtr, 1)
-	
+
 	return selected, nil
 }
 
@@ -139,7 +139,7 @@ func (b *LeastConnectionsBalancer) ReportResult(instanceID string, success bool,
 	b.mu.RLock()
 	connPtr, ok := b.connections[instanceID]
 	b.mu.RUnlock()
-	
+
 	if ok {
 		atomic.AddInt64(connPtr, -1)
 	}
@@ -149,12 +149,12 @@ func (b *LeastConnectionsBalancer) ReportResult(instanceID string, success bool,
 func (b *LeastConnectionsBalancer) GetStats() map[string]interface{} {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	stats := make(map[string]interface{})
 	for id, connPtr := range b.connections {
 		stats[id] = atomic.LoadInt64(connPtr)
 	}
-	
+
 	return map[string]interface{}{
 		"type":        "least_connections",
 		"connections": stats,
@@ -168,10 +168,10 @@ type WeightedResponseTimeBalancer struct {
 }
 
 type responseTimeStats struct {
-	totalTime  int64
-	count      int64
-	successes  int64
-	failures   int64
+	totalTime int64
+	count     int64
+	successes int64
+	failures  int64
 }
 
 // NewWeightedResponseTimeBalancer creates a new weighted response time balancer.
@@ -188,26 +188,26 @@ func (b *WeightedResponseTimeBalancer) SelectInstance(
 	if len(instances) == 0 {
 		return nil, ErrNoInstancesAvailable
 	}
-	
+
 	var selected *clis.AgentInstance
 	var bestScore float64 = -1
-	
+
 	for _, inst := range instances {
 		if !inst.CanAcceptWork() {
 			continue
 		}
-		
+
 		score := b.calculateScore(inst.ID)
 		if bestScore == -1 || score > bestScore {
 			bestScore = score
 			selected = inst
 		}
 	}
-	
+
 	if selected == nil {
 		return nil, ErrNoHealthyInstances
 	}
-	
+
 	return selected, nil
 }
 
@@ -215,16 +215,16 @@ func (b *WeightedResponseTimeBalancer) calculateScore(instanceID string) float64
 	b.mu.RLock()
 	stats, ok := b.responseTimes[instanceID]
 	b.mu.RUnlock()
-	
+
 	if !ok || stats.count == 0 {
 		// No data, give average score
 		return 0.5
 	}
-	
+
 	// Calculate metrics
 	avgTime := float64(stats.totalTime) / float64(stats.count)
 	successRate := float64(stats.successes) / float64(stats.count)
-	
+
 	// Score: higher is better
 	// Factor in both response time and success rate
 	// Normalize: assume 5s (5000ms) is worst case
@@ -232,7 +232,7 @@ func (b *WeightedResponseTimeBalancer) calculateScore(instanceID string) float64
 	if timeScore < 0 {
 		timeScore = 0
 	}
-	
+
 	// Weight success rate more heavily
 	return (timeScore * 0.3) + (successRate * 0.7)
 }
@@ -246,7 +246,7 @@ func (b *WeightedResponseTimeBalancer) ReportResult(instanceID string, success b
 		b.responseTimes[instanceID] = stats
 	}
 	b.mu.Unlock()
-	
+
 	atomic.AddInt64(&stats.totalTime, duration)
 	atomic.AddInt64(&stats.count, 1)
 	if success {
@@ -260,7 +260,7 @@ func (b *WeightedResponseTimeBalancer) ReportResult(instanceID string, success b
 func (b *WeightedResponseTimeBalancer) GetStats() map[string]interface{} {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	stats := make(map[string]interface{})
 	for id, rt := range b.responseTimes {
 		count := atomic.LoadInt64(&rt.count)
@@ -268,12 +268,12 @@ func (b *WeightedResponseTimeBalancer) GetStats() map[string]interface{} {
 			totalTime := atomic.LoadInt64(&rt.totalTime)
 			stats[id] = map[string]interface{}{
 				"avg_response_time_ms": float64(totalTime) / float64(count),
-				"success_rate": float64(atomic.LoadInt64(&rt.successes)) / float64(count),
-				"total_requests": count,
+				"success_rate":         float64(atomic.LoadInt64(&rt.successes)) / float64(count),
+				"total_requests":       count,
 			}
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"type":  "weighted_response_time",
 		"stats": stats,
@@ -300,7 +300,7 @@ func (b *PriorityBalancer) SelectInstance(
 	if len(instances) == 0 {
 		return nil, ErrNoInstancesAvailable
 	}
-	
+
 	// Build type -> instances map
 	byType := make(map[clis.AgentType][]*clis.AgentInstance)
 	for _, inst := range instances {
@@ -308,7 +308,7 @@ func (b *PriorityBalancer) SelectInstance(
 			byType[inst.Type] = append(byType[inst.Type], inst)
 		}
 	}
-	
+
 	// Check priority order
 	for _, agentType := range b.priorityOrder {
 		if typeInstances, ok := byType[agentType]; ok && len(typeInstances) > 0 {
@@ -316,14 +316,14 @@ func (b *PriorityBalancer) SelectInstance(
 			return typeInstances[0], nil
 		}
 	}
-	
+
 	// No priority match, return first available
 	for _, inst := range instances {
 		if inst.CanAcceptWork() {
 			return inst, nil
 		}
 	}
-	
+
 	return nil, ErrNoHealthyInstances
 }
 

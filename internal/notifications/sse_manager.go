@@ -26,9 +26,9 @@ type SSEManager struct {
 	ipConnsMu sync.Mutex
 
 	// Configuration
-	heartbeatInterval  time.Duration
-	bufferSize         int
-	maxConnsPerIP      int
+	heartbeatInterval time.Duration
+	bufferSize        int
+	maxConnsPerIP     int
 
 	logger   *logrus.Logger
 	ctx      context.Context
@@ -186,8 +186,8 @@ func (m *SSEManager) RegisterClientWithIP(taskID string, clientIP string, client
 	if current >= m.maxConnsPerIP {
 		m.ipConnsMu.Unlock()
 		m.logger.WithFields(logrus.Fields{
-			"client_ip":       clientIP,
-			"current_conns":   current,
+			"client_ip":        clientIP,
+			"current_conns":    current,
 			"max_conns_per_ip": m.maxConnsPerIP,
 		}).Warn("SSE connection rejected: per-IP cap reached")
 		return fmt.Errorf("connection limit reached for IP %s (%d/%d)", clientIP, current, m.maxConnsPerIP)

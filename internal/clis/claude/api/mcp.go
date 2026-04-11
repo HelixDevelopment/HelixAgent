@@ -11,13 +11,13 @@ import (
 )
 
 // MCPProxyAPI provides access to Anthropic's MCP proxy servers
- type MCPProxyAPI struct {
+type MCPProxyAPI struct {
 	client  *Client
 	baseURL string
 }
 
 // NewMCPProxyAPI creates a new MCP proxy API client
- func NewMCPProxyAPI(client *Client) *MCPProxyAPI {
+func NewMCPProxyAPI(client *Client) *MCPProxyAPI {
 	return &MCPProxyAPI{
 		client:  client,
 		baseURL: MCPProxyBaseURL,
@@ -57,39 +57,39 @@ type MCPResource struct {
 }
 
 // MCPCallRequest represents a call to an MCP tool
- type MCPCallRequest struct {
+type MCPCallRequest struct {
 	Tool   string                 `json:"tool"`
 	Params map[string]interface{} `json:"params"`
 }
 
 // MCPCallResponse represents the response from an MCP tool call
- type MCPCallResponse struct {
+type MCPCallResponse struct {
 	Content []MCPContent `json:"content"`
 	IsError bool         `json:"isError,omitempty"`
 }
 
 // MCPContent represents content returned by an MCP tool
- type MCPContent struct {
+type MCPContent struct {
 	Type string `json:"type"` // "text", "image", "resource"
-	
+
 	// For text type
 	Text string `json:"text,omitempty"`
-	
+
 	// For image type
 	Image *MCPImageContent `json:"image,omitempty"`
-	
+
 	// For resource type
 	Resource *MCPResourceContent `json:"resource,omitempty"`
 }
 
 // MCPImageContent represents image content
- type MCPImageContent struct {
+type MCPImageContent struct {
 	Data     string `json:"data"` // base64
 	MimeType string `json:"mimeType"`
 }
 
 // MCPResourceContent represents embedded resource content
- type MCPResourceContent struct {
+type MCPResourceContent struct {
 	URI  string `json:"uri"`
 	Text string `json:"text,omitempty"`
 	Blob string `json:"blob,omitempty"` // base64
@@ -98,23 +98,23 @@ type MCPResource struct {
 // CallTool calls a tool on an MCP server
 func (m *MCPProxyAPI) CallTool(ctx context.Context, serverID string, req *MCPCallRequest) (*MCPCallResponse, error) {
 	path := fmt.Sprintf("/v1/mcp/%s", serverID)
-	
+
 	// Use the base client but override the base URL temporarily
 	resp, err := m.doMCPRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result MCPCallResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -125,99 +125,99 @@ func (m *MCPProxyAPI) ListServers(ctx context.Context) ([]MCPServer, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result struct {
 		Servers []MCPServer `json:"servers"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return result.Servers, nil
 }
 
 // GetServer gets information about a specific MCP server
 func (m *MCPProxyAPI) GetServer(ctx context.Context, serverID string) (*MCPServer, error) {
 	path := fmt.Sprintf("/v1/mcp/%s", serverID)
-	
+
 	resp, err := m.doMCPRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result MCPServer
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
 // ListResources lists resources available from an MCP server
 func (m *MCPProxyAPI) ListResources(ctx context.Context, serverID string) ([]MCPResource, error) {
 	path := fmt.Sprintf("/v1/mcp/%s/resources", serverID)
-	
+
 	resp, err := m.doMCPRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result struct {
 		Resources []MCPResource `json:"resources"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return result.Resources, nil
 }
 
 // ReadResource reads a resource from an MCP server
 func (m *MCPProxyAPI) ReadResource(ctx context.Context, serverID, resourceURI string) (*MCPResourceContent, error) {
 	path := fmt.Sprintf("/v1/mcp/%s/resources/read", serverID)
-	
+
 	req := struct {
 		URI string `json:"uri"`
 	}{
 		URI: resourceURI,
 	}
-	
+
 	resp, err := m.doMCPRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return nil, handleErrorResponse(resp)
 	}
-	
+
 	var result MCPResourceContent
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
 // doMCPRequest performs an MCP proxy request
 func (m *MCPProxyAPI) doMCPRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
 	url := m.baseURL + path
-	
+
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
@@ -226,57 +226,57 @@ func (m *MCPProxyAPI) doMCPRequest(ctx context.Context, method, path string, bod
 		}
 		bodyReader = bytes.NewReader(jsonBody)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
-	
+
 	// Set auth headers from the main client
 	m.client.setAuthHeaders(&req.Header)
-	
+
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	
+
 	return m.client.httpClient.Do(req)
 }
 
 // Predefined MCP Server IDs
 const (
-	MCPServerGitHub       = "github"
-	MCPServerFilesystem   = "filesystem"
-	MCPServerWebSearch    = "web-search"
-	MCPServerBraveSearch  = "brave-search"
-	MCPServerFetch        = "fetch"
-	MCPServerMemory       = "memory"
+	MCPServerGitHub             = "github"
+	MCPServerFilesystem         = "filesystem"
+	MCPServerWebSearch          = "web-search"
+	MCPServerBraveSearch        = "brave-search"
+	MCPServerFetch              = "fetch"
+	MCPServerMemory             = "memory"
 	MCPServerSequentialThinking = "sequential-thinking"
 )
 
 // Common MCP Tools
 const (
-	MCPToolGitHubSearchRepos     = "search_repositories"
-	MCPToolGitHubGetFile         = "get_file_contents"
-	MCPToolGitHubCreateIssue     = "create_issue"
-	MCPToolGitHubListPRs         = "list_pull_requests"
-	MCPToolFilesystemRead        = "read_file"
-	MCPToolFilesystemWrite       = "write_file"
-	MCPToolFilesystemList        = "list_directory"
-	MCPToolWebSearchSearch       = "search"
-	MCPToolFetchURL              = "fetch_url"
-	MCPToolMemoryRemember        = "remember"
-	MCPToolMemoryRecall          = "recall"
-	MCPToolSequentialThink       = "think"
+	MCPToolGitHubSearchRepos = "search_repositories"
+	MCPToolGitHubGetFile     = "get_file_contents"
+	MCPToolGitHubCreateIssue = "create_issue"
+	MCPToolGitHubListPRs     = "list_pull_requests"
+	MCPToolFilesystemRead    = "read_file"
+	MCPToolFilesystemWrite   = "write_file"
+	MCPToolFilesystemList    = "list_directory"
+	MCPToolWebSearchSearch   = "search"
+	MCPToolFetchURL          = "fetch_url"
+	MCPToolMemoryRemember    = "remember"
+	MCPToolMemoryRecall      = "recall"
+	MCPToolSequentialThink   = "think"
 )
 
 // MCPManager manages multiple MCP server connections
- type MCPManager struct {
+type MCPManager struct {
 	api     *MCPProxyAPI
 	servers map[string]*MCPServer
 }
 
 // NewMCPManager creates a new MCP manager
- func NewMCPManager(api *MCPProxyAPI) *MCPManager {
+func NewMCPManager(api *MCPProxyAPI) *MCPManager {
 	return &MCPManager{
 		api:     api,
 		servers: make(map[string]*MCPServer),
@@ -289,11 +289,11 @@ func (mm *MCPManager) DiscoverServers(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	
+
 	for _, server := range servers {
 		mm.servers[server.ID] = &server
 	}
-	
+
 	return nil
 }
 
@@ -309,13 +309,13 @@ func (mm *MCPManager) HasTool(serverID, toolName string) bool {
 	if !ok {
 		return false
 	}
-	
+
 	for _, tool := range server.Tools {
 		if tool.Name == toolName {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -325,18 +325,18 @@ func (mm *MCPManager) Call(ctx context.Context, serverID, toolName string, param
 		Tool:   toolName,
 		Params: params,
 	}
-	
+
 	return mm.api.CallTool(ctx, serverID, req)
 }
 
 // ListAllTools returns all available tools across all servers
 func (mm *MCPManager) ListAllTools() map[string][]MCPTool {
 	result := make(map[string][]MCPTool)
-	
+
 	for id, server := range mm.servers {
 		result[id] = server.Tools
 	}
-	
+
 	return result
 }
 
@@ -349,6 +349,6 @@ func (mm *MCPManager) FindTool(toolName string) (serverID string, tool *MCPTool,
 			}
 		}
 	}
-	
+
 	return "", nil, false
 }

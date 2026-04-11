@@ -18,7 +18,7 @@ func TestNewStreamBufferAdapter(t *testing.T) {
 	tests := []string{"word", "sentence", "line", "size", "unknown"}
 	for _, strategy := range tests {
 		t.Run(strategy, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			buf := adapter.NewStreamBufferAdapter(strategy, 100)
 			require.NotNil(t, buf)
 		})

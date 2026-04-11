@@ -8,22 +8,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/multi_instance"
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // AgentType represents the type of agent in a team
 type AgentType string
 
 const (
-	AgentTypePrimary   AgentType = "primary"
-	AgentTypeCritic    AgentType = "critic"
-	AgentTypeVerifier  AgentType = "verifier"
+	AgentTypePrimary    AgentType = "primary"
+	AgentTypeCritic     AgentType = "critic"
+	AgentTypeVerifier   AgentType = "verifier"
 	AgentTypeResearcher AgentType = "researcher"
-	AgentTypeCoder     AgentType = "coder"
-	AgentTypeTester    AgentType = "tester"
+	AgentTypeCoder      AgentType = "coder"
+	AgentTypeTester     AgentType = "tester"
 )
 
 // AgentDefinition defines an agent in a team
@@ -37,9 +37,9 @@ type AgentDefinition struct {
 
 // ProviderConfig defines LLM provider configuration
 type ProviderConfig struct {
-	Name    string                 `json:"name"`
-	Model   string                 `json:"model"`
-	Config  map[string]interface{} `json:"config,omitempty"`
+	Name   string                 `json:"name"`
+	Model  string                 `json:"model"`
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // Team defines a team of agents
@@ -63,31 +63,31 @@ type TeamConfig struct {
 
 // TeamExecutionRequest represents a team execution request
 type TeamExecutionRequest struct {
-	Task        string                 `json:"task" binding:"required"`
-	Context     map[string]interface{} `json:"context,omitempty"`
-	Timeout     int                    `json:"timeout_seconds,omitempty"`
-	RequireConsensus bool              `json:"require_consensus,omitempty"`
+	Task             string                 `json:"task" binding:"required"`
+	Context          map[string]interface{} `json:"context,omitempty"`
+	Timeout          int                    `json:"timeout_seconds,omitempty"`
+	RequireConsensus bool                   `json:"require_consensus,omitempty"`
 }
 
 // TeamExecutionResult represents the result of team execution
 type TeamExecutionResult struct {
-	TeamID           string                 `json:"team_id"`
-	Task             string                 `json:"task"`
-	Consensus        string                 `json:"consensus"`
-	Confidence       float64                `json:"confidence"`
-	IndividualVotes  map[string]string      `json:"individual_votes"`
-	AgentResults     []AgentResult          `json:"agent_results"`
-	ExecutionTime    int64                  `json:"execution_time_ms"`
-	ConsensusReached bool                   `json:"consensus_reached"`
+	TeamID           string            `json:"team_id"`
+	Task             string            `json:"task"`
+	Consensus        string            `json:"consensus"`
+	Confidence       float64           `json:"confidence"`
+	IndividualVotes  map[string]string `json:"individual_votes"`
+	AgentResults     []AgentResult     `json:"agent_results"`
+	ExecutionTime    int64             `json:"execution_time_ms"`
+	ConsensusReached bool              `json:"consensus_reached"`
 }
 
 // AgentResult represents an individual agent's result
 type AgentResult struct {
-	AgentID   string        `json:"agent_id"`
-	AgentName string        `json:"agent_name"`
-	AgentType AgentType     `json:"agent_type"`
-	Output    string        `json:"output"`
-	Confidence float64      `json:"confidence"`
+	AgentID       string    `json:"agent_id"`
+	AgentName     string    `json:"agent_name"`
+	AgentType     AgentType `json:"agent_type"`
+	Output        string    `json:"output"`
+	Confidence    float64   `json:"confidence"`
 	ExecutionTime int64     `json:"execution_time_ms"`
 }
 
@@ -95,7 +95,7 @@ type AgentResult struct {
 type EnsembleHandler struct {
 	coordinator *multi_instance.Coordinator
 	logger      *logrus.Logger
-	
+
 	// Team management
 	teams   map[string]*Team
 	teamsMu sync.RWMutex
@@ -121,7 +121,7 @@ func (h *EnsembleHandler) RegisterRoutes(r *gin.RouterGroup) {
 		sessions.POST("/:id/execute", h.ExecuteSession)
 		sessions.POST("/:id/cancel", h.CancelSession)
 	}
-	
+
 	// New team management routes
 	teams := r.Group("/ensemble/teams")
 	{
@@ -138,16 +138,16 @@ func (h *EnsembleHandler) RegisterRoutes(r *gin.RouterGroup) {
 
 // CreateSessionRequest represents a create session request.
 type CreateSessionRequest struct {
-	Strategy     string   `json:"strategy" binding:"required"`
+	Strategy     string             `json:"strategy" binding:"required"`
 	Participants ParticipantRequest `json:"participants" binding:"required"`
 }
 
 // ParticipantRequest represents participant configuration.
 type ParticipantRequest struct {
-	Primary   *InstanceRequest   `json:"primary,omitempty"`
-	Critiques []InstanceRequest  `json:"critiques,omitempty"`
-	Verifiers []InstanceRequest  `json:"verifiers,omitempty"`
-	Fallbacks []InstanceRequest  `json:"fallbacks,omitempty"`
+	Primary   *InstanceRequest  `json:"primary,omitempty"`
+	Critiques []InstanceRequest `json:"critiques,omitempty"`
+	Verifiers []InstanceRequest `json:"verifiers,omitempty"`
+	Fallbacks []InstanceRequest `json:"fallbacks,omitempty"`
 }
 
 // InstanceRequest represents instance configuration.
@@ -167,19 +167,19 @@ func (h *EnsembleHandler) CreateSession(c *gin.Context) {
 
 	// Convert request to coordinator format
 	participants := multi_instance.ParticipantConfig{}
-	
+
 	if req.Participants.Primary != nil {
 		participants.Primary = multi_instance.InstanceConfig{
 			Type: clis.AgentType(req.Participants.Primary.Type),
 		}
 	}
-	
+
 	for _, ic := range req.Participants.Critiques {
 		participants.Critiques = append(participants.Critiques, multi_instance.InstanceConfig{
 			Type: clis.AgentType(ic.Type),
 		})
 	}
-	
+
 	for _, ic := range req.Participants.Verifiers {
 		participants.Verifiers = append(participants.Verifiers, multi_instance.InstanceConfig{
 			Type: clis.AgentType(ic.Type),
@@ -206,7 +206,7 @@ func (h *EnsembleHandler) CreateSession(c *gin.Context) {
 func (h *EnsembleHandler) ListSessions(c *gin.Context) {
 	status := c.Query("status")
 	sessions := h.coordinator.ListSessions(multi_instance.SessionStatus(status))
-	
+
 	var response []gin.H
 	for _, s := range sessions {
 		response = append(response, gin.H{
@@ -216,20 +216,20 @@ func (h *EnsembleHandler) ListSessions(c *gin.Context) {
 			"created_at": s.CreatedAt,
 		})
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
 // GetSession gets a session by ID.
 func (h *EnsembleHandler) GetSession(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	session, err := h.coordinator.GetSession(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":         session.ID,
 		"strategy":   session.Strategy,
@@ -248,28 +248,28 @@ type ExecuteRequest struct {
 // ExecuteSession executes a task in a session.
 func (h *EnsembleHandler) ExecuteSession(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	var req ExecuteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	task := multi_instance.Task{
 		Type:    "completion",
 		Content: req.Content,
 	}
-	
+
 	if req.Timeout > 0 {
 		task.Timeout = time.Duration(req.Timeout) * time.Second
 	}
-	
+
 	result, err := h.coordinator.ExecuteSession(c.Request.Context(), id, task)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"consensus_reached": result.Reached,
 		"confidence":        result.Confidence,
@@ -281,15 +281,14 @@ func (h *EnsembleHandler) ExecuteSession(c *gin.Context) {
 // CancelSession cancels a session.
 func (h *EnsembleHandler) CancelSession(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	if err := h.coordinator.CancelSession(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
 }
-
 
 // ============================================
 // TEAM MANAGEMENT METHODS

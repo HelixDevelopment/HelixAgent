@@ -20,12 +20,12 @@ type MCPIntegration struct {
 
 // MCPServer represents an MCP server configuration
 type MCPServer struct {
-	Name        string            `json:"name"`
-	Command     string            `json:"command"`
-	Args        []string          `json:"args"`
-	Env         map[string]string `json:"env,omitempty"`
-	Enabled     bool              `json:"enabled"`
-	Tools       []MCPTool         `json:"tools,omitempty"`
+	Name    string            `json:"name"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args"`
+	Env     map[string]string `json:"env,omitempty"`
+	Enabled bool              `json:"enabled"`
+	Tools   []MCPTool         `json:"tools,omitempty"`
 }
 
 // MCPTool represents an available MCP tool

@@ -38,7 +38,7 @@ func New() *UIUXProMax {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &UIUXProMax{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (u *UIUXProMax) Initialize(ctx context.Context, config interface{}) error {
 	if err := u.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		u.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (u *UIUXProMax) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "design":
 		return u.design(ctx, params)
@@ -89,7 +89,7 @@ func (u *UIUXProMax) design(ctx context.Context, params map[string]interface{}) 
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	return map[string]interface{}{
 		"prompt":        prompt,
 		"design":        fmt.Sprintf("UI design for: %s", prompt),
@@ -103,7 +103,7 @@ func (u *UIUXProMax) prototype(ctx context.Context, params map[string]interface{
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	return map[string]interface{}{
 		"name":      name,
 		"prototype": fmt.Sprintf("Prototype: %s", name),

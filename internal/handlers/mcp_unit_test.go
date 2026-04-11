@@ -830,25 +830,25 @@ func TestFindUnderscoreIndexUnit(t *testing.T) {
 		input    string
 		expected int
 	}{
-		{"test_tool", 4},               // First underscore in middle
-		{"provider_tool_name", 8},      // First underscore
-		{"ab_cd_ef", 2},                // First underscore
-		{"__test", 1},                  // Second underscore (first is at position 0)
-		{"test__name", 4},              // First valid underscore
-		{"x_y", 1},                     // Minimum valid case
-		{"_", -1},                      // Only underscore, at start/end
-		{"__", -1},                     // Double underscore, both invalid
-		{"a__b", 1},                    // First underscore at valid position
-		{"testtool", -1},               // No underscore
-		{"", -1},                       // Empty string
-		{"a", -1},                      // Single character
-		{"a_", -1},                     // Underscore at end
-		{"_a", -1},                     // Underscore at start
+		{"test_tool", 4},          // First underscore in middle
+		{"provider_tool_name", 8}, // First underscore
+		{"ab_cd_ef", 2},           // First underscore
+		{"__test", 1},             // Second underscore (first is at position 0)
+		{"test__name", 4},         // First valid underscore
+		{"x_y", 1},                // Minimum valid case
+		{"_", -1},                 // Only underscore, at start/end
+		{"__", -1},                // Double underscore, both invalid
+		{"a__b", 1},               // First underscore at valid position
+		{"testtool", -1},          // No underscore
+		{"", -1},                  // Empty string
+		{"a", -1},                 // Single character
+		{"a_", -1},                // Underscore at end
+		{"_a", -1},                // Underscore at start
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := findUnderscoreIndex(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})

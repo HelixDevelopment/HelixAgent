@@ -126,7 +126,7 @@ func TestPublicAIProvider_CalculateConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			confidence := provider.calculateConfidence(tt.content, tt.finishReason)
 			assert.GreaterOrEqual(t, confidence, tt.expectedMin)
 			assert.LessOrEqual(t, confidence, tt.expectedMax)
@@ -217,7 +217,7 @@ func TestPublicAIProvider_IsRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(rune(tt.statusCode)), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := isRetryableStatus(tt.statusCode)
 			assert.Equal(t, tt.expected, result)
 		})

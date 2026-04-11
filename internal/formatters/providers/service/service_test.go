@@ -273,7 +273,7 @@ func TestSpecificServiceFormatters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			formatter := tc.function(tc.baseURL, logger)
 			assert.NotNil(t, formatter)
 			assert.Equal(t, tc.name, formatter.Name())

@@ -420,7 +420,7 @@ func TestIntegration_InvalidRoutes(t *testing.T) {
 
 	for _, route := range invalidRoutes {
 		t.Run(route.method+"_"+route.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var body *bytes.Buffer
 			if route.body != "" {
 				body = bytes.NewBufferString(route.body)
@@ -659,9 +659,9 @@ func TestIntegration_ComplexDebateFlow(t *testing.T) {
 			ShowPhaseIndicators: true,
 		},
 		Metadata: map[string]interface{}{
-			"category":    "integration_test",
-			"priority":    "high",
-			"test":        true,
+			"category": "integration_test",
+			"priority": "high",
+			"test":     true,
 		},
 	}
 	body, _ := json.Marshal(createBody)
@@ -758,7 +758,7 @@ func TestIntegration_ErrorResponseFormat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var body *bytes.Buffer
 			if tc.body != "" {
 				body = bytes.NewBufferString(tc.body)
@@ -790,7 +790,7 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 	// Test 1: Completion request-response
 	t.Run("completion cycle", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		reqBody := CompletionRequest{
 			Prompt:      "What is 2+2?",
 			Temperature: 0.5,
@@ -814,7 +814,7 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 	// Test 2: Debate request-response
 	t.Run("debate cycle", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		reqBody := CreateDebateRequest{
 			Topic: "Test topic",
 			Participants: []ParticipantConfigRequest{
@@ -840,7 +840,7 @@ func TestIntegration_RequestResponseCycle(t *testing.T) {
 
 	// Test 3: MCP request-response
 	t.Run("mcp cycle", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/mcp/capabilities", nil)
 		router.ServeHTTP(w, req)
@@ -861,7 +861,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 
 	// Test completion routes
 	t.Run("POST_/v1/completions", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		reqBody := CompletionRequest{Prompt: "Test"}
 		b, _ := json.Marshal(reqBody)
 		body := bytes.NewBuffer(b)
@@ -875,7 +875,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("GET_/v1/models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 		router.ServeHTTP(w, req)
@@ -884,7 +884,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("POST_/v1_debates", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		reqBody := CreateDebateRequest{
 			Topic: "Test",
 			Participants: []ParticipantConfigRequest{
@@ -904,7 +904,7 @@ func TestIntegration_URLRouting(t *testing.T) {
 	})
 
 	t.Run("GET_/v1_debates", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/v1/debates", nil)
 		router.ServeHTTP(w, req)
@@ -918,7 +918,7 @@ func TestIntegration_JSONMarshaling(t *testing.T) {
 	t.Parallel()
 	// Test CompletionRequest marshaling
 	t.Run("completion request", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := CompletionRequest{
 			Prompt:      "Test",
 			Model:       "test-model",
@@ -948,7 +948,7 @@ func TestIntegration_JSONMarshaling(t *testing.T) {
 
 	// Test CreateDebateRequest marshaling
 	t.Run("debate request", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := CreateDebateRequest{
 			Topic: "Test",
 			Participants: []ParticipantConfigRequest{

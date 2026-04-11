@@ -38,7 +38,7 @@ func New() *Codai {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Codai{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (c *Codai) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (c *Codai) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "review":
 		return c.review(ctx, params)
@@ -89,7 +89,7 @@ func (c *Codai) review(ctx context.Context, params map[string]interface{}) (inte
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-	
+
 	return map[string]interface{}{
 		"code":   code,
 		"review": "Code review by Codai",
@@ -105,7 +105,7 @@ func (c *Codai) analyze(ctx context.Context, params map[string]interface{}) (int
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	return map[string]interface{}{
 		"file":     file,
 		"analysis": "Code analysis by Codai",

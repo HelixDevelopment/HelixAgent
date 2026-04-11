@@ -38,7 +38,7 @@ func New() *Shai {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Shai{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (s *Shai) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (s *Shai) Execute(ctx context.Context, command string, params map[string]in
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "generate":
 		return s.generate(ctx, params)
@@ -89,7 +89,7 @@ func (s *Shai) generate(ctx context.Context, params map[string]interface{}) (int
 	if description == "" {
 		return nil, fmt.Errorf("description required")
 	}
-	
+
 	return map[string]interface{}{
 		"description": description,
 		"command":     fmt.Sprintf("# Shai command for: %s", description),
@@ -103,9 +103,9 @@ func (s *Shai) explain(ctx context.Context, params map[string]interface{}) (inte
 	if cmd == "" {
 		return nil, fmt.Errorf("command required")
 	}
-	
+
 	return map[string]interface{}{
-		"command": cmd,
+		"command":     cmd,
 		"explanation": fmt.Sprintf("Explanation of: %s", cmd),
 	}, nil
 }

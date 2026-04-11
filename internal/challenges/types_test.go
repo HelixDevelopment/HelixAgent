@@ -61,7 +61,7 @@ func TestProviderInfo_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.info.Name, tt.info.Name)
 			assert.Equal(t, tt.info.DisplayName, tt.info.DisplayName)
 			assert.Equal(t, tt.info.Type, tt.info.Type)
@@ -134,7 +134,7 @@ func TestModelScore_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.score.ModelID, tt.score.ModelID)
 			assert.Equal(t, tt.score.Provider, tt.score.Provider)
 			assert.Equal(t, tt.score.ResponseSpeed, tt.score.ResponseSpeed)
@@ -201,7 +201,7 @@ func TestDebateGroup_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.group.Name, tt.group.Name)
 			assert.Equal(t, tt.group.Strategy, tt.group.Strategy)
 			assert.Equal(t, tt.group.Members, tt.group.Members)
@@ -276,7 +276,7 @@ func TestTestPrompt_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.prompt.ID, tt.prompt.ID)
 			assert.Equal(t, tt.prompt.Category, tt.prompt.Category)
 			assert.Equal(t, tt.prompt.Prompt, tt.prompt.Prompt)
@@ -337,7 +337,7 @@ func TestAPITestResult_Fields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.result.PromptID, tt.result.PromptID)
 			assert.Equal(t, tt.result.Response, tt.result.Response)
 			assert.Equal(t, tt.result.Latency, tt.result.Latency)

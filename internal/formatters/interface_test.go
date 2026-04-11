@@ -58,7 +58,7 @@ func TestBaseFormatter_Name(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Name: tc.input})
 			assert.Equal(t, tc.expected, bf.Name())
 		})
@@ -79,7 +79,7 @@ func TestBaseFormatter_Version(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Version: tc.version})
 			assert.Equal(t, tc.expected, bf.Version())
 		})
@@ -99,7 +99,7 @@ func TestBaseFormatter_Languages(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{Languages: tc.languages})
 			assert.Equal(t, tc.languages, bf.Languages())
 		})
@@ -118,7 +118,7 @@ func TestBaseFormatter_SupportsStdin(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			bf := NewBaseFormatter(&FormatterMetadata{SupportsStdin: tc.supports})
 			assert.Equal(t, tc.supports, bf.SupportsStdin())
 		})

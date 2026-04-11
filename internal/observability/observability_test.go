@@ -142,7 +142,7 @@ func TestNewLLMTracer(t *testing.T) {
 	})
 
 	t.Run("WithCustomConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &TracerConfig{
 			ServiceName:    "test-service",
 			ServiceVersion: "1.0.0",
@@ -205,7 +205,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("BasicRequest", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		ctx := context.Background()
 		params := &LLMRequestParams{
 			Provider:  "openai",
@@ -227,7 +227,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 	})
 
 	t.Run("WithAllParams", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		tracer, _ := NewLLMTracer(&TracerConfig{
 			EnableContentTrace: true,
 		})
@@ -267,7 +267,7 @@ func TestLLMTracer_StartEndRequest(t *testing.T) {
 	})
 
 	t.Run("WithError", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		ctx := context.Background()
 		params := &LLMRequestParams{
 			Provider:  "openai",
@@ -357,17 +357,17 @@ func TestLLMMetrics_RecordRequest(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SuccessfulRequest", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		metrics.RecordRequest(ctx, "openai", "gpt-4", 100*time.Millisecond, 100, 200, 0.01, nil)
 	})
 
 	t.Run("FailedRequest", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		metrics.RecordRequest(ctx, "openai", "gpt-4", 50*time.Millisecond, 100, 0, 0, errors.New("error"))
 	})
 
 	t.Run("NoCost", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		metrics.RecordRequest(ctx, "ollama", "llama2", 200*time.Millisecond, 50, 100, 0, nil)
 	})
 }
@@ -620,7 +620,7 @@ func TestTracedProvider_HealthCheck(t *testing.T) {
 	})
 
 	t.Run("Unhealthy", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := &mockLLMProvider{healthErr: errors.New("unhealthy")}
 		tracer, _ := NewLLMTracer(nil)
 		traced := NewTracedProvider(provider, tracer, "test")
@@ -683,13 +683,13 @@ func TestTracedProviderRegistry_GetProvider(t *testing.T) {
 	traced := NewTracedProviderRegistry(registry, tracer)
 
 	t.Run("ExistingProvider", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := traced.GetProvider("openai")
 		assert.NotNil(t, provider)
 	})
 
 	t.Run("NonExistingProvider", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := traced.GetProvider("nonexistent")
 		assert.Nil(t, provider)
 	})
@@ -706,13 +706,13 @@ func TestTracedProviderRegistry_GetProviderByModel(t *testing.T) {
 	traced := NewTracedProviderRegistry(registry, tracer)
 
 	t.Run("ExistingModel", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := traced.GetProviderByModel("gpt-4")
 		assert.NotNil(t, provider)
 	})
 
 	t.Run("NonExistingModel", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := traced.GetProviderByModel("nonexistent")
 		assert.Nil(t, provider)
 	})

@@ -16,25 +16,25 @@ import (
 // Smolagents provides Smolagents integration
 type Smolagents struct {
 	*base.BaseIntegration
-	config  *Config
-	agents  []Agent
+	config *Config
+	agents []Agent
 }
 
 // Config holds Smolagents configuration
 type Config struct {
 	base.BaseConfig
-	Model       string
-	Tools       []string
-	MaxSteps    int
+	Model    string
+	Tools    []string
+	MaxSteps int
 }
 
 // Agent represents an agent
 type Agent struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Type        string   `json:"type"` // "tool_calling", "code_agent"
-	Tools       []string `json:"tools"`
-	Status      string   `json:"status"`
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"` // "tool_calling", "code_agent"
+	Tools  []string `json:"tools"`
+	Status string   `json:"status"`
 }
 
 // New creates a new Smolagents integration
@@ -55,7 +55,7 @@ func New() *Smolagents {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Smolagents{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -75,27 +75,27 @@ func (s *Smolagents) Initialize(ctx context.Context, config interface{}) error {
 	if err := s.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		s.config = cfg
 	}
-	
+
 	return s.loadAgents()
 }
 
 // loadAgents loads agents
 func (s *Smolagents) loadAgents() error {
 	agentsPath := filepath.Join(s.GetWorkDir(), "agents.json")
-	
+
 	if _, err := os.Stat(agentsPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(agentsPath)
 	if err != nil {
 		return fmt.Errorf("read agents: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &s.agents)
 }
 
@@ -116,7 +116,7 @@ func (s *Smolagents) Execute(ctx context.Context, command string, params map[str
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "create_agent":
 		return s.createAgent(ctx, params)
@@ -137,17 +137,17 @@ func (s *Smolagents) createAgent(ctx context.Context, params map[string]interfac
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	agentType, _ := params["type"].(string)
 	if agentType == "" {
 		agentType = "tool_calling"
 	}
-	
+
 	tools, _ := params["tools"].([]string)
 	if tools == nil {
 		tools = s.config.Tools
 	}
-	
+
 	agent := Agent{
 		ID:     fmt.Sprintf("agent-%d", len(s.agents)+1),
 		Name:   name,
@@ -155,13 +155,13 @@ func (s *Smolagents) createAgent(ctx context.Context, params map[string]interfac
 		Tools:  tools,
 		Status: "created",
 	}
-	
+
 	s.agents = append(s.agents, agent)
-	
+
 	if err := s.saveAgents(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"agent":  agent,
 		"status": "created",
@@ -174,12 +174,12 @@ func (s *Smolagents) run(ctx context.Context, params map[string]interface{}) (in
 	if agentID == "" {
 		return nil, fmt.Errorf("agent_id required")
 	}
-	
+
 	task, _ := params["task"].(string)
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-	
+
 	var agent *Agent
 	for i := range s.agents {
 		if s.agents[i].ID == agentID {
@@ -187,24 +187,24 @@ func (s *Smolagents) run(ctx context.Context, params map[string]interface{}) (in
 			break
 		}
 	}
-	
+
 	if agent == nil {
 		return nil, fmt.Errorf("agent not found: %s", agentID)
 	}
-	
+
 	// Execute task
 	steps := []map[string]interface{}{
 		{"step": 1, "action": "Analyze task", "result": "Analyzed"},
 		{"step": 2, "action": "Plan approach", "result": "Planned"},
 		{"step": 3, "action": "Execute", "result": "Completed"},
 	}
-	
+
 	return map[string]interface{}{
-		"agent":   agent,
-		"task":    task,
-		"steps":   steps,
-		"result":  "Task completed successfully",
-		"status":  "completed",
+		"agent":  agent,
+		"task":   task,
+		"steps":  steps,
+		"result": "Task completed successfully",
+		"status": "completed",
 	}, nil
 }
 
@@ -222,13 +222,13 @@ func (s *Smolagents) importTool(ctx context.Context, params map[string]interface
 	if toolName == "" {
 		return nil, fmt.Errorf("tool required")
 	}
-	
+
 	s.config.Tools = append(s.config.Tools, toolName)
-	
+
 	return map[string]interface{}{
-		"tool":    toolName,
-		"tools":   s.config.Tools,
-		"status":  "imported",
+		"tool":   toolName,
+		"tools":  s.config.Tools,
+		"status": "imported",
 	}, nil
 }
 

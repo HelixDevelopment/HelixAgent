@@ -38,7 +38,7 @@ func New() *PostgresMCP {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &PostgresMCP{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -54,11 +54,11 @@ func (p *PostgresMCP) Initialize(ctx context.Context, config interface{}) error 
 	if err := p.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		p.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -69,7 +69,7 @@ func (p *PostgresMCP) Execute(ctx context.Context, command string, params map[st
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "query":
 		return p.query(ctx, params)
@@ -88,7 +88,7 @@ func (p *PostgresMCP) query(ctx context.Context, params map[string]interface{}) 
 	if sql == "" {
 		return nil, fmt.Errorf("sql required")
 	}
-	
+
 	return map[string]interface{}{
 		"sql":    sql,
 		"result": "Query result",

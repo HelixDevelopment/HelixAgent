@@ -190,7 +190,7 @@ func TestWindsurfExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := w.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -323,7 +323,7 @@ func TestWindsurfGenerateComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.framework, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := w.Execute(ctx, "generate_component", map[string]interface{}{
 				"name":      "Card",
 				"type":      "functional",
@@ -631,7 +631,7 @@ func TestWindsurfConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := New()
 			ctx := context.Background()
 			err := w.Initialize(ctx, tt.config)

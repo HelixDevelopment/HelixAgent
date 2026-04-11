@@ -29,9 +29,9 @@ type RoutingResult struct {
 }
 
 type IntentBasedRouter struct {
-	startupVerifier    *verifier.StartupVerifier
-	llmClassifier      *LLMIntentClassifier // LLM-based intent recognition (multilingual, no hardcoding)
-	logger             *logrus.Logger
+	startupVerifier *verifier.StartupVerifier
+	llmClassifier   *LLMIntentClassifier // LLM-based intent recognition (multilingual, no hardcoding)
+	logger          *logrus.Logger
 
 	simplePatterns     []*regexp.Regexp
 	complexPatterns    []*regexp.Regexp
@@ -130,8 +130,8 @@ func (r *IntentBasedRouter) initPatterns() {
 	r.actionablePatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)\b(` + verbGroup + `)\b.{0,30}\b(` + targetGroup + `)\b`),
 		// Path-like references (dynamic: any slash-separated path or dotted extension)
-		regexp.MustCompile(`(?i)\b\w+/\w+/`),               // e.g., docs/reports/, internal/handlers/
-		regexp.MustCompile(`(?i)\.\w{1,5}\b`),               // e.g., .md, .txt, .json, .go, .yaml (any extension)
+		regexp.MustCompile(`(?i)\b\w+/\w+/`),                     // e.g., docs/reports/, internal/handlers/
+		regexp.MustCompile(`(?i)\.\w{1,5}\b`),                    // e.g., .md, .txt, .json, .go, .yaml (any extension)
 		regexp.MustCompile(`(?i)\b(into|to|in)\s+(the\s+)?\w+/`), // "write to docs/", "save in reports/"
 	}
 }

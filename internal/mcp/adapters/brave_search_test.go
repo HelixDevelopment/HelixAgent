@@ -565,7 +565,7 @@ func TestGetIntArg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getIntArg(tt.args, tt.key, tt.def)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -604,7 +604,7 @@ func TestBraveSearchAdapter_ToolInputSchemas(t *testing.T) {
 
 	for _, tool := range tools {
 		t.Run(tool.Name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			schema := tool.InputSchema
 			assert.NotNil(t, schema)
 			assert.Equal(t, "object", schema["type"])

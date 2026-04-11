@@ -18,7 +18,7 @@ type Task struct {
 	ID          string                 `json:"id"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	Type        string                 `json:"type"` // code, test, reasoning, multi-step
+	Type        string                 `json:"type"`       // code, test, reasoning, multi-step
 	Difficulty  string                 `json:"difficulty"` // easy, medium, hard
 	Input       map[string]interface{} `json:"input"`
 	Expected    interface{}            `json:"expected"`
@@ -28,14 +28,14 @@ type Task struct {
 
 // Result represents the result of evaluating a task
 type Result struct {
-	TaskID      string                 `json:"task_id"`
-	Success     bool                   `json:"success"`
-	Score       float64                `json:"score"` // 0.0 - 1.0
-	Output      interface{}            `json:"output,omitempty"`
-	Error       string                 `json:"error,omitempty"`
-	Duration    time.Duration          `json:"duration"`
-	Metrics     map[string]float64     `json:"metrics,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
+	TaskID    string             `json:"task_id"`
+	Success   bool               `json:"success"`
+	Score     float64            `json:"score"` // 0.0 - 1.0
+	Output    interface{}        `json:"output,omitempty"`
+	Error     string             `json:"error,omitempty"`
+	Duration  time.Duration      `json:"duration"`
+	Metrics   map[string]float64 `json:"metrics,omitempty"`
+	Timestamp time.Time          `json:"timestamp"`
 }
 
 // Evaluator evaluates agent performance on tasks
@@ -305,8 +305,8 @@ func (e *Evaluator) generateSummary() *Summary {
 	}
 
 	summary := &Summary{
-		TotalTasks: len(e.results),
-		ByType:     make(map[string]int),
+		TotalTasks:   len(e.results),
+		ByType:       make(map[string]int),
 		ByDifficulty: make(map[string]int),
 	}
 
@@ -359,26 +359,26 @@ type Agent interface {
 
 // Summary represents evaluation summary
 type Summary struct {
-	TotalTasks      int                    `json:"total_tasks"`
-	Passed          int                    `json:"passed"`
-	Failed          int                    `json:"failed"`
-	SuccessRate     float64                `json:"success_rate"`
-	AverageScore    float64                `json:"average_score"`
-	AverageDuration time.Duration          `json:"average_duration"`
-	ByType          map[string]int         `json:"by_type"`
-	ByDifficulty    map[string]int         `json:"by_difficulty"`
+	TotalTasks      int            `json:"total_tasks"`
+	Passed          int            `json:"passed"`
+	Failed          int            `json:"failed"`
+	SuccessRate     float64        `json:"success_rate"`
+	AverageScore    float64        `json:"average_score"`
+	AverageDuration time.Duration  `json:"average_duration"`
+	ByType          map[string]int `json:"by_type"`
+	ByDifficulty    map[string]int `json:"by_difficulty"`
 }
 
 // String returns formatted summary
 func (s *Summary) String() string {
 	return fmt.Sprintf(
 		"Evaluation Summary:\n"+
-		"  Total Tasks: %d\n"+
-		"  Passed: %d\n"+
-		"  Failed: %d\n"+
-		"  Success Rate: %.2f%%\n"+
-		"  Average Score: %.2f\n"+
-		"  Average Duration: %v",
+			"  Total Tasks: %d\n"+
+			"  Passed: %d\n"+
+			"  Failed: %d\n"+
+			"  Success Rate: %.2f%%\n"+
+			"  Average Score: %.2f\n"+
+			"  Average Duration: %v",
 		s.TotalTasks,
 		s.Passed,
 		s.Failed,

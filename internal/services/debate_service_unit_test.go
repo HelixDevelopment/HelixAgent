@@ -295,7 +295,7 @@ func TestDebateServiceUnit_ConductDebate_RequiresProviderRegistry(t *testing.T) 
 }
 
 func TestDebateServiceUnit_ConductDebate_Success(t *testing.T) {
-	
+
 	logger := newDebateServiceUnitTestLogger()
 
 	// Create mock providers
@@ -347,7 +347,7 @@ func TestDebateServiceUnit_ConductDebate_Success(t *testing.T) {
 }
 
 func TestDebateServiceUnit_ConductDebate_WithTimeout(t *testing.T) {
-	
+
 	logger := newDebateServiceUnitTestLogger()
 
 	// Create a slow mock provider
@@ -381,7 +381,7 @@ func TestDebateServiceUnit_ConductDebate_WithTimeout(t *testing.T) {
 }
 
 func TestDebateServiceUnit_ConductDebate_ProviderFallback(t *testing.T) {
-	
+
 	logger := newDebateServiceUnitTestLogger()
 
 	// Create a failing primary provider and working fallback
@@ -1013,9 +1013,9 @@ func TestDebateServiceUnit_GenerateFinalPosition(t *testing.T) {
 	ds := NewDebateService(logger)
 
 	tests := []struct {
-		name           string
-		responses      []ParticipantResponse
-		consensus      bool
+		name             string
+		responses        []ParticipantResponse
+		consensus        bool
 		expectedNotEmpty bool
 	}{
 		{
@@ -1024,13 +1024,13 @@ func TestDebateServiceUnit_GenerateFinalPosition(t *testing.T) {
 				{Content: "This is the best approach", QualityScore: 0.9},
 				{Content: "Alternative view", QualityScore: 0.7},
 			},
-			consensus:      true,
+			consensus:        true,
 			expectedNotEmpty: true,
 		},
 		{
-			name:           "empty responses",
-			responses:      []ParticipantResponse{},
-			consensus:      false,
+			name:             "empty responses",
+			responses:        []ParticipantResponse{},
+			consensus:        false,
 			expectedNotEmpty: false,
 		},
 	}
@@ -1070,9 +1070,9 @@ func TestDebateServiceUnit_GetWinner(t *testing.T) {
 	ds := NewDebateService(logger)
 
 	tests := []struct {
-		name     string
+		name      string
 		responses []ParticipantResponse
-		expected string
+		expected  string
 	}{
 		{
 			name: "has winner",
@@ -1083,9 +1083,9 @@ func TestDebateServiceUnit_GetWinner(t *testing.T) {
 			expected: "Agent2",
 		},
 		{
-			name:     "empty responses",
+			name:      "empty responses",
 			responses: []ParticipantResponse{},
-			expected: "",
+			expected:  "",
 		},
 	}
 
@@ -1106,14 +1106,14 @@ func TestDebateServiceUnit_CheckEarlyConsensus(t *testing.T) {
 	ds := NewDebateService(logger)
 
 	tests := []struct {
-		name     string
+		name      string
 		responses []ParticipantResponse
-		expected bool
+		expected  bool
 	}{
 		{
-			name:     "not enough responses",
+			name:      "not enough responses",
 			responses: []ParticipantResponse{{Content: "Only one"}},
-			expected: false,
+			expected:  false,
 		},
 		{
 			name: "similar responses",
@@ -1239,4 +1239,3 @@ func TestDebateServiceUnit_BuildDebatePrompt_WithPreviousResponses(t *testing.T)
 	assert.Contains(t, prompt, "PREVIOUS RESPONSES")
 	assert.Contains(t, prompt, "Previous response content")
 }
-

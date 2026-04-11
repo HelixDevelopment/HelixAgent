@@ -112,9 +112,9 @@ func TestDefaultMessagingConfig_EnvOverrides(t *testing.T) {
 
 func TestLoadMessagingConfigFromEnv(t *testing.T) {
 	tests := []struct {
-		name   string
-		envs   map[string]string
-		check  func(*testing.T, *MessagingConfig)
+		name  string
+		envs  map[string]string
+		check func(*testing.T, *MessagingConfig)
 	}{
 		{
 			name: "all defaults when no env set",
@@ -279,12 +279,12 @@ func TestMessagingSystem_GetHub_Default(t *testing.T) {
 
 func TestGetEnvOrDefault(t *testing.T) {
 	tests := []struct {
-		name         string
-		key          string
-		defaultVal   string
-		envValue     string
-		setEnv       bool
-		expected     string
+		name       string
+		key        string
+		defaultVal string
+		envValue   string
+		setEnv     bool
+		expected   string
 	}{
 		{
 			name:       "returns default when env not set",

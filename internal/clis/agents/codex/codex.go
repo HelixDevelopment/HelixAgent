@@ -14,25 +14,25 @@ import (
 )
 
 // Codex provides Codex CLI integration
- type Codex struct {
+type Codex struct {
 	*base.BaseIntegration
 	config *Config
 }
 
 // Config holds Codex configuration
- type Config struct {
+type Config struct {
 	base.BaseConfig
-	ApprovalMode   string // "suggest", "auto-edit", "full-auto"
-	ContextWindow  int
-	Editor         string
-	FullAuto       bool
-	ImageSupport   bool
-	Quiet          bool
+	ApprovalMode    string // "suggest", "auto-edit", "full-auto"
+	ContextWindow   int
+	Editor          string
+	FullAuto        bool
+	ImageSupport    bool
+	Quiet           bool
 	ReasoningEffort string // "low", "medium", "high"
 }
 
 // New creates a new Codex integration
- func New() *Codex {
+func New() *Codex {
 	info := agents.AgentInfo{
 		Type:        agents.TypeCodex,
 		Name:        "Codex",
@@ -51,7 +51,7 @@ import (
 		IsEnabled: true,
 		Priority:  1,
 	}
-	
+
 	return &Codex{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -75,16 +75,16 @@ func (c *Codex) Initialize(ctx context.Context, config interface{}) error {
 	if err := c.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		c.config = cfg
 	}
-	
+
 	// Set API key if available
 	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
 		c.SetEnvVar("OPENAI_API_KEY", apiKey)
 	}
-	
+
 	return nil
 }
 
@@ -95,7 +95,7 @@ func (c *Codex) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "chat":
 		return c.chat(ctx, params)
@@ -120,15 +120,15 @@ func (c *Codex) chat(ctx context.Context, params map[string]interface{}) (interf
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-	
+
 	args := c.buildArgs()
 	args = append(args, "-p", message)
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex chat failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"response": string(output),
 		"success":  true,
@@ -138,16 +138,16 @@ func (c *Codex) chat(ctx context.Context, params map[string]interface{}) (interf
 // run runs Codex in interactive mode
 func (c *Codex) run(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	args := c.buildArgs()
-	
+
 	if file, ok := params["file"].(string); ok {
 		args = append(args, file)
 	}
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex run failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"response": string(output),
 		"success":  true,
@@ -160,19 +160,19 @@ func (c *Codex) edit(ctx context.Context, params map[string]interface{}) (interf
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	args := c.buildArgs()
 	args = append(args, "-e", prompt)
-	
+
 	if file, ok := params["file"].(string); ok {
 		args = append(args, file)
 	}
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex edit failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return map[string]interface{}{
 		"response": string(output),
 		"success":  true,
@@ -185,15 +185,15 @@ func (c *Codex) explain(ctx context.Context, params map[string]interface{}) (int
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	args := c.buildArgs()
 	args = append(args, "-x", file)
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex explain failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"explanation": string(output),
 		"success":     true,
@@ -206,15 +206,15 @@ func (c *Codex) review(ctx context.Context, params map[string]interface{}) (inte
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	args := c.buildArgs()
 	args = append(args, "-r", file)
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex review failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"review":  string(output),
 		"success": true,
@@ -227,15 +227,15 @@ func (c *Codex) test(ctx context.Context, params map[string]interface{}) (interf
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-	
+
 	args := c.buildArgs()
 	args = append(args, "-t", file)
-	
+
 	output, err := c.ExecuteCommand(ctx, "codex", args...)
 	if err != nil {
 		return nil, fmt.Errorf("codex test failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"tests":   string(output),
 		"success": true,
@@ -245,35 +245,35 @@ func (c *Codex) test(ctx context.Context, params map[string]interface{}) (interf
 // buildArgs builds command-line arguments
 func (c *Codex) buildArgs() []string {
 	var args []string
-	
+
 	if c.config.Model != "" {
 		args = append(args, "-m", c.config.Model)
 	}
-	
+
 	if c.config.ApprovalMode != "" {
 		args = append(args, "-a", c.config.ApprovalMode)
 	}
-	
+
 	if c.config.ContextWindow > 0 {
 		args = append(args, "-c", fmt.Sprintf("%d", c.config.ContextWindow))
 	}
-	
+
 	if c.config.Editor != "" {
 		args = append(args, "-e", c.config.Editor)
 	}
-	
+
 	if c.config.FullAuto {
 		args = append(args, "-y")
 	}
-	
+
 	if c.config.Quiet {
 		args = append(args, "-q")
 	}
-	
+
 	if c.config.ReasoningEffort != "" {
 		args = append(args, "-r", c.config.ReasoningEffort)
 	}
-	
+
 	return args
 }
 
@@ -292,7 +292,7 @@ func (c *Codex) GetContextFiles(ctx context.Context, dir string) ([]string, erro
 		"CODEX.md",
 		"codex.md",
 	}
-	
+
 	var found []string
 	for _, file := range contextFiles {
 		path := filepath.Join(dir, file)
@@ -300,7 +300,7 @@ func (c *Codex) GetContextFiles(ctx context.Context, dir string) ([]string, erro
 			found = append(found, path)
 		}
 	}
-	
+
 	return found, nil
 }
 

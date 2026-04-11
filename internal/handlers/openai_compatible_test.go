@@ -710,7 +710,7 @@ func TestUnifiedHandler_SendOpenAIError_VariousErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.errType, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -937,7 +937,7 @@ func TestUnifiedHandler_RequestWithSpecialCharacters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			reqBody := `{"model": "gpt-4", "messages": [{"role": "user", "content": "` + tc.content + `"}]}`
 
 			w := httptest.NewRecorder()
@@ -1083,7 +1083,7 @@ func TestUnifiedHandler_ResponseConversion_EdgeCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := &services.EnsembleResult{
 				Selected: &models.LLMResponse{
 					ID:           "test-" + tc.name,
@@ -1241,7 +1241,7 @@ func TestStreamingResponseContainsDoneMarker(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Create a mock response channel
 			respChan := make(chan *models.LLMResponse, len(tt.content)+1)
 			for _, content := range tt.content {
@@ -1510,7 +1510,7 @@ func TestStreamingFinishReasonHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			resp := &models.LLMResponse{
 				ID:           "finish-test",
 				Content:      "",
@@ -1596,7 +1596,7 @@ func TestStreamingTimeoutPreventsEndlessLoop(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			startTime := time.Now()
 
 			// Simulate receiving from a channel that doesn't close
@@ -1684,7 +1684,7 @@ func TestStreamingContextCancellationWithTimeout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Create context with timeout
 			doneChan, cancel := timeoutContext(tt.timeout)
 			defer cancel()
@@ -1718,7 +1718,7 @@ func TestStreamingDoneMarkerAlwaysSent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var builder strings.Builder
 
 			// Simulate chunks
@@ -1825,7 +1825,7 @@ func TestStreamingWriteErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			writeAttempted := false
 			aborted := false
 
@@ -2151,7 +2151,7 @@ func TestUnifiedHandler_GetProviderForMember(t *testing.T) {
 	handler := NewUnifiedHandler(registry, cfg)
 
 	t.Run("NilMemberProvider_TriesRegistry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		member := &services.DebateTeamMember{
 			Position:     services.PositionAnalyst,
 			ProviderName: "nonexistent-provider",
@@ -2175,7 +2175,7 @@ func TestUnifiedHandler_FallbackChain(t *testing.T) {
 	_ = NewUnifiedHandler(registry, cfg) // Verify handler creation works
 
 	t.Run("NoFallbackAvailable", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Create a team member with no provider and no fallback
 		// This tests the structure of a member without fallback
 		member := &services.DebateTeamMember{
@@ -2205,7 +2205,7 @@ func TestUnifiedHandler_FallbackChain(t *testing.T) {
 	})
 
 	t.Run("FallbackChainStructure", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Test that fallback chain can be constructed
 		fallback2 := &services.DebateTeamMember{
 			Position:     services.PositionAnalyst,
@@ -2260,7 +2260,7 @@ func TestUnifiedHandler_OAuthProviderHandling(t *testing.T) {
 	})
 
 	t.Run("NonOAuthMember", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		member := &services.DebateTeamMember{
 			Position:     services.PositionSynthesis,
 			Role:         services.RoleSynthesis,
@@ -2282,7 +2282,7 @@ func TestUnifiedHandler_DebateResponseErrorHandling(t *testing.T) {
 	_ = NewUnifiedHandler(registry, cfg) // Verify handler can be created
 
 	t.Run("NilProviderRegistry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handlerNoRegistry := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: nil,
@@ -2297,7 +2297,7 @@ func TestUnifiedHandler_DebateResponseErrorHandling(t *testing.T) {
 	})
 
 	t.Run("NilDebateTeamConfig", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handlerNoConfig := NewUnifiedHandler(registry, cfg)
 		handlerNoConfig.debateTeamConfig = nil
 
@@ -2774,13 +2774,13 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	}
 
 	t.Run("returns_empty_when_no_tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := handler.generateActionToolCalls(ctx, "test topic", "synthesis", nil, nil, nil)
 		assert.Empty(t, result, "Should return empty when no tools provided")
 	})
 
 	t.Run("generates_glob_for_codebase_access_question", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		topic := "Do you see my codebase?"
 		synthesis := "Yes, I can access the codebase using the available tools."
 
@@ -2792,7 +2792,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("generates_grep_for_search_queries", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		topic := "Search for OpenAITool in the codebase"
 		synthesis := "I can search for OpenAITool using grep."
 
@@ -2811,7 +2811,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("generates_read_for_file_read_requests", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		topic := "Read README.md please"
 		synthesis := "I will read the README.md file."
 
@@ -2830,7 +2830,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("synthesizes_tool_calls_from_synthesis_content", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		topic := "How is the project structured?"
 		synthesis := "To understand the project structure, I recommend using the Glob tool to explore the file system."
 
@@ -2841,7 +2841,7 @@ func TestGenerateActionToolCalls(t *testing.T) {
 	})
 
 	t.Run("tool_calls_have_valid_structure", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		topic := "Can you access my code?"
 		synthesis := "Yes, I can access the codebase."
 
@@ -2896,19 +2896,19 @@ func TestGenerateLLMBasedToolCalls(t *testing.T) {
 	synthesis := "To explore the codebase, I will use the Glob tool to list all files."
 
 	t.Run("returns_empty_when_no_registry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := handler.generateLLMBasedToolCalls(ctx, messages, tools, synthesis)
 		assert.Empty(t, result, "Should return empty when provider registry is nil")
 	})
 
 	t.Run("returns_empty_when_no_tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := handler.generateLLMBasedToolCalls(ctx, messages, nil, synthesis)
 		assert.Empty(t, result, "Should return empty when no tools provided")
 	})
 
 	t.Run("returns_empty_when_no_debate_config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handlerWithRegistry := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: nil,
@@ -3023,7 +3023,7 @@ func TestContainsAny(t *testing.T) {
 	})
 
 	t.Run("returns_false_when_no_pattern_found", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := containsAny("hello world", []string{"foo", "bar"})
 		assert.False(t, result)
 	})
@@ -3050,7 +3050,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 1: Valid tool calls pass through
 	// ============================================
 	t.Run("valid_read_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "README.md"}`),
 		}
@@ -3059,7 +3059,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_write_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "output.md", "content": "Hello World"}`),
 		}
@@ -3068,7 +3068,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_edit_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Edit", `{"file_path": "file.go", "old_string": "foo", "new_string": "bar"}`),
 		}
@@ -3077,7 +3077,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_glob_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Glob", `{"pattern": "**/*.go"}`),
 		}
@@ -3086,7 +3086,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_grep_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Grep", `{"pattern": "func.*Test"}`),
 		}
@@ -3095,7 +3095,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_bash_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"command": "go test", "description": "Run tests"}`),
 		}
@@ -3104,7 +3104,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_git_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Git", `{"operation": "status", "description": "Check git status"}`),
 		}
@@ -3113,7 +3113,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_websearch_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebSearch", `{"query": "golang testing"}`),
 		}
@@ -3122,7 +3122,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("valid_webfetch_tool_passes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"url": "https://example.com", "prompt": "Summarize"}`),
 		}
@@ -3134,7 +3134,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 2: Invalid tool calls are filtered
 	// ============================================
 	t.Run("write_missing_file_path_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"content": "Hello World"}`),
 		}
@@ -3143,7 +3143,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_missing_content_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "output.md"}`),
 		}
@@ -3152,7 +3152,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_empty_file_path_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": "", "content": "Hello"}`),
 		}
@@ -3161,7 +3161,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("read_missing_file_path_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{}`),
 		}
@@ -3170,7 +3170,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("bash_missing_description_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"command": "ls"}`),
 		}
@@ -3179,7 +3179,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("bash_missing_command_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Bash", `{"description": "List files"}`),
 		}
@@ -3188,7 +3188,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("glob_missing_pattern_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Glob", `{}`),
 		}
@@ -3197,7 +3197,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("grep_missing_pattern_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Grep", `{}`),
 		}
@@ -3206,7 +3206,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("git_missing_operation_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Git", `{"description": "Git operation"}`),
 		}
@@ -3215,7 +3215,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("websearch_missing_query_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebSearch", `{}`),
 		}
@@ -3224,7 +3224,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("webfetch_missing_url_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"prompt": "Summarize"}`),
 		}
@@ -3233,7 +3233,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("webfetch_missing_prompt_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("WebFetch", `{"url": "https://example.com"}`),
 		}
@@ -3245,7 +3245,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 3: Edge cases
 	// ============================================
 	t.Run("invalid_json_arguments_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{not valid json}`),
 		}
@@ -3254,19 +3254,19 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("empty_tool_calls_returns_empty", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := validateAndFilterToolCalls([]StreamingToolCall{})
 		assert.Len(t, result, 0, "Empty input should return empty")
 	})
 
 	t.Run("nil_tool_calls_returns_nil", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := validateAndFilterToolCalls(nil)
 		assert.Nil(t, result, "Nil input should return nil")
 	})
 
 	t.Run("mixed_valid_invalid_filters_correctly", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "valid.md"}`),    // Valid
 			createToolCall("Write", `{"content": "missing path"}`), // Invalid
@@ -3278,7 +3278,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("whitespace_only_values_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("Read", `{"file_path": "   "}`),
 		}
@@ -3290,7 +3290,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 4: Case insensitivity for tool names
 	// ============================================
 	t.Run("lowercase_read_validates", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("read", `{"file_path": "file.txt"}`),
 		}
@@ -3299,7 +3299,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("lowercase_write_validates", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		toolCalls := []StreamingToolCall{
 			createToolCall("write", `{"file_path": "file.txt", "content": "test"}`),
 		}
@@ -3311,7 +3311,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// Test 5: All 21 tools validation rules
 	// ============================================
 	t.Run("all_tools_have_validation_rules", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Test that all known tools have proper validation
 		toolsToTest := []struct {
 			name        string
@@ -3343,14 +3343,14 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 
 		for _, tc := range toolsToTest {
 			t.Run(tc.name+"_valid", func(t *testing.T) {
-					t.Parallel()
+				t.Parallel()
 				toolCalls := []StreamingToolCall{createToolCall(tc.name, tc.validArgs)}
 				result := validateAndFilterToolCalls(toolCalls)
 				assert.Len(t, result, 1, "%s with valid args should pass", tc.name)
 			})
 
 			t.Run(tc.name+"_invalid", func(t *testing.T) {
-					t.Parallel()
+				t.Parallel()
 				toolCalls := []StreamingToolCall{createToolCall(tc.name, tc.invalidArgs)}
 				result := validateAndFilterToolCalls(toolCalls)
 				assert.Len(t, result, 0, "%s with invalid args should be filtered", tc.name)
@@ -3363,7 +3363,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	// This tests the exact error user reported: "filePath: undefined"
 	// ============================================
 	t.Run("null_file_path_value_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// This simulates the case where filePath is null/undefined in JSON
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"file_path": null, "content": "test"}`),
@@ -3373,7 +3373,7 @@ func TestValidateAndFilterToolCalls(t *testing.T) {
 	})
 
 	t.Run("write_with_camelCase_filePath_missing_filtered", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// LLM might generate with camelCase, but we require snake_case
 		toolCalls := []StreamingToolCall{
 			createToolCall("Write", `{"filePath": "test.md", "content": "test"}`),
@@ -3399,7 +3399,7 @@ func TestExtractSearchTerm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractSearchTerm(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3421,7 +3421,7 @@ func TestExtractFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractFilePath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3448,7 +3448,7 @@ func TestExtractCreateFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := extractCreateFilePath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3466,7 +3466,7 @@ func TestExtractFileContent(t *testing.T) {
 	})
 
 	t.Run("generates_agents_md_content", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		synthesis := "This is a Go project with main.go as the entry point"
 		result := extractFileContent(synthesis, "./AGENTS.md", "create AGENTS.md")
 		assert.Contains(t, result, "AGENTS.md")
@@ -3475,7 +3475,7 @@ func TestExtractFileContent(t *testing.T) {
 	})
 
 	t.Run("generates_readme_content", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		synthesis := "A web application for managing tasks"
 		result := extractFileContent(synthesis, "./README.md", "create README.md")
 		assert.Contains(t, result, "Description")
@@ -3497,7 +3497,7 @@ func TestCleanSynthesisForFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := cleanSynthesisForFile(tt.input)
 			assert.Equal(t, strings.TrimSpace(tt.expected), result)
 		})
@@ -3519,7 +3519,7 @@ func TestEscapeJSONString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := escapeJSONString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -3548,7 +3548,7 @@ Done!`
 	})
 
 	t.Run("parses_function_call_format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		content := `Creating file:
 <function_call name="write">
 <path>./AGENTS.md</path>
@@ -3562,7 +3562,7 @@ Done!`
 	})
 
 	t.Run("parses_simple_xml_format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		content := `<Write>
 <file_path>/tmp/test.txt</file_path>
 <content>Hello World</content>
@@ -3575,7 +3575,7 @@ Done!`
 	})
 
 	t.Run("parses_multiple_calls", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		content := `<function=write>
 <parameter=path>file1.md</parameter>
 <parameter=content>Content 1</parameter>
@@ -3591,7 +3591,7 @@ Some text
 	})
 
 	t.Run("returns_empty_for_no_function_calls", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		content := "This is just regular text without any function calls."
 		calls := parseEmbeddedFunctionCalls(content)
 		assert.Len(t, calls, 0)
@@ -3608,25 +3608,25 @@ func TestGetParam(t *testing.T) {
 	}
 
 	t.Run("finds_exact_key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := getParam(params, "path")
 		assert.Equal(t, "/test/path", result)
 	})
 
 	t.Run("finds_first_available_key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := getParam(params, "missing", "path", "content")
 		assert.Equal(t, "/test/path", result)
 	})
 
 	t.Run("finds_alternative_key", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := getParam(params, "filepath", "file_path")
 		assert.Equal(t, "/other/path", result)
 	})
 
 	t.Run("returns_empty_for_missing_keys", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := getParam(params, "nonexistent", "also_missing")
 		assert.Equal(t, "", result)
 	})
@@ -3664,7 +3664,7 @@ func TestCLIAgentToolCallsFormat(t *testing.T) {
 	})
 
 	t.Run("tool_call_id_is_unique", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		ids := make(map[string]bool)
 		for i := 0; i < 100; i++ {
 			id := generateToolCallID()
@@ -3714,7 +3714,7 @@ func TestToolResultMessageDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			hasToolResults := false
 			for _, msg := range tt.messages {
 				if msg.Role == "tool" || msg.ToolCallID != "" {
@@ -3740,7 +3740,7 @@ func TestOpenAIMessageStructure(t *testing.T) {
 	})
 
 	t.Run("assistant_message_with_tool_calls", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		msg := OpenAIMessage{
 			Role:    "assistant",
 			Content: "Let me search for that.",
@@ -3761,7 +3761,7 @@ func TestOpenAIMessageStructure(t *testing.T) {
 	})
 
 	t.Run("tool_result_message", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		msg := OpenAIMessage{
 			Role:       "tool",
 			Content:    `{"matches": ["line 10: TODO fix this"]}`,
@@ -3808,7 +3808,7 @@ func TestStreamingResponseFormat(t *testing.T) {
 	})
 
 	t.Run("finish_reason_stop_format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chunk := map[string]any{
 			"id":      "chatcmpl-123",
 			"object":  "chat.completion.chunk",
@@ -3836,7 +3836,7 @@ func TestStreamingResponseFormat(t *testing.T) {
 	})
 
 	t.Run("finish_reason_tool_calls_format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		chunk := map[string]any{
 			"id":      "chatcmpl-123",
 			"object":  "chat.completion.chunk",
@@ -3995,7 +3995,7 @@ func TestCLIAgentRequestFormats(t *testing.T) {
 	})
 
 	t.Run("tool_result_request", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// CLI agent sends tool result back
 		reqJSON := `{
 			"model": "helixagent-debate",
@@ -4061,7 +4061,7 @@ func TestToolCallPatternMatching(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.topic, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			topicLower := strings.ToLower(tt.topic)
 			matches := containsAny(topicLower, tt.patterns)
 			assert.Equal(t, tt.shouldMatch, matches)
@@ -4165,7 +4165,7 @@ func TestToolResultProcessingFlow(t *testing.T) {
 	})
 
 	t.Run("no_tool_results_detected_for_normal_chat", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		messages := []OpenAIMessage{
 			{Role: "user", Content: "Hello"},
 			{Role: "assistant", Content: "Hi there!"},
@@ -4184,7 +4184,7 @@ func TestToolResultProcessingFlow(t *testing.T) {
 	})
 
 	t.Run("assistant_with_tool_calls_properly_serialized", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		msg := OpenAIMessage{
 			Role:    "assistant",
 			Content: "",
@@ -4243,7 +4243,7 @@ func TestDynamicProviderOrdering(t *testing.T) {
 	})
 
 	t.Run("score_based_sorting", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Simulate score-based sorting logic
 		type providerScore struct {
 			name  string
@@ -4309,7 +4309,7 @@ func TestToolResultRequestDetectionInNonStreaming(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			hasToolResults := false
 			for _, msg := range tt.messages {
 				if msg.Role == "tool" || msg.ToolCallID != "" {
@@ -4514,7 +4514,7 @@ func TestIsToolResultProcessingTurn(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := handler.isToolResultProcessingTurn(tc.messages)
 			assert.Equal(t, tc.expectedResult, result, tc.description)
 		})
@@ -4722,7 +4722,7 @@ Would you like me to:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := handler.expandFollowUpResponse(tc.userMessage, tc.messages)
 
 			if tc.shouldExpand {
@@ -4811,7 +4811,7 @@ func TestFollowUpResponseEdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			messages := append(messagesWithOptions, OpenAIMessage{Role: "user", Content: tc.userMessage})
 			result := handler.expandFollowUpResponse(tc.userMessage, messages)
 
@@ -4854,7 +4854,7 @@ func TestBashToolCallsIncludeDescription(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.command, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := generateBashDescription(tc.command)
 
 			if tc.shouldMatch {
@@ -4923,7 +4923,7 @@ func TestBashToolCallArgumentsStructure(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, tools, nil, nil)
 
 			// Find Bash tool call
@@ -5094,7 +5094,7 @@ func TestAllToolCallsHaveRequiredFields(t *testing.T) {
 
 	for _, tc := range testScenarios {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, allTools, nil, nil)
 
 			// Find the expected tool call
@@ -5153,7 +5153,7 @@ func TestToolCallParameterNaming(t *testing.T) {
 
 	for _, args := range sampleArguments {
 		t.Run(args, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Check no camelCase patterns
 			for _, camel := range invalidCamelCasePatterns {
 				assert.NotContains(t, args, camel,
@@ -5254,7 +5254,7 @@ func TestExtractToolArgumentsRequiredFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			args := extractToolArguments(tc.toolName, tc.context)
 
 			// Parse the JSON
@@ -5341,7 +5341,7 @@ func TestSanitizeDisplayContent(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := sanitizeDisplayContent(tc.input)
 			assert.Equal(t, tc.expected, result, "Sanitized content should match expected")
 		})
@@ -5382,7 +5382,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 	}
 
 	t.Run("no_hardcoded_confirmation_patterns_in_generateActionToolCalls", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Read the source file to verify no hardcoded patterns exist
 		// This is a meta-test that ensures code quality
 		// The actual implementation uses LLM-based generation
@@ -5421,7 +5421,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 
 		for _, input := range arbitraryInputs {
 			t.Run(input, func(t *testing.T) {
-					t.Parallel()
+				t.Parallel()
 				// Without LLM-based generation (no registry), this should return empty
 				// because these inputs don't match task-specific patterns
 				result := handler.generateActionToolCalls(ctx, input, input, tools, nil, nil)
@@ -5434,7 +5434,7 @@ func TestNoHardcodedConfirmationPatterns(t *testing.T) {
 	})
 
 	t.Run("deprecated_patterns_documented", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Document the patterns that were removed
 		for _, pattern := range deprecatedPatterns {
 			t.Logf("Deprecated pattern (no longer hardcoded): %s", pattern)
@@ -5543,7 +5543,7 @@ func TestLLMBasedToolGenerationWithArbitraryIntents(t *testing.T) {
 
 	for _, tc := range arbitraryIntents {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			messages := []OpenAIMessage{
 				{Role: "user", Content: "Help me with my code"},
 				{Role: "assistant", Content: "I can help. Let me analyze your codebase first."},
@@ -5610,7 +5610,7 @@ func TestGenerateActionToolCallsUsesLLMWhenNoPatternMatch(t *testing.T) {
 
 	for _, input := range nonMatchingInputs {
 		t.Run(input.topic, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Without provider registry, this will return empty but
 			// the LLM-based generation code path should be attempted
 			handler := &UnifiedHandler{}
@@ -5646,7 +5646,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	synthesis := "test synthesis"
 
 	t.Run("requires_provider_registry", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: nil,
 			debateTeamConfig: &services.DebateTeamConfig{}, // Has config but no registry
@@ -5657,7 +5657,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	})
 
 	t.Run("requires_debate_team_config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: &services.ProviderRegistry{}, // Has registry but no config
 			debateTeamConfig: nil,
@@ -5668,7 +5668,7 @@ func TestLLMBasedToolGenerationRequiresValidConfig(t *testing.T) {
 	})
 
 	t.Run("requires_tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler := &UnifiedHandler{
 			providerRegistry: &services.ProviderRegistry{},
 			debateTeamConfig: &services.DebateTeamConfig{},
@@ -5714,7 +5714,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	}
 
 	t.Run("handles_long_messages", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Test with a very long message
 		longContent := strings.Repeat("This is a very long message. ", 100)
 		messages := []OpenAIMessage{
@@ -5728,7 +5728,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	})
 
 	t.Run("handles_empty_messages", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		messages := []OpenAIMessage{}
 
 		// Should not panic
@@ -5737,7 +5737,7 @@ func TestLLMBasedToolGenerationMessageConversion(t *testing.T) {
 	})
 
 	t.Run("handles_system_messages", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		messages := []OpenAIMessage{
 			{Role: "system", Content: "You are a helpful assistant."},
 			{Role: "user", Content: "Help me"},
@@ -5789,7 +5789,7 @@ func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
 	})
 
 	t.Run("formats_tool_without_parameters", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		tools := []OpenAITool{
 			{
 				Type: "function",
@@ -5805,7 +5805,7 @@ func TestLLMBasedToolGenerationToolDescriptions(t *testing.T) {
 	})
 
 	t.Run("skips_non_function_tools", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		handler := &UnifiedHandler{}
 		tools := []OpenAITool{
 			{
@@ -5907,7 +5907,7 @@ func TestSynthesisBasedToolSelection(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := handler.generateActionToolCalls(ctx, tc.topic, tc.synthesis, tools, nil, nil)
 
 			// Check that expected tools were selected
@@ -5983,7 +5983,7 @@ func TestEscapeJSONStringExtended(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := escapeJSONString(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -6210,7 +6210,7 @@ func TestActionIndicatorGeneration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Generate action indicator (simulating the logic in the handler)
 			actionIndicator := "\n\n<--- EXECUTING " + strconv.Itoa(tc.actionCount) + " ACTION(S) --->\n"
 			assert.Contains(t, actionIndicator, tc.expectedMatch)
@@ -6393,7 +6393,7 @@ func TestToolCallArgumentsValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			var args map[string]interface{}
 			err := json.Unmarshal([]byte(tc.arguments), &args)
 
@@ -6481,7 +6481,7 @@ func TestActionIndicatorVisibility(t *testing.T) {
 
 	for _, indicator := range indicators {
 		t.Run(indicator, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Contains(t, indicator, "<---")
 			assert.Contains(t, indicator, "--->")
 		})
@@ -6633,7 +6633,7 @@ func TestExecuteGrepFunction_AlternativeParamNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			call := EmbeddedFunctionCall{
 				Name:       "grep",
 				Parameters: tt.params,
@@ -6819,7 +6819,7 @@ func TestGetParam_GrepHelper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getParam(tt.params, tt.keys...)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -6999,7 +6999,7 @@ func TestDebateDialogueGatingConditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			h := &UnifiedHandler{showDebateDialogue: tt.show}
 			if tt.formatter {
 				h.dialogueFormatter = services.NewDialogueFormatter(services.StyleTheater)

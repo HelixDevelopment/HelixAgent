@@ -35,7 +35,7 @@ type UnifiedHandler struct {
 	skillsIntegration       *skills.Integration
 	intentRouter            *services.IntentBasedRouter
 	orchestratorIntegration *debate_integration.ServiceIntegration
-	agenticEnsemble        *services.AgenticEnsemble
+	agenticEnsemble         *services.AgenticEnsemble
 	debateService           *services.DebateService
 	showDebateDialogue      bool
 	reportGenerator         *services.VerificationReportGenerator
@@ -579,11 +579,11 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 			}
 			useDebate = !isTrivial
 			logrus.WithFields(logrus.Fields{
-				"use_debate":  useDebate,
-				"intent":      llmResult.Intent,
-				"actionable":  llmResult.IsActionable,
-				"confidence":  llmResult.Confidence,
-				"message":     lastUserMsg[:min(50, len(lastUserMsg))],
+				"use_debate": useDebate,
+				"intent":     llmResult.Intent,
+				"actionable": llmResult.IsActionable,
+				"confidence": llmResult.Confidence,
+				"message":    lastUserMsg[:min(50, len(lastUserMsg))],
 			}).Info("[STREAMING] LLM-based routing decision")
 		} else {
 			logrus.WithError(llmErr).Warn("[STREAMING] LLM classification failed — defaulting to debate")
@@ -923,7 +923,7 @@ Respond concisely and helpfully.`, clientName, toolList)
 					}
 				}
 			}
-			} else if debateResult != nil {
+		} else if debateResult != nil {
 			// Stream the debate results: show each participant's response grouped by round
 			currentRound := 0
 			for _, resp := range debateResult.AllResponses {
@@ -6370,7 +6370,6 @@ All notable changes to this project will be documented in this file.
 - Initial release
 `
 }
-
 
 // processToolResultsWithLLM processes tool results by making a direct LLM call
 // CRITICAL: This enables proper handling of tool results from CLI agents like OpenCode

@@ -427,7 +427,7 @@ func RegisterPlanningRoutes(r *gin.RouterGroup, h *PlanningHandler) {
 		p.POST("/hiplan", h.CreateHiPlan)
 		p.POST("/mcts", h.RunMCTS)
 		p.POST("/tot", h.RunToT)
-		
+
 		// Plan Mode endpoints (from Claude Code)
 		p.POST("/plan-mode/enter", h.EnterPlanMode)
 		p.POST("/plan-mode/:id/exit", h.ExitPlanMode)
@@ -656,7 +656,6 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
-
 // ============================================
 // PLAN MODE - Multi-step planning with verification
 // ============================================
@@ -687,17 +686,17 @@ const (
 
 // PlanModeSession represents a plan mode session
 type PlanModeSession struct {
-	ID            string              `json:"id"`
-	State         PlanState           `json:"state"`
-	OriginalTask  string              `json:"original_task"`
-	Tasks         []PlanTask          `json:"tasks"`
-	Progress      float64             `json:"progress"`
-	CurrentPhase  string              `json:"current_phase"`
-	Verification  PlanVerification    `json:"verification"`
-	CreatedAt     time.Time           `json:"created_at"`
-	UpdatedAt     time.Time           `json:"updated_at"`
-	CompletedAt   *time.Time          `json:"completed_at,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ID           string                 `json:"id"`
+	State        PlanState              `json:"state"`
+	OriginalTask string                 `json:"original_task"`
+	Tasks        []PlanTask             `json:"tasks"`
+	Progress     float64                `json:"progress"`
+	CurrentPhase string                 `json:"current_phase"`
+	Verification PlanVerification       `json:"verification"`
+	CreatedAt    time.Time              `json:"created_at"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	CompletedAt  *time.Time             `json:"completed_at,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // PlanTask represents a task in the plan
@@ -717,23 +716,23 @@ type PlanTask struct {
 
 // PlanVerification represents the verification state
 type PlanVerification struct {
-	Required      bool      `json:"required"`
-	Passed        bool      `json:"passed"`
-	Feedback      string    `json:"feedback,omitempty"`
-	VerifiedAt    *time.Time `json:"verified_at,omitempty"`
-	VerifiedBy    string    `json:"verified_by,omitempty"`
+	Required   bool       `json:"required"`
+	Passed     bool       `json:"passed"`
+	Feedback   string     `json:"feedback,omitempty"`
+	VerifiedAt *time.Time `json:"verified_at,omitempty"`
+	VerifiedBy string     `json:"verified_by,omitempty"`
 }
 
 // EnterPlanModeRequest represents a request to enter plan mode
 type EnterPlanModeRequest struct {
-	Task              string  `json:"task" binding:"required"`
+	Task                string `json:"task" binding:"required"`
 	RequireVerification bool   `json:"require_verification,omitempty"`
 }
 
 // ExitPlanModeRequest represents a request to exit plan mode
 type ExitPlanModeRequest struct {
-	Force    bool   `json:"force,omitempty"`
-	Reason   string `json:"reason,omitempty"`
+	Force  bool   `json:"force,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // VerifyPlanRequest represents a plan verification request
@@ -794,12 +793,12 @@ func (h *PlanningHandler) EnterPlanMode(c *gin.Context) {
 	}).Info("Entered plan mode")
 
 	c.JSON(http.StatusCreated, gin.H{
-		"session_id":   session.ID,
-		"state":        session.State,
+		"session_id":    session.ID,
+		"state":         session.State,
 		"original_task": session.OriginalTask,
-		"tasks":        session.Tasks,
-		"progress":     session.Progress,
-		"created_at":   session.CreatedAt,
+		"tasks":         session.Tasks,
+		"progress":      session.Progress,
+		"created_at":    session.CreatedAt,
 	})
 }
 
@@ -915,11 +914,11 @@ func (h *PlanningHandler) VerifyPlan(c *gin.Context) {
 	}).Info("Plan verification completed")
 
 	c.JSON(http.StatusOK, gin.H{
-		"session_id":    session.ID,
-		"verified":      req.Approved,
-		"state":         session.State,
-		"feedback":      req.Feedback,
-		"verified_at":   now,
+		"session_id":  session.ID,
+		"verified":    req.Approved,
+		"state":       session.State,
+		"feedback":    req.Feedback,
+		"verified_at": now,
 	})
 }
 
@@ -1002,7 +1001,7 @@ func (h *PlanningHandler) UpdatePlanTask(c *gin.Context) {
 			if req.Verified != nil {
 				session.Tasks[i].Verified = *req.Verified
 			}
-			
+
 			now := time.Now()
 			if req.Status == "in_progress" && session.Tasks[i].StartedAt == nil {
 				session.Tasks[i].StartedAt = &now
@@ -1010,7 +1009,7 @@ func (h *PlanningHandler) UpdatePlanTask(c *gin.Context) {
 			if (req.Status == "completed" || req.Status == "failed") && session.Tasks[i].CompletedAt == nil {
 				session.Tasks[i].CompletedAt = &now
 			}
-			
+
 			found = true
 			break
 		}
@@ -1040,44 +1039,44 @@ func (h *PlanningHandler) generateTaskBreakdown(task string) []PlanTask {
 	// For now, create placeholder tasks
 	return []PlanTask{
 		{
-			ID:          generateTaskID(),
-			Description: "Analyze requirements: " + truncate(task, 50),
-			Status:      TaskStatusPending,
+			ID:           generateTaskID(),
+			Description:  "Analyze requirements: " + truncate(task, 50),
+			Status:       TaskStatusPending,
 			Dependencies: []string{},
-			CanParallel: false,
-			Verified:    false,
+			CanParallel:  false,
+			Verified:     false,
 		},
 		{
-			ID:          generateTaskID(),
-			Description: "Design solution approach",
-			Status:      TaskStatusPending,
+			ID:           generateTaskID(),
+			Description:  "Design solution approach",
+			Status:       TaskStatusPending,
 			Dependencies: []string{},
-			CanParallel: false,
-			Verified:    false,
+			CanParallel:  false,
+			Verified:     false,
 		},
 		{
-			ID:          generateTaskID(),
-			Description: "Implement core functionality",
-			Status:      TaskStatusPending,
+			ID:           generateTaskID(),
+			Description:  "Implement core functionality",
+			Status:       TaskStatusPending,
 			Dependencies: []string{},
-			CanParallel: false,
-			Verified:    false,
+			CanParallel:  false,
+			Verified:     false,
 		},
 		{
-			ID:          generateTaskID(),
-			Description: "Add tests and validation",
-			Status:      TaskStatusPending,
+			ID:           generateTaskID(),
+			Description:  "Add tests and validation",
+			Status:       TaskStatusPending,
 			Dependencies: []string{},
-			CanParallel: true,
-			Verified:    false,
+			CanParallel:  true,
+			Verified:     false,
 		},
 		{
-			ID:          generateTaskID(),
-			Description: "Review and finalize",
-			Status:      TaskStatusPending,
+			ID:           generateTaskID(),
+			Description:  "Review and finalize",
+			Status:       TaskStatusPending,
 			Dependencies: []string{},
-			CanParallel: false,
-			Verified:    false,
+			CanParallel:  false,
+			Verified:     false,
 		},
 	}
 }
@@ -1087,14 +1086,14 @@ func (h *PlanningHandler) calculateProgress(tasks []PlanTask) float64 {
 	if len(tasks) == 0 {
 		return 0.0
 	}
-	
+
 	completed := 0
 	for _, task := range tasks {
 		if task.Status == TaskStatusCompleted || task.Status == TaskStatusVerified {
 			completed++
 		}
 	}
-	
+
 	return float64(completed) / float64(len(tasks))
 }
 
@@ -1114,7 +1113,7 @@ func (h *PlanningHandler) executePlan(sessionID string) {
 		planModeSessionsMu.RLock()
 		s, ok := planModeSessions[sessionID]
 		planModeSessionsMu.RUnlock()
-		
+
 		if !ok || s.State != PlanStateExecuting {
 			return
 		}

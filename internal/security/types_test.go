@@ -34,7 +34,7 @@ func TestAttackType_PromptInjectionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -56,7 +56,7 @@ func TestAttackType_DataExtractionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -76,7 +76,7 @@ func TestAttackType_DenialOfServiceConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -98,7 +98,7 @@ func TestAttackType_ContentSafetyConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -119,7 +119,7 @@ func TestAttackType_SocialEngineeringConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -140,7 +140,7 @@ func TestAttackType_CodeInjectionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -160,7 +160,7 @@ func TestAttackType_BiasAndFairnessConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -180,7 +180,7 @@ func TestAttackType_HallucinationConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -200,7 +200,7 @@ func TestAttackType_SupplyChainConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -221,7 +221,7 @@ func TestAttackType_EvasionConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AttackType(tc.expected), tc.value)
 		})
 	}
@@ -283,7 +283,7 @@ func TestOWASPCategory_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, OWASPCategory(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -325,7 +325,7 @@ func TestSeverity_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, Severity(tc.expected), tc.value)
 		})
 	}
@@ -599,7 +599,7 @@ func TestGuardrailType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, GuardrailType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -626,7 +626,7 @@ func TestGuardrailAction_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, GuardrailAction(tc.expected), tc.value)
 		})
 	}
@@ -754,7 +754,7 @@ func TestPIIType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, PIIType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -900,7 +900,7 @@ func TestPermissionLevel_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, PermissionLevel(tc.expected), tc.value)
 		})
 	}
@@ -956,7 +956,7 @@ func TestNetworkPolicy_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, NetworkPolicy(tc.expected), tc.value)
 		})
 	}
@@ -981,7 +981,7 @@ func TestFilesystemPolicy_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, FilesystemPolicy(tc.expected), tc.value)
 		})
 	}
@@ -1056,7 +1056,7 @@ func TestAuditEventType_AllConstants(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, AuditEventType(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})

@@ -254,7 +254,7 @@ func TestFormatterRegistry_DetectLanguageFromPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			language := registry.DetectLanguageFromPath(tc.path)
 			assert.Equal(t, tc.expected, language, "Failed for path: %s", tc.path)
 		})

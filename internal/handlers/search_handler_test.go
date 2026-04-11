@@ -358,7 +358,7 @@ func TestSearchHandler_RegisterRoutes(t *testing.T) {
 	routes := router.Routes()
 	expected := map[string]bool{
 		"POST:/v1/search/semantic": true,
-		"POST:/v1/search/index":   true,
+		"POST:/v1/search/index":    true,
 	}
 
 	for _, r := range routes {

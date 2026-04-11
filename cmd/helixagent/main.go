@@ -3880,10 +3880,10 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres"}, Env: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:5432/helixagent_db"}, Enabled: true},
 		"puppeteer":           {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"}, Enabled: true},
 		"sequential-thinking": {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sequential-thinking"}, Enabled: true},
-		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
-		"brave-search":        {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-brave-search"}, Env: map[string]string{"BRAVE_API_KEY": "{env:BRAVE_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true},                                                                              // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"brave-search":        {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-brave-search"}, Env: map[string]string{"BRAVE_API_KEY": "{env:BRAVE_API_KEY}"}, Enabled: true},            // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"google-maps":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-google-maps"}, Env: map[string]string{"GOOGLE_MAPS_API_KEY": "{env:GOOGLE_MAPS_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
-		"slack":               {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"}, Env: map[string]string{"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"slack":               {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"}, Env: map[string]string{"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}"}, Enabled: true},               // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"github":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-github"}, Env: map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"}, Enabled: true},
 		"gitlab":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-gitlab"}, Env: map[string]string{"GITLAB_PERSONAL_ACCESS_TOKEN": "{env:GITLAB_TOKEN}"}, Enabled: true},
 		"sentry":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"}, Env: map[string]string{"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
@@ -3897,7 +3897,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"notion":     {Type: "local", Command: []string{"npx", "-y", "@notionhq/notion-mcp-server"}, Env: map[string]string{"NOTION_API_KEY": "{env:NOTION_API_KEY}"}, Enabled: true},
 		"figma":      {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp"}, Env: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"}, Enabled: true},
 		"todoist":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-todoist"}, Env: map[string]string{"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
-		"obsidian":   {Type: "local", Command: []string{"npx", "-y", "mcp-obsidian"}, Env: map[string]string{"OBSIDIAN_VAULT_PATH": "{env:OBSIDIAN_VAULT_PATH}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"obsidian":   {Type: "local", Command: []string{"npx", "-y", "mcp-obsidian"}, Env: map[string]string{"OBSIDIAN_VAULT_PATH": "{env:OBSIDIAN_VAULT_PATH}"}, Enabled: true},                     // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"raycast":    {Type: "local", Command: []string{"npx", "-y", "@raycast/mcp-server-raycast"}, Enabled: true},
 		"tinybird":   {Type: "local", Command: []string{"npx", "-y", "mcp-tinybird"}, Env: map[string]string{"TINYBIRD_TOKEN": "{env:TINYBIRD_TOKEN}"}, Enabled: true},
 		"cloudflare": {Type: "local", Command: []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"}, Env: map[string]string{"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}"}, Enabled: true},
@@ -3915,13 +3915,13 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"milvus":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-milvus"}, Env: map[string]string{"MILVUS_HOST": "localhost"}, Enabled: true},
 		"weaviate":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-weaviate"}, Env: map[string]string{"WEAVIATE_URL": "http://localhost:8080"}, Enabled: true},
 		"supabase":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-supabase"}, Env: map[string]string{"SUPABASE_URL": "{env:SUPABASE_URL}"}, Enabled: true},
- // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		// #nosec G101 -- not a credential (map key / config label / env-var reference)
 		// Productivity/Collaboration MCPs - LOCAL
 		"jira":            {Type: "local", Command: []string{"npx", "-y", "mcp-server-atlassian"}, Env: map[string]string{"JIRA_URL": "{env:JIRA_URL}"}, Enabled: true},
 		"asana":           {Type: "local", Command: []string{"npx", "-y", "mcp-server-asana"}, Env: map[string]string{"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}"}, Enabled: true},
 		"trello":          {Type: "local", Command: []string{"npx", "-y", "mcp-server-trello"}, Env: map[string]string{"TRELLO_API_KEY": "{env:TRELLO_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"monday":          {Type: "local", Command: []string{"npx", "-y", "mcp-server-monday"}, Env: map[string]string{"MONDAY_API_KEY": "{env:MONDAY_API_KEY}"}, Enabled: true},
-		"clickup":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-clickup"}, Env: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"clickup":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-clickup"}, Env: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"}, Enabled: true},     // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"discord":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-discord"}, Env: map[string]string{"DISCORD_BOT_TOKEN": "{env:DISCORD_BOT_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"microsoft-teams": {Type: "local", Command: []string{"npx", "-y", "mcp-server-teams"}, Env: map[string]string{"TEAMS_CLIENT_ID": "{env:TEAMS_CLIENT_ID}"}, Enabled: true},
 		"gmail":           {Type: "local", Command: []string{"npx", "-y", "mcp-server-gmail"}, Env: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"}, Enabled: true},

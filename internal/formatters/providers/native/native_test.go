@@ -96,7 +96,7 @@ func TestNativeFormatter_buildArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			metadata.SupportsCheck = tc.supportsCheck
 			formatter := &NativeFormatter{
 				BaseFormatter: formatters.NewBaseFormatter(metadata),
@@ -230,7 +230,7 @@ func TestComputeLineChanges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := computeLineChanges(tt.original, tt.formatted)
 			assert.Equal(t, tt.expected, result)
 		})

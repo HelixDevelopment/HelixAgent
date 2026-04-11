@@ -28,7 +28,7 @@ func TestNewPollingStore(t *testing.T) {
 	logger := testLogger()
 
 	t.Run("with default config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		store := NewPollingStore(nil, logger)
 		require.NotNil(t, store)
 
@@ -40,7 +40,7 @@ func TestNewPollingStore(t *testing.T) {
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := &PollingConfig{
 			MaxEventsPerTask: 50,
 			MaxGlobalEvents:  500,
@@ -79,7 +79,7 @@ func TestPollingStore_StoreEvent(t *testing.T) {
 	defer func() { _ = store.Stop() }()
 
 	t.Run("store single event", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		notification := &TaskNotification{
 			TaskID:    "task-1",
 			EventType: "progress",
@@ -94,7 +94,7 @@ func TestPollingStore_StoreEvent(t *testing.T) {
 	})
 
 	t.Run("store multiple events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		for i := 0; i < 5; i++ {
 			notification := &TaskNotification{
 				TaskID:    "task-2",
@@ -110,7 +110,7 @@ func TestPollingStore_StoreEvent(t *testing.T) {
 	})
 
 	t.Run("global event count increases", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		initialCount := store.GetGlobalEventCount()
 
 		notification := &TaskNotification{
@@ -141,7 +141,7 @@ func TestPollingStore_EventLimits(t *testing.T) {
 	defer func() { _ = store.Stop() }()
 
 	t.Run("task events trimmed at limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		for i := 0; i < 10; i++ {
 			notification := &TaskNotification{
 				TaskID:    "task-1",
@@ -157,7 +157,7 @@ func TestPollingStore_EventLimits(t *testing.T) {
 	})
 
 	t.Run("global events trimmed at limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Clear store
 		store2 := NewPollingStore(config, logger)
 		defer func() { _ = store2.Stop() }()
@@ -196,33 +196,33 @@ func TestPollingStore_GetTaskEvents(t *testing.T) {
 	}
 
 	t.Run("get all events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetTaskEvents("task-1", nil, 0)
 		assert.Len(t, events, 5)
 	})
 
 	t.Run("get events with limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetTaskEvents("task-1", nil, 3)
 		assert.Len(t, events, 3)
 	})
 
 	t.Run("get events since time", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		since := baseTime.Add(2 * time.Second)
 		events := store.GetTaskEvents("task-1", &since, 0)
 		assert.Len(t, events, 2) // Only events after 2 seconds
 	})
 
 	t.Run("get events with since and limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		since := baseTime.Add(1 * time.Second)
 		events := store.GetTaskEvents("task-1", &since, 2)
 		assert.Len(t, events, 2)
 	})
 
 	t.Run("get events for nonexistent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetTaskEvents("nonexistent", nil, 0)
 		assert.Nil(t, events)
 	})
@@ -247,26 +247,26 @@ func TestPollingStore_GetGlobalEvents(t *testing.T) {
 	}
 
 	t.Run("get all global events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetGlobalEvents(nil, 0)
 		assert.Len(t, events, 5)
 	})
 
 	t.Run("get global events with limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetGlobalEvents(nil, 3)
 		assert.Len(t, events, 3)
 	})
 
 	t.Run("get global events since time", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		since := baseTime.Add(2 * time.Second)
 		events := store.GetGlobalEvents(&since, 0)
 		assert.Len(t, events, 2)
 	})
 
 	t.Run("get global events with since and limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		since := baseTime.Add(1 * time.Second)
 		events := store.GetGlobalEvents(&since, 2)
 		assert.Len(t, events, 2)
@@ -281,13 +281,13 @@ func TestPollingStore_GetLatestTaskEvent(t *testing.T) {
 	defer func() { _ = store.Stop() }()
 
 	t.Run("no events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		event := store.GetLatestTaskEvent("task-1")
 		assert.Nil(t, event)
 	})
 
 	t.Run("returns latest event", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		for i := 0; i < 3; i++ {
 			notification := &TaskNotification{
 				TaskID:    "task-1",
@@ -459,7 +459,7 @@ func TestPollingStore_Poll(t *testing.T) {
 	}
 
 	t.Run("poll task events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &PollRequest{
 			TaskID: "task-1",
 			Limit:  5,
@@ -474,7 +474,7 @@ func TestPollingStore_Poll(t *testing.T) {
 	})
 
 	t.Run("poll global events", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &PollRequest{
 			Limit: 5,
 		}
@@ -486,7 +486,7 @@ func TestPollingStore_Poll(t *testing.T) {
 	})
 
 	t.Run("poll with since", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		since := baseTime.Add(5 * time.Second)
 		req := &PollRequest{
 			TaskID: "task-1",
@@ -501,7 +501,7 @@ func TestPollingStore_Poll(t *testing.T) {
 	})
 
 	t.Run("poll with default limit", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &PollRequest{
 			TaskID: "task-1",
 		}
@@ -556,7 +556,7 @@ func TestPollingSubscriber(t *testing.T) {
 	defer func() { _ = store.Stop() }()
 
 	t.Run("create new subscriber", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewPollingSubscriber("sub-1", "task-1", store)
 
 		assert.Equal(t, "sub-1", subscriber.ID())
@@ -565,7 +565,7 @@ func TestPollingSubscriber(t *testing.T) {
 	})
 
 	t.Run("notify subscriber stores event", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewPollingSubscriber("sub-1", "task-1", store)
 
 		notification := &TaskNotification{
@@ -582,7 +582,7 @@ func TestPollingSubscriber(t *testing.T) {
 	})
 
 	t.Run("close subscriber", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		subscriber := NewPollingSubscriber("sub-2", "task-2", store)
 
 		err := subscriber.Close()
@@ -664,19 +664,19 @@ func TestPollingStore_EmptyStoreEdgeCases(t *testing.T) {
 	defer func() { _ = store.Stop() }()
 
 	t.Run("get events from empty store", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetTaskEvents("nonexistent", nil, 10)
 		assert.Nil(t, events)
 	})
 
 	t.Run("get global events from empty store", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		events := store.GetGlobalEvents(nil, 10)
 		assert.Nil(t, events)
 	})
 
 	t.Run("poll empty store", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &PollRequest{TaskID: "nonexistent"}
 		resp := store.Poll(req)
 
@@ -686,13 +686,13 @@ func TestPollingStore_EmptyStoreEdgeCases(t *testing.T) {
 	})
 
 	t.Run("clear nonexistent task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// Should not panic
 		store.ClearTaskEvents("nonexistent")
 	})
 
 	t.Run("get latest from empty task", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		event := store.GetLatestTaskEvent("nonexistent")
 		assert.Nil(t, event)
 	})

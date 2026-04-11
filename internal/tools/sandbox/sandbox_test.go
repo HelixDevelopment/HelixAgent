@@ -225,7 +225,7 @@ func TestSandbox_ExecuteDirect_WithTimeout(t *testing.T) {
 	// Check for timeout indicators
 	if result.ExitCode != 0 {
 		// Should have non-zero exit code or timeout message
-		assert.True(t, result.ExitCode == -1 || result.ExitCode == 124 || 
+		assert.True(t, result.ExitCode == -1 || result.ExitCode == 124 ||
 			result.ExitCode == 137 || result.ExitCode == 143 ||
 			result.Stderr != "", "Expected timeout or error")
 	}

@@ -26,14 +26,14 @@ func newIntegrationTestLogger() *logrus.Logger {
 
 // integrationMockProvider simulates a real LLM provider for integration tests
 type integrationMockProvider struct {
-	name        string
-	response    string
-	confidence  float64
-	latency     time.Duration
-	shouldFail  bool
-	failAfter   int
-	callCount   int
-	mu          sync.Mutex
+	name       string
+	response   string
+	confidence float64
+	latency    time.Duration
+	shouldFail bool
+	failAfter  int
+	callCount  int
+	mu         sync.Mutex
 }
 
 func newIntegrationMockProvider(name, response string, confidence float64) *integrationMockProvider {
@@ -481,7 +481,7 @@ func TestServicesIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 		err := registry.RegisterProvider(name, newIntegrationMockProvider(name, "response", 0.8))
 		require.NoError(t, err, "Failed to register provider %s", name)
 	}
-	
+
 	// Verify initial registration
 	initialProviders := registry.ListProviders()
 	require.Len(t, initialProviders, 5, "Should have 5 providers after registration")

@@ -370,7 +370,7 @@ func TestGetIntOption(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getIntOption(tt.options, tt.key, tt.defVal)
 			if result != tt.expected {
 				t.Errorf("getIntOption() = %d, want %d", result, tt.expected)
@@ -397,7 +397,7 @@ func TestGetFloat64Option(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getFloat64Option(tt.options, tt.key, tt.defVal)
 			if result != tt.expected {
 				t.Errorf("getFloat64Option() = %f, want %f", result, tt.expected)

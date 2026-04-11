@@ -8,11 +8,11 @@ import (
 
 func TestModelConfig_Validation(t *testing.T) {
 	tests := []struct {
-		name       string
-		modelID    string
-		modelName  string
-		enabled    bool
-		weight     float64
+		name         string
+		modelID      string
+		modelName    string
+		enabled      bool
+		weight       float64
 		capabilities []string
 	}{
 		{

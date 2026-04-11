@@ -22,7 +22,7 @@ func extendToolRegistry() {
 	// ============================================
 	// AIDER-INSPIRED TOOLS (Git-Native Workflow)
 	// ============================================
-	
+
 	ToolSchemaRegistry["SearchReplace"] = &ToolSchema{
 		Name:           "SearchReplace",
 		Description:    "Apply precise edits using SEARCH/REPLACE blocks (Aider-style diff editing). More reliable than simple text replacement for multi-line changes.",
@@ -50,10 +50,10 @@ func extendToolRegistry() {
 		Aliases:        []string{"repo_map", "codemap", "context_map"},
 		Category:       CategoryCodeIntel,
 		Parameters: map[string]Param{
-			"query":          {Type: "string", Description: "The query or task to find relevant code for", Required: true},
-			"map_tokens":     {Type: "integer", Description: "Maximum tokens for the repo map output", Required: false, Default: 1024},
+			"query":           {Type: "string", Description: "The query or task to find relevant code for", Required: true},
+			"map_tokens":      {Type: "integer", Description: "Maximum tokens for the repo map output", Required: false, Default: 1024},
 			"mentioned_files": {Type: "array", Description: "Files already mentioned in the conversation for context", Required: false},
-			"description":    {Type: "string", Description: "Human-readable description of the query", Required: true},
+			"description":     {Type: "string", Description: "Human-readable description of the query", Required: true},
 		},
 		Examples: []ToolExample{
 			{Description: "Find auth code", Arguments: `{"query": "user authentication flow", "description": "Find authentication related code"}`},
@@ -68,11 +68,11 @@ func extendToolRegistry() {
 		Aliases:        []string{"git_commit", "commit"},
 		Category:       CategoryVersionControl,
 		Parameters: map[string]Param{
-			"message":       {Type: "string", Description: "Commit message (will be formatted if conventional=true)", Required: true},
-			"files":         {Type: "array", Description: "Specific files to commit (empty = all staged)", Required: false},
-			"attribution":   {Type: "string", Description: "Who made the change: user, assistant, or both", Required: false, Default: "assistant"},
-			"conventional":  {Type: "boolean", Description: "Use conventional commits format", Required: false, Default: true},
-			"description":   {Type: "string", Description: "Human-readable description", Required: true},
+			"message":      {Type: "string", Description: "Commit message (will be formatted if conventional=true)", Required: true},
+			"files":        {Type: "array", Description: "Specific files to commit (empty = all staged)", Required: false},
+			"attribution":  {Type: "string", Description: "Who made the change: user, assistant, or both", Required: false, Default: "assistant"},
+			"conventional": {Type: "boolean", Description: "Use conventional commits format", Required: false, Default: true},
+			"description":  {Type: "string", Description: "Human-readable description", Required: true},
 		},
 		Examples: []ToolExample{
 			{Description: "Commit changes", Arguments: `{"message": "Add user auth", "description": "Commit authentication changes"}`},
@@ -141,11 +141,11 @@ func extendToolRegistry() {
 		Aliases:        []string{"python", "py", "interpreter"},
 		Category:       CategoryCore,
 		Parameters: map[string]Param{
-			"code":             {Type: "string", Description: "Python code to execute", Required: true},
-			"timeout":          {Type: "integer", Description: "Execution timeout in seconds", Required: false, Default: 30},
+			"code":              {Type: "string", Description: "Python code to execute", Required: true},
+			"timeout":           {Type: "integer", Description: "Execution timeout in seconds", Required: false, Default: 30},
 			"allow_file_access": {Type: "boolean", Description: "Allow reading/writing files in working directory", Required: false, Default: false},
-			"packages":         {Type: "array", Description: "Additional Python packages to install", Required: false},
-			"description":      {Type: "string", Description: "Human-readable description", Required: true},
+			"packages":          {Type: "array", Description: "Additional Python packages to install", Required: false},
+			"description":       {Type: "string", Description: "Human-readable description", Required: true},
 		},
 		Examples: []ToolExample{
 			{Description: "Analyze data", Arguments: `{"code": "import pandas as pd; df = pd.read_csv('data.csv'); print(df.describe())", "description": "Analyze CSV data"}`},
@@ -194,8 +194,8 @@ func extendToolRegistry() {
 		Aliases:        []string{"browser_click", "click"},
 		Category:       CategoryWeb,
 		Parameters: map[string]Param{
-			"selector":          {Type: "string", Description: "CSS selector or element description", Required: true},
-			"description":       {Type: "string", Description: "Human-readable description of what is being clicked", Required: false},
+			"selector":            {Type: "string", Description: "CSS selector or element description", Required: true},
+			"description":         {Type: "string", Description: "Human-readable description of what is being clicked", Required: false},
 			"wait_for_navigation": {Type: "boolean", Description: "Wait for navigation after click", Required: false, Default: false},
 		},
 	}
@@ -208,9 +208,9 @@ func extendToolRegistry() {
 		Aliases:        []string{"browser_type", "type_text"},
 		Category:       CategoryWeb,
 		Parameters: map[string]Param{
-			"selector":   {Type: "string", Description: "CSS selector for the input field", Required: true},
-			"text":       {Type: "string", Description: "Text to type", Required: true},
-			"submit":     {Type: "boolean", Description: "Press Enter after typing", Required: false, Default: false},
+			"selector":    {Type: "string", Description: "CSS selector for the input field", Required: true},
+			"text":        {Type: "string", Description: "Text to type", Required: true},
+			"submit":      {Type: "boolean", Description: "Press Enter after typing", Required: false, Default: false},
 			"clear_first": {Type: "boolean", Description: "Clear field before typing", Required: false, Default: true},
 		},
 	}
@@ -310,10 +310,10 @@ func extendToolRegistry() {
 		Aliases:        []string{"plan", "create_plan"},
 		Category:       CategoryWorkflow,
 		Parameters: map[string]Param{
-			"objective":  {Type: "string", Description: "High-level objective to achieve", Required: true},
-			"context":    {Type: "array", Description: "Additional context items", Required: false},
-			"max_steps":  {Type: "integer", Description: "Maximum number of steps in plan", Required: false, Default: 10},
-			"deadline":   {Type: "string", Description: "Target completion time", Required: false},
+			"objective":   {Type: "string", Description: "High-level objective to achieve", Required: true},
+			"context":     {Type: "array", Description: "Additional context items", Required: false},
+			"max_steps":   {Type: "integer", Description: "Maximum number of steps in plan", Required: false, Default: 10},
+			"deadline":    {Type: "string", Description: "Target completion time", Required: false},
 			"description": {Type: "string", Description: "Human-readable description", Required: true},
 		},
 	}
@@ -326,10 +326,10 @@ func extendToolRegistry() {
 		Aliases:        []string{"execute_plan", "run_plan"},
 		Category:       CategoryWorkflow,
 		Parameters: map[string]Param{
-			"plan_id":        {Type: "string", Description: "ID of the plan to execute", Required: true},
-			"start_step":     {Type: "integer", Description: "Step to start from", Required: false, Default: 0},
-			"auto_continue":  {Type: "boolean", Description: "Auto-continue after each step", Required: false, Default: false},
-			"description":    {Type: "string", Description: "Human-readable description", Required: true},
+			"plan_id":       {Type: "string", Description: "ID of the plan to execute", Required: true},
+			"start_step":    {Type: "integer", Description: "Step to start from", Required: false, Default: 0},
+			"auto_continue": {Type: "boolean", Description: "Auto-continue after each step", Required: false, Default: false},
+			"description":   {Type: "string", Description: "Human-readable description", Required: true},
 		},
 	}
 }
@@ -342,7 +342,7 @@ func extendToolRegistry() {
 func ExecuteSearchReplace(filePath, searchBlock, replaceBlock string, createIfMissing bool) error {
 	// Normalize file path
 	filePath = filepath.Clean(filePath)
-	
+
 	// Check if file exists
 	exists := false
 	if _, err := exec.LookPath("test"); err == nil {
@@ -351,7 +351,7 @@ func ExecuteSearchReplace(filePath, searchBlock, replaceBlock string, createIfMi
 			exists = true
 		}
 	}
-	
+
 	if !exists {
 		if createIfMissing && searchBlock == "" {
 			// Create new file
@@ -359,23 +359,23 @@ func ExecuteSearchReplace(filePath, searchBlock, replaceBlock string, createIfMi
 		}
 		return fmt.Errorf("file does not exist: %s", filePath)
 	}
-	
+
 	// Read current content
 	cmd := exec.Command("cat", filePath)
 	output, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
-	
+
 	content := string(output)
-	
+
 	// Find and replace
 	if !strings.Contains(content, searchBlock) {
 		return fmt.Errorf("search block not found in file (ensure exact match including whitespace)")
 	}
-	
+
 	newContent := strings.Replace(content, searchBlock, replaceBlock, 1)
-	
+
 	// Write back
 	writeCmd := exec.Command("tee", filePath)
 	writeCmd.Stdin = strings.NewReader(newContent)
@@ -398,7 +398,7 @@ func GetCLITools() []*ToolSchema {
 		"Remember", "Recall",
 		"Plan", "ExecutePlan",
 	}
-	
+
 	var tools []*ToolSchema
 	for _, name := range cliToolNames {
 		if schema, ok := ToolSchemaRegistry[name]; ok {

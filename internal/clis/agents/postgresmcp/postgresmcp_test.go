@@ -15,7 +15,7 @@ func TestNewPostgresMCP(t *testing.T) {
 	t.Parallel()
 	p := New()
 	require.NotNil(t, p)
-	
+
 	info := p.Info()
 	assert.Equal(t, agents.TypePostgresMCP, info.Type)
 	assert.Equal(t, "Postgres MCP", info.Name)
@@ -27,14 +27,14 @@ func TestPostgresMCPInitialize(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		ConnectionString: "postgres://user:pass@localhost/db",
 	}
-	
+
 	err := p.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, "postgres://user:pass@localhost/db", p.config.ConnectionString)
@@ -44,7 +44,7 @@ func TestPostgresMCPInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Empty(t, p.config.ConnectionString)
@@ -54,14 +54,14 @@ func TestPostgresMCPStartStop(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = p.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, p.IsStarted())
-	
+
 	err = p.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, p.IsStarted())
@@ -71,10 +71,10 @@ func TestPostgresMCPExecute(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -114,10 +114,10 @@ func TestPostgresMCPExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := p.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -133,7 +133,7 @@ func TestPostgresMCPCapabilities(t *testing.T) {
 	t.Parallel()
 	p := New()
 	info := p.Info()
-	
+
 	expectedCaps := []string{"database", "postgresql", "mcp_protocol"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -144,7 +144,7 @@ func TestPostgresMCPIsAvailable(t *testing.T) {
 	t.Parallel()
 	p := New()
 	assert.False(t, p.IsAvailable()) // No connection string initially
-	
+
 	p.config.ConnectionString = "postgres://user:pass@localhost/db"
 	assert.True(t, p.IsAvailable())
 }
@@ -153,15 +153,15 @@ func TestPostgresMCPQueryResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "query", map[string]interface{}{
 		"sql": "SELECT id FROM posts",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "SELECT id FROM posts", resultMap["sql"])
@@ -171,13 +171,13 @@ func TestPostgresMCPSchemaResult(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
-	
+
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	result, err := p.Execute(ctx, "schema", map[string]interface{}{})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.NotNil(t, resultMap["tables"])

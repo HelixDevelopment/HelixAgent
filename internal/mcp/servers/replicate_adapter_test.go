@@ -54,7 +54,7 @@ func TestNewReplicateAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewReplicateAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.want.baseURL, adapter.baseURL)
@@ -99,7 +99,7 @@ func TestReplicateAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/account", r.URL.Path)
 				assert.Equal(t, "Token test-token", r.Header.Get("Authorization"))
@@ -158,7 +158,7 @@ func TestReplicateAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -219,7 +219,7 @@ func TestReplicateAdapter_GetModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/models/"+tt.owner+"/"+tt.modelName)
@@ -285,7 +285,7 @@ func TestReplicateAdapter_GetModelVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -355,7 +355,7 @@ func TestReplicateAdapter_ListModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/models")
@@ -440,7 +440,7 @@ func TestReplicateAdapter_CreatePrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/predictions", r.URL.Path)
@@ -504,7 +504,7 @@ func TestReplicateAdapter_GetPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.URL.Path, "/predictions/"+tt.predictionID)
@@ -563,7 +563,7 @@ func TestReplicateAdapter_CancelPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Contains(t, r.URL.Path, "/cancel")
@@ -621,7 +621,7 @@ func TestReplicateAdapter_ListPredictions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)
@@ -678,7 +678,7 @@ func TestReplicateAdapter_WaitForPrediction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			callCount := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				status := tt.statuses[callCount]
@@ -746,7 +746,7 @@ func TestReplicateAdapter_GetCollection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Contains(t, r.URL.Path, "/collections/"+tt.slug)
 
@@ -799,7 +799,7 @@ func TestReplicateAdapter_ListCollections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
 				_ = json.NewEncoder(w).Encode(tt.response)

@@ -137,7 +137,7 @@ func TestEmbeddingHandler_EmptyBody(t *testing.T) {
 	handler := NewEmbeddingHandler(nil, log)
 
 	t.Run("generate embeddings empty", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/embeddings/generate", nil)
@@ -150,7 +150,7 @@ func TestEmbeddingHandler_EmptyBody(t *testing.T) {
 	})
 
 	t.Run("vector search empty", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/embeddings/search", nil)
@@ -302,7 +302,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	handler := NewEmbeddingHandler(manager, log)
 
 	t.Run("GenerateEmbeddings success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"texts": ["Hello world"], "model": "text-embedding-3-small"}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -315,7 +315,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("VectorSearch success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"query": "test query", "limit": 10, "threshold": 0.7}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -328,7 +328,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("IndexDocument success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"id": "doc-1", "title": "Test Doc", "content": "Test content", "metadata": {}}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -341,7 +341,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("BatchIndexDocuments success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"documents": [{"id": "doc-1", "title": "Test", "content": "Content"}]}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -354,7 +354,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("GetEmbeddingStats success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/embeddings/stats", nil)
@@ -365,7 +365,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ListEmbeddingProviders success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/v1/embeddings/providers", nil)
@@ -376,7 +376,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("ConfigureProvider success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		body := `{"name": "openai", "enabled": true, "model": "text-embedding-3-small"}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -389,7 +389,7 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 	})
 
 	t.Run("SimilaritySearch success", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// SimilaritySearch uses VectorSearchRequest which needs query or vector
 		body := `{"query": "test similarity", "limit": 5}`
 		w := httptest.NewRecorder()

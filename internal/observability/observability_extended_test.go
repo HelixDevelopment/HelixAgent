@@ -360,7 +360,7 @@ func TestSetupTraceExporter_UnsupportedTypes(t *testing.T) {
 
 	for _, exporterType := range unsupportedTypes {
 		t.Run(string(exporterType), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := &ExporterConfig{
 				Type:        exporterType,
 				ServiceName: "test",
@@ -720,7 +720,7 @@ func TestEstimateTokens_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := estimateTokens(tt.text)
 			assert.Equal(t, tt.expected, result)
 		})

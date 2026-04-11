@@ -66,7 +66,7 @@ func TestProvider_ValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			p := NewProvider(tt.config)
 			valid, errs := p.ValidateConfig(nil)
 			assert.Equal(t, tt.wantValid, valid)

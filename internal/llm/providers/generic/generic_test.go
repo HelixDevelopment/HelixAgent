@@ -48,7 +48,7 @@ func TestNewGenericProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewGenericProvider(tt.pName, tt.apiKey, tt.baseURL, tt.model)
 			require.NotNil(t, provider)
 			assert.Equal(t, tt.pName, provider.name)
@@ -301,7 +301,7 @@ func TestValidateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := &Provider{
 				apiKey:  tt.apiKey,
 				baseURL: tt.baseURL,
@@ -678,7 +678,7 @@ func TestComplete_FinishReasonConfidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = fmt.Fprintf(w, `{

@@ -15,15 +15,15 @@ type Message struct {
 
 // Session represents a Claude Code session
 type Session struct {
-	ID            string                 `json:"id"`
-	WorkDir       string                 `json:"work_dir"`
-	Messages      []Message              `json:"messages"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
-	Config        *Config                `json:"config"`
-	Context       map[string]interface{} `json:"context"`
-	Active        bool                   `json:"active"`
-	LastActivity  time.Time              `json:"last_activity"`
+	ID           string                 `json:"id"`
+	WorkDir      string                 `json:"work_dir"`
+	Messages     []Message              `json:"messages"`
+	CreatedAt    time.Time              `json:"created_at"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	Config       *Config                `json:"config"`
+	Context      map[string]interface{} `json:"context"`
+	Active       bool                   `json:"active"`
+	LastActivity time.Time              `json:"last_activity"`
 }
 
 // NewSession creates a new session
@@ -133,8 +133,8 @@ type GitResult struct {
 
 // SearchRequest represents a search request
 type SearchRequest struct {
-	Pattern string `json:"pattern"`
-	Path    string `json:"path,omitempty"`
+	Pattern  string `json:"pattern"`
+	Path     string `json:"path,omitempty"`
 	FileType string `json:"file_type,omitempty"`
 }
 
@@ -155,45 +155,45 @@ type SearchResults struct {
 
 // ReviewRequest represents a code review request
 type ReviewRequest struct {
-	Target      string `json:"target"` // file or directory
-	ReviewType  string `json:"review_type,omitempty"` // "general", "security", "performance"
-	FocusAreas  []string `json:"focus_areas,omitempty"`
+	Target     string   `json:"target"`                // file or directory
+	ReviewType string   `json:"review_type,omitempty"` // "general", "security", "performance"
+	FocusAreas []string `json:"focus_areas,omitempty"`
 }
 
 // ReviewResult represents a code review result
 type ReviewResult struct {
-	Success  bool          `json:"success"`
-	Summary  string        `json:"summary"`
-	Issues   []ReviewIssue `json:"issues"`
-	Score    int           `json:"score"` // 0-100
-	Error    string        `json:"error,omitempty"`
+	Success bool          `json:"success"`
+	Summary string        `json:"summary"`
+	Issues  []ReviewIssue `json:"issues"`
+	Score   int           `json:"score"` // 0-100
+	Error   string        `json:"error,omitempty"`
 }
 
 // ReviewIssue represents an issue found during review
 type ReviewIssue struct {
-	Type        string `json:"type"` // "error", "warning", "suggestion"
-	File        string `json:"file"`
-	Line        int    `json:"line"`
-	Message     string `json:"message"`
-	Suggestion  string `json:"suggestion,omitempty"`
+	Type       string `json:"type"` // "error", "warning", "suggestion"
+	File       string `json:"file"`
+	Line       int    `json:"line"`
+	Message    string `json:"message"`
+	Suggestion string `json:"suggestion,omitempty"`
 }
 
 // TestRequest represents a test execution request
 type TestRequest struct {
-	Command    string   `json:"command,omitempty"`
-	Files      []string `json:"files,omitempty"`
-	Coverage   bool     `json:"coverage,omitempty"`
-	Verbose    bool     `json:"verbose,omitempty"`
+	Command  string   `json:"command,omitempty"`
+	Files    []string `json:"files,omitempty"`
+	Coverage bool     `json:"coverage,omitempty"`
+	Verbose  bool     `json:"verbose,omitempty"`
 }
 
 // TestResult represents test execution results
 type TestResult struct {
-	Success     bool   `json:"success"`
-	Output      string `json:"output"`
-	Passed      int    `json:"passed"`
-	Failed      int    `json:"failed"`
-	Skipped     int    `json:"skipped"`
-	DurationMs  int64  `json:"duration_ms"`
+	Success     bool    `json:"success"`
+	Output      string  `json:"output"`
+	Passed      int     `json:"passed"`
+	Failed      int     `json:"failed"`
+	Skipped     int     `json:"skipped"`
+	DurationMs  int64   `json:"duration_ms"`
 	CoveragePct float64 `json:"coverage_pct,omitempty"`
-	Error       string `json:"error,omitempty"`
+	Error       string  `json:"error,omitempty"`
 }

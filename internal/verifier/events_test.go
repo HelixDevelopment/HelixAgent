@@ -30,7 +30,7 @@ func TestVerificationEventType_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.eventType.String())
 		})
 	}
@@ -55,7 +55,7 @@ func TestVerificationEventType_Topic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.eventType), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tt.expected, tt.eventType.Topic())
 		})
 	}

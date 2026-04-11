@@ -38,7 +38,7 @@ func New() *Forge {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Forge{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -55,11 +55,11 @@ func (f *Forge) Initialize(ctx context.Context, config interface{}) error {
 	if err := f.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		f.config = cfg
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (f *Forge) Execute(ctx context.Context, command string, params map[string]i
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "create":
 		return f.create(ctx, params)
@@ -89,7 +89,7 @@ func (f *Forge) create(ctx context.Context, params map[string]interface{}) (inte
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	return map[string]interface{}{
 		"name":   name,
 		"status": "created",
@@ -102,7 +102,7 @@ func (f *Forge) deploy(ctx context.Context, params map[string]interface{}) (inte
 	if env == "" {
 		env = f.config.Environment
 	}
-	
+
 	return map[string]interface{}{
 		"environment": env,
 		"status":      "deployed",

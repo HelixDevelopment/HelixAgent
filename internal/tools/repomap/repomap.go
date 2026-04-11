@@ -15,11 +15,11 @@ import (
 
 // RepoMap represents a mapped repository
 type RepoMap struct {
-	RootPath     string                 `json:"root_path"`
+	RootPath     string                  `json:"root_path"`
 	Languages    map[string]LanguageInfo `json:"languages"`
-	Files        []FileInfo             `json:"files"`
-	Symbols      []Symbol               `json:"symbols"`
-	Dependencies []Dependency           `json:"dependencies"`
+	Files        []FileInfo              `json:"files"`
+	Symbols      []Symbol                `json:"symbols"`
+	Dependencies []Dependency            `json:"dependencies"`
 
 	// Internal
 	logger *logrus.Logger
@@ -36,14 +36,14 @@ type LanguageInfo struct {
 
 // FileInfo represents a file in the repository
 type FileInfo struct {
-	Path       string `json:"path"`
-	Name       string `json:"name"`
-	Extension  string `json:"extension"`
-	Language   string `json:"language"`
-	Size       int64  `json:"size"`
-	LineCount  int    `json:"line_count"`
-	IsBinary   bool   `json:"is_binary"`
-	IsTest     bool   `json:"is_test"`
+	Path      string `json:"path"`
+	Name      string `json:"name"`
+	Extension string `json:"extension"`
+	Language  string `json:"language"`
+	Size      int64  `json:"size"`
+	LineCount int    `json:"line_count"`
+	IsBinary  bool   `json:"is_binary"`
+	IsTest    bool   `json:"is_test"`
 }
 
 // Symbol represents a code symbol (function, class, variable, etc.)
@@ -61,9 +61,9 @@ type Symbol struct {
 
 // Dependency represents a dependency relationship
 type Dependency struct {
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	Type     string `json:"type"` // import, call, extend, implement
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Type   string `json:"type"` // import, call, extend, implement
 }
 
 // Config configures the repository mapper
@@ -280,7 +280,7 @@ func (r *RepoMap) calculateLanguageStats() {
 // extractSymbols extracts symbols from a file (basic regex-based)
 func (r *RepoMap) extractSymbols(path, language string) ([]Symbol, error) {
 	// This is a basic implementation
-// For production, use tree-sitter or LSP
+	// For production, use tree-sitter or LSP
 	switch language {
 	case "Go":
 		return r.extractGoSymbols(path)
@@ -367,11 +367,11 @@ func (r *RepoMap) GetSummary() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"root_path":     r.RootPath,
-		"total_files":   len(r.Files),
-		"total_symbols": len(r.Symbols),
-		"total_lines":   totalLines,
-		"languages":     len(r.Languages),
+		"root_path":      r.RootPath,
+		"total_files":    len(r.Files),
+		"total_symbols":  len(r.Symbols),
+		"total_lines":    totalLines,
+		"languages":      len(r.Languages),
 		"language_stats": r.Languages,
 	}
 }
@@ -401,47 +401,47 @@ func detectLanguage(ext, path string) string {
 	ext = strings.ToLower(strings.TrimPrefix(ext, "."))
 
 	languageMap := map[string]string{
-		"go":     "Go",
-		"py":     "Python",
-		"js":     "JavaScript",
-		"ts":     "TypeScript",
-		"jsx":    "JavaScript",
-		"tsx":    "TypeScript",
-		"java":   "Java",
-		"kt":     "Kotlin",
-		"rs":     "Rust",
-		"cpp":    "C++",
-		"cc":     "C++",
-		"c":      "C",
-		"h":      "C/C++ Header",
-		"hpp":    "C++",
-		"rb":     "Ruby",
-		"php":    "PHP",
-		"swift":  "Swift",
-		"scala":  "Scala",
-		"r":      "R",
-		"m":      "Objective-C",
-		"cs":     "C#",
-		"fs":     "F#",
-		"hs":     "Haskell",
-		"lua":    "Lua",
-		"sh":     "Shell",
-		"bash":   "Bash",
-		"zsh":    "Zsh",
-		"ps1":    "PowerShell",
-		"sql":    "SQL",
-		"html":   "HTML",
-		"css":    "CSS",
-		"scss":   "SCSS",
-		"less":   "LESS",
-		"json":   "JSON",
-		"xml":    "XML",
-		"yaml":   "YAML",
-		"yml":    "YAML",
-		"toml":   "TOML",
-		"md":     "Markdown",
-		"rst":    "reStructuredText",
-		"tex":    "LaTeX",
+		"go":    "Go",
+		"py":    "Python",
+		"js":    "JavaScript",
+		"ts":    "TypeScript",
+		"jsx":   "JavaScript",
+		"tsx":   "TypeScript",
+		"java":  "Java",
+		"kt":    "Kotlin",
+		"rs":    "Rust",
+		"cpp":   "C++",
+		"cc":    "C++",
+		"c":     "C",
+		"h":     "C/C++ Header",
+		"hpp":   "C++",
+		"rb":    "Ruby",
+		"php":   "PHP",
+		"swift": "Swift",
+		"scala": "Scala",
+		"r":     "R",
+		"m":     "Objective-C",
+		"cs":    "C#",
+		"fs":    "F#",
+		"hs":    "Haskell",
+		"lua":   "Lua",
+		"sh":    "Shell",
+		"bash":  "Bash",
+		"zsh":   "Zsh",
+		"ps1":   "PowerShell",
+		"sql":   "SQL",
+		"html":  "HTML",
+		"css":   "CSS",
+		"scss":  "SCSS",
+		"less":  "LESS",
+		"json":  "JSON",
+		"xml":   "XML",
+		"yaml":  "YAML",
+		"yml":   "YAML",
+		"toml":  "TOML",
+		"md":    "Markdown",
+		"rst":   "reStructuredText",
+		"tex":   "LaTeX",
 	}
 
 	if lang, ok := languageMap[ext]; ok {
@@ -451,15 +451,15 @@ func detectLanguage(ext, path string) string {
 	// Check for specific filenames
 	base := filepath.Base(path)
 	specialFiles := map[string]string{
-		"Dockerfile":     "Dockerfile",
-		"Makefile":       "Makefile",
-		"CMakeLists.txt": "CMake",
-		"Cargo.toml":     "Rust",
-		"go.mod":         "Go",
-		"package.json":   "JavaScript",
+		"Dockerfile":       "Dockerfile",
+		"Makefile":         "Makefile",
+		"CMakeLists.txt":   "CMake",
+		"Cargo.toml":       "Rust",
+		"go.mod":           "Go",
+		"package.json":     "JavaScript",
 		"requirements.txt": "Python",
-		"setup.py":       "Python",
-		"Gemfile":        "Ruby",
+		"setup.py":         "Python",
+		"Gemfile":          "Ruby",
 	}
 
 	if lang, ok := specialFiles[base]; ok {

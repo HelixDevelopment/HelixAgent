@@ -112,7 +112,7 @@ func TestGetModelScore_KnownModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/api/v1/verifier/scores/"+tt.modelID, nil)
 			r.ServeHTTP(w, req)

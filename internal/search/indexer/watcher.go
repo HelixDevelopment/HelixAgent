@@ -12,10 +12,10 @@ import (
 
 // FileWatcher watches for file changes and triggers reindexing
 type FileWatcher struct {
-	indexer   *CodeIndexer
-	watcher   *fsnotify.Watcher
-	config    Config
-	stopChan  chan struct{}
+	indexer  *CodeIndexer
+	watcher  *fsnotify.Watcher
+	config   Config
+	stopChan chan struct{}
 }
 
 // NewFileWatcher creates a new file watcher
@@ -24,7 +24,7 @@ func NewFileWatcher(indexer *CodeIndexer, config Config) (*FileWatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &FileWatcher{
 		indexer:  indexer,
 		watcher:  watcher,
@@ -39,7 +39,7 @@ func (w *FileWatcher) Start(ctx context.Context) error {
 	if err := w.addWatchPaths(w.config.RootPath); err != nil {
 		return err
 	}
-	
+
 	go w.watchLoop(ctx)
 	return nil
 }
@@ -56,16 +56,16 @@ func (w *FileWatcher) addWatchPaths(root string) error {
 		if err != nil {
 			return nil
 		}
-		
+
 		if !info.IsDir() {
 			return nil
 		}
-		
+
 		// Skip excluded directories
 		if w.indexer.shouldExcludeDir(path) {
 			return filepath.SkipDir
 		}
-		
+
 		return w.watcher.Add(path)
 	})
 }
@@ -79,16 +79,16 @@ func (w *FileWatcher) watchLoop(ctx context.Context) {
 				return
 			}
 			w.handleEvent(ctx, event)
-			
+
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
 				return
 			}
 			log.Printf("Watcher error: %v", err)
-			
+
 		case <-w.stopChan:
 			return
-			
+
 		case <-ctx.Done():
 			return
 		}
@@ -101,31 +101,31 @@ func (w *FileWatcher) handleEvent(ctx context.Context, event fsnotify.Event) {
 	if !w.indexer.shouldIndexFile(event.Name) {
 		return
 	}
-	
+
 	switch {
 	case event.Op&fsnotify.Write == fsnotify.Write:
 		log.Printf("Modified file: %s", event.Name)
 		if err := w.indexer.IndexFile(ctx, event.Name); err != nil {
 			log.Printf("Failed to reindex %s: %v", event.Name, err)
 		}
-		
+
 	case event.Op&fsnotify.Create == fsnotify.Create:
 		log.Printf("Created file: %s", event.Name)
 		if err := w.indexer.IndexFile(ctx, event.Name); err != nil {
 			log.Printf("Failed to index %s: %v", event.Name, err)
 		}
-		
+
 		// If it's a directory, add it to watcher
 		if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
 			w.watcher.Add(event.Name)
 		}
-		
+
 	case event.Op&fsnotify.Remove == fsnotify.Remove:
 		log.Printf("Removed file: %s", event.Name)
 		if err := w.indexer.DeleteFile(ctx, event.Name); err != nil {
 			log.Printf("Failed to delete %s from index: %v", event.Name, err)
 		}
-		
+
 	case event.Op&fsnotify.Rename == fsnotify.Rename:
 		log.Printf("Renamed file: %s", event.Name)
 		// Treat as delete - new file will be handled by Create event

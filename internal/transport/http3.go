@@ -50,7 +50,7 @@ func NewHTTP3Server(handler *gin.Engine, config *HTTP3Config) (*HTTP3Server, err
 			EnableHTTP3:    true,
 			EnableHTTP2:    true,
 			MaxConnections: 1000,
-			IdleTimeout:    0,                 // Disabled for SSE streaming
+			IdleTimeout:    0, // Disabled for SSE streaming
 			ReadTimeout:    30 * time.Second,
 			WriteTimeout:   600 * time.Second, // 10 min for large debate responses
 		}

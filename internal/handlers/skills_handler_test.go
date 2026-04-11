@@ -649,7 +649,7 @@ func TestSkillsHandler_ResponseContentType(t *testing.T) {
 
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			var req *http.Request
 			if route.body != "" {

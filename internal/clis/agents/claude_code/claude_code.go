@@ -275,9 +275,9 @@ func (c *ClaudeCode) handleBash(ctx context.Context, params map[string]interface
 	// Execute the command
 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
 	cmd.Dir = c.workDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	response := &Response{
 		Success:   err == nil,
 		Content:   string(output),
@@ -287,7 +287,7 @@ func (c *ClaudeCode) handleBash(ctx context.Context, params map[string]interface
 			"workdir": c.workDir,
 		},
 	}
-	
+
 	if err != nil {
 		response.Error = err.Error()
 	}
@@ -309,9 +309,9 @@ func (c *ClaudeCode) handleGit(ctx context.Context, params map[string]interface{
 
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = c.workDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	response := &Response{
 		Success:   err == nil,
 		Content:   string(output),
@@ -320,7 +320,7 @@ func (c *ClaudeCode) handleGit(ctx context.Context, params map[string]interface{
 			"subcommand": subcommand,
 		},
 	}
-	
+
 	if err != nil {
 		response.Error = err.Error()
 	}
@@ -357,9 +357,9 @@ func (c *ClaudeCode) handleTest(ctx context.Context, params map[string]interface
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", testCmd)
 	cmd.Dir = c.workDir
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	response := &Response{
 		Success:   err == nil,
 		Content:   string(output),
@@ -368,7 +368,7 @@ func (c *ClaudeCode) handleTest(ctx context.Context, params map[string]interface
 			"test_command": testCmd,
 		},
 	}
-	
+
 	if err != nil {
 		response.Error = err.Error()
 	}
@@ -386,8 +386,8 @@ func (c *ClaudeCode) handleMCP(ctx context.Context, params map[string]interface{
 	switch action {
 	case "list":
 		return &Response{
-			Success: true,
-			Content: "Available MCP servers: filesystem, github, memory, fetch, puppeteer",
+			Success:   true,
+			Content:   "Available MCP servers: filesystem, github, memory, fetch, puppeteer",
 			SessionID: c.sessionID,
 			Metadata: map[string]interface{}{
 				"mcp_enabled": c.config.MCPEnabled,
@@ -397,8 +397,8 @@ func (c *ClaudeCode) handleMCP(ctx context.Context, params map[string]interface{
 		server, _ := params["server"].(string)
 		tool, _ := params["tool"].(string)
 		return &Response{
-			Success: true,
-			Content: fmt.Sprintf("Called %s/%s via MCP", server, tool),
+			Success:   true,
+			Content:   fmt.Sprintf("Called %s/%s via MCP", server, tool),
 			SessionID: c.sessionID,
 		}, nil
 	default:
@@ -424,7 +424,7 @@ func (c *ClaudeCode) handleConfig(ctx context.Context, params map[string]interfa
 	case "set":
 		key, _ := params["key"].(string)
 		value := params["value"]
-		
+
 		// Update config dynamically
 		switch key {
 		case "editor_mode":
@@ -436,7 +436,7 @@ func (c *ClaudeCode) handleConfig(ctx context.Context, params map[string]interfa
 		case "mcp_enabled":
 			c.config.MCPEnabled = value.(bool)
 		}
-		
+
 		return &Response{
 			Success:   true,
 			Content:   fmt.Sprintf("Set %s = %v", key, value),
@@ -488,7 +488,7 @@ func generateSessionID() string {
 // extractActions extracts actions from Claude Code response
 func (c *ClaudeCode) extractActions(content string) []Action {
 	actions := []Action{}
-	
+
 	// Simple parsing - in real implementation would parse structured output
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
@@ -502,6 +502,6 @@ func (c *ClaudeCode) extractActions(content string) []Action {
 			}
 		}
 	}
-	
+
 	return actions
 }

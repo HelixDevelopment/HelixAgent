@@ -24,21 +24,21 @@ type Windsurf struct {
 // Config holds Windsurf configuration
 type Config struct {
 	base.BaseConfig
-	EditorPath   string
-	AIProvider   string
-	Model        string
-	AutoDeploy   bool
+	EditorPath string
+	AIProvider string
+	Model      string
+	AutoDeploy bool
 }
 
 // Project represents a Windsurf project
 type Project struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Path        string   `json:"path"`
-	Type        string   `json:"type"` // "web", "mobile", "api"
-	Framework   string   `json:"framework"`
-	Status      string   `json:"status"`
-	CreatedAt   string   `json:"created_at"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Type      string `json:"type"` // "web", "mobile", "api"
+	Framework string `json:"framework"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
 }
 
 // New creates a new Windsurf integration
@@ -61,7 +61,7 @@ func New() *Windsurf {
 		IsEnabled: true,
 		Priority:  2,
 	}
-	
+
 	return &Windsurf{
 		BaseIntegration: base.NewBaseIntegration(info),
 		config: &Config{
@@ -81,27 +81,27 @@ func (w *Windsurf) Initialize(ctx context.Context, config interface{}) error {
 	if err := w.BaseIntegration.Initialize(ctx, config); err != nil {
 		return err
 	}
-	
+
 	if cfg, ok := config.(*Config); ok {
 		w.config = cfg
 	}
-	
+
 	return w.loadProjects()
 }
 
 // loadProjects loads project list
 func (w *Windsurf) loadProjects() error {
 	projectsPath := filepath.Join(w.GetWorkDir(), "projects.json")
-	
+
 	if _, err := os.Stat(projectsPath); os.IsNotExist(err) {
 		return nil
 	}
-	
+
 	data, err := os.ReadFile(projectsPath)
 	if err != nil {
 		return fmt.Errorf("read projects: %w", err)
 	}
-	
+
 	return json.Unmarshal(data, &w.projects)
 }
 
@@ -122,7 +122,7 @@ func (w *Windsurf) Execute(ctx context.Context, command string, params map[strin
 			return nil, err
 		}
 	}
-	
+
 	switch command {
 	case "cascade":
 		return w.cascade(ctx, params)
@@ -149,17 +149,17 @@ func (w *Windsurf) cascade(ctx context.Context, params map[string]interface{}) (
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-	
+
 	projectType, _ := params["project_type"].(string)
 	if projectType == "" {
 		projectType = "web"
 	}
-	
+
 	framework, _ := params["framework"].(string)
 	if framework == "" {
 		framework = "nextjs"
 	}
-	
+
 	// Generate full-stack application
 	result := map[string]interface{}{
 		"prompt":       prompt,
@@ -177,10 +177,10 @@ func (w *Windsurf) cascade(ctx context.Context, params map[string]interface{}) (
 			{"path": "prisma/schema.prisma", "type": "database"},
 			{"path": "package.json", "type": "config"},
 		},
-		"status":   "generated",
-		"note":     "Cascade flow generated full-stack structure",
+		"status": "generated",
+		"note":   "Cascade flow generated full-stack structure",
 	}
-	
+
 	return result, nil
 }
 
@@ -190,17 +190,17 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	projectType, _ := params["project_type"].(string)
 	if projectType == "" {
 		projectType = "web"
 	}
-	
+
 	framework, _ := params["framework"].(string)
 	if framework == "" {
 		framework = "react"
 	}
-	
+
 	project := Project{
 		ID:        fmt.Sprintf("project-%d", len(w.projects)+1),
 		Name:      name,
@@ -209,18 +209,18 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 		Framework: framework,
 		Status:    "created",
 	}
-	
+
 	// Create project directory
 	if err := os.MkdirAll(project.Path, 0755); err != nil {
 		return nil, fmt.Errorf("create project dir: %w", err)
 	}
-	
+
 	w.projects = append(w.projects, project)
-	
+
 	if err := w.saveProjects(); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"project": project,
 		"message": "Project created successfully",
@@ -233,17 +233,17 @@ func (w *Windsurf) generateComponent(ctx context.Context, params map[string]inte
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-	
+
 	componentType, _ := params["type"].(string)
 	if componentType == "" {
 		componentType = "functional"
 	}
-	
+
 	framework, _ := params["framework"].(string)
 	if framework == "" {
 		framework = "react"
 	}
-	
+
 	// Generate component code
 	var code string
 	switch framework {
@@ -276,7 +276,7 @@ export const %s: React.FC<%sProps> = (props) => {
 	default:
 		code = fmt.Sprintf("// %s component\n// Framework: %s\n", name, framework)
 	}
-	
+
 	return map[string]interface{}{
 		"name":      name,
 		"type":      componentType,
@@ -292,7 +292,7 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 	if projectID == "" {
 		return nil, fmt.Errorf("project_id required")
 	}
-	
+
 	var project *Project
 	for i := range w.projects {
 		if w.projects[i].ID == projectID {
@@ -300,11 +300,11 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 			break
 		}
 	}
-	
+
 	if project == nil {
 		return nil, fmt.Errorf("project not found: %s", projectID)
 	}
-	
+
 	// Try to open in Windsurf
 	if w.config.EditorPath != "" {
 		cmd := exec.CommandContext(ctx, w.config.EditorPath, project.Path)
@@ -312,7 +312,7 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 			return nil, fmt.Errorf("open editor: %w", err)
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"project": project,
 		"status":  "opened",
@@ -325,12 +325,12 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 	if projectID == "" {
 		return nil, fmt.Errorf("project_id required")
 	}
-	
+
 	platform, _ := params["platform"].(string)
 	if platform == "" {
 		platform = "vercel"
 	}
-	
+
 	var project *Project
 	for i := range w.projects {
 		if w.projects[i].ID == projectID {
@@ -338,11 +338,11 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 			break
 		}
 	}
-	
+
 	if project == nil {
 		return nil, fmt.Errorf("project not found: %s", projectID)
 	}
-	
+
 	return map[string]interface{}{
 		"project":  project,
 		"platform": platform,
@@ -365,11 +365,11 @@ func (w *Windsurf) terminalAI(ctx context.Context, params map[string]interface{}
 	if command == "" {
 		return nil, fmt.Errorf("command required")
 	}
-	
+
 	// AI-enhanced terminal command
 	return map[string]interface{}{
-		"command":   command,
-		"enhanced":  fmt.Sprintf("Enhanced: %s", command),
+		"command":  command,
+		"enhanced": fmt.Sprintf("Enhanced: %s", command),
 		"suggested": []string{
 			"git status",
 			"npm install",

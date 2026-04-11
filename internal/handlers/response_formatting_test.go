@@ -21,7 +21,7 @@ func TestResponseStatus_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			validStatuses := map[string]bool{
 				"pending":   true,
 				"running":   true,
@@ -49,7 +49,7 @@ func TestErrorCode_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, tt.code)
 		})
 	}

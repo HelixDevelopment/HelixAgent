@@ -37,24 +37,24 @@ const (
 
 // SwarmAgent represents an agent in the swarm
 type SwarmAgent struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Color       AgentColor             `json:"color"`
-	Role        AgentRole              `json:"role"`
-	Status      AgentStatus            `json:"status"`
-	Capabilities []string              `json:"capabilities"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	JoinedAt    time.Time              `json:"joined_at"`
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Color        AgentColor             `json:"color"`
+	Role         AgentRole              `json:"role"`
+	Status       AgentStatus            `json:"status"`
+	Capabilities []string               `json:"capabilities"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	JoinedAt     time.Time              `json:"joined_at"`
 }
 
 // AgentStatus represents agent status
 type AgentStatus string
 
 const (
-	AgentIdle      AgentStatus = "idle"
-	AgentWorking   AgentStatus = "working"
-	AgentDone      AgentStatus = "done"
-	AgentError     AgentStatus = "error"
+	AgentIdle    AgentStatus = "idle"
+	AgentWorking AgentStatus = "working"
+	AgentDone    AgentStatus = "done"
+	AgentError   AgentStatus = "error"
 )
 
 // Swarm manages a team of agents with shared resources
@@ -271,11 +271,11 @@ type Scratchpad struct {
 
 // ScratchpadEntry represents a single entry in the scratchpad
 type ScratchpadEntry struct {
-	Type      string    `json:"type"`
-	AgentID   string    `json:"agent_id"`
-	Content   string    `json:"content"`
+	Type      string                 `json:"type"`
+	AgentID   string                 `json:"agent_id"`
+	Content   string                 `json:"content"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time              `json:"timestamp"`
 }
 
 // NewScratchpad creates a new scratchpad
@@ -372,10 +372,10 @@ func (s *Scratchpad) ToXML() ([]byte, error) {
 
 // Coordinator manages coordination between agents
 type Coordinator struct {
-	swarm    *Swarm
-	logger   *logrus.Logger
-	tasks    map[string]*CoordinatedTask
-	mu       sync.RWMutex
+	swarm  *Swarm
+	logger *logrus.Logger
+	tasks  map[string]*CoordinatedTask
+	mu     sync.RWMutex
 }
 
 // CoordinatedTask represents a task being coordinated
@@ -446,8 +446,8 @@ func (c *Coordinator) Assign(taskID, agentID, subtask string) error {
 	task.Assignments[agentID] = subtask
 
 	c.logger.WithFields(logrus.Fields{
-		"task":   taskID,
-		"agent":  agentID,
+		"task":    taskID,
+		"agent":   agentID,
 		"subtask": subtask,
 	}).Info("Task assigned")
 

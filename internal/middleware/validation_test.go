@@ -89,7 +89,7 @@ func TestValidator_BodySizeMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body := strings.Repeat("x", tt.bodySize)
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
@@ -360,7 +360,7 @@ func TestRequireJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(`{"test": true}`))
 			req.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
@@ -481,7 +481,7 @@ func TestValidator_ValidateCompletionMiddleware_TopP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			body := CompletionValidationRequest{
 				Prompt: "Hello",
 				TopP:   &tt.topP,
@@ -775,7 +775,7 @@ func TestRequireContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest("POST", "/test", strings.NewReader(`{}`))
 			req.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()

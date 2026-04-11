@@ -44,7 +44,7 @@ func TestVulnerabilitySeverity_AllValues(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, VulnerabilitySeverity(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -76,7 +76,7 @@ func TestVulnerabilityCategory_AllValues(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, VulnerabilityCategory(tc.expected), tc.value)
 			assert.NotEmpty(t, string(tc.value))
 		})
@@ -130,7 +130,7 @@ func TestSecurityScanResult_MarshalJSON_DurationConversion(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := &SecurityScanResult{
 				Vulnerabilities: []*Vulnerability{},
 				TotalFiles:      1,
@@ -290,7 +290,7 @@ func TestPatternBasedScanner_Scan_SQLInjectionPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 			if tc.expectHit {
@@ -346,7 +346,7 @@ func TestPatternBasedScanner_Scan_XSSPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "javascript")
 			require.NoError(t, err)
 
@@ -407,7 +407,7 @@ func TestPatternBasedScanner_Scan_SensitiveDataPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 
@@ -473,7 +473,7 @@ func TestPatternBasedScanner_Scan_CryptographicPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			vulns, err := scanner.Scan(ctx, tc.code, "go")
 			require.NoError(t, err)
 
@@ -675,7 +675,7 @@ func TestPatternBasedScanner_GetLineNumber_EdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, scanner.getLineNumber(tc.code, tc.offset))
 		})
 	}
@@ -714,7 +714,7 @@ func TestDetectLanguageFromPath_AllLanguages(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
@@ -734,7 +734,7 @@ func TestDetectLanguageFromPath_CaseInsensitive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
@@ -753,7 +753,7 @@ func TestDetectLanguageFromPath_WithPaths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, detectLanguageFromPath(tc.path))
 		})
 	}
@@ -781,7 +781,7 @@ func TestMin_Various(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.Equal(t, tc.expected, min(tc.a, tc.b))
 		})
 	}
@@ -889,7 +889,7 @@ func TestSecureFixAgent_ShouldReport_SeverityThresholds(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			config := DefaultSecureFixAgentConfig()
 			config.SeverityThreshold = tc.threshold
 			logger := logrus.New()
@@ -1532,7 +1532,7 @@ func TestInputSanitizationRing_Check_MaliciousPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			passed, msg, err := ring.Check(ctx, tc.input)
 			require.NoError(t, err)
 			assert.Equal(t, tc.shouldPass, passed, "Message: %s", msg)

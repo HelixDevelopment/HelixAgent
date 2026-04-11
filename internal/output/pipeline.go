@@ -61,12 +61,12 @@ type FormattedContent struct {
 
 // FormatOptions contains formatting options.
 type FormatOptions struct {
-	Language      string
-	LineNumbers   bool
-	Width         int
-	ColorScheme   string
-	ShowDiff      bool
-	Highlight     []string
+	Language    string
+	LineNumbers bool
+	Width       int
+	ColorScheme string
+	ShowDiff    bool
+	Highlight   []string
 }
 
 // NewPipeline creates a new output pipeline.

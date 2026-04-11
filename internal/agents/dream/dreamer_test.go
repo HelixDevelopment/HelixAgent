@@ -141,7 +141,7 @@ func TestDreamer_ShouldDream(t *testing.T) {
 
 	// Set up conditions for dreaming
 	dreamer.trigger.LastDreamTime = time.Now().Add(-25 * time.Hour) // > 24 hours ago
-	dreamer.trigger.SessionsSinceDream = 10                          // >= 5 sessions
+	dreamer.trigger.SessionsSinceDream = 10                         // >= 5 sessions
 	dreamer.trigger.Locked = false
 
 	assert.True(t, dreamer.ShouldDream())
@@ -391,8 +391,6 @@ func TestGenerateMemoryID(t *testing.T) {
 	assert.NotEqual(t, id1, id2)
 	assert.Contains(t, id1, "mem_")
 }
-
-
 
 func TestDreamer_Dream_Locked(t *testing.T) {
 	t.Parallel()

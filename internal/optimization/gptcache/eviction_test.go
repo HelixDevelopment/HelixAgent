@@ -512,7 +512,7 @@ func TestEvictionStrategy_AllImplementations(t *testing.T) {
 
 	for _, tt := range strategies {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			s := tt.strategy
 
 			// Add

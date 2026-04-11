@@ -31,7 +31,7 @@ func TestZenCLIProvider_ConfigurationValidation(t *testing.T) {
 	})
 
 	t.Run("zero timeout gets default", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := ZenCLIConfig{
 			Model:           "test-model",
 			Timeout:         0, // Zero
@@ -43,7 +43,7 @@ func TestZenCLIProvider_ConfigurationValidation(t *testing.T) {
 	})
 
 	t.Run("zero max tokens gets default", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := ZenCLIConfig{
 			Model:           "test-model",
 			Timeout:         60 * time.Second,
@@ -55,7 +55,7 @@ func TestZenCLIProvider_ConfigurationValidation(t *testing.T) {
 	})
 
 	t.Run("explicit values are preserved", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		config := ZenCLIConfig{
 			Model:           "custom-model",
 			Timeout:         30 * time.Second,
@@ -75,14 +75,14 @@ func TestZenCLIProvider_FailedAPIModelTracking(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("test-model")
 
 	t.Run("initially no models are marked as failed", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.False(t, provider.IsModelFailedAPI("any-model"))
 		assert.False(t, provider.IsModelFailedAPI("test-model"))
 		assert.False(t, provider.IsModelFailedAPI(""))
 	})
 
 	t.Run("marking a model as failed is tracked", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider.MarkModelAsFailedAPI("failed-model-1")
 		provider.MarkModelAsFailedAPI("failed-model-2")
 
@@ -92,7 +92,7 @@ func TestZenCLIProvider_FailedAPIModelTracking(t *testing.T) {
 	})
 
 	t.Run("marking same model multiple times is idempotent", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider.MarkModelAsFailedAPI("idempotent-model")
 		provider.MarkModelAsFailedAPI("idempotent-model")
 		provider.MarkModelAsFailedAPI("idempotent-model")
@@ -101,7 +101,7 @@ func TestZenCLIProvider_FailedAPIModelTracking(t *testing.T) {
 	})
 
 	t.Run("ShouldUseCLIFacade respects CLI availability", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider.MarkModelAsFailedAPI("facade-test-model")
 
 		// If CLI is available, should use facade for failed models
@@ -123,7 +123,7 @@ func TestZenCLIProvider_CLIAvailabilityCheck(t *testing.T) {
 	}
 
 	t.Run("availability check is cached (sync.Once)", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewZenCLIProviderWithModel("test")
 
 		// Call multiple times
@@ -137,7 +137,7 @@ func TestZenCLIProvider_CLIAvailabilityCheck(t *testing.T) {
 	})
 
 	t.Run("GetCLIError returns nil if available", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewZenCLIProviderWithModel("test")
 
 		if provider.IsCLIAvailable() {
@@ -148,7 +148,7 @@ func TestZenCLIProvider_CLIAvailabilityCheck(t *testing.T) {
 	})
 
 	t.Run("unavailable provider returns correct error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewZenCLIProviderWithUnavailableCLI("test", exec.ErrNotFound)
 
 		assert.False(t, provider.IsCLIAvailable())
@@ -166,26 +166,26 @@ func TestZenCLIProvider_ProviderInterface(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("test-model")
 
 	t.Run("GetName returns correct name", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		name := provider.GetName()
 		assert.Equal(t, "zen-cli", name)
 		assert.NotEmpty(t, name)
 	})
 
 	t.Run("GetProviderType returns correct type", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		providerType := provider.GetProviderType()
 		assert.Equal(t, "zen", providerType)
 		assert.NotEmpty(t, providerType)
 	})
 
 	t.Run("GetCurrentModel returns set model", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, "test-model", provider.GetCurrentModel())
 	})
 
 	t.Run("SetModel changes current model", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider.SetModel("new-model")
 		assert.Equal(t, "new-model", provider.GetCurrentModel())
 
@@ -194,7 +194,7 @@ func TestZenCLIProvider_ProviderInterface(t *testing.T) {
 	})
 
 	t.Run("GetCapabilities returns valid capabilities", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		caps := provider.GetCapabilities()
 
 		require.NotNil(t, caps)
@@ -214,7 +214,7 @@ func TestZenCLIProvider_ProviderInterface(t *testing.T) {
 	})
 
 	t.Run("ValidateConfig returns expected results", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		valid, errors := provider.ValidateConfig(nil)
 
 		if provider.IsCLIAvailable() {
@@ -249,7 +249,7 @@ func TestZenCLIProvider_CompleteNotAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			provider := NewZenCLIProviderWithUnavailableCLI("test-model", tt.err)
 
 			req := &models.LLMRequest{
@@ -299,7 +299,7 @@ func TestZenCLIProvider_EmptyPromptHandling(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("test-model")
 
 	t.Run("empty messages and empty prompt returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Prompt:   "",
 			Messages: []models.Message{},
@@ -314,7 +314,7 @@ func TestZenCLIProvider_EmptyPromptHandling(t *testing.T) {
 	})
 
 	t.Run("nil messages with empty prompt returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		req := &models.LLMRequest{
 			Prompt:   "",
 			Messages: nil,
@@ -337,7 +337,7 @@ func TestZenCLIProvider_ModelDiscovery(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("initial-model")
 
 	t.Run("GetAvailableModels returns non-empty list", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		models := provider.GetAvailableModels()
 
 		// STRICT: Must return at least some models (fallback or discovered)
@@ -345,7 +345,7 @@ func TestZenCLIProvider_ModelDiscovery(t *testing.T) {
 	})
 
 	t.Run("GetBestAvailableModel returns non-empty string", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		bestModel := provider.GetBestAvailableModel()
 
 		// STRICT: Must return a model name
@@ -353,7 +353,7 @@ func TestZenCLIProvider_ModelDiscovery(t *testing.T) {
 	})
 
 	t.Run("IsModelAvailable returns true for available models", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		models := provider.GetAvailableModels()
 
 		if len(models) > 0 {
@@ -363,7 +363,7 @@ func TestZenCLIProvider_ModelDiscovery(t *testing.T) {
 	})
 
 	t.Run("IsModelAvailable returns false for non-existent model", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.False(t, provider.IsModelAvailable("definitely-not-a-real-model-12345"))
 	})
 }
@@ -374,12 +374,12 @@ func TestZenCLIProvider_KnownModels(t *testing.T) {
 	knownModels := GetKnownZenModels()
 
 	t.Run("known models list is not empty", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		require.NotEmpty(t, knownModels)
 	})
 
 	t.Run("known models contain expected entries", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		// STRICT: These models MUST be in the known list (as of 2026-02)
 		assert.Contains(t, knownModels, "big-pickle")
 		assert.Contains(t, knownModels, "gpt-5-nano")
@@ -456,7 +456,7 @@ func TestZenCLIProvider_ParseModelsOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			models := parseZenModelsOutput(tt.output)
 
 			if tt.expectEmpty {
@@ -481,7 +481,7 @@ func TestZenCLIProvider_ConcurrentAccess(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("test-model")
 
 	t.Run("concurrent model marking is safe", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		var wg sync.WaitGroup
 		numGoroutines := 100
 
@@ -500,7 +500,7 @@ func TestZenCLIProvider_ConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("concurrent CLI availability check is safe", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		var wg sync.WaitGroup
 		numGoroutines := 50
 
@@ -517,7 +517,7 @@ func TestZenCLIProvider_ConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("concurrent model discovery is safe", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		var wg sync.WaitGroup
 		numGoroutines := 20
 
@@ -542,7 +542,7 @@ func TestZenCLIProvider_HealthCheckComprehensive(t *testing.T) {
 	}
 
 	t.Run("health check returns appropriate result based on CLI availability", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewZenCLIProviderWithModel("test")
 
 		err := provider.HealthCheck()
@@ -555,7 +555,7 @@ func TestZenCLIProvider_HealthCheckComprehensive(t *testing.T) {
 	})
 
 	t.Run("health check with unavailable CLI returns error", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		provider := NewZenCLIProviderWithUnavailableCLI("test", exec.ErrNotFound)
 
 		err := provider.HealthCheck()

@@ -543,7 +543,7 @@ func TestChallengeConstructors_NotNil(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := tt.fn()
 			require.NotNil(t, result)
 			c, ok := result.(challenge.Challenge)

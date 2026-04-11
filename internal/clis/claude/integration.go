@@ -15,29 +15,29 @@ import (
 )
 
 // Integration provides the main entry point for Claude Code integration
- type Integration struct {
+type Integration struct {
 	// API clients
-	client    *api.Client
-	mcpAPI    *api.MCPProxyAPI
-	filesAPI  *api.FilesAPI
-	
+	client   *api.Client
+	mcpAPI   *api.MCPProxyAPI
+	filesAPI *api.FilesAPI
+
 	// Feature managers
-	featureFlags *api.FeatureFlagManager
-	usageTracker *api.UsageTracker
-	rateChecker  *api.RateLimitChecker
+	featureFlags   *api.FeatureFlagManager
+	usageTracker   *api.UsageTracker
+	rateChecker    *api.RateLimitChecker
 	bootstrapCache *api.BootstrapCache
-	
+
 	// Internal features
-	buddy     *features.BuddySystem
-	kairos    *features.KAIROS
-	dream     *features.DreamSystem
-	
+	buddy  *features.BuddySystem
+	kairos *features.KAIROS
+	dream  *features.DreamSystem
+
 	// Strategy
-	strategy  strategy.Strategy
-	
+	strategy strategy.Strategy
+
 	// Configuration
-	config    *Config
-	
+	config *Config
+
 	// State
 	mu        sync.RWMutex
 	started   bool
@@ -45,35 +45,35 @@ import (
 }
 
 // Config holds Claude Code integration configuration
- type Config struct {
+type Config struct {
 	// Authentication
 	APIKey       string
 	OAuthToken   string
 	RefreshToken string
-	
+
 	// Environment
-	BaseURL      string // Production, Staging, or Custom
-	MCPProxyURL  string
-	
+	BaseURL     string // Production, Staging, or Custom
+	MCPProxyURL string
+
 	// Features - ALL ENABLED by default
 	EnableAllFeatures bool
-	
+
 	// Individual feature toggles (override EnableAllFeatures)
-	EnableStreaming      bool
-	EnableTools          bool
-	EnableMCP            bool
-	EnableVision         bool
-	EnableFiles          bool
-	EnableBuddy          bool
-	EnableKAIROS         bool
-	EnableDream          bool
-	EnableUsageTracking  bool
-	EnableRateLimiting   bool
-	
+	EnableStreaming     bool
+	EnableTools         bool
+	EnableMCP           bool
+	EnableVision        bool
+	EnableFiles         bool
+	EnableBuddy         bool
+	EnableKAIROS        bool
+	EnableDream         bool
+	EnableUsageTracking bool
+	EnableRateLimiting  bool
+
 	// Strategy configuration
-	StrategyType     string // "full", "oauth", "api_key", "standard"
-	DefaultModel     string
-	
+	StrategyType string // "full", "oauth", "api_key", "standard"
+	DefaultModel string
+
 	// Cache settings
 	BootstrapCacheTTL time.Duration
 	FileCacheDir      string
@@ -81,34 +81,34 @@ import (
 }
 
 // DefaultConfig returns a default configuration with ALL features enabled
- func DefaultConfig() *Config {
+func DefaultConfig() *Config {
 	return &Config{
-		BaseURL:           api.ProductionBaseURL,
-		EnableAllFeatures: true,
-		EnableStreaming:   true,
-		EnableTools:       true,
-		EnableMCP:         true,
-		EnableVision:      true,
-		EnableFiles:       true,
-		EnableBuddy:       true,
-		EnableKAIROS:      true,
-		EnableDream:       true,
+		BaseURL:             api.ProductionBaseURL,
+		EnableAllFeatures:   true,
+		EnableStreaming:     true,
+		EnableTools:         true,
+		EnableMCP:           true,
+		EnableVision:        true,
+		EnableFiles:         true,
+		EnableBuddy:         true,
+		EnableKAIROS:        true,
+		EnableDream:         true,
 		EnableUsageTracking: true,
 		EnableRateLimiting:  true,
-		StrategyType:      "full",
-		DefaultModel:      api.ModelClaudeSonnet4_5,
-		BootstrapCacheTTL: 5 * time.Minute,
-		FileCacheDir:      "/tmp/claude-cache",
-		FileCacheMaxSize:  1024 * 1024 * 1024, // 1GB
+		StrategyType:        "full",
+		DefaultModel:        api.ModelClaudeSonnet4_5,
+		BootstrapCacheTTL:   5 * time.Minute,
+		FileCacheDir:        "/tmp/claude-cache",
+		FileCacheMaxSize:    1024 * 1024 * 1024, // 1GB
 	}
 }
 
 // NewIntegration creates a new Claude Code integration
- func NewIntegration(config *Config) (*Integration, error) {
+func NewIntegration(config *Config) (*Integration, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	// Create API client with all beta headers
 	opts := []api.ClientOption{
 		api.WithBetaHeaders(
@@ -120,23 +120,23 @@ import (
 			api.BetaFastMode,
 		),
 	}
-	
+
 	if config.BaseURL != "" {
 		opts = append(opts, api.WithBaseURL(config.BaseURL))
 	}
-	
+
 	if config.APIKey != "" {
 		opts = append(opts, api.WithAPIKey(config.APIKey))
 	} else if config.OAuthToken != "" {
 		opts = append(opts, api.WithOAuthToken(config.OAuthToken))
 	}
-	
+
 	client := api.NewClient(opts...)
-	
+
 	// Create bootstrap cache
 	bootstrapCache := api.NewBootstrapCache(client, config.BootstrapCacheTTL)
 	featureFlags := api.NewFeatureFlagManager(bootstrapCache)
-	
+
 	// Create integration
 	integration := &Integration{
 		client:         client,
@@ -148,28 +148,28 @@ import (
 		bootstrapCache: bootstrapCache,
 		config:         config,
 	}
-	
+
 	// Initialize strategy
 	var err error
 	integration.strategy, err = strategy.New(config.StrategyType, client, config)
 	if err != nil {
 		return nil, fmt.Errorf("create strategy: %w", err)
 	}
-	
+
 	return integration, nil
 }
 
 // Start initializes and starts all Claude Code features
- func (i *Integration) Start(ctx context.Context) error {
+func (i *Integration) Start(ctx context.Context) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	
+
 	if i.started {
 		return nil
 	}
-	
+
 	log.Println("[Claude] Starting Claude Code integration...")
-	
+
 	// Fetch bootstrap configuration
 	bootstrap, err := i.bootstrapCache.Get(ctx)
 	if err != nil {
@@ -178,7 +178,7 @@ import (
 	} else {
 		log.Printf("[Claude] Bootstrap config loaded. Minimum version: %s", bootstrap.ClientData.MinimumVersion)
 	}
-	
+
 	// Check and display enabled features
 	flags, _ := i.featureFlags.GetFlags(ctx)
 	if flags != nil {
@@ -191,78 +191,78 @@ import (
 		log.Printf("  - KAIROS: %v", flags.KAIROSEnabled)
 		log.Printf("  - Dream: %v", flags.DreamSystemEnabled)
 	}
-	
+
 	// Initialize internal features if enabled
 	if i.config.EnableAllFeatures || i.config.EnableBuddy {
 		i.buddy = features.NewBuddySystem()
 		log.Println("[Claude] BUDDY system initialized")
 	}
-	
+
 	if i.config.EnableAllFeatures || i.config.EnableKAIROS {
 		i.kairos = features.NewKAIROS(i.client)
 		log.Println("[Claude] KAIROS initialized")
 	}
-	
+
 	if i.config.EnableAllFeatures || i.config.EnableDream {
 		i.dream = features.NewDreamSystem()
 		log.Println("[Claude] Dream system initialized")
 	}
-	
+
 	// Start strategy
 	if err := i.strategy.Start(ctx); err != nil {
 		return fmt.Errorf("start strategy: %w", err)
 	}
-	
+
 	i.started = true
 	log.Println("[Claude] Integration started successfully")
-	
+
 	return nil
 }
 
 // Stop stops all Claude Code features
- func (i *Integration) Stop(ctx context.Context) error {
+func (i *Integration) Stop(ctx context.Context) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	
+
 	if !i.started {
 		return nil
 	}
-	
+
 	log.Println("[Claude] Stopping Claude Code integration...")
-	
+
 	// Stop internal features
 	if i.kairos != nil {
 		i.kairos.Stop()
 	}
-	
+
 	if i.dream != nil {
 		i.dream.Stop()
 	}
-	
+
 	// Stop strategy
 	if err := i.strategy.Stop(ctx); err != nil {
 		return fmt.Errorf("stop strategy: %w", err)
 	}
-	
+
 	i.started = false
 	log.Println("[Claude] Integration stopped")
-	
+
 	return nil
 }
 
 // IsStarted returns whether the integration is started
- func (i *Integration) IsStarted() bool {
+func (i *Integration) IsStarted() bool {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	return i.started
 }
 
 // CreateMessage creates a message using the configured strategy
- func (i *Integration) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
+func (i *Integration) CreateMessage(ctx context.Context, req *api.MessageRequest) (*api.MessageResponse, error) {
 	if !i.started {
 		return nil, fmt.Errorf("integration not started")
 	}
-	
+
 	// Check rate limits
 	if i.config.EnableRateLimiting && i.rateChecker.ShouldCheck() {
 		usage, err := i.client.GetUsage(ctx)
@@ -275,127 +275,127 @@ import (
 			}
 		}
 	}
-	
+
 	// Execute via strategy
 	resp, err := i.strategy.CreateMessage(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Track usage
 	if i.config.EnableUsageTracking {
 		i.usageTracker.TrackRequest(resp.Usage)
 	}
-	
+
 	return resp, nil
 }
 
 // CreateMessageStream creates a streaming message
- func (i *Integration) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
+func (i *Integration) CreateMessageStream(ctx context.Context, req *api.MessageRequest) (<-chan api.StreamEvent, <-chan error) {
 	if !i.started {
 		errors := make(chan error, 1)
 		errors <- fmt.Errorf("integration not started")
 		close(errors)
 		return nil, errors
 	}
-	
+
 	return i.strategy.CreateMessageStream(ctx, req)
 }
 
 // CallTool calls an MCP tool
- func (i *Integration) CallTool(ctx context.Context, serverID string, tool string, params map[string]interface{}) (*api.MCPCallResponse, error) {
+func (i *Integration) CallTool(ctx context.Context, serverID string, tool string, params map[string]interface{}) (*api.MCPCallResponse, error) {
 	if !i.started {
 		return nil, fmt.Errorf("integration not started")
 	}
-	
+
 	if !i.config.EnableMCP && !i.config.EnableAllFeatures {
 		return nil, fmt.Errorf("MCP not enabled")
 	}
-	
+
 	req := &api.MCPCallRequest{
 		Tool:   tool,
 		Params: params,
 	}
-	
+
 	return i.mcpAPI.CallTool(ctx, serverID, req)
 }
 
 // GetBuddy returns the BUDDY system (creates if needed)
- func (i *Integration) GetBuddy() (*features.BuddySystem, error) {
+func (i *Integration) GetBuddy() (*features.BuddySystem, error) {
 	if !i.config.EnableBuddy && !i.config.EnableAllFeatures {
 		return nil, fmt.Errorf("BUDDY system not enabled")
 	}
-	
+
 	if i.buddy == nil {
 		return nil, fmt.Errorf("BUDDY system not initialized")
 	}
-	
+
 	return i.buddy, nil
 }
 
 // GetKAIROS returns the KAIROS system
- func (i *Integration) GetKAIROS() (*features.KAIROS, error) {
+func (i *Integration) GetKAIROS() (*features.KAIROS, error) {
 	if !i.config.EnableKAIROS && !i.config.EnableAllFeatures {
 		return nil, fmt.Errorf("KAIROS not enabled")
 	}
-	
+
 	if i.kairos == nil {
 		return nil, fmt.Errorf("KAIROS not initialized")
 	}
-	
+
 	return i.kairos, nil
 }
 
 // GetDreamSystem returns the Dream system
- func (i *Integration) GetDreamSystem() (*features.DreamSystem, error) {
+func (i *Integration) GetDreamSystem() (*features.DreamSystem, error) {
 	if !i.config.EnableDream && !i.config.EnableAllFeatures {
 		return nil, fmt.Errorf("Dream system not enabled")
 	}
-	
+
 	if i.dream == nil {
 		return nil, fmt.Errorf("Dream system not initialized")
 	}
-	
+
 	return i.dream, nil
 }
 
 // GetUsageStats returns usage statistics
- func (i *Integration) GetUsageStats() map[string]interface{} {
+func (i *Integration) GetUsageStats() map[string]interface{} {
 	return map[string]interface{}{
-		"requests":              i.usageTracker.Requests,
-		"total_input_tokens":    i.usageTracker.TotalInputTokens,
-		"total_output_tokens":   i.usageTracker.TotalOutputTokens,
-		"total_tokens":          i.usageTracker.TotalTokens(),
+		"requests":               i.usageTracker.Requests,
+		"total_input_tokens":     i.usageTracker.TotalInputTokens,
+		"total_output_tokens":    i.usageTracker.TotalOutputTokens,
+		"total_tokens":           i.usageTracker.TotalTokens(),
 		"avg_tokens_per_request": i.usageTracker.AverageTokensPerRequest(),
-		"estimated_cost":        i.usageTracker.CostEstimate(i.config.DefaultModel),
+		"estimated_cost":         i.usageTracker.CostEstimate(i.config.DefaultModel),
 	}
 }
 
 // RefreshToken refreshes the OAuth token if needed
- func (i *Integration) RefreshToken(ctx context.Context) error {
+func (i *Integration) RefreshToken(ctx context.Context) error {
 	if i.tokenInfo == nil || !i.tokenInfo.IsExpired() {
 		return nil
 	}
-	
+
 	config := api.ClaudeAIOAuthConfig
 	newToken, err := i.client.RefreshToken(ctx, config, i.tokenInfo.RefreshToken)
 	if err != nil {
 		return fmt.Errorf("refresh token: %w", err)
 	}
-	
+
 	i.tokenInfo = newToken
 	return nil
 }
 
 // GetEnabledFeatures returns a list of enabled features
- func (i *Integration) GetEnabledFeatures() []string {
+func (i *Integration) GetEnabledFeatures() []string {
 	var features []string
-	
+
 	if i.config.EnableAllFeatures {
 		features = append(features, "all")
 		return features
 	}
-	
+
 	if i.config.EnableStreaming {
 		features = append(features, "streaming")
 	}
@@ -426,38 +426,38 @@ import (
 	if i.config.EnableRateLimiting {
 		features = append(features, "rate_limiting")
 	}
-	
+
 	return features
 }
 
 // HealthCheck performs a health check on the integration
- func (i *Integration) HealthCheck(ctx context.Context) error {
+func (i *Integration) HealthCheck(ctx context.Context) error {
 	if !i.started {
 		return fmt.Errorf("integration not started")
 	}
-	
+
 	// Try to get bootstrap config
 	_, err := i.bootstrapCache.Get(ctx)
 	if err != nil {
 		return fmt.Errorf("bootstrap check failed: %w", err)
 	}
-	
+
 	return nil
 }
 
 // Singleton instance
- var (
+var (
 	instance *Integration
 	once     sync.Once
 )
 
 // GetInstance returns the singleton integration instance
- func GetInstance() *Integration {
+func GetInstance() *Integration {
 	return instance
 }
 
 // Initialize initializes the singleton instance
- func Initialize(config *Config) error {
+func Initialize(config *Config) error {
 	var err error
 	once.Do(func() {
 		instance, err = NewIntegration(config)

@@ -63,7 +63,7 @@ func TestGetAgentExactMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agent, found := GetAgent(tt.name)
 			assert.True(t, found)
 			assert.Equal(t, tt.expected, agent.Name)
@@ -93,7 +93,7 @@ func TestGetAgentCaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agent, found := GetAgent(tt.input)
 			assert.True(t, found, "Agent %s should be found", tt.input)
 			assert.Equal(t, tt.expected, agent.Name)
@@ -114,7 +114,7 @@ func TestGetAgentNotFound(t *testing.T) {
 
 	for _, name := range nonExistent {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agent, found := GetAgent(name)
 			assert.False(t, found, "Agent %s should not be found", name)
 			assert.Nil(t, agent)
@@ -179,7 +179,7 @@ func TestAgentRequiredFields(t *testing.T) {
 	t.Parallel()
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, agent.Name, "Agent %s should have a name", name)
 			assert.NotEmpty(t, agent.Description, "Agent %s should have a description", name)
 			assert.NotEmpty(t, agent.Language, "Agent %s should have a language", name)
@@ -201,7 +201,7 @@ func TestAgentToolSupport(t *testing.T) {
 	// Each agent should support at least one tool
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, agent.ToolSupport, "Agent %s should support at least one tool", name)
 		})
 	}
@@ -213,7 +213,7 @@ func TestAgentProtocols(t *testing.T) {
 	// Each agent should support at least one protocol
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.NotEmpty(t, agent.Protocols, "Agent %s should support at least one protocol", name)
 		})
 	}
@@ -242,7 +242,7 @@ func TestGetAgentsByProtocol(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.protocol, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agents := GetAgentsByProtocol(tt.protocol)
 			assert.GreaterOrEqual(t, len(agents), tt.minExpected,
 				"Protocol %s should have at least %d agents", tt.protocol, tt.minExpected)
@@ -302,7 +302,7 @@ func TestGetAgentsByTool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.tool, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			agents := GetAgentsByTool(tt.tool)
 			assert.GreaterOrEqual(t, len(agents), tt.minExpected,
 				"Tool %s should be supported by at least %d agents", tt.tool, tt.minExpected)
@@ -343,7 +343,7 @@ func TestAgentLanguages(t *testing.T) {
 
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, validLanguages[agent.Language],
 				"Agent %s has invalid language: %s", name, agent.Language)
 		})
@@ -364,7 +364,7 @@ func TestAgentConfigFormats(t *testing.T) {
 
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, validFormats[agent.ConfigFormat],
 				"Agent %s has invalid config format: %s", name, agent.ConfigFormat)
 		})
@@ -394,7 +394,7 @@ func TestAgentAPIPatterns(t *testing.T) {
 
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, validPatterns[agent.APIPattern],
 				"Agent %s has invalid API pattern: %s", name, agent.APIPattern)
 		})
@@ -508,7 +508,7 @@ func TestEqualFold(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.a+"_"+tt.b, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := equalFold(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -531,7 +531,7 @@ func TestAgentConfigLocations(t *testing.T) {
 	t.Parallel()
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Config location should start with ~ or /
 			assert.True(t,
 				agent.ConfigLocation[0] == '~' || agent.ConfigLocation[0] == '/',
@@ -545,7 +545,7 @@ func TestAgentEntryPoints(t *testing.T) {
 	t.Parallel()
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// Entry point should be a simple command name (allows space for multi-word commands like "gh copilot")
 			for _, c := range agent.EntryPoint {
 				assert.True(t,
@@ -561,7 +561,7 @@ func TestAgentSystemPrompts(t *testing.T) {
 	t.Parallel()
 	for name, agent := range CLIAgentRegistry {
 		t.Run(name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			// System prompt should be at least 30 characters
 			assert.GreaterOrEqual(t, len(agent.SystemPrompt), 30,
 				"Agent %s system prompt is too short", name)

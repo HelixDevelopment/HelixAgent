@@ -84,7 +84,7 @@ func TestInstanceManager_CreateInstance(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Expect status update
-	mock.ExpectExec("UPDATE agent_instances SET status = .*, health_status = .*, started_at = NOW()") .
+	mock.ExpectExec("UPDATE agent_instances SET status = .*, health_status = .*, started_at = NOW()").
 		WithArgs(StatusIdle, HealthHealthy, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -125,10 +125,10 @@ func TestInstanceManager_AcquireInstance(t *testing.T) {
 	// Create pool for Aider
 	pool := NewInstancePool(TypeAider, DefaultPoolConfig(), func() (*AgentInstance, error) {
 		return &AgentInstance{
-			ID:        "test-instance",
-			Type:      TypeAider,
-			Name:      "test",
-			Status:    StatusIdle,
+			ID:         "test-instance",
+			Type:       TypeAider,
+			Name:       "test",
+			Status:     StatusIdle,
 			RequestCh:  make(chan *Request, 10),
 			ResponseCh: make(chan *Response, 10),
 			EventCh:    make(chan *Event, 10),
@@ -324,7 +324,7 @@ func TestInstanceManager_TerminateInstance(t *testing.T) {
 	im.mu.Unlock()
 
 	// Expect database update
-	mock.ExpectExec("UPDATE agent_instances SET status = .*, terminated_at = NOW()") .
+	mock.ExpectExec("UPDATE agent_instances SET status = .*, terminated_at = NOW()").
 		WithArgs(StatusTerminated, "test-instance").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -557,7 +557,7 @@ func TestAgentInstance_IsActive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			inst := &AgentInstance{Status: tt.status}
 			assert.Equal(t, tt.expected, inst.IsActive())
 		})
@@ -579,7 +579,7 @@ func TestAgentInstance_IsHealthy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			inst := &AgentInstance{Health: tt.health}
 			assert.Equal(t, tt.expected, inst.IsHealthy())
 		})
@@ -602,7 +602,7 @@ func TestAgentInstance_CanAcceptWork(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			inst := &AgentInstance{Status: tt.status, Health: tt.health}
 			assert.Equal(t, tt.expected, inst.CanAcceptWork())
 		})
@@ -643,9 +643,9 @@ func BenchmarkInstanceManager_AcquireRelease(b *testing.B) {
 	// Create pool
 	pool := NewInstancePool(TypeAider, DefaultPoolConfig(), func() (*AgentInstance, error) {
 		return &AgentInstance{
-			ID:        "bench-instance",
-			Type:      TypeAider,
-			Status:    StatusIdle,
+			ID:         "bench-instance",
+			Type:       TypeAider,
+			Status:     StatusIdle,
 			RequestCh:  make(chan *Request, 10),
 			ResponseCh: make(chan *Response, 10),
 			EventCh:    make(chan *Event, 10),

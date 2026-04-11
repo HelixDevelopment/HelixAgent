@@ -62,7 +62,7 @@ func TestCompletionHandler_SendCategorizedError_LLMServiceError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -264,7 +264,7 @@ func TestCompletionHandler_Complete_VariousContentTypes(t *testing.T) {
 
 	for _, ct := range contentTypes {
 		t.Run(ct, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			reqBody := map[string]interface{}{
 				"prompt": "Test",
 			}

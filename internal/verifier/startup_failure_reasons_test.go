@@ -166,7 +166,7 @@ func TestCategorizeFailure_AllCategories(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			category := categorizeFailure(tc.result)
 			assert.Equal(t, tc.expected, category)
 		})
@@ -322,7 +322,7 @@ func TestTruncateString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := truncateString(tc.input, tc.maxLen)
 			assert.Equal(t, tc.expected, result)
 			assert.LessOrEqual(t, len(result), tc.maxLen)

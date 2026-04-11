@@ -35,7 +35,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Contains proper Markdown structure", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -62,7 +62,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Includes fallback information", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -82,7 +82,7 @@ func TestFormatDebateTeamIntroductionMarkdown(t *testing.T) {
 	})
 
 	t.Run("Truncates long topics", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		longTopic := strings.Repeat("x", 100)
 		result := FormatDebateTeamIntroductionMarkdown(longTopic, nil)
 
@@ -107,7 +107,7 @@ func TestFormatPhaseHeaderMarkdown(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(string(tc.phase), func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := FormatPhaseHeaderMarkdown(tc.phase, 1)
 
 			// Must NOT contain ANSI codes
@@ -133,7 +133,7 @@ func TestFormatFinalResponseMarkdown(t *testing.T) {
 	})
 
 	t.Run("Has proper Markdown structure", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		content := "This is the final answer."
 		result := FormatFinalResponseMarkdown(content)
 
@@ -152,7 +152,7 @@ func TestFormatConsensusHeaderMarkdown(t *testing.T) {
 	})
 
 	t.Run("Shows correct confidence percentage", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatConsensusHeaderMarkdown(0.85)
 
 		assert.Contains(t, result, "85.0%")
@@ -196,7 +196,7 @@ func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
 	})
 
 	t.Run("Contains no Markdown", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -213,7 +213,7 @@ func TestFormatDebateTeamIntroductionPlain(t *testing.T) {
 	})
 
 	t.Run("Contains plain text content", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		members := []*services.DebateTeamMember{
 			{
 				Role:         services.RoleAnalyst,
@@ -281,7 +281,7 @@ func TestStripANSIRegex(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := StripANSIRegex(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -296,7 +296,7 @@ func TestContainsANSI(t *testing.T) {
 	})
 
 	t.Run("Returns false for clean text", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.False(t, ContainsANSI("Plain text"))
 		assert.False(t, ContainsANSI("# Markdown Header"))
 		assert.False(t, ContainsANSI("╔══════╗"))
@@ -348,7 +348,7 @@ func TestStripMarkdown(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := StripMarkdown(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -383,14 +383,14 @@ func TestDetectOutputFormat(t *testing.T) {
 	})
 
 	t.Run("Terminal clients get ANSI", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "curl/7.64.1", ""))
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "wget", ""))
 		assert.Equal(t, OutputFormatANSI, DetectOutputFormat("", "HTTPie/2.0.0", ""))
 	})
 
 	t.Run("API clients get Markdown", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "OpenCode/1.0", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "Crush/0.1", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "claude-code", ""))
@@ -399,12 +399,12 @@ func TestDetectOutputFormat(t *testing.T) {
 	})
 
 	t.Run("Accept header text/plain", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, OutputFormatPlain, DetectOutputFormat("text/plain", "", ""))
 	})
 
 	t.Run("Default is Markdown", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("", "", ""))
 		assert.Equal(t, OutputFormatMarkdown, DetectOutputFormat("application/json", "unknown-client", ""))
 	})
@@ -423,7 +423,7 @@ func TestIsTerminalClient(t *testing.T) {
 
 	for _, client := range terminalClients {
 		t.Run(client, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.True(t, IsTerminalClient(client), "Should detect %s as terminal client", client)
 		})
 	}
@@ -438,7 +438,7 @@ func TestIsTerminalClient(t *testing.T) {
 
 	for _, client := range nonTerminalClients {
 		t.Run(client, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			assert.False(t, IsTerminalClient(client), "Should not detect %s as terminal client", client)
 		})
 	}
@@ -459,20 +459,20 @@ func TestFormatDebateTeamIntroductionForFormat(t *testing.T) {
 	}
 
 	t.Run("ANSI format contains ANSI codes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatANSI, "Test", members)
 		assert.True(t, ContainsANSI(result), "ANSI format should contain ANSI codes")
 	})
 
 	t.Run("Markdown format contains no ANSI codes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatMarkdown, "Test", members)
 		assert.False(t, ContainsANSI(result), "Markdown format should not contain ANSI codes")
 		assert.Contains(t, result, "#") // Should have Markdown headers
 	})
 
 	t.Run("Plain format contains no ANSI or Markdown", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionForFormat(OutputFormatPlain, "Test", members)
 		assert.False(t, ContainsANSI(result))
 		assert.NotContains(t, result, "#")
@@ -500,7 +500,7 @@ func TestOutputReadability(t *testing.T) {
 	}
 
 	t.Run("Markdown output is well-structured", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("What is the meaning of life?", members)
 
 		// Check for proper sections
@@ -522,7 +522,7 @@ func TestOutputReadability(t *testing.T) {
 	})
 
 	t.Run("No garbage characters in output", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("Test", members)
 
 		// Should not contain escape sequences rendered as text
@@ -533,7 +533,7 @@ func TestOutputReadability(t *testing.T) {
 	})
 
 	t.Run("Output has reasonable line lengths", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatDebateTeamIntroductionMarkdown("Test", members)
 
 		lines := strings.Split(result, "\n")
@@ -651,7 +651,7 @@ func TestNilMemberHandling(t *testing.T) {
 	})
 
 	t.Run("Plain format handles nil members", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		members := []*services.DebateTeamMember{nil, nil}
 
 		require.NotPanics(t, func() {
@@ -670,7 +670,7 @@ func TestEmptyInputHandling(t *testing.T) {
 	})
 
 	t.Run("Empty content in FormatFinalResponseMarkdown", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFinalResponseMarkdown("")
 		assert.Contains(t, result, "## Final Answer")
 	})
@@ -707,7 +707,7 @@ func TestCategorizeErrorString(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := categorizeErrorString(tc.input)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -735,7 +735,7 @@ func TestGetCategoryIcon(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.category, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := getCategoryIcon(tc.category)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -764,7 +764,7 @@ func TestFormatFallbackTriggeredMarkdown(t *testing.T) {
 	})
 
 	t.Run("Contains no ANSI codes", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
 			"openai", "gpt-4",
@@ -843,7 +843,7 @@ func TestFormatFallbackWithErrorForFormat(t *testing.T) {
 	})
 
 	t.Run("Markdown format is clean", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackWithErrorForFormat(
 			OutputFormatMarkdown,
 			services.RoleAnalyst,
@@ -860,7 +860,7 @@ func TestFormatFallbackWithErrorForFormat(t *testing.T) {
 	})
 
 	t.Run("Plain format has no formatting", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackWithErrorForFormat(
 			OutputFormatPlain,
 			services.RoleAnalyst,
@@ -921,7 +921,7 @@ func TestFormatFallbackChainMarkdown(t *testing.T) {
 	})
 
 	t.Run("Empty chain returns empty string", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackChainMarkdown(services.PositionAnalyst, nil)
 		assert.Empty(t, result)
 	})
@@ -948,7 +948,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	}
 
 	t.Run("ANSI format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatANSI,
 			services.PositionAnalyst,
@@ -961,7 +961,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	})
 
 	t.Run("Markdown format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatMarkdown,
 			services.PositionAnalyst,
@@ -975,7 +975,7 @@ func TestFormatFallbackChainWithErrorsForFormat(t *testing.T) {
 	})
 
 	t.Run("Plain format", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackChainWithErrorsForFormat(
 			OutputFormatPlain,
 			services.PositionAnalyst,
@@ -1003,7 +1003,7 @@ func TestErrorCategoryEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Case insensitivity", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		assert.Equal(t, "rate_limit", categorizeErrorString("RATE LIMIT"))
 		assert.Equal(t, "timeout", categorizeErrorString("TIMEOUT"))
 		assert.Equal(t, "auth", categorizeErrorString("UNAUTHORIZED"))
@@ -1136,7 +1136,7 @@ func TestFormatModelRef(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := formatModelRef(tt.provider, tt.model)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -1164,7 +1164,7 @@ func TestFormatFallbackTriggeredMarkdown_NoDoublePrefix(t *testing.T) {
 	})
 
 	t.Run("Standard model displays correctly", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		result := FormatFallbackTriggeredMarkdown(
 			"Analyst",
 			"anthropic", "claude-3-opus",

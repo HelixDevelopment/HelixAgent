@@ -43,7 +43,7 @@ func TestNewWeaviateAdapter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewWeaviateAdapter(tt.config)
 			assert.NotNil(t, adapter)
 			assert.Equal(t, tt.expectedURL, adapter.baseURL)
@@ -79,7 +79,7 @@ func TestWeaviateAdapter_Connect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -121,7 +121,7 @@ func TestWeaviateAdapter_Health(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -179,7 +179,7 @@ func TestWeaviateAdapter_GetSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -257,7 +257,7 @@ func TestWeaviateAdapter_CreateClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -302,7 +302,7 @@ func TestWeaviateAdapter_DeleteClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -364,7 +364,7 @@ func TestWeaviateAdapter_GetClass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -443,7 +443,7 @@ func TestWeaviateAdapter_CreateObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -502,7 +502,7 @@ func TestWeaviateAdapter_BatchCreateObjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -574,7 +574,7 @@ func TestWeaviateAdapter_GetObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -623,7 +623,7 @@ func TestWeaviateAdapter_DeleteObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -676,7 +676,7 @@ func TestWeaviateAdapter_UpdateObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -788,7 +788,7 @@ func TestWeaviateAdapter_VectorSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 
@@ -895,7 +895,7 @@ func TestWeaviateAdapter_HybridSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverHandler))
 			defer server.Close()
 

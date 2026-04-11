@@ -209,7 +209,7 @@ func TestAsanaAdapter_GetTask(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-			t.Parallel()
+		t.Parallel()
 		client := &MockAsanaClient{Tasks: []AsanaTask{}}
 		adapter := NewAsanaAdapter(DefaultAsanaConfig(), client)
 

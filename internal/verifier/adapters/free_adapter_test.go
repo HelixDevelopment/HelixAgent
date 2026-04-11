@@ -394,7 +394,7 @@ func TestGetModelDisplayName_Known(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			name := getModelDisplayName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})
@@ -413,7 +413,7 @@ func TestGetModelDisplayName_Unknown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			name := getModelDisplayName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})
@@ -436,7 +436,7 @@ func TestGetOpenRouterModelName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			name := getOpenRouterModelName(tt.modelID)
 			assert.Equal(t, tt.expected, name)
 		})

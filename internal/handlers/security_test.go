@@ -96,7 +96,7 @@ func TestSecurity_SQLInjectionPrevention(t *testing.T) {
 
 	for _, input := range maliciousInputs {
 		t.Run("sql_injection", func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest("GET", "/v1/models?id="+input, nil)
 			rec := httptest.NewRecorder()
 
@@ -121,7 +121,7 @@ func TestSecurity_XSSPrevention(t *testing.T) {
 
 	for _, payload := range xssPayloads {
 		t.Run("xss_prevention", func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			req := httptest.NewRequest("GET", "/v1/models?q="+payload, nil)
 			rec := httptest.NewRecorder()
 
@@ -220,7 +220,7 @@ func TestSecurity_InputSanitization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			if tt.hasIssue {
 				assert.True(t, strings.Contains(tt.input, "\x00") || strings.Contains(tt.input, "\x1b"))
 			}

@@ -15,7 +15,7 @@ func TestNewMultiAgentCoding(t *testing.T) {
 	t.Parallel()
 	m := New()
 	require.NotNil(t, m)
-	
+
 	info := m.Info()
 	assert.Equal(t, agents.TypeMultiagentCoding, info.Type)
 	assert.Equal(t, "Multi-Agent Coding", info.Name)
@@ -27,14 +27,14 @@ func TestMultiAgentCodingInitialize(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		AgentCount: 5,
 	}
-	
+
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, 5, m.config.AgentCount)
@@ -44,7 +44,7 @@ func TestMultiAgentCodingInitializeWithNilConfig(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 3, m.config.AgentCount) // Default value
@@ -54,14 +54,14 @@ func TestMultiAgentCodingStartStop(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	err = m.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, m.IsStarted())
-	
+
 	err = m.Stop(ctx)
 	require.NoError(t, err)
 	assert.False(t, m.IsStarted())
@@ -71,10 +71,10 @@ func TestMultiAgentCodingExecute(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	err := m.Initialize(ctx, nil)
 	require.NoError(t, err)
-	
+
 	tests := []struct {
 		name    string
 		command string
@@ -108,10 +108,10 @@ func TestMultiAgentCodingExecute(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result, err := m.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -127,7 +127,7 @@ func TestMultiAgentCodingCapabilities(t *testing.T) {
 	t.Parallel()
 	m := New()
 	info := m.Info()
-	
+
 	expectedCaps := []string{"multi_agent", "collaboration", "code_generation"}
 	for _, cap := range expectedCaps {
 		assert.Contains(t, info.Capabilities, cap)
@@ -144,22 +144,22 @@ func TestMultiAgentCodingCollaborateResult(t *testing.T) {
 	t.Parallel()
 	m := New()
 	ctx := context.Background()
-	
+
 	config := &Config{
 		BaseConfig: base.BaseConfig{
 			WorkDir: t.TempDir(),
 		},
 		AgentCount: 4,
 	}
-	
+
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
-	
+
 	result, err := m.Execute(ctx, "collaborate", map[string]interface{}{
 		"task": "Build API",
 	})
 	require.NoError(t, err)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, 4, resultMap["agents"])

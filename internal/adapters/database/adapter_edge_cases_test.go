@@ -22,7 +22,7 @@ func TestClient_Close_RealClient(t *testing.T) {
 	cfg := &config.Config{}
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Close should work even if not connected
 	err = client.Close()
 	// No error expected - Close handles nil client gracefully
@@ -45,14 +45,14 @@ func TestClient_initConnection_WithExistingDeadline_EdgeCase(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Create context with deadline
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	// This will fail to connect but tests the branch with existing deadline
 	err = client.initConnection(ctx)
 	// Should get connection error
@@ -71,16 +71,16 @@ func TestClient_initConnection_WithoutExistingDeadline_EdgeCase(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force reconnection
 	client.connectOnce = sync.Once{}
-	
+
 	// Use context without deadline - will trigger the timeout branch
 	ctx := context.Background()
-	
+
 	// This will fail to connect but tests the branch without deadline
 	err = client.initConnection(ctx)
 	// Should get connection error
@@ -102,13 +102,13 @@ func TestClient_Pool_NotConnected(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	// Pool should return nil when not connected
 	pool := client.Pool()
 	assert.Nil(t, pool)
@@ -129,13 +129,13 @@ func TestClient_Ping_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	err = client.Ping()
 	assert.Error(t, err)
 }
@@ -144,7 +144,7 @@ func TestClient_Ping_WithMockSuccess(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{healthCheckErr: nil}
 	client := newTestClient(mock)
-	
+
 	err := client.Ping()
 	assert.NoError(t, err)
 	assert.True(t, mock.healthCheckCalled)
@@ -165,13 +165,13 @@ func TestClient_HealthCheck_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	err = client.HealthCheck()
 	assert.Error(t, err)
 }
@@ -191,13 +191,13 @@ func TestClient_Exec_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	err = client.Exec("SELECT 1")
 	assert.Error(t, err)
 }
@@ -206,7 +206,7 @@ func TestClient_Exec_WithMockErrorCase(t *testing.T) {
 	t.Parallel()
 	mock := &mockDatabase{execErr: errors.New("exec failed")}
 	client := newTestClient(mock)
-	
+
 	err := client.Exec("INSERT INTO test VALUES ($1)", "value")
 	assert.Error(t, err)
 	assert.Equal(t, "exec failed", err.Error())
@@ -227,13 +227,13 @@ func TestClient_Query_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	results, err := client.Query("SELECT * FROM test")
 	assert.Error(t, err)
 	assert.Nil(t, results)
@@ -244,7 +244,7 @@ func TestClient_Query_NoRows_ReturnsEmpty(t *testing.T) {
 	mockRows := &mockRows{nextReturns: []bool{false}}
 	mock := &mockDatabase{queryRows: mockRows}
 	client := newTestClient(mock)
-	
+
 	results, err := client.Query("SELECT * FROM test")
 	assert.NoError(t, err)
 	assert.Empty(t, results)
@@ -265,16 +265,16 @@ func TestClient_QueryRow_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	row := client.QueryRow("SELECT 1")
 	assert.NotNil(t, row)
-	
+
 	// Scan should return error
 	var val int
 	err = row.Scan(&val)
@@ -286,7 +286,7 @@ func TestClient_QueryRow_WithMockSuccess(t *testing.T) {
 	mockRow := mockRow{}
 	mock := &mockDatabase{queryRowResult: mockRow}
 	client := newTestClient(mock)
-	
+
 	row := client.QueryRow("SELECT 1")
 	assert.NotNil(t, row)
 	assert.True(t, mock.queryRowCalled)
@@ -307,13 +307,13 @@ func TestClient_Begin_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	tx, err := client.Begin(context.Background())
 	assert.Error(t, err)
 	assert.Nil(t, tx)
@@ -324,7 +324,7 @@ func TestClient_Begin_WithMockSuccess(t *testing.T) {
 	mockTx := &mockTx{}
 	mock := &mockDatabase{beginTx: mockTx}
 	client := newTestClient(mock)
-	
+
 	tx, err := client.Begin(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
@@ -346,13 +346,13 @@ func TestClient_Migrate_NotConnected_Error(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	client, err := NewClient(cfg)
 	require.NoError(t, err)
-	
+
 	// Reset sync.Once to force connection attempt
 	client.connectOnce = sync.Once{}
-	
+
 	err = client.Migrate(context.Background(), []string{"CREATE TABLE test (id INT)"})
 	assert.Error(t, err)
 }
@@ -364,15 +364,15 @@ func TestClient_Migrate_NotConnected_Error(t *testing.T) {
 func TestNewClientWithFallback_WithRealConnection(t *testing.T) {
 	t.Parallel()
 	cfg := &config.Config{}
-	
+
 	client, err := NewClientWithFallback(cfg)
 	if err != nil {
 		t.Skipf("PostgreSQL not available: %v", err)
 	}
-	
+
 	assert.NotNil(t, client)
 	assert.NoError(t, client.Ping())
-	
+
 	client.Close()
 }
 
@@ -391,7 +391,7 @@ func TestNewPostgresDB_NoError(t *testing.T) {
 			Port: "5432",
 		},
 	}
-	
+
 	pgDB, err := NewPostgresDB(cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, pgDB)
@@ -412,9 +412,9 @@ func TestNewPostgresDBWithFallback_ConnectError_Fallback(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	pgDB, memDB, err := NewPostgresDBWithFallback(cfg)
-	
+
 	// Should not error - fallback to memory
 	assert.NoError(t, err)
 	assert.Nil(t, pgDB)
@@ -432,9 +432,9 @@ func TestNewPostgresDBWithFallback_PingFails_Fallback(t *testing.T) {
 			Name:     "test",
 		},
 	}
-	
+
 	pgDB, memDB, err := NewPostgresDBWithFallback(cfg)
-	
+
 	// Should not error - fallback to memory
 	assert.NoError(t, err)
 	// We should have memory DB since ping will fail
@@ -451,11 +451,11 @@ func TestConnect_Success(t *testing.T) {
 	// Connect creates a client with empty config
 	// The connection won't happen until used (lazy)
 	db, err := Connect()
-	
+
 	// Client creation succeeds
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	
+
 	// But ping should fail since no real PostgreSQL
 	err = db.Ping()
 	// If PostgreSQL is available, this might succeed

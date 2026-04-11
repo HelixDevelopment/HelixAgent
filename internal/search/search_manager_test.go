@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"dev.helix.agent/internal/search/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSearchOptions(t *testing.T) {
@@ -101,18 +101,18 @@ func (m *mockEmbedder) Dimensions() int {
 
 func TestMockEmbedder(t *testing.T) {
 	embedder := &mockEmbedder{}
-	
+
 	ctx := context.Background()
 	texts := []string{"hello", "world"}
-	
+
 	embeddings, err := embedder.Embed(ctx, texts)
 	assert.NoError(t, err)
 	assert.Len(t, embeddings, 2)
 	assert.Equal(t, []float32{0.1, 0.2, 0.3}, embeddings[0])
-	
+
 	queryEmbedding, err := embedder.EmbedQuery(ctx, "test")
 	assert.NoError(t, err)
 	assert.Equal(t, []float32{0.1, 0.2, 0.3}, queryEmbedding)
-	
+
 	assert.Equal(t, 3, embedder.Dimensions())
 }

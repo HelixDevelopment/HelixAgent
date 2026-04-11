@@ -34,11 +34,11 @@ type Session struct {
 type SessionStatus string
 
 const (
-	SessionStatusPending    SessionStatus = "pending"
-	SessionStatusRunning    SessionStatus = "running"
-	SessionStatusCompleted  SessionStatus = "completed"
-	SessionStatusFailed     SessionStatus = "failed"
-	SessionStatusCancelled  SessionStatus = "cancelled"
+	SessionStatusPending   SessionStatus = "pending"
+	SessionStatusRunning   SessionStatus = "running"
+	SessionStatusCompleted SessionStatus = "completed"
+	SessionStatusFailed    SessionStatus = "failed"
+	SessionStatusCancelled SessionStatus = "cancelled"
 )
 
 // OrchestrationPlan defines how agents should work together

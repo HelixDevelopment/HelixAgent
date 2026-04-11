@@ -152,7 +152,7 @@ func TestDetectLanguageFromPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			result := adapter.DetectLanguageFromPath(tt.path)
 			assert.Equal(t, tt.expected, result)
 		})

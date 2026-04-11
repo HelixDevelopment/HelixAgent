@@ -19,26 +19,26 @@ import (
 // Ported from Continue.dev's LSP integration
 type LSPClient struct {
 	// Server configuration
-	serverCmd   string
-	serverArgs  []string
-	
+	serverCmd  string
+	serverArgs []string
+
 	// Connection
 	server *jsonrpc2.Conn
-	
+
 	// State
 	initialized bool
 	rootPath    string
-	
+
 	// Capabilities
 	serverCapabilities ServerCapabilities
-	
+
 	// Request tracking
 	requestID uint64
 	mu        sync.Mutex
-	
+
 	// Notification handlers
 	handlers map[string]NotificationHandler
-	
+
 	// Control
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -46,22 +46,22 @@ type LSPClient struct {
 
 // ServerCapabilities represents LSP server capabilities.
 type ServerCapabilities struct {
-	TextDocumentSync           interface{} `json:"textDocumentSync"`
-	CompletionProvider         *CompletionOptions `json:"completionProvider"`
-	HoverProvider              bool `json:"hoverProvider"`
-	SignatureHelpProvider      *SignatureHelpOptions `json:"signatureHelpProvider"`
-	DefinitionProvider         bool `json:"definitionProvider"`
-	ReferencesProvider         bool `json:"referencesProvider"`
-	DocumentHighlightProvider  bool `json:"documentHighlightProvider"`
-	DocumentSymbolProvider     bool `json:"documentSymbolProvider"`
-	CodeActionProvider         interface{} `json:"codeActionProvider"`
-	CodeLensProvider           *CodeLensOptions `json:"codeLensProvider"`
-	DocumentFormattingProvider bool `json:"documentFormattingProvider"`
-	DocumentRangeFormattingProvider bool `json:"documentRangeFormattingProvider"`
+	TextDocumentSync                 interface{}                      `json:"textDocumentSync"`
+	CompletionProvider               *CompletionOptions               `json:"completionProvider"`
+	HoverProvider                    bool                             `json:"hoverProvider"`
+	SignatureHelpProvider            *SignatureHelpOptions            `json:"signatureHelpProvider"`
+	DefinitionProvider               bool                             `json:"definitionProvider"`
+	ReferencesProvider               bool                             `json:"referencesProvider"`
+	DocumentHighlightProvider        bool                             `json:"documentHighlightProvider"`
+	DocumentSymbolProvider           bool                             `json:"documentSymbolProvider"`
+	CodeActionProvider               interface{}                      `json:"codeActionProvider"`
+	CodeLensProvider                 *CodeLensOptions                 `json:"codeLensProvider"`
+	DocumentFormattingProvider       bool                             `json:"documentFormattingProvider"`
+	DocumentRangeFormattingProvider  bool                             `json:"documentRangeFormattingProvider"`
 	DocumentOnTypeFormattingProvider *DocumentOnTypeFormattingOptions `json:"documentOnTypeFormattingProvider"`
-	RenameProvider             interface{} `json:"renameProvider"`
-	ExecuteCommandProvider     *ExecuteCommandOptions `json:"executeCommandProvider"`
-	SelectionRangeProvider     interface{} `json:"selectionRangeProvider"`
+	RenameProvider                   interface{}                      `json:"renameProvider"`
+	ExecuteCommandProvider           *ExecuteCommandOptions           `json:"executeCommandProvider"`
+	SelectionRangeProvider           interface{}                      `json:"selectionRangeProvider"`
 }
 
 // CompletionOptions represents completion options.
@@ -97,7 +97,7 @@ type NotificationHandler func(method string, params json.RawMessage)
 // NewLSPClient creates a new LSP client.
 func NewLSPClient(serverCmd string, serverArgs []string, rootPath string) *LSPClient {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &LSPClient{
 		serverCmd:  serverCmd,
 		serverArgs: serverArgs,
@@ -112,38 +112,38 @@ func NewLSPClient(serverCmd string, serverArgs []string, rootPath string) *LSPCl
 func (c *LSPClient) Start(ctx context.Context) error {
 	// Start server process
 	cmd := exec.CommandContext(ctx, c.serverCmd, c.serverArgs...)
-	
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("get stdin pipe: %w", err)
 	}
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("get stdout pipe: %w", err)
 	}
-	
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return fmt.Errorf("get stderr pipe: %w", err)
 	}
-	
+
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start server: %w", err)
 	}
-	
+
 	// Create JSON-RPC connection
 	stream := jsonrpc2.NewBufferedStream(&stdioConn{stdin, stdout}, jsonrpc2.VSCodeObjectCodec{})
 	c.server = jsonrpc2.NewConn(ctx, stream, jsonrpc2.HandlerWithError(c.handle))
-	
+
 	// Log stderr
 	go c.logStderr(stderr)
-	
+
 	// Initialize
 	if err := c.initialize(ctx); err != nil {
 		return fmt.Errorf("initialize: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -153,10 +153,10 @@ func (c *LSPClient) Stop() error {
 		// Send shutdown request
 		c.server.Notify(c.ctx, "shutdown", nil)
 		c.server.Notify(c.ctx, "exit", nil)
-		
+
 		c.server.Close()
 	}
-	
+
 	c.cancel()
 	return nil
 }
@@ -186,7 +186,7 @@ func (c *LSPClient) TextDocumentDidOpen(ctx context.Context, uri, languageID str
 			Text:       text,
 		},
 	}
-	
+
 	return c.server.Notify(ctx, "textDocument/didOpen", params)
 }
 
@@ -199,7 +199,7 @@ func (c *LSPClient) TextDocumentDidChange(ctx context.Context, uri string, versi
 		},
 		ContentChanges: changes,
 	}
-	
+
 	return c.server.Notify(ctx, "textDocument/didChange", params)
 }
 
@@ -208,7 +208,7 @@ func (c *LSPClient) TextDocumentDidClose(ctx context.Context, uri string) error 
 	params := DidCloseTextDocumentParams{
 		TextDocument: TextDocumentIdentifier{URI: uri},
 	}
-	
+
 	return c.server.Notify(ctx, "textDocument/didClose", params)
 }
 
@@ -223,12 +223,12 @@ func (c *LSPClient) Completion(ctx context.Context, uri string, line, character 
 			},
 		},
 	}
-	
+
 	var result CompletionList
 	if err := c.call(ctx, "textDocument/completion", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return &result, nil
 }
 
@@ -241,12 +241,12 @@ func (c *LSPClient) Hover(ctx context.Context, uri string, line, character int) 
 			Character: character,
 		},
 	}
-	
+
 	var result Hover
 	if err := c.call(ctx, "textDocument/hover", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return &result, nil
 }
 
@@ -259,12 +259,12 @@ func (c *LSPClient) Definition(ctx context.Context, uri string, line, character 
 			Character: character,
 		},
 	}
-	
+
 	var result []Location
 	if err := c.call(ctx, "textDocument/definition", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -282,12 +282,12 @@ func (c *LSPClient) References(ctx context.Context, uri string, line, character 
 			IncludeDeclaration: includeDeclaration,
 		},
 	}
-	
+
 	var result []Location
 	if err := c.call(ctx, "textDocument/references", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -296,12 +296,12 @@ func (c *LSPClient) DocumentSymbols(ctx context.Context, uri string) ([]Document
 	params := DocumentSymbolParams{
 		TextDocument: TextDocumentIdentifier{URI: uri},
 	}
-	
+
 	var result []DocumentSymbol
 	if err := c.call(ctx, "textDocument/documentSymbol", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -312,12 +312,12 @@ func (c *LSPClient) CodeAction(ctx context.Context, uri string, range_ Range, co
 		Range:        range_,
 		Context:      context,
 	}
-	
+
 	var result []CodeAction
 	if err := c.call(ctx, "textDocument/codeAction", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -327,12 +327,12 @@ func (c *LSPClient) Formatting(ctx context.Context, uri string, options Formatti
 		TextDocument: TextDocumentIdentifier{URI: uri},
 		Options:      options,
 	}
-	
+
 	var result []TextEdit
 	if err := c.call(ctx, "textDocument/formatting", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -348,12 +348,12 @@ func (c *LSPClient) Rename(ctx context.Context, uri string, line, character int,
 		},
 		NewName: newName,
 	}
-	
+
 	var result WorkspaceEdit
 	if err := c.call(ctx, "textDocument/rename", params, &result); err != nil {
 		return nil, err
 	}
-	
+
 	return &result, nil
 }
 
@@ -394,15 +394,15 @@ func (c *LSPClient) initialize(ctx context.Context) error {
 			},
 		},
 	}
-	
+
 	var result InitializeResult
 	if err := c.call(ctx, "initialize", params, &result); err != nil {
 		return err
 	}
-	
+
 	c.serverCapabilities = result.Capabilities
 	c.initialized = true
-	
+
 	// Send initialized notification
 	return c.server.Notify(ctx, "initialized", InitializedParams{})
 }
@@ -411,7 +411,7 @@ func (c *LSPClient) call(ctx context.Context, method string, params, result inte
 	c.mu.Lock()
 	c.requestID++
 	c.mu.Unlock()
-	
+
 	return c.server.Call(ctx, method, params, result)
 }
 
@@ -425,7 +425,7 @@ func (c *LSPClient) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrp
 		}
 		return nil, nil
 	}
-	
+
 	// Return method not found for requests we don't handle
 	return nil, &jsonrpc2.Error{
 		Code:    jsonrpc2.CodeMethodNotFound,
@@ -455,12 +455,12 @@ func (c *stdioConn) Close() error {
 
 // InitializeParams represents initialize request params.
 type InitializeParams struct {
-	ProcessID             int32                  `json:"processId"`
-	RootPath              string                 `json:"rootPath"`
-	InitializationOptions interface{}            `json:"initializationOptions,omitempty"`
-	Capabilities          ClientCapabilities     `json:"capabilities"`
-	Trace                 string                 `json:"trace,omitempty"`
-	WorkspaceFolders      []WorkspaceFolder      `json:"workspaceFolders,omitempty"`
+	ProcessID             int32              `json:"processId"`
+	RootPath              string             `json:"rootPath"`
+	InitializationOptions interface{}        `json:"initializationOptions,omitempty"`
+	Capabilities          ClientCapabilities `json:"capabilities"`
+	Trace                 string             `json:"trace,omitempty"`
+	WorkspaceFolders      []WorkspaceFolder  `json:"workspaceFolders,omitempty"`
 }
 
 // InitializeResult represents initialize response.
@@ -585,18 +585,18 @@ type CompletionList struct {
 
 // CompletionItem represents a completion item.
 type CompletionItem struct {
-	Label            string             `json:"label"`
-	Kind             int                `json:"kind,omitempty"`
-	Detail           string             `json:"detail,omitempty"`
-	Documentation    string             `json:"documentation,omitempty"`
-	SortText         string             `json:"sortText,omitempty"`
-	FilterText       string             `json:"filterText,omitempty"`
-	InsertText       string             `json:"insertText,omitempty"`
-	InsertTextFormat int                `json:"insertTextFormat,omitempty"`
-	TextEdit         *TextEdit          `json:"textEdit,omitempty"`
-	AdditionalTextEdits []TextEdit      `json:"additionalTextEdits,omitempty"`
-	Command          *Command            `json:"command,omitempty"`
-	Data             interface{}        `json:"data,omitempty"`
+	Label               string      `json:"label"`
+	Kind                int         `json:"kind,omitempty"`
+	Detail              string      `json:"detail,omitempty"`
+	Documentation       string      `json:"documentation,omitempty"`
+	SortText            string      `json:"sortText,omitempty"`
+	FilterText          string      `json:"filterText,omitempty"`
+	InsertText          string      `json:"insertText,omitempty"`
+	InsertTextFormat    int         `json:"insertTextFormat,omitempty"`
+	TextEdit            *TextEdit   `json:"textEdit,omitempty"`
+	AdditionalTextEdits []TextEdit  `json:"additionalTextEdits,omitempty"`
+	Command             *Command    `json:"command,omitempty"`
+	Data                interface{} `json:"data,omitempty"`
 }
 
 // Command represents a command.
@@ -631,11 +631,11 @@ type DocumentSymbol struct {
 
 // CodeAction represents a code action.
 type CodeAction struct {
-	Title       string      `json:"title"`
-	Kind        string      `json:"kind,omitempty"`
-	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	Title       string         `json:"title"`
+	Kind        string         `json:"kind,omitempty"`
+	Diagnostics []Diagnostic   `json:"diagnostics,omitempty"`
 	Edit        *WorkspaceEdit `json:"edit,omitempty"`
-	Command     *Command    `json:"command,omitempty"`
+	Command     *Command       `json:"command,omitempty"`
 }
 
 // Diagnostic represents a diagnostic.
@@ -656,7 +656,7 @@ type WorkspaceEdit struct {
 // TextDocumentEdit represents text document edits.
 type TextDocumentEdit struct {
 	TextDocument VersionedTextDocumentIdentifier `json:"textDocument"`
-	Edits        []TextEdit                       `json:"edits"`
+	Edits        []TextEdit                      `json:"edits"`
 }
 
 // FormattingOptions represents formatting options.
@@ -673,7 +673,7 @@ type DidOpenTextDocumentParams struct {
 
 type DidChangeTextDocumentParams struct {
 	TextDocument   VersionedTextDocumentIdentifier  `json:"textDocument"`
-	ContentChanges []TextDocumentContentChangeEvent   `json:"contentChanges"`
+	ContentChanges []TextDocumentContentChangeEvent `json:"contentChanges"`
 }
 
 type DidCloseTextDocumentParams struct {
@@ -728,5 +728,3 @@ type RenameParams struct {
 	TextDocumentPositionParams
 	NewName string `json:"newName"`
 }
-
-

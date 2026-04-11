@@ -257,7 +257,7 @@ func TestEditBlock_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			err := tt.block.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -377,13 +377,13 @@ func TestTruncate(t *testing.T) {
 func TestMatchBlock(t *testing.T) {
 	t.Parallel()
 	lines := []string{"  line1  ", "line2", "  line3  "}
-	
+
 	// Should match with flexible whitespace
 	assert.True(t, matchBlock(lines, []string{"line1", "line2", "line3"}))
-	
+
 	// Should not match different content
 	assert.False(t, matchBlock(lines, []string{"different", "content"}))
-	
+
 	// Should not match if too few lines
 	assert.False(t, matchBlock(lines[:1], []string{"line1", "line2"}))
 }
@@ -391,7 +391,7 @@ func TestMatchBlock(t *testing.T) {
 func TestFindAndReplace(t *testing.T) {
 	t.Parallel()
 	content := "line1\nline2\nline3\nline4"
-	
+
 	newContent, start, end, found := findAndReplace(content, "line2\nline3", "replaced", 0)
 	assert.True(t, found)
 	assert.Equal(t, 2, start)
@@ -403,7 +403,7 @@ func TestFindAndReplace(t *testing.T) {
 func TestFindAndReplace_WithHint(t *testing.T) {
 	t.Parallel()
 	content := "a\na\na\ntarget\nb\nb\nb"
-	
+
 	newContent, start, end, found := findAndReplace(content, "target", "REPLACED", 4)
 	assert.True(t, found)
 	assert.Equal(t, 4, start)
@@ -414,7 +414,7 @@ func TestFindAndReplace_WithHint(t *testing.T) {
 func TestFindAndReplace_NotFound(t *testing.T) {
 	t.Parallel()
 	content := "line1\nline2"
-	
+
 	_, _, _, found := findAndReplace(content, "nonexistent", "replace", 0)
 	assert.False(t, found)
 }

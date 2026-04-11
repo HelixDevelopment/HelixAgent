@@ -8,18 +8,18 @@ import (
 )
 
 // BuddySystem implements the Terminal Tamagotchi feature
- type BuddySystem struct {
-	mu       sync.RWMutex
-	enabled  bool
-	species  string
-	name     string
-	level    int
-	stats    BuddyStats
-	mood     string
+type BuddySystem struct {
+	mu      sync.RWMutex
+	enabled bool
+	species string
+	name    string
+	level   int
+	stats   BuddyStats
+	mood    string
 }
 
 // BuddyStats represents Buddy's statistics
- type BuddyStats struct {
+type BuddyStats struct {
 	Debugging int `json:"debugging"`
 	Patience  int `json:"patience"`
 	Chaos     int `json:"chaos"`
@@ -59,7 +59,7 @@ const (
 )
 
 // NewBuddySystem creates a new BUDDY system
- func NewBuddySystem() *BuddySystem {
+func NewBuddySystem() *BuddySystem {
 	return &BuddySystem{
 		enabled: true,
 		mood:    "curious",
@@ -70,11 +70,11 @@ const (
 func (b *BuddySystem) GenerateBuddy(userID string) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	// Use Mulberry32 PRNG seeded with userID
 	seed := hashString(userID + "friend-2026-401")
 	rng := mulberry32(seed)
-	
+
 	// Determine rarity
 	rarityRoll := int(rng() * 100)
 	var rarity string
@@ -90,13 +90,13 @@ func (b *BuddySystem) GenerateBuddy(userID string) error {
 	default:
 		rarity = "common"
 	}
-	
+
 	// Check for shiny (1% chance)
 	isShiny := rng() < 0.01
-	
+
 	// Select species based on rarity
 	species := b.selectSpecies(rarity, rng)
-	
+
 	// Generate stats (0-100 each)
 	stats := BuddyStats{
 		Debugging: int(rng() * 100),
@@ -105,7 +105,7 @@ func (b *BuddySystem) GenerateBuddy(userID string) error {
 		Wisdom:    int(rng() * 100),
 		Snark:     int(rng() * 100),
 	}
-	
+
 	b.species = species
 	if isShiny {
 		b.species = "shiny_" + species
@@ -113,7 +113,7 @@ func (b *BuddySystem) GenerateBuddy(userID string) error {
 	b.stats = stats
 	b.level = 1
 	b.name = b.generateName(species)
-	
+
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (b *BuddySystem) selectSpecies(rarity string, rng func() float64) string {
 		"epic":      {SpeciesStormwyrm, SpeciesVoidcat, SpeciesAetherling},
 		"legendary": {SpeciesCosmoshale, SpeciesNebulynx},
 	}
-	
+
 	list := species[rarity]
 	return list[int(rng()*float64(len(list)))]
 }
@@ -153,7 +153,7 @@ func (b *BuddySystem) generateName(species string) string {
 		SpeciesCosmoshale:   {"Cosmo", "Galaxy", "Universe", "Celestial"},
 		SpeciesNebulynx:     {"Nebula", "Stardust", "Aurora", "Lynx"},
 	}
-	
+
 	list := names[species]
 	if len(list) == 0 {
 		return "Buddy"
@@ -166,8 +166,8 @@ func mulberry32(seed uint32) func() float64 {
 	return func() float64 {
 		seed |= 0
 		seed = seed + 0x6D2B79F5 | 0
-		t := int32(seed ^ seed>>15) * (1 | int32(seed)) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
-		t = t + int32(int32(t^t>>7)*(61|int32(t)))^t
+		t := int32(seed^seed>>15) * (1 | int32(seed)) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
+		t = t + int32(int32(t^t>>7)*(61|int32(t))) ^ t
 		return float64(uint32(t^t>>14)) / 4294967296.0 // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
 	}
 }
@@ -186,13 +186,13 @@ func hashString(s string) uint32 {
 func (b *BuddySystem) GetInfo() map[string]interface{} {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"name":   b.name,
+		"name":    b.name,
 		"species": b.species,
-		"level":  b.level,
-		"stats":  b.stats,
-		"mood":   b.mood,
+		"level":   b.level,
+		"stats":   b.stats,
+		"mood":    b.mood,
 		"enabled": b.enabled,
 	}
 }
@@ -201,11 +201,11 @@ func (b *BuddySystem) GetInfo() map[string]interface{} {
 func (b *BuddySystem) Render() string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	if !b.enabled {
 		return ""
 	}
-	
+
 	// Basic ASCII art based on species
 	arts := map[string]string{
 		SpeciesPebblecrab: "  /\\_/\\  \n ( o.o ) \n  > ^ <   \n  /|_|\\  \n   / \\   ",
@@ -213,13 +213,13 @@ func (b *BuddySystem) Render() string {
 		SpeciesMossfrog:   "    @ @   \n   (o_o)  \n  >(   )< \n   /   \\  ",
 		"default":         "  /\\_/\\  \n ( o.o ) \n  > ^ <   ",
 	}
-	
+
 	art, ok := arts[b.species]
 	if !ok {
 		art = arts["default"]
 	}
-	
-	return fmt.Sprintf("\n%s the %s\n%s\nLevel: %d | Mood: %s\n", 
+
+	return fmt.Sprintf("\n%s the %s\n%s\nLevel: %d | Mood: %s\n",
 		b.name, b.species, art, b.level, b.mood)
 }
 
@@ -227,7 +227,7 @@ func (b *BuddySystem) Render() string {
 func (b *BuddySystem) Interact(action string) string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	switch action {
 	case "pet":
 		b.mood = "happy"
@@ -254,7 +254,7 @@ func (b *BuddySystem) Interact(action string) string {
 func (b *BuddySystem) GetComment(context string) string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	comments := map[string][]string{
 		"coding": {
 			"Don't forget to save!",
@@ -281,12 +281,12 @@ func (b *BuddySystem) GetComment(context string) string {
 			"You've got this!",
 		},
 	}
-	
+
 	list, ok := comments[context]
 	if !ok {
 		list = comments["default"]
 	}
-	
+
 	// Select based on stats
 	idx := (b.stats.Wisdom + b.stats.Snark) % len(list)
 	return list[idx]

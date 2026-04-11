@@ -809,4 +809,3 @@ func (m *EmbeddingManager) ClearCache() {
 	m.embeddingCache = make(map[string][]float64)
 	m.log.Info("Embedding cache cleared")
 }
-

@@ -85,7 +85,7 @@ func TestBrokerAdapter_BrokerType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+			t.Parallel()
 			adapter := NewBrokerAdapter(tt.genericBroker)
 			assert.Equal(t, tt.expectedType, adapter.BrokerType())
 		})

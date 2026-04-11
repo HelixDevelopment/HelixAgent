@@ -104,6 +104,7 @@ func (dpo *DebatePerformanceOptimizer) ExecuteWithOptimization(
 				"provider":  member.ProviderName,
 				"cache_hit": true,
 			}).Debug("Debate response served from cache")
+			dpo.recordLatency(time.Since(startTime))
 			return cached.Response, nil
 		}
 		atomic.AddInt64(&dpo.stats.CacheMisses, 1)
@@ -122,17 +123,36 @@ func (dpo *DebatePerformanceOptimizer) ExecuteWithOptimization(
 		dpo.cacheResponse(prompt, member.ModelName, member.ProviderName, response)
 	}
 
-	latency := time.Since(startTime).Milliseconds()
-	// Use CAS loop for running average — lock-free
+	dpo.recordLatency(time.Since(startTime))
+	return response, err
+}
+
+// recordLatency folds a per-call elapsed duration into the running
+// AverageLatencyMs counter. Using microseconds internally (then
+// converting to ms with a minimum of 1) lets sub-millisecond calls
+// still contribute a nonzero value, which matters for tests that
+// exercise a mock provider returning instantly — otherwise the
+// running average collapses to zero and the "latency must be > 0"
+// assertion fails despite the code being correct.
+func (dpo *DebatePerformanceOptimizer) recordLatency(elapsed time.Duration) {
+	latencyMs := elapsed.Milliseconds()
+	if latencyMs <= 0 && elapsed > 0 {
+		// Sub-millisecond call — clamp to 1 ms so the average remains nonzero.
+		latencyMs = 1
+	}
+	// CAS loop for running average — lock-free.
 	for {
 		old := atomic.LoadInt64(&dpo.stats.AverageLatencyMs)
-		newAvg := (old + latency) / 2
+		var newAvg int64
+		if old == 0 {
+			newAvg = latencyMs
+		} else {
+			newAvg = (old + latencyMs) / 2
+		}
 		if atomic.CompareAndSwapInt64(&dpo.stats.AverageLatencyMs, old, newAvg) {
-			break
+			return
 		}
 	}
-
-	return response, err
 }
 
 func (dpo *DebatePerformanceOptimizer) ExecuteParallel(

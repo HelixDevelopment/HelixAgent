@@ -77,6 +77,15 @@ func NewStartupVerifier(cfg *StartupConfig, log *logrus.Logger) *StartupVerifier
 	if cfg == nil {
 		cfg = DefaultStartupConfig()
 	}
+	// Normalize MaxConcurrency: callers who construct a StartupConfig
+	// literal (integration tests, embeds) routinely forget this field
+	// and leave it at its zero value. A zero-sized semaphore in
+	// verifyProviders' parallel path blocks every goroutine forever
+	// on `sem <- struct{}{}` — that was the integration-suite hang
+	// fixed in 2026-04-11's remediation round.
+	if cfg.MaxConcurrency <= 0 {
+		cfg.MaxConcurrency = DefaultStartupConfig().MaxConcurrency
+	}
 	if log == nil {
 		log = logrus.New()
 	}
@@ -625,7 +634,15 @@ func (sv *StartupVerifier) verifyProviders(ctx context.Context, discovered []*Pr
 		// Parallel verification
 		var wg sync.WaitGroup
 		var mu sync.Mutex
-		sem := make(chan struct{}, sv.config.MaxConcurrency)
+		// Defensive: a zero or negative MaxConcurrency would create an
+		// unbuffered semaphore that every goroutine blocks on forever.
+		// NewStartupVerifier already normalises this, but any test that
+		// mutates the config after construction should still be safe.
+		maxConcurrency := sv.config.MaxConcurrency
+		if maxConcurrency <= 0 {
+			maxConcurrency = DefaultStartupConfig().MaxConcurrency
+		}
+		sem := make(chan struct{}, maxConcurrency)
 
 		for _, disc := range discovered {
 			wg.Add(1)

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -384,7 +385,7 @@ func (rt *http3RoundTripper) decompressResponse(resp *http.Response) *http.Respo
 		return resp
 	}
 
-	encoding := resp.Header.Get("Content-Encoding")
+	encoding := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding")))
 	if encoding == "" {
 		return resp
 	}
@@ -399,6 +400,21 @@ func (rt *http3RoundTripper) decompressResponse(resp *http.Response) *http.Respo
 			resp.Header.Del("Content-Encoding")
 			resp.Header.Del("Content-Length")
 		}
+	case "gzip":
+		// We advertise "br, gzip" in Accept-Encoding (see RoundTrip),
+		// so the server is free to respond in gzip. Prior to 2026-04-11
+		// only "br" was decompressed, causing JSON unmarshal failures
+		// with `\x1f` (the gzip magic byte) as the first character —
+		// the Gemini provider was the most visible victim.
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			// Fall back to the raw body; the caller will see the
+			// gzip bytes but at least the reader isn't closed twice.
+			return resp
+		}
+		resp.Body = &gzipReadCloser{reader: gr, closer: resp.Body}
+		resp.Header.Del("Content-Encoding")
+		resp.Header.Del("Content-Length")
 	}
 
 	return resp
@@ -415,6 +431,22 @@ func (r *brotliReadCloser) Read(p []byte) (int, error) {
 }
 
 func (r *brotliReadCloser) Close() error {
+	return r.closer.Close()
+}
+
+// gzipReadCloser wraps a gzip.Reader so closing it closes both the
+// decoder (which frees its internal buffers) and the underlying body.
+type gzipReadCloser struct {
+	reader *gzip.Reader
+	closer io.Closer
+}
+
+func (r *gzipReadCloser) Read(p []byte) (int, error) {
+	return r.reader.Read(p)
+}
+
+func (r *gzipReadCloser) Close() error {
+	_ = r.reader.Close()
 	return r.closer.Close()
 }
 

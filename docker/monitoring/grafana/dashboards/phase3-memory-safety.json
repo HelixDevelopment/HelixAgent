@@ -1,0 +1,234 @@
+{
+  "dashboard": {
+    "title": "Phase-3 Memory Safety",
+    "uid": "phase3-memory-safety",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "description": "HelixAgent Phase-3 memory-safety gauges: ensemble worker pool admission and guardrail pipeline stats-map instrumentation. See internal/observability/metrics/phase3_gauges.go and internal/ensemble/background/worker_pool.go for the underlying counters.",
+    "tags": ["helixagent", "memory-safety", "phase3"],
+    "panels": [
+      {
+        "id": 1,
+        "type": "timeseries",
+        "title": "Ensemble Worker Pool — Pending Depth",
+        "description": "Number of in-flight SubmitAsync tasks currently holding a per-task delivery channel in the ensemble worker pool. Bounded by DefaultMaxPendingResults (default 10_000); sustained values near the cap indicate upstream backpressure.",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2,
+              "fillOpacity": 20,
+              "showPoints": "never"
+            },
+            "color": { "mode": "palette-classic" },
+            "unit": "short"
+          }
+        },
+        "targets": [
+          {
+            "expr": "helixagent_ensemble_pending_results",
+            "legendFormat": "pending",
+            "refId": "A"
+          },
+          {
+            "expr": "helixagent_ensemble_pending_results_cap",
+            "legendFormat": "cap",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "timeseries",
+        "title": "Ensemble Worker Pool — Utilization (pending / cap)",
+        "description": "Fraction of the worker pool's admission window currently in use. Values >0.8 sustained for more than a few minutes indicate the consumer side cannot keep up; >1 is impossible (rejection fires first).",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.6 },
+                { "color": "red", "value": 0.8 }
+              ]
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2,
+              "fillOpacity": 30,
+              "showPoints": "never"
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "helixagent_ensemble_pending_results / clamp_min(helixagent_ensemble_pending_results_cap, 1)",
+            "legendFormat": "utilization",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Ensemble — Tasks Rejected (rate/min)",
+        "description": "Cumulative SubmitAsync calls rejected because the pending cap was reached. Any non-zero rate is a signal the pool is being asked to accept more work than it can hold; investigate producer backpressure.",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": { "mode": "thresholds" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 1 }
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(helixagent_ensemble_tasks_rejected_total[1m])) * 60",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "type": "timeseries",
+        "title": "Ensemble — Tasks Rejected (cumulative)",
+        "description": "Monotonic counter of rejected SubmitAsync calls since process start. Flat horizontal line = healthy. Any positive slope indicates producer/consumer imbalance.",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 6, "w": 18, "x": 6, "y": 8 },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2,
+              "fillOpacity": 15,
+              "showPoints": "never"
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "helixagent_ensemble_tasks_rejected_total",
+            "legendFormat": "total rejected",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "type": "timeseries",
+        "title": "Guardrail Stats — Distinct Keys Tracked",
+        "description": "Current number of distinct guardrail names held in the pipeline's per-guardrail stats map. Capped at MaxGuardrailStatsKeys (default 1024). A healthy pipeline has O(10) distinct keys; runaway growth is a bug.",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2,
+              "fillOpacity": 20,
+              "showPoints": "never"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 512 },
+                { "color": "red", "value": 900 }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "helixagent_guardrails_stats_keys",
+            "legendFormat": "keys",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "type": "stat",
+        "title": "Guardrail Stats — Drops (rate/min)",
+        "description": "Updates dropped because the stats-key cap was reached. Non-zero means the pipeline is seeing more distinct guardrail names than the cap allows — almost always a bug in the caller (random strings leaking into guardrail names).",
+        "datasource": "Prometheus",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": { "mode": "thresholds" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 1 }
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(helixagent_guardrails_stats_dropped_total[1m])) * 60",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "type": "row",
+        "title": "Context",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+        "collapsed": false
+      },
+      {
+        "id": 8,
+        "type": "text",
+        "title": "Reading this dashboard",
+        "gridPos": { "h": 6, "w": 24, "x": 0, "y": 23 },
+        "options": {
+          "mode": "markdown",
+          "content": "**Healthy state**: pending-depth sawtooth between 0 and a few dozen, utilization <0.2, rejected_total flat at 0, guardrail_keys ~O(10), stats_dropped flat at 0.\n\n**Backpressure warning**: pending-depth climbs toward the cap, utilization >0.6 for >1 minute. Investigate consumer-side throughput (ensemble worker pool, downstream LLM provider latency).\n\n**Cap-hit incident**: rejected_total slope >0. SubmitAsync is rejecting tasks. Look at `helixagent_ensemble_tasks_rejected_total` labels (if any) and recent producer traffic.\n\n**Guardrail namespace pollution**: stats_keys approaches 1024 or stats_dropped_total slope >0. Search logs for the guardrail names being registered — something is producing unique strings instead of a fixed allow-list.\n\n**Source counters**: see `internal/ensemble/background/worker_pool.go` (PendingCount, DefaultMaxPendingResults, tasksRejected) and `internal/security/guardrails.go` (byGuardrailSize, byGuardrailDropped, MaxGuardrailStatsKeys).\n\n**Collector wiring**: see `internal/observability/metrics/phase3_gauges.go` and `phase3_source.go`. The gauges are registered against the default Prometheus registry during router.Setup() and pulled via contributor callbacks at scrape time, so they always report zero until the live WorkerPool and GuardrailPipeline register themselves."
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "annotations": {
+      "list": []
+    }
+  }
+}

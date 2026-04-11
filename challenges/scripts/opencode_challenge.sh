@@ -522,19 +522,23 @@ phase2_api_test() {
         echo "Response body: $chat_body" >> "$ERROR_LOG"
     fi
 
-    # Generate API test summary
+    # Generate API test summary. Wrap statuses as strings because bash
+    # statuses like "000" (client timeout) are not valid JSON numbers —
+    # leading zeros get rejected by strict parsers like Python's json
+    # module, which previously flipped the whole challenge to FAILED
+    # even though both endpoints reported success=true.
     cat > "$api_results" << EOF
 {
     "timestamp": "$(date -Iseconds)",
     "endpoints_tested": [
         {
             "endpoint": "/v1/models",
-            "status": $models_status,
+            "status": "$models_status",
             "success": $([ "$models_status" = "200" ] && echo "true" || echo "false")
         },
         {
             "endpoint": "/v1/chat/completions",
-            "status": $chat_status,
+            "status": "$chat_status",
             "success": $chat_success
         }
     ],

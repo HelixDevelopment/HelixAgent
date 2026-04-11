@@ -21,7 +21,7 @@
 
 ## Overview
 
-HelixAgent is a highly concurrent system that orchestrates parallel requests across 22+ LLM providers, runs multi-round debate sessions with ensemble voting, manages connection pools to PostgreSQL and Redis, and processes background tasks. This manual covers the concurrency patterns used throughout the codebase and how to apply them correctly.
+HelixAgent is a highly concurrent system that orchestrates parallel requests across 47+ LLM providers, runs multi-round debate sessions with ensemble voting, manages connection pools to PostgreSQL and Redis, and processes background tasks. This manual covers the concurrency patterns used throughout the codebase and how to apply them correctly.
 
 The Concurrency module (`digital.vasic.concurrency`) provides reusable primitives: worker pools, priority queues, rate limiters (token bucket and sliding window), circuit breakers, semaphores, and resource monitoring. These are used across the HelixAgent core and all extracted modules.
 

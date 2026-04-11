@@ -44,7 +44,7 @@ By the end of this course, you will be able to:
 **Topics:**
 - HTTP API endpoints (Gin framework, JSON responses)
 - Authentication middleware (JWT, API keys)
-- External integrations (43 LLM providers, vector DBs)
+- External integrations (47+ LLM providers, vector DBs)
 - Internal services (PostgreSQL, Redis, MCP servers)
 - File system access (tool sandbox, formatters)
 

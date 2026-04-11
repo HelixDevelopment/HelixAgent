@@ -200,7 +200,7 @@ helixagent_circuit_breaker_state == 2
 
 ### Provider Comparison Dashboard
 
-Create a dedicated dashboard that compares all 22+ LLM providers side by side:
+Create a dedicated dashboard that compares all 47+ LLM providers side by side:
 
 - Response latency per provider (grouped bar chart)
 - Error rate per provider (stacked area)
@@ -257,7 +257,7 @@ func (h *Handler) HandleChat(c *gin.Context) {
 
 ## Provider Latency Tracking
 
-Each of the 22+ LLM providers is tracked independently. The verification pipeline at startup establishes baseline latency scores.
+Each of the 47+ LLM providers is tracked independently. The verification pipeline at startup establishes baseline latency scores.
 
 ### Viewing Provider Performance
 

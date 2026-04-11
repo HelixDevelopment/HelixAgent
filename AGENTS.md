@@ -17,7 +17,7 @@
 
 ## Project Overview
 
-HelixAgent is a production-ready, AI-powered ensemble LLM service written in Go (1.25+) that aggregates responses from multiple language models to provide the most accurate and reliable outputs. It provides OpenAI-compatible APIs with support for 22+ LLM providers, debate orchestration, MCP adapters, and containerized infrastructure.
+HelixAgent is a production-ready, AI-powered ensemble LLM service written in Go (1.25+) that aggregates responses from multiple language models to provide the most accurate and reliable outputs. It provides OpenAI-compatible APIs with support for 47+ LLM providers, debate orchestration, MCP adapters, and containerized infrastructure. (Authoritative count: `ls internal/llm/providers/ | grep -v common`.)
 
 **Module**: `dev.helix.agent`
 
@@ -48,7 +48,7 @@ HelixAgent is a production-ready, AI-powered ensemble LLM service written in Go 
          ┌───────────────────────────┼───────────────────────────┐
          ▼                           ▼                           ▼
 ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   PostgreSQL    │    │       Redis         │    │   22+ LLM Providers │
+│   PostgreSQL    │    │       Redis         │    │   47+ LLM Providers │
 │                 │    │                     │    │  ┌───────────────┐  │
 │   - Sessions    │    │   - Caching         │    │  │ Claude        │  │
 │   - Analytics   │    │   - Rate Limiting   │    │  │ DeepSeek      │  │

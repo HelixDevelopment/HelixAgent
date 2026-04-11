@@ -45,10 +45,10 @@ make run-dev
 
 ## 📋 Features
 
-> **Comprehensive Reference**: See **[docs/FEATURES.md](docs/FEATURES.md)** for complete documentation of all 21 LLM providers, 13 embedding providers, 35 MCP implementations, 10 LSP servers, and 24+ power features.
+> **Comprehensive Reference**: See **[docs/FEATURES.md](docs/FEATURES.md)** for complete documentation of all 47+ LLM providers, 13 embedding providers, 35 MCP implementations, 10 LSP servers, and 24+ power features. (Authoritative count: `ls internal/llm/providers/ | grep -v common`.)
 
 ### 🧠 AI Ensemble System
-- **Multi-Provider Support**: 21 LLM providers including Claude, DeepSeek, Gemini, Mistral, OpenRouter, Qwen, xAI/Grok, Cohere, Perplexity, Groq, and more
+- **Multi-Provider Support**: 47+ LLM providers including Claude, DeepSeek, Gemini, Mistral, OpenRouter, Qwen, xAI/Grok, Cohere, Perplexity, Groq, and many more — see `internal/llm/providers/` for the full list
 - **Dynamic Provider Selection**: Real-time verification scores via LLMsVerifier integration
 - **SpecKit Auto-Activation**: Intelligent 7-phase development flow (Constitution → Specify → Clarify → Plan → Tasks → Analyze → Implement) triggered automatically for large changes based on work granularity detection
 - **Constitution Watcher**: Auto-update Constitution on project changes (new modules, documentation changes, structure changes, test coverage drops) with background filesystem monitoring

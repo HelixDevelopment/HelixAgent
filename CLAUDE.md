@@ -2,23 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## MANDATORY: No CI/CD Pipelines
+## ⚠️ READ FIRST — Hard Stops
 
-**NO GitHub Actions, GitLab CI/CD, or any automated pipeline may exist in this repository!**
-
-- No `.github/workflows/` directory
-- No `.gitlab-ci.yml` file
-- No Jenkinsfile, .travis.yml, .circleci, or any other CI configuration
-- All builds and tests are run manually or via Makefile targets
-- This rule is permanent and non-negotiable
+1. **NO CI/CD pipelines** — no `.github/workflows/`, `.gitlab-ci.yml`, Jenkinsfile, `.travis.yml`, `.circleci/`, or any automated pipeline. No Git hooks either. Permanent, non-negotiable.
+2. **NO manual container commands** — never run `docker/podman start|stop|rm`, `docker-compose up|down`, or `make test-infra-start` as a workflow. The HelixAgent binary orchestrates **all** containers automatically during boot, reading `Containers/.env`. The only acceptable workflow is `make build` → `./bin/helixagent`. Full rules in the Constitution section below.
+3. **NO HTTPS for Git** — SSH URLs only (`git@github.com:…`), including for public repos and submodule updates.
+4. **Run `go mod vendor` after touching submodules** — especially `LLMsVerifier/llm-verifier/pkg/cliagents/`. HelixAgent builds from `vendor/`; skip this and the binary silently uses stale submodule code. This bites repeatedly.
 
 ## Project Overview
 
-HelixAgent is an AI-powered ensemble LLM service written in Go that combines responses from multiple language models using intelligent aggregation strategies. It provides OpenAI-compatible APIs and supports 43 LLM providers (Claude, Chutes, DeepSeek, Gemini, Mistral, OpenRouter, Qwen, ZAI, Zen, Cerebras, Ollama, AI21, Anthropic, Cohere, Fireworks, GitHub Models, Groq, HuggingFace, OpenAI, Perplexity, Replicate, Together, Venice, xAI, Junie, Cloudflare, Codestral, Hyperbolic, Kilo, Kimi, KimiCode, Modal, Nia, NLPCloud, Novita, Nvidia, PublicAI, SambaNova, Sarvam, SiliconFlow, Upstage, VulaVula, Zhipu) with **dynamic provider selection** based on LLMsVerifier verification scores.
+HelixAgent is a Go (module `dev.helix.agent`, Go 1.25.3) ensemble LLM service exposing OpenAI-compatible APIs. It fronts **47+ LLM providers** (authoritative list: `ls internal/llm/providers/ | grep -v common`) with dynamic selection driven by LLMsVerifier verification scores.
 
-**Module**: `dev.helix.agent` (Go 1.25.3)
-
-Subprojects: **Toolkit** (`Toolkit/`) — Go library for AI apps. **LLMsVerifier** (`LLMsVerifier/`) — provider accuracy verification. Plus **41 extracted modules** (see [Extracted Modules](#extracted-modules-submodules) below) covering containers, challenges, concurrency, observability, auth, storage, streaming, security, vector databases, embeddings, database, cache, messaging, formatters, MCP, RAG, memory, optimization, plugins, event bus, agentic workflows, LLM operations, self-improvement, planning algorithms, benchmarking, background tasks, build checks, conversation context, debate orchestration, LLM provider interface, data models, skill registry, tool schemas, **HelixMemory** (unified cognitive memory engine), **HelixSpecifier** (spec-driven development fusion engine), documentation processing, QA orchestration, CLI agent management, computer vision, provider verification, and containerized MCP servers.
+Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and **41 extracted modules** across 8 phases. Catalog: `docs/MODULES.md`. Summary table under [Extracted Modules](#extracted-modules-submodules).
 
 ## Mandatory Development Standards
 
@@ -26,18 +21,7 @@ Subprojects: **Toolkit** (`Toolkit/`) — Go library for AI apps. **LLMsVerifier
 
 1. **100% Test Coverage** — Every component MUST have unit, integration, E2E, automation, security/penetration, and benchmark tests. No false positives. Mocks/stubs ONLY in unit tests; all other tests use real data and live services.
 2. **Challenge Coverage** — Every component MUST have Challenge scripts (`./challenges/scripts/`) validating real-life use cases. No false success — validate actual behavior, not return codes.
-3. **Containerization** — All services MUST run in containers (Docker/Podman/K8s). Must support local default execution AND remote configuration. Auto boot-up before HelixAgent is ready. Remote services need API-based health checks.
-3a. **Centralized Container Management** — ALL container operations (runtime detection, compose up/down, health checks, remote distribution) MUST go through the Containers module (`digital.vasic.containers`) via `internal/adapters/containers/adapter.go`. No direct `exec.Command` to `docker`/`podman` in production code. The adapter delegates to the Containers module when available, with fallback to direct commands only in adapter internals.
-3b. **MANDATORY Container Orchestration Flow (CRITICAL)** — This is the ONLY acceptable container orchestration flow. All tests and challenges MUST follow this pattern:
-   - **Step 1**: HelixAgent boots and initializes Containers module adapter
-   - **Step 2**: Adapter reads `Containers/.env` file (NOT project root `.env`)
-   - **Step 3**: Based on `Containers/.env` content:
-     - `CONTAINERS_REMOTE_ENABLED=true` → ALL containers distributed to remote host(s) via `CONTAINERS_REMOTE_HOST_*` vars. NO local containers started.
-     - `CONTAINERS_REMOTE_ENABLED=false` or missing → ALL containers start locally
-   - **Step 4**: Health checks performed against configured endpoints (local or remote)
-   - **Step 5**: Required services failing health check cause boot failure in strict mode
-   - **Rules**: NO manual container starts, NO mixed mode, tests use `tests/precondition/containers_boot_test.go`, challenges verify container placement based on `Containers/.env`
-   - **Key Files**: `Containers/.env` (orchestration), `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`, `tests/precondition/containers_boot_test.go`
+3. **Containerization** — All services run in containers via the Containers module (`digital.vasic.containers`), accessed through `internal/adapters/containers/adapter.go`. No direct `exec.Command` to `docker`/`podman` in production code. Orchestration flow and local-vs-remote rules are defined in the Constitution ("Mandatory Container Orchestration Flow") — all tests and challenges must follow it. Key files: `Containers/.env`, `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`, `tests/precondition/containers_boot_test.go`.
 4. **Configuration via HelixAgent Only** — CLI agent config export uses only HelixAgent + LLMsVerifier's unified generator (`pkg/cliagents/`). No third-party scripts.
 5. **Real Data** — Beyond unit tests, all components MUST use actual API calls, real databases, live services. No simulated success. Fallback chains tested with actual failures.
 6. **Health & Observability** — Every service MUST expose health endpoints. Circuit breakers for all external deps. Prometheus/OpenTelemetry integration. Status via `/v1/monitoring/status`.
@@ -118,15 +102,15 @@ GOMAXPROCS=2 nice -n 19 go test -v ./tests/load/ -count=1 -p 1
 
 Single test: `go test -v -run TestName ./path/to/package`
 
-With infrastructure:
+**Infrastructure is always started by the HelixAgent binary** (`./bin/helixagent` reads `Containers/.env` and boots all containers). When running a single test against an already-booted instance, set env vars to point at the local ports:
+
 ```bash
-make test-infra-start     # Start PostgreSQL, Redis, Mock LLM containers
 DB_HOST=localhost DB_PORT=15432 DB_USER=helixagent DB_PASSWORD=helixagent123 DB_NAME=helixagent_db \
 REDIS_HOST=localhost REDIS_PORT=16379 REDIS_PASSWORD=helixagent123 \
 go test -v -run TestName ./path/to/package
-make test-infra-stop      # Stop containers
-make test-with-infra      # All tests with Docker infra
 ```
+
+> `make test-infra-start` / `make test-with-infra` still exist as legacy targets but **contradict the Constitution's container orchestration rule**. Prefer booting via the binary. They are documented only because older tests still reference them.
 
 ## Code Quality & CI
 
@@ -160,7 +144,7 @@ make monitoring-reset-circuits / force-health-check
 - `cmd/mcp-bridge/` — MCP bridge | `cmd/generate-constitution/` — Constitution generator
 
 ### Core Packages (`internal/`)
-- `llm/providers/` — 43 dedicated LLM providers (ai21, anthropic, cerebras, chutes, claude, cloudflare, codestral, cohere, deepseek, fireworks, gemini (unified: API+CLI+ACP), githubmodels, groq, huggingface, hyperbolic, junie, kilo, kimi, kimicode, mistral, modal, nia, nlpcloud, novita, nvidia, ollama, openai, openrouter, perplexity, publicai, qwen, replicate, sambanova, sarvam, siliconflow, together, upstage, venice, vulavula, xai, zai, zen, zhipu) + generic OpenAI-compatible provider
+- `llm/providers/` — 47+ dedicated LLM providers (full list via `ls internal/llm/providers/ | grep -v common`) + `generic/` OpenAI-compatible fallback
 - `llm/providers/generic/` — Generic OpenAI-compatible provider for verification of providers without dedicated implementations
 - `llm/discovery/` — 3-tier dynamic model discovery (Provider API → models.dev → hardcoded fallback)
 - `llm/ensemble.go` — Ensemble orchestration
@@ -177,7 +161,6 @@ make monitoring-reset-circuits / force-health-check
 - `vectordb/` — Qdrant, Pinecone, Milvus, pgvector
 - `mcp/adapters/` — 45+ MCP adapters | `mcp/config/` — Container config generator
 - `rag/` — Hybrid retrieval | `memory/` — Mem0-style with entity graphs
-- `routing/semantic/` — Embedding similarity routing
 - `agentic/` — Graph-based workflow orchestration
 - `security/` — Red team framework, guardrails, PII detection
 - `observability/` — OpenTelemetry, Jaeger, Zipkin, Langfuse
@@ -284,10 +267,16 @@ BigData components configured via `BIGDATA_ENABLE_*` env vars. Missing deps (Neo
 
 **HelixLLM Local Inference (MANDATORY)**: HelixLLM's core MUST use local llama.cpp as the PRIMARY model provider, NOT cloud APIs. Cloud APIs (DeepSeek, OpenAI) are FALLBACK only. The llama.cpp server runs with RPC support (`-DGGML_RPC=ON`) for distributed inference across multiple hosts. Config: `HELIX_LLM_DEFAULT_PROVIDER=local`, `HELIX_LLM_LOCAL_RPC_HOST`, `HELIX_LLM_LOCAL_RPC_PORT=8090`. The `LLAMA_RPC_SERVERS` env var enables multi-host distribution. Changing the default provider to a cloud API violates HelixLLM's fundamental design. Container: `helixagent-helixllm-llamacpp` built from `HelixLLM/container/Containerfile.llamacpp`. Models: **Multi-model fleet** via llama.cpp router mode — Qwen2.5-Coder-1.5B Q4_K_M (fast, ~1GB) + Qwen2.5-Coder-3B Q4_K_M (balanced, ~2GB) + nomic-embed-text-v1.5 Q4_K_M (embeddings, ~90MB). Task complexity routing selects model per-request.
 
-**HelixLLM TLS Configuration**: HelixLLM requires HTTPS (TLS 1.3) with self-signed certificates. The cert MUST have Subject Alternative Names (SANs) — legacy CN-only certs are rejected by Go 1.15+. Cert location: `HelixLLM/certs/cert.pem` (regenerated with SANs: `DNS:localhost,IP:127.0.0.1,IP:::1`). For CLI agents and tools to trust the cert, these env vars MUST be set system-wide:
-- `SSL_CERT_FILE=~/.helixagent/ca-bundle.pem` (combined system CAs + HelixLLM cert, for Go binaries)
-- `NODE_EXTRA_CA_CERTS=<project>/HelixLLM/certs/cert.pem` (for Node.js/Bun runtimes)
-Set via `~/.config/environment.d/helixllm-tls.conf` (systemd sessions), `~/.profile` (login shells), `~/.bashrc` (interactive shells). The combined CA bundle is created by: `cat /var/lib/ssl/cert.pem HelixLLM/certs/cert.pem > ~/.helixagent/ca-bundle.pem`. HelixAgent boot MUST auto-configure these env vars and regenerate the CA bundle if the cert changes. **NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests** — all TLS verification must use proper cert trust. The HelixLLM provider's `InsecureSkipVerify` defaults to `false` (secure); explicit opt-in required via `HELIX_LLM_TLS_SKIP_VERIFY=true` or `Config.TLSSkipVerify=true`.
+**HelixLLM TLS Configuration**: HelixLLM requires HTTPS (TLS 1.3) with a self-signed cert at `HelixLLM/certs/cert.pem`. The cert MUST include SANs (`DNS:localhost,IP:127.0.0.1,IP:::1`) — Go 1.15+ rejects CN-only certs. HelixAgent boot auto-configures trust, but if you need to rebuild the CA bundle manually:
+
+```bash
+mkdir -p ~/.helixagent
+cat /var/lib/ssl/cert.pem HelixLLM/certs/cert.pem > ~/.helixagent/ca-bundle.pem
+export SSL_CERT_FILE=~/.helixagent/ca-bundle.pem                         # Go binaries
+export NODE_EXTRA_CA_CERTS="$PWD/HelixLLM/certs/cert.pem"                # Node/Bun
+```
+
+Persist via `~/.config/environment.d/helixllm-tls.conf`, `~/.profile`, or `~/.bashrc`. **NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests.** `HelixLLM` provider's `InsecureSkipVerify` defaults to `false`; explicit opt-in via `HELIX_LLM_TLS_SKIP_VERIFY=true` or `Config.TLSSkipVerify=true`.
 
 ## Adding a New LLM Provider
 
@@ -356,10 +345,12 @@ CI_RESOURCE_LIMIT=medium make ci-all  # Medium resource limits (default: low)
 
 ## Challenges
 
-**IMPORTANT:** Infrastructure containers MUST be running before executing challenges.
+**IMPORTANT:** HelixAgent binary must be running (it boots all required infra) before executing challenges.
 
 ```bash
-./challenges/scripts/run_all_challenges.sh    # Run ALL challenges (~70+ scripts)
+./challenges/scripts/run_all_challenges.sh                    # Run ALL (~70+ scripts)
+./challenges/scripts/memory_safety_challenge.sh               # Run a single challenge
+GOMAXPROCS=2 nice -n 19 ./challenges/scripts/<name>_challenge.sh   # With resource limits
 ```
 
 Individual challenges: `./challenges/scripts/<name>_challenge.sh`. Key ones:

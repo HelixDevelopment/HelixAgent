@@ -25,7 +25,7 @@
 
 ## Overview
 
-HelixAgent processes requests through 43 LLM providers, an ensemble
+HelixAgent processes requests through 47+ LLM providers, an ensemble
 debate system, and multiple middleware layers. Performance optimization
 is essential for maintaining low latency and high throughput while
 respecting the mandatory 30-40% host resource limit imposed by the
@@ -173,7 +173,7 @@ go test -bench=BenchmarkLazyInit -benchmem ./internal/...
 
 | Component | Before (init) | After (lazy) | Savings |
 |-----------|---------------|--------------|---------|
-| HTTP clients (43 providers) | ~500ms | 0ms (deferred) | ~500ms |
+| HTTP clients (47+ providers) | ~500ms | 0ms (deferred) | ~500ms |
 | Database connection pool | ~200ms | 0ms (deferred) | ~200ms |
 | Redis client | ~100ms | 0ms (deferred) | ~100ms |
 | Provider registry | ~300ms | 0ms (deferred) | ~300ms |
@@ -401,7 +401,7 @@ Monitor these metrics for performance degradation:
 
 ## Health Check Parallelization
 
-HelixAgent checks the health of 43 providers, databases, caches, and
+HelixAgent checks the health of 47+ providers, databases, caches, and
 external services. Running health checks sequentially takes too long.
 Parallel execution with bounded concurrency is essential.
 

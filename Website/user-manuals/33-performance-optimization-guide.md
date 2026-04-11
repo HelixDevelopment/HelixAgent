@@ -23,7 +23,7 @@
 
 ## Overview
 
-HelixAgent processes requests through 22 LLM providers, an ensemble debate system, and multiple middleware layers. Performance optimization is critical for maintaining low latency and high throughput while respecting the 30-40% host resource limit.
+HelixAgent processes requests through 47+ LLM providers, an ensemble debate system, and multiple middleware layers. Performance optimization is critical for maintaining low latency and high throughput while respecting the 30-40% host resource limit.
 
 This guide covers the performance patterns used throughout HelixAgent:
 - **Lazy loading** to defer expensive initialization until first use

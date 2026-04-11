@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: All features can activate together
 test_start "All integrated features can activate together"
 TOPIC="Write a secure Python function with performance optimization and comprehensive tests"
-RESPONSE=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -38,7 +38,7 @@ fi
 # Test 2: Server handles integrated features without errors
 test_start "Server handles integrated workload"
 for i in {1..5}; do
-  RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+  RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
     -H "Content-Type: application/json" \
     -d "{\"topic\":\"Test $i\",\"max_rounds\":1}")
 
@@ -56,7 +56,7 @@ PASSED=$((PASSED + 1))
 test_start "Integrated features performance check"
 START_TIME=$(date +%s)
 
-RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"Performance test\",\"max_rounds\":1}")
 
@@ -84,7 +84,7 @@ fi
 # Test 5: Concurrent debates with integrated features
 test_start "Concurrent debates work with integrated features"
 for i in {1..3}; do
-  curl -s -X POST http://localhost:7061/v1/debates \
+  curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
     -H "Content-Type: application/json" \
     -d "{\"topic\":\"Concurrent $i\",\"max_rounds\":1}" > /tmp/concurrent_$i.json &
 done
@@ -111,7 +111,7 @@ fi
 
 # Test 6: Server health remains good
 test_start "Server health check after integration"
-HEALTH=$(curl -s http://localhost:7061/health | jq -r '.status')
+HEALTH=$(curl -s --max-time 60 http://localhost:7061/health | jq -r '.status')
 if [ "$HEALTH" = "healthy" ]; then
   test_pass
   PASSED=$((PASSED + 1))
@@ -134,7 +134,7 @@ fi
 # Test 8: Error handling works with integrated features
 test_start "Error handling works with integrated features"
 # Send invalid request
-RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"\",\"max_rounds\":0}")
 
@@ -169,7 +169,7 @@ fi
 # Test 10: All integrated features documented in response
 test_start "Response includes all feature fields"
 TOPIC="Final comprehensive test"
-RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 

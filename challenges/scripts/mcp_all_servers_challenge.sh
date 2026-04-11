@@ -34,7 +34,7 @@ test_npm_package() {
 
     # URL encode the package name
     local encoded=$(echo "$package" | sed 's/@/%40/g; s/\//%2f/g')
-    local status=$(curl -s -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/$encoded")
+    local status=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/$encoded")
 
     if [ "$expected" = "exists" ]; then
         if [ "$status" = "200" ]; then
@@ -148,7 +148,7 @@ test_sse_endpoint() {
     log_info "Testing SSE endpoint: /v1/$protocol"
 
     # Test SSE connection with timeout
-    local response=$(timeout 2s curl -s -N -H "Accept: text/event-stream" "${HELIXAGENT_URL}/v1/${protocol}" 2>&1 || true)
+    local response=$(timeout 2s curl -s --max-time 60 -N -H "Accept: text/event-stream" "${HELIXAGENT_URL}/v1/${protocol}" 2>&1 || true)
 
     if echo "$response" | grep -q "event: endpoint"; then
         if echo "$response" | grep -q "data: /v1/${protocol}"; then
@@ -170,7 +170,7 @@ test_jsonrpc_initialize() {
     TOTAL=$((TOTAL + 1))
     log_info "Testing JSON-RPC initialize: /v1/$protocol"
 
-    local response=$(curl -s -X POST "${HELIXAGENT_URL}/v1/${protocol}" \
+    local response=$(curl -s --max-time 60 -X POST "${HELIXAGENT_URL}/v1/${protocol}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}}}')
 
@@ -195,7 +195,7 @@ test_jsonrpc_tools_list() {
     TOTAL=$((TOTAL + 1))
     log_info "Testing JSON-RPC tools/list: /v1/$protocol"
 
-    local response=$(curl -s -X POST "${HELIXAGENT_URL}/v1/${protocol}" \
+    local response=$(curl -s --max-time 60 -X POST "${HELIXAGENT_URL}/v1/${protocol}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 
@@ -215,7 +215,7 @@ log_info "Section 3: HelixAgent SSE Endpoint Tests"
 log_info "=============================================="
 
 # Check if HelixAgent is running
-if curl -s "${HELIXAGENT_URL}/health" | grep -q "healthy"; then
+if curl -s --max-time 60 "${HELIXAGENT_URL}/health" | grep -q "healthy"; then
     log_success "HelixAgent is running at ${HELIXAGENT_URL}"
 
     for protocol in mcp acp lsp embeddings vision cognee; do

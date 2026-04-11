@@ -106,9 +106,9 @@ check_helixagent() {
     local port="${HELIXAGENT_PORT:-7061}"
     local host="${HELIXAGENT_HOST:-localhost}"
 
-    if curl -s "http://$host:$port/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 "http://$host:$port/health" > /dev/null 2>&1; then
         return 0
-    elif curl -s "http://$host:$port/v1/models" > /dev/null 2>&1; then
+    elif curl -s --max-time 60 "http://$host:$port/v1/models" > /dev/null 2>&1; then
         return 0
     fi
     return 1

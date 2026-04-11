@@ -50,7 +50,7 @@ log_info "Testing against: $HELIXAGENT_URL"
 
 # Test 1: Check HelixAgent is running
 log_info "Test 1: Checking if HelixAgent is running..."
-if curl -s "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
     log_pass "HelixAgent is running and healthy"
 else
     log_fail "HelixAgent is not running or not healthy at ${HELIXAGENT_URL}"
@@ -64,7 +64,7 @@ fi
 # Test 2: Verify comprehensive debate endpoint works
 log_info "Test 2: Testing comprehensive debate endpoint..."
 RESPONSE_FILE=$(mktemp)
-curl -s -X POST "${HELIXAGENT_URL}/v1/chat/completions" \
+curl -s --max-time 60 -X POST "${HELIXAGENT_URL}/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer test-key" \
     -d '{
@@ -84,7 +84,7 @@ rm -f "$RESPONSE_FILE"
 # Test 3: Test streaming debate and capture output
 log_info "Test 3: Testing streaming debate with real LLM calls..."
 STREAM_FILE=$(mktemp)
-curl -s -X POST "${HELIXAGENT_URL}/v1/chat/completions" \
+curl -s --max-time 60 -X POST "${HELIXAGENT_URL}/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer test-key" \
     -d '{

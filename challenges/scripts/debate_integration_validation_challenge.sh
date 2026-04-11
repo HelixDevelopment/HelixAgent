@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: Validation result is present in response
 test_start "Validation result is present"
 TOPIC="Analyze the benefits of microservices"
-RESPONSE=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -73,7 +73,7 @@ fi
 # Test 6: Validation works for code content
 test_start "Validation works for code generation tasks"
 TOPIC="Write a function to parse JSON"
-RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -88,7 +88,7 @@ fi
 # Test 7: Validation works for documentation
 test_start "Validation works for documentation tasks"
 TOPIC="Document the API endpoints"
-RESP=$(curl -s -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 

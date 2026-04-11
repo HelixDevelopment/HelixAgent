@@ -188,21 +188,21 @@ echo "=== Section 4: Network Pre-flight Checks ==="
 echo ""
 
 # Test 4.1: Alpine repository reachable
-if curl -s --connect-timeout 5 -I https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/APKINDEX.tar.gz > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 -I https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/APKINDEX.tar.gz > /dev/null 2>&1; then
     pass "4.1 Alpine repository reachable"
 else
     fail "4.1 Alpine repository NOT reachable (builds will fail)"
 fi
 
 # Test 4.2: npm registry reachable
-if curl -s --connect-timeout 5 -I https://registry.npmjs.org/ > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 -I https://registry.npmjs.org/ > /dev/null 2>&1; then
     pass "4.2 npm registry reachable"
 else
     fail "4.2 npm registry NOT reachable (Node.js builds will fail)"
 fi
 
 # Test 4.3: PyPI reachable
-if curl -s --connect-timeout 5 -I https://pypi.org/simple/ > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 -I https://pypi.org/simple/ > /dev/null 2>&1; then
     pass "4.3 PyPI repository reachable"
 else
     fail "4.3 PyPI repository NOT reachable (Python builds may fail)"

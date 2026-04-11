@@ -547,7 +547,7 @@ if check_helixagent; then
         fi
 
         # Test 7.7: Discovery returns 35+ MCP servers
-        MCP_RUNTIME=$(curl -s http://localhost:9300/v1/discovery/mcp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
+        MCP_RUNTIME=$(curl -s --max-time 60 http://localhost:9300/v1/discovery/mcp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
         if [ "$MCP_RUNTIME" -ge 35 ]; then
             pass_test "7.7 Discovery returns 35+ MCP servers (found: $MCP_RUNTIME)"
         else
@@ -555,7 +555,7 @@ if check_helixagent; then
         fi
 
         # Test 7.8: Discovery returns LSP servers
-        LSP_RUNTIME=$(curl -s http://localhost:9300/v1/discovery/lsp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
+        LSP_RUNTIME=$(curl -s --max-time 60 http://localhost:9300/v1/discovery/lsp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
         if [ "$LSP_RUNTIME" -ge 1 ]; then
             pass_test "7.8 Discovery returns LSP servers (found: $LSP_RUNTIME)"
         else
@@ -563,7 +563,7 @@ if check_helixagent; then
         fi
 
         # Test 7.9: Discovery returns ACP servers
-        ACP_RUNTIME=$(curl -s http://localhost:9300/v1/discovery/acp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
+        ACP_RUNTIME=$(curl -s --max-time 60 http://localhost:9300/v1/discovery/acp 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
         if [ "$ACP_RUNTIME" -ge 1 ]; then
             pass_test "7.9 Discovery returns ACP servers (found: $ACP_RUNTIME)"
         else
@@ -571,7 +571,7 @@ if check_helixagent; then
         fi
 
         # Test 7.10: Discovery returns embedding servers
-        EMBED_RUNTIME=$(curl -s http://localhost:9300/v1/discovery/embedding 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
+        EMBED_RUNTIME=$(curl -s --max-time 60 http://localhost:9300/v1/discovery/embedding 2>/dev/null | grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo 0)
         if [ "$EMBED_RUNTIME" -ge 1 ]; then
             pass_test "7.10 Discovery returns embedding servers (found: $EMBED_RUNTIME)"
         else

@@ -22,7 +22,7 @@ test_worker_status() {
     log_info "Test 1: Getting worker pool status..."
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local workers
     workers=$(echo "$response" | jq -r '.workers_active // 0')
@@ -37,7 +37,7 @@ test_concurrent_tasks() {
 
     local pids=()
     for i in {1..5}; do
-        curl -s -X POST "${API_BASE}/v1/tasks" \
+        curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
             -H "Content-Type: application/json" \
             -d "{
                 \"task_type\": \"test_command\",
@@ -56,7 +56,7 @@ test_concurrent_tasks() {
     sleep 2
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local running
     running=$(echo "$response" | jq -r '.running_count // 0')
@@ -72,7 +72,7 @@ test_worker_statistics() {
     log_info "Test 3: Checking worker statistics..."
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local worker_status
     worker_status=$(echo "$response" | jq -r '.worker_status // []')
@@ -94,7 +94,7 @@ test_task_distribution() {
 
     # Create multiple tasks quickly
     for i in {1..3}; do
-        curl -s -X POST "${API_BASE}/v1/tasks" \
+        curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
             -H "Content-Type: application/json" \
             -d "{
                 \"task_type\": \"test_command\",
@@ -107,7 +107,7 @@ test_task_distribution() {
     sleep 1
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks?limit=10")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks?limit=10")
 
     local count
     count=$(echo "$response" | jq -r '.count // 0')
@@ -122,7 +122,7 @@ main() {
     local failed=0
 
     # Check API
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available, using mock validation"
         log_success "Challenge passed with mock validation"
         exit 0

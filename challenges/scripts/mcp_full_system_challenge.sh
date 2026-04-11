@@ -256,7 +256,7 @@ test_sse_endpoint() {
     local timeout=3
 
     # Try to connect to SSE endpoint
-    response=$(curl -s -m $timeout "http://localhost:$port/sse" 2>&1)
+    response=$(curl -s --max-time 60 -m $timeout "http://localhost:$port/sse" 2>&1)
 
     # Check if we get an SSE response or at least a connection
     if [ $? -eq 0 ]; then
@@ -302,7 +302,7 @@ test_jsonrpc() {
     local port=$1
     local method=$2
 
-    response=$(curl -s -m 5 -X POST "http://localhost:$port/message" \
+    response=$(curl -s --max-time 60 -m 5 -X POST "http://localhost:$port/message" \
         -H "Content-Type: application/json" \
         -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\",\"params\":{}}" 2>&1)
 
@@ -411,7 +411,7 @@ test_mcp_tool() {
     local tool=$2
     local args=$3
 
-    response=$(curl -s -m 10 -X POST "http://localhost:$port/message" \
+    response=$(curl -s --max-time 60 -m 10 -X POST "http://localhost:$port/message" \
         -H "Content-Type: application/json" \
         -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"$tool\",\"arguments\":$args}}" 2>&1)
 

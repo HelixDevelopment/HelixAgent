@@ -77,14 +77,14 @@ else
 fi
 
 # Test 4: Cognee health endpoint responds
-if curl -s -f "http://localhost:8000/" -o /dev/null; then
+if curl -s --max-time 60 -f "http://localhost:8000/" -o /dev/null; then
     test_result "Cognee health endpoint (/)" "pass"
 else
     test_result "Cognee health endpoint (/)" "fail" "Health endpoint not responding"
 fi
 
 # Test 5: Health endpoint returns JSON with message
-HEALTH_RESPONSE=$(curl -s "http://localhost:8000/")
+HEALTH_RESPONSE=$(curl -s --max-time 60 "http://localhost:8000/")
 if echo "$HEALTH_RESPONSE" | jq -e '.message' >/dev/null 2>&1; then
     test_result "Health endpoint returns JSON" "pass"
 else
@@ -99,14 +99,14 @@ else
 fi
 
 # Test 7: Cognee authentication endpoint exists
-if curl -s "http://localhost:8000/api/v1/auth/login" -o /dev/null -w "%{http_code}" | grep -qE "^(200|400|422)$"; then
+if curl -s --max-time 60 "http://localhost:8000/api/v1/auth/login" -o /dev/null -w "%{http_code}" | grep -qE "^(200|400|422)$"; then
     test_result "Authentication endpoint exists" "pass"
 else
     test_result "Authentication endpoint exists" "fail" "Auth endpoint not found"
 fi
 
 # Test 8: Form-encoded authentication succeeds
-AUTH_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8000/api/v1/auth/login" \
+AUTH_RESPONSE=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "http://localhost:8000/api/v1/auth/login" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "username=admin@helixagent.ai&password=HelixAgentPass123")
 HTTP_CODE=$(echo "$AUTH_RESPONSE" | tail -n 1)
@@ -135,7 +135,7 @@ fi
 echo ""
 echo -e "${YELLOW}Testing known Cognee bug (AttributeError in extract_subgraph_chunks)${NC}"
 SEARCH_TIMEOUT=0
-if timeout 3 curl -s -X POST "http://localhost:8000/api/v1/search" \
+if timeout 3 curl -s --max-time 60 -X POST "http://localhost:8000/api/v1/search" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"query":"test"}' >/dev/null 2>&1; then
@@ -181,7 +181,7 @@ else
 fi
 
 # Test 17: HelixAgent API works without Cognee
-if timeout 5 curl -s -X POST "http://localhost:7061/v1/chat/completions" \
+if timeout 5 curl -s --max-time 60 -X POST "http://localhost:7061/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Hi"}],"max_tokens":5}' | jq -e '.choices[0].message.content' >/dev/null 2>&1; then
     test_result "HelixAgent API works without Cognee" "pass"
@@ -191,7 +191,7 @@ fi
 
 # Test 18: API response time is fast (<10 seconds)
 START_TIME=$(date +%s)
-curl -s -X POST "http://localhost:7061/v1/chat/completions" \
+curl -s --max-time 60 -X POST "http://localhost:7061/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Hi"}],"max_tokens":5}' >/dev/null 2>&1 || true
 END_TIME=$(date +%s)

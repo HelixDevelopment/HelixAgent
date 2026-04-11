@@ -304,7 +304,7 @@ log_info "=============================================="
 # Test 19: Check if HelixAgent is running
 TOTAL=$((TOTAL + 1))
 log_info "Test 19: HelixAgent server health check"
-if curl -s -f --connect-timeout 5 "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 -f --connect-timeout 5 "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
     log_success "HelixAgent server is running"
     PASSED=$((PASSED + 1))
 else

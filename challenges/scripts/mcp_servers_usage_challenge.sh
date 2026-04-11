@@ -32,7 +32,7 @@ log_info "=============================================="
 # Test 1: helixagent-mcp SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-mcp SSE endpoint"
-response=$(timeout 5s curl -s -N "$HELIXAGENT_URL/v1/mcp" 2>&1 || echo "TIMEOUT")
+response=$(timeout 5s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/mcp" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "helixagent-mcp SSE endpoint responds"
     PASSED=$((PASSED + 1))
@@ -44,7 +44,7 @@ fi
 # Test 2: helixagent-mcp POST message
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-mcp POST message"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/mcp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/mcp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if echo "$response" | grep -q "jsonrpc\|result\|error"; then
@@ -58,7 +58,7 @@ fi
 # Test 3: helixagent-acp
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-acp endpoint"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/acp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -72,7 +72,7 @@ fi
 # Test 4: helixagent-lsp
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-lsp endpoint"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/lsp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"capabilities":{}}}' 2>&1)
 if [ -n "$response" ]; then
@@ -86,7 +86,7 @@ fi
 # Test 5: helixagent-embeddings
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-embeddings endpoint"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/embeddings" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/embeddings" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -100,7 +100,7 @@ fi
 # Test 6: helixagent-vision
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-vision endpoint"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -114,7 +114,7 @@ fi
 # Test 7: helixagent-cognee
 TOTAL=$((TOTAL + 1))
 log_info "Testing helixagent-cognee endpoint"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/cognee" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/cognee" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -218,7 +218,7 @@ log_info "=============================================="
 # Test 14: Get MCP capabilities
 TOTAL=$((TOTAL + 1))
 log_info "Testing MCP capabilities retrieval"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
 if echo "$response" | grep -q "capabilities\|tools\|prompts\|resources"; then
     log_success "MCP capabilities retrieved successfully"
     PASSED=$((PASSED + 1))
@@ -230,7 +230,7 @@ fi
 # Test 15: List MCP tools
 TOTAL=$((TOTAL + 1))
 log_info "Testing MCP tools listing"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
 if echo "$response" | grep -q "tools\|name\|description"; then
     log_success "MCP tools listed successfully"
     PASSED=$((PASSED + 1))
@@ -242,7 +242,7 @@ fi
 # Test 16: Call MCP tool (get_capabilities)
 TOTAL=$((TOTAL + 1))
 log_info "Testing MCP tool call (mcp_get_capabilities)"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/mcp/tools/call" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/mcp/tools/call" \
     -H "Content-Type: application/json" \
     -d '{"name":"mcp_get_capabilities","arguments":{}}' 2>&1)
 if echo "$response" | grep -q "result\|capabilities\|error"; then

@@ -111,7 +111,7 @@ setup_results() {
 check_helixagent() {
     log_header "CHECKING HELIXAGENT AVAILABILITY"
 
-    if curl -s --connect-timeout 5 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 5 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
         log_pass "HelixAgent is running at $HELIXAGENT_URL"
         return 0
     else
@@ -175,7 +175,7 @@ test_api_key_auth() {
     log_info "Testing HelixAgent API key authentication..."
 
     local response
-    response=$(curl -s -X POST "$HELIXAGENT_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $CLAUDE_API_KEY" \
         -d '{
@@ -197,7 +197,7 @@ test_api_key_auth() {
 
     # Test 2: Verify provider list shows Claude with API key auth
     local providers
-    providers=$(curl -s "$HELIXAGENT_URL/v1/providers" 2>&1)
+    providers=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers" 2>&1)
 
     if echo "$providers" | jq -e '.providers[] | select(.name == "claude")' > /dev/null 2>&1; then
         log_pass "TEST 4: Claude provider listed in providers endpoint"
@@ -219,7 +219,7 @@ test_oauth_auth() {
     log_info "Testing OAuth credential detection..."
 
     local oauth_status
-    oauth_status=$(curl -s "$HELIXAGENT_URL/v1/providers" 2>&1)
+    oauth_status=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers" 2>&1)
 
     # Check if Claude OAuth provider is detected
     if echo "$oauth_status" | jq -e '.providers[] | select(.name == "claude" and .auth_type == "oauth")' > /dev/null 2>&1; then
@@ -239,7 +239,7 @@ test_oauth_auth() {
     # The OAuth adapter should use trust mode for Claude
     # This means it won't attempt API calls (which would fail)
     local verifier_status
-    verifier_status=$(curl -s "$HELIXAGENT_URL/v1/providers/verification-status" 2>&1 || echo "{}")
+    verifier_status=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers/verification-status" 2>&1 || echo "{}")
 
     if echo "$verifier_status" | jq -e '.' > /dev/null 2>&1; then
         local claude_verified
@@ -275,7 +275,7 @@ test_cli_agents() {
 
         # Test agent config generation
         local config_response
-        config_response=$(curl -s "$HELIXAGENT_URL/v1/agents/$agent/config" 2>&1)
+        config_response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/agents/$agent/config" 2>&1)
 
         if [[ $? -eq 0 ]] && echo "$config_response" | jq -e '.' > /dev/null 2>&1; then
             log_pass "TEST 8.$agent: Agent config generated successfully"
@@ -316,7 +316,7 @@ test_oauth_edge_cases() {
 
     # The provider should have proper error handling for product restriction
     local provider_info
-    provider_info=$(curl -s "$HELIXAGENT_URL/v1/models/metadata" 2>&1)
+    provider_info=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/models/metadata" 2>&1)
 
     if [[ $? -eq 0 ]]; then
         log_pass "TEST 10: Provider metadata accessible"

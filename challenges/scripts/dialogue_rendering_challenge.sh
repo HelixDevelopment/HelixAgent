@@ -23,7 +23,7 @@ test_bash_tag_stripping() {
     log_info "Test 1: Testing bash tag stripping..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{
             "model": "helixagent-debate",
@@ -51,7 +51,7 @@ test_markdown_preservation() {
     log_info "Test 2: Testing markdown code block preservation..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{
             "model": "helixagent-debate",
@@ -74,7 +74,7 @@ test_tool_argument_format() {
     log_info "Test 3: Testing tool argument format (camelCase)..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{
             "model": "helixagent-debate",
@@ -121,7 +121,7 @@ test_scripting_language_tags() {
 
     for lang in "${languages[@]}"; do
         local response
-        response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+        response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{
                 \"model\": \"helixagent-debate\",
@@ -200,7 +200,7 @@ test_streaming_response() {
     log_info "Test 6: Testing streaming response format..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{
             "model": "helixagent-debate",
@@ -228,7 +228,7 @@ test_debate_dialogue_format() {
     log_info "Test 7: Testing debate dialogue format..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d '{
             "model": "helixagent-debate",
@@ -316,7 +316,7 @@ main() {
     local skipped=0
 
     # Check API health first
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" 2>/dev/null | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" 2>/dev/null | grep -q "200"; then
         log_warning "API not available at ${API_BASE}, some tests will be skipped"
     fi
 

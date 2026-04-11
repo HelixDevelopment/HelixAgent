@@ -33,7 +33,7 @@ log_info "=============================================="
 # Simulate: List project files
 TOTAL=$((TOTAL + 1))
 log_info "Task 1.1: List project structure (filesystem MCP)"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/mcp/tools/call" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/mcp/tools/call" \
     -H "Content-Type: application/json" \
     -d '{
         "name": "mcp_list_tools",
@@ -50,7 +50,7 @@ fi
 # Simulate: Get code intelligence
 TOTAL=$((TOTAL + 1))
 log_info "Task 1.2: Get LSP server info (helixagent-lsp)"
-response=$(curl -s "$HELIXAGENT_URL/v1/lsp/servers" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/lsp/servers" 2>&1)
 if [ -n "$response" ]; then
     log_success "LSP server query successful"
     PASSED=$((PASSED + 1))
@@ -83,7 +83,7 @@ fi
 # Simulate: MCP tool for web fetching
 TOTAL=$((TOTAL + 1))
 log_info "Task 2.2: Query MCP capabilities for fetch"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
 if echo "$response" | grep -q "capabilities"; then
     log_success "MCP capabilities available for fetch operations"
     PASSED=$((PASSED + 1))
@@ -236,7 +236,7 @@ log_info "=============================================="
 # Simulate: MCP tool capabilities for analysis
 TOTAL=$((TOTAL + 1))
 log_info "Task 7.1: Query HelixAgent MCP for analysis tools"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
 if [ -n "$response" ]; then
     log_success "HelixAgent MCP tools accessible"
     PASSED=$((PASSED + 1))
@@ -248,7 +248,7 @@ fi
 # Simulate: LSP for code analysis
 TOTAL=$((TOTAL + 1))
 log_info "Task 7.2: Query LSP for code diagnostics"
-response=$(curl -s "$HELIXAGENT_URL/v1/lsp/stats" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/lsp/stats" 2>&1)
 if [ -n "$response" ]; then
     log_success "LSP diagnostics accessible"
     PASSED=$((PASSED + 1))
@@ -270,7 +270,7 @@ log_info "=============================================="
 # Simulate: Embeddings for semantic search
 TOTAL=$((TOTAL + 1))
 log_info "Task 8.1: Query embeddings providers"
-response=$(curl -s "$HELIXAGENT_URL/v1/embeddings/providers" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/embeddings/providers" 2>&1)
 if [ -n "$response" ]; then
     log_success "Embeddings providers accessible"
     PASSED=$((PASSED + 1))
@@ -282,7 +282,7 @@ fi
 # Simulate: Cognee for knowledge graph search
 TOTAL=$((TOTAL + 1))
 log_info "Task 8.2: Query Cognee for semantic search"
-response=$(curl -s "$HELIXAGENT_URL/v1/cognee/health" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/cognee/health" 2>&1)
 if [ -n "$response" ]; then
     log_success "Cognee knowledge graph accessible"
     PASSED=$((PASSED + 1))
@@ -304,7 +304,7 @@ log_info "=============================================="
 # Simulate: Vision protocol for OCR
 TOTAL=$((TOTAL + 1))
 log_info "Task 9.1: Test vision protocol availability"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"capabilities","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -328,7 +328,7 @@ log_info "=============================================="
 # Simulate: ACP for agent coordination
 TOTAL=$((TOTAL + 1))
 log_info "Task 10.1: Test ACP protocol availability"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/acp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"capabilities","id":1}' 2>&1)
 if [ -n "$response" ]; then

@@ -154,7 +154,7 @@ start_helixagent() {
     log_info "Starting HelixAgent on port $port..."
 
     # Check if already running
-    if curl -s "http://localhost:$port/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 "http://localhost:$port/health" > /dev/null 2>&1; then
         log_info "HelixAgent already running on port $port"
         return 0
     fi
@@ -167,7 +167,7 @@ start_helixagent() {
     # Wait for startup
     local max_wait=30
     local waited=0
-    while ! curl -s "http://localhost:$port/health" > /dev/null 2>&1; do
+    while ! curl -s --max-time 60 "http://localhost:$port/health" > /dev/null 2>&1; do
         sleep 1
         waited=$((waited + 1))
         if [[ $waited -ge $max_wait ]]; then
@@ -248,14 +248,14 @@ api_request() {
     local response_file="$OUTPUT_DIR/logs/api_response_$(date +%s%N).json"
 
     if [[ -n "$data" ]]; then
-        curl -s -X "$method" "$url" \
+        curl -s --max-time 60 -X "$method" "$url" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -d "$data" \
             -o "$response_file" \
             -w "%{http_code}"
     else
-        curl -s -X "$method" "$url" \
+        curl -s --max-time 60 -X "$method" "$url" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -o "$response_file" \
             -w "%{http_code}"

@@ -201,7 +201,7 @@ fi
 # Test 7: Service Health Checks (if containers are running)
 test_case "autopep8 health check (if running)"
 if curl -sf "$FORMATTER_BASE_URL:9211/health" > /dev/null 2>&1; then
-    HEALTH=$(curl -s "$FORMATTER_BASE_URL:9211/health")
+    HEALTH=$(curl -s --max-time 60 "$FORMATTER_BASE_URL:9211/health")
     if echo "$HEALTH" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
         pass
     else
@@ -213,7 +213,7 @@ fi
 
 test_case "yapf health check (if running)"
 if curl -sf "$FORMATTER_BASE_URL:9210/health" > /dev/null 2>&1; then
-    HEALTH=$(curl -s "$FORMATTER_BASE_URL:9210/health")
+    HEALTH=$(curl -s --max-time 60 "$FORMATTER_BASE_URL:9210/health")
     if echo "$HEALTH" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
         pass
     else
@@ -225,7 +225,7 @@ fi
 
 test_case "sqlfluff health check (if running)"
 if curl -sf "$FORMATTER_BASE_URL:9220/health" > /dev/null 2>&1; then
-    HEALTH=$(curl -s "$FORMATTER_BASE_URL:9220/health")
+    HEALTH=$(curl -s --max-time 60 "$FORMATTER_BASE_URL:9220/health")
     if echo "$HEALTH" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
         pass
     else
@@ -238,7 +238,7 @@ fi
 # Test 8: Service Formatting (if containers are running)
 test_case "autopep8 format Python code (if running)"
 if curl -sf "$FORMATTER_BASE_URL:9211/health" > /dev/null 2>&1; then
-    RESPONSE=$(curl -s "$FORMATTER_BASE_URL:9211/format" \
+    RESPONSE=$(curl -s --max-time 60 "$FORMATTER_BASE_URL:9211/format" \
         -X POST \
         -H "Content-Type: application/json" \
         -d '{"content":"def hello(  x,y ):\n  return x+y"}')
@@ -254,7 +254,7 @@ fi
 
 test_case "sqlfluff format SQL code (if running)"
 if curl -sf "$FORMATTER_BASE_URL:9220/health" > /dev/null 2>&1; then
-    RESPONSE=$(curl -s "$FORMATTER_BASE_URL:9220/format" \
+    RESPONSE=$(curl -s --max-time 60 "$FORMATTER_BASE_URL:9220/format" \
         -X POST \
         -H "Content-Type: application/json" \
         -d '{"content":"SELECT * FROM users WHERE id=1;"}')

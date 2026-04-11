@@ -19,7 +19,7 @@ test_sse_stream_initiation() {
     log_info "Test 1: SSE stream initiation"
 
     # Start streaming request
-    local resp=$(timeout 10 curl -s -N "$BASE_URL/v1/chat/completions" \
+    local resp=$(timeout 10 curl -s --max-time 60 -N "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Stream test"}],"max_tokens":20,"stream":true}' \
@@ -36,7 +36,7 @@ test_sse_stream_initiation() {
 test_sse_event_format() {
     log_info "Test 2: SSE event format"
 
-    local resp=$(timeout 10 curl -s -N "$BASE_URL/v1/chat/completions" \
+    local resp=$(timeout 10 curl -s --max-time 60 -N "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Event format"}],"max_tokens":20,"stream":true}' \
@@ -58,7 +58,7 @@ test_sse_event_format() {
 test_sse_stream_completion() {
     log_info "Test 3: SSE stream completion signal"
 
-    local resp=$(timeout 15 curl -s -N "$BASE_URL/v1/chat/completions" \
+    local resp=$(timeout 15 curl -s --max-time 60 -N "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Complete"}],"max_tokens":15,"stream":true}' \
@@ -79,7 +79,7 @@ test_sse_connection_handling() {
 
     # Test with Connection: keep-alive header
     local start_time=$(date +%s%N)
-    local resp=$(timeout 12 curl -s -N "$BASE_URL/v1/chat/completions" \
+    local resp=$(timeout 12 curl -s --max-time 60 -N "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -H "Connection: keep-alive" \
@@ -100,7 +100,7 @@ test_sse_connection_handling() {
 main() {
     log_info "Starting SSE streaming challenge..."
 
-    if ! curl -s "$BASE_URL/health" > /dev/null 2>&1; then
+    if ! curl -s --max-time 60 "$BASE_URL/health" > /dev/null 2>&1; then
         start_helixagent "$CHALLENGE_PORT" || { finalize_challenge "FAILED"; exit 1; }
     fi
 

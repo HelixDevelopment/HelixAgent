@@ -255,20 +255,20 @@ log_info "=============================================="
 log_info "Section 3: Runtime AI Debate Team Verification"
 log_info "=============================================="
 
-if curl -s "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "healthy"; then
+if curl -s --max-time 60 "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "healthy"; then
     log_info "HelixAgent is running, performing runtime checks..."
 
     # Test 11: Debate team has 15 LLMs
     TOTAL=$((TOTAL + 1))
     log_info "Test 11: Debate team has 15 LLMs total"
     # Check server logs or API for debate team size
-    team_info=$(curl -s "$HELIXAGENT_URL/v1/debates" 2>/dev/null || echo "{}")
+    team_info=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/debates" 2>/dev/null || echo "{}")
     if echo "$team_info" | grep -qi "15\|team" 2>/dev/null; then
         log_success "Debate team API responding"
         PASSED=$((PASSED + 1))
     else
         # Check discovery endpoint for debate readiness
-        discovery=$(curl -s "$HELIXAGENT_URL/v1/providers/discovery" 2>/dev/null || echo "{}")
+        discovery=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers/discovery" 2>/dev/null || echo "{}")
         if echo "$discovery" | jq -e '.debate_ready' 2>/dev/null | grep -q "true"; then
             log_success "Debate team ready (from discovery)"
             PASSED=$((PASSED + 1))
@@ -281,7 +281,7 @@ if curl -s "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "healthy"; then
     # Test 12: OAuth providers registered
     TOTAL=$((TOTAL + 1))
     log_info "Test 12: OAuth providers registered"
-    providers=$(curl -s "$HELIXAGENT_URL/v1/providers" 2>/dev/null || echo "[]")
+    providers=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers" 2>/dev/null || echo "[]")
     oauth_count=$(echo "$providers" | jq '[.providers[] | select(.name | test("oauth|claude|qwen"; "i"))] | length' 2>/dev/null || echo 0)
     if [ "$oauth_count" -ge 1 ]; then
         log_success "Found $oauth_count OAuth-related providers"

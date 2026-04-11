@@ -228,13 +228,13 @@ log_info "Section 5: Runtime API Verification"
 log_info "=============================================="
 
 # Check if HelixAgent is running
-if curl -s "$HELIXAGENT_URL/health" | grep -q "healthy"; then
+if curl -s --max-time 60 "$HELIXAGENT_URL/health" | grep -q "healthy"; then
     log_info "HelixAgent is running, performing runtime checks..."
 
     # Test 12: Zen models in API response
     TOTAL=$((TOTAL + 1))
     log_info "Test 12: Zen models available via API"
-    team_summary=$(curl -s "$HELIXAGENT_URL/v1/debates/team" 2>/dev/null || echo "{}")
+    team_summary=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/debates/team" 2>/dev/null || echo "{}")
     if echo "$team_summary" | grep -q "zen_models\|big_pickle\|grok_code_fast"; then
         log_success "Zen models available in API response"
         PASSED=$((PASSED + 1))
@@ -246,7 +246,7 @@ if curl -s "$HELIXAGENT_URL/health" | grep -q "healthy"; then
     # Test 13: Provider discovery endpoint
     TOTAL=$((TOTAL + 1))
     log_info "Test 13: Provider discovery includes Zen provider"
-    discovery=$(curl -s "$HELIXAGENT_URL/v1/providers/discovery" 2>/dev/null || echo "{}")
+    discovery=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers/discovery" 2>/dev/null || echo "{}")
     if echo "$discovery" | grep -qiE "zen|opencode"; then
         log_success "Zen provider in discovery"
         PASSED=$((PASSED + 1))

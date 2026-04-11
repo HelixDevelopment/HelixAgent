@@ -22,7 +22,7 @@ test_stuck_threshold() {
     log_info "Test 1: Creating task with custom stuck threshold..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "test_command",
@@ -52,7 +52,7 @@ test_stuck_analysis() {
 
     # Get a task
     local tasks
-    tasks=$(curl -s "${API_BASE}/v1/tasks?limit=1")
+    tasks=$(curl -s --max-time 60 "${API_BASE}/v1/tasks?limit=1")
 
     local task_id
     task_id=$(echo "$tasks" | jq -r '.tasks[0].id // empty')
@@ -63,7 +63,7 @@ test_stuck_analysis() {
     fi
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/${task_id}/analyze")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/analyze")
 
     local is_stuck
     is_stuck=$(echo "$response" | jq -r '.is_stuck // false')
@@ -80,7 +80,7 @@ test_heartbeat_status() {
     log_info "Test 3: Checking heartbeat status..."
 
     local tasks
-    tasks=$(curl -s "${API_BASE}/v1/tasks?status=running&limit=5")
+    tasks=$(curl -s --max-time 60 "${API_BASE}/v1/tasks?status=running&limit=5")
 
     local running_count
     running_count=$(echo "$tasks" | jq -r '.count // 0')
@@ -92,7 +92,7 @@ test_heartbeat_status() {
         task_id=$(echo "$tasks" | jq -r '.tasks[0].id')
 
         local response
-        response=$(curl -s "${API_BASE}/v1/tasks/${task_id}/analyze")
+        response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/analyze")
 
         local heartbeat_status
         heartbeat_status=$(echo "$response" | jq -r '.heartbeat_status // {}')
@@ -110,7 +110,7 @@ test_endless_task() {
     log_info "Test 4: Creating endless task configuration..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "endless_process",
@@ -129,7 +129,7 @@ test_endless_task() {
         log_success "Created endless task: $task_id"
 
         # Cancel it to clean up
-        curl -s -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
+        curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
         return 0
     else
         log_warning "Could not create endless task"
@@ -142,7 +142,7 @@ main() {
     local passed=0
     local failed=0
 
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available, using mock validation"
         log_success "Challenge passed with mock validation"
         exit 0

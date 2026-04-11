@@ -180,13 +180,13 @@ log_info "Section 4: Runtime API Verification"
 log_info "=============================================="
 
 # Check if HelixAgent is running
-if curl -s "$HELIXAGENT_URL/health" | grep -q "healthy"; then
+if curl -s --max-time 60 "$HELIXAGENT_URL/health" | grep -q "healthy"; then
     log_info "HelixAgent is running, performing runtime checks..."
 
     # Test 11: Get debate team summary
     TOTAL=$((TOTAL + 1))
     log_info "Test 11: Fetch debate team summary from API"
-    team_summary=$(curl -s "$HELIXAGENT_URL/v1/debates/team" 2>/dev/null || echo "{}")
+    team_summary=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/debates/team" 2>/dev/null || echo "{}")
     if echo "$team_summary" | grep -q "team_name\|positions\|total_llms"; then
         log_success "Debate team API responds"
         PASSED=$((PASSED + 1))

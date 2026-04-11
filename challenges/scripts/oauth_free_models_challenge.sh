@@ -286,13 +286,13 @@ log_info "=============================================="
 log_info "Section 5: Runtime API Verification"
 log_info "=============================================="
 
-if curl -s "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "healthy"; then
+if curl -s --max-time 60 "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "healthy"; then
     log_info "HelixAgent is running, performing runtime checks..."
 
     # Test 19: Provider list includes OpenRouter
     TOTAL=$((TOTAL + 1))
     log_info "Test 19: OpenRouter in provider list"
-    providers=$(curl -s "$HELIXAGENT_URL/v1/providers" 2>/dev/null || echo "{}")
+    providers=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/providers" 2>/dev/null || echo "{}")
     if echo "$providers" | grep -qi "openrouter"; then
         log_success "OpenRouter in provider list"
         PASSED=$((PASSED + 1))

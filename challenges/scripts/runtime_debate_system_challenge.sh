@@ -34,7 +34,7 @@ skip() { SKIP=$((SKIP + 1)); TOTAL=$((TOTAL + 1)); echo -e "  ${YELLOW}[SKIP]${N
 
 # Check if server is running
 SERVER_URL="http://localhost:7061"
-if ! curl -s --connect-timeout 5 "$SERVER_URL/v1/health" > /dev/null 2>&1; then
+if ! curl -s --max-time 60 --connect-timeout 5 "$SERVER_URL/v1/health" > /dev/null 2>&1; then
     echo -e "${RED}ERROR: HelixAgent server not running on port 7061${NC}"
     echo "Start it with: GIN_MODE=release ./bin/helixagent"
     exit 1
@@ -50,7 +50,7 @@ echo ""
 echo -e "${BLUE}=== Group 1: Server Health (4 tests) ===${NC}"
 
 # Test 1.1: Server responds to health check
-HEALTH=$(curl -s "$SERVER_URL/v1/health" 2>/dev/null)
+HEALTH=$(curl -s --max-time 60 "$SERVER_URL/v1/health" 2>/dev/null)
 if echo "$HEALTH" | grep -q '"status":"healthy"'; then
     pass "Server health check returns healthy"
 else
@@ -180,7 +180,7 @@ else
 fi
 
 # Test 3.5: Ollama should not be sole provider
-PROVIDERS_LIST=$(curl -s "$SERVER_URL/v1/providers" 2>/dev/null)
+PROVIDERS_LIST=$(curl -s --max-time 60 "$SERVER_URL/v1/providers" 2>/dev/null)
 if echo "$PROVIDERS_LIST" | grep -q '"count"'; then
     PROV_COUNT=$(echo "$PROVIDERS_LIST" | grep -oP '"count":\K[0-9]+' || echo "0")
     if [ "$PROV_COUNT" -ge 5 ]; then

@@ -45,7 +45,7 @@ test_xss_reflection() {
     local test_name="$2"
 
     local response
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{
@@ -241,19 +241,19 @@ log_info "SECTION 8: XSS via HTTP Headers"
 log_info "=============================================="
 
 run_test "XSS in User-Agent header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "User-Agent: <script>alert(1)</script>" 2>&1)
     ! echo "$response" | grep -F "<script>alert(1)</script>" > /dev/null
 '
 
 run_test "XSS in Referer header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "Referer: http://example.com/<script>alert(1)</script>" 2>&1)
     ! echo "$response" | grep -F "<script>alert(1)</script>" > /dev/null
 '
 
 run_test "XSS in Accept-Language header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "Accept-Language: <script>alert(1)</script>" 2>&1)
     ! echo "$response" | grep -F "<script>alert(1)</script>" > /dev/null
 '
@@ -266,7 +266,7 @@ log_info "SECTION 9: Security Headers Verification"
 log_info "=============================================="
 
 run_test "X-Content-Type-Options header present" '
-    headers=$(curl -s -I "$BASE_URL/health" 2>&1)
+    headers=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     echo "$headers" | grep -i "X-Content-Type-Options" > /dev/null || \
     echo "$headers" | grep -i "x-content-type-options" > /dev/null || \
     log_warning "X-Content-Type-Options header recommended but not present"
@@ -274,21 +274,21 @@ run_test "X-Content-Type-Options header present" '
 '
 
 run_test "X-XSS-Protection header present" '
-    headers=$(curl -s -I "$BASE_URL/health" 2>&1)
+    headers=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     echo "$headers" | grep -i "X-XSS-Protection" > /dev/null || \
     log_warning "X-XSS-Protection header recommended but not present"
     true
 '
 
 run_test "Content-Security-Policy header check" '
-    headers=$(curl -s -I "$BASE_URL/health" 2>&1)
+    headers=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     echo "$headers" | grep -i "Content-Security-Policy" > /dev/null || \
     log_warning "Content-Security-Policy header recommended but not present"
     true
 '
 
 run_test "X-Frame-Options header present" '
-    headers=$(curl -s -I "$BASE_URL/health" 2>&1)
+    headers=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     echo "$headers" | grep -i "X-Frame-Options" > /dev/null || \
     log_warning "X-Frame-Options header recommended but not present"
     true
@@ -302,7 +302,7 @@ log_info "SECTION 10: Content Type Validation"
 log_info "=============================================="
 
 run_test "JSON content type enforced for POST" '
-    response=$(curl -s -w "%{http_code}" -o /dev/null -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "%{http_code}" -o /dev/null -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: text/html" \
         -d "<script>alert(1)</script>" 2>&1)
     # Should reject with 400 or 415 (Unsupported Media Type)
@@ -310,7 +310,7 @@ run_test "JSON content type enforced for POST" '
 '
 
 run_test "Response content type is JSON" '
-    content_type=$(curl -s -I -X GET "$BASE_URL/health" 2>&1 | grep -i "Content-Type" | head -1)
+    content_type=$(curl -s --max-time 60 -I -X GET "$BASE_URL/health" 2>&1 | grep -i "Content-Type" | head -1)
     echo "$content_type" | grep -i "application/json" > /dev/null
 '
 
@@ -343,7 +343,7 @@ log_info "SECTION 12: Context-Specific Output Encoding"
 log_info "=============================================="
 
 run_test "HTML context encoding" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"<div>test</div>\"}]}")
@@ -355,7 +355,7 @@ run_test "HTML context encoding" '
 '
 
 run_test "JavaScript context encoding" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"</script><script>alert(1)</script>\"}]}")
@@ -365,7 +365,7 @@ run_test "JavaScript context encoding" '
 '
 
 run_test "URL context encoding" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"javascript:alert(1)\"}]}")

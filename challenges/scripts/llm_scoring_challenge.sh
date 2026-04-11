@@ -204,7 +204,7 @@ echo -e "${BLUE}========================================${NC}"
 # Check if server is running
 SERVER_URL="${HELIXAGENT_URL:-http://localhost:8080}"
 SERVER_RUNNING=false
-if curl -s --connect-timeout 5 "$SERVER_URL/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 "$SERVER_URL/health" > /dev/null 2>&1; then
     SERVER_RUNNING=true
     log_info "Server is running at $SERVER_URL"
 else
@@ -214,7 +214,7 @@ fi
 # Test 16: Server verification endpoint
 log_info "Test 16: Server verification endpoint"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     if [[ -n "$RESP" ]] && echo "$RESP" | grep -q "reevaluation_completed"; then
         log_pass 16 "Server verification endpoint returns data"
     else
@@ -227,7 +227,7 @@ fi
 # Test 17: Providers are returned sorted by score
 log_info "Test 17: Providers are sorted by score (descending)"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     if echo "$RESP" | grep -q "providers_sorted.*true"; then
         log_pass 17 "Providers are sorted by score"
     else
@@ -240,7 +240,7 @@ fi
 # Test 18: At least 5 providers verified
 log_info "Test 18: At least 5 providers verified"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     VERIFIED=$(echo "$RESP" | grep -o '"verified_count":[0-9]*' | grep -o '[0-9]*' || echo "0")
     if [[ "$VERIFIED" -ge 5 ]]; then
         log_pass 18 "$VERIFIED providers verified (>= 5)"
@@ -254,7 +254,7 @@ fi
 # Test 19: First ranked provider has highest score
 log_info "Test 19: First ranked provider has highest score"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     FIRST_SCORE=$(echo "$RESP" | jq -r '.ranked_providers[0].score // 0' 2>/dev/null || echo "0")
     if [[ $(echo "$FIRST_SCORE > 5.0" | bc -l) -eq 1 ]]; then
         log_pass 19 "First ranked provider score: $FIRST_SCORE"
@@ -268,7 +268,7 @@ fi
 # Test 20: Debate team configured
 log_info "Test 20: Debate team configured"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     if echo "$RESP" | grep -q '"team_configured":true'; then
         log_pass 20 "Debate team configured"
     else
@@ -287,7 +287,7 @@ echo -e "${BLUE}========================================${NC}"
 
 # Test 21-30: Generate comprehensive report
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
 
     mkdir -p "$(dirname "$REPORT_FILE")"
 

@@ -56,7 +56,7 @@ fi
 
 # Test 2: List Formatters
 test_case "List all formatters returns JSON"
-RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters")
+RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters")
 if echo "$RESPONSE" | jq -e '.formatters' > /dev/null 2>&1; then
     pass
 else
@@ -104,7 +104,7 @@ fi
 
 # Test 6: Language Detection
 test_case "Detect Python formatter from .py file"
-DETECT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.py")
+DETECT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.py")
 LANGUAGE=$(echo "$DETECT_RESPONSE" | jq -r '.language // ""')
 if [ "$LANGUAGE" = "python" ]; then
     pass
@@ -113,7 +113,7 @@ else
 fi
 
 test_case "Detect JavaScript formatter from .js file"
-DETECT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.js")
+DETECT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.js")
 LANGUAGE=$(echo "$DETECT_RESPONSE" | jq -r '.language // ""')
 if [ "$LANGUAGE" = "javascript" ]; then
     pass
@@ -122,7 +122,7 @@ else
 fi
 
 test_case "Detect Go formatter from .go file"
-DETECT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.go")
+DETECT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters/detect?file_path=test.go")
 LANGUAGE=$(echo "$DETECT_RESPONSE" | jq -r '.language // ""')
 if [ "$LANGUAGE" = "go" ]; then
     pass
@@ -132,7 +132,7 @@ fi
 
 # Test 7: Format Operations (if formatters are installed)
 test_case "Format Python code (if black available)"
-FORMAT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format" \
+FORMAT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"def hello(  x,y ):\n  return x+y","language":"python"}')
@@ -151,7 +151,7 @@ else
 fi
 
 test_case "Format JavaScript code (if prettier available)"
-FORMAT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format" \
+FORMAT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"const x={a:1,b:2};","language":"javascript"}')
@@ -170,7 +170,7 @@ fi
 
 # Test 8: Batch Formatting
 test_case "Batch format multiple files"
-BATCH_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format/batch" \
+BATCH_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format/batch" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{
@@ -193,7 +193,7 @@ fi
 
 # Test 9: Check-Only Mode
 test_case "Check if code is formatted (dry-run)"
-CHECK_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format/check" \
+CHECK_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format/check" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"def hello():\n    pass","language":"python"}')
@@ -206,7 +206,7 @@ fi
 
 # Test 10: Filter by Language
 test_case "Filter formatters by Python language"
-FILTER_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters?language=python")
+FILTER_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters?language=python")
 if echo "$FILTER_RESPONSE" | jq -e '.formatters' > /dev/null 2>&1; then
     COUNT=$(echo "$FILTER_RESPONSE" | jq -r '.count // 0')
     if [ "$COUNT" -ge 1 ]; then
@@ -220,7 +220,7 @@ fi
 
 # Test 11: Filter by Type
 test_case "Filter formatters by native type"
-FILTER_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters?type=native")
+FILTER_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters?type=native")
 if echo "$FILTER_RESPONSE" | jq -e '.formatters' > /dev/null 2>&1; then
     pass
 else
@@ -229,7 +229,7 @@ fi
 
 # Test 12: Get Formatter Metadata
 test_case "Get black formatter metadata"
-META_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/formatters/black")
+META_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/formatters/black")
 if echo "$META_RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
     NAME=$(echo "$META_RESPONSE" | jq -r '.name')
     if [ "$NAME" = "black" ]; then
@@ -258,7 +258,7 @@ fi
 
 # Test 14: Error Handling
 test_case "Invalid language returns error"
-ERROR_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format" \
+ERROR_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"test","language":"invalid_language_xyz"}')
@@ -270,7 +270,7 @@ else
 fi
 
 test_case "Empty content returns error"
-ERROR_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format" \
+ERROR_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"","language":"python"}')
@@ -283,7 +283,7 @@ fi
 
 # Test 15: Response Format
 test_case "Format response includes formatter name"
-FORMAT_RESPONSE=$(curl -s "$HELIXAGENT_URL/v1/format" \
+FORMAT_RESPONSE=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/format" \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"content":"def foo():\n pass","language":"python"}')

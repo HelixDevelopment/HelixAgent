@@ -94,7 +94,7 @@ test_websocket_close_handling() {
 main() {
     log_info "Starting WebSocket challenge..."
 
-    if ! curl -s "$BASE_URL/health" > /dev/null 2>&1; then
+    if ! curl -s --max-time 60 "$BASE_URL/health" > /dev/null 2>&1; then
         start_helixagent "$CHALLENGE_PORT" || { finalize_challenge "FAILED"; exit 1; }
     fi
 

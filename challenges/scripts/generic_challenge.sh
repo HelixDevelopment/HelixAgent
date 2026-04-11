@@ -110,13 +110,13 @@ run_api_test() {
 
     local http_code
     if [[ -n "$data" ]]; then
-        http_code=$(curl -s -w "%{http_code}" -o "$response_file" \
+        http_code=$(curl -s --max-time 60 -w "%{http_code}" -o "$response_file" \
             -X "$method" "$url" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -d "$data" 2>/dev/null) || http_code="000"
     else
-        http_code=$(curl -s -w "%{http_code}" -o "$response_file" \
+        http_code=$(curl -s --max-time 60 -w "%{http_code}" -o "$response_file" \
             -X "$method" "$url" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null) || http_code="000"
     fi
@@ -148,13 +148,13 @@ run_optional_api_test() {
 
     local http_code
     if [[ -n "$data" ]]; then
-        http_code=$(curl -s -w "%{http_code}" -o "$response_file" \
+        http_code=$(curl -s --max-time 60 -w "%{http_code}" -o "$response_file" \
             -X "$method" "$url" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -d "$data" 2>/dev/null) || http_code="000"
     else
-        http_code=$(curl -s -w "%{http_code}" -o "$response_file" \
+        http_code=$(curl -s --max-time 60 -w "%{http_code}" -o "$response_file" \
             -X "$method" "$url" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null) || http_code="000"
     fi
@@ -415,7 +415,7 @@ run_security_tests() {
             # Test unauthorized access if API available
             if [[ "$HELIXAGENT_AVAILABLE" == "true" ]]; then
                 local port="${HELIXAGENT_PORT:-7061}"
-                local http_code=$(curl -s -w "%{http_code}" -o /dev/null \
+                local http_code=$(curl -s --max-time 30 -w "%{http_code}" -o /dev/null \
                     "http://localhost:$port/v1/chat/completions" \
                     -X POST -H "Content-Type: application/json" \
                     -d '{"messages":[]}' 2>/dev/null) || http_code="000"

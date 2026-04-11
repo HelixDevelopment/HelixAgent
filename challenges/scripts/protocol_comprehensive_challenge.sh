@@ -49,7 +49,7 @@ log_test() {
 }
 
 check_helixagent() {
-    if curl -s --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -105,7 +105,7 @@ if check_helixagent; then
     for server in "${LSP_SERVERS[@]}"; do
         name="${server%%:*}"
         lang="${server##*:}"
-        response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/lsp/$name/status" 2>/dev/null)
+        response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/lsp/$name/status" 2>/dev/null)
         if [ "$response" = "200" ]; then
             log_test "LSP: $name ($lang)" "PASS"
         else
@@ -131,7 +131,7 @@ echo -e "${CYAN}═════════════════════�
 ACP_AGENTS=("code-reviewer" "bug-finder" "refactor-assistant" "documentation-generator" "test-generator" "security-scanner")
 
 if check_helixagent; then
-    response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/acp/agents" 2>/dev/null)
+    response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/acp/agents" 2>/dev/null)
     if [ "$response" = "200" ]; then
         log_test "ACP: Agent discovery endpoint" "PASS"
     else
@@ -158,7 +158,7 @@ EMBEDDING_PROVIDERS=("openai" "cohere" "voyage" "jina" "google" "bedrock")
 
 if check_helixagent; then
     for provider in "${EMBEDDING_PROVIDERS[@]}"; do
-        response=$(curl -s -o /dev/null -w "%{http_code}" \
+        response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" \
             -X POST "$HELIXAGENT_URL/v1/embeddings" \
             -H "Content-Type: application/json" \
             -d "{\"provider\":\"$provider\",\"model\":\"default\",\"input\":[\"test\"]}" 2>/dev/null)
@@ -187,7 +187,7 @@ VISION_CAPS=("analyze" "ocr" "detect" "caption")
 
 if check_helixagent; then
     for cap in "${VISION_CAPS[@]}"; do
-        response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/$cap/status" 2>/dev/null)
+        response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/$cap/status" 2>/dev/null)
         if [ "$response" = "200" ]; then
             log_test "Vision: $cap" "PASS"
         else
@@ -252,7 +252,7 @@ echo -e "${CYAN}Phase 7: AI Debate Integration Tests${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
 
 if check_helixagent; then
-    response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/debates" 2>/dev/null)
+    response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/debates" 2>/dev/null)
     if [ "$response" = "200" ] || [ "$response" = "405" ]; then
         log_test "AI Debate: Endpoint available" "PASS"
     else
@@ -281,7 +281,7 @@ PROTOCOLS=("mcp" "lsp" "acp" "embeddings" "vision" "cognee")
 
 if check_helixagent; then
     for protocol in "${PROTOCOLS[@]}"; do
-        response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/$protocol/health" 2>/dev/null)
+        response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/$protocol/health" 2>/dev/null)
         if [ "$response" = "200" ]; then
             log_test "Health: $protocol" "PASS"
         else

@@ -135,14 +135,14 @@ echo "----------------------------------------------------------------------"
 
 # Check if server is running
 echo -n "  Checking HelixAgent server... "
-if curl -s --connect-timeout 5 "${BASE_URL}/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 "${BASE_URL}/health" > /dev/null 2>&1; then
     echo -e "${GREEN}[RUNNING]${NC}"
 
     # Test tool call generation via API
     echo -e "${BLUE}[RUN]${NC} Testing tool call generation via API..."
 
     # Make a chat completion request that should trigger tool usage
-    API_RESPONSE=$(curl -s -X POST "${BASE_URL}/v1/chat/completions" \
+    API_RESPONSE=$(curl -s --max-time 60 -X POST "${BASE_URL}/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer test-key" \
         -d '{

@@ -231,8 +231,8 @@ check_main_challenge() {
 check_helixagent_running() {
     log_info "Checking if HelixAgent is running..."
 
-    if curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/health" > /dev/null 2>&1 || \
-       curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" > /dev/null 2>&1; then
+    if curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/health" > /dev/null 2>&1 || \
+       curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" > /dev/null 2>&1; then
         log_success "HelixAgent is running on port $HELIXAGENT_PORT"
         return 0
     else
@@ -462,7 +462,7 @@ phase2_api_test() {
 
     # Test /v1/models endpoint
     log_info "Testing /v1/models..."
-    local models_response=$(curl -s -w "\n%{http_code}" "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" 2>&1)
+    local models_response=$(curl -s --max-time 60 -w "\n%{http_code}" "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" 2>&1)
     local models_body=$(echo "$models_response" | head -n -1)
     local models_status=$(echo "$models_response" | tail -n 1)
 
@@ -490,7 +490,7 @@ phase2_api_test() {
     log_info "Testing /v1/chat/completions..."
 
     local chat_request='{"model":"helixagent-debate","messages":[{"role":"user","content":"Say hello"}],"max_tokens":50}'
-    local chat_response=$(curl -s -w "\n%{http_code}" \
+    local chat_response=$(curl -s --max-time 60 -w "\n%{http_code}" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $HELIXAGENT_API_KEY" \
         -d "$chat_request" \
@@ -1020,7 +1020,7 @@ REQUESTEOF
 )
 
         # Get HTTP status code and response body
-        local full_response=$(curl -s -w "\n%{http_code}" -X POST \
+        local full_response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $HELIXAGENT_API_KEY" \
             -d "$request_body" \

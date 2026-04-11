@@ -397,7 +397,7 @@ if [ "$MODE" = "--llm" ] || [ "$MODE" = "--full" ]; then
     echo ""
 
     # Check if HelixAgent is running
-    if curl -s --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
         for provider in "${LLM_PROVIDERS[@]}"; do
             # Check for API key
             case "$provider" in
@@ -419,7 +419,7 @@ if [ "$MODE" = "--llm" ] || [ "$MODE" = "--full" ]; then
             fi
 
             # Test MCP tool call through LLM
-            response=$(curl -s -X POST "$HELIXAGENT_URL/v1/chat/completions" \
+            response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/chat/completions" \
                 -H "Content-Type: application/json" \
                 -d '{
                     "model": "'$provider'",
@@ -450,8 +450,8 @@ if [ "$MODE" = "--llm" ] || [ "$MODE" = "--full" ]; then
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    if curl -s --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
-        response=$(curl -s -X POST "$HELIXAGENT_URL/v1/debates" \
+    if curl -s --max-time 60 --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+        response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/debates" \
             -H "Content-Type: application/json" \
             -d '{
                 "topic": "What is the current time?",

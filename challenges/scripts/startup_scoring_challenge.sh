@@ -153,10 +153,10 @@ test_result_structure() {
 test_live_server() {
     log_info "Testing: Live server startup scoring (if running)"
 
-    local health=$(curl -s http://localhost:7061/health 2>/dev/null)
+    local health=$(curl -s --max-time 60 http://localhost:7061/health 2>/dev/null)
     if [ -n "$health" ]; then
         # Server is running, check provider discovery endpoint
-        local providers=$(curl -s http://localhost:7061/v1/providers 2>/dev/null)
+        local providers=$(curl -s --max-time 60 http://localhost:7061/v1/providers 2>/dev/null)
         if [ -n "$providers" ]; then
             assert_test "Server responds with provider info" "true"
         else

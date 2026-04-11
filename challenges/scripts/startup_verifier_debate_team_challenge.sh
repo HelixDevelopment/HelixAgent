@@ -344,7 +344,7 @@ echo -e "${BLUE}========================================${NC}"
 # Check if server is running
 SERVER_URL="${HELIXAGENT_URL:-http://localhost:8080}"
 SERVER_RUNNING=false
-if curl -s --connect-timeout 5 "$SERVER_URL/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 "$SERVER_URL/health" > /dev/null 2>&1; then
     SERVER_RUNNING=true
     log_info "Server is running at $SERVER_URL"
 else
@@ -354,7 +354,7 @@ fi
 # Test 28: Startup verification endpoint exists
 log_info "Test 28: Startup verification endpoint"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     if [[ -n "$RESP" ]] && echo "$RESP" | grep -q "reevaluation_completed"; then
         log_pass 28 "Startup verification endpoint returns data"
     else
@@ -369,7 +369,7 @@ fi
 # by checking for either valid data OR the auth error (which proves routing works)
 log_info "Test 29: Debate team endpoint exists"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/debates/team" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/debates/team" 2>/dev/null)
     if [[ -n "$RESP" ]]; then
         # Endpoint exists if we get data OR an auth error (proves endpoint is routed)
         if echo "$RESP" | grep -q "positions\|members\|unauthorized\|Missing authorization"; then
@@ -387,7 +387,7 @@ fi
 # Test 30: OAuth providers in verification response
 log_info "Test 30: OAuth providers in verification response"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     # Check for auth_type:"oauth" (actual API format) or oauth_providers count
     OAUTH_COUNT=$(echo "$RESP" | grep -o '"auth_type":"oauth"' | wc -l || echo "0")
     OAUTH_PROVIDERS=$(echo "$RESP" | grep -o '"oauth_providers":[0-9]*' | grep -o '[0-9]*' || echo "0")
@@ -403,7 +403,7 @@ fi
 # Test 31: Debate team has at least 15 LLMs
 log_info "Test 31: Debate team has at least 15 LLMs"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     TOTAL_LLMS=$(echo "$RESP" | grep -o '"total_llms":[0-9]*' | grep -o '[0-9]*' || echo "0")
     if [[ "$TOTAL_LLMS" -ge 15 ]]; then
         log_pass 31 "Debate team has $TOTAL_LLMS LLMs (>= 15)"
@@ -417,7 +417,7 @@ fi
 # Test 32: At least 3 providers verified
 log_info "Test 32: At least 3 providers verified"
 if [[ "$SERVER_RUNNING" == "true" ]]; then
-    RESP=$(curl -s "$SERVER_URL/v1/startup/verification" 2>/dev/null)
+    RESP=$(curl -s --max-time 60 "$SERVER_URL/v1/startup/verification" 2>/dev/null)
     VERIFIED_COUNT=$(echo "$RESP" | grep -o '"verified_count":[0-9]*' | grep -o '[0-9]*' || echo "0")
     if [[ "$VERIFIED_COUNT" -ge 3 ]]; then
         log_pass 32 "$VERIFIED_COUNT providers verified (>= 3)"

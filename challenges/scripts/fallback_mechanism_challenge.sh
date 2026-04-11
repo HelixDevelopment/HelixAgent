@@ -238,14 +238,14 @@ log_info "=============================================="
 # Test 16: Check if HelixAgent is running
 TOTAL=$((TOTAL + 1))
 log_info "Test 16: HelixAgent server health check"
-if curl -s -f "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 -f "${HELIXAGENT_URL}/health" > /dev/null 2>&1; then
     log_success "HelixAgent server is running"
     PASSED=$((PASSED + 1))
 
     # Test 17: Debate endpoint available
     TOTAL=$((TOTAL + 1))
     log_info "Test 17: Debate API endpoint available"
-    if curl -s "${HELIXAGENT_URL}/v1/chat/completions" -X POST \
+    if curl -s --max-time 60 "${HELIXAGENT_URL}/v1/chat/completions" -X POST \
         -H "Content-Type: application/json" \
         -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"test"}]}' 2>&1 | grep -q "content\|error"; then
         log_success "Debate API endpoint available"

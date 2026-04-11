@@ -47,7 +47,7 @@ log_info "SECTION 1: CORS Headers Validation"
 log_info "=============================================="
 
 run_test "CORS headers present for OPTIONS request" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: POST" \
         -H "Access-Control-Request-Headers: Content-Type, Authorization" 2>&1)
@@ -56,7 +56,7 @@ run_test "CORS headers present for OPTIONS request" '
 '
 
 run_test "Access-Control-Allow-Origin not wildcard for sensitive endpoints" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://evil.com" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # Should NOT return Access-Control-Allow-Origin: * for untrusted origins on sensitive endpoints
@@ -66,7 +66,7 @@ run_test "Access-Control-Allow-Origin not wildcard for sensitive endpoints" '
 '
 
 run_test "Access-Control-Allow-Credentials handled correctly" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # If credentials are allowed, origin must not be *
@@ -78,7 +78,7 @@ run_test "Access-Control-Allow-Credentials handled correctly" '
 '
 
 run_test "Preflight caching has reasonable max-age" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # Access-Control-Max-Age should exist and be reasonable (< 1 week = 604800)
@@ -98,7 +98,7 @@ log_info "SECTION 2: Origin Header Validation"
 log_info "=============================================="
 
 run_test "Request from null origin handled" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Origin: null" \
         -H "Authorization: Bearer test" \
@@ -110,7 +110,7 @@ run_test "Request from null origin handled" '
 '
 
 run_test "Request from evil.com origin validated" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://evil.com" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # Should not reflect evil.com in Access-Control-Allow-Origin
@@ -120,7 +120,7 @@ run_test "Request from evil.com origin validated" '
 '
 
 run_test "Origin with port mismatch handled" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:9999" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # Should handle different ports appropriately
@@ -128,7 +128,7 @@ run_test "Origin with port mismatch handled" '
 '
 
 run_test "Origin with path component rejected" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000/path" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     # Origin should not have path - malformed
@@ -136,7 +136,7 @@ run_test "Origin with path component rejected" '
 '
 
 run_test "Origin injection attempt blocked" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://evil.com%0d%0aX-Injected: true" \
         -H "Access-Control-Request-Method: POST" 2>&1)
     ! echo "$response" | grep -i "X-Injected" > /dev/null
@@ -150,7 +150,7 @@ log_info "SECTION 3: Referer Header Validation"
 log_info "=============================================="
 
 run_test "Missing Referer handled gracefully" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer test" \
         -d "{\"model\":\"test\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}" 2>&1)
@@ -160,7 +160,7 @@ run_test "Missing Referer handled gracefully" '
 '
 
 run_test "Referer from different domain logged/validated" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Referer: http://evil.com/attack.html" \
         -H "Authorization: Bearer test" \
@@ -171,7 +171,7 @@ run_test "Referer from different domain logged/validated" '
 '
 
 run_test "Referer with javascript: URI handled safely" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Referer: javascript:alert(1)" \
         -H "Authorization: Bearer test" \
@@ -188,14 +188,14 @@ log_info "SECTION 4: Cross-Origin Resource Sharing Attacks"
 log_info "=============================================="
 
 run_test "Simple GET request CORS handling" '
-    response=$(curl -s -I -X GET "$BASE_URL/v1/models" \
+    response=$(curl -s --max-time 60 -I -X GET "$BASE_URL/v1/models" \
         -H "Origin: http://attacker.com" 2>&1)
     # Check CORS behavior for simple requests
     echo "$response" | grep -iE "HTTP/[0-9.]+ [0-9]" > /dev/null
 '
 
 run_test "POST with custom Content-Type triggers preflight" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: POST" \
         -H "Access-Control-Request-Headers: Content-Type" 2>&1)
@@ -204,7 +204,7 @@ run_test "POST with custom Content-Type triggers preflight" '
 '
 
 run_test "DELETE method requires proper CORS" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/conversations/test" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/conversations/test" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: DELETE" 2>&1)
     # DELETE should be in Access-Control-Allow-Methods if allowed
@@ -212,7 +212,7 @@ run_test "DELETE method requires proper CORS" '
 '
 
 run_test "Non-standard header requires preflight" '
-    response=$(curl -s -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -I -X OPTIONS "$BASE_URL/v1/chat/completions" \
         -H "Origin: http://localhost:3000" \
         -H "Access-Control-Request-Method: POST" \
         -H "Access-Control-Request-Headers: X-Custom-Header" 2>&1)
@@ -227,7 +227,7 @@ log_info "SECTION 5: CSRF Token Validation"
 log_info "=============================================="
 
 run_test "Check for CSRF token endpoint" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/csrf-token" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/csrf-token" \
         -H "Authorization: Bearer test" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Endpoint may or may not exist
@@ -235,7 +235,7 @@ run_test "Check for CSRF token endpoint" '
 '
 
 run_test "Form submission without CSRF token behavior" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/settings" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/settings" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "Authorization: Bearer test" \
         -d "setting=value" 2>&1)
@@ -245,7 +245,7 @@ run_test "Form submission without CSRF token behavior" '
 '
 
 run_test "State-changing GET requests blocked" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/delete?id=123" 2>&1)
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/delete?id=123" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Should not allow state changes via GET
     [[ "$http_code" == "404" ]] || [[ "$http_code" == "405" ]] || [[ "$http_code" == "401" ]]
@@ -259,7 +259,7 @@ log_info "SECTION 6: Cookie Security"
 log_info "=============================================="
 
 run_test "Session cookies have SameSite attribute" '
-    response=$(curl -s -I -c - "$BASE_URL/v1/auth/login" 2>&1)
+    response=$(curl -s --max-time 60 -I -c - "$BASE_URL/v1/auth/login" 2>&1)
     # If cookies are set, check for SameSite
     if echo "$response" | grep -i "Set-Cookie" > /dev/null; then
         # SameSite should be Strict or Lax for CSRF protection
@@ -270,7 +270,7 @@ run_test "Session cookies have SameSite attribute" '
 '
 
 run_test "Session cookies have HttpOnly flag" '
-    response=$(curl -s -I -c - "$BASE_URL/v1/auth/login" 2>&1)
+    response=$(curl -s --max-time 60 -I -c - "$BASE_URL/v1/auth/login" 2>&1)
     if echo "$response" | grep -i "Set-Cookie" > /dev/null; then
         echo "$response" | grep -i "HttpOnly" > /dev/null || \
         log_warning "Cookies set without HttpOnly flag"
@@ -279,7 +279,7 @@ run_test "Session cookies have HttpOnly flag" '
 '
 
 run_test "Session cookies have Secure flag" '
-    response=$(curl -s -I -c - "$BASE_URL/v1/auth/login" 2>&1)
+    response=$(curl -s --max-time 60 -I -c - "$BASE_URL/v1/auth/login" 2>&1)
     if echo "$response" | grep -i "Set-Cookie" > /dev/null; then
         echo "$response" | grep -i "Secure" > /dev/null || \
         log_warning "Cookies set without Secure flag (required for HTTPS)"
@@ -295,7 +295,7 @@ log_info "SECTION 7: Content-Type Validation"
 log_info "=============================================="
 
 run_test "Form-encoded POST rejected for JSON endpoints" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "Authorization: Bearer test" \
         -d "model=test&messages=[{\"role\":\"user\",\"content\":\"test\"}]" 2>&1)
@@ -304,7 +304,7 @@ run_test "Form-encoded POST rejected for JSON endpoints" '
 '
 
 run_test "Multipart form POST rejected for JSON endpoints" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary" \
         -H "Authorization: Bearer test" \
         -d "------WebKitFormBoundary
@@ -317,7 +317,7 @@ test
 '
 
 run_test "Plain text POST rejected for JSON endpoints" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: text/plain" \
         -H "Authorization: Bearer test" \
         -d "{\"model\":\"test\"}" 2>&1)
@@ -333,7 +333,7 @@ log_info "SECTION 8: Flash/Silverlight Crossdomain Policy"
 log_info "=============================================="
 
 run_test "crossdomain.xml not overly permissive" '
-    response=$(curl -s -w "\n%{http_code}" "$BASE_URL/crossdomain.xml" 2>&1)
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" "$BASE_URL/crossdomain.xml" 2>&1)
     http_code=$(echo "$response" | tail -1)
     if [[ "$http_code" == "200" ]]; then
         body=$(echo "$response" | head -n -1)
@@ -345,7 +345,7 @@ run_test "crossdomain.xml not overly permissive" '
 '
 
 run_test "clientaccesspolicy.xml not overly permissive" '
-    response=$(curl -s -w "\n%{http_code}" "$BASE_URL/clientaccesspolicy.xml" 2>&1)
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" "$BASE_URL/clientaccesspolicy.xml" 2>&1)
     http_code=$(echo "$response" | tail -1)
     if [[ "$http_code" == "200" ]]; then
         body=$(echo "$response" | head -n -1)
@@ -364,7 +364,7 @@ log_info "SECTION 9: Custom Header Requirements"
 log_info "=============================================="
 
 run_test "API requires Authorization header" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"test\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}" 2>&1)
     http_code=$(echo "$response" | tail -1)
@@ -373,7 +373,7 @@ run_test "API requires Authorization header" '
 '
 
 run_test "X-Requested-With header handling" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer test" \
         -H "X-Requested-With: XMLHttpRequest" \
@@ -391,14 +391,14 @@ log_info "SECTION 10: Iframe Protection (Clickjacking)"
 log_info "=============================================="
 
 run_test "X-Frame-Options header present" '
-    response=$(curl -s -I "$BASE_URL/health" 2>&1)
+    response=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     echo "$response" | grep -iE "X-Frame-Options: (DENY|SAMEORIGIN)" > /dev/null || \
     log_warning "X-Frame-Options header not set - clickjacking protection recommended"
     true
 '
 
 run_test "Content-Security-Policy frame-ancestors directive" '
-    response=$(curl -s -I "$BASE_URL/health" 2>&1)
+    response=$(curl -s --max-time 60 -I "$BASE_URL/health" 2>&1)
     if echo "$response" | grep -i "Content-Security-Policy" > /dev/null; then
         csp=$(echo "$response" | grep -i "Content-Security-Policy")
         echo "$csp" | grep -i "frame-ancestors" > /dev/null || \
@@ -418,14 +418,14 @@ log_info "=============================================="
 
 run_test "Cookie and header CSRF token match verification" '
     # First, get a CSRF token cookie (if implemented)
-    cookie_response=$(curl -s -c cookies.txt "$BASE_URL/v1/auth/login" 2>&1)
+    cookie_response=$(curl -s --max-time 60 -c cookies.txt "$BASE_URL/v1/auth/login" 2>&1)
 
     # Extract CSRF token from cookie if present
     if [[ -f cookies.txt ]] && grep -i "csrf" cookies.txt > /dev/null 2>&1; then
         csrf_token=$(grep -i "csrf" cookies.txt | awk "{print \$7}" | head -1)
         if [[ -n "$csrf_token" ]]; then
             # Try request with matching header
-            response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/settings" \
+            response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/settings" \
                 -b cookies.txt \
                 -H "Content-Type: application/json" \
                 -H "X-CSRF-Token: $csrf_token" \
@@ -450,7 +450,7 @@ log_info "=============================================="
 run_test "WebSocket endpoint origin validation" '
     # Try to establish WebSocket connection with evil origin
     # Using curl to test the upgrade request
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/ws" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/ws" \
         -H "Upgrade: websocket" \
         -H "Connection: Upgrade" \
         -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
@@ -471,20 +471,20 @@ log_info "SECTION 13: Additional CSRF Attack Vectors"
 log_info "=============================================="
 
 run_test "JSON with padding (JSONP) not vulnerable" '
-    response=$(curl -s "$BASE_URL/v1/models?callback=maliciousFunction" 2>&1)
+    response=$(curl -s --max-time 60 "$BASE_URL/v1/models?callback=maliciousFunction" 2>&1)
     # Should not return JSONP format
     ! echo "$response" | grep -E "^maliciousFunction\(" > /dev/null
 '
 
 run_test "TRACE method disabled" '
-    response=$(curl -s -w "\n%{http_code}" -X TRACE "$BASE_URL/" 2>&1)
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X TRACE "$BASE_URL/" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # TRACE should be disabled (returns 405 or similar)
     [[ "$http_code" == "405" ]] || [[ "$http_code" == "501" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
 '
 
 run_test "OPTIONS method does not expose sensitive data" '
-    response=$(curl -s -X OPTIONS "$BASE_URL/v1/chat/completions" 2>&1)
+    response=$(curl -s --max-time 60 -X OPTIONS "$BASE_URL/v1/chat/completions" 2>&1)
     # Should not include sensitive data in OPTIONS response
     ! echo "$response" | grep -iE "api_key|secret|password|token" > /dev/null
 '

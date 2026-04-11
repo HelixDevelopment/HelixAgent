@@ -67,14 +67,14 @@ test_full_workflow() {
     log_info "Test 3: Testing full workflow via API..."
 
     # Check API
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available, skipping API tests"
         return 0
     fi
 
     # Step 1: Create task
     local task_id
-    task_id=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    task_id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "integration_test",
@@ -100,26 +100,26 @@ test_full_workflow() {
 
     # Step 2: Check status
     local status
-    status=$(curl -s "${API_BASE}/v1/tasks/${task_id}/status" | jq -r '.status // "unknown"')
+    status=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/status" | jq -r '.status // "unknown"')
     log_info "Task status: $status"
 
     # Step 3: Get logs
     local logs
-    logs=$(curl -s "${API_BASE}/v1/tasks/${task_id}/logs" | jq -r '.count // 0')
+    logs=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/logs" | jq -r '.count // 0')
     log_info "Task has $logs log entries"
 
     # Step 4: Get resources
     local resources
-    resources=$(curl -s "${API_BASE}/v1/tasks/${task_id}/resources" | jq -r '.count // 0')
+    resources=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/resources" | jq -r '.count // 0')
     log_info "Task has $resources resource snapshots"
 
     # Step 5: Analyze task
     local is_stuck
-    is_stuck=$(curl -s "${API_BASE}/v1/tasks/${task_id}/analyze" | jq -r '.is_stuck // false')
+    is_stuck=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/analyze" | jq -r '.is_stuck // false')
     log_info "Task is_stuck: $is_stuck"
 
     # Step 6: Cancel task
-    curl -s -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
+    curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
 
     log_success "Full workflow completed"
     return 0
@@ -129,13 +129,13 @@ test_full_workflow() {
 test_queue_statistics() {
     log_info "Test 4: Checking queue statistics..."
 
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available"
         return 0
     fi
 
     local stats
-    stats=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    stats=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local pending
     pending=$(echo "$stats" | jq -r '.pending_count // 0')
@@ -150,7 +150,7 @@ test_queue_statistics() {
 test_concurrent_handling() {
     log_info "Test 5: Testing concurrent task handling..."
 
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available"
         return 0
     fi
@@ -159,7 +159,7 @@ test_concurrent_handling() {
     local task_ids=()
     for i in {1..5}; do
         local id
-        id=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+        id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
             -H "Content-Type: application/json" \
             -d "{
                 \"task_type\": \"concurrent_test\",
@@ -179,11 +179,11 @@ test_concurrent_handling() {
 
     # Check queue
     local stats
-    stats=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    stats=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     # Cancel all created tasks
     for id in "${task_ids[@]}"; do
-        curl -s -X POST "${API_BASE}/v1/tasks/${id}/cancel" > /dev/null 2>&1 || true
+        curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${id}/cancel" > /dev/null 2>&1 || true
     done
 
     log_success "Concurrent task handling completed"
@@ -194,14 +194,14 @@ test_concurrent_handling() {
 test_webhook_lifecycle() {
     log_info "Test 6: Testing webhook lifecycle..."
 
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available"
         return 0
     fi
 
     # Register
     local webhook_id
-    webhook_id=$(curl -s -X POST "${API_BASE}/v1/webhooks" \
+    webhook_id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/webhooks" \
         -H "Content-Type: application/json" \
         -d '{
             "url": "https://httpbin.org/post",
@@ -212,7 +212,7 @@ test_webhook_lifecycle() {
         log_info "Registered webhook: $webhook_id"
 
         # Delete
-        curl -s -X DELETE "${API_BASE}/v1/webhooks/${webhook_id}" > /dev/null
+        curl -s --max-time 60 -X DELETE "${API_BASE}/v1/webhooks/${webhook_id}" > /dev/null
         log_success "Webhook lifecycle completed"
     else
         log_warning "Could not register webhook"

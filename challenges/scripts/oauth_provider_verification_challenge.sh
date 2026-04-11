@@ -39,13 +39,13 @@ echo "Testing: OAuth trust, provider scoring, debate team"
 echo ""
 
 # Check if HelixAgent is running
-if ! curl -s "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+if ! curl -s --max-time 60 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
     echo -e "${RED}ERROR: HelixAgent not running at $HELIXAGENT_URL${NC}"
     exit 1
 fi
 
 # Get verification status
-VERIFICATION=$(curl -s "$HELIXAGENT_URL/v1/startup/verification")
+VERIFICATION=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/startup/verification")
 
 # Test 1: Startup verification completed
 echo ""

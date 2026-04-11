@@ -284,7 +284,7 @@ if [ -n "$ZAI_API_KEY" ] && [ "$ZAI_API_KEY" != "" ]; then
     
     # Test 23: Models endpoint reachable
     log_info "Test 23: Models endpoint reachable"
-    MODELS_RESP=$(curl -s -w "%{http_code}" "https://open.bigmodel.cn/api/paas/v4/models" \
+    MODELS_RESP=$(curl -s --max-time 60 -w "%{http_code}" "https://open.bigmodel.cn/api/paas/v4/models" \
         -H "Authorization: Bearer $ZAI_API_KEY" 2>/dev/null)
     HTTP_CODE=$(echo "$MODELS_RESP" | tail -c 4)
     if [ "$HTTP_CODE" = "200" ]; then
@@ -292,7 +292,7 @@ if [ -n "$ZAI_API_KEY" ] && [ "$ZAI_API_KEY" != "" ]; then
         
         # Test 24: Parse available models
         log_info "Test 24: Parse available models"
-        MODELS=$(curl -s "https://open.bigmodel.cn/api/paas/v4/models" \
+        MODELS=$(curl -s --max-time 60 "https://open.bigmodel.cn/api/paas/v4/models" \
             -H "Authorization: Bearer $ZAI_API_KEY" 2>/dev/null | \
             grep -o '"id":"[^"]*"' | cut -d'"' -f4 | tr '\n' ' ')
         if [ -n "$MODELS" ]; then
@@ -306,7 +306,7 @@ if [ -n "$ZAI_API_KEY" ] && [ "$ZAI_API_KEY" != "" ]; then
     
     # Test 25: Chat completion test
     log_info "Test 25: Chat completion test"
-    CHAT_RESP=$(curl -s -w "\n%{http_code}" "https://open.bigmodel.cn/api/paas/v4/chat/completions" \
+    CHAT_RESP=$(curl -s --max-time 60 -w "\n%{http_code}" "https://open.bigmodel.cn/api/paas/v4/chat/completions" \
         -H "Authorization: Bearer $ZAI_API_KEY" \
         -H "Content-Type: application/json" \
         -d '{"model": "glm-4.5", "messages": [{"role": "user", "content": "Say OK"}], "max_tokens": 10}' 2>/dev/null)
@@ -361,7 +361,7 @@ fi
 
 # Test 28: HelixAgent health check
 log_info "Test 28: HelixAgent health check"
-HEALTH_RESP=$(curl -s http://localhost:7061/v1/health 2>/dev/null)
+HEALTH_RESP=$(curl -s --max-time 60 http://localhost:7061/v1/health 2>/dev/null)
 if [ -n "$HEALTH_RESP" ]; then
     if echo "$HEALTH_RESP" | grep -q "healthy"; then
         log_success "HelixAgent is running and healthy"

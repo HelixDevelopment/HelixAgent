@@ -584,7 +584,7 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 37: Live API health check"
 
-        health_response=$(curl -s -o /dev/null -w "%{http_code}" \
+        health_response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $CEREBRAS_API_KEY" \
             "https://api.cerebras.ai/v1/models" 2>/dev/null || echo "000")
 
@@ -601,7 +601,7 @@ if [ "$LIVE_TESTS" = true ]; then
         log_info "Test 38: Live completion request"
 
         start_time=$(date +%s%N)
-        completion_response=$(curl -s -X POST \
+        completion_response=$(curl -s --max-time 60 -X POST \
             -H "Authorization: Bearer $CEREBRAS_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -635,7 +635,7 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 39: Live streaming request"
 
-        stream_response=$(curl -s -X POST \
+        stream_response=$(curl -s --max-time 60 -X POST \
             -H "Authorization: Bearer $CEREBRAS_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -658,8 +658,8 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 40: HelixAgent Cerebras integration"
 
-        if curl -s "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
-            helix_response=$(curl -s -X POST \
+        if curl -s --max-time 60 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+            helix_response=$(curl -s --max-time 60 -X POST \
                 -H "Content-Type: application/json" \
                 -d '{
                     "model": "llama-3.3-70b",

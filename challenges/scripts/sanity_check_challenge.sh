@@ -120,13 +120,13 @@ echo "Phase 3: Endpoint Validation"
 echo "----------------------------------------------------------------------"
 
 # Test health endpoint
-run_check "Health endpoint" "curl -s 'http://$HOST:$PORT/health' | grep -q 'status'"
+run_check "Health endpoint" "curl -s --max-time 60 'http://$HOST:$PORT/health' | grep -q 'status'"
 
 # Test models endpoint
-run_check "Models endpoint" "curl -s 'http://$HOST:$PORT/v1/models' | grep -q 'data'"
+run_check "Models endpoint" "curl -s --max-time 60 'http://$HOST:$PORT/v1/models' | grep -q 'data'"
 
 # Test providers endpoint
-run_check "Providers endpoint" "curl -s 'http://$HOST:$PORT/v1/providers' | head -1"
+run_check "Providers endpoint" "curl -s --max-time 60 'http://$HOST:$PORT/v1/providers' | head -1"
 
 echo ""
 echo "----------------------------------------------------------------------"

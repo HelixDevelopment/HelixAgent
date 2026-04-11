@@ -33,7 +33,7 @@ log_info "=============================================="
 # Test 1.1: LSP Initialize
 TOTAL=$((TOTAL + 1))
 log_info "Mission 1.1: Initialize LSP session for Go project"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/lsp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{
         "jsonrpc": "2.0",
@@ -62,7 +62,7 @@ fi
 # Test 1.2: LSP Server listing
 TOTAL=$((TOTAL + 1))
 log_info "Mission 1.2: List available LSP servers"
-response=$(curl -s "$HELIXAGENT_URL/v1/lsp/servers" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/lsp/servers" 2>&1)
 if echo "$response" | grep -q "servers\|gopls\|name"; then
     log_success "LSP servers listed"
     PASSED=$((PASSED + 1))
@@ -74,7 +74,7 @@ fi
 # Test 1.3: LSP Stats
 TOTAL=$((TOTAL + 1))
 log_info "Mission 1.3: Get LSP statistics"
-response=$(curl -s "$HELIXAGENT_URL/v1/lsp/stats" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/lsp/stats" 2>&1)
 if [ -n "$response" ]; then
     log_success "LSP stats retrieved"
     PASSED=$((PASSED + 1))
@@ -96,7 +96,7 @@ log_info "=============================================="
 # Test 2.1: Get embedding providers
 TOTAL=$((TOTAL + 1))
 log_info "Mission 2.1: List available embedding providers"
-response=$(curl -s "$HELIXAGENT_URL/v1/embeddings/providers" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/embeddings/providers" 2>&1)
 if echo "$response" | grep -q "providers\|model\|dimensions"; then
     log_success "Embedding providers listed"
     PASSED=$((PASSED + 1))
@@ -108,7 +108,7 @@ fi
 # Test 2.2: Get embedding stats
 TOTAL=$((TOTAL + 1))
 log_info "Mission 2.2: Get embedding statistics"
-response=$(curl -s "$HELIXAGENT_URL/v1/embeddings/stats" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/embeddings/stats" 2>&1)
 if [ -n "$response" ]; then
     log_success "Embedding stats retrieved"
     PASSED=$((PASSED + 1))
@@ -120,7 +120,7 @@ fi
 # Test 2.3: Embeddings SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Mission 2.3: Test embeddings SSE connection"
-response=$(timeout 3s curl -s -N "$HELIXAGENT_URL/v1/embeddings" 2>&1 || echo "TIMEOUT")
+response=$(timeout 3s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/embeddings" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "Embeddings SSE endpoint working"
     PASSED=$((PASSED + 1))
@@ -142,7 +142,7 @@ log_info "=============================================="
 # Test 3.1: Vision SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Mission 3.1: Test vision SSE connection"
-response=$(timeout 3s curl -s -N "$HELIXAGENT_URL/v1/vision" 2>&1 || echo "TIMEOUT")
+response=$(timeout 3s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/vision" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "Vision SSE endpoint working"
     PASSED=$((PASSED + 1))
@@ -154,7 +154,7 @@ fi
 # Test 3.2: Vision POST message
 TOTAL=$((TOTAL + 1))
 log_info "Mission 3.2: Send vision protocol message"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"ping","id":1}' 2>&1)
 if [ -n "$response" ]; then
@@ -178,7 +178,7 @@ log_info "=============================================="
 # Test 4.1: Cognee health check
 TOTAL=$((TOTAL + 1))
 log_info "Mission 4.1: Check Cognee service health"
-response=$(curl -s "$HELIXAGENT_URL/v1/cognee/health" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/cognee/health" 2>&1)
 if echo "$response" | grep -q "status\|healthy\|connected"; then
     log_success "Cognee health check passed"
     PASSED=$((PASSED + 1))
@@ -190,7 +190,7 @@ fi
 # Test 4.2: Cognee stats
 TOTAL=$((TOTAL + 1))
 log_info "Mission 4.2: Get Cognee statistics"
-response=$(curl -s "$HELIXAGENT_URL/v1/cognee/stats" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/cognee/stats" 2>&1)
 if [ -n "$response" ]; then
     log_success "Cognee stats retrieved"
     PASSED=$((PASSED + 1))
@@ -202,7 +202,7 @@ fi
 # Test 4.3: List Cognee datasets
 TOTAL=$((TOTAL + 1))
 log_info "Mission 4.3: List Cognee datasets"
-response=$(curl -s "$HELIXAGENT_URL/v1/cognee/datasets" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/cognee/datasets" 2>&1)
 if [ -n "$response" ]; then
     log_success "Cognee datasets listed"
     PASSED=$((PASSED + 1))
@@ -214,7 +214,7 @@ fi
 # Test 4.4: Cognee SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Mission 4.4: Test Cognee SSE connection"
-response=$(timeout 3s curl -s -N "$HELIXAGENT_URL/v1/cognee" 2>&1 || echo "TIMEOUT")
+response=$(timeout 3s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/cognee" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "Cognee SSE endpoint working"
     PASSED=$((PASSED + 1))
@@ -236,7 +236,7 @@ log_info "=============================================="
 # Test 5.1: MCP capabilities
 TOTAL=$((TOTAL + 1))
 log_info "Mission 5.1: Get MCP capabilities"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/capabilities" 2>&1)
 if echo "$response" | grep -q "capabilities\|experimental"; then
     log_success "MCP capabilities retrieved"
     PASSED=$((PASSED + 1))
@@ -248,7 +248,7 @@ fi
 # Test 5.2: MCP tools
 TOTAL=$((TOTAL + 1))
 log_info "Mission 5.2: List MCP tools"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/tools" 2>&1)
 if echo "$response" | grep -q "tools\|name"; then
     log_success "MCP tools listed"
     PASSED=$((PASSED + 1))
@@ -260,7 +260,7 @@ fi
 # Test 5.3: MCP prompts
 TOTAL=$((TOTAL + 1))
 log_info "Mission 5.3: List MCP prompts"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/prompts" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/prompts" 2>&1)
 if [ -n "$response" ]; then
     log_success "MCP prompts listed"
     PASSED=$((PASSED + 1))
@@ -272,7 +272,7 @@ fi
 # Test 5.4: MCP resources
 TOTAL=$((TOTAL + 1))
 log_info "Mission 5.4: List MCP resources"
-response=$(curl -s "$HELIXAGENT_URL/v1/mcp/resources" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/mcp/resources" 2>&1)
 if [ -n "$response" ]; then
     log_success "MCP resources listed"
     PASSED=$((PASSED + 1))
@@ -284,7 +284,7 @@ fi
 # Test 5.5: MCP SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Mission 5.5: Test MCP SSE connection"
-response=$(timeout 3s curl -s -N "$HELIXAGENT_URL/v1/mcp" 2>&1 || echo "TIMEOUT")
+response=$(timeout 3s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/mcp" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "MCP SSE endpoint working"
     PASSED=$((PASSED + 1))
@@ -306,7 +306,7 @@ log_info "=============================================="
 # Test 6.1: ACP SSE connection
 TOTAL=$((TOTAL + 1))
 log_info "Mission 6.1: Test ACP SSE connection"
-response=$(timeout 3s curl -s -N "$HELIXAGENT_URL/v1/acp" 2>&1 || echo "TIMEOUT")
+response=$(timeout 3s curl -s --max-time 60 -N "$HELIXAGENT_URL/v1/acp" 2>&1 || echo "TIMEOUT")
 if echo "$response" | grep -q "event:\|data:\|TIMEOUT"; then
     log_success "ACP SSE endpoint working"
     PASSED=$((PASSED + 1))
@@ -318,7 +318,7 @@ fi
 # Test 6.2: ACP message handling
 TOTAL=$((TOTAL + 1))
 log_info "Mission 6.2: Send ACP protocol message"
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/acp" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"agent.register","id":1,"params":{"name":"test-agent"}}' 2>&1)
 if [ -n "$response" ]; then
@@ -342,7 +342,7 @@ log_info "=============================================="
 # Test 7.1: List protocol servers
 TOTAL=$((TOTAL + 1))
 log_info "Mission 7.1: List all protocol servers"
-response=$(curl -s "$HELIXAGENT_URL/v1/protocols/servers" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/protocols/servers" 2>&1)
 if [ -n "$response" ]; then
     log_success "Protocol servers listed"
     PASSED=$((PASSED + 1))
@@ -354,7 +354,7 @@ fi
 # Test 7.2: Protocol metrics
 TOTAL=$((TOTAL + 1))
 log_info "Mission 7.2: Get protocol metrics"
-response=$(curl -s "$HELIXAGENT_URL/v1/protocols/metrics" 2>&1)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/protocols/metrics" 2>&1)
 if [ -n "$response" ]; then
     log_success "Protocol metrics retrieved"
     PASSED=$((PASSED + 1))

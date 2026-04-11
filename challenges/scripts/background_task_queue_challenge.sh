@@ -23,7 +23,7 @@ log_info "Starting ${CHALLENGE_NAME} challenge"
 check_api_health() {
     log_info "Checking API health..."
     local response
-    response=$(curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" 2>/dev/null || echo "000")
+    response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" 2>/dev/null || echo "000")
     if [[ "$response" != "200" ]]; then
         log_error "API not available at ${API_BASE}"
         return 1
@@ -37,7 +37,7 @@ test_create_task() {
     log_info "Test 1: Creating a background task..." >&2
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "test_command",
@@ -68,7 +68,7 @@ test_get_task_status() {
     log_info "Test 2: Getting task status for $task_id..."
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/${task_id}/status")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/status")
 
     local status
     status=$(echo "$response" | jq -r '.status // empty')
@@ -88,7 +88,7 @@ test_priority_ordering() {
 
     # Create low priority task
     local low_id
-    low_id=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    low_id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "test_command",
@@ -99,7 +99,7 @@ test_priority_ordering() {
 
     # Create high priority task
     local high_id
-    high_id=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    high_id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "test_command",
@@ -110,7 +110,7 @@ test_priority_ordering() {
 
     # Create critical priority task
     local critical_id
-    critical_id=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    critical_id=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "test_command",
@@ -123,7 +123,7 @@ test_priority_ordering() {
 
     # Check queue stats to verify ordering
     local stats
-    stats=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    stats=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local pending
     pending=$(echo "$stats" | jq -r '.pending_count // 0')
@@ -142,7 +142,7 @@ test_list_tasks() {
     log_info "Test 4: Listing tasks..."
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks?limit=10")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks?limit=10")
 
     local count
     count=$(echo "$response" | jq -r '.count // 0')
@@ -150,7 +150,7 @@ test_list_tasks() {
     log_info "Found $count tasks"
 
     # Test status filter
-    response=$(curl -s "${API_BASE}/v1/tasks?status=pending&limit=10")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks?status=pending&limit=10")
     local pending_count
     pending_count=$(echo "$response" | jq -r '.count // 0')
 
@@ -164,7 +164,7 @@ test_cancel_task() {
     log_info "Test 5: Cancelling task $task_id..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks/${task_id}/cancel")
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${task_id}/cancel")
 
     local status
     status=$(echo "$response" | jq -r '.status // empty')
@@ -184,7 +184,7 @@ test_queue_stats() {
     log_info "Test 6: Getting queue statistics..."
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/queue/stats")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/queue/stats")
 
     local pending
     pending=$(echo "$response" | jq -r '.pending_count // 0')
@@ -214,7 +214,7 @@ test_task_with_deadline() {
     fi
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d "{
             \"task_type\": \"test_command\",

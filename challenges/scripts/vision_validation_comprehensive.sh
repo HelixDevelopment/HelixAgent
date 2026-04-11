@@ -61,7 +61,7 @@ log_test() {
 }
 
 check_helixagent() {
-    if curl -s --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -88,7 +88,7 @@ else
 fi
 
 # Check vision health endpoint
-response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/health" 2>/dev/null)
+response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/health" 2>/dev/null)
 if [ "$response" = "200" ]; then
     log_test "Vision: Health Endpoint" "PASS"
 else
@@ -104,7 +104,7 @@ echo -e "${CYAN}║  PHASE 2: CAPABILITY DISCOVERY                              
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-response=$(curl -s "$HELIXAGENT_URL/v1/vision/capabilities" 2>/dev/null)
+response=$(curl -s --max-time 60 "$HELIXAGENT_URL/v1/vision/capabilities" 2>/dev/null)
 if echo "$response" | grep -q '"capabilities"'; then
     log_test "Vision: Capability Discovery" "PASS"
 else
@@ -121,7 +121,7 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 for capability in "${VISION_CAPABILITIES[@]}"; do
-    response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/$capability/status" 2>/dev/null)
+    response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/vision/$capability/status" 2>/dev/null)
     if [ "$response" = "200" ]; then
         log_test "Vision: $capability capability" "PASS"
     else
@@ -139,7 +139,7 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 for capability in "${VISION_CAPABILITIES[@]}"; do
-    response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision/$capability" \
+    response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision/$capability" \
         -H "Content-Type: application/json" \
         -d '{
             "capability": "'$capability'",
@@ -172,7 +172,7 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 # Test with a public image URL
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision/analyze" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision/analyze" \
     -H "Content-Type: application/json" \
     -d '{
         "capability": "analyze",
@@ -195,7 +195,7 @@ echo -e "${CYAN}║  PHASE 6: OCR SPECIFIC TEST                                 
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-response=$(curl -s -X POST "$HELIXAGENT_URL/v1/vision/ocr" \
+response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/vision/ocr" \
     -H "Content-Type: application/json" \
     -d '{
         "capability": "ocr",

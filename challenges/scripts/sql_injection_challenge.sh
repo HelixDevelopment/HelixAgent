@@ -45,7 +45,7 @@ test_sql_injection_payload() {
     local test_name="$2"
 
     local response
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{
@@ -77,7 +77,7 @@ test_sql_injection_query_param() {
     local payload="$3"
 
     local response
-    response=$(curl -s -X GET "$BASE_URL$endpoint?$param=$(echo "$payload" | jq -sRr @uri)" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL$endpoint?$param=$(echo "$payload" | jq -sRr @uri)" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>&1)
 
     local sql_errors="sql syntax|mysql_fetch|ora-|oracle|sqlserver|postgresql|sqlite_|sql error|database error"
@@ -232,7 +232,7 @@ log_info "=============================================="
 
 # Test in model field
 run_test "SQL in model field" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"'"'"'; DROP TABLE models; --\", \"messages\": [{\"role\": \"user\", \"content\": \"test\"}]}")
@@ -241,7 +241,7 @@ run_test "SQL in model field" '
 
 # Test in temperature field (numeric injection)
 run_test "Numeric field injection" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"test\"}], \"temperature\": \"1 OR 1=1\"}")
@@ -250,7 +250,7 @@ run_test "Numeric field injection" '
 
 # Test in JSON array
 run_test "SQL in JSON array" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"test\"}], \"stop\": [\"'"'"'; DROP TABLE stops; --\"]}")
@@ -265,19 +265,19 @@ log_info "SECTION 8: SQL Injection via HTTP Headers"
 log_info "=============================================="
 
 run_test "SQL in User-Agent header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "User-Agent: '"'"'; DROP TABLE users; --" 2>&1)
     ! echo "$response" | grep -iE "sql syntax|database error" > /dev/null
 '
 
 run_test "SQL in X-Forwarded-For header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "X-Forwarded-For: 127.0.0.1'"'"'; DROP TABLE logs; --" 2>&1)
     ! echo "$response" | grep -iE "sql syntax|database error" > /dev/null
 '
 
 run_test "SQL in Referer header" '
-    response=$(curl -s -X GET "$BASE_URL/health" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/health" \
         -H "Referer: http://example.com/'"'"'; SELECT * FROM users; --" 2>&1)
     ! echo "$response" | grep -iE "sql syntax|database error" > /dev/null
 '
@@ -292,13 +292,13 @@ log_info "=============================================="
 # Store payload first, then trigger
 run_test "Second-order injection preparation" '
     # First request stores the payload
-    curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"My name is admin'"'"'--\"}]}" > /dev/null 2>&1
 
     # Second request might trigger stored payload
-    response=$(curl -s -X GET "$BASE_URL/v1/models" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/v1/models" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>&1)
     ! echo "$response" | grep -iE "sql syntax|database error" > /dev/null
 '
@@ -311,7 +311,7 @@ log_info "SECTION 10: SQL Error Message Disclosure"
 log_info "=============================================="
 
 run_test "No SQL error details exposed" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"'"'"'; INVALID SQL SYNTAX; --\", \"messages\": [{\"role\": \"user\", \"content\": \"test\"}]}")
@@ -320,7 +320,7 @@ run_test "No SQL error details exposed" '
 '
 
 run_test "No stack traces in error responses" '
-    response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+    response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "{\"model\": \"test'"'"'\", \"messages\": [{\"role\": \"user\", \"content\": \"test\"}]}")
@@ -345,7 +345,7 @@ SAFE_INPUT_TESTS=(
 for i in "${!SAFE_INPUT_TESTS[@]}"; do
     input="${SAFE_INPUT_TESTS[$i]}"
     run_test "Safe handling of SQL-like input #$((i+1))" '
-        response=$(curl -s -X POST "$BASE_URL/v1/chat/completions" \
+        response=$(curl -s --max-time 60 -X POST "$BASE_URL/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": \"'"$input"'\"}]}")

@@ -559,7 +559,7 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 35: Live API health check"
 
-        health_response=$(curl -s -o /dev/null -w "%{http_code}" \
+        health_response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $MISTRAL_API_KEY" \
             "https://api.mistral.ai/v1/models" 2>/dev/null || echo "000")
 
@@ -575,7 +575,7 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 36: Live completion request"
 
-        completion_response=$(curl -s -X POST \
+        completion_response=$(curl -s --max-time 60 -X POST \
             -H "Authorization: Bearer $MISTRAL_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -603,7 +603,7 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 37: Live streaming request"
 
-        stream_response=$(curl -s -X POST \
+        stream_response=$(curl -s --max-time 60 -X POST \
             -H "Authorization: Bearer $MISTRAL_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -626,8 +626,8 @@ if [ "$LIVE_TESTS" = true ]; then
         TOTAL=$((TOTAL + 1))
         log_info "Test 38: HelixAgent Mistral integration"
 
-        if curl -s "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
-            helix_response=$(curl -s -X POST \
+        if curl -s --max-time 60 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+            helix_response=$(curl -s --max-time 60 -X POST \
                 -H "Content-Type: application/json" \
                 -d '{
                     "model": "mistral-large-latest",

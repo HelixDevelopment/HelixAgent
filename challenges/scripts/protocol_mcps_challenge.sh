@@ -45,7 +45,7 @@ echo ""
 # Check if HelixAgent is running
 HELIXAGENT_URL="http://localhost:7061"
 log_test "HelixAgent server health check"
-if curl -s -m 5 "$HELIXAGENT_URL/health" | grep -q "healthy"; then
+if curl -s --max-time 60 -m 5 "$HELIXAGENT_URL/health" | grep -q "healthy"; then
     pass "HelixAgent is running"
 else
     fail "HelixAgent is not running - cannot proceed"
@@ -60,7 +60,7 @@ echo ""
 echo -e "${YELLOW}=== Section 1: ACP Tests ===${NC}"
 
 log_test "ACP SSE endpoint responds"
-RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/acp" 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/acp" 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     pass "ACP SSE endpoint responds with endpoint event"
 else
@@ -68,7 +68,7 @@ else
 fi
 
 log_test "ACP initialize method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "protocolVersion"; then
@@ -78,7 +78,7 @@ else
 fi
 
 log_test "ACP tools/list method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then
@@ -88,7 +88,7 @@ else
 fi
 
 log_test "ACP list_agents tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/acp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"acp_list_agents","arguments":{}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -104,7 +104,7 @@ echo ""
 echo -e "${YELLOW}=== Section 2: LSP Tests ===${NC}"
 
 log_test "LSP SSE endpoint responds"
-RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/lsp" 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/lsp" 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     pass "LSP SSE endpoint responds with endpoint event"
 else
@@ -112,7 +112,7 @@ else
 fi
 
 log_test "LSP initialize method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "protocolVersion"; then
@@ -122,7 +122,7 @@ else
 fi
 
 log_test "LSP tools/list method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then
@@ -132,7 +132,7 @@ else
 fi
 
 log_test "LSP list_servers tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lsp_list_servers","arguments":{}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -142,7 +142,7 @@ else
 fi
 
 log_test "LSP get_diagnostics tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/lsp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"lsp_get_diagnostics","arguments":{"file_path":"/tmp/test.go"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -158,7 +158,7 @@ echo ""
 echo -e "${YELLOW}=== Section 3: Embeddings Tests ===${NC}"
 
 log_test "Embeddings SSE endpoint responds"
-RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/embeddings" 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/embeddings" 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     pass "Embeddings SSE endpoint responds with endpoint event"
 else
@@ -166,7 +166,7 @@ else
 fi
 
 log_test "Embeddings initialize method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "protocolVersion"; then
@@ -176,7 +176,7 @@ else
 fi
 
 log_test "Embeddings tools/list method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then
@@ -186,7 +186,7 @@ else
 fi
 
 log_test "Embeddings generate tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/embeddings" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"embeddings_generate","arguments":{"text":"Hello world"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -196,7 +196,7 @@ else
 fi
 
 log_test "Embeddings REST endpoint /v1/embeddings/providers"
-RESP=$(curl -s -m 10 "$HELIXAGENT_URL/v1/embeddings/providers" 2>/dev/null || echo "{}")
+RESP=$(curl -s --max-time 60 -m 10 "$HELIXAGENT_URL/v1/embeddings/providers" 2>/dev/null || echo "{}")
 if [ ! -z "$RESP" ] && [ "$RESP" != "{}" ]; then
     pass "Embeddings providers endpoint works"
 else
@@ -210,7 +210,7 @@ echo ""
 echo -e "${YELLOW}=== Section 4: Vision Tests ===${NC}"
 
 log_test "Vision SSE endpoint responds"
-RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/vision" 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/vision" 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     pass "Vision SSE endpoint responds with endpoint event"
 else
@@ -218,7 +218,7 @@ else
 fi
 
 log_test "Vision initialize method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "protocolVersion"; then
@@ -228,7 +228,7 @@ else
 fi
 
 log_test "Vision tools/list method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then
@@ -238,7 +238,7 @@ else
 fi
 
 log_test "Vision analyze_image tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"vision_analyze_image","arguments":{"image_url":"https://example.com/test.png"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -248,7 +248,7 @@ else
 fi
 
 log_test "Vision ocr tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/vision" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"vision_ocr","arguments":{"image_url":"https://example.com/test.png"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -264,7 +264,7 @@ echo ""
 echo -e "${YELLOW}=== Section 5: Cognee Tests ===${NC}"
 
 log_test "Cognee SSE endpoint responds"
-RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/cognee" 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/cognee" 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     pass "Cognee SSE endpoint responds with endpoint event"
 else
@@ -272,7 +272,7 @@ else
 fi
 
 log_test "Cognee initialize method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "protocolVersion"; then
@@ -282,7 +282,7 @@ else
 fi
 
 log_test "Cognee tools/list method"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then
@@ -292,7 +292,7 @@ else
 fi
 
 log_test "Cognee add tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"cognee_add","arguments":{"content":"Test knowledge entry"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -302,7 +302,7 @@ else
 fi
 
 log_test "Cognee search tool"
-RESP=$(curl -s -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
+RESP=$(curl -s --max-time 60 -m 10 -X POST "$HELIXAGENT_URL/v1/cognee" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"cognee_search","arguments":{"query":"test"}}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "content\|result"; then
@@ -312,7 +312,7 @@ else
 fi
 
 log_test "Cognee REST endpoint /v1/cognee/status"
-RESP=$(curl -s -m 10 "$HELIXAGENT_URL/v1/cognee/status" 2>/dev/null || echo "{}")
+RESP=$(curl -s --max-time 60 -m 10 "$HELIXAGENT_URL/v1/cognee/status" 2>/dev/null || echo "{}")
 if [ ! -z "$RESP" ]; then
     pass "Cognee status endpoint works"
 else
@@ -371,7 +371,7 @@ echo -e "${YELLOW}=== Section 7: Integration Tests ===${NC}"
 log_test "All protocol SSE endpoints have heartbeat"
 ALL_SSE_WORK=true
 for proto in mcp acp lsp embeddings vision cognee; do
-    RESP=$(curl -s -m 3 "$HELIXAGENT_URL/v1/$proto" 2>/dev/null || echo "")
+    RESP=$(curl -s --max-time 60 -m 3 "$HELIXAGENT_URL/v1/$proto" 2>/dev/null || echo "")
     if echo "$RESP" | grep -q "endpoint"; then
         continue
     else
@@ -387,7 +387,7 @@ fi
 
 log_test "Protocol endpoints work in standalone mode"
 # Verify no auth is required
-AUTH_RESP=$(curl -s -m 5 -X POST "$HELIXAGENT_URL/v1/mcp" \
+AUTH_RESP=$(curl -s --max-time 60 -m 5 -X POST "$HELIXAGENT_URL/v1/mcp" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$AUTH_RESP" | grep -q "tools"; then

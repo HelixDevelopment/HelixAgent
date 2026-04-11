@@ -178,28 +178,28 @@ test_service_health() {
     section "Service Health Checks"
 
     # HelixAgent
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$HELIXAGENT_URL/health" 2>/dev/null | grep -q "200"; then
         pass "HelixAgent API is healthy"
     else
         fail "HelixAgent API is not responding"
     fi
 
     # HelixAgent metrics
-    if curl -s --connect-timeout 5 "$HELIXAGENT_URL/metrics" 2>/dev/null | grep -q "go_"; then
+    if curl -s --max-time 60 --connect-timeout 5 "$HELIXAGENT_URL/metrics" 2>/dev/null | grep -q "go_"; then
         pass "HelixAgent metrics endpoint working"
     else
         warn "HelixAgent metrics endpoint not responding (may need to start monitoring)"
     fi
 
     # ChromaDB
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$CHROMADB_URL/api/v1/heartbeat" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$CHROMADB_URL/api/v1/heartbeat" 2>/dev/null | grep -q "200"; then
         pass "ChromaDB is healthy"
     else
         fail "ChromaDB is not responding"
     fi
 
     # Cognee
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$COGNEE_URL/health" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$COGNEE_URL/health" 2>/dev/null | grep -q "200"; then
         pass "Cognee is healthy"
     else
         fail "Cognee is not responding"
@@ -228,11 +228,11 @@ test_prometheus() {
     section "Prometheus Integration"
 
     # Prometheus availability
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$PROMETHEUS_URL/-/healthy" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$PROMETHEUS_URL/-/healthy" 2>/dev/null | grep -q "200"; then
         pass "Prometheus is healthy"
 
         # Check targets
-        TARGETS=$(curl -s "$PROMETHEUS_URL/api/v1/targets" 2>/dev/null)
+        TARGETS=$(curl -s --max-time 60 "$PROMETHEUS_URL/api/v1/targets" 2>/dev/null)
         if [ -n "$TARGETS" ]; then
             UP_COUNT=$(echo "$TARGETS" | jq '[.data.activeTargets[] | select(.health == "up")] | length' 2>/dev/null || echo "0")
             TOTAL_COUNT=$(echo "$TARGETS" | jq '.data.activeTargets | length' 2>/dev/null || echo "0")
@@ -240,14 +240,14 @@ test_prometheus() {
         fi
 
         # Check rules
-        RULES=$(curl -s "$PROMETHEUS_URL/api/v1/rules" 2>/dev/null)
+        RULES=$(curl -s --max-time 60 "$PROMETHEUS_URL/api/v1/rules" 2>/dev/null)
         if [ -n "$RULES" ]; then
             RULE_COUNT=$(echo "$RULES" | jq '[.data.groups[].rules[]] | length' 2>/dev/null || echo "0")
             pass "Prometheus rules loaded: $RULE_COUNT"
         fi
 
         # Check alerts
-        ALERTS=$(curl -s "$PROMETHEUS_URL/api/v1/alerts" 2>/dev/null)
+        ALERTS=$(curl -s --max-time 60 "$PROMETHEUS_URL/api/v1/alerts" 2>/dev/null)
         if [ -n "$ALERTS" ]; then
             FIRING=$(echo "$ALERTS" | jq '[.data.alerts[] | select(.state == "firing")] | length' 2>/dev/null || echo "0")
             if [ "$FIRING" -eq 0 ]; then
@@ -268,11 +268,11 @@ test_prometheus() {
 test_grafana() {
     section "Grafana Integration"
 
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$GRAFANA_URL/api/health" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$GRAFANA_URL/api/health" 2>/dev/null | grep -q "200"; then
         pass "Grafana is healthy"
 
         # Check datasources
-        DATASOURCES=$(curl -s -u admin:admin123 "$GRAFANA_URL/api/datasources" 2>/dev/null)
+        DATASOURCES=$(curl -s --max-time 60 -u admin:admin123 "$GRAFANA_URL/api/datasources" 2>/dev/null)
         if [ -n "$DATASOURCES" ]; then
             DS_COUNT=$(echo "$DATASOURCES" | jq '. | length' 2>/dev/null || echo "0")
             pass "Grafana datasources configured: $DS_COUNT"
@@ -289,11 +289,11 @@ test_grafana() {
 test_alertmanager() {
     section "Alertmanager Integration"
 
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$ALERTMANAGER_URL/-/healthy" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$ALERTMANAGER_URL/-/healthy" 2>/dev/null | grep -q "200"; then
         pass "Alertmanager is healthy"
 
         # Check status
-        STATUS=$(curl -s "$ALERTMANAGER_URL/api/v2/status" 2>/dev/null)
+        STATUS=$(curl -s --max-time 60 "$ALERTMANAGER_URL/api/v2/status" 2>/dev/null)
         if [ -n "$STATUS" ]; then
             CLUSTER=$(echo "$STATUS" | jq -r '.cluster.status' 2>/dev/null || echo "unknown")
             pass "Alertmanager cluster status: $CLUSTER"
@@ -310,11 +310,11 @@ test_alertmanager() {
 test_loki() {
     section "Loki Log Aggregation"
 
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$LOKI_URL/ready" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$LOKI_URL/ready" 2>/dev/null | grep -q "200"; then
         pass "Loki is ready"
 
         # Check labels
-        LABELS=$(curl -s "$LOKI_URL/loki/api/v1/labels" 2>/dev/null)
+        LABELS=$(curl -s --max-time 60 "$LOKI_URL/loki/api/v1/labels" 2>/dev/null)
         if [ -n "$LABELS" ]; then
             LABEL_COUNT=$(echo "$LABELS" | jq '.data | length' 2>/dev/null || echo "0")
             pass "Loki labels available: $LABEL_COUNT"
@@ -333,11 +333,11 @@ test_custom_exporter() {
 
     EXPORTER_URL="http://localhost:9200"
 
-    if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$EXPORTER_URL/health" 2>/dev/null | grep -q "200"; then
+    if curl -s --max-time 60 -o /dev/null -w "%{http_code}" --connect-timeout 5 "$EXPORTER_URL/health" 2>/dev/null | grep -q "200"; then
         pass "Custom exporter is healthy"
 
         # Check metrics
-        METRICS=$(curl -s "$EXPORTER_URL/metrics" 2>/dev/null)
+        METRICS=$(curl -s --max-time 60 "$EXPORTER_URL/metrics" 2>/dev/null)
         if [ -n "$METRICS" ]; then
             if echo "$METRICS" | grep -q "helixagent_up"; then
                 pass "HelixAgent metrics being exported"

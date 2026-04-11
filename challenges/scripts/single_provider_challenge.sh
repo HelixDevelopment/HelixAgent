@@ -185,8 +185,8 @@ load_environment() {
 check_helixagent_running() {
     log_info "Checking if HelixAgent is running..."
 
-    if curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/health" > /dev/null 2>&1 || \
-       curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" > /dev/null 2>&1; then
+    if curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/health" > /dev/null 2>&1 || \
+       curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/models" > /dev/null 2>&1; then
         log_success "HelixAgent is running on port $HELIXAGENT_PORT"
         return 0
     else
@@ -233,11 +233,11 @@ phase1_provider_discovery() {
     log_info "Discovering available providers..."
 
     # Call the discovery endpoint
-    local response=$(curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/providers/discovery" 2>&1)
+    local response=$(curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/providers/discovery" 2>&1)
 
     if [ -z "$response" ]; then
         log_warning "Discovery endpoint not available, using verification endpoint..."
-        response=$(curl -s "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/providers/verify" 2>&1)
+        response=$(curl -s --max-time 60 "http://$HELIXAGENT_HOST:$HELIXAGENT_PORT/v1/providers/verify" 2>&1)
     fi
 
     if [ -z "$response" ]; then
@@ -350,7 +350,7 @@ DEBATEREQUEST
 
     # Submit debate
     local start_time=$(date +%s%N)
-    local response=$(curl -s -X POST \
+    local response=$(curl -s --max-time 60 -X POST \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $HELIXAGENT_API_KEY" \
         -d "$debate_request" \

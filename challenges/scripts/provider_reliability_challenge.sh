@@ -94,7 +94,7 @@ HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
 
 log_info "Checking HelixAgent at $HELIXAGENT_URL..."
 
-if ! curl -s "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+if ! curl -s --max-time 60 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
     if [ "$SKIP_OFFLINE" = true ]; then
         log_warning "HelixAgent is not running - skipping challenge (--skip-if-offline)"
         exit 0

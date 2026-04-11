@@ -90,7 +90,7 @@ else
 fi
 
 log_test "P1.3: HelixAgent is running"
-HEALTH=$(curl -s http://localhost:7061/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
+HEALTH=$(curl -s --max-time 60 http://localhost:7061/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
 if [[ "$HEALTH" == "healthy" ]]; then
     log_pass "HelixAgent is healthy"
 else

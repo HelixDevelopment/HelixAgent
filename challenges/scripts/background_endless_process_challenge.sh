@@ -22,7 +22,7 @@ test_create_endless_task() {
     log_info "Test 1: Creating endless process task..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "endless_process",
@@ -61,7 +61,7 @@ test_monitor_endless_task() {
     sleep 2
 
     local response
-    response=$(curl -s "${API_BASE}/v1/tasks/${task_id}/status")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/status")
 
     local status
     status=$(echo "$response" | jq -r '.status // "unknown"')
@@ -69,7 +69,7 @@ test_monitor_endless_task() {
     log_info "Endless task status: $status"
 
     # Check resources
-    response=$(curl -s "${API_BASE}/v1/tasks/${task_id}/resources")
+    response=$(curl -s --max-time 60 "${API_BASE}/v1/tasks/${task_id}/resources")
     local resource_count
     resource_count=$(echo "$response" | jq -r '.count // 0')
 
@@ -88,7 +88,7 @@ test_cancel_endless_task() {
     fi
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks/${task_id}/cancel")
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${task_id}/cancel")
 
     local status
     status=$(echo "$response" | jq -r '.status // empty')
@@ -107,7 +107,7 @@ test_pausable_endless_task() {
     log_info "Test 4: Creating pausable endless task..."
 
     local response
-    response=$(curl -s -X POST "${API_BASE}/v1/tasks" \
+    response=$(curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks" \
         -H "Content-Type: application/json" \
         -d '{
             "task_type": "endless_process",
@@ -127,7 +127,7 @@ test_pausable_endless_task() {
         log_success "Created pausable endless task: $task_id"
 
         # Clean up
-        curl -s -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
+        curl -s --max-time 60 -X POST "${API_BASE}/v1/tasks/${task_id}/cancel" > /dev/null
         return 0
     else
         log_warning "Could not create pausable task"
@@ -140,7 +140,7 @@ main() {
     local passed=0
     local failed=0
 
-    if ! curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
+    if ! curl -s --max-time 60 -o /dev/null -w "%{http_code}" "${API_BASE}/v1/health" | grep -q "200"; then
         log_warning "API not available, using mock validation"
         log_success "Challenge passed with mock validation"
         exit 0

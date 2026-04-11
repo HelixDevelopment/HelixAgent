@@ -150,7 +150,7 @@ log_info "=============================================="
 # Check if HelixAgent is running
 log_info "Checking if HelixAgent is running at $HELIXAGENT_URL..."
 HELIXAGENT_RUNNING=false
-if curl -s --connect-timeout 5 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+if curl -s --max-time 60 --connect-timeout 5 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
     HELIXAGENT_RUNNING=true
     log_success "HelixAgent is running"
 else
@@ -162,7 +162,7 @@ if [ "$HELIXAGENT_RUNNING" = "true" ]; then
     # Test 9: GET /v1/startup/verification returns 200
     TOTAL=$((TOTAL + 1))
     log_info "Test 9: GET /v1/startup/verification returns 200"
-    HTTP_CODE=$(curl -s -o /tmp/startup_verification.json -w "%{http_code}" "$HELIXAGENT_URL/v1/startup/verification" 2>/dev/null)
+    HTTP_CODE=$(curl -s --max-time 60 -o /tmp/startup_verification.json -w "%{http_code}" "$HELIXAGENT_URL/v1/startup/verification" 2>/dev/null)
     if [ "$HTTP_CODE" = "200" ]; then
         log_success "GET /v1/startup/verification returns 200"
         PASSED=$((PASSED + 1))

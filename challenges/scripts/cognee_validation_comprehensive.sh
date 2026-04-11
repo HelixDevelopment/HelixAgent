@@ -56,7 +56,7 @@ log_test() {
 }
 
 check_cognee() {
-    if curl -s --connect-timeout 2 "$COGNEE_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 2 "$COGNEE_URL/health" > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -64,7 +64,7 @@ check_cognee() {
 }
 
 check_helixagent() {
-    if curl -s --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 --connect-timeout 2 "$HELIXAGENT_URL/health" > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -104,7 +104,7 @@ echo ""
 if check_cognee; then
     # Test Add
     timestamp=$(date +%s)
-    response=$(curl -s -X POST "$COGNEE_URL/add" \
+    response=$(curl -s --max-time 60 -X POST "$COGNEE_URL/add" \
         -H "Content-Type: application/json" \
         -d "{
             \"data\": \"HelixAgent validation test $timestamp: AI systems process natural language\",
@@ -118,7 +118,7 @@ if check_cognee; then
     fi
 
     # Test Cognify
-    response=$(curl -s -X POST "$COGNEE_URL/cognify" \
+    response=$(curl -s --max-time 60 -X POST "$COGNEE_URL/cognify" \
         -H "Content-Type: application/json" 2>/dev/null)
 
     if [ -n "$response" ]; then
@@ -128,7 +128,7 @@ if check_cognee; then
     fi
 
     # Test Search
-    response=$(curl -s -X POST "$COGNEE_URL/search" \
+    response=$(curl -s --max-time 60 -X POST "$COGNEE_URL/search" \
         -H "Content-Type: application/json" \
         -d '{
             "query": "AI systems natural language",
@@ -157,7 +157,7 @@ echo ""
 
 if check_helixagent; then
     # Test Cognee health via HelixAgent
-    response=$(curl -s -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/cognee/health" 2>/dev/null)
+    response=$(curl -s --max-time 60 -o /dev/null -w "%{http_code}" "$HELIXAGENT_URL/v1/cognee/health" 2>/dev/null)
     if [ "$response" = "200" ]; then
         log_test "Proxy: Cognee Health" "PASS"
     else
@@ -165,7 +165,7 @@ if check_helixagent; then
     fi
 
     # Test Add via HelixAgent
-    response=$(curl -s -X POST "$HELIXAGENT_URL/v1/cognee/add" \
+    response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/cognee/add" \
         -H "Content-Type: application/json" \
         -d '{
             "content": "Test content via HelixAgent proxy"
@@ -178,7 +178,7 @@ if check_helixagent; then
     fi
 
     # Test Search via HelixAgent
-    response=$(curl -s -X POST "$HELIXAGENT_URL/v1/cognee/search" \
+    response=$(curl -s --max-time 60 -X POST "$HELIXAGENT_URL/v1/cognee/search" \
         -H "Content-Type: application/json" \
         -d '{
             "query": "test content",
@@ -207,7 +207,7 @@ echo ""
 
 if check_cognee; then
     # Test get graph
-    response=$(curl -s "$COGNEE_URL/graph" 2>/dev/null)
+    response=$(curl -s --max-time 60 "$COGNEE_URL/graph" 2>/dev/null)
     if [ -n "$response" ]; then
         log_test "Graph: Get Graph" "PASS"
     else
@@ -215,7 +215,7 @@ if check_cognee; then
     fi
 
     # Test get datasets
-    response=$(curl -s "$COGNEE_URL/datasets" 2>/dev/null)
+    response=$(curl -s --max-time 60 "$COGNEE_URL/datasets" 2>/dev/null)
     if [ -n "$response" ]; then
         log_test "Graph: List Datasets" "PASS"
     else

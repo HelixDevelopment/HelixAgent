@@ -20,7 +20,7 @@ log_info "Testing provider scoring and ranking..."
 test_score_components() {
     log_info "Test 1: Score components presence"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     local first_provider=$(echo "$response" | jq -r '.ranked_providers[0] // empty' 2>/dev/null)
@@ -54,7 +54,7 @@ test_score_components() {
 test_score_range() {
     log_info "Test 2: Score range validation"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     local provider_count=$(echo "$response" | jq '.ranked_providers | length' 2>/dev/null || echo "0")
@@ -86,7 +86,7 @@ test_score_range() {
 test_ranking_consistency() {
     log_info "Test 3: Ranking consistency (descending scores)"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     local provider_count=$(echo "$response" | jq '.ranked_providers | length' 2>/dev/null || echo "0")
@@ -120,7 +120,7 @@ test_ranking_consistency() {
 test_free_provider_scoring() {
     log_info "Test 4: Free provider scoring (if present)"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     # Find free providers
@@ -147,7 +147,7 @@ test_free_provider_scoring() {
 test_oauth_provider_scoring() {
     log_info "Test 5: OAuth provider scoring bonus"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     # Find OAuth providers
@@ -174,7 +174,7 @@ test_oauth_provider_scoring() {
 test_score_diversity() {
     log_info "Test 6: Score diversity (dynamic vs hardcoded)"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     local provider_count=$(echo "$response" | jq '.ranked_providers | length' 2>/dev/null || echo "0")
@@ -202,7 +202,7 @@ test_score_diversity() {
 test_top_provider() {
     log_info "Test 7: Top provider selection"
 
-    local response=$(curl -s "$BASE_URL/v1/startup/verification" \
+    local response=$(curl -s --max-time 60 "$BASE_URL/v1/startup/verification" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" 2>/dev/null || true)
 
     local top_provider=$(echo "$response" | jq -r '.ranked_providers[0] // empty' 2>/dev/null)
@@ -236,7 +236,7 @@ main() {
     log_info "Starting Provider Scoring Challenge..."
 
     # Check if server is running
-    if ! curl -s "$BASE_URL/health" > /dev/null 2>&1; then
+    if ! curl -s --max-time 60 "$BASE_URL/health" > /dev/null 2>&1; then
         log_warning "HelixAgent not running, attempting to start..."
         start_helixagent "$CHALLENGE_PORT" || {
             log_error "Failed to start HelixAgent"

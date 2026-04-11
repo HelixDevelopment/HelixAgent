@@ -116,13 +116,13 @@ log_info "SECTION 1: Token Format Validation"
 log_info "=============================================="
 
 run_test "Missing Authorization header rejected" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" 2>&1)
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
 '
 
 run_test "Empty Authorization header rejected" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: " 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -130,7 +130,7 @@ run_test "Empty Authorization header rejected" '
 
 run_test "Missing Bearer prefix rejected" '
     token=$(create_valid_jwt)
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/models" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/models" \
         -H "Authorization: $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Without Bearer prefix, should be treated as unauthenticated
@@ -138,21 +138,21 @@ run_test "Missing Bearer prefix rejected" '
 '
 
 run_test "Invalid token format rejected" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer invalid.token.here" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
 '
 
 run_test "Token with wrong number of parts rejected" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer header.payload" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
 '
 
 run_test "Malformed base64 in token rejected" '
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer !!!.@@@.###" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -167,7 +167,7 @@ log_info "=============================================="
 
 run_test "Expired token rejected" '
     expired_token=$(create_expired_jwt)
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $expired_token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     body=$(echo "$response" | head -n -1)
@@ -180,7 +180,7 @@ run_test "Token expired 1 second ago rejected" '
     exp=$((now - 1))
     payload="{\"user_id\":\"test\",\"exp\":$exp,\"iat\":$((now - 100))}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -191,7 +191,7 @@ run_test "Token with future iat handled correctly" '
     future_iat=$((now + 3600))
     payload="{\"user_id\":\"test\",\"exp\":$((future_iat + 3600)),\"iat\":$future_iat}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Tokens issued in the future should be suspicious
@@ -209,7 +209,7 @@ run_test "Token with wrong secret rejected" '
     now=$(date +%s)
     payload="{\"user_id\":\"test\",\"exp\":$((now + 3600)),\"iat\":$now}"
     token=$(create_jwt "$payload" "wrong-secret-key" "HS256")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -224,7 +224,7 @@ run_test "Token with tampered payload rejected" '
     # Create new payload with different user_id
     new_payload=$(base64url_encode "{\"user_id\":\"admin\",\"username\":\"admin\",\"role\":\"admin\",\"exp\":$(($(date +%s) + 3600))}")
     tampered_token="${header}.${new_payload}.${original_sig}"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $tampered_token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -236,7 +236,7 @@ run_test "Token with empty signature rejected" '
     header=$(base64url_encode "{\"alg\":\"HS256\",\"typ\":\"JWT\"}")
     payload_b64=$(base64url_encode "$payload")
     token="${header}.${payload_b64}."
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -253,7 +253,7 @@ run_test "Algorithm 'none' attack rejected" '
     now=$(date +%s)
     payload="{\"user_id\":\"admin\",\"username\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600)),\"iat\":$now}"
     token=$(create_jwt "$payload" "" "none")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -264,7 +264,7 @@ run_test "Algorithm 'None' (capitalized) attack rejected" '
     header=$(base64url_encode "{\"alg\":\"None\",\"typ\":\"JWT\"}")
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     token="${header}.${payload}."
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -275,7 +275,7 @@ run_test "Algorithm 'NONE' attack rejected" '
     header=$(base64url_encode "{\"alg\":\"NONE\",\"typ\":\"JWT\"}")
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     token="${header}.${payload}."
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -287,7 +287,7 @@ run_test "Unknown algorithm rejected" '
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     sig=$(echo -n "${header}.${payload}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | base64 | tr '+/' '-_' | tr -d '=')
     token="${header}.${payload}.${sig}"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -302,7 +302,7 @@ log_info "=============================================="
 
 run_test "Token refresh endpoint exists or handled gracefully" '
     valid_token=$(create_valid_jwt)
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
         -H "Authorization: Bearer $valid_token" \
         -H "Content-Type: application/json" 2>&1)
     http_code=$(echo "$response" | tail -1)
@@ -312,7 +312,7 @@ run_test "Token refresh endpoint exists or handled gracefully" '
 
 run_test "Expired token cannot be refreshed" '
     expired_token=$(create_expired_jwt)
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
         -H "Authorization: Bearer $expired_token" \
         -H "Content-Type: application/json" 2>&1)
     http_code=$(echo "$response" | tail -1)
@@ -322,7 +322,7 @@ run_test "Expired token cannot be refreshed" '
 '
 
 run_test "Invalid token cannot be refreshed" '
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST "$BASE_URL/v1/auth/refresh" \
         -H "Authorization: Bearer invalid.token.here" \
         -H "Content-Type: application/json" 2>&1)
     http_code=$(echo "$response" | tail -1)
@@ -340,7 +340,7 @@ run_test "SQL injection in JWT claims rejected" '
     now=$(date +%s)
     payload="{\"user_id\":\"'"'"'; DROP TABLE users; --\",\"exp\":$((now + 3600))}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     ! echo "$response" | grep -iE "sql syntax|database error" > /dev/null
 '
@@ -349,7 +349,7 @@ run_test "XSS in JWT claims handled safely" '
     now=$(date +%s)
     payload="{\"user_id\":\"<script>alert(1)</script>\",\"exp\":$((now + 3600))}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     ! echo "$response" | grep -F "<script>alert(1)</script>" > /dev/null
 '
@@ -359,7 +359,7 @@ run_test "Large payload in JWT handled" '
     large_data=$(printf "A%.0s" {1..10000})
     payload="{\"user_id\":\"$large_data\",\"exp\":$((now + 3600))}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Should reject or handle gracefully - not crash
@@ -383,7 +383,7 @@ run_test "Role claim tampering detected" '
     now=$(date +%s)
     tampered_payload=$(base64url_encode "{\"user_id\":\"user1\",\"username\":\"regularuser\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     tampered_token="${header}.${tampered_payload}.${original_sig}"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $tampered_token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -393,7 +393,7 @@ run_test "Multiple role claims handled correctly" '
     now=$(date +%s)
     payload="{\"user_id\":\"test\",\"role\":\"user\",\"role\":\"admin\",\"exp\":$((now + 3600))}"
     token=$(create_jwt "$payload" "$JWT_SECRET" "HS256")
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     # Should not grant admin access due to duplicate claims
@@ -412,7 +412,7 @@ run_test "JKU header injection rejected" '
     header=$(base64url_encode "{\"alg\":\"RS256\",\"typ\":\"JWT\",\"jku\":\"http://evil.com/keys.json\"}")
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     token="${header}.${payload}.fake_signature"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -424,7 +424,7 @@ run_test "JWK embedded header attack rejected" '
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     sig=$(echo -n "${header}.${payload}" | openssl dgst -sha256 -hmac "abc" -binary | base64 | tr '+/' '-_' | tr -d '=')
     token="${header}.${payload}.${sig}"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -435,7 +435,7 @@ run_test "x5u header injection rejected" '
     header=$(base64url_encode "{\"alg\":\"RS256\",\"typ\":\"JWT\",\"x5u\":\"http://evil.com/cert.pem\"}")
     payload=$(base64url_encode "{\"user_id\":\"admin\",\"role\":\"admin\",\"exp\":$((now + 3600))}")
     token="${header}.${payload}.fake_signature"
-    response=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
+    response=$(curl -s --max-time 60 -w "\n%{http_code}" -X GET "$BASE_URL/v1/admin/users" \
         -H "Authorization: Bearer $token" 2>&1)
     http_code=$(echo "$response" | tail -1)
     [[ "$http_code" == "401" ]] || [[ "$http_code" == "403" ]] || [[ "$http_code" == "404" ]]
@@ -450,14 +450,14 @@ log_info "=============================================="
 
 run_test "Token not exposed in error messages" '
     valid_token=$(create_valid_jwt)
-    response=$(curl -s -X GET "$BASE_URL/v1/nonexistent" \
+    response=$(curl -s --max-time 60 -X GET "$BASE_URL/v1/nonexistent" \
         -H "Authorization: Bearer $valid_token" 2>&1)
     ! echo "$response" | grep -F "$valid_token" > /dev/null
 '
 
 run_test "Token not logged in response headers" '
     valid_token=$(create_valid_jwt)
-    headers=$(curl -s -I -X GET "$BASE_URL/v1/models" \
+    headers=$(curl -s --max-time 60 -I -X GET "$BASE_URL/v1/models" \
         -H "Authorization: Bearer $valid_token" 2>&1)
     ! echo "$headers" | grep -F "$valid_token" > /dev/null
 '

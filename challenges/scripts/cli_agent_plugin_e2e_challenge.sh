@@ -207,17 +207,17 @@ section4_server_health() {
     log_info "SECTION 4: HelixAgent Server Health"
     log_info "=============================================="
 
-    if ! curl -s "$BASE_URL/health" > /dev/null 2>&1; then
+    if ! curl -s --max-time 60 "$BASE_URL/health" > /dev/null 2>&1; then
         log_warning "HelixAgent server not running on $BASE_URL"
         skip_test "HelixAgent health check" "Server not running"
         return 1
     fi
 
     run_test "HelixAgent health check" \
-        "curl -s '$BASE_URL/health' | grep -q 'healthy'"
+        "curl -s --max-time 60 '$BASE_URL/health' | grep -q 'healthy'"
 
     run_test "HelixAgent models endpoint" \
-        "curl -s '$BASE_URL/v1/models' | grep -q 'helixagent-debate'"
+        "curl -s --max-time 60 '$BASE_URL/v1/models' | grep -q 'helixagent-debate'"
 
     # Check X-Features-Enabled header
     local features=$(curl -sI "$BASE_URL/health" | grep -i "X-Features-Enabled" || true)
@@ -252,7 +252,7 @@ section5_request_response_testing() {
         "stream": false
     }'
 
-    local response=$(curl -s -m 60 "$BASE_URL/v1/chat/completions" \
+    local response=$(curl -s --max-time 60 -m 60 "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d "$request" 2>/dev/null)
@@ -285,7 +285,7 @@ section5_request_response_testing() {
         "stream": true
     }'
 
-    local stream_response=$(curl -s -m 60 "$BASE_URL/v1/chat/completions" \
+    local stream_response=$(curl -s --max-time 60 -m 60 "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Accept: text/event-stream" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
@@ -313,7 +313,7 @@ section6_plugin_confirmation() {
 
     # 1. Check MCP endpoint (used by plugins)
     log_info "Testing MCP endpoint for plugin functionality..."
-    local mcp_response=$(curl -s -m 5 "$BASE_URL/v1/mcp" 2>/dev/null || true)
+    local mcp_response=$(curl -s --max-time 60 -m 5 "$BASE_URL/v1/mcp" 2>/dev/null || true)
 
     if [[ -n "$mcp_response" ]]; then
         run_test "MCP endpoint responds (plugin communication enabled)" \
@@ -338,7 +338,7 @@ section6_plugin_confirmation() {
     # 3. Check debate feature (core plugin functionality)
     log_info "Testing debate feature (plugin core functionality)..."
 
-    local debate_response=$(curl -s -m 30 "$BASE_URL/v1/chat/completions" \
+    local debate_response=$(curl -s --max-time 60 -m 30 "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
         -d '{
@@ -369,14 +369,14 @@ section6_plugin_confirmation() {
 
     # 4. Verify protocol discovery (if running)
     local discovery_url="${PROTOCOL_DISCOVERY_URL:-http://localhost:9300}"
-    local discovery_response=$(curl -s -m 5 "$discovery_url/health" 2>/dev/null || true)
+    local discovery_response=$(curl -s --max-time 60 -m 5 "$discovery_url/health" 2>/dev/null || true)
 
     if [[ -n "$discovery_response" ]]; then
         run_test "Protocol Discovery service accessible" \
             "echo '$discovery_response' | grep -q 'healthy'"
 
         # Check MCP Tool Search
-        local search_response=$(curl -s -m 5 "$discovery_url/v1/search?query=file" 2>/dev/null || true)
+        local search_response=$(curl -s --max-time 60 -m 5 "$discovery_url/v1/search?query=file" 2>/dev/null || true)
         if [[ -n "$search_response" ]]; then
             run_test "MCP Tool Search functional" \
                 "echo '$search_response' | grep -qE 'results|servers'"
@@ -411,7 +411,7 @@ section7_e2e_workflow() {
         # Step 2: Make request using config settings
         log_info "Step 2: Making request using generated config..."
 
-        local workflow_response=$(curl -s -m 60 "$api_base/v1/chat/completions" \
+        local workflow_response=$(curl -s --max-time 60 -m 60 "$api_base/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
             -d '{

@@ -348,15 +348,31 @@ func (h *ContainerHarness) Cleanup() error {
 	return nil
 }
 
-// SkipIfContainersUnavailable skips the test if containers aren't available
+// runtimeAvailableCache memoises RuntimeAvailable across tests so each
+// t.Run doesn't re-exec `podman info` (which can hang for ~10 s on a
+// busy host and was the source of the test-level 10-minute timeout in
+// TestContainer_Qdrant_Connection). The first call runs the probe with
+// a 3-second hard cap; subsequent calls reuse the cached answer.
+var (
+	runtimeAvailableOnce   sync.Once
+	runtimeAvailableCached bool
+)
+
+// SkipIfContainersUnavailable skips the test if containers aren't available.
 func SkipIfContainersUnavailable(t *testing.T) {
 	h, err := GetContainerHarness()
 	if err != nil {
 		t.Skipf("Container harness not available: %v", err)
 	}
 
-	if !h.Adapter.RuntimeAvailable(context.Background()) {
-		t.Skip("Container runtime not available (docker/podman required)")
+	runtimeAvailableOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		runtimeAvailableCached = h.Adapter.RuntimeAvailable(ctx)
+	})
+
+	if !runtimeAvailableCached {
+		t.Skip("Container runtime not available (docker/podman required, or probe timed out)")
 	}
 }
 

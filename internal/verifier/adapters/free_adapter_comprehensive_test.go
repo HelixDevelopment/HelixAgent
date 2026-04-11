@@ -82,10 +82,10 @@ func TestNewFreeProviderAdapter_Comprehensive(t *testing.T) {
 
 func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
 	t.Parallel()
-	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty initially", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		models := adapter.GetVerifiedModels()
 		assert.NotNil(t, models)
 		assert.Empty(t, models)
@@ -93,6 +93,7 @@ func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
 
 	t.Run("returns copy of models", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		// Add a model manually
 		testModel := &verifier.UnifiedModel{
 			ID:       "test-model",
@@ -142,10 +143,10 @@ func TestFreeProviderAdapter_IsModelVerified(t *testing.T) {
 
 func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
 	t.Parallel()
-	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("empty initially", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		status := adapter.GetHealthStatus()
 		assert.NotNil(t, status)
 		assert.Empty(t, status)
@@ -153,6 +154,7 @@ func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
 
 	t.Run("returns copy of health status", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		adapter.mu.Lock()
 		adapter.healthStatus["zen"] = true
 		adapter.healthStatus["openrouter"] = false
@@ -570,16 +572,17 @@ func TestFreeProviderAdapter_CLIFacadeAvailability(t *testing.T) {
 
 func TestFreeProviderAdapter_FailedAPIModels(t *testing.T) {
 	t.Parallel()
-	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("initially empty", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		failed := adapter.GetFailedAPIModels()
 		assert.Empty(t, failed)
 	})
 
 	t.Run("returns copy not reference", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		// Manually add a failed model
 		adapter.mu.Lock()
 		adapter.failedAPIModels["test-model"] = assert.AnError
@@ -638,10 +641,10 @@ func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
 
 func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 	t.Parallel()
-	adapter := NewFreeProviderAdapter(nil, nil)
 
 	t.Run("returns empty when no CLI models", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		adapter.mu.Lock()
 		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
 			ID:       "api-model",
@@ -655,6 +658,7 @@ func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 
 	t.Run("returns only CLI facade models", func(t *testing.T) {
 		t.Parallel()
+		adapter := NewFreeProviderAdapter(nil, nil)
 		adapter.mu.Lock()
 		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
 			ID:       "api-model",

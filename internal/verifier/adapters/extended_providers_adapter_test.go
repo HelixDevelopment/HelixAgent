@@ -37,29 +37,28 @@ func TestNewExtendedProvidersAdapter(t *testing.T) {
 
 func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
 	t.Parallel()
-	// Create mock server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{
-			"id": "test-id",
-			"object": "chat.completion",
-			"created": 1234567890,
-			"model": "test-model",
-			"choices": [{
-				"index": 0,
-				"message": {"role": "assistant", "content": "4"},
-				"finish_reason": "stop"
-			}],
-			"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
-		}`))
-	}))
-	defer server.Close()
-
-	adapter := NewExtendedProvidersAdapter(DefaultExtendedProviderConfig())
 
 	t.Run("verifies provider successfully", func(t *testing.T) {
 		t.Parallel()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"id": "test-id",
+				"object": "chat.completion",
+				"created": 1234567890,
+				"model": "test-model",
+				"choices": [{
+					"index": 0,
+					"message": {"role": "assistant", "content": "4"},
+					"finish_reason": "stop"
+				}],
+				"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+			}`))
+		}))
+		defer server.Close()
+
+		adapter := NewExtendedProvidersAdapter(DefaultExtendedProviderConfig())
 		req := &ProviderVerificationRequest{
 			ProviderID:   "test-provider",
 			ProviderName: "Test Provider",
@@ -89,6 +88,8 @@ func TestExtendedProvidersAdapter_VerifyProvider(t *testing.T) {
 			_, _ = w.Write([]byte(`{"error": "internal server error"}`))
 		}))
 		defer errorServer.Close()
+
+		adapter := NewExtendedProvidersAdapter(DefaultExtendedProviderConfig())
 
 		req := &ProviderVerificationRequest{
 			ProviderID:   "error-provider",

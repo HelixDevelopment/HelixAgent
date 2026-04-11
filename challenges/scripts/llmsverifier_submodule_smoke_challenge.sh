@@ -64,35 +64,34 @@ fail() { printf '  ✗ %s\n' "$1" >&2; }
   echo
 
   # ---- Check 2: structural package list ----
-  echo "[2/4] Enumerating submodule packages (excluding known-broken subtrees)..."
+  echo "[2/4] Enumerating submodule packages..."
   cd "${VERIFIER_DIR}"
-  # Known-broken subtrees in the submodule as of 2026-04-11:
-  #   pkg/mcp/* — imports dev.helix.agent/internal/services (reverse
-  #               dependency: submodule reaching into parent repo).
-  # The challenge reports these as drift but does not block the overall
-  # run, since they are tracked as upstream submodule issues.
-  PKGS=$(GOMAXPROCS=2 nice -n 19 go list -mod=mod ./... 2>/dev/null | grep -v 'pkg/mcp' || true)
+  # As of the 2026-04-11 dead-code sweep, the submodule builds cleanly
+  # end-to-end — no package exclusions required. The prior pkg/mcp
+  # workaround was removed because the offending reverse-dependency file
+  # (pkg/mcp/test_runner.go, never tracked in git) was deleted.
+  PKGS=$(GOMAXPROCS=2 nice -n 19 go list ./... 2>/dev/null || true)
   if [ -z "${PKGS}" ]; then
-    printf '  ⚠ go list returned no packages (likely submodule drift); skipping vet\n'
+    printf '  ⚠ go list returned no packages (submodule drift); skipping vet\n'
   else
     count=$(printf '%s\n' "${PKGS}" | wc -l)
     pass "enumerated ${count} submodule packages"
   fi
   echo
 
-  # ---- Check 3: vet (portable across go.mod drift) ----
-  echo "[3/4] Running go vet on enumerated packages..."
+  # ---- Check 3: vet ----
+  echo "[3/4] Running go vet..."
   # go vet accepts test-only packages (unlike go build), so it's the
   # right bar for a submodule that contains integration test dirs.
   if [ -z "${PKGS}" ]; then
     printf '  ⚠ no packages to vet — treating as warning (submodule present but not analysable)\n'
   else
     VET_LOG="/tmp/llmsverifier_vet.$$"
-    if printf '%s\n' "${PKGS}" | xargs -r env GOMAXPROCS=2 nice -n 19 go vet -mod=mod > "${VET_LOG}" 2>&1; then
-      pass "go vet passes on all enumerated packages (pkg/mcp excluded)"
+    if printf '%s\n' "${PKGS}" | xargs -r env GOMAXPROCS=2 nice -n 19 go vet > "${VET_LOG}" 2>&1; then
+      pass "go vet passes on all enumerated packages"
       rm -f "${VET_LOG}"
     else
-      fail "go vet failed on packages outside pkg/mcp"
+      fail "go vet failed"
       tail -30 "${VET_LOG}" >&2
       rm -f "${VET_LOG}"
       exit 3

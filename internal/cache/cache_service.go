@@ -249,11 +249,16 @@ func (c *CacheService) InvalidateUserCache(ctx context.Context, userID string) e
 		return fmt.Errorf("userID cannot be empty")
 	}
 
-	// First, delete any keys tracked in the in-memory user key set
-	c.userKeysMu.Lock()
-	userKeySet := c.userKeys[userID]
-	delete(c.userKeys, userID)
-	c.userKeysMu.Unlock()
+	// First, delete any keys tracked in the in-memory user key set.
+	// Wrapped in an IIFE so defer guarantees mutex release even if the
+	// map operations panic (OOM, corrupt hash, etc.).
+	userKeySet := func() map[string]struct{} {
+		c.userKeysMu.Lock()
+		defer c.userKeysMu.Unlock()
+		set := c.userKeys[userID]
+		delete(c.userKeys, userID)
+		return set
+	}()
 
 	// Delete all tracked keys from Redis
 	if len(userKeySet) > 0 {

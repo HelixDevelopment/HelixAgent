@@ -15,23 +15,42 @@ import (
 	"github.com/google/uuid"
 )
 
+// DefaultMaxPendingResults caps the number of concurrent in-flight SubmitAsync
+// calls a WorkerPool will accept. SubmitAsync creates a per-task delivery
+// channel stored in pendingResults; while each entry is removed by defer, a
+// pathological caller could accumulate entries faster than workers drain them.
+// The cap makes the map growth observable and bounded. 10_000 was chosen as a
+// generous headroom over the task queue capacity (size*10 with typical
+// size=64 → 640 queue slots) while still fitting comfortably in memory
+// (~<1 MB of channels) and preventing runaway growth from stuck callers.
+const DefaultMaxPendingResults = 10_000
+
+// SubmitAsyncTimeout bounds how long SubmitAsync will wait for a worker to
+// deliver a result. Exposed as a var so tests can tune it.
+var SubmitAsyncTimeout = 30 * time.Second
+
 // WorkerPool manages background agent workers.
 type WorkerPool struct {
 	db     *sql.DB
 	logger *log.Logger
 
 	// Pool configuration
-	size        int
-	queueSize   int
+	size              int
+	queueSize         int
+	maxPendingResults int64 // hard cap on pendingResults size; 0 = use default
 
 	// Task queue
-	taskQueue   chan *clis.Task
+	taskQueue chan *clis.Task
 
 	// Result queue
 	resultQueue chan *TaskResult
 
-	// Per-task result channels for SubmitAsync callers
+	// Per-task result channels for SubmitAsync callers.
+	// Size is tracked explicitly via pendingCount so consumers (monitoring,
+	// health checks, admission control) can observe growth without walking
+	// the map. Every Store must be paired with exactly one Delete.
 	pendingResults sync.Map // taskID -> chan *TaskResult
+	pendingCount   int64    // atomic; current number of entries in pendingResults
 
 	// Workers
 	workers []*Worker
@@ -40,10 +59,11 @@ type WorkerPool struct {
 	instanceAssignments map[string]string // taskID -> instanceID
 
 	// Metrics
-	tasksSubmitted   uint64
-	tasksCompleted   uint64
-	tasksFailed      uint64
-	tasksCancelled   uint64
+	tasksSubmitted uint64
+	tasksCompleted uint64
+	tasksFailed    uint64
+	tasksCancelled uint64
+	tasksRejected  uint64 // incremented when SubmitAsync trips the pending cap
 
 	// Control
 	ctx    context.Context
@@ -171,27 +191,89 @@ func (wp *WorkerPool) Submit(ctx context.Context, task *clis.Task) error {
 	}
 }
 
+// PendingCount returns the current number of in-flight SubmitAsync tasks.
+// Safe to call concurrently; intended for monitoring / health checks.
+func (wp *WorkerPool) PendingCount() int64 {
+	return atomic.LoadInt64(&wp.pendingCount)
+}
+
+// maxPending returns the configured cap, falling back to the package default.
+func (wp *WorkerPool) maxPending() int64 {
+	if wp.maxPendingResults > 0 {
+		return wp.maxPendingResults
+	}
+	return DefaultMaxPendingResults
+}
+
+// SetMaxPendingResults overrides the pending-results cap. Must be called
+// before Start or while no SubmitAsync calls are in flight. Zero restores
+// the default.
+func (wp *WorkerPool) SetMaxPendingResults(n int64) {
+	wp.mu.Lock()
+	defer wp.mu.Unlock()
+	wp.maxPendingResults = n
+}
+
+// storePending registers a per-task delivery channel under admission control.
+// Returns false if the pending cap has been reached — caller must not proceed.
+// Every successful storePending must be paired with exactly one deletePending.
+func (wp *WorkerPool) storePending(taskID string, ch chan *TaskResult) bool {
+	// Reserve a slot via compare-and-increment so the cap is honoured even
+	// under concurrent admission. We inc first and roll back on overflow;
+	// this keeps the fast path to a single atomic op.
+	n := atomic.AddInt64(&wp.pendingCount, 1)
+	if n > wp.maxPending() {
+		atomic.AddInt64(&wp.pendingCount, -1)
+		return false
+	}
+	wp.pendingResults.Store(taskID, ch)
+	return true
+}
+
+// deletePending removes a per-task delivery channel and decrements the counter.
+// Idempotent: safe to call even if the entry was already removed.
+func (wp *WorkerPool) deletePending(taskID string) {
+	if _, loaded := wp.pendingResults.LoadAndDelete(taskID); loaded {
+		atomic.AddInt64(&wp.pendingCount, -1)
+	}
+}
+
 // SubmitAsync submits a task asynchronously and returns a channel that
 // will receive exactly one TaskResult when the task completes.
 // The result is delivered directly via a per-task channel — no polling
 // of resultQueue, so no result loss or contention.
+//
+// Admission control: if the pool already has DefaultMaxPendingResults (or the
+// configured cap) in-flight SubmitAsync calls, this returns a channel that
+// immediately delivers a rejection error — the task is NOT queued and workers
+// are not touched. The rejection is tracked via tasksRejected for monitoring.
 func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 	resultCh := make(chan *TaskResult, 1)
 
+	// Set task ID early so we can register the pending channel and report
+	// a stable ID even on rejection.
+	if task.ID == "" {
+		task.ID = uuid.New().String()
+	}
+
+	// Register an internal per-task delivery channel before spawning the
+	// waiter goroutine. Workers will find this and send the result here
+	// directly, bypassing the shared resultQueue entirely.
+	deliveryCh := make(chan *TaskResult, 1)
+	if !wp.storePending(task.ID, deliveryCh) {
+		atomic.AddUint64(&wp.tasksRejected, 1)
+		resultCh <- &TaskResult{
+			TaskID:  task.ID,
+			Success: false,
+			Error:   fmt.Errorf("worker pool rejected task: pending cap reached (%d)", wp.maxPending()),
+		}
+		close(resultCh)
+		return resultCh
+	}
+
 	go func() {
 		defer close(resultCh)
-
-		// Set task ID early so we can register the pending channel
-		if task.ID == "" {
-			task.ID = uuid.New().String()
-		}
-
-		// Register an internal per-task delivery channel before submitting.
-		// Workers will find this and send the result here directly,
-		// bypassing the shared resultQueue entirely.
-		deliveryCh := make(chan *TaskResult, 1)
-		wp.pendingResults.Store(task.ID, deliveryCh)
-		defer wp.pendingResults.Delete(task.ID)
+		defer wp.deletePending(task.ID)
 
 		if err := wp.Submit(wp.ctx, task); err != nil {
 			resultCh <- &TaskResult{
@@ -201,6 +283,12 @@ func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 			}
 			return
 		}
+
+		// Use an explicit timer so we can Stop() it on the hot paths and
+		// avoid the time.After leak pattern (timers pinned in the runtime
+		// heap until they fire, even after the select has resolved).
+		timer := time.NewTimer(SubmitAsyncTimeout)
+		defer timer.Stop()
 
 		// Wait for the worker to deliver the result via deliverResult,
 		// or for the pool context to be cancelled (shutdown).
@@ -213,11 +301,11 @@ func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 				Success: false,
 				Error:   fmt.Errorf("worker pool stopped"),
 			}
-		case <-time.After(30 * time.Second):
+		case <-timer.C:
 			resultCh <- &TaskResult{
 				TaskID:  task.ID,
 				Success: false,
-				Error:   fmt.Errorf("timeout waiting for result"),
+				Error:   fmt.Errorf("timeout waiting for result after %s", SubmitAsyncTimeout),
 			}
 		}
 	}()
@@ -287,7 +375,7 @@ func (wp *WorkerPool) ListTasks(
 	query := `SELECT id, task_type, task_name, payload, priority, status, 
 	                 progress_percent, retry_count, max_retries, created_at
 	          FROM background_tasks`
-	
+
 	var args []interface{}
 	if status != "" {
 		query += " WHERE status = $1"
@@ -332,14 +420,17 @@ func (wp *WorkerPool) GetStats() map[string]interface{} {
 	defer wp.mu.RUnlock()
 
 	return map[string]interface{}{
-		"size":             wp.size,
-		"running":          wp.running,
-		"queue_depth":      len(wp.taskQueue),
-		"queue_capacity":   cap(wp.taskQueue),
-		"tasks_submitted":  atomic.LoadUint64(&wp.tasksSubmitted),
-		"tasks_completed":  atomic.LoadUint64(&wp.tasksCompleted),
-		"tasks_failed":     atomic.LoadUint64(&wp.tasksFailed),
-		"tasks_cancelled":  atomic.LoadUint64(&wp.tasksCancelled),
+		"size":                wp.size,
+		"running":             wp.running,
+		"queue_depth":         len(wp.taskQueue),
+		"queue_capacity":      cap(wp.taskQueue),
+		"tasks_submitted":     atomic.LoadUint64(&wp.tasksSubmitted),
+		"tasks_completed":     atomic.LoadUint64(&wp.tasksCompleted),
+		"tasks_failed":        atomic.LoadUint64(&wp.tasksFailed),
+		"tasks_cancelled":     atomic.LoadUint64(&wp.tasksCancelled),
+		"tasks_rejected":      atomic.LoadUint64(&wp.tasksRejected),
+		"pending_results":     atomic.LoadInt64(&wp.pendingCount),
+		"pending_results_cap": wp.maxPending(),
 	}
 }
 

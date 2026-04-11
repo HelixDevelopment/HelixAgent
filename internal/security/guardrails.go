@@ -45,13 +45,23 @@ func DefaultGuardrailPipelineConfig() *GuardrailPipelineConfig {
 	}
 }
 
+// MaxGuardrailStatsKeys caps the number of distinct guardrail names the
+// pipeline will track in byGuardrail. Real pipelines have O(10) guardrails;
+// the cap catches pathological growth from bugs or hostile input before it
+// starves memory. Once the cap is hit, new names are dropped (logged once)
+// but their checks still count toward the totals — safety of the pipeline
+// itself is never affected by stats collection.
+const MaxGuardrailStatsKeys = 1024
+
 type pipelineStats struct {
-	totalChecks   int64
-	totalBlocks   int64
-	totalWarnings int64
-	byGuardrail   sync.Map
-	lastTriggered time.Time
-	mu            sync.RWMutex
+	totalChecks        int64
+	totalBlocks        int64
+	totalWarnings      int64
+	byGuardrail        sync.Map
+	byGuardrailSize    int64 // atomic; number of keys in byGuardrail
+	byGuardrailDropped int64 // atomic; count of updates dropped after cap
+	lastTriggered      time.Time
+	mu                 sync.RWMutex
 }
 
 // NewStandardGuardrailPipeline creates a new guardrail pipeline
@@ -215,15 +225,34 @@ func (p *StandardGuardrailPipeline) updateStats(name string, result *GuardrailRe
 		p.stats.mu.Unlock()
 	}
 
-	// Update per-guardrail stats
-	val, _ := p.stats.byGuardrail.LoadOrStore(name, &GuardrailStat{Name: name})
+	// Update per-guardrail stats. Two safety properties:
+	// 1. Concurrent increments use atomic.AddInt64 — previously this path
+	//    had a data race on stat.Checks / stat.Triggers because the pipeline
+	//    runs guardrails in parallel.
+	// 2. New keys are only admitted while the size is under the cap; once
+	//    the cap is reached we increment byGuardrailDropped and skip
+	//    tracking rather than letting the map grow unbounded.
+	val, loaded := p.stats.byGuardrail.Load(name)
+	if !loaded {
+		// Admission check: refuse new keys past the cap.
+		if atomic.LoadInt64(&p.stats.byGuardrailSize) >= MaxGuardrailStatsKeys {
+			atomic.AddInt64(&p.stats.byGuardrailDropped, 1)
+			return
+		}
+		newStat := &GuardrailStat{Name: name}
+		actual, loaded2 := p.stats.byGuardrail.LoadOrStore(name, newStat)
+		val = actual
+		if !loaded2 {
+			atomic.AddInt64(&p.stats.byGuardrailSize, 1)
+		}
+	}
 	stat, ok := val.(*GuardrailStat)
 	if !ok {
 		return
 	}
-	stat.Checks++
+	atomic.AddInt64(&stat.Checks, 1)
 	if result.Triggered {
-		stat.Triggers++
+		atomic.AddInt64(&stat.Triggers, 1)
 	}
 }
 
@@ -285,16 +314,35 @@ func (p *StandardGuardrailPipeline) GetStats() *GuardrailStats {
 		if !ok {
 			return true
 		}
+		checks := atomic.LoadInt64(&stat.Checks)
+		triggers := atomic.LoadInt64(&stat.Triggers)
+		var rate float64
+		if checks > 0 {
+			rate = float64(triggers) / float64(checks)
+		}
 		stats.ByGuardrail[name] = &GuardrailStat{
 			Name:        stat.Name,
-			Checks:      stat.Checks,
-			Triggers:    stat.Triggers,
-			TriggerRate: float64(stat.Triggers) / float64(stat.Checks),
+			Checks:      checks,
+			Triggers:    triggers,
+			TriggerRate: rate,
 		}
 		return true
 	})
 
 	return stats
+}
+
+// StatsKeyCount returns the number of distinct guardrail names being tracked
+// in byGuardrail. Useful for health checks and leak detection tests.
+func (p *StandardGuardrailPipeline) StatsKeyCount() int64 {
+	return atomic.LoadInt64(&p.stats.byGuardrailSize)
+}
+
+// StatsKeysDropped returns the number of updateStats calls that were dropped
+// because the byGuardrail cap was already reached. A non-zero value is a
+// signal that something is generating excessive distinct guardrail names.
+func (p *StandardGuardrailPipeline) StatsKeysDropped() int64 {
+	return atomic.LoadInt64(&p.stats.byGuardrailDropped)
 }
 
 // PromptInjectionGuardrail detects prompt injection attempts

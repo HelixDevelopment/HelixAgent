@@ -226,34 +226,30 @@ func (c *ProviderCache) getTTL(provider string) time.Duration {
 	return c.config.DefaultTTL
 }
 
-func (c *ProviderCache) trackProviderHit(provider string) {
+// getOrCreateStats looks up (or lazily creates) the per-provider stats bucket.
+// Uses defer on the write lock so a panic between the map lookup and the
+// return cannot leak the mutex. The returned *providerStats pointer is stable
+// for the lifetime of the cache, so callers may safely atomic-add after the
+// lock is released.
+func (c *ProviderCache) getOrCreateStats(provider string) *providerStats {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.metrics.ByProvider[provider] == nil {
 		c.metrics.ByProvider[provider] = &providerStats{}
 	}
-	stats := c.metrics.ByProvider[provider]
-	c.mu.Unlock()
-	atomic.AddInt64(&stats.Hits, 1)
+	return c.metrics.ByProvider[provider]
+}
+
+func (c *ProviderCache) trackProviderHit(provider string) {
+	atomic.AddInt64(&c.getOrCreateStats(provider).Hits, 1)
 }
 
 func (c *ProviderCache) trackProviderMiss(provider string) {
-	c.mu.Lock()
-	if c.metrics.ByProvider[provider] == nil {
-		c.metrics.ByProvider[provider] = &providerStats{}
-	}
-	stats := c.metrics.ByProvider[provider]
-	c.mu.Unlock()
-	atomic.AddInt64(&stats.Misses, 1)
+	atomic.AddInt64(&c.getOrCreateStats(provider).Misses, 1)
 }
 
 func (c *ProviderCache) trackProviderSet(provider string) {
-	c.mu.Lock()
-	if c.metrics.ByProvider[provider] == nil {
-		c.metrics.ByProvider[provider] = &providerStats{}
-	}
-	stats := c.metrics.ByProvider[provider]
-	c.mu.Unlock()
-	atomic.AddInt64(&stats.Sets, 1)
+	atomic.AddInt64(&c.getOrCreateStats(provider).Sets, 1)
 }
 
 // Metrics returns current metrics

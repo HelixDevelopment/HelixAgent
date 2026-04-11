@@ -9,7 +9,7 @@ import (
 // MockProviders returns a list of mock LLM providers for testing
 func MockProviders() []*models.LLMProvider {
 	return []*models.LLMProvider{
-		{
+		{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			ID:           "deepseek-provider-1",
 			Name:         "DeepSeek",
 			Type:         "api",
@@ -24,7 +24,7 @@ func MockProviders() []*models.LLMProvider {
 			CreatedAt:    time.Now().Add(-24 * time.Hour),
 			UpdatedAt:    time.Now().Add(-1 * time.Hour),
 		},
-		{
+		{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			ID:           "claude-provider-1",
 			Name:         "Claude",
 			Type:         "api",

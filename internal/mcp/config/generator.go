@@ -283,7 +283,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["github"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "@modelcontextprotocol/server-github"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}",
 			}),
 			Enabled: true,
@@ -295,7 +295,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["gitlab"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "@modelcontextprotocol/server-gitlab"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"GITLAB_PERSONAL_ACCESS_TOKEN": "{env:GITLAB_TOKEN}",
 			}),
 			Enabled: true,
@@ -319,7 +319,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["slack"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}",
 				"SLACK_TEAM_ID":   "{env:SLACK_TEAM_ID}",
 			}),
@@ -356,7 +356,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["sentry"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}",
 				"SENTRY_ORG":        "{env:SENTRY_ORG}",
 			}),
@@ -369,7 +369,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["cloudflare"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}",
 			}),
 			Enabled: true,
@@ -381,7 +381,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		mcps["discord"] = MCPServerConfig{
 			Type:    "local",
 			Command: []string{"npx", "-y", "mcp-server-discord"},
-			Environment: g.expandEnvMap(map[string]string{
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"DISCORD_TOKEN": "{env:DISCORD_TOKEN}",
 			}),
 			Enabled: true,

@@ -415,7 +415,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 				if !valid {
 					pd.log.WithField("errors", errs).Warn("Claude CLI provider validation failed")
 				} else {
-					dp := &DiscoveredProvider{
+					dp := &DiscoveredProvider{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:         "claude-oauth",
 						Type:         "claude",
 						APIKeyEnvVar: "CLI:~/.claude/.credentials.json",
@@ -475,7 +475,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 				if !valid {
 					pd.log.WithField("errors", errs).Warn("Qwen CLI provider validation failed")
 				} else {
-					dp := &DiscoveredProvider{
+					dp := &DiscoveredProvider{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:         "qwen-oauth",
 						Type:         "qwen",
 						APIKeyEnvVar: "CLI:~/.qwen/oauth_creds.json",
@@ -558,7 +558,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 		}
 
 		if provider != nil {
-			dp := &DiscoveredProvider{
+			dp := &DiscoveredProvider{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				Name:         "zen",
 				Type:         "zen",
 				APIKeyEnvVar: "OPENCODE_API_KEY (optional - anonymous mode for free models)",

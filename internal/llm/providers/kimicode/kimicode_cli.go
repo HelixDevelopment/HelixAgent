@@ -22,7 +22,7 @@ const (
 	KimiCodeMaxContext     = 262144
 	KimiCodeMaxOutput      = 32768
 	KimiCodeAPIURL         = "https://api.kimi.com/coding/v1"
-	KimiCodeCredentialPath = ".kimi/credentials/kimi-code.json"
+	KimiCodeCredentialPath = ".kimi/credentials/kimi-code.json" // #nosec G101 -- not a credential (map key / config label / env-var reference)
 )
 
 var knownKimiCodeModels = []string{

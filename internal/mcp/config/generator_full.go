@@ -328,7 +328,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["github"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@modelcontextprotocol/server-github"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("GITHUB_TOKEN"),
@@ -336,7 +336,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["gitlab"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@modelcontextprotocol/server-gitlab"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GITLAB_PERSONAL_ACCESS_TOKEN": "{env:GITLAB_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("GITLAB_TOKEN"),
@@ -344,7 +344,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["sentry"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}",
 			"SENTRY_ORG":        "{env:SENTRY_ORG}",
 		}),
@@ -362,7 +362,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["slack"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}",
 			"SLACK_TEAM_ID":   "{env:SLACK_TEAM_ID}",
 		}),
@@ -371,7 +371,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["discord"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-discord"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"DISCORD_TOKEN": "{env:DISCORD_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("DISCORD_TOKEN"),
@@ -379,7 +379,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["telegram"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-telegram"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"TELEGRAM_BOT_TOKEN": "{env:TELEGRAM_BOT_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("TELEGRAM_BOT_TOKEN"),
@@ -407,7 +407,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["jira"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-jira"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"JIRA_URL":       "{env:JIRA_URL}",
 			"JIRA_EMAIL":     "{env:JIRA_EMAIL}",
 			"JIRA_API_TOKEN": "{env:JIRA_API_TOKEN}",
@@ -417,7 +417,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["asana"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-asana"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("ASANA_ACCESS_TOKEN"),
@@ -425,7 +425,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["trello"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-trello"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"TRELLO_API_KEY":   "{env:TRELLO_API_KEY}",
 			"TRELLO_API_TOKEN": "{env:TRELLO_API_TOKEN}",
 		}),
@@ -434,7 +434,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["todoist"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@modelcontextprotocol/server-todoist"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("TODOIST_API_TOKEN"),
@@ -442,7 +442,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["monday"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-monday"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"MONDAY_API_TOKEN": "{env:MONDAY_API_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("MONDAY_API_TOKEN"),
@@ -498,7 +498,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["cloudflare"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("CLOUDFLARE_API_TOKEN"),
@@ -506,7 +506,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["vercel"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-vercel"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"VERCEL_TOKEN": "{env:VERCEL_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("VERCEL_TOKEN"),
@@ -522,7 +522,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["aws"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-aws"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"AWS_ACCESS_KEY_ID":     "{env:AWS_ACCESS_KEY_ID}",
 			"AWS_SECRET_ACCESS_KEY": "{env:AWS_SECRET_ACCESS_KEY}",
 			"AWS_REGION":            g.getEnvOrDefault("AWS_REGION", "us-east-1"),
@@ -532,7 +532,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["gcp"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-gcp"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GOOGLE_APPLICATION_CREDENTIALS": "{env:GOOGLE_APPLICATION_CREDENTIALS}",
 		}),
 		Enabled: g.hasEnvVar("GOOGLE_APPLICATION_CREDENTIALS"),
@@ -553,7 +553,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["google-drive"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-gdrive"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GOOGLE_CLIENT_ID":     "{env:GOOGLE_CLIENT_ID}",
 			"GOOGLE_CLIENT_SECRET": "{env:GOOGLE_CLIENT_SECRET}",
 		}),
@@ -562,7 +562,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["google-calendar"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-google-calendar"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GOOGLE_CLIENT_ID":     "{env:GOOGLE_CLIENT_ID}",
 			"GOOGLE_CLIENT_SECRET": "{env:GOOGLE_CLIENT_SECRET}",
 		}),
@@ -587,7 +587,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["gmail"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-gmail"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GOOGLE_CLIENT_ID":     "{env:GOOGLE_CLIENT_ID}",
 			"GOOGLE_CLIENT_SECRET": "{env:GOOGLE_CLIENT_SECRET}",
 		}),
@@ -609,7 +609,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["grafana"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-grafana"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"GRAFANA_URL":   "{env:GRAFANA_URL}",
 			"GRAFANA_TOKEN": "{env:GRAFANA_TOKEN}",
 		}),
@@ -638,7 +638,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["hubspot"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-hubspot"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"HUBSPOT_ACCESS_TOKEN": "{env:HUBSPOT_ACCESS_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("HUBSPOT_ACCESS_TOKEN"),
@@ -646,7 +646,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	mcps["zendesk"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-zendesk"},
-		Environment: g.expandEnvMap(map[string]string{
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"ZENDESK_SUBDOMAIN": "{env:ZENDESK_SUBDOMAIN}",
 			"ZENDESK_EMAIL":     "{env:ZENDESK_EMAIL}",
 			"ZENDESK_TOKEN":     "{env:ZENDESK_TOKEN}",

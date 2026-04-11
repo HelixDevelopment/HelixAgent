@@ -2719,12 +2719,12 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-google-maps"},
 			Environment: map[string]string{"GOOGLE_MAPS_API_KEY": "{env:GOOGLE_MAPS_API_KEY}"},
 		},
-		"slack": {
+		"slack": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-slack"},
 			Environment: map[string]string{"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}", "SLACK_TEAM_ID": "{env:SLACK_TEAM_ID}"},
 		},
-		"github": {
+		"github": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-github"},
 			Environment: map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"},
@@ -2734,7 +2734,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// in ALL versions (0.5.1, 0.6.2, 2025.4.25). OpenCode rejects these with
 		// "Failed to get tools". Disabled until upstream fixes the schemas.
 		// GitLab API access is available via GitLab token in environment.
-		"sentry": {
+		"sentry": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
 			Environment: map[string]string{"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}", "SENTRY_ORG": "{env:SENTRY_ORG}"},
@@ -2744,7 +2744,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-everart"},
 			Environment: map[string]string{"EVERART_API_KEY": "{env:EVERART_API_KEY}"},
 		},
-		"aws-kb-retrieval": {
+		"aws-kb-retrieval": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-aws-kb-retrieval"},
 			Environment: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "{env:AWS_SECRET_ACCESS_KEY}"},
@@ -2773,7 +2773,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "figma-developer-mcp"},
 			Environment: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"},
 		},
-		"todoist": {
+		"todoist": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-todoist"},
 			Environment: map[string]string{"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}"},
@@ -2787,12 +2787,12 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Type:    "local",
 			Command: []string{"npx", "-y", "@raycast/mcp-server-raycast"},
 		},
-		"tinybird": {
+		"tinybird": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-tinybird"},
 			Environment: map[string]string{"TINYBIRD_TOKEN": "{env:TINYBIRD_TOKEN}"},
 		},
-		"cloudflare": {
+		"cloudflare": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"},
 			Environment: map[string]string{"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}"},
@@ -2802,7 +2802,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "@neondatabase/mcp-server-neon"},
 			Environment: map[string]string{"NEON_API_KEY": "{env:NEON_API_KEY}"},
 		},
-		"gdrive": {
+		"gdrive": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@anthropic/mcp-server-gdrive"},
 			Environment: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"},
@@ -2869,17 +2869,17 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// =============================================================================
 		// Productivity/Collaboration MCPs - LOCAL
 		// =============================================================================
-		"jira": {
+		"jira": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-atlassian"},
 			Environment: map[string]string{"JIRA_URL": "{env:JIRA_URL}", "JIRA_EMAIL": "{env:JIRA_EMAIL}", "JIRA_API_TOKEN": "{env:JIRA_API_TOKEN}"},
 		},
-		"asana": {
+		"asana": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-asana"},
 			Environment: map[string]string{"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}"},
 		},
-		"trello": {
+		"trello": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-trello"},
 			Environment: map[string]string{"TRELLO_API_KEY": "{env:TRELLO_API_KEY}", "TRELLO_TOKEN": "{env:TRELLO_TOKEN}"},
@@ -2894,27 +2894,27 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-clickup"},
 			Environment: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"},
 		},
-		"discord": {
+		"discord": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-discord"},
 			Environment: map[string]string{"DISCORD_BOT_TOKEN": "{env:DISCORD_BOT_TOKEN}"},
 		},
-		"microsoft-teams": {
+		"microsoft-teams": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-teams"},
 			Environment: map[string]string{"TEAMS_CLIENT_ID": "{env:TEAMS_CLIENT_ID}", "TEAMS_CLIENT_SECRET": "{env:TEAMS_CLIENT_SECRET}"},
 		},
-		"gmail": {
+		"gmail": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-gmail"},
 			Environment: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"},
 		},
-		"calendar": {
+		"calendar": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-google-calendar"},
 			Environment: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"},
 		},
-		"zoom": {
+		"zoom": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-zoom"},
 			Environment: map[string]string{"ZOOM_CLIENT_ID": "{env:ZOOM_CLIENT_ID}", "ZOOM_CLIENT_SECRET": "{env:ZOOM_CLIENT_SECRET}"},
@@ -2923,12 +2923,12 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// =============================================================================
 		// Cloud/DevOps MCPs - LOCAL
 		// =============================================================================
-		"aws-s3": {
+		"aws-s3": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-s3"},
 			Environment: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "{env:AWS_SECRET_ACCESS_KEY}"},
 		},
-		"aws-lambda": {
+		"aws-lambda": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-aws-lambda"},
 			Environment: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "{env:AWS_SECRET_ACCESS_KEY}"},
@@ -2938,7 +2938,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-azure"},
 			Environment: map[string]string{"AZURE_SUBSCRIPTION_ID": "{env:AZURE_SUBSCRIPTION_ID}", "AZURE_TENANT_ID": "{env:AZURE_TENANT_ID}"},
 		},
-		"gcp": {
+		"gcp": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-gcp"},
 			Environment: map[string]string{"GOOGLE_APPLICATION_CREDENTIALS": "{env:GOOGLE_APPLICATION_CREDENTIALS}"},
@@ -2966,7 +2966,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-prometheus"},
 			Environment: map[string]string{"PROMETHEUS_URL": "{env:PROMETHEUS_URL}"},
 		},
-		"circleci": {
+		"circleci": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-circleci"},
 			Environment: map[string]string{"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}"},
@@ -2988,7 +2988,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// NOTE: No official huggingface MCP server npm package exists.
 		// "mcp-server-huggingface" is NOT on npm. HuggingFace access is via
 		// the huggingface provider or @huggingface/mcp-client (client, not server).
-		"replicate": {
+		"replicate": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-replicate"},
 			Environment: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"},
@@ -3874,30 +3874,30 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"filesystem":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-filesystem", homeDir}, Enabled: true},
 		"fetch":               {Type: "local", Command: []string{"npx", "-y", "mcp-fetch-server"}, Enabled: true},
 		"memory":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-memory"}, Enabled: true},
-		"time":                {Type: "local", Command: []string{"npx", "-y", "@theo.foobar/mcp-time"}, Enabled: true},
+		"time":                {Type: "local", Command: []string{"npx", "-y", "@theo.foobar/mcp-time"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"git":                 {Type: "local", Command: []string{"npx", "-y", "mcp-git"}, Enabled: true},
 		"sqlite":              {Type: "local", Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"}, Enabled: true},
 		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres"}, Env: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:5432/helixagent_db"}, Enabled: true},
 		"puppeteer":           {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"}, Enabled: true},
 		"sequential-thinking": {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sequential-thinking"}, Enabled: true},
-		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true},
-		"brave-search":        {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-brave-search"}, Env: map[string]string{"BRAVE_API_KEY": "{env:BRAVE_API_KEY}"}, Enabled: true},
-		"google-maps":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-google-maps"}, Env: map[string]string{"GOOGLE_MAPS_API_KEY": "{env:GOOGLE_MAPS_API_KEY}"}, Enabled: true},
-		"slack":               {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"}, Env: map[string]string{"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}"}, Enabled: true},
+		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"brave-search":        {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-brave-search"}, Env: map[string]string{"BRAVE_API_KEY": "{env:BRAVE_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"google-maps":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-google-maps"}, Env: map[string]string{"GOOGLE_MAPS_API_KEY": "{env:GOOGLE_MAPS_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"slack":               {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-slack"}, Env: map[string]string{"SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"github":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-github"}, Env: map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"}, Enabled: true},
 		"gitlab":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-gitlab"}, Env: map[string]string{"GITLAB_PERSONAL_ACCESS_TOKEN": "{env:GITLAB_TOKEN}"}, Enabled: true},
-		"sentry":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"}, Env: map[string]string{"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}"}, Enabled: true},
+		"sentry":              {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"}, Env: map[string]string{"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"everart":             {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everart"}, Env: map[string]string{"EVERART_API_KEY": "{env:EVERART_API_KEY}"}, Enabled: true},
 		"aws-kb-retrieval":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-aws-kb-retrieval"}, Env: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}"}, Enabled: true},
 		"gdrive":              {Type: "local", Command: []string{"npx", "-y", "@anthropic/mcp-server-gdrive"}, Env: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"}, Enabled: true},
 
 		// Additional Anthropic & Community MCPs - LOCAL
 		"exa":        {Type: "local", Command: []string{"npx", "-y", "exa-mcp-server"}, Env: map[string]string{"EXA_API_KEY": "{env:EXA_API_KEY}"}, Enabled: true},
-		"linear":     {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-linear"}, Env: map[string]string{"LINEAR_API_KEY": "{env:LINEAR_API_KEY}"}, Enabled: true},
+		"linear":     {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-linear"}, Env: map[string]string{"LINEAR_API_KEY": "{env:LINEAR_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"notion":     {Type: "local", Command: []string{"npx", "-y", "@notionhq/notion-mcp-server"}, Env: map[string]string{"NOTION_API_KEY": "{env:NOTION_API_KEY}"}, Enabled: true},
 		"figma":      {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp"}, Env: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"}, Enabled: true},
-		"todoist":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-todoist"}, Env: map[string]string{"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}"}, Enabled: true},
-		"obsidian":   {Type: "local", Command: []string{"npx", "-y", "mcp-obsidian"}, Env: map[string]string{"OBSIDIAN_VAULT_PATH": "{env:OBSIDIAN_VAULT_PATH}"}, Enabled: true},
+		"todoist":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-todoist"}, Env: map[string]string{"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"obsidian":   {Type: "local", Command: []string{"npx", "-y", "mcp-obsidian"}, Env: map[string]string{"OBSIDIAN_VAULT_PATH": "{env:OBSIDIAN_VAULT_PATH}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"raycast":    {Type: "local", Command: []string{"npx", "-y", "@raycast/mcp-server-raycast"}, Enabled: true},
 		"tinybird":   {Type: "local", Command: []string{"npx", "-y", "mcp-tinybird"}, Env: map[string]string{"TINYBIRD_TOKEN": "{env:TINYBIRD_TOKEN}"}, Enabled: true},
 		"cloudflare": {Type: "local", Command: []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"}, Env: map[string]string{"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}"}, Enabled: true},
@@ -3915,33 +3915,33 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"milvus":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-milvus"}, Env: map[string]string{"MILVUS_HOST": "localhost"}, Enabled: true},
 		"weaviate":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-weaviate"}, Env: map[string]string{"WEAVIATE_URL": "http://localhost:8080"}, Enabled: true},
 		"supabase":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-supabase"}, Env: map[string]string{"SUPABASE_URL": "{env:SUPABASE_URL}"}, Enabled: true},
-
+ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		// Productivity/Collaboration MCPs - LOCAL
 		"jira":            {Type: "local", Command: []string{"npx", "-y", "mcp-server-atlassian"}, Env: map[string]string{"JIRA_URL": "{env:JIRA_URL}"}, Enabled: true},
 		"asana":           {Type: "local", Command: []string{"npx", "-y", "mcp-server-asana"}, Env: map[string]string{"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}"}, Enabled: true},
-		"trello":          {Type: "local", Command: []string{"npx", "-y", "mcp-server-trello"}, Env: map[string]string{"TRELLO_API_KEY": "{env:TRELLO_API_KEY}"}, Enabled: true},
+		"trello":          {Type: "local", Command: []string{"npx", "-y", "mcp-server-trello"}, Env: map[string]string{"TRELLO_API_KEY": "{env:TRELLO_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"monday":          {Type: "local", Command: []string{"npx", "-y", "mcp-server-monday"}, Env: map[string]string{"MONDAY_API_KEY": "{env:MONDAY_API_KEY}"}, Enabled: true},
-		"clickup":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-clickup"}, Env: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"}, Enabled: true},
-		"discord":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-discord"}, Env: map[string]string{"DISCORD_BOT_TOKEN": "{env:DISCORD_BOT_TOKEN}"}, Enabled: true},
+		"clickup":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-clickup"}, Env: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"discord":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-discord"}, Env: map[string]string{"DISCORD_BOT_TOKEN": "{env:DISCORD_BOT_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"microsoft-teams": {Type: "local", Command: []string{"npx", "-y", "mcp-server-teams"}, Env: map[string]string{"TEAMS_CLIENT_ID": "{env:TEAMS_CLIENT_ID}"}, Enabled: true},
 		"gmail":           {Type: "local", Command: []string{"npx", "-y", "mcp-server-gmail"}, Env: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"}, Enabled: true},
 		"calendar":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-google-calendar"}, Env: map[string]string{"GOOGLE_CREDENTIALS_PATH": "{env:GOOGLE_CREDENTIALS_PATH}"}, Enabled: true},
 		"zoom":            {Type: "local", Command: []string{"npx", "-y", "mcp-server-zoom"}, Env: map[string]string{"ZOOM_CLIENT_ID": "{env:ZOOM_CLIENT_ID}"}, Enabled: true},
 
 		// Cloud/DevOps MCPs - LOCAL
-		"aws-s3":     {Type: "local", Command: []string{"npx", "-y", "mcp-server-s3"}, Env: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}"}, Enabled: true},
+		"aws-s3":     {Type: "local", Command: []string{"npx", "-y", "mcp-server-s3"}, Env: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"aws-lambda": {Type: "local", Command: []string{"npx", "-y", "mcp-server-aws-lambda"}, Env: map[string]string{"AWS_ACCESS_KEY_ID": "{env:AWS_ACCESS_KEY_ID}"}, Enabled: true},
 		"azure":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-azure"}, Env: map[string]string{"AZURE_SUBSCRIPTION_ID": "{env:AZURE_SUBSCRIPTION_ID}"}, Enabled: true},
 		"gcp":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-gcp"}, Env: map[string]string{"GOOGLE_APPLICATION_CREDENTIALS": "{env:GOOGLE_APPLICATION_CREDENTIALS}"}, Enabled: true},
 		"terraform":  {Type: "local", Command: []string{"npx", "-y", "mcp-server-terraform"}, Enabled: true},
 		"ansible":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-ansible"}, Enabled: true},
-		"datadog":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-datadog"}, Env: map[string]string{"DD_API_KEY": "{env:DD_API_KEY}"}, Enabled: true},
+		"datadog":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-datadog"}, Env: map[string]string{"DD_API_KEY": "{env:DD_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"grafana":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-grafana"}, Env: map[string]string{"GRAFANA_URL": "{env:GRAFANA_URL}"}, Enabled: true},
 		"prometheus": {Type: "local", Command: []string{"npx", "-y", "mcp-server-prometheus"}, Env: map[string]string{"PROMETHEUS_URL": "{env:PROMETHEUS_URL}"}, Enabled: true},
 		"circleci":   {Type: "local", Command: []string{"npx", "-y", "mcp-server-circleci"}, Env: map[string]string{"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}"}, Enabled: true},
 
 		// AI/ML Integration MCPs - LOCAL
-		"langchain":  {Type: "local", Command: []string{"npx", "-y", "mcp-server-langchain"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
+		"langchain":  {Type: "local", Command: []string{"npx", "-y", "mcp-server-langchain"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"llamaindex": {Type: "local", Command: []string{"npx", "-y", "mcp-server-llamaindex"}, Env: map[string]string{"OPENAI_API_KEY": "{env:OPENAI_API_KEY}"}, Enabled: true},
 		// NOTE: huggingface MCP removed — npm package does not exist
 		"replicate":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-replicate"}, Env: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"}, Enabled: true},

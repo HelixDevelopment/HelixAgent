@@ -391,7 +391,7 @@ func (sv *StartupVerifier) discoverOAuthProviders(ctx context.Context) []*Provid
 	if sv.isClaudeOAuthEnabled() {
 		creds, err := sv.oauthReader.ReadClaudeCredentials()
 		if err == nil && creds != nil && creds.ClaudeAiOauth != nil {
-			providers = append(providers, &ProviderDiscoveryResult{
+			providers = append(providers, &ProviderDiscoveryResult{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				ID:          "claude",
 				Type:        "claude",
 				AuthType:    AuthTypeOAuth,
@@ -408,7 +408,7 @@ func (sv *StartupVerifier) discoverOAuthProviders(ctx context.Context) []*Provid
 	if sv.isQwenOAuthEnabled() {
 		creds, err := sv.oauthReader.ReadQwenCredentials()
 		if err == nil && creds != nil {
-			providers = append(providers, &ProviderDiscoveryResult{
+			providers = append(providers, &ProviderDiscoveryResult{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				ID:          "qwen",
 				Type:        "qwen",
 				AuthType:    AuthTypeOAuth,

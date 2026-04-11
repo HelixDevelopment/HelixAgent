@@ -20,7 +20,7 @@ var ProviderAccessRegistry = map[string]*ProviderAccessConfig{
 		ModelsURL:            "https://api.openai.com/v1/models",
 		DefaultSubscription:  SubTypeFreeCredits,
 		AvailableTiers:       []SubscriptionType{SubTypeFreeCredits, SubTypePayAsYouGo, SubTypeEnterprise},
-		RateLimitHeaders: &RateLimitHeaderNames{
+		RateLimitHeaders: &RateLimitHeaderNames{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			RequestsLimit:     "x-ratelimit-limit-requests",
 			RequestsRemaining: "x-ratelimit-remaining-requests",
 			RequestsReset:     "x-ratelimit-reset-requests",
@@ -54,7 +54,7 @@ var ProviderAccessRegistry = map[string]*ProviderAccessConfig{
 		ModelsURL:           "https://api.anthropic.com/v1/models",
 		DefaultSubscription: SubTypePayAsYouGo,
 		AvailableTiers:      []SubscriptionType{SubTypePayAsYouGo, SubTypeEnterprise},
-		RateLimitHeaders: &RateLimitHeaderNames{
+		RateLimitHeaders: &RateLimitHeaderNames{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			RequestsLimit:     "anthropic-ratelimit-requests-limit",
 			RequestsRemaining: "anthropic-ratelimit-requests-remaining",
 			RequestsReset:     "anthropic-ratelimit-requests-reset",
@@ -119,7 +119,7 @@ var ProviderAccessRegistry = map[string]*ProviderAccessConfig{
 		ModelsURL:           "https://api.groq.com/openai/v1/models",
 		DefaultSubscription: SubTypeFree,
 		AvailableTiers:      []SubscriptionType{SubTypeFree, SubTypePayAsYouGo, SubTypeEnterprise},
-		RateLimitHeaders: &RateLimitHeaderNames{
+		RateLimitHeaders: &RateLimitHeaderNames{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			RequestsLimit:     "x-ratelimit-limit-requests",
 			RequestsRemaining: "x-ratelimit-remaining-requests",
 			RequestsReset:     "x-ratelimit-reset-requests",

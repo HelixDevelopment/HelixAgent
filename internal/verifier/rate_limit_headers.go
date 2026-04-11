@@ -11,7 +11,7 @@ import (
 // RateLimitHeaderMap maps provider types to their specific rate limit header names.
 // Providers use different header naming conventions, so this map normalizes the lookup.
 var RateLimitHeaderMap = map[string]*RateLimitHeaderNames{
-	"openai": {
+	"openai": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		RequestsLimit:     "x-ratelimit-limit-requests",
 		RequestsRemaining: "x-ratelimit-remaining-requests",
 		RequestsReset:     "x-ratelimit-reset-requests",
@@ -19,7 +19,7 @@ var RateLimitHeaderMap = map[string]*RateLimitHeaderNames{
 		TokensRemaining:   "x-ratelimit-remaining-tokens",
 		TokensReset:       "x-ratelimit-reset-tokens",
 	},
-	"groq": {
+	"groq": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		RequestsLimit:     "x-ratelimit-limit-requests",
 		RequestsRemaining: "x-ratelimit-remaining-requests",
 		RequestsReset:     "x-ratelimit-reset-requests",
@@ -27,7 +27,7 @@ var RateLimitHeaderMap = map[string]*RateLimitHeaderNames{
 		TokensRemaining:   "x-ratelimit-remaining-tokens",
 		TokensReset:       "x-ratelimit-reset-tokens",
 	},
-	"claude": {
+	"claude": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		RequestsLimit:     "anthropic-ratelimit-requests-limit",
 		RequestsRemaining: "anthropic-ratelimit-requests-remaining",
 		RequestsReset:     "anthropic-ratelimit-requests-reset",

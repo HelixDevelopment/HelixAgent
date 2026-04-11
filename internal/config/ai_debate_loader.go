@@ -337,7 +337,7 @@ func GetDefaultConfig() *AIDebateConfig {
 				Description: "Main analytical participant with comprehensive reasoning capabilities",
 				Enabled:     true,
 				LLMs: []LLMConfiguration{
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Primary LLM",
 						Provider:    "claude",
 						Model:       "claude-3-5-sonnet-20241022",
@@ -349,7 +349,7 @@ func GetDefaultConfig() *AIDebateConfig {
 						MaxTokens:   2000,
 						Weight:      1.0,
 					},
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Fallback LLM 1",
 						Provider:    "deepseek",
 						Model:       "deepseek-coder",
@@ -361,7 +361,7 @@ func GetDefaultConfig() *AIDebateConfig {
 						MaxTokens:   2000,
 						Weight:      0.9,
 					},
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Fallback LLM 2",
 						Provider:    "gemini",
 						Model:       "gemini-2.0-flash-exp",
@@ -393,7 +393,7 @@ func GetDefaultConfig() *AIDebateConfig {
 				Enabled:             true,
 				MaximalRepeatRounds: intPtr(2),
 				LLMs: []LLMConfiguration{
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Primary LLM",
 						Provider:    "qwen",
 						Model:       "qwen-turbo",
@@ -436,7 +436,7 @@ func GetDefaultConfig() *AIDebateConfig {
 				Description: "Creative participant with innovative thinking capabilities",
 				Enabled:     true,
 				LLMs: []LLMConfiguration{
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Primary LLM",
 						Provider:    "openrouter",
 						Model:       "x-ai/grok-4",
@@ -448,7 +448,7 @@ func GetDefaultConfig() *AIDebateConfig {
 						MaxTokens:   1800,
 						Weight:      1.0,
 					},
-					{
+					{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 						Name:        "Fallback LLM",
 						Provider:    "zai",
 						Model:       "zai-large",

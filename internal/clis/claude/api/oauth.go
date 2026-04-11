@@ -24,14 +24,14 @@ import (
 // Default OAuth configurations
 var (
 	// ConsoleOAuthConfig for API key creation
-	ConsoleOAuthConfig = OAuthConfig{
+	ConsoleOAuthConfig = OAuthConfig{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		AuthURL: "https://platform.claude.com/oauth/authorize",
 		TokenURL: "https://platform.claude.com/v1/oauth/token",
 		Scopes:   []string{"org:create_api_key", "user:profile"},
 	}
 	
 	// ClaudeAIOAuthConfig for Claude.ai integration
-	ClaudeAIOAuthConfig = OAuthConfig{
+	ClaudeAIOAuthConfig = OAuthConfig{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		AuthURL: "https://claude.com/cai/oauth/authorize",
 		TokenURL: "https://platform.claude.com/v1/oauth/token",
 		Scopes: []string{

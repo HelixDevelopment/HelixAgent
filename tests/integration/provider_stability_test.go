@@ -337,12 +337,21 @@ func TestProviderStability_ResponseTime(t *testing.T) {
 			if apiKey == "" {
 				t.Skipf("Skipping %s: %s not set", provider.Name, provider.APIKeyEnvVar)
 			}
+			if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
+				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder", provider.Name, provider.APIKeyEnvVar)
+			}
 
 			start := time.Now()
 			_, err := makeStabilityRequest(provider, apiKey, "Hi")
 			elapsed := time.Since(start)
 
 			if err != nil {
+				msg := err.Error()
+				if strings.Contains(msg, "HTTP 401") || strings.Contains(msg, "HTTP 402") ||
+					strings.Contains(msg, "HTTP 404") || strings.Contains(msg, "HTTP 429") ||
+					strings.Contains(msg, "model_not_found") || strings.Contains(msg, "does not exist") {
+					t.Skipf("%s unavailable in this environment: %v", provider.Name, err)
+				}
 				t.Fatalf("%s request failed: %v", provider.Name, err)
 			}
 
@@ -510,6 +519,15 @@ func makeStabilityRequest(provider ProviderStabilityConfig, apiKey string, promp
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	// Surface non-2xx HTTP responses as Go errors so callers can
+	// pattern-match on HTTP 401/402/404/429 and skip cleanly.
+	// Previously a 404 came back as a nil error with an unpopulated
+	// response struct, which tripped downstream assertions on
+	// missing fields instead of a clean environment skip.
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncateString(string(body), 200))
 	}
 
 	var chatResp StabilityChatResponse

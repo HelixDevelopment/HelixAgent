@@ -470,7 +470,13 @@ func TestLLMProviderMem0Verification_AllProviders(t *testing.T) {
 		}))
 		defer server.Close()
 
-		provider := zen.NewZenProvider("", server.URL, "opencode/grok-code")
+		// Use a known-free model so the anonymous mode branch
+		// activates and the X-Device-ID header is attached. The
+		// previous "opencode/grok-code" was removed from the free
+		// tier in 2026-02 and therefore flipped the provider to
+		// paid mode, which never sets the header.
+		freeModel := zen.ModelGLM5Free
+		provider := zen.NewZenProvider("", server.URL, freeModel)
 
 		caps := provider.GetCapabilities()
 		assert.True(t, caps.SupportsStreaming)
@@ -481,7 +487,7 @@ func TestLLMProviderMem0Verification_AllProviders(t *testing.T) {
 				{Role: "user", Content: "Hello"},
 			},
 			ModelParams: models.ModelParameters{
-				Model:       "opencode/grok-code",
+				Model:       freeModel,
 				MaxTokens:   100,
 				Temperature: 0.7,
 			},
@@ -778,9 +784,16 @@ func TestMem0StartupVerifierPipeline(t *testing.T) {
 		cfg := verifier.DefaultStartupConfig()
 		require.NotNil(t, cfg)
 
+		// The default debate team grew from 5×3 to 5×5 when
+		// FallbacksPerPosition was bumped from 2 to 4; assert
+		// against the current ratios so the test survives
+		// future fallback-count bumps without another refresh.
 		assert.Equal(t, 5, cfg.PositionCount)
-		assert.Equal(t, 15, cfg.DebateTeamSize)
-		assert.Equal(t, 2, cfg.FallbacksPerPosition)
+		assert.Greater(t, cfg.FallbacksPerPosition, 0,
+			"FallbacksPerPosition should be positive")
+		expectedTeamSize := cfg.PositionCount * (1 + cfg.FallbacksPerPosition)
+		assert.Equal(t, expectedTeamSize, cfg.DebateTeamSize,
+			"DebateTeamSize should equal PositionCount × (1 + FallbacksPerPosition)")
 		assert.True(t, cfg.ParallelVerification)
 		assert.True(t, cfg.EnableFreeProviders)
 	})

@@ -2365,22 +2365,27 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 			},
 		},
 		// Agent configuration - uses provider-id/model-id format
-		// NOTE: Model selection is done per-agent, not at top level
+		// All agents route through the helixagent provider so HelixAgent
+		// can apply smart routing (tools→direct provider, everything
+		// else→debate ensemble). Routing HelixLLM directly via the
+		// "helixllm" provider bypasses that layer and breaks the
+		// model-id regression test that asserts every agent model
+		// MUST reference the "helixagent" provider.
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixllm/model.gguf",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 8192,
 			},
 			"task": {
-				Model:     "helixllm/model.gguf",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixllm/model.gguf",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 80,
 			},
 			"summarizer": {
-				Model:     "helixllm/model.gguf",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 4096,
 			},
 		},

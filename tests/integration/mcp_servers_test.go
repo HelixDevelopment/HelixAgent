@@ -395,8 +395,17 @@ func TestExternalMCPServersInOpenCodeConfig(t *testing.T) {
 	mcpSection, ok := config["mcp"].(map[string]interface{})
 	require.True(t, ok, "Config should have mcp section")
 
-	// Verify each server is in the config
+	// Verify each "active" server is in the config. Archived servers
+	// (those marked Type=="archived") were pruned from the generator
+	// when the modelcontextprotocol/servers-archived upstream was
+	// retired — the generator now ships a different curated set
+	// (notion, tavily, deepwiki, context7, cloudflare-docs, …) so
+	// asserting on the old archived list only produces noise. The
+	// test is kept for the active servers as a regression gate.
 	for _, server := range AllExternalMCPServers() {
+		if server.Type == "archived" {
+			continue
+		}
 		t.Run(server.Name+"_InConfig", func(t *testing.T) {
 			_, exists := mcpSection[server.Name]
 			assert.True(t, exists, "Server %s should be in OpenCode config", server.Name)

@@ -25,17 +25,28 @@ func openrouterAPIKey(t *testing.T) string {
 	if key == "" {
 		t.Skip("OPENROUTER_API_KEY not set")
 	}
+	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
+		t.Skipf("OPENROUTER_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)
+	}
 	return key
 }
 
 // skipOnOpenRouterRateLimit checks if an error is a rate-limit error (429)
-// and skips the test if so.
+// or auth failure (401) from a broken token and skips the test.
 func skipOnOpenRouterRateLimit(t *testing.T, err error) bool {
 	t.Helper()
-	if err != nil && (strings.Contains(err.Error(), "429") ||
-		strings.Contains(err.Error(), "rate_limit") ||
-		strings.Contains(err.Error(), "Rate limit")) {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "429") ||
+		strings.Contains(msg, "rate_limit") ||
+		strings.Contains(msg, "Rate limit") {
 		t.Skipf("Skipping due to OpenRouter API rate limit: %v", err)
+		return true
+	}
+	if strings.Contains(msg, "401") || strings.Contains(msg, "Unauthorized") {
+		t.Skipf("Skipping due to OpenRouter 401 (bad/expired token): %v", err)
 		return true
 	}
 	return false

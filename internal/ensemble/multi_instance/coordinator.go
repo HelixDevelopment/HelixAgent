@@ -13,6 +13,7 @@ import (
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/background"
 	"dev.helix.agent/internal/ensemble/synchronization"
+	obsmetrics "dev.helix.agent/internal/observability/metrics"
 	"github.com/google/uuid"
 )
 
@@ -62,14 +63,14 @@ type EnsembleSession struct {
 	Config   EnsembleConfig
 
 	// Instances
-	Primary     *clis.AgentInstance
-	Critiques   []*clis.AgentInstance
-	Verifiers   []*clis.AgentInstance
-	Fallbacks   []*clis.AgentInstance
+	Primary   *clis.AgentInstance
+	Critiques []*clis.AgentInstance
+	Verifiers []*clis.AgentInstance
+	Fallbacks []*clis.AgentInstance
 
 	// State
-	Status      SessionStatus
-	Context     map[string]interface{}
+	Status         SessionStatus
+	Context        map[string]interface{}
 	TaskDefinition Task
 
 	// Communication
@@ -77,8 +78,8 @@ type EnsembleSession struct {
 	Results    chan *AgentResult
 
 	// Consensus
-	Consensus     *ConsensusResult
-	CurrentRound  int
+	Consensus    *ConsensusResult
+	CurrentRound int
 
 	// Timestamps
 	CreatedAt   time.Time
@@ -91,12 +92,12 @@ type EnsembleStrategy string
 
 // Strategy types.
 const (
-	StrategyVoting     EnsembleStrategy = "voting"
-	StrategyDebate     EnsembleStrategy = "debate"
-	StrategyConsensus  EnsembleStrategy = "consensus"
-	StrategyPipeline   EnsembleStrategy = "pipeline"
-	StrategyParallel   EnsembleStrategy = "parallel"
-	StrategySequential EnsembleStrategy = "sequential"
+	StrategyVoting      EnsembleStrategy = "voting"
+	StrategyDebate      EnsembleStrategy = "debate"
+	StrategyConsensus   EnsembleStrategy = "consensus"
+	StrategyPipeline    EnsembleStrategy = "pipeline"
+	StrategyParallel    EnsembleStrategy = "parallel"
+	StrategySequential  EnsembleStrategy = "sequential"
 	StrategyExpertPanel EnsembleStrategy = "expert_panel"
 )
 
@@ -105,31 +106,31 @@ type SessionStatus string
 
 // Session statuses.
 const (
-	SessionStatusCreating SessionStatus = "creating"
-	SessionStatusActive   SessionStatus = "active"
-	SessionStatusPaused   SessionStatus = "paused"
+	SessionStatusCreating  SessionStatus = "creating"
+	SessionStatusActive    SessionStatus = "active"
+	SessionStatusPaused    SessionStatus = "paused"
 	SessionStatusCompleted SessionStatus = "completed"
-	SessionStatusFailed   SessionStatus = "failed"
+	SessionStatusFailed    SessionStatus = "failed"
 	SessionStatusCancelled SessionStatus = "cancelled"
 )
 
 // EnsembleConfig contains strategy configuration.
 type EnsembleConfig struct {
 	// Participant requirements
-	MinParticipants     int
-	MaxParticipants     int
-	ConsensusThreshold  float64
+	MinParticipants    int
+	MaxParticipants    int
+	ConsensusThreshold float64
 
 	// Execution limits
-	MaxRounds           int
-	TimeoutPerRound     time.Duration
-	TotalTimeout        time.Duration
+	MaxRounds       int
+	TimeoutPerRound time.Duration
+	TotalTimeout    time.Duration
 
 	// Feature flags
-	EnableStreaming     bool
-	EnableFallbacks     bool
-	RequireConsensus    bool
-	EnableAutoRecovery  bool
+	EnableStreaming    bool
+	EnableFallbacks    bool
+	RequireConsensus   bool
+	EnableAutoRecovery bool
 }
 
 // DefaultEnsembleConfig returns default configuration.
@@ -165,11 +166,11 @@ type InstanceConfig struct {
 
 // Task represents an ensemble task.
 type Task struct {
-	ID          string
-	Type        string
-	Content     string
-	Context     map[string]interface{}
-	Timeout     time.Duration
+	ID               string
+	Type             string
+	Content          string
+	Context          map[string]interface{}
+	Timeout          time.Duration
 	RequireConsensus bool
 }
 
@@ -187,12 +188,12 @@ type AgentResult struct {
 
 // ConsensusResult represents the final consensus.
 type ConsensusResult struct {
-	Reached     bool
-	Winner      string
-	Confidence  float64
-	AllResults  map[string]*AgentResult
-	Rounds      int
-	Agreement   map[string]int
+	Reached    bool
+	Winner     string
+	Confidence float64
+	AllResults map[string]*AgentResult
+	Rounds     int
+	Agreement  map[string]int
 }
 
 // MessageBus handles inter-agent communication.
@@ -230,6 +231,24 @@ func NewCoordinator(
 		cancel:        cancel,
 	}
 
+	// Phase-3 observability: register the worker pool's live counters
+	// with the default Prometheus source singleton. Decoupled — the
+	// metrics package reads through these accessors on every scrape
+	// but never holds a reference to the coordinator or pool structs.
+	obsmetrics.SetEnsembleWorkerPoolContributor(obsmetrics.WorkerPoolContributor{
+		PendingCount: c.workerPool.PendingCount,
+		PendingCap:   func() int64 { return background.DefaultMaxPendingResults },
+		TasksRejected: func() uint64 {
+			// GetStats returns the full stat map; we only need
+			// tasks_rejected. The cast is safe because the field
+			// is always set to a uint64 inside GetStats.
+			if v, ok := c.workerPool.GetStats()["tasks_rejected"].(uint64); ok {
+				return v
+			}
+			return 0
+		},
+	})
+
 	// Start health monitoring
 	c.wg.Add(1)
 	go c.healthMonitorLoop()
@@ -245,15 +264,15 @@ func (c *Coordinator) CreateSession(
 	participants ParticipantConfig,
 ) (*EnsembleSession, error) {
 	session := &EnsembleSession{
-		ID:             uuid.New().String(),
-		Strategy:       strategy,
-		Config:         config,
-		Status:         SessionStatusCreating,
-		Context:        make(map[string]interface{}),
-		MessageBus:     &MessageBus{messages: make(chan *clis.Message, 100)},
-		Results:        make(chan *AgentResult, 100),
-		CurrentRound:   0,
-		CreatedAt:      time.Now(),
+		ID:           uuid.New().String(),
+		Strategy:     strategy,
+		Config:       config,
+		Status:       SessionStatusCreating,
+		Context:      make(map[string]interface{}),
+		MessageBus:   &MessageBus{messages: make(chan *clis.Message, 100)},
+		Results:      make(chan *AgentResult, 100),
+		CurrentRound: 0,
+		CreatedAt:    time.Now(),
 	}
 
 	// Create primary instance

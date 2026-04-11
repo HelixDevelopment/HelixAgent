@@ -52,17 +52,37 @@ func NewHTTPMetricsWithRegistry(registry *prometheus.Registry) *HTTPMetrics {
 		),
 	}
 
+	// Register each collector idempotently. If a collector with the same
+	// name is already registered (common in test suites that construct
+	// multiple routers against the same process-global registry, and
+	// in hot-reload scenarios), reuse the existing instance via
+	// prometheus.AlreadyRegisteredError.ExistingCollector instead of
+	// panicking via MustRegister. This makes the constructor safe to
+	// call more than once without having to pass a fresh registry.
+	reg := prometheus.Registerer(prometheus.DefaultRegisterer)
 	if registry != nil {
-		registry.MustRegister(m.requestDuration)
-		registry.MustRegister(m.requestsTotal)
-		registry.MustRegister(m.requestErrors)
-	} else {
-		prometheus.MustRegister(m.requestDuration)
-		prometheus.MustRegister(m.requestsTotal)
-		prometheus.MustRegister(m.requestErrors)
+		reg = registry
 	}
+	m.requestDuration = registerIdempotent(reg, m.requestDuration).(*prometheus.HistogramVec)
+	m.requestsTotal = registerIdempotent(reg, m.requestsTotal).(*prometheus.CounterVec)
+	m.requestErrors = registerIdempotent(reg, m.requestErrors).(*prometheus.CounterVec)
 
 	return m
+}
+
+// registerIdempotent attempts to register c with reg. If reg already has
+// a collector with the same name, it returns the pre-existing instance
+// so that callers can keep using it transparently. Any other error
+// panics — those indicate genuine misconfiguration (e.g. label
+// mismatch), not duplicate registration.
+func registerIdempotent(reg prometheus.Registerer, c prometheus.Collector) prometheus.Collector {
+	if err := reg.Register(c); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			return are.ExistingCollector
+		}
+		panic(err)
+	}
+	return c
 }
 
 // Middleware returns a Gin middleware handler that records per-handler

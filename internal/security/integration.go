@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	obsmetrics "dev.helix.agent/internal/observability/metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -116,10 +117,18 @@ func NewSecurityIntegration(config *SecurityIntegrationConfig, logger *logrus.Lo
 
 	if config.EnableGuardrails {
 		si.guardrails = CreateDefaultPipeline(logger)
-		if si.auditLogger != nil {
-			if pipeline, ok := si.guardrails.(*StandardGuardrailPipeline); ok {
+		if pipeline, ok := si.guardrails.(*StandardGuardrailPipeline); ok {
+			if si.auditLogger != nil {
 				pipeline.SetAuditLogger(si.auditLogger)
 			}
+			// Phase-3 observability: expose the pipeline's stats
+			// counters through the default Prometheus source singleton.
+			// Accessors only — metrics never holds a reference to the
+			// pipeline itself, so this wiring adds no new ownership.
+			obsmetrics.SetGuardrailPipelineContributor(obsmetrics.GuardrailContributor{
+				KeyCount:    pipeline.StatsKeyCount,
+				KeysDropped: pipeline.StatsKeysDropped,
+			})
 		}
 	}
 

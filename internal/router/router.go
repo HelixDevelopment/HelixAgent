@@ -21,8 +21,8 @@ import (
 	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/middleware"
 	"dev.helix.agent/internal/models"
-	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/modelsdev"
+	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/search"
 	"dev.helix.agent/internal/search/indexer"
 	"dev.helix.agent/internal/services"
@@ -179,6 +179,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 	// Per-handler Prometheus metrics (duration histogram, request counter, error counter)
 	httpMetrics := httpmetrics.NewHTTPMetrics()
 	r.Use(httpMetrics.Middleware())
+
+	// Phase-3 memory-safety gauges. Registered once, idempotently; the
+	// underlying singleton picks up live WorkerPool and GuardrailPipeline
+	// accessors as those services initialize, and reports zero until
+	// they do. Any error here is logged but not fatal — metrics are
+	// observability, not a boot requirement.
+	if _, err := httpmetrics.RegisterDefaultPhase3Metrics(); err != nil {
+		log.Printf("Warning: failed to register Phase-3 metrics: %v", err)
+	}
 
 	// Add pprof debugging endpoints if enabled
 	if os.Getenv("ENABLE_PPROF") == "true" {
@@ -1333,12 +1342,12 @@ func initializeSearchService(cfg *config.Config, logger *logrus.Logger, containe
 	if chromadbPort == 0 {
 		chromadbPort = 8000
 	}
-	
+
 	qdrantPort, _ := strconv.Atoi(cfg.Services.Qdrant.Port)
 	if qdrantPort == 0 {
 		qdrantPort = 6333
 	}
-	
+
 	searchConfig := search.ServiceConfig{
 		Enabled:          true,
 		EmbedderType:     "local", // Use local embedder by default (deterministic, no API key needed)

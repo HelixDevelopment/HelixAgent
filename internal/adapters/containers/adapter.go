@@ -741,6 +741,29 @@ func (a *Adapter) extractBuildContexts(composePath string) ([]string, error) {
 	var contexts []string
 	composeDir := filepath.Dir(composePath)
 
+	// Resolve project root once so we can skip any build context that
+	// points at the project itself — that's the HelixAgent orchestrator
+	// container (build: { context: . }) which should NEVER be shipped
+	// to remote workers. The orchestrator runs on the local machine;
+	// only the workloads it schedules (postgres, redis, MCP servers,
+	// cognee, etc.) get pushed remotely. Without this skip, every
+	// remote-distribution boot tried to scp the entire 27 GB project
+	// directory (vendor/, releases/, cli_agents/, submodules, models)
+	// and hung for 30+ minutes before timing out.
+	projectRoot := a.projectDir
+	if abs, err := filepath.Abs(projectRoot); err == nil {
+		projectRoot = abs
+	}
+
+	isProjectRoot := func(p string) bool {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return false
+		}
+		// Filepath.Clean both sides so trailing "/." or "/" don't throw off the compare.
+		return filepath.Clean(abs) == filepath.Clean(projectRoot)
+	}
+
 	for _, service := range cf.Services {
 		if service.Build == nil {
 			continue
@@ -753,12 +776,26 @@ func (a *Adapter) extractBuildContexts(composePath string) ([]string, error) {
 			if !filepath.IsAbs(build) {
 				build = filepath.Join(composeDir, build)
 			}
+			if isProjectRoot(build) {
+				a.logger.Info(
+					"skipping project-root build context (orchestrator stays local): %s",
+					build,
+				)
+				continue
+			}
 			contexts = append(contexts, build)
 		case map[string]interface{}:
 			// Map with context and dockerfile
 			if ctx, ok := build["context"].(string); ok {
 				if !filepath.IsAbs(ctx) {
 					ctx = filepath.Join(composeDir, ctx)
+				}
+				if isProjectRoot(ctx) {
+					a.logger.Info(
+						"skipping project-root build context (orchestrator stays local): %s",
+						ctx,
+					)
+					continue
 				}
 				contexts = append(contexts, ctx)
 

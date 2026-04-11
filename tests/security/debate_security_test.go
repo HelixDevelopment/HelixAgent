@@ -181,10 +181,19 @@ func TestDebate_ResourceExhaustion(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&memAfter)
 
-	memIncreaseMB := float64(memAfter.Alloc-memBefore.Alloc) / 1024 / 1024
-	t.Logf("Memory increase for %d votes: %.2f MB", voteCount, memIncreaseMB)
+	// runtime.MemStats.Alloc is uint64 — naive subtraction underflows
+	// to ~1.8e19 bytes when GC ran between snapshots and freed more
+	// than it retained. Cast through int64 so a genuine decrease
+	// produces a negative delta instead of gigantic nonsense.
+	memDeltaBytes := int64(memAfter.Alloc) - int64(memBefore.Alloc)
+	memIncreaseMB := float64(memDeltaBytes) / 1024 / 1024
+	t.Logf("Memory delta for %d votes: %.2f MB (after=%d, before=%d bytes)",
+		voteCount, memIncreaseMB, memAfter.Alloc, memBefore.Alloc)
 
-	// Memory increase should be bounded (less than 50 MB for 10K votes)
+	// Memory increase should be bounded (less than 50 MB for 10K votes).
+	// A negative or zero delta is also fine — it means GC compacted
+	// more than the test retained, which is strictly better than the
+	// 50 MB ceiling.
 	assert.Less(t, memIncreaseMB, 50.0,
 		"Memory increase should be bounded for large vote counts")
 

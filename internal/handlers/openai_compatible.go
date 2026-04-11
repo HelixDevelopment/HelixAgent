@@ -2263,6 +2263,17 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 }
 
 func (h *UnifiedHandler) processWithEnsemble(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (*services.EnsembleResult, error) {
+	// Early guards: the handler is often constructed lazily and the
+	// provider registry may be nil during boot or in unit tests that
+	// exercise the error path. Fail fast with a clear error rather
+	// than panicking on req.Tools or any subsequent dereference.
+	if h == nil || h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available")
+	}
+	if req == nil {
+		return nil, fmt.Errorf("provider registry not available: nil request")
+	}
+
 	// Smart routing: Layer 1 — tools present → direct provider
 	if len(req.Tools) > 0 {
 		logrus.WithField("tool_count", len(req.Tools)).
@@ -2452,6 +2463,16 @@ func (h *UnifiedHandler) processWithDirectProviderStream(
 }
 
 func (h *UnifiedHandler) processWithEnsembleStream(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (<-chan *models.LLMResponse, error) {
+	// Early guards: same nil-safety as processWithEnsemble so a handler
+	// constructed without a provider registry (unit tests, early boot)
+	// cannot panic on req.Tools.
+	if h == nil || h.providerRegistry == nil {
+		return nil, fmt.Errorf("provider registry not available")
+	}
+	if req == nil {
+		return nil, fmt.Errorf("provider registry not available: nil request")
+	}
+
 	// Smart routing: Layer 1 — tools present → direct provider stream
 	if len(req.Tools) > 0 {
 		logrus.WithField("tool_count", len(req.Tools)).

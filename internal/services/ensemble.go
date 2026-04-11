@@ -659,9 +659,16 @@ func (s *MajorityVoteStrategy) Vote(responses []*models.LLMResponse, req *models
 
 	// If we have a clear majority, use it
 	if len(largestGroup) > len(responses)/2 {
-		// Select the highest confidence response from the majority group
-		var selected *models.LLMResponse
-		maxConfidence := 0.0
+		// Select the highest-confidence response from the majority
+		// group. Seed `selected` with the first element of the group
+		// (guaranteed non-empty because len(largestGroup) > len/2 >= 1)
+		// so a cohort where every confidence is 0 — or equal — still
+		// yields a deterministic winner. The prior strict `>` loop
+		// left `selected` nil when no response had positive confidence,
+		// which crashed the mark-pass below (caught by
+		// tests/e2e/ensemble_voting_e2e_test.go:73).
+		selected := largestGroup[0]
+		maxConfidence := selected.Confidence
 
 		for _, resp := range largestGroup {
 			scores[resp.ID] = 1.0 // Majority vote score

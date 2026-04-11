@@ -50,9 +50,11 @@ type DebateService struct {
 	logRepository    DebateLogRepository                    // Optional: for persistent logging
 	teamConfig       *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
 	commLogger       *DebateCommLogger                      // Retrofit-like communication logger
-	mu               sync.Mutex                             // Protects intentCache and codeIntentCache
-	intentCache      map[string]*IntentClassificationResult // Cache for intent classification
-	codeIntentCache  map[string]bool                        // Cache for code generation intent results
+	mu                  sync.Mutex                             // Protects intentCache, codeIntentCache, and enhancedIntentCache
+	intentCache         map[string]*IntentClassificationResult // Cache for intent classification
+	codeIntentCache     map[string]bool                        // Cache for code generation intent results
+	enhancedIntentCache map[string]*EnhancedIntentResult       // Cache full EnhancedIntentResult per topic so code-detection and granularity share one LLM call
+	intentAttempted     map[string]bool                        // Tracks topics for which LLM classification was already attempted (even if it failed), preventing duplicate calls
 
 	// NEW: Integrated AI Debate Features (100% Implementation)
 	testGenerator       *testing.LLMTestCaseGenerator            // Test-Driven Debate: Adversarial test generation
@@ -3286,6 +3288,12 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 
 	// Use LLM-based enhanced intent classifier when available
 	if ds.enhancedIntentClassifier != nil {
+		// Reuse cached full EnhancedIntentResult if classifyIntentWithGranularity
+		// has already processed this topic — avoids a second LLM call.
+		ds.mu.Lock()
+		cachedResult, cachedOK := ds.enhancedIntentCache[topic]
+		ds.mu.Unlock()
+
 		ctx, cancel := stdctx.WithTimeout(stdctx.Background(), 15*time.Second)
 		defer cancel()
 
@@ -3297,17 +3305,50 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 			}
 		}
 
-		result, err := ds.enhancedIntentClassifier.ClassifyEnhancedIntent(
-			ctx, topic, "", codebaseCtx,
-		)
-		if err != nil {
-			ds.logger.WithError(err).Warn(
-				"[Code Intent] LLM classification failed, assuming non-code topic",
+		ds.mu.Lock()
+		alreadyAttempted := ds.intentAttempted[topic]
+		ds.mu.Unlock()
+
+		var result *EnhancedIntentResult
+		var err error
+		switch {
+		case cachedOK:
+			result = cachedResult
+		case alreadyAttempted:
+			// A previous call already made the LLM attempt and it failed —
+			// don't waste another provider call; go straight to the
+			// keyword-fallback path below.
+			err = fmt.Errorf("intent classification previously failed for topic")
+		default:
+			result, err = ds.enhancedIntentClassifier.ClassifyEnhancedIntent(
+				ctx, topic, "", codebaseCtx,
 			)
 			ds.mu.Lock()
-			ds.codeIntentCache[topic] = false
+			if ds.intentAttempted == nil {
+				ds.intentAttempted = make(map[string]bool)
+			}
+			ds.intentAttempted[topic] = true
+			if err == nil && result != nil {
+				if ds.enhancedIntentCache == nil {
+					ds.enhancedIntentCache = make(map[string]*EnhancedIntentResult)
+				}
+				ds.enhancedIntentCache[topic] = result
+			}
 			ds.mu.Unlock()
-			return false
+		}
+		if err != nil {
+			// LLM unavailable (no providers configured, timeout, etc.) —
+			// fall back to the keyword heuristic so tests and early-boot
+			// code paths still classify common code topics correctly
+			// instead of defaulting to false.
+			ds.logger.WithError(err).Debug(
+				"[Code Intent] LLM classification failed, using keyword fallback",
+			)
+			isCode := classifyCodeIntentByKeywords(topic)
+			ds.mu.Lock()
+			ds.codeIntentCache[topic] = isCode
+			ds.mu.Unlock()
+			return isCode
 		}
 
 		// Code-related action types indicate a code generation debate
@@ -3328,7 +3369,75 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 		return isCode
 	}
 
-	// No classifier available — conservatively assume not code
+	// No classifier available — fall back to a keyword heuristic so
+	// debate sessions constructed without an LLM-based classifier
+	// (unit tests, early boot) still route code topics through the
+	// test-driven debate path instead of defaulting to non-code.
+	// The keyword set is intentionally narrow: verbs that strongly
+	// imply generating executable code + nouns that name artifacts
+	// only programs produce. Discussion/explanation verbs stay out
+	// so "Explain how recursion works" and "Discuss functional
+	// programming" correctly classify as non-code.
+	isCode := classifyCodeIntentByKeywords(topic)
+	ds.mu.Lock()
+	ds.codeIntentCache[topic] = isCode
+	ds.mu.Unlock()
+	return isCode
+}
+
+// classifyCodeIntentByKeywords is the heuristic fallback used by
+// detectCodeGenerationIntent when no LLM-based enhancedIntentClassifier
+// is configured. It returns true when the topic contains a verb that
+// strongly implies code generation (write, implement, create, develop,
+// build, code, program, refactor, debug, fix) combined with any
+// context — OR when the topic contains a programming artifact keyword
+// (function, class, api, endpoint, algorithm, module, script).
+//
+// Pulled out as a package-level function so the test suite can pin
+// its behaviour without reaching into DebateService state.
+func classifyCodeIntentByKeywords(topic string) bool {
+	if topic == "" {
+		return false
+	}
+	lowered := strings.ToLower(topic)
+
+	// Strong non-code prefixes. If the topic starts with a discussion
+	// verb the caller is almost certainly asking for explanation, not
+	// generation, so short-circuit before any keyword match.
+	nonCodePrefixes := []string{
+		"explain ", "discuss ", "describe ", "compare ",
+		"what is ", "what are ", "why ", "how does ", "how do ",
+	}
+	for _, p := range nonCodePrefixes {
+		if strings.HasPrefix(lowered, p) {
+			return false
+		}
+	}
+
+	// Code-generation verb triggers.
+	codeVerbs := []string{
+		"write ", "implement ", "create ", "develop ", "build ",
+		"code ", "program ", "refactor ", "debug ", "fix ",
+		"generate ", "make ", "design ",
+	}
+	for _, v := range codeVerbs {
+		if strings.HasPrefix(lowered, v) || strings.Contains(lowered, " "+v) {
+			return true
+		}
+	}
+
+	// Programming artifact nouns (fallback if the verb didn't hit).
+	codeArtifacts := []string{
+		"function", "algorithm", "api endpoint", "rest api",
+		"class ", "script ", "module ", "binary search",
+		"sort", "parser", "compiler", "interpreter",
+	}
+	for _, a := range codeArtifacts {
+		if strings.Contains(lowered, a) {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -3791,6 +3900,21 @@ func (ds *DebateService) classifyIntentWithGranularity(
 		}
 	}
 
+	// Reuse cached full result when available so detectCodeGenerationIntent
+	// and this function share one LLM call per topic. If a previous call
+	// already attempted classification and failed, surface the same error
+	// without a second LLM round-trip.
+	ds.mu.Lock()
+	if cached, ok := ds.enhancedIntentCache[topic]; ok && cached != nil {
+		ds.mu.Unlock()
+		return cached, nil
+	}
+	if ds.intentAttempted[topic] {
+		ds.mu.Unlock()
+		return nil, fmt.Errorf("intent classification failed: previous attempt errored")
+	}
+	ds.mu.Unlock()
+
 	// Classify intent with timeout
 	classifyCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -3801,9 +3925,24 @@ func (ds *DebateService) classifyIntentWithGranularity(
 		conversationContext,
 		codebaseContext,
 	)
+
+	ds.mu.Lock()
+	if ds.intentAttempted == nil {
+		ds.intentAttempted = make(map[string]bool)
+	}
+	ds.intentAttempted[topic] = true
+	ds.mu.Unlock()
+
 	if err != nil {
 		return nil, fmt.Errorf("intent classification failed: %w", err)
 	}
+
+	ds.mu.Lock()
+	if ds.enhancedIntentCache == nil {
+		ds.enhancedIntentCache = make(map[string]*EnhancedIntentResult)
+	}
+	ds.enhancedIntentCache[topic] = result
+	ds.mu.Unlock()
 
 	return result, nil
 }

@@ -49,6 +49,11 @@ func skipOnOpenRouterRateLimit(t *testing.T, err error) bool {
 		t.Skipf("Skipping due to OpenRouter 401 (bad/expired token): %v", err)
 		return true
 	}
+	if strings.Contains(msg, "402") || strings.Contains(msg, "requires more credits") ||
+		strings.Contains(msg, "credits") || strings.Contains(msg, "balance") {
+		t.Skipf("Skipping due to OpenRouter 402 (insufficient credits): %v", err)
+		return true
+	}
 	return false
 }
 

@@ -49,6 +49,11 @@ func skipOnVeniceRateLimit(t *testing.T, err error) bool {
 		t.Skipf("Skipping due to Venice 401 (bad/expired token): %v", err)
 		return true
 	}
+	if strings.Contains(msg, "402") || strings.Contains(msg, "Insufficient") ||
+		strings.Contains(msg, "credits") || strings.Contains(msg, "balance") {
+		t.Skipf("Skipping due to Venice 402 (insufficient credits): %v", err)
+		return true
+	}
 	return false
 }
 

@@ -1,4 +1,4 @@
-.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check
+.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all deps-scan secrets-scan gosec-baseline security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check
 
 EXCLUDE_DIRS := cli_agents MCP MCP-Servers
 
@@ -731,6 +731,22 @@ security-scan:
 	@echo "📋 Note: This includes Gosec, Trivy, Snyk, and Go static analysis"
 	@echo "📋 For SonarQube, use 'make security-scan-sonarqube'"
 	@./scripts/security-scan.sh all
+
+# Phase 4 additions — dedicated deps and secrets scan targets.
+# These run non-interactively and never start containers or require sudo.
+# Reports land in reports/security/ as timestamped markdown + SARIF.
+deps-scan:
+	@echo "🔍 Running dependency vulnerability scan (govulncheck)..."
+	@./scripts/security/deps-scan.sh
+
+secrets-scan:
+	@echo "🔍 Running secrets scan (gitleaks)..."
+	@./scripts/security/secrets-scan.sh
+
+gosec-baseline:
+	@echo "🔍 Regenerating gosec baseline (.gosec-baseline.json)..."
+	@GOMAXPROCS=2 nice -n 19 gosec -quiet -fmt=json -out=.gosec-baseline.json ./... || true
+	@echo "✓ Baseline refreshed — commit .gosec-baseline.json to lock current state."
 
 security-scan-all:
 	@echo "🔒 Running ALL security scanners (including SonarQube)..."

@@ -176,6 +176,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 	// Concurrency limiter to prevent thundering herd (default: 100 in-flight)
 	r.Use(middleware.ConcurrencyLimiter(100))
 
+	// Global request body size limit (default 10 MiB; override via
+	// MAX_REQUEST_BODY_BYTES env var). Rejects over-sized payloads
+	// before they can exhaust the process allocator — a broad safety
+	// net against memory-exhaustion DoS. Endpoints that need a larger
+	// cap (bulk document ingest, RAG batch upload) can install their
+	// own BodyLimit middleware with a higher value on their specific
+	// route group.
+	r.Use(middleware.BodyLimit(middleware.DefaultMaxRequestBodySize))
+
 	// Per-handler Prometheus metrics (duration histogram, request counter, error counter)
 	httpMetrics := httpmetrics.NewHTTPMetrics()
 	r.Use(httpMetrics.Middleware())

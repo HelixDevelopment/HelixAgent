@@ -130,7 +130,7 @@ echo "=========================================="
 echo "PHASE 4: Protocol Servers"
 echo "=========================================="
 
-start_compose "docker-compose.protocols.yml" "Protocol Services (MCP, LSP, ACP)"
+start_compose "docker-compose.protocols.yml" "Protocol Services (MCP, LSP, ACP)" || echo -e "${YELLOW}  Note: docker-compose.protocols.yml references stale build contexts (docker/mcp/{fetch,time,sqlite,chroma,qdrant,puppeteer,sequential-thinking,adapters/*} directories no longer exist). The corresponding containers come from docker/mcp/docker-compose.mcp-servers.yml via the Phase-10 Full MCP Servers step. Fix tracked as follow-up — either dedupe protocols.yml or replace the build: blocks with image: references.${NC}"
 
 # Phase 5: Integration Services
 echo ""

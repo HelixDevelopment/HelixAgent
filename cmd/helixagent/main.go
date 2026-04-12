@@ -1766,6 +1766,24 @@ func run(appCfg *AppConfig) error {
 	oauth_credentials.StartBackgroundRefresh(stopRefresh)
 	logger.Info("Started background OAuth token refresh for Claude and Qwen")
 
+	// Auto-regenerate CLI agent configs (OpenCode, Crush, etc.) at boot.
+	// This ensures configs always reflect the current system state:
+	// - HelixLLM provider included only when models are loaded
+	// - Correct HelixAgent endpoint + API key
+	// - Up-to-date MCP server list
+	go func() {
+		openCodeOutput := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
+		os.MkdirAll(filepath.Dir(openCodeOutput), 0755)
+		if err := handleGenerateOpenCode(&AppConfig{
+			Logger:         logger,
+			OpenCodeOutput: openCodeOutput,
+		}); err != nil {
+			logger.WithError(err).Warn("Auto-regenerate OpenCode config failed (non-fatal)")
+		} else {
+			logger.WithField("path", openCodeOutput).Info("Auto-regenerated OpenCode config at boot")
+		}
+	}()
+
 	// Use provided shutdown signal or create one
 	quit := appCfg.ShutdownSignal
 	if quit == nil {

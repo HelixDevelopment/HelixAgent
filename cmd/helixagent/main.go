@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -2333,83 +2332,51 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	var jsonData []byte
 	var err error
 
-	// Probe HelixLLM: only include the provider when the endpoint is
-	// reachable AND has at least one model. Otherwise OpenCode probes
-	// it on startup and spams "no available provider for model.gguf".
-	helixLLMAvailable := false
-	if helixLLMEndpoint != "" {
-		probeClient := &http.Client{
-			Timeout: 3 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // probe only
+	// Build OpenCode configuration.
+	// HelixLLM is ALWAYS included as a selectable provider so the user
+	// can switch to local inference at any time. When llama.cpp isn't
+	// running, requests to HelixLLM will fail at the router level — but
+	// the provider MUST remain visible in the OpenCode UI. Agents
+	// default to helixagent (debate ensemble) so HelixLLM errors don't
+	// block normal usage.
+	config := OpenCodeConfig{
+		Schema: "https://opencode.ai/config.json",
+		Provider: map[string]OpenCodeProviderDefNew{
+			"helixagent": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "HelixAgent",
+				Options: &OpenCodeProviderOptionsNew{
+					BaseURL: baseURL + "/v1",
+					APIKey:  apiKey,
+				},
+				Models: map[string]OpenCodeModelDefNew{
+					"helixagent-debate": {
+						Name: "HelixAgent AI Debate Ensemble",
+						Limit: &OpenCodeModelLimit{
+							Context: 128000,
+							Output:  8192,
+						},
+					},
+				},
 			},
-		}
-		if resp, err := probeClient.Get(helixLLMEndpoint + "/v1/models"); err == nil {
-			defer resp.Body.Close()
-			var modelsResp struct {
-				Data []struct{ ID string `json:"id"` } `json:"data"`
-			}
-			if json.NewDecoder(resp.Body).Decode(&modelsResp) == nil && len(modelsResp.Data) > 0 {
-				helixLLMAvailable = true
-				logger.WithFields(logrus.Fields{
-					"endpoint": helixLLMEndpoint,
-					"models":   len(modelsResp.Data),
-				}).Info("HelixLLM probe: models available, including provider in OpenCode config")
-			} else {
-				logger.Info("HelixLLM probe: endpoint reachable but no models loaded — omitting provider from OpenCode config")
-			}
-		} else {
-			logger.WithError(err).Info("HelixLLM probe: endpoint not reachable — omitting provider from OpenCode config")
-		}
-	}
-
-	// Build CORRECT OpenCode configuration based on official documentation
-	// https://opencode.ai/docs/config/ and https://opencode.ai/docs/providers/
-	providers := map[string]OpenCodeProviderDefNew{
-		// HelixAgent as OpenAI-compatible provider (AI Debate Ensemble)
-		"helixagent": {
-			NPM:  "@ai-sdk/openai-compatible",
-			Name: "HelixAgent",
-			Options: &OpenCodeProviderOptionsNew{
-				BaseURL: baseURL + "/v1",
-				APIKey:  apiKey,
-			},
-			Models: map[string]OpenCodeModelDefNew{
-				"helixagent-debate": {
-					Name: "HelixAgent AI Debate Ensemble",
-					Limit: &OpenCodeModelLimit{
-						Context: 128000,
-						Output:  8192,
+			"helixllm": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "HelixLLM (Local Inference)",
+				Options: &OpenCodeProviderOptionsNew{
+					BaseURL: helixLLMEndpoint + "/v1",
+					APIKey:  helixLLMAPIKey,
+				},
+				Models: map[string]OpenCodeModelDefNew{
+					"model.gguf": {
+						Name: "HelixLLM Local",
+						Limit: &OpenCodeModelLimit{
+							Context: 8192,
+							Output:  4096,
+						},
 					},
 				},
 			},
 		},
-	}
-
-	// Conditionally add HelixLLM when models are actually loaded.
-	if helixLLMAvailable {
-		providers["helixllm"] = OpenCodeProviderDefNew{
-			NPM:  "@ai-sdk/openai-compatible",
-			Name: "HelixLLM (Local Inference)",
-			Options: &OpenCodeProviderOptionsNew{
-				BaseURL: helixLLMEndpoint + "/v1",
-				APIKey:  helixLLMAPIKey,
-			},
-			Models: map[string]OpenCodeModelDefNew{
-				"model.gguf": {
-					Name: "HelixLLM Local",
-					Limit: &OpenCodeModelLimit{
-						Context: 8192,
-						Output:  4096,
-					},
-				},
-			},
-		}
-	}
-
-	config := OpenCodeConfig{
-		Schema:   "https://opencode.ai/config.json",
-		Provider: providers,
 		// Agent configuration - uses provider-id/model-id format
 		// All agents route through the helixagent provider so HelixAgent
 		// can apply smart routing (tools→direct provider, everything

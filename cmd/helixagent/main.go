@@ -2368,9 +2368,23 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				},
 				Models: map[string]OpenCodeModelDefNew{
 					"qwen2.5-coder:7b": {
-						Name: "HelixLLM",
+						Name: "HelixLLM (Coder)",
 						Limit: &OpenCodeModelLimit{
 							Context: 32768,
+							Output:  8192,
+						},
+					},
+					"llama3.1:8b": {
+						Name: "HelixLLM (Instruct)",
+						Limit: &OpenCodeModelLimit{
+							Context: 131072,
+							Output:  8192,
+						},
+					},
+					"granite3.3:8b": {
+						Name: "HelixLLM (Granite)",
+						Limit: &OpenCodeModelLimit{
+							Context: 131072,
 							Output:  8192,
 						},
 					},
@@ -2392,19 +2406,19 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		// 7B model gives fast responses (2-5s) WITH tool support.
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixllm/granite3.3:8b",
 				MaxTokens: 8192,
 			},
 			"task": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixllm/granite3.3:8b",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixllm/granite3.3:8b",
 				MaxTokens: 80,
 			},
 			"summarizer": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixllm/granite3.3:8b",
 				MaxTokens: 4096,
 			},
 		},

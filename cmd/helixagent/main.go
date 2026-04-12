@@ -2367,11 +2367,18 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 					APIKey:  helixLLMAPIKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{
-					"model.gguf": {
-						Name: "HelixLLM Local",
+					"qwen2.5-coder:7b": {
+						Name: "HelixLLM Local (Qwen 2.5 Coder 7B)",
 						Limit: &OpenCodeModelLimit{
-							Context: 8192,
-							Output:  4096,
+							Context: 32768,
+							Output:  8192,
+						},
+					},
+					"llama3.1:8b": {
+						Name: "HelixLLM Local (Llama 3.1 8B)",
+						Limit: &OpenCodeModelLimit{
+							Context: 131072,
+							Output:  8192,
 						},
 					},
 				},

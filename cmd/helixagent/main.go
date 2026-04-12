@@ -2363,7 +2363,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				NPM:  "@ai-sdk/openai-compatible",
 				Name: "HelixLLM (Local Inference)",
 				Options: &OpenCodeProviderOptionsNew{
-					BaseURL: helixLLMEndpoint + "/v1",
+					BaseURL: helixLLMEndpoint, // No /v1 suffix — OpenCode appends it
 					APIKey:  helixLLMAPIKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{

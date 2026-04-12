@@ -265,7 +265,7 @@ JSON
         )
 
         local full
-        full=$(curl -s --max-time 300 -w "\n%{http_code}" -X POST \
+        full=$(curl -s --max-time 60 -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $HELIXAGENT_API_KEY" \
             -d "$body" \

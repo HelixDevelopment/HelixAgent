@@ -2398,21 +2398,27 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		// "helixllm" provider bypasses that layer and breaks the
 		// model-id regression test that asserts every agent model
 		// MUST reference the "helixagent" provider.
+		// Agent configuration: route through HelixLLM's Ollama backend
+		// (qwen2.5-coder:7b) which supports native tool calling. The
+		// helixagent-debate ensemble is too slow for interactive use
+		// (30-120s per call), and model.gguf (1.5B) is too small for
+		// reliable tool use (can't call git, read files, etc.). The
+		// 7B model gives fast responses (2-5s) WITH tool support.
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/qwen2.5-coder:7b",
 				MaxTokens: 8192,
 			},
 			"task": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/qwen2.5-coder:7b",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/qwen2.5-coder:7b",
 				MaxTokens: 80,
 			},
 			"summarizer": {
-				Model:     "helixagent/helixagent-debate",
+				Model:     "helixllm/qwen2.5-coder:7b",
 				MaxTokens: 4096,
 			},
 		},

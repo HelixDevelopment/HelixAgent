@@ -2368,17 +2368,24 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				},
 				Models: map[string]OpenCodeModelDefNew{
 					"qwen2.5-coder:7b": {
-						Name: "HelixLLM Local (Qwen 2.5 Coder 7B)",
+						Name: "Qwen 2.5 Coder 7B (Ollama)",
 						Limit: &OpenCodeModelLimit{
 							Context: 32768,
 							Output:  8192,
 						},
 					},
 					"llama3.1:8b": {
-						Name: "HelixLLM Local (Llama 3.1 8B)",
+						Name: "Llama 3.1 8B (Ollama)",
 						Limit: &OpenCodeModelLimit{
 							Context: 131072,
 							Output:  8192,
+						},
+					},
+					"model.gguf": {
+						Name: "llama.cpp Local (Qwen 1.5B Q4_K_M)",
+						Limit: &OpenCodeModelLimit{
+							Context: 65536,
+							Output:  4096,
 						},
 					},
 				},

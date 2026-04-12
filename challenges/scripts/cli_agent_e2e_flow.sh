@@ -103,7 +103,7 @@ send_prompt() {
             timeout "$timeout_s" "$bin" -p "$prompt" 2>/dev/null
             ;;
         junie_print)
-            timeout "$timeout_s" "$bin" -p "$prompt" --output-format text 2>/dev/null
+            timeout "$timeout_s" "$bin" -p . "$prompt" --output-format text 2>/dev/null
             ;;
         generic_p)
             timeout "$timeout_s" "$bin" -p "$prompt" 2>/dev/null

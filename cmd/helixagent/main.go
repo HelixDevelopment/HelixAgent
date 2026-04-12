@@ -2338,31 +2338,16 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 					},
 				},
 			},
-			// HelixLLM under HelixAgent group (direct LLM access with RAG/agents)
-			"helixllm": {
-				NPM:  "@ai-sdk/openai-compatible",
-				Name: "HelixAgent",
-				Options: &OpenCodeProviderOptionsNew{
-					BaseURL: helixLLMEndpoint + "/v1",
-					APIKey:  helixLLMAPIKey,
-				},
-				Models: map[string]OpenCodeModelDefNew{
-					"model.gguf": {
-						Name: "HelixLLM",
-						Limit: &OpenCodeModelLimit{
-							Context: 8192,
-							Output:  4096,
-						},
-					},
-					"deepseek-chat": {
-						Name: "HelixLLM (DeepSeek fallback)",
-						Limit: &OpenCodeModelLimit{
-							Context: 128000,
-							Output:  8192,
-						},
-					},
-				},
-			},
+			// NOTE: HelixLLM provider omitted from the generated config.
+			// HelixLLM requires a running llama.cpp backend with loaded
+			// GGUF model files. Without models, /v1/models returns
+			// {"data": null} and OpenCode shows "no available provider
+			// for model 'model.gguf'" on every keystroke. All agent
+			// routing goes through the helixagent provider which does
+			// smart routing (tools→direct, else→debate ensemble) and
+			// can optionally fall back to HelixLLM internally when
+			// USE_HELIX_LLM=true. Re-enable the helixllm provider
+			// only after llama.cpp is serving models.
 		},
 		// Agent configuration - uses provider-id/model-id format
 		// All agents route through the helixagent provider so HelixAgent

@@ -229,6 +229,68 @@ internal/
 | Zen | Local | Free local models |
 | + 8 more | Various | See internal/llm/providers/ |
 
+### HelixLLM Multi-Provider Fallback Chain
+
+When HelixAgent's smart routing (`processWithDirectProvider`) dispatches a tool-bearing or
+direct-provider request to HelixLLM, that request does **not** go to a single brain provider.
+Instead, HelixLLM's Gateway forwards every completion through a `FallbackChain` that is
+transparent to HelixAgent — HelixAgent sees one OpenAI-compatible endpoint; the failover
+happens entirely inside HelixLLM.
+
+**Request flow:**
+
+```
+HelixAgent (smart routing)
+    → HelixLLM Gateway (HTTPS / HTTP3)
+        → FallbackChain
+            → [cloud provider 1 (highest score)] → success → return
+            → [cloud provider 2]                 → 429/5xx → next
+            → ...
+            → [cloud provider 7 (lowest score)]  → next if exhausted
+            → [llama.cpp local]                  → guaranteed last resort
+```
+
+**Chain ordering** is driven by `ScorerBridge` (`HelixLLM/internal/fallback/scorer_bridge.go`),
+which polls LLMsVerifier at `HELIX_LLM_VERIFIER_URL/api/scores` every 5 minutes and rebuilds
+the entry list sorted by composite verification score (descending). Local llama.cpp
+(`IsLocalFallback=true`) is pinned last regardless of score.
+
+**Static fallback scores** (used when LLMsVerifier is unreachable):
+
+| Provider | Default Score | Package |
+|----------|--------------|---------|
+| OpenRouter | 90 | `internal/brain/openrouter_provider.go` |
+| Chutes | 85 | `internal/brain/chutes_provider.go` |
+| HuggingFace Inference | 80 | `internal/brain/huggingface_provider.go` |
+| Nvidia NIM | 75 | `internal/brain/nvidia_provider.go` |
+| Cerebras | 70 | `internal/brain/cerebras_provider.go` |
+| SambaNova | 65 | `internal/brain/sambanova_provider.go` |
+| Together AI | 60 | `internal/brain/together_provider.go` |
+| llama.cpp (local) | 10 (pinned last) | `internal/brain/llamacpp.go` |
+
+**Rate limiting is transparent to HelixAgent.** Two mechanisms prevent hammering throttled
+cloud providers:
+
+1. **Reactive failover** — a `429` response immediately marks the provider exhausted with an
+   exponential backoff window (60s → 120s → 240s → 480s → capped at 15 minutes) and moves to
+   the next entry in the chain.
+2. **Proactive header parsing** — `RateLimitTracker` (`internal/fallback/rate_limit.go`)
+   reads `X-RateLimit-Remaining-Requests`, `X-RateLimit-Remaining-Tokens`, and
+   `X-RateLimit-Reset` on every successful response. When remaining quota drops below the
+   configured minimum thresholds, the provider is skipped before a 429 is ever received.
+
+Each cloud entry also carries a `CircuitBreaker` (3 failures → 2-minute open window).
+Rate-limit 429s do not count toward circuit-breaker failures — they are handled separately
+by `RateLimitTracker`.
+
+**Key env vars for HelixLLM fallback chain:**
+- `HELIX_LLM_VERIFIER_URL` — LLMsVerifier endpoint for live score refresh (empty → static scores)
+- `HELIX_LLM_DEFAULT_PROVIDER` — `local` (llama.cpp only), `auto` (ScorerBridge ordering)
+- `HELIX_LLM_CHUTES_KEY`, `HELIX_LLM_OPENROUTER_KEY`, `HELIX_LLM_HUGGINGFACE_KEY`, etc. — API keys for each cloud provider
+
+Key files: `HelixLLM/internal/fallback/chain.go`, `scorer_bridge.go`, `rate_limit.go`,
+`circuit_breaker.go`.
+
 ## Build Commands
 
 ```bash

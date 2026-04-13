@@ -70,7 +70,89 @@ internal/
 - **48 dedicated providers**: AI21, Anthropic, Anthropic CU, Azure OpenAI, Cerebras, Chutes, Claude, Cloudflare, Codestral, Cohere, DeepSeek, Fireworks, Gemini (unified: API+CLI+ACP), GitHub Models, Groq, HelixLLM, HuggingFace, Hyperbolic, Junie, Kilo, Kimi, KimiCode, LM Studio, Mistral, Modal, Nia, NLPCloud, Novita, NVIDIA, Ollama, OpenAI, OpenRouter, Perplexity, PublicAI, Qwen, Replicate, SambaNova, Sarvam, SiliconFlow, Together, Upstage, Venice, Vertex AI, VulaVula, xAI, ZAI, Zen, Zhipu
 - **Generic OpenAI-compatible**: Provider for verification of providers without dedicated implementations
 - **Dynamic model discovery**: 3-tier (Provider API → models.dev → hardcoded fallback)
-- **HelixLLM integration**: First-class provider wrapping the HelixLLM submodule's OpenAI-compatible API and RAG capabilities
+- **HelixLLM integration**: First-class provider wrapping the HelixLLM submodule's OpenAI-compatible API, RAG capabilities, and multi-provider fallback chain
+
+### HelixLLM Multi-Provider Fallback Chain
+
+HelixAgent's smart routing layer (`internal/handlers/handler.go:processWithDirectProvider`)
+dispatches tool-bearing and direct-provider requests to HelixLLM as the primary local
+inference endpoint. Inside HelixLLM, the Gateway never calls a brain provider directly —
+every completion is routed through a `FallbackChain` (`HelixLLM/internal/fallback/chain.go`)
+that is fully transparent to HelixAgent.
+
+#### Request Flow
+
+```
+HelixAgent smart routing
+    └─► HelixLLM Gateway  (HTTPS / HTTP/3, port 8443)
+            └─► FallbackChain
+                    ├─► Cloud provider 1  (highest LLMsVerifier score) ──► success → return
+                    ├─► Cloud provider 2  (429 or 5xx → skip, try next)
+                    ├─► ...
+                    ├─► Cloud provider 7  (lowest score)
+                    └─► llama.cpp local   (IsLocalFallback=true, always last)
+```
+
+#### ScorerBridge — LLMsVerifier Integration
+
+`ScorerBridge` (`HelixLLM/internal/fallback/scorer_bridge.go`) polls the LLMsVerifier
+service at `{HELIX_LLM_VERIFIER_URL}/api/scores` every 5 minutes and rebuilds the chain
+entry list sorted by composite quality score (descending). Local llama.cpp is pinned at the
+end of the chain regardless of score. On any network or decode failure, the bridge falls
+back to built-in static scores so the chain always has a usable ordering.
+
+**Default chain ordering (static scores, highest → lowest):**
+
+| Provider | Score | Key Env Var |
+|----------|-------|-------------|
+| OpenRouter | 90 | `HELIX_LLM_OPENROUTER_KEY` |
+| Chutes | 85 | `HELIX_LLM_CHUTES_KEY` |
+| HuggingFace Inference | 80 | `HELIX_LLM_HUGGINGFACE_KEY` |
+| Nvidia NIM | 75 | `HELIX_LLM_NVIDIA_KEY` |
+| Cerebras | 70 | `HELIX_LLM_CEREBRAS_KEY` |
+| SambaNova | 65 | `HELIX_LLM_SAMBANOVA_KEY` |
+| Together AI | 60 | `HELIX_LLM_TOGETHER_KEY` |
+| llama.cpp (local) | 10 — pinned last | *(always available)* |
+
+#### Rate Limit Handling — Transparent to HelixAgent
+
+HelixAgent does not need to implement provider rotation for HelixLLM requests. Two
+complementary mechanisms inside HelixLLM handle rate limits automatically:
+
+1. **Reactive failover** (`chain.go`) — a `429 Too Many Requests` response marks the
+   entry `Exhausted` with a cooldown derived from the `Retry-After` header, or an
+   exponential backoff sequence (60s → 120s → 240s → 480s → capped at 15 minutes). The
+   chain immediately advances to the next available entry.
+2. **Proactive header parsing** (`RateLimitTracker`, `internal/fallback/rate_limit.go`) —
+   parses `X-RateLimit-Remaining-Requests`, `X-RateLimit-Remaining-Tokens`, and
+   `X-RateLimit-Reset` on every successful response. When remaining quota drops below
+   configured minimum thresholds, the provider is skipped *before* a 429 is ever received.
+
+#### Circuit Breaker
+
+Each cloud chain entry carries an independent `CircuitBreaker`
+(`internal/fallback/circuit_breaker.go`):
+
+| State | Trigger | Behavior |
+|-------|---------|----------|
+| Closed (normal) | — | All requests pass through |
+| Open | 3 consecutive failures | All requests skip this provider immediately |
+| Half-open | 2 minutes after opening | One probe allowed; success → Closed, failure → Open |
+
+Failure categories that trip the breaker: connection errors, 5xx responses, timeouts.
+Rate-limit 429s do **not** count toward the failure threshold — they are handled by
+`RateLimitTracker` separately.
+
+#### Key Source Files
+
+| File | Responsibility |
+|------|---------------|
+| `HelixLLM/internal/fallback/chain.go` | Ordered provider list, retry loop, error aggregation |
+| `HelixLLM/internal/fallback/scorer_bridge.go` | LLMsVerifier integration, background score refresh |
+| `HelixLLM/internal/fallback/rate_limit.go` | Proactive rate-limit header parsing and deprioritization |
+| `HelixLLM/internal/fallback/circuit_breaker.go` | Per-provider circuit breaker (closed/open/half-open) |
+| `HelixLLM/internal/fallback/memory_adapter.go` | High-importance memory sync to HelixMemory |
+| `internal/llm/providers/helixllm/provider.go` | HelixAgent-side provider wrapping HelixLLM's gateway |
 
 ### AI Debate System
 

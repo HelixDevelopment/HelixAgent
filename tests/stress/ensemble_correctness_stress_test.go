@@ -91,10 +91,10 @@ func TestEnsemble_CorrectnessUnderConcurrentLoad_Stress(t *testing.T) {
 
 	const concurrency = 200
 	var (
-		wg           sync.WaitGroup
-		panics       int64
-		successes    int64
-		malformed    int64 // responses with empty ProviderID
+		wg        sync.WaitGroup
+		panics    int64
+		successes int64
+		malformed int64 // responses with empty ProviderID
 	)
 
 	start := make(chan struct{})

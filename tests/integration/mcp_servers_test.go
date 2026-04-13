@@ -78,7 +78,6 @@ func AllExternalMCPServers() []ExternalMCPServerConfig {
 // TestExternalMCPServersSubmodulesExist verifies that the MCP server git submodules are properly initialized
 func TestExternalMCPServersSubmodulesExist(t *testing.T) {
 
-
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")
 
@@ -108,7 +107,6 @@ func TestExternalMCPServersSubmodulesExist(t *testing.T) {
 
 // TestExternalMCPServerSourcesExist verifies that source code for all MCP servers exists
 func TestExternalMCPServerSourcesExist(t *testing.T) {
-
 
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")
@@ -141,7 +139,6 @@ func TestExternalMCPServerSourcesExist(t *testing.T) {
 // TestExternalMCPContainerBuild verifies that the MCP servers container can be built
 func TestExternalMCPContainerBuild(t *testing.T) {
 
-
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")
 
@@ -163,7 +160,6 @@ func TestExternalMCPContainerBuild(t *testing.T) {
 
 // TestExternalMCPContainerHealth verifies that the MCP servers container is healthy
 func TestExternalMCPContainerHealth(t *testing.T) {
-
 
 	// Check if container is running
 	runtime := detectContainerRuntime()
@@ -190,7 +186,6 @@ func TestExternalMCPContainerHealth(t *testing.T) {
 
 // TestExternalMCPServerConnectivity verifies that each MCP server can be connected to
 func TestExternalMCPServerConnectivity(t *testing.T) {
-
 
 	mcpHost := os.Getenv("MCP_HOST")
 	if mcpHost == "" {
@@ -226,7 +221,6 @@ func TestExternalMCPServerConnectivity(t *testing.T) {
 
 // TestExternalMCPServerJSONRPC verifies that MCP servers respond to JSON-RPC requests
 func TestExternalMCPServerJSONRPC(t *testing.T) {
-
 
 	mcpHost := os.Getenv("MCP_HOST")
 	if mcpHost == "" {
@@ -286,7 +280,6 @@ func TestExternalMCPServerJSONRPC(t *testing.T) {
 
 // TestExternalMCPServerToolsList verifies that MCP servers list their tools
 func TestExternalMCPServerToolsList(t *testing.T) {
-
 
 	mcpHost := os.Getenv("MCP_HOST")
 	if mcpHost == "" {
@@ -350,7 +343,6 @@ func detectContainerRuntime() string {
 // TestAllExternalMCPServersDocumented verifies that all MCP servers are documented
 func TestAllExternalMCPServersDocumented(t *testing.T) {
 
-
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")
 
@@ -373,7 +365,6 @@ func TestAllExternalMCPServersDocumented(t *testing.T) {
 
 // TestExternalMCPServersInOpenCodeConfig verifies that all MCP servers are in the OpenCode config
 func TestExternalMCPServersInOpenCodeConfig(t *testing.T) {
-
 
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")
@@ -417,7 +408,6 @@ func TestExternalMCPServersInOpenCodeConfig(t *testing.T) {
 // is available for container builds (needed for Alpine apk, npm, pip)
 func TestMCPContainerBuildNetworkConnectivity(t *testing.T) {
 
-
 	// Test host-level network connectivity to Alpine repo
 	t.Run("AlpineRepository", func(t *testing.T) {
 		client := &http.Client{Timeout: 10 * time.Second}
@@ -459,7 +449,6 @@ func TestMCPContainerBuildNetworkConnectivity(t *testing.T) {
 
 // TestMCPContainerNetworkDNSResolution verifies that container DNS resolution works
 func TestMCPContainerNetworkDNSResolution(t *testing.T) {
-
 
 	runtime := detectContainerRuntime()
 	if runtime == "" {

@@ -191,8 +191,8 @@ func TestPrometheusMetricRegistration_Types(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedTypes := map[string]dto.MetricType{
-		"helixagent_reg_type_counter_total":    dto.MetricType_COUNTER,
-		"helixagent_reg_type_gauge":            dto.MetricType_GAUGE,
+		"helixagent_reg_type_counter_total":     dto.MetricType_COUNTER,
+		"helixagent_reg_type_gauge":             dto.MetricType_GAUGE,
 		"helixagent_reg_type_histogram_seconds": dto.MetricType_HISTOGRAM,
 		"helixagent_reg_type_summary":           dto.MetricType_SUMMARY,
 	}

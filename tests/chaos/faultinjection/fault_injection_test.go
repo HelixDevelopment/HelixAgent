@@ -22,9 +22,9 @@ import (
 
 // timeoutProvider simulates a provider that times out mid-stream.
 type timeoutProvider struct {
-	name    string
-	delay   time.Duration // delay before responding
-	calls   int64
+	name  string
+	delay time.Duration // delay before responding
+	calls int64
 }
 
 func (p *timeoutProvider) Complete(
@@ -139,9 +139,9 @@ func (p *corruptProvider) CompleteStream(
 
 // failingProvider always returns errors.
 type failingProvider struct {
-	name     string
-	errMsg   string
-	calls    int64
+	name   string
+	errMsg string
+	calls  int64
 }
 
 func (p *failingProvider) Complete(
@@ -159,10 +159,10 @@ func (p *failingProvider) CompleteStream(
 
 // recoveringProvider fails for N calls, then succeeds.
 type recoveringProvider struct {
-	name        string
-	failCount   int64 // how many calls to fail before recovering
-	calls       int64
-	confidence  float64
+	name       string
+	failCount  int64 // how many calls to fail before recovering
+	calls      int64
+	confidence float64
 }
 
 func (p *recoveringProvider) Complete(

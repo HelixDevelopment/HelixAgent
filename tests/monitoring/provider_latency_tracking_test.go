@@ -121,13 +121,13 @@ func TestMonitoring_ProviderLatency_BucketDistribution(t *testing.T) {
 	// Observe values that should distribute across buckets
 	observations := []float64{
 		0.005, 0.008, // <= 0.01 bucket
-		0.02, 0.03,   // <= 0.05 bucket
-		0.07, 0.09,   // <= 0.1 bucket
-		0.15, 0.20,   // <= 0.25 bucket
-		0.35, 0.45,   // <= 0.5 bucket
-		0.7, 0.9,     // <= 1.0 bucket
-		1.5, 2.0,     // <= 2.5 bucket
-		3.0, 4.0,     // <= 5.0 bucket
+		0.02, 0.03, // <= 0.05 bucket
+		0.07, 0.09, // <= 0.1 bucket
+		0.15, 0.20, // <= 0.25 bucket
+		0.35, 0.45, // <= 0.5 bucket
+		0.7, 0.9, // <= 1.0 bucket
+		1.5, 2.0, // <= 2.5 bucket
+		3.0, 4.0, // <= 5.0 bucket
 	}
 
 	for _, obs := range observations {

@@ -202,10 +202,10 @@ func TestPool_TryAcquire_Contention_Stress(t *testing.T) {
 	sem := semaphore.New(maxWeight)
 
 	var (
-		wg        sync.WaitGroup
-		panics    int64
-		acquired  int64
-		rejected  int64
+		wg       sync.WaitGroup
+		panics   int64
+		acquired int64
+		rejected int64
 	)
 
 	start := make(chan struct{})

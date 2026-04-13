@@ -132,7 +132,6 @@ var AllMCPServers = []MCPServerPortConfig{
 // TestMCPServerConnectivity tests TCP connectivity to all MCP servers
 func TestMCPServerConnectivity(t *testing.T) {
 
-
 	results := make(map[string]bool)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -213,7 +212,6 @@ type MCPProtocolMessage struct {
 // TestMCPProtocolCompliance tests that MCP servers respond correctly to protocol messages
 func TestMCPProtocolCompliance(t *testing.T) {
 
-
 	// Test core servers that should be running
 	coreServers := []MCPServerPortConfig{
 		{Name: "fetch", Port: 9101},
@@ -282,7 +280,6 @@ func TestMCPProtocolCompliance(t *testing.T) {
 // TestMCPToolDiscovery tests that MCP servers report their available tools
 func TestMCPToolDiscovery(t *testing.T) {
 
-
 	// Expected tools for some core servers
 	expectedTools := map[string][]string{
 		"filesystem": {"read_file", "write_file", "list_directory", "create_directory"},
@@ -313,7 +310,6 @@ func TestMCPToolDiscovery(t *testing.T) {
 
 // TestMCPWithLLMProviders tests MCP integration with all supported LLM providers
 func TestMCPWithLLMProviders(t *testing.T) {
-
 
 	// List of LLM providers to test
 	providers := []string{
@@ -382,7 +378,6 @@ func TestMCPWithLLMProviders(t *testing.T) {
 // TestMCPWithAIDebate tests MCP integration within the AI Debate system
 func TestMCPWithAIDebate(t *testing.T) {
 
-
 	baseURL := os.Getenv("HELIXAGENT_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
@@ -440,7 +435,6 @@ func TestMCPWithAIDebate(t *testing.T) {
 // TestMCPServerHealth tests health endpoints for all running MCP servers
 func TestMCPServerHealth(t *testing.T) {
 
-
 	var healthy, unhealthy, unreachable int
 
 	for _, server := range AllMCPServers {
@@ -478,7 +472,6 @@ func getServerPort(name string) int {
 // TestMCPContainerStatus tests that all MCP Docker containers are running
 func TestMCPContainerStatus(t *testing.T) {
 
-
 	// Use centralized container runtime detection.
 	rt := containerRuntime()
 	if rt == "" {
@@ -503,7 +496,6 @@ func TestMCPContainerStatus(t *testing.T) {
 
 // TestMCPEndToEnd performs a full end-to-end test of MCP functionality
 func TestMCPEndToEnd(t *testing.T) {
-
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

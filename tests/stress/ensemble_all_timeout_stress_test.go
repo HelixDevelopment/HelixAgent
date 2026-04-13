@@ -59,9 +59,9 @@ func TestEnsembleAllTimeout(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		providerCount  = 5
+		providerCount   = 5
 		ensembleTimeout = 500 * time.Millisecond // short ensemble timeout
-		concurrency    = 30
+		concurrency     = 30
 	)
 
 	ensemble := services.NewEnsembleService("confidence_weighted", ensembleTimeout)

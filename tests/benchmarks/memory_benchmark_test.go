@@ -83,7 +83,7 @@ func BenchmarkMemoryLatency(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	
+
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			mem := &helixmem.Memory{

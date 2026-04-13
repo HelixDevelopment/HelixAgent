@@ -26,7 +26,7 @@ func TestStreamingBackpressure(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		bufferSize      = 64           // small channel buffer to trigger backpressure
+		bufferSize      = 64 // small channel buffer to trigger backpressure
 		produceDuration = 5 * time.Second
 		// OOM threshold: live heap must not exceed 100 MB during the test.
 		maxHeapMB = 100.0

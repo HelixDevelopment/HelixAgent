@@ -83,9 +83,9 @@ func TestConcurrentDebates_50(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		debateCount    = 50
-		providersEach  = 5
-		debateTimeout  = 10 * time.Second
+		debateCount   = 50
+		providersEach = 5
+		debateTimeout = 10 * time.Second
 	)
 
 	goroutinesBefore := runtime.NumGoroutine()

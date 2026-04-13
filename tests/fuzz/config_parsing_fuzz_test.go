@@ -61,7 +61,7 @@ func FuzzEnvVarParsing(f *testing.F) {
 
 		// os.Getenv simulation: set and read back (safe, sandboxed in test)
 		key := "FUZZ_TEST_VAR_" + strconv.Itoa(len(boolVal))
-		os.Setenv(key, boolVal)  //nolint:errcheck
+		os.Setenv(key, boolVal) //nolint:errcheck
 		_ = os.Getenv(key)
 		os.Unsetenv(key) //nolint:errcheck
 	})

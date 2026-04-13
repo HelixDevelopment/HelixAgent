@@ -28,8 +28,8 @@ func TestEventBus_HighThroughputPublish_Stress(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		publishers     = 200
-		eventsEach     = 100
+		publishers      = 200
+		eventsEach      = 100
 		subscriberCount = 5
 	)
 

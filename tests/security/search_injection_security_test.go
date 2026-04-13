@@ -119,4 +119,3 @@ func TestSearchSecurity_OversizedQuery(t *testing.T) {
 	assert.NotEqual(t, http.StatusInternalServerError, w.Code,
 		"oversized query must not crash the server")
 }
-

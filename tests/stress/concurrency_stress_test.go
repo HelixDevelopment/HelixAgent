@@ -329,9 +329,9 @@ func TestStress_SemaphoreContention(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		semCapacity    = 5
-		numGoroutines  = 50
-		opsPerRoutine  = 20
+		semCapacity   = 5
+		numGoroutines = 50
+		opsPerRoutine = 20
 	)
 
 	sem := concurrency.NewSemaphore(semCapacity)

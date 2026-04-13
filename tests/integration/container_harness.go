@@ -295,7 +295,7 @@ func (h *ContainerHarness) GetServiceURL(service string) string {
 func (h *ContainerHarness) GetServiceURLWithMode(service string, useTestPorts bool) string {
 	host := getServiceHost(service)
 	port := getServicePortWithMode(service, useTestPorts)
-	
+
 	switch service {
 	case "postgresql":
 		return fmt.Sprintf("postgres://helixagent:helixagent123@%s:%s/helixagent_db", host, port)
@@ -379,11 +379,11 @@ func SkipIfContainersUnavailable(t *testing.T) {
 // RequireContainerService skips the test if a specific service is not available
 func RequireContainerService(t *testing.T, service string) {
 	SkipIfContainersUnavailable(t)
-	
+
 	h, _ := GetContainerHarness()
 	host := getServiceHost(service)
 	port := getServicePort(service)
-	
+
 	if !h.isServiceHealthy(host, port) {
 		t.Skipf("Required service %s not available at %s:%s", service, host, port)
 	}
@@ -393,7 +393,7 @@ func RequireContainerService(t *testing.T, service string) {
 // Call this at the start of integration tests that need real containers.
 func SetupIntegrationTest(t *testing.T) *ContainerHarness {
 	t.Helper()
-	
+
 	h, err := GetContainerHarness()
 	if err != nil {
 		t.Fatalf("Failed to initialize container harness: %v", err)
@@ -418,7 +418,7 @@ func getServiceHost(service string) string {
 	if host := os.Getenv(envVar); host != "" {
 		return host
 	}
-	
+
 	// Default to localhost
 	return "localhost"
 }
@@ -436,14 +436,14 @@ func getServicePortWithMode(service string, useTestPorts bool) string {
 	if port := os.Getenv(envVar); port != "" {
 		return port
 	}
-	
+
 	// Return test port if requested
 	if useTestPorts {
 		if port, ok := TestServicePorts[service]; ok {
 			return port
 		}
 	}
-	
+
 	// Return default port
 	if port, ok := DefaultServicePorts[service]; ok {
 		return port
@@ -463,7 +463,7 @@ var findProjectRoot = func() (string, error) {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
-		
+
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			break
@@ -481,10 +481,9 @@ var findProjectRoot = func() (string, error) {
 // TestMainIntegration is the main entry point for integration tests.
 // Use this in your integration test files:
 //
-//   func TestMain(m *testing.M) {
-//       integration.TestMainIntegration(m)
-//   }
-//
+//	func TestMain(m *testing.M) {
+//	    integration.TestMainIntegration(m)
+//	}
 func TestMainIntegration(m *testing.M) {
 	logger := logrus.New()
 	logger.Info("Starting integration test suite with container harness")

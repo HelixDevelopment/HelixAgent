@@ -30,8 +30,8 @@ func TestCircuitBreakerCascade(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		breakerCount   = 10
-		maxFailures    = 5
+		breakerCount    = 10
+		maxFailures     = 5
 		recoveryTimeout = 200 * time.Millisecond
 	)
 

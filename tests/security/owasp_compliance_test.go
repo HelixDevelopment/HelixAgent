@@ -1428,11 +1428,11 @@ func TestOWASP_A05_SecurityMisconfiguration(t *testing.T) {
 		defer resp.Body.Close()
 
 		requiredHeaders := map[string]string{
-			"X-Content-Type-Options":   "nosniff",
-			"X-Frame-Options":          "DENY",
-			"X-XSS-Protection":         "1; mode=block",
-			"Referrer-Policy":          "strict-origin-when-cross-origin",
-			"Content-Security-Policy":  "default-src 'self'",
+			"X-Content-Type-Options":  "nosniff",
+			"X-Frame-Options":         "DENY",
+			"X-XSS-Protection":        "1; mode=block",
+			"Referrer-Policy":         "strict-origin-when-cross-origin",
+			"Content-Security-Policy": "default-src 'self'",
 		}
 
 		for header, expectedValue := range requiredHeaders {

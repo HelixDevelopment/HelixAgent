@@ -100,10 +100,10 @@ func FuzzRateLimitPathConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, path string) {
 		// Simulate path normalisation and exact-match lookup
 		knownPaths := map[string]int{
-			"/v1/chat/completions":    100,
-			"/v1/embeddings":          50,
-			"/v1/agentic/workflows":   20,
-			"/v1/debate":              10,
+			"/v1/chat/completions":     100,
+			"/v1/embeddings":           50,
+			"/v1/agentic/workflows":    20,
+			"/v1/debate":               10,
 			"/v1/startup/verification": 5,
 		}
 

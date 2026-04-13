@@ -47,10 +47,10 @@ type Config struct {
 	NVIDIABaseURL string
 
 	// Processing Options
-	ChunkSize      int
-	ChunkOverlap   int
-	ExtractTables  bool
-	ExtractCharts  bool
+	ChunkSize     int
+	ChunkOverlap  int
+	ExtractTables bool
+	ExtractCharts bool
 }
 
 // LoadConfig loads configuration from environment
@@ -118,22 +118,22 @@ func NewServer(config *Config) *Server {
 
 // DocumentRequest represents a document processing request
 type DocumentRequest struct {
-	DocumentID      string                 `json:"document_id,omitempty"`
-	Content         string                 `json:"content,omitempty"`
-	Source          string                 `json:"source,omitempty"`
-	ExtractTables   *bool                  `json:"extract_tables,omitempty"`
-	ExtractCharts   *bool                  `json:"extract_charts,omitempty"`
-	TableFormat     string                 `json:"table_format,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	DocumentID    string                 `json:"document_id,omitempty"`
+	Content       string                 `json:"content,omitempty"`
+	Source        string                 `json:"source,omitempty"`
+	ExtractTables *bool                  `json:"extract_tables,omitempty"`
+	ExtractCharts *bool                  `json:"extract_charts,omitempty"`
+	TableFormat   string                 `json:"table_format,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // DocumentResult represents document processing result
 type DocumentResult struct {
-	DocumentID  string   `json:"document_id"`
-	Chunks      []Chunk  `json:"chunks"`
-	Tables      []Table  `json:"tables,omitempty"`
-	Charts      []Chart  `json:"charts,omitempty"`
-	TotalPages  int      `json:"total_pages,omitempty"`
+	DocumentID  string    `json:"document_id"`
+	Chunks      []Chunk   `json:"chunks"`
+	Tables      []Table   `json:"tables,omitempty"`
+	Charts      []Chart   `json:"charts,omitempty"`
+	TotalPages  int       `json:"total_pages,omitempty"`
 	ProcessedAt time.Time `json:"processed_at"`
 }
 
@@ -164,10 +164,10 @@ type Chart struct {
 
 // RAGQueryRequest represents a RAG query
 type RAGQueryRequest struct {
-	Query            string   `json:"query"`
-	Collection       string   `json:"collection,omitempty"`
-	TopK             int      `json:"top_k,omitempty"`
-	RequireCitations bool     `json:"require_citations,omitempty"`
+	Query            string                 `json:"query"`
+	Collection       string                 `json:"collection,omitempty"`
+	TopK             int                    `json:"top_k,omitempty"`
+	RequireCitations bool                   `json:"require_citations,omitempty"`
 	Filters          map[string]interface{} `json:"filters,omitempty"`
 }
 
@@ -182,10 +182,10 @@ type RAGQueryResult struct {
 
 // Citation represents a source citation
 type Citation struct {
-	Text      string `json:"text"`
-	SourceID  string `json:"source_id"`
-	Page      int    `json:"page,omitempty"`
-	Section   string `json:"section,omitempty"`
+	Text     string `json:"text"`
+	SourceID string `json:"source_id"`
+	Page     int    `json:"page,omitempty"`
+	Section  string `json:"section,omitempty"`
 }
 
 // Source represents a source document
@@ -199,11 +199,11 @@ type Source struct {
 
 // HealthResponse represents health check response
 type HealthResponse struct {
-	Status     string            `json:"status"`
-	Version    string            `json:"version"`
-	Services   map[string]string `json:"services"`
-	Config     map[string]string `json:"config"`
-	Timestamp  time.Time         `json:"timestamp"`
+	Status    string            `json:"status"`
+	Version   string            `json:"version"`
+	Services  map[string]string `json:"services"`
+	Config    map[string]string `json:"config"`
+	Timestamp time.Time         `json:"timestamp"`
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +339,7 @@ func (s *Server) processWithNemo(ctx context.Context, req *DocumentRequest, extr
 	jsonData, _ := json.Marshal(nemoReq)
 	nemoURL := s.config.ExtractionURL + "/v1/extract"
 
-	 httpReq, err := http.NewRequestWithContext(ctx, "POST", nemoURL, strings.NewReader(string(jsonData)))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", nemoURL, strings.NewReader(string(jsonData)))
 	if err != nil {
 		return nil, err
 	}
@@ -492,30 +492,30 @@ func (s *Server) chunkText(text, docID string) []Chunk {
 	// Simple sentence-based chunking
 	words := strings.Fields(text)
 	var chunks []Chunk
-	
+
 	chunkSize := s.config.ChunkSize
 	overlap := s.config.ChunkOverlap
-	
+
 	for i := 0; i < len(words); i += chunkSize - overlap {
 		end := i + chunkSize
 		if end > len(words) {
 			end = len(words)
 		}
-		
+
 		chunkWords := words[i:end]
 		chunkText := strings.Join(chunkWords, " ")
-		
+
 		chunks = append(chunks, Chunk{
 			ID:       fmt.Sprintf("%s-chunk-%d", docID, len(chunks)),
 			Text:     chunkText,
 			Position: len(chunks),
 		})
-		
+
 		if end >= len(words) {
 			break
 		}
 	}
-	
+
 	return chunks
 }
 
@@ -721,7 +721,7 @@ Answer:`, func() string {
 				{"role": "user", "content": prompt},
 			},
 			"temperature": 0.3,
-			"max_tokens": 4096,
+			"max_tokens":  4096,
 		}
 		jsonData, _ := json.Marshal(reqBody)
 		body = strings.NewReader(string(jsonData))
@@ -734,7 +734,7 @@ Answer:`, func() string {
 				{"role": "user", "content": prompt},
 			},
 			"temperature": 0.3,
-			"max_tokens": 4096,
+			"max_tokens":  4096,
 		}
 		jsonData, _ := json.Marshal(reqBody)
 		body = strings.NewReader(string(jsonData))

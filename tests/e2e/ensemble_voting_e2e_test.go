@@ -53,15 +53,15 @@ func TestEnsembleVoting_MajorityVote_E2E(t *testing.T) {
 	// Two providers agree on "Paris", one disagrees.
 	responses := []*models.LLMResponse{
 		{
-			Content:  "Paris",
+			Content:      "Paris",
 			ProviderName: "provider-a",
 		},
 		{
-			Content:  "Paris",
+			Content:      "Paris",
 			ProviderName: "provider-b",
 		},
 		{
-			Content:  "Lyon",
+			Content:      "Lyon",
 			ProviderName: "provider-c",
 		},
 	}
@@ -103,9 +103,9 @@ func TestEnsembleVoting_SingleResponse(t *testing.T) {
 
 	responses := []*models.LLMResponse{
 		{
-			Content:    "only answer",
+			Content:      "only answer",
 			ProviderName: "solo-provider",
-			Confidence: 0.8,
+			Confidence:   0.8,
 		},
 	}
 

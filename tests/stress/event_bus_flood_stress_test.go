@@ -63,7 +63,7 @@ func TestEventBusFlood_HighThroughput(t *testing.T) {
 	}
 
 	var (
-		wg          sync.WaitGroup
+		wg            sync.WaitGroup
 		publishPanics int64
 	)
 	start := make(chan struct{})

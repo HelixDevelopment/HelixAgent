@@ -424,39 +424,39 @@ func TestIntegration_Cache_CacheServiceDisabledMode(t *testing.T) {
 // the container harness. This tests against a real Redis container.
 func newL2CacheWithRedis(t *testing.T) *cache.TieredCache {
 	t.Helper()
-	
+
 	// Require Redis container to be available
 	RequireContainerService(t, "redis")
-	
+
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
-	
+
 	// Parse Redis URL for client creation
 	opt, err := redis.ParseURL(redisURL)
 	require.NoError(t, err, "Failed to parse Redis URL")
-	
+
 	redisClient := redis.NewClient(opt)
-	
+
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	err = redisClient.Ping(ctx).Err()
 	require.NoError(t, err, "Failed to connect to Redis container")
-	
+
 	cfg := cache.DefaultTieredCacheConfig()
 	cfg.EnableL1 = true
 	cfg.EnableL2 = true
 	cfg.L1MaxSize = 1000
 	cfg.L1TTL = 1 * time.Minute
 	cfg.L2TTL = 5 * time.Minute
-	
+
 	tc := cache.NewTieredCache(redisClient, cfg)
 	t.Cleanup(func() {
 		_ = tc.Close()
 		redisClient.Close()
 	})
-	
+
 	return tc
 }
 
@@ -464,29 +464,29 @@ func newL2CacheWithRedis(t *testing.T) *cache.TieredCache {
 func TestIntegration_Cache_Redis_SetAndGet(t *testing.T) {
 	tc := newL2CacheWithRedis(t)
 	ctx := context.Background()
-	
+
 	// Store a string value (should go to both L1 and L2)
 	err := tc.Set(ctx, "redis:test:key:1", "hello-redis", 5*time.Minute)
 	require.NoError(t, err)
-	
+
 	// Read from cache (L1 will serve initially)
 	var result string
 	found, err := tc.Get(ctx, "redis:test:key:1", &result)
 	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "hello-redis", result)
-	
+
 	// Verify L2 (Redis) also has the value by creating new L1 cache
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
 	opt, _ := redis.ParseURL(redisURL)
 	redisClient := redis.NewClient(opt)
 	defer redisClient.Close()
-	
+
 	val, err := redisClient.Get(ctx, "redis:test:key:1").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "\"hello-redis\"", val, "Value should be stored in Redis")
-	
+
 	t.Log("✓ Redis container integration test passed")
 }
 
@@ -495,34 +495,34 @@ func TestIntegration_Cache_Redis_TTLExpiry(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping TTL expiry test in short mode")
 	}
-	
+
 	tc := newL2CacheWithRedis(t)
 	ctx := context.Background()
-	
+
 	// Store with 500ms TTL
 	err := tc.Set(ctx, "redis:ttl:key", "ephemeral", 500*time.Millisecond)
 	require.NoError(t, err)
-	
+
 	// Immediately readable from L1
 	var result string
 	found, err := tc.Get(ctx, "redis:ttl:key", &result)
 	require.NoError(t, err)
 	assert.True(t, found)
-	
+
 	// Wait for TTL to expire in Redis
 	time.Sleep(1 * time.Second)
-	
+
 	// Create new cache instance (new L1) to force L2 read
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
 	opt, _ := redis.ParseURL(redisURL)
 	redisClient := redis.NewClient(opt)
 	defer redisClient.Close()
-	
+
 	// Value should be gone from Redis
 	_, err = redisClient.Get(ctx, "redis:ttl:key").Result()
 	assert.Equal(t, redis.Nil, err, "Value should have expired in Redis")
-	
+
 	t.Log("✓ Redis TTL expiry test passed")
 }
 
@@ -530,32 +530,32 @@ func TestIntegration_Cache_Redis_TTLExpiry(t *testing.T) {
 func TestIntegration_Cache_Redis_L1L2Consistency(t *testing.T) {
 	tc := newL2CacheWithRedis(t)
 	ctx := context.Background()
-	
+
 	// Store value
 	err := tc.Set(ctx, "consistency:key", "original", 5*time.Minute)
 	require.NoError(t, err)
-	
+
 	// Read from L1 (first read)
 	var l1Val string
 	found, err := tc.Get(ctx, "consistency:key", &l1Val)
 	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "original", l1Val)
-	
+
 	// Verify L2 (Redis) has same value
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
 	opt, _ := redis.ParseURL(redisURL)
 	redisClient := redis.NewClient(opt)
 	defer redisClient.Close()
-	
+
 	l2Val, err := redisClient.Get(ctx, "consistency:key").Result()
 	require.NoError(t, err)
 	assert.Contains(t, l2Val, "original", "L2 should have the same value as L1")
-	
+
 	// Metrics should show L1 hit
 	metrics := tc.Metrics()
 	assert.Greater(t, metrics.L1Hits, int64(0), "Should have L1 hits")
-	
+
 	t.Log("✓ L1/L2 consistency test passed")
 }

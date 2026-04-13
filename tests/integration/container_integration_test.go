@@ -33,16 +33,16 @@ func TestContainer_AllServicesHealthy(t *testing.T) {
 	_ = SetupIntegrationTest(t)
 
 	services := []string{"postgresql", "redis", "chromadb", "cognee", "qdrant"}
-	
+
 	for _, service := range services {
 		t.Run(service, func(t *testing.T) {
 			host := getServiceHost(service)
 			port := getServicePort(service)
-			
+
 			// Verify service is reachable
 			addr := host + ":" + port
 			client := &http.Client{Timeout: 5 * time.Second}
-			
+
 			var url string
 			switch service {
 			case "chromadb":
@@ -50,9 +50,9 @@ func TestContainer_AllServicesHealthy(t *testing.T) {
 			case "cognee":
 				url = "http://" + addr + "/health"
 			case "qdrant":
-				url = "http://" + addr 
+				url = "http://" + addr
 			}
-			
+
 			if url != "" {
 				resp, err := client.Get(url)
 				if err == nil {
@@ -60,11 +60,11 @@ func TestContainer_AllServicesHealthy(t *testing.T) {
 					assert.True(t, resp.StatusCode < 500, "Service %s returned status %d", service, resp.StatusCode)
 				}
 			}
-			
+
 			t.Logf("✓ Service %s is healthy at %s", service, addr)
 		})
 	}
-	
+
 	t.Logf("Container runtime: All %d services are running", len(services))
 }
 
@@ -75,29 +75,29 @@ func TestContainer_AllServicesHealthy(t *testing.T) {
 // TestContainer_PostgreSQL_Connection tests connection to real PostgreSQL container
 func TestContainer_PostgreSQL_Connection(t *testing.T) {
 	RequireContainerService(t, "postgresql")
-	
+
 	harness, _ := GetContainerHarness()
 	connStr := harness.GetServiceURL("postgresql")
-	
+
 	db, err := sql.Open("postgres", connStr+"?sslmode=disable")
 	require.NoError(t, err, "Failed to open PostgreSQL connection")
 	defer db.Close()
-	
+
 	// Set connection timeout
 	db.SetConnMaxLifetime(5 * time.Second)
-	
+
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	err = db.PingContext(ctx)
 	require.NoError(t, err, "Failed to ping PostgreSQL")
-	
+
 	// Verify we can execute a query
 	var version string
 	err = db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
 	require.NoError(t, err, "Failed to execute query")
-	
+
 	assert.Contains(t, version, "PostgreSQL", "Expected PostgreSQL version string")
 	t.Logf("✓ PostgreSQL connection successful: %s", version)
 }
@@ -105,16 +105,16 @@ func TestContainer_PostgreSQL_Connection(t *testing.T) {
 // TestContainer_PostgreSQL_CRUD tests CRUD operations on real PostgreSQL
 func TestContainer_PostgreSQL_CRUD(t *testing.T) {
 	RequireContainerService(t, "postgresql")
-	
+
 	harness, _ := GetContainerHarness()
 	connStr := harness.GetServiceURL("postgresql")
-	
+
 	db, err := sql.Open("postgres", connStr+"?sslmode=disable")
 	require.NoError(t, err)
 	defer db.Close()
-	
+
 	ctx := context.Background()
-	
+
 	// Create test table
 	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS test_container_integration (
@@ -124,26 +124,26 @@ func TestContainer_PostgreSQL_CRUD(t *testing.T) {
 		)
 	`)
 	require.NoError(t, err, "Failed to create test table")
-	
+
 	// Cleanup after test
 	defer db.ExecContext(ctx, "DROP TABLE IF EXISTS test_container_integration")
-	
+
 	// Insert test data
-	result, err := db.ExecContext(ctx, 
-		"INSERT INTO test_container_integration (name) VALUES ($1)", 
+	result, err := db.ExecContext(ctx,
+		"INSERT INTO test_container_integration (name) VALUES ($1)",
 		"container-test")
 	require.NoError(t, err, "Failed to insert test data")
-	
+
 	rowsAffected, _ := result.RowsAffected()
 	assert.Equal(t, int64(1), rowsAffected, "Expected 1 row to be inserted")
-	
+
 	// Query test data
 	var retrievedName string
-	err = db.QueryRowContext(ctx, 
-		"SELECT name FROM test_container_integration WHERE name = $1", 
+	err = db.QueryRowContext(ctx,
+		"SELECT name FROM test_container_integration WHERE name = $1",
 		"container-test").Scan(&retrievedName)
 	require.NoError(t, err, "Failed to query test data")
-	
+
 	assert.Equal(t, "container-test", retrievedName)
 	t.Log("✓ PostgreSQL CRUD operations successful")
 }
@@ -155,54 +155,54 @@ func TestContainer_PostgreSQL_CRUD(t *testing.T) {
 // TestContainer_Redis_Connection tests connection to real Redis container
 func TestContainer_Redis_Connection(t *testing.T) {
 	RequireContainerService(t, "redis")
-	
+
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
-	
+
 	// Parse redis URL
 	opt, err := redis.ParseURL(redisURL)
 	require.NoError(t, err, "Failed to parse Redis URL")
-	
+
 	client := redis.NewClient(opt)
 	defer client.Close()
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	// Test connection with PING
 	pong, err := client.Ping(ctx).Result()
 	require.NoError(t, err, "Failed to ping Redis")
 	assert.Equal(t, "PONG", pong, "Redis should respond with PONG")
-	
+
 	t.Log("✓ Redis connection successful")
 }
 
 // TestContainer_Redis_Operations tests Redis operations on real container
 func TestContainer_Redis_Operations(t *testing.T) {
 	RequireContainerService(t, "redis")
-	
+
 	harness, _ := GetContainerHarness()
 	redisURL := harness.GetServiceURL("redis")
-	
+
 	opt, err := redis.ParseURL(redisURL)
 	require.NoError(t, err)
-	
+
 	client := redis.NewClient(opt)
 	defer client.Close()
-	
+
 	ctx := context.Background()
-	
+
 	// Test SET/GET
 	err = client.Set(ctx, "container:test:key", "test-value", 10*time.Second).Err()
 	require.NoError(t, err, "Failed to SET value")
-	
+
 	val, err := client.Get(ctx, "container:test:key").Result()
 	require.NoError(t, err, "Failed to GET value")
 	assert.Equal(t, "test-value", val)
-	
+
 	// Cleanup
 	client.Del(ctx, "container:test:key")
-	
+
 	t.Log("✓ Redis operations successful")
 }
 
@@ -213,16 +213,16 @@ func TestContainer_Redis_Operations(t *testing.T) {
 // TestContainer_ChromaDB_Connection tests connection to real ChromaDB container
 func TestContainer_ChromaDB_Connection(t *testing.T) {
 	RequireContainerService(t, "chromadb")
-	
+
 	harness, _ := GetContainerHarness()
 	chromaURL := harness.GetServiceURL("chromadb")
-	
+
 	// Health check via HTTP
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(chromaURL + "/api/v2/heartbeat")
 	require.NoError(t, err, "Failed to connect to ChromaDB")
 	defer resp.Body.Close()
-	
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "ChromaDB health check should return 200")
 	t.Log("✓ ChromaDB connection successful")
 }
@@ -267,15 +267,15 @@ func TestContainer_Cognee_Connection(t *testing.T) {
 // TestContainer_Qdrant_Connection tests connection to real Qdrant container
 func TestContainer_Qdrant_Connection(t *testing.T) {
 	RequireContainerService(t, "qdrant")
-	
+
 	harness, _ := GetContainerHarness()
 	qdrantURL := harness.GetServiceURL("qdrant")
-	
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(qdrantURL)
 	require.NoError(t, err, "Failed to connect to Qdrant")
 	defer resp.Body.Close()
-	
+
 	// Qdrant root returns info without auth
 	assert.True(t, resp.StatusCode < 500, "Qdrant should be accessible")
 	t.Log("✓ Qdrant connection successful")

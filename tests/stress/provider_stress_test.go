@@ -24,7 +24,7 @@ type providerStressMock struct {
 	name       string
 	latency    time.Duration
 	confidence float64
-	failAfter  int64  // if > 0, fail after this many calls
+	failAfter  int64 // if > 0, fail after this many calls
 	calls      int64
 	streaming  bool
 }
@@ -114,9 +114,9 @@ func TestStress_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 	require.NotNil(t, registry)
 
 	const (
-		numReaders  = 100
-		numWriters  = 30
-		numScorers  = 20
+		numReaders = 100
+		numWriters = 30
+		numScorers = 20
 	)
 
 	var wg sync.WaitGroup

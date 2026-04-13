@@ -271,8 +271,8 @@ func TestChaos_CacheMiss_Degradation(t *testing.T) {
 	ctx := context.Background()
 
 	const (
-		numGoroutines  = 30
-		opsPerRoutine  = 50
+		numGoroutines = 30
+		opsPerRoutine = 50
 	)
 
 	var wg sync.WaitGroup

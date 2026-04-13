@@ -46,10 +46,10 @@ type DebateService struct {
 		Get(ctx context.Context, id string) (*helixmem.Memory, error)
 		Search(ctx context.Context, query string, opts *helixmem.SearchOptions) ([]*helixmem.Memory, error)
 	}
-	specifierAdapter *specifieradapter.SpecAdapter          // HelixSpecifier fusion engine (default)
-	logRepository    DebateLogRepository                    // Optional: for persistent logging
-	teamConfig       *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
-	commLogger       *DebateCommLogger                      // Retrofit-like communication logger
+	specifierAdapter    *specifieradapter.SpecAdapter          // HelixSpecifier fusion engine (default)
+	logRepository       DebateLogRepository                    // Optional: for persistent logging
+	teamConfig          *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
+	commLogger          *DebateCommLogger                      // Retrofit-like communication logger
 	mu                  sync.Mutex                             // Protects intentCache, codeIntentCache, and enhancedIntentCache
 	intentCache         map[string]*IntentClassificationResult // Cache for intent classification
 	codeIntentCache     map[string]bool                        // Cache for code generation intent results

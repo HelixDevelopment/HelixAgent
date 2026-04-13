@@ -23,15 +23,15 @@ func init() {
 
 // loadMetrics tracks per-test metrics for load analysis.
 type loadMetrics struct {
-	totalRequests   int64
-	successCount    int64
-	failureCount    int64
-	rejectedCount   int64
-	totalLatencyNs  int64
-	maxLatencyNs    int64
-	minLatencyNs    int64
-	goroutinePeak   int64
-	memAllocBytes   int64
+	totalRequests  int64
+	successCount   int64
+	failureCount   int64
+	rejectedCount  int64
+	totalLatencyNs int64
+	maxLatencyNs   int64
+	minLatencyNs   int64
+	goroutinePeak  int64
+	memAllocBytes  int64
 }
 
 func (m *loadMetrics) recordSuccess(latency time.Duration) {

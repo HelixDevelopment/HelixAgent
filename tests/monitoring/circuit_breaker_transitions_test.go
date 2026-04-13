@@ -123,9 +123,9 @@ func TestMonitoring_CircuitBreaker_MultiProvider(t *testing.T) {
 
 	// Set different states for different providers
 	stateGauge.WithLabelValues("openai").Set(0)    // closed
-	stateGauge.WithLabelValues("anthropic").Set(1)  // open
-	stateGauge.WithLabelValues("deepseek").Set(2)   // half-open
-	stateGauge.WithLabelValues("gemini").Set(0)     // closed
+	stateGauge.WithLabelValues("anthropic").Set(1) // open
+	stateGauge.WithLabelValues("deepseek").Set(2)  // half-open
+	stateGauge.WithLabelValues("gemini").Set(0)    // closed
 
 	metricFamilies, err := registry.Gather()
 	require.NoError(t, err)

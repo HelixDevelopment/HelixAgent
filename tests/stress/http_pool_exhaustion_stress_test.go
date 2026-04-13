@@ -32,7 +32,7 @@ func TestHTTPPoolExhaustion(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
 	const (
-		maxConnsPerHost = 5  // tight pool to force exhaustion quickly
+		maxConnsPerHost = 5 // tight pool to force exhaustion quickly
 		holdDuration    = 200 * time.Millisecond
 		requestTimeout  = 150 * time.Millisecond // shorter than hold — causes timeout
 		totalRequests   = 50

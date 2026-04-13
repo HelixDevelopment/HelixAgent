@@ -20,7 +20,7 @@ import (
 // stormMockProvider implements llm.LLMProvider for circuit breaker storm tests.
 // The alwaysFail flag controls whether Complete returns an error or a response.
 type stormMockProvider struct {
-	id        string
+	id         string
 	alwaysFail bool
 	callCount  atomic.Int64
 }

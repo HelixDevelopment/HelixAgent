@@ -81,9 +81,9 @@ func TestLazyLoading_SyncOnceCount(t *testing.T) {
 // =============================================================================
 
 // TestLazyProvider_InitDeferred verifies that:
-//   1. A newly created LazyProvider reports IsInitialized() == false.
-//   2. After Get() is called, IsInitialized() == true.
-//   3. The factory is called exactly once even under concurrent access.
+//  1. A newly created LazyProvider reports IsInitialized() == false.
+//  2. After Get() is called, IsInitialized() == true.
+//  3. The factory is called exactly once even under concurrent access.
 func TestLazyProvider_InitDeferred(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping in short mode")
@@ -211,10 +211,10 @@ func TestLazyProvider_ErrorPropagation(t *testing.T) {
 // =============================================================================
 
 // TestLazyServiceRegistry_DeferredInit verifies that:
-//   1. Registering a service does not call the factory.
-//   2. The factory is called on the first Get().
-//   3. Subsequent Get() calls return the cached value without re-invoking
-//      the factory.
+//  1. Registering a service does not call the factory.
+//  2. The factory is called on the first Get().
+//  3. Subsequent Get() calls return the cached value without re-invoking
+//     the factory.
 func TestLazyServiceRegistry_DeferredInit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping in short mode")

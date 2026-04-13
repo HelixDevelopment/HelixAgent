@@ -292,18 +292,18 @@ func BenchmarkIntentCacheLookup(b *testing.B) {
 
 // benchChatResponse is a typical OpenAI-compatible chat completion response.
 type benchChatResponse struct {
-	ID      string               `json:"id"`
-	Object  string               `json:"object"`
-	Created int64                `json:"created"`
-	Model   string               `json:"model"`
-	Choices []benchChoiceItem    `json:"choices"`
-	Usage   benchUsage           `json:"usage"`
+	ID      string            `json:"id"`
+	Object  string            `json:"object"`
+	Created int64             `json:"created"`
+	Model   string            `json:"model"`
+	Choices []benchChoiceItem `json:"choices"`
+	Usage   benchUsage        `json:"usage"`
 }
 
 type benchChoiceItem struct {
-	Index        int             `json:"index"`
-	Message      benchMessage    `json:"message"`
-	FinishReason string          `json:"finish_reason"`
+	Index        int          `json:"index"`
+	Message      benchMessage `json:"message"`
+	FinishReason string       `json:"finish_reason"`
 }
 
 type benchMessage struct {

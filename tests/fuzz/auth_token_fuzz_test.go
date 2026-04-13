@@ -44,7 +44,7 @@ func FuzzJWTTokenValidation(f *testing.F) {
 	f.Add("not-a-jwt-at-all")
 	f.Add(strings.Repeat("a", 10000))
 	f.Add("header.payload.signature.extra.parts")
-	f.Add("..") // Three-part but empty
+	f.Add("..")                                                               // Three-part but empty
 	f.Add("eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0.") // alg:none attack
 	f.Add("\x00\x01\x02\xff\xfe")
 	f.Add("eyJhbGciOiJSUzI1NiJ9.eyJ0ZXN0IjoxfQ.signature") // RS256 alg confusion

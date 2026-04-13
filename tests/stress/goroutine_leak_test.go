@@ -91,7 +91,7 @@ func TestGoroutineLeakDetection(t *testing.T) {
 
 		for i := 0; i < 200; i++ {
 			timer := time.NewTimer(time.Hour) // Long timer
-			timer.Stop()                       // Must stop to prevent leak
+			timer.Stop()                      // Must stop to prevent leak
 		}
 
 		time.Sleep(100 * time.Millisecond)

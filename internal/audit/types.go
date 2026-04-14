@@ -119,19 +119,23 @@ func containsFold(s, substr string) bool {
 	return false
 }
 
+var skipPatterns = []struct {
+	substr   string
+	category SkipCategory
+}{
+	{"not found", CategoryInfrastructure},
+	{"not available", CategoryInfrastructure},
+	{"not accessible", CategoryInfrastructure},
+	{"integration test", CategoryInfrastructure},
+	{"container runtime", CategoryInfrastructure},
+	{"short mode", CategoryFlakyGuard},
+	{"involves sleep", CategoryFlakyGuard},
+}
+
 func (se *SkipEntry) Classify() {
-	reasons := map[string]SkipCategory{
-		"not found":         CategoryInfrastructure,
-		"not available":     CategoryInfrastructure,
-		"not accessible":    CategoryInfrastructure,
-		"short mode":        CategoryFlakyGuard,
-		"involves sleep":    CategoryFlakyGuard,
-		"integration test":  CategoryInfrastructure,
-		"container runtime": CategoryInfrastructure,
-	}
-	for substr, cat := range reasons {
-		if containsFold(se.Reason, substr) {
-			se.Category = cat
+	for _, p := range skipPatterns {
+		if containsFold(se.Reason, p.substr) {
+			se.Category = p.category
 			return
 		}
 	}

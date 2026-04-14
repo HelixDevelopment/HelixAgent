@@ -2333,18 +2333,15 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	var err error
 
 	// Build OpenCode configuration.
-	// HelixLLM is ALWAYS included as a selectable provider so the user
-	// can switch to local inference at any time. When llama.cpp isn't
-	// running, requests to HelixLLM will fail at the router level — but
-	// the provider MUST remain visible in the OpenCode UI. Agents
-	// default to helixagent (debate ensemble) so HelixLLM errors don't
-	// block normal usage.
+	// TWO SEPARATE PROVIDERS for different routing paths:
+	// 1. helixagent provider → routes to HelixAgent server (AI Debate ensemble)
+	// 2. helixllm provider → routes directly to HelixLLM server (fast local inference)
 	config := OpenCodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		Provider: map[string]OpenCodeProviderDefNew{
 			"helixagent": {
 				NPM:  "@ai-sdk/openai-compatible",
-				Name: "HelixAgent",
+				Name: "HelixAgent AI Debate Ensemble",
 				Options: &OpenCodeProviderOptionsNew{
 					BaseURL: baseURL + "/v1",
 					APIKey:  apiKey,
@@ -2357,6 +2354,16 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 							Output:  8192,
 						},
 					},
+				},
+			},
+			"helixllm": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "Helix LLM (Local Inference)",
+				Options: &OpenCodeProviderOptionsNew{
+					BaseURL: helixLLMEndpoint + "/v1",
+					APIKey:  helixLLMAPIKey,
+				},
+				Models: map[string]OpenCodeModelDefNew{
 					"helix-llm": {
 						Name: "Helix LLM",
 						Limit: &OpenCodeModelLimit{
@@ -2368,25 +2375,24 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 			},
 		},
 		// Agent configuration - uses provider-id/model-id format
-		// All agents route through the helixagent provider so HelixAgent
-		// can apply smart routing (tools→direct provider, everything
-		// else→debate ensemble).
+		// coder/summarizer → helixagent (debate) for quality
+		// task/title → helixllm for fast local inference
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
 				Model:     "helixagent/helix-debate",
 				MaxTokens: 8192,
 			},
-			"task": {
-				Model:     "helixagent/helix-llm",
-				MaxTokens: 4096,
-			},
-			"title": {
-				Model:     "helixagent/helix-llm",
-				MaxTokens: 80,
-			},
 			"summarizer": {
 				Model:     "helixagent/helix-debate",
 				MaxTokens: 4096,
+			},
+			"task": {
+				Model:     "helixllm/helix-llm",
+				MaxTokens: 4096,
+			},
+			"title": {
+				Model:     "helixllm/helix-llm",
+				MaxTokens: 80,
 			},
 		},
 		MCP:    getMCPServersWithHelixLLM(baseURL, helixLLMEndpoint, *workingMCPsOnly),

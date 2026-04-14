@@ -384,6 +384,24 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
+	// Check if client explicitly requested a specific model
+	// helix-llm or helixllm/helix-llm → route to HelixLLM directly for fast local inference
+	// helix-debate or helixagent/helix-debate → route to AI Debate ensemble for best quality
+	// empty/default → route to ensemble for best results
+	modelToCheck := req.Model
+	if modelToCheck == "" {
+		// Default - use ensemble
+		logrus.Info("No specific model requested - using AI Debate ensemble (default)")
+	} else if modelToCheck == "helix-llm" || modelToCheck == "helixllm/helix-llm" {
+		logrus.Info("Client requested helix-llm - routing to HelixLLM for direct local inference")
+		h.processWithHelixLLM(c, &req)
+		return
+	} else if modelToCheck == "helix-debate" || modelToCheck == "helixagent/helix-debate" {
+		logrus.Info("Client requested helix-debate - routing to AI Debate ensemble")
+	} else {
+		logrus.Infof("Model '%s' not recognized, using AI Debate ensemble", modelToCheck)
+	}
+
 	// Check if this is a tool result processing turn vs a new user request
 	// CRITICAL: Tool results must be processed directly to prevent infinite loops
 	// Only NEW user messages should trigger a fresh AI Debate cycle
@@ -527,6 +545,14 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 
 // handleStreamingChatCompletions handles streaming chat completions with SSE
 func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *OpenAIChatRequest) {
+	// Check if client explicitly requested helixllm provider
+	// Parse model string: "helixllm/helix-llm" format
+	if req.Model == "helixllm/helix-llm" || req.Model == "helix-llm" {
+		logrus.Info("Client requested helixllm/helix-llm - streaming via HelixLLM")
+		h.streamWithHelixLLM(c, req)
+		return
+	}
+
 	// Convert to internal request format
 	internalReq := h.convertOpenAIChatRequest(req, c)
 
@@ -2460,6 +2486,107 @@ func (h *UnifiedHandler) processWithDirectProviderStream(
 	}
 
 	return nil, fmt.Errorf("no direct provider available for streaming tool-calling request")
+}
+
+// processWithHelixLLM routes a non-streaming request directly to HelixLLM for fast local inference
+func (h *UnifiedHandler) processWithHelixLLM(c *gin.Context, req *OpenAIChatRequest) {
+	if h.providerRegistry == nil {
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_available", "HelixLLM provider not available", "provider registry not initialized")
+		return
+	}
+
+	provider, err := h.providerRegistry.GetProvider("helixllm")
+	if err != nil {
+		logrus.WithError(err).Warn("HelixLLM provider not found")
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_found", "HelixLLM provider not configured", err.Error())
+		return
+	}
+
+	// Convert OpenAI request to internal format
+	internalReq := h.convertOpenAIChatRequest(req, c)
+
+	// Call HelixLLM directly
+	response, err := provider.Complete(c.Request.Context(), internalReq)
+	if err != nil {
+		logrus.WithError(err).Warn("HelixLLM request failed")
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_error", "HelixLLM request failed", err.Error())
+		return
+	}
+
+	// Convert response to OpenAI format
+	openAIResp := h.convertSingleResponseToOpenAI(response, req.Model)
+	c.JSON(http.StatusOK, openAIResp)
+}
+
+// streamWithHelixLLM routes a streaming request directly to HelixLLM
+func (h *UnifiedHandler) streamWithHelixLLM(c *gin.Context, req *OpenAIChatRequest) {
+	if h.providerRegistry == nil {
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_available", "HelixLLM provider not available", "provider registry not initialized")
+		return
+	}
+
+	provider, err := h.providerRegistry.GetProvider("helixllm")
+	if err != nil {
+		logrus.WithError(err).Warn("HelixLLM provider not found for streaming")
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_found", "HelixLLM provider not configured", err.Error())
+		return
+	}
+
+	// Convert OpenAI request to internal format
+	internalReq := h.convertOpenAIChatRequest(req, c)
+
+	// Create streaming response
+	streamChan, err := provider.CompleteStream(c.Request.Context(), internalReq)
+	if err != nil {
+		logrus.WithError(err).Warn("HelixLLM streaming request failed")
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_error", "HelixLLM streaming failed", err.Error())
+		return
+	}
+
+	// Stream response to client
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+	for chunk := range streamChan {
+		// Convert chunk to SSE format
+		sseData := h.convertChunkToSSE(chunk, streamID, req.Model)
+		c.Writer.Write([]byte(sseData))
+		c.Writer.Flush()
+	}
+	c.Writer.Write([]byte("data: [DONE]\n\n"))
+}
+
+func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse, model string) OpenAIChatResponse {
+	return OpenAIChatResponse{
+		ID:                resp.ID,
+		Object:            "chat.completion",
+		Created:           time.Now().Unix(),
+		Model:             model,
+		SystemFingerprint: "fp_helixllm_v1",
+		Choices: []OpenAIChoice{
+			{
+				Index: 0,
+				Message: OpenAIMessage{
+					Role:    "assistant",
+					Content: resp.Content,
+				},
+				FinishReason: resp.FinishReason,
+			},
+		},
+		Usage: &OpenAIUsage{
+			PromptTokens:     resp.TokensUsed / 2,
+			CompletionTokens: resp.TokensUsed / 2,
+			TotalTokens:      resp.TokensUsed,
+		},
+	}
+}
+
+func (h *UnifiedHandler) convertChunkToSSE(chunk *models.LLMResponse, streamID, model string) string {
+	return fmt.Sprintf("data: {\"id\":\"%s\",\"object\":\"chat.completion.chunk\",\"created\":%d,\"model\":\"%s\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"%s\"},\"finish_reason\":null}]}\n\n",
+		streamID, time.Now().Unix(), model, chunk.Content)
 }
 
 func (h *UnifiedHandler) processWithEnsembleStream(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (<-chan *models.LLMResponse, error) {

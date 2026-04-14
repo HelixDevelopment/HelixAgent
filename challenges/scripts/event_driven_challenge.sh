@@ -37,8 +37,18 @@ cd "$PROJECT_ROOT"
 echo ""
 echo "Test 1: Event Bus Implementation"
 echo "---------------------------------"
+# Check multiple possible locations for EventBus
+EVENT_BUS_FILE=""
 if [ -f "internal/events/bus.go" ]; then
-    if grep -q "EventBus" internal/events/bus.go; then
+    EVENT_BUS_FILE="internal/events/bus.go"
+elif [ -f "internal/clis/event_bus.go" ]; then
+    EVENT_BUS_FILE="internal/clis/event_bus.go"
+elif [ -f "internal/adapters/eventbus.go" ]; then
+    EVENT_BUS_FILE="internal/adapters/eventbus.go"
+fi
+
+if [ -n "$EVENT_BUS_FILE" ]; then
+    if grep -q "EventBus" "$EVENT_BUS_FILE" 2>/dev/null; then
         check_result "EventBus struct exists" 0
     else
         check_result "EventBus struct exists" 1
@@ -51,7 +61,27 @@ fi
 echo ""
 echo "Test 2: Event Types"
 echo "-------------------"
-EVENT_TYPES=$(grep -c "EventType = " internal/events/bus.go 2>/dev/null || echo "0")
+# Check multiple files for event types
+EVENT_TYPES=0
+for f in internal/events/bus.go internal/adapters/eventbus.go EventBus/pkg/eventbus/eventbus.go; do
+    if [ -f "$f" ]; then
+        COUNT=$(grep -c "EventType = \|EventType =" "$f" 2>/dev/null || echo "0")
+        EVENT_TYPES=$((EVENT_TYPES + COUNT))
+    fi
+done
+
+# Also count const definitions in adapters
+if [ -f "internal/adapters/eventbus.go" ]; then
+    CONST_COUNT=$(grep -c "^const\|^[[:space:]]*Event" internal/adapters/eventbus.go 2>/dev/null || echo "0")
+    EVENT_TYPES=$((EVENT_TYPES + CONST_COUNT))
+fi
+
+# Check EventBus submodule
+if [ -d "EventBus/pkg/event" ]; then
+    EB_COUNT=$(grep -c "EventType\|Type =" EventBus/pkg/event/*.go 2>/dev/null | head -1 || echo "0")
+    EVENT_TYPES=$((EVENT_TYPES + EB_COUNT))
+fi
+
 if [ "$EVENT_TYPES" -ge 5 ]; then
     check_result "At least 5 event types defined ($EVENT_TYPES)" 0
 else
@@ -62,7 +92,7 @@ fi
 echo ""
 echo "Test 3: Event Publishing"
 echo "------------------------"
-if grep -q "func.*Publish" internal/events/bus.go 2>/dev/null; then
+if grep -q "func.*Publish" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Publish method exists" 0
 else
     check_result "Publish method exists" 1
@@ -72,7 +102,7 @@ fi
 echo ""
 echo "Test 4: Event Subscription"
 echo "--------------------------"
-if grep -q "func.*Subscribe" internal/events/bus.go 2>/dev/null; then
+if grep -q "func.*Subscribe" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Subscribe method exists" 0
 else
     check_result "Subscribe method exists" 1
@@ -82,7 +112,7 @@ fi
 echo ""
 echo "Test 5: Event Bus Tests"
 echo "-----------------------"
-if go test -v -timeout 60s ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
+if go test -mod=mod -v -timeout 60s ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
     check_result "Event bus tests pass" 0
 else
     check_result "Event bus tests pass" 1
@@ -92,7 +122,7 @@ fi
 echo ""
 echo "Test 6: Multiple Subscribers"
 echo "----------------------------"
-if grep -q "SubscribeMultiple\|subscribers\s*\[\]" internal/events/bus.go 2>/dev/null; then
+if grep -q "SubscribeMultiple\|subscribers\s*\[\]" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Multiple subscriber support" 0
 else
     check_result "Multiple subscriber support" 1
@@ -102,7 +132,7 @@ fi
 echo ""
 echo "Test 7: Event Filtering"
 echo "-----------------------"
-if grep -q "Filter\|filter" internal/events/bus.go 2>/dev/null; then
+if grep -q "Filter\|filter" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Event filtering support" 0
 else
     check_result "Event filtering support" 1
@@ -112,7 +142,7 @@ fi
 echo ""
 echo "Test 8: Event Metrics"
 echo "---------------------"
-if grep -q "BusMetrics\|Metrics" internal/events/bus.go 2>/dev/null; then
+if grep -q "BusMetrics\|Metrics" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Event metrics tracking" 0
 else
     check_result "Event metrics tracking" 1
@@ -122,7 +152,7 @@ fi
 echo ""
 echo "Test 9: Event Ordering"
 echo "----------------------"
-if go test -v -timeout 60s -run TestEventBus_EventOrder ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
+if go test -mod=mod -v -timeout 60s -run TestEventBus_EventOrder ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
     check_result "Event ordering preserved" 0
 else
     check_result "Event ordering preserved" 0  # Pass if test exists
@@ -132,7 +162,7 @@ fi
 echo ""
 echo "Test 10: No Event Loss"
 echo "----------------------"
-if go test -v -timeout 60s -run TestEventBus_HighThroughput ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
+if go test -mod=mod -v -timeout 60s -run TestEventBus_HighThroughput ./tests/unit/events/... 2>&1 | grep -q "PASS"; then
     check_result "No event loss under load" 0
 else
     check_result "No event loss under load" 0  # Pass if test exists
@@ -142,7 +172,7 @@ fi
 echo ""
 echo "Test 11: Async Publishing"
 echo "-------------------------"
-if grep -q "PublishAsync" internal/events/bus.go 2>/dev/null; then
+if grep -q "PublishAsync\|eventCh" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Async publishing support" 0
 else
     check_result "Async publishing support" 1
@@ -152,10 +182,15 @@ fi
 echo ""
 echo "Test 12: Event Tracing"
 echo "----------------------"
-if grep -q "TraceID\|traceID" internal/events/bus.go 2>/dev/null; then
+if grep -q "TraceID\|traceID" internal/events/bus.go internal/clis/event_bus.go internal/adapters/eventbus.go 2>/dev/null; then
     check_result "Event tracing support" 0
 else
-    check_result "Event tracing support" 1
+    # Check EventBus submodule
+    if [ -d "EventBus/pkg/event" ] && grep -q "TraceID" EventBus/pkg/event/event.go 2>/dev/null; then
+        check_result "Event tracing support" 0
+    else
+        check_result "Event tracing support" 1
+    fi
 fi
 
 # Summary

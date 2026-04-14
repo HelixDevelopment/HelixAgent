@@ -2,6 +2,7 @@ package audit
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -49,6 +50,7 @@ var runtimeWiredPatterns = []string{
 func ScanDeadCode(rootDir string, entryPoints []string) ([]DeadCodeEntry, error) {
 	allFuncs := map[string]*DeadCodeEntry{}
 	fileContents := map[string][]string{}
+	globalNameIndex := map[string]int{}
 	err := filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -71,6 +73,13 @@ func ScanDeadCode(rootDir string, entryPoints []string) ([]DeadCodeEntry, error)
 			return readErr
 		}
 		fileContents[rel] = lines
+		for _, line := range lines {
+			for _, m := range funcCallPattern.FindAllStringSubmatch(line, -1) {
+				if len(m) > 1 {
+					globalNameIndex[m[1]]++
+				}
+			}
+		}
 		extractFuncDeclsFromLines(lines, rel, allFuncs)
 		return nil
 	})
@@ -113,14 +122,14 @@ func ScanDeadCode(rootDir string, entryPoints []string) ([]DeadCodeEntry, error)
 		entry.Reachable = isReachable
 		entry.Ident = name
 		if !isReachable {
-			entry.Confidence, entry.Reason = classifyDeadCode(name, entry.File, fileContents)
+			entry.Confidence, entry.Reason = classifyDeadCode(name, entry.File, fileContents, globalNameIndex)
 		}
 		results = append(results, *entry)
 	}
 	return results, nil
 }
 
-func classifyDeadCode(funcName, file string, fileContents map[string][]string) (DeadCodeConfidence, string) {
+func classifyDeadCode(funcName, file string, fileContents map[string][]string, globalNameIndex map[string]int) (DeadCodeConfidence, string) {
 	lines, ok := fileContents[file]
 	if !ok {
 		return ConfidenceNeedsReview, "file not available for analysis"
@@ -153,7 +162,12 @@ func classifyDeadCode(funcName, file string, fileContents map[string][]string) (
 		return ConfidenceNeedsReview, "constructor function may be used via reflection or DI"
 	}
 
-	return ConfidenceSafeToRemove, "no references found in codebase"
+	globalRefCount := globalNameIndex[funcName]
+	if globalRefCount > 1 {
+		return ConfidenceNeedsReview, fmt.Sprintf("name appears %d times globally - may be called via interface or from another package", globalRefCount)
+	}
+
+	return ConfidenceSafeToRemove, "no references found anywhere in codebase"
 }
 
 func extractPattern(line, pattern string) string {

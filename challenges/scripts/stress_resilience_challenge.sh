@@ -71,7 +71,7 @@ fi
 # --------------------------------------------------------------------------
 # Test 4: Stress tests compile with stress build tag
 # --------------------------------------------------------------------------
-if GOMAXPROCS=2 nice -n 19 go test -tags stress -run=^$ -count=0 \
+if GOMAXPROCS=2 nice -n 19 go test -mod=mod -tags stress -run=^$ -count=0 \
     -p 1 ./tests/stress/... 2>/dev/null; then
     record_result "stress tests compile with -tags stress" "PASS"
 else

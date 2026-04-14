@@ -215,7 +215,7 @@ fi
 section "Section 5: Binary Compilation"
 
 # Test 5.1: Binary builds without errors
-if go build -o /dev/null "$PROJECT_ROOT/cmd/helixagent/" 2>/dev/null; then
+if go build -mod=mod -o /dev/null "$PROJECT_ROOT/cmd/helixagent/" 2>/dev/null; then
     pass "helixagent binary compiles successfully"
 else
     fail "helixagent binary compilation failed"

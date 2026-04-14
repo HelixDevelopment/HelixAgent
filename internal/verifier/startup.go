@@ -20,6 +20,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/junie"
 	"dev.helix.agent/internal/llm/providers/qwen"
 	"dev.helix.agent/internal/llm/providers/zen"
+	"digital.vasic.llmsverifier/api_keys"
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
 	"github.com/sirupsen/logrus"
 )
@@ -272,25 +273,59 @@ func (sv *StartupVerifier) discoverProviders(ctx context.Context) ([]*ProviderDi
 	discovered := make([]*ProviderDiscoveryResult, 0)
 	seen := make(map[string]bool)
 
-	// 1. Discover OAuth providers first (highest priority)
-	oauthProviders := sv.discoverOAuthProviders(ctx)
-	for _, p := range oauthProviders {
-		if !seen[p.Type] {
-			discovered = append(discovered, p)
-			seen[p.Type] = true
-			sv.log.WithFields(logrus.Fields{
-				"provider": p.Type,
-				"source":   p.Source,
-			}).Debug("Discovered OAuth provider")
+	faultyKeys, err := api_keys.ReadFaultyAPIKeys()
+	if err != nil {
+		sv.log.WithField("error", err).Warn("Failed to read faulty API keys")
+	}
+
+	unsupportedScanner := api_keys.NewEnvVarScanner()
+	unsupportedKeys, err := unsupportedScanner.ScanEnvForUnsupportedKeys()
+	if err != nil {
+		sv.log.WithField("error", err).Warn("Failed to scan for unsupported API keys")
+	}
+	for keyName, _ := range unsupportedKeys {
+		if err := api_keys.WriteUnsupportedAPIKey(keyName, "Environment variable detected but not recognized as supported provider"); err != nil {
+			sv.log.WithField("key", keyName).Warn("Failed to write unsupported API key entry")
+		} else {
+			sv.log.WithField("key", keyName).Info("Recorded unsupported API key")
 		}
 	}
 
-	// 2. Discover API key providers from environment
-	for providerType, info := range SupportedProviders {
+	isFaulty := func(providerType string) bool {
+		apiKeyName := api_keys.GetProviderAPIKeyName(providerType)
+		_, exists := faultyKeys[apiKeyName]
+		return exists
+	}
+
+	getPriority := func(providerType string) int {
+		if isFaulty(providerType) {
+			return 1
+		}
+		return 0
+	}
+
+	providerTypes := make([]string, 0, len(SupportedProviders))
+	for providerType := range SupportedProviders {
+		providerTypes = append(providerTypes, providerType)
+	}
+
+	sort.Slice(providerTypes, func(i, j int) bool {
+		prioI := getPriority(providerTypes[i])
+		prioJ := getPriority(providerTypes[j])
+		if prioI != prioJ {
+			return prioI < prioJ
+		}
+		return providerTypes[i] < providerTypes[j]
+	})
+
+	sv.log.WithField("total", len(providerTypes)).Info("Provider discovery order determined (faulty keys will be checked last)")
+
+	for _, providerType := range providerTypes {
 		if seen[providerType] {
 			continue // Already discovered via OAuth
 		}
 
+		info := SupportedProviders[providerType]
 		for _, envVar := range info.EnvVars {
 			apiKey := os.Getenv(envVar)
 			if apiKey != "" && !isPlaceholder(apiKey) {
@@ -1173,6 +1208,13 @@ func (sv *StartupVerifier) verifyAPIKeyProvider(ctx context.Context, provider *U
 			"total_models":    len(disc.Models),
 			"score":           provider.Score,
 		}).Info("API key provider verification complete")
+
+		apiKeyName := api_keys.GetProviderAPIKeyName(provider.Type)
+		if err := api_keys.RemoveFaultyAPIKey(apiKeyName); err != nil {
+			sv.log.WithField("error", err).Warn("Failed to remove faulty API key entry")
+		} else {
+			sv.log.WithField("api_key", apiKeyName).Info("Removed previously faulty API key (now verified)")
+		}
 	} else {
 		// No models passed verification
 		provider.Status = StatusFailed
@@ -1190,6 +1232,17 @@ func (sv *StartupVerifier) verifyAPIKeyProvider(ctx context.Context, provider *U
 			"total_models": len(disc.Models),
 			"error":        provider.ErrorMessage,
 		}).Warn("API key provider verification failed - no verified models")
+
+		apiKeyName := api_keys.GetProviderAPIKeyName(provider.Type)
+		failureReason := provider.FailureReason
+		if failureReason == "" {
+			failureReason = "no models passed verification"
+		}
+		if err := api_keys.WriteFaultyAPIKey(apiKeyName, failureReason); err != nil {
+			sv.log.WithField("error", err).Warn("Failed to write faulty API key entry")
+		} else {
+			sv.log.WithField("api_key", apiKeyName).Info("Recorded faulty API key")
+		}
 	}
 
 	return provider, nil

@@ -122,6 +122,12 @@ releases/*.*
 # QA Results (ephemeral test output)
 qa-results/
 
+# Faulty API Keys tracking file (contains API key names, NOT values)
+.faulty_api_keys
+
+# Unsupported API Keys tracking file (keys from .env not recognized as providers)
+.unsupported_api_keys
+
 # CLI Agent config backups (may contain API keys)
 scripts/cli-agents/configs/backups/
 **/*.backup*

@@ -89,7 +89,7 @@ fi
 # --------------------------------------------------------------------------
 if [ -n "$REGRESSION_TEST" ]; then
     # Test-only package: use go test -run=^$ -count=0 to verify compilation
-    if GOMAXPROCS=2 nice -n 19 go test -tags performance -run=^$ -count=0 \
+    if GOMAXPROCS=2 nice -n 19 go test -mod=mod -tags performance -run=^$ -count=0 \
            -p 1 ./tests/performance/... 2>/dev/null; then
         record_result "baseline_regression_test.go compiles with performance tag" "PASS"
     else

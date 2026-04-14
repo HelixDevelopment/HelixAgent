@@ -384,20 +384,17 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// Check if client explicitly requested a specific model
-	// helix-llm or helixllm/helix-llm → route to HelixLLM directly for fast local inference
-	// helix-debate or helixagent/helix-debate → route to AI Debate ensemble for best quality
-	// empty/default → route to ensemble for best results
+	// Check model routing
+	// helix-llm → provider chain with fallback (helixllm → other providers)
+	// helix-debate → full AI Debate ensemble
+	// default → ensemble
 	modelToCheck := req.Model
-	if modelToCheck == "" {
-		// Default - use ensemble
-		logrus.Info("No specific model requested - using AI Debate ensemble (default)")
-	} else if modelToCheck == "helix-llm" || modelToCheck == "helixllm/helix-llm" {
-		logrus.Info("Client requested helix-llm - routing to HelixLLM for direct local inference")
-		h.processWithHelixLLM(c, &req)
+	if modelToCheck == "" || modelToCheck == "helixagent/helix-debate" || modelToCheck == "helix-debate" {
+		logrus.Info("Model: helix-debate or default - routing to AI Debate ensemble")
+	} else if modelToCheck == "helixagent/helix-llm" || modelToCheck == "helix-llm" {
+		logrus.Info("Model: helix-llm - routing to provider chain with fallback")
+		h.processWithProviderChain(c, &req)
 		return
-	} else if modelToCheck == "helix-debate" || modelToCheck == "helixagent/helix-debate" {
-		logrus.Info("Client requested helix-debate - routing to AI Debate ensemble")
 	} else {
 		logrus.Infof("Model '%s' not recognized, using AI Debate ensemble", modelToCheck)
 	}
@@ -545,11 +542,12 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 
 // handleStreamingChatCompletions handles streaming chat completions with SSE
 func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *OpenAIChatRequest) {
-	// Check if client explicitly requested helixllm provider
-	// Parse model string: "helixllm/helix-llm" format
-	if req.Model == "helixllm/helix-llm" || req.Model == "helix-llm" {
-		logrus.Info("Client requested helixllm/helix-llm - streaming via HelixLLM")
-		h.streamWithHelixLLM(c, req)
+	// Check model routing for streaming
+	// helix-llm → provider chain with fallback
+	// helix-debate → ensemble stream
+	if req.Model == "helixagent/helix-llm" || req.Model == "helix-llm" {
+		logrus.Info("Streaming: helix-llm - using provider chain with fallback")
+		h.streamWithProviderChain(c, req)
 		return
 	}
 
@@ -2587,6 +2585,110 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 func (h *UnifiedHandler) convertChunkToSSE(chunk *models.LLMResponse, streamID, model string) string {
 	return fmt.Sprintf("data: {\"id\":\"%s\",\"object\":\"chat.completion.chunk\",\"created\":%d,\"model\":\"%s\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"%s\"},\"finish_reason\":null}]}\n\n",
 		streamID, time.Now().Unix(), model, chunk.Content)
+}
+
+// processWithProviderChain handles helix-llm requests with provider chain and fallback
+// Tries: helixllm → best cloud provider → other cloud providers (ordered by score)
+func (h *UnifiedHandler) processWithProviderChain(c *gin.Context, req *OpenAIChatRequest) {
+	if h.providerRegistry == nil {
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_available", "Provider registry not available", "provider registry not initialized")
+		return
+	}
+
+	internalReq := h.convertOpenAIChatRequest(req, c)
+
+	// Try helixllm first (local inference)
+	provider, err := h.providerRegistry.GetProvider("helixllm")
+	if err == nil {
+		response, provErr := provider.Complete(c.Request.Context(), internalReq)
+		if provErr == nil {
+			logrus.Info("[Provider Chain] helixllm succeeded")
+			openAIResp := h.convertSingleResponseToOpenAI(response, req.Model)
+			c.JSON(http.StatusOK, openAIResp)
+			return
+		}
+		logrus.WithError(provErr).Warn("[Provider Chain] helixllm failed, trying fallback providers")
+	}
+
+	// Fallback: try providers ordered by verification score
+	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
+	for _, name := range providerNames {
+		if name == "helixllm" {
+			continue
+		}
+		provider, err := h.providerRegistry.GetProvider(name)
+		if err != nil {
+			continue
+		}
+		response, err := provider.Complete(c.Request.Context(), internalReq)
+		if err == nil {
+			logrus.WithField("provider", name).Info("[Provider Chain] Fallback provider succeeded")
+			openAIResp := h.convertSingleResponseToOpenAI(response, req.Model)
+			c.JSON(http.StatusOK, openAIResp)
+			return
+		}
+		logrus.WithError(err).WithField("provider", name).Debug("[Provider Chain] Fallback provider failed")
+	}
+
+	h.sendOpenAIError(c, http.StatusServiceUnavailable, "no_provider_available", "All providers failed", "no provider in the chain was able to handle the request")
+}
+
+// streamWithProviderChain handles streaming for helix-llm with provider chain and fallback
+func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChatRequest) {
+	if h.providerRegistry == nil {
+		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_available", "Provider registry not available", "")
+		return
+	}
+
+	internalReq := h.convertOpenAIChatRequest(req, c)
+	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+
+	// Try helixllm first
+	provider, err := h.providerRegistry.GetProvider("helixllm")
+	if err == nil {
+		streamChan, provErr := provider.CompleteStream(c.Request.Context(), internalReq)
+		if provErr == nil {
+			logrus.Info("[Provider Chain Stream] helixllm streaming")
+			h.streamResponse(c, streamChan, streamID, req.Model)
+			return
+		}
+		logrus.WithError(provErr).Warn("[Provider Chain Stream] helixllm failed")
+	}
+
+	// Fallback: try providers by score
+	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
+	for _, name := range providerNames {
+		if name == "helixllm" {
+			continue
+		}
+		provider, err := h.providerRegistry.GetProvider(name)
+		if err != nil {
+			continue
+		}
+		streamChan, err := provider.CompleteStream(c.Request.Context(), internalReq)
+		if err == nil {
+			logrus.WithField("provider", name).Info("[Provider Chain Stream] Fallback streaming")
+			h.streamResponse(c, streamChan, streamID, req.Model)
+			return
+		}
+	}
+
+	h.sendOpenAIError(c, http.StatusServiceUnavailable, "no_provider_available", "All streaming providers failed", "")
+}
+
+// streamResponse helper to stream SSE response
+func (h *UnifiedHandler) streamResponse(c *gin.Context, streamChan <-chan *models.LLMResponse, streamID, model string) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	for chunk := range streamChan {
+		sseData := h.convertChunkToSSE(chunk, streamID, model)
+		c.Writer.Write([]byte(sseData))
+		c.Writer.Flush()
+	}
+	c.Writer.Write([]byte("data: [DONE]\n\n"))
 }
 
 func (h *UnifiedHandler) processWithEnsembleStream(ctx context.Context, req *models.LLMRequest, openaiReq *OpenAIChatRequest) (<-chan *models.LLMResponse, error) {

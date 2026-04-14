@@ -2333,15 +2333,16 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	var err error
 
 	// Build OpenCode configuration.
-	// TWO SEPARATE PROVIDERS for different routing paths:
-	// 1. helixagent provider → routes to HelixAgent server (AI Debate ensemble)
-	// 2. helixllm provider → routes directly to HelixLLM server (fast local inference)
+	// Single "Helix Agent" provider with TWO models under it:
+	// - helix-llm: Fast local inference via HelixLLM (provider chain with fallback)
+	// - helix-debate: AI Debate Ensemble for best quality
+	// Agents: task/title -> helix-llm (fast), coder/summarizer -> helix-debate (quality)
 	config := OpenCodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		Provider: map[string]OpenCodeProviderDefNew{
 			"helixagent": {
 				NPM:  "@ai-sdk/openai-compatible",
-				Name: "HelixAgent AI Debate Ensemble",
+				Name: "Helix Agent",
 				Options: &OpenCodeProviderOptionsNew{
 					BaseURL: baseURL + "/v1",
 					APIKey:  apiKey,
@@ -2354,16 +2355,6 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 							Output:  8192,
 						},
 					},
-				},
-			},
-			"helixllm": {
-				NPM:  "@ai-sdk/openai-compatible",
-				Name: "Helix LLM (Local Inference)",
-				Options: &OpenCodeProviderOptionsNew{
-					BaseURL: helixLLMEndpoint + "/v1",
-					APIKey:  helixLLMAPIKey,
-				},
-				Models: map[string]OpenCodeModelDefNew{
 					"helix-llm": {
 						Name: "Helix LLM",
 						Limit: &OpenCodeModelLimit{
@@ -2375,8 +2366,8 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 			},
 		},
 		// Agent configuration - uses provider-id/model-id format
-		// coder/summarizer → helixagent (debate) for quality
-		// task/title → helixllm for fast local inference
+		// task/title → helix-llm (provider chain with fallback for fast local inference)
+		// coder/summarizer → helix-debate (full debate ensemble for quality)
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
 				Model:     "helixagent/helix-debate",
@@ -2387,11 +2378,11 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 				MaxTokens: 4096,
 			},
 			"task": {
-				Model:     "helixllm/helix-llm",
+				Model:     "helixagent/helix-llm",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixllm/helix-llm",
+				Model:     "helixagent/helix-llm",
 				MaxTokens: 80,
 			},
 		},

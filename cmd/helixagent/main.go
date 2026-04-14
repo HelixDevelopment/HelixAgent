@@ -2350,27 +2350,17 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 					APIKey:  apiKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{
-					"helixagent-debate": {
-						Name: "HelixAgent AI Debate Ensemble",
+					"helix-debate": {
+						Name: "Helix AI Debate Ensemble",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,
 						},
 					},
-				},
-			},
-			"helixllm": {
-				NPM:  "@ai-sdk/openai-compatible",
-				Name: "HelixLLM (Local Inference)",
-				Options: &OpenCodeProviderOptionsNew{
-					BaseURL: helixLLMEndpoint + "/v1",
-					APIKey:  helixLLMAPIKey,
-				},
-				Models: map[string]OpenCodeModelDefNew{
-					"qwen2.5-coder:7b": {
-						Name: "HelixLLM",
+					"helix-llm": {
+						Name: "Helix LLM",
 						Limit: &OpenCodeModelLimit{
-							Context: 32768,
+							Context: 128000,
 							Output:  8192,
 						},
 					},
@@ -2380,31 +2370,22 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		// Agent configuration - uses provider-id/model-id format
 		// All agents route through the helixagent provider so HelixAgent
 		// can apply smart routing (tools→direct provider, everything
-		// else→debate ensemble). Routing HelixLLM directly via the
-		// "helixllm" provider bypasses that layer and breaks the
-		// model-id regression test that asserts every agent model
-		// MUST reference the "helixagent" provider.
-		// Agent configuration: route through HelixLLM's Ollama backend
-		// (qwen2.5-coder:7b) which supports native tool calling. The
-		// helixagent-debate ensemble is too slow for interactive use
-		// (30-120s per call), and model.gguf (1.5B) is too small for
-		// reliable tool use (can't call git, read files, etc.). The
-		// 7B model gives fast responses (2-5s) WITH tool support.
+		// else→debate ensemble).
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixagent/helix-debate",
 				MaxTokens: 8192,
 			},
 			"task": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixagent/helix-llm",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixagent/helix-llm",
 				MaxTokens: 80,
 			},
 			"summarizer": {
-				Model:     "helixllm/qwen2.5-coder:7b",
+				Model:     "helixagent/helix-debate",
 				MaxTokens: 4096,
 			},
 		},

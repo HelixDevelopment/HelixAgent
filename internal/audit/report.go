@@ -62,14 +62,36 @@ func GenerateReportMarkdown(report *AuditReport) string {
 	}
 
 	if len(report.DeadCode) > 0 {
-		b.WriteString("## Dead Code\n\n")
-		b.WriteString("| File | Identifier | Reachable |\n|------|------------|----------|\n")
+		var unreachable []DeadCodeEntry
 		for _, d := range report.DeadCode {
 			if !d.Reachable {
-				b.WriteString(fmt.Sprintf("| `%s` | %s | %v |\n", d.File, d.Ident, d.Reachable))
+				unreachable = append(unreachable, d)
 			}
 		}
-		b.WriteString("\n")
+		if len(unreachable) > 0 {
+			confidenceCounts := map[DeadCodeConfidence]int{}
+			for _, d := range unreachable {
+				confidenceCounts[d.Confidence]++
+			}
+			b.WriteString("## Dead Code\n\n")
+			b.WriteString("| Confidence | Count |\n|------------|-------|\n")
+			for _, c := range []DeadCodeConfidence{ConfidenceSafeToRemove, ConfidenceLikelyDead, ConfidenceNeedsReview, ConfidenceWiredByRuntime} {
+				if confidenceCounts[c] > 0 {
+					b.WriteString(fmt.Sprintf("| %s | %d |\n", c, confidenceCounts[c]))
+				}
+			}
+			b.WriteString("\n### WARNING\n\n")
+			b.WriteString("**Do NOT delete code marked `needs-manual-review` or `wired-by-runtime` without manual verification.**\n")
+			b.WriteString("These functions may be called via reflection, HTTP/gRPC registration, dependency injection, or plugin loading.\n\n")
+			b.WriteString("| Confidence | File | Identifier | Reason |\n|------------|------|------------|--------|\n")
+			sort.Slice(unreachable, func(i, j int) bool {
+				return unreachable[i].Confidence < unreachable[j].Confidence
+			})
+			for _, d := range unreachable {
+				b.WriteString(fmt.Sprintf("| %s | `%s` | %s | %s |\n", d.Confidence, d.File, d.Ident, d.Reason))
+			}
+			b.WriteString("\n")
+		}
 	}
 
 	if len(report.Concurrency) > 0 {

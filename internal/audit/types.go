@@ -54,11 +54,22 @@ type SkipEntry struct {
 	Category SkipCategory `json:"category"`
 }
 
+type DeadCodeConfidence string
+
+const (
+	ConfidenceSafeToRemove   DeadCodeConfidence = "safe-to-remove"
+	ConfidenceLikelyDead     DeadCodeConfidence = "likely-dead"
+	ConfidenceNeedsReview    DeadCodeConfidence = "needs-manual-review"
+	ConfidenceWiredByRuntime DeadCodeConfidence = "wired-by-runtime"
+)
+
 type DeadCodeEntry struct {
-	File      string `json:"file"`
-	Ident     string `json:"ident"`
-	Kind      string `json:"kind"`
-	Reachable bool   `json:"reachable"`
+	File       string             `json:"file"`
+	Ident      string             `json:"ident"`
+	Kind       string             `json:"kind"`
+	Reachable  bool               `json:"reachable"`
+	Confidence DeadCodeConfidence `json:"confidence"`
+	Reason     string             `json:"reason,omitempty"`
 }
 
 type ConcurrencyEntry struct {

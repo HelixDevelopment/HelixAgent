@@ -1,10 +1,10 @@
 # HelixAgent Constitution
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Created:** 2026-02-10
-**Updated:** 2026-03-16
+**Updated:** 2026-04-16
 
-Constitution with 29 rules (29 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 5, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
+Constitution with 32 rules (32 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 8, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
 
 ## Architecture
 
@@ -211,3 +211,65 @@ ALL HTTP communication MUST use HTTP/3 (QUIC) as primary transport with Brotli c
 **ID:** CONST-024
 
 ALL test and challenge execution MUST be strictly limited to 30-40% of host system resources. Use GOMAXPROCS=2, nice -n 19, ionice -c 3, and -p 1 for go test. Container limits required. Host machine runs mission-critical processes; exceeding limits has caused system crashes and forced resets.
+
+## Testing Constraints
+
+### No Mocks Outside Unit Tests **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-025
+
+ONLY unit tests (`*_test.go` with `-short` flag or tests that do NOT call live services) may use mocks, stubs, fakes, or placeholder implementations. Integration tests, functional tests, E2E tests, Challenge tests, and HelixQA tests MUST ALL execute against the REAL running HelixAgent system with real containers, real databases, real Redis, and real HTTP calls. NO test that is not a unit test may use `integrationMockProvider`, `debateMockLLMProvider`, or any other mock. All services and containers MUST be booted and operational before non-unit tests run. Tests that cannot connect to real services MUST skip (not fail).
+
+### Both Debate Flavors Must Be Tested **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-026
+
+HelixAgent has TWO distinct debate implementations:
+1. **DebateService** (`internal/services/debate_service.go`) — Core debate with `ConductDebate()`, provider registry, suspiciously-fast-response detection, multi-round orchestration
+2. **Orchestrator Framework** (`internal/services/debate_integration/`) — Advanced orchestrator with agent pools, 8-phase protocol, topology support
+
+BOTH flavors MUST have comprehensive integration tests against the LIVE HelixAgent API (`/v1/debates`). Tests MUST cover:
+- **5-position debates** (minimum viable multi-agent debate)
+- **8+ position debates** (large-scale multi-agent debate)
+- Error handling, timeout, fallback, and concurrent execution
+- Voting methods, consensus detection, quality scoring
+
+The `IsSuspiciouslyFastResponse` check (100ms / 100 chars threshold) is a production safeguard. Mock providers in unit tests must respect this threshold (latency >= 100ms or content >= 100 chars).
+
+### Port and Service Architecture **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-027
+
+The following service architecture is MANDATORY and MUST NOT be changed without updating this Constitution:
+
+**Eager Services** (started at boot, always running):
+- HelixAgent: port **7061** (NOT 8080)
+- HelixLLM: port 8444 (HTTPS/TLS 1.3)
+- PostgreSQL: port 5432
+- Redis (primary): port **6379**, **NO password** (container: helixagent-redis)
+- MCP Bridge: port 9000
+- MCP Servers: ports 9101-9803 (internal port 9000, bridged via socat)
+
+**Lazy Services** (started on-demand):
+- Cognee/HelixMemory: port 8000
+- ChromaDB: port 8001
+- Neo4j: ports 7474 (HTTP) / 7687 (Bolt)
+- Qdrant: port 6333
+
+**Redis Architecture**:
+- `helixagent-redis` on port 6379: **NO password** — used by HelixAgent core, streaming, and functional tests
+- `helixagent-mcp-redis-backend` on port 16379: password `helixagent123` — used by MCP containers
+
+**API Response Format Contracts** (server returns these exact formats, tests must match):
+- `/v1/embeddings/providers` → `{"providers":[{"name":"...","model":"...","dimension":N,"enabled":bool}]}` (objects, NOT strings)
+- `/v1/vision/capabilities` → `{"capabilities":[{"id":"...","name":"...","status":"..."}]}` (objects with status field)
+- `/v1/acp/agents` → `{"agents":[{"id":"...","name":"...","status":"..."}]}` (objects with status field)
+- `/v1/acp/agents/{id}` → `{"id":"...","name":"...","status":"...","capabilities":[...]}` (uses `id` NOT `agent_id`)
+- `/v1/acp/execute` → `{"agent_id":"...","status":"...","result":{...}}` (uses `agent_id`)
+- Health endpoints: `/v1/vision/health` ✓, `/v1/acp/health` ✓, `/v1/embeddings/health` ✗ (404 — use `/v1/embeddings/providers` as health check)
+
+### Bugfix Documentation **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-028
+
+All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with: root cause analysis, affected files, fix description, and verification test reference. Fixes without documentation are incomplete.

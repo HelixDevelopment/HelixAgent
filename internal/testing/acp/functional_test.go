@@ -43,13 +43,21 @@ type AgentRequest struct {
 	Timeout int                    `json:"timeout,omitempty"`
 }
 
-// AgentResponse represents an ACP agent response
 type AgentResponse struct {
+	ID       string                 `json:"id"`
 	AgentID  string                 `json:"agent_id"`
+	Name     string                 `json:"name,omitempty"`
 	Status   string                 `json:"status"`
 	Result   interface{}            `json:"result,omitempty"`
 	Error    string                 `json:"error,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func (r *AgentResponse) GetID() string {
+	if r.ID != "" {
+		return r.ID
+	}
+	return r.AgentID
 }
 
 // ListAgents lists all available ACP agents
@@ -65,14 +73,24 @@ func (c *ACPClient) ListAgents() ([]string, error) {
 		return nil, fmt.Errorf("list agents failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result struct {
-		Agents []string `json:"agents"`
+	var raw struct {
+		Agents []struct {
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"agents"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Agents, nil
+	var agents []string
+	for _, a := range raw.Agents {
+		if a.Status == "active" {
+			agents = append(agents, a.ID)
+		}
+	}
+	return agents, nil
 }
 
 // GetAgentInfo gets information about a specific agent
@@ -144,8 +162,8 @@ func TestACPAgentDiscovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", "http://localhost:8080/v1/acp/health")
-	client := NewACPClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
+	client := NewACPClient(testutil.ServerURL())
 
 	agents, err := client.ListAgents()
 	require.NoError(t, err)
@@ -159,8 +177,8 @@ func TestACPAgentInfo(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", "http://localhost:8080/v1/acp/health")
-	client := NewACPClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
+	client := NewACPClient(testutil.ServerURL())
 
 	for _, agent := range ACPAgents {
 		t.Run(agent.ID, func(t *testing.T) {
@@ -170,7 +188,7 @@ func TestACPAgentInfo(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, agent.ID, info.AgentID)
+			assert.Equal(t, agent.ID, info.GetID())
 			t.Logf("Agent %s info: %+v", agent.ID, info)
 		})
 	}
@@ -181,8 +199,8 @@ func TestACPAgentExecution(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", "http://localhost:8080/v1/acp/health")
-	client := NewACPClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
+	client := NewACPClient(testutil.ServerURL())
 
 	testCode := `
 func add(a, b int) int {
@@ -208,7 +226,7 @@ func add(a, b int) int {
 				return
 			}
 
-			assert.Equal(t, agent.ID, resp.AgentID)
+			assert.Equal(t, agent.ID, resp.GetID())
 			assert.NotEqual(t, "error", resp.Status, "Agent should not return error status")
 			t.Logf("Agent %s result: %v", agent.ID, resp.Result)
 		})
@@ -220,9 +238,9 @@ func TestACPHealthCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", "http://localhost:8080/v1/acp/health")
+	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
 
-	client := NewACPClient("http://localhost:8080")
+	client := NewACPClient(testutil.ServerURL())
 
 	resp, err := client.httpClient.Get(client.baseURL + "/v1/acp/health")
 	require.NoError(t, err)
@@ -233,7 +251,7 @@ func TestACPHealthCheck(t *testing.T) {
 
 // BenchmarkACPAgentExecution benchmarks agent task execution
 func BenchmarkACPAgentExecution(b *testing.B) {
-	client := NewACPClient("http://localhost:8080")
+	client := NewACPClient(testutil.ServerURL())
 
 	req := &AgentRequest{
 		AgentID: "code-reviewer",

@@ -206,15 +206,20 @@ type RedisStateStore struct {
 }
 
 // NewRedisStateStore creates a new Redis state store
-func NewRedisStateStore(host, port string, db int, logger *zap.Logger) (*RedisStateStore, error) {
+func NewRedisStateStore(host, port string, db int, logger *zap.Logger, password ...string) (*RedisStateStore, error) {
 	if logger == nil {
 		logger = zap.NewNop()
+	}
+
+	var pwd string
+	if len(password) > 0 {
+		pwd = password[0]
 	}
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", host, port),
 		DB:       db,
-		Password: "", // Add password support if needed
+		Password: pwd,
 	})
 
 	// Test connection

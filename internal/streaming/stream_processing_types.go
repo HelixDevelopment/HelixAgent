@@ -126,6 +126,7 @@ type StreamProcessorConfig struct {
 	RedisHost      string `json:"redis_host,omitempty"`
 	RedisPort      string `json:"redis_port,omitempty"`
 	RedisDB        int    `json:"redis_db,omitempty"`
+	RedisPassword  string `json:"redis_password,omitempty"`
 
 	// Performance tuning
 	MaxConcurrentMessages int           `json:"max_concurrent_messages"`

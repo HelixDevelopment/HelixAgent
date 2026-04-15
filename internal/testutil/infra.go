@@ -48,7 +48,7 @@ func DefaultInfraConfig() InfraConfig {
 		PostgresHost: envOr("DB_HOST", "localhost"),
 		PostgresPort: envOr("DB_PORT", "15432"),
 		RedisHost:    envOr("REDIS_HOST", "localhost"),
-		RedisPort:    envOr("REDIS_PORT", "16379"),
+		RedisPort:    envOr("REDIS_PORT", "6379"),
 		MockLLMHost:  envOr("MOCK_LLM_HOST", "localhost"),
 		MockLLMPort:  envOr("MOCK_LLM_PORT", "18081"),
 		ServerHost:   envOr("HELIXAGENT_HOST", "localhost"),
@@ -307,5 +307,5 @@ func RedisAddr() string {
 
 // RedisPassword returns the Redis password for tests.
 func RedisPassword() string {
-	return envOr("REDIS_PASSWORD", "helixagent123")
+	return envOr("REDIS_PASSWORD", "")
 }

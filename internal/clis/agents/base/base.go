@@ -3,6 +3,8 @@ package base
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,6 +51,15 @@ func (b *BaseIntegration) Initialize(ctx context.Context, config interface{}) er
 	if b.workDir == "" {
 		home, _ := os.UserHomeDir()
 		b.workDir = filepath.Join(home, ".helixagent", "agents", string(b.info.Type))
+		if _, err := os.Stat(b.workDir); err == nil {
+			if lockFile, lfErr := os.CreateTemp(b.workDir, ".lock-*"); lfErr == nil {
+				lockFile.Close()
+				os.Remove(lockFile.Name())
+			}
+		}
+		if isTestBinary() {
+			b.workDir = filepath.Join(os.TempDir(), "helixagent-test", string(b.info.Type), uniqueSuffix())
+		}
 	}
 
 	// Create work directory
@@ -180,4 +191,15 @@ func extractWorkDir(config interface{}) string {
 	}
 
 	return ""
+}
+
+func uniqueSuffix() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func isTestBinary() bool {
+	exe, _ := os.Executable()
+	return len(exe) > 5 && exe[len(exe)-5:] == ".test"
 }

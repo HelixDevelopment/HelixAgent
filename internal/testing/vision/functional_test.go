@@ -106,14 +106,24 @@ func (c *VisionClient) ListCapabilities() ([]string, error) {
 		return nil, fmt.Errorf("list capabilities failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result struct {
-		Capabilities []string `json:"capabilities"`
+	var raw struct {
+		Capabilities []struct {
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"capabilities"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Capabilities, nil
+	var caps []string
+	for _, c := range raw.Capabilities {
+		if c.Status == "active" {
+			caps = append(caps, c.ID)
+		}
+	}
+	return caps, nil
 }
 
 // VisionCapabilityConfig holds configuration for testing a vision capability
@@ -149,8 +159,8 @@ func TestVisionCapabilityDiscovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	capabilities, err := client.ListCapabilities()
 	require.NoError(t, err)
@@ -164,8 +174,8 @@ func TestVisionAnalyze(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	for _, cap := range VisionCapabilities {
 		t.Run(cap.Capability, func(t *testing.T) {
@@ -199,8 +209,8 @@ func TestVisionWithURL(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	// Use a public test image
 	testURL := "https://httpbin.org/image/png"
@@ -226,8 +236,8 @@ func TestVisionOCR(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	// In a real test, you'd use an image with actual text
 	req := &VisionRequest{
@@ -251,8 +261,8 @@ func TestVisionDetection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	req := &VisionRequest{
 		Capability: "detect",
@@ -277,9 +287,9 @@ func TestVisionHealthCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 
-	client := NewVisionClient("http://localhost:8080")
+	client := NewVisionClient(testutil.ServerURL())
 
 	resp, err := client.httpClient.Get(client.baseURL + "/v1/vision/health")
 	require.NoError(t, err)
@@ -293,8 +303,8 @@ func TestVisionFromFile(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", "http://localhost:8080/v1/vision/health")
-	client := NewVisionClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
+	client := NewVisionClient(testutil.ServerURL())
 
 	// Create a temporary test image file
 	tmpFile := "/tmp/test_image.png"
@@ -329,7 +339,7 @@ func TestVisionFromFile(t *testing.T) {
 
 // BenchmarkVisionAnalyze benchmarks vision analysis
 func BenchmarkVisionAnalyze(b *testing.B) {
-	client := NewVisionClient("http://localhost:8080")
+	client := NewVisionClient(testutil.ServerURL())
 
 	req := &VisionRequest{
 		Capability: "analyze",

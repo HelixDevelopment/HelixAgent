@@ -41,7 +41,7 @@ func newIntegrationMockProvider(name, response string, confidence float64) *inte
 		name:       name,
 		response:   response,
 		confidence: confidence,
-		latency:    10 * time.Millisecond,
+		latency:    150 * time.Millisecond,
 	}
 }
 

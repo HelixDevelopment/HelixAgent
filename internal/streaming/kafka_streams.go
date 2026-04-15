@@ -54,7 +54,7 @@ func NewConversationStreamProcessor(
 	var err error
 	switch config.StateStoreType {
 	case "redis":
-		stateStore, err = NewRedisStateStore(config.RedisHost, config.RedisPort, config.RedisDB, logger)
+		stateStore, err = NewRedisStateStore(config.RedisHost, config.RedisPort, config.RedisDB, logger, config.RedisPassword)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Redis state store: %w", err)
 		}

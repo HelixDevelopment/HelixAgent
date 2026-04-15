@@ -39,6 +39,7 @@ func TestConversationStreamProcessor_NewWithRedis(t *testing.T) {
 	config.StateStoreType = "redis"
 	config.RedisHost = infraCfg.RedisHost
 	config.RedisPort = infraCfg.RedisPort
+	config.RedisPassword = testutil.RedisPassword()
 
 	processor, err := NewConversationStreamProcessor(config, nil, zap.NewNop())
 	require.NoError(t, err)

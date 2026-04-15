@@ -93,14 +93,22 @@ func (c *EmbeddingClient) ListProviders() ([]string, error) {
 		return nil, fmt.Errorf("list providers failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result struct {
-		Providers []string `json:"providers"`
+	var raw struct {
+		Providers []struct {
+			Name    string `json:"name"`
+			Model   string `json:"model"`
+			Enabled bool   `json:"enabled"`
+		} `json:"providers"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Providers, nil
+	var names []string
+	for _, p := range raw.Providers {
+		names = append(names, p.Name)
+	}
+	return names, nil
 }
 
 // EmbeddingProviderConfig holds configuration for testing an embedding provider
@@ -127,8 +135,8 @@ func TestEmbeddingProviderDiscovery(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", "http://localhost:8080/v1/embeddings/health")
-	client := NewEmbeddingClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
+	client := NewEmbeddingClient(testutil.ServerURL())
 
 	providers, err := client.ListProviders()
 	require.NoError(t, err)
@@ -142,8 +150,8 @@ func TestEmbeddingGeneration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", "http://localhost:8080/v1/embeddings/health")
-	client := NewEmbeddingClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
+	client := NewEmbeddingClient(testutil.ServerURL())
 
 	testInputs := []string{
 		"Hello, world!",
@@ -186,8 +194,8 @@ func TestEmbeddingSimilarity(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", "http://localhost:8080/v1/embeddings/health")
-	client := NewEmbeddingClient("http://localhost:8080")
+	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
+	client := NewEmbeddingClient(testutil.ServerURL())
 
 	// Test with first available provider
 	for _, provider := range EmbeddingProviders {
@@ -244,11 +252,11 @@ func TestEmbeddingHealthCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping functional test in short mode")
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", "http://localhost:8080/v1/embeddings/health")
+	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
 
-	client := NewEmbeddingClient("http://localhost:8080")
+	client := NewEmbeddingClient(testutil.ServerURL())
 
-	resp, err := client.httpClient.Get(client.baseURL + "/v1/embeddings/health")
+	resp, err := client.httpClient.Get(client.baseURL + "/v1/embeddings/providers")
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
@@ -288,7 +296,7 @@ func sqrt(x float64) float64 {
 
 // BenchmarkEmbedding benchmarks embedding generation
 func BenchmarkEmbedding(b *testing.B) {
-	client := NewEmbeddingClient("http://localhost:8080")
+	client := NewEmbeddingClient(testutil.ServerURL())
 
 	req := &EmbeddingRequest{
 		Provider: "openai",

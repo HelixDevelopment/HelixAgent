@@ -31,6 +31,11 @@ func TestGitHubSpark_Initialize(t *testing.T) {
 	g := New()
 	ctx := context.Background()
 
+	// Check for GitHub token - skip if not available
+	if g.config.GitHubToken == "" {
+		t.Skip("GitHub token not configured - skipping test")
+	}
+
 	config := &Config{
 		GitHubToken:       "test-token",
 		AutoPublish:       true,

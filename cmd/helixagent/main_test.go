@@ -3089,7 +3089,7 @@ func TestHandleGenerateOpenCode(t *testing.T) {
 		assert.Contains(t, output, "provider")
 		assert.Contains(t, output, "agent")
 		assert.Contains(t, output, "mcp")
-		assert.Contains(t, output, "helixagent/helixagent-debate")
+		assert.Contains(t, output, "helixagent/helix-debate")
 		assert.Contains(t, output, "helixagent")
 	})
 
@@ -3154,7 +3154,7 @@ func TestHandleGenerateOpenCode(t *testing.T) {
 		assert.Contains(t, string(content), "provider")
 		assert.Contains(t, string(content), "agent")
 		assert.Contains(t, string(content), "mcp")
-		assert.Contains(t, string(content), "helixagent/helixagent-debate")
+		assert.Contains(t, string(content), "helixagent/helix-debate")
 	})
 
 	t.Run("uses env variable template for API key", func(t *testing.T) {

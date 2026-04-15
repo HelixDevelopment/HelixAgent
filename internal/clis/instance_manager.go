@@ -251,9 +251,15 @@ func (m *InstanceManager) TerminateInstance(ctx context.Context, id string) erro
 	}
 
 	// Close channels
-	close(instance.RequestCh)
-	close(instance.ResponseCh)
-	close(instance.EventCh)
+	if instance.RequestCh != nil {
+		close(instance.RequestCh)
+	}
+	if instance.ResponseCh != nil {
+		close(instance.ResponseCh)
+	}
+	if instance.EventCh != nil {
+		close(instance.EventCh)
+	}
 
 	// Update database
 	_, err := m.db.ExecContext(ctx,

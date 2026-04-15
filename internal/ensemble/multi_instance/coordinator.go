@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -217,6 +218,9 @@ func NewCoordinator(
 ) *Coordinator {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	if logger == nil {
+		logger = log.New(os.Stdout, "", 0)
+	}
 	c := &Coordinator{
 		db:            db,
 		logger:        logger,

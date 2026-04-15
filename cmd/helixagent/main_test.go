@@ -242,10 +242,10 @@ func TestEnsureRequiredContainersWithConfig_AllServicesRunning(t *testing.T) {
 }
 
 func TestEnsureRequiredContainersWithConfig_SomeServicesNeedStart(t *testing.T) {
-	// Skip mock-based test when real runtime is available
+	// This is an integration test - requires real services running
 	runtime, _, err := DetectContainerRuntime()
-	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")
+	if err != nil || runtime == RuntimeNone {
+		t.Skip("Skipping - no container runtime available")
 	}
 
 	startCalled := false
@@ -335,14 +335,10 @@ func TestEnsureRequiredContainersWithConfig_StartFails(t *testing.T) {
 }
 
 func TestEnsureRequiredContainersWithConfig_DockerComposeSuccess(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping test that involves sleep in short mode")
-	}
-
-	// Skip mock-based test when real runtime is available
+	// Integration test - requires container runtime
 	runtime, _, err := DetectContainerRuntime()
-	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")
+	if err != nil || runtime == RuntimeNone {
+		t.Skip("Skipping - no container runtime available")
 	}
 
 	dockerComposeUsed := false
@@ -388,10 +384,10 @@ func TestEnsureRequiredContainersWithConfig_DockerComposeSuccess(t *testing.T) {
 }
 
 func TestEnsureRequiredContainersWithConfig_GetRunningServicesFails(t *testing.T) {
-	// Skip mock-based test when real runtime is available
+	// Integration test - requires container runtime
 	runtime, _, err := DetectContainerRuntime()
-	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")
+	if err != nil || runtime == RuntimeNone {
+		t.Skip("Skipping - no container runtime available")
 	}
 
 	getServicesCalled := false

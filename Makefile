@@ -1,4 +1,4 @@
-.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all deps-scan secrets-scan gosec-baseline security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check audit audit-json audit-coverage audit-todo audit-skip audit-deadcode audit-concurrency
+.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all deps-scan secrets-scan gosec-baseline security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check audit audit-json audit-coverage audit-todo audit-skip audit-deadcode audit-concurrency test-submodule-sync
 
 EXCLUDE_DIRS := cli_agents MCP MCP-Servers
 
@@ -389,6 +389,10 @@ test-challenges:
 test-unit:
 	@echo "🧪 Running unit tests..."
 	$(RESOURCE_PREFIX) go test -v $(GO_TEST_FLAGS) ./internal/... -short
+
+test-submodule-sync:
+	@echo "🧪 Running submodule sync tests..."
+	$(RESOURCE_PREFIX) go test -v -mod=mod $(GO_TEST_FLAGS) ./tests/integration/... -run "TestSubmoduleSync" -short
 
 test-integration:
 	@echo "🧪 Running integration tests with Docker dependencies..."

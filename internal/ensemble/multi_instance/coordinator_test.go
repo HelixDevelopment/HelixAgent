@@ -16,11 +16,14 @@ import (
 )
 
 func TestNewCoordinator(t *testing.T) {
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 
 	coord := NewCoordinator(db, nil, im, syncMgr)
@@ -36,47 +39,25 @@ func TestCoordinator_CreateSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	t.Skip("Skipping - requires InstanceManager mock refactor to isolate DB operations from background goroutines")
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, imMock := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
-	for i := 0; i < 8; i++ {
-		imMock.ExpectExec("INSERT INTO agent_instances").
-			WillReturnResult(sqlmock.NewResult(1, 1))
-	}
-	for i := 0; i < 8; i++ {
-		imMock.ExpectExec("UPDATE agent_instances").
-			WillReturnResult(sqlmock.NewResult(1, 1))
-	}
-
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 2; i++ {
 		mock.ExpectExec("INSERT INTO agent_instances").
 			WillReturnResult(sqlmock.NewResult(1, 1))
-	}
-	for i := 0; i < 8; i++ {
-		mock.ExpectExec("UPDATE agent_instances").
+		mock.ExpectExec("UPDATE agent_instances SET status").
 			WillReturnResult(sqlmock.NewResult(1, 1))
 	}
 
 	mock.ExpectExec("INSERT INTO ensemble_sessions").
-		WithArgs(
-			sqlmock.AnyArg(), // id
-			StrategyVoting,
-			sqlmock.AnyArg(), // config
-			sqlmock.AnyArg(), // participant_types
-			sqlmock.AnyArg(), // primary_instance_id
-			sqlmock.AnyArg(), // critique_instance_ids
-			sqlmock.AnyArg(), // verification_instance_ids
-			sqlmock.AnyArg(), // fallback_instance_ids
-			SessionStatusCreating,
-			sqlmock.AnyArg(), // context
-			sqlmock.AnyArg(), // created_at
-		).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	ctx := context.Background()
@@ -103,16 +84,17 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	t.Skip("Skipping - requires InstanceManager mock refactor to isolate DB operations from background goroutines")
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
-	// Create a test session
 	session := &EnsembleSession{
 		ID:       "test-session",
 		Strategy: StrategyVoting,
@@ -124,14 +106,13 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 	coord.sessions[session.ID] = session
 	coord.mu.Unlock()
 
-	// Setup DB expectations
-	mock.ExpectExec("UPDATE ensemble_sessions SET status = .*, started_at = NOW()").
+	mock.ExpectExec("UPDATE ensemble_sessions SET status = .* started_at").
 		WithArgs(SessionStatusActive, "test-session").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectExec("UPDATE ensemble_sessions SET").
 		WithArgs(
-			SessionStatusCompleted,
+			SessionStatusFailed,
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
@@ -141,6 +122,10 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 		).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
+	mock.ExpectExec("UPDATE ensemble_sessions SET error_message").
+		WithArgs(sqlmock.AnyArg(), "test-session").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
 	ctx := context.Background()
 	task := Task{
 		Type:    "test",
@@ -148,16 +133,9 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 		Timeout: 5 * time.Second,
 	}
 
-	// Note: This test requires mocking the instance manager to return proper responses
-	// In a real test, you'd mock the instance manager's SendRequest method
 	_, err = coord.ExecuteSession(ctx, session.ID, task)
-
-	// Since we don't have real instances, this will likely fail or return partial results
-	// The test validates the coordinator logic executes without panicking
-	if err != nil {
-		// Expected - no real instances
-		t.Logf("Expected error without real instances: %v", err)
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "insufficient participants")
 
 	coord.Close()
 }
@@ -166,11 +144,14 @@ func TestCoordinator_GetSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -199,11 +180,14 @@ func TestCoordinator_ListSessions(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -242,7 +226,10 @@ func TestCoordinator_CancelSession(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -271,11 +258,14 @@ func TestCoordinator_collectParticipants(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -300,11 +290,14 @@ func TestCoordinator_calculateAgreement(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -347,11 +340,14 @@ func TestCoordinator_resultKey(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping coordinator test in short mode - requires database setup")
 	}
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(t)
+	mock.ExpectQuery("SELECT (.+) FROM agent_instances").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "agent_type", "instance_name", "status", "config", "provider_config", "max_memory_mb", "max_cpu_percent", "current_session_id", "current_task_id", "health_status", "requests_processed", "errors_count", "total_execution_time_ms", "created_at", "updated_at"}))
+
+	im := createMockInstanceManagerWithDB(t, db)
 	syncMgr := createMockSyncManager(t, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 
@@ -406,14 +402,16 @@ func TestConsensusResult_Validation(t *testing.T) {
 
 // Helper functions
 
+func createMockInstanceManagerWithDB(t *testing.T, db *sql.DB) *clis.InstanceManager {
+	im, err := clis.NewInstanceManager(db, nil)
+	require.NoError(t, err)
+	return im
+}
+
 func createMockInstanceManager(t *testing.T) (*clis.InstanceManager, sqlmock.Sqlmock) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-
-	im, err := clis.NewInstanceManager(db, nil)
-	require.NoError(t, err)
-
-	return im, mock
+	return createMockInstanceManagerWithDB(t, db), mock
 }
 
 func createMockSyncManager(t *testing.T, db *sql.DB) *synchronization.SyncManager {
@@ -426,7 +424,7 @@ func BenchmarkCoordinator_collectParticipants(b *testing.B) {
 	db, _, _ := sqlmock.New()
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(nil)
+	im := createMockInstanceManagerWithDB(nil, db)
 	syncMgr := createMockSyncManager(nil, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 	defer coord.Close()
@@ -454,7 +452,7 @@ func BenchmarkCoordinator_calculateAgreement(b *testing.B) {
 	db, _, _ := sqlmock.New()
 	defer db.Close()
 
-	im, _ := createMockInstanceManager(nil)
+	im := createMockInstanceManagerWithDB(nil, db)
 	syncMgr := createMockSyncManager(nil, db)
 	coord := NewCoordinator(db, nil, im, syncMgr)
 	defer coord.Close()

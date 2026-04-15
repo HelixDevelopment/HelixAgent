@@ -971,6 +971,10 @@ func (c *Coordinator) persistSession(
 
 	configJSON, _ := json.Marshal(session.Config)
 	contextJSON, _ := json.Marshal(session.Context)
+	participantTypesJSON, _ := json.Marshal(participantTypes)
+	critiqueIDsJSON, _ := json.Marshal(critiqueIDs)
+	verifierIDsJSON, _ := json.Marshal(verifierIDs)
+	fallbackIDsJSON, _ := json.Marshal(fallbackIDs)
 
 	_, err := c.db.ExecContext(ctx,
 		`INSERT INTO ensemble_sessions (
@@ -978,8 +982,8 @@ func (c *Coordinator) persistSession(
 			primary_instance_id, critique_instance_ids, verification_instance_ids,
 			fallback_instance_ids, status, context, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		session.ID, session.Strategy, configJSON, participantTypes,
-		primaryID, critiqueIDs, verifierIDs, fallbackIDs,
+		session.ID, session.Strategy, configJSON, participantTypesJSON,
+		primaryID, critiqueIDsJSON, verifierIDsJSON, fallbackIDsJSON,
 		session.Status, contextJSON, session.CreatedAt,
 	)
 
@@ -992,12 +996,28 @@ func (c *Coordinator) persistResult(
 	result *ConsensusResult,
 	execErr error,
 ) error {
-	resultJSON, _ := json.Marshal(result)
+	var resultJSON []byte
+	if result != nil {
+		resultJSON, _ = json.Marshal(result)
+	}
 
 	var errorMsg *string
 	if execErr != nil {
 		msg := execErr.Error()
 		errorMsg = &msg
+	}
+
+	var reached bool
+	var confidence float64
+	var rounds int
+	var durationMs int64
+	if result != nil {
+		reached = result.Reached
+		confidence = result.Confidence
+		rounds = result.Rounds
+	}
+	if session.StartedAt != nil {
+		durationMs = time.Since(*session.StartedAt).Milliseconds()
 	}
 
 	_, err := c.db.ExecContext(ctx,
@@ -1010,9 +1030,8 @@ func (c *Coordinator) persistResult(
 			total_duration_ms = $5,
 			round_count = $6
 		 WHERE id = $7`,
-		session.Status, resultJSON, result.Reached, result.Confidence,
-		time.Since(*session.StartedAt).Milliseconds(),
-		result.Rounds, session.ID,
+		session.Status, resultJSON, reached, confidence,
+		durationMs, rounds, session.ID,
 	)
 
 	if errorMsg != nil {

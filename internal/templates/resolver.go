@@ -87,25 +87,78 @@ func (r *Resolver) Resolve(template *ContextTemplate, vars map[string]string) (*
 // resolveFiles resolves file patterns
 func (r *Resolver) resolveFiles(spec FileSpec) ([]ContextFile, error) {
 	var files []ContextFile
+	seen := make(map[string]bool)
+	cleanRoot := filepath.Clean(r.rootPath)
+
+	isWithinRoot := func(path string) bool {
+		cleanPath := filepath.Clean(path)
+		rel, err := filepath.Rel(cleanRoot, cleanPath)
+		if err != nil {
+			return false
+		}
+		return !strings.HasPrefix(rel, "..") && rel != ".."
+	}
 
 	for _, pattern := range spec.Include {
-		matches, err := filepath.Glob(filepath.Join(r.rootPath, pattern))
-		if err != nil {
-			continue
+		var matches []string
+
+		if strings.HasPrefix(pattern, "**/") {
+			suffix := strings.TrimPrefix(pattern, "**/")
+			filepath.WalkDir(r.rootPath, func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				matched, _ := filepath.Match(suffix, filepath.Base(path))
+				if matched {
+					matches = append(matches, path)
+				}
+				return nil
+			})
+		} else if strings.Contains(pattern, "**") {
+			parts := strings.SplitN(pattern, "**", 2)
+			suffix := strings.TrimPrefix(parts[1], "/")
+			filepath.WalkDir(r.rootPath, func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				if suffix == "" || suffix == "*" {
+					matches = append(matches, path)
+				} else {
+					matched, _ := filepath.Match(suffix, filepath.Base(path))
+					if matched {
+						matches = append(matches, path)
+					}
+				}
+				return nil
+			})
+		} else {
+			var err error
+			matches, err = filepath.Glob(filepath.Join(r.rootPath, pattern))
+			if err != nil {
+				continue
+			}
 		}
 
 		for _, match := range matches {
-			// Check exclude patterns
+			if !isWithinRoot(match) {
+				continue
+			}
+
 			if r.isExcluded(match, spec.Exclude) {
 				continue
 			}
+
+			relPath, _ := filepath.Rel(r.rootPath, match)
+			if seen[relPath] {
+				continue
+			}
+			seen[relPath] = true
 
 			content, err := os.ReadFile(match)
 			if err != nil {
 				continue
 			}
 
-			relPath, _ := filepath.Rel(r.rootPath, match)
 			files = append(files, ContextFile{
 				Path:    relPath,
 				Content: string(content),

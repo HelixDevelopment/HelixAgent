@@ -251,4 +251,76 @@ Standardize on one canonical location and use Go module `replace` directives con
 
 ---
 
-Last Updated: April 15, 2026
+## Issue #21: persistSession Passes Go Slices as SQL Parameters
+
+### Issue
+`Coordinator.CreateSession` failed with `sql: converting argument $4 type: unsupported type []clis.CLIAgentType, a slice of string` when trying to persist ensemble sessions.
+
+### Root Cause
+In `internal/ensemble/multi_instance/coordinator.go:981`, `persistSession` passed Go slices (`participantTypes []clis.AgentType`, `critiqueIDs []string`, etc.) directly as SQL parameters. Go's `database/sql` does not support slice types — only scalar values.
+
+### Fix Applied
+JSON-marshal all slice arguments before passing to `ExecContext`:
+- `participantTypes` → `participantTypesJSON`
+- `critiqueIDs` → `critiqueIDsJSON`
+- `verifierIDs` → `verifierIDsJSON`
+- `fallbackIDs` → `fallbackIDsJSON`
+
+### Files
+- `internal/ensemble/multi_instance/coordinator.go` — `persistSession` function
+
+---
+
+## Issue #22: persistResult Nil Pointer Panic on Error Path
+
+### Issue
+`ExecuteSession_Voting` test (and any failed session execution) caused a nil pointer dereference panic at `coordinator.go:1013`.
+
+### Root Cause
+When `executeVotingStrategy` (or any strategy) returns an error, `result` is nil. `persistResult` was called with nil `result` and then dereferenced it (`result.Reached`, `result.Confidence`, `result.Rounds`). Similarly, `session.StartedAt` could be nil.
+
+### Fix Applied
+Added nil checks for `result` and `session.StartedAt` in `persistResult`, using zero values when nil.
+
+### Files
+- `internal/ensemble/multi_instance/coordinator.go` — `persistResult` function
+
+---
+
+## Issue #23: Templates Resolver Does Not Support `**/` Recursive Glob
+
+### Issue
+`TestResolver_ResolveFiles/recursive_pattern` failed — `**/*.md` only matched files in a directory literally named `**` instead of recursively.
+
+### Root Cause
+Go's `filepath.Glob` does NOT support `**` as a recursive wildcard — it treats `**` literally. The resolver used `filepath.Glob` for all patterns.
+
+### Fix Applied
+Rewrote `resolveFiles` to:
+1. Detect `**` patterns and use `filepath.WalkDir` for recursive matching
+2. Keep `filepath.Glob` for simple patterns
+3. Add `isWithinRoot()` security check to prevent path traversal attacks
+4. Add deduplication with `seen` map
+
+### Files
+- `internal/templates/resolver.go` — `resolveFiles` function
+
+---
+
+## Issue #24: MCP Bridge Error Response Test — Premature Shutdown via t.Parallel()
+
+### Issue
+`TestSSEBridge_ErrorResponses/Handles_MCP_error_response` failed expecting error code `-32601` (Method not found) but got `-32000` (Server error — "Bridge not ready").
+
+### Root Cause
+The subtest used `t.Parallel()`. In Go's testing model, when a parent test function returns, its `defer` statements execute. The parent had `defer bridge.Shutdown()` which ran BEFORE the parallel subtest, shutting down the bridge. The subtest then sent a request to a stopped bridge.
+
+### Fix Applied
+Removed `t.Parallel()` from the subtest since it needs the bridge to remain running.
+
+### Files
+- `internal/mcp/bridge/sse_bridge_comprehensive_test.go` — `TestSSEBridge_ErrorResponses`
+
+---
+
+Last Updated: April 16, 2026

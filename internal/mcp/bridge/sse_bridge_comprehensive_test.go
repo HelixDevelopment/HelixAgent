@@ -1040,7 +1040,6 @@ func TestSSEBridge_ErrorResponses(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	t.Run("Handles MCP error response", func(t *testing.T) {
-		t.Parallel()
 		reqBody := `{"jsonrpc":"2.0","id":1,"method":"error"}`
 		req := httptest.NewRequest(http.MethodPost, "/message", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")

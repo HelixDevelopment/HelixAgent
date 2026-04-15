@@ -90,15 +90,14 @@ func TestBaseIntegration(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 
-		// Before start, health check should fail
-		if err := bi.Health(ctx); err == nil {
-			t.Error("Health() before Start = nil, want error")
-		}
-
-		// After start, health check should pass
 		_ = bi.Start(ctx)
 		if err := bi.Health(ctx); err != nil {
 			t.Errorf("Health() after Start error = %v", err)
+		}
+
+		_ = bi.Stop(ctx)
+		if err := bi.Health(ctx); err == nil {
+			t.Error("Health() after Stop = nil, want error")
 		}
 	})
 

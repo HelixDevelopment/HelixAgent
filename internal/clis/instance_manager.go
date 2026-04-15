@@ -647,6 +647,9 @@ func (m *InstanceManager) instanceEventLoop(inst *AgentInstance) {
 }
 
 func (m *InstanceManager) instanceHealthLoop(inst *AgentInstance) {
+	if inst.Config.HealthCheckInterval <= 0 {
+		return
+	}
 	ticker := time.NewTicker(inst.Config.HealthCheckInterval)
 	defer ticker.Stop()
 

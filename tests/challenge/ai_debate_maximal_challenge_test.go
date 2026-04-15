@@ -40,10 +40,15 @@ func TestAIDebateMaximalChallenge(t *testing.T) {
 
 	// Verify we have healthy providers
 	healthyProviders := getHealthyProviderCount(t, baseURL)
-	if healthyProviders == 0 {
-		t.Skip("No healthy providers available")
+	registeredProviders := len(getAvailableProviders(t, baseURL))
+	if healthyProviders == 0 && registeredProviders == 0 {
+		t.Skip("No providers available (none registered, none healthy)")
 	}
-	t.Logf("Starting AI Debate Maximal Challenge with %d healthy providers", healthyProviders)
+	effectiveProviders := healthyProviders
+	if effectiveProviders == 0 {
+		effectiveProviders = registeredProviders
+	}
+	t.Logf("Starting AI Debate Maximal Challenge with %d healthy/%d registered providers", healthyProviders, registeredProviders)
 
 	// Initialize challenge tracker
 	tracker := &ChallengeTracker{

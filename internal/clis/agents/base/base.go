@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sync"
 
 	"dev.helix.agent/internal/clis/agents"
@@ -42,10 +43,7 @@ func (b *BaseIntegration) Initialize(ctx context.Context, config interface{}) er
 
 	b.config = config
 
-	// Extract work directory from config if provided
-	if cfg, ok := config.(*BaseConfig); ok && cfg != nil && cfg.WorkDir != "" {
-		b.workDir = cfg.WorkDir
-	}
+	b.workDir = extractWorkDir(config)
 
 	// Set default work directory if still empty
 	if b.workDir == "" {
@@ -158,4 +156,28 @@ type BaseConfig struct {
 	AutoStart bool
 	LogLevel  string
 	Timeout   int
+}
+
+func extractWorkDir(config interface{}) string {
+	if config == nil {
+		return ""
+	}
+
+	if cfg, ok := config.(*BaseConfig); ok && cfg != nil && cfg.WorkDir != "" {
+		return cfg.WorkDir
+	}
+
+	v := reflect.ValueOf(config)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+		if v.Kind() == reflect.Struct {
+			if f := v.FieldByName("BaseConfig"); f.IsValid() {
+				if bc, ok := f.Interface().(BaseConfig); ok && bc.WorkDir != "" {
+					return bc.WorkDir
+				}
+			}
+		}
+	}
+
+	return ""
 }

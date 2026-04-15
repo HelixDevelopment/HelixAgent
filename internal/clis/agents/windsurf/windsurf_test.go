@@ -250,7 +250,6 @@ func TestWindsurfCascade(t *testing.T) {
 
 func TestWindsurfCreateProject(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()
 
@@ -357,7 +356,6 @@ func TestWindsurfGenerateComponent(t *testing.T) {
 
 func TestWindsurfListProjects(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()
 
@@ -555,7 +553,6 @@ func TestWindsurfHealth(t *testing.T) {
 
 func TestWindsurfProjectsPersistence(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping - test needs fixing")
 	tempDir := t.TempDir()
 
 	// Create first instance and add a project
@@ -634,7 +631,19 @@ func TestWindsurfConfigValidation(t *testing.T) {
 			t.Parallel()
 			w := New()
 			ctx := context.Background()
-			err := w.Initialize(ctx, tt.config)
+
+			cfg := tt.config
+			if cfg == nil {
+				cfg = &Config{
+					BaseConfig: base.BaseConfig{
+						WorkDir: t.TempDir(),
+					},
+				}
+			} else if cfg.WorkDir == "" {
+				cfg.WorkDir = t.TempDir()
+			}
+
+			err := w.Initialize(ctx, cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Initialize() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -644,7 +653,6 @@ func TestWindsurfConfigValidation(t *testing.T) {
 
 func TestWindsurfGetProjects(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping - test needs fixing")
 	w := New()
 	ctx := context.Background()
 

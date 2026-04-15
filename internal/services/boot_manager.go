@@ -513,7 +513,16 @@ func (bm *BootManager) startComposeServices(composeFile, profile string, service
 		"services": strings.Join(services, ", "),
 	}).Info("Starting compose services via Containers module")
 	ctx := context.Background()
-	return ca.ComposeUp(ctx, composeFile, profile)
+
+	bm.Logger.WithField("composeFile", composeFile).Debug("Calling ca.ComposeUp()")
+	err := ca.ComposeUp(ctx, composeFile, profile)
+	bm.Logger.WithField("composeFile", composeFile).WithError(err).Debug("ca.ComposeUp() returned")
+
+	if err != nil {
+		return err
+	}
+	bm.Logger.WithField("composeFile", composeFile).Info("Compose services started successfully")
+	return nil
 }
 
 func (bm *BootManager) stopComposeServices(composeFile, profile string, services []string) error {

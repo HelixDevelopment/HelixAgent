@@ -97,6 +97,7 @@ var (
 	useLocalMCPServers = flag.Bool("use-local-mcp-servers", false, "Use local Docker-based MCP servers on TCP ports (requires running start-mcp-servers.sh)")
 	useContainerMCPs   = flag.Bool("use-container-mcps", false, "Use containerized MCP servers with HTTP SSE endpoints (requires running MCP containers)")
 	autoStartMCP       = flag.Bool("auto-start-mcp", true, "Automatically start MCP Docker containers on HelixAgent startup")
+	skipVerification   = flag.Bool("skip-verification", false, "Skip startup provider verification (for faster boot in test environments)")
 	// Unified CLI agent configuration flags (all 48 agents)
 	generateAgentConfig = flag.String("generate-agent-config", "", "Generate config for specified CLI agent (use --list-agents to see all)")
 	validateAgentConfig = flag.String("validate-agent-config", "", "Validate config file for agent (format: agent:path)")
@@ -1900,6 +1901,7 @@ func main() {
 	appCfg.PreinstallMCP = *preinstallMCP
 	appCfg.SkipMCPPreinstall = *skipMCPPreinstall
 	appCfg.AutoStartMCP = *autoStartMCP
+	appCfg.SkipVerification = *skipVerification
 	// Unified CLI agent configuration flags
 	appCfg.GenerateAgentConfig = *generateAgentConfig
 	appCfg.ValidateAgentConfig = *validateAgentConfig

@@ -440,7 +440,13 @@ func (a *Adapter) ComposeUp(
 	a.logger.Info("compose up: %s (profile: %s)",
 		composeFile, profile,
 	)
-	return a.orchestrator.Up(ctx, project)
+	err := a.orchestrator.Up(ctx, project)
+	if err != nil {
+		a.logger.Error("compose up FAILED: %v", err)
+		return err
+	}
+	a.logger.Info("compose up completed successfully")
+	return nil
 }
 
 // ComposeDown stops services from a compose file.
@@ -820,6 +826,7 @@ func (a *Adapter) copyBuildContexts(
 	contexts []string,
 	remoteDir string,
 ) error {
+	var errors []error
 	for _, buildCtx := range contexts {
 		// Get relative path from project root
 		relPath, err := filepath.Rel(a.projectDir, buildCtx)
@@ -835,6 +842,7 @@ func (a *Adapter) copyBuildContexts(
 		mkdirCmd := fmt.Sprintf("mkdir -p %s", remoteParent)
 		if _, err = a.executor.Execute(ctx, host, mkdirCmd); err != nil {
 			a.logger.Warn("Failed to create remote directory %s: %v", remoteParent, err)
+			errors = append(errors, fmt.Errorf("create remote dir %s: %w", remoteParent, err))
 			continue
 		}
 
@@ -842,25 +850,31 @@ func (a *Adapter) copyBuildContexts(
 		info, err := os.Stat(buildCtx)
 		if err != nil {
 			a.logger.Warn("Failed to stat %s: %v", buildCtx, err)
+			errors = append(errors, fmt.Errorf("stat %s: %w", buildCtx, err))
 			continue
 		}
 
 		if info.IsDir() {
 			// Copy directory recursively
 			if err := a.executor.CopyDir(ctx, host, buildCtx, remotePath); err != nil {
-				a.logger.Warn("Failed to copy directory %s to remote: %v", buildCtx, err)
+				a.logger.Error("Failed to copy directory %s to remote: %v", buildCtx, err)
+				errors = append(errors, fmt.Errorf("copy dir %s: %w", buildCtx, err))
 				continue
 			}
 			a.logger.Info("Copied build context to remote: %s -> %s", buildCtx, remotePath)
 		} else {
 			// Copy file
 			if err := a.executor.CopyFile(ctx, host, buildCtx, remotePath); err != nil {
-				a.logger.Warn("Failed to copy file %s to remote: %v", buildCtx, err)
+				a.logger.Error("Failed to copy file %s to remote: %v", buildCtx, err)
+				errors = append(errors, fmt.Errorf("copy file %s: %w", buildCtx, err))
 				continue
 			}
 		}
 	}
 
+	if len(errors) > 0 {
+		return fmt.Errorf("copy build contexts failed: %d errors: %v", len(errors), errors)
+	}
 	return nil
 }
 

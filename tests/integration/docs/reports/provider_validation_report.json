@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-16T01:46:09.090320034+03:00",
+  "timestamp": "2026-04-16T02:36:41.407875604+03:00",
   "total_providers": 36,
   "with_keys": 29,
   "without_keys": 7,
@@ -24,7 +24,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable ANTHROPIC_API_KEY is not set. Set it with: export ANTHROPIC_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:04.609536952+03:00"
+      "timestamp": "2026-04-16T02:36:25.493106514+03:00"
     },
     {
       "provider_name": "openai",
@@ -41,7 +41,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable OPENAI_API_KEY is not set. Set it with: export OPENAI_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:04.609541583+03:00"
+      "timestamp": "2026-04-16T02:36:25.493116335+03:00"
     },
     {
       "provider_name": "gemini",
@@ -54,13 +54,13 @@
       "enabled": true,
       "health_status": "bad_request",
       "health_error": "HTTP 400: API Key not found. Please pass a valid API key.",
-      "health_latency_ms": 428034916,
+      "health_latency_ms": 183472505,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 400,
       "overall_status": "bad_request",
       "root_cause": "Provider gemini (GEMINI_API_KEY) bad request (HTTP 400). Error: API Key not found. Please pass a valid API key.. Action: Request format may be wrong for this provider's API version",
-      "timestamp": "2026-04-16T01:46:04.609543535+03:00"
+      "timestamp": "2026-04-16T02:36:25.407205825+03:00"
     },
     {
       "provider_name": "deepseek",
@@ -72,12 +72,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 452545999,
+      "health_latency_ms": 408482129,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:05.038045368+03:00"
+      "timestamp": "2026-04-16T02:36:25.493119931+03:00"
     },
     {
       "provider_name": "mistral",
@@ -89,12 +89,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 600857374,
+      "health_latency_ms": 613560358,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:05.098641341+03:00"
+      "timestamp": "2026-04-16T02:36:25.590843503+03:00"
     },
     {
       "provider_name": "codestral",
@@ -106,12 +106,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 324074957,
+      "health_latency_ms": 253763132,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:05.315465819+03:00"
+      "timestamp": "2026-04-16T02:36:23.521266872+03:00"
     },
     {
       "provider_name": "qwen",
@@ -128,7 +128,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable QWEN_API_KEY is not set. Set it with: export QWEN_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:05.445318142+03:00"
+      "timestamp": "2026-04-16T02:36:26.125118509+03:00"
     },
     {
       "provider_name": "xai",
@@ -145,7 +145,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable XAI_API_KEY is not set. Set it with: export XAI_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:05.44532475+03:00"
+      "timestamp": "2026-04-16T02:36:26.125127123+03:00"
     },
     {
       "provider_name": "zai",
@@ -158,13 +158,13 @@
       "enabled": true,
       "health_status": "rate_limited",
       "health_error": "HTTP 429: Insufficient balance or no resource package. Please recharge.",
-      "health_latency_ms": 705761344,
+      "health_latency_ms": 577645192,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 429,
       "overall_status": "rate_limited",
       "root_cause": "Provider zai (ZAI_API_KEY) rate limited. The API key is valid but quota is exhausted. Error: Insufficient balance or no resource package. Please recharge.. Action: Wait for rate limit reset or upgrade plan",
-      "timestamp": "2026-04-16T01:46:04.609236522+03:00"
+      "timestamp": "2026-04-16T02:36:26.12513105+03:00"
     },
     {
       "provider_name": "github-models",
@@ -177,13 +177,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: (no response body)",
-      "health_latency_ms": 489271997,
+      "health_latency_ms": 443493991,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider github-models (GITHUB_MODELS_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: (no response body). Action: Verify the key at the provider's dashboard and update GITHUB_MODELS_API_KEY",
-      "timestamp": "2026-04-16T01:46:04.609310727+03:00"
+      "timestamp": "2026-04-16T02:36:26.204539233+03:00"
     },
     {
       "provider_name": "cohere",
@@ -196,13 +196,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 403: (no response body)",
-      "health_latency_ms": 440511494,
+      "health_latency_ms": 333397311,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 403,
       "overall_status": "auth_failed",
       "root_cause": "Provider cohere (COHERE_API_KEY) authentication failed (HTTP 403). The API key is invalid, expired, or revoked. Error: (no response body). Action: Verify the key at the provider's dashboard and update COHERE_API_KEY",
-      "timestamp": "2026-04-16T01:46:07.148894928+03:00"
+      "timestamp": "2026-04-16T02:36:25.791552289+03:00"
     },
     {
       "provider_name": "perplexity",
@@ -219,7 +219,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable PERPLEXITY_API_KEY is not set. Set it with: export PERPLEXITY_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:07.424418494+03:00"
+      "timestamp": "2026-04-16T02:36:26.315557012+03:00"
     },
     {
       "provider_name": "ai21",
@@ -236,7 +236,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable AI21_API_KEY is not set. Set it with: export AI21_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:06.254355235+03:00"
+      "timestamp": "2026-04-16T02:36:26.315562754+03:00"
     },
     {
       "provider_name": "groq",
@@ -249,13 +249,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 403: Forbidden",
-      "health_latency_ms": 139151052,
+      "health_latency_ms": 109507834,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 403,
       "overall_status": "auth_failed",
       "root_cause": "Provider groq (GROQ_API_KEY) authentication failed (HTTP 403). The API key is invalid, expired, or revoked. Error: Forbidden. Action: Verify the key at the provider's dashboard and update GROQ_API_KEY",
-      "timestamp": "2026-04-16T01:46:06.115067774+03:00"
+      "timestamp": "2026-04-16T02:36:26.205988424+03:00"
     },
     {
       "provider_name": "cerebras",
@@ -268,13 +268,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 403: (no response body)",
-      "health_latency_ms": 317471286,
+      "health_latency_ms": 144550509,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 403,
       "overall_status": "auth_failed",
       "root_cause": "Provider cerebras (CEREBRAS_API_KEY) authentication failed (HTTP 403). The API key is invalid, expired, or revoked. Error: (no response body). Action: Verify the key at the provider's dashboard and update CEREBRAS_API_KEY",
-      "timestamp": "2026-04-16T01:46:06.862340125+03:00"
+      "timestamp": "2026-04-16T02:36:26.315564707+03:00"
     },
     {
       "provider_name": "sambanova",
@@ -287,13 +287,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: A payment method is required. Please set up a payment method to continue.",
-      "health_latency_ms": 766209121,
+      "health_latency_ms": 636643326,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 402,
       "overall_status": "model_not_found",
       "root_cause": "Provider sambanova (SAMBANOVA_API_KEY) model Meta-Llama-3.1-70B-Instruct not found (HTTP 404). Error: A payment method is required. Please set up a payment method to continue.. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:06.735650306+03:00"
+      "timestamp": "2026-04-16T02:36:23.521273682+03:00"
     },
     {
       "provider_name": "fireworks",
@@ -306,13 +306,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: Model not found, inaccessible, and/or not deployed",
-      "health_latency_ms": 324728395,
+      "health_latency_ms": 160453409,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 404,
       "overall_status": "model_not_found",
       "root_cause": "Provider fireworks (FIREWORKS_API_KEY) model accounts/fireworks/models/llama-v3p1-70b-instruct not found (HTTP 404). Error: Model not found, inaccessible, and/or not deployed. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:06.729108769+03:00"
+      "timestamp": "2026-04-16T02:36:23.521282655+03:00"
     },
     {
       "provider_name": "together",
@@ -329,7 +329,7 @@
       "complete_latency_ms": 0,
       "overall_status": "no_key",
       "root_cause": "Environment variable TOGETHER_API_KEY is not set. Set it with: export TOGETHER_API_KEY=\u003cyour-api-key\u003e",
-      "timestamp": "2026-04-16T01:46:04.609227988+03:00"
+      "timestamp": "2026-04-16T02:36:23.521317197+03:00"
     },
     {
       "provider_name": "hyperbolic",
@@ -342,13 +342,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 403: (no response body)",
-      "health_latency_ms": 209522046,
+      "health_latency_ms": 93300514,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 403,
       "overall_status": "auth_failed",
       "root_cause": "Provider hyperbolic (HYPERBOLIC_API_KEY) authentication failed (HTTP 403). The API key is invalid, expired, or revoked. Error: (no response body). Action: Verify the key at the provider's dashboard and update HYPERBOLIC_API_KEY",
-      "timestamp": "2026-04-16T01:46:07.510444995+03:00"
+      "timestamp": "2026-04-16T02:36:23.521325588+03:00"
     },
     {
       "provider_name": "replicate",
@@ -361,13 +361,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: You did not pass a valid authentication token",
-      "health_latency_ms": 262846344,
+      "health_latency_ms": 480770202,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider replicate (REPLICATE_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: You did not pass a valid authentication token. Action: Verify the key at the provider's dashboard and update REPLICATE_API_KEY",
-      "timestamp": "2026-04-16T01:46:06.27270195+03:00"
+      "timestamp": "2026-04-16T02:36:23.614768787+03:00"
     },
     {
       "provider_name": "siliconflow",
@@ -380,13 +380,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: (no response body)",
-      "health_latency_ms": 1665110945,
+      "health_latency_ms": 643647580,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider siliconflow (SILICONFLOW_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: (no response body). Action: Verify the key at the provider's dashboard and update SILICONFLOW_API_KEY",
-      "timestamp": "2026-04-16T01:46:07.424424775+03:00"
+      "timestamp": "2026-04-16T02:36:23.681888241+03:00"
     },
     {
       "provider_name": "cloudflare",
@@ -399,13 +399,13 @@
       "enabled": true,
       "health_status": "bad_request",
       "health_error": "HTTP 400: {\"errors\":[{\"code\":7000,\"message\":\"No route for that URI\"}],\"messages\":[],\"result\":null,\"success\":false}",
-      "health_latency_ms": 370224952,
+      "health_latency_ms": 324289617,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 400,
       "overall_status": "bad_request",
       "root_cause": "Provider cloudflare (CLOUDFLARE_API_KEY) bad request (HTTP 400). Error: {\"errors\":[{\"code\":7000,\"message\":\"No route for that URI\"}],\"messages\":[],\"result\":null,\"success\":false}. Action: Request format may be wrong for this provider's API version",
-      "timestamp": "2026-04-16T01:46:07.053990711+03:00"
+      "timestamp": "2026-04-16T02:36:23.775198232+03:00"
     },
     {
       "provider_name": "nvidia",
@@ -417,12 +417,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 474647824,
+      "health_latency_ms": 17312105180,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:06.254360855+03:00"
+      "timestamp": "2026-04-16T02:36:24.095611793+03:00"
     },
     {
       "provider_name": "kimi",
@@ -435,13 +435,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: Invalid Authentication",
-      "health_latency_ms": 1923654492,
+      "health_latency_ms": 994955042,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider kimi (KIMI_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: Invalid Authentication. Action: Verify the key at the provider's dashboard and update KIMI_API_KEY",
-      "timestamp": "2026-04-16T01:46:06.535690154+03:00"
+      "timestamp": "2026-04-16T02:36:24.099608244+03:00"
     },
     {
       "provider_name": "huggingface",
@@ -454,13 +454,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: (no response body)",
-      "health_latency_ms": 309057635,
+      "health_latency_ms": 260066934,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 404,
       "overall_status": "model_not_found",
       "root_cause": "Provider huggingface (HUGGINGFACE_API_KEY) model meta-llama/Llama-3.2-3B-Instruct not found (HTTP 404). Error: (no response body). Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:06.426505859+03:00"
+      "timestamp": "2026-04-16T02:36:24.167629804+03:00"
     },
     {
       "provider_name": "novita",
@@ -473,13 +473,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: model not found",
-      "health_latency_ms": 549369213,
+      "health_latency_ms": 294009453,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 404,
       "overall_status": "model_not_found",
       "root_cause": "Provider novita (NOVITA_API_KEY) model meta-llama/llama-3.1-70b-instruct not found (HTTP 404). Error: model not found. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:07.17998634+03:00"
+      "timestamp": "2026-04-16T02:36:24.194813191+03:00"
     },
     {
       "provider_name": "upstage",
@@ -492,13 +492,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: API key suspended due to insufficient credit. Register your payment method at https://console.upstage.ai/billing to continue.",
-      "health_latency_ms": 1141452171,
+      "health_latency_ms": 1167339532,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider upstage (UPSTAGE_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: API key suspended due to insufficient credit. Register your payment method at https://console.upstage.ai/billing to continue.. Action: Verify the key at the provider's dashboard and update UPSTAGE_API_KEY",
-      "timestamp": "2026-04-16T01:46:04.609462918+03:00"
+      "timestamp": "2026-04-16T02:36:24.325631833+03:00"
     },
     {
       "provider_name": "chutes",
@@ -511,13 +511,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: model not found: chutesai/Chutes-Mistral-Nemo-2407",
-      "health_latency_ms": 475129974,
+      "health_latency_ms": 856830268,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 404,
       "overall_status": "model_not_found",
       "root_cause": "Provider chutes (CHUTES_API_KEY) model chutesai/Chutes-Mistral-Nemo-2407 not found (HTTP 404). Error: model not found: chutesai/Chutes-Mistral-Nemo-2407. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:05.639736823+03:00"
+      "timestamp": "2026-04-16T02:36:24.427804887+03:00"
     },
     {
       "provider_name": "openrouter",
@@ -530,13 +530,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: This request requires more credits, or fewer max_tokens. You requested up to 50 tokens, but can only afford 1. To increase, visit https://openrouter.ai/settings/credits and add more credits",
-      "health_latency_ms": 454259832,
+      "health_latency_ms": 319583625,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 402,
       "overall_status": "model_not_found",
       "root_cause": "Provider openrouter (OPENROUTER_API_KEY) model x-ai/grok-4 not found (HTTP 404). Error: This request requires more credits, or fewer max_tokens. You requested up to 50 tokens, but can only afford 1. To increase, visit https://openrouter.ai/settings/credits and add more credits. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:05.642720763+03:00"
+      "timestamp": "2026-04-16T02:36:24.488963009+03:00"
     },
     {
       "provider_name": "venice",
@@ -549,13 +549,13 @@
       "enabled": true,
       "health_status": "model_not_found",
       "health_error": "HTTP 404: {\"error\":\"Specified model not found: llama-3.1-70b-instruct. Did you mean: llama-3.3-70b, mistral-small-3-2-24b-instruct, olafangensan-glm-4.7-flash-heretic?\"}",
-      "health_latency_ms": 287173983,
+      "health_latency_ms": 265507926,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 404,
       "overall_status": "model_not_found",
       "root_cause": "Provider venice (VENICE_API_KEY) model llama-3.1-70b-instruct not found (HTTP 404). Error: {\"error\":\"Specified model not found: llama-3.1-70b-instruct. Did you mean: llama-3.3-70b, mistral-small-3-2-24b-instruct, olafangensan-glm-4.7-flash-heretic?\"}. Action: The model may have been renamed or deprecated. Check provider docs for current model names",
-      "timestamp": "2026-04-16T01:46:05.700100204+03:00"
+      "timestamp": "2026-04-16T02:36:24.808631377+03:00"
     },
     {
       "provider_name": "sarvam",
@@ -567,12 +567,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 1397801068,
+      "health_latency_ms": 1131611791,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:05.750999746+03:00"
+      "timestamp": "2026-04-16T02:36:25.074311132+03:00"
     },
     {
       "provider_name": "kilo",
@@ -585,13 +585,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 403: Forbidden",
-      "health_latency_ms": 197300416,
+      "health_latency_ms": 108026316,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 403,
       "overall_status": "auth_failed",
       "root_cause": "Provider kilo (KILO_API_KEY) authentication failed (HTTP 403). The API key is invalid, expired, or revoked. Error: Forbidden. Action: Verify the key at the provider's dashboard and update KILO_API_KEY",
-      "timestamp": "2026-04-16T01:46:05.445333734+03:00"
+      "timestamp": "2026-04-16T02:36:25.094650935+03:00"
     },
     {
       "provider_name": "publicai",
@@ -604,13 +604,13 @@
       "enabled": true,
       "health_status": "auth_failed",
       "health_error": "HTTP 401: Session check failed",
-      "health_latency_ms": 329371368,
+      "health_latency_ms": 166932843,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "status_code": 401,
       "overall_status": "auth_failed",
       "root_cause": "Provider publicai (PUBLICAI_API_KEY) authentication failed (HTTP 401). The API key is invalid, expired, or revoked. Error: Session check failed. Action: Verify the key at the provider's dashboard and update PUBLICAI_API_KEY",
-      "timestamp": "2026-04-16T01:46:06.097057553+03:00"
+      "timestamp": "2026-04-16T02:36:25.202781926+03:00"
     },
     {
       "provider_name": "modal",
@@ -622,12 +622,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 644234808,
+      "health_latency_ms": 506660002,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:05.987431778+03:00"
+      "timestamp": "2026-04-16T02:36:25.28482356+03:00"
     },
     {
       "provider_name": "nia",
@@ -640,12 +640,12 @@
       "enabled": true,
       "health_status": "unreachable",
       "health_error": "Post \"https://api.nia.ai/v1/chat/completions\": dial tcp: lookup api.nia.ai on 192.168.0.1:53: no such host",
-      "health_latency_ms": 230531334,
+      "health_latency_ms": 37334409,
       "complete_ok": false,
       "complete_latency_ms": 0,
       "overall_status": "dns_failure",
       "root_cause": "Provider nia (NIA_API_KEY) DNS resolution failed for https://api.nia.ai/v1/chat/completions. Check network connectivity.",
-      "timestamp": "2026-04-16T01:46:06.631726034+03:00"
+      "timestamp": "2026-04-16T02:36:25.36979022+03:00"
     },
     {
       "provider_name": "nvidia",
@@ -657,12 +657,12 @@
       "has_config": true,
       "enabled": true,
       "health_status": "healthy",
-      "health_latency_ms": 835173140,
+      "health_latency_ms": 673360140,
       "complete_ok": true,
       "complete_latency_ms": 0,
       "status_code": 200,
       "overall_status": "healthy",
-      "timestamp": "2026-04-16T01:46:04.609089725+03:00"
+      "timestamp": "2026-04-16T02:36:23.521276349+03:00"
     }
   ],
   "server_healthy": true,

@@ -1,5 +1,41 @@
 # Bug Fixes and Known Issues
 
+## Issue #13: Main build broken — HelixQA imports non-existent `pkg/helixqa` in LLMsVerifier (BUGFIX 2026-04-18)
+
+### Issue
+`go build ./cmd/helixagent/` at the monorepo root failed with:
+
+```
+HelixQA/pkg/llm/vision_ranking.go:10:2: module digital.vasic.llmsverifier@latest
+found (v0.0.0-00010101000000-000000000000, replaced by ./LLMsVerifier/llm-verifier),
+but does not contain package digital.vasic.llmsverifier/pkg/helixqa
+```
+
+The break existed before the 2026-04-18 submodule-sync commit — it was introduced when HelixQA upstream landed the OpenClawing2 / vision-ranking work that references a package `LLMsVerifier` was never given.
+
+### Root Cause
+`HelixQA/pkg/llm/vision_ranking.go` imports `digital.vasic.llmsverifier/pkg/helixqa` and calls `helixqa.VisionModelRegistry()`. HelixQA's own `CLAUDE.md` explicitly says:
+
+> "Both registries MUST stay in sync — see `LLMsVerifier/pkg/helixqa/models.go`"
+
+But no such file had ever been committed in any LLMsVerifier branch (verified via `git log --all --diff-filter=A -- '**/helixqa/*'`, empty). The contract-holder had been deleted or never landed on the LLMsVerifier side.
+
+### Fix Applied
+- `LLMsVerifier/llm-verifier/pkg/helixqa/models.go` (new file, commit `b49a08b8` in LLMsVerifier)
+  - Declares `type VisionModel` with the fields HelixQA's `vision_ranking.go` reads: `Provider`, `Model`, `QualityScore`, `ReliabilityScore`, `InputCostPer1k`, `OutputCostPer1k`, `AvgLatencyMs`.
+  - Declares `func VisionModelRegistry() []VisionModel` returning a 10-provider initial registry mirroring the cost/quality rates documented in `HelixQA/CLAUDE.md` § "Cost Rates".
+  - Conservative starting scores (quality/reliability). LLMsVerifier benchmarks can override these per-provider later.
+- Root `go.mod`: pseudo-version pin for `digital.vasic.llmsverifier` collapsed by `go mod tidy`.
+- Root `LLMsVerifier` submodule pointer advanced to `b49a08b8`.
+
+**Verification:**
+- `GOMAXPROCS=2 nice -n 19 go build ./...` — passes.
+- `GOMAXPROCS=2 nice -n 19 go test -race -short -run "TestServicesIntegration_ProviderRegistry" ./internal/services/ -p 1 -count=3` — 3 iterations, all PASS.
+
+**Follow-up (not blocking build):** Replace the conservative initial scores with real LLMsVerifier benchmark data as part of Phase P3 (test-type breadth) so the registry is benchmark-backed, not hand-curated.
+
+---
+
 ## Issue #12: Flaky `TestServicesIntegration_ProviderRegistry_ConcurrentAccess` (BUGFIX 2026-04-18)
 
 ### Issue

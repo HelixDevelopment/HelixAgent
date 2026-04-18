@@ -1,0 +1,52 @@
+# tests/security/exec-sites-baseline.txt
+#
+# Baseline snapshot of every production Go file that invokes
+# exec.Command / exec.CommandContext, audited 2026-04-19.
+#
+# Consumed by challenges/scripts/exec_hygiene_challenge.sh:
+#   - A new file added to this list must carry a security audit
+#     note in docs/security/exec-sites-audit.md.
+#   - The challenge fails if any production file uses exec.Command
+#     and is NOT in this list and does NOT carry a //nolint:gosec
+#     or //#nosec G204 annotation on the call line.
+#
+# Format: one relative-from-repo-root path per line; comments start
+# with "#"; blank lines ignored.
+cmd/helixagent/main.go
+internal/auth/oauth_credentials/cli_refresh.go
+internal/bigdata/spark_processor.go
+internal/clis/agents/base/base.go
+internal/clis/agents/claude_code/claude_code.go
+internal/clis/agents/claude_code/tool_executor.go
+internal/clis/agents/openhands/openhands.go
+internal/clis/agents/windsurf/windsurf.go
+internal/clis/aider/git_ops.go
+internal/clis/continueagent/lsp_client.go
+internal/formatters/providers/native/base.go
+internal/llm/providers/claude/claude_cli.go
+internal/llm/providers/gemini/gemini_acp.go
+internal/llm/providers/gemini/gemini_cli.go
+internal/llm/providers/junie/junie_acp.go
+internal/llm/providers/junie/junie_cli.go
+internal/llm/providers/kimicode/kimicode_cli.go
+internal/llm/providers/qwen/qwen_acp.go
+internal/llm/providers/qwen/qwen_cli.go
+internal/llm/providers/zen/zen.go
+internal/llm/providers/zen/zen_cli.go
+internal/llm/providers/zen/zen_http.go
+internal/mcp/bridge/bridge.go
+internal/mcp/bridge/sse_bridge.go
+internal/mcp/connection_pool.go
+internal/mcp/preinstaller.go
+internal/mcp/servers/git_adapter.go
+internal/mcp/validation/validator.go
+internal/services/acp_client.go
+internal/services/lsp_manager.go
+internal/services/mcp_client.go
+internal/testing/framework.go
+internal/tools/bash_providers/registry.go
+internal/tools/cli_agent_extensions.go
+internal/tools/gittools/autocommit.go
+internal/tools/handler.go
+internal/tools/sandbox/sandbox.go
+internal/tools/tool_executors.go

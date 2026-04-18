@@ -1,11 +1,51 @@
 # HelixAgent — Unfinished-Work Report & Phased Implementation Plan
 
-**Date:** 2026-04-18
+**Date:** 2026-04-18 (opened), 2026-04-19 (progress update)
 **Author:** Compiled by Claude Opus 4.7 (1M context) for Милош Васић
 **Scope:** Entire HelixAgent monorepo (main app + 41 extracted modules + Toolkit + LLMsVerifier)
 **Sources:** Direct repo scan, four parallel codebase exploration passes, `git push` telemetry (GitHub Dependabot), `docs/issues/fixed/BUGFIXES.md`, Constitution v1.2.0, CLAUDE.md, AGENTS.md
 
 > **Governance:** This plan adheres strictly to the Constitution's 26 rules. It is a *delivery contract*, not a brainstorming document. Each phase declares its exit criteria; no phase is "done" until every gate in its exit criteria passes. Every rule below is mandatory and non-negotiable unless explicitly deprecated in a future Constitution revision.
+
+## Session Progress — 2026-04-19
+
+The following gaps have been **closed** during the 2026-04-18 / 2026-04-19 execution session. Evidence in commit SHAs and BUGFIXES.md issues.
+
+| Gap | Status | Closure commit(s) | BUGFIX |
+|---|---|---|---|
+| G2 Flaky `ProviderRegistry_ConcurrentAccess` | **Closed** | `cf31c819` | #12 |
+| G7 Goroutine leak: `debate_integration.adaptedProvider.CompleteStream` | **Closed** | `2b4ef1a3` | #14 |
+| G7 Data race + leak: `LazyProvider.createProviderWithContext` | **Closed** | `2393b019` | #15 |
+| G10 TLS posture: unconditional `InsecureSkipVerify` + `curl -sk` | **Closed** | `b6c8c20b` | #16 |
+| G11 `govulncheck` Makefile target | Verified **already present** (`make deps-scan`) | — | — |
+| G12 Snyk + SonarQube compose | Verified **already present** (`docker-compose.security.yml`) | — | — |
+| G13 Build broken — HelixQA `pkg/helixqa` missing in LLMsVerifier | **Closed** | `7e2d21c4` (+ LLMsVerifier `b49a08b8`) | #13 |
+| G1 partial (Go subset only): pgx/v5 CVEs | **Closed** (4 Go CVEs → 2; pgx/v5 5.7.6 → 5.9.0) | `e9eb9ffd` | — |
+| G9 Command-exec hardening (regression floor) | **Closed** (baseline + challenge; by-design sites documented) | `a578f951` | — |
+| P0 Foundation scripts + Makefile targets | **Shipped** | `855fdd84` | — |
+
+**Net deltas since session start:**
+
+- Go-level CVEs (govulncheck): **4 → 2** (remaining: 2 docker/docker, no upstream fix, mitigated architecturally — documented in `docs/security/dependabot-triage-2026-Q2.md`).
+- Skipped/flaky services tests: **1 → 0** (+ 4 new regression tests).
+- Broken compilation: `go build ./...` was failing at session start (missing `pkg/helixqa`); now clean.
+- Production goroutine leaks closed: **2 of ~10** identified.
+- Production TLS violations closed: **1 of 1** (unconditional `InsecureSkipVerify` in `startup.go`).
+- New Makefile targets: **+4** (`repo-health`, `coverage-floor`, `metrics-snapshot`, `security-gates-all`).
+- New challenges: **+3** (`repo_hygiene_challenge`, `tls_posture_challenge`, `exec_hygiene_challenge`).
+- BUGFIXES.md entries: **+5** (#12–#16).
+
+**Still open (prioritised):**
+
+- G1 remainder — 147 non-Go Dependabot CVEs on the vasic-digital mirror require UI-side triage (scoped API token).
+- G3/G4/G5 — bulk test-type coverage expansion across 26+ modules.
+- G6 — 8 thin-unit-test modules (BuildCheck, Models, ToolSchema, ConversationContext, BackgroundTasks, SelfImprove, Planning, LLMOps).
+- G7 remaining — ~8 more goroutine hotspots flagged by the initial audit; most are either already correctly structured (see `circuit_breaker.go:167` — defensive flag, code is fine) or need per-file review.
+- G8 — the `debate_performance_optimizer.go` cache was verified already-bounded; audit was pessimistic.
+- G14, G13 (original doc numbering) — actual video recordings, website modernisation.
+- G17 — `cli_agents/bridle` orphan sub-submodule.
+
+---
 
 ---
 

@@ -1,5 +1,49 @@
 # Bug Fixes and Known Issues
 
+## Issue #19: Data race in `buildcheck.MemoryStore.Load` — shared-pointer aliasing (BUGFIX 2026-04-19)
+
+### Issue
+Stress-testing BuildCheck (new `pkg/buildcheck/stress_test.go`, itself the canonical P3 stress-test template for other modules) caught a data race when two goroutines call `RecordBuild` on the same image name concurrently.
+
+```
+WARNING: DATA RACE
+Write at 0x00c0000ca8d0 by goroutine 10:
+  buildcheck.(*Detector).RecordBuild  detector.go:137
+Previous write at 0x00c0000ca8d0 by goroutine 14:
+  buildcheck.(*Detector).RecordBuild  detector.go:137
+```
+
+### Root Cause
+`MemoryStore.Load` returned the stored `*Manifest` pointer directly:
+
+```go
+func (s *MemoryStore) Load(imageName string) (*Manifest, error) {
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    return s.manifests[imageName], nil // shared pointer
+}
+```
+
+`RecordBuild` then mutated the returned manifest in place (`LastBuildAt`, `LastBuildTag`, `BuildArgs`). Two concurrent `RecordBuild` calls therefore raced on the same struct.
+
+### Fix Applied
+`BuildCheck/pkg/buildcheck/store.go` (BuildCheck commit `481a841`)
+
+`MemoryStore.Load` now returns a deep copy via a new `cloneManifest` helper. The FileHashes map and BuildArgs slice are copied so downstream mutations cannot alias the stored copy.
+
+### Template Value
+The test that surfaced the race (`pkg/buildcheck/stress_test.go`) is the canonical P3 stress-test template for every HelixAgent-extracted module. Its properties:
+
+- respects CONST-022 (`GOMAXPROCS=2`, bounded goroutine count, wall-clock deadline);
+- uses only in-package APIs (no external services);
+- includes a goroutine-count assertion to catch leaks;
+- ships with companion benchmarks for ±25% regression gates.
+
+**Verification:**
+- `go test -race -run '^TestStress' ./pkg/buildcheck/ -p 1 -count=3 -timeout 120s` → ok, 1.5 s wall.
+
+---
+
 ## Issue #16: TLS posture — unconditional `InsecureSkipVerify` in startup verifier + challenge scripts (BUGFIX 2026-04-19)
 
 ### Issue

@@ -1377,9 +1377,14 @@ ci-validate-constitution: validate-constitution check-compliance sync-constituti
 
 ci-validate-all:
 	@echo "🔍 CI/CD: Running all validation checks..."
+	@$(MAKE) repo-health
 	@$(MAKE) ci-validate-fallback
 	@$(MAKE) ci-validate-monitoring
 	@$(MAKE) ci-validate-constitution
+	@echo "🔐 Running new P0/P1 regression gates..."
+	@./challenges/scripts/repo_hygiene_challenge.sh
+	@./challenges/scripts/tls_posture_challenge.sh
+	@./challenges/scripts/exec_hygiene_challenge.sh
 	@echo "✅ All CI/CD validations passed"
 
 ci-pre-commit:

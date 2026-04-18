@@ -464,8 +464,11 @@ func TestServicesIntegration_ProviderRegistry_FullLifecycle(t *testing.T) {
 }
 
 func TestServicesIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
-	// TODO: Fix this test - providers not being registered properly in test setup
-	t.Skip("Skipping flaky concurrent access test - needs investigation")
+	// Regression: CONST-028 BUGFIX 2026-04-18 — previously skipped as "flaky"
+	// with reason "providers not being registered properly". Real cause: the
+	// concurrent-writer goroutine built a ProviderConfig without setting
+	// Enabled=true; ConfigureProvider's documented contract unregisters the
+	// provider when Enabled==false, silently draining the registry under load.
 	cfg := &RegistryConfig{
 		DefaultTimeout: 30 * time.Second,
 		CircuitBreaker: CircuitBreakerConfig{
@@ -504,7 +507,10 @@ func TestServicesIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 		}()
 	}
 
-	// Concurrent configuration updates
+	// Concurrent configuration updates — Enabled: true is REQUIRED, otherwise
+	// ConfigureProvider treats the call as a disable+unregister (see
+	// provider_registry.go ConfigureProvider: `if !config.Enabled { return
+	// unregisterProviderLocked(...) }`).
 	for i := 0; i < numGoroutines/2; i++ {
 		wg.Add(1)
 		go func(id int) {
@@ -512,8 +518,9 @@ func TestServicesIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 			for j := 0; j < iterations; j++ {
 				name := "provider-" + string(rune('a'+id))
 				_ = registry.ConfigureProvider(name, &ProviderConfig{
-					Name:   name,
-					Weight: float64(j),
+					Name:    name,
+					Enabled: true,
+					Weight:  float64(j),
 				})
 			}
 		}(i)
@@ -523,7 +530,32 @@ func TestServicesIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 
 	// Verify registry is still consistent
 	providers := registry.ListProviders()
-	assert.Len(t, providers, 5)
+	assert.Len(t, providers, 5, "expected all 5 providers to survive concurrent updates")
+}
+
+// TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider locks in
+// the intentional behaviour that ConfigureProvider with Enabled=false
+// unregisters the provider. Guards against regressing the fix for the
+// concurrent-access flake.
+func TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider(t *testing.T) {
+	cfg := &RegistryConfig{
+		DefaultTimeout: 30 * time.Second,
+		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
+		Providers:      make(map[string]*ProviderConfig),
+	}
+	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
+
+	require.NoError(t, registry.RegisterProvider("p1", newIntegrationMockProvider("p1", "r", 0.5)))
+	require.Len(t, registry.ListProviders(), 1)
+
+	// Enabled: false (default) is the disable signal.
+	require.NoError(t, registry.ConfigureProvider("p1", &ProviderConfig{Name: "p1", Weight: 1.0}))
+	assert.Empty(t, registry.ListProviders(), "Enabled=false must unregister")
+
+	// Re-register and confirm Enabled=true keeps it.
+	require.NoError(t, registry.RegisterProvider("p1", newIntegrationMockProvider("p1", "r", 0.5)))
+	require.NoError(t, registry.ConfigureProvider("p1", &ProviderConfig{Name: "p1", Enabled: true, Weight: 2.0}))
+	assert.Len(t, registry.ListProviders(), 1, "Enabled=true must preserve")
 }
 
 // =============================================================================

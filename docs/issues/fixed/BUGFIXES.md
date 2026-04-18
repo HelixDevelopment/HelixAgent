@@ -1,5 +1,45 @@
 # Bug Fixes and Known Issues
 
+## Issue #12: Flaky `TestServicesIntegration_ProviderRegistry_ConcurrentAccess` (BUGFIX 2026-04-18)
+
+### Issue
+`internal/services/services_integration_test.go:466` was marked:
+
+```go
+// TODO: Fix this test - providers not being registered properly in test setup
+t.Skip("Skipping flaky concurrent access test - needs investigation")
+```
+
+The diagnosis was wrong. Providers *were* being registered correctly; the concurrent-writer goroutine was silently **unregistering** them one iteration later.
+
+### Root Cause
+`ProviderRegistry.ConfigureProvider` in `internal/services/provider_registry.go:1054` has the documented contract:
+
+```go
+// If disabling the provider, unregister it
+if !config.Enabled {
+    return r.unregisterProviderLocked(name)
+}
+```
+
+The concurrent-updates block in the test built a `ProviderConfig` with only `Name` and `Weight` set, leaving `Enabled` at its zero value (`false`). Every "update weight" call therefore triggered the unregister path, draining the registry and failing the final `assert.Len(t, providers, 5)`.
+
+### Fix Applied
+`internal/services/services_integration_test.go`
+
+1. Removed the `t.Skip()` and the misleading TODO.
+2. Set `Enabled: true` in the concurrent-updates config construction.
+3. Added a comment pointing to `ConfigureProvider`'s documented disable-semantics so the contract is not re-broken by "cleanup" edits.
+4. Added a new regression test `TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider` that explicitly locks in the intentional unregister-on-`Enabled=false` behaviour, so future changes to `ConfigureProvider` cannot silently alter it.
+
+**Verification:**
+- `GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -race -run "TestServicesIntegration_ProviderRegistry_ConcurrentAccess|TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider" ./internal/services/ -count=50 -p 1` — 50 iterations, 24 s wall, zero races, zero failures.
+- Production behaviour unchanged; only the test and the new regression test were edited.
+
+**Tests:** both tests pass under `-race` 50× consecutively.
+
+---
+
 ## Issue #11: BaseIntegration.Initialize() Fails to Extract WorkDir from Embedded BaseConfig
 
 ### Issue

@@ -1,0 +1,49 @@
+# scripts/repo-own-modules.txt — the canonical list of own-module
+# directories at the monorepo root (one per line). Used by
+# scripts/coverage-floor.sh and scripts/metrics-snapshot.sh.
+#
+# Only project-owned modules (vasic-digital/*, HelixDevelopment/*,
+# milos85vasic/*) belong here. Third-party submodules (cli_agents/*,
+# MCP/*, external/*, tools/snow-cli, HelixQA/tools/opensource/*)
+# MUST NOT appear here per CLAUDE.md Rule 10.
+Agentic
+Auth
+BackgroundTasks
+Benchmark
+BuildCheck
+Cache
+Challenges
+Concurrency
+Containers
+ConversationContext
+Database
+DebateOrchestrator
+DocProcessor
+Embeddings
+EventBus
+Formatters
+HelixLLM
+HelixMemory
+HelixQA
+HelixSpecifier
+LLMOps
+LLMOrchestrator
+LLMProvider
+LLMsVerifier
+Memory
+MCP_Module
+Messaging
+Models
+Observability
+Optimization
+Planning
+Plugins
+RAG
+Security
+SelfImprove
+SkillRegistry
+Storage
+Streaming
+ToolSchema
+VectorDB
+VisionEngine

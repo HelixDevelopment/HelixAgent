@@ -80,6 +80,10 @@ reports/security/
 reports/sbom/
 run_sonar.sh
 
+# Phase-boundary metrics snapshots (time-stamped; regenerated per invocation)
+reports/metrics-snapshots/
+reports/coverage-floor/
+
 # CI generated reports
 reports/go/
 reports/mobile/

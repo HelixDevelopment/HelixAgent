@@ -1864,3 +1864,31 @@ audit-deadcode:
 audit-concurrency:
 	@echo "Scanning for concurrency hazards..."
 	go run ./cmd/audit --root . --scanners concurrency
+
+# =============================================================================
+# P0 FOUNDATION TARGETS (2026-04-18)
+# =============================================================================
+# Scaffolded by the phased plan in
+# docs/reports/2026-04-18-unfinished-work-report-and-phased-plan.md.
+# All targets are non-interactive (CONST-019) and resource-capped (CONST-022).
+
+## Run read-only repo health sanity checks
+repo-health:
+	@./scripts/repo-health.sh
+
+## Aggregate per-module coverage floor gate (runs make coverage-local in each)
+coverage-floor:
+	@echo "🎯 Running per-module coverage floor (90% lines, 85% branches)..."
+	@./scripts/coverage-floor.sh
+
+## Capture baseline metrics snapshot for a phase-closure report
+metrics-snapshot:
+	@echo "📊 Capturing metrics snapshot..."
+	@mkdir -p reports/metrics-snapshots
+	@./scripts/metrics-snapshot.sh "reports/metrics-snapshots/$$(date -u +%Y-%m-%dT%H%M%SZ)"
+
+## Run every security gate (gosec + govulncheck + gitleaks + compose scanners)
+security-gates-all: security-scan-gosec deps-scan secrets-scan security-scan-trivy
+	@echo "✓ security gates complete — reports under reports/security/"
+
+.PHONY: repo-health coverage-floor metrics-snapshot security-gates-all

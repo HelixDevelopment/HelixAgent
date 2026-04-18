@@ -71,6 +71,13 @@ func (a *adaptedProvider) Complete(ctx context.Context, req *digitalvasicmodels.
 }
 
 // CompleteStream implements llmprovider.LLMProvider
+//
+// Goroutine lifecycle: the forwarder goroutine exits when EITHER
+//   (a) internalCh closes, OR
+//   (b) ctx.Done() fires.
+// Both the receive from internalCh and the send to externalCh are guarded
+// by ctx.Done() so a cancelled caller cannot pin this goroutine even if
+// the inner provider never closes internalCh. See BUGFIXES.md Issue #14.
 func (a *adaptedProvider) CompleteStream(ctx context.Context, req *digitalvasicmodels.LLMRequest) (<-chan *digitalvasicmodels.LLMResponse, error) {
 	internalReq, err := convertLLMRequest(req)
 	if err != nil {
@@ -83,13 +90,25 @@ func (a *adaptedProvider) CompleteStream(ctx context.Context, req *digitalvasicm
 	externalCh := make(chan *digitalvasicmodels.LLMResponse, 1)
 	go func() {
 		defer close(externalCh)
-		for internalResp := range internalCh {
-			externalResp, err := convertLLMResponse(internalResp)
-			if err != nil {
-				// Log error? For now, skip.
-				continue
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case internalResp, ok := <-internalCh:
+				if !ok {
+					return
+				}
+				externalResp, err := convertLLMResponse(internalResp)
+				if err != nil {
+					// Conversion failure is non-fatal; skip this frame.
+					continue
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case externalCh <- externalResp:
+				}
 			}
-			externalCh <- externalResp
 		}
 	}()
 	return externalCh, nil

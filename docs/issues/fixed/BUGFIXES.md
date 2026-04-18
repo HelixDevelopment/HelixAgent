@@ -1,5 +1,61 @@
 # Bug Fixes and Known Issues
 
+## Issue #14: Goroutine leak in `debate_integration.adaptedProvider.CompleteStream` (BUGFIX 2026-04-19)
+
+### Issue
+`internal/services/debate_integration/provider_bridge.go:74` wraps an internal `llm.LLMProvider` and forwards its streaming channel to the external `llmprovider.LLMProvider` interface. The forwarder goroutine had two leak paths:
+
+1. **Receive side:** `for internalResp := range internalCh` kept the goroutine alive as long as `internalCh` kept sending frames, even after the caller's context was cancelled.
+2. **Send side:** `externalCh <- externalResp` blocked indefinitely when the caller stopped reading `externalCh`, leaving the goroutine pinned on the send.
+
+Either path held onto provider state, model buffers, and (in fan-out scenarios) the entire per-request call-chain memory until the inner provider decided to stop sending — which for some misbehaving CLI-agent providers means "never".
+
+### Root Cause
+The original loop did not observe the caller's `context.Context` at all. The only exit condition was `internalCh` closing.
+
+### Fix Applied
+`internal/services/debate_integration/provider_bridge.go`
+
+Replaced the range with a `select`-based loop that honours `ctx.Done()` on both the receive and send sides:
+
+```go
+go func() {
+    defer close(externalCh)
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case internalResp, ok := <-internalCh:
+            if !ok {
+                return
+            }
+            externalResp, err := convertLLMResponse(internalResp)
+            if err != nil {
+                continue
+            }
+            select {
+            case <-ctx.Done():
+                return
+            case externalCh <- externalResp:
+            }
+        }
+    }
+}()
+```
+
+### Regression Tests (new)
+`internal/services/debate_integration/provider_bridge_leak_test.go` — three tests:
+
+1. `TestAdaptedProvider_CompleteStream_ExitsOnContextCancel` — proves the forwarder exits when ctx is cancelled even though the inner channel never closes. Cancels, expects `externalCh` to close within 2 s.
+2. `TestAdaptedProvider_CompleteStream_ExitsOnInnerClose` — guards the legacy exit path so future refactors do not break EOF propagation.
+3. `TestAdaptedProvider_CompleteStream_DoesNotBlockOnUnreadExternal` — proves the send side also exits on ctx, by filling the 1-buffered external channel and then cancelling.
+
+**Verification:**
+- `go test -race -run "TestAdaptedProvider_CompleteStream" ./internal/services/debate_integration/ -count=5 -p 1` — 5 iterations, all 3 tests PASS, 1.8 s wall.
+- Full debate_integration suite still PASS under `-race`.
+
+---
+
 ## Issue #13: Main build broken — HelixQA imports non-existent `pkg/helixqa` in LLMsVerifier (BUGFIX 2026-04-18)
 
 ### Issue

@@ -57,7 +57,13 @@ _post_helixagent() {
 
 _post_helixllm() {
     local data="$1"
-    curl -sk --max-time 120 -X POST \
+    local tls_opts=""
+    if [[ -n "${SSL_CERT_FILE:-}" ]] && [[ -f "${SSL_CERT_FILE}" ]]; then
+        tls_opts="--cacert ${SSL_CERT_FILE}"
+    elif [[ -f "${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}" ]]; then
+        tls_opts="--cacert ${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}"
+    fi
+    curl -s --max-time 120 $tls_opts -X POST \
         -H "Content-Type: application/json" \
         -d "$data" \
         "${HELIXLLM_URL}/v1/chat/completions" 2>/dev/null
@@ -102,9 +108,15 @@ cli_agent_helixllm_e2e() {
         ha_ok=false
     fi
 
-    # Pre-check: HelixLLM reachable
+    # Pre-check: HelixLLM reachable (with proper TLS cert)
+    local llm_cacert=""
+    if [[ -n "${SSL_CERT_FILE:-}" ]] && [[ -f "${SSL_CERT_FILE}" ]]; then
+        llm_cacert="--cacert ${SSL_CERT_FILE}"
+    elif [[ -f "${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}" ]]; then
+        llm_cacert="--cacert ${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}"
+    fi
     local llm_ok=true
-    if ! curl -sk --max-time 5 -o /dev/null -w "%{http_code}" \
+    if ! curl -s --max-time 5 $llm_cacert -o /dev/null -w "%{http_code}" \
         "${HELIXLLM_URL}/v1/models" 2>/dev/null | grep -q "200"; then
         _log WARN "HelixLLM not reachable — testing HelixAgent only"
         llm_ok=false

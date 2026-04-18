@@ -1,5 +1,58 @@
 # Bug Fixes and Known Issues
 
+## Issue #16: TLS posture — unconditional `InsecureSkipVerify` in startup verifier + challenge scripts (BUGFIX 2026-04-19)
+
+### Issue
+CLAUDE.md § "HelixLLM TLS Configuration" states:
+
+> "NEVER use `curl -sk` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in challenges or tests. HelixLLM provider's `InsecureSkipVerify` defaults to `false`; explicit opt-in via `HELIX_LLM_TLS_SKIP_VERIFY=true` or `Config.TLSSkipVerify=true`."
+
+Three sites violated that posture:
+
+1. `internal/verifier/startup.go:620` — `checkHelixLLMHealth` created a TLS client with `InsecureSkipVerify: true` unconditionally.
+2. `challenges/scripts/_cli_agent_helixllm_e2e_common.sh:60, 107` — `curl -sk --max-time …` in two places.
+3. `challenges/scripts/helixllm_opencode_session_challenge.sh:28` — `CURL="curl -sk --max-time 120"`.
+
+### Root Cause
+Expedience during the initial HelixLLM integration — a self-signed local cert was accepted by the shortest code path (`InsecureSkipVerify: true`) rather than by the documented path (append the cert to `SSL_CERT_FILE`, load via `x509.CertPool`).
+
+### Fix Applied
+
+**Production (`internal/verifier/startup.go`):**
+
+Introduced `helixLLMTLSConfig()` that returns a secure-by-default `*tls.Config`:
+
+- `MinVersion: tls.VersionTLS12`
+- `RootCAs` populated from `SystemCertPool` + optional `SSL_CERT_FILE` + optional `HELIX_LLM_CERT_PATH`
+- `InsecureSkipVerify` defaults to `false`; honours opt-in env `HELIX_LLM_TLS_SKIP_VERIFY=true` only
+
+`checkHelixLLMHealth` now uses that helper. The unconditional literal is removed.
+
+**Challenges (`challenges/scripts/_cli_agent_helixllm_e2e_common.sh`, `challenges/scripts/helixllm_opencode_session_challenge.sh`):**
+
+Replaced `curl -sk` with `curl -s --cacert $CACERT` where `$CACERT` is derived from `SSL_CERT_FILE` or `HELIX_LLM_CERT_PATH` (falling back to `HelixLLM/certs/cert.pem` which is the repo-default location per CLAUDE.md).
+
+**Challenge gate (`challenges/scripts/tls_posture_challenge.sh`, new):**
+
+3-assertion script that prevents regression:
+
+- T1: no unconditional `InsecureSkipVerify: true` in production Go (annotated `//nolint:gosec` or `#nosec` opt-in paths are allowed; comment and backtick mentions are excluded).
+- T2: no `curl -sk` / `--insecure` in `scripts/` or `challenges/scripts/` (comments excluded).
+- T3: no `NODE_TLS_REJECT_UNAUTHORIZED=0` anywhere in scripts.
+
+**Regression tests (`internal/verifier/tls_posture_test.go`, new):**
+
+- `TestHelixLLMTLSConfig_SecureByDefault` — asserts `InsecureSkipVerify=false` and `MinVersion≥TLS1.2` with no env overrides.
+- `TestHelixLLMTLSConfig_OptInSkip` — `HELIX_LLM_TLS_SKIP_VERIFY=true` must be honoured.
+- `TestHelixLLMTLSConfig_LoadsHelixLLMCert` — `HELIX_LLM_CERT_PATH` is loaded into the pool.
+- `TestGetEnvBoolVerifier_BoundaryValues` — parameterised env-parse contract.
+
+**Verification:**
+- `go test -race ./internal/verifier/... -run "TestHelixLLMTLSConfig|TestGetEnvBoolVerifier" -count=3 -p 1` — 15 PASS.
+- `./challenges/scripts/tls_posture_challenge.sh` — 3/3 pass, zero findings.
+
+---
+
 ## Issue #15: Data race + goroutine leak in `LazyProvider.createProviderWithContext` (BUGFIX 2026-04-19)
 
 ### Issue

@@ -5,6 +5,7 @@ package verifier
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,6 +25,64 @@ import (
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
 	"github.com/sirupsen/logrus"
 )
+
+// helixLLMTLSConfig returns a tls.Config suitable for talking to a local
+// HelixLLM instance that uses a self-signed certificate.
+//
+// Preference order (first match wins — all safe-by-default):
+//
+//  1. SSL_CERT_FILE env var — system-wide CA bundle path. CLAUDE.md's
+//     HelixLLM TLS guide instructs operators to append the HelixLLM cert
+//     to this bundle during boot, so most environments trust it natively.
+//  2. HELIX_LLM_CERT_PATH env var — explicit override for the HelixLLM
+//     server certificate (added to a fresh pool alongside system CAs).
+//  3. System trust store only — works when the HelixLLM cert is already
+//     trusted by the host.
+//
+// Only when the operator explicitly opts in via HELIX_LLM_TLS_SKIP_VERIFY=true
+// does this function disable verification. This replaces the previous
+// unconditional `InsecureSkipVerify: true` which violated
+// CLAUDE.md's "NEVER use `curl -sk` or NODE_TLS_REJECT_UNAUTHORIZED=0"
+// posture (BUGFIX #16).
+func helixLLMTLSConfig() *tls.Config {
+	cfg := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: getEnvBoolVerifier("HELIX_LLM_TLS_SKIP_VERIFY", false), //nolint:gosec // env-gated opt-in only
+	}
+	if cfg.InsecureSkipVerify {
+		return cfg
+	}
+
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if caPath := os.Getenv("SSL_CERT_FILE"); caPath != "" {
+		if pem, err := os.ReadFile(caPath); err == nil { //nolint:gosec // G304: env-supplied path is operator-controlled
+			pool.AppendCertsFromPEM(pem)
+		}
+	}
+	if certPath := os.Getenv("HELIX_LLM_CERT_PATH"); certPath != "" {
+		if pem, err := os.ReadFile(certPath); err == nil { //nolint:gosec // G304: env-supplied path is operator-controlled
+			pool.AppendCertsFromPEM(pem)
+		}
+	}
+	cfg.RootCAs = pool
+	return cfg
+}
+
+// getEnvBoolVerifier is a local helper to avoid importing a config package
+// that would create a cycle. Matches the semantics of strconv.ParseBool.
+func getEnvBoolVerifier(key string, def bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	switch v {
+	case "1", "t", "true", "y", "yes", "on":
+		return true
+	case "0", "f", "false", "n", "no", "off":
+		return false
+	}
+	return def
+}
 
 // StartupVerifier orchestrates the complete startup verification pipeline
 // It is the single source of truth for all LLM provider information
@@ -613,12 +672,13 @@ func (sv *StartupVerifier) checkOllamaHealth(baseURL string) []string {
 func (sv *StartupVerifier) checkHelixLLMHealth(baseURL string) []string {
 	modelsURL := strings.TrimSuffix(baseURL, "/") + "/v1/models"
 
+	// Secure by default: load SSL_CERT_FILE or HELIX_LLM_CERT_PATH; only skip
+	// verification when explicitly opted in via HELIX_LLM_TLS_SKIP_VERIFY=true.
+	// See helixLLMTLSConfig above and BUGFIXES.md Issue #16.
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // self-signed cert
-			},
+			TLSClientConfig: helixLLMTLSConfig(),
 		},
 	}
 

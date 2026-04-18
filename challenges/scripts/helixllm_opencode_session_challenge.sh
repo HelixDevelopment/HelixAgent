@@ -25,7 +25,16 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 HELIXLLM_URL="${HELIXLLM_URL:-https://localhost:8444}"
-CURL="curl -sk --max-time 120"
+# TLS posture: NEVER use curl -sk (see CLAUDE.md § "HelixLLM TLS Configuration"
+# and challenges/scripts/tls_posture_challenge.sh). Respect SSL_CERT_FILE so
+# the HelixLLM self-signed cert is trusted via the normal CA bundle path.
+CURL_TLS_OPTS="--max-time 120"
+if [[ -n "${SSL_CERT_FILE:-}" ]] && [[ -f "${SSL_CERT_FILE}" ]]; then
+    CURL_TLS_OPTS="${CURL_TLS_OPTS} --cacert ${SSL_CERT_FILE}"
+elif [[ -f "${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}" ]]; then
+    CURL_TLS_OPTS="${CURL_TLS_OPTS} --cacert ${HELIX_LLM_CERT_PATH:-HelixLLM/certs/cert.pem}"
+fi
+CURL="curl -s ${CURL_TLS_OPTS}"
 PASSED=0
 FAILED=0
 TOTAL=0

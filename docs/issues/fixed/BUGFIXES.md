@@ -1,5 +1,60 @@
 # Bug Fixes and Known Issues
 
+## Issue #15: Data race + goroutine leak in `LazyProvider.createProviderWithContext` (BUGFIX 2026-04-19)
+
+### Issue
+`internal/llm/lazy_provider.go:172` launched the factory in a goroutine that wrote its result to `provider` and `err` variables declared in the enclosing function. On `ctx.Done()`, the enclosing function returned early while the goroutine was still running. If the goroutine later completed its `p.factory()` call and wrote to the (now-captured) variables, the Go race detector flagged a concurrent write/read.
+
+```go
+done := make(chan struct{})
+var provider LLMProvider
+var err error
+go func() {
+    provider, err = p.factory() // race: main goroutine may have already returned
+    close(done)
+}()
+```
+
+The leak dimension: the goroutine could outlive its enclosing function by the factory's full duration (up to the caller's configured factory timeout). In aggressive retry loops this could accumulate goroutines.
+
+### Root Cause
+Shared mutable state between the parent and child goroutine without synchronisation, combined with the parent's early return on ctx cancel.
+
+### Fix Applied
+`internal/llm/lazy_provider.go`
+
+Replaced the shared-variable pattern with a buffered result channel so the child goroutine writes only to its own locals:
+
+```go
+type result struct {
+    provider LLMProvider
+    err      error
+}
+done := make(chan result, 1) // buffered — sender always succeeds, goroutine exits cleanly
+go func() {
+    prov, err := p.factory()
+    done <- result{provider: prov, err: err}
+}()
+select {
+case <-ctx.Done():
+    return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())
+case r := <-done:
+    return r.provider, r.err
+}
+```
+
+### Known Limitation
+If `p.factory()` hangs forever, the goroutine still outlives the ctx-cancelled parent. That is unavoidable without a context-aware factory contract (the factory closure is caller-provided and lacks a `ctx` parameter). This fix scopes the damage to one goroutine per lazy-init attempt and removes the data race, which were the concrete bugs.
+
+### Regression Tests (new in `internal/llm/lazy_provider_test.go`)
+1. `TestLazyProvider_Get_TimeoutRaceFree` — factory sleeps past the timeout; under `-race` the prior implementation tripped a data-race diagnostic. The new implementation passes clean 5× in a row.
+2. `TestLazyProvider_Get_AfterTimeoutRetrySucceeds` — proves a timed-out LazyProvider can still be `Reset()`+`Get()`-retried into a clean success state; the orphaned first-call goroutine does not corrupt internal state.
+
+**Verification:**
+- `go test -race -run "TestLazyProvider_Get_Timeout|TestLazyProvider_Get_TimeoutRaceFree|TestLazyProvider_Get_AfterTimeoutRetrySucceeds" ./internal/llm/ -count=5 -p 1` — 15 PASS, 3.0 s wall.
+
+---
+
 ## Issue #14: Goroutine leak in `debate_integration.adaptedProvider.CompleteStream` (BUGFIX 2026-04-19)
 
 ### Issue

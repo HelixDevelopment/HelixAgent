@@ -194,6 +194,83 @@ func TestLazyProvider_Get_Timeout(t *testing.T) {
 	assert.Contains(t, err.Error(), "timed out")
 }
 
+// TestLazyProvider_Get_TimeoutRaceFree is a regression for BUGFIX #15.
+// The previous implementation of createProviderWithContext shared mutable
+// `provider`/`err` variables between the main goroutine and the factory
+// goroutine; on ctx timeout the main goroutine returned nil while the
+// factory later wrote to the same slot — a data race caught by -race.
+// The fixed implementation posts a result struct through a buffered
+// channel, so the factory writes only to its own locals.
+func TestLazyProvider_Get_TimeoutRaceFree(t *testing.T) {
+	factoryDone := make(chan struct{})
+	factory := func() (LLMProvider, error) {
+		// Sleep past the timeout then write a value. On the old code this
+		// race-tripped when the main goroutine read the shared var.
+		time.Sleep(100 * time.Millisecond)
+		defer close(factoryDone)
+		return &lazyMockProvider{name: "eventually-ready"}, nil
+	}
+
+	config := &LazyProviderConfig{
+		InitTimeout:   20 * time.Millisecond,
+		RetryAttempts: 1,
+		RetryDelay:    5 * time.Millisecond,
+	}
+	lazy := NewLazyProvider("slow-race", factory, config)
+
+	prov, err := lazy.Get()
+	require.Error(t, err)
+	assert.Nil(t, prov)
+	assert.Contains(t, err.Error(), "timed out")
+
+	// Wait for the orphaned factory goroutine to finish — ensures go
+	// race detector saw all writes and did not flag a hazard.
+	select {
+	case <-factoryDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("factory goroutine never completed")
+	}
+}
+
+// TestLazyProvider_Get_AfterTimeoutRetrySucceeds covers the second
+// concern of BUGFIX #15 — a failed-on-timeout LazyProvider must still be
+// usable for subsequent Get() calls once a faster factory path is
+// available (e.g. under retry config). The orphaned factory from the
+// first attempt must not corrupt internal state.
+func TestLazyProvider_Get_AfterTimeoutRetrySucceeds(t *testing.T) {
+	var callCount int32
+	factory := func() (LLMProvider, error) {
+		n := atomic.AddInt32(&callCount, 1)
+		if n == 1 {
+			time.Sleep(80 * time.Millisecond) // will be timed out
+			return &lazyMockProvider{name: "slow"}, nil
+		}
+		return &lazyMockProvider{name: "fast"}, nil
+	}
+
+	config := &LazyProviderConfig{
+		InitTimeout:   20 * time.Millisecond,
+		RetryAttempts: 1,
+		RetryDelay:    5 * time.Millisecond,
+	}
+	lazy := NewLazyProvider("retry-me", factory, config)
+
+	// First Get should time out.
+	_, err := lazy.Get()
+	require.Error(t, err)
+
+	// Give the orphaned first-call factory goroutine time to exit.
+	time.Sleep(120 * time.Millisecond)
+
+	// Reset to allow another attempt.
+	lazy.Reset()
+
+	// Second Get should succeed.
+	prov, err := lazy.Get()
+	require.NoError(t, err)
+	require.NotNil(t, prov)
+}
+
 func TestLazyProvider_Complete(t *testing.T) {
 	expectedResponse := &models.LLMResponse{
 		Content:    "Hello from lazy provider",

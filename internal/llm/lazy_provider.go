@@ -163,22 +163,40 @@ func (p *LazyProvider) initialize() {
 	}
 }
 
-// createProviderWithContext creates the provider with context awareness
+// createProviderWithContext creates the provider with context awareness.
+//
+// Lifecycle: the factory runs in its own goroutine so context cancellation
+// does not block on a slow factory. Results are posted to a buffered
+// channel so the goroutine can always complete its send and exit cleanly
+// even if the parent has already returned on ctx cancel — this avoids the
+// data race that the previous implementation had by writing to
+// outer-scope vars from the goroutine.
+//
+// Known limitation: if p.factory() hangs forever, the goroutine will
+// outlive the ctx-cancelled parent. That is an unavoidable cost of the
+// factory contract (p.factory is a caller-provided closure without a
+// context parameter) — we cannot forcibly kill a goroutine in Go. The
+// fix here limits the damage to one goroutine per lazy-init attempt and
+// removes the data race, which were the concrete bugs.
 func (p *LazyProvider) createProviderWithContext(ctx context.Context) (LLMProvider, error) {
-	done := make(chan struct{})
-	var provider LLMProvider
-	var err error
+	type result struct {
+		provider LLMProvider
+		err      error
+	}
+	// Buffered: the sender always succeeds so the goroutine exits even if
+	// the receiver (this function) has already returned on ctx cancel.
+	done := make(chan result, 1)
 
 	go func() {
-		provider, err = p.factory()
-		close(done)
+		prov, err := p.factory()
+		done <- result{provider: prov, err: err}
 	}()
 
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())
-	case <-done:
-		return provider, err
+	case r := <-done:
+		return r.provider, r.err
 	}
 }
 

@@ -5,8 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/models"
 	"github.com/fsnotify/fsnotify"
@@ -35,8 +38,8 @@ func TestHotReloadManager_GetLoadedPlugins(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -46,8 +49,8 @@ func TestHotReloadManager_GetLoadedPlugins(t *testing.T) {
 	})
 
 	t.Run("returns plugins after manual registration", func(t *testing.T) {
-		manager.pluginMap["test-plugin"] = "/path/to/test-plugin.so"
-		manager.pluginMap["another-plugin"] = "/path/to/another-plugin.so"
+		manager.pluginMap.Put("test-plugin", "/path/to/test-plugin.so")
+		manager.pluginMap.Put("another-plugin", "/path/to/another-plugin.so")
 
 		plugins := manager.GetLoadedPlugins()
 		assert.Equal(t, 2, len(plugins))
@@ -62,10 +65,10 @@ func TestHotReloadManager_EnableDisable(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
 		stopChan:    make(chan struct{}),
 	}
+	manager.enabled.Store(true)
 
 	t.Run("is initially enabled", func(t *testing.T) {
 		assert.True(t, manager.IsEnabled())
@@ -88,14 +91,14 @@ func TestHotReloadManager_GetStats(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins", "./custom"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
 		stopChan:    make(chan struct{}),
 	}
+	manager.enabled.Store(true)
 
 	// Add some plugins to the map
-	manager.pluginMap["plugin1"] = "/path/to/plugin1.so"
-	manager.pluginMap["plugin2"] = "/path/to/plugin2.so"
+	manager.pluginMap.Put("plugin1", "/path/to/plugin1.so")
+	manager.pluginMap.Put("plugin2", "/path/to/plugin2.so")
 
 	stats := manager.GetStats()
 
@@ -159,8 +162,8 @@ func TestHotReloadManager_UnloadPlugin_NotFound(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -175,8 +178,8 @@ func TestHotReloadManager_ReloadPlugin_NotFound(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -191,8 +194,8 @@ func TestHotReloadManager_LoadPlugin_FileNotExists(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -207,8 +210,8 @@ func TestHotReloadManager_GetPluginInfo_NotFound(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -237,8 +240,8 @@ func TestHotReloadManager_Start_WithWatcher(t *testing.T) {
 			registry:    registry,
 			loader:      NewLoader(registry),
 			pluginPaths: []string{tmpDir},
-			pluginMap:   make(map[string]string),
-			enabled:     true,
+			pluginMap:   safe.NewStore[string, string](),
+			enabled:     atomic.Bool{},
 			stopChan:    make(chan struct{}),
 		}
 
@@ -276,8 +279,8 @@ func TestHotReloadManager_ConcurrentAccess(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -315,7 +318,7 @@ func TestNewHotReloadManager_Success(t *testing.T) {
 		assert.NotNil(t, manager.registry)
 		assert.NotNil(t, manager.loader)
 		assert.NotNil(t, manager.watcher)
-		assert.True(t, manager.enabled)
+		assert.True(t, manager.enabled.Load())
 		// Clean up
 		_ = manager.watcher.Close()
 	}
@@ -342,8 +345,8 @@ func TestHotReloadManager_Start_And_Stop(t *testing.T) {
 			registry:    registry,
 			loader:      NewLoader(registry),
 			pluginPaths: []string{},
-			pluginMap:   make(map[string]string),
-			enabled:     true,
+			pluginMap:   safe.NewStore[string, string](),
+			enabled:     atomic.Bool{},
 			stopChan:    make(chan struct{}),
 			watcher:     nil,
 		}
@@ -367,8 +370,8 @@ func TestHotReloadManager_LoadPlugin_ValidPath(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -394,8 +397,8 @@ func TestHotReloadManager_UnloadPlugin_WithRegisteredPlugin(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -405,14 +408,14 @@ func TestHotReloadManager_UnloadPlugin_WithRegisteredPlugin(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a plugin to the map
-	manager.pluginMap["test-plugin"] = "/path/to/test-plugin.so"
+	manager.pluginMap.Put("test-plugin", "/path/to/test-plugin.so")
 
 	// Unload should succeed
 	err = manager.UnloadPlugin("test-plugin")
 	assert.NoError(t, err)
 
 	// Plugin should be removed from map
-	_, exists := manager.pluginMap["test-plugin"]
+	_, exists := manager.pluginMap.Get("test-plugin")
 	assert.False(t, exists)
 }
 
@@ -422,8 +425,8 @@ func TestHotReloadManager_GetPluginInfo_WithRegisteredPlugin(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{"./plugins"},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -433,7 +436,7 @@ func TestHotReloadManager_GetPluginInfo_WithRegisteredPlugin(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add to plugin map
-	manager.pluginMap["test-plugin"] = "/path/to/test-plugin.so"
+	manager.pluginMap.Put("test-plugin", "/path/to/test-plugin.so")
 
 	// GetPluginInfo should return the info as a map
 	info, err := manager.GetPluginInfo("test-plugin")
@@ -491,8 +494,8 @@ func TestHotReloadManager_Start_WithRealWatcher(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -527,8 +530,8 @@ func TestHotReloadManager_Stop_WithRealWatcher(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -553,8 +556,8 @@ func TestHotReloadManager_LoadExistingPlugins(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -588,8 +591,8 @@ func TestHotReloadManager_LoadExistingPlugins(t *testing.T) {
 			registry:    registry,
 			loader:      NewLoader(registry),
 			pluginPaths: []string{"/non/existent/path"},
-			pluginMap:   make(map[string]string),
-			enabled:     true,
+			pluginMap:   safe.NewStore[string, string](),
+			enabled:     atomic.Bool{},
 			stopChan:    make(chan struct{}),
 		}
 		// Should not error, just skip the directory
@@ -606,8 +609,8 @@ func TestHotReloadManager_HandleFileEvent(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -631,7 +634,7 @@ func TestHotReloadManager_HandleFileEvent(t *testing.T) {
 		err := os.WriteFile(soFile, []byte("fake"), 0644)
 		assert.NoError(t, err)
 
-		manager.pluginMap["existing"] = soFile
+		manager.pluginMap.Put("existing", soFile)
 
 		event := fsnotify.Event{
 			Name: soFile,
@@ -645,7 +648,7 @@ func TestHotReloadManager_HandleFileEvent(t *testing.T) {
 		// Register a mock plugin
 		mockPlugin := &mockPluginForHotReload{name: "removeme", version: "1.0.0"}
 		_ = registry.Register(mockPlugin)
-		manager.pluginMap["removeme"] = filepath.Join(tmpDir, "removeme.so")
+		manager.pluginMap.Put("removeme", filepath.Join(tmpDir, "removeme.so"))
 
 		event := fsnotify.Event{
 			Name: filepath.Join(tmpDir, "removeme.so"),
@@ -654,14 +657,14 @@ func TestHotReloadManager_HandleFileEvent(t *testing.T) {
 		manager.handleFileEvent(event)
 
 		// Plugin should be unloaded
-		_, exists := manager.pluginMap["removeme"]
+		_, exists := manager.pluginMap.Get("removeme")
 		assert.False(t, exists)
 	})
 
 	t.Run("rename event unloads plugin", func(t *testing.T) {
 		mockPlugin := &mockPluginForHotReload{name: "renameme", version: "1.0.0"}
 		_ = registry.Register(mockPlugin)
-		manager.pluginMap["renameme"] = filepath.Join(tmpDir, "renameme.so")
+		manager.pluginMap.Put("renameme", filepath.Join(tmpDir, "renameme.so"))
 
 		event := fsnotify.Event{
 			Name: filepath.Join(tmpDir, "renameme.so"),
@@ -669,7 +672,7 @@ func TestHotReloadManager_HandleFileEvent(t *testing.T) {
 		}
 		manager.handleFileEvent(event)
 
-		_, exists := manager.pluginMap["renameme"]
+		_, exists := manager.pluginMap.Get("renameme")
 		assert.False(t, exists)
 	})
 }
@@ -694,8 +697,8 @@ func TestHotReloadManager_WatchLoop_ContextCancel(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -738,8 +741,8 @@ func TestHotReloadManager_WatchLoop_StopChannel(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -782,8 +785,8 @@ func TestHotReloadManager_WatchLoop_FileEvent(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -813,8 +816,8 @@ func TestHotReloadManager_ReloadPlugin_WithPlugin(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -827,7 +830,7 @@ func TestHotReloadManager_ReloadPlugin_WithPlugin(t *testing.T) {
 	err := os.WriteFile(soFile, []byte("fake"), 0644)
 	assert.NoError(t, err)
 
-	manager.pluginMap["reloadtest"] = soFile
+	manager.pluginMap.Put("reloadtest", soFile)
 
 	// ReloadPlugin will fail because it's not a real plugin, but covers the code path
 	err = manager.ReloadPlugin("reloadtest")
@@ -840,13 +843,13 @@ func TestHotReloadManager_GetPluginInfo_NotRegistered(t *testing.T) {
 		registry:    registry,
 		loader:      NewLoader(registry),
 		pluginPaths: []string{},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
 	// Add to plugin map but don't register in registry
-	manager.pluginMap["orphan"] = "/path/to/orphan.so"
+	manager.pluginMap.Put("orphan", "/path/to/orphan.so")
 
 	info, err := manager.GetPluginInfo("orphan")
 	assert.Error(t, err)
@@ -868,7 +871,7 @@ func TestNewHotReloadManager_WithExistingPluginDir(t *testing.T) {
 	if err == nil {
 		assert.NotNil(t, manager)
 		assert.NotNil(t, manager.watcher)
-		assert.True(t, manager.enabled)
+		assert.True(t, manager.enabled.Load())
 		_ = manager.watcher.Close()
 	}
 }
@@ -894,8 +897,8 @@ func TestHotReloadManager_StartStop_NoGoroutineLeak(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 
@@ -947,8 +950,8 @@ func TestHotReloadManager_DoubleStop_NoPanic(t *testing.T) {
 		loader:      NewLoader(registry),
 		watcher:     watcher,
 		pluginPaths: []string{tmpDir},
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
+		enabled:     atomic.Bool{},
 		stopChan:    make(chan struct{}),
 	}
 

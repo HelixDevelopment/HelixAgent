@@ -7,21 +7,27 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/config"
 	"github.com/fsnotify/fsnotify"
 )
 
-// HotReloadManager manages plugin hot-reloading functionality
+// HotReloadManager manages plugin hot-reloading functionality.
+//
+// Concurrent-safe by construction (CONST-029): pluginMap is a safe.Store;
+// `enabled` is an atomic.Bool. pluginPaths is set once at construction
+// and never mutated thereafter.
 type HotReloadManager struct {
 	registry    *Registry
 	loader      *Loader
 	watcher     *fsnotify.Watcher
 	pluginPaths []string
-	pluginMap   map[string]string // plugin name -> file path
-	mu          sync.RWMutex
-	enabled     bool
+	pluginMap   *safe.Store[string, string] // plugin name -> file path
+	enabled     atomic.Bool
 	stopChan    chan struct{}
 	wg          sync.WaitGroup
 	stopOnce    sync.Once
@@ -52,10 +58,10 @@ func NewHotReloadManager(cfg *config.Config, registry *Registry) (*HotReloadMana
 		loader:      loader,
 		watcher:     watcher,
 		pluginPaths: watchPaths,
-		pluginMap:   make(map[string]string),
-		enabled:     true,
+		pluginMap:   safe.NewStore[string, string](),
 		stopChan:    make(chan struct{}),
 	}
+	manager.enabled.Store(true)
 
 	// Add watch paths
 	for _, path := range watchPaths {
@@ -104,9 +110,6 @@ func (h *HotReloadManager) Stop() error {
 
 // LoadPlugin loads a plugin from the specified path
 func (h *HotReloadManager) LoadPlugin(path string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	// Check if plugin file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return fmt.Errorf("plugin file does not exist: %s", path)
@@ -120,7 +123,7 @@ func (h *HotReloadManager) LoadPlugin(path string) error {
 
 	// Track the plugin
 	pluginName := plugin.Name()
-	h.pluginMap[pluginName] = path
+	h.pluginMap.Put(pluginName, path)
 
 	fmt.Printf("Successfully loaded plugin: %s from %s", pluginName, path)
 	return nil
@@ -128,11 +131,7 @@ func (h *HotReloadManager) LoadPlugin(path string) error {
 
 // UnloadPlugin unloads a plugin by name
 func (h *HotReloadManager) UnloadPlugin(name string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// Check if plugin is loaded
-	path, exists := h.pluginMap[name]
+	path, exists := h.pluginMap.Get(name)
 	if !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
@@ -143,7 +142,7 @@ func (h *HotReloadManager) UnloadPlugin(name string) error {
 	}
 
 	// Remove from tracking
-	delete(h.pluginMap, name)
+	h.pluginMap.Delete(name)
 
 	fmt.Printf("Successfully unloaded plugin: %s from %s", name, path)
 	return nil
@@ -151,11 +150,7 @@ func (h *HotReloadManager) UnloadPlugin(name string) error {
 
 // ReloadPlugin reloads a plugin by name
 func (h *HotReloadManager) ReloadPlugin(name string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	// Get the plugin path
-	path, exists := h.pluginMap[name]
+	path, exists := h.pluginMap.Get(name)
 	if !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
@@ -172,7 +167,7 @@ func (h *HotReloadManager) ReloadPlugin(name string) error {
 	}
 
 	// Update tracking
-	h.pluginMap[name] = path
+	h.pluginMap.Put(name, path)
 
 	fmt.Printf("Successfully reloaded plugin: %s from %s", name, path)
 	return plugin.Init(nil) // Re-initialize with default config
@@ -180,23 +175,12 @@ func (h *HotReloadManager) ReloadPlugin(name string) error {
 
 // GetLoadedPlugins returns a list of currently loaded plugins
 func (h *HotReloadManager) GetLoadedPlugins() []string {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	plugins := make([]string, 0, len(h.pluginMap))
-	for name := range h.pluginMap {
-		plugins = append(plugins, name)
-	}
-
-	return plugins
+	return h.pluginMap.Keys()
 }
 
 // GetPluginInfo returns information about a loaded plugin
 func (h *HotReloadManager) GetPluginInfo(name string) (map[string]interface{}, error) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	path, exists := h.pluginMap[name]
+	path, exists := h.pluginMap.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("plugin %s not found", name)
 	}
@@ -273,7 +257,7 @@ func (h *HotReloadManager) handleFileEvent(event fsnotify.Event) {
 		// File created or modified - try to load/reload
 		if pluginName != "" {
 			// Check if plugin is already loaded
-			if _, exists := h.pluginMap[pluginName]; exists {
+			if _, exists := h.pluginMap.Get(pluginName); exists {
 				// Reload existing plugin
 				if err := h.ReloadPlugin(pluginName); err != nil {
 					fmt.Printf("Failed to reload plugin %s: %v\n", pluginName, err)
@@ -342,36 +326,27 @@ func (h *HotReloadManager) getPluginNameFromPath(path string) string {
 
 // GetStats returns hot-reload statistics
 func (h *HotReloadManager) GetStats() map[string]interface{} {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	return map[string]interface{}{
-		"enabled":        h.enabled,
+		"enabled":        h.enabled.Load(),
 		"watch_paths":    h.pluginPaths,
-		"loaded_plugins": len(h.pluginMap),
+		"loaded_plugins": h.pluginMap.Len(),
 		"plugin_names":   h.GetLoadedPlugins(),
 	}
 }
 
 // Enable enables hot-reloading
 func (h *HotReloadManager) Enable() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.enabled = true
+	h.enabled.Store(true)
 	fmt.Printf("Plugin hot-reload enabled")
 }
 
 // Disable disables hot-reloading
 func (h *HotReloadManager) Disable() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.enabled = false
+	h.enabled.Store(false)
 	fmt.Printf("Plugin hot-reload disabled")
 }
 
 // IsEnabled returns whether hot-reloading is enabled
 func (h *HotReloadManager) IsEnabled() bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return h.enabled
+	return h.enabled.Load()
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
 )
@@ -335,103 +336,199 @@ func (r *QdrantEnhancedRetriever) evaluateWithDebate(
 	return results
 }
 
-// EnhancedBM25Index provides BM25 sparse retrieval for hybrid search
+// EnhancedBM25Index provides BM25 sparse retrieval for hybrid search.
+//
+// Concurrent-safe by construction (CONST-029):
+//
+// The whole mutable state (four maps + avgDocLen + totalDocs) lives in
+// a *bm25State pointed to by an atomic.Pointer. Readers Load the
+// pointer once per Search and dereference it — no lock. Writers
+// (AddDocument / RemoveDocument) serialise through writeMu, copy the
+// current snapshot with the rows they intend to touch, and Store the
+// new pointer. k1 and b are immutable after construction.
+//
+// Per-document inner maps (termFreqs[docID]) are frozen after
+// AddDocument returns them in the snapshot, so new snapshots can
+// safely share the inner maps of documents they don't mutate. Remove
+// only ever *drops* a docID's inner map; it never mutates it.
+//
+// Exported accessors (TotalDocs, AvgDocLen, K1, B, Documents) let
+// tests and external callers inspect state without touching the
+// internals or holding any lock.
 type EnhancedBM25Index struct {
+	state   atomic.Pointer[bm25State]
+	writeMu sync.Mutex
+	k1      float64 // immutable after construction
+	b       float64 // immutable after construction
+}
+
+// bm25State is the joint snapshot of all mutable fields. Instances are
+// treated as immutable after being Stored into state — writers always
+// allocate a fresh bm25State (with shared inner maps where safe) and
+// swap the pointer.
+type bm25State struct {
 	documents  map[string]string
-	termFreqs  map[string]map[string]int
+	termFreqs  map[string]map[string]int // per-doc inner maps are frozen post-AddDocument
 	docFreqs   map[string]int
 	docLengths map[string]int
 	avgDocLen  float64
 	totalDocs  int
-	k1         float64
-	b          float64
-	mu         sync.RWMutex
 }
 
-// NewEnhancedBM25Index creates a new BM25 index for enhanced retrieval
-func NewEnhancedBM25Index() *EnhancedBM25Index {
-	return &EnhancedBM25Index{
+// newEmptyBM25State returns an empty state seed.
+func newEmptyBM25State() *bm25State {
+	return &bm25State{
 		documents:  make(map[string]string),
 		termFreqs:  make(map[string]map[string]int),
 		docFreqs:   make(map[string]int),
 		docLengths: make(map[string]int),
-		k1:         1.2,
-		b:          0.75,
 	}
+}
+
+// loadState returns the current state, substituting an empty seed on
+// first read so callers never dereference nil.
+func (idx *EnhancedBM25Index) loadState() *bm25State {
+	s := idx.state.Load()
+	if s == nil {
+		return newEmptyBM25State()
+	}
+	return s
+}
+
+// NewEnhancedBM25Index creates a new BM25 index for enhanced retrieval
+func NewEnhancedBM25Index() *EnhancedBM25Index {
+	idx := &EnhancedBM25Index{
+		k1: 1.2,
+		b:  0.75,
+	}
+	idx.state.Store(newEmptyBM25State())
+	return idx
+}
+
+// TotalDocs returns the number of documents currently indexed.
+func (idx *EnhancedBM25Index) TotalDocs() int {
+	return idx.loadState().totalDocs
+}
+
+// AvgDocLen returns the current average document length.
+func (idx *EnhancedBM25Index) AvgDocLen() float64 {
+	return idx.loadState().avgDocLen
+}
+
+// K1 returns the BM25 k1 tuning constant.
+func (idx *EnhancedBM25Index) K1() float64 { return idx.k1 }
+
+// B returns the BM25 b tuning constant.
+func (idx *EnhancedBM25Index) B() float64 { return idx.b }
+
+// Documents returns a point-in-time copy of the (id → content) map.
+// Returns an empty (non-nil) map when the index is empty, so callers
+// using assert.Empty get the intuitive zero result.
+func (idx *EnhancedBM25Index) Documents() map[string]string {
+	s := idx.loadState()
+	out := make(map[string]string, len(s.documents))
+	for k, v := range s.documents {
+		out[k] = v
+	}
+	return out
 }
 
 // AddDocument adds a document to the BM25 index
 func (idx *EnhancedBM25Index) AddDocument(id, content string) {
-	idx.mu.Lock()
-	defer idx.mu.Unlock()
+	idx.writeMu.Lock()
+	defer idx.writeMu.Unlock()
 
+	cur := idx.loadState()
 	terms := enhancedTokenize(content)
 
-	idx.documents[id] = content
-	idx.termFreqs[id] = make(map[string]int)
-	idx.docLengths[id] = len(terms)
+	next := &bm25State{
+		documents:  copyStringMap(cur.documents),
+		termFreqs:  copyOuterTermFreqs(cur.termFreqs),
+		docFreqs:   copyIntMap(cur.docFreqs),
+		docLengths: copyIntMap(cur.docLengths),
+		totalDocs:  cur.totalDocs,
+	}
+
+	next.documents[id] = content
+	// Brand-new inner map; once stored it is never mutated in place.
+	innerFreqs := make(map[string]int, len(terms))
+	next.termFreqs[id] = innerFreqs
+	next.docLengths[id] = len(terms)
 
 	termsSeen := make(map[string]bool)
 	for _, term := range terms {
-		idx.termFreqs[id][term]++
+		innerFreqs[term]++
 		if !termsSeen[term] {
-			idx.docFreqs[term]++
+			next.docFreqs[term]++
 			termsSeen[term] = true
 		}
 	}
 
-	idx.totalDocs++
-	idx.recalculateAvgDocLen()
+	next.totalDocs++
+	next.avgDocLen = recalcAvgDocLen(next.docLengths, next.totalDocs)
+
+	idx.state.Store(next)
 }
 
 // RemoveDocument removes a document from the index
 func (idx *EnhancedBM25Index) RemoveDocument(id string) {
-	idx.mu.Lock()
-	defer idx.mu.Unlock()
+	idx.writeMu.Lock()
+	defer idx.writeMu.Unlock()
 
-	if _, exists := idx.documents[id]; !exists {
+	cur := idx.loadState()
+	if _, exists := cur.documents[id]; !exists {
 		return
 	}
 
-	// Decrement doc frequencies
-	for term := range idx.termFreqs[id] {
-		idx.docFreqs[term]--
-		if idx.docFreqs[term] <= 0 {
-			delete(idx.docFreqs, term)
+	next := &bm25State{
+		documents:  copyStringMap(cur.documents),
+		termFreqs:  copyOuterTermFreqs(cur.termFreqs),
+		docFreqs:   copyIntMap(cur.docFreqs),
+		docLengths: copyIntMap(cur.docLengths),
+		totalDocs:  cur.totalDocs,
+	}
+
+	// Decrement doc frequencies based on the *old* snapshot's per-doc
+	// inner map (frozen, so we can safely read it without copying).
+	for term := range cur.termFreqs[id] {
+		next.docFreqs[term]--
+		if next.docFreqs[term] <= 0 {
+			delete(next.docFreqs, term)
 		}
 	}
 
-	delete(idx.documents, id)
-	delete(idx.termFreqs, id)
-	delete(idx.docLengths, id)
-	idx.totalDocs--
-	idx.recalculateAvgDocLen()
+	delete(next.documents, id)
+	delete(next.termFreqs, id)
+	delete(next.docLengths, id)
+	next.totalDocs--
+	next.avgDocLen = recalcAvgDocLen(next.docLengths, next.totalDocs)
+
+	idx.state.Store(next)
 }
 
-// Search performs BM25 search
+// Search performs BM25 search against an atomic snapshot of the index.
+// No lock is held for the duration.
 func (idx *EnhancedBM25Index) Search(query string, topK int) []*SearchResult {
-	idx.mu.RLock()
-	defer idx.mu.RUnlock()
-
+	s := idx.loadState()
 	queryTerms := enhancedTokenize(query)
 	scores := make(map[string]float64)
 
 	for _, term := range queryTerms {
-		df, exists := idx.docFreqs[term]
+		df, exists := s.docFreqs[term]
 		if !exists {
 			continue
 		}
 
-		idf := idx.calculateIDF(df)
+		idf := calculateIDF(df, s.totalDocs)
 
-		for docID, tf := range idx.termFreqs {
+		for docID, tf := range s.termFreqs {
 			termFreq, ok := tf[term]
 			if !ok {
 				continue
 			}
 
-			docLen := float64(idx.docLengths[docID])
-			tfScore := idx.calculateTF(float64(termFreq), docLen)
+			docLen := float64(s.docLengths[docID])
+			tfScore := idx.calculateTF(float64(termFreq), docLen, s.avgDocLen)
 			scores[docID] += idf * tfScore
 		}
 	}
@@ -442,7 +539,7 @@ func (idx *EnhancedBM25Index) Search(query string, topK int) []*SearchResult {
 		results = append(results, &SearchResult{
 			Document: &Document{
 				ID:      docID,
-				Content: idx.documents[docID],
+				Content: s.documents[docID],
 			},
 			Score:     score,
 			MatchType: MatchTypeSparse,
@@ -460,23 +557,60 @@ func (idx *EnhancedBM25Index) Search(query string, topK int) []*SearchResult {
 	return results
 }
 
-func (idx *EnhancedBM25Index) calculateIDF(df int) float64 {
-	n := float64(idx.totalDocs)
+// calculateIDF is a free function so it needs no receiver state.
+func calculateIDF(df, totalDocs int) float64 {
+	n := float64(totalDocs)
 	return math.Log((n-float64(df)+0.5)/(float64(df)+0.5) + 1)
 }
 
-func (idx *EnhancedBM25Index) calculateTF(tf, docLen float64) float64 {
-	return (tf * (idx.k1 + 1)) / (tf + idx.k1*(1-idx.b+idx.b*(docLen/idx.avgDocLen)))
+// calculateTF takes avgDocLen as a parameter so callers hold exactly
+// one consistent snapshot across a Search sweep. The method lives on
+// EnhancedBM25Index so k1 and b are still reached via the receiver;
+// they are immutable after construction.
+func (idx *EnhancedBM25Index) calculateTF(tf, docLen, avgDocLen float64) float64 {
+	return (tf * (idx.k1 + 1)) / (tf + idx.k1*(1-idx.b+idx.b*(docLen/avgDocLen)))
 }
 
-func (idx *EnhancedBM25Index) recalculateAvgDocLen() {
+// recalcAvgDocLen is a free function taking the docLengths map and
+// totalDocs so it can operate on a freshly-built snapshot inside
+// AddDocument / RemoveDocument (before the snapshot is Stored).
+func recalcAvgDocLen(docLengths map[string]int, totalDocs int) float64 {
+	if totalDocs == 0 {
+		return 0
+	}
 	total := 0
-	for _, length := range idx.docLengths {
+	for _, length := range docLengths {
 		total += length
 	}
-	if idx.totalDocs > 0 {
-		idx.avgDocLen = float64(total) / float64(idx.totalDocs)
+	return float64(total) / float64(totalDocs)
+}
+
+// copyStringMap / copyIntMap / copyOuterTermFreqs are shallow copies.
+// For copyOuterTermFreqs the *inner* maps are shared because AddDocument
+// never mutates an existing doc's inner map (it only inserts a fresh
+// one for the new id) and RemoveDocument only deletes the outer entry.
+func copyStringMap(in map[string]string) map[string]string {
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		out[k] = v
 	}
+	return out
+}
+
+func copyIntMap(in map[string]int) map[string]int {
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+func copyOuterTermFreqs(in map[string]map[string]int) map[string]map[string]int {
+	out := make(map[string]map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v // inner maps are treated as immutable — safe to share
+	}
+	return out
 }
 
 // enhancedTokenize tokenizes text for BM25 (renamed to avoid conflict with existing tokenize)

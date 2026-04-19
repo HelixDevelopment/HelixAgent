@@ -483,11 +483,11 @@ func TestEnhancedBM25Index_AddAndRemove(t *testing.T) {
 	// Add documents
 	idx.AddDocument("doc1", "hello world")
 	idx.AddDocument("doc2", "hello there")
-	assert.Equal(t, 2, idx.totalDocs)
+	assert.Equal(t, 2, idx.TotalDocs())
 
 	// Remove one
 	idx.RemoveDocument("doc1")
-	assert.Equal(t, 1, idx.totalDocs)
+	assert.Equal(t, 1, idx.TotalDocs())
 
 	// Search should only find doc2
 	results := idx.Search("hello", 10)
@@ -603,21 +603,20 @@ func TestCrossEncoderReranker_ScoreBatch_MismatchedScores(t *testing.T) {
 func TestEnhancedBM25Index_RecalculateAvgDocLen(t *testing.T) {
 	idx := NewEnhancedBM25Index()
 
-	// Test with empty index
-	idx.recalculateAvgDocLen()
-	assert.Equal(t, 0.0, idx.avgDocLen)
+	// Empty index reports zero avg length.
+	assert.Equal(t, 0.0, idx.AvgDocLen())
 
-	// Add document
+	// Add document — AddDocument drives the recalc internally.
 	idx.AddDocument("doc1", "one two three")
-	assert.Greater(t, idx.avgDocLen, 0.0)
+	assert.Greater(t, idx.AvgDocLen(), 0.0)
 
 	// Add another document with different length
 	idx.AddDocument("doc2", "one two three four five")
-	previousAvg := idx.avgDocLen
+	previousAvg := idx.AvgDocLen()
 
 	// Remove doc - should recalculate
 	idx.RemoveDocument("doc2")
-	assert.NotEqual(t, previousAvg, idx.avgDocLen)
+	assert.NotEqual(t, previousAvg, idx.AvgDocLen())
 }
 
 func TestHyDEGenerator_Generate_EdgeCases(t *testing.T) {

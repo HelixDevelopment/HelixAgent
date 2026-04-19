@@ -3,6 +3,7 @@ package rag
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -380,10 +381,10 @@ func TestEnhancedBM25Index(t *testing.T) {
 		idx := NewEnhancedBM25Index()
 
 		assert.NotNil(t, idx)
-		assert.Empty(t, idx.documents)
-		assert.Equal(t, 0, idx.totalDocs)
-		assert.Equal(t, 1.2, idx.k1)
-		assert.Equal(t, 0.75, idx.b)
+		assert.Empty(t, idx.Documents())
+		assert.Equal(t, 0, idx.TotalDocs())
+		assert.Equal(t, 1.2, idx.K1())
+		assert.Equal(t, 0.75, idx.B())
 	})
 
 	t.Run("add and search documents", func(t *testing.T) {
@@ -393,7 +394,7 @@ func TestEnhancedBM25Index(t *testing.T) {
 		idx.AddDocument("doc2", "deep learning uses neural networks")
 		idx.AddDocument("doc3", "natural language processing is important")
 
-		assert.Equal(t, 3, idx.totalDocs)
+		assert.Equal(t, 3, idx.TotalDocs())
 
 		results := idx.Search("machine learning", 10)
 
@@ -407,11 +408,11 @@ func TestEnhancedBM25Index(t *testing.T) {
 		idx.AddDocument("doc1", "machine learning")
 		idx.AddDocument("doc2", "deep learning")
 
-		assert.Equal(t, 2, idx.totalDocs)
+		assert.Equal(t, 2, idx.TotalDocs())
 
 		idx.RemoveDocument("doc1")
 
-		assert.Equal(t, 1, idx.totalDocs)
+		assert.Equal(t, 1, idx.TotalDocs())
 
 		results := idx.Search("machine learning", 10)
 		for _, r := range results {
@@ -425,7 +426,7 @@ func TestEnhancedBM25Index(t *testing.T) {
 
 		idx.RemoveDocument("non_existent")
 
-		assert.Equal(t, 1, idx.totalDocs)
+		assert.Equal(t, 1, idx.TotalDocs())
 	})
 
 	t.Run("search with no matching terms", func(t *testing.T) {
@@ -456,8 +457,8 @@ func TestEnhancedBM25Index(t *testing.T) {
 
 		// word1 appears in 2 docs, word2 in 1 doc
 		// word2 should have higher IDF
-		idf1 := idx.calculateIDF(2)
-		idf2 := idx.calculateIDF(1)
+		idf1 := calculateIDF(2, idx.TotalDocs())
+		idf2 := calculateIDF(1, idx.TotalDocs())
 
 		assert.Greater(t, idf2, idf1)
 	})
@@ -465,9 +466,10 @@ func TestEnhancedBM25Index(t *testing.T) {
 	t.Run("TF calculation", func(t *testing.T) {
 		idx := NewEnhancedBM25Index()
 		idx.AddDocument("doc1", "word word word")
-		idx.avgDocLen = 3
-
-		tf := idx.calculateTF(3, 3)
+		// AddDocument already populated avgDocLen correctly via the
+		// bm25State snapshot; pass it as an explicit argument to
+		// calculateTF so the test does not reach into private state.
+		tf := idx.calculateTF(3, 3, idx.AvgDocLen())
 
 		assert.Greater(t, tf, 0.0)
 	})
@@ -640,5 +642,55 @@ func TestEnhancedBM25Index_Concurrency(t *testing.T) {
 	wg.Wait()
 
 	// Should have 10 documents
-	assert.Equal(t, 10, idx.totalDocs)
+	assert.Equal(t, 10, idx.TotalDocs())
+}
+
+// TestEnhancedBM25Index_RaceFree is the CONST-029 verification test.
+// It pounds the index with concurrent AddDocument, RemoveDocument, and
+// Search calls under -race. If any bare-map mutation leaks back in
+// (accidental Pattern-A regression) the race detector trips.
+func TestEnhancedBM25Index_RaceFree(t *testing.T) {
+	idx := NewEnhancedBM25Index()
+
+	const writers = 8
+	const readers = 16
+	const iterations = 200
+
+	var wg sync.WaitGroup
+
+	for w := 0; w < writers; w++ {
+		wg.Add(1)
+		go func(base int) {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				id := fmt.Sprintf("doc-%d-%d", base, i)
+				idx.AddDocument(id, fmt.Sprintf("content for %s alpha beta gamma", id))
+				if i%3 == 0 && i > 0 {
+					idx.RemoveDocument(fmt.Sprintf("doc-%d-%d", base, i-1))
+				}
+			}
+		}(w)
+	}
+
+	for r := 0; r < readers; r++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				_ = idx.Search("alpha beta", 5)
+				_ = idx.TotalDocs()
+				_ = idx.AvgDocLen()
+				_ = idx.Documents()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Sanity check: we didn't lose the invariant that docCount matches
+	// the size of documents(). An accidental partial snapshot would
+	// show up here.
+	docs := idx.Documents()
+	assert.Equal(t, idx.TotalDocs(), len(docs),
+		"TotalDocs() must match Documents() snapshot size")
 }

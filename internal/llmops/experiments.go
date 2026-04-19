@@ -6,20 +6,41 @@ import (
 	"hash/fnv"
 	"math"
 	"sort"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// InMemoryExperimentManager implements ExperimentManager
+// InMemoryExperimentManager implements ExperimentManager.
+//
+// Concurrent-safe by construction (CONST-029): the (experiments,
+// metrics, assignments) triple lives in a single experimentState held
+// under a sentinel key in safe.Store — Create initializes all three
+// in one Update callback, and AssignVariant / RecordMetric / Get all
+// run inside withState (Pattern Epsilon — joint atomicity via state
+// struct).
 type InMemoryExperimentManager struct {
+	state  *safe.Store[string, *experimentState]
+	logger *logrus.Logger
+}
+
+// experimentState is the joint mutable state held under expStateKey.
+type experimentState struct {
 	experiments map[string]*Experiment
 	metrics     map[string]map[string][]*metricSample // exp -> variant -> samples
 	assignments map[string]map[string]string          // exp -> user -> variant
-	mu          sync.RWMutex
-	logger      *logrus.Logger
+}
+
+const expStateKey = "_"
+
+func newExperimentState() *experimentState {
+	return &experimentState{
+		experiments: make(map[string]*Experiment),
+		metrics:     make(map[string]map[string][]*metricSample),
+		assignments: make(map[string]map[string]string),
+	}
 }
 
 type metricSample struct {
@@ -32,19 +53,27 @@ func NewInMemoryExperimentManager(logger *logrus.Logger) *InMemoryExperimentMana
 	if logger == nil {
 		logger = logrus.New()
 	}
+	store := safe.NewStore[string, *experimentState]()
+	store.Put(expStateKey, newExperimentState())
 	return &InMemoryExperimentManager{
-		experiments: make(map[string]*Experiment),
-		metrics:     make(map[string]map[string][]*metricSample),
-		assignments: make(map[string]map[string]string),
-		logger:      logger,
+		state:  store,
+		logger: logger,
 	}
+}
+
+// withState runs fn under the Store's write lock.
+func (m *InMemoryExperimentManager) withState(fn func(*experimentState)) {
+	m.state.Update(expStateKey, func(s *experimentState, _ bool) (*experimentState, bool) {
+		if s == nil {
+			s = newExperimentState()
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // Create creates a new experiment
 func (m *InMemoryExperimentManager) Create(ctx context.Context, exp *Experiment) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if exp.Name == "" {
 		return fmt.Errorf("experiment name is required")
 	}
@@ -52,19 +81,15 @@ func (m *InMemoryExperimentManager) Create(ctx context.Context, exp *Experiment)
 		return fmt.Errorf("at least 2 variants required")
 	}
 
-	// Generate ID if not present
 	if exp.ID == "" {
 		exp.ID = uuid.New().String()
 	}
-
-	// Ensure each variant has an ID
 	for _, v := range exp.Variants {
 		if v.ID == "" {
 			v.ID = uuid.New().String()
 		}
 	}
 
-	// Validate and normalize traffic split
 	if err := m.validateTrafficSplit(exp); err != nil {
 		return err
 	}
@@ -73,14 +98,14 @@ func (m *InMemoryExperimentManager) Create(ctx context.Context, exp *Experiment)
 	exp.CreatedAt = time.Now()
 	exp.UpdatedAt = time.Now()
 
-	m.experiments[exp.ID] = exp
-	m.metrics[exp.ID] = make(map[string][]*metricSample)
-	m.assignments[exp.ID] = make(map[string]string)
-
-	// Initialize metrics for each variant
-	for _, v := range exp.Variants {
-		m.metrics[exp.ID][v.ID] = make([]*metricSample, 0)
-	}
+	m.withState(func(s *experimentState) {
+		s.experiments[exp.ID] = exp
+		s.metrics[exp.ID] = make(map[string][]*metricSample)
+		s.assignments[exp.ID] = make(map[string]string)
+		for _, v := range exp.Variants {
+			s.metrics[exp.ID][v.ID] = make([]*metricSample, 0)
+		}
+	})
 
 	m.logger.WithFields(logrus.Fields{
 		"id":       exp.ID,
@@ -93,175 +118,180 @@ func (m *InMemoryExperimentManager) Create(ctx context.Context, exp *Experiment)
 
 // Get retrieves an experiment
 func (m *InMemoryExperimentManager) Get(ctx context.Context, id string) (*Experiment, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	exp, ok := m.experiments[id]
-	if !ok {
-		return nil, fmt.Errorf("experiment not found: %s", id)
-	}
-
-	return exp, nil
+	var (
+		result *Experiment
+		outErr error
+	)
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[id]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", id)
+			return
+		}
+		result = exp
+	})
+	return result, outErr
 }
 
 // List lists all experiments
 func (m *InMemoryExperimentManager) List(ctx context.Context, status ExperimentStatus) ([]*Experiment, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var result []*Experiment
-	for _, exp := range m.experiments {
-		if status == "" || exp.Status == status {
-			result = append(result, exp)
+	m.withState(func(s *experimentState) {
+		for _, exp := range s.experiments {
+			if status == "" || exp.Status == status {
+				result = append(result, exp)
+			}
 		}
-	}
-
-	// Sort by creation time (newest first)
+	})
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].CreatedAt.After(result[j].CreatedAt)
 	})
-
 	return result, nil
 }
 
 // Start starts an experiment
 func (m *InMemoryExperimentManager) Start(ctx context.Context, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	exp, ok := m.experiments[id]
-	if !ok {
-		return fmt.Errorf("experiment not found: %s", id)
+	var outErr error
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[id]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", id)
+			return
+		}
+		if exp.Status != ExperimentStatusDraft && exp.Status != ExperimentStatusPaused {
+			outErr = fmt.Errorf("cannot start experiment in status: %s", exp.Status)
+			return
+		}
+		now := time.Now()
+		exp.Status = ExperimentStatusRunning
+		if exp.StartTime == nil {
+			exp.StartTime = &now
+		}
+		exp.UpdatedAt = now
+	})
+	if outErr != nil {
+		return outErr
 	}
-
-	if exp.Status != ExperimentStatusDraft && exp.Status != ExperimentStatusPaused {
-		return fmt.Errorf("cannot start experiment in status: %s", exp.Status)
-	}
-
-	now := time.Now()
-	exp.Status = ExperimentStatusRunning
-	if exp.StartTime == nil {
-		exp.StartTime = &now
-	}
-	exp.UpdatedAt = now
-
 	m.logger.WithField("id", id).Info("Experiment started")
-
 	return nil
 }
 
 // Pause pauses an experiment
 func (m *InMemoryExperimentManager) Pause(ctx context.Context, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	exp, ok := m.experiments[id]
-	if !ok {
-		return fmt.Errorf("experiment not found: %s", id)
+	var outErr error
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[id]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", id)
+			return
+		}
+		if exp.Status != ExperimentStatusRunning {
+			outErr = fmt.Errorf("cannot pause experiment in status: %s", exp.Status)
+			return
+		}
+		exp.Status = ExperimentStatusPaused
+		exp.UpdatedAt = time.Now()
+	})
+	if outErr != nil {
+		return outErr
 	}
-
-	if exp.Status != ExperimentStatusRunning {
-		return fmt.Errorf("cannot pause experiment in status: %s", exp.Status)
-	}
-
-	exp.Status = ExperimentStatusPaused
-	exp.UpdatedAt = time.Now()
-
 	m.logger.WithField("id", id).Info("Experiment paused")
-
 	return nil
 }
 
 // Complete completes an experiment
 func (m *InMemoryExperimentManager) Complete(ctx context.Context, id string, winner string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	exp, ok := m.experiments[id]
-	if !ok {
-		return fmt.Errorf("experiment not found: %s", id)
-	}
-
-	// Validate winner if specified
-	if winner != "" {
-		found := false
-		for _, v := range exp.Variants {
-			if v.ID == winner {
-				found = true
-				break
+	var outErr error
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[id]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", id)
+			return
+		}
+		if winner != "" {
+			found := false
+			for _, v := range exp.Variants {
+				if v.ID == winner {
+					found = true
+					break
+				}
+			}
+			if !found {
+				outErr = fmt.Errorf("invalid winner variant: %s", winner)
+				return
 			}
 		}
-		if !found {
-			return fmt.Errorf("invalid winner variant: %s", winner)
-		}
+		now := time.Now()
+		exp.Status = ExperimentStatusCompleted
+		exp.EndTime = &now
+		exp.Winner = winner
+		exp.UpdatedAt = now
+	})
+	if outErr != nil {
+		return outErr
 	}
-
-	now := time.Now()
-	exp.Status = ExperimentStatusCompleted
-	exp.EndTime = &now
-	exp.Winner = winner
-	exp.UpdatedAt = now
-
 	m.logger.WithFields(logrus.Fields{
 		"id":     id,
 		"winner": winner,
 	}).Info("Experiment completed")
-
 	return nil
 }
 
 // Cancel cancels an experiment
 func (m *InMemoryExperimentManager) Cancel(ctx context.Context, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	exp, ok := m.experiments[id]
-	if !ok {
-		return fmt.Errorf("experiment not found: %s", id)
+	var outErr error
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[id]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", id)
+			return
+		}
+		if exp.Status == ExperimentStatusCompleted || exp.Status == ExperimentStatusCancelled {
+			outErr = fmt.Errorf("experiment already finalized")
+			return
+		}
+		now := time.Now()
+		exp.Status = ExperimentStatusCancelled
+		exp.EndTime = &now
+		exp.UpdatedAt = now
+	})
+	if outErr != nil {
+		return outErr
 	}
-
-	if exp.Status == ExperimentStatusCompleted || exp.Status == ExperimentStatusCancelled {
-		return fmt.Errorf("experiment already finalized")
-	}
-
-	now := time.Now()
-	exp.Status = ExperimentStatusCancelled
-	exp.EndTime = &now
-	exp.UpdatedAt = now
-
 	m.logger.WithField("id", id).Info("Experiment cancelled")
-
 	return nil
 }
 
 // AssignVariant assigns a variant for a request
 func (m *InMemoryExperimentManager) AssignVariant(ctx context.Context, experimentID, userID string) (*Variant, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	exp, ok := m.experiments[experimentID]
-	if !ok {
-		return nil, fmt.Errorf("experiment not found: %s", experimentID)
-	}
-
-	if exp.Status != ExperimentStatusRunning {
-		return nil, fmt.Errorf("experiment not running: %s", exp.Status)
-	}
-
-	// Check for existing assignment
-	if variantID, exists := m.assignments[experimentID][userID]; exists {
-		for _, v := range exp.Variants {
-			if v.ID == variantID {
-				return v, nil
+	var (
+		variant *Variant
+		outErr  error
+	)
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[experimentID]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", experimentID)
+			return
+		}
+		if exp.Status != ExperimentStatusRunning {
+			outErr = fmt.Errorf("experiment not running: %s", exp.Status)
+			return
+		}
+		if variantID, exists := s.assignments[experimentID][userID]; exists {
+			for _, v := range exp.Variants {
+				if v.ID == variantID {
+					variant = v
+					return
+				}
 			}
 		}
+		variant = m.selectVariant(exp, userID)
+		s.assignments[experimentID][userID] = variant.ID
+	})
+	if outErr != nil {
+		return nil, outErr
 	}
-
-	// Assign based on traffic split
-	variant := m.selectVariant(exp, userID)
-
-	// Store assignment
-	m.assignments[experimentID][userID] = variant.ID
 
 	m.logger.WithFields(logrus.Fields{
 		"experiment": experimentID,
@@ -274,62 +304,65 @@ func (m *InMemoryExperimentManager) AssignVariant(ctx context.Context, experimen
 
 // RecordMetric records a metric for a variant
 func (m *InMemoryExperimentManager) RecordMetric(ctx context.Context, experimentID, variantID, metric string, value float64) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, ok := m.experiments[experimentID]; !ok {
-		return fmt.Errorf("experiment not found: %s", experimentID)
-	}
-
-	if _, ok := m.metrics[experimentID][variantID]; !ok {
-		return fmt.Errorf("variant not found: %s", variantID)
-	}
-
-	// Store sample (could store by metric name for more granularity)
-	m.metrics[experimentID][variantID] = append(m.metrics[experimentID][variantID], &metricSample{
-		Value:     value,
-		Timestamp: time.Now(),
+	var outErr error
+	m.withState(func(s *experimentState) {
+		if _, ok := s.experiments[experimentID]; !ok {
+			outErr = fmt.Errorf("experiment not found: %s", experimentID)
+			return
+		}
+		if _, ok := s.metrics[experimentID][variantID]; !ok {
+			outErr = fmt.Errorf("variant not found: %s", variantID)
+			return
+		}
+		s.metrics[experimentID][variantID] = append(s.metrics[experimentID][variantID], &metricSample{
+			Value:     value,
+			Timestamp: time.Now(),
+		})
 	})
-
-	return nil
+	return outErr
 }
 
 // GetResults gets experiment results
 func (m *InMemoryExperimentManager) GetResults(ctx context.Context, experimentID string) (*ExperimentResult, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	exp, ok := m.experiments[experimentID]
-	if !ok {
-		return nil, fmt.Errorf("experiment not found: %s", experimentID)
-	}
-
-	result := &ExperimentResult{
-		ExperimentID:   experimentID,
-		VariantResults: make(map[string]*VariantResult),
-		StartTime:      exp.CreatedAt,
-	}
-
-	if exp.StartTime != nil {
-		result.StartTime = *exp.StartTime
-	}
-	if exp.EndTime != nil {
-		result.EndTime = *exp.EndTime
-	} else {
-		result.EndTime = time.Now()
-	}
-
-	// Calculate results for each variant
-	var controlResult *VariantResult
-	for _, v := range exp.Variants {
-		samples := m.metrics[experimentID][v.ID]
-		vr := m.calculateVariantResult(v.ID, samples)
-		result.VariantResults[v.ID] = vr
-		result.TotalSamples += vr.SampleCount
-
-		if v.IsControl {
-			controlResult = vr
+	var (
+		result        *ExperimentResult
+		controlResult *VariantResult
+		outErr        error
+	)
+	m.withState(func(s *experimentState) {
+		exp, ok := s.experiments[experimentID]
+		if !ok {
+			outErr = fmt.Errorf("experiment not found: %s", experimentID)
+			return
 		}
+
+		result = &ExperimentResult{
+			ExperimentID:   experimentID,
+			VariantResults: make(map[string]*VariantResult),
+			StartTime:      exp.CreatedAt,
+		}
+
+		if exp.StartTime != nil {
+			result.StartTime = *exp.StartTime
+		}
+		if exp.EndTime != nil {
+			result.EndTime = *exp.EndTime
+		} else {
+			result.EndTime = time.Now()
+		}
+
+		for _, v := range exp.Variants {
+			samples := s.metrics[experimentID][v.ID]
+			vr := m.calculateVariantResult(v.ID, samples)
+			result.VariantResults[v.ID] = vr
+			result.TotalSamples += vr.SampleCount
+			if v.IsControl {
+				controlResult = vr
+			}
+		}
+	})
+	if outErr != nil {
+		return nil, outErr
 	}
 
 	// Calculate improvement vs control

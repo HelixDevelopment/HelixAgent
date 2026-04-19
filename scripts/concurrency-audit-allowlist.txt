@@ -62,7 +62,6 @@ internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/llm/circuit_breaker_test.go:461:logrusWarnHook
 internal/llm/health_monitor.go:54:HealthMonitor
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
-internal/llmops/experiments.go:17:InMemoryExperimentManager
 internal/llm/providers/gemini/gemini_acp.go:28:GeminiACPProvider
 internal/llm/providers/junie/junie_acp.go:28:JunieACPProvider
 internal/llm/providers/qwen/qwen_acp.go:27:QwenACPProvider

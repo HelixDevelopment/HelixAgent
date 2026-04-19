@@ -9,16 +9,22 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
 
-// Windsurf provides Windsurf IDE integration
+// Windsurf provides Windsurf IDE integration.
+//
+// All access to `projects` (slice append / range / index read)
+// goes through `projMu`. Concurrent Execute() calls would otherwise
+// race on the slice (race-debt BUGFIX #37).
 type Windsurf struct {
 	*base.BaseIntegration
 	config   *Config
 	projects []Project
+	projMu   sync.RWMutex
 }
 
 // Config holds Windsurf configuration
@@ -102,13 +108,17 @@ func (w *Windsurf) loadProjects() error {
 		return fmt.Errorf("read projects: %w", err)
 	}
 
+	w.projMu.Lock()
+	defer w.projMu.Unlock()
 	return json.Unmarshal(data, &w.projects)
 }
 
 // saveProjects saves project list
 func (w *Windsurf) saveProjects() error {
 	projectsPath := filepath.Join(w.GetWorkDir(), "projects.json")
+	w.projMu.RLock()
 	data, err := json.MarshalIndent(w.projects, "", "  ")
+	w.projMu.RUnlock()
 	if err != nil {
 		return fmt.Errorf("marshal projects: %w", err)
 	}
@@ -201,6 +211,10 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 		framework = "react"
 	}
 
+	// ID generation + slice append under write lock — otherwise
+	// concurrent createProject calls can produce duplicate IDs and
+	// race on the slice.
+	w.projMu.Lock()
 	project := Project{
 		ID:        fmt.Sprintf("project-%d", len(w.projects)+1),
 		Name:      name,
@@ -210,12 +224,15 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 		Status:    "created",
 	}
 
-	// Create project directory
+	// Create project directory (doesn't touch projects slice but
+	// serializing here is cheaper than re-locking).
 	if err := os.MkdirAll(project.Path, 0755); err != nil {
+		w.projMu.Unlock()
 		return nil, fmt.Errorf("create project dir: %w", err)
 	}
 
 	w.projects = append(w.projects, project)
+	w.projMu.Unlock()
 
 	if err := w.saveProjects(); err != nil {
 		return nil, err
@@ -293,13 +310,18 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 		return nil, fmt.Errorf("project_id required")
 	}
 
+	// Snapshot the project under read lock so callers don't race
+	// with concurrent createProject / deploy mutations.
+	w.projMu.RLock()
 	var project *Project
 	for i := range w.projects {
 		if w.projects[i].ID == projectID {
-			project = &w.projects[i]
+			p := w.projects[i] // value copy
+			project = &p
 			break
 		}
 	}
+	w.projMu.RUnlock()
 
 	if project == nil {
 		return nil, fmt.Errorf("project not found: %s", projectID)
@@ -307,7 +329,7 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 
 	// Try to open in Windsurf
 	if w.config.EditorPath != "" {
-		cmd := exec.CommandContext(ctx, w.config.EditorPath, project.Path)
+		cmd := exec.CommandContext(ctx, w.config.EditorPath, project.Path) // #nosec G204 // EditorPath from trusted config
 		if err := cmd.Start(); err != nil {
 			return nil, fmt.Errorf("open editor: %w", err)
 		}
@@ -331,13 +353,17 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 		platform = "vercel"
 	}
 
+	// Snapshot under read lock (same pattern as openProject).
+	w.projMu.RLock()
 	var project *Project
 	for i := range w.projects {
 		if w.projects[i].ID == projectID {
-			project = &w.projects[i]
+			p := w.projects[i]
+			project = &p
 			break
 		}
 	}
+	w.projMu.RUnlock()
 
 	if project == nil {
 		return nil, fmt.Errorf("project not found: %s", projectID)
@@ -351,11 +377,16 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 	}, nil
 }
 
-// listProjects lists all projects
+// listProjects lists all projects — returns a defensive snapshot.
 func (w *Windsurf) listProjects(ctx context.Context) (interface{}, error) {
+	w.projMu.RLock()
+	snapshot := make([]Project, len(w.projects))
+	copy(snapshot, w.projects)
+	count := len(w.projects)
+	w.projMu.RUnlock()
 	return map[string]interface{}{
-		"projects": w.projects,
-		"count":    len(w.projects),
+		"projects": snapshot,
+		"count":    count,
 	}, nil
 }
 

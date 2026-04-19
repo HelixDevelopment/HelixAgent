@@ -191,7 +191,6 @@ internal/services/cognee_service.go:95:FeedbackLoop
 internal/services/concurrency_alert_manager.go:505:ConcurrencyAlertManager
 internal/services/concurrency_monitor.go:69:ConcurrencyMonitor
 internal/services/context_manager.go:36:ContextManager
-internal/services/debate_monitoring_service.go:55:DebateMonitoringService
 internal/services/debate_multipass_validation.go:211:MultiPassValidator
 internal/services/debate_performance_service.go:38:DebatePerformanceService
 internal/services/debate_reporting_service.go:56:DebateReportingService

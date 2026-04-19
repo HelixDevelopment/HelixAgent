@@ -404,12 +404,10 @@ func TestDebateMonitoringService_CleanupInactiveSessions(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Manually set old timestamps
-	svc.sessionsMu.Lock()
-	for _, session := range svc.sessions {
+	// Manually set old timestamps via Snapshot (session pointer lets us mutate).
+	for _, session := range svc.sessions.Snapshot() {
 		session.LastCheck = time.Now().Add(-2 * time.Hour)
 	}
-	svc.sessionsMu.Unlock()
 
 	// Cleanup sessions older than 1 hour
 	removed := svc.CleanupInactiveSessions(time.Hour)

@@ -37,7 +37,6 @@ internal/ensemble/background/worker_pool.go:33:WorkerPool
 internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/synchronization/manager.go:17:SyncManager
 internal/features/capability.go:455:CapabilityRegistry
-internal/features/features.go:321:Registry
 internal/handlers/acp_handler.go:104:ACPHandler
 internal/handlers/agentic_handler.go:20:AgenticHandler
 internal/handlers/debate_handler.go:19:DebateHandler

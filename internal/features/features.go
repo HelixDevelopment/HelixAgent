@@ -7,6 +7,8 @@ package features
 import (
 	"strings"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // Feature represents a toggleable feature in HelixAgent
@@ -317,12 +319,17 @@ var featureRegistry = map[Feature]*FeatureInfo{
 	},
 }
 
-// Registry provides thread-safe access to feature definitions
+// Registry provides thread-safe access to feature definitions.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - features is a safe.Store seeded at GetRegistry time; callers never
+//     add/remove entries after construction, so reads are lock-free.
+//   - customDefaults keys on endpoint name and stores the inner
+//     map[Feature]bool by value (the map itself is not further mutated
+//     after SetEndpointDefaults; callers always pass a new map).
 type Registry struct {
-	mu       sync.RWMutex
-	features map[Feature]*FeatureInfo
-	// customDefaults stores per-endpoint default overrides
-	customDefaults map[string]map[Feature]bool
+	features       *safe.Store[Feature, *FeatureInfo]
+	customDefaults *safe.Store[string, map[Feature]bool]
 }
 
 // globalRegistry is the singleton feature registry
@@ -332,14 +339,14 @@ var registryOnce sync.Once
 // GetRegistry returns the global feature registry
 func GetRegistry() *Registry {
 	registryOnce.Do(func() {
-		globalRegistry = &Registry{
-			features:       make(map[Feature]*FeatureInfo),
-			customDefaults: make(map[string]map[Feature]bool),
-		}
-		// Copy all features
+		featuresStore := safe.NewStore[Feature, *FeatureInfo]()
 		for k, v := range featureRegistry {
 			info := *v
-			globalRegistry.features[k] = &info
+			featuresStore.Put(k, &info)
+		}
+		globalRegistry = &Registry{
+			features:       featuresStore,
+			customDefaults: safe.NewStore[string, map[Feature]bool](),
 		}
 	})
 	return globalRegistry
@@ -347,67 +354,53 @@ func GetRegistry() *Registry {
 
 // GetFeature returns feature info by name
 func (r *Registry) GetFeature(name Feature) (*FeatureInfo, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	info, ok := r.features[name]
-	return info, ok
+	return r.features.Get(name)
 }
 
 // GetAllFeatures returns all registered features
 func (r *Registry) GetAllFeatures() []*FeatureInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	features := make([]*FeatureInfo, 0, len(r.features))
-	for _, f := range r.features {
-		features = append(features, f)
-	}
-	return features
+	return r.features.Values()
 }
 
 // GetFeaturesByCategory returns features in a specific category
 func (r *Registry) GetFeaturesByCategory(category FeatureCategory) []*FeatureInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	var features []*FeatureInfo
-	for _, f := range r.features {
+	r.features.Range(func(_ Feature, f *FeatureInfo) bool {
 		if f.Category == category {
 			features = append(features, f)
 		}
-	}
+		return true
+	})
 	return features
 }
 
 // GetDefaultValue returns the default value for a feature
 func (r *Registry) GetDefaultValue(name Feature) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	if info, ok := r.features[name]; ok {
+	if info, ok := r.features.Get(name); ok {
 		return info.DefaultValue
 	}
 	return false
 }
 
-// SetEndpointDefaults sets custom default values for a specific endpoint
+// SetEndpointDefaults sets custom default values for a specific endpoint.
+// The incoming map is installed as-is; callers should not mutate it after
+// passing it in, matching the pre-migration contract where the map was
+// shallow-stored under r.mu.
 func (r *Registry) SetEndpointDefaults(endpoint string, defaults map[Feature]bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.customDefaults[endpoint] = defaults
+	r.customDefaults.Put(endpoint, defaults)
 }
 
 // GetEndpointDefault returns the default value for a feature on a specific endpoint
 func (r *Registry) GetEndpointDefault(endpoint string, feature Feature) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	// Check endpoint-specific defaults first
-	if endpointDefaults, ok := r.customDefaults[endpoint]; ok {
+	if endpointDefaults, ok := r.customDefaults.Get(endpoint); ok {
 		if val, ok := endpointDefaults[feature]; ok {
 			return val
 		}
 	}
 
 	// Fall back to global default
-	if info, ok := r.features[feature]; ok {
+	if info, ok := r.features.Get(feature); ok {
 		return info.DefaultValue
 	}
 	return false
@@ -415,47 +408,47 @@ func (r *Registry) GetEndpointDefault(endpoint string, feature Feature) bool {
 
 // IsValidFeature checks if a feature name is valid
 func (r *Registry) IsValidFeature(name Feature) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	_, ok := r.features[name]
-	return ok
+	return r.features.Has(name)
 }
 
 // GetFeatureByHeader finds a feature by its header name
 func (r *Registry) GetFeatureByHeader(headerName string) (Feature, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for _, f := range r.features {
+	var found Feature
+	var ok bool
+	r.features.Range(func(_ Feature, f *FeatureInfo) bool {
 		if strings.EqualFold(f.HeaderName, headerName) {
-			return f.Name, true
+			found = f.Name
+			ok = true
+			return false
 		}
-	}
-	return "", false
+		return true
+	})
+	return found, ok
 }
 
 // GetFeatureByQueryParam finds a feature by its query parameter
 func (r *Registry) GetFeatureByQueryParam(param string) (Feature, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for _, f := range r.features {
+	var found Feature
+	var ok bool
+	r.features.Range(func(_ Feature, f *FeatureInfo) bool {
 		if strings.EqualFold(f.QueryParam, param) {
-			return f.Name, true
+			found = f.Name
+			ok = true
+			return false
 		}
-	}
-	return "", false
+		return true
+	})
+	return found, ok
 }
 
 // ValidateFeatureCombination checks if a set of features can be enabled together
 func (r *Registry) ValidateFeatureCombination(features map[Feature]bool) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	for feature, enabled := range features {
 		if !enabled {
 			continue
 		}
 
-		info, ok := r.features[feature]
+		info, ok := r.features.Get(feature)
 		if !ok {
 			continue
 		}
@@ -506,20 +499,12 @@ func ParseFeature(s string) Feature {
 
 // ListFeatures returns all registered feature names
 func (r *Registry) ListFeatures() []Feature {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	features := make([]Feature, 0, len(r.features))
-	for f := range r.features {
-		features = append(features, f)
-	}
-	return features
+	return r.features.Keys()
 }
 
 // GetFeatureInfo returns the complete FeatureInfo for a feature
 func (r *Registry) GetFeatureInfo(name Feature) *FeatureInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	if info, ok := r.features[name]; ok {
+	if info, ok := r.features.Get(name); ok {
 		// Return a copy to prevent modification
 		infoCopy := *info
 		return &infoCopy

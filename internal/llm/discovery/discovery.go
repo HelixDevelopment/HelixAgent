@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"dev.helix.agent/internal/modelsdev"
@@ -62,15 +62,24 @@ type ProviderConfig struct {
 }
 
 // Discoverer handles 3-tier model discovery for LLM providers.
-// It is safe for concurrent use.
+//
+// Concurrent-safe by construction (CONST-029): the (models, discoveredAt,
+// tier) triple lives in an atomic.Pointer[discoveryState]. cacheModels
+// constructs a fresh state and atomically Stores it; readers Load and
+// inspect the snapshot. Tiered discovery is read-mostly so the lock-free
+// path is the common one.
 type Discoverer struct {
-	config       ProviderConfig
+	config     ProviderConfig
+	state      atomic.Pointer[discoveryState]
+	log        *logrus.Logger
+	httpClient *http.Client
+}
+
+// discoveryState is the joint cache state.
+type discoveryState struct {
 	models       []string
 	discoveredAt time.Time
 	tier         int
-	mu           sync.RWMutex
-	log          *logrus.Logger
-	httpClient   *http.Client
 }
 
 // NewDiscoverer creates a new model discoverer with the given configuration.
@@ -102,14 +111,11 @@ func NewDiscoverer(config ProviderConfig) *Discoverer {
 //
 // Results are cached for CacheTTL duration.
 func (d *Discoverer) DiscoverModels() []string {
-	d.mu.RLock()
-	if len(d.models) > 0 && time.Since(d.discoveredAt) < d.config.CacheTTL {
-		result := make([]string, len(d.models))
-		copy(result, d.models)
-		d.mu.RUnlock()
+	if cur := d.state.Load(); cur != nil && len(cur.models) > 0 && time.Since(cur.discoveredAt) < d.config.CacheTTL {
+		result := make([]string, len(cur.models))
+		copy(result, cur.models)
 		return result
 	}
-	d.mu.RUnlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -161,38 +167,35 @@ func (d *Discoverer) DiscoverModels() []string {
 // GetCachedModels returns the currently cached models without triggering discovery.
 // Falls back to FallbackModels if cache is empty.
 func (d *Discoverer) GetCachedModels() []string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	if len(d.models) == 0 {
+	cur := d.state.Load()
+	if cur == nil || len(cur.models) == 0 {
 		return d.config.FallbackModels
 	}
-	result := make([]string, len(d.models))
-	copy(result, d.models)
+	result := make([]string, len(cur.models))
+	copy(result, cur.models)
 	return result
 }
 
 // GetDiscoveryTier returns which tier provided the current models (0 = not discovered).
 func (d *Discoverer) GetDiscoveryTier() int {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.tier
+	cur := d.state.Load()
+	if cur == nil {
+		return 0
+	}
+	return cur.tier
 }
 
 // InvalidateCache forces the next DiscoverModels() call to re-fetch models.
 func (d *Discoverer) InvalidateCache() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.models = nil
-	d.discoveredAt = time.Time{}
-	d.tier = 0
+	d.state.Store(nil)
 }
 
 func (d *Discoverer) cacheModels(models []string, tier int) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.models = models
-	d.discoveredAt = time.Now()
-	d.tier = tier
+	d.state.Store(&discoveryState{
+		models:       models,
+		discoveredAt: time.Now(),
+		tier:         tier,
+	})
 }
 
 // openAIModelsResponse is the standard OpenAI-compatible /v1/models response.

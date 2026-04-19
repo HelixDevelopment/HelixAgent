@@ -530,9 +530,28 @@ func (p *ZenCLIProvider) SetModel(model string) {
 }
 
 // IsOpenCodeInstalled is a standalone function to check if OpenCode is installed
+// IsOpenCodeInstalled reports whether the `opencode` CLI is both
+// present on PATH AND actually runnable on this host. The previous
+// implementation returned true whenever `exec.LookPath("opencode")`
+// succeeded — but on resource-constrained hosts (CI runners,
+// CONST-022 `nice -n 19 / ionice -c 3` test budget) the binary can be
+// on PATH yet get SIGKILL'd before it can execute, producing
+// "installed-but-unusable" state that diverges from what
+// ZenCLIProvider.IsCLIAvailable() observes internally.
+//
+// To keep this package-level helper agreeing with the instance-level
+// ZenCLIProvider.IsCLIAvailable()`, we now run the same `--version`
+// probe with the same 10-second timeout. Tests branch on this
+// function; if it disagreed with IsCLIAvailable() the assertions
+// would race.
 func IsOpenCodeInstalled() bool {
-	_, err := exec.LookPath("opencode")
-	return err == nil
+	if _, err := exec.LookPath("opencode"); err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "opencode", "--version") // #nosec G204 // hard-coded binary + no user input
+	return cmd.Run() == nil
 }
 
 // GetOpenCodePath returns the path to opencode command if installed

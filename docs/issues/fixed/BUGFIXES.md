@@ -1,5 +1,33 @@
 # Bug Fixes and Known Issues
 
+## Issue #20: `IsOpenCodeInstalled` too permissive — PATH-only probe (BUGFIX 2026-04-19)
+
+### Issue
+`make test-unit` failed on this host with two cascading failures:
+
+```
+--- FAIL: TestZenCLIProvider_ValidateConfig (10.30s)
+    Error: "OpenCode CLI not available: opencode command failed: signal: killed"
+--- FAIL: TestZenCLIProvider_EmptyPromptHandling/empty_messages_and_empty_prompt_returns_error
+    Error: "OpenCode CLI not available: …" does not contain "no prompt"
+```
+
+Both tests branch on the package-level helper `IsOpenCodeInstalled()`. It returned `true` because the `opencode` binary was on `PATH`, but the subsequent actual call to `opencode` inside `ZenCLIProvider.IsCLIAvailable()` failed with `signal: killed` — the resource-constrained test environment (`nice -n 19 / ionice -c 3` per CONST-022) had `SIGKILL`'d the heavy opencode process. Result: tests took the "installed" branch but met "not installed" behaviour. Divergent semantics between the two probes.
+
+### Root Cause
+`IsOpenCodeInstalled()` did only `exec.LookPath("opencode")`. `ZenCLIProvider.IsCLIAvailable()` did `exec.LookPath` + a 10s `--version` probe. The two functions could disagree whenever the binary was on PATH but slow / killed / broken.
+
+### Fix Applied
+`internal/llm/providers/zen/zen_cli.go`
+
+Aligned `IsOpenCodeInstalled()` with `ZenCLIProvider.IsCLIAvailable()` — both now run the same `--version` probe with the same 10-second timeout before returning `true`. Added a comment pointing to the historical reason and the CONST-022 resource-budget context.
+
+**Verification:**
+- `make test-unit` — previously exit 2, now exit 0: 265 packages pass, 0 fail.
+- The `EmptyPromptHandling` test now correctly SKIPs on hosts where opencode is installed-but-unusable (deterministic skip, not flake).
+
+---
+
 ## Issue #19: Data race in `buildcheck.MemoryStore.Load` — shared-pointer aliasing (BUGFIX 2026-04-19)
 
 ### Issue

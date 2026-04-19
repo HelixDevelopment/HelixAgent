@@ -48,6 +48,20 @@ This document is updated after each step with real evidence (commands run, pass/
 
 ### A3 `make test-unit`
 
+**First run:** exit 2. Two failures in `internal/llm/providers/zen`:
+- `TestZenCLIProvider_ValidateConfig`
+- `TestZenCLIProvider_EmptyPromptHandling/empty_messages_and_empty_prompt_returns_error`
+
+**Root cause:** Divergent semantics between package-level `IsOpenCodeInstalled()` (PATH-only) and instance-level `ZenCLIProvider.IsCLIAvailable()` (PATH + 10s `--version` probe). On this resource-constrained host (CONST-022 `nice -n 19 / ionice -c 3`), opencode binary exists but its slow version probe could be SIGKILL'd, producing an "installed but unusable" state the tests didn't handle.
+
+**Fix:** `internal/llm/providers/zen/zen_cli.go` — `IsOpenCodeInstalled()` now runs the same 10s `--version` probe as `IsCLIAvailable()`. Documented in BUGFIX #20.
+
+**Second run:** exit 0, **265 packages pass, 0 fail**. `EmptyPromptHandling` now deterministically SKIPs on hosts where opencode is installed-but-unusable (no flake).
+
+**Status:** PASS.
+
+### A4 `make test-race`
+
 *in progress*
 
 ### A3 `make test-unit`

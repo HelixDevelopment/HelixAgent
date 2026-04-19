@@ -302,9 +302,14 @@ func TestUpdateTeam(t *testing.T) {
 		},
 	}
 
+	// Subtests are ORDER-DEPENDENT — "update status" expects
+	// "Updated Name" from the previous "update name" subtest. Running
+	// them in parallel defeats the intent and produces flaky failures
+	// (race-debt BUGFIX #28). Subtests run sequentially here; the
+	// outer test still runs in parallel with other tests via
+	// t.Parallel() at the top.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			body, _ := json.Marshal(tt.reqBody)
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/ensemble/teams/"+tt.teamID, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")

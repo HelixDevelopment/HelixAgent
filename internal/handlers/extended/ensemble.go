@@ -7,6 +7,7 @@
 package extended
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -30,7 +31,22 @@ type AgentTeam struct {
 	Status      TeamStatus      `json:"status"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
-	mu          sync.RWMutex
+	mu          sync.RWMutex    `json:"-"`
+}
+
+// MarshalJSON takes the read lock before serialising so concurrent
+// updates to any team field (see UpdateTeam / AddMember / etc.) do
+// not race with encoding/json reading the same fields. Previously
+// `c.JSON(http.StatusOK, team)` in handlers raced with in-flight
+// writers — caught by -race (BUGFIX #28).
+func (t *AgentTeam) MarshalJSON() ([]byte, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	// Local alias type bypasses the custom MarshalJSON so we don't
+	// recurse infinitely; inherits the `json:` tags.
+	type teamAlias AgentTeam
+	alias := (*teamAlias)(t)
+	return json.Marshal(alias)
 }
 
 // TeamConfig holds team configuration
@@ -81,7 +97,17 @@ type Task struct {
 	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
 	Deadline     *time.Time      `json:"deadline,omitempty"`
 	Metadata     TaskMetadata    `json:"metadata"`
-	mu           sync.RWMutex
+	mu           sync.RWMutex    `json:"-"`
+}
+
+// MarshalJSON takes the read lock before serialising. Same rationale
+// as AgentTeam.MarshalJSON (BUGFIX #28).
+func (t *Task) MarshalJSON() ([]byte, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	type taskAlias Task
+	alias := (*taskAlias)(t)
+	return json.Marshal(alias)
 }
 
 // AgentTaskStatus represents task status

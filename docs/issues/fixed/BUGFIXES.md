@@ -1,5 +1,36 @@
 # Bug Fixes and Known Issues
 
+## Issue #28: `AgentTeam` / `Task` JSON-serialisation race + order-dependent subtests (BUGFIX 2026-04-19)
+
+### Issue
+`go test -race ./internal/handlers/extended/`:
+1. `c.JSON(…, team)` and `c.JSON(…, task)` serialised the `*AgentTeam` / `*Task` structs under `encoding/json` reflection while concurrent handlers held the struct's write lock mutating fields — `-race` detected reflect-driven reads racing with field writes.
+2. `TestUpdateTeam`'s subtests were marked `t.Parallel()` but were ORDER-DEPENDENT — the "update status" subtest expected the team's `Name` to still be `"Updated Name"` from the previous "update name" subtest.
+
+### Fix Applied
+`internal/handlers/extended/ensemble.go`:
+- Added `MarshalJSON()` methods to `AgentTeam` and `Task` that take the read-lock before serialising, using a typedef alias to avoid infinite recursion.
+- Marked `mu sync.RWMutex` fields with `json:"-"` (cosmetic; `encoding/json` already skips unexported fields).
+
+`internal/handlers/extended/extended_test.go`:
+- Removed `t.Parallel()` from `TestUpdateTeam`'s ordered subtests. The outer test still runs in parallel with other tests — only the intra-test ordering is now sequential where the chain of dependencies requires it.
+
+**Verification:** 3-count race run on `./internal/handlers/extended/` → ok, 1.0 s wall.
+
+### Race-debt programme closed
+
+All 8 pre-existing packages that failed under `-race` at session start are now clean:
+- #21 `internal/agentic`
+- #22 `internal/agents/swarm`
+- #23 `internal/clis/agents/kodu`
+- #24 `internal/formatters/providers/native`
+- #25 `internal/notifications`
+- #26 `internal/verifier/adapters`
+- #27 `internal/handlers`
+- #28 `internal/handlers/extended` (this)
+
+---
+
 ## Issue #27: `DebateHandler` data race — RLock released before field reads (BUGFIX 2026-04-19)
 
 ### Issue

@@ -8,11 +8,19 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
+// NonBlockingChan pairs a bounded channel with an overflow buffer.
+// mu is Pattern Zeta (scalar mutex survivor): it serialises the
+// compound "len-check-then-append" / "len-check-then-pop" sequences
+// on buffer so the cap invariant holds under concurrency. The buffer
+// itself is a safe.Slice, so there is no bare map/slice adjacent to
+// mu in the struct body.
 type NonBlockingChan struct {
 	ch     chan interface{}
-	buffer []interface{}
+	buffer *safe.Slice[interface{}]
 	mu     sync.Mutex
 	size   int
 }
@@ -20,7 +28,7 @@ type NonBlockingChan struct {
 func NewNonBlockingChan(size int) *NonBlockingChan {
 	return &NonBlockingChan{
 		ch:     make(chan interface{}, size),
-		buffer: make([]interface{}, 0, size),
+		buffer: safe.NewSlice[interface{}](),
 		size:   size,
 	}
 }
@@ -33,8 +41,8 @@ func (nbc *NonBlockingChan) Send(item interface{}) bool {
 		nbc.mu.Lock()
 		defer nbc.mu.Unlock()
 
-		if len(nbc.buffer) < nbc.size {
-			nbc.buffer = append(nbc.buffer, item)
+		if nbc.buffer.Len() < nbc.size {
+			nbc.buffer.Append(item)
 			return true
 		}
 		return false
@@ -47,21 +55,20 @@ func (nbc *NonBlockingChan) Receive() (interface{}, bool) {
 		return item, true
 	default:
 		nbc.mu.Lock()
-		if len(nbc.buffer) > 0 {
-			item := nbc.buffer[0]
-			nbc.buffer = nbc.buffer[1:]
-			nbc.mu.Unlock()
-			return item, true
+		defer nbc.mu.Unlock()
+
+		snap := nbc.buffer.Snapshot()
+		if len(snap) == 0 {
+			return nil, false
 		}
-		nbc.mu.Unlock()
-		return nil, false
+		item := snap[0]
+		nbc.buffer.Replace(snap[1:])
+		return item, true
 	}
 }
 
 func (nbc *NonBlockingChan) Len() int {
-	nbc.mu.Lock()
-	defer nbc.mu.Unlock()
-	return len(nbc.buffer) + len(nbc.ch)
+	return nbc.buffer.Len() + len(nbc.ch)
 }
 
 type AsyncProcessor struct {
@@ -170,44 +177,31 @@ func (ll *LazyLoader) GetOrDefault(defaultValue interface{}) interface{} {
 }
 
 type NonBlockingCache struct {
-	data map[string]interface{}
-	mu   sync.RWMutex
+	data *safe.Store[string, interface{}]
 	ttl  time.Duration
 }
 
 func NewNonBlockingCache(ttl time.Duration) *NonBlockingCache {
 	return &NonBlockingCache{
-		data: make(map[string]interface{}),
+		data: safe.NewStore[string, interface{}](),
 		ttl:  ttl,
 	}
 }
 
 func (nbc *NonBlockingCache) Get(key string) (interface{}, bool) {
-	nbc.mu.RLock()
-	defer nbc.mu.RUnlock()
-
-	val, ok := nbc.data[key]
-	return val, ok
+	return nbc.data.Get(key)
 }
 
 func (nbc *NonBlockingCache) Set(key string, value interface{}) {
-	nbc.mu.Lock()
-	defer nbc.mu.Unlock()
-
-	nbc.data[key] = value
+	nbc.data.Put(key, value)
 }
 
 func (nbc *NonBlockingCache) Delete(key string) {
-	nbc.mu.Lock()
-	defer nbc.mu.Unlock()
-
-	delete(nbc.data, key)
+	nbc.data.Delete(key)
 }
 
 func (nbc *NonBlockingCache) Len() int {
-	nbc.mu.RLock()
-	defer nbc.mu.RUnlock()
-	return len(nbc.data)
+	return nbc.data.Len()
 }
 
 type BackgroundTask struct {

@@ -47,8 +47,6 @@ internal/clis/instance_manager.go:18:InstanceManager
 internal/clis/openhands/sandbox.go:441:SandboxManager
 internal/clis/pool.go:13:InstancePool
 internal/concurrency/deadlock/detector.go:19:Detector
-internal/concurrency/nonblocking.go:13:NonBlockingChan
-internal/concurrency/nonblocking.go:172:NonBlockingCache
 internal/containers/lazy_integration.go:19:LazyOrchestrator
 internal/conversation/infinite_context.go:27:ContextCache
 internal/database/memory.go:15:MemoryDB

@@ -5,14 +5,18 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/clis"
 )
 
 // HealthMonitor tracks instance health and makes routing decisions.
+//
+// Concurrent-safe by construction (CONST-029): history is a safe.Store;
+// HealthHistory field mutations route through Update callbacks
+// (Pattern Beta).
 type HealthMonitor struct {
-	// Health history per instance
-	history map[string]*HealthHistory
-	mu      sync.RWMutex
+	history *safe.Store[string, *HealthHistory]
 
 	// Thresholds
 	failureThreshold  int
@@ -51,7 +55,7 @@ type HealthCheck struct {
 // NewHealthMonitor creates a new health monitor.
 func NewHealthMonitor() *HealthMonitor {
 	return &HealthMonitor{
-		history:           make(map[string]*HealthHistory),
+		history:           safe.NewStore[string, *HealthHistory](),
 		failureThreshold:  3,
 		degradedThreshold: 0.5,
 		recoveryThreshold: 0.8,
@@ -61,107 +65,79 @@ func NewHealthMonitor() *HealthMonitor {
 
 // RecordCheck records a health check result.
 func (m *HealthMonitor) RecordCheck(instanceID string, healthy bool, duration time.Duration, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	history, ok := m.history[instanceID]
-	if !ok {
-		history = &HealthHistory{
-			InstanceID: instanceID,
-			Checks:     make([]*HealthCheck, 0),
+	m.history.Update(instanceID, func(history *HealthHistory, _ bool) (*HealthHistory, bool) {
+		if history == nil {
+			history = &HealthHistory{
+				InstanceID: instanceID,
+				Checks:     make([]*HealthCheck, 0),
+			}
 		}
-		m.history[instanceID] = history
-	}
 
-	// Add check
-	check := &HealthCheck{
-		Timestamp: time.Now(),
-		Healthy:   healthy,
-		Duration:  duration,
-		Error:     err,
-	}
-	history.Checks = append(history.Checks, check)
-	history.LastCheck = time.Now()
+		check := &HealthCheck{
+			Timestamp: time.Now(),
+			Healthy:   healthy,
+			Duration:  duration,
+			Error:     err,
+		}
+		history.Checks = append(history.Checks, check)
+		history.LastCheck = time.Now()
 
-	// Update consecutive counters
-	if healthy {
-		history.ConsecutiveSuccesses++
-		history.ConsecutiveFailures = 0
-	} else {
-		history.ConsecutiveFailures++
-		history.ConsecutiveSuccesses = 0
-	}
+		if healthy {
+			history.ConsecutiveSuccesses++
+			history.ConsecutiveFailures = 0
+		} else {
+			history.ConsecutiveFailures++
+			history.ConsecutiveSuccesses = 0
+		}
 
-	// Clean old checks
-	m.cleanupOldChecks(history)
-
-	// Recalculate metrics
-	m.recalculateMetrics(history)
+		m.cleanupOldChecks(history)
+		m.recalculateMetrics(history)
+		return history, true
+	})
 }
 
 // GetHealth returns the current health status for an instance.
 func (m *HealthMonitor) GetHealth(instanceID string) clis.HealthStatus {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	history, ok := m.history[instanceID]
-	if !ok {
-		return clis.HealthUnknown
-	}
-
-	return m.calculateHealthStatus(history)
+	var status clis.HealthStatus = clis.HealthUnknown
+	m.history.Update(instanceID, func(history *HealthHistory, ok bool) (*HealthHistory, bool) {
+		if !ok {
+			return nil, false
+		}
+		status = m.calculateHealthStatus(history)
+		return history, true
+	})
+	return status
 }
 
 // GetRecommendation returns routing recommendation for an instance.
 func (m *HealthMonitor) GetRecommendation(instanceID string) HealthRecommendation {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	history, ok := m.history[instanceID]
-	if !ok {
-		return HealthRecommendation{
-			CanRoute: true, // Unknown = allow
-			Weight:   1.0,
-			Reason:   "no health history",
-		}
+	var rec HealthRecommendation = HealthRecommendation{
+		CanRoute: true,
+		Weight:   1.0,
+		Reason:   "no health history",
 	}
-
-	status := m.calculateHealthStatus(history)
-
-	switch status {
-	case clis.HealthHealthy:
-		return HealthRecommendation{
-			CanRoute: true,
-			Weight:   1.0,
-			Reason:   "healthy",
+	m.history.Update(instanceID, func(history *HealthHistory, ok bool) (*HealthHistory, bool) {
+		if !ok {
+			return nil, false
 		}
-
-	case clis.HealthDegraded:
-		// Reduce weight based on failure rate
-		weight := 1.0 - history.FailureRate
-		if weight < 0.1 {
-			weight = 0.1
+		status := m.calculateHealthStatus(history)
+		switch status {
+		case clis.HealthHealthy:
+			rec = HealthRecommendation{CanRoute: true, Weight: 1.0, Reason: "healthy"}
+		case clis.HealthDegraded:
+			weight := 1.0 - history.FailureRate
+			if weight < 0.1 {
+				weight = 0.1
+			}
+			rec = HealthRecommendation{CanRoute: true, Weight: weight, Reason: "degraded"}
+		case clis.HealthUnhealthy:
+			rec = HealthRecommendation{CanRoute: false, Weight: 0.0, Reason: "unhealthy"}
+		default:
+			rec = HealthRecommendation{CanRoute: true, Weight: 0.5, Reason: "unknown health"}
 		}
-		return HealthRecommendation{
-			CanRoute: true,
-			Weight:   weight,
-			Reason:   "degraded",
-		}
-
-	case clis.HealthUnhealthy:
-		return HealthRecommendation{
-			CanRoute: false,
-			Weight:   0.0,
-			Reason:   "unhealthy",
-		}
-
-	default:
-		return HealthRecommendation{
-			CanRoute: true,
-			Weight:   0.5,
-			Reason:   "unknown health",
-		}
-	}
+		return history, true
+	})
+	return rec
 }
 
 // HealthRecommendation provides routing guidance.
@@ -173,11 +149,8 @@ type HealthRecommendation struct {
 
 // GetStats returns health statistics for all instances.
 func (m *HealthMonitor) GetStats() map[string]interface{} {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	stats := make(map[string]interface{})
-	for id, history := range m.history {
+	m.history.Range(func(id string, history *HealthHistory) bool {
 		stats[id] = map[string]interface{}{
 			"failure_rate":          history.FailureRate,
 			"avg_response_time_ms":  history.AvgResponseTime.Milliseconds(),
@@ -186,16 +159,14 @@ func (m *HealthMonitor) GetStats() map[string]interface{} {
 			"total_checks":          len(history.Checks),
 			"last_check":            history.LastCheck,
 		}
-	}
-
+		return true
+	})
 	return stats
 }
 
 // RemoveInstance removes an instance from monitoring.
 func (m *HealthMonitor) RemoveInstance(instanceID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.history, instanceID)
+	m.history.Delete(instanceID)
 }
 
 // cleanupOldChecks removes checks outside the history window.
@@ -410,58 +381,41 @@ func (cb *CircuitBreaker) GetStats() map[string]interface{} {
 }
 
 // CircuitBreakerManager manages circuit breakers for all instances.
+//
+// Concurrent-safe by construction (CONST-029): breakers is a safe.Store.
+// CircuitBreaker has its own internal mutex (no collection adjacent —
+// audit-clean).
 type CircuitBreakerManager struct {
-	breakers map[string]*CircuitBreaker
-	mu       sync.RWMutex
+	breakers *safe.Store[string, *CircuitBreaker]
 }
 
 // NewCircuitBreakerManager creates a new manager.
 func NewCircuitBreakerManager() *CircuitBreakerManager {
 	return &CircuitBreakerManager{
-		breakers: make(map[string]*CircuitBreaker),
+		breakers: safe.NewStore[string, *CircuitBreaker](),
 	}
 }
 
 // GetBreaker gets or creates a circuit breaker.
 func (m *CircuitBreakerManager) GetBreaker(instanceID string) *CircuitBreaker {
-	m.mu.RLock()
-	cb, ok := m.breakers[instanceID]
-	m.mu.RUnlock()
-
-	if ok {
+	if cb, ok := m.breakers.Get(instanceID); ok {
 		return cb
 	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Double-check
-	cb, ok = m.breakers[instanceID]
-	if ok {
-		return cb
-	}
-
-	cb = NewCircuitBreaker(instanceID)
-	m.breakers[instanceID] = cb
+	cb, _ := m.breakers.PutIfAbsent(instanceID, NewCircuitBreaker(instanceID))
 	return cb
 }
 
 // RemoveBreaker removes a circuit breaker.
 func (m *CircuitBreakerManager) RemoveBreaker(instanceID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.breakers, instanceID)
+	m.breakers.Delete(instanceID)
 }
 
 // GetAllStats returns stats for all breakers.
 func (m *CircuitBreakerManager) GetAllStats() map[string]interface{} {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	stats := make(map[string]interface{})
-	for id, cb := range m.breakers {
+	m.breakers.Range(func(id string, cb *CircuitBreaker) bool {
 		stats[id] = cb.GetStats()
-	}
-
+		return true
+	})
 	return stats
 }

@@ -122,7 +122,6 @@ internal/messaging/replay/handler.go:96:Handler
 internal/modelsdev/cache.go:11:Cache
 internal/notifications/hub.go:34:NotificationHub
 internal/notifications/hub_test.go:18:MockSubscriber
-internal/notifications/polling_store.go:12:PollingStore
 internal/notifications/sse_manager.go:15:SSEManager
 internal/notifications/webhook_dispatcher.go:23:WebhookDispatcher
 internal/notifications/websocket_server.go:29:WebSocketServer

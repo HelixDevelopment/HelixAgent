@@ -34,6 +34,7 @@ func TestNewPollingStore(t *testing.T) {
 
 		assert.NotNil(t, store.taskEvents)
 		assert.NotNil(t, store.globalEvents)
+		assert.Equal(t, 0, store.taskEvents.Len())
 		assert.Equal(t, logger, store.logger)
 
 		_ = store.Stop()

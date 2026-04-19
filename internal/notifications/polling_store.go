@@ -5,18 +5,24 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
 // PollingStore provides an in-memory event buffer for polling clients
+//
+// Concurrent-safe by construction (CONST-029):
+//   - taskEvents is a safe.Store; per-task slice mutations go through Update.
+//   - globalEvents is a safe.Store with a single constant key holding the
+//     full slice — append+trim is performed atomically under one Update
+//     callback (Pattern Epsilon — joint atomicity via state-struct).
 type PollingStore struct {
-	// Events by task ID
-	taskEvents   map[string][]*TaskNotification
-	taskEventsMu sync.RWMutex
+	// Events by task ID — value is a []*TaskNotification, replaced wholesale
+	// on Update so readers can iterate a snapshot lock-free.
+	taskEvents *safe.Store[string, []*TaskNotification]
 
-	// Global events (most recent)
-	globalEvents   []*TaskNotification
-	globalEventsMu sync.RWMutex
+	// Global events (most recent). Single-key Store: append+trim atomic.
+	globalEvents *safe.Store[string, []*TaskNotification]
 
 	// Configuration
 	config *PollingConfig
@@ -26,6 +32,10 @@ type PollingStore struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
+
+// globalEventsKey is the single-key sentinel under which the entire
+// globalEvents slice lives in the Store. Pattern Epsilon.
+const globalEventsKey = "_"
 
 // PollingConfig holds polling store configuration
 type PollingConfig struct {
@@ -54,8 +64,8 @@ func NewPollingStore(config *PollingConfig, logger *logrus.Logger) *PollingStore
 	ctx, cancel := context.WithCancel(context.Background())
 
 	store := &PollingStore{
-		taskEvents:   make(map[string][]*TaskNotification),
-		globalEvents: make([]*TaskNotification, 0, config.MaxGlobalEvents),
+		taskEvents:   safe.NewStore[string, []*TaskNotification](),
+		globalEvents: safe.NewStore[string, []*TaskNotification](),
 		config:       config,
 		logger:       logger,
 		ctx:          ctx,
@@ -85,39 +95,47 @@ func (s *PollingStore) Stop() error {
 
 // StoreEvent stores an event for polling clients
 func (s *PollingStore) StoreEvent(notification *TaskNotification) {
-	// Store in task-specific events
-	s.taskEventsMu.Lock()
-	events := s.taskEvents[notification.TaskID]
-	events = append(events, notification)
+	maxPerTask := s.config.MaxEventsPerTask
+	maxGlobal := s.config.MaxGlobalEvents
 
-	// Trim if over limit
-	if len(events) > s.config.MaxEventsPerTask {
-		events = events[len(events)-s.config.MaxEventsPerTask:]
-	}
-	s.taskEvents[notification.TaskID] = events
-	s.taskEventsMu.Unlock()
+	// Store in task-specific events — atomic append + trim
+	s.taskEvents.Update(notification.TaskID, func(events []*TaskNotification, _ bool) ([]*TaskNotification, bool) {
+		events = append(events, notification)
+		if len(events) > maxPerTask {
+			events = events[len(events)-maxPerTask:]
+		}
+		return events, true
+	})
 
-	// Store in global events
-	s.globalEventsMu.Lock()
-	s.globalEvents = append(s.globalEvents, notification)
-
-	// Trim if over limit
-	if len(s.globalEvents) > s.config.MaxGlobalEvents {
-		s.globalEvents = s.globalEvents[len(s.globalEvents)-s.config.MaxGlobalEvents:]
-	}
-	s.globalEventsMu.Unlock()
+	// Store in global events — atomic append + trim under single key
+	s.globalEvents.Update(globalEventsKey, func(events []*TaskNotification, _ bool) ([]*TaskNotification, bool) {
+		events = append(events, notification)
+		if len(events) > maxGlobal {
+			events = events[len(events)-maxGlobal:]
+		}
+		return events, true
+	})
 }
 
 // GetTaskEvents retrieves events for a specific task
 func (s *PollingStore) GetTaskEvents(taskID string, since *time.Time, limit int) []*TaskNotification {
-	s.taskEventsMu.RLock()
-	defer s.taskEventsMu.RUnlock()
+	events, _ := s.taskEvents.Get(taskID)
+	return filterEvents(events, since, limit)
+}
 
-	events := s.taskEvents[taskID]
+// GetGlobalEvents retrieves global events
+func (s *PollingStore) GetGlobalEvents(since *time.Time, limit int) []*TaskNotification {
+	events, _ := s.globalEvents.Get(globalEventsKey)
+	return filterEvents(events, since, limit)
+}
+
+// filterEvents copies events that match `since` (if set) up to `limit`.
+// Safe to call lock-free on a slice obtained from safe.Store.Get because
+// the Store mutates by replacement, never in-place.
+func filterEvents(events []*TaskNotification, since *time.Time, limit int) []*TaskNotification {
 	if len(events) == 0 {
 		return nil
 	}
-
 	result := make([]*TaskNotification, 0)
 	for _, event := range events {
 		if since != nil && !event.Timestamp.After(*since) {
@@ -128,67 +146,33 @@ func (s *PollingStore) GetTaskEvents(taskID string, since *time.Time, limit int)
 			break
 		}
 	}
-
-	return result
-}
-
-// GetGlobalEvents retrieves global events
-func (s *PollingStore) GetGlobalEvents(since *time.Time, limit int) []*TaskNotification {
-	s.globalEventsMu.RLock()
-	defer s.globalEventsMu.RUnlock()
-
-	if len(s.globalEvents) == 0 {
-		return nil
-	}
-
-	result := make([]*TaskNotification, 0)
-	for _, event := range s.globalEvents {
-		if since != nil && !event.Timestamp.After(*since) {
-			continue
-		}
-		result = append(result, event)
-		if limit > 0 && len(result) >= limit {
-			break
-		}
-	}
-
 	return result
 }
 
 // GetLatestTaskEvent retrieves the most recent event for a task
 func (s *PollingStore) GetLatestTaskEvent(taskID string) *TaskNotification {
-	s.taskEventsMu.RLock()
-	defer s.taskEventsMu.RUnlock()
-
-	events := s.taskEvents[taskID]
+	events, _ := s.taskEvents.Get(taskID)
 	if len(events) == 0 {
 		return nil
 	}
-
 	return events[len(events)-1]
 }
 
 // GetEventCount returns the number of events for a task
 func (s *PollingStore) GetEventCount(taskID string) int {
-	s.taskEventsMu.RLock()
-	defer s.taskEventsMu.RUnlock()
-
-	return len(s.taskEvents[taskID])
+	events, _ := s.taskEvents.Get(taskID)
+	return len(events)
 }
 
 // GetGlobalEventCount returns the total number of global events
 func (s *PollingStore) GetGlobalEventCount() int {
-	s.globalEventsMu.RLock()
-	defer s.globalEventsMu.RUnlock()
-
-	return len(s.globalEvents)
+	events, _ := s.globalEvents.Get(globalEventsKey)
+	return len(events)
 }
 
 // ClearTaskEvents removes all events for a task
 func (s *PollingStore) ClearTaskEvents(taskID string) {
-	s.taskEventsMu.Lock()
-	delete(s.taskEvents, taskID)
-	s.taskEventsMu.Unlock()
+	s.taskEvents.Delete(taskID)
 }
 
 // cleanupLoop periodically removes expired events
@@ -217,53 +201,48 @@ func (s *PollingStore) cleanupLoop() {
 func (s *PollingStore) cleanup() {
 	cutoff := time.Now().Add(-s.config.EventTTL)
 
-	// Cleanup task events
-	s.taskEventsMu.Lock()
-	for taskID, events := range s.taskEvents {
-		filtered := make([]*TaskNotification, 0)
+	// Cleanup task events — Update each key atomically; drop key when empty.
+	for _, taskID := range s.taskEvents.Keys() {
+		s.taskEvents.Update(taskID, func(events []*TaskNotification, ok bool) ([]*TaskNotification, bool) {
+			if !ok {
+				return nil, false
+			}
+			filtered := make([]*TaskNotification, 0, len(events))
+			for _, event := range events {
+				if event.Timestamp.After(cutoff) {
+					filtered = append(filtered, event)
+				}
+			}
+			return filtered, len(filtered) > 0
+		})
+	}
+
+	// Cleanup global events — single-key Update.
+	s.globalEvents.Update(globalEventsKey, func(events []*TaskNotification, _ bool) ([]*TaskNotification, bool) {
+		filtered := make([]*TaskNotification, 0, len(events))
 		for _, event := range events {
 			if event.Timestamp.After(cutoff) {
 				filtered = append(filtered, event)
 			}
 		}
-		if len(filtered) == 0 {
-			delete(s.taskEvents, taskID)
-		} else {
-			s.taskEvents[taskID] = filtered
-		}
-	}
-	s.taskEventsMu.Unlock()
-
-	// Cleanup global events
-	s.globalEventsMu.Lock()
-	filtered := make([]*TaskNotification, 0)
-	for _, event := range s.globalEvents {
-		if event.Timestamp.After(cutoff) {
-			filtered = append(filtered, event)
-		}
-	}
-	s.globalEvents = filtered
-	s.globalEventsMu.Unlock()
+		return filtered, true
+	})
 }
 
 // GetStats returns polling store statistics
 func (s *PollingStore) GetStats() map[string]interface{} {
-	s.taskEventsMu.RLock()
-	taskCount := len(s.taskEvents)
+	taskCount := s.taskEvents.Len()
 	taskEventCount := 0
-	for _, events := range s.taskEvents {
+	s.taskEvents.Range(func(_ string, events []*TaskNotification) bool {
 		taskEventCount += len(events)
-	}
-	s.taskEventsMu.RUnlock()
+		return true
+	})
 
-	s.globalEventsMu.RLock()
-	globalEventCount := len(s.globalEvents)
-	s.globalEventsMu.RUnlock()
-
+	globalEvents, _ := s.globalEvents.Get(globalEventsKey)
 	return map[string]interface{}{
 		"tasks_with_events": taskCount,
 		"task_events_total": taskEventCount,
-		"global_events":     globalEventCount,
+		"global_events":     len(globalEvents),
 	}
 }
 

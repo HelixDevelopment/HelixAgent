@@ -28,7 +28,6 @@ internal/bigdata/debate_integration_test.go:19:mockBroker
 internal/bigdata/integration.go:74:inMemoryEventLog
 internal/bigdata/memory_integration_test.go:19:mockMemoryStore
 internal/cache/cache_service.go:16:CacheService
-internal/cache/expiration.go:41:ExpirationManager
 internal/cache/invalidation.go:191:EventDrivenInvalidation
 internal/cache/invalidation.go:36:TagBasedInvalidation
 internal/cache/tiered_cache.go:76:l1Cache

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ValidatorFunc is a function that validates cache entries
@@ -37,16 +39,16 @@ func DefaultExpirationConfig() *ExpirationConfig {
 	}
 }
 
-// ExpirationManager handles TTL, validation, and cleanup for cache entries
+// ExpirationManager handles TTL, validation, and cleanup for cache entries.
+// validators is Pattern Alpha — registered functions are immutable.
 type ExpirationManager struct {
-	cache       *TieredCache
-	config      *ExpirationConfig
-	validators  map[string]ValidatorFunc
-	validatorMu sync.RWMutex
-	metrics     *ExpirationMetrics
-	ctx         context.Context
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
+	cache      *TieredCache
+	config     *ExpirationConfig
+	validators *safe.Store[string, ValidatorFunc]
+	metrics    *ExpirationMetrics
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // ExpirationMetrics tracks expiration manager statistics
@@ -71,7 +73,7 @@ func NewExpirationManager(cache *TieredCache, config *ExpirationConfig) *Expirat
 	em := &ExpirationManager{
 		cache:      cache,
 		config:     config,
-		validators: make(map[string]ValidatorFunc),
+		validators: safe.NewStore[string, ValidatorFunc](),
 		metrics:    &ExpirationMetrics{},
 		ctx:        ctx,
 		cancel:     cancel,
@@ -105,16 +107,12 @@ func (m *ExpirationManager) Stop() {
 // RegisterValidator adds a custom validator for keys matching a pattern
 // Pattern uses glob-style matching (* for any characters)
 func (m *ExpirationManager) RegisterValidator(pattern string, fn ValidatorFunc) {
-	m.validatorMu.Lock()
-	defer m.validatorMu.Unlock()
-	m.validators[pattern] = fn
+	m.validators.Put(pattern, fn)
 }
 
 // UnregisterValidator removes a validator
 func (m *ExpirationManager) UnregisterValidator(pattern string) {
-	m.validatorMu.Lock()
-	defer m.validatorMu.Unlock()
-	delete(m.validators, pattern)
+	m.validators.Delete(pattern)
 }
 
 // ValidateEntry checks if a cached entry is still valid
@@ -128,20 +126,21 @@ func (m *ExpirationManager) ValidateEntry(key string, value interface{}, age tim
 		return false
 	}
 
-	// Find matching validator
-	m.validatorMu.RLock()
-	defer m.validatorMu.RUnlock()
-
-	for pattern, validator := range m.validators {
+	// Find matching validator. Range holds the Store's read lock, so
+	// the validator map cannot mutate mid-iteration.
+	valid := true
+	m.validators.Range(func(pattern string, validator ValidatorFunc) bool {
 		if matchPattern(pattern, key) {
 			if !validator(key, value, age) {
 				atomic.AddInt64(&m.metrics.ExpiredByValidation, 1)
+				valid = false
 				return false
 			}
 		}
-	}
+		return true
+	})
 
-	return true
+	return valid
 }
 
 // ForceExpire immediately expires entries matching the pattern

@@ -109,7 +109,6 @@ internal/security/secure_fix_agent.go:734:RateLimitingRing
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient
-internal/services/boot_manager.go:29:BootManager
 internal/services/circuit_breaker_monitor.go:59:CircuitBreakerMonitor
 internal/services/cognee_service.go:95:FeedbackLoop
 internal/services/concurrency_alert_manager.go:505:ConcurrencyAlertManager

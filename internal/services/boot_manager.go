@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	containeradapter "dev.helix.agent/internal/adapters/containers"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/services/discovery"
@@ -23,14 +25,18 @@ type BootResult struct {
 
 // BootManager handles starting, health-checking, and stopping all configured services.
 //
-// Results is exported for backward compatibility but MUST NOT be accessed directly
-// from outside this package; use GetResults() for concurrent-safe reads.
-// All writes go through setResult() which is protected by resultsMu.
+// Concurrent-safe by construction (CONST-029):
+//   - Results is a safe.Store[string, *BootResult]. External callers can
+//     still inspect it (the field stays exported) but via Get / Range /
+//     Snapshot — the "MUST NOT access directly" comment is retired
+//     because safe.Store makes direct access safe by construction.
+//   - ContainerAdapter keeps its own adapterMu because it is an
+//     atomic-pointer-style single field, not a collection; the audit
+//     does not flag mutex+pointer fields.
 type BootManager struct {
 	Config         *config.ServicesConfig
 	Logger         *logrus.Logger
-	Results        map[string]*BootResult // protected by resultsMu
-	resultsMu      sync.RWMutex
+	Results        *safe.Store[string, *BootResult]
 	HealthChecker  *ServiceHealthChecker
 	Discoverer     discovery.Discoverer
 	RemoteDeployer RemoteDeployer
@@ -47,7 +53,7 @@ func NewBootManager(cfg *config.ServicesConfig, logger *logrus.Logger) *BootMana
 	return &BootManager{
 		Config:         cfg,
 		Logger:         logger,
-		Results:        make(map[string]*BootResult),
+		Results:        safe.NewStore[string, *BootResult](),
 		HealthChecker:  NewServiceHealthChecker(logger),
 		Discoverer:     discovery.NewDiscoverer(logger),
 		RemoteDeployer: nil,
@@ -72,58 +78,47 @@ func (bm *BootManager) getContainerAdapter() *containeradapter.Adapter {
 	return a
 }
 
-// GetResults returns a defensive copy of the Results map under a read lock.
-// It is safe to call concurrently with BootAll and any other method that writes
-// to the Results map.
+// GetResults returns a defensive copy of the Results map. Callers get
+// fresh *BootResult pointers whose fields cannot be mutated underfoot
+// by a concurrent setResult.
 func (bm *BootManager) GetResults() map[string]*BootResult {
-	bm.resultsMu.RLock()
-	defer bm.resultsMu.RUnlock()
-	copy := make(map[string]*BootResult, len(bm.Results))
-	for k, v := range bm.Results {
-		r := *v // value copy so callers cannot mutate internal state
-		copy[k] = &r
+	snapshot := bm.Results.Snapshot()
+	out := make(map[string]*BootResult, len(snapshot))
+	for k, v := range snapshot {
+		if v != nil {
+			r := *v
+			out[k] = &r
+		} else {
+			out[k] = nil
+		}
 	}
-	return copy
+	return out
 }
 
-// setResultLocked stores a BootResult directly into the map.
-// Caller MUST hold resultsMu for writing (resultsMu.Lock()) before calling this.
-// Never call from code that does not already hold the write lock — doing so
-// creates a data race that the race detector will not catch at this call site.
-func (bm *BootManager) setResultLocked(name string, result *BootResult) {
-	bm.Results[name] = result
-}
-
-// setResult stores a BootResult under the write lock.
+// setResult stores a BootResult. safe.Store.Put is already atomic;
+// callers do not have to hold a lock.
 func (bm *BootManager) setResult(name string, result *BootResult) {
-	bm.resultsMu.Lock()
-	bm.setResultLocked(name, result)
-	bm.resultsMu.Unlock()
+	bm.Results.Put(name, result)
 }
 
-// getResult retrieves a copy of the BootResult by name under the read lock.
-// Returns (result, true) when found, (nil, false) otherwise.
-// The value copy is made while the lock is held, matching the aliasing
-// invariant enforced by GetResults() — callers cannot race on struct fields.
+// getResult retrieves a copy of the BootResult by name. Returns
+// (result, true) when found, (nil, false) otherwise. The pointed-at
+// struct is value-copied so concurrent setResult callers cannot
+// mutate the returned object underfoot.
 func (bm *BootManager) getResult(name string) (*BootResult, bool) {
-	bm.resultsMu.RLock()
-	r, ok := bm.Results[name]
-	if !ok {
-		bm.resultsMu.RUnlock()
+	r, ok := bm.Results.Get(name)
+	if !ok || r == nil {
 		return nil, false
 	}
-	cp := *r // dereference inside the lock — concurrent writers are excluded
-	bm.resultsMu.RUnlock()
+	cp := *r
 	return &cp, true
 }
 
-// setResultIfAbsent sets a BootResult only when no entry already exists for name.
+// setResultIfAbsent sets a BootResult only when no entry already
+// exists for name. safe.Store.PutIfAbsent keeps the check-then-set
+// atomic against concurrent setResult callers.
 func (bm *BootManager) setResultIfAbsent(name string, result *BootResult) {
-	bm.resultsMu.Lock()
-	if _, exists := bm.Results[name]; !exists {
-		bm.Results[name] = result
-	}
-	bm.resultsMu.Unlock()
+	bm.Results.PutIfAbsent(name, result)
 }
 
 // BootAll starts all enabled local services and health-checks all enabled services.
@@ -240,28 +235,34 @@ func (bm *BootManager) BootAll() error {
 					"services":     strings.Join(services, ", "),
 					"error":        err,
 				}).Error("Failed to deploy remote services")
-				bm.resultsMu.Lock()
 				for _, svc := range services {
-					if result, ok := bm.Results[svc]; ok {
-						result.Error = err
-						result.Status = "failed"
-						result.Duration = duration
-					}
+					bm.Results.Update(svc, func(cur *BootResult, present bool) (*BootResult, bool) {
+						if !present || cur == nil {
+							return cur, present
+						}
+						next := *cur
+						next.Error = err
+						next.Status = "failed"
+						next.Duration = duration
+						return &next, true
+					})
 				}
-				bm.resultsMu.Unlock()
 			} else {
 				bm.Logger.WithFields(logrus.Fields{
 					"compose_file": composeFile,
 					"services":     strings.Join(services, ", "),
 					"duration":     duration,
 				}).Info("Remote services deployed successfully")
-				bm.resultsMu.Lock()
 				for _, svc := range services {
-					if result, ok := bm.Results[svc]; ok {
-						result.Duration = duration
-					}
+					bm.Results.Update(svc, func(cur *BootResult, present bool) (*BootResult, bool) {
+						if !present || cur == nil {
+							return cur, present
+						}
+						next := *cur
+						next.Duration = duration
+						return &next, true
+					})
 				}
-				bm.resultsMu.Unlock()
 			}
 		}
 	} else if len(remoteGroups) > 0 {
@@ -330,23 +331,27 @@ func (bm *BootManager) BootAll() error {
 							"error":    err,
 						}).Warn("Optional remote service health check failed")
 					}
-					bm.resultsMu.Lock()
-					if result, ok := bm.Results[name]; ok {
-						result.Error = err
-					} else {
-						bm.setResultLocked(name, &BootResult{Name: name, Status: "failed", Duration: duration, Error: err})
-					}
-					bm.resultsMu.Unlock()
+					bm.Results.Update(name, func(cur *BootResult, present bool) (*BootResult, bool) {
+						if !present || cur == nil {
+							return &BootResult{Name: name, Status: "failed", Duration: duration, Error: err}, true
+						}
+						next := *cur
+						next.Error = err
+						return &next, true
+					})
 				} else {
 					bm.Logger.WithFields(logrus.Fields{
 						"service":  name,
 						"duration": duration,
 					}).Info("Remote service health check passed")
-					bm.resultsMu.Lock()
-					if result, ok := bm.Results[name]; ok {
-						result.Duration = duration
-					}
-					bm.resultsMu.Unlock()
+					bm.Results.Update(name, func(cur *BootResult, present bool) (*BootResult, bool) {
+						if !present || cur == nil {
+							return cur, present
+						}
+						next := *cur
+						next.Duration = duration
+						return &next, true
+					})
 				}
 			} else {
 				// No container adapter available - for required services, this is a failure
@@ -385,29 +390,33 @@ func (bm *BootManager) BootAll() error {
 					"error":    err,
 				}).Warn("Optional service health check failed")
 			}
-			bm.resultsMu.Lock()
-			if result, ok := bm.Results[name]; ok {
-				result.Error = err
-				if result.Status != "remote" {
-					result.Status = "failed"
+			bm.Results.Update(name, func(cur *BootResult, present bool) (*BootResult, bool) {
+				if !present || cur == nil {
+					return &BootResult{Name: name, Status: "failed", Duration: duration, Error: err}, true
 				}
-			} else {
-				bm.setResultLocked(name, &BootResult{Name: name, Status: "failed", Duration: duration, Error: err})
-			}
-			bm.resultsMu.Unlock()
+				next := *cur
+				next.Error = err
+				if next.Status != "remote" {
+					next.Status = "failed"
+				}
+				return &next, true
+			})
 		} else {
 			bm.Logger.WithFields(logrus.Fields{
 				"service":  name,
 				"duration": duration,
 			}).Info("Service health check passed")
-			bm.resultsMu.Lock()
-			if result, ok := bm.Results[name]; ok {
-				result.Duration = duration
-				if result.Status == "" {
-					result.Status = "already_running"
+			bm.Results.Update(name, func(cur *BootResult, present bool) (*BootResult, bool) {
+				if !present || cur == nil {
+					return cur, present
 				}
-			}
-			bm.resultsMu.Unlock()
+				next := *cur
+				next.Duration = duration
+				if next.Status == "" {
+					next.Status = "already_running"
+				}
+				return &next, true
+			})
 		}
 	}
 
@@ -545,9 +554,12 @@ func (bm *BootManager) stopComposeServices(composeFile, profile string, services
 
 func (bm *BootManager) logSummary() {
 	started, remote, discovered, failed, skipped := 0, 0, 0, 0, 0
-	bm.resultsMu.RLock()
-	total := len(bm.Results)
-	for _, r := range bm.Results {
+	snapshot := bm.Results.Snapshot()
+	total := len(snapshot)
+	for _, r := range snapshot {
+		if r == nil {
+			continue
+		}
 		switch r.Status {
 		case "started", "already_running":
 			started++
@@ -561,7 +573,6 @@ func (bm *BootManager) logSummary() {
 			skipped++
 		}
 	}
-	bm.resultsMu.RUnlock()
 
 	bm.Logger.WithFields(logrus.Fields{
 		"started":    started,

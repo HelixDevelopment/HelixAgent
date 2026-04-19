@@ -822,10 +822,12 @@ func TestConnection_OnConnect(t *testing.T) {
 		called = true
 	})
 
-	assert.Len(t, conn.onConnect, 1)
+	assert.Equal(t, 1, conn.onConnect.Len())
 
 	// Simulate callback
-	conn.onConnect[0]()
+	cb, ok := conn.onConnect.At(0)
+	assert.True(t, ok)
+	cb()
 	assert.True(t, called)
 }
 
@@ -837,11 +839,13 @@ func TestConnection_OnDisconnect(t *testing.T) {
 		receivedErr = err
 	})
 
-	assert.Len(t, conn.onDisconnect, 1)
+	assert.Equal(t, 1, conn.onDisconnect.Len())
 
 	// Simulate callback
 	testErr := assert.AnError
-	conn.onDisconnect[0](testErr)
+	cb, ok := conn.onDisconnect.At(0)
+	assert.True(t, ok)
+	cb(testErr)
 	assert.Equal(t, testErr, receivedErr)
 }
 
@@ -853,10 +857,12 @@ func TestConnection_OnReconnect(t *testing.T) {
 		called = true
 	})
 
-	assert.Len(t, conn.onReconnect, 1)
+	assert.Equal(t, 1, conn.onReconnect.Len())
 
 	// Simulate callback
-	conn.onReconnect[0]()
+	cb, ok := conn.onReconnect.At(0)
+	assert.True(t, ok)
+	cb()
 	assert.True(t, called)
 }
 
@@ -1551,15 +1557,18 @@ func TestConnection_MultipleCallbacks(t *testing.T) {
 	conn.OnReconnect(func() { reconnectCalls++ })
 
 	// Simulate callbacks
-	for _, cb := range conn.onConnect {
+	conn.onConnect.Range(func(_ int, cb func()) bool {
 		cb()
-	}
-	for _, cb := range conn.onDisconnect {
+		return true
+	})
+	conn.onDisconnect.Range(func(_ int, cb func(error)) bool {
 		cb(nil)
-	}
-	for _, cb := range conn.onReconnect {
+		return true
+	})
+	conn.onReconnect.Range(func(_ int, cb func()) bool {
 		cb()
-	}
+		return true
+	})
 
 	assert.Equal(t, 2, connectCalls)
 	assert.Equal(t, 2, disconnectCalls)

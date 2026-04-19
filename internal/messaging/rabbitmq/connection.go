@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
@@ -23,7 +24,10 @@ const (
 	StateClosed
 )
 
-// Connection manages a RabbitMQ connection with automatic reconnection
+// Connection manages a RabbitMQ connection with automatic reconnection.
+// mu is Pattern Zeta: it guards the scalar *amqp.Connection and the
+// per-connection notifyCh channel (no collection adjacent). Callback
+// slices live in safe.Slice containers and manage their own locking.
 type Connection struct {
 	config     *Config
 	logger     *zap.Logger
@@ -35,9 +39,9 @@ type Connection struct {
 	reconnects int64
 
 	// Callbacks
-	onConnect    []func()
-	onDisconnect []func(error)
-	onReconnect  []func()
+	onConnect    *safe.Slice[func()]
+	onDisconnect *safe.Slice[func(error)]
+	onReconnect  *safe.Slice[func()]
 }
 
 // NewConnection creates a new RabbitMQ connection manager
@@ -50,9 +54,12 @@ func NewConnection(config *Config, logger *zap.Logger) *Connection {
 	}
 
 	c := &Connection{
-		config:  config,
-		logger:  logger,
-		closeCh: make(chan struct{}),
+		config:       config,
+		logger:       logger,
+		closeCh:      make(chan struct{}),
+		onConnect:    safe.NewSlice[func()](),
+		onDisconnect: safe.NewSlice[func(error)](),
+		onReconnect:  safe.NewSlice[func()](),
 	}
 	c.state.Store(int32(StateDisconnected))
 	return c
@@ -86,9 +93,10 @@ func (c *Connection) Connect(ctx context.Context) error {
 	go c.handleReconnect()
 
 	// Call connect callbacks
-	for _, cb := range c.onConnect {
+	c.onConnect.Range(func(_ int, cb func()) bool {
 		go cb()
-	}
+		return true
+	})
 
 	c.logger.Info("Connected to RabbitMQ",
 		zap.String("host", c.config.Host),
@@ -174,9 +182,10 @@ func (c *Connection) handleReconnect() {
 				zap.Error(err))
 
 			// Call disconnect callbacks
-			for _, cb := range c.onDisconnect {
+			c.onDisconnect.Range(func(_ int, cb func(error)) bool {
 				go cb(err)
-			}
+				return true
+			})
 
 			c.state.Store(int32(StateReconnecting))
 
@@ -244,9 +253,10 @@ func (c *Connection) reconnect() error {
 			zap.Int("attempts", attempts))
 
 		// Call reconnect callbacks
-		for _, cb := range c.onReconnect {
+		c.onReconnect.Range(func(_ int, cb func()) bool {
 			go cb()
-		}
+			return true
+		})
 
 		return nil
 	}
@@ -315,23 +325,17 @@ func (c *Connection) ReconnectCount() int64 {
 
 // OnConnect registers a callback for connection events
 func (c *Connection) OnConnect(cb func()) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.onConnect = append(c.onConnect, cb)
+	c.onConnect.Append(cb)
 }
 
 // OnDisconnect registers a callback for disconnection events
 func (c *Connection) OnDisconnect(cb func(error)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.onDisconnect = append(c.onDisconnect, cb)
+	c.onDisconnect.Append(cb)
 }
 
 // OnReconnect registers a callback for reconnection events
 func (c *Connection) OnReconnect(cb func()) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.onReconnect = append(c.onReconnect, cb)
+	c.onReconnect.Append(cb)
 }
 
 // String returns the connection state as a string

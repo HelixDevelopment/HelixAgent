@@ -126,7 +126,6 @@ internal/messaging/migration.go:152:MigrationManager
 internal/messaging/migration_test.go:147:mockMessageBroker
 internal/messaging/migration_test.go:15:mockLegacyQueue
 internal/messaging/rabbitmq/broker.go:17:Broker
-internal/messaging/rabbitmq/connection.go:27:Connection
 internal/messaging/replay/handler.go:96:Handler
 internal/middleware/rate_limit.go:16:RateLimiter
 internal/modelsdev/cache.go:11:Cache

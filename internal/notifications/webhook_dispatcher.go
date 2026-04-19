@@ -11,38 +11,42 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/models"
 )
 
-// WebhookDispatcher handles webhook delivery with retry logic
+// WebhookDispatcher handles webhook delivery with retry logic.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - webhooks is a safe.Store[string, *WebhookRegistration]. Every
+//     mutation (RegisterWebhook, handleDeliverySuccess,
+//     handleDeliveryFailure) allocates a **new** *WebhookRegistration
+//     via Store.Update and swaps the pointer — values handed out by
+//     Get are treated as immutable. Before the migration, mutations
+//     modified the pointed-at struct's fields under webhooksMu.Lock
+//     while deliver() read the *same* pointer's URL/Secret/Headers
+//     outside the lock; the migration makes that race structurally
+//     impossible by never aliasing a live pointer.
+//   - deliveredCount / failedCount are atomic.Int64, replacing the
+//     metricsMu+int pair.
 type WebhookDispatcher struct {
-	// Registered webhooks
-	webhooks   map[string]*WebhookRegistration
-	webhooksMu sync.RWMutex
-
-	// Delivery queue
+	webhooks      *safe.Store[string, *WebhookRegistration]
 	deliveryQueue chan *WebhookDelivery
+	config        *WebhookConfig
+	client        *http.Client
+	logger        *logrus.Logger
+	ctx           context.Context
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
 
-	// Configuration
-	config *WebhookConfig
-
-	// HTTP client
-	client *http.Client
-
-	logger *logrus.Logger
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-
-	// Metrics
-	deliveredCount int64
-	failedCount    int64
-	metricsMu      sync.RWMutex
+	deliveredCount atomic.Int64
+	failedCount    atomic.Int64
 }
 
 // WebhookConfig holds webhook configuration
@@ -108,7 +112,7 @@ func NewWebhookDispatcher(config *WebhookConfig, logger *logrus.Logger) *Webhook
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dispatcher := &WebhookDispatcher{
-		webhooks:      make(map[string]*WebhookRegistration),
+		webhooks:      safe.NewStore[string, *WebhookRegistration](),
 		deliveryQueue: make(chan *WebhookDelivery, config.QueueSize),
 		config:        config,
 		client: &http.Client{
@@ -155,9 +159,10 @@ func (d *WebhookDispatcher) RegisterWebhook(webhook *WebhookRegistration) error 
 	// If not explicitly set, default to true (zero value for bool is false)
 	// This allows callers to register disabled webhooks that can be enabled later
 
-	d.webhooksMu.Lock()
-	d.webhooks[webhook.ID] = webhook
-	d.webhooksMu.Unlock()
+	// Store the registered webhook. Callers pass in a freshly
+	// constructed *WebhookRegistration, so keeping that pointer in the
+	// Store is safe — subsequent mutations always swap in a new copy.
+	d.webhooks.Put(webhook.ID, webhook)
 
 	d.logger.WithFields(logrus.Fields{
 		"webhook_id": webhook.ID,
@@ -169,45 +174,30 @@ func (d *WebhookDispatcher) RegisterWebhook(webhook *WebhookRegistration) error 
 
 // UnregisterWebhook removes a webhook
 func (d *WebhookDispatcher) UnregisterWebhook(id string) error {
-	d.webhooksMu.Lock()
-	delete(d.webhooks, id)
-	d.webhooksMu.Unlock()
-
+	d.webhooks.Delete(id)
 	d.logger.WithField("webhook_id", id).Info("Webhook unregistered")
 	return nil
 }
 
 // GetWebhook returns a webhook by ID
 func (d *WebhookDispatcher) GetWebhook(id string) (*WebhookRegistration, bool) {
-	d.webhooksMu.RLock()
-	defer d.webhooksMu.RUnlock()
-
-	webhook, exists := d.webhooks[id]
-	return webhook, exists
+	return d.webhooks.Get(id)
 }
 
 // ListWebhooks returns all registered webhooks
 func (d *WebhookDispatcher) ListWebhooks() []*WebhookRegistration {
-	d.webhooksMu.RLock()
-	defer d.webhooksMu.RUnlock()
-
-	webhooks := make([]*WebhookRegistration, 0, len(d.webhooks))
-	for _, webhook := range d.webhooks {
-		webhooks = append(webhooks, webhook)
-	}
-	return webhooks
+	return d.webhooks.Values()
 }
 
 // Dispatch dispatches a notification to matching webhooks
 func (d *WebhookDispatcher) Dispatch(notification *TaskNotification) {
-	d.webhooksMu.RLock()
-	webhooks := make([]*WebhookRegistration, 0)
-	for _, webhook := range d.webhooks {
+	snapshot := d.webhooks.Snapshot()
+	webhooks := make([]*WebhookRegistration, 0, len(snapshot))
+	for _, webhook := range snapshot {
 		if d.matchesWebhook(webhook, notification) {
 			webhooks = append(webhooks, webhook)
 		}
 	}
-	d.webhooksMu.RUnlock()
 
 	for _, webhook := range webhooks {
 		delivery := &WebhookDelivery{
@@ -300,10 +290,7 @@ func (d *WebhookDispatcher) deliveryWorker() {
 
 // deliver attempts to deliver a webhook
 func (d *WebhookDispatcher) deliver(delivery *WebhookDelivery) {
-	d.webhooksMu.RLock()
-	webhook, exists := d.webhooks[delivery.WebhookID]
-	d.webhooksMu.RUnlock()
-
+	webhook, exists := d.webhooks.Get(delivery.WebhookID)
 	if !exists {
 		return
 	}
@@ -361,19 +348,24 @@ func (d *WebhookDispatcher) deliver(delivery *WebhookDelivery) {
 	}
 }
 
-// handleDeliverySuccess handles successful webhook delivery
+// handleDeliverySuccess handles successful webhook delivery.
+// Swaps in a new *WebhookRegistration rather than mutating the one the
+// caller is holding, keeping Get'd pointers immutable.
 func (d *WebhookDispatcher) handleDeliverySuccess(delivery *WebhookDelivery, webhook *WebhookRegistration) {
 	now := time.Now()
 	delivery.DeliveredAt = &now
 
-	d.webhooksMu.Lock()
-	webhook.LastSuccess = &now
-	webhook.FailCount = 0
-	d.webhooksMu.Unlock()
+	d.webhooks.Update(webhook.ID, func(cur *WebhookRegistration, present bool) (*WebhookRegistration, bool) {
+		if !present || cur == nil {
+			return cur, present
+		}
+		next := *cur
+		next.LastSuccess = &now
+		next.FailCount = 0
+		return &next, true
+	})
 
-	d.metricsMu.Lock()
-	d.deliveredCount++
-	d.metricsMu.Unlock()
+	d.deliveredCount.Add(1)
 
 	d.logger.WithFields(logrus.Fields{
 		"webhook_id":  webhook.ID,
@@ -382,21 +374,33 @@ func (d *WebhookDispatcher) handleDeliverySuccess(delivery *WebhookDelivery, web
 	}).Debug("Webhook delivered successfully")
 }
 
-// handleDeliveryFailure handles failed webhook delivery
+// handleDeliveryFailure handles failed webhook delivery.
+// Swaps in a new *WebhookRegistration rather than mutating the one the
+// caller is holding, keeping Get'd pointers immutable. Logging the
+// auto-disable transition happens outside the Update closure so the
+// logger call never runs under the Store's write lock.
 func (d *WebhookDispatcher) handleDeliveryFailure(delivery *WebhookDelivery, webhook *WebhookRegistration, errorMsg string, status int) {
 	delivery.Error = errorMsg
 
-	d.webhooksMu.Lock()
 	now := time.Now()
-	webhook.LastFailure = &now
-	webhook.FailCount++
+	var disabled bool
+	d.webhooks.Update(webhook.ID, func(cur *WebhookRegistration, present bool) (*WebhookRegistration, bool) {
+		if !present || cur == nil {
+			return cur, present
+		}
+		next := *cur
+		next.LastFailure = &now
+		next.FailCount++
+		if next.FailCount > 10 {
+			next.Enabled = false
+			disabled = true
+		}
+		return &next, true
+	})
 
-	// Disable webhook after too many failures
-	if webhook.FailCount > 10 {
-		webhook.Enabled = false
+	if disabled {
 		d.logger.WithField("webhook_id", webhook.ID).Warn("Webhook disabled due to repeated failures")
 	}
-	d.webhooksMu.Unlock()
 
 	// Retry if possible
 	if delivery.RetryCount < d.config.MaxRetries {
@@ -424,9 +428,7 @@ func (d *WebhookDispatcher) handleDeliveryFailure(delivery *WebhookDelivery, web
 			"backoff":     backoff,
 		}).Debug("Scheduling webhook retry")
 	} else {
-		d.metricsMu.Lock()
-		d.failedCount++
-		d.metricsMu.Unlock()
+		d.failedCount.Add(1)
 
 		d.logger.WithFields(logrus.Fields{
 			"webhook_id":  webhook.ID,
@@ -454,19 +456,10 @@ func (d *WebhookDispatcher) generateSignature(payload []byte, secret string) str
 
 // GetStats returns webhook dispatcher statistics
 func (d *WebhookDispatcher) GetStats() map[string]interface{} {
-	d.metricsMu.RLock()
-	delivered := d.deliveredCount
-	failed := d.failedCount
-	d.metricsMu.RUnlock()
-
-	d.webhooksMu.RLock()
-	webhookCount := len(d.webhooks)
-	d.webhooksMu.RUnlock()
-
 	return map[string]interface{}{
-		"webhooks_registered": webhookCount,
-		"deliveries_success":  delivered,
-		"deliveries_failed":   failed,
+		"webhooks_registered": d.webhooks.Len(),
+		"deliveries_success":  d.deliveredCount.Load(),
+		"deliveries_failed":   d.failedCount.Load(),
 		"queue_size":          len(d.deliveryQueue),
 	}
 }

@@ -95,7 +95,6 @@ internal/messaging/rabbitmq/broker.go:17:Broker
 internal/messaging/replay/handler.go:96:Handler
 internal/notifications/hub.go:34:NotificationHub
 internal/notifications/hub_test.go:18:MockSubscriber
-internal/notifications/webhook_dispatcher.go:23:WebhookDispatcher
 internal/notifications/websocket_server.go:29:WebSocketServer
 internal/notifications/websocket_server_test.go:21:MockWebSocketClient
 internal/optimization/context/summarizer.go:531:SummaryCache

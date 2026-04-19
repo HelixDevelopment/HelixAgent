@@ -32,7 +32,6 @@ internal/cache/invalidation.go:191:EventDrivenInvalidation
 internal/cache/invalidation.go:36:TagBasedInvalidation
 internal/cache/tiered_cache.go:76:l1Cache
 internal/cache/tiered_cache.go:91:tagIndex
-internal/clis/agents/cursor/cursor.go:22:Cursor
 internal/clis/agents/registry.go:128:Registry
 internal/clis/agents/windsurf/windsurf.go:23:Windsurf
 internal/clis/aider/repo_map.go:69:SymbolCache

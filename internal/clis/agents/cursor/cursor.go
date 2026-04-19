@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
@@ -16,14 +18,15 @@ import (
 
 // Cursor provides Cursor IDE integration.
 //
-// All access to `sessions` (slice append / range / index mutation)
-// goes through `sessMu`. Previously concurrent Execute() calls raced
-// on the slice under -race (BUGFIX #30).
+// sessions is a safe.Slice[ChatSession] — all mutations (append on
+// createSession, in-place Messages extension on chat) route through
+// UpdateAt/Append under the Slice's write lock, closing the BUGFIX
+// #30 race on concurrent Execute() callers.
 type Cursor struct {
 	*base.BaseIntegration
 	config   *Config
-	sessions []ChatSession
-	sessMu   sync.RWMutex
+	sessions *safe.Slice[ChatSession]
+	nextID   atomic.Int64
 }
 
 // Config holds Cursor configuration
@@ -81,7 +84,7 @@ func New() *Cursor {
 			Model:         "claude-sonnet-4",
 			ContextWindow: 200000,
 		},
-		sessions: make([]ChatSession, 0),
+		sessions: safe.NewSlice[ChatSession](),
 	}
 }
 
@@ -111,17 +114,20 @@ func (c *Cursor) loadSessions() error {
 		return fmt.Errorf("read sessions: %w", err)
 	}
 
-	c.sessMu.Lock()
-	defer c.sessMu.Unlock()
-	return json.Unmarshal(data, &c.sessions)
+	var loaded []ChatSession
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		return err
+	}
+	c.sessions.Replace(loaded)
+	c.nextID.Store(int64(len(loaded)))
+	return nil
 }
 
 // saveSessions saves chat sessions
 func (c *Cursor) saveSessions() error {
 	sessionsPath := filepath.Join(c.GetWorkDir(), "sessions.json")
-	c.sessMu.RLock()
-	data, err := json.MarshalIndent(c.sessions, "", "  ")
-	c.sessMu.RUnlock()
+	snapshot := c.sessions.Snapshot()
+	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal sessions: %w", err)
 	}
@@ -167,24 +173,23 @@ func (c *Cursor) chat(ctx context.Context, params map[string]interface{}) (inter
 
 	sessionID, _ := params["session_id"].(string)
 
-	// Add message to session — write lock because we mutate Messages
-	// slices in place. saveSessions() is called outside the lock
-	// (it takes its own RLock).
-	c.sessMu.Lock()
-	for i := range c.sessions {
-		if c.sessions[i].ID == sessionID {
-			c.sessions[i].Messages = append(c.sessions[i].Messages, Message{
+	// UpdateAt runs the mutation under the Slice's write lock, so the
+	// paired user/assistant Messages append is atomic with respect to
+	// concurrent chats and createSessions.
+	c.sessions.UpdateAt(
+		func(s ChatSession) bool { return s.ID == sessionID },
+		func(s ChatSession) ChatSession {
+			s.Messages = append(s.Messages, Message{
 				Role:    "user",
 				Content: message,
 			})
-			c.sessions[i].Messages = append(c.sessions[i].Messages, Message{
+			s.Messages = append(s.Messages, Message{
 				Role:    "assistant",
 				Content: fmt.Sprintf("Response to: %s", message),
 			})
-			break
-		}
-	}
-	c.sessMu.Unlock()
+			return s
+		},
+	)
 	_ = c.saveSessions()
 
 	return map[string]interface{}{
@@ -298,19 +303,18 @@ func (c *Cursor) createSession(ctx context.Context, params map[string]interface{
 
 	context, _ := params["context"].(string)
 
-	// ID generation + append under write lock — otherwise two
-	// concurrent createSessions can produce duplicate IDs and race
-	// on the slice.
-	c.sessMu.Lock()
+	// Atomic ID generation from the counter keyed off Len() after
+	// loadSessions — guarantees no duplicate IDs across concurrent
+	// createSession calls.
+	id := c.nextID.Add(1)
 	session := ChatSession{
-		ID:       fmt.Sprintf("session-%d", len(c.sessions)+1),
+		ID:       fmt.Sprintf("session-%d", id),
 		Name:     name,
 		Context:  context,
 		Messages: []Message{},
 		Status:   "active",
 	}
-	c.sessions = append(c.sessions, session)
-	c.sessMu.Unlock()
+	c.sessions.Append(session)
 
 	if err := c.saveSessions(); err != nil {
 		return nil, err
@@ -322,17 +326,13 @@ func (c *Cursor) createSession(ctx context.Context, params map[string]interface{
 	}, nil
 }
 
-// listSessions lists all sessions. Takes a defensive copy so the
-// returned slice is safe to iterate outside the lock.
+// listSessions lists all sessions. Snapshot returns a copy safe to
+// iterate outside the lock.
 func (c *Cursor) listSessions(ctx context.Context) (interface{}, error) {
-	c.sessMu.RLock()
-	snapshot := make([]ChatSession, len(c.sessions))
-	copy(snapshot, c.sessions)
-	count := len(c.sessions)
-	c.sessMu.RUnlock()
+	snapshot := c.sessions.Snapshot()
 	return map[string]interface{}{
 		"sessions": snapshot,
-		"count":    count,
+		"count":    len(snapshot),
 	}, nil
 }
 

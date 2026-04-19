@@ -1,5 +1,64 @@
 # Bug Fixes and Known Issues
 
+## Issue #27: `DebateHandler` data race — RLock released before field reads (BUGFIX 2026-04-19)
+
+### Issue
+`go test -race -short ./internal/handlers/` reported **191 test failures** with cascading DATA RACE warnings. Running individual tests in isolation showed no failures — the races were package-wide.
+
+Sample race:
+```
+WARNING: DATA RACE
+Write by goroutine 3422 (runDebate):
+  debate_handler.go:267  (state.Status = "running")
+Previous read by goroutine 750 (GetDebate):
+  debate_handler.go:375  (state.Status in response = ...)
+```
+
+### Root Cause
+`GetDebate`, `GetDebateStatus`, and `GetDebateResults` all followed the same pattern:
+
+```go
+h.mu.RLock()
+state, exists := h.activeDebates[id]
+h.mu.RUnlock()
+// ... reads state.Status, state.CurrentPhase, state.EndTime, ... WITHOUT lock
+```
+
+Meanwhile `runDebate()` mutates those same fields under `h.mu.Lock()`. The RLock was released IMMEDIATELY after the map lookup — the subsequent field reads were unprotected.
+
+Because the handlers package has many integration tests that each hit multiple HTTP handlers in parallel (via `gin.Engine.ServeHTTP`), the single root race exploded into hundreds of cascading test failures.
+
+### Fix Applied
+`internal/handlers/debate_handler.go` — three handlers `GetDebate`, `GetDebateStatus`, `GetDebateResults`. Each now holds the `RLock` across the entire state-to-response copy (or takes a local-variable snapshot under the lock for `GetDebateResults` where the response is small).
+
+### Impact
+Single package-level fix closed **191 test failures** in `internal/handlers` — confirming these were all cascade-effects of the same three racy handlers, not independent bugs.
+
+**Verification:**
+- `go test -race -short ./internal/handlers/ -p 1` → 0 failures, 0 race warnings (previously 191 fails / 3+ DATA RACE warnings).
+
+---
+
+## Issue #26: OAuth adapter shared-fixture race across 3 test groups (BUGFIX 2026-04-19)
+
+### Issue
+`TestOAuthAdapter_IsClaudeTokenValid`, `TestOAuthAdapter_IsQwenTokenValid`, and `TestOAuthAdapter_TokenState` each had parallel subtests sharing a single `OAuthAdapter`. "no token" subtests expected empty tokens but parallel siblings had already set them.
+
+### Fix Applied
+Per-subtest `newAdapter()` closure-factory in each outer test. Each subtest mutates its own adapter.
+
+---
+
+## Issue #25: SSE manager / polling store shared-fixture races (BUGFIX 2026-04-19)
+
+### Issue
+`TestSSEManager_RegisterClient` (3 parallel subtests) shared one SSEManager; `TestPollingStore_GetLatestTaskEvent` (2 parallel subtests) shared one PollingStore. Subtest assertions raced on the shared state.
+
+### Fix Applied
+Per-subtest `newManager(t)` / `newStore(t)` factories using `t.Cleanup` for disposal.
+
+---
+
 ## Issue #24: `TestNativeFormatter_buildArgs` shared-metadata race (BUGFIX 2026-04-19)
 
 ### Issue

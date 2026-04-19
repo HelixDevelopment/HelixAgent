@@ -352,15 +352,21 @@ func (e *debateError) Error() string {
 	return e.message
 }
 
-// GetDebate handles GET /v1/debates/:id
+// GetDebate handles GET /v1/debates/:id.
+//
+// The read lock is held across the entire state-to-response copy
+// because runDebate() writes to state.Status / state.CurrentPhase /
+// state.EndTime / state.Error / state.Result / state.MultiPassResult /
+// state.SkillsUsed concurrently. Previously the lock was released
+// right after the map lookup and the subsequent field reads raced
+// with runDebate's writes — caught by -race (BUGFIX #27).
 func (h *DebateHandler) GetDebate(c *gin.Context) {
 	debateID := c.Param("id")
 
 	h.mu.RLock()
 	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
-
 	if !exists {
+		h.mu.RUnlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -370,6 +376,9 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 		return
 	}
 
+	// Build the response while still holding RLock. All field reads
+	// must happen here; runDebate takes the write lock for state
+	// mutations, so this section is race-safe.
 	response := gin.H{
 		"debate_id":                    debateID,
 		"status":                       state.Status,
@@ -396,7 +405,6 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 		response["result"] = state.Result
 	}
 
-	// Include Skills usage metadata if available
 	if state.SkillsUsed != nil {
 		response["skills_used"] = state.SkillsUsed
 	}
@@ -410,19 +418,20 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 			"phases":              state.MultiPassResult.Phases,
 		}
 	}
+	h.mu.RUnlock()
 
 	c.JSON(http.StatusOK, response)
 }
 
-// GetDebateStatus handles GET /v1/debates/:id/status
+// GetDebateStatus handles GET /v1/debates/:id/status.
+// Same race-safety pattern as GetDebate above (BUGFIX #27).
 func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 	debateID := c.Param("id")
 
 	h.mu.RLock()
 	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
-
 	if !exists {
+		h.mu.RUnlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -452,7 +461,6 @@ func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 		status["error"] = state.Error
 	}
 
-	// Add progress info if running
 	if state.Status == "running" && state.Config != nil {
 		status["max_rounds"] = state.Config.MaxRounds
 		status["timeout_seconds"] = state.Config.Timeout.Seconds()
@@ -466,25 +474,25 @@ func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 		}
 	}
 
-	// Add multi-pass validation summary if completed
 	if state.MultiPassResult != nil {
 		status["overall_confidence"] = state.MultiPassResult.OverallConfidence
 		status["quality_improvement"] = state.MultiPassResult.QualityImprovement
 		status["phases_completed"] = len(state.MultiPassResult.Phases)
 	}
+	h.mu.RUnlock()
 
 	c.JSON(http.StatusOK, status)
 }
 
-// GetDebateResults handles GET /v1/debates/:id/results
+// GetDebateResults handles GET /v1/debates/:id/results.
+// Same race-safety pattern as GetDebate (BUGFIX #27).
 func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 	debateID := c.Param("id")
 
 	h.mu.RLock()
 	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
-
 	if !exists {
+		h.mu.RUnlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -493,18 +501,23 @@ func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 		})
 		return
 	}
+	// Snapshot the fields we need under the lock; release before
+	// responding so we do not hold RLock across c.JSON.
+	status := state.Status
+	result := state.Result
+	h.mu.RUnlock()
 
-	if state.Status != "completed" {
+	if status != "completed" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": gin.H{
 				"message": "Debate has not completed yet",
-				"status":  state.Status,
+				"status":  status,
 			},
 		})
 		return
 	}
 
-	if state.Result == nil {
+	if result == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
 				"message": "Debate completed but no results available",
@@ -513,7 +526,7 @@ func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, state.Result)
+	c.JSON(http.StatusOK, result)
 }
 
 // ListDebates handles GET /v1/debates

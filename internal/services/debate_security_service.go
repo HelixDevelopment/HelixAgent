@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -71,16 +71,23 @@ type RateLimitEntry struct {
 	WindowStart time.Time
 }
 
-// DebateSecurityService provides security capabilities
+// DebateSecurityService provides security capabilities.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - violations / auditLog are safe.Slice[T]; Append, Snapshot, Len, Replace
+//     are the only entry points.
+//   - rateLimiter is safe.Store[string, RateLimitEntry]. Storing by value
+//     (not *RateLimitEntry) lets Update atomically increment Count via the
+//     single-write-lock read-modify-write path; without by-value semantics
+//     the old code handed out pointers that were mutated outside the lock.
+//   - blockedPatterns / sensitivePatterns are set once in the constructor
+//     and never mutated, so they stay as bare slices (no mutex adjacency).
 type DebateSecurityService struct {
 	logger            *logrus.Logger
 	config            *SecurityConfig
-	violations        []SecurityViolation
-	violationsMu      sync.RWMutex
-	auditLog          []AuditEntry
-	auditMu           sync.RWMutex
-	rateLimiter       map[string]*RateLimitEntry
-	rateLimiterMu     sync.RWMutex
+	violations        *safe.Slice[SecurityViolation]
+	auditLog          *safe.Slice[AuditEntry]
+	rateLimiter       *safe.Store[string, RateLimitEntry]
 	blockedPatterns   []*regexp.Regexp
 	sensitivePatterns []*regexp.Regexp
 }
@@ -99,9 +106,9 @@ func NewDebateSecurityServiceWithConfig(logger *logrus.Logger, config *SecurityC
 	svc := &DebateSecurityService{
 		logger:      logger,
 		config:      config,
-		violations:  make([]SecurityViolation, 0),
-		auditLog:    make([]AuditEntry, 0),
-		rateLimiter: make(map[string]*RateLimitEntry),
+		violations:  safe.NewSlice[SecurityViolation](),
+		auditLog:    safe.NewSlice[AuditEntry](),
+		rateLimiter: safe.NewStore[string, RateLimitEntry](),
 	}
 
 	// Compile blocked patterns
@@ -272,9 +279,7 @@ func (dss *DebateSecurityService) audit(debateID, action, actor string, details 
 	hash := sha256.Sum256([]byte(hashInput))
 	entry.Hash = hex.EncodeToString(hash[:])
 
-	dss.auditMu.Lock()
-	dss.auditLog = append(dss.auditLog, entry)
-	dss.auditMu.Unlock()
+	dss.auditLog.Append(entry)
 
 	dss.logger.WithFields(logrus.Fields{
 		"audit_id":  entry.ID,
@@ -296,9 +301,7 @@ func (dss *DebateSecurityService) recordViolation(violationType, severity, descr
 		Timestamp:   time.Now(),
 	}
 
-	dss.violationsMu.Lock()
-	dss.violations = append(dss.violations, violation)
-	dss.violationsMu.Unlock()
+	dss.violations.Append(violation)
 
 	dss.logger.WithFields(logrus.Fields{
 		"violation_id": violation.ID,
@@ -331,29 +334,30 @@ func (dss *DebateSecurityService) checkPII(content, debateID string) error {
 	return nil
 }
 
-// CheckRateLimit checks if a request should be rate limited
+// CheckRateLimit checks if a request should be rate limited.
+//
+// The read-modify-write against rateLimiter is collapsed into a single
+// Update callback so concurrent calls for the same key cannot race on
+// Count. recordViolation runs outside the Update closure to keep
+// cross-store locking strictly linear.
 func (dss *DebateSecurityService) CheckRateLimit(ctx context.Context, key string) error {
-	dss.rateLimiterMu.Lock()
-	defer dss.rateLimiterMu.Unlock()
-
 	now := time.Now()
-	entry, exists := dss.rateLimiter[key]
-
-	if !exists || now.Sub(entry.WindowStart) > dss.config.RateLimitWindow {
-		// New window
-		dss.rateLimiter[key] = &RateLimitEntry{
-			Key:         key,
-			Count:       1,
-			WindowStart: now,
+	var exceededCount int
+	dss.rateLimiter.Update(key, func(cur RateLimitEntry, present bool) (RateLimitEntry, bool) {
+		if !present || now.Sub(cur.WindowStart) > dss.config.RateLimitWindow {
+			return RateLimitEntry{Key: key, Count: 1, WindowStart: now}, true
 		}
-		return nil
-	}
+		cur.Count++
+		if cur.Count > dss.config.RateLimitRequests {
+			exceededCount = cur.Count
+		}
+		return cur, true
+	})
 
-	entry.Count++
-	if entry.Count > dss.config.RateLimitRequests {
+	if exceededCount > 0 {
 		return dss.recordViolation("rate_limit", "medium",
 			fmt.Sprintf("Rate limit exceeded for key: %s (%d requests in %v)",
-				key, entry.Count, dss.config.RateLimitWindow),
+				key, exceededCount, dss.config.RateLimitWindow),
 			"")
 	}
 
@@ -362,21 +366,13 @@ func (dss *DebateSecurityService) CheckRateLimit(ctx context.Context, key string
 
 // GetViolations returns all recorded violations
 func (dss *DebateSecurityService) GetViolations() []SecurityViolation {
-	dss.violationsMu.RLock()
-	defer dss.violationsMu.RUnlock()
-
-	violations := make([]SecurityViolation, len(dss.violations))
-	copy(violations, dss.violations)
-	return violations
+	return dss.violations.Snapshot()
 }
 
 // GetViolationsByDebate returns violations for a specific debate
 func (dss *DebateSecurityService) GetViolationsByDebate(debateID string) []SecurityViolation {
-	dss.violationsMu.RLock()
-	defer dss.violationsMu.RUnlock()
-
 	violations := make([]SecurityViolation, 0)
-	for _, v := range dss.violations {
+	for _, v := range dss.violations.Snapshot() {
 		if v.DebateID == debateID {
 			violations = append(violations, v)
 		}
@@ -386,21 +382,13 @@ func (dss *DebateSecurityService) GetViolationsByDebate(debateID string) []Secur
 
 // GetAuditLog returns the audit log
 func (dss *DebateSecurityService) GetAuditLog() []AuditEntry {
-	dss.auditMu.RLock()
-	defer dss.auditMu.RUnlock()
-
-	entries := make([]AuditEntry, len(dss.auditLog))
-	copy(entries, dss.auditLog)
-	return entries
+	return dss.auditLog.Snapshot()
 }
 
 // GetAuditLogByDebate returns audit entries for a specific debate
 func (dss *DebateSecurityService) GetAuditLogByDebate(debateID string) []AuditEntry {
-	dss.auditMu.RLock()
-	defer dss.auditMu.RUnlock()
-
 	entries := make([]AuditEntry, 0)
-	for _, e := range dss.auditLog {
+	for _, e := range dss.auditLog.Snapshot() {
 		if e.DebateID == debateID {
 			entries = append(entries, e)
 		}
@@ -410,12 +398,9 @@ func (dss *DebateSecurityService) GetAuditLogByDebate(debateID string) []AuditEn
 
 // VerifyAuditIntegrity verifies the integrity of audit entries
 func (dss *DebateSecurityService) VerifyAuditIntegrity() (bool, []string) {
-	dss.auditMu.RLock()
-	defer dss.auditMu.RUnlock()
-
 	invalidEntries := make([]string, 0)
 
-	for _, entry := range dss.auditLog {
+	for _, entry := range dss.auditLog.Snapshot() {
 		hashInput := fmt.Sprintf("%s|%s|%s|%s|%v", entry.ID, entry.DebateID, entry.Action, entry.Timestamp, entry.Details)
 		hash := sha256.Sum256([]byte(hashInput))
 		expectedHash := hex.EncodeToString(hash[:])
@@ -430,38 +415,27 @@ func (dss *DebateSecurityService) VerifyAuditIntegrity() (bool, []string) {
 
 // ClearViolations clears all recorded violations
 func (dss *DebateSecurityService) ClearViolations() {
-	dss.violationsMu.Lock()
-	defer dss.violationsMu.Unlock()
-	dss.violations = make([]SecurityViolation, 0)
+	dss.violations.Clear()
 }
 
 // GetStats returns security service statistics
 func (dss *DebateSecurityService) GetStats() map[string]interface{} {
-	dss.violationsMu.RLock()
-	violationCount := len(dss.violations)
-	dss.violationsMu.RUnlock()
+	// Single Snapshot so the severity histogram is consistent with the count.
+	violationSnapshot := dss.violations.Snapshot()
 
-	dss.auditMu.RLock()
-	auditCount := len(dss.auditLog)
-	dss.auditMu.RUnlock()
-
-	// Count violations by severity
 	severityCounts := map[string]int{
 		"low":      0,
 		"medium":   0,
 		"high":     0,
 		"critical": 0,
 	}
-
-	dss.violationsMu.RLock()
-	for _, v := range dss.violations {
+	for _, v := range violationSnapshot {
 		severityCounts[v.Severity]++
 	}
-	dss.violationsMu.RUnlock()
 
 	return map[string]interface{}{
-		"total_violations":       violationCount,
-		"audit_entries":          auditCount,
+		"total_violations":       len(violationSnapshot),
+		"audit_entries":          dss.auditLog.Len(),
 		"violations_by_severity": severityCounts,
 		"audit_enabled":          dss.config.AuditEnabled,
 		"content_filter":         dss.config.ContentFilterEnabled,

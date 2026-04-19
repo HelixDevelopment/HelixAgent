@@ -493,12 +493,15 @@ func TestDebateSecurityService_VerifyAuditIntegrity(t *testing.T) {
 	t.Run("detect tampered audit entry", func(t *testing.T) {
 		_ = svc.AuditDebate(ctx, "debate-tampered")
 
-		// Tamper with an entry
-		svc.auditMu.Lock()
-		if len(svc.auditLog) > 0 {
-			svc.auditLog[len(svc.auditLog)-1].Hash = "tampered-hash"
+		// Tamper with an entry (via safe.Slice UpdateAt to match the last entry by ID)
+		entries := svc.auditLog.Snapshot()
+		if len(entries) > 0 {
+			targetID := entries[len(entries)-1].ID
+			svc.auditLog.UpdateAt(
+				func(e AuditEntry) bool { return e.ID == targetID },
+				func(e AuditEntry) AuditEntry { e.Hash = "tampered-hash"; return e },
+			)
 		}
-		svc.auditMu.Unlock()
 
 		valid, invalidEntries := svc.VerifyAuditIntegrity()
 		assert.False(t, valid)

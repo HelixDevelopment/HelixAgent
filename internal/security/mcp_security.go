@@ -8,17 +8,27 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// MCPSecurityManager provides security features for MCP protocol
-// Integrates with HelixAgent's existing MCP client and server infrastructure
+// MCPSecurityManager provides security features for MCP protocol.
+// Integrates with HelixAgent's existing MCP client and server infrastructure.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - trustedServers / toolRegistry / callStack are safe.* containers.
+//   - mu (sync.RWMutex) survives as a Pattern Zeta scalar mutex: it
+//     serialises CheckToolCall's compound operation (call-depth check
+//     + push + rate-limit read-modify-write on the cached
+//     *ToolPermission). Individual store operations are already atomic;
+//     mu guards the cross-field invariant. The audit is happy because
+//     no bare map/slice field sits next to the mutex any more.
 type MCPSecurityManager struct {
 	config         *MCPSecurityConfig
-	trustedServers map[string]*TrustedServer
-	toolRegistry   map[string]*ToolPermission
-	callStack      []string // Track call depth
+	trustedServers *safe.Store[string, *TrustedServer]
+	toolRegistry   *safe.Store[string, *ToolPermission]
+	callStack      *safe.Slice[string]
 	auditLogger    AuditLogger
 	logger         *logrus.Logger
 	mu             sync.RWMutex
@@ -85,9 +95,9 @@ func NewMCPSecurityManager(config *MCPSecurityConfig, logger *logrus.Logger) *MC
 
 	return &MCPSecurityManager{
 		config:         config,
-		trustedServers: make(map[string]*TrustedServer),
-		toolRegistry:   make(map[string]*ToolPermission),
-		callStack:      make([]string, 0),
+		trustedServers: safe.NewStore[string, *TrustedServer](),
+		toolRegistry:   safe.NewStore[string, *ToolPermission](),
+		callStack:      safe.NewSlice[string](),
 		logger:         logger,
 	}
 }
@@ -101,9 +111,6 @@ func (m *MCPSecurityManager) SetAuditLogger(logger AuditLogger) {
 
 // RegisterTrustedServer registers a trusted MCP server
 func (m *MCPSecurityManager) RegisterTrustedServer(server *TrustedServer) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if server.ID == "" {
 		server.ID = uuid.New().String()
 	}
@@ -113,7 +120,7 @@ func (m *MCPSecurityManager) RegisterTrustedServer(server *TrustedServer) error 
 	server.Verified = true
 	server.LastVerified = time.Now()
 
-	m.trustedServers[server.ID] = server
+	m.trustedServers.Put(server.ID, server)
 
 	m.logger.WithFields(logrus.Fields{
 		"server_id":   server.ID,
@@ -126,14 +133,11 @@ func (m *MCPSecurityManager) RegisterTrustedServer(server *TrustedServer) error 
 
 // VerifyServer verifies if a server is trusted
 func (m *MCPSecurityManager) VerifyServer(serverID string) (*TrustedServer, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	if !m.config.VerifyServers {
 		return nil, nil // Verification disabled
 	}
 
-	server, exists := m.trustedServers[serverID]
+	server, exists := m.trustedServers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("server not found: %s", serverID)
 	}
@@ -148,11 +152,8 @@ func (m *MCPSecurityManager) VerifyServer(serverID string) (*TrustedServer, erro
 
 // RegisterToolPermission registers permissions for a tool
 func (m *MCPSecurityManager) RegisterToolPermission(permission *ToolPermission) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	key := m.toolKey(permission.ServerID, permission.ToolName)
-	m.toolRegistry[key] = permission
+	m.toolRegistry.Put(key, permission)
 
 	m.logger.WithFields(logrus.Fields{
 		"tool":       permission.ToolName,
@@ -161,7 +162,10 @@ func (m *MCPSecurityManager) RegisterToolPermission(permission *ToolPermission) 
 	}).Debug("Tool permission registered")
 }
 
-// SetDefaultToolPermission sets the default permission level for a tool
+// SetDefaultToolPermission sets the default permission level for a tool.
+// mu is retained as the serialisation point for writes into the external
+// config.ToolPermissions map (which this manager doesn't own, so we can't
+// migrate it).
 func (m *MCPSecurityManager) SetDefaultToolPermission(toolName string, level PermissionLevel) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -169,7 +173,9 @@ func (m *MCPSecurityManager) SetDefaultToolPermission(toolName string, level Per
 	m.config.ToolPermissions[toolName] = level
 }
 
-// CheckToolCall checks if a tool call is allowed
+// CheckToolCall checks if a tool call is allowed.
+// mu is held for the duration to keep the compound call-depth check +
+// push + rate-limit increment atomic across concurrent callers.
 func (m *MCPSecurityManager) CheckToolCall(ctx context.Context, request *ToolCallRequest) (*ToolCallResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -212,7 +218,7 @@ func (m *MCPSecurityManager) CheckToolCall(ctx context.Context, request *ToolCal
 	}
 
 	// Check call depth (prevent infinite loops)
-	if len(m.callStack) >= m.config.MaxCallDepth {
+	if m.callStack.Len() >= m.config.MaxCallDepth {
 		response.Allowed = false
 		response.Reason = fmt.Sprintf("Maximum call depth exceeded (%d)", m.config.MaxCallDepth)
 		m.logAuditEvent(ctx, request, response, "max_depth_exceeded")
@@ -221,7 +227,7 @@ func (m *MCPSecurityManager) CheckToolCall(ctx context.Context, request *ToolCal
 
 	// Check tool permission
 	key := m.toolKey(request.ServerID, request.ToolName)
-	permission, exists := m.toolRegistry[key]
+	permission, exists := m.toolRegistry.Get(key)
 
 	if !exists {
 		// Check default permission
@@ -299,7 +305,7 @@ func (m *MCPSecurityManager) CheckToolCall(ctx context.Context, request *ToolCal
 	}
 
 	// Push to call stack
-	m.callStack = append(m.callStack, request.ToolName)
+	m.callStack.Append(request.ToolName)
 
 	// Log successful call
 	if m.config.AuditLogging {
@@ -309,30 +315,28 @@ func (m *MCPSecurityManager) CheckToolCall(ctx context.Context, request *ToolCal
 	return response, nil
 }
 
-// PopCallStack removes the last tool from the call stack
+// PopCallStack removes the last tool from the call stack.
+// mu serialises the snapshot-then-replace pop so concurrent Push/Pop
+// from different goroutines cannot lose updates.
 func (m *MCPSecurityManager) PopCallStack() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if len(m.callStack) > 0 {
-		m.callStack = m.callStack[:len(m.callStack)-1]
+	snap := m.callStack.Snapshot()
+	if len(snap) > 0 {
+		m.callStack.Replace(snap[:len(snap)-1])
 	}
 }
 
 // GetCallStack returns the current call stack
 func (m *MCPSecurityManager) GetCallStack() []string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	stack := make([]string, len(m.callStack))
-	copy(stack, m.callStack)
-	return stack
+	return m.callStack.Snapshot()
 }
 
 // Internal helpers
 
 func (m *MCPSecurityManager) verifyServerInternal(serverID string) (*TrustedServer, error) {
-	server, exists := m.trustedServers[serverID]
+	server, exists := m.trustedServers.Get(serverID)
 	if !exists {
 		// Check if it's in the trusted servers list
 		for _, trusted := range m.config.TrustedServers {
@@ -500,7 +504,7 @@ func (m *MCPSecurityManager) logAuditEvent(ctx context.Context, request *ToolCal
 			"server_id":  request.ServerID,
 			"allowed":    response.Allowed,
 			"reason":     response.Reason,
-			"call_depth": len(m.callStack),
+			"call_depth": m.callStack.Len(),
 		},
 		Risk: SeverityLow,
 	}

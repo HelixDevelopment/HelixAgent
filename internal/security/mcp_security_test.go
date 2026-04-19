@@ -146,7 +146,7 @@ func TestMCPSecurityManager_RegisterToolPermission(t *testing.T) {
 	// Verify by checking tool call with this permission
 	// The permission should be found when checking tool calls
 	key := manager.toolKey("server-001", "read_file")
-	assert.Contains(t, manager.toolRegistry, key)
+	assert.True(t, manager.toolRegistry.Has(key))
 }
 
 func TestMCPSecurityManager_SetDefaultToolPermission(t *testing.T) {
@@ -254,7 +254,7 @@ func TestMCPSecurityManager_CheckToolCall(t *testing.T) {
 		manager := NewMCPSecurityManager(config, nil)
 
 		// Fill up call stack
-		manager.callStack = []string{"tool1", "tool2"}
+		manager.callStack.Replace([]string{"tool1", "tool2"})
 
 		request := &ToolCallRequest{
 			ToolName: "tool3",

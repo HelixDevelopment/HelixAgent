@@ -229,7 +229,11 @@ func TestEventTypeConstants(t *testing.T) {
 }
 
 func TestGlobalBus_InitAndEmit(t *testing.T) {
-	t.Parallel()
+	// NOT t.Parallel — this test mutates adapters.GlobalBus, a global
+	// singleton shared with TestGlobalBus_EmitAsync and TestOn_
+	// NilGlobalBus. Running them in parallel races on
+	// InitGlobalBus (replaces the global) vs GlobalBus = nil in
+	// TestOn_NilGlobalBus (race-debt BUGFIX #35).
 	cfg := adapters.DefaultBusConfig()
 	adapters.InitGlobalBus(cfg)
 
@@ -247,7 +251,8 @@ func TestGlobalBus_InitAndEmit(t *testing.T) {
 }
 
 func TestGlobalBus_EmitAsync(t *testing.T) {
-	t.Parallel()
+	// NOT t.Parallel — see TestGlobalBus_InitAndEmit for rationale
+	// (BUGFIX #35).
 	cfg := adapters.DefaultBusConfig()
 	adapters.InitGlobalBus(cfg)
 
@@ -265,7 +270,8 @@ func TestGlobalBus_EmitAsync(t *testing.T) {
 }
 
 func TestOn_NilGlobalBus(t *testing.T) {
-	t.Parallel()
+	// NOT t.Parallel — mutates the adapters.GlobalBus singleton
+	// shared with TestGlobalBus_InitAndEmit + _EmitAsync (BUGFIX #35).
 	// When GlobalBus is nil, On should return a closed channel
 	adapters.GlobalBus = nil
 	ch := adapters.On(adapters.EventSystemStartup)

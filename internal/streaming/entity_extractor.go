@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -20,9 +21,9 @@ type EntityExtractor struct {
 	codeBlockRegex *regexp.Regexp
 	mentionRegex   *regexp.Regexp
 
-	// Cache for extracted entities
-	cache map[string][]EntityData
-	mu    sync.RWMutex
+	// Cache for extracted entities. Values are freshly built per Extract
+	// call and never mutated post-insert (Pattern Alpha).
+	cache *safe.Store[string, []EntityData]
 }
 
 // NewEntityExtractor creates a new entity extractor
@@ -37,19 +38,16 @@ func NewEntityExtractor(logger *zap.Logger) *EntityExtractor {
 		urlRegex:       regexp.MustCompile(`https?://[^\s]+`),
 		codeBlockRegex: regexp.MustCompile("```([a-z]+)?\\n([\\s\\S]*?)```"),
 		mentionRegex:   regexp.MustCompile(`@([a-zA-Z0-9_]+)`),
-		cache:          make(map[string][]EntityData),
+		cache:          safe.NewStore[string, []EntityData](),
 	}
 }
 
 // Extract extracts entities from text
 func (ee *EntityExtractor) Extract(text string) []EntityData {
 	// Check cache first
-	ee.mu.RLock()
-	if cached, exists := ee.cache[text]; exists {
-		ee.mu.RUnlock()
+	if cached, exists := ee.cache.Get(text); exists {
 		return cached
 	}
-	ee.mu.RUnlock()
 
 	entities := make([]EntityData, 0)
 
@@ -73,16 +71,15 @@ func (ee *EntityExtractor) Extract(text string) []EntityData {
 	programmingTerms := ee.extractProgrammingTerms(text)
 	entities = append(entities, programmingTerms...)
 
-	// Cache results
-	ee.mu.Lock()
-	ee.cache[text] = entities
-	ee.mu.Unlock()
+	// Cache results. PutIfAbsent converges racing callers on the same
+	// extracted slice.
+	cached, _ := ee.cache.PutIfAbsent(text, entities)
 
 	ee.logger.Debug("Extracted entities from text",
-		zap.Int("total_entities", len(entities)),
+		zap.Int("total_entities", len(cached)),
 		zap.Int("text_length", len(text)))
 
-	return entities
+	return cached
 }
 
 // extractEmails extracts email addresses
@@ -289,14 +286,10 @@ func (ee *EntityExtractor) ExtractBatch(texts []string) [][]EntityData {
 
 // ClearCache clears the entity extraction cache
 func (ee *EntityExtractor) ClearCache() {
-	ee.mu.Lock()
-	defer ee.mu.Unlock()
-	ee.cache = make(map[string][]EntityData)
+	ee.cache.Clear()
 }
 
 // GetCacheSize returns the current cache size
 func (ee *EntityExtractor) GetCacheSize() int {
-	ee.mu.RLock()
-	defer ee.mu.RUnlock()
-	return len(ee.cache)
+	return ee.cache.Len()
 }

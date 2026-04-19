@@ -91,12 +91,24 @@ func TestWorkflow_AddNode(t *testing.T) {
 
 func TestWorkflow_AddEdge(t *testing.T) {
 	t.Parallel()
-	w := NewWorkflow("test", "test", nil, nil)
-	_ = w.AddNode(&Node{ID: "node1", Name: "Node 1"})
-	_ = w.AddNode(&Node{ID: "node2", Name: "Node 2"})
+
+	// Each subtest constructs its own workflow to avoid sharing
+	// mutable Graph state between parallel subtests. The previous
+	// implementation shared a single workflow across 4 t.Parallel()
+	// subtests; "ValidEdge" asserted len(Edges)==1 but "WithCondition"
+	// also added an edge concurrently, producing a nondeterministic
+	// count. Fix: per-subtest fresh workflow. (Race-debt BUGFIX #21.)
+	newTestWorkflow := func(t *testing.T) *Workflow {
+		t.Helper()
+		w := NewWorkflow("test", "test", nil, nil)
+		require.NoError(t, w.AddNode(&Node{ID: "node1", Name: "Node 1"}))
+		require.NoError(t, w.AddNode(&Node{ID: "node2", Name: "Node 2"}))
+		return w
+	}
 
 	t.Run("ValidEdge", func(t *testing.T) {
 		t.Parallel()
+		w := newTestWorkflow(t)
 		err := w.AddEdge("node1", "node2", nil, "edge1")
 		require.NoError(t, err)
 
@@ -108,6 +120,7 @@ func TestWorkflow_AddEdge(t *testing.T) {
 
 	t.Run("InvalidSourceNode", func(t *testing.T) {
 		t.Parallel()
+		w := newTestWorkflow(t)
 		err := w.AddEdge("invalid", "node2", nil, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "source node not found")
@@ -115,6 +128,7 @@ func TestWorkflow_AddEdge(t *testing.T) {
 
 	t.Run("InvalidTargetNode", func(t *testing.T) {
 		t.Parallel()
+		w := newTestWorkflow(t)
 		err := w.AddEdge("node1", "invalid", nil, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "target node not found")
@@ -122,11 +136,14 @@ func TestWorkflow_AddEdge(t *testing.T) {
 
 	t.Run("WithCondition", func(t *testing.T) {
 		t.Parallel()
+		w := newTestWorkflow(t)
 		condition := func(state *WorkflowState) bool {
 			return state.Variables["proceed"].(bool)
 		}
 		err := w.AddEdge("node1", "node2", condition, "conditional")
 		require.NoError(t, err)
+		assert.Len(t, w.Graph.Edges, 1, "each subtest owns its workflow; exactly 1 edge expected")
+		assert.Equal(t, "conditional", w.Graph.Edges[0].Label)
 	})
 }
 

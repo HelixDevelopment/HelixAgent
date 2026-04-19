@@ -310,6 +310,40 @@ func TestRepoMap_GetSummary(t *testing.T) {
 	assert.Equal(t, 2, summary["languages"])
 }
 
+// TestRepoMap_Snapshot is the CONST-029 verification test for the
+// single-writer model. Snapshot must return a deep copy so a second
+// goroutine reading the snapshot cannot race with the Map()-owner.
+func TestRepoMap_Snapshot(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	orig := NewRepoMap("/test", logger)
+	orig.Files = []FileInfo{{Path: "/test/a.go", Language: "Go", LineCount: 10}}
+	orig.Symbols = []Symbol{{Name: "a", Type: "function"}}
+	orig.Languages = map[string]LanguageInfo{"Go": {Name: "Go", FileCount: 1, LineCount: 10}}
+	orig.Dependencies = []Dependency{{Source: "a", Target: "b", Type: "import"}}
+
+	snap := orig.Snapshot()
+	require.NotNil(t, snap)
+
+	// Mutate the snapshot — must not leak into the original.
+	snap.Files = append(snap.Files, FileInfo{Path: "/test/b.go"})
+	snap.Symbols = append(snap.Symbols, Symbol{Name: "extra"})
+	snap.Languages["Python"] = LanguageInfo{Name: "Python"}
+	snap.Dependencies = append(snap.Dependencies, Dependency{Source: "c", Target: "d"})
+
+	assert.Len(t, orig.Files, 1, "snapshot mutation leaked into orig.Files")
+	assert.Len(t, orig.Symbols, 1, "snapshot mutation leaked into orig.Symbols")
+	assert.NotContains(t, orig.Languages, "Python", "snapshot mutation leaked into orig.Languages")
+	assert.Len(t, orig.Dependencies, 1, "snapshot mutation leaked into orig.Dependencies")
+}
+
+// TestRepoMap_NilSnapshot documents the nil-receiver contract.
+func TestRepoMap_NilSnapshot(t *testing.T) {
+	t.Parallel()
+	var rm *RepoMap
+	assert.Nil(t, rm.Snapshot())
+}
+
 func TestExtractGoSymbols(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()

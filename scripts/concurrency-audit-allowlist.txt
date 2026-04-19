@@ -152,7 +152,6 @@ internal/streaming/types.go:511:MpscStream
 internal/testing/helpers.go:25:MockMCPServer
 internal/testing/helpers.go:421:MockHTTPServer
 internal/tools/handler.go:29:ToolRegistry
-internal/tools/repomap/repomap.go:17:RepoMap
 internal/verifier/adapters/extended_providers_adapter.go:47:ExtendedProvidersAdapter
 internal/verifier/adapters/extended_registry.go:14:ExtendedProviderRegistry
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter

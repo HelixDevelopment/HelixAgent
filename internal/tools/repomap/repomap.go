@@ -8,12 +8,30 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/sirupsen/logrus"
 )
 
-// RepoMap represents a mapped repository
+// RepoMap represents a mapped repository.
+//
+// Concurrency model (CONST-029):
+//
+// RepoMap follows a single-writer, read-after-complete pattern. Map()
+// owns the struct for the duration of a mapping call; readers
+// (GetFiles, GetSymbols, GetLanguageStats, GetSummary, FindSymbol,
+// etc.) must only run after Map() has returned, or concurrently with
+// **no other** Map() call. The previous defensive sync.RWMutex was
+// flagged by the CONST-029 audit (mutex + multiple bare maps/slices
+// in the same struct) but never guarded anything the single-writer
+// invariant didn't already cover.
+//
+// If a caller needs to read state from another goroutine while Map()
+// may be running, they should Snapshot() it first (deep-copy) and
+// work against the snapshot.
+//
+// JSON field layout is unchanged — the previous exported fields
+// remain in place, so external JSON consumers see the same wire
+// format.
 type RepoMap struct {
 	RootPath     string                  `json:"root_path"`
 	Languages    map[string]LanguageInfo `json:"languages"`
@@ -23,7 +41,35 @@ type RepoMap struct {
 
 	// Internal
 	logger *logrus.Logger
-	mu     sync.RWMutex
+}
+
+// Snapshot returns a deep copy of the RepoMap's mapped data. Call
+// Snapshot from the same goroutine that drove Map() (or after Map()
+// has returned) to get a value safe to hand to another goroutine.
+func (r *RepoMap) Snapshot() *RepoMap {
+	if r == nil {
+		return nil
+	}
+	out := &RepoMap{
+		RootPath: r.RootPath,
+		logger:   r.logger,
+	}
+	if r.Languages != nil {
+		out.Languages = make(map[string]LanguageInfo, len(r.Languages))
+		for k, v := range r.Languages {
+			out.Languages[k] = v
+		}
+	}
+	if r.Files != nil {
+		out.Files = append([]FileInfo(nil), r.Files...)
+	}
+	if r.Symbols != nil {
+		out.Symbols = append([]Symbol(nil), r.Symbols...)
+	}
+	if r.Dependencies != nil {
+		out.Dependencies = append([]Dependency(nil), r.Dependencies...)
+	}
+	return out
 }
 
 // LanguageInfo contains information about a language in the repo
@@ -100,11 +146,10 @@ func NewRepoMap(rootPath string, logger *logrus.Logger) *RepoMap {
 	}
 }
 
-// Map analyzes and maps the repository
+// Map analyzes and maps the repository.
+// Must not run concurrently with other Map() calls on the same instance
+// or with the Get*/FindSymbol readers.
 func (r *RepoMap) Map(ctx context.Context, config Config) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	r.logger.Infof("Mapping repository: %s", r.RootPath)
 
 	// Reset state
@@ -293,25 +338,20 @@ func (r *RepoMap) extractSymbols(path, language string) ([]Symbol, error) {
 	}
 }
 
-// GetFiles returns all mapped files
+// GetFiles returns all mapped files. See the struct docstring for the
+// single-writer invariant: call only after Map() has returned, or use
+// Snapshot() for cross-goroutine reads.
 func (r *RepoMap) GetFiles() []FileInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	return r.Files
 }
 
-// GetSymbols returns all extracted symbols
+// GetSymbols returns all extracted symbols. See GetFiles for concurrency.
 func (r *RepoMap) GetSymbols() []Symbol {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	return r.Symbols
 }
 
-// GetSymbolsByType returns symbols of a specific type
+// GetSymbolsByType returns symbols of a specific type. See GetFiles for concurrency.
 func (r *RepoMap) GetSymbolsByType(symbolType string) []Symbol {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var result []Symbol
 	for _, sym := range r.Symbols {
 		if sym.Type == symbolType {
@@ -321,11 +361,8 @@ func (r *RepoMap) GetSymbolsByType(symbolType string) []Symbol {
 	return result
 }
 
-// GetSymbolsInFile returns symbols in a specific file
+// GetSymbolsInFile returns symbols in a specific file. See GetFiles for concurrency.
 func (r *RepoMap) GetSymbolsInFile(file string) []Symbol {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var result []Symbol
 	for _, sym := range r.Symbols {
 		if sym.File == file {
@@ -335,11 +372,8 @@ func (r *RepoMap) GetSymbolsInFile(file string) []Symbol {
 	return result
 }
 
-// FindSymbol searches for a symbol by name
+// FindSymbol searches for a symbol by name. See GetFiles for concurrency.
 func (r *RepoMap) FindSymbol(name string) []Symbol {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var result []Symbol
 	for _, sym := range r.Symbols {
 		if sym.Name == name {
@@ -349,18 +383,13 @@ func (r *RepoMap) FindSymbol(name string) []Symbol {
 	return result
 }
 
-// GetLanguageStats returns language statistics
+// GetLanguageStats returns language statistics. See GetFiles for concurrency.
 func (r *RepoMap) GetLanguageStats() map[string]LanguageInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	return r.Languages
 }
 
-// GetSummary returns a summary of the repository
+// GetSummary returns a summary of the repository. See GetFiles for concurrency.
 func (r *RepoMap) GetSummary() map[string]interface{} {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	totalLines := 0
 	for _, lang := range r.Languages {
 		totalLines += lang.LineCount

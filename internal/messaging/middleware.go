@@ -5,53 +5,50 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // MessageMiddleware is a function that wraps a MessageHandler.
 type MessageMiddleware func(MessageHandler) MessageHandler
 
 // MiddlewareChain represents a chain of middleware.
+// Concurrent-safe by construction (CONST-029): middleware is a safe.Slice.
 type MiddlewareChain struct {
-	middleware []MessageMiddleware
-	mu         sync.RWMutex
+	middleware *safe.Slice[MessageMiddleware]
 }
 
 // NewMiddlewareChain creates a new middleware chain.
 func NewMiddlewareChain(middleware ...MessageMiddleware) *MiddlewareChain {
 	return &MiddlewareChain{
-		middleware: middleware,
+		middleware: safe.NewSlice(middleware...),
 	}
 }
 
 // Add adds middleware to the chain.
 func (c *MiddlewareChain) Add(middleware ...MessageMiddleware) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.middleware = append(c.middleware, middleware...)
+	c.middleware.AppendAll(middleware...)
 }
 
 // Prepend adds middleware to the beginning of the chain.
+// safe.Slice has no first-class prepend, but Replace with a fresh
+// concatenated slice gives the same effect under the store's write lock.
 func (c *MiddlewareChain) Prepend(middleware ...MessageMiddleware) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.middleware = append(middleware, c.middleware...)
+	current := c.middleware.Snapshot()
+	c.middleware.Replace(append(append([]MessageMiddleware(nil), middleware...), current...))
 }
 
 // Clear removes all middleware from the chain.
 func (c *MiddlewareChain) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.middleware = nil
+	c.middleware.Clear()
 }
 
 // Wrap wraps a handler with all middleware in the chain.
 func (c *MiddlewareChain) Wrap(handler MessageHandler) MessageHandler {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
+	snapshot := c.middleware.Snapshot()
 	// Apply middleware in reverse order so they execute in order
-	for i := len(c.middleware) - 1; i >= 0; i-- {
-		handler = c.middleware[i](handler)
+	for i := len(snapshot) - 1; i >= 0; i-- {
+		handler = snapshot[i](handler)
 	}
 	return handler
 }
@@ -404,17 +401,17 @@ type DeduplicationStore interface {
 }
 
 // InMemoryDeduplicationStore is an in-memory implementation of DeduplicationStore.
+// Concurrent-safe by construction (CONST-029): ids is a safe.Store.
 type InMemoryDeduplicationStore struct {
-	ids    map[string]time.Time
+	ids    *safe.Store[string, time.Time]
 	ttl    time.Duration
-	mu     sync.RWMutex
 	stopCh chan struct{}
 }
 
 // NewInMemoryDeduplicationStore creates a new in-memory deduplication store.
 func NewInMemoryDeduplicationStore(ttl time.Duration) *InMemoryDeduplicationStore {
 	store := &InMemoryDeduplicationStore{
-		ids:    make(map[string]time.Time),
+		ids:    safe.NewStore[string, time.Time](),
 		ttl:    ttl,
 		stopCh: make(chan struct{}),
 	}
@@ -424,16 +421,12 @@ func NewInMemoryDeduplicationStore(ttl time.Duration) *InMemoryDeduplicationStor
 
 // Add adds a message ID to the store.
 func (s *InMemoryDeduplicationStore) Add(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.ids[id] = time.Now().Add(s.ttl)
+	s.ids.Put(id, time.Now().Add(s.ttl))
 }
 
 // Exists checks if a message ID exists in the store.
 func (s *InMemoryDeduplicationStore) Exists(id string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	expiry, ok := s.ids[id]
+	expiry, ok := s.ids.Get(id)
 	if !ok {
 		return false
 	}
@@ -442,16 +435,12 @@ func (s *InMemoryDeduplicationStore) Exists(id string) bool {
 
 // Remove removes a message ID from the store.
 func (s *InMemoryDeduplicationStore) Remove(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.ids, id)
+	s.ids.Delete(id)
 }
 
 // Clear removes all message IDs from the store.
 func (s *InMemoryDeduplicationStore) Clear() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.ids = make(map[string]time.Time)
+	s.ids.Clear()
 }
 
 // Stop stops the cleanup goroutine.
@@ -460,6 +449,8 @@ func (s *InMemoryDeduplicationStore) Stop() {
 }
 
 // cleanup removes expired entries periodically.
+// Iterates a Snapshot so the per-key Delete doesn't trip the
+// "mutate during Range" deadlock-avoidance comment in safe.Store.Range.
 func (s *InMemoryDeduplicationStore) cleanup() {
 	ticker := time.NewTicker(s.ttl / 2)
 	defer ticker.Stop()
@@ -467,14 +458,12 @@ func (s *InMemoryDeduplicationStore) cleanup() {
 	for {
 		select {
 		case <-ticker.C:
-			s.mu.Lock()
 			now := time.Now()
-			for id, expiry := range s.ids {
+			for id, expiry := range s.ids.Snapshot() {
 				if now.After(expiry) {
-					delete(s.ids, id)
+					s.ids.Delete(id)
 				}
 			}
-			s.mu.Unlock()
 		case <-s.stopCh:
 			return
 		}

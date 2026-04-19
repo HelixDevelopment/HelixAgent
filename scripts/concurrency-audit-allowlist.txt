@@ -82,8 +82,6 @@ internal/messaging/inmemory/stream.go:173:Partition
 internal/messaging/inmemory/stream.go:270:StreamBroker
 internal/messaging/kafka/broker.go:17:Broker
 internal/messaging/metrics.go:492:MetricsCollector
-internal/messaging/middleware.go:14:MiddlewareChain
-internal/messaging/middleware.go:407:InMemoryDeduplicationStore
 internal/messaging/migration.go:152:MigrationManager
 internal/messaging/migration_test.go:147:mockMessageBroker
 internal/messaging/migration_test.go:15:mockLegacyQueue

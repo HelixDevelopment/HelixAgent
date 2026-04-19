@@ -20,7 +20,7 @@ func TestNewMiddlewareChain(t *testing.T) {
 	chain := NewMiddlewareChain()
 
 	require.NotNil(t, chain)
-	assert.Empty(t, chain.middleware)
+	assert.Zero(t, chain.middleware.Len())
 }
 
 func TestNewMiddlewareChain_WithMiddleware(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNewMiddlewareChain_WithMiddleware(t *testing.T) {
 	chain := NewMiddlewareChain(mw1, mw2)
 
 	require.NotNil(t, chain)
-	assert.Len(t, chain.middleware, 2)
+	assert.Equal(t, 2, chain.middleware.Len())
 }
 
 func TestMiddlewareChain_Add(t *testing.T) {
@@ -46,7 +46,7 @@ func TestMiddlewareChain_Add(t *testing.T) {
 
 	chain.Add(mw)
 
-	assert.Len(t, chain.middleware, 1)
+	assert.Equal(t, 1, chain.middleware.Len())
 }
 
 func TestMiddlewareChain_Add_Multiple(t *testing.T) {
@@ -64,7 +64,7 @@ func TestMiddlewareChain_Add_Multiple(t *testing.T) {
 
 	chain.Add(mw1, mw2, mw3)
 
-	assert.Len(t, chain.middleware, 3)
+	assert.Equal(t, 3, chain.middleware.Len())
 }
 
 func TestMiddlewareChain_Prepend(t *testing.T) {
@@ -106,10 +106,10 @@ func TestMiddlewareChain_Clear(t *testing.T) {
 	}
 
 	chain.Add(mw, mw, mw)
-	assert.Len(t, chain.middleware, 3)
+	assert.Equal(t, 3, chain.middleware.Len())
 
 	chain.Clear()
-	assert.Empty(t, chain.middleware)
+	assert.Zero(t, chain.middleware.Len())
 }
 
 func TestMiddlewareChain_Wrap(t *testing.T) {

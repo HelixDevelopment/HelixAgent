@@ -27,12 +27,12 @@ func TestNewInMemoryStore_Initialization(t *testing.T) {
 	assert.NotNil(t, store.userIndex)
 	assert.NotNil(t, store.sessionIndex)
 	assert.NotNil(t, store.entityIndex)
-	assert.Empty(t, store.memories)
-	assert.Empty(t, store.entities)
-	assert.Empty(t, store.relationships)
-	assert.Empty(t, store.userIndex)
-	assert.Empty(t, store.sessionIndex)
-	assert.Empty(t, store.entityIndex)
+	assert.Equal(t, 0, store.memories.Len())
+	assert.Equal(t, 0, store.entities.Len())
+	assert.Equal(t, 0, store.relationships.Len())
+	assert.Equal(t, 0, store.userIndex.Len())
+	assert.Equal(t, 0, store.sessionIndex.Len())
+	assert.Equal(t, 0, store.entityIndex.Len())
 }
 
 func TestNewInMemoryStore_ReturnsDistinctInstances(t *testing.T) {
@@ -59,7 +59,7 @@ func TestInMemoryStore_Add_BasicMemory(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "mem-add-1", mem.ID)
-	assert.Contains(t, store.memories, "mem-add-1")
+	assert.True(t, store.memories.Has("mem-add-1"))
 }
 
 func TestInMemoryStore_Add_GeneratesID(t *testing.T) {
@@ -84,10 +84,12 @@ func TestInMemoryStore_Add_UpdatesUserIndex(t *testing.T) {
 	_ = store.Add(ctx, &Memory{ID: "m2", UserID: "user1", Content: "b"})
 	_ = store.Add(ctx, &Memory{ID: "m3", UserID: "user2", Content: "c"})
 
-	assert.Len(t, store.userIndex["user1"], 2)
-	assert.Len(t, store.userIndex["user2"], 1)
-	assert.Contains(t, store.userIndex["user1"], "m1")
-	assert.Contains(t, store.userIndex["user1"], "m2")
+	u1, _ := store.userIndex.Get("user1")
+	u2, _ := store.userIndex.Get("user2")
+	assert.Len(t, u1, 2)
+	assert.Len(t, u2, 1)
+	assert.Contains(t, u1, "m1")
+	assert.Contains(t, u1, "m2")
 }
 
 func TestInMemoryStore_Add_UpdatesSessionIndex(t *testing.T) {
@@ -98,8 +100,10 @@ func TestInMemoryStore_Add_UpdatesSessionIndex(t *testing.T) {
 	_ = store.Add(ctx, &Memory{ID: "m2", SessionID: "s1", Content: "b"})
 	_ = store.Add(ctx, &Memory{ID: "m3", SessionID: "s2", Content: "c"})
 
-	assert.Len(t, store.sessionIndex["s1"], 2)
-	assert.Len(t, store.sessionIndex["s2"], 1)
+	s1, _ := store.sessionIndex.Get("s1")
+	s2, _ := store.sessionIndex.Get("s2")
+	assert.Len(t, s1, 2)
+	assert.Len(t, s2, 1)
 }
 
 func TestInMemoryStore_Add_EmptyUserAndSession(t *testing.T) {
@@ -109,8 +113,8 @@ func TestInMemoryStore_Add_EmptyUserAndSession(t *testing.T) {
 	mem := &Memory{ID: "m1", Content: "no user or session"}
 	err := store.Add(ctx, mem)
 	require.NoError(t, err)
-	assert.Empty(t, store.userIndex)
-	assert.Empty(t, store.sessionIndex)
+	assert.Equal(t, 0, store.userIndex.Len())
+	assert.Equal(t, 0, store.sessionIndex.Len())
 }
 
 func TestInMemoryStore_Add_MultipleMemoriesTableDriven(t *testing.T) {
@@ -141,7 +145,7 @@ func TestInMemoryStore_Add_MultipleMemoriesTableDriven(t *testing.T) {
 
 			err := store.Add(ctx, mem)
 			require.NoError(t, err)
-			assert.Contains(t, store.memories, tt.id)
+			assert.True(t, store.memories.Has(tt.id))
 		})
 	}
 }
@@ -299,9 +303,10 @@ func TestInMemoryStore_Delete_RemovesFromUserIndex(t *testing.T) {
 	err := store.Delete(ctx, "del-m2")
 	require.NoError(t, err)
 
-	assert.Len(t, store.userIndex["user1"], 1)
-	assert.NotContains(t, store.userIndex["user1"], "del-m2")
-	assert.Contains(t, store.userIndex["user1"], "del-m3")
+	u1, _ := store.userIndex.Get("user1")
+	assert.Len(t, u1, 1)
+	assert.NotContains(t, u1, "del-m2")
+	assert.Contains(t, u1, "del-m3")
 }
 
 func TestInMemoryStore_Delete_RemovesFromSessionIndex(t *testing.T) {
@@ -314,8 +319,9 @@ func TestInMemoryStore_Delete_RemovesFromSessionIndex(t *testing.T) {
 	err := store.Delete(ctx, "del-m4")
 	require.NoError(t, err)
 
-	assert.Len(t, store.sessionIndex["s1"], 1)
-	assert.NotContains(t, store.sessionIndex["s1"], "del-m4")
+	s1, _ := store.sessionIndex.Get("s1")
+	assert.Len(t, s1, 1)
+	assert.NotContains(t, s1, "del-m4")
 }
 
 func TestInMemoryStore_Delete_NotFound(t *testing.T) {
@@ -538,7 +544,7 @@ func TestInMemoryStore_Search_ReturnsCopies(t *testing.T) {
 	// Modifying result should not affect stored memory
 	results[0].Content = "Modified"
 
-	stored := store.memories["s1"]
+	stored, _ := store.memories.Get("s1")
 	assert.Equal(t, "Go programming", stored.Content)
 }
 
@@ -778,7 +784,7 @@ func TestInMemoryStore_AddEntity_MultipleEntities(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	assert.Len(t, store.entities, 5)
+	assert.Equal(t, 5, store.entities.Len())
 }
 
 // --- GetEntity ---
@@ -908,8 +914,10 @@ func TestInMemoryStore_AddRelationship_UpdatesEntityIndex(t *testing.T) {
 	require.NoError(t, err)
 
 	// Both source and target should be in the entity index
-	assert.Contains(t, store.entityIndex["e1"], "r1")
-	assert.Contains(t, store.entityIndex["e2"], "r1")
+	e1, _ := store.entityIndex.Get("e1")
+	e2, _ := store.entityIndex.Get("e2")
+	assert.Contains(t, e1, "r1")
+	assert.Contains(t, e2, "r1")
 }
 
 func TestInMemoryStore_AddRelationship_MultipleRelationships(t *testing.T) {
@@ -920,10 +928,13 @@ func TestInMemoryStore_AddRelationship_MultipleRelationships(t *testing.T) {
 	_ = store.AddRelationship(ctx, &Relationship{ID: "r2", SourceID: "e1", TargetID: "e3"})
 	_ = store.AddRelationship(ctx, &Relationship{ID: "r3", SourceID: "e2", TargetID: "e3"})
 
-	assert.Len(t, store.relationships, 3)
-	assert.Len(t, store.entityIndex["e1"], 2) // source of r1 and r2
-	assert.Len(t, store.entityIndex["e2"], 2) // target of r1, source of r3
-	assert.Len(t, store.entityIndex["e3"], 2) // target of r2 and r3
+	assert.Equal(t, 3, store.relationships.Len())
+	e1, _ := store.entityIndex.Get("e1")
+	e2, _ := store.entityIndex.Get("e2")
+	e3, _ := store.entityIndex.Get("e3")
+	assert.Len(t, e1, 2) // source of r1 and r2
+	assert.Len(t, e2, 2) // target of r1, source of r3
+	assert.Len(t, e3, 2) // target of r2 and r3
 }
 
 // --- GetRelationships ---
@@ -1079,7 +1090,7 @@ func TestInMemoryStore_ConcurrentAdd(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, store.memories, 100)
+	assert.Equal(t, 100, store.memories.Len())
 }
 
 func TestInMemoryStore_ConcurrentGetAndAdd(t *testing.T) {
@@ -1120,7 +1131,7 @@ func TestInMemoryStore_ConcurrentGetAndAdd(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, store.memories, 100)
+	assert.Equal(t, 100, store.memories.Len())
 }
 
 func TestInMemoryStore_ConcurrentSearch(t *testing.T) {
@@ -1170,7 +1181,7 @@ func TestInMemoryStore_ConcurrentEntityOperations(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, store.entities, 50)
+	assert.Equal(t, 50, store.entities.Len())
 }
 
 func TestInMemoryStore_ConcurrentRelationshipOperations(t *testing.T) {
@@ -1193,7 +1204,7 @@ func TestInMemoryStore_ConcurrentRelationshipOperations(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, store.relationships, 50)
+	assert.Equal(t, 50, store.relationships.Len())
 }
 
 func TestInMemoryStore_ConcurrentDeleteAndGet(t *testing.T) {
@@ -1234,7 +1245,7 @@ func TestInMemoryStore_ConcurrentDeleteAndGet(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, store.memories, 50)
+	assert.Equal(t, 50, store.memories.Len())
 }
 
 func TestInMemoryStore_ConcurrentUpdateAndSearch(t *testing.T) {

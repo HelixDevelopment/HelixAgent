@@ -102,7 +102,6 @@ internal/mcp/validation/validator.go:63:MCPValidator
 internal/memory/distributed_manager.go:15:DistributedMemoryManager
 internal/memory/distributed_manager_test.go:18:mockBroker
 internal/memory/distributed_manager_test.go:81:mockEventLog
-internal/memory/store_memory.go:15:InMemoryStore
 internal/messaging/dlq/processor.go:85:Processor
 internal/messaging/hub.go:14:MessagingHub
 internal/messaging/hub_test.go:419:hubTestMockBroker

@@ -5,55 +5,62 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
 
-// InMemoryStore provides an in-memory implementation of MemoryStore
+// InMemoryStore provides an in-memory implementation of MemoryStore.
+//
+// Six safe.Stores replace the original sync.RWMutex + six bare maps.
+// Compound operations (index updates that append an ID to the inner
+// slice, Get's access-count mutation) run under Store.Update so both
+// the outer map modification and the inner mutation share the same
+// write lock. The original code's concurrent Get mutating
+// memory.AccessCount under mu.RLock was a latent race; Update fixes
+// it (Pattern Beta for the *Memory values).
 type InMemoryStore struct {
-	memories      map[string]*Memory
-	entities      map[string]*Entity
-	relationships map[string]*Relationship
+	memories      *safe.Store[string, *Memory]
+	entities      *safe.Store[string, *Entity]
+	relationships *safe.Store[string, *Relationship]
 
 	// Indexes for faster lookups
-	userIndex    map[string][]string // userID -> memoryIDs
-	sessionIndex map[string][]string // sessionID -> memoryIDs
-	entityIndex  map[string][]string // entityID -> relationshipIDs
-
-	mu sync.RWMutex
+	userIndex    *safe.Store[string, []string] // userID -> memoryIDs
+	sessionIndex *safe.Store[string, []string] // sessionID -> memoryIDs
+	entityIndex  *safe.Store[string, []string] // entityID -> relationshipIDs
 }
 
 // NewInMemoryStore creates a new in-memory store
 func NewInMemoryStore() *InMemoryStore {
 	return &InMemoryStore{
-		memories:      make(map[string]*Memory),
-		entities:      make(map[string]*Entity),
-		relationships: make(map[string]*Relationship),
-		userIndex:     make(map[string][]string),
-		sessionIndex:  make(map[string][]string),
-		entityIndex:   make(map[string][]string),
+		memories:      safe.NewStore[string, *Memory](),
+		entities:      safe.NewStore[string, *Entity](),
+		relationships: safe.NewStore[string, *Relationship](),
+		userIndex:     safe.NewStore[string, []string](),
+		sessionIndex:  safe.NewStore[string, []string](),
+		entityIndex:   safe.NewStore[string, []string](),
 	}
 }
 
 // Add adds a new memory
 func (s *InMemoryStore) Add(ctx context.Context, memory *Memory) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if memory.ID == "" {
 		memory.ID = uuid.New().String()
 	}
 
-	s.memories[memory.ID] = memory
+	s.memories.Put(memory.ID, memory)
 
 	// Update indexes
 	if memory.UserID != "" {
-		s.userIndex[memory.UserID] = append(s.userIndex[memory.UserID], memory.ID)
+		s.userIndex.Update(memory.UserID, func(ids []string, _ bool) ([]string, bool) {
+			return append(ids, memory.ID), true
+		})
 	}
 	if memory.SessionID != "" {
-		s.sessionIndex[memory.SessionID] = append(s.sessionIndex[memory.SessionID], memory.ID)
+		s.sessionIndex.Update(memory.SessionID, func(ids []string, _ bool) ([]string, bool) {
+			return append(ids, memory.ID), true
+		})
 	}
 
 	return nil
@@ -61,63 +68,69 @@ func (s *InMemoryStore) Add(ctx context.Context, memory *Memory) error {
 
 // Get retrieves a memory by ID
 func (s *InMemoryStore) Get(ctx context.Context, id string) (*Memory, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	var result *Memory
+	var missing bool
+	s.memories.Update(id, func(m *Memory, ok bool) (*Memory, bool) {
+		if !ok {
+			missing = true
+			return nil, false
+		}
+		m.AccessCount++
+		m.LastAccess = time.Now()
+		result = m
+		return m, true
+	})
 
-	memory, exists := s.memories[id]
-	if !exists {
+	if missing {
 		return nil, fmt.Errorf("memory not found: %s", id)
 	}
-
-	// Update access stats
-	memory.AccessCount++
-	memory.LastAccess = time.Now()
-
-	return memory, nil
+	return result, nil
 }
 
 // Update updates an existing memory
 func (s *InMemoryStore) Update(ctx context.Context, memory *Memory) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, exists := s.memories[memory.ID]; !exists {
+	if !s.memories.Has(memory.ID) {
 		return fmt.Errorf("memory not found: %s", memory.ID)
 	}
 
 	memory.UpdatedAt = time.Now()
-	s.memories[memory.ID] = memory
+	s.memories.Put(memory.ID, memory)
 
 	return nil
 }
 
 // Delete removes a memory
 func (s *InMemoryStore) Delete(ctx context.Context, id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	memory, exists := s.memories[id]
-	if !exists {
+	memory, existed := s.memories.Delete(id)
+	if !existed {
 		return fmt.Errorf("memory not found: %s", id)
 	}
 
 	// Remove from indexes
 	if memory.UserID != "" {
-		s.userIndex[memory.UserID] = removeFromSlice(s.userIndex[memory.UserID], id)
+		s.userIndex.Update(memory.UserID, func(ids []string, ok bool) ([]string, bool) {
+			if !ok {
+				return nil, false
+			}
+			next := removeFromSlice(ids, id)
+			return next, len(next) > 0
+		})
 	}
 	if memory.SessionID != "" {
-		s.sessionIndex[memory.SessionID] = removeFromSlice(s.sessionIndex[memory.SessionID], id)
+		s.sessionIndex.Update(memory.SessionID, func(ids []string, ok bool) ([]string, bool) {
+			if !ok {
+				return nil, false
+			}
+			next := removeFromSlice(ids, id)
+			return next, len(next) > 0
+		})
 	}
 
-	delete(s.memories, id)
 	return nil
 }
 
 // Search searches for relevant memories
 func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Memory, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	if opts == nil {
 		opts = DefaultSearchOptions()
 	}
@@ -125,31 +138,31 @@ func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOp
 	var results []*Memory
 	queryLower := strings.ToLower(query)
 
-	for _, memory := range s.memories {
+	s.memories.Range(func(_ string, memory *Memory) bool {
 		// Filter by user
 		if opts.UserID != "" && memory.UserID != opts.UserID {
-			continue
+			return true
 		}
 
 		// Filter by session
 		if opts.SessionID != "" && memory.SessionID != opts.SessionID {
-			continue
+			return true
 		}
 
 		// Filter by type
 		if opts.Type != "" && memory.Type != opts.Type {
-			continue
+			return true
 		}
 
 		// Filter by category
 		if opts.Category != "" && memory.Category != opts.Category {
-			continue
+			return true
 		}
 
 		// Filter by time range
 		if opts.TimeRange != nil {
 			if memory.CreatedAt.Before(opts.TimeRange.Start) || memory.CreatedAt.After(opts.TimeRange.End) {
-				continue
+				return true
 			}
 		}
 
@@ -160,7 +173,8 @@ func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOp
 			memoryCopy.Importance = score // Use importance as score for sorting
 			results = append(results, &memoryCopy)
 		}
-	}
+		return true
+	})
 
 	// Sort by score
 	sort.Slice(results, func(i, j int) bool {
@@ -177,17 +191,14 @@ func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOp
 
 // GetByUser retrieves memories for a user
 func (s *InMemoryStore) GetByUser(ctx context.Context, userID string, opts *ListOptions) ([]*Memory, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	memoryIDs := s.userIndex[userID]
+	memoryIDs, _ := s.userIndex.Get(userID)
 	if len(memoryIDs) == 0 {
 		return []*Memory{}, nil
 	}
 
 	var results []*Memory
 	for _, id := range memoryIDs {
-		if memory, exists := s.memories[id]; exists {
+		if memory, exists := s.memories.Get(id); exists {
 			results = append(results, memory)
 		}
 	}
@@ -217,17 +228,14 @@ func (s *InMemoryStore) GetByUser(ctx context.Context, userID string, opts *List
 
 // GetBySession retrieves memories for a session
 func (s *InMemoryStore) GetBySession(ctx context.Context, sessionID string) ([]*Memory, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	memoryIDs := s.sessionIndex[sessionID]
+	memoryIDs, _ := s.sessionIndex.Get(sessionID)
 	if len(memoryIDs) == 0 {
 		return []*Memory{}, nil
 	}
 
 	var results []*Memory
 	for _, id := range memoryIDs {
-		if memory, exists := s.memories[id]; exists {
+		if memory, exists := s.memories.Get(id); exists {
 			results = append(results, memory)
 		}
 	}
@@ -242,9 +250,6 @@ func (s *InMemoryStore) GetBySession(ctx context.Context, sessionID string) ([]*
 
 // AddEntity adds an entity
 func (s *InMemoryStore) AddEntity(ctx context.Context, entity *Entity) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if entity.ID == "" {
 		entity.ID = uuid.New().String()
 	}
@@ -253,36 +258,30 @@ func (s *InMemoryStore) AddEntity(ctx context.Context, entity *Entity) error {
 	entity.CreatedAt = now
 	entity.UpdatedAt = now
 
-	s.entities[entity.ID] = entity
+	s.entities.Put(entity.ID, entity)
 	return nil
 }
 
 // GetEntity retrieves an entity
 func (s *InMemoryStore) GetEntity(ctx context.Context, id string) (*Entity, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	entity, exists := s.entities[id]
+	entity, exists := s.entities.Get(id)
 	if !exists {
 		return nil, fmt.Errorf("entity not found: %s", id)
 	}
-
 	return entity, nil
 }
 
 // SearchEntities searches for entities
 func (s *InMemoryStore) SearchEntities(ctx context.Context, query string, limit int) ([]*Entity, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	queryLower := strings.ToLower(query)
 	var results []*Entity
 
-	for _, entity := range s.entities {
+	s.entities.Range(func(_ string, entity *Entity) bool {
 		if strings.Contains(strings.ToLower(entity.Name), queryLower) {
 			results = append(results, entity)
 		}
-	}
+		return true
+	})
 
 	if limit > 0 && len(results) > limit {
 		results = results[:limit]
@@ -293,9 +292,6 @@ func (s *InMemoryStore) SearchEntities(ctx context.Context, query string, limit 
 
 // AddRelationship adds a relationship
 func (s *InMemoryStore) AddRelationship(ctx context.Context, rel *Relationship) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if rel.ID == "" {
 		rel.ID = uuid.New().String()
 	}
@@ -304,25 +300,25 @@ func (s *InMemoryStore) AddRelationship(ctx context.Context, rel *Relationship) 
 	rel.CreatedAt = now
 	rel.UpdatedAt = now
 
-	s.relationships[rel.ID] = rel
+	s.relationships.Put(rel.ID, rel)
 
 	// Update indexes
-	s.entityIndex[rel.SourceID] = append(s.entityIndex[rel.SourceID], rel.ID)
-	s.entityIndex[rel.TargetID] = append(s.entityIndex[rel.TargetID], rel.ID)
+	appendID := func(ids []string, _ bool) ([]string, bool) {
+		return append(ids, rel.ID), true
+	}
+	s.entityIndex.Update(rel.SourceID, appendID)
+	s.entityIndex.Update(rel.TargetID, appendID)
 
 	return nil
 }
 
 // GetRelationships gets relationships for an entity
 func (s *InMemoryStore) GetRelationships(ctx context.Context, entityID string) ([]*Relationship, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	relIDs := s.entityIndex[entityID]
+	relIDs, _ := s.entityIndex.Get(entityID)
 	var results []*Relationship
 
 	for _, id := range relIDs {
-		if rel, exists := s.relationships[id]; exists {
+		if rel, exists := s.relationships.Get(id); exists {
 			results = append(results, rel)
 		}
 	}

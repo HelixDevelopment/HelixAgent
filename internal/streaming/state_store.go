@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 )
@@ -39,86 +39,68 @@ type StateStore interface {
 // In-Memory State Store
 // ============================================================================
 
-// InMemoryStateStore implements StateStore using in-memory maps
+// InMemoryStateStore implements StateStore using in-memory maps.
+//
+// Concurrent-safe by construction (CONST-029): two independent
+// safe.Stores. Save/Get clone the value, so the pointer stored is
+// owned by the Store and is never mutated through the Store.
 type InMemoryStateStore struct {
-	conversationStates map[string]*ConversationState
-	windowedAnalytics  map[string]*WindowedAnalytics
-	mu                 sync.RWMutex
+	conversationStates *safe.Store[string, *ConversationState]
+	windowedAnalytics  *safe.Store[string, *WindowedAnalytics]
 }
 
 // NewInMemoryStateStore creates a new in-memory state store
 func NewInMemoryStateStore() *InMemoryStateStore {
 	return &InMemoryStateStore{
-		conversationStates: make(map[string]*ConversationState),
-		windowedAnalytics:  make(map[string]*WindowedAnalytics),
+		conversationStates: safe.NewStore[string, *ConversationState](),
+		windowedAnalytics:  safe.NewStore[string, *WindowedAnalytics](),
 	}
 }
 
 // GetState retrieves conversation state
 func (s *InMemoryStateStore) GetState(ctx context.Context, conversationID string) (*ConversationState, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	state, exists := s.conversationStates[conversationID]
+	state, exists := s.conversationStates.Get(conversationID)
 	if !exists {
 		return nil, fmt.Errorf("conversation state not found: %s", conversationID)
 	}
-
 	// Return a deep copy to prevent concurrent modifications
 	return s.cloneState(state), nil
 }
 
 // SaveState saves conversation state
 func (s *InMemoryStateStore) SaveState(ctx context.Context, conversationID string, state *ConversationState) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Store a deep copy
-	s.conversationStates[conversationID] = s.cloneState(state)
+	s.conversationStates.Put(conversationID, s.cloneState(state))
 	return nil
 }
 
 // DeleteState deletes conversation state
 func (s *InMemoryStateStore) DeleteState(ctx context.Context, conversationID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.conversationStates, conversationID)
+	s.conversationStates.Delete(conversationID)
 	return nil
 }
 
 // ListStates lists all conversation states
 func (s *InMemoryStateStore) ListStates(ctx context.Context) ([]*ConversationState, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	states := make([]*ConversationState, 0, len(s.conversationStates))
-	for _, state := range s.conversationStates {
+	snapshot := s.conversationStates.Values()
+	states := make([]*ConversationState, 0, len(snapshot))
+	for _, state := range snapshot {
 		states = append(states, s.cloneState(state))
 	}
-
 	return states, nil
 }
 
 // GetWindowedAnalytics retrieves windowed analytics
 func (s *InMemoryStateStore) GetWindowedAnalytics(ctx context.Context, key string) (*WindowedAnalytics, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	analytics, exists := s.windowedAnalytics[key]
+	analytics, exists := s.windowedAnalytics.Get(key)
 	if !exists {
 		return nil, fmt.Errorf("windowed analytics not found: %s", key)
 	}
-
 	return s.cloneAnalytics(analytics), nil
 }
 
 // SaveWindowedAnalytics saves windowed analytics
 func (s *InMemoryStateStore) SaveWindowedAnalytics(ctx context.Context, key string, analytics *WindowedAnalytics) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.windowedAnalytics[key] = s.cloneAnalytics(analytics)
+	s.windowedAnalytics.Put(key, s.cloneAnalytics(analytics))
 	return nil
 }
 

@@ -177,7 +177,6 @@ internal/services/request_service.go:15:RequestService
 internal/services/request_service.go:50:ProviderMetrics
 internal/services/request_service.go:680:CircuitBreakerPattern
 internal/skills/protocol_adapter.go:28:ProtocolSkillAdapter
-internal/streaming/state_store.go:43:InMemoryStateStore
 internal/streaming/types.go:511:MpscStream
 internal/templates/manager.go:16:TemplateManager
 internal/testing/framework.go:64:TestBankFramework

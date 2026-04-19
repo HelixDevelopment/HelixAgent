@@ -66,6 +66,32 @@ log_warning() {
     echo "$msg" >> "$LOG_FILE"
 }
 
+log_section() {
+    local msg="=== $1 ==="
+    echo ""
+    echo -e "${CYAN}$msg${NC}"
+    if [[ -n "$LOG_FILE" ]] && [[ -f "$LOG_FILE" ]]; then
+        echo "" >> "$LOG_FILE"
+        echo "$msg" >> "$LOG_FILE"
+    fi
+}
+
+log_pass() {
+    local msg="[PASS] $(date '+%Y-%m-%d %H:%M:%S') $1"
+    echo -e "${GREEN}$msg${NC}"
+    if [[ -n "$LOG_FILE" ]] && [[ -f "$LOG_FILE" ]]; then
+        echo "$msg" >> "$LOG_FILE"
+    fi
+}
+
+log_fail() {
+    local msg="[FAIL] $(date '+%Y-%m-%d %H:%M:%S') $1"
+    echo -e "${RED}$msg${NC}"
+    if [[ -n "$LOG_FILE" ]] && [[ -f "$LOG_FILE" ]]; then
+        echo "$msg" >> "$LOG_FILE"
+    fi
+}
+
 log_error() {
     local msg="[ERROR] $(date '+%Y-%m-%d %H:%M:%S') $1"
     echo -e "${RED}$msg${NC}"

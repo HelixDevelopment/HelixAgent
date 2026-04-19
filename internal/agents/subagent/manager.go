@@ -6,21 +6,23 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
 
-// Manager implements SubAgentManager interface
+// Manager implements SubAgentManager interface.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - agents/tasks/agentInstances are safe.Stores with no joint-atomicity
+//     requirement across them; each Store mutation is independently
+//     atomic. Field mutations on *SubAgent and *SubAgentTask values
+//     route through Update callbacks (Pattern Beta).
 type Manager struct {
 	config Config
 
-	agents   map[string]*SubAgent
-	agentsMu sync.RWMutex
-
-	tasks   map[string]*SubAgentTask
-	tasksMu sync.RWMutex
-
-	agentInstances map[string]*agentInstance
-	instancesMu    sync.RWMutex
+	agents         *safe.Store[string, *SubAgent]
+	tasks          *safe.Store[string, *SubAgentTask]
+	agentInstances *safe.Store[string, *agentInstance]
 
 	shutdown chan struct{}
 	wg       sync.WaitGroup
@@ -42,18 +44,15 @@ func NewManager(config *Config) *Manager {
 
 	return &Manager{
 		config:         *config,
-		agents:         make(map[string]*SubAgent),
-		tasks:          make(map[string]*SubAgentTask),
-		agentInstances: make(map[string]*agentInstance),
+		agents:         safe.NewStore[string, *SubAgent](),
+		tasks:          safe.NewStore[string, *SubAgentTask](),
+		agentInstances: safe.NewStore[string, *agentInstance](),
 		shutdown:       make(chan struct{}),
 	}
 }
 
 // Create creates a new sub-agent
 func (m *Manager) Create(ctx context.Context, config SubAgentConfig) (*SubAgent, error) {
-	m.agentsMu.Lock()
-	defer m.agentsMu.Unlock()
-
 	agent := &SubAgent{
 		ID:        uuid.New().String(),
 		Name:      fmt.Sprintf("agent-%s", config.Profile),
@@ -64,16 +63,13 @@ func (m *Manager) Create(ctx context.Context, config SubAgentConfig) (*SubAgent,
 		UpdatedAt: time.Now(),
 	}
 
-	m.agents[agent.ID] = agent
+	m.agents.Put(agent.ID, agent)
 	return agent, nil
 }
 
 // Get retrieves a sub-agent by ID
 func (m *Manager) Get(ctx context.Context, id string) (*SubAgent, error) {
-	m.agentsMu.RLock()
-	defer m.agentsMu.RUnlock()
-
-	agent, exists := m.agents[id]
+	agent, exists := m.agents.Get(id)
 	if !exists {
 		return nil, fmt.Errorf("agent not found: %s", id)
 	}
@@ -82,41 +78,32 @@ func (m *Manager) Get(ctx context.Context, id string) (*SubAgent, error) {
 
 // List returns all sub-agents
 func (m *Manager) List(ctx context.Context) ([]*SubAgent, error) {
-	m.agentsMu.RLock()
-	defer m.agentsMu.RUnlock()
-
-	agents := make([]*SubAgent, 0, len(m.agents))
-	for _, agent := range m.agents {
-		agents = append(agents, agent)
-	}
-	return agents, nil
+	return m.agents.Values(), nil
 }
 
 // Update updates a sub-agent configuration
 func (m *Manager) Update(ctx context.Context, id string, config SubAgentConfig) error {
-	m.agentsMu.Lock()
-	defer m.agentsMu.Unlock()
-
-	agent, exists := m.agents[id]
-	if !exists {
+	var notFound bool
+	m.agents.Update(id, func(agent *SubAgent, ok bool) (*SubAgent, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		agent.Config = config
+		agent.UpdatedAt = time.Now()
+		return agent, true
+	})
+	if notFound {
 		return fmt.Errorf("agent not found: %s", id)
 	}
-
-	agent.Config = config
-	agent.UpdatedAt = time.Now()
 	return nil
 }
 
 // Delete removes a sub-agent
 func (m *Manager) Delete(ctx context.Context, id string) error {
-	m.agentsMu.Lock()
-	defer m.agentsMu.Unlock()
-
-	if _, exists := m.agents[id]; !exists {
+	if _, ok := m.agents.Delete(id); !ok {
 		return fmt.Errorf("agent not found: %s", id)
 	}
-
-	delete(m.agents, id)
 	return nil
 }
 
@@ -134,34 +121,42 @@ func (m *Manager) Execute(ctx context.Context, agentID string, task SubAgentTask
 	now := time.Now()
 	task.StartedAt = &now
 
-	m.tasksMu.Lock()
-	m.tasks[task.ID] = &task
-	m.tasksMu.Unlock()
+	m.tasks.Put(task.ID, &task)
 
 	// Update agent status
-	m.agentsMu.Lock()
-	agent.Status = StatusRunning
-	agent.UpdatedAt = time.Now()
-	m.agentsMu.Unlock()
+	m.agents.Update(agentID, func(a *SubAgent, ok bool) (*SubAgent, bool) {
+		if !ok {
+			return nil, false
+		}
+		a.Status = StatusRunning
+		a.UpdatedAt = time.Now()
+		return a, true
+	})
 
 	// Execute the task
 	result := m.executeTask(ctx, agent, &task)
 
 	// Update task with result
 	completedAt := time.Now()
-	m.tasksMu.Lock()
-	if existingTask, exists := m.tasks[task.ID]; exists {
-		existingTask.Result = result
-		existingTask.Status = TaskCompleted
-		existingTask.CompletedAt = &completedAt
-	}
-	m.tasksMu.Unlock()
+	m.tasks.Update(task.ID, func(existing *SubAgentTask, ok bool) (*SubAgentTask, bool) {
+		if !ok {
+			return nil, false
+		}
+		existing.Result = result
+		existing.Status = TaskCompleted
+		existing.CompletedAt = &completedAt
+		return existing, true
+	})
 
 	// Update agent status
-	m.agentsMu.Lock()
-	agent.Status = StatusIdle
-	agent.UpdatedAt = time.Now()
-	m.agentsMu.Unlock()
+	m.agents.Update(agentID, func(a *SubAgent, ok bool) (*SubAgent, bool) {
+		if !ok {
+			return nil, false
+		}
+		a.Status = StatusIdle
+		a.UpdatedAt = time.Now()
+		return a, true
+	})
 
 	return result, nil
 }
@@ -173,9 +168,7 @@ func (m *Manager) ExecuteAsync(ctx context.Context, agentID string, task SubAgen
 	task.Status = TaskPending
 	task.CreatedAt = time.Now()
 
-	m.tasksMu.Lock()
-	m.tasks[task.ID] = &task
-	m.tasksMu.Unlock()
+	m.tasks.Put(task.ID, &task)
 
 	m.wg.Add(1)
 	go func() {
@@ -195,10 +188,7 @@ func (m *Manager) ExecuteAsync(ctx context.Context, agentID string, task SubAgen
 
 // GetTask retrieves task status and result
 func (m *Manager) GetTask(ctx context.Context, taskID string) (*SubAgentTask, error) {
-	m.tasksMu.RLock()
-	defer m.tasksMu.RUnlock()
-
-	task, exists := m.tasks[taskID]
+	task, exists := m.tasks.Get(taskID)
 	if !exists {
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
@@ -207,28 +197,31 @@ func (m *Manager) GetTask(ctx context.Context, taskID string) (*SubAgentTask, er
 
 // CancelTask cancels a running task
 func (m *Manager) CancelTask(ctx context.Context, taskID string) error {
-	m.tasksMu.Lock()
-	defer m.tasksMu.Unlock()
-
-	task, exists := m.tasks[taskID]
-	if !exists {
+	var notFound, notRunning bool
+	m.tasks.Update(taskID, func(task *SubAgentTask, ok bool) (*SubAgentTask, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		if task.Status != TaskRunning {
+			notRunning = true
+			return task, true
+		}
+		task.Status = TaskCancelled
+		return task, true
+	})
+	if notFound {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
-
-	if task.Status != TaskRunning {
+	if notRunning {
 		return fmt.Errorf("task is not running: %s", taskID)
 	}
-
-	task.Status = TaskCancelled
 	return nil
 }
 
 // SendMessage sends a message to a running sub-agent
 func (m *Manager) SendMessage(ctx context.Context, agentID string, message string) error {
-	m.instancesMu.RLock()
-	instance, exists := m.agentInstances[agentID]
-	m.instancesMu.RUnlock()
-
+	instance, exists := m.agentInstances.Get(agentID)
 	if !exists {
 		return fmt.Errorf("agent instance not found: %s", agentID)
 	}
@@ -243,9 +236,6 @@ func (m *Manager) SendMessage(ctx context.Context, agentID string, message strin
 
 // CreateAgent creates an agent with the given profile (high-level API)
 func (m *Manager) CreateAgent(ctx context.Context, agentType string, profile ProfileConfig) (Agent, error) {
-	m.instancesMu.Lock()
-	defer m.instancesMu.Unlock()
-
 	// Create the underlying sub-agent
 	config := SubAgentConfig{
 		Model:       profile.Model,
@@ -274,9 +264,7 @@ func (m *Manager) CreateAgent(ctx context.Context, agentType string, profile Pro
 		}
 	}
 
-	m.agentsMu.Lock()
-	m.agents[subAgent.ID] = subAgent
-	m.agentsMu.Unlock()
+	m.agents.Put(subAgent.ID, subAgent)
 
 	// Create the agent instance
 	instance := &agentInstance{
@@ -285,7 +273,7 @@ func (m *Manager) CreateAgent(ctx context.Context, agentType string, profile Pro
 		messageChan: make(chan string, 10),
 	}
 
-	m.agentInstances[subAgent.ID] = instance
+	m.agentInstances.Put(subAgent.ID, instance)
 
 	// Return the high-level agent wrapper
 	return &agentWrapper{
@@ -300,14 +288,13 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 	close(m.shutdown)
 
 	// Cancel all running agent instances
-	m.instancesMu.Lock()
-	for _, instance := range m.agentInstances {
+	m.agentInstances.Range(func(_ string, instance *agentInstance) bool {
 		if instance.cancelFunc != nil {
 			instance.cancelFunc()
 		}
 		close(instance.messageChan)
-	}
-	m.instancesMu.Unlock()
+		return true
+	})
 
 	// Wait for all goroutines to finish with timeout
 	done := make(chan struct{})

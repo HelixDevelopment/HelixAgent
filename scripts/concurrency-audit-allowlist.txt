@@ -10,7 +10,6 @@ internal/adapters/security/security.go:172:InMemoryAuditLogger
 internal/agentic/workflow.go:120:WorkflowState
 internal/agents/dream/dreamer.go:129:Dreamer
 internal/agents/kairos/service.go:84:Service
-internal/agents/subagent/manager.go:13:Manager
 internal/agents/subagent/orchestrator.go:13:Orchestrator
 internal/agents/swarm/swarm.go:267:Scratchpad
 internal/agents/swarm/swarm.go:374:Coordinator

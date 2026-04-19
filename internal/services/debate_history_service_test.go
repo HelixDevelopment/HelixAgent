@@ -44,7 +44,7 @@ func TestDebateHistoryService_New(t *testing.T) {
 	assert.NotNil(t, svc)
 	assert.NotNil(t, svc.history)
 	assert.Equal(t, 10000, svc.maxEntries)
-	assert.Equal(t, 0, len(svc.history))
+	assert.Equal(t, 0, svc.history.Len())
 }
 
 func TestNewDebateHistoryServiceWithMaxEntries(t *testing.T) {

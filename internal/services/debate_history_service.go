@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // DebateHistorySummary provides a summary of historical debate data
@@ -23,11 +24,15 @@ type DebateHistorySummary struct {
 	HistoryTimeRange  TimeRange     `json:"time_range"`
 }
 
-// DebateHistoryService provides historical debate data with persistent storage
+// DebateHistoryService provides historical debate data with persistent storage.
+//
+// Concurrent-safe by construction (CONST-029 Tier 1): history is a
+// safe.Store. Eviction under concurrent Save may briefly overshoot
+// maxEntries (each saver evicts one, net same count) — acceptable LRU
+// approximation.
 type DebateHistoryService struct {
 	logger     *logrus.Logger
-	history    map[string]*DebateResult
-	historyMu  sync.RWMutex
+	history    *safe.Store[string, *DebateResult]
 	maxEntries int
 }
 
@@ -35,7 +40,7 @@ type DebateHistoryService struct {
 func NewDebateHistoryService(logger *logrus.Logger) *DebateHistoryService {
 	return &DebateHistoryService{
 		logger:     logger,
-		history:    make(map[string]*DebateResult),
+		history:    safe.NewStore[string, *DebateResult](),
 		maxEntries: 10000,
 	}
 }
@@ -47,7 +52,7 @@ func NewDebateHistoryServiceWithMaxEntries(logger *logrus.Logger, maxEntries int
 	}
 	return &DebateHistoryService{
 		logger:     logger,
-		history:    make(map[string]*DebateResult),
+		history:    safe.NewStore[string, *DebateResult](),
 		maxEntries: maxEntries,
 	}
 }
@@ -62,17 +67,13 @@ func (dhs *DebateHistoryService) SaveDebateResult(ctx context.Context, result *D
 		return fmt.Errorf("debate result must have a debate ID")
 	}
 
-	dhs.historyMu.Lock()
-	defer dhs.historyMu.Unlock()
-
-	// Check if we need to evict old entries
-	if len(dhs.history) >= dhs.maxEntries {
+	if dhs.history.Len() >= dhs.maxEntries {
 		dhs.evictOldestEntry()
 	}
 
 	// Make a copy to prevent external modification
 	resultCopy := *result
-	dhs.history[result.DebateID] = &resultCopy
+	dhs.history.Put(result.DebateID, &resultCopy)
 
 	dhs.logger.WithFields(logrus.Fields{
 		"debate_id":     result.DebateID,
@@ -89,7 +90,7 @@ func (dhs *DebateHistoryService) evictOldestEntry() {
 	var oldestID string
 	var oldestTime time.Time
 
-	for id, result := range dhs.history {
+	for id, result := range dhs.history.Snapshot() {
 		if oldestID == "" || result.StartTime.Before(oldestTime) {
 			oldestID = id
 			oldestTime = result.StartTime
@@ -97,23 +98,20 @@ func (dhs *DebateHistoryService) evictOldestEntry() {
 	}
 
 	if oldestID != "" {
-		delete(dhs.history, oldestID)
+		dhs.history.Delete(oldestID)
 		dhs.logger.Debugf("Evicted oldest debate from history: %s", oldestID)
 	}
 }
 
 // QueryHistory queries historical debate data with filters
 func (dhs *DebateHistoryService) QueryHistory(ctx context.Context, filters *HistoryFilters) ([]*DebateResult, error) {
-	dhs.historyMu.RLock()
-	defer dhs.historyMu.RUnlock()
-
 	if filters == nil {
 		filters = &HistoryFilters{}
 	}
 
 	results := make([]*DebateResult, 0)
 
-	for _, result := range dhs.history {
+	for _, result := range dhs.history.Snapshot() {
 		if dhs.matchesFilters(result, filters) {
 			// Make a copy
 			resultCopy := *result
@@ -218,10 +216,7 @@ func (dhs *DebateHistoryService) sortResults(results []*DebateResult, sortBy, so
 
 // GetDebateByID retrieves a specific debate by ID
 func (dhs *DebateHistoryService) GetDebateByID(ctx context.Context, debateID string) (*DebateResult, error) {
-	dhs.historyMu.RLock()
-	defer dhs.historyMu.RUnlock()
-
-	result, exists := dhs.history[debateID]
+	result, exists := dhs.history.Get(debateID)
 	if !exists {
 		return nil, fmt.Errorf("debate not found: %s", debateID)
 	}
@@ -233,14 +228,9 @@ func (dhs *DebateHistoryService) GetDebateByID(ctx context.Context, debateID str
 
 // DeleteDebate removes a debate from history
 func (dhs *DebateHistoryService) DeleteDebate(ctx context.Context, debateID string) error {
-	dhs.historyMu.Lock()
-	defer dhs.historyMu.Unlock()
-
-	if _, exists := dhs.history[debateID]; !exists {
+	if _, ok := dhs.history.Delete(debateID); !ok {
 		return fmt.Errorf("debate not found: %s", debateID)
 	}
-
-	delete(dhs.history, debateID)
 	dhs.logger.Infof("Deleted debate from history: %s", debateID)
 	return nil
 }
@@ -302,16 +292,14 @@ func (dhs *DebateHistoryService) GetSummary(ctx context.Context, filters *Histor
 
 // CleanupOldEntries removes entries older than the given duration
 func (dhs *DebateHistoryService) CleanupOldEntries(ctx context.Context, maxAge time.Duration) (int, error) {
-	dhs.historyMu.Lock()
-	defer dhs.historyMu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
 	removed := 0
 
-	for id, result := range dhs.history {
+	for id, result := range dhs.history.Snapshot() {
 		if result.EndTime.Before(cutoff) {
-			delete(dhs.history, id)
-			removed++
+			if _, ok := dhs.history.Delete(id); ok {
+				removed++
+			}
 		}
 	}
 
@@ -324,7 +312,5 @@ func (dhs *DebateHistoryService) CleanupOldEntries(ctx context.Context, maxAge t
 
 // GetCount returns the total number of entries in history
 func (dhs *DebateHistoryService) GetCount() int {
-	dhs.historyMu.RLock()
-	defer dhs.historyMu.RUnlock()
-	return len(dhs.history)
+	return dhs.history.Len()
 }

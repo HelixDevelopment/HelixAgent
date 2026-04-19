@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dev.helix.agent/internal/models"
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ============================================================================
@@ -207,53 +210,45 @@ type MultiPassResult struct {
 	Metadata           map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// MultiPassValidator provides multi-pass validation for debate responses
+// MultiPassValidator provides multi-pass validation for debate responses.
+// Concurrent-safe by construction (CONST-029): phaseCallbacks is a safe.Store;
+// config is an atomic.Pointer.
 type MultiPassValidator struct {
 	debateService  *DebateService
 	logger         *logrus.Logger
-	config         *ValidationConfig
-	phaseCallbacks map[ValidationPhase]func(*PhaseResult)
-	mu             sync.RWMutex
+	config         atomic.Pointer[ValidationConfig]
+	phaseCallbacks *safe.Store[ValidationPhase, func(*PhaseResult)]
 }
 
 // NewMultiPassValidator creates a new multi-pass validator
 func NewMultiPassValidator(debateService *DebateService, logger *logrus.Logger) *MultiPassValidator {
-	return &MultiPassValidator{
+	mpv := &MultiPassValidator{
 		debateService:  debateService,
 		logger:         logger,
-		config:         DefaultValidationConfig(),
-		phaseCallbacks: make(map[ValidationPhase]func(*PhaseResult)),
+		phaseCallbacks: safe.NewStore[ValidationPhase, func(*PhaseResult)](),
 	}
+	mpv.config.Store(DefaultValidationConfig())
+	return mpv
 }
 
 // SetConfig sets the validation configuration
 func (mpv *MultiPassValidator) SetConfig(config *ValidationConfig) {
-	mpv.mu.Lock()
-	defer mpv.mu.Unlock()
-	mpv.config = config
+	mpv.config.Store(config)
 }
 
 // GetConfig returns the current validation configuration
 func (mpv *MultiPassValidator) GetConfig() *ValidationConfig {
-	mpv.mu.RLock()
-	defer mpv.mu.RUnlock()
-	return mpv.config
+	return mpv.config.Load()
 }
 
 // SetPhaseCallback sets a callback for a specific phase
 func (mpv *MultiPassValidator) SetPhaseCallback(phase ValidationPhase, callback func(*PhaseResult)) {
-	mpv.mu.Lock()
-	defer mpv.mu.Unlock()
-	mpv.phaseCallbacks[phase] = callback
+	mpv.phaseCallbacks.Put(phase, callback)
 }
 
 // notifyPhaseCallback notifies the callback for a phase
 func (mpv *MultiPassValidator) notifyPhaseCallback(phase ValidationPhase, result *PhaseResult) {
-	mpv.mu.RLock()
-	callback := mpv.phaseCallbacks[phase]
-	mpv.mu.RUnlock()
-
-	if callback != nil {
+	if callback, ok := mpv.phaseCallbacks.Get(phase); ok && callback != nil {
 		callback(result)
 	}
 }
@@ -269,13 +264,13 @@ func (mpv *MultiPassValidator) ValidateAndImprove(
 		"debate_id":     debateResult.DebateID,
 		"topic":         debateResult.Topic,
 		"responses":     len(debateResult.AllResponses),
-		"enable_polish": mpv.config.EnablePolish,
+		"enable_polish": mpv.config.Load().EnablePolish,
 	}).Info("Starting multi-pass validation")
 
 	result := &MultiPassResult{
 		DebateID: debateResult.DebateID,
 		Topic:    debateResult.Topic,
-		Config:   mpv.config,
+		Config:   mpv.config.Load(),
 		Phases:   make([]*PhaseResult, 0, 4),
 		Metadata: make(map[string]interface{}),
 	}
@@ -289,7 +284,7 @@ func (mpv *MultiPassValidator) ValidateAndImprove(
 	initialQuality := mpv.calculatePhaseQuality(phase1.Responses)
 
 	// Phase 2: Validation
-	if mpv.config.EnableValidation {
+	if mpv.config.Load().EnableValidation {
 		phase2, err := mpv.runValidationPhase(ctx, phase1.Responses, debateResult.Topic)
 		if err != nil {
 			mpv.logger.WithError(err).Warn("Validation phase failed, continuing with initial responses")
@@ -301,10 +296,10 @@ func (mpv *MultiPassValidator) ValidateAndImprove(
 
 	// Phase 3: Polish & Improve
 	var polishedResponses []ParticipantResponse
-	if mpv.config.EnablePolish {
+	if mpv.config.Load().EnablePolish {
 		// Only polish if initial confidence is below threshold
 		avgConfidence := mpv.calculateAverageConfidence(phase1.Responses)
-		if avgConfidence < mpv.config.MinConfidenceToSkip {
+		if avgConfidence < mpv.config.Load().MinConfidenceToSkip {
 			lastPhase := result.Phases[len(result.Phases)-1]
 			phase3, err := mpv.runPolishPhase(ctx, lastPhase.Responses, debateResult.Topic)
 			if err != nil {
@@ -395,11 +390,11 @@ func (mpv *MultiPassValidator) runValidationPhase(
 	var mu sync.Mutex
 
 	// Create validation context with timeout
-	validationCtx, cancel := context.WithTimeout(ctx, mpv.config.ValidationTimeout)
+	validationCtx, cancel := context.WithTimeout(ctx, mpv.config.Load().ValidationTimeout)
 	defer cancel()
 
 	for _, resp := range responses {
-		if mpv.config.ParallelValidation {
+		if mpv.config.Load().ParallelValidation {
 			wg.Add(1)
 			go func(r ParticipantResponse) {
 				defer wg.Done()
@@ -414,7 +409,7 @@ func (mpv *MultiPassValidator) runValidationPhase(
 		}
 	}
 
-	if mpv.config.ParallelValidation {
+	if mpv.config.Load().ParallelValidation {
 		wg.Wait()
 	}
 
@@ -562,11 +557,11 @@ func (mpv *MultiPassValidator) runPolishPhase(
 	var mu sync.Mutex
 
 	// Create polish context with timeout
-	polishCtx, cancel := context.WithTimeout(ctx, mpv.config.PolishTimeout)
+	polishCtx, cancel := context.WithTimeout(ctx, mpv.config.Load().PolishTimeout)
 	defer cancel()
 
 	for _, resp := range responses {
-		if mpv.config.ParallelValidation {
+		if mpv.config.Load().ParallelValidation {
 			wg.Add(1)
 			go func(r ParticipantResponse) {
 				defer wg.Done()
@@ -583,7 +578,7 @@ func (mpv *MultiPassValidator) runPolishPhase(
 		}
 	}
 
-	if mpv.config.ParallelValidation {
+	if mpv.config.Load().ParallelValidation {
 		wg.Wait()
 	}
 

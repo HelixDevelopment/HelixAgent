@@ -4,7 +4,11 @@
 // rather than at router setup time.
 package router
 
-import "sync"
+import (
+	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
+)
 
 // LazyService provides thread-safe, on-demand initialization of a service.
 // The factory function is called at most once, on the first call to Get().
@@ -51,30 +55,25 @@ func (ls *LazyService) IsInitialized() bool {
 // It provides a central place to register and retrieve lazily initialized
 // services used by router handlers.
 type LazyServiceRegistry struct {
-	mu       sync.RWMutex
-	services map[string]*LazyService
+	services *safe.Store[string, *LazyService]
 }
 
 // NewLazyServiceRegistry creates a new empty registry.
 func NewLazyServiceRegistry() *LazyServiceRegistry {
 	return &LazyServiceRegistry{
-		services: make(map[string]*LazyService),
+		services: safe.NewStore[string, *LazyService](),
 	}
 }
 
 // Register adds a named lazy service to the registry.
 func (r *LazyServiceRegistry) Register(name string, svc *LazyService) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.services[name] = svc
+	r.services.Put(name, svc)
 }
 
 // Get retrieves a lazy service by name and triggers initialization.
 // Returns nil, false if the name is not registered.
 func (r *LazyServiceRegistry) Get(name string) (interface{}, bool) {
-	r.mu.RLock()
-	ls, ok := r.services[name]
-	r.mu.RUnlock()
+	ls, ok := r.services.Get(name)
 	if !ok {
 		return nil, false
 	}
@@ -87,26 +86,15 @@ func (r *LazyServiceRegistry) Get(name string) (interface{}, bool) {
 
 // GetLazy retrieves the LazyService wrapper without triggering initialization.
 func (r *LazyServiceRegistry) GetLazy(name string) (*LazyService, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	ls, ok := r.services[name]
-	return ls, ok
+	return r.services.Get(name)
 }
 
 // Names returns all registered service names.
 func (r *LazyServiceRegistry) Names() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	names := make([]string, 0, len(r.services))
-	for name := range r.services {
-		names = append(names, name)
-	}
-	return names
+	return r.services.Keys()
 }
 
 // Count returns the number of registered services.
 func (r *LazyServiceRegistry) Count() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return len(r.services)
+	return r.services.Len()
 }

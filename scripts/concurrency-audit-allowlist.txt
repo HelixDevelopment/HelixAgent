@@ -10,9 +10,6 @@ internal/adapters/security/security.go:172:InMemoryAuditLogger
 internal/agentic/workflow.go:120:WorkflowState
 internal/agents/dream/dreamer.go:129:Dreamer
 internal/agents/kairos/service.go:84:Service
-internal/agents/swarm/swarm.go:267:Scratchpad
-internal/agents/swarm/swarm.go:374:Coordinator
-internal/agents/swarm/swarm.go:61:Swarm
 internal/agents/yolo/classifier.go:79:HeuristicClassifier
 internal/background/adaptive_worker_pool_test.go:211:mockNotificationService
 internal/background/adaptive_worker_pool_test.go:50:mockTaskQueue

@@ -5,9 +5,10 @@ package swarm
 import (
 	"encoding/xml"
 	"fmt"
-	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -57,15 +58,20 @@ const (
 	AgentError   AgentStatus = "error"
 )
 
-// Swarm manages a team of agents with shared resources
+// Swarm manages a team of agents with shared resources.
+//
+// Concurrent-safe by construction (CONST-029): agents is a safe.Store;
+// colorIdx and agentSeq are atomic.Int64 counters so AddAgent does not
+// need a mutex for ID/colour generation. The colors slice is set once
+// at construction and never mutated.
 type Swarm struct {
 	id         string
-	agents     map[string]*SwarmAgent
+	agents     *safe.Store[string, *SwarmAgent]
 	scratchpad *Scratchpad
 	logger     *logrus.Logger
-	mu         sync.RWMutex
 	colors     []AgentColor
-	colorIdx   int
+	colorIdx   atomic.Int64
+	agentSeq   atomic.Int64
 }
 
 // NewSwarm creates a new agent swarm
@@ -76,7 +82,7 @@ func NewSwarm(id string, logger *logrus.Logger) *Swarm {
 
 	return &Swarm{
 		id:         id,
-		agents:     make(map[string]*SwarmAgent),
+		agents:     safe.NewStore[string, *SwarmAgent](),
 		scratchpad: NewScratchpad(),
 		logger:     logger,
 		colors: []AgentColor{
@@ -93,15 +99,12 @@ func (s *Swarm) ID() string {
 
 // AddAgent adds an agent to the swarm
 func (s *Swarm) AddAgent(name string, role AgentRole) (*SwarmAgent, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Assign color
-	color := s.colors[s.colorIdx%len(s.colors)]
-	s.colorIdx++
+	colorIdx := s.colorIdx.Add(1) - 1
+	color := s.colors[int(colorIdx)%len(s.colors)]
+	seq := s.agentSeq.Add(1)
 
 	agent := &SwarmAgent{
-		ID:       fmt.Sprintf("%s-%d", s.id, len(s.agents)+1),
+		ID:       fmt.Sprintf("%s-%d", s.id, seq),
 		Name:     name,
 		Color:    color,
 		Role:     role,
@@ -109,7 +112,7 @@ func (s *Swarm) AddAgent(name string, role AgentRole) (*SwarmAgent, error) {
 		JoinedAt: time.Now(),
 	}
 
-	s.agents[agent.ID] = agent
+	s.agents.Put(agent.ID, agent)
 
 	s.logger.WithFields(logrus.Fields{
 		"agent_id": agent.ID,
@@ -123,64 +126,49 @@ func (s *Swarm) AddAgent(name string, role AgentRole) (*SwarmAgent, error) {
 
 // RemoveAgent removes an agent from the swarm
 func (s *Swarm) RemoveAgent(agentID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.agents[agentID]; !ok {
+	if _, ok := s.agents.Delete(agentID); !ok {
 		return fmt.Errorf("agent not found: %s", agentID)
 	}
-
-	delete(s.agents, agentID)
-
 	s.logger.WithField("agent_id", agentID).Info("Agent left swarm")
 	return nil
 }
 
 // GetAgent retrieves an agent by ID
 func (s *Swarm) GetAgent(agentID string) (*SwarmAgent, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	agent, ok := s.agents[agentID]
-	return agent, ok
+	return s.agents.Get(agentID)
 }
 
 // GetAgentsByRole returns agents with a specific role
 func (s *Swarm) GetAgentsByRole(role AgentRole) []*SwarmAgent {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var agents []*SwarmAgent
-	for _, agent := range s.agents {
+	s.agents.Range(func(_ string, agent *SwarmAgent) bool {
 		if agent.Role == role {
 			agents = append(agents, agent)
 		}
-	}
+		return true
+	})
 	return agents
 }
 
 // ListAgents returns all agents in the swarm
 func (s *Swarm) ListAgents() []*SwarmAgent {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	agents := make([]*SwarmAgent, 0, len(s.agents))
-	for _, agent := range s.agents {
-		agents = append(agents, agent)
-	}
-	return agents
+	return s.agents.Values()
 }
 
 // UpdateAgentStatus updates an agent's status
 func (s *Swarm) UpdateAgentStatus(agentID string, status AgentStatus) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	agent, ok := s.agents[agentID]
-	if !ok {
+	var notFound bool
+	s.agents.Update(agentID, func(agent *SwarmAgent, ok bool) (*SwarmAgent, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		agent.Status = status
+		return agent, true
+	})
+	if notFound {
 		return fmt.Errorf("agent not found: %s", agentID)
 	}
-
-	agent.Status = status
 	return nil
 }
 
@@ -191,9 +179,6 @@ func (s *Swarm) GetScratchpad() *Scratchpad {
 
 // Broadcast sends a message to all agents
 func (s *Swarm) Broadcast(from string, content string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	msg := XMLMessage{
 		Type:      "broadcast",
 		From:      from,
@@ -220,10 +205,7 @@ func (s *Swarm) Broadcast(from string, content string) error {
 
 // SendTo sends a message to a specific agent
 func (s *Swarm) SendTo(from, to, content string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if _, ok := s.agents[to]; !ok {
+	if _, ok := s.agents.Get(to); !ok {
 		return fmt.Errorf("recipient not found: %s", to)
 	}
 
@@ -263,10 +245,11 @@ func ParseXML(data []byte) (*XMLMessage, error) {
 	return &msg, nil
 }
 
-// Scratchpad is shared memory for all agents
+// Scratchpad is shared memory for all agents.
+//
+// Concurrent-safe by construction (CONST-029): entries is a safe.Slice.
 type Scratchpad struct {
-	entries []ScratchpadEntry
-	mu      sync.RWMutex
+	entries *safe.Slice[ScratchpadEntry]
 }
 
 // ScratchpadEntry represents a single entry in the scratchpad
@@ -281,101 +264,81 @@ type ScratchpadEntry struct {
 // NewScratchpad creates a new scratchpad
 func NewScratchpad() *Scratchpad {
 	return &Scratchpad{
-		entries: make([]ScratchpadEntry, 0),
+		entries: safe.NewSlice[ScratchpadEntry](),
 	}
 }
 
 // AddEntry adds an entry to the scratchpad
 func (s *Scratchpad) AddEntry(entry ScratchpadEntry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if entry.Timestamp.IsZero() {
 		entry.Timestamp = time.Now()
 	}
-
-	s.entries = append(s.entries, entry)
+	s.entries.Append(entry)
 }
 
 // GetEntries returns all entries
 func (s *Scratchpad) GetEntries() []ScratchpadEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	// Return a copy
-	entries := make([]ScratchpadEntry, len(s.entries))
-	copy(entries, s.entries)
-	return entries
+	return s.entries.Snapshot()
 }
 
 // GetEntriesByType returns entries of a specific type
 func (s *Scratchpad) GetEntriesByType(entryType string) []ScratchpadEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var entries []ScratchpadEntry
-	for _, entry := range s.entries {
+	s.entries.Range(func(_ int, entry ScratchpadEntry) bool {
 		if entry.Type == entryType {
 			entries = append(entries, entry)
 		}
-	}
+		return true
+	})
 	return entries
 }
 
 // GetEntriesByAgent returns entries from a specific agent
 func (s *Scratchpad) GetEntriesByAgent(agentID string) []ScratchpadEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var entries []ScratchpadEntry
-	for _, entry := range s.entries {
+	s.entries.Range(func(_ int, entry ScratchpadEntry) bool {
 		if entry.AgentID == agentID {
 			entries = append(entries, entry)
 		}
-	}
+		return true
+	})
 	return entries
 }
 
 // Clear clears all entries
 func (s *Scratchpad) Clear() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.entries = s.entries[:0]
+	s.entries.Clear()
 }
 
 // LastN returns the last n entries
 func (s *Scratchpad) LastN(n int) []ScratchpadEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if n >= len(s.entries) {
-		entries := make([]ScratchpadEntry, len(s.entries))
-		copy(entries, s.entries)
-		return entries
+	snapshot := s.entries.Snapshot()
+	if n >= len(snapshot) {
+		return snapshot
 	}
-
-	return s.entries[len(s.entries)-n:]
+	return snapshot[len(snapshot)-n:]
 }
 
 // ToXML exports scratchpad to XML
 func (s *Scratchpad) ToXML() ([]byte, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	type scratchpadXML struct {
 		XMLName xml.Name          `xml:"scratchpad"`
 		Entries []ScratchpadEntry `xml:"entry"`
 	}
-
-	return xml.MarshalIndent(scratchpadXML{Entries: s.entries}, "", "  ")
+	return xml.MarshalIndent(scratchpadXML{Entries: s.entries.Snapshot()}, "", "  ")
 }
 
-// Coordinator manages coordination between agents
+// Coordinator manages coordination between agents.
+//
+// Concurrent-safe by construction (CONST-029): tasks is a safe.Store;
+// taskSeq is an atomic.Int64 counter so CreateTask cannot race on
+// `len(tasks)`-derived IDs. Field mutations on *CoordinatedTask
+// (Assignments, Results) route through Update (Pattern Beta).
 type Coordinator struct {
-	swarm  *Swarm
-	logger *logrus.Logger
-	tasks  map[string]*CoordinatedTask
-	mu     sync.RWMutex
+	swarm   *Swarm
+	logger  *logrus.Logger
+	tasks   *safe.Store[string, *CoordinatedTask]
+	taskSeq atomic.Int64
 }
 
 // CoordinatedTask represents a task being coordinated
@@ -397,30 +360,26 @@ func NewCoordinator(swarm *Swarm, logger *logrus.Logger) *Coordinator {
 	return &Coordinator{
 		swarm:  swarm,
 		logger: logger,
-		tasks:  make(map[string]*CoordinatedTask),
+		tasks:  safe.NewStore[string, *CoordinatedTask](),
 	}
 }
 
 // CreateTask creates a coordinated task.
 //
-// ID generation and map insertion both happen under the same lock so
-// concurrent callers (a) see a consistent `len(c.tasks)` snapshot for
-// the `task-N` format and (b) cannot collide on map writes. Previously,
-// `len(c.tasks)` was read unlocked and two goroutines could produce
-// the same ID; `-race` caught it as a map read/write collision (race-
-// debt BUGFIX #22).
+// taskSeq atomic counter takes ID generation off `len(c.tasks)+1`, so
+// concurrent callers cannot collide on IDs (the original mutex-based
+// fix from race-debt BUGFIX #22 — preserved by structural means here).
 func (c *Coordinator) CreateTask(description string) *CoordinatedTask {
-	c.mu.Lock()
+	seq := c.taskSeq.Add(1)
 	task := &CoordinatedTask{
-		ID:          fmt.Sprintf("task-%d", len(c.tasks)+1),
+		ID:          fmt.Sprintf("task-%d", seq),
 		Description: description,
 		Assignments: make(map[string]string),
 		Status:      "pending",
 		Results:     make(map[string]interface{}),
 		CreatedAt:   time.Now(),
 	}
-	c.tasks[task.ID] = task
-	c.mu.Unlock()
+	c.tasks.Put(task.ID, task)
 
 	// Add to scratchpad (outside the lock — scratchpad has its own
 	// synchronisation and we must not hold c.mu during a call that
@@ -438,20 +397,19 @@ func (c *Coordinator) CreateTask(description string) *CoordinatedTask {
 
 // Assign assigns a subtask to an agent
 func (c *Coordinator) Assign(taskID, agentID, subtask string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	task, ok := c.tasks[taskID]
-	if !ok {
+	if !c.tasks.Has(taskID) {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
-
-	// Check agent exists
 	if _, ok := c.swarm.GetAgent(agentID); !ok {
 		return fmt.Errorf("agent not found: %s", agentID)
 	}
-
-	task.Assignments[agentID] = subtask
+	c.tasks.Update(taskID, func(task *CoordinatedTask, ok bool) (*CoordinatedTask, bool) {
+		if !ok {
+			return nil, false
+		}
+		task.Assignments[agentID] = subtask
+		return task, true
+	})
 
 	c.logger.WithFields(logrus.Fields{
 		"task":    taskID,
@@ -464,15 +422,18 @@ func (c *Coordinator) Assign(taskID, agentID, subtask string) error {
 
 // ReportResult reports task result from an agent
 func (c *Coordinator) ReportResult(taskID, agentID string, result interface{}) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	task, ok := c.tasks[taskID]
-	if !ok {
+	var notFound bool
+	c.tasks.Update(taskID, func(task *CoordinatedTask, ok bool) (*CoordinatedTask, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		task.Results[agentID] = result
+		return task, true
+	})
+	if notFound {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
-
-	task.Results[agentID] = result
 
 	// Add to scratchpad
 	c.swarm.GetScratchpad().AddEntry(ScratchpadEntry{
@@ -489,10 +450,7 @@ func (c *Coordinator) ReportResult(taskID, agentID string, result interface{}) e
 
 // GetTask retrieves a task
 func (c *Coordinator) GetTask(taskID string) (*CoordinatedTask, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	task, ok := c.tasks[taskID]
-	return task, ok
+	return c.tasks.Get(taskID)
 }
 
 // Colorize adds color formatting for display

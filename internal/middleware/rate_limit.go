@@ -7,19 +7,25 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/cache"
 	"github.com/gin-gonic/gin"
 )
 
 // RateLimiter implements rate limiting with in-memory storage
-// Falls back to in-memory when Redis is unavailable
+// Falls back to in-memory when Redis is unavailable.
+//
+// limits: Pattern Alpha (*RateLimitConfig values are immutable).
+// buckets: Pattern Beta at the outer level — the bucket pointer is
+// stable after PutIfAbsent; mutable state (tokens, lastRefill) lives
+// behind tokenBucket.mu.
 type RateLimiter struct {
 	cache      *cache.CacheService
-	mu         sync.RWMutex
-	limits     map[string]*RateLimitConfig
+	limits     *safe.Store[string, *RateLimitConfig]
 	defaultCfg *RateLimitConfig
 	// In-memory storage for rate limit tracking
-	buckets map[string]*tokenBucket
+	buckets *safe.Store[string, *tokenBucket]
 	// Lifecycle management for cleanup goroutine
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -55,8 +61,8 @@ func NewRateLimiter(cacheService *cache.CacheService) *RateLimiter {
 	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		cache:   cacheService,
-		limits:  make(map[string]*RateLimitConfig),
-		buckets: make(map[string]*tokenBucket),
+		limits:  safe.NewStore[string, *RateLimitConfig](),
+		buckets: safe.NewStore[string, *tokenBucket](),
 		ctx:     ctx,
 		cancel:  cancel,
 		defaultCfg: &RateLimitConfig{
@@ -78,8 +84,8 @@ func NewRateLimiterWithConfig(cacheService *cache.CacheService, defaultConfig *R
 	ctx, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		cache:      cacheService,
-		limits:     make(map[string]*RateLimitConfig),
-		buckets:    make(map[string]*tokenBucket),
+		limits:     safe.NewStore[string, *RateLimitConfig](),
+		buckets:    safe.NewStore[string, *tokenBucket](),
 		defaultCfg: defaultConfig,
 		ctx:        ctx,
 		cancel:     cancel,
@@ -108,17 +114,21 @@ func (rl *RateLimiter) cleanupExpiredBuckets() {
 		case <-rl.ctx.Done():
 			return
 		case <-ticker.C:
-			rl.mu.Lock()
 			now := time.Now()
-			for key, bucket := range rl.buckets {
-				bucket.mu.Lock()
-				// Remove buckets that haven't been used in 10 minutes
-				if now.Sub(bucket.lastRefill) > 10*time.Minute {
-					delete(rl.buckets, key)
-				}
-				bucket.mu.Unlock()
+			for _, key := range rl.buckets.Keys() {
+				rl.buckets.Update(key, func(b *tokenBucket, ok bool) (*tokenBucket, bool) {
+					if !ok {
+						return nil, false
+					}
+					b.mu.Lock()
+					expired := now.Sub(b.lastRefill) > 10*time.Minute
+					b.mu.Unlock()
+					if expired {
+						return nil, false // delete
+					}
+					return b, true
+				})
 			}
-			rl.mu.Unlock()
 		}
 	}
 }
@@ -131,9 +141,7 @@ func (rl *RateLimiter) Stop() {
 
 // AddLimit adds a rate limit for a specific path
 func (rl *RateLimiter) AddLimit(path string, config *RateLimitConfig) {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	rl.limits[path] = config
+	rl.limits.Put(path, config)
 }
 
 // Middleware returns a Gin middleware function for rate limiting
@@ -217,21 +225,17 @@ func (rl *RateLimiter) checkLimit(key string, config *RateLimitConfig) (*RateLim
 
 // getOrCreateBucket gets or creates a token bucket for the given key
 func (rl *RateLimiter) getOrCreateBucket(key string, config *RateLimitConfig) *tokenBucket {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	if bucket, exists := rl.buckets[key]; exists {
+	if bucket, exists := rl.buckets.Get(key); exists {
 		return bucket
 	}
-
 	bucket := &tokenBucket{
 		tokens:     config.Requests,
 		maxTokens:  config.Requests,
 		refillRate: config.Window,
 		lastRefill: time.Now(),
 	}
-	rl.buckets[key] = bucket
-	return bucket
+	cached, _ := rl.buckets.PutIfAbsent(key, bucket)
+	return cached
 }
 
 // min returns the minimum of two integers
@@ -244,13 +248,9 @@ func min(a, b int) int {
 
 // getConfig returns the rate limit config for a path
 func (rl *RateLimiter) getConfig(path string) *RateLimitConfig {
-	rl.mu.RLock()
-	defer rl.mu.RUnlock()
-
-	if config, exists := rl.limits[path]; exists {
+	if config, exists := rl.limits.Get(path); exists {
 		return config
 	}
-
 	return rl.defaultCfg
 }
 

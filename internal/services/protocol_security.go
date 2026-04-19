@@ -11,13 +11,18 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// ProtocolSecurity provides authentication and authorization for protocols
+// ProtocolSecurity provides authentication and authorization for protocols.
+// Concurrent-safe by construction (CONST-029 Tier 1): apiKeys and
+// permissions are independent safe.Stores (no method atomically touches
+// both; CreateAPIKeyWithValue writes to both sequentially, which is safe
+// because readers of one vs. the other never need joint consistency).
 type ProtocolSecurity struct {
-	mu          sync.RWMutex
-	apiKeys     map[string]*APIKey
-	permissions map[string][]string // key -> permissions
+	apiKeys     *safe.Store[string, *APIKey]
+	permissions *safe.Store[string, []string] // key -> permissions
 	logger      *logrus.Logger
 }
 
@@ -43,8 +48,8 @@ type ProtocolAccessRequest struct {
 // NewProtocolSecurity creates a new protocol security manager
 func NewProtocolSecurity(logger *logrus.Logger) *ProtocolSecurity {
 	return &ProtocolSecurity{
-		apiKeys:     make(map[string]*APIKey),
-		permissions: make(map[string][]string),
+		apiKeys:     safe.NewStore[string, *APIKey](),
+		permissions: safe.NewStore[string, []string](),
 		logger:      logger,
 	}
 }
@@ -58,9 +63,6 @@ func (s *ProtocolSecurity) CreateAPIKey(name, owner string, permissions []string
 // CreateAPIKeyWithValue creates an API key with a specific key value
 // This is useful when you want to set the API key from an environment variable
 func (s *ProtocolSecurity) CreateAPIKeyWithValue(name, owner, key string, permissions []string) (*APIKey, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	apiKey := &APIKey{
 		Key:         key,
 		Name:        name,
@@ -69,9 +71,8 @@ func (s *ProtocolSecurity) CreateAPIKeyWithValue(name, owner, key string, permis
 		CreatedAt:   time.Now(),
 		Active:      true,
 	}
-
-	s.apiKeys[key] = apiKey
-	s.permissions[key] = permissions
+	s.apiKeys.Put(key, apiKey)
+	s.permissions.Put(key, permissions)
 
 	s.logger.WithFields(logrus.Fields{
 		"name":  name,
@@ -81,36 +82,41 @@ func (s *ProtocolSecurity) CreateAPIKeyWithValue(name, owner, key string, permis
 	return apiKey, nil
 }
 
-// ValidateAccess validates if an API key has access to a protocol operation
+// ValidateAccess validates if an API key has access to a protocol operation.
+// Active/LastUsed reads/writes happen inside Update callbacks to serialize
+// with concurrent access (eliminated the pre-migration lock-upgrade IIFE).
 func (s *ProtocolSecurity) ValidateAccess(ctx context.Context, req ProtocolAccessRequest) error {
-	s.mu.RLock()
-	apiKey, exists := s.apiKeys[req.APIKey]
-	s.mu.RUnlock()
-
-	if !exists || !apiKey.Active {
+	var activeOK bool
+	s.apiKeys.Update(req.APIKey, func(k *APIKey, ok bool) (*APIKey, bool) {
+		if !ok || !k.Active {
+			return k, ok
+		}
+		activeOK = true
+		return k, true
+	})
+	if !activeOK {
 		return fmt.Errorf("invalid API key")
 	}
 
-	// Check permissions
-	permissions, exists := s.permissions[req.APIKey]
+	permissions, exists := s.permissions.Get(req.APIKey)
 	if !exists {
 		return fmt.Errorf("no permissions found for API key")
 	}
 
 	requiredPermission := fmt.Sprintf("%s:%s", req.Protocol, req.Action)
 
-	// Check for exact match or wildcard
 	for _, permission := range permissions {
 		if permission == requiredPermission ||
 			permission == fmt.Sprintf("%s:*", req.Protocol) ||
 			permission == "*" {
-			// Update last used time
-			func() {
-				s.mu.Lock()
-				defer s.mu.Unlock()
-				apiKey.LastUsed = time.Now()
-			}()
-
+			// Update last used time atomically.
+			s.apiKeys.Update(req.APIKey, func(k *APIKey, ok bool) (*APIKey, bool) {
+				if !ok {
+					return nil, false
+				}
+				k.LastUsed = time.Now()
+				return k, true
+			})
 			return nil
 		}
 	}
@@ -120,31 +126,26 @@ func (s *ProtocolSecurity) ValidateAccess(ctx context.Context, req ProtocolAcces
 
 // RevokeAPIKey revokes an API key
 func (s *ProtocolSecurity) RevokeAPIKey(key string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if apiKey, exists := s.apiKeys[key]; exists {
-		apiKey.Active = false
-		delete(s.permissions, key)
-
-		s.logger.WithField("key", key[:8]+"...").Info("API key revoked")
-		return nil
+	var found bool
+	s.apiKeys.Update(key, func(k *APIKey, ok bool) (*APIKey, bool) {
+		if !ok {
+			return nil, false
+		}
+		k.Active = false
+		found = true
+		return k, true
+	})
+	if !found {
+		return fmt.Errorf("API key not found")
 	}
-
-	return fmt.Errorf("API key not found")
+	s.permissions.Delete(key)
+	s.logger.WithField("key", key[:8]+"...").Info("API key revoked")
+	return nil
 }
 
 // ListAPIKeys returns all API keys (for admin purposes)
 func (s *ProtocolSecurity) ListAPIKeys() []*APIKey {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	keys := make([]*APIKey, 0, len(s.apiKeys))
-	for _, key := range s.apiKeys {
-		keys = append(keys, key)
-	}
-
-	return keys
+	return s.apiKeys.Values()
 }
 
 // InitializeDefaultSecurity sets up default security configuration
@@ -198,49 +199,43 @@ func (s *ProtocolSecurity) InitializeDefaultSecurity() error {
 
 // Rate limiting (basic implementation)
 
+// RateLimiter is a simple sliding-window rate limiter.
+// Concurrent-safe by construction (CONST-029): requests is a safe.Store;
+// the check-then-append compound operation happens atomically inside
+// Store.Update.
 type RateLimiter struct {
-	mu        sync.Mutex
-	requests  map[string][]time.Time
+	requests  *safe.Store[string, []time.Time]
 	maxPerMin int
 }
 
 // NewRateLimiter creates a new rate limiter
 func NewRateLimiter(maxPerMin int) *RateLimiter {
 	return &RateLimiter{
-		requests:  make(map[string][]time.Time),
+		requests:  safe.NewStore[string, []time.Time](),
 		maxPerMin: maxPerMin,
 	}
 }
 
 // Allow checks if a request should be allowed
 func (r *RateLimiter) Allow(key string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	now := time.Now()
 	windowStart := now.Add(-time.Minute)
+	var allowed bool
 
-	// Clean old requests
-	if requests, exists := r.requests[key]; exists {
-		valid := make([]time.Time, 0)
-		for _, t := range requests {
+	r.requests.Update(key, func(cur []time.Time, _ bool) ([]time.Time, bool) {
+		valid := make([]time.Time, 0, len(cur))
+		for _, t := range cur {
 			if t.After(windowStart) {
 				valid = append(valid, t)
 			}
 		}
-		r.requests[key] = valid
-
-		// Check if under limit
 		if len(valid) < r.maxPerMin {
-			r.requests[key] = append(r.requests[key], now)
-			return true
+			valid = append(valid, now)
+			allowed = true
 		}
-		return false
-	}
-
-	// First request
-	r.requests[key] = []time.Time{now}
-	return true
+		return valid, true
+	})
+	return allowed
 }
 
 // Global rate limiter (lazy-loaded)

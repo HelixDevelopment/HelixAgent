@@ -1,5 +1,43 @@
 # Bug Fixes and Known Issues
 
+## Issue #22: Data race in `swarm.Coordinator.CreateTask` — unlocked map read (BUGFIX 2026-04-19)
+
+### Issue
+`go test -race ./internal/agents/swarm/...` reported a DATA RACE on map `c.tasks` between a READ at `swarm.go:407` and a WRITE at `swarm.go:416`.
+
+### Root Cause
+`CreateTask` computed `fmt.Sprintf("task-%d", len(c.tasks)+1)` OUTSIDE the `c.mu.Lock()`. Two concurrent callers could:
+
+1. Each read `len(c.tasks)` simultaneously — flagged as the read hazard.
+2. Each produce the same `task-N` ID.
+3. Both write into `c.tasks[id]` under the lock — but the ID collision means the second overwrites the first.
+
+### Fix Applied
+`internal/agents/swarm/swarm.go` — moved ID generation INSIDE the lock so the `len(c.tasks)` read and the subsequent map write happen atomically. Scratchpad entry is still added outside the lock (it has its own synchronisation; holding `c.mu` during a blocking call would risk deadlock).
+
+**Verification:**
+- `go test -race -run "TestCoordinator_Concurrent|TestConcurrentAccess" ./internal/agents/swarm/ -p 1 -count=10` → 10/10 passes, 1.0 s wall.
+- Full package `-race -short` → ok, 1.0 s wall.
+
+---
+
+## Issue #21: `TestWorkflow_AddEdge` shared-workflow race-debt (BUGFIX 2026-04-19)
+
+### Issue
+`TestWorkflow_AddEdge` failed nondeterministically under `-race`: subtest `ValidEdge` asserted `len(Graph.Edges)==1` but parallel subtest `WithCondition` also called `AddEdge` on the same workflow, occasionally producing len==2.
+
+### Root Cause
+All 4 `t.Parallel()` subtests shared a single `*Workflow` created before `t.Run`. No data race in production code — a test-fixture error.
+
+### Fix Applied
+`internal/agentic/workflow_test.go` — `newTestWorkflow` helper constructs a fresh per-subtest workflow with the same two seeded nodes.
+
+**Verification:**
+- `go test -race -run TestWorkflow_AddEdge ./internal/agentic/ -p 1 -count=10` → 10/10 passes.
+- Full `internal/agentic` race suite → ok.
+
+---
+
 ## Issue #20: `IsOpenCodeInstalled` too permissive — PATH-only probe (BUGFIX 2026-04-19)
 
 ### Issue

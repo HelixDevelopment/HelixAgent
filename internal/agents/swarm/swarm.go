@@ -401,8 +401,16 @@ func NewCoordinator(swarm *Swarm, logger *logrus.Logger) *Coordinator {
 	}
 }
 
-// CreateTask creates a coordinated task
+// CreateTask creates a coordinated task.
+//
+// ID generation and map insertion both happen under the same lock so
+// concurrent callers (a) see a consistent `len(c.tasks)` snapshot for
+// the `task-N` format and (b) cannot collide on map writes. Previously,
+// `len(c.tasks)` was read unlocked and two goroutines could produce
+// the same ID; `-race` caught it as a map read/write collision (race-
+// debt BUGFIX #22).
 func (c *Coordinator) CreateTask(description string) *CoordinatedTask {
+	c.mu.Lock()
 	task := &CoordinatedTask{
 		ID:          fmt.Sprintf("task-%d", len(c.tasks)+1),
 		Description: description,
@@ -411,12 +419,12 @@ func (c *Coordinator) CreateTask(description string) *CoordinatedTask {
 		Results:     make(map[string]interface{}),
 		CreatedAt:   time.Now(),
 	}
-
-	c.mu.Lock()
 	c.tasks[task.ID] = task
 	c.mu.Unlock()
 
-	// Add to scratchpad
+	// Add to scratchpad (outside the lock — scratchpad has its own
+	// synchronisation and we must not hold c.mu during a call that
+	// could block on another subsystem).
 	c.swarm.GetScratchpad().AddEntry(ScratchpadEntry{
 		Type:    "task_created",
 		Content: description,

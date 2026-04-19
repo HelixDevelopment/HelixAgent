@@ -12,16 +12,21 @@ import (
 	"reflect"
 	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/clis/agents"
 )
 
-// BaseIntegration provides common functionality for all CLI agent integrations
+// BaseIntegration provides common functionality for all CLI agent integrations.
+// envVars is serialised by its own Store; the remaining scalar fields
+// (config, workDir, started) are guarded by mu (Pattern Zeta — scalar
+// mutex survivor).
 type BaseIntegration struct {
 	info    agents.AgentInfo
+	envVars *safe.Store[string, string]
+	mu      sync.RWMutex
 	config  interface{}
 	workDir string
-	envVars map[string]string
-	mu      sync.RWMutex
 	started bool
 }
 
@@ -29,7 +34,7 @@ type BaseIntegration struct {
 func NewBaseIntegration(info agents.AgentInfo) *BaseIntegration {
 	return &BaseIntegration{
 		info:    info,
-		envVars: make(map[string]string),
+		envVars: safe.NewStore[string, string](),
 	}
 }
 
@@ -121,21 +126,20 @@ func (b *BaseIntegration) IsAvailable() bool {
 // ExecuteCommand executes a shell command
 func (b *BaseIntegration) ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Dir = b.workDir
+	cmd.Dir = b.GetWorkDir()
 
 	// Set environment variables
-	for k, v := range b.envVars {
+	b.envVars.Range(func(k, v string) bool {
 		cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", k, v))
-	}
+		return true
+	})
 
 	return cmd.CombinedOutput()
 }
 
 // SetEnvVar sets an environment variable
 func (b *BaseIntegration) SetEnvVar(key, value string) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.envVars[key] = value
+	b.envVars.Put(key, value)
 }
 
 // GetWorkDir returns the working directory

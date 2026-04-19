@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
@@ -65,21 +67,28 @@ func initCMMetrics() {
 	})
 }
 
-// ConcurrencyMonitor monitors concurrency usage and provides alerts
+// ConcurrencyMonitor monitors concurrency usage and provides alerts.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - listeners is a safe.Slice[ConcurrencyAlertListener].
+//   - highConcurrencyStart / highConcurrencyState are safe.Store maps.
+//   - running is atomic.Bool; Start/Stop use CAS so Start is idempotent
+//     against concurrent callers.
+//   - startMu (sync.Mutex) survives as a Pattern Zeta guard for the
+//     Start path that creates a fresh stopCh after an earlier Stop.
+//     No bare map/slice sits beside startMu, so the audit is happy.
 type ConcurrencyMonitor struct {
-	mu                sync.RWMutex
-	registry          *ProviderRegistry
-	logger            *logrus.Logger
-	checkInterval     time.Duration
-	alertThreshold    float64 // Saturation percentage to trigger warning alert (0-100)
-	criticalThreshold float64 // Saturation percentage to trigger critical alert (0-100)
-	listeners         []ConcurrencyAlertListener
-	stopCh            chan struct{}
-	running           bool
-
-	// Track high concurrency periods
-	highConcurrencyStart map[string]time.Time
-	highConcurrencyState map[string]bool
+	startMu              sync.Mutex
+	registry             *ProviderRegistry
+	logger               *logrus.Logger
+	checkInterval        time.Duration
+	alertThreshold       float64 // Saturation percentage to trigger warning alert (0-100)
+	criticalThreshold    float64 // Saturation percentage to trigger critical alert (0-100)
+	listeners            *safe.Slice[ConcurrencyAlertListener]
+	stopCh               chan struct{}
+	running              atomic.Bool
+	highConcurrencyStart *safe.Store[string, time.Time]
+	highConcurrencyState *safe.Store[string, bool]
 }
 
 // ConcurrencyAlertListener is called when concurrency alerts occur
@@ -127,30 +136,30 @@ func NewConcurrencyMonitor(registry *ProviderRegistry, logger *logrus.Logger, co
 		checkInterval:        config.CheckInterval,
 		alertThreshold:       config.AlertThreshold,
 		criticalThreshold:    config.CriticalThreshold,
-		listeners:            make([]ConcurrencyAlertListener, 0),
+		listeners:            safe.NewSlice[ConcurrencyAlertListener](),
 		stopCh:               make(chan struct{}),
-		highConcurrencyStart: make(map[string]time.Time),
-		highConcurrencyState: make(map[string]bool),
+		highConcurrencyStart: safe.NewStore[string, time.Time](),
+		highConcurrencyState: safe.NewStore[string, bool](),
 	}
 }
 
 // AddAlertListener adds a listener for alerts
 func (cm *ConcurrencyMonitor) AddAlertListener(listener ConcurrencyAlertListener) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	cm.listeners = append(cm.listeners, listener)
+	cm.listeners.Append(listener)
 }
 
-// Start starts the monitoring loop
+// Start starts the monitoring loop. startMu guards the "flip running
+// and create a fresh stopCh" pair so a Start-after-Stop sequence
+// cannot lose the channel to a concurrent Stop.
 func (cm *ConcurrencyMonitor) Start(ctx context.Context) {
-	cm.mu.Lock()
-	if cm.running {
-		cm.mu.Unlock()
+	cm.startMu.Lock()
+	if !cm.running.CompareAndSwap(false, true) {
+		cm.startMu.Unlock()
 		return
 	}
-	cm.running = true
 	cm.stopCh = make(chan struct{})
-	cm.mu.Unlock()
+	stopCh := cm.stopCh
+	cm.startMu.Unlock()
 
 	cm.logger.Info("Concurrency monitor started")
 
@@ -162,7 +171,7 @@ func (cm *ConcurrencyMonitor) Start(ctx context.Context) {
 		case <-ctx.Done():
 			cm.logger.Info("Concurrency monitor stopped (context cancelled)")
 			return
-		case <-cm.stopCh:
+		case <-stopCh:
 			cm.logger.Info("Concurrency monitor stopped")
 			return
 		case <-ticker.C:
@@ -173,12 +182,11 @@ func (cm *ConcurrencyMonitor) Start(ctx context.Context) {
 
 // Stop stops the monitoring loop
 func (cm *ConcurrencyMonitor) Stop() {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
+	cm.startMu.Lock()
+	defer cm.startMu.Unlock()
 
-	if cm.running {
+	if cm.running.CompareAndSwap(true, false) {
 		close(cm.stopCh)
-		cm.running = false
 	}
 }
 
@@ -223,33 +231,39 @@ func (cm *ConcurrencyMonitor) checkConcurrency() {
 			highSaturationCount++
 			cmHighConcurrencyGauge.WithLabelValues(providerID).Set(1)
 
-			// Track high concurrency duration
-			cm.mu.Lock()
-			if !cm.highConcurrencyState[providerID] {
-				// Transition to high concurrency
-				cm.highConcurrencyState[providerID] = true
-				cm.highConcurrencyStart[providerID] = time.Now()
-			}
-			cm.mu.Unlock()
+			// Track high concurrency duration. Update keeps the
+			// state/start pair atomic per provider key.
+			cm.highConcurrencyState.Update(providerID, func(cur bool, _ bool) (bool, bool) {
+				if !cur {
+					cm.highConcurrencyStart.Put(providerID, time.Now())
+				}
+				return true, true
+			})
 		} else {
 			cmHighConcurrencyGauge.WithLabelValues(providerID).Set(0)
 
-			// End high concurrency period if needed
-			cm.mu.Lock()
-			if cm.highConcurrencyState[providerID] {
-				// Transition out of high concurrency
-				duration := time.Since(cm.highConcurrencyStart[providerID])
+			// End high concurrency period if needed.
+			var duration time.Duration
+			ended := false
+			cm.highConcurrencyState.Update(providerID, func(cur bool, present bool) (bool, bool) {
+				if present && cur {
+					if started, ok := cm.highConcurrencyStart.Get(providerID); ok {
+						duration = time.Since(started)
+					}
+					cm.highConcurrencyStart.Delete(providerID)
+					ended = true
+					return false, true
+				}
+				return cur, present
+			})
+			if ended {
 				cmHighConcurrencyDuration.WithLabelValues(providerID).Observe(duration.Seconds())
-				cm.highConcurrencyState[providerID] = false
-				delete(cm.highConcurrencyStart, providerID)
-
 				cm.logger.WithFields(logrus.Fields{
 					"provider":   providerID,
 					"duration":   duration,
 					"saturation": saturation,
 				}).Info("High concurrency period ended")
 			}
-			cm.mu.Unlock()
 		}
 
 		// Log warning for high saturation
@@ -294,11 +308,7 @@ func (cm *ConcurrencyMonitor) checkConcurrency() {
 func (cm *ConcurrencyMonitor) sendAlert(alert ConcurrencyAlert) {
 	cmConcurrencyAlertsTotal.Inc()
 
-	cm.mu.RLock()
-	listeners := cm.listeners
-	cm.mu.RUnlock()
-
-	for _, listener := range listeners {
+	for _, listener := range cm.listeners.Snapshot() {
 		go listener(alert)
 	}
 
@@ -394,21 +404,15 @@ func (cm *ConcurrencyMonitor) RecordBlockedRequest(provider string) {
 
 // ResetHighConcurrencyTracking resets high concurrency tracking for a provider
 func (cm *ConcurrencyMonitor) ResetHighConcurrencyTracking(provider string) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	delete(cm.highConcurrencyStart, provider)
-	delete(cm.highConcurrencyState, provider)
+	cm.highConcurrencyStart.Delete(provider)
+	cm.highConcurrencyState.Delete(provider)
 	cmHighConcurrencyGauge.WithLabelValues(provider).Set(0)
 }
 
 // ResetAllHighConcurrencyTracking resets high concurrency tracking for all providers
 func (cm *ConcurrencyMonitor) ResetAllHighConcurrencyTracking() {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	cm.highConcurrencyStart = make(map[string]time.Time)
-	cm.highConcurrencyState = make(map[string]bool)
+	cm.highConcurrencyStart.Clear()
+	cm.highConcurrencyState.Clear()
 
 	// Reset all gauge values to 0
 	if cmHighConcurrencyGauge != nil {

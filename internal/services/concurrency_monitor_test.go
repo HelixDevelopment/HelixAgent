@@ -64,11 +64,11 @@ func TestNewConcurrencyMonitor_WithNilRegistry(t *testing.T) {
 	assert.Equal(t, cfg.AlertThreshold, cm.alertThreshold)
 	assert.Equal(t, cfg.CriticalThreshold, cm.criticalThreshold)
 	assert.NotNil(t, cm.listeners)
-	assert.Empty(t, cm.listeners)
+	assert.Zero(t, cm.listeners.Len())
 	assert.NotNil(t, cm.stopCh)
 	assert.NotNil(t, cm.highConcurrencyStart)
 	assert.NotNil(t, cm.highConcurrencyState)
-	assert.False(t, cm.running)
+	assert.False(t, cm.running.Load())
 }
 
 func TestNewConcurrencyMonitor_WithRegistry(t *testing.T) {
@@ -114,9 +114,7 @@ func TestConcurrencyMonitor_AddAlertListener_Single(t *testing.T) {
 		// listener callback
 	})
 
-	cm.mu.RLock()
-	assert.Len(t, cm.listeners, 1)
-	cm.mu.RUnlock()
+	assert.Equal(t, 1, cm.listeners.Len())
 }
 
 func TestConcurrencyMonitor_AddAlertListener_Multiple(t *testing.T) {
@@ -127,9 +125,7 @@ func TestConcurrencyMonitor_AddAlertListener_Multiple(t *testing.T) {
 		cm.AddAlertListener(func(alert ConcurrencyAlert) {})
 	}
 
-	cm.mu.RLock()
-	assert.Len(t, cm.listeners, 5)
-	cm.mu.RUnlock()
+	assert.Equal(t, 5, cm.listeners.Len())
 }
 
 func TestConcurrencyMonitor_AddAlertListener_ConcurrentSafety(t *testing.T) {
@@ -149,9 +145,7 @@ func TestConcurrencyMonitor_AddAlertListener_ConcurrentSafety(t *testing.T) {
 
 	wg.Wait()
 
-	cm.mu.RLock()
-	assert.Len(t, cm.listeners, numGoroutines)
-	cm.mu.RUnlock()
+	assert.Equal(t, numGoroutines, cm.listeners.Len())
 }
 
 // =============================================================================
@@ -174,9 +168,7 @@ func TestConcurrencyMonitor_Start_AndStop(t *testing.T) {
 	// Give it time to start
 	time.Sleep(20 * time.Millisecond)
 
-	cm.mu.RLock()
-	assert.True(t, cm.running)
-	cm.mu.RUnlock()
+	assert.True(t, cm.running.Load())
 
 	cancel()
 	time.Sleep(20 * time.Millisecond)
@@ -198,9 +190,7 @@ func TestConcurrencyMonitor_Stop_ExplicitStop(t *testing.T) {
 
 	cm.Stop()
 
-	cm.mu.RLock()
-	assert.False(t, cm.running)
-	cm.mu.RUnlock()
+	assert.False(t, cm.running.Load())
 }
 
 func TestConcurrencyMonitor_Stop_DoubleStop(t *testing.T) {
@@ -215,9 +205,7 @@ func TestConcurrencyMonitor_Stop_DoubleStop(t *testing.T) {
 	cm.Stop()
 	cm.Stop()
 
-	cm.mu.RLock()
-	assert.False(t, cm.running)
-	cm.mu.RUnlock()
+	assert.False(t, cm.running.Load())
 }
 
 func TestConcurrencyMonitor_Start_DoubleStart(t *testing.T) {
@@ -461,17 +449,13 @@ func TestConcurrencyMonitor_ResetHighConcurrencyTracking(t *testing.T) {
 	cm := NewConcurrencyMonitor(nil, logger, DefaultConcurrencyMonitorConfig())
 
 	// Manually set high concurrency state
-	cm.mu.Lock()
-	cm.highConcurrencyState["provider-1"] = true
-	cm.highConcurrencyStart["provider-1"] = time.Now()
-	cm.mu.Unlock()
+	cm.highConcurrencyState.Put("provider-1", true)
+	cm.highConcurrencyStart.Put("provider-1", time.Now())
 
 	cm.ResetHighConcurrencyTracking("provider-1")
 
-	cm.mu.RLock()
-	_, stateExists := cm.highConcurrencyState["provider-1"]
-	_, startExists := cm.highConcurrencyStart["provider-1"]
-	cm.mu.RUnlock()
+	_, stateExists := cm.highConcurrencyState.Get("provider-1")
+	_, startExists := cm.highConcurrencyStart.Get("provider-1")
 
 	assert.False(t, stateExists)
 	assert.False(t, startExists)
@@ -496,19 +480,15 @@ func TestConcurrencyMonitor_ResetAllHighConcurrencyTracking(t *testing.T) {
 	cm := NewConcurrencyMonitor(nil, logger, DefaultConcurrencyMonitorConfig())
 
 	// Manually set high concurrency state for multiple providers
-	cm.mu.Lock()
-	cm.highConcurrencyState["provider-1"] = true
-	cm.highConcurrencyStart["provider-1"] = time.Now()
-	cm.highConcurrencyState["provider-2"] = true
-	cm.highConcurrencyStart["provider-2"] = time.Now()
-	cm.mu.Unlock()
+	cm.highConcurrencyState.Put("provider-1", true)
+	cm.highConcurrencyStart.Put("provider-1", time.Now())
+	cm.highConcurrencyState.Put("provider-2", true)
+	cm.highConcurrencyStart.Put("provider-2", time.Now())
 
 	cm.ResetAllHighConcurrencyTracking()
 
-	cm.mu.RLock()
-	assert.Empty(t, cm.highConcurrencyState)
-	assert.Empty(t, cm.highConcurrencyStart)
-	cm.mu.RUnlock()
+	assert.Zero(t, cm.highConcurrencyState.Len())
+	assert.Zero(t, cm.highConcurrencyStart.Len())
 }
 
 func TestConcurrencyMonitor_ResetAllHighConcurrencyTracking_EmptyState(t *testing.T) {

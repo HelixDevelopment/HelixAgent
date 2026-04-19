@@ -97,12 +97,19 @@ func TestTabnineStartStop(t *testing.T) {
 
 func TestTabnineExecute(t *testing.T) {
 	t.Parallel()
-	tn := New()
 	ctx := context.Background()
 
-	err := tn.Initialize(ctx, nil)
-	if err != nil {
-		t.Fatalf("Initialize() error = %v", err)
+	// Each subtest below gets its own Tabnine — `configure` writes to
+	// t.config fields WITHOUT synchronisation (race-debt BUGFIX #34);
+	// the "configure command" subtest and "status command" subtest
+	// would otherwise race on the same struct.
+	newTabnine := func(t *testing.T) *Tabnine {
+		t.Helper()
+		tn := New()
+		if err := tn.Initialize(ctx, nil); err != nil {
+			t.Fatalf("Initialize() error = %v", err)
+		}
+		return tn
 	}
 
 	tests := []struct {
@@ -183,6 +190,7 @@ func TestTabnineExecute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			tn := newTabnine(t)
 			result, err := tn.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)

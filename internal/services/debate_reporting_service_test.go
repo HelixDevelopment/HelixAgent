@@ -75,9 +75,9 @@ func TestDebateReportingService_New(t *testing.T) {
 	assert.NotNil(t, svc)
 	assert.NotNil(t, svc.reports)
 	assert.NotNil(t, svc.templates)
-	assert.Contains(t, svc.templates, "html")
-	assert.Contains(t, svc.templates, "markdown")
-	assert.Contains(t, svc.templates, "md")
+	assert.True(t, svc.templates.Has("html"))
+	assert.True(t, svc.templates.Has("markdown"))
+	assert.True(t, svc.templates.Has("md"))
 }
 
 func TestDebateReportingService_Generate(t *testing.T) {

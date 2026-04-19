@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ParticipantReport holds report data for a participant
@@ -52,20 +53,22 @@ type ExtendedDebateReport struct {
 	Quality      *QualityReport      `json:"quality,omitempty"`
 }
 
-// DebateReportingService provides reporting capabilities
+// DebateReportingService provides reporting capabilities.
+// Concurrent-safe by construction (CONST-029 Tier 1): reports and
+// templates are independent safe.Stores. Templates are populated once
+// at construction and thereafter read-only; reports grow over time.
 type DebateReportingService struct {
 	logger    *logrus.Logger
-	reports   map[string]*ExtendedDebateReport
-	reportsMu sync.RWMutex
-	templates map[string]*template.Template
+	reports   *safe.Store[string, *ExtendedDebateReport]
+	templates *safe.Store[string, *template.Template]
 }
 
 // NewDebateReportingService creates a new reporting service
 func NewDebateReportingService(logger *logrus.Logger) *DebateReportingService {
 	svc := &DebateReportingService{
 		logger:    logger,
-		reports:   make(map[string]*ExtendedDebateReport),
-		templates: make(map[string]*template.Template),
+		reports:   safe.NewStore[string, *ExtendedDebateReport](),
+		templates: safe.NewStore[string, *template.Template](),
 	}
 	svc.initTemplates()
 	return svc
@@ -122,7 +125,7 @@ func (drs *DebateReportingService) initTemplates() {
 
 	tmpl, err := template.New("html").Parse(htmlTmpl)
 	if err == nil {
-		drs.templates["html"] = tmpl
+		drs.templates.Put("html", tmpl)
 	}
 
 	// Markdown template
@@ -156,8 +159,8 @@ func (drs *DebateReportingService) initTemplates() {
 
 	mdTemplate, err := template.New("markdown").Parse(mdTmpl)
 	if err == nil {
-		drs.templates["markdown"] = mdTemplate
-		drs.templates["md"] = mdTemplate
+		drs.templates.Put("markdown", mdTemplate)
+		drs.templates.Put("md", mdTemplate)
 	}
 }
 
@@ -210,9 +213,7 @@ func (drs *DebateReportingService) GenerateReport(ctx context.Context, result *D
 	}
 
 	// Store report
-	drs.reportsMu.Lock()
-	drs.reports[reportID] = report
-	drs.reportsMu.Unlock()
+	drs.reports.Put(reportID, report)
 
 	drs.logger.WithFields(logrus.Fields{
 		"report_id": reportID,
@@ -403,10 +404,7 @@ func (drs *DebateReportingService) generateQualityReport(result *DebateResult) *
 
 // ExportReport exports a report in the specified format
 func (drs *DebateReportingService) ExportReport(ctx context.Context, reportID string, format string) ([]byte, error) {
-	drs.reportsMu.RLock()
-	report, exists := drs.reports[reportID]
-	drs.reportsMu.RUnlock()
-
+	report, exists := drs.reports.Get(reportID)
 	if !exists {
 		return nil, fmt.Errorf("report not found: %s", reportID)
 	}
@@ -416,7 +414,7 @@ func (drs *DebateReportingService) ExportReport(ctx context.Context, reportID st
 		return json.MarshalIndent(report, "", "  ")
 
 	case "html":
-		tmpl, exists := drs.templates["html"]
+		tmpl, exists := drs.templates.Get("html")
 		if !exists {
 			return nil, fmt.Errorf("HTML template not available")
 		}
@@ -427,7 +425,7 @@ func (drs *DebateReportingService) ExportReport(ctx context.Context, reportID st
 		return buf.Bytes(), nil
 
 	case "markdown", "md":
-		tmpl, exists := drs.templates["markdown"]
+		tmpl, exists := drs.templates.Get("markdown")
 		if !exists {
 			return nil, fmt.Errorf("Markdown template not available")
 		}
@@ -479,54 +477,34 @@ func (drs *DebateReportingService) generateTextReport(report *DebateReport) []by
 
 // GetReport retrieves a report by ID
 func (drs *DebateReportingService) GetReport(ctx context.Context, reportID string) (*DebateReport, error) {
-	drs.reportsMu.RLock()
-	defer drs.reportsMu.RUnlock()
-
-	report, exists := drs.reports[reportID]
+	report, exists := drs.reports.Get(reportID)
 	if !exists {
 		return nil, fmt.Errorf("report not found: %s", reportID)
 	}
-
 	reportCopy := report.DebateReport
 	return &reportCopy, nil
 }
 
 // GetExtendedReport retrieves the full extended report by ID
 func (drs *DebateReportingService) GetExtendedReport(ctx context.Context, reportID string) (*ExtendedDebateReport, error) {
-	drs.reportsMu.RLock()
-	defer drs.reportsMu.RUnlock()
-
-	report, exists := drs.reports[reportID]
+	report, exists := drs.reports.Get(reportID)
 	if !exists {
 		return nil, fmt.Errorf("report not found: %s", reportID)
 	}
-
 	reportCopy := *report
 	return &reportCopy, nil
 }
 
 // ListReports returns all report IDs
 func (drs *DebateReportingService) ListReports() []string {
-	drs.reportsMu.RLock()
-	defer drs.reportsMu.RUnlock()
-
-	ids := make([]string, 0, len(drs.reports))
-	for id := range drs.reports {
-		ids = append(ids, id)
-	}
-	return ids
+	return drs.reports.Keys()
 }
 
 // DeleteReport removes a report
 func (drs *DebateReportingService) DeleteReport(ctx context.Context, reportID string) error {
-	drs.reportsMu.Lock()
-	defer drs.reportsMu.Unlock()
-
-	if _, exists := drs.reports[reportID]; !exists {
+	if _, ok := drs.reports.Delete(reportID); !ok {
 		return fmt.Errorf("report not found: %s", reportID)
 	}
-
-	delete(drs.reports, reportID)
 	drs.logger.Infof("Deleted report %s", reportID)
 	return nil
 }

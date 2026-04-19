@@ -79,7 +79,6 @@ internal/llm/lazy_provider.go:302:LazyProviderRegistry
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/llmops/experiments.go:17:InMemoryExperimentManager
 internal/llmops/integration.go:272:InMemoryAlertManager
-internal/llmops/prompts.go:19:InMemoryPromptRegistry
 internal/llm/providers/gemini/gemini_acp.go:28:GeminiACPProvider
 internal/llm/providers/junie/junie_acp.go:28:JunieACPProvider
 internal/llm/providers/qwen/qwen_acp.go:27:QwenACPProvider

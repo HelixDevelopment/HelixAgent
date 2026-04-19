@@ -6,21 +6,39 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 var templateVarRegex = regexp.MustCompile(`\{\{(\w+)\}\}`)
 
-// InMemoryPromptRegistry implements PromptRegistry with in-memory storage
+// InMemoryPromptRegistry implements PromptRegistry with in-memory storage.
+//
+// Concurrent-safe by construction (CONST-029): the (prompts, active)
+// pair is held under a sentinel key in a safe.Store — Create/Activate/
+// Delete require joint atomicity across both maps, so every mutation
+// runs inside one Update callback (Pattern Epsilon).
 type InMemoryPromptRegistry struct {
+	state  *safe.Store[string, *promptState]
+	logger *logrus.Logger
+}
+
+// promptState is the joint state held under promptStateKey.
+type promptState struct {
 	prompts map[string]map[string]*PromptVersion // name -> version -> prompt
 	active  map[string]string                    // name -> active version
-	mu      sync.RWMutex
-	logger  *logrus.Logger
+}
+
+const promptStateKey = "_"
+
+func newPromptState() *promptState {
+	return &promptState{
+		prompts: make(map[string]map[string]*PromptVersion),
+		active:  make(map[string]string),
+	}
 }
 
 // NewInMemoryPromptRegistry creates a new in-memory prompt registry
@@ -28,18 +46,27 @@ func NewInMemoryPromptRegistry(logger *logrus.Logger) *InMemoryPromptRegistry {
 	if logger == nil {
 		logger = logrus.New()
 	}
+	store := safe.NewStore[string, *promptState]()
+	store.Put(promptStateKey, newPromptState())
 	return &InMemoryPromptRegistry{
-		prompts: make(map[string]map[string]*PromptVersion),
-		active:  make(map[string]string),
-		logger:  logger,
+		state:  store,
+		logger: logger,
 	}
+}
+
+// withState runs fn under the Store's write lock; fn may mutate the state.
+func (r *InMemoryPromptRegistry) withState(fn func(*promptState)) {
+	r.state.Update(promptStateKey, func(s *promptState, _ bool) (*promptState, bool) {
+		if s == nil {
+			s = newPromptState()
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // Create creates a new prompt version
 func (r *InMemoryPromptRegistry) Create(ctx context.Context, prompt *PromptVersion) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if prompt.Name == "" {
 		return fmt.Errorf("prompt name is required")
 	}
@@ -55,30 +82,36 @@ func (r *InMemoryPromptRegistry) Create(ctx context.Context, prompt *PromptVersi
 		prompt.ID = uuid.New().String()
 	}
 
-	// Initialize maps
-	if r.prompts[prompt.Name] == nil {
-		r.prompts[prompt.Name] = make(map[string]*PromptVersion)
-	}
-
-	// Check if version exists
-	if _, exists := r.prompts[prompt.Name][prompt.Version]; exists {
-		return fmt.Errorf("prompt version already exists: %s/%s", prompt.Name, prompt.Version)
-	}
-
-	// Validate variables in content
+	// Validate variables in content (pure function; safe outside the lock)
 	if err := r.validateVariables(prompt); err != nil {
 		return err
 	}
 
-	prompt.CreatedAt = time.Now()
-	prompt.UpdatedAt = time.Now()
+	var outErr error
+	r.withState(func(s *promptState) {
+		// Initialize nested map
+		if s.prompts[prompt.Name] == nil {
+			s.prompts[prompt.Name] = make(map[string]*PromptVersion)
+		}
 
-	r.prompts[prompt.Name][prompt.Version] = prompt
+		// Check if version exists
+		if _, exists := s.prompts[prompt.Name][prompt.Version]; exists {
+			outErr = fmt.Errorf("prompt version already exists: %s/%s", prompt.Name, prompt.Version)
+			return
+		}
 
-	// Set as active if first version or explicitly active
-	if len(r.prompts[prompt.Name]) == 1 || prompt.IsActive {
-		r.active[prompt.Name] = prompt.Version
-		prompt.IsActive = true
+		prompt.CreatedAt = time.Now()
+		prompt.UpdatedAt = time.Now()
+		s.prompts[prompt.Name][prompt.Version] = prompt
+
+		// Set as active if first version or explicitly active
+		if len(s.prompts[prompt.Name]) == 1 || prompt.IsActive {
+			s.active[prompt.Name] = prompt.Version
+			prompt.IsActive = true
+		}
+	})
+	if outErr != nil {
+		return outErr
 	}
 
 	r.logger.WithFields(logrus.Fields{
@@ -92,145 +125,151 @@ func (r *InMemoryPromptRegistry) Create(ctx context.Context, prompt *PromptVersi
 
 // Get retrieves a specific version
 func (r *InMemoryPromptRegistry) Get(ctx context.Context, name, version string) (*PromptVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	versions, ok := r.prompts[name]
-	if !ok {
-		return nil, fmt.Errorf("prompt not found: %s", name)
-	}
-
-	prompt, ok := versions[version]
-	if !ok {
-		return nil, fmt.Errorf("version not found: %s/%s", name, version)
-	}
-
-	return prompt, nil
+	var (
+		result  *PromptVersion
+		outErr  error
+	)
+	r.withState(func(s *promptState) {
+		versions, ok := s.prompts[name]
+		if !ok {
+			outErr = fmt.Errorf("prompt not found: %s", name)
+			return
+		}
+		prompt, ok := versions[version]
+		if !ok {
+			outErr = fmt.Errorf("version not found: %s/%s", name, version)
+			return
+		}
+		result = prompt
+	})
+	return result, outErr
 }
 
 // GetLatest retrieves the latest active version
 func (r *InMemoryPromptRegistry) GetLatest(ctx context.Context, name string) (*PromptVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	activeVersion, ok := r.active[name]
-	if !ok {
-		return nil, fmt.Errorf("no active version for prompt: %s", name)
-	}
-
-	return r.prompts[name][activeVersion], nil
+	var (
+		result *PromptVersion
+		outErr error
+	)
+	r.withState(func(s *promptState) {
+		activeVersion, ok := s.active[name]
+		if !ok {
+			outErr = fmt.Errorf("no active version for prompt: %s", name)
+			return
+		}
+		result = s.prompts[name][activeVersion]
+	})
+	return result, outErr
 }
 
 // List lists all versions of a prompt
 func (r *InMemoryPromptRegistry) List(ctx context.Context, name string) ([]*PromptVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	var result []*PromptVersion
+	r.withState(func(s *promptState) {
+		versions, ok := s.prompts[name]
+		if !ok {
+			result = []*PromptVersion{}
+			return
+		}
+		result = make([]*PromptVersion, 0, len(versions))
+		for _, v := range versions {
+			result = append(result, v)
+		}
+	})
 
-	versions, ok := r.prompts[name]
-	if !ok {
-		return []*PromptVersion{}, nil
-	}
-
-	result := make([]*PromptVersion, 0, len(versions))
-	for _, v := range versions {
-		result = append(result, v)
-	}
-
-	// Sort by creation time (newest first)
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].CreatedAt.After(result[j].CreatedAt)
 	})
-
 	return result, nil
 }
 
 // ListAll lists all prompts
 func (r *InMemoryPromptRegistry) ListAll(ctx context.Context) ([]*PromptVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var result []*PromptVersion
-	for _, versions := range r.prompts {
-		for _, v := range versions {
-			result = append(result, v)
+	r.withState(func(s *promptState) {
+		for _, versions := range s.prompts {
+			for _, v := range versions {
+				result = append(result, v)
+			}
 		}
-	}
+	})
 
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name ||
 			(result[i].Name == result[j].Name && result[i].CreatedAt.After(result[j].CreatedAt))
 	})
-
 	return result, nil
 }
 
 // Activate sets a version as active
 func (r *InMemoryPromptRegistry) Activate(ctx context.Context, name, version string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	versions, ok := r.prompts[name]
-	if !ok {
-		return fmt.Errorf("prompt not found: %s", name)
-	}
-
-	prompt, ok := versions[version]
-	if !ok {
-		return fmt.Errorf("version not found: %s/%s", name, version)
-	}
-
-	// Deactivate current active
-	if currentActive, exists := r.active[name]; exists {
-		if v, ok := versions[currentActive]; ok {
-			v.IsActive = false
+	var outErr error
+	r.withState(func(s *promptState) {
+		versions, ok := s.prompts[name]
+		if !ok {
+			outErr = fmt.Errorf("prompt not found: %s", name)
+			return
 		}
-	}
+		prompt, ok := versions[version]
+		if !ok {
+			outErr = fmt.Errorf("version not found: %s/%s", name, version)
+			return
+		}
 
-	// Activate new version
-	r.active[name] = version
-	prompt.IsActive = true
-	prompt.UpdatedAt = time.Now()
+		// Deactivate current active
+		if currentActive, exists := s.active[name]; exists {
+			if v, ok := versions[currentActive]; ok {
+				v.IsActive = false
+			}
+		}
+
+		// Activate new version
+		s.active[name] = version
+		prompt.IsActive = true
+		prompt.UpdatedAt = time.Now()
+	})
+	if outErr != nil {
+		return outErr
+	}
 
 	r.logger.WithFields(logrus.Fields{
 		"name":    name,
 		"version": version,
 	}).Info("Prompt version activated")
-
 	return nil
 }
 
 // Delete removes a prompt version
 func (r *InMemoryPromptRegistry) Delete(ctx context.Context, name, version string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	versions, ok := r.prompts[name]
-	if !ok {
-		return fmt.Errorf("prompt not found: %s", name)
-	}
-
-	if _, ok := versions[version]; !ok {
-		return fmt.Errorf("version not found: %s/%s", name, version)
-	}
-
-	// Can't delete active version
-	if r.active[name] == version {
-		return fmt.Errorf("cannot delete active version: %s/%s", name, version)
-	}
-
-	delete(versions, version)
-
-	// Clean up if no versions left
-	if len(versions) == 0 {
-		delete(r.prompts, name)
-		delete(r.active, name)
+	var outErr error
+	r.withState(func(s *promptState) {
+		versions, ok := s.prompts[name]
+		if !ok {
+			outErr = fmt.Errorf("prompt not found: %s", name)
+			return
+		}
+		if _, ok := versions[version]; !ok {
+			outErr = fmt.Errorf("version not found: %s/%s", name, version)
+			return
+		}
+		if s.active[name] == version {
+			outErr = fmt.Errorf("cannot delete active version: %s/%s", name, version)
+			return
+		}
+		delete(versions, version)
+		if len(versions) == 0 {
+			delete(s.prompts, name)
+			delete(s.active, name)
+		}
+	})
+	if outErr != nil {
+		return outErr
 	}
 
 	r.logger.WithFields(logrus.Fields{
 		"name":    name,
 		"version": version,
 	}).Info("Prompt version deleted")
-
 	return nil
 }
 

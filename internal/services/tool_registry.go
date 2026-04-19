@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // Tool represents a unified tool interface
@@ -18,43 +19,53 @@ type Tool interface {
 	Source() string // "mcp", "lsp", "custom", etc.
 }
 
-// ToolRegistry manages tools from various sources
+// ToolRegistry manages tools from various sources.
+//
+// Concurrent-safe by construction (CONST-029 Tier 1): `tools` and
+// `customTools` are independent safe.Store instances. RegisterCustomTool
+// is the only joint-write path; it writes `tools` then `customTools`
+// sequentially (a reader between the two writes would see the tool in
+// `tools` but not yet in `customTools` — acceptable since customTools
+// is only consulted for the custom_count stat).
 type ToolRegistry struct {
-	mu          sync.RWMutex
-	tools       map[string]Tool
+	tools       *safe.Store[string, Tool]
+	customTools *safe.Store[string, Tool]
 	mcpManager  *MCPManager
 	lspClient   *LSPClient
-	customTools map[string]Tool
 	lastRefresh time.Time
 }
 
 // NewToolRegistry creates a new tool registry
 func NewToolRegistry(mcpManager *MCPManager, lspClient *LSPClient) *ToolRegistry {
 	return &ToolRegistry{
-		tools:       make(map[string]Tool),
+		tools:       safe.NewStore[string, Tool](),
+		customTools: safe.NewStore[string, Tool](),
 		mcpManager:  mcpManager,
 		lspClient:   lspClient,
-		customTools: make(map[string]Tool),
 	}
 }
 
-// RegisterCustomTool registers a custom tool with validation
+// RegisterCustomTool registers a custom tool with validation.
+// Atomic check-then-insert for the primary `tools` store via Update;
+// `customTools` is then populated unconditionally.
 func (tr *ToolRegistry) RegisterCustomTool(tool Tool) error {
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-
-	name := tool.Name()
-	if _, exists := tr.tools[name]; exists {
-		return fmt.Errorf("tool %s already registered", name)
-	}
-
-	// Validate tool metadata
 	if err := tr.validateToolMetadata(tool); err != nil {
 		return fmt.Errorf("tool validation failed: %w", err)
 	}
 
-	tr.tools[name] = tool
-	tr.customTools[name] = tool
+	name := tool.Name()
+	var registered bool
+	tr.tools.Update(name, func(existing Tool, present bool) (Tool, bool) {
+		if present {
+			return existing, true
+		}
+		registered = true
+		return tool, true
+	})
+	if !registered {
+		return fmt.Errorf("tool %s already registered", name)
+	}
+	tr.customTools.Put(name, tool)
 	return nil
 }
 
@@ -100,9 +111,6 @@ func (tr *ToolRegistry) validateParameterSchema(name string, schema interface{})
 
 // RegisterExternalToolSource registers tools from an external source
 func (tr *ToolRegistry) RegisterExternalToolSource(sourceName string, toolFetcher func() ([]Tool, error)) error {
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-
 	tools, err := toolFetcher()
 	if err != nil {
 		return fmt.Errorf("failed to fetch tools from %s: %w", sourceName, err)
@@ -110,36 +118,31 @@ func (tr *ToolRegistry) RegisterExternalToolSource(sourceName string, toolFetche
 
 	for _, tool := range tools {
 		name := tool.Name()
-		if _, exists := tr.tools[name]; exists {
-			log.Printf("Tool %s from %s already exists, skipping", name, sourceName)
-			continue
-		}
-
 		if err := tr.validateToolMetadata(tool); err != nil {
 			log.Printf("Tool %s from %s validation failed: %v, skipping", name, sourceName, err)
 			continue
 		}
-
-		tr.tools[name] = tool
-		log.Printf("Registered tool %s from external source %s", name, sourceName)
+		if _, stored := tr.tools.PutIfAbsent(name, tool); stored {
+			log.Printf("Registered tool %s from external source %s", name, sourceName)
+		} else {
+			log.Printf("Tool %s from %s already exists, skipping", name, sourceName)
+		}
 	}
 
 	return nil
 }
 
-// RefreshTools refreshes tools from all sources
+// RefreshTools refreshes tools from all sources. Readers during refresh
+// may observe a transitional state (non-custom tools briefly absent);
+// callers retry on "tool not found" if that matters.
 func (tr *ToolRegistry) RefreshTools(ctx context.Context) error {
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-
-	// Clear existing tools except custom ones
-	for name, tool := range tr.tools {
+	// Clear non-custom tools.
+	for name, tool := range tr.tools.Snapshot() {
 		if tool.Source() != "custom" {
-			delete(tr.tools, name)
+			tr.tools.Delete(name)
 		}
 	}
 
-	// Add MCP tools
 	if tr.mcpManager != nil {
 		mcpTools := tr.mcpManager.ListTools()
 		for _, mcpTool := range mcpTools {
@@ -147,18 +150,17 @@ func (tr *ToolRegistry) RefreshTools(ctx context.Context) error {
 				mcpTool:    mcpTool,
 				mcpManager: tr.mcpManager,
 			}
-			tr.tools[mcpTool.Name] = wrapper
+			tr.tools.Put(mcpTool.Name, wrapper)
 		}
 	}
 
-	// Add LSP-based tools (code actions)
 	if tr.lspClient != nil { //nolint:staticcheck
 		wrapper := &LSPToolWrapper{
 			name:        "lsp_diagnostic",
 			description: "Get diagnostics from LSP server for a given file",
 			client:      tr.lspClient,
 		}
-		tr.tools[wrapper.Name()] = wrapper
+		tr.tools.Put(wrapper.Name(), wrapper)
 		log.Printf("Added LSP tool: %s", wrapper.Name())
 	}
 
@@ -168,23 +170,12 @@ func (tr *ToolRegistry) RefreshTools(ctx context.Context) error {
 
 // GetTool returns a tool by name
 func (tr *ToolRegistry) GetTool(name string) (Tool, bool) {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
-	tool, exists := tr.tools[name]
-	return tool, exists
+	return tr.tools.Get(name)
 }
 
 // ListTools returns all available tools
 func (tr *ToolRegistry) ListTools() []Tool {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
-	tools := make([]Tool, 0, len(tr.tools))
-	for _, tool := range tr.tools {
-		tools = append(tools, tool)
-	}
-	return tools
+	return tr.tools.Values()
 }
 
 // ExecuteTool safely executes a tool with sandboxing
@@ -322,9 +313,6 @@ type UnifiedSearchResult struct {
 
 // Search performs unified search across all tool sources
 func (tr *ToolRegistry) Search(opts UnifiedSearchOptions) []UnifiedSearchResult {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
 	if opts.MaxResults <= 0 {
 		opts.MaxResults = 50
 	}
@@ -343,7 +331,7 @@ func (tr *ToolRegistry) Search(opts UnifiedSearchOptions) []UnifiedSearchResult 
 	}
 
 	// Search registered tools
-	for _, tool := range tr.tools {
+	for _, tool := range tr.tools.Snapshot() {
 		source := strings.ToLower(tool.Source())
 		if !searchAll && !sourceMap[source] {
 			continue
@@ -472,9 +460,6 @@ func (tr *ToolRegistry) sortSearchResults(results []UnifiedSearchResult) {
 
 // GetToolSuggestions returns suggestions based on partial input
 func (tr *ToolRegistry) GetToolSuggestions(prefix string, maxSuggestions int) []Tool {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
 	if maxSuggestions <= 0 {
 		maxSuggestions = 10
 	}
@@ -482,7 +467,7 @@ func (tr *ToolRegistry) GetToolSuggestions(prefix string, maxSuggestions int) []
 	prefixLower := strings.ToLower(prefix)
 	var suggestions []Tool
 
-	for _, tool := range tr.tools {
+	for _, tool := range tr.tools.Snapshot() {
 		if strings.HasPrefix(strings.ToLower(tool.Name()), prefixLower) {
 			suggestions = append(suggestions, tool)
 			if len(suggestions) >= maxSuggestions {
@@ -496,13 +481,10 @@ func (tr *ToolRegistry) GetToolSuggestions(prefix string, maxSuggestions int) []
 
 // GetToolsBySource returns tools from a specific source
 func (tr *ToolRegistry) GetToolsBySource(source string) []Tool {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
 	var tools []Tool
 	sourceLower := strings.ToLower(source)
 
-	for _, tool := range tr.tools {
+	for _, tool := range tr.tools.Snapshot() {
 		if strings.ToLower(tool.Source()) == sourceLower {
 			tools = append(tools, tool)
 		}
@@ -513,18 +495,16 @@ func (tr *ToolRegistry) GetToolsBySource(source string) []Tool {
 
 // GetToolStats returns statistics about registered tools
 func (tr *ToolRegistry) GetToolStats() map[string]interface{} {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
+	snap := tr.tools.Snapshot()
 	sourceCounts := make(map[string]int)
-	for _, tool := range tr.tools {
+	for _, tool := range snap {
 		sourceCounts[tool.Source()]++
 	}
 
 	return map[string]interface{}{
-		"total_tools":  len(tr.tools),
+		"total_tools":  len(snap),
 		"by_source":    sourceCounts,
 		"last_refresh": tr.lastRefresh,
-		"custom_count": len(tr.customTools),
+		"custom_count": tr.customTools.Len(),
 	}
 }

@@ -232,7 +232,6 @@ internal/services/request_service.go:107:MetricsRegistry
 internal/services/request_service.go:15:RequestService
 internal/services/request_service.go:50:ProviderMetrics
 internal/services/request_service.go:680:CircuitBreakerPattern
-internal/services/tool_registry.go:22:ToolRegistry
 internal/skills/protocol_adapter.go:28:ProtocolSkillAdapter
 internal/skills/registry.go:13:Registry
 internal/skills/tracker.go:11:Tracker

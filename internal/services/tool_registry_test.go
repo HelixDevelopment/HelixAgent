@@ -427,9 +427,7 @@ func TestToolRegistry_RefreshTools(t *testing.T) {
 			Description: "Should be removed",
 		}
 		wrapper := &MCPToolWrapper{mcpTool: mcpTool, mcpManager: nil}
-		freshRegistry.mu.Lock()
-		freshRegistry.tools["mcp-tool-to-remove"] = wrapper
-		freshRegistry.mu.Unlock()
+		freshRegistry.tools.Put("mcp-tool-to-remove", wrapper)
 
 		// Verify both tools exist
 		_, customExists := freshRegistry.GetTool("custom-keep")

@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/utils"
 )
@@ -13,39 +14,37 @@ import (
 // ConfigManager handles plugin configuration management
 type ConfigManager struct {
 	configDir string
-	configs   map[string]map[string]interface{}
-	mu        sync.RWMutex
+	configs   *safe.Store[string, map[string]interface{}]
 }
 
 func NewConfigManager(configDir string) *ConfigManager {
 	return &ConfigManager{
 		configDir: configDir,
-		configs:   make(map[string]map[string]interface{}),
+		configs:   safe.NewStore[string, map[string]interface{}](),
 	}
 }
 
 func (c *ConfigManager) LoadPluginConfig(pluginName string) (map[string]interface{}, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if !utils.ValidatePath(pluginName) {
 		return nil, fmt.Errorf("invalid plugin name: %s", pluginName)
 	}
 
-	configPath := filepath.Join(c.configDir, pluginName+".json")
-
 	// Check if already loaded
-	if config, exists := c.configs[pluginName]; exists {
+	if config, exists := c.configs.Get(pluginName); exists {
 		return config, nil
 	}
+
+	configPath := filepath.Join(c.configDir, pluginName+".json")
 
 	// Load from file
 	data, err := os.ReadFile(configPath) // #nosec G304 - plugin name validated with utils.ValidatePath
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Return default empty config
+			// Return default empty config, racing PutIfAbsent so concurrent
+			// first-loaders converge on the same cached instance.
 			defaultConfig := make(map[string]interface{})
-			c.configs[pluginName] = defaultConfig
-			return defaultConfig, nil
+			cached, _ := c.configs.PutIfAbsent(pluginName, defaultConfig)
+			return cached, nil
 		}
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -55,15 +54,14 @@ func (c *ConfigManager) LoadPluginConfig(pluginName string) (map[string]interfac
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	c.configs[pluginName] = config
-	utils.GetLogger().Infof("Loaded configuration for plugin %s", pluginName)
-	return config, nil
+	cached, stored := c.configs.PutIfAbsent(pluginName, config)
+	if stored {
+		utils.GetLogger().Infof("Loaded configuration for plugin %s", pluginName)
+	}
+	return cached, nil
 }
 
 func (c *ConfigManager) SavePluginConfig(pluginName string, config map[string]interface{}) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	configPath := filepath.Join(c.configDir, pluginName+".json")
 
 	data, err := json.MarshalIndent(config, "", "  ")
@@ -76,7 +74,7 @@ func (c *ConfigManager) SavePluginConfig(pluginName string, config map[string]in
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	c.configs[pluginName] = config
+	c.configs.Put(pluginName, config)
 	utils.GetLogger().Infof("Saved configuration for plugin %s", pluginName)
 	return nil
 }
@@ -152,12 +150,5 @@ func (c *ConfigManager) ValidateConfig(pluginName string, config map[string]inte
 }
 
 func (c *ConfigManager) GetAllConfigs() map[string]map[string]interface{} {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	result := make(map[string]map[string]interface{})
-	for name, config := range c.configs {
-		result[name] = config
-	}
-	return result
+	return c.configs.Snapshot()
 }

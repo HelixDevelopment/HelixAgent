@@ -62,7 +62,7 @@ func TestConfigManager_LoadPluginConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// Clear cache
-		delete(cm.configs, "invalid")
+		cm.configs.Delete("invalid")
 
 		_, err = cm.LoadPluginConfig("invalid")
 		assert.Error(t, err)
@@ -90,7 +90,8 @@ func TestConfigManager_SavePluginConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify cached
-		assert.Equal(t, config, cm.configs["save-test"])
+		cached, _ := cm.configs.Get("save-test")
+		assert.Equal(t, config, cached)
 	})
 
 	t.Run("overwrite existing config", func(t *testing.T) {
@@ -103,7 +104,8 @@ func TestConfigManager_SavePluginConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify cached value directly (before serialization)
-		assert.Equal(t, 2, cm.configs["overwrite-test"]["value"])
+		cached, _ := cm.configs.Get("overwrite-test")
+		assert.Equal(t, 2, cached["value"])
 	})
 }
 
@@ -130,7 +132,7 @@ func TestConfigManager_UpdatePluginConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// Clear cache to force reload
-		delete(cm.configs, "update-test")
+		cm.configs.Delete("update-test")
 
 		// Verify merged config
 		loaded, err := cm.LoadPluginConfig("update-test")
@@ -286,8 +288,8 @@ func TestConfigManager_GetAllConfigs(t *testing.T) {
 	cm := NewConfigManager(tmpDir)
 
 	// Add some configs
-	cm.configs["plugin-a"] = map[string]interface{}{"name": "a"}
-	cm.configs["plugin-b"] = map[string]interface{}{"name": "b"}
+	cm.configs.Put("plugin-a", map[string]interface{}{"name": "a"})
+	cm.configs.Put("plugin-b", map[string]interface{}{"name": "b"})
 
 	all := cm.GetAllConfigs()
 	assert.Len(t, all, 2)
@@ -296,7 +298,7 @@ func TestConfigManager_GetAllConfigs(t *testing.T) {
 
 	// Verify it's a copy, not the original
 	all["plugin-c"] = map[string]interface{}{"name": "c"}
-	assert.Len(t, cm.configs, 2)
+	assert.Equal(t, 2, cm.configs.Len())
 }
 
 func TestConfigManager_ValidateConfig_MaxRetries(t *testing.T) {
@@ -410,10 +412,10 @@ func BenchmarkConfigManager_GetAllConfigs(b *testing.B) {
 
 	for i := 0; i < 50; i++ {
 		name := "plugin-" + string(rune('a'+i%26))
-		cm.configs[name] = map[string]interface{}{
+		cm.configs.Put(name, map[string]interface{}{
 			"name":    name,
 			"version": "1.0.0",
-		}
+		})
 	}
 
 	b.ResetTimer()

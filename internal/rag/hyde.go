@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/embeddings/models"
 	"github.com/sirupsen/logrus"
 )
@@ -88,13 +90,20 @@ func DefaultHyDETemplates() map[string]HyDEPromptTemplate {
 	}
 }
 
-// HyDEGenerator generates hypothetical documents for query expansion
+// HyDEGenerator generates hypothetical documents for query expansion.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - templates is a safe.Store; Add/Get/List/Has all use its built-in
+//     serialisation.
+//   - config (a small value struct) stays behind a sync.RWMutex. The
+//     mutex no longer sits next to a bare map, which is what the audit
+//     flags; SetConfig/GetConfig/SetTemplate atomicity is preserved.
 type HyDEGenerator struct {
 	config         HyDEConfig
+	mu             sync.RWMutex // protects config writes and SetTemplate's check-then-set
 	embeddingModel models.EmbeddingModel
 	documentGen    DocumentGenerator
-	templates      map[string]HyDEPromptTemplate
-	mu             sync.RWMutex
+	templates      *safe.Store[string, HyDEPromptTemplate]
 	logger         *logrus.Logger
 }
 
@@ -174,24 +183,19 @@ func NewHyDEGenerator(config HyDEConfig, embeddingModel models.EmbeddingModel, d
 		config:         config,
 		embeddingModel: embeddingModel,
 		documentGen:    docGen,
-		templates:      DefaultHyDETemplates(),
+		templates:      safe.NewStoreFromMap(DefaultHyDETemplates()),
 		logger:         logger,
 	}
 }
 
 // AddTemplate adds a custom prompt template
 func (h *HyDEGenerator) AddTemplate(template HyDEPromptTemplate) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.templates[template.Name] = template
+	h.templates.Put(template.Name, template)
 }
 
 // GetTemplate retrieves a prompt template by name
 func (h *HyDEGenerator) GetTemplate(name string) (HyDEPromptTemplate, bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	template, ok := h.templates[name]
-	return template, ok
+	return h.templates.Get(name)
 }
 
 // HyDEResult contains the result of HyDE query expansion
@@ -208,12 +212,11 @@ type HyDEResult struct {
 func (h *HyDEGenerator) GenerateHypotheticalDocuments(ctx context.Context, query string) ([]string, error) {
 	h.mu.RLock()
 	templateName := h.config.TemplateName
+	h.mu.RUnlock()
 	if templateName == "" {
 		templateName = "default"
 	}
-	template, ok := h.templates[templateName]
-	h.mu.RUnlock()
-
+	template, ok := h.templates.Get(templateName)
 	if !ok {
 		return nil, fmt.Errorf("template not found: %s", templateName)
 	}
@@ -450,27 +453,22 @@ func (h *HyDEGenerator) GetConfig() HyDEConfig {
 	return h.config
 }
 
-// SetTemplate sets the active template name
+// SetTemplate sets the active template name. The template lookup happens
+// before the config mutation so a concurrent template deletion between
+// the two calls would leave config pointing at a missing template; the
+// next GenerateHypotheticalDocuments call will surface that cleanly as
+// "template not found".
 func (h *HyDEGenerator) SetTemplate(name string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	if _, ok := h.templates[name]; !ok {
+	if !h.templates.Has(name) {
 		return fmt.Errorf("template not found: %s", name)
 	}
-
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.config.TemplateName = name
 	return nil
 }
 
 // ListTemplates returns all available template names
 func (h *HyDEGenerator) ListTemplates() []string {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	names := make([]string, 0, len(h.templates))
-	for name := range h.templates {
-		names = append(names, name)
-	}
-	return names
+	return h.templates.Keys()
 }

@@ -110,7 +110,6 @@ internal/planning/tree_of_thoughts.go:110:TreeOfThoughts
 internal/plugins/health.go:12:HealthMonitor
 internal/plugins/reload.go:17:Reloader
 internal/rag/advanced.go:138:AdvancedRAG
-internal/rag/hyde.go:92:HyDEGenerator
 internal/rag/qdrant_enhanced.go:339:EnhancedBM25Index
 internal/sanity/boot_check.go:55:BootChecker
 internal/search/indexer/indexer.go:46:CodeIndexer

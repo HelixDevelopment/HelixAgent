@@ -120,7 +120,7 @@ func TestNewHyDEGenerator(t *testing.T) {
 	assert.NotNil(t, generator)
 	assert.Equal(t, 3, generator.config.NumHypotheses)
 	assert.NotNil(t, generator.templates)
-	assert.Contains(t, generator.templates, "default")
+	assert.True(t, generator.templates.Has("default"))
 }
 
 func TestNewHyDEGenerator_DefaultDocGen(t *testing.T) {

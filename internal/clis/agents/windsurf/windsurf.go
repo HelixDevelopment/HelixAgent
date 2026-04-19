@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
@@ -17,14 +19,16 @@ import (
 
 // Windsurf provides Windsurf IDE integration.
 //
-// All access to `projects` (slice append / range / index read)
-// goes through `projMu`. Concurrent Execute() calls would otherwise
-// race on the slice (race-debt BUGFIX #37).
+// Concurrent-safe by construction (CONST-029): projects is a safe.Slice;
+// nextID is an atomic.Int64 counter that takes ID generation off the
+// slice's len() so concurrent createProject calls cannot collide on
+// IDs (the previous mutex-guarded `len(projects)+1` worked but was
+// fragile under any future migration that broke len/append atomicity).
 type Windsurf struct {
 	*base.BaseIntegration
 	config   *Config
-	projects []Project
-	projMu   sync.RWMutex
+	projects *safe.Slice[Project]
+	nextID   atomic.Int64
 }
 
 // Config holds Windsurf configuration
@@ -78,7 +82,7 @@ func New() *Windsurf {
 			Model:      "claude-sonnet-4",
 			AutoDeploy: false,
 		},
-		projects: make([]Project, 0),
+		projects: safe.NewSlice[Project](),
 	}
 }
 
@@ -108,17 +112,23 @@ func (w *Windsurf) loadProjects() error {
 		return fmt.Errorf("read projects: %w", err)
 	}
 
-	w.projMu.Lock()
-	defer w.projMu.Unlock()
-	return json.Unmarshal(data, &w.projects)
+	var loaded []Project
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		return err
+	}
+	w.projects.Replace(loaded)
+	// Seed the ID counter so subsequent IDs do not collide with loaded ones.
+	if int64(len(loaded)) > w.nextID.Load() {
+		w.nextID.Store(int64(len(loaded)))
+	}
+	return nil
 }
 
 // saveProjects saves project list
 func (w *Windsurf) saveProjects() error {
 	projectsPath := filepath.Join(w.GetWorkDir(), "projects.json")
-	w.projMu.RLock()
-	data, err := json.MarshalIndent(w.projects, "", "  ")
-	w.projMu.RUnlock()
+	snapshot := w.projects.Snapshot()
+	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal projects: %w", err)
 	}
@@ -211,12 +221,10 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 		framework = "react"
 	}
 
-	// ID generation + slice append under write lock — otherwise
-	// concurrent createProject calls can produce duplicate IDs and
-	// race on the slice.
-	w.projMu.Lock()
+	// Atomic ID gen via counter; safe.Slice.Append is independently atomic.
+	id := w.nextID.Add(1)
 	project := Project{
-		ID:        fmt.Sprintf("project-%d", len(w.projects)+1),
+		ID:        fmt.Sprintf("project-%d", id),
 		Name:      name,
 		Path:      filepath.Join(w.GetWorkDir(), name),
 		Type:      projectType,
@@ -224,15 +232,11 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 		Status:    "created",
 	}
 
-	// Create project directory (doesn't touch projects slice but
-	// serializing here is cheaper than re-locking).
 	if err := os.MkdirAll(project.Path, 0755); err != nil {
-		w.projMu.Unlock()
 		return nil, fmt.Errorf("create project dir: %w", err)
 	}
 
-	w.projects = append(w.projects, project)
-	w.projMu.Unlock()
+	w.projects.Append(project)
 
 	if err := w.saveProjects(); err != nil {
 		return nil, err
@@ -310,22 +314,13 @@ func (w *Windsurf) openProject(ctx context.Context, params map[string]interface{
 		return nil, fmt.Errorf("project_id required")
 	}
 
-	// Snapshot the project under read lock so callers don't race
-	// with concurrent createProject / deploy mutations.
-	w.projMu.RLock()
-	var project *Project
-	for i := range w.projects {
-		if w.projects[i].ID == projectID {
-			p := w.projects[i] // value copy
-			project = &p
-			break
-		}
-	}
-	w.projMu.RUnlock()
-
-	if project == nil {
+	// Snapshot the project so callers don't race with concurrent
+	// mutations.
+	found, ok := w.projects.Find(func(p Project) bool { return p.ID == projectID })
+	if !ok {
 		return nil, fmt.Errorf("project not found: %s", projectID)
 	}
+	project := &found
 
 	// Try to open in Windsurf
 	if w.config.EditorPath != "" {
@@ -353,21 +348,12 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 		platform = "vercel"
 	}
 
-	// Snapshot under read lock (same pattern as openProject).
-	w.projMu.RLock()
-	var project *Project
-	for i := range w.projects {
-		if w.projects[i].ID == projectID {
-			p := w.projects[i]
-			project = &p
-			break
-		}
-	}
-	w.projMu.RUnlock()
-
-	if project == nil {
+	// Snapshot the project (same pattern as openProject).
+	found, ok := w.projects.Find(func(p Project) bool { return p.ID == projectID })
+	if !ok {
 		return nil, fmt.Errorf("project not found: %s", projectID)
 	}
+	project := &found
 
 	return map[string]interface{}{
 		"project":  project,
@@ -379,14 +365,10 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 
 // listProjects lists all projects — returns a defensive snapshot.
 func (w *Windsurf) listProjects(ctx context.Context) (interface{}, error) {
-	w.projMu.RLock()
-	snapshot := make([]Project, len(w.projects))
-	copy(snapshot, w.projects)
-	count := len(w.projects)
-	w.projMu.RUnlock()
+	snapshot := w.projects.Snapshot()
 	return map[string]interface{}{
 		"projects": snapshot,
-		"count":    count,
+		"count":    len(snapshot),
 	}, nil
 }
 
@@ -416,9 +398,9 @@ func (w *Windsurf) IsAvailable() bool {
 	return err == nil
 }
 
-// GetProjects returns all projects
+// GetProjects returns all projects (defensive snapshot).
 func (w *Windsurf) GetProjects() []Project {
-	return w.projects
+	return w.projects.Snapshot()
 }
 
 var _ agents.AgentIntegration = (*Windsurf)(nil)

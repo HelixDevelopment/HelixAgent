@@ -149,8 +149,6 @@ internal/optimization/gptcache/eviction.go:96:TTLEviction
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/optimization/optimizer.go:23:Service
 internal/optimization/sglang/client.go:17:Client
-internal/optimization/streaming/aggregator.go:125:ChunkAggregator
-internal/optimization/streaming/aggregator.go:23:StreamAggregator
 internal/optimization/streaming/chunker.go:433:StreamingChunker
 internal/planning/hiplan.go:145:HiPlan
 internal/planning/mcts.go:27:MCTSNode

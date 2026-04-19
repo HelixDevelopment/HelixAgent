@@ -3,8 +3,10 @@ package streaming
 import (
 	"context"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // AggregatedStream contains the aggregated result of a stream.
@@ -21,38 +23,38 @@ type AggregatedStream struct {
 
 // StreamAggregator aggregates streaming output while passing through.
 type StreamAggregator struct {
-	mu        sync.Mutex
-	chunks    []string
-	startTime time.Time
+	chunks    *safe.Slice[string]
+	startTime atomic.Pointer[time.Time]
 }
 
 // NewStreamAggregator creates a new stream aggregator.
 func NewStreamAggregator() *StreamAggregator {
-	return &StreamAggregator{}
+	return &StreamAggregator{
+		chunks: safe.NewSlice[string](),
+	}
 }
 
 // Start begins aggregation.
 func (a *StreamAggregator) Start() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.startTime = time.Now()
-	a.chunks = nil
+	now := time.Now()
+	a.startTime.Store(&now)
+	a.chunks.Clear()
 }
 
 // Add adds a chunk to the aggregation.
 func (a *StreamAggregator) Add(chunk string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.chunks = append(a.chunks, chunk)
+	a.chunks.Append(chunk)
 }
 
 // GetResult returns the aggregated result.
 func (a *StreamAggregator) GetResult() *AggregatedStream {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	var duration float64
+	if st := a.startTime.Load(); st != nil && !st.IsZero() {
+		duration = time.Since(*st).Seconds()
+	}
 
-	duration := time.Since(a.startTime).Seconds()
-	fullContent := strings.Join(a.chunks, "")
+	chunks := a.chunks.Snapshot()
+	fullContent := strings.Join(chunks, "")
 	tokenCount := len(strings.Fields(fullContent))
 	charCount := len(fullContent)
 
@@ -64,10 +66,10 @@ func (a *StreamAggregator) GetResult() *AggregatedStream {
 
 	return &AggregatedStream{
 		FullContent:     fullContent,
-		Chunks:          a.chunks,
+		Chunks:          chunks,
 		TokenCount:      tokenCount,
 		CharacterCount:  charCount,
-		ChunkCount:      len(a.chunks),
+		ChunkCount:      len(chunks),
 		DurationSeconds: duration,
 		TokensPerSecond: tps,
 		CharsPerSecond:  cps,
@@ -76,10 +78,9 @@ func (a *StreamAggregator) GetResult() *AggregatedStream {
 
 // Reset clears the aggregator.
 func (a *StreamAggregator) Reset() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.chunks = nil
-	a.startTime = time.Time{}
+	a.chunks.Clear()
+	var zero time.Time
+	a.startTime.Store(&zero)
 }
 
 // Aggregate wraps a channel to aggregate content while passing through.
@@ -123,42 +124,42 @@ type StreamChunk struct {
 
 // ChunkAggregator aggregates StreamChunk objects.
 type ChunkAggregator struct {
-	mu        sync.Mutex
-	chunks    []*StreamChunk
-	startTime time.Time
+	chunks    *safe.Slice[*StreamChunk]
+	startTime atomic.Pointer[time.Time]
 }
 
 // NewChunkAggregator creates a new chunk aggregator.
 func NewChunkAggregator() *ChunkAggregator {
-	return &ChunkAggregator{}
+	return &ChunkAggregator{
+		chunks: safe.NewSlice[*StreamChunk](),
+	}
 }
 
 // Start begins aggregation.
 func (a *ChunkAggregator) Start() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.startTime = time.Now()
-	a.chunks = nil
+	now := time.Now()
+	a.startTime.Store(&now)
+	a.chunks.Clear()
 }
 
 // Add adds a chunk to the aggregation.
 func (a *ChunkAggregator) Add(chunk *StreamChunk) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.chunks = append(a.chunks, chunk)
+	a.chunks.Append(chunk)
 }
 
 // GetResult returns the aggregated result.
 func (a *ChunkAggregator) GetResult() *AggregatedStream {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	var duration float64
+	if st := a.startTime.Load(); st != nil && !st.IsZero() {
+		duration = time.Since(*st).Seconds()
+	}
 
-	duration := time.Since(a.startTime).Seconds()
+	chunks := a.chunks.Snapshot()
 
 	var builder strings.Builder
-	chunkStrings := make([]string, 0, len(a.chunks))
+	chunkStrings := make([]string, 0, len(chunks))
 
-	for _, chunk := range a.chunks {
+	for _, chunk := range chunks {
 		builder.WriteString(chunk.Content)
 		chunkStrings = append(chunkStrings, chunk.Content)
 	}
@@ -178,7 +179,7 @@ func (a *ChunkAggregator) GetResult() *AggregatedStream {
 		Chunks:          chunkStrings,
 		TokenCount:      tokenCount,
 		CharacterCount:  charCount,
-		ChunkCount:      len(a.chunks),
+		ChunkCount:      len(chunks),
 		DurationSeconds: duration,
 		TokensPerSecond: tps,
 		CharsPerSecond:  cps,

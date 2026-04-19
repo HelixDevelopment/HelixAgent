@@ -8,24 +8,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
-// SSEManager manages Server-Sent Events connections
+// SSEManager manages Server-Sent Events connections.
+//
+// Concurrent-safe by construction (CONST-029): the entire client topology
+// (per-task clients, global clients, per-IP counters) lives in a single
+// sseState held under a sentinel key in a safe.Store. Every broadcast,
+// register, and close runs inside one Update callback, which preserves
+// the original invariant that "channel close" and "channel send" are
+// mutually exclusive — a property a per-collection Store cannot give us
+// (Pattern Epsilon — joint atomicity via state struct).
 type SSEManager struct {
-	// Task-specific clients
-	clients   map[string]map[chan<- []byte]struct{}
-	clientsMu sync.RWMutex
+	state *safe.Store[string, *sseState]
 
-	// Global event clients (for all task events)
-	globalClients   map[chan<- []byte]struct{}
-	globalClientsMu sync.RWMutex
-
-	// Per-IP connection tracking for backpressure
-	ipConns   map[string]int
-	ipConnsMu sync.Mutex
-
-	// Configuration
+	// Configuration (read-only after construction)
 	heartbeatInterval time.Duration
 	bufferSize        int
 	maxConnsPerIP     int
@@ -36,6 +35,23 @@ type SSEManager struct {
 	wg       sync.WaitGroup
 	closed   atomic.Bool
 	stopOnce sync.Once
+}
+
+// sseState is the joint mutable state held under sseStateKey.
+type sseState struct {
+	clients       map[string]map[chan<- []byte]struct{}
+	globalClients map[chan<- []byte]struct{}
+	ipConns       map[string]int
+}
+
+const sseStateKey = "_"
+
+func newSSEState() *sseState {
+	return &sseState{
+		clients:       make(map[string]map[chan<- []byte]struct{}),
+		globalClients: make(map[chan<- []byte]struct{}),
+		ipConns:       make(map[string]int),
+	}
 }
 
 // SSEConfig holds SSE configuration
@@ -69,10 +85,10 @@ func NewSSEManager(config *SSEConfig, logger *logrus.Logger) *SSEManager {
 		maxConnsPerIP = 10
 	}
 
+	store := safe.NewStore[string, *sseState]()
+	store.Put(sseStateKey, newSSEState())
 	manager := &SSEManager{
-		clients:           make(map[string]map[chan<- []byte]struct{}),
-		globalClients:     make(map[chan<- []byte]struct{}),
-		ipConns:           make(map[string]int),
+		state:             store,
 		heartbeatInterval: config.HeartbeatInterval,
 		bufferSize:        config.BufferSize,
 		maxConnsPerIP:     maxConnsPerIP,
@@ -86,6 +102,18 @@ func NewSSEManager(config *SSEConfig, logger *logrus.Logger) *SSEManager {
 	go manager.heartbeatLoop()
 
 	return manager
+}
+
+// withState runs fn under the state Store's write lock; fn may mutate
+// the maps in-place.
+func (m *SSEManager) withState(fn func(*sseState)) {
+	m.state.Update(sseStateKey, func(s *sseState, _ bool) (*sseState, bool) {
+		if s == nil {
+			s = newSSEState()
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // Start starts the SSE manager
@@ -104,39 +132,39 @@ func (m *SSEManager) Stop() error {
 		m.cancel()
 		m.wg.Wait()
 
-		// Close all client channels
-		m.clientsMu.Lock()
-		for taskID, clients := range m.clients {
-			for client := range clients {
+		// Close all client channels under the state Store's write lock
+		// so concurrent Broadcasts (which also run under withState)
+		// cannot send to a half-closed channel.
+		m.withState(func(s *sseState) {
+			for taskID, clients := range s.clients {
+				for client := range clients {
+					close(client)
+				}
+				delete(s.clients, taskID)
+			}
+			for client := range s.globalClients {
 				close(client)
 			}
-			delete(m.clients, taskID)
-		}
-		m.clientsMu.Unlock()
-
-		m.globalClientsMu.Lock()
-		for client := range m.globalClients {
-			close(client)
-		}
-		m.globalClients = make(map[chan<- []byte]struct{})
-		m.globalClientsMu.Unlock()
+			s.globalClients = make(map[chan<- []byte]struct{})
+		})
 	})
 	return stopErr
 }
 
 // RegisterClient registers a client for a specific task
 func (m *SSEManager) RegisterClient(taskID string, client chan<- []byte) error {
-	m.clientsMu.Lock()
-	defer m.clientsMu.Unlock()
-
-	if m.clients[taskID] == nil {
-		m.clients[taskID] = make(map[chan<- []byte]struct{})
-	}
-	m.clients[taskID][client] = struct{}{}
+	var totalAfter int
+	m.withState(func(s *sseState) {
+		if s.clients[taskID] == nil {
+			s.clients[taskID] = make(map[chan<- []byte]struct{})
+		}
+		s.clients[taskID][client] = struct{}{}
+		totalAfter = len(s.clients[taskID])
+	})
 
 	m.logger.WithFields(logrus.Fields{
 		"task_id":       taskID,
-		"total_clients": len(m.clients[taskID]),
+		"total_clients": totalAfter,
 	}).Debug("SSE client registered")
 
 	return nil
@@ -144,15 +172,14 @@ func (m *SSEManager) RegisterClient(taskID string, client chan<- []byte) error {
 
 // UnregisterClient removes a client from a task
 func (m *SSEManager) UnregisterClient(taskID string, client chan<- []byte) error {
-	m.clientsMu.Lock()
-	defer m.clientsMu.Unlock()
-
-	if clients, exists := m.clients[taskID]; exists {
-		delete(clients, client)
-		if len(clients) == 0 {
-			delete(m.clients, taskID)
+	m.withState(func(s *sseState) {
+		if clients, exists := s.clients[taskID]; exists {
+			delete(clients, client)
+			if len(clients) == 0 {
+				delete(s.clients, taskID)
+			}
 		}
-	}
+	})
 
 	m.logger.WithField("task_id", taskID).Debug("SSE client unregistered")
 	return nil
@@ -160,31 +187,40 @@ func (m *SSEManager) UnregisterClient(taskID string, client chan<- []byte) error
 
 // RegisterGlobalClient registers a client for all events
 func (m *SSEManager) RegisterGlobalClient(client chan<- []byte) error {
-	m.globalClientsMu.Lock()
-	defer m.globalClientsMu.Unlock()
+	var totalAfter int
+	m.withState(func(s *sseState) {
+		s.globalClients[client] = struct{}{}
+		totalAfter = len(s.globalClients)
+	})
 
-	m.globalClients[client] = struct{}{}
-
-	m.logger.WithField("total_global_clients", len(m.globalClients)).Debug("Global SSE client registered")
+	m.logger.WithField("total_global_clients", totalAfter).Debug("Global SSE client registered")
 	return nil
 }
 
 // UnregisterGlobalClient removes a global client
 func (m *SSEManager) UnregisterGlobalClient(client chan<- []byte) error {
-	m.globalClientsMu.Lock()
-	defer m.globalClientsMu.Unlock()
-
-	delete(m.globalClients, client)
+	m.withState(func(s *sseState) {
+		delete(s.globalClients, client)
+	})
 	return nil
 }
 
 // RegisterClientWithIP registers a task-scoped client and enforces a per-IP
 // connection cap. Returns an error when the caller's IP has reached maxConnsPerIP.
 func (m *SSEManager) RegisterClientWithIP(taskID string, clientIP string, client chan<- []byte) error {
-	m.ipConnsMu.Lock()
-	current := m.ipConns[clientIP]
-	if current >= m.maxConnsPerIP {
-		m.ipConnsMu.Unlock()
+	var (
+		rejected bool
+		current  int
+	)
+	m.withState(func(s *sseState) {
+		current = s.ipConns[clientIP]
+		if current >= m.maxConnsPerIP {
+			rejected = true
+			return
+		}
+		s.ipConns[clientIP]++
+	})
+	if rejected {
 		m.logger.WithFields(logrus.Fields{
 			"client_ip":        clientIP,
 			"current_conns":    current,
@@ -192,31 +228,31 @@ func (m *SSEManager) RegisterClientWithIP(taskID string, clientIP string, client
 		}).Warn("SSE connection rejected: per-IP cap reached")
 		return fmt.Errorf("connection limit reached for IP %s (%d/%d)", clientIP, current, m.maxConnsPerIP)
 	}
-	m.ipConns[clientIP]++
-	m.ipConnsMu.Unlock()
 
 	return m.RegisterClient(taskID, client)
 }
 
 // UnregisterClientWithIP removes a task-scoped client and decrements the per-IP counter.
 func (m *SSEManager) UnregisterClientWithIP(taskID string, clientIP string, client chan<- []byte) error {
-	m.ipConnsMu.Lock()
-	if m.ipConns[clientIP] > 0 {
-		m.ipConns[clientIP]--
-		if m.ipConns[clientIP] == 0 {
-			delete(m.ipConns, clientIP)
+	m.withState(func(s *sseState) {
+		if s.ipConns[clientIP] > 0 {
+			s.ipConns[clientIP]--
+			if s.ipConns[clientIP] == 0 {
+				delete(s.ipConns, clientIP)
+			}
 		}
-	}
-	m.ipConnsMu.Unlock()
+	})
 
 	return m.UnregisterClient(taskID, client)
 }
 
 // GetIPConnCount returns the current number of connections for a given client IP.
 func (m *SSEManager) GetIPConnCount(clientIP string) int {
-	m.ipConnsMu.Lock()
-	defer m.ipConnsMu.Unlock()
-	return m.ipConns[clientIP]
+	var count int
+	m.withState(func(s *sseState) {
+		count = s.ipConns[clientIP]
+	})
+	return count
 }
 
 // Broadcast sends a message to all clients watching a task
@@ -225,26 +261,29 @@ func (m *SSEManager) Broadcast(taskID string, data []byte) {
 		return
 	}
 
-	// Format as SSE event
 	sseData := formatSSEEvent("message", data)
 
-	// Hold RLock during sends so Stop() cannot close channels
-	// while we are iterating
-	m.clientsMu.RLock()
-	if !m.closed.Load() {
-		for client := range m.clients[taskID] {
+	// Send under withState so concurrent Stop() cannot close channels
+	// mid-send (Stop also runs its closes inside withState).
+	m.withState(func(s *sseState) {
+		if m.closed.Load() {
+			return
+		}
+		for client := range s.clients[taskID] {
 			select {
 			case client <- sseData:
 			default:
-				// Client channel full, skip
 				m.logger.WithField("task_id", taskID).Debug("SSE client channel full, skipping")
 			}
 		}
-	}
-	m.clientsMu.RUnlock()
-
-	// Also send to global clients
-	m.broadcastGlobal(sseData)
+		for client := range s.globalClients {
+			select {
+			case client <- sseData:
+			default:
+				m.logger.Debug("Global SSE client channel full")
+			}
+		}
+	})
 }
 
 // BroadcastEvent sends a named event to all clients watching a task
@@ -260,19 +299,25 @@ func (m *SSEManager) BroadcastEvent(taskID string, eventName string, data interf
 
 	sseData := formatSSEEvent(eventName, jsonData)
 
-	m.clientsMu.RLock()
-	if !m.closed.Load() {
-		for client := range m.clients[taskID] {
+	m.withState(func(s *sseState) {
+		if m.closed.Load() {
+			return
+		}
+		for client := range s.clients[taskID] {
 			select {
 			case client <- sseData:
 			default:
 				m.logger.WithField("task_id", taskID).Debug("SSE client channel full")
 			}
 		}
-	}
-	m.clientsMu.RUnlock()
-
-	m.broadcastGlobal(sseData)
+		for client := range s.globalClients {
+			select {
+			case client <- sseData:
+			default:
+				m.logger.Debug("Global SSE client channel full")
+			}
+		}
+	})
 	return nil
 }
 
@@ -284,9 +329,11 @@ func (m *SSEManager) BroadcastAll(data []byte) {
 
 	sseData := formatSSEEvent("message", data)
 
-	m.clientsMu.RLock()
-	if !m.closed.Load() {
-		for _, clients := range m.clients {
+	m.withState(func(s *sseState) {
+		if m.closed.Load() {
+			return
+		}
+		for _, clients := range s.clients {
 			for client := range clients {
 				select {
 				case client <- sseData:
@@ -294,29 +341,14 @@ func (m *SSEManager) BroadcastAll(data []byte) {
 				}
 			}
 		}
-	}
-	m.clientsMu.RUnlock()
-
-	m.broadcastGlobal(sseData)
-}
-
-// broadcastGlobal sends data to all global clients
-func (m *SSEManager) broadcastGlobal(data []byte) {
-	if m.closed.Load() {
-		return
-	}
-
-	m.globalClientsMu.RLock()
-	if !m.closed.Load() {
-		for client := range m.globalClients {
+		for client := range s.globalClients {
 			select {
-			case client <- data:
+			case client <- sseData:
 			default:
 				m.logger.Debug("Global SSE client channel full")
 			}
 		}
-	}
-	m.globalClientsMu.RUnlock()
+	})
 }
 
 // heartbeatLoop sends periodic heartbeats to keep connections alive
@@ -344,9 +376,11 @@ func (m *SSEManager) sendHeartbeats(heartbeat []byte) {
 		return
 	}
 
-	m.clientsMu.RLock()
-	if !m.closed.Load() {
-		for _, clients := range m.clients {
+	m.withState(func(s *sseState) {
+		if m.closed.Load() {
+			return
+		}
+		for _, clients := range s.clients {
 			for client := range clients {
 				select {
 				case client <- heartbeat:
@@ -354,43 +388,34 @@ func (m *SSEManager) sendHeartbeats(heartbeat []byte) {
 				}
 			}
 		}
-	}
-	m.clientsMu.RUnlock()
-
-	m.globalClientsMu.RLock()
-	if !m.closed.Load() {
-		for client := range m.globalClients {
+		for client := range s.globalClients {
 			select {
 			case client <- heartbeat:
 			default:
 			}
 		}
-	}
-	m.globalClientsMu.RUnlock()
+	})
 }
 
 // GetClientCount returns the number of clients for a task
 func (m *SSEManager) GetClientCount(taskID string) int {
-	m.clientsMu.RLock()
-	defer m.clientsMu.RUnlock()
-
-	return len(m.clients[taskID])
+	var count int
+	m.withState(func(s *sseState) {
+		count = len(s.clients[taskID])
+	})
+	return count
 }
 
 // GetTotalClientCount returns the total number of connected clients
 func (m *SSEManager) GetTotalClientCount() int {
-	m.clientsMu.RLock()
-	taskCount := 0
-	for _, clients := range m.clients {
-		taskCount += len(clients)
-	}
-	m.clientsMu.RUnlock()
-
-	m.globalClientsMu.RLock()
-	globalCount := len(m.globalClients)
-	m.globalClientsMu.RUnlock()
-
-	return taskCount + globalCount
+	var total int
+	m.withState(func(s *sseState) {
+		for _, clients := range s.clients {
+			total += len(clients)
+		}
+		total += len(s.globalClients)
+	})
+	return total
 }
 
 // formatSSEEvent formats data as an SSE event

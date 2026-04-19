@@ -31,8 +31,8 @@ func TestNewSSEManager(t *testing.T) {
 		manager := NewSSEManager(nil, logger)
 		require.NotNil(t, manager)
 
-		assert.NotNil(t, manager.clients)
-		assert.NotNil(t, manager.globalClients)
+		assert.NotNil(t, manager.state)
+		assert.Equal(t, 0, manager.GetTotalClientCount())
 		assert.Equal(t, logger, manager.logger)
 		assert.Equal(t, 30*time.Second, manager.heartbeatInterval)
 		assert.Equal(t, 100, manager.bufferSize)

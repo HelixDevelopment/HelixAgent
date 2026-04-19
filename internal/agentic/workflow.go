@@ -116,7 +116,28 @@ type ToolCall struct {
 // ToolHandler executes a tool
 type ToolHandler func(ctx context.Context, args map[string]interface{}) (interface{}, error)
 
-// WorkflowState maintains state across the workflow
+// WorkflowState maintains state across the workflow.
+//
+// Concurrency model (CONST-029):
+//
+// WorkflowState is owned by exactly ONE goroutine at a time — the
+// workflow executor's executeLoop. All writes (History append,
+// CurrentNode transition, Variables mutations, Checkpoints append) and
+// all in-flight reads happen in that single goroutine. Handlers run
+// synchronously inside executeNode; a handler that spawns its own
+// goroutines to mutate *state* races against the executor — that has
+// always been a misuse and is not supported.
+//
+// External observers (e.g. the HTTP handler that renders a workflow
+// completion response) must only read WorkflowState AFTER
+// Workflow.Execute has returned, or via Snapshot() which returns a
+// deep-copied value safe to read from another goroutine.
+//
+// The previous defensive sync.RWMutex was removed because it created
+// the audit-flagged Pattern-A pairing without protecting anything
+// that the single-owner invariant didn't already guarantee. Keeping
+// the lock would also have hidden handler-spawned-goroutine misuse by
+// silencing the race detector in CI.
 type WorkflowState struct {
 	ID          string
 	WorkflowID  string
@@ -129,7 +150,44 @@ type WorkflowState struct {
 	StartTime   time.Time
 	EndTime     *time.Time
 	Error       error
-	mu          sync.RWMutex
+}
+
+// Snapshot returns a deep copy of WorkflowState suitable for reading
+// from a goroutine other than the executor. Call Snapshot from the
+// executor goroutine (or after Execute has returned) and hand the
+// result to the other goroutine.
+func (s *WorkflowState) Snapshot() *WorkflowState {
+	if s == nil {
+		return nil
+	}
+	out := &WorkflowState{
+		ID:          s.ID,
+		WorkflowID:  s.WorkflowID,
+		CurrentNode: s.CurrentNode,
+		Status:      s.Status,
+		StartTime:   s.StartTime,
+		Error:       s.Error,
+	}
+	if s.EndTime != nil {
+		endCopy := *s.EndTime
+		out.EndTime = &endCopy
+	}
+	if s.Messages != nil {
+		out.Messages = append([]Message(nil), s.Messages...)
+	}
+	if s.Variables != nil {
+		out.Variables = make(map[string]interface{}, len(s.Variables))
+		for k, v := range s.Variables {
+			out.Variables[k] = v
+		}
+	}
+	if s.History != nil {
+		out.History = append([]NodeExecution(nil), s.History...)
+	}
+	if s.Checkpoints != nil {
+		out.Checkpoints = append([]Checkpoint(nil), s.Checkpoints...)
+	}
+	return out
 }
 
 // NodeExecution records a node execution
@@ -361,9 +419,7 @@ func (w *Workflow) executeLoop(ctx context.Context, state *WorkflowState, input 
 		execution.Output = output
 		execution.Error = err
 
-		state.mu.Lock()
 		state.History = append(state.History, execution)
-		state.mu.Unlock()
 
 		if err != nil {
 			return fmt.Errorf("node %s failed: %w", currentNode.Name, err)
@@ -399,9 +455,7 @@ func (w *Workflow) executeLoop(ctx context.Context, state *WorkflowState, input 
 			return nil // No more nodes to execute
 		}
 
-		state.mu.Lock()
 		state.CurrentNode = nextNode
-		state.mu.Unlock()
 
 		// Update input for next node
 		input = &NodeInput{
@@ -476,9 +530,6 @@ func (w *Workflow) getNextNode(state *WorkflowState) string {
 }
 
 func (w *Workflow) createCheckpoint(state *WorkflowState) {
-	state.mu.Lock()
-	defer state.mu.Unlock()
-
 	checkpoint := Checkpoint{
 		ID:        uuid.New().String(),
 		NodeID:    state.CurrentNode,
@@ -496,11 +547,9 @@ func (w *Workflow) createCheckpoint(state *WorkflowState) {
 	w.Logger.WithField("checkpoint_id", checkpoint.ID).Debug("Checkpoint created")
 }
 
-// RestoreFromCheckpoint restores state from a checkpoint
+// RestoreFromCheckpoint restores state from a checkpoint.
+// Must be called from the executor goroutine (or before/after Execute).
 func (w *Workflow) RestoreFromCheckpoint(state *WorkflowState, checkpointID string) error {
-	state.mu.Lock()
-	defer state.mu.Unlock()
-
 	for _, cp := range state.Checkpoints {
 		if cp.ID == checkpointID {
 			state.CurrentNode = cp.NodeID

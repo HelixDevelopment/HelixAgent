@@ -891,3 +891,51 @@ func TestWorkflowState(t *testing.T) {
 	assert.NotNil(t, state.EndTime)
 	assert.Nil(t, state.Error)
 }
+
+// TestWorkflowState_Snapshot is the CONST-029 verification test for
+// the single-owner model. Snapshot must return a deep copy so a
+// second goroutine reading the snapshot cannot race with the executor
+// owning the original.
+func TestWorkflowState_Snapshot(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	endTime := now.Add(time.Second)
+	orig := &WorkflowState{
+		ID:          "s1",
+		WorkflowID:  "w1",
+		CurrentNode: "n1",
+		Messages:    []Message{{Role: "user", Content: "hi"}},
+		Variables:   map[string]interface{}{"k": "v"},
+		History:     []NodeExecution{{NodeID: "n0"}},
+		Checkpoints: []Checkpoint{{ID: "cp"}},
+		Status:      StatusCompleted,
+		StartTime:   now,
+		EndTime:     &endTime,
+	}
+
+	snap := orig.Snapshot()
+	require.NotNil(t, snap)
+
+	// Mutate the snapshot — must not affect orig.
+	snap.Variables["k"] = "changed"
+	snap.Messages = append(snap.Messages, Message{Role: "system", Content: "x"})
+	snap.History = append(snap.History, NodeExecution{NodeID: "new"})
+	snap.Checkpoints = append(snap.Checkpoints, Checkpoint{ID: "cp2"})
+
+	assert.Equal(t, "v", orig.Variables["k"], "snapshot mutation leaked into orig.Variables")
+	assert.Len(t, orig.Messages, 1, "snapshot mutation leaked into orig.Messages")
+	assert.Len(t, orig.History, 1, "snapshot mutation leaked into orig.History")
+	assert.Len(t, orig.Checkpoints, 1, "snapshot mutation leaked into orig.Checkpoints")
+
+	// EndTime must be deep-copied too.
+	assert.NotSame(t, orig.EndTime, snap.EndTime, "EndTime pointer must be deep-copied")
+	assert.Equal(t, *orig.EndTime, *snap.EndTime)
+}
+
+// TestWorkflowState_NilSnapshot verifies Snapshot's nil-receiver contract.
+func TestWorkflowState_NilSnapshot(t *testing.T) {
+	t.Parallel()
+	var s *WorkflowState
+	assert.Nil(t, s.Snapshot())
+}

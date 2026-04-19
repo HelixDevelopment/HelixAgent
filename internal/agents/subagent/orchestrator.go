@@ -6,16 +6,19 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
 
-// Orchestrator coordinates multiple sub-agents for complex tasks
+// Orchestrator coordinates multiple sub-agents for complex tasks.
+//
+// Concurrent-safe by construction (CONST-029): sessions is a safe.Store;
+// Session field mutations route through Update callbacks (Pattern Beta).
 type Orchestrator struct {
-	manager    *Manager
-	sessions   map[string]*Session
-	sessionsMu sync.RWMutex
-	shutdown   chan struct{}
-	wg         sync.WaitGroup
+	manager  *Manager
+	sessions *safe.Store[string, *Session]
+	shutdown chan struct{}
+	wg       sync.WaitGroup
 }
 
 // Session represents an orchestrated multi-agent session
@@ -61,16 +64,13 @@ type OrchestrationStep struct {
 func NewOrchestrator(manager *Manager) *Orchestrator {
 	return &Orchestrator{
 		manager:  manager,
-		sessions: make(map[string]*Session),
+		sessions: safe.NewStore[string, *Session](),
 		shutdown: make(chan struct{}),
 	}
 }
 
 // CreateSession creates a new orchestration session
 func (o *Orchestrator) CreateSession(ctx context.Context) (*Session, error) {
-	o.sessionsMu.Lock()
-	defer o.sessionsMu.Unlock()
-
 	now := time.Now()
 	session := &Session{
 		ID:        uuid.New().String(),
@@ -83,20 +83,29 @@ func (o *Orchestrator) CreateSession(ctx context.Context) (*Session, error) {
 		Context:   make(map[string]interface{}),
 	}
 
-	o.sessions[session.ID] = session
+	o.sessions.Put(session.ID, session)
 	return session, nil
 }
 
 // GetSession retrieves a session by ID
 func (o *Orchestrator) GetSession(ctx context.Context, sessionID string) (*Session, error) {
-	o.sessionsMu.RLock()
-	defer o.sessionsMu.RUnlock()
-
-	session, exists := o.sessions[sessionID]
+	session, exists := o.sessions.Get(sessionID)
 	if !exists {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
 	return session, nil
+}
+
+// updateSession atomically applies fn to the session's fields. fn must
+// not retain pointers to mutable fields beyond the callback.
+func (o *Orchestrator) updateSession(sessionID string, fn func(*Session)) {
+	o.sessions.Update(sessionID, func(s *Session, ok bool) (*Session, bool) {
+		if !ok {
+			return nil, false
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // ExecutePlan executes an orchestration plan within a session
@@ -106,11 +115,10 @@ func (o *Orchestrator) ExecutePlan(ctx context.Context, sessionID string, plan O
 		return err
 	}
 
-	// Update session status
-	o.sessionsMu.Lock()
-	session.Status = SessionStatusRunning
-	session.UpdatedAt = time.Now()
-	o.sessionsMu.Unlock()
+	o.updateSession(sessionID, func(s *Session) {
+		s.Status = SessionStatusRunning
+		s.UpdatedAt = time.Now()
+	})
 
 	// Build dependency graph
 	completedSteps := make(map[string]bool)
@@ -120,16 +128,16 @@ func (o *Orchestrator) ExecutePlan(ctx context.Context, sessionID string, plan O
 	for len(completedSteps) < len(plan.Steps) {
 		select {
 		case <-ctx.Done():
-			o.sessionsMu.Lock()
-			session.Status = SessionStatusCancelled
-			session.UpdatedAt = time.Now()
-			o.sessionsMu.Unlock()
+			o.updateSession(sessionID, func(s *Session) {
+				s.Status = SessionStatusCancelled
+				s.UpdatedAt = time.Now()
+			})
 			return ctx.Err()
 		case <-o.shutdown:
-			o.sessionsMu.Lock()
-			session.Status = SessionStatusCancelled
-			session.UpdatedAt = time.Now()
-			o.sessionsMu.Unlock()
+			o.updateSession(sessionID, func(s *Session) {
+				s.Status = SessionStatusCancelled
+				s.UpdatedAt = time.Now()
+			})
 			return fmt.Errorf("orchestrator shutting down")
 		default:
 		}
@@ -156,37 +164,34 @@ func (o *Orchestrator) ExecutePlan(ctx context.Context, sessionID string, plan O
 			// Execute the step
 			result, err := o.executeStep(ctx, session, step, stepResults)
 			if err != nil {
-				o.sessionsMu.Lock()
-				session.Status = SessionStatusFailed
-				session.UpdatedAt = time.Now()
-				o.sessionsMu.Unlock()
+				o.updateSession(sessionID, func(s *Session) {
+					s.Status = SessionStatusFailed
+					s.UpdatedAt = time.Now()
+				})
 				return fmt.Errorf("step %s failed: %w", step.Name, err)
 			}
 
 			completedSteps[step.Name] = true
 			stepResults[step.Name] = result
 
-			// Update session
-			o.sessionsMu.Lock()
-			session.Results[step.Name] = result
-			session.UpdatedAt = time.Now()
-			o.sessionsMu.Unlock()
+			stepName := step.Name
+			o.updateSession(sessionID, func(s *Session) {
+				s.Results[stepName] = result
+				s.UpdatedAt = time.Now()
+			})
 		}
 	}
 
-	// Mark session as completed
-	o.sessionsMu.Lock()
-	session.Status = SessionStatusCompleted
-	session.UpdatedAt = time.Now()
-	o.sessionsMu.Unlock()
-
+	o.updateSession(sessionID, func(s *Session) {
+		s.Status = SessionStatusCompleted
+		s.UpdatedAt = time.Now()
+	})
 	return nil
 }
 
 // ExecuteParallel executes multiple agents in parallel
 func (o *Orchestrator) ExecuteParallel(ctx context.Context, sessionID string, prompts []string, agentType SubAgentType) ([]*SubAgentTaskResult, error) {
-	session, err := o.GetSession(ctx, sessionID)
-	if err != nil {
+	if _, err := o.GetSession(ctx, sessionID); err != nil {
 		return nil, err
 	}
 
@@ -266,65 +271,66 @@ func (o *Orchestrator) ExecuteParallel(ctx context.Context, sessionID string, pr
 		resultList[res.index] = res.result
 	}
 
-	// Update session
-	o.sessionsMu.Lock()
-	session.UpdatedAt = time.Now()
-	o.sessionsMu.Unlock()
+	o.updateSession(sessionID, func(s *Session) { s.UpdatedAt = time.Now() })
 
 	return resultList, nil
 }
 
 // CancelSession cancels a running session
 func (o *Orchestrator) CancelSession(ctx context.Context, sessionID string) error {
-	o.sessionsMu.Lock()
-	defer o.sessionsMu.Unlock()
-
-	session, exists := o.sessions[sessionID]
-	if !exists {
+	var (
+		notFound, notRunning bool
+		taskIDs              []string
+	)
+	o.sessions.Update(sessionID, func(session *Session, ok bool) (*Session, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		if session.Status != SessionStatusRunning {
+			notRunning = true
+			return session, true
+		}
+		session.Status = SessionStatusCancelled
+		session.UpdatedAt = time.Now()
+		taskIDs = append(taskIDs, session.Tasks...)
+		return session, true
+	})
+	if notFound {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
-
-	if session.Status != SessionStatusRunning {
+	if notRunning {
 		return fmt.Errorf("session is not running: %s", sessionID)
 	}
-
-	session.Status = SessionStatusCancelled
-	session.UpdatedAt = time.Now()
-
-	// Cancel all running tasks in the session
-	for _, taskID := range session.Tasks {
+	for _, taskID := range taskIDs {
 		_ = o.manager.CancelTask(ctx, taskID)
 	}
-
 	return nil
 }
 
 // ListSessions returns all sessions
 func (o *Orchestrator) ListSessions(ctx context.Context) ([]*Session, error) {
-	o.sessionsMu.RLock()
-	defer o.sessionsMu.RUnlock()
-
-	sessions := make([]*Session, 0, len(o.sessions))
-	for _, session := range o.sessions {
-		sessions = append(sessions, session)
-	}
-	return sessions, nil
+	return o.sessions.Values(), nil
 }
 
 // Cleanup removes completed sessions older than the specified duration
 func (o *Orchestrator) Cleanup(ctx context.Context, olderThan time.Duration) error {
-	o.sessionsMu.Lock()
-	defer o.sessionsMu.Unlock()
-
 	cutoff := time.Now().Add(-olderThan)
-	for id, session := range o.sessions {
-		if session.Status == SessionStatusCompleted || session.Status == SessionStatusFailed || session.Status == SessionStatusCancelled {
-			if session.UpdatedAt.Before(cutoff) {
-				delete(o.sessions, id)
+	for _, id := range o.sessions.Keys() {
+		o.sessions.Update(id, func(session *Session, ok bool) (*Session, bool) {
+			if !ok {
+				return nil, false
 			}
-		}
+			if session.Status == SessionStatusCompleted ||
+				session.Status == SessionStatusFailed ||
+				session.Status == SessionStatusCancelled {
+				if session.UpdatedAt.Before(cutoff) {
+					return nil, false // delete
+				}
+			}
+			return session, true
+		})
 	}
-
 	return nil
 }
 
@@ -333,12 +339,7 @@ func (o *Orchestrator) Shutdown(ctx context.Context) error {
 	close(o.shutdown)
 
 	// Cancel all running sessions
-	o.sessionsMu.RLock()
-	sessions := make([]*Session, 0, len(o.sessions))
-	for _, session := range o.sessions {
-		sessions = append(sessions, session)
-	}
-	o.sessionsMu.RUnlock()
+	sessions := o.sessions.Values()
 
 	for _, session := range sessions {
 		if session.Status == SessionStatusRunning {

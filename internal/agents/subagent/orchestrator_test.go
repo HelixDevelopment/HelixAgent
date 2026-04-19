@@ -111,16 +111,21 @@ func TestOrchestrator_Cleanup(t *testing.T) {
 	assert.Len(t, sessions, 5)
 
 	// Mark some sessions as completed with old timestamp
-	orchestrator.sessionsMu.Lock()
 	count := 0
-	for _, session := range orchestrator.sessions {
-		if count < 3 {
-			session.Status = SessionStatusCompleted
-			session.UpdatedAt = time.Now().Add(-2 * time.Hour)
+	for _, id := range orchestrator.sessions.Keys() {
+		if count >= 3 {
+			break
 		}
+		orchestrator.sessions.Update(id, func(s *Session, ok bool) (*Session, bool) {
+			if !ok {
+				return nil, false
+			}
+			s.Status = SessionStatusCompleted
+			s.UpdatedAt = time.Now().Add(-2 * time.Hour)
+			return s, true
+		})
 		count++
 	}
-	orchestrator.sessionsMu.Unlock()
 
 	// Cleanup sessions older than 1 hour
 	err := orchestrator.Cleanup(ctx, time.Hour)

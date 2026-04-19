@@ -1,20 +1,38 @@
 package skills
 
 import (
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
 // Tracker tracks skill usage across requests and sessions.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - All mutable tracking state (activeUsages, history, stats) is held
+//     in a single trackerState struct stored under a sentinel key in a
+//     safe.Store. Every read-modify-write therefore runs under one Update
+//     callback — multi-collection invariants are atomic by construction.
+//     This is Pattern Epsilon (joint atomicity via state struct).
 type Tracker struct {
-	mu           sync.RWMutex
-	activeUsages map[string]*SkillUsage // requestID -> usage
-	history      []SkillUsage           // Historical usage records
+	state        *safe.Store[string, *trackerState]
 	historyLimit int
-	stats        *UsageStats
 	log          *logrus.Logger
+}
+
+const trackerStateKey = "_"
+
+// trackerState is the single jointly-managed state. All fields are mutated
+// only inside trackerState.Update callbacks. Readers obtain a *trackerState
+// pointer via Get and must not mutate it; mutators always replace the value
+// with a new *trackerState (semantically — though we mutate in place under
+// the Store's write lock for performance, which is safe because no reader
+// can be inside the callback).
+type trackerState struct {
+	activeUsages map[string]*SkillUsage // requestID -> usage
+	history      []SkillUsage           // historical usage records
+	stats        *UsageStats
 }
 
 // UsageStats provides aggregate usage statistics.
@@ -52,19 +70,27 @@ type CategoryStats struct {
 	UniqueSkills    int    `json:"unique_skills"`
 }
 
-// NewTracker creates a new skill usage tracker.
-func NewTracker() *Tracker {
-	return &Tracker{
+func newTrackerState() *trackerState {
+	return &trackerState{
 		activeUsages: make(map[string]*SkillUsage),
 		history:      make([]SkillUsage, 0, 1000),
-		historyLimit: 10000,
 		stats: &UsageStats{
 			BySkill:     make(map[string]*SkillStats),
 			ByCategory:  make(map[string]*CategoryStats),
 			ByMatchType: make(map[MatchType]int64),
 			LastUpdated: time.Now(),
 		},
-		log: logrus.New(),
+	}
+}
+
+// NewTracker creates a new skill usage tracker.
+func NewTracker() *Tracker {
+	store := safe.NewStore[string, *trackerState]()
+	store.Put(trackerStateKey, newTrackerState())
+	return &Tracker{
+		state:        store,
+		historyLimit: 10000,
+		log:          logrus.New(),
 	}
 }
 
@@ -73,11 +99,20 @@ func (t *Tracker) SetLogger(log *logrus.Logger) {
 	t.log = log
 }
 
+// withState runs fn under the state Store's write lock; fn may safely
+// mutate *trackerState.
+func (t *Tracker) withState(fn func(*trackerState)) {
+	t.state.Update(trackerStateKey, func(s *trackerState, _ bool) (*trackerState, bool) {
+		if s == nil {
+			s = newTrackerState()
+		}
+		fn(s)
+		return s, true
+	})
+}
+
 // StartTracking begins tracking usage for a skill.
 func (t *Tracker) StartTracking(requestID string, skill *Skill, match *SkillMatch) *SkillUsage {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	usage := &SkillUsage{
 		SkillName:    skill.Name,
 		Category:     skill.Category,
@@ -88,7 +123,9 @@ func (t *Tracker) StartTracking(requestID string, skill *Skill, match *SkillMatc
 		StartedAt:    time.Now(),
 	}
 
-	t.activeUsages[requestID] = usage
+	t.withState(func(s *trackerState) {
+		s.activeUsages[requestID] = usage
+	})
 
 	t.log.WithFields(logrus.Fields{
 		"request_id": requestID,
@@ -102,89 +139,86 @@ func (t *Tracker) StartTracking(requestID string, skill *Skill, match *SkillMatc
 
 // RecordToolUse records a tool being used by a skill.
 func (t *Tracker) RecordToolUse(requestID, toolName string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if usage, ok := t.activeUsages[requestID]; ok {
-		usage.ToolsInvoked = append(usage.ToolsInvoked, toolName)
-	}
+	t.withState(func(s *trackerState) {
+		if usage, ok := s.activeUsages[requestID]; ok {
+			usage.ToolsInvoked = append(usage.ToolsInvoked, toolName)
+		}
+	})
 }
 
 // CompleteTracking marks skill usage as complete.
 func (t *Tracker) CompleteTracking(requestID string, success bool, err string) *SkillUsage {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	var result *SkillUsage
+	t.withState(func(s *trackerState) {
+		usage, ok := s.activeUsages[requestID]
+		if !ok {
+			return
+		}
 
-	usage, ok := t.activeUsages[requestID]
-	if !ok {
-		return nil
+		usage.CompletedAt = time.Now()
+		usage.Success = success
+		usage.Error = err
+
+		updateStatsLocked(s.stats, usage)
+		s.history = appendHistoryLocked(s.history, *usage, t.historyLimit)
+		delete(s.activeUsages, requestID)
+
+		result = usage
+	})
+
+	if result != nil {
+		t.log.WithFields(logrus.Fields{
+			"request_id": requestID,
+			"skill":      result.SkillName,
+			"success":    success,
+			"duration":   result.CompletedAt.Sub(result.StartedAt),
+		}).Debug("Completed tracking skill usage")
 	}
-
-	usage.CompletedAt = time.Now()
-	usage.Success = success
-	usage.Error = err
-
-	// Update statistics
-	t.updateStats(usage)
-
-	// Add to history
-	t.addToHistory(*usage)
-
-	// Remove from active
-	delete(t.activeUsages, requestID)
-
-	t.log.WithFields(logrus.Fields{
-		"request_id": requestID,
-		"skill":      usage.SkillName,
-		"success":    success,
-		"duration":   usage.CompletedAt.Sub(usage.StartedAt),
-	}).Debug("Completed tracking skill usage")
-
-	return usage
+	return result
 }
 
 // GetActiveUsage returns the active usage for a request.
 func (t *Tracker) GetActiveUsage(requestID string) *SkillUsage {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	return t.activeUsages[requestID]
+	var result *SkillUsage
+	t.withState(func(s *trackerState) {
+		result = s.activeUsages[requestID]
+	})
+	return result
 }
 
 // GetActiveUsages returns all currently active usages.
 func (t *Tracker) GetActiveUsages() []*SkillUsage {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	usages := make([]*SkillUsage, 0, len(t.activeUsages))
-	for _, usage := range t.activeUsages {
-		usages = append(usages, usage)
-	}
+	var usages []*SkillUsage
+	t.withState(func(s *trackerState) {
+		usages = make([]*SkillUsage, 0, len(s.activeUsages))
+		for _, usage := range s.activeUsages {
+			usages = append(usages, usage)
+		}
+	})
 	return usages
 }
 
-// updateStats updates aggregate statistics.
-func (t *Tracker) updateStats(usage *SkillUsage) {
-	t.stats.TotalInvocations++
+// updateStatsLocked updates aggregate statistics. Caller must hold the
+// state's write lock (i.e. be inside a withState callback).
+func updateStatsLocked(stats *UsageStats, usage *SkillUsage) {
+	stats.TotalInvocations++
 
 	if usage.Success {
-		t.stats.SuccessfulCount++
+		stats.SuccessfulCount++
 	} else {
-		t.stats.FailedCount++
+		stats.FailedCount++
 	}
 
-	// Update by match type
-	t.stats.ByMatchType[usage.MatchType]++
+	stats.ByMatchType[usage.MatchType]++
 
-	// Update by skill
-	skillStats, ok := t.stats.BySkill[usage.SkillName]
+	skillStats, ok := stats.BySkill[usage.SkillName]
 	if !ok {
 		skillStats = &SkillStats{
 			Name:            usage.SkillName,
 			Category:        usage.Category,
 			TriggersCounted: make(map[string]int64),
 		}
-		t.stats.BySkill[usage.SkillName] = skillStats
+		stats.BySkill[usage.SkillName] = skillStats
 	}
 
 	skillStats.InvocationCount++
@@ -200,17 +234,15 @@ func (t *Tracker) updateStats(usage *SkillUsage) {
 	skillStats.LastUsed = usage.CompletedAt
 	skillStats.TriggersCounted[usage.TriggerUsed]++
 
-	// Update average confidence
 	oldConfidence := skillStats.AverageConfidence
 	skillStats.AverageConfidence = ((oldConfidence * float64(skillStats.InvocationCount-1)) + usage.Confidence) / float64(skillStats.InvocationCount)
 
-	// Update by category
-	catStats, ok := t.stats.ByCategory[usage.Category]
+	catStats, ok := stats.ByCategory[usage.Category]
 	if !ok {
 		catStats = &CategoryStats{
 			Category: usage.Category,
 		}
-		t.stats.ByCategory[usage.Category] = catStats
+		stats.ByCategory[usage.Category] = catStats
 	}
 
 	catStats.InvocationCount++
@@ -218,104 +250,95 @@ func (t *Tracker) updateStats(usage *SkillUsage) {
 		catStats.SuccessCount++
 	}
 
-	// Calculate global average confidence
 	totalConfidence := float64(0)
-	for _, ss := range t.stats.BySkill {
+	for _, ss := range stats.BySkill {
 		totalConfidence += ss.AverageConfidence * float64(ss.InvocationCount)
 	}
-	t.stats.AverageConfidence = totalConfidence / float64(t.stats.TotalInvocations)
+	stats.AverageConfidence = totalConfidence / float64(stats.TotalInvocations)
 
-	// Calculate global average duration
 	totalDuration := time.Duration(0)
-	for _, ss := range t.stats.BySkill {
+	for _, ss := range stats.BySkill {
 		totalDuration += ss.TotalDuration
 	}
-	t.stats.AverageDuration = totalDuration / time.Duration(t.stats.TotalInvocations)
+	stats.AverageDuration = totalDuration / time.Duration(stats.TotalInvocations)
 
-	t.stats.LastUpdated = time.Now()
+	stats.LastUpdated = time.Now()
 }
 
-// addToHistory adds a usage record to history.
-func (t *Tracker) addToHistory(usage SkillUsage) {
-	t.history = append(t.history, usage)
-
-	// Trim if over limit
-	if len(t.history) > t.historyLimit {
-		t.history = t.history[len(t.history)-t.historyLimit:]
+// appendHistoryLocked appends and trims to historyLimit.
+func appendHistoryLocked(history []SkillUsage, usage SkillUsage, limit int) []SkillUsage {
+	history = append(history, usage)
+	if len(history) > limit {
+		history = history[len(history)-limit:]
 	}
+	return history
 }
 
 // GetHistory returns usage history.
 func (t *Tracker) GetHistory(limit int) []SkillUsage {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	if limit <= 0 || limit > len(t.history) {
-		limit = len(t.history)
-	}
-
-	// Return most recent
-	start := len(t.history) - limit
-	if start < 0 {
-		start = 0
-	}
-
-	result := make([]SkillUsage, limit)
-	copy(result, t.history[start:])
+	var result []SkillUsage
+	t.withState(func(s *trackerState) {
+		if limit <= 0 || limit > len(s.history) {
+			limit = len(s.history)
+		}
+		start := len(s.history) - limit
+		if start < 0 {
+			start = 0
+		}
+		result = make([]SkillUsage, limit)
+		copy(result, s.history[start:])
+	})
 	return result
 }
 
 // GetStats returns aggregate statistics.
 func (t *Tracker) GetStats() *UsageStats {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	// Return a copy
-	stats := &UsageStats{
-		TotalInvocations:  t.stats.TotalInvocations,
-		SuccessfulCount:   t.stats.SuccessfulCount,
-		FailedCount:       t.stats.FailedCount,
-		BySkill:           make(map[string]*SkillStats),
-		ByCategory:        make(map[string]*CategoryStats),
-		ByMatchType:       make(map[MatchType]int64),
-		AverageConfidence: t.stats.AverageConfidence,
-		AverageDuration:   t.stats.AverageDuration,
-		LastUpdated:       t.stats.LastUpdated,
-	}
-
-	for k, v := range t.stats.BySkill {
-		stats.BySkill[k] = v
-	}
-	for k, v := range t.stats.ByCategory {
-		stats.ByCategory[k] = v
-	}
-	for k, v := range t.stats.ByMatchType {
-		stats.ByMatchType[k] = v
-	}
-
+	var stats *UsageStats
+	t.withState(func(s *trackerState) {
+		stats = &UsageStats{
+			TotalInvocations:  s.stats.TotalInvocations,
+			SuccessfulCount:   s.stats.SuccessfulCount,
+			FailedCount:       s.stats.FailedCount,
+			BySkill:           make(map[string]*SkillStats, len(s.stats.BySkill)),
+			ByCategory:        make(map[string]*CategoryStats, len(s.stats.ByCategory)),
+			ByMatchType:       make(map[MatchType]int64, len(s.stats.ByMatchType)),
+			AverageConfidence: s.stats.AverageConfidence,
+			AverageDuration:   s.stats.AverageDuration,
+			LastUpdated:       s.stats.LastUpdated,
+		}
+		for k, v := range s.stats.BySkill {
+			stats.BySkill[k] = v
+		}
+		for k, v := range s.stats.ByCategory {
+			stats.ByCategory[k] = v
+		}
+		for k, v := range s.stats.ByMatchType {
+			stats.ByMatchType[k] = v
+		}
+	})
 	return stats
 }
 
 // GetSkillStats returns statistics for a specific skill.
 func (t *Tracker) GetSkillStats(skillName string) *SkillStats {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	return t.stats.BySkill[skillName]
+	var result *SkillStats
+	t.withState(func(s *trackerState) {
+		result = s.stats.BySkill[skillName]
+	})
+	return result
 }
 
 // GetTopSkills returns the most frequently used skills.
 func (t *Tracker) GetTopSkills(limit int) []*SkillStats {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	var skills []*SkillStats
+	t.withState(func(s *trackerState) {
+		skills = make([]*SkillStats, 0, len(s.stats.BySkill))
+		for _, ss := range s.stats.BySkill {
+			skills = append(skills, ss)
+		}
+	})
 
-	// Convert to slice and sort
-	skills := make([]*SkillStats, 0, len(t.stats.BySkill))
-	for _, s := range t.stats.BySkill {
-		skills = append(skills, s)
-	}
-
-	// Sort by invocation count
+	// Sort by invocation count (outside the lock — `skills` is now ours)
 	for i := 0; i < len(skills)-1; i++ {
 		for j := i + 1; j < len(skills); j++ {
 			if skills[j].InvocationCount > skills[i].InvocationCount {
@@ -327,21 +350,10 @@ func (t *Tracker) GetTopSkills(limit int) []*SkillStats {
 	if limit > 0 && limit < len(skills) {
 		skills = skills[:limit]
 	}
-
 	return skills
 }
 
 // Reset clears all tracking data.
 func (t *Tracker) Reset() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.activeUsages = make(map[string]*SkillUsage)
-	t.history = make([]SkillUsage, 0, 1000)
-	t.stats = &UsageStats{
-		BySkill:     make(map[string]*SkillStats),
-		ByCategory:  make(map[string]*CategoryStats),
-		ByMatchType: make(map[MatchType]int64),
-		LastUpdated: time.Now(),
-	}
+	t.state.Put(trackerStateKey, newTrackerState())
 }

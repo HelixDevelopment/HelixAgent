@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,14 +32,23 @@ func (lf *lazyFormatter) get() (Formatter, error) {
 	return lf.result, lf.initErr
 }
 
-// FormatterRegistry manages all available formatters
+// FormatterRegistry manages all available formatters.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - Every collection is a safe.Store; callers cannot forget a lock
+//     because there is no exposed lock.
+//   - regMu is a write-only serialiser for Register / RegisterLazy /
+//     Unregister / Stop (Pattern Zeta). It protects the invariant that
+//     a formatter added to `formatters` also lands in `metadata` and
+//     the `byLanguage` index atomically, and that Unregister tears
+//     those three rows down together. Readers never take regMu.
 type FormatterRegistry struct {
-	mu             sync.RWMutex
-	formatters     map[string]Formatter          // name -> formatter (eager)
-	lazyFormatters map[string]*lazyFormatter     // name -> lazy formatter
-	byLanguage     map[string][]Formatter        // language -> formatters (eager only)
-	lazyByLanguage map[string][]string           // language -> lazy formatter names
-	metadata       map[string]*FormatterMetadata // name -> metadata
+	regMu          sync.Mutex
+	formatters     *safe.Store[string, Formatter]          // name -> formatter (eager)
+	lazyFormatters *safe.Store[string, *lazyFormatter]     // name -> lazy formatter
+	byLanguage     *safe.Store[string, []Formatter]        // language -> formatters (eager only)
+	lazyByLanguage *safe.Store[string, []string]           // language -> lazy formatter names
+	metadata       *safe.Store[string, *FormatterMetadata] // name -> metadata
 	config         *RegistryConfig
 	logger         *logrus.Logger
 }
@@ -69,11 +79,11 @@ type RegistryConfig struct {
 // NewFormatterRegistry creates a new formatter registry
 func NewFormatterRegistry(config *RegistryConfig, logger *logrus.Logger) *FormatterRegistry {
 	return &FormatterRegistry{
-		formatters:     make(map[string]Formatter),
-		lazyFormatters: make(map[string]*lazyFormatter),
-		byLanguage:     make(map[string][]Formatter),
-		lazyByLanguage: make(map[string][]string),
-		metadata:       make(map[string]*FormatterMetadata),
+		formatters:     safe.NewStore[string, Formatter](),
+		lazyFormatters: safe.NewStore[string, *lazyFormatter](),
+		byLanguage:     safe.NewStore[string, []Formatter](),
+		lazyByLanguage: safe.NewStore[string, []string](),
+		metadata:       safe.NewStore[string, *FormatterMetadata](),
 		config:         config,
 		logger:         logger,
 	}
@@ -81,24 +91,26 @@ func NewFormatterRegistry(config *RegistryConfig, logger *logrus.Logger) *Format
 
 // Register registers a formatter with metadata
 func (r *FormatterRegistry) Register(formatter Formatter, metadata *FormatterMetadata) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
 
 	name := formatter.Name()
 
 	// Check for duplicate
-	if _, exists := r.formatters[name]; exists {
+	if _, exists := r.formatters.Get(name); exists {
 		return fmt.Errorf("formatter %s already registered", name)
 	}
 
 	// Register formatter
-	r.formatters[name] = formatter
-	r.metadata[name] = metadata
+	r.formatters.Put(name, formatter)
+	r.metadata.Put(name, metadata)
 
 	// Register by language
 	for _, lang := range formatter.Languages() {
 		langLower := strings.ToLower(lang)
-		r.byLanguage[langLower] = append(r.byLanguage[langLower], formatter)
+		r.byLanguage.Update(langLower, func(cur []Formatter, _ bool) ([]Formatter, bool) {
+			return append(cur, formatter), true
+		})
 	}
 
 	r.logger.Infof("Registered formatter: %s (v%s) for languages: %v", name, formatter.Version(), formatter.Languages())
@@ -111,26 +123,28 @@ func (r *FormatterRegistry) Register(formatter Formatter, metadata *FormatterMet
 // via Get or GetByLanguage. The metadata must include Languages so that
 // language-based lookups can discover the lazy formatter.
 func (r *FormatterRegistry) RegisterLazy(factory LazyFormatterFunc, metadata *FormatterMetadata) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
 
 	name := metadata.Name
 
 	// Check for duplicate in both eager and lazy registrations
-	if _, exists := r.formatters[name]; exists {
+	if _, exists := r.formatters.Get(name); exists {
 		return fmt.Errorf("formatter %s already registered", name)
 	}
-	if _, exists := r.lazyFormatters[name]; exists {
+	if _, exists := r.lazyFormatters.Get(name); exists {
 		return fmt.Errorf("formatter %s already registered (lazy)", name)
 	}
 
-	r.lazyFormatters[name] = &lazyFormatter{factory: factory}
-	r.metadata[name] = metadata
+	r.lazyFormatters.Put(name, &lazyFormatter{factory: factory})
+	r.metadata.Put(name, metadata)
 
 	// Register by language for lazy lookup
 	for _, lang := range metadata.Languages {
 		langLower := strings.ToLower(lang)
-		r.lazyByLanguage[langLower] = append(r.lazyByLanguage[langLower], name)
+		r.lazyByLanguage.Update(langLower, func(cur []string, _ bool) ([]string, bool) {
+			return append(cur, name), true
+		})
 	}
 
 	r.logger.Infof("Registered lazy formatter: %s (v%s) for languages: %v",
@@ -141,11 +155,11 @@ func (r *FormatterRegistry) RegisterLazy(factory LazyFormatterFunc, metadata *Fo
 
 // Unregister removes a formatter from the registry
 func (r *FormatterRegistry) Unregister(name string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
 
-	formatter, eagerExists := r.formatters[name]
-	_, lazyExists := r.lazyFormatters[name]
+	formatter, eagerExists := r.formatters.Get(name)
+	_, lazyExists := r.lazyFormatters.Get(name)
 
 	if !eagerExists && !lazyExists {
 		return fmt.Errorf("formatter %s not found", name)
@@ -155,37 +169,38 @@ func (r *FormatterRegistry) Unregister(name string) error {
 	if eagerExists {
 		for _, lang := range formatter.Languages() {
 			langLower := strings.ToLower(lang)
-			formatters := r.byLanguage[langLower]
-			for i, f := range formatters {
-				if f.Name() == name {
-					r.byLanguage[langLower] = append(formatters[:i], formatters[i+1:]...)
-					break
+			r.byLanguage.Update(langLower, func(cur []Formatter, _ bool) ([]Formatter, bool) {
+				for i, f := range cur {
+					if f.Name() == name {
+						return append(cur[:i], cur[i+1:]...), true
+					}
 				}
-			}
+				return cur, true
+			})
 		}
 	}
 
 	// Remove lazy language mappings
 	if lazyExists {
-		meta := r.metadata[name]
-		if meta != nil {
+		if meta, ok := r.metadata.Get(name); ok && meta != nil {
 			for _, lang := range meta.Languages {
 				langLower := strings.ToLower(lang)
-				lazyNames := r.lazyByLanguage[langLower]
-				for i, n := range lazyNames {
-					if n == name {
-						r.lazyByLanguage[langLower] = append(lazyNames[:i], lazyNames[i+1:]...)
-						break
+				r.lazyByLanguage.Update(langLower, func(cur []string, _ bool) ([]string, bool) {
+					for i, n := range cur {
+						if n == name {
+							return append(cur[:i], cur[i+1:]...), true
+						}
 					}
-				}
+					return cur, true
+				})
 			}
 		}
 	}
 
 	// Remove from all registries
-	delete(r.formatters, name)
-	delete(r.lazyFormatters, name)
-	delete(r.metadata, name)
+	r.formatters.Delete(name)
+	r.lazyFormatters.Delete(name)
+	r.metadata.Delete(name)
 
 	r.logger.Infof("Unregistered formatter: %s", name)
 
@@ -195,16 +210,12 @@ func (r *FormatterRegistry) Unregister(name string) error {
 // Get retrieves a formatter by name. For lazily registered formatters,
 // this triggers initialization on the first call.
 func (r *FormatterRegistry) Get(name string) (Formatter, error) {
-	r.mu.RLock()
 	// Check eagerly registered formatters first
-	if formatter, exists := r.formatters[name]; exists {
-		r.mu.RUnlock()
+	if formatter, exists := r.formatters.Get(name); exists {
 		return formatter, nil
 	}
 	// Check lazily registered formatters
-	lf, lazyExists := r.lazyFormatters[name]
-	r.mu.RUnlock()
-
+	lf, lazyExists := r.lazyFormatters.Get(name)
 	if !lazyExists {
 		return nil, fmt.Errorf("formatter %s not found", name)
 	}
@@ -219,11 +230,9 @@ func (r *FormatterRegistry) Get(name string) (Formatter, error) {
 // GetByLanguage retrieves all formatters for a language.
 // Lazy formatters are initialized on access.
 func (r *FormatterRegistry) GetByLanguage(language string) []Formatter {
-	r.mu.RLock()
 	langLower := strings.ToLower(language)
-	eagerFormatters := r.byLanguage[langLower]
-	lazyNames := r.lazyByLanguage[langLower]
-	r.mu.RUnlock()
+	eagerFormatters, _ := r.byLanguage.Get(langLower)
+	lazyNames, _ := r.lazyByLanguage.Get(langLower)
 
 	// Start with eager formatters
 	result := make([]Formatter, 0, len(eagerFormatters)+len(lazyNames))
@@ -231,9 +240,7 @@ func (r *FormatterRegistry) GetByLanguage(language string) []Formatter {
 
 	// Initialize and append lazy formatters
 	for _, name := range lazyNames {
-		r.mu.RLock()
-		lf, ok := r.lazyFormatters[name]
-		r.mu.RUnlock()
+		lf, ok := r.lazyFormatters.Get(name)
 		if !ok {
 			continue
 		}
@@ -250,49 +257,41 @@ func (r *FormatterRegistry) GetByLanguage(language string) []Formatter {
 
 // GetMetadata retrieves formatter metadata
 func (r *FormatterRegistry) GetMetadata(name string) (*FormatterMetadata, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	metadata, exists := r.metadata[name]
+	metadata, exists := r.metadata.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("formatter %s not found", name)
 	}
-
 	return metadata, nil
 }
 
 // List returns all registered formatter names (both eager and lazy)
 func (r *FormatterRegistry) List() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	eagerKeys := r.formatters.Keys()
+	lazyKeys := r.lazyFormatters.Keys()
 
-	seen := make(map[string]struct{}, len(r.formatters)+len(r.lazyFormatters))
-	names := make([]string, 0, len(r.formatters)+len(r.lazyFormatters))
-	for name := range r.formatters {
+	seen := make(map[string]struct{}, len(eagerKeys)+len(lazyKeys))
+	names := make([]string, 0, len(eagerKeys)+len(lazyKeys))
+	for _, name := range eagerKeys {
 		names = append(names, name)
 		seen[name] = struct{}{}
 	}
-	for name := range r.lazyFormatters {
+	for _, name := range lazyKeys {
 		if _, ok := seen[name]; !ok {
 			names = append(names, name)
 		}
 	}
-
 	return names
 }
 
 // ListByType returns all formatters of a specific type
 func (r *FormatterRegistry) ListByType(ftype FormatterType) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	names := make([]string, 0)
-	for name, metadata := range r.metadata {
+	r.metadata.Range(func(name string, metadata *FormatterMetadata) bool {
 		if metadata.Type == ftype {
 			names = append(names, name)
 		}
-	}
-
+		return true
+	})
 	return names
 }
 
@@ -417,17 +416,18 @@ func (r *FormatterRegistry) DetectLanguageFromPath(filePath string) string {
 // maxConcurrentHealthChecks limits the number of parallel health checks
 const maxConcurrentHealthChecks = 10
 
-// HealthCheckAll performs health checks on all formatters with bounded concurrency
+// HealthCheckAll performs health checks on all formatters with bounded concurrency.
+// Iterates over a Snapshot so writers (Register/Unregister) are not blocked by
+// potentially-slow HealthCheck calls.
 func (r *FormatterRegistry) HealthCheckAll(ctx context.Context) map[string]error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	snapshot := r.formatters.Snapshot()
 
 	results := make(map[string]error)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	sem := make(chan struct{}, maxConcurrentHealthChecks)
 
-	for name, formatter := range r.formatters {
+	for name, formatter := range snapshot {
 		wg.Add(1)
 		go func(name string, formatter Formatter) {
 			defer wg.Done()
@@ -477,17 +477,20 @@ func (r *FormatterRegistry) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop shuts down the registry
+// Stop shuts down the registry.
+//
+// Preserves the original (admittedly asymmetric) behaviour of clearing
+// only the eager collections and metadata; lazy registrations survive a
+// Stop. Changing that semantic is out of scope for this migration.
 func (r *FormatterRegistry) Stop(ctx context.Context) error {
 	r.logger.Info("Stopping formatter registry")
 
-	// Clear all formatters
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
 
-	r.formatters = make(map[string]Formatter)
-	r.byLanguage = make(map[string][]Formatter)
-	r.metadata = make(map[string]*FormatterMetadata)
+	r.formatters.Clear()
+	r.byLanguage.Clear()
+	r.metadata.Clear()
 
 	r.logger.Info("Formatter registry stopped")
 
@@ -496,15 +499,14 @@ func (r *FormatterRegistry) Stop(ctx context.Context) error {
 
 // Count returns the number of registered formatters (both eager and lazy)
 func (r *FormatterRegistry) Count() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	eagerKeys := r.formatters.Keys()
+	lazyKeys := r.lazyFormatters.Keys()
 
-	// Count unique names across both maps
-	seen := make(map[string]struct{}, len(r.formatters)+len(r.lazyFormatters))
-	for name := range r.formatters {
+	seen := make(map[string]struct{}, len(eagerKeys)+len(lazyKeys))
+	for _, name := range eagerKeys {
 		seen[name] = struct{}{}
 	}
-	for name := range r.lazyFormatters {
+	for _, name := range lazyKeys {
 		seen[name] = struct{}{}
 	}
 	return len(seen)
@@ -512,11 +514,9 @@ func (r *FormatterRegistry) Count() int {
 
 // CountByLanguage returns the number of formatters for a language
 func (r *FormatterRegistry) CountByLanguage(language string) int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	langLower := strings.ToLower(language)
-	return len(r.byLanguage[langLower])
+	formatters, _ := r.byLanguage.Get(langLower)
+	return len(formatters)
 }
 
 // GetPreferredFormatter returns the preferred formatter for a language

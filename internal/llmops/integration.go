@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -268,11 +269,13 @@ func (a *debateEvaluatorAdapter) Evaluate(ctx context.Context, prompt, response,
 	return a.evaluator.EvaluateWithDebate(ctx, prompt, response, expected, metrics)
 }
 
-// InMemoryAlertManager implements AlertManager
+// InMemoryAlertManager implements AlertManager.
+//
+// Concurrent-safe by construction (CONST-029): alerts and callbacks are
+// safe.Slices. Acknowledge uses UpdateAt for atomic find-and-mutate.
 type InMemoryAlertManager struct {
-	alerts    []*Alert
-	callbacks []AlertCallback
-	mu        sync.RWMutex
+	alerts    *safe.Slice[*Alert]
+	callbacks *safe.Slice[AlertCallback]
 	logger    *logrus.Logger
 }
 
@@ -282,24 +285,22 @@ func NewInMemoryAlertManager(logger *logrus.Logger) *InMemoryAlertManager {
 		logger = logrus.New()
 	}
 	return &InMemoryAlertManager{
-		alerts:    make([]*Alert, 0),
-		callbacks: make([]AlertCallback, 0),
+		alerts:    safe.NewSlice[*Alert](),
+		callbacks: safe.NewSlice[AlertCallback](),
 		logger:    logger,
 	}
 }
 
 // Create creates a new alert
 func (m *InMemoryAlertManager) Create(ctx context.Context, alert *Alert) error {
-	m.mu.Lock()
 	if alert.ID == "" {
 		alert.ID = uuid.New().String()
 	}
 	if alert.CreatedAt.IsZero() {
 		alert.CreatedAt = time.Now()
 	}
-	m.alerts = append(m.alerts, alert)
-	callbacks := m.callbacks
-	m.mu.Unlock()
+	m.alerts.Append(alert)
+	callbacks := m.callbacks.Snapshot()
 
 	// Notify subscribers
 	for _, cb := range callbacks {
@@ -322,11 +323,10 @@ func (m *InMemoryAlertManager) Create(ctx context.Context, alert *Alert) error {
 
 // List lists alerts
 func (m *InMemoryAlertManager) List(ctx context.Context, filter *AlertFilter) ([]*Alert, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	snapshot := m.alerts.Snapshot()
 
 	var result []*Alert
-	for _, alert := range m.alerts {
+	for _, alert := range snapshot {
 		if m.matchesFilter(alert, filter) {
 			result = append(result, alert)
 		}
@@ -388,25 +388,22 @@ func (m *InMemoryAlertManager) matchesFilter(alert *Alert, filter *AlertFilter) 
 
 // Acknowledge acknowledges an alert
 func (m *InMemoryAlertManager) Acknowledge(ctx context.Context, alertID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for _, alert := range m.alerts {
-		if alert.ID == alertID {
+	updated := m.alerts.UpdateAt(
+		func(a *Alert) bool { return a.ID == alertID },
+		func(a *Alert) *Alert {
 			now := time.Now()
-			alert.AckedAt = &now
-			return nil
-		}
+			a.AckedAt = &now
+			return a
+		},
+	)
+	if !updated {
+		return fmt.Errorf("alert not found: %s", alertID)
 	}
-
-	return fmt.Errorf("alert not found: %s", alertID)
+	return nil
 }
 
 // Subscribe subscribes to alerts
 func (m *InMemoryAlertManager) Subscribe(ctx context.Context, callback AlertCallback) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.callbacks = append(m.callbacks, callback)
+	m.callbacks.Append(callback)
 	return nil
 }

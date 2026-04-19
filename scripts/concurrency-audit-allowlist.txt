@@ -34,7 +34,6 @@ internal/cache/tiered_cache.go:91:tagIndex
 internal/clis/agents/windsurf/windsurf.go:23:Windsurf
 internal/clis/aider/repo_map.go:69:SymbolCache
 internal/clis/aider/repo_map.go:75:FileCache
-internal/clis/claude/api/files.go:300:FileCache
 internal/clis/continueagent/lsp_client.go:20:LSPClient
 internal/clis/event_bus.go:11:EventBus
 internal/clis/instance_manager.go:18:InstanceManager

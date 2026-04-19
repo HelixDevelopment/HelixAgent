@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // FilesAPI provides file operations via Anthropic's Files API
@@ -296,12 +297,16 @@ func ValidateFileSize(size int64) error {
 	return nil
 }
 
-// FileCache provides local caching for downloaded files
+// FileCache provides local caching for downloaded files.
+//
+// Concurrent-safe by construction (CONST-029): entries is a safe.Store —
+// cacheEntry values are immutable (replaced wholesale on accessedAt
+// update), so Get can read lock-free and the LRU sweep iterates a
+// Snapshot.
 type FileCache struct {
 	baseDir string
 	maxSize int64
-	mu      sync.RWMutex
-	entries map[string]cacheEntry
+	entries *safe.Store[string, cacheEntry]
 }
 
 type cacheEntry struct {
@@ -319,26 +324,20 @@ func NewFileCache(baseDir string, maxSize int64) (*FileCache, error) {
 	return &FileCache{
 		baseDir: baseDir,
 		maxSize: maxSize,
-		entries: make(map[string]cacheEntry),
+		entries: safe.NewStore[string, cacheEntry](),
 	}, nil
 }
 
 // Get retrieves a file from cache or downloads it
 func (c *FileCache) Get(ctx context.Context, api *FilesAPI, fileID string) (string, error) {
-	c.mu.RLock()
-	entry, exists := c.entries[fileID]
-	c.mu.RUnlock()
-
-	if exists {
+	if entry, exists := c.entries.Get(fileID); exists {
 		// Check if file still exists
 		if _, err := os.Stat(entry.path); err == nil {
-			c.mu.Lock()
-			c.entries[fileID] = cacheEntry{
+			c.entries.Put(fileID, cacheEntry{
 				path:       entry.path,
 				size:       entry.size,
 				accessedAt: time.Now(),
-			}
-			c.mu.Unlock()
+			})
 			return entry.path, nil
 		}
 	}
@@ -356,13 +355,11 @@ func (c *FileCache) Get(ctx context.Context, api *FilesAPI, fileID string) (stri
 	}
 
 	// Add to cache
-	c.mu.Lock()
-	c.entries[fileID] = cacheEntry{
+	c.entries.Put(fileID, cacheEntry{
 		path:       cachePath,
 		size:       info.Size(),
 		accessedAt: time.Now(),
-	}
-	c.mu.Unlock()
+	})
 
 	// Clean up if needed
 	c.cleanup()
@@ -370,13 +367,14 @@ func (c *FileCache) Get(ctx context.Context, api *FilesAPI, fileID string) (stri
 	return cachePath, nil
 }
 
-// cleanup removes old entries to stay under max size
+// cleanup removes old entries to stay under max size. Snapshot-then-evict;
+// the brief race window with a concurrent Get is acceptable — at worst we
+// re-download a just-evicted file.
 func (c *FileCache) cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	snapshot := c.entries.Snapshot()
 
 	var totalSize int64
-	for _, entry := range c.entries {
+	for _, entry := range snapshot {
 		totalSize += entry.size
 	}
 
@@ -390,12 +388,11 @@ func (c *FileCache) cleanup() {
 		entry cacheEntry
 	}
 
-	var sorted []kv
-	for k, v := range c.entries {
+	sorted := make([]kv, 0, len(snapshot))
+	for k, v := range snapshot {
 		sorted = append(sorted, kv{k, v})
 	}
 
-	// Simple bubble sort by accessedAt
 	for i := 0; i < len(sorted); i++ {
 		for j := i + 1; j < len(sorted); j++ {
 			if sorted[i].entry.accessedAt.After(sorted[j].entry.accessedAt) {
@@ -404,27 +401,22 @@ func (c *FileCache) cleanup() {
 		}
 	}
 
-	// Remove oldest entries until under limit
 	for _, kv := range sorted {
 		if totalSize <= c.maxSize {
 			break
 		}
-
 		os.Remove(kv.entry.path)
-		delete(c.entries, kv.key)
+		c.entries.Delete(kv.key)
 		totalSize -= kv.entry.size
 	}
 }
 
 // Clear clears the entire cache
 func (c *FileCache) Clear() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, entry := range c.entries {
+	snapshot := c.entries.Snapshot()
+	for _, entry := range snapshot {
 		os.Remove(entry.path)
 	}
-
-	c.entries = make(map[string]cacheEntry)
+	c.entries.Clear()
 	return nil
 }

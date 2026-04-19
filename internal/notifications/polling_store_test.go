@@ -273,21 +273,32 @@ func TestPollingStore_GetGlobalEvents(t *testing.T) {
 	})
 }
 
-// Tests for GetLatestTaskEvent
+// Tests for GetLatestTaskEvent.
+//
+// Each subtest constructs its OWN store — the previous shared-store
+// pattern caused "no events" to see a non-nil event after "returns
+// latest event" had stored 3 on the same store (race-debt BUGFIX #25).
 func TestPollingStore_GetLatestTaskEvent(t *testing.T) {
 	t.Parallel()
 	logger := testLogger()
-	store := NewPollingStore(nil, logger)
-	defer func() { _ = store.Stop() }()
+
+	newStore := func(t *testing.T) *PollingStore {
+		t.Helper()
+		s := NewPollingStore(nil, logger)
+		t.Cleanup(func() { _ = s.Stop() })
+		return s
+	}
 
 	t.Run("no events", func(t *testing.T) {
 		t.Parallel()
+		store := newStore(t)
 		event := store.GetLatestTaskEvent("task-1")
 		assert.Nil(t, event)
 	})
 
 	t.Run("returns latest event", func(t *testing.T) {
 		t.Parallel()
+		store := newStore(t)
 		for i := 0; i < 3; i++ {
 			notification := &TaskNotification{
 				TaskID:    "task-1",

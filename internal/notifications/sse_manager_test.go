@@ -71,15 +71,27 @@ func TestSSEManager_StartStop(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Tests for RegisterClient
+// Tests for RegisterClient.
+//
+// Each subtest constructs its OWN SSEManager to avoid sharing the
+// clients map across parallel subtests (race-debt BUGFIX #25). The
+// previous shared-manager pattern produced nondeterministic
+// GetClientCount values: "register single client" saw 3 because
+// "register multiple" had already added 2 more, and vice-versa.
 func TestSSEManager_RegisterClient(t *testing.T) {
 	t.Parallel()
 	logger := testLogger()
-	manager := NewSSEManager(nil, logger)
-	defer func() { _ = manager.Stop() }()
+
+	newManager := func(t *testing.T) *SSEManager {
+		t.Helper()
+		m := NewSSEManager(nil, logger)
+		t.Cleanup(func() { _ = m.Stop() })
+		return m
+	}
 
 	t.Run("register single client", func(t *testing.T) {
 		t.Parallel()
+		manager := newManager(t)
 		clientChan := make(chan []byte, 10)
 		err := manager.RegisterClient("task-1", clientChan)
 		assert.NoError(t, err)
@@ -90,14 +102,14 @@ func TestSSEManager_RegisterClient(t *testing.T) {
 
 	t.Run("register multiple clients for same task", func(t *testing.T) {
 		t.Parallel()
+		manager := newManager(t)
+		clientChan1 := make(chan []byte, 10)
 		clientChan2 := make(chan []byte, 10)
 		clientChan3 := make(chan []byte, 10)
 
-		err := manager.RegisterClient("task-1", clientChan2)
-		assert.NoError(t, err)
-
-		err = manager.RegisterClient("task-1", clientChan3)
-		assert.NoError(t, err)
+		require.NoError(t, manager.RegisterClient("task-1", clientChan1))
+		require.NoError(t, manager.RegisterClient("task-1", clientChan2))
+		require.NoError(t, manager.RegisterClient("task-1", clientChan3))
 
 		count := manager.GetClientCount("task-1")
 		assert.Equal(t, 3, count)
@@ -105,6 +117,7 @@ func TestSSEManager_RegisterClient(t *testing.T) {
 
 	t.Run("register clients for different tasks", func(t *testing.T) {
 		t.Parallel()
+		manager := newManager(t)
 		clientChan := make(chan []byte, 10)
 		err := manager.RegisterClient("task-2", clientChan)
 		assert.NoError(t, err)

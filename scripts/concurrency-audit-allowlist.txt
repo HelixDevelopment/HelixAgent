@@ -36,7 +36,6 @@ internal/cache/invalidation.go:36:TagBasedInvalidation
 internal/cache/tiered_cache.go:76:l1Cache
 internal/cache/tiered_cache.go:91:tagIndex
 internal/clis/agents/base/base.go:19:BaseIntegration
-internal/clis/agents/claude_code/session_manager.go:11:SessionManager
 internal/clis/agents/cursor/cursor.go:22:Cursor
 internal/clis/agents/gptr/gptr.go:18:GPTR
 internal/clis/agents/registry.go:128:Registry

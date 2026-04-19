@@ -3,14 +3,14 @@ package claude_code
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // SessionManager manages Claude Code sessions
 type SessionManager struct {
-	sessions    map[string]*Session
-	mu          sync.RWMutex
+	sessions    *safe.Store[string, *Session]
 	config      *Config
 	cleanupTick *time.Ticker
 	stopCleanup chan struct{}
@@ -19,7 +19,7 @@ type SessionManager struct {
 // NewSessionManager creates a new session manager
 func NewSessionManager(config *Config) *SessionManager {
 	sm := &SessionManager{
-		sessions:    make(map[string]*Session),
+		sessions:    safe.NewStore[string, *Session](),
 		config:      config,
 		stopCleanup: make(chan struct{}),
 	}
@@ -35,85 +35,70 @@ func NewSessionManager(config *Config) *SessionManager {
 
 // CreateSession creates a new session
 func (sm *SessionManager) CreateSession(workDir string) *Session {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
 	session := NewSession(workDir, sm.config)
-	sm.sessions[session.ID] = session
+	sm.sessions.Put(session.ID, session)
 	return session
 }
 
 // GetSession retrieves a session by ID
 func (sm *SessionManager) GetSession(id string) (*Session, bool) {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
-	session, ok := sm.sessions[id]
-	return session, ok
+	return sm.sessions.Get(id)
 }
 
 // GetOrCreateSession gets an existing session or creates a new one
 func (sm *SessionManager) GetOrCreateSession(id, workDir string) *Session {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if session, ok := sm.sessions[id]; ok && session.Active {
-		session.LastActivity = time.Now()
-		return session
+	var existing *Session
+	sm.sessions.Update(id, func(s *Session, ok bool) (*Session, bool) {
+		if ok && s.Active {
+			s.LastActivity = time.Now()
+			existing = s
+			return s, true
+		}
+		return s, ok
+	})
+	if existing != nil {
+		return existing
 	}
 
 	session := NewSession(workDir, sm.config)
-	sm.sessions[session.ID] = session
+	sm.sessions.Put(session.ID, session)
 	return session
 }
 
 // EndSession ends a session
 func (sm *SessionManager) EndSession(id string) bool {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if session, ok := sm.sessions[id]; ok {
-		session.Active = false
-		return true
-	}
-	return false
+	found := false
+	sm.sessions.Update(id, func(s *Session, ok bool) (*Session, bool) {
+		if !ok {
+			return nil, false
+		}
+		s.Active = false
+		found = true
+		return s, true
+	})
+	return found
 }
 
 // DeleteSession completely removes a session
 func (sm *SessionManager) DeleteSession(id string) bool {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if _, ok := sm.sessions[id]; ok {
-		delete(sm.sessions, id)
-		return true
-	}
-	return false
+	_, existed := sm.sessions.Delete(id)
+	return existed
 }
 
 // ListSessions returns all sessions
 func (sm *SessionManager) ListSessions() []*Session {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
-	sessions := make([]*Session, 0, len(sm.sessions))
-	for _, session := range sm.sessions {
-		sessions = append(sessions, session)
-	}
-	return sessions
+	return sm.sessions.Values()
 }
 
 // ListActiveSessions returns only active sessions
 func (sm *SessionManager) ListActiveSessions() []*Session {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
 	var sessions []*Session
-	for _, session := range sm.sessions {
-		if session.Active {
-			sessions = append(sessions, session)
+	sm.sessions.Range(func(_ string, s *Session) bool {
+		if s.Active {
+			sessions = append(sessions, s)
 		}
-	}
+		return true
+	})
 	return sessions
 }
 
@@ -131,14 +116,17 @@ func (sm *SessionManager) cleanupLoop() {
 
 // cleanupExpired removes expired sessions
 func (sm *SessionManager) cleanupExpired() {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	for id, session := range sm.sessions {
-		if session.IsExpired(sm.config.TimeoutMinutes) {
-			session.Active = false
-			delete(sm.sessions, id)
-		}
+	for _, id := range sm.sessions.Keys() {
+		sm.sessions.Update(id, func(s *Session, ok bool) (*Session, bool) {
+			if !ok {
+				return nil, false
+			}
+			if s.IsExpired(sm.config.TimeoutMinutes) {
+				s.Active = false
+				return nil, false
+			}
+			return s, true
+		})
 	}
 }
 
@@ -153,21 +141,17 @@ func (sm *SessionManager) Stop(ctx context.Context) error {
 
 // GetSessionCount returns the total number of sessions
 func (sm *SessionManager) GetSessionCount() int {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	return len(sm.sessions)
+	return sm.sessions.Len()
 }
 
 // GetActiveSessionCount returns the number of active sessions
 func (sm *SessionManager) GetActiveSessionCount() int {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
 	count := 0
-	for _, session := range sm.sessions {
-		if session.Active {
+	sm.sessions.Range(func(_ string, s *Session) bool {
+		if s.Active {
 			count++
 		}
-	}
+		return true
+	})
 	return count
 }

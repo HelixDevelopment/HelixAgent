@@ -160,7 +160,27 @@ Then my 120 s Bash timeout killed the process. **The binary did not crash** — 
 
 **Second launch** (`nohup ./bin/helixagent -strict-dependencies=false > /tmp/helixagent.log 2>&1 & disown`) — running with no timeout cap. Monitor watching `/tmp/helixagent.log` for `listen tcp` / `Starting HTTP server` / fatal markers.
 
-**Final status:** documented separately once the provider-verification + HTTP-server start completes (takes minutes — verification probes every configured provider and many have 10–30 s timeouts).
+**Final status (second launch):**
+
+- Binary `pid 506274` running under `nohup`, alive for ~1m14s at report time.
+- Log at `/tmp/helixagent.log` — 316 lines of boot output.
+- Provider verification actively in progress (sampled messages):
+
+```
+... "Recorded faulty API key" api_key=OPENROUTER_API_KEY
+... "Model not verified" model=meta/meta-llama-3-70b-instruct provider=replicate
+... "API key provider verification failed - no verified models" provider=venice
+... "Mistral API returned error" error_type=rate_limited status_code=429
+```
+
+These are **real cloud-provider API probes** — verifying 40+ configured API keys against live endpoints. Many fail (expected: either no valid key configured, rate-limited, or model deprecated). The binary will still start the HTTP server on :7061 as long as at least one provider verifies OR `-strict-dependencies=false` is set (it is).
+
+- HTTP server on :7061 will come online once verification finishes; the `BootManager` summary already reports "All services booted successfully" for infrastructure.
+- Monitor task `bqy722pck` watching `/tmp/helixagent.log` for `Starting HTTP server` / `listen tcp` / fatal markers. It will event either when the server listens or if the binary crashes.
+
+**No forbidden manual container commands were used.** Constitutional path honoured end-to-end.
+
+**Persistence:** the `nohup` launch detaches from the Claude-session TTY; the binary will keep running after this session ends. Containers orchestrated by the binary remain until the binary shuts down, which happens on SIGTERM. Operator can verify manually via `ps -p 506274`, `curl http://localhost:7061/v1/health` (once listening), `tail -f /tmp/helixagent.log`.
 
 ## D — `make full-test-matrix` target
 

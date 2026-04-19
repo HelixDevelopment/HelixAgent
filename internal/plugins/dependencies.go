@@ -7,26 +7,36 @@ import (
 	"strings"
 	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/utils"
 )
 
-// DependencyResolver handles plugin dependency resolution and conflict detection
+// DependencyResolver handles plugin dependency resolution and conflict detection.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - deps is a safe.Store; reads (ResolveLoadOrder, GetDependencies,
+//     GetDependents, hasCircularDependencyLocked) iterate via Range/Get
+//     and copy out the per-plugin slice.
+//   - addMu serialises the validate-then-commit sequence in AddDependency
+//     so two concurrent additions cannot create a cycle that neither check
+//     observed individually. addMu has no collection adjacency.
 type DependencyResolver struct {
 	registry *Registry
-	mu       sync.RWMutex
-	deps     map[string][]string // plugin -> dependencies
+	addMu    sync.Mutex // serialises AddDependency validate+commit only
+	deps     *safe.Store[string, []string]
 }
 
 func NewDependencyResolver(registry *Registry) *DependencyResolver {
 	return &DependencyResolver{
 		registry: registry,
-		deps:     make(map[string][]string),
+		deps:     safe.NewStore[string, []string](),
 	}
 }
 
 func (d *DependencyResolver) AddDependency(pluginName string, dependencies []string) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.addMu.Lock()
+	defer d.addMu.Unlock()
 
 	// Check for circular dependencies
 	if d.hasCircularDependencyLocked(pluginName, dependencies) {
@@ -38,15 +48,12 @@ func (d *DependencyResolver) AddDependency(pluginName string, dependencies []str
 		return err
 	}
 
-	d.deps[pluginName] = dependencies
+	d.deps.Put(pluginName, dependencies)
 	utils.GetLogger().Infof("Added dependencies for plugin %s: %v", pluginName, dependencies)
 	return nil
 }
 
 func (d *DependencyResolver) ResolveLoadOrder(plugins []string) ([]string, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	// Topological sort for dependency resolution
 	visited := make(map[string]bool)
 	recStack := make(map[string]bool)
@@ -65,7 +72,8 @@ func (d *DependencyResolver) ResolveLoadOrder(plugins []string) ([]string, error
 		recStack[plugin] = true
 
 		// Visit dependencies first
-		for _, dep := range d.deps[plugin] {
+		deps, _ := d.deps.Get(plugin)
+		for _, dep := range deps {
 			if err := visit(dep); err != nil {
 				return err
 			}
@@ -92,7 +100,8 @@ func (d *DependencyResolver) ResolveLoadOrder(plugins []string) ([]string, error
 	return order, nil
 }
 
-// hasCircularDependencyLocked checks for circular deps. Caller must hold d.mu.
+// hasCircularDependencyLocked checks for circular deps. Caller must hold d.addMu
+// (the cycle check + commit must be atomic).
 func (d *DependencyResolver) hasCircularDependencyLocked(plugin string, deps []string) bool {
 	visited := make(map[string]bool)
 	recStack := make(map[string]bool)
@@ -102,7 +111,8 @@ func (d *DependencyResolver) hasCircularDependencyLocked(plugin string, deps []s
 		visited[p] = true
 		recStack[p] = true
 
-		for _, dep := range d.deps[p] {
+		pDeps, _ := d.deps.Get(p)
+		for _, dep := range pDeps {
 			if !visited[dep] && hasCycle(dep) {
 				return true
 			} else if recStack[dep] {
@@ -291,30 +301,26 @@ func parseInt(s string) int {
 }
 
 func (d *DependencyResolver) GetDependencies(plugin string) []string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	if deps, exists := d.deps[plugin]; exists {
-		result := make([]string, len(deps))
-		copy(result, deps)
-		return result
+	deps, exists := d.deps.Get(plugin)
+	if !exists {
+		return []string{}
 	}
-	return []string{}
+	result := make([]string, len(deps))
+	copy(result, deps)
+	return result
 }
 
 func (d *DependencyResolver) GetDependents(plugin string) []string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	var dependents []string
-	for p, deps := range d.deps {
+	d.deps.Range(func(p string, deps []string) bool {
 		for _, dep := range deps {
 			if dep == plugin {
 				dependents = append(dependents, p)
 				break
 			}
 		}
-	}
+		return true
+	})
 	sort.Strings(dependents)
 	return dependents
 }

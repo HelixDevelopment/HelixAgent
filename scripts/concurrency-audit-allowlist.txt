@@ -135,7 +135,6 @@ internal/optimization/streaming/chunker.go:433:StreamingChunker
 internal/planning/hiplan.go:145:HiPlan
 internal/planning/mcts.go:27:MCTSNode
 internal/planning/tree_of_thoughts.go:110:TreeOfThoughts
-internal/plugins/dependencies.go:14:DependencyResolver
 internal/plugins/health.go:12:HealthMonitor
 internal/plugins/hot_reload.go:17:HotReloadManager
 internal/plugins/reload.go:17:Reloader

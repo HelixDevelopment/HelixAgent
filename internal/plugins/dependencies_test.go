@@ -26,7 +26,8 @@ func TestDependencyResolver_AddDependency(t *testing.T) {
 		err := resolver.AddDependency("plugin-a", []string{"plugin-b"})
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"plugin-b"}, resolver.deps["plugin-a"])
+		got, _ := resolver.deps.Get("plugin-a")
+		assert.Equal(t, []string{"plugin-b"}, got)
 	})
 
 	t.Run("add multiple dependencies", func(t *testing.T) {
@@ -36,7 +37,8 @@ func TestDependencyResolver_AddDependency(t *testing.T) {
 		err := resolver.AddDependency("plugin-a", []string{"plugin-b", "plugin-c", "plugin-d"})
 
 		require.NoError(t, err)
-		assert.Len(t, resolver.deps["plugin-a"], 3)
+		got, _ := resolver.deps.Get("plugin-a")
+		assert.Len(t, got, 3)
 	})
 }
 
@@ -76,9 +78,9 @@ func TestDependencyResolver_ResolveLoadOrder(t *testing.T) {
 		resolver := NewDependencyResolver(registry)
 
 		// Create circular dependency directly in deps map
-		resolver.deps["a"] = []string{"b"}
-		resolver.deps["b"] = []string{"c"}
-		resolver.deps["c"] = []string{"a"}
+		resolver.deps.Put("a", []string{"b"})
+		resolver.deps.Put("b", []string{"c"})
+		resolver.deps.Put("c", []string{"a"})
 
 		_, err := resolver.ResolveLoadOrder([]string{"a", "b", "c"})
 
@@ -330,7 +332,7 @@ func TestDependencyResolver_HasCircularDependency(t *testing.T) {
 	t.Run("no circular with simple dependency", func(t *testing.T) {
 		registry := NewRegistry()
 		resolver := NewDependencyResolver(registry)
-		resolver.deps["a"] = []string{"b"}
+		resolver.deps.Put("a", []string{"b"})
 
 		result := resolver.hasCircularDependencyLocked("a", []string{"b"})
 
@@ -340,8 +342,8 @@ func TestDependencyResolver_HasCircularDependency(t *testing.T) {
 	t.Run("detects direct circular", func(t *testing.T) {
 		registry := NewRegistry()
 		resolver := NewDependencyResolver(registry)
-		resolver.deps["a"] = []string{"b"}
-		resolver.deps["b"] = []string{"a"}
+		resolver.deps.Put("a", []string{"b"})
+		resolver.deps.Put("b", []string{"a"})
 
 		result := resolver.hasCircularDependencyLocked("a", []string{"b"})
 
@@ -351,9 +353,9 @@ func TestDependencyResolver_HasCircularDependency(t *testing.T) {
 	t.Run("detects indirect circular", func(t *testing.T) {
 		registry := NewRegistry()
 		resolver := NewDependencyResolver(registry)
-		resolver.deps["a"] = []string{"b"}
-		resolver.deps["b"] = []string{"c"}
-		resolver.deps["c"] = []string{"a"}
+		resolver.deps.Put("a", []string{"b"})
+		resolver.deps.Put("b", []string{"c"})
+		resolver.deps.Put("c", []string{"a"})
 
 		result := resolver.hasCircularDependencyLocked("a", []string{"b"})
 
@@ -363,7 +365,7 @@ func TestDependencyResolver_HasCircularDependency(t *testing.T) {
 	t.Run("detects self-dependency", func(t *testing.T) {
 		registry := NewRegistry()
 		resolver := NewDependencyResolver(registry)
-		resolver.deps["a"] = []string{"a"}
+		resolver.deps.Put("a", []string{"a"})
 
 		result := resolver.hasCircularDependencyLocked("a", []string{"a"})
 
@@ -383,7 +385,8 @@ func TestDependencyResolver_AddDependency_EdgeCases(t *testing.T) {
 		err := resolver.AddDependency("plugin-a", []string{})
 
 		require.NoError(t, err)
-		assert.Empty(t, resolver.deps["plugin-a"])
+		got, _ := resolver.deps.Get("plugin-a")
+		assert.Empty(t, got)
 	})
 
 	t.Run("add nil dependencies", func(t *testing.T) {
@@ -427,9 +430,9 @@ func TestDependencyResolver_ResolveLoadOrder_EdgeCases(t *testing.T) {
 		resolver := NewDependencyResolver(registry)
 
 		// Diamond: a -> b,c -> d
-		resolver.deps["a"] = []string{"b", "c"}
-		resolver.deps["b"] = []string{"d"}
-		resolver.deps["c"] = []string{"d"}
+		resolver.deps.Put("a", []string{"b", "c"})
+		resolver.deps.Put("b", []string{"d"})
+		resolver.deps.Put("c", []string{"d"})
 
 		order, err := resolver.ResolveLoadOrder([]string{"a", "b", "c", "d"})
 
@@ -731,9 +734,9 @@ func TestDependencyResolver_AddDependency_CircularError(t *testing.T) {
 	resolver := NewDependencyResolver(registry)
 
 	// Create a chain that will be circular
-	resolver.deps["a"] = []string{"b"}
-	resolver.deps["b"] = []string{"c"}
-	resolver.deps["c"] = []string{"a"}
+	resolver.deps.Put("a", []string{"b"})
+	resolver.deps.Put("b", []string{"c"})
+	resolver.deps.Put("c", []string{"a"})
 
 	// Adding a dependency to 'a' should detect circular dependency
 	err := resolver.AddDependency("d", []string{"a"})
@@ -770,8 +773,8 @@ func TestDependencyResolver_ResolveLoadOrder_WithDependencies(t *testing.T) {
 	resolver := NewDependencyResolver(registry)
 
 	// Create a dependency chain: a -> b -> c
-	resolver.deps["a"] = []string{"b"}
-	resolver.deps["b"] = []string{"c"}
+	resolver.deps.Put("a", []string{"b"})
+	resolver.deps.Put("b", []string{"c"})
 
 	order, err := resolver.ResolveLoadOrder([]string{"a", "b", "c"})
 	require.NoError(t, err)
@@ -788,10 +791,10 @@ func TestDependencyResolver_GetDependents_Multiple(t *testing.T) {
 	resolver := NewDependencyResolver(registry)
 
 	// Multiple plugins depend on 'common'
-	resolver.deps["a"] = []string{"common", "other"}
-	resolver.deps["b"] = []string{"common"}
-	resolver.deps["c"] = []string{"common", "another"}
-	resolver.deps["d"] = []string{"other"}
+	resolver.deps.Put("a", []string{"common", "other"})
+	resolver.deps.Put("b", []string{"common"})
+	resolver.deps.Put("c", []string{"common", "another"})
+	resolver.deps.Put("d", []string{"other"})
 
 	dependents := resolver.GetDependents("common")
 	assert.Len(t, dependents, 3)
@@ -827,11 +830,11 @@ func TestDependencyResolver_HasCircularDependency_Deep(t *testing.T) {
 	resolver := NewDependencyResolver(registry)
 
 	// Create a deep chain
-	resolver.deps["a"] = []string{"b"}
-	resolver.deps["b"] = []string{"c"}
-	resolver.deps["c"] = []string{"d"}
-	resolver.deps["d"] = []string{"e"}
-	resolver.deps["e"] = []string{"f"}
+	resolver.deps.Put("a", []string{"b"})
+	resolver.deps.Put("b", []string{"c"})
+	resolver.deps.Put("c", []string{"d"})
+	resolver.deps.Put("d", []string{"e"})
+	resolver.deps.Put("e", []string{"f"})
 
 	t.Run("no circular in deep chain", func(t *testing.T) {
 		result := resolver.hasCircularDependencyLocked("g", []string{"f"})
@@ -839,7 +842,7 @@ func TestDependencyResolver_HasCircularDependency_Deep(t *testing.T) {
 	})
 
 	// Now add circular back to a
-	resolver.deps["f"] = []string{"a"}
+	resolver.deps.Put("f", []string{"a"})
 
 	t.Run("circular in deep chain", func(t *testing.T) {
 		result := resolver.hasCircularDependencyLocked("g", []string{"a"})

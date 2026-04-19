@@ -130,16 +130,22 @@ func TestOAuthAdapter_GetQwenToken(t *testing.T) {
 
 func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 	t.Parallel()
-	adapter := NewOAuthAdapter(nil, nil)
+
+	// Per-subtest adapter — the previous shared adapter pattern caused
+	// "no token" to fail after "valid token" set claudeToken on the
+	// same adapter (race-debt BUGFIX #26).
+	newAdapter := func() *OAuthAdapter { return NewOAuthAdapter(nil, nil) }
 
 	t.Run("no token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		valid := adapter.IsClaudeTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -151,6 +157,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 
 	t.Run("expired token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		adapter.mu.Lock()
 		adapter.claudeToken = "test-token"
 		adapter.claudeExpiry = time.Now().Add(-time.Hour)
@@ -162,6 +169,7 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 
 	t.Run("empty token with future expiry", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		adapter.mu.Lock()
 		adapter.claudeToken = ""
 		adapter.claudeExpiry = time.Now().Add(time.Hour)
@@ -174,16 +182,20 @@ func TestOAuthAdapter_IsClaudeTokenValid(t *testing.T) {
 
 func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 	t.Parallel()
-	adapter := NewOAuthAdapter(nil, nil)
+	// Per-subtest adapter — see BUGFIX #26 for the rationale
+	// (parallel subtests must not share a mutable adapter).
+	newAdapter := func() *OAuthAdapter { return NewOAuthAdapter(nil, nil) }
 
 	t.Run("no token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		valid := adapter.IsQwenTokenValid()
 		assert.False(t, valid)
 	})
 
 	t.Run("valid token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(time.Hour)
@@ -195,6 +207,7 @@ func TestOAuthAdapter_IsQwenTokenValid(t *testing.T) {
 
 	t.Run("expired token", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		adapter.mu.Lock()
 		adapter.qwenToken = "test-token"
 		adapter.qwenExpiry = time.Now().Add(-time.Hour)
@@ -436,10 +449,14 @@ func TestOAuthAdapterConfig_Fields_Comprehensive(t *testing.T) {
 
 func TestOAuthAdapter_TokenState(t *testing.T) {
 	t.Parallel()
-	adapter := NewOAuthAdapter(nil, nil)
+	// Per-subtest adapter — "initial state" expected empty tokens but
+	// the shared adapter was being mutated by "after setting tokens"
+	// in parallel (race-debt BUGFIX #26).
+	newAdapter := func() *OAuthAdapter { return NewOAuthAdapter(nil, nil) }
 
 	t.Run("initial state", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		token, expiry := adapter.GetClaudeToken()
 		assert.Empty(t, token)
 		assert.True(t, expiry.IsZero())
@@ -451,6 +468,7 @@ func TestOAuthAdapter_TokenState(t *testing.T) {
 
 	t.Run("after setting tokens", func(t *testing.T) {
 		t.Parallel()
+		adapter := newAdapter()
 		now := time.Now()
 		claudeExpiry := now.Add(time.Hour)
 		qwenExpiry := now.Add(2 * time.Hour)

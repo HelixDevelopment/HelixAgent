@@ -6,9 +6,9 @@ package security
 
 import (
 	"context"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
@@ -168,13 +168,19 @@ type AuditLogger interface {
 	GetStats(ctx context.Context, since time.Time) (*AuditStats, error)
 }
 
-// InMemoryAuditLogger provides an in-memory audit log implementation
+// InMemoryAuditLogger provides an in-memory audit log implementation.
+//
+// Concurrent-safe by construction (CONST-029): events lives inside a
+// single-key sseState-style state held by safe.Store; Log atomically
+// appends + trims under one Update callback (Pattern Epsilon for the
+// single-slice-needing-bounded-trim case).
 type InMemoryAuditLogger struct {
-	events    []*AuditEvent
+	state     *safe.Store[string, []*AuditEvent]
 	maxEvents int
 	logger    *logrus.Logger
-	mu        sync.RWMutex
 }
+
+const auditStateKey = "_"
 
 // NewInMemoryAuditLogger creates a new in-memory audit logger
 func NewInMemoryAuditLogger(maxEvents int, logger *logrus.Logger) *InMemoryAuditLogger {
@@ -184,8 +190,10 @@ func NewInMemoryAuditLogger(maxEvents int, logger *logrus.Logger) *InMemoryAudit
 	if logger == nil {
 		logger = logrus.New()
 	}
+	store := safe.NewStore[string, []*AuditEvent]()
+	store.Put(auditStateKey, make([]*AuditEvent, 0, maxEvents))
 	return &InMemoryAuditLogger{
-		events:    make([]*AuditEvent, 0, maxEvents),
+		state:     store,
 		maxEvents: maxEvents,
 		logger:    logger,
 	}
@@ -193,9 +201,6 @@ func NewInMemoryAuditLogger(maxEvents int, logger *logrus.Logger) *InMemoryAudit
 
 // Log logs an audit event
 func (l *InMemoryAuditLogger) Log(ctx context.Context, event *AuditEvent) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	if event.ID == "" {
 		event.ID = uuid.New().String()
 	}
@@ -203,13 +208,14 @@ func (l *InMemoryAuditLogger) Log(ctx context.Context, event *AuditEvent) error 
 		event.Timestamp = time.Now()
 	}
 
-	// Enforce max events limit
-	if len(l.events) >= l.maxEvents {
-		removeCount := l.maxEvents / 10
-		l.events = l.events[removeCount:]
-	}
-
-	l.events = append(l.events, event)
+	l.state.Update(auditStateKey, func(events []*AuditEvent, _ bool) ([]*AuditEvent, bool) {
+		if len(events) >= l.maxEvents {
+			removeCount := l.maxEvents / 10
+			events = events[removeCount:]
+		}
+		events = append(events, event)
+		return events, true
+	})
 
 	l.logger.WithFields(logrus.Fields{
 		"audit_id":   event.ID,
@@ -225,12 +231,11 @@ func (l *InMemoryAuditLogger) Log(ctx context.Context, event *AuditEvent) error 
 
 // Query queries audit events with filtering
 func (l *InMemoryAuditLogger) Query(ctx context.Context, filter *AuditFilter) ([]*AuditEvent, error) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	events, _ := l.state.Get(auditStateKey)
 
 	var results []*AuditEvent
 
-	for _, event := range l.events {
+	for _, event := range events {
 		if filter.StartTime != nil && event.Timestamp.Before(*filter.StartTime) {
 			continue
 		}
@@ -264,8 +269,7 @@ func (l *InMemoryAuditLogger) Query(ctx context.Context, filter *AuditFilter) ([
 
 // GetStats returns audit statistics
 func (l *InMemoryAuditLogger) GetStats(ctx context.Context, since time.Time) (*AuditStats, error) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	events, _ := l.state.Get(auditStateKey)
 
 	stats := &AuditStats{
 		EventsByType: make(map[AuditEventType]int64),
@@ -273,7 +277,7 @@ func (l *InMemoryAuditLogger) GetStats(ctx context.Context, since time.Time) (*A
 		TopUsers:     make([]UserAuditStat, 0),
 	}
 
-	for _, event := range l.events {
+	for _, event := range events {
 		if event.Timestamp.Before(since) {
 			continue
 		}

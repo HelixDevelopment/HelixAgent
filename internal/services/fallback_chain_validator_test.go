@@ -32,7 +32,7 @@ func TestFallbackChainValidator_AlertListener(t *testing.T) {
 			alertReceived <- alert
 		})
 
-		assert.Len(t, validator.listeners, 1)
+		assert.Equal(t, 1, validator.listeners.Len())
 	})
 }
 

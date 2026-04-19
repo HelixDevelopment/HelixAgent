@@ -3,11 +3,14 @@ package services
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // Package-level metrics (registered once)
@@ -43,16 +46,17 @@ func initFCVMetrics() {
 	})
 }
 
-// FallbackChainValidator validates that fallback chains have proper diversity
+// FallbackChainValidator validates that fallback chains have proper diversity.
+//
+// Concurrent-safe by construction (CONST-029): listeners is a safe.Slice,
+// lastValidation is an atomic pointer. FallbackChainValidationResult
+// has its own ValidatedAt field so we no longer carry a separate
+// lastValidatedAt; Load() the pointer and read result.ValidatedAt.
 type FallbackChainValidator struct {
-	mu               sync.RWMutex
 	logger           *logrus.Logger
 	debateTeamConfig *DebateTeamConfig
-	listeners        []FallbackChainAlertListener
-
-	// Validation results cache
-	lastValidation  *FallbackChainValidationResult
-	lastValidatedAt time.Time
+	listeners        *safe.Slice[FallbackChainAlertListener]
+	lastValidation   atomic.Pointer[FallbackChainValidationResult]
 }
 
 // FallbackChainAlertListener is called when validation alerts occur
@@ -107,22 +111,17 @@ func NewFallbackChainValidator(logger *logrus.Logger, debateTeamConfig *DebateTe
 	return &FallbackChainValidator{
 		logger:           logger,
 		debateTeamConfig: debateTeamConfig,
-		listeners:        make([]FallbackChainAlertListener, 0),
+		listeners:        safe.NewSlice[FallbackChainAlertListener](),
 	}
 }
 
 // AddAlertListener adds a listener for alerts
 func (fcv *FallbackChainValidator) AddAlertListener(listener FallbackChainAlertListener) {
-	fcv.mu.Lock()
-	defer fcv.mu.Unlock()
-	fcv.listeners = append(fcv.listeners, listener)
+	fcv.listeners.Append(listener)
 }
 
 // Validate performs the fallback chain validation
 func (fcv *FallbackChainValidator) Validate() *FallbackChainValidationResult {
-	fcv.mu.Lock()
-	defer fcv.mu.Unlock()
-
 	result := &FallbackChainValidationResult{
 		Valid:       true,
 		Issues:      make([]FallbackChainIssue, 0),
@@ -137,8 +136,7 @@ func (fcv *FallbackChainValidator) Validate() *FallbackChainValidationResult {
 			Description: "DebateTeamConfig is not initialized",
 			Suggestion:  "Ensure DebateTeamConfig is properly initialized at startup",
 		})
-		fcv.lastValidation = result
-		fcv.lastValidatedAt = time.Now()
+		fcv.lastValidation.Store(result)
 		fcvValidationResultGauge.Set(0)
 		return result
 	}
@@ -152,8 +150,7 @@ func (fcv *FallbackChainValidator) Validate() *FallbackChainValidationResult {
 			Description: "No verified LLMs available",
 			Suggestion:  "Check API keys and provider availability",
 		})
-		fcv.lastValidation = result
-		fcv.lastValidatedAt = time.Now()
+		fcv.lastValidation.Store(result)
 		fcvValidationResultGauge.Set(0)
 		return result
 	}
@@ -283,8 +280,7 @@ func (fcv *FallbackChainValidator) Validate() *FallbackChainValidationResult {
 		})
 	}
 
-	fcv.lastValidation = result
-	fcv.lastValidatedAt = time.Now()
+	fcv.lastValidation.Store(result)
 
 	fcv.logger.WithFields(logrus.Fields{
 		"valid":            result.Valid,
@@ -369,9 +365,7 @@ func (fcv *FallbackChainValidator) calculateDiversityScore(result *FallbackChain
 func (fcv *FallbackChainValidator) sendAlert(alert FallbackChainAlert) {
 	fcvValidationAlertsTotal.Inc()
 
-	listeners := fcv.listeners
-
-	for _, listener := range listeners {
+	for _, listener := range fcv.listeners.Snapshot() {
 		go listener(alert)
 	}
 
@@ -384,17 +378,13 @@ func (fcv *FallbackChainValidator) sendAlert(alert FallbackChainAlert) {
 
 // GetLastValidation returns the last validation result
 func (fcv *FallbackChainValidator) GetLastValidation() *FallbackChainValidationResult {
-	fcv.mu.RLock()
-	defer fcv.mu.RUnlock()
-	return fcv.lastValidation
+	return fcv.lastValidation.Load()
 }
 
 // GetStatus returns the current validation status
 func (fcv *FallbackChainValidator) GetStatus() FallbackChainStatus {
-	fcv.mu.RLock()
-	defer fcv.mu.RUnlock()
-
-	if fcv.lastValidation == nil {
+	last := fcv.lastValidation.Load()
+	if last == nil {
 		return FallbackChainStatus{
 			Validated: false,
 			Message:   "Validation not yet performed",
@@ -403,11 +393,11 @@ func (fcv *FallbackChainValidator) GetStatus() FallbackChainStatus {
 
 	return FallbackChainStatus{
 		Validated:       true,
-		Valid:           fcv.lastValidation.Valid,
-		DiversityScore:  fcv.lastValidation.DiversityScore,
-		UniqueProviders: fcv.lastValidation.UniqueProviders,
-		IssuesCount:     len(fcv.lastValidation.Issues),
-		ValidatedAt:     fcv.lastValidatedAt,
+		Valid:           last.Valid,
+		DiversityScore:  last.DiversityScore,
+		UniqueProviders: last.UniqueProviders,
+		IssuesCount:     len(last.Issues),
+		ValidatedAt:     last.ValidatedAt,
 	}
 }
 

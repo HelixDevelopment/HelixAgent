@@ -24,8 +24,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/version"
@@ -33,10 +34,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// analyticsStore tracks protocol request metrics in-memory
+// analyticsStore tracks protocol request metrics in-memory.
+// Concurrent-safe by construction (CONST-029): requests is a safe.Slice.
 type analyticsStore struct {
-	mu       sync.RWMutex
-	requests []analyticsRecord
+	requests *safe.Slice[analyticsRecord]
 }
 
 type analyticsRecord struct {
@@ -48,21 +49,18 @@ type analyticsRecord struct {
 }
 
 func newAnalyticsStore() *analyticsStore {
-	return &analyticsStore{requests: make([]analyticsRecord, 0)}
+	return &analyticsStore{requests: safe.NewSlice[analyticsRecord]()}
 }
 
 func (a *analyticsStore) record(r analyticsRecord) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.requests = append(a.requests, r)
+	a.requests.Append(r)
 }
 
 func (a *analyticsStore) allMetrics() map[string]interface{} {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	total := len(a.requests)
+	snapshot := a.requests.Snapshot()
+	total := len(snapshot)
 	success := 0
-	for _, r := range a.requests {
+	for _, r := range snapshot {
 		if r.Success {
 			success++
 		}
@@ -71,14 +69,17 @@ func (a *analyticsStore) allMetrics() map[string]interface{} {
 		"total_requests":    total,
 		"successful":        success,
 		"failed":            total - success,
-		"protocols_tracked": a.protocolList(),
+		"protocols_tracked": protocolList(snapshot),
 	}
 }
 
-func (a *analyticsStore) protocolList() []string {
+// protocolList extracts the distinct non-empty protocols from a
+// pre-taken snapshot. Taking a slice argument (vs. reading a.requests)
+// keeps the single-snapshot consistency guarantee of allMetrics.
+func protocolList(snapshot []analyticsRecord) []string {
 	seen := map[string]bool{}
 	var list []string
-	for _, r := range a.requests {
+	for _, r := range snapshot {
 		if r.Protocol != "" && !seen[r.Protocol] {
 			seen[r.Protocol] = true
 			list = append(list, r.Protocol)
@@ -90,11 +91,9 @@ func (a *analyticsStore) protocolList() []string {
 func (a *analyticsStore) metricsForProtocol(
 	protocol string,
 ) (map[string]interface{}, bool) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
 	total := 0
 	success := 0
-	for _, r := range a.requests {
+	for _, r := range a.requests.Snapshot() {
 		if r.Protocol == protocol {
 			total++
 			if r.Success {
@@ -439,9 +438,7 @@ func (s *APIServer) handleStatus(c *gin.Context) {
 }
 
 func (s *APIServer) handlePrometheusMetrics(c *gin.Context) {
-	s.analytics.mu.RLock()
-	totalRequests := len(s.analytics.requests)
-	s.analytics.mu.RUnlock()
+	totalRequests := s.analytics.requests.Len()
 
 	metrics := fmt.Sprintf(`# HELP helixagent_up Server is up
 # TYPE helixagent_up gauge

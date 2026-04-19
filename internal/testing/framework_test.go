@@ -97,7 +97,7 @@ func TestGenerateReport(t *testing.T) {
 	framework := NewTestBankFramework()
 
 	// Add some test results
-	framework.results[UnitTest] = []TestResult{
+	framework.results.Put(UnitTest, []TestResult{
 		{
 			Passed:   true,
 			Output:   "Test passed",
@@ -111,7 +111,7 @@ func TestGenerateReport(t *testing.T) {
 			Duration: 2 * time.Second,
 			Coverage: 0.0,
 		},
-	}
+	})
 
 	// Test JSON report
 	jsonReport, err := framework.GenerateReport("json")
@@ -516,9 +516,9 @@ func TestSuiteReportFields(t *testing.T) {
 func TestGenerateReportFormats(t *testing.T) {
 	framework := NewTestBankFramework()
 
-	framework.results[SecurityTest] = []TestResult{
+	framework.results.Put(SecurityTest, []TestResult{
 		{Passed: true, Output: "Security test passed", Duration: 500 * time.Millisecond},
-	}
+	})
 
 	t.Run("json format", func(t *testing.T) {
 		report, err := framework.GenerateReport("json")
@@ -613,7 +613,7 @@ func TestLoadSuitesFromConfig(t *testing.T) {
 	// Check that suites were registered
 	suites := []TestType{UnitTest, IntegrationTest, E2ETest, StressTest, SecurityTest, StandaloneTest}
 	for _, suiteType := range suites {
-		if framework.suites[suiteType] == nil {
+		if !framework.suites.Has(suiteType) {
 			t.Fatalf("Expected %s suite to be registered", suiteType)
 		}
 	}

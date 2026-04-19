@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // TestType represents the type of test
@@ -60,42 +62,41 @@ type TestConfig struct {
 	CoverageFile string
 }
 
-// TestBankFramework manages all test execution
+// TestBankFramework manages all test execution.
+//
+// Concurrent-safe by construction (CONST-029): suites and results are
+// safe.Stores. Suites are registered once at startup; results accumulate
+// per RunAllSuites / RunSuite call.
 type TestBankFramework struct {
-	suites  map[TestType]*TestSuite
-	results map[TestType][]TestResult
-	mu      sync.RWMutex
+	suites  *safe.Store[TestType, *TestSuite]
+	results *safe.Store[TestType, []TestResult]
 }
 
 // NewTestBankFramework creates a new test framework
 func NewTestBankFramework() *TestBankFramework {
 	return &TestBankFramework{
-		suites:  make(map[TestType]*TestSuite),
-		results: make(map[TestType][]TestResult),
+		suites:  safe.NewStore[TestType, *TestSuite](),
+		results: safe.NewStore[TestType, []TestResult](),
 	}
 }
 
 // RegisterSuite registers a test suite
 func (tbf *TestBankFramework) RegisterSuite(suite *TestSuite) {
-	tbf.mu.Lock()
-	defer tbf.mu.Unlock()
-	tbf.suites[suite.Type] = suite
+	tbf.suites.Put(suite.Type, suite)
 }
 
 // RunAllSuites runs all registered test suites
 func (tbf *TestBankFramework) RunAllSuites() (map[TestType][]TestResult, error) {
-	tbf.mu.Lock()
-	defer tbf.mu.Unlock()
-
 	results := make(map[TestType][]TestResult)
 
-	for testType, suite := range tbf.suites {
+	suites := tbf.suites.Snapshot()
+	for testType, suite := range suites {
 		suiteResults, err := tbf.runSuite(suite)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run %s suite: %w", testType, err)
 		}
 		results[testType] = suiteResults
-		tbf.results[testType] = suiteResults
+		tbf.results.Put(testType, suiteResults)
 	}
 
 	return results, nil
@@ -103,14 +104,10 @@ func (tbf *TestBankFramework) RunAllSuites() (map[TestType][]TestResult, error) 
 
 // RunSuite runs a specific test suite
 func (tbf *TestBankFramework) RunSuite(testType TestType) ([]TestResult, error) {
-	tbf.mu.RLock()
-	suite, exists := tbf.suites[testType]
-	tbf.mu.RUnlock()
-
+	suite, exists := tbf.suites.Get(testType)
 	if !exists {
 		return nil, fmt.Errorf("suite %s not found", testType)
 	}
-
 	return tbf.runSuite(suite)
 }
 
@@ -201,9 +198,6 @@ func (tbf *TestBankFramework) parseCoverage(output string) float64 {
 
 // GenerateReport generates a test report
 func (tbf *TestBankFramework) GenerateReport(format string) (string, error) {
-	tbf.mu.RLock()
-	defer tbf.mu.RUnlock()
-
 	report := TestReport{
 		Timestamp: time.Now(),
 		Suites:    make(map[string]SuiteReport),
@@ -212,7 +206,8 @@ func (tbf *TestBankFramework) GenerateReport(format string) (string, error) {
 	totalTests := 0
 	totalPassed := 0
 
-	for testType, results := range tbf.results {
+	results := tbf.results.Snapshot()
+	for testType, results := range results {
 		suiteReport := SuiteReport{
 			Type:    string(testType),
 			Tests:   len(results),

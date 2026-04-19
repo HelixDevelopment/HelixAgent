@@ -6,10 +6,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
+	"sync/atomic"
 
 	db "digital.vasic.database/pkg/database"
 	"digital.vasic.database/pkg/postgres"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -119,10 +121,9 @@ func (p *PostgresDB) Database() db.Database {
 // MemoryDB implements DB interface using in-memory storage.
 // This is used when PostgreSQL is not available (standalone/testing mode).
 type MemoryDB struct {
-	mu      sync.RWMutex
-	data    map[string][]map[string]any
-	enabled bool
-	rowData map[string]map[string][]any
+	data    *safe.Store[string, []map[string]any]
+	rowData *safe.Store[string, map[string][]any]
+	enabled atomic.Bool
 }
 
 // memoryRow implements Row interface for in-memory queries.
@@ -162,11 +163,12 @@ func (r *memoryRow) Scan(dest ...any) error {
 // NewMemoryDB creates a new in-memory database.
 func NewMemoryDB() *MemoryDB {
 	log.Println("Using in-memory database (standalone mode)")
-	return &MemoryDB{
-		data:    make(map[string][]map[string]any),
-		rowData: make(map[string]map[string][]any),
-		enabled: true,
+	m := &MemoryDB{
+		data:    safe.NewStore[string, []map[string]any](),
+		rowData: safe.NewStore[string, map[string][]any](),
 	}
+	m.enabled.Store(true)
+	return m
 }
 
 func (m *MemoryDB) Ping() error {
@@ -185,8 +187,6 @@ func (m *MemoryDB) Exec(query string, args ...any) error {
 }
 
 func (m *MemoryDB) Query(query string, args ...any) ([]any, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	// Returns (nil, nil) intentionally: MemoryDB does not execute SQL queries.
 	// Callers receive an empty result set, which is the safest degraded behaviour
 	// in standalone mode. Use StoreRow/QueryRow for keyed in-memory lookups.
@@ -194,21 +194,17 @@ func (m *MemoryDB) Query(query string, args ...any) ([]any, error) {
 }
 
 func (m *MemoryDB) QueryRow(query string, args ...any) Row {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	return &memoryRow{values: nil, err: fmt.Errorf("no rows found")}
 }
 
 func (m *MemoryDB) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.data = nil
-	m.enabled = false
+	m.data.Clear()
+	m.enabled.Store(false)
 	return nil
 }
 
 func (m *MemoryDB) HealthCheck() error {
-	if !m.enabled {
+	if !m.enabled.Load() {
 		return fmt.Errorf("memory database closed")
 	}
 	return nil
@@ -226,13 +222,13 @@ func (m *MemoryDB) IsMemoryMode() bool {
 
 // StoreRow stores a row in the in-memory database for later retrieval.
 func (m *MemoryDB) StoreRow(table string, key string, values []any) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.rowData[table] == nil {
-		m.rowData[table] = make(map[string][]any)
-	}
-	m.rowData[table][key] = values
+	m.rowData.Update(table, func(inner map[string][]any, ok bool) (map[string][]any, bool) {
+		if !ok || inner == nil {
+			inner = make(map[string][]any)
+		}
+		inner[key] = values
+		return inner, true
+	})
 }
 
 // RunMigration executes database migrations.

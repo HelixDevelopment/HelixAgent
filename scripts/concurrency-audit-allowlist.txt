@@ -6,7 +6,6 @@
 cmd/api/main.go:37:analyticsStore
 cmd/cognee-mock/main.go:26:CogneeMockServer
 cmd/grpc-server/main.go:25:LLMFacadeServer
-internal/adapters/database/compat.go:121:MemoryDB
 internal/adapters/security/security.go:172:InMemoryAuditLogger
 internal/agentic/workflow.go:120:WorkflowState
 internal/agents/dream/dreamer.go:129:Dreamer

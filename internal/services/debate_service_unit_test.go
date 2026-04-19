@@ -735,23 +735,17 @@ func TestDebateServiceUnit_EvictIntentCacheIfNeeded(t *testing.T) {
 	ds := NewDebateService(logger)
 
 	// Fill cache beyond limit
-	ds.mu.Lock()
-	ds.intentCache = make(map[string]*IntentClassificationResult)
 	for i := 0; i < maxIntentCacheSize+10; i++ {
-		ds.intentCache[uuid.New().String()] = &IntentClassificationResult{
+		ds.intentCache.Put(uuid.New().String(), &IntentClassificationResult{
 			Intent:     "test",
 			Confidence: 0.5,
-		}
+		})
 	}
-	ds.mu.Unlock()
 
 	// Trigger eviction
 	ds.evictIntentCacheIfNeeded()
 
-	ds.mu.Lock()
-	cacheSize := len(ds.intentCache)
-	ds.mu.Unlock()
-
+	cacheSize := ds.intentCache.Len()
 	assert.LessOrEqual(t, cacheSize, maxIntentCacheSize)
 }
 

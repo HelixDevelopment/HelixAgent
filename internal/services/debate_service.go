@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/text/cases"
@@ -49,12 +50,11 @@ type DebateService struct {
 	specifierAdapter    *specifieradapter.SpecAdapter          // HelixSpecifier fusion engine (default)
 	logRepository       DebateLogRepository                    // Optional: for persistent logging
 	teamConfig          *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
-	commLogger          *DebateCommLogger                      // Retrofit-like communication logger
-	mu                  sync.Mutex                             // Protects intentCache, codeIntentCache, and enhancedIntentCache
-	intentCache         map[string]*IntentClassificationResult // Cache for intent classification
-	codeIntentCache     map[string]bool                        // Cache for code generation intent results
-	enhancedIntentCache map[string]*EnhancedIntentResult       // Cache full EnhancedIntentResult per topic so code-detection and granularity share one LLM call
-	intentAttempted     map[string]bool                        // Tracks topics for which LLM classification was already attempted (even if it failed), preventing duplicate calls
+	commLogger          *DebateCommLogger                           // Retrofit-like communication logger
+	intentCache         *safe.Store[string, *IntentClassificationResult] // Cache for intent classification
+	codeIntentCache     *safe.Store[string, bool]                        // Cache for code generation intent results
+	enhancedIntentCache *safe.Store[string, *EnhancedIntentResult]       // Cache full EnhancedIntentResult per topic
+	intentAttempted     *safe.Store[string, bool]                        // Tracks topics where LLM classification was already attempted (even if it failed)
 
 	// NEW: Integrated AI Debate Features (100% Implementation)
 	testGenerator       *testing.LLMTestCaseGenerator            // Test-Driven Debate: Adversarial test generation
@@ -165,9 +165,31 @@ func IsSuspiciouslyFastResponse(responseTime time.Duration, contentLength int) b
 
 // NewDebateService creates a new debate service
 func NewDebateService(logger *logrus.Logger) *DebateService {
-	return &DebateService{
+	ds := &DebateService{
 		logger:     logger,
 		commLogger: NewDebateCommLogger(logger),
+	}
+	ds.initCaches()
+	return ds
+}
+
+// initCaches constructs the four safe.Store caches. Idempotent so it
+// can be called from the NewDebateService* constructors and from any
+// code path that starts with a struct-literal *DebateService (some
+// tests do so; callers must ensure caches are initialised before any
+// cache-dependent method is invoked).
+func (ds *DebateService) initCaches() {
+	if ds.intentCache == nil {
+		ds.intentCache = safe.NewStore[string, *IntentClassificationResult]()
+	}
+	if ds.codeIntentCache == nil {
+		ds.codeIntentCache = safe.NewStore[string, bool]()
+	}
+	if ds.enhancedIntentCache == nil {
+		ds.enhancedIntentCache = safe.NewStore[string, *EnhancedIntentResult]()
+	}
+	if ds.intentAttempted == nil {
+		ds.intentAttempted = safe.NewStore[string, bool]()
 	}
 }
 
@@ -303,7 +325,7 @@ func NewDebateServiceWithDeps(
 
 	logger.Info("[Debate Service] Initialized with integrated features: Test-Driven, 4-Pass Validation, Tool Integration, Enhanced Intent, HelixSpecifier, SpecKit, Reflexion, Adversarial, Approval Gates, Provenance, Performance Optimizer, Comprehensive Multi-Agent Debate")
 
-	return &DebateService{
+	ds := &DebateService{
 		logger:           logger,
 		providerRegistry: providerRegistry,
 		cogneeService:    cogneeService,
@@ -342,6 +364,8 @@ func NewDebateServiceWithDeps(
 		comprehensiveIntegration: comprehensiveIntegration,
 		useComprehensiveSystem:   useComprehensive,
 	}
+	ds.initCaches()
+	return ds
 }
 
 // SetProviderRegistry sets the provider registry for LLM calls
@@ -1417,16 +1441,11 @@ func (ds *DebateService) buildSystemPrompt(participant ParticipantConfig) string
 // ZERO HARDCODING - Pure AI semantic understanding
 // Uses caching to avoid repeated LLM calls for the same topic
 func (ds *DebateService) classifyUserIntent(topic string, hasContext bool) *IntentClassificationResult {
+	ds.initCaches()
 	// Check cache first to avoid repeated LLM calls (cache by topic only)
-	ds.mu.Lock()
-	if ds.intentCache == nil {
-		ds.intentCache = make(map[string]*IntentClassificationResult)
-	}
-	if cached, ok := ds.intentCache[topic]; ok {
-		ds.mu.Unlock()
+	if cached, ok := ds.intentCache.Get(topic); ok {
 		return cached
 	}
-	ds.mu.Unlock()
 
 	var result *IntentClassificationResult
 
@@ -1461,9 +1480,7 @@ func (ds *DebateService) classifyUserIntent(topic string, hasContext bool) *Inte
 	}
 
 	// Cache the result by topic
-	ds.mu.Lock()
-	ds.intentCache[topic] = result
-	ds.mu.Unlock()
+	ds.intentCache.Put(topic, result)
 
 	// Evict excess entries if the cache grew beyond bounds.
 	ds.evictIntentCacheIfNeeded()
@@ -1472,17 +1489,19 @@ func (ds *DebateService) classifyUserIntent(topic string, hasContext bool) *Inte
 }
 
 // evictIntentCacheIfNeeded removes entries when cache exceeds bounds.
-// Caller must NOT hold ds.mu.
+// Safe to call concurrently; safe.Store.Delete serialises with concurrent Put.
 func (ds *DebateService) evictIntentCacheIfNeeded() {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
-	if len(ds.intentCache) <= maxIntentCacheSize {
+	if ds.intentCache == nil {
+		return
+	}
+	keys := ds.intentCache.Keys()
+	if len(keys) <= maxIntentCacheSize {
 		return
 	}
 	count := 0
-	target := len(ds.intentCache) / 2
-	for key := range ds.intentCache {
-		delete(ds.intentCache, key)
+	target := len(keys) / 2
+	for _, key := range keys {
+		ds.intentCache.Delete(key)
 		count++
 		if count >= target {
 			break
@@ -3275,24 +3294,16 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 		}
 	}
 
-	// Check cache (protected by ds.mu which also guards intentCache)
-	ds.mu.Lock()
-	if ds.codeIntentCache == nil {
-		ds.codeIntentCache = make(map[string]bool)
-	}
-	if cached, ok := ds.codeIntentCache[topic]; ok {
-		ds.mu.Unlock()
+	ds.initCaches()
+	if cached, ok := ds.codeIntentCache.Get(topic); ok {
 		return cached
 	}
-	ds.mu.Unlock()
 
 	// Use LLM-based enhanced intent classifier when available
 	if ds.enhancedIntentClassifier != nil {
 		// Reuse cached full EnhancedIntentResult if classifyIntentWithGranularity
 		// has already processed this topic — avoids a second LLM call.
-		ds.mu.Lock()
-		cachedResult, cachedOK := ds.enhancedIntentCache[topic]
-		ds.mu.Unlock()
+		cachedResult, cachedOK := ds.enhancedIntentCache.Get(topic)
 
 		ctx, cancel := stdctx.WithTimeout(stdctx.Background(), 15*time.Second)
 		defer cancel()
@@ -3305,9 +3316,7 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 			}
 		}
 
-		ds.mu.Lock()
-		alreadyAttempted := ds.intentAttempted[topic]
-		ds.mu.Unlock()
+		alreadyAttempted, _ := ds.intentAttempted.Get(topic)
 
 		var result *EnhancedIntentResult
 		var err error
@@ -3323,18 +3332,10 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 			result, err = ds.enhancedIntentClassifier.ClassifyEnhancedIntent(
 				ctx, topic, "", codebaseCtx,
 			)
-			ds.mu.Lock()
-			if ds.intentAttempted == nil {
-				ds.intentAttempted = make(map[string]bool)
-			}
-			ds.intentAttempted[topic] = true
+			ds.intentAttempted.Put(topic, true)
 			if err == nil && result != nil {
-				if ds.enhancedIntentCache == nil {
-					ds.enhancedIntentCache = make(map[string]*EnhancedIntentResult)
-				}
-				ds.enhancedIntentCache[topic] = result
+				ds.enhancedIntentCache.Put(topic, result)
 			}
-			ds.mu.Unlock()
 		}
 		if err != nil {
 			// LLM unavailable (no providers configured, timeout, etc.) —
@@ -3345,9 +3346,7 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 				"[Code Intent] LLM classification failed, using keyword fallback",
 			)
 			isCode := classifyCodeIntentByKeywords(topic)
-			ds.mu.Lock()
-			ds.codeIntentCache[topic] = isCode
-			ds.mu.Unlock()
+			ds.codeIntentCache.Put(topic, isCode)
 			return isCode
 		}
 
@@ -3363,9 +3362,7 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 			"is_code":     isCode,
 		}).Debug("[Code Intent] LLM classification result")
 
-		ds.mu.Lock()
-		ds.codeIntentCache[topic] = isCode
-		ds.mu.Unlock()
+		ds.codeIntentCache.Put(topic, isCode)
 		return isCode
 	}
 
@@ -3379,9 +3376,7 @@ func (ds *DebateService) detectCodeGenerationIntent(topic string, context map[st
 	// so "Explain how recursion works" and "Discuss functional
 	// programming" correctly classify as non-code.
 	isCode := classifyCodeIntentByKeywords(topic)
-	ds.mu.Lock()
-	ds.codeIntentCache[topic] = isCode
-	ds.mu.Unlock()
+	ds.codeIntentCache.Put(topic, isCode)
 	return isCode
 }
 
@@ -3900,20 +3895,17 @@ func (ds *DebateService) classifyIntentWithGranularity(
 		}
 	}
 
+	ds.initCaches()
 	// Reuse cached full result when available so detectCodeGenerationIntent
 	// and this function share one LLM call per topic. If a previous call
 	// already attempted classification and failed, surface the same error
 	// without a second LLM round-trip.
-	ds.mu.Lock()
-	if cached, ok := ds.enhancedIntentCache[topic]; ok && cached != nil {
-		ds.mu.Unlock()
+	if cached, ok := ds.enhancedIntentCache.Get(topic); ok && cached != nil {
 		return cached, nil
 	}
-	if ds.intentAttempted[topic] {
-		ds.mu.Unlock()
+	if attempted, _ := ds.intentAttempted.Get(topic); attempted {
 		return nil, fmt.Errorf("intent classification failed: previous attempt errored")
 	}
-	ds.mu.Unlock()
 
 	// Classify intent with timeout
 	classifyCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -3926,23 +3918,13 @@ func (ds *DebateService) classifyIntentWithGranularity(
 		codebaseContext,
 	)
 
-	ds.mu.Lock()
-	if ds.intentAttempted == nil {
-		ds.intentAttempted = make(map[string]bool)
-	}
-	ds.intentAttempted[topic] = true
-	ds.mu.Unlock()
+	ds.intentAttempted.Put(topic, true)
 
 	if err != nil {
 		return nil, fmt.Errorf("intent classification failed: %w", err)
 	}
 
-	ds.mu.Lock()
-	if ds.enhancedIntentCache == nil {
-		ds.enhancedIntentCache = make(map[string]*EnhancedIntentResult)
-	}
-	ds.enhancedIntentCache[topic] = result
-	ds.mu.Unlock()
+	ds.enhancedIntentCache.Put(topic, result)
 
 	return result, nil
 }

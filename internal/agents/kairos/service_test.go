@@ -34,7 +34,7 @@ func TestNewService(t *testing.T) {
 	assert.NotNil(t, service.observations)
 	assert.NotNil(t, service.actions)
 	assert.NotNil(t, service.stopCh)
-	assert.False(t, service.running)
+	assert.False(t, service.running.Load())
 }
 
 func TestService_SetCallbacks(t *testing.T) {

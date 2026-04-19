@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -80,17 +82,26 @@ type ObservedContext struct {
 	SystemState      map[string]interface{} `json:"system_state,omitempty"`
 }
 
-// Service is the KAIROS always-on assistant
+// Service is the KAIROS always-on assistant.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - observations: single-key Store holding the full slice for atomic
+//     append+bounded-trim (Pattern Epsilon).
+//   - actions: safe.Slice with UpdateAt for find-and-mutate (Pattern Beta).
+//   - currentContext: atomic.Pointer[ObservedContext].
+//   - running: atomic.Bool.
+//   - startMu: sync.Mutex retained for Start/Stop validate-then-commit
+//     (no collection adjacency — audit-clean).
 type Service struct {
 	config         ServiceConfig
 	logger         *logrus.Logger
-	observations   []Observation
-	actions        []Action
-	currentContext ObservedContext
+	observations   *safe.Store[string, []Observation]
+	actions        *safe.Slice[Action]
+	currentContext atomic.Pointer[ObservedContext]
 	ticker         *time.Ticker
 	stopCh         chan struct{}
-	mu             sync.RWMutex
-	running        bool
+	startMu        sync.Mutex // serialises Start/Stop only
+	running        atomic.Bool
 
 	// Callbacks
 	onObservation func(Observation)
@@ -98,18 +109,24 @@ type Service struct {
 	onDecision    func(TickPrompt) (Action, error)
 }
 
+const kairosObsKey = "_"
+
 // NewService creates a new KAIROS service
 func NewService(config ServiceConfig, logger *logrus.Logger) *Service {
-	return &Service{
+	obsStore := safe.NewStore[string, []Observation]()
+	obsStore.Put(kairosObsKey, make([]Observation, 0))
+	s := &Service{
 		config:        config,
 		logger:        logger,
-		observations:  make([]Observation, 0),
-		actions:       make([]Action, 0),
+		observations:  obsStore,
+		actions:       safe.NewSlice[Action](),
 		stopCh:        make(chan struct{}),
 		onObservation: func(o Observation) {},
 		onAction:      func(a Action) {},
 		onDecision:    func(t TickPrompt) (Action, error) { return Action{}, nil },
 	}
+	s.currentContext.Store(&ObservedContext{})
+	return s
 }
 
 // SetCallbacks sets the service callbacks
@@ -125,10 +142,10 @@ func (s *Service) SetCallbacks(
 
 // Start starts the KAIROS service
 func (s *Service) Start(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
 
-	if s.running {
+	if s.running.Load() {
 		return fmt.Errorf("KAIROS service already running")
 	}
 
@@ -137,17 +154,14 @@ func (s *Service) Start(ctx context.Context) error {
 		return nil
 	}
 
-	// Ensure directories exist
 	if err := os.MkdirAll(s.config.LogPath, 0750); err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	// Load previous observations
 	s.loadObservations()
 
-	// Start ticker
 	s.ticker = time.NewTicker(s.config.TickInterval)
-	s.running = true
+	s.running.Store(true)
 
 	go s.run(ctx)
 
@@ -157,18 +171,17 @@ func (s *Service) Start(ctx context.Context) error {
 
 // Stop stops the KAIROS service
 func (s *Service) Stop() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
 
-	if !s.running {
+	if !s.running.Load() {
 		return nil
 	}
 
 	s.ticker.Stop()
 	close(s.stopCh)
-	s.running = false
+	s.running.Store(false)
 
-	// Save observations
 	s.saveObservations()
 
 	s.logger.Info("KAIROS service stopped")
@@ -177,9 +190,7 @@ func (s *Service) Stop() error {
 
 // IsRunning returns true if the service is running
 func (s *Service) IsRunning() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.running
+	return s.running.Load()
 }
 
 // run is the main service loop
@@ -203,10 +214,14 @@ func (s *Service) tick(ctx context.Context) {
 	s.updateContext()
 
 	// Create tick prompt
+	currentCtx := s.currentContext.Load()
+	if currentCtx == nil {
+		currentCtx = &ObservedContext{}
+	}
 	prompt := TickPrompt{
 		Type:       "tick",
 		Timestamp:  time.Now(),
-		Context:    s.currentContext,
+		Context:    *currentCtx,
 		RecentLogs: s.getRecentObservations(10),
 	}
 
@@ -274,21 +289,22 @@ func (s *Service) tick(ctx context.Context) {
 
 // updateContext updates the current observed context
 func (s *Service) updateContext() {
-	// Get working directory
 	wd, _ := os.Getwd()
-
-	// Get git info
 	branch := s.getGitBranch(wd)
 	modifiedFiles := s.getModifiedFiles(wd)
 
-	s.mu.Lock()
-	s.currentContext = ObservedContext{
+	prev := s.currentContext.Load()
+	var recentCmds []string
+	if prev != nil {
+		recentCmds = prev.RecentCommands
+	}
+	next := &ObservedContext{
 		WorkingDirectory: wd,
 		GitBranch:        branch,
 		ModifiedFiles:    modifiedFiles,
-		RecentCommands:   s.currentContext.RecentCommands,
+		RecentCommands:   recentCmds,
 	}
-	s.mu.Unlock()
+	s.currentContext.Store(next)
 }
 
 // getGitBranch gets the current git branch
@@ -316,13 +332,13 @@ func (s *Service) Observe(obsType, source, content string, metadata map[string]i
 		Processed: false,
 	}
 
-	s.mu.Lock()
-	s.observations = append(s.observations, obs)
-	// Keep only last 1000 observations
-	if len(s.observations) > 1000 {
-		s.observations = s.observations[len(s.observations)-1000:]
-	}
-	s.mu.Unlock()
+	s.observations.Update(kairosObsKey, func(events []Observation, _ bool) ([]Observation, bool) {
+		events = append(events, obs)
+		if len(events) > 1000 {
+			events = events[len(events)-1000:]
+		}
+		return events, true
+	})
 
 	s.onObservation(obs)
 
@@ -332,56 +348,40 @@ func (s *Service) Observe(obsType, source, content string, metadata map[string]i
 
 // recordAction records an action
 func (s *Service) recordAction(action Action) {
-	s.mu.Lock()
-	s.actions = append(s.actions, action)
-	s.mu.Unlock()
+	s.actions.Append(action)
 }
 
 // updateAction updates an existing action
 func (s *Service) updateAction(action Action) {
-	s.mu.Lock()
-	for i, a := range s.actions {
-		if a.ID == action.ID {
-			s.actions[i] = action
-			break
-		}
-	}
-	s.mu.Unlock()
+	s.actions.UpdateAt(
+		func(a Action) bool { return a.ID == action.ID },
+		func(_ Action) Action { return action },
+	)
 }
 
 // GetObservations returns all observations
 func (s *Service) GetObservations() []Observation {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	result := make([]Observation, len(s.observations))
-	copy(result, s.observations)
+	obs, _ := s.observations.Get(kairosObsKey)
+	result := make([]Observation, len(obs))
+	copy(result, obs)
 	return result
 }
 
 // GetActions returns all actions
 func (s *Service) GetActions() []Action {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	result := make([]Action, len(s.actions))
-	copy(result, s.actions)
-	return result
+	return s.actions.Snapshot()
 }
 
 // getRecentObservations returns recent observations
 func (s *Service) getRecentObservations(count int) []Observation {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if len(s.observations) <= count {
-		result := make([]Observation, len(s.observations))
-		copy(result, s.observations)
+	obs, _ := s.observations.Get(kairosObsKey)
+	if len(obs) <= count {
+		result := make([]Observation, len(obs))
+		copy(result, obs)
 		return result
 	}
-
 	result := make([]Observation, count)
-	copy(result, s.observations[len(s.observations)-count:])
+	copy(result, obs[len(obs)-count:])
 	return result
 }
 
@@ -448,26 +448,25 @@ func (s *Service) CleanupOldLogs() error {
 
 // GetDailySummary returns a summary of the day's activities
 func (s *Service) GetDailySummary(date time.Time) map[string]interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var dayObservations []Observation
 	var dayActions []Action
 
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
-	for _, obs := range s.observations {
+	allObs, _ := s.observations.Get(kairosObsKey)
+	for _, obs := range allObs {
 		if obs.Timestamp.After(startOfDay) && obs.Timestamp.Before(endOfDay) {
 			dayObservations = append(dayObservations, obs)
 		}
 	}
 
-	for _, action := range s.actions {
+	s.actions.Range(func(_ int, action Action) bool {
 		if action.Timestamp.After(startOfDay) && action.Timestamp.Before(endOfDay) {
 			dayActions = append(dayActions, action)
 		}
-	}
+		return true
+	})
 
 	return map[string]interface{}{
 		"date":              date.Format("2006-01-02"),

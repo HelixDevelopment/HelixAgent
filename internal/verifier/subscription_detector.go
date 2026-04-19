@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,9 +17,12 @@ import (
 // Tier 1: Query provider-specific APIs (OpenRouter /v1/auth/key, Cohere /check-api-key)
 // Tier 2: Infer from rate limit headers in API responses
 // Tier 3: Static fallback from ProviderAccessRegistry
+//
+// Concurrent-safe by construction (CONST-029): cache is a safe.Store.
+// UpdateFromHeaders mutates *SubscriptionInfo fields under Update
+// callback (Pattern Beta).
 type SubscriptionDetector struct {
-	cache    map[string]*SubscriptionInfo
-	cacheMu  sync.RWMutex
+	cache    *safe.Store[string, *SubscriptionInfo]
 	cacheTTL time.Duration
 	client   *http.Client
 	log      *logrus.Logger
@@ -31,7 +34,7 @@ func NewSubscriptionDetector(log *logrus.Logger) *SubscriptionDetector {
 		log = logrus.New()
 	}
 	return &SubscriptionDetector{
-		cache:    make(map[string]*SubscriptionInfo),
+		cache:    safe.NewStore[string, *SubscriptionInfo](),
 		cacheTTL: 1 * time.Hour,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -43,15 +46,11 @@ func NewSubscriptionDetector(log *logrus.Logger) *SubscriptionDetector {
 // DetectSubscription performs 3-tier subscription detection for a provider.
 // Returns the best available subscription info, falling back through tiers.
 func (sd *SubscriptionDetector) DetectSubscription(ctx context.Context, providerType, apiKey string) *SubscriptionInfo {
-	// Check cache first
-	sd.cacheMu.RLock()
-	if cached, ok := sd.cache[providerType]; ok {
-		if time.Since(cached.DetectedAt) < sd.cacheTTL {
-			sd.cacheMu.RUnlock()
-			return cached
-		}
+	// Check cache first — copy out under Update so concurrent
+	// UpdateFromHeaders cannot race on the *SubscriptionInfo fields.
+	if snapshot := sd.GetCachedSubscription(providerType); snapshot != nil {
+		return snapshot
 	}
-	sd.cacheMu.RUnlock()
 
 	// Tier 1: Try provider-specific API detection
 	if apiKey != "" {
@@ -310,46 +309,52 @@ func (sd *SubscriptionDetector) UpdateFromHeaders(providerType string, headers h
 		return
 	}
 
-	// Check if we have an existing entry to update
-	sd.cacheMu.Lock()
-	if existing, ok := sd.cache[providerType]; ok {
+	// Check if we have an existing entry to update — atomic via Update.
+	var hadExisting bool
+	sd.cache.Update(providerType, func(existing *SubscriptionInfo, ok bool) (*SubscriptionInfo, bool) {
+		if !ok {
+			return nil, false
+		}
+		hadExisting = true
 		existing.RateLimits = rateLimits
 		existing.DetectedAt = time.Now()
-		sd.cacheMu.Unlock()
+		return existing, true
+	})
+	if hadExisting {
 		return
 	}
-	sd.cacheMu.Unlock()
 
 	// No existing entry — infer from rate limits (Tier 2)
 	sd.InferFromRateLimits(providerType, rateLimits)
 }
 
-// GetCachedSubscription returns the cached subscription info for a provider.
-// Returns nil if not cached or expired.
+// GetCachedSubscription returns a snapshot of the cached subscription info
+// for a provider. Returns nil if not cached or expired. The snapshot is a
+// value copy taken under the Store's write lock so concurrent
+// UpdateFromHeaders cannot race on the *SubscriptionInfo fields
+// (Pattern Beta — read-and-copy via Update).
 func (sd *SubscriptionDetector) GetCachedSubscription(providerType string) *SubscriptionInfo {
-	sd.cacheMu.RLock()
-	defer sd.cacheMu.RUnlock()
-
-	cached, ok := sd.cache[providerType]
-	if !ok {
-		return nil
-	}
-	if time.Since(cached.DetectedAt) > sd.cacheTTL {
-		return nil
-	}
-	return cached
+	var snapshot *SubscriptionInfo
+	sd.cache.Update(providerType, func(cached *SubscriptionInfo, ok bool) (*SubscriptionInfo, bool) {
+		if !ok {
+			return nil, false
+		}
+		if time.Since(cached.DetectedAt) > sd.cacheTTL {
+			return cached, true // keep
+		}
+		copy := *cached
+		snapshot = &copy
+		return cached, true
+	})
+	return snapshot
 }
 
 // cacheResult stores subscription info in the cache
 func (sd *SubscriptionDetector) cacheResult(providerType string, info *SubscriptionInfo) {
-	sd.cacheMu.Lock()
-	defer sd.cacheMu.Unlock()
-	sd.cache[providerType] = info
+	sd.cache.Put(providerType, info)
 }
 
 // CacheSize returns the number of cached subscription entries
 func (sd *SubscriptionDetector) CacheSize() int {
-	sd.cacheMu.RLock()
-	defer sd.cacheMu.RUnlock()
-	return len(sd.cache)
+	return sd.cache.Len()
 }

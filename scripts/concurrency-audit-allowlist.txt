@@ -193,4 +193,3 @@ internal/verifier/health.go:145:HealthService
 internal/verifier/scoring.go:53:ScoringService
 internal/verifier/service.go:142:VerificationService
 internal/verifier/startup.go:89:StartupVerifier
-internal/verifier/subscription_detector.go:20:SubscriptionDetector

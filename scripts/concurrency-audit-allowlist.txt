@@ -67,7 +67,6 @@ internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/llm/circuit_breaker_test.go:461:logrusWarnHook
 internal/llm/discovery/discovery.go:66:Discoverer
 internal/llm/health_monitor.go:54:HealthMonitor
-internal/llm/lazy_provider.go:302:LazyProviderRegistry
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/llmops/experiments.go:17:InMemoryExperimentManager
 internal/llm/providers/gemini/gemini_acp.go:28:GeminiACPProvider

@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/adapters"
 	"dev.helix.agent/internal/models"
 )
@@ -298,10 +300,13 @@ func (p *LazyProvider) ValidateConfig(config map[string]interface{}) (bool, []st
 	return provider.ValidateConfig(config)
 }
 
-// LazyProviderRegistry manages multiple lazy providers
+// LazyProviderRegistry manages multiple lazy providers.
+//
+// Concurrent-safe by construction (CONST-029): providers is a safe.Store.
+// LazyProvider has its own internal sync once-init (no collection
+// adjacency in its own struct — audit-clean).
 type LazyProviderRegistry struct {
-	providers map[string]*LazyProvider
-	mu        sync.RWMutex
+	providers *safe.Store[string, *LazyProvider]
 	config    *LazyProviderConfig
 	eventBus  *adapters.EventBus
 }
@@ -313,7 +318,7 @@ func NewLazyProviderRegistry(config *LazyProviderConfig, eventBus *adapters.Even
 	}
 
 	return &LazyProviderRegistry{
-		providers: make(map[string]*LazyProvider),
+		providers: safe.NewStore[string, *LazyProvider](),
 		config:    config,
 		eventBus:  eventBus,
 	}
@@ -321,73 +326,51 @@ func NewLazyProviderRegistry(config *LazyProviderConfig, eventBus *adapters.Even
 
 // Register registers a provider factory
 func (r *LazyProviderRegistry) Register(name string, factory ProviderFactory) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	config := *r.config
 	config.EventBus = r.eventBus
 
-	r.providers[name] = NewLazyProvider(name, factory, &config)
+	r.providers.Put(name, NewLazyProvider(name, factory, &config))
 }
 
 // Get returns a lazy provider by name
 func (r *LazyProviderRegistry) Get(name string) (*LazyProvider, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	provider, ok := r.providers[name]
-	return provider, ok
+	return r.providers.Get(name)
 }
 
 // GetProvider returns the initialized provider by name
 func (r *LazyProviderRegistry) GetProvider(name string) (LLMProvider, error) {
-	r.mu.RLock()
-	lazy, ok := r.providers[name]
-	r.mu.RUnlock()
-
+	lazy, ok := r.providers.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("provider %s not found", name)
 	}
-
 	return lazy.Get()
 }
 
 // List returns all registered provider names
 func (r *LazyProviderRegistry) List() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	names := make([]string, 0, len(r.providers))
-	for name := range r.providers {
-		names = append(names, name)
-	}
-	return names
+	return r.providers.Keys()
 }
 
 // InitializedProviders returns names of initialized providers
 func (r *LazyProviderRegistry) InitializedProviders() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	names := make([]string, 0)
-	for name, provider := range r.providers {
+	r.providers.Range(func(name string, provider *LazyProvider) bool {
 		if provider.IsInitialized() {
 			names = append(names, name)
 		}
-	}
+		return true
+	})
 	return names
 }
 
 // Preload initializes specified providers in background
 func (r *LazyProviderRegistry) Preload(ctx context.Context, names ...string) error {
-	r.mu.RLock()
 	toInit := make([]*LazyProvider, 0, len(names))
 	for _, name := range names {
-		if provider, ok := r.providers[name]; ok {
+		if provider, ok := r.providers.Get(name); ok {
 			toInit = append(toInit, provider)
 		}
 	}
-	r.mu.RUnlock()
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(toInit))
@@ -424,10 +407,8 @@ func (r *LazyProviderRegistry) PreloadAll(ctx context.Context) error {
 
 // Reset resets all providers
 func (r *LazyProviderRegistry) Reset() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for _, provider := range r.providers {
+	r.providers.Range(func(_ string, provider *LazyProvider) bool {
 		provider.Reset()
-	}
+		return true
+	})
 }

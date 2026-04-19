@@ -1381,11 +1381,17 @@ ci-validate-all:
 	@$(MAKE) ci-validate-fallback
 	@$(MAKE) ci-validate-monitoring
 	@$(MAKE) ci-validate-constitution
+	@$(MAKE) ci-validate-concurrency
 	@echo "🔐 Running new P0/P1 regression gates..."
 	@./challenges/scripts/repo_hygiene_challenge.sh
 	@./challenges/scripts/tls_posture_challenge.sh
 	@./challenges/scripts/exec_hygiene_challenge.sh
 	@echo "✅ All CI/CD validations passed"
+
+ci-validate-concurrency:
+	@echo "🔍 CONST-029: auditing Pattern-A sites against allowlist..."
+	@./scripts/concurrency-audit.sh
+	@echo "✅ Concurrency audit passed"
 
 ci-pre-commit:
 	@echo "🔍 Pre-commit validation..."

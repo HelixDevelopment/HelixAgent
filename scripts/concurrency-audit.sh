@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#
+# concurrency-audit.sh — flag Pattern-A struct definitions.
+#
+# A Pattern-A site is a struct field-list that pairs:
+#   - a sync.Mutex or sync.RWMutex, AND
+#   - at least one bare collection field (map[...] or []...)
+#
+# This is the review-caught bug class CONST-029 retires: mutex
+# discipline enforced by convention. The fix is migration to
+# safe.Store[K,V] / safe.Slice[T] from digital.vasic.concurrency/pkg/safe.
+#
+# Exit 0 if no new violations beyond the allowlist; exit 1 otherwise.
+#
+# Usage:
+#   scripts/concurrency-audit.sh              # normal audit (uses allowlist)
+#   scripts/concurrency-audit.sh --all        # report every hit, ignore allowlist
+#   scripts/concurrency-audit.sh --update-allowlist  # rewrite allowlist to current state
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ALLOWLIST="${ROOT}/scripts/concurrency-audit-allowlist.txt"
+REPORT_ALL=0
+UPDATE_ALLOWLIST=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --all) REPORT_ALL=1 ;;
+        --update-allowlist) UPDATE_ALLOWLIST=1 ;;
+        -h|--help)
+            sed -n '1,30p' "$0" | sed 's/^# //;s/^#//'
+            exit 0
+            ;;
+        *) echo "unknown arg: $arg" >&2; exit 2 ;;
+    esac
+done
+
+# Paths we audit. Extracted submodules and vendored/third-party trees
+# are skipped — each submodule has its own CI for this.
+AUDIT_PATHS=(
+    internal
+    cmd
+    pkg
+)
+
+EXCLUDE_DIRS=(
+    vendor
+    cli_agents
+    MCP
+    MCP_Module
+    testdata
+    node_modules
+)
+
+# Build find-exclude clause.
+exclude_find=()
+for d in "${EXCLUDE_DIRS[@]}"; do
+    exclude_find+=( -not -path "*/$d/*" )
+done
+
+# Collect all Go source files under the audit roots.
+files=()
+for p in "${AUDIT_PATHS[@]}"; do
+    [[ -d "${ROOT}/${p}" ]] || continue
+    while IFS= read -r -d '' f; do
+        files+=("$f")
+    done < <(find "${ROOT}/${p}" -type f -name "*.go" "${exclude_find[@]}" -print0 2>/dev/null)
+done
+
+if [[ ${#files[@]} -eq 0 ]]; then
+    echo "concurrency-audit: no Go files found under ${AUDIT_PATHS[*]}" >&2
+    exit 0
+fi
+
+# Extract struct blocks and analyse.
+#
+# awk walks the file line-by-line. State machine:
+#   - scan for "type NAME struct {"
+#   - collect lines until the matching "}"
+#   - after closing, test whether the block contains BOTH
+#     (a) sync.Mutex or sync.RWMutex, AND
+#     (b) a field whose type is a bare map[...] or []...
+#   - if so, emit "FILE:LINE:STRUCT" to stdout
+#
+# We skip fields prefixed with "safe." — those are already migrated.
+# We also skip fields whose element type is itself safe.Store/Slice.
+#
+# Test files (*_test.go) are audited separately — test-only shared
+# state is still a bug class (BUGFIX #34, #36, #37 all shipped from
+# test-code races).
+
+scan_awk='
+BEGIN { in_struct = 0; brace = 0; block = ""; start_line = 0; name = "" }
+
+function check_block(   has_mu, has_coll, safe_coll, n, arr, i, line) {
+    has_mu = 0; has_coll = 0; safe_coll = 0
+    n = split(block, arr, "\n")
+    for (i = 1; i <= n; i++) {
+        line = arr[i]
+        # strip leading/trailing whitespace
+        sub(/^[ \t]+/, "", line)
+        sub(/[ \t]+$/, "", line)
+
+        # skip comments
+        if (line ~ /^\/\//) continue
+        if (line == "") continue
+
+        # mutex detection
+        if (line ~ /sync\.(RW)?Mutex/) has_mu = 1
+
+        # safe.* wrapper → this field is already migrated, ignore
+        if (line ~ /safe\.(Store|Slice)\[/) { safe_coll = 1; continue }
+
+        # bare collection detection: a struct field whose type is
+        # map[...]  or  []T
+        # Field form: "name [space/tab] type"
+        # We look for "  map[" or "  []" preceded by an identifier.
+        if (line ~ /^[A-Za-z_][A-Za-z0-9_]*[[:space:]]+map\[/) has_coll = 1
+        else if (line ~ /^[A-Za-z_][A-Za-z0-9_]*[[:space:]]+\[\]/) has_coll = 1
+        # channel-map (e.g. map[string]chan T) is a map, already covered
+    }
+    return (has_mu && has_coll) ? 1 : 0
+}
+
+/^type [A-Za-z_][A-Za-z0-9_]* struct \{[[:space:]]*$/ {
+    in_struct = 1
+    brace = 1
+    name = $2
+    start_line = FNR
+    block = ""
+    next
+}
+
+in_struct == 1 {
+    # count braces to find the close
+    nopen = gsub(/\{/, "{", $0)
+    nclose = gsub(/\}/, "}", $0)
+    brace += nopen - nclose
+    block = block "\n" $0
+    if (brace == 0) {
+        if (check_block()) {
+            printf "%s:%d:%s\n", FILENAME, start_line, name
+        }
+        in_struct = 0
+        block = ""
+    }
+}
+'
+
+raw_hits=$(awk "$scan_awk" "${files[@]}" 2>/dev/null || true)
+
+# Normalise paths to project-relative.
+hits=$(printf '%s\n' "$raw_hits" | sed "s|^${ROOT}/||" | sort -u | grep -v '^$' || true)
+
+if [[ $UPDATE_ALLOWLIST -eq 1 ]]; then
+    {
+        echo "# concurrency-audit allowlist — Pattern-A sites pending migration"
+        echo "# Format: <relative-path>:<line>:<StructName>"
+        echo "# See docs/development/concurrency-playbook.md for the migration plan."
+        echo "# Generated by scripts/concurrency-audit.sh --update-allowlist"
+        echo "#"
+        printf '%s\n' "$hits"
+    } > "$ALLOWLIST"
+    echo "concurrency-audit: allowlist refreshed with $(printf '%s\n' "$hits" | wc -l) entries → $ALLOWLIST"
+    exit 0
+fi
+
+# Load allowlist (ignoring comments / blank lines).
+allow=""
+if [[ -f "$ALLOWLIST" ]]; then
+    allow=$(grep -vE '^[[:space:]]*(#|$)' "$ALLOWLIST" || true)
+fi
+
+if [[ $REPORT_ALL -eq 1 ]]; then
+    new_hits="$hits"
+else
+    # Diff hits against allowlist — everything in hits but not in allow.
+    new_hits=$(comm -23 <(printf '%s\n' "$hits" | sort) <(printf '%s\n' "$allow" | sort) | grep -v '^$' || true)
+fi
+
+count=$(printf '%s\n' "$new_hits" | grep -c . || true)
+
+if [[ $count -eq 0 ]]; then
+    total=$(printf '%s\n' "$hits" | grep -c . || true)
+    allowed=$(printf '%s\n' "$allow" | grep -c . || true)
+    echo "concurrency-audit: OK — ${total} Pattern-A struct(s) total, ${allowed} allowlisted, 0 new."
+    exit 0
+fi
+
+echo "concurrency-audit: ${count} NEW Pattern-A violation(s) detected." >&2
+echo >&2
+echo "These struct fields pair sync.Mutex with bare map/slice fields — CONST-029" >&2
+echo "requires safe.Store[K,V] or safe.Slice[T] from digital.vasic.concurrency/pkg/safe." >&2
+echo >&2
+printf '%s\n' "$new_hits" | sed 's/^/  /' >&2
+echo >&2
+echo "Fix options:" >&2
+echo "  1. Migrate the struct to safe.Store/safe.Slice (preferred)" >&2
+echo "  2. If this is a legitimate pre-existing site queued for later migration," >&2
+echo "     run: scripts/concurrency-audit.sh --update-allowlist" >&2
+echo "     and justify the addition in your PR description." >&2
+echo >&2
+echo "Playbook: docs/development/concurrency-playbook.md" >&2
+exit 1

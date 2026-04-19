@@ -4,7 +4,7 @@
 **Created:** 2026-02-10
 **Updated:** 2026-04-16
 
-Constitution with 32 rules (32 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 8, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
+Constitution with 33 rules (33 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 8, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1, Concurrency: 1
 
 ## Architecture
 
@@ -273,3 +273,23 @@ The following service architecture is MANDATORY and MUST NOT be changed without 
 **ID:** CONST-028
 
 All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with: root cause analysis, affected files, fix description, and verification test reference. Fixes without documentation are incomplete.
+
+## Concurrency
+
+### Concurrent-Safe Containers **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-029
+
+Any struct field that is a mutable collection (map, slice, channel-map) and is accessed concurrently MUST use `safe.Store[K,V]` or `safe.Slice[T]` from `digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map` / `sync.Mutex + slice` combinations in shared state are prohibited for new code.
+
+**Rationale:** The bare-mutex pattern is a review-caught bug class; the primitives make forgetting the lock structurally impossible (there is no lock to forget). We have shipped 18+ fixes against Pattern-A races (BUGFIXES #29, #30, #34–#38); each fix was correct but the pattern that demanded fixing was wrong.
+
+**Primitives:** `digital.vasic.concurrency/pkg/safe/{store,slice}.go` — generic, 10× race-clean, internal collection never exposed (no `Raw()`, `Map()`, `Slice()`, `Internal()` methods).
+
+**Atomic operations:** Use `Store.Update` and `Slice.UpdateAt` callbacks for read-modify-write. Do not compose Get+Put in userland.
+
+**Iteration:** Never mutate inside `Range` (deadlock). Use `Snapshot` + iterate the copy + apply mutations.
+
+**Discipline and migration table:** `docs/development/concurrency-playbook.md`.
+
+**Enforcement:** `scripts/concurrency-audit.sh` runs under `make ci-validate-all`. New code failing the audit fails CI. Existing sites migrate per the playbook's priority order; allowlist is temporary.

@@ -3,7 +3,7 @@
   "project_name": "HelixAgent",
   "summary": "Constitution with 28 rules (28 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 4, Configuration: 2, Testing: 4, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1",
   "created_at": "2026-02-10T00:18:38.71286699+03:00",
-  "updated_at": "2026-03-16T00:00:00.000000000+03:00",
+  "updated_at": "2026-04-19T16:16:18",
   "rules": [
     {
       "id": "CONST-001",
@@ -284,8 +284,18 @@
       "priority": 1,
       "added_at": "2026-03-16T00:00:00.000000000+03:00",
       "updated_at": "2026-03-16T00:00:00.000000000+03:00"
+    },
+    {
+      "id": "CONST-029",
+      "category": "Concurrency",
+      "title": "Concurrent-Safe Containers",
+      "description": "Any struct field that is a mutable collection (map, slice, channel-map) and is accessed concurrently MUST use safe.Store[K,V] or safe.Slice[T] from digital.vasic.concurrency/pkg/safe. Bare sync.Mutex + map / sync.Mutex + slice combinations in shared state are prohibited for new code. Primitives never expose the internal collection (no Raw/Map/Slice/Internal methods). Atomic read-modify-write goes through Update/UpdateAt callbacks. Never mutate inside Range (deadlock) — snapshot, iterate, apply. Discipline and migration table in docs/development/concurrency-playbook.md. Enforced via scripts/concurrency-audit.sh under make ci-validate-all.",
+      "mandatory": true,
+      "priority": 1,
+      "added_at": "2026-04-19T16:16:18",
+      "updated_at": "2026-04-19T16:16:18"
     }
   ],
-  "updated": "2026-04-16",
-  "total_rules": 32
+  "updated": "2026-04-19T16:16:18",
+  "total_rules": 29
 }

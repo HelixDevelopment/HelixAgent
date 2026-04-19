@@ -3,8 +3,9 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/utils"
 )
@@ -14,8 +15,7 @@ type LifecycleManager struct {
 	registry *Registry
 	loader   *Loader
 	health   *HealthMonitor
-	running  map[string]context.CancelFunc
-	mu       sync.RWMutex
+	running  *safe.Store[string, context.CancelFunc]
 }
 
 func NewLifecycleManager(registry *Registry, loader *Loader, health *HealthMonitor) *LifecycleManager {
@@ -23,15 +23,12 @@ func NewLifecycleManager(registry *Registry, loader *Loader, health *HealthMonit
 		registry: registry,
 		loader:   loader,
 		health:   health,
-		running:  make(map[string]context.CancelFunc),
+		running:  safe.NewStore[string, context.CancelFunc](),
 	}
 }
 
 func (l *LifecycleManager) StartPlugin(ctx context.Context, name string) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if _, exists := l.running[name]; exists {
+	if l.running.Has(name) {
 		return fmt.Errorf("plugin %s is already running", name)
 	}
 
@@ -42,7 +39,10 @@ func (l *LifecycleManager) StartPlugin(ctx context.Context, name string) error {
 
 	// Create context for the plugin
 	pluginCtx, cancel := context.WithCancel(ctx)
-	l.running[name] = cancel
+	if _, stored := l.running.PutIfAbsent(name, cancel); !stored {
+		cancel()
+		return fmt.Errorf("plugin %s is already running", name)
+	}
 
 	// Start plugin monitoring in background
 	//nolint:gosec // G118: long-lived plugin monitor uses its own scoped context, intentionally decoupled from the caller
@@ -53,16 +53,12 @@ func (l *LifecycleManager) StartPlugin(ctx context.Context, name string) error {
 }
 
 func (l *LifecycleManager) StopPlugin(name string) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	cancel, exists := l.running[name]
-	if !exists {
+	cancel, existed := l.running.Delete(name)
+	if !existed {
 		return fmt.Errorf("plugin %s is not running", name)
 	}
 
 	cancel()
-	delete(l.running, name)
 
 	// Shutdown the plugin
 	if plugin, exists := l.registry.Get(name); exists {
@@ -94,14 +90,7 @@ func (l *LifecycleManager) RestartPlugin(ctx context.Context, name string) error
 }
 
 func (l *LifecycleManager) GetRunningPlugins() []string {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	plugins := make([]string, 0, len(l.running))
-	for name := range l.running {
-		plugins = append(plugins, name)
-	}
-	return plugins
+	return l.running.Keys()
 }
 
 func (l *LifecycleManager) monitorPlugin(ctx context.Context, plugin LLMPlugin) {
@@ -125,10 +114,11 @@ func (l *LifecycleManager) monitorPlugin(ctx context.Context, plugin LLMPlugin) 
 }
 
 func (l *LifecycleManager) ShutdownAll(ctx context.Context) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	for name, cancel := range l.running {
+	for _, name := range l.running.Keys() {
+		cancel, existed := l.running.Delete(name)
+		if !existed {
+			continue
+		}
 		cancel()
 		if plugin, exists := l.registry.Get(name); exists {
 			shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -139,7 +129,6 @@ func (l *LifecycleManager) ShutdownAll(ctx context.Context) error {
 		}
 	}
 
-	l.running = make(map[string]context.CancelFunc)
 	utils.GetLogger().Info("Shut down all plugins")
 	return nil
 }

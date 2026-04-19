@@ -164,7 +164,6 @@ internal/plugins/config.go:14:ConfigManager
 internal/plugins/dependencies.go:14:DependencyResolver
 internal/plugins/health.go:12:HealthMonitor
 internal/plugins/hot_reload.go:17:HotReloadManager
-internal/plugins/lifecycle.go:13:LifecycleManager
 internal/plugins/reload.go:17:Reloader
 internal/rag/advanced.go:138:AdvancedRAG
 internal/rag/hyde.go:92:HyDEGenerator

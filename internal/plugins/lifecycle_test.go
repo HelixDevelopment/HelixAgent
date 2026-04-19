@@ -30,7 +30,7 @@ func TestNewLifecycleManager_Initialization(t *testing.T) {
 	assert.Equal(t, loader, manager.loader)
 	assert.Equal(t, health, manager.health)
 	assert.NotNil(t, manager.running)
-	assert.Empty(t, manager.running)
+	assert.Equal(t, 0, manager.running.Len())
 }
 
 func TestNewLifecycleManager_EmptyRunning(t *testing.T) {

@@ -9,16 +9,21 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// InMemoryAuditLogger provides an in-memory audit log implementation
+// InMemoryAuditLogger provides an in-memory audit log implementation.
+// mu is Pattern Zeta: it serialises the compound "cap-check + trim +
+// append" in Log so the maxEvents invariant holds under concurrent
+// writers. Events themselves live in a safe.Slice; *AuditEvent values
+// are immutable post-append (Pattern Alpha).
 type InMemoryAuditLogger struct {
-	events    []*AuditEvent
+	events    *safe.Slice[*AuditEvent]
 	maxEvents int
 	logger    *logrus.Logger
-	mu        sync.RWMutex
+	mu        sync.Mutex
 }
 
 // NewInMemoryAuditLogger creates a new in-memory audit logger
@@ -31,7 +36,7 @@ func NewInMemoryAuditLogger(maxEvents int, logger *logrus.Logger) *InMemoryAudit
 	}
 
 	return &InMemoryAuditLogger{
-		events:    make([]*AuditEvent, 0, maxEvents),
+		events:    safe.NewSlice[*AuditEvent](),
 		maxEvents: maxEvents,
 		logger:    logger,
 	}
@@ -49,14 +54,17 @@ func (l *InMemoryAuditLogger) Log(ctx context.Context, event *AuditEvent) error 
 		event.Timestamp = time.Now()
 	}
 
-	// Enforce max events limit
-	if len(l.events) >= l.maxEvents {
-		// Remove oldest events (first 10%)
+	// Enforce max events limit: trim the oldest 10% if we hit the cap.
+	if l.events.Len() >= l.maxEvents {
+		snap := l.events.Snapshot()
 		removeCount := l.maxEvents / 10
-		l.events = l.events[removeCount:]
+		if removeCount > len(snap) {
+			removeCount = len(snap)
+		}
+		l.events.Replace(snap[removeCount:])
 	}
 
-	l.events = append(l.events, event)
+	l.events.Append(event)
 
 	// Also log to structured logger
 	l.logger.WithFields(logrus.Fields{
@@ -73,12 +81,11 @@ func (l *InMemoryAuditLogger) Log(ctx context.Context, event *AuditEvent) error 
 
 // Query queries audit events with filtering
 func (l *InMemoryAuditLogger) Query(ctx context.Context, filter *AuditFilter) ([]*AuditEvent, error) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	events := l.events.Snapshot()
 
 	var results []*AuditEvent
 
-	for _, event := range l.events {
+	for _, event := range events {
 		// Apply filters
 		if filter.StartTime != nil && event.Timestamp.Before(*filter.StartTime) {
 			continue
@@ -125,8 +132,7 @@ func (l *InMemoryAuditLogger) Query(ctx context.Context, filter *AuditFilter) ([
 
 // GetStats returns audit statistics
 func (l *InMemoryAuditLogger) GetStats(ctx context.Context, since time.Time) (*AuditStats, error) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	events := l.events.Snapshot()
 
 	stats := &AuditStats{
 		EventsByType: make(map[AuditEventType]int64),
@@ -136,7 +142,7 @@ func (l *InMemoryAuditLogger) GetStats(ctx context.Context, since time.Time) (*A
 
 	userStats := make(map[string]*UserAuditStat)
 
-	for _, event := range l.events {
+	for _, event := range events {
 		if event.Timestamp.Before(since) {
 			continue
 		}

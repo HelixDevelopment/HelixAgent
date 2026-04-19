@@ -83,7 +83,7 @@ func TestInMemoryAuditLogger_Log(t *testing.T) {
 		}
 
 		// Should have removed oldest events
-		assert.LessOrEqual(t, len(smallLogger.events), 15)
+		assert.LessOrEqual(t, smallLogger.events.Len(), 15)
 	})
 }
 

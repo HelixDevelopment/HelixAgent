@@ -153,7 +153,6 @@ internal/rag/hyde.go:92:HyDEGenerator
 internal/rag/qdrant_enhanced.go:339:EnhancedBM25Index
 internal/sanity/boot_check.go:55:BootChecker
 internal/search/indexer/indexer.go:46:CodeIndexer
-internal/security/audit.go:17:InMemoryAuditLogger
 internal/security/guardrails.go:16:StandardGuardrailPipeline
 internal/security/integration.go:662:VerifierSecurityAdapter
 internal/security/mcp_security.go:17:MCPSecurityManager

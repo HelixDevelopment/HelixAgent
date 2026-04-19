@@ -547,10 +547,15 @@ func (es *EnhancedScoringService) calculateConfidenceScore(model *UnifiedModel, 
 }
 
 // calculateDiversityBonus calculates diversity bonus for team selection
-// Based on Document 003: "Productive Chaos" philosophy with diversity metric
+// Based on Document 003: "Productive Chaos" philosophy with diversity metric.
+//
+// Ranges over es.cache, which is protected by cacheMu — NOT
+// providerScoresMu. Previously this held the wrong lock, so concurrent
+// CalculateEnhancedScore callers writing to the cache raced with the
+// diversity scan (BUGFIX #38).
 func (es *EnhancedScoringService) calculateDiversityBonus(providerID, modelID string) float64 {
-	es.providerScoresMu.RLock()
-	defer es.providerScoresMu.RUnlock()
+	es.cacheMu.RLock()
+	defer es.cacheMu.RUnlock()
 
 	// Count how many models from this provider are already in cache
 	providerCount := 0

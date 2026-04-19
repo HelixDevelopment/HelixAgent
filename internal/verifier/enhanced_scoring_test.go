@@ -290,25 +290,35 @@ func TestEnhancedScoringService_CalculateDiversityBonus(t *testing.T) {
 	t.Parallel()
 	svc := NewEnhancedScoringService(nil)
 
+	// Subtests share `svc.cache` — "bonus decreases with more models"
+	// writes to the map while "first model from provider gets highest
+	// bonus" calls calculateDiversityBonus which reads it. Running in
+	// parallel races on the map (BUGFIX #38 — paired with the
+	// production-side lock correction in enhanced_scoring.go).
 	t.Run("first model from provider gets highest bonus", func(t *testing.T) {
-		t.Parallel()
 		bonus := svc.calculateDiversityBonus("new-provider", "model-1")
 		assert.Equal(t, 0.5, bonus)
 	})
 
 	t.Run("bonus decreases with more models", func(t *testing.T) {
-		t.Parallel()
-		// Simulate adding models to cache
+		// Simulate adding models to cache — guarded by cacheMu so the
+		// concurrent reader in calculateDiversityBonus is safe.
+		svc.cacheMu.Lock()
 		svc.cache["provider-a:model-1"] = &EnhancedScoringResult{}
+		svc.cacheMu.Unlock()
 
 		bonus1 := svc.calculateDiversityBonus("provider-a", "model-2")
 		assert.Equal(t, 0.2, bonus1)
 
+		svc.cacheMu.Lock()
 		svc.cache["provider-a:model-2"] = &EnhancedScoringResult{}
+		svc.cacheMu.Unlock()
 		bonus2 := svc.calculateDiversityBonus("provider-a", "model-3")
 		assert.Equal(t, 0.1, bonus2)
 
+		svc.cacheMu.Lock()
 		svc.cache["provider-a:model-3"] = &EnhancedScoringResult{}
+		svc.cacheMu.Unlock()
 		bonus3 := svc.calculateDiversityBonus("provider-a", "model-4")
 		assert.Equal(t, 0.0, bonus3)
 	})

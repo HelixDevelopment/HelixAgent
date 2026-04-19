@@ -196,7 +196,6 @@ internal/services/debate_service.go:40:DebateService
 internal/services/debate_service_test.go:2187:mockDebateLogRepository
 internal/services/debate_team_config.go:304:DebateTeamConfig
 internal/services/embedding_manager.go:21:EmbeddingManager
-internal/services/ensemble.go:16:EnsembleService
 internal/services/integration_orchestrator.go:22:IntegrationOrchestrator
 internal/services/llmsverifier_score_adapter.go:16:LLMsVerifierScoreAdapter
 internal/services/lsp_manager.go:22:LSPManager

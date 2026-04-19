@@ -10,15 +10,20 @@ import (
 	"time"
 
 	"dev.helix.agent/internal/models"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// EnsembleService manages multiple LLM providers and implements voting strategies
+// EnsembleService manages multiple LLM providers and implements voting strategies.
+// Concurrent-safe by construction (CONST-029): providers is a safe.Store;
+// scoreProvider is protected by scoreMu (interface field, not a collection,
+// so the bare-mutex pattern is acceptable per CONST-029 matcher scope).
 type EnsembleService struct {
-	providers     map[string]LLMProvider
+	providers     *safe.Store[string, LLMProvider]
 	strategy      string
 	timeout       time.Duration
-	mu            sync.RWMutex
-	scoreProvider LLMsVerifierScoreProvider // Optional: provides LLMsVerifier scores for provider ordering
+	scoreMu       sync.RWMutex
+	scoreProvider LLMsVerifierScoreProvider
 }
 
 // LLMProvider interface for all LLM providers
@@ -52,51 +57,41 @@ type QualityWeightedStrategy struct{}
 
 func NewEnsembleService(strategy string, timeout time.Duration) *EnsembleService {
 	return &EnsembleService{
-		providers: make(map[string]LLMProvider),
+		providers: safe.NewStore[string, LLMProvider](),
 		strategy:  strategy,
 		timeout:   timeout,
 	}
 }
 
 func (e *EnsembleService) RegisterProvider(name string, provider LLMProvider) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.providers[name] = provider
+	e.providers.Put(name, provider)
 }
 
 func (e *EnsembleService) RemoveProvider(name string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	delete(e.providers, name)
+	e.providers.Delete(name)
 }
 
 // SetScoreProvider sets the LLMsVerifier score provider for dynamic provider ordering
 func (e *EnsembleService) SetScoreProvider(sp LLMsVerifierScoreProvider) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.scoreMu.Lock()
 	e.scoreProvider = sp
+	e.scoreMu.Unlock()
+}
+
+func (e *EnsembleService) getScoreProvider() LLMsVerifierScoreProvider {
+	e.scoreMu.RLock()
+	defer e.scoreMu.RUnlock()
+	return e.scoreProvider
 }
 
 func (e *EnsembleService) GetProviders() []string {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	names := make([]string, 0, len(e.providers))
-	for name := range e.providers {
-		names = append(names, name)
-	}
-	return names
+	return e.providers.Keys()
 }
 
 func (e *EnsembleService) RunEnsemble(ctx context.Context, req *models.LLMRequest) (*EnsembleResult, error) {
 	startTime := time.Now()
 
-	e.mu.RLock()
-	providers := make(map[string]LLMProvider)
-	for k, v := range e.providers {
-		providers[k] = v
-	}
-	e.mu.RUnlock()
+	providers := e.providers.Snapshot()
 
 	if len(providers) == 0 {
 		return nil, NewConfigurationError("no providers available", nil)
@@ -211,12 +206,7 @@ collectLoop:
 }
 
 func (e *EnsembleService) RunEnsembleStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
-	e.mu.RLock()
-	providers := make(map[string]LLMProvider)
-	for k, v := range e.providers {
-		providers[k] = v
-	}
-	e.mu.RUnlock()
+	providers := e.providers.Snapshot()
 
 	if len(providers) == 0 {
 		return nil, NewConfigurationError("no providers available for streaming", nil)
@@ -462,15 +452,15 @@ func (e *EnsembleService) getSortedProviderNames(providers map[string]LLMProvide
 
 	// Get provider scores from LLMsVerifier
 	providerScores := make(map[string]float64)
-	if e.scoreProvider != nil {
+	if sp := e.getScoreProvider(); sp != nil {
 		for _, name := range names {
 			// Try to get score by provider name
-			if score, ok := e.scoreProvider.GetProviderScore(name); ok {
+			if score, ok := sp.GetProviderScore(name); ok {
 				providerScores[name] = score
 			} else {
 				// Try base provider name (e.g., "claude" for "claude-oauth")
 				baseName := strings.TrimSuffix(name, "-oauth")
-				if score, ok := e.scoreProvider.GetProviderScore(baseName); ok {
+				if score, ok := sp.GetProviderScore(baseName); ok {
 					providerScores[name] = score
 				}
 			}

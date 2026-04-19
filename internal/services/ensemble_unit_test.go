@@ -112,7 +112,7 @@ func TestEnsembleUnit_NewEnsembleService(t *testing.T) {
 			assert.Equal(t, tt.strategy, service.strategy)
 			assert.Equal(t, tt.timeout, service.timeout)
 			assert.NotNil(t, service.providers)
-			assert.Empty(t, service.providers)
+			assert.Equal(t, 0, service.providers.Len())
 		})
 	}
 }

@@ -3,10 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // DebateState represents the current state of a debate for recovery purposes
@@ -23,12 +24,14 @@ type DebateState struct {
 	RecoveryAttempt int                   `json:"recovery_attempt"`
 }
 
-// DebateResilienceService provides resilience and recovery capabilities
+// DebateResilienceService provides resilience and recovery capabilities.
+// Concurrent-safe by construction (CONST-029): activeDebates is a
+// safe.Store. All DebateState field mutations go through Store.Update
+// callbacks to preserve the pre-migration lock discipline.
 type DebateResilienceService struct {
 	logger            *logrus.Logger
 	debateService     *DebateService
-	activeDebates     map[string]*DebateState
-	debatesMu         sync.RWMutex
+	activeDebates     *safe.Store[string, *DebateState]
 	maxRetries        int
 	retryDelay        time.Duration
 	checkpointEnabled bool
@@ -55,7 +58,7 @@ func NewDebateResilienceService(logger *logrus.Logger) *DebateResilienceService 
 	config := DefaultResilienceConfig()
 	return &DebateResilienceService{
 		logger:            logger,
-		activeDebates:     make(map[string]*DebateState),
+		activeDebates:     safe.NewStore[string, *DebateState](),
 		maxRetries:        config.MaxRetries,
 		retryDelay:        config.RetryDelay,
 		checkpointEnabled: config.CheckpointEnabled,
@@ -69,7 +72,7 @@ func NewDebateResilienceServiceWithConfig(logger *logrus.Logger, config *Resilie
 	}
 	return &DebateResilienceService{
 		logger:            logger,
-		activeDebates:     make(map[string]*DebateState),
+		activeDebates:     safe.NewStore[string, *DebateState](),
 		maxRetries:        config.MaxRetries,
 		retryDelay:        config.RetryDelay,
 		checkpointEnabled: config.CheckpointEnabled,
@@ -98,34 +101,34 @@ func (drs *DebateResilienceService) HandleFailure(ctx context.Context, err error
 
 // HandleDebateFailure handles a failure for a specific debate
 func (drs *DebateResilienceService) HandleDebateFailure(ctx context.Context, debateID string, err error) error {
-	drs.debatesMu.Lock()
-	defer drs.debatesMu.Unlock()
-
-	state, exists := drs.activeDebates[debateID]
-	if !exists {
+	var notFound bool
+	var failureCount int
+	drs.activeDebates.Update(debateID, func(state *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		state.FailureCount++
+		state.LastError = err.Error()
+		state.LastUpdated = time.Now()
+		state.Status = "failed"
+		failureCount = state.FailureCount
+		return state, true
+	})
+	if notFound {
 		drs.logger.Warnf("No active debate found for ID %s", debateID)
 		return fmt.Errorf("no active debate found: %s", debateID)
 	}
-
-	state.FailureCount++
-	state.LastError = err.Error()
-	state.LastUpdated = time.Now()
-	state.Status = "failed"
-
 	drs.logger.WithFields(logrus.Fields{
 		"debate_id":     debateID,
-		"failure_count": state.FailureCount,
+		"failure_count": failureCount,
 		"error":         err.Error(),
 	}).Warn("Debate failure recorded")
-
 	return nil
 }
 
 // RegisterDebate registers a new debate for tracking
 func (drs *DebateResilienceService) RegisterDebate(config *DebateConfig) *DebateState {
-	drs.debatesMu.Lock()
-	defer drs.debatesMu.Unlock()
-
 	state := &DebateState{
 		DebateID:     config.DebateID,
 		Config:       config,
@@ -136,76 +139,78 @@ func (drs *DebateResilienceService) RegisterDebate(config *DebateConfig) *Debate
 		Status:       "active",
 		FailureCount: 0,
 	}
-
-	drs.activeDebates[config.DebateID] = state
+	drs.activeDebates.Put(config.DebateID, state)
 	drs.logger.Infof("Registered debate %s for resilience tracking", config.DebateID)
-
 	return state
 }
 
 // UpdateDebateProgress updates the progress of an active debate
 func (drs *DebateResilienceService) UpdateDebateProgress(debateID string, round int, responses []ParticipantResponse) error {
-	drs.debatesMu.Lock()
-	defer drs.debatesMu.Unlock()
-
-	state, exists := drs.activeDebates[debateID]
-	if !exists {
+	var notFound bool
+	drs.activeDebates.Update(debateID, func(state *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		state.CurrentRound = round
+		state.Responses = append(state.Responses, responses...)
+		state.LastUpdated = time.Now()
+		return state, true
+	})
+	if notFound {
 		return fmt.Errorf("no active debate found: %s", debateID)
 	}
-
-	state.CurrentRound = round
-	state.Responses = append(state.Responses, responses...)
-	state.LastUpdated = time.Now()
-
 	if drs.checkpointEnabled {
 		drs.logger.Debugf("Checkpoint saved for debate %s at round %d", debateID, round)
 	}
-
 	return nil
 }
 
 // CompleteDebate marks a debate as completed
 func (drs *DebateResilienceService) CompleteDebate(debateID string) error {
-	drs.debatesMu.Lock()
-	defer drs.debatesMu.Unlock()
-
-	state, exists := drs.activeDebates[debateID]
-	if !exists {
+	var notFound bool
+	drs.activeDebates.Update(debateID, func(state *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		state.Status = "completed"
+		state.LastUpdated = time.Now()
+		return state, true
+	})
+	if notFound {
 		return fmt.Errorf("no active debate found: %s", debateID)
 	}
-
-	state.Status = "completed"
-	state.LastUpdated = time.Now()
 	drs.logger.Infof("Debate %s marked as completed", debateID)
-
 	return nil
 }
 
 // RecoverDebate recovers a debate from a failure
 func (drs *DebateResilienceService) RecoverDebate(ctx context.Context, debateID string) (*DebateResult, error) {
-	drs.debatesMu.Lock()
-	state, exists := drs.activeDebates[debateID]
-	if !exists {
-		drs.debatesMu.Unlock()
-		return nil, fmt.Errorf("no debate state found for recovery: %s", debateID)
+	var state *DebateState
+	var preErr error
+	drs.activeDebates.Update(debateID, func(s *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			preErr = fmt.Errorf("no debate state found for recovery: %s", debateID)
+			return nil, false
+		}
+		if s.Status == "completed" {
+			preErr = fmt.Errorf("debate %s is already completed", debateID)
+			return s, true
+		}
+		if s.RecoveryAttempt >= drs.maxRetries {
+			preErr = fmt.Errorf("max recovery attempts (%d) exceeded for debate %s", drs.maxRetries, debateID)
+			return s, true
+		}
+		s.RecoveryAttempt++
+		s.Status = "recovering"
+		s.LastUpdated = time.Now()
+		state = s
+		return s, true
+	})
+	if preErr != nil {
+		return nil, preErr
 	}
-
-	// Check if already completed
-	if state.Status == "completed" {
-		drs.debatesMu.Unlock()
-		return nil, fmt.Errorf("debate %s is already completed", debateID)
-	}
-
-	// Check retry limit
-	if state.RecoveryAttempt >= drs.maxRetries {
-		drs.debatesMu.Unlock()
-		return nil, fmt.Errorf("max recovery attempts (%d) exceeded for debate %s", drs.maxRetries, debateID)
-	}
-
-	state.RecoveryAttempt++
-	state.Status = "recovering"
-	state.LastUpdated = time.Now()
-	drs.debatesMu.Unlock()
 
 	drs.logger.WithFields(logrus.Fields{
 		"debate_id":        debateID,
@@ -239,62 +244,76 @@ func (drs *DebateResilienceService) RecoverDebate(ctx context.Context, debateID 
 	// Attempt to re-run the debate
 	result, err := drs.debateService.ConductDebate(ctx, &recoveryConfig)
 	if err != nil {
-		drs.debatesMu.Lock()
-		state.Status = "failed"
-		state.LastError = err.Error()
-		state.LastUpdated = time.Now()
-		drs.debatesMu.Unlock()
-
+		drs.activeDebates.Update(debateID, func(s *DebateState, ok bool) (*DebateState, bool) {
+			if !ok {
+				return nil, false
+			}
+			s.Status = "failed"
+			s.LastError = err.Error()
+			s.LastUpdated = time.Now()
+			return s, true
+		})
 		drs.logger.WithFields(logrus.Fields{
 			"debate_id": debateID,
 			"error":     err.Error(),
 		}).Error("Debate recovery failed")
-
 		return nil, fmt.Errorf("recovery failed: %w", err)
 	}
 
-	// Mark as recovered
-	drs.debatesMu.Lock()
-	state.Status = "recovered"
-	state.LastUpdated = time.Now()
-	drs.debatesMu.Unlock()
+	// Mark as recovered + grab data under the write lock.
+	var responses []ParticipantResponse
+	var recoveryAttempt int
+	drs.activeDebates.Update(debateID, func(s *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			return nil, false
+		}
+		s.Status = "recovered"
+		s.LastUpdated = time.Now()
+		responses = make([]ParticipantResponse, len(s.Responses))
+		copy(responses, s.Responses)
+		recoveryAttempt = s.RecoveryAttempt
+		return s, true
+	})
 
 	drs.logger.WithFields(logrus.Fields{
 		"debate_id":        debateID,
-		"recovery_attempt": state.RecoveryAttempt,
+		"recovery_attempt": recoveryAttempt,
 	}).Info("Debate recovered successfully")
 
 	// Merge previous responses with new result if applicable
-	if len(state.Responses) > 0 && result != nil {
-		result.AllResponses = append(state.Responses, result.AllResponses...)
-		result.FallbackUsed = true // Mark that recovery was used
+	if len(responses) > 0 && result != nil {
+		result.AllResponses = append(responses, result.AllResponses...)
+		result.FallbackUsed = true
 	}
 
 	return result, nil
 }
 
-// GetDebateState returns the current state of a debate
+// GetDebateState returns the current state of a debate. Copy under Update
+// lock to avoid racing with mutators.
 func (drs *DebateResilienceService) GetDebateState(debateID string) (*DebateState, error) {
-	drs.debatesMu.RLock()
-	defer drs.debatesMu.RUnlock()
-
-	state, exists := drs.activeDebates[debateID]
-	if !exists {
+	var result *DebateState
+	var notFound bool
+	drs.activeDebates.Update(debateID, func(state *DebateState, ok bool) (*DebateState, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		stateCopy := *state
+		result = &stateCopy
+		return state, true
+	})
+	if notFound {
 		return nil, fmt.Errorf("no debate state found: %s", debateID)
 	}
-
-	// Return a copy to prevent external modification
-	stateCopy := *state
-	return &stateCopy, nil
+	return result, nil
 }
 
 // ListActiveDebates returns all active debate IDs
 func (drs *DebateResilienceService) ListActiveDebates() []string {
-	drs.debatesMu.RLock()
-	defer drs.debatesMu.RUnlock()
-
-	ids := make([]string, 0, len(drs.activeDebates))
-	for id, state := range drs.activeDebates {
+	snap := drs.activeDebates.Snapshot()
+	ids := make([]string, 0, len(snap))
+	for id, state := range snap {
 		if state.Status == "active" || state.Status == "recovering" {
 			ids = append(ids, id)
 		}
@@ -304,16 +323,14 @@ func (drs *DebateResilienceService) ListActiveDebates() []string {
 
 // CleanupCompletedDebates removes completed debates older than the given duration
 func (drs *DebateResilienceService) CleanupCompletedDebates(maxAge time.Duration) int {
-	drs.debatesMu.Lock()
-	defer drs.debatesMu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
 	removed := 0
 
-	for id, state := range drs.activeDebates {
+	for id, state := range drs.activeDebates.Snapshot() {
 		if (state.Status == "completed" || state.Status == "recovered") && state.LastUpdated.Before(cutoff) {
-			delete(drs.activeDebates, id)
-			removed++
+			if _, ok := drs.activeDebates.Delete(id); ok {
+				removed++
+			}
 		}
 	}
 
@@ -326,11 +343,9 @@ func (drs *DebateResilienceService) CleanupCompletedDebates(maxAge time.Duration
 
 // GetStats returns statistics about the resilience service
 func (drs *DebateResilienceService) GetStats() map[string]interface{} {
-	drs.debatesMu.RLock()
-	defer drs.debatesMu.RUnlock()
-
+	snap := drs.activeDebates.Snapshot()
 	stats := map[string]interface{}{
-		"total_debates": len(drs.activeDebates),
+		"total_debates": len(snap),
 		"active":        0,
 		"completed":     0,
 		"failed":        0,
@@ -341,7 +356,7 @@ func (drs *DebateResilienceService) GetStats() map[string]interface{} {
 	totalFailures := 0
 	totalRecoveries := 0
 
-	for _, state := range drs.activeDebates {
+	for _, state := range snap {
 		switch state.Status {
 		case "active":
 			//nolint:errcheck // map initialized with int values

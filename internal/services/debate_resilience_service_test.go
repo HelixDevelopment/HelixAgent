@@ -265,11 +265,9 @@ func TestDebateResilienceService_Recover(t *testing.T) {
 		config := createTestDebateConfigForResilience("debate-max-retries")
 		state := svc.RegisterDebate(config)
 
-		// Manually set recovery attempts to max
-		svc.debatesMu.Lock()
+		// Manually set recovery attempts to max (test setup — no concurrency)
 		state.RecoveryAttempt = 3
 		state.Status = "failed"
-		svc.debatesMu.Unlock()
 
 		result, err := svc.RecoverDebate(ctx, "debate-max-retries")
 		assert.Error(t, err)
@@ -362,9 +360,9 @@ func TestDebateResilienceService_ListActiveDebates(t *testing.T) {
 		config := createTestDebateConfigForResilience("debate-recovering")
 		svc.RegisterDebate(config)
 
-		svc.debatesMu.Lock()
-		svc.activeDebates["debate-recovering"].Status = "recovering"
-		svc.debatesMu.Unlock()
+		if s, ok := svc.activeDebates.Get("debate-recovering"); ok {
+			s.Status = "recovering"
+		}
 
 		ids := svc.ListActiveDebates()
 		found := false
@@ -389,14 +387,12 @@ func TestDebateResilienceService_CleanupCompletedDebates(t *testing.T) {
 		_ = svc.CompleteDebate("debate-cleanup-" + string(rune('A'+i)))
 	}
 
-	// Set old timestamps
-	svc.debatesMu.Lock()
-	for _, state := range svc.activeDebates {
+	// Set old timestamps (test setup — no concurrency)
+	for _, state := range svc.activeDebates.Snapshot() {
 		if state.Status == "completed" {
 			state.LastUpdated = time.Now().Add(-2 * time.Hour)
 		}
 	}
-	svc.debatesMu.Unlock()
 
 	// Create active debates (should not be cleaned up)
 	for i := 0; i < 2; i++ {

@@ -53,8 +53,6 @@ internal/ensemble/background/worker_pool.go:33:WorkerPool
 internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/multi_instance/health_monitor.go:12:HealthMonitor
 internal/ensemble/multi_instance/health_monitor.go:413:CircuitBreakerManager
-internal/ensemble/multi_instance/load_balancer.go:165:WeightedResponseTimeBalancer
-internal/ensemble/multi_instance/load_balancer.go:72:LeastConnectionsBalancer
 internal/ensemble/synchronization/manager.go:17:SyncManager
 internal/features/capability.go:455:CapabilityRegistry
 internal/features/config.go:385:FeatureUsageTracker

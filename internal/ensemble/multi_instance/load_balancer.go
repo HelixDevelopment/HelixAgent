@@ -2,8 +2,9 @@
 package multi_instance
 
 import (
-	"sync"
 	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/clis"
 )
@@ -69,15 +70,16 @@ func (b *RoundRobinBalancer) GetStats() map[string]interface{} {
 }
 
 // LeastConnectionsBalancer selects instances with fewest active connections.
+// Pattern Alpha at the map level: each *int64 counter is immutable
+// as a pointer; concurrent updates happen via atomic ops.
 type LeastConnectionsBalancer struct {
-	connections map[string]*int64
-	mu          sync.RWMutex
+	connections *safe.Store[string, *int64]
 }
 
 // NewLeastConnectionsBalancer creates a new least-connections balancer.
 func NewLeastConnectionsBalancer() *LeastConnectionsBalancer {
 	return &LeastConnectionsBalancer{
-		connections: make(map[string]*int64),
+		connections: safe.NewStore[string, *int64](),
 	}
 }
 
@@ -97,12 +99,8 @@ func (b *LeastConnectionsBalancer) SelectInstance(
 			continue
 		}
 
-		b.mu.RLock()
-		connPtr, ok := b.connections[inst.ID]
-		b.mu.RUnlock()
-
 		var conn int64
-		if ok {
+		if connPtr, ok := b.connections.Get(inst.ID); ok {
 			conn = atomic.LoadInt64(connPtr)
 		}
 
@@ -116,19 +114,10 @@ func (b *LeastConnectionsBalancer) SelectInstance(
 		return nil, ErrNoHealthyInstances
 	}
 
-	// Increment connection count
-	b.mu.RLock()
-	connPtr, ok := b.connections[selected.ID]
-	b.mu.RUnlock()
-
-	if !ok {
-		b.mu.Lock()
-		zero := int64(0)
-		b.connections[selected.ID] = &zero
-		connPtr = &zero
-		b.mu.Unlock()
-	}
-
+	// Increment connection count. PutIfAbsent makes get-or-create
+	// atomic; racing first-callers converge on the same counter.
+	zero := int64(0)
+	connPtr, _ := b.connections.PutIfAbsent(selected.ID, &zero)
 	atomic.AddInt64(connPtr, 1)
 
 	return selected, nil
@@ -136,24 +125,18 @@ func (b *LeastConnectionsBalancer) SelectInstance(
 
 // ReportResult updates connection count.
 func (b *LeastConnectionsBalancer) ReportResult(instanceID string, success bool, duration int64) {
-	b.mu.RLock()
-	connPtr, ok := b.connections[instanceID]
-	b.mu.RUnlock()
-
-	if ok {
+	if connPtr, ok := b.connections.Get(instanceID); ok {
 		atomic.AddInt64(connPtr, -1)
 	}
 }
 
 // GetStats returns balancer statistics.
 func (b *LeastConnectionsBalancer) GetStats() map[string]interface{} {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	stats := make(map[string]interface{})
-	for id, connPtr := range b.connections {
+	b.connections.Range(func(id string, connPtr *int64) bool {
 		stats[id] = atomic.LoadInt64(connPtr)
-	}
+		return true
+	})
 
 	return map[string]interface{}{
 		"type":        "least_connections",
@@ -162,9 +145,10 @@ func (b *LeastConnectionsBalancer) GetStats() map[string]interface{} {
 }
 
 // WeightedResponseTimeBalancer selects based on response time performance.
+// Pattern Alpha at the map level: each *responseTimeStats pointer is
+// immutable; fields are updated via atomic ops.
 type WeightedResponseTimeBalancer struct {
-	responseTimes map[string]*responseTimeStats
-	mu            sync.RWMutex
+	responseTimes *safe.Store[string, *responseTimeStats]
 }
 
 type responseTimeStats struct {
@@ -177,7 +161,7 @@ type responseTimeStats struct {
 // NewWeightedResponseTimeBalancer creates a new weighted response time balancer.
 func NewWeightedResponseTimeBalancer() *WeightedResponseTimeBalancer {
 	return &WeightedResponseTimeBalancer{
-		responseTimes: make(map[string]*responseTimeStats),
+		responseTimes: safe.NewStore[string, *responseTimeStats](),
 	}
 }
 
@@ -212,18 +196,20 @@ func (b *WeightedResponseTimeBalancer) SelectInstance(
 }
 
 func (b *WeightedResponseTimeBalancer) calculateScore(instanceID string) float64 {
-	b.mu.RLock()
-	stats, ok := b.responseTimes[instanceID]
-	b.mu.RUnlock()
-
-	if !ok || stats.count == 0 {
+	stats, ok := b.responseTimes.Get(instanceID)
+	if !ok || atomic.LoadInt64(&stats.count) == 0 {
 		// No data, give average score
 		return 0.5
 	}
 
+	// Load atomically so a concurrent ReportResult cannot race us.
+	count := atomic.LoadInt64(&stats.count)
+	totalTime := atomic.LoadInt64(&stats.totalTime)
+	successes := atomic.LoadInt64(&stats.successes)
+
 	// Calculate metrics
-	avgTime := float64(stats.totalTime) / float64(stats.count)
-	successRate := float64(stats.successes) / float64(stats.count)
+	avgTime := float64(totalTime) / float64(count)
+	successRate := float64(successes) / float64(count)
 
 	// Score: higher is better
 	// Factor in both response time and success rate
@@ -239,13 +225,11 @@ func (b *WeightedResponseTimeBalancer) calculateScore(instanceID string) float64
 
 // ReportResult updates statistics.
 func (b *WeightedResponseTimeBalancer) ReportResult(instanceID string, success bool, duration int64) {
-	b.mu.Lock()
-	stats, ok := b.responseTimes[instanceID]
-	if !ok {
-		stats = &responseTimeStats{}
-		b.responseTimes[instanceID] = stats
-	}
-	b.mu.Unlock()
+	// Atomic get-or-create: racing first-callers converge on the same
+	// stats pointer, and all subsequent updates are lock-free via
+	// atomic ops on the pointed-to struct.
+	fresh := &responseTimeStats{}
+	stats, _ := b.responseTimes.PutIfAbsent(instanceID, fresh)
 
 	atomic.AddInt64(&stats.totalTime, duration)
 	atomic.AddInt64(&stats.count, 1)
@@ -258,11 +242,8 @@ func (b *WeightedResponseTimeBalancer) ReportResult(instanceID string, success b
 
 // GetStats returns balancer statistics.
 func (b *WeightedResponseTimeBalancer) GetStats() map[string]interface{} {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	stats := make(map[string]interface{})
-	for id, rt := range b.responseTimes {
+	b.responseTimes.Range(func(id string, rt *responseTimeStats) bool {
 		count := atomic.LoadInt64(&rt.count)
 		if count > 0 {
 			totalTime := atomic.LoadInt64(&rt.totalTime)
@@ -272,7 +253,8 @@ func (b *WeightedResponseTimeBalancer) GetStats() map[string]interface{} {
 				"total_requests":       count,
 			}
 		}
-	}
+		return true
+	})
 
 	return map[string]interface{}{
 		"type":  "weighted_response_time",

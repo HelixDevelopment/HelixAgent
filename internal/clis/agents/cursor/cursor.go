@@ -8,16 +8,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
 
-// Cursor provides Cursor IDE integration
+// Cursor provides Cursor IDE integration.
+//
+// All access to `sessions` (slice append / range / index mutation)
+// goes through `sessMu`. Previously concurrent Execute() calls raced
+// on the slice under -race (BUGFIX #30).
 type Cursor struct {
 	*base.BaseIntegration
 	config   *Config
 	sessions []ChatSession
+	sessMu   sync.RWMutex
 }
 
 // Config holds Cursor configuration
@@ -105,13 +111,17 @@ func (c *Cursor) loadSessions() error {
 		return fmt.Errorf("read sessions: %w", err)
 	}
 
+	c.sessMu.Lock()
+	defer c.sessMu.Unlock()
 	return json.Unmarshal(data, &c.sessions)
 }
 
 // saveSessions saves chat sessions
 func (c *Cursor) saveSessions() error {
 	sessionsPath := filepath.Join(c.GetWorkDir(), "sessions.json")
+	c.sessMu.RLock()
 	data, err := json.MarshalIndent(c.sessions, "", "  ")
+	c.sessMu.RUnlock()
 	if err != nil {
 		return fmt.Errorf("marshal sessions: %w", err)
 	}
@@ -157,7 +167,10 @@ func (c *Cursor) chat(ctx context.Context, params map[string]interface{}) (inter
 
 	sessionID, _ := params["session_id"].(string)
 
-	// Add message to session
+	// Add message to session — write lock because we mutate Messages
+	// slices in place. saveSessions() is called outside the lock
+	// (it takes its own RLock).
+	c.sessMu.Lock()
 	for i := range c.sessions {
 		if c.sessions[i].ID == sessionID {
 			c.sessions[i].Messages = append(c.sessions[i].Messages, Message{
@@ -168,10 +181,11 @@ func (c *Cursor) chat(ctx context.Context, params map[string]interface{}) (inter
 				Role:    "assistant",
 				Content: fmt.Sprintf("Response to: %s", message),
 			})
-			c.saveSessions()
 			break
 		}
 	}
+	c.sessMu.Unlock()
+	_ = c.saveSessions()
 
 	return map[string]interface{}{
 		"message":    message,
@@ -284,6 +298,10 @@ func (c *Cursor) createSession(ctx context.Context, params map[string]interface{
 
 	context, _ := params["context"].(string)
 
+	// ID generation + append under write lock — otherwise two
+	// concurrent createSessions can produce duplicate IDs and race
+	// on the slice.
+	c.sessMu.Lock()
 	session := ChatSession{
 		ID:       fmt.Sprintf("session-%d", len(c.sessions)+1),
 		Name:     name,
@@ -291,8 +309,8 @@ func (c *Cursor) createSession(ctx context.Context, params map[string]interface{
 		Messages: []Message{},
 		Status:   "active",
 	}
-
 	c.sessions = append(c.sessions, session)
+	c.sessMu.Unlock()
 
 	if err := c.saveSessions(); err != nil {
 		return nil, err
@@ -304,11 +322,17 @@ func (c *Cursor) createSession(ctx context.Context, params map[string]interface{
 	}, nil
 }
 
-// listSessions lists all sessions
+// listSessions lists all sessions. Takes a defensive copy so the
+// returned slice is safe to iterate outside the lock.
 func (c *Cursor) listSessions(ctx context.Context) (interface{}, error) {
+	c.sessMu.RLock()
+	snapshot := make([]ChatSession, len(c.sessions))
+	copy(snapshot, c.sessions)
+	count := len(c.sessions)
+	c.sessMu.RUnlock()
 	return map[string]interface{}{
-		"sessions": c.sessions,
-		"count":    len(c.sessions),
+		"sessions": snapshot,
+		"count":    count,
 	}, nil
 }
 

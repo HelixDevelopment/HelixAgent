@@ -240,13 +240,24 @@ func (s *Service) tick(ctx context.Context) {
 
 	s.logger.Infof("KAIROS executing action: %s", action.Description)
 
-	// Execute with timeout
+	// Execute with timeout. The onAction callback is a caller-supplied
+	// function value and may read/mutate its argument arbitrarily, so
+	// we pass it a defensive COPY of the Action. The outer function
+	// then mutates only the original (status, result) and the callback
+	// runs in its own isolated goroutine against its own copy. On
+	// completion we merge any metadata the callback might have set
+	// back (shallow merge — Metadata map). Race-debt BUGFIX #30.
 	actionCtx, cancel := context.WithTimeout(ctx, s.config.BlockingBudget)
 	defer cancel()
 
 	done := make(chan struct{})
+	// `action` is Action (value) here. We pass a COPY to the callback
+	// so the callback cannot race with our post-select mutations of
+	// the original. Metadata map is still shared — callers should
+	// treat Metadata as append-only or synchronise externally.
+	actionForCallback := action
 	go func() {
-		s.onAction(action)
+		s.onAction(actionForCallback)
 		close(done)
 	}()
 

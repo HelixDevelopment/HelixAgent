@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -462,4 +463,70 @@ func TestBroker_RetryOnError(t *testing.T) {
 
 	// Handler should have been called at least once
 	assert.True(t, callCount.Load() >= 1)
+}
+
+// TestBroker_RaceFree is the CONST-029 verification test. It drives
+// parallel Publish + Subscribe + Unsubscribe across overlapping topics
+// to shake out any regression where the migrated safe.Stores fail to
+// serialise the check-create flow that used to live under mu.Lock.
+//
+// The old Broker held a single mu across all four maps, so any
+// concurrent Publish to the same new topic would see at most one
+// queue creation; the migrated version uses regMu as a Pattern Zeta
+// serialiser across queues/topics/subscribers/notifyCh to preserve
+// that same invariant without adjacent bare collections.
+func TestBroker_RaceFree(t *testing.T) {
+	broker := NewBroker(&Config{
+		DefaultQueueCapacity: 10000,
+		DefaultTopicCapacity: 10000,
+		MessageTTL:           time.Minute,
+	})
+	require.NoError(t, broker.Connect(context.Background()))
+	defer func() { _ = broker.Close(context.Background()) }()
+
+	const publishers = 8
+	const subscribers = 8
+	const iterations = 100
+
+	var wg sync.WaitGroup
+	received := atomic.Int32{}
+
+	// A pool of subscribers that come and go while publishers hammer topics.
+	for s := 0; s < subscribers; s++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			topic := fmt.Sprintf("topic-%d", id%4) // 4 overlapping topics
+			for i := 0; i < iterations; i++ {
+				sub, err := broker.Subscribe(context.Background(), topic,
+					func(ctx context.Context, msg *messaging.Message) error {
+						received.Add(1)
+						return nil
+					})
+				if err != nil {
+					continue
+				}
+				_ = sub.Unsubscribe()
+			}
+		}(s)
+	}
+
+	// Publishers hammering all 4 overlapping topics.
+	for p := 0; p < publishers; p++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				topic := fmt.Sprintf("topic-%d", (id+i)%4)
+				msg := messaging.NewMessage("x", []byte("y"))
+				_ = broker.Publish(context.Background(), topic, msg)
+			}
+		}(p)
+	}
+
+	wg.Wait()
+
+	// Sanity check: broker is still healthy after the storm.
+	require.NoError(t, broker.HealthCheck(context.Background()))
+	assert.True(t, broker.IsConnected())
 }

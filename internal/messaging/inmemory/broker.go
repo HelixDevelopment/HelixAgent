@@ -5,23 +5,41 @@ package inmemory
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/messaging"
 )
 
 // Broker is an in-memory message broker implementation.
+//
+// Concurrent-safe by construction (CONST-029):
+//
+//   - queues / topics / subscribers / notifyCh are safe.Store
+//     containers; each individual map lookup, insert, and delete is
+//     atomic without any caller-held lock.
+//   - connected is an atomic.Bool.
+//   - regMu (sync.Mutex) is a Pattern Zeta scalar survivor. It
+//     serialises multi-store compound operations that must stay
+//     atomic across keys — specifically Publish's "is there a queue
+//     OR a topic for this name? if not, create a queue" sequence,
+//     Subscribe's "ensure queue AND notifyCh exist" sequence, and
+//     Close's "flip connected then signal stopCh then clear every
+//     store" teardown. Because no bare map/slice sits beside regMu,
+//     the audit is happy.
 type Broker struct {
-	queues      map[string]*Queue
-	topics      map[string]*Topic
+	regMu       sync.Mutex
+	queues      *safe.Store[string, *Queue]
+	topics      *safe.Store[string, *Topic]
 	metrics     *messaging.BrokerMetrics
-	connected   bool
-	mu          sync.RWMutex
+	connected   atomic.Bool
 	stopCh      chan struct{}
 	config      *Config
-	subscribers map[string][]subscriberEntry
-	notifyCh    map[string]chan struct{} // Per-topic notification channels
-	wg          sync.WaitGroup           // Tracks consumeLoop goroutines
+	subscribers *safe.Store[string, []subscriberEntry]
+	notifyCh    *safe.Store[string, chan struct{}] // Per-topic notification channels
+	wg          sync.WaitGroup                     // Tracks consumeLoop goroutines
 }
 
 // subscriberEntry holds a subscriber and its options.
@@ -60,62 +78,56 @@ func NewBroker(config *Config) *Broker {
 		config = DefaultConfig()
 	}
 	return &Broker{
-		queues:      make(map[string]*Queue),
-		topics:      make(map[string]*Topic),
+		queues:      safe.NewStore[string, *Queue](),
+		topics:      safe.NewStore[string, *Topic](),
 		metrics:     messaging.NewBrokerMetrics(),
 		config:      config,
-		subscribers: make(map[string][]subscriberEntry),
-		notifyCh:    make(map[string]chan struct{}),
+		subscribers: safe.NewStore[string, []subscriberEntry](),
+		notifyCh:    safe.NewStore[string, chan struct{}](),
 		stopCh:      make(chan struct{}),
 	}
 }
 
 // Connect establishes a connection (no-op for in-memory).
 func (b *Broker) Connect(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	b.metrics.RecordConnectionAttempt()
-	b.connected = true
+	b.connected.Store(true)
 	b.metrics.RecordConnectionSuccess()
-
 	return nil
 }
 
 // Close closes the broker.
 func (b *Broker) Close(ctx context.Context) error {
-	b.mu.Lock()
-
-	if !b.connected {
-		b.mu.Unlock()
+	// Flip connected → false under regMu so no new Publish/Subscribe
+	// races past the guard after we've already started shutdown.
+	b.regMu.Lock()
+	if !b.connected.Load() {
+		b.regMu.Unlock()
 		return nil
 	}
-
 	close(b.stopCh)
-	b.connected = false
+	b.connected.Store(false)
 	b.metrics.RecordDisconnection()
-	b.mu.Unlock()
+	b.regMu.Unlock()
 
-	// Wait for all consumeLoop goroutines to finish
+	// Wait for all consumeLoop goroutines to finish before clearing
+	// the stores — consumers still referring to notifyCh entries must
+	// wake and return on stopCh first.
 	b.wg.Wait()
 
-	b.mu.Lock()
-	// Clear all queues, topics, and notification channels
-	b.queues = make(map[string]*Queue)
-	b.topics = make(map[string]*Topic)
-	b.subscribers = make(map[string][]subscriberEntry)
-	b.notifyCh = make(map[string]chan struct{})
-	b.mu.Unlock()
+	b.regMu.Lock()
+	b.queues.Clear()
+	b.topics.Clear()
+	b.subscribers.Clear()
+	b.notifyCh.Clear()
+	b.regMu.Unlock()
 
 	return nil
 }
 
 // HealthCheck checks if the broker is healthy.
 func (b *Broker) HealthCheck(ctx context.Context) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	if !b.connected {
+	if !b.connected.Load() {
 		return messaging.ErrNotConnected
 	}
 	return nil
@@ -123,17 +135,19 @@ func (b *Broker) HealthCheck(ctx context.Context) error {
 
 // IsConnected returns true if connected.
 func (b *Broker) IsConnected() bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.connected
+	return b.connected.Load()
 }
 
 // Publish publishes a message to a topic or queue.
+//
+// The queue-vs-topic-vs-create check-create chain runs under regMu so
+// two concurrent Publish calls for the same name can't both decide to
+// "create a new queue on demand."
 func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.Message, opts ...messaging.PublishOption) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.regMu.Lock()
+	defer b.regMu.Unlock()
 
-	if !b.connected {
+	if !b.connected.Load() {
 		return messaging.ErrNotConnected
 	}
 
@@ -149,13 +163,13 @@ func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.M
 	msg.Timestamp = time.Now().UTC()
 
 	// Try to deliver to queue first (for subscriptions with consumeLoop)
-	if queue, ok := b.queues[topic]; ok {
+	if queue, ok := b.queues.Get(topic); ok {
 		if err := queue.Enqueue(msg); err != nil {
 			b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), false)
 			return err
 		}
 		// Signal waiting consumers that a message is available
-		if ch, exists := b.notifyCh[topic]; exists {
+		if ch, exists := b.notifyCh.Get(topic); exists {
 			select {
 			case ch <- struct{}{}:
 			default: // Non-blocking - channel may be full or no receivers
@@ -166,7 +180,7 @@ func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.M
 	}
 
 	// Try to deliver to topic (direct pub/sub without queue)
-	if topicObj, ok := b.topics[topic]; ok {
+	if topicObj, ok := b.topics.Get(topic); ok {
 		if err := topicObj.Publish(msg); err != nil {
 			b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), false)
 			return err
@@ -179,7 +193,7 @@ func (b *Broker) Publish(ctx context.Context, topic string, message *messaging.M
 
 	// Create queue/topic on demand
 	queue := NewQueue(topic, b.config.DefaultQueueCapacity)
-	b.queues[topic] = queue
+	b.queues.Put(topic, queue)
 	if err := queue.Enqueue(msg); err != nil {
 		b.metrics.RecordPublish(int64(len(msg.Payload)), time.Since(start), false)
 		return err
@@ -203,11 +217,15 @@ func (b *Broker) PublishBatch(ctx context.Context, topic string, messages []*mes
 }
 
 // Subscribe creates a subscription to a topic or queue.
+//
+// regMu serialises the compound "append subscriber + ensure queue +
+// ensure notifyCh" sequence so two concurrent Subscribe calls for the
+// same topic can't both race to create the queue / notifyCh.
 func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.MessageHandler, opts ...messaging.SubscribeOption) (messaging.Subscription, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.regMu.Lock()
+	defer b.regMu.Unlock()
 
-	if !b.connected {
+	if !b.connected.Load() {
 		return nil, messaging.ErrNotConnected
 	}
 
@@ -221,16 +239,18 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 		subID:   subID,
 	}
 
-	b.subscribers[topic] = append(b.subscribers[topic], entry)
+	b.subscribers.Update(topic, func(cur []subscriberEntry, _ bool) ([]subscriberEntry, bool) {
+		return append(cur, entry), true
+	})
 
 	// Ensure queue exists
-	if _, ok := b.queues[topic]; !ok {
-		b.queues[topic] = NewQueue(topic, b.config.DefaultQueueCapacity)
+	if _, ok := b.queues.Get(topic); !ok {
+		b.queues.Put(topic, NewQueue(topic, b.config.DefaultQueueCapacity))
 	}
 
 	// Create notification channel if it doesn't exist
-	if _, ok := b.notifyCh[topic]; !ok {
-		b.notifyCh[topic] = make(chan struct{}, 100) // Buffered to avoid blocking publishers
+	if _, ok := b.notifyCh.Get(topic); !ok {
+		b.notifyCh.Put(topic, make(chan struct{}, 100)) // Buffered to avoid blocking publishers
 	}
 
 	b.metrics.RecordSubscription()
@@ -253,10 +273,10 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriberEntry, sub *Subscription) {
 	defer b.wg.Done()
 
-	// Get the notification channel for this topic
-	b.mu.RLock()
-	notifyCh := b.notifyCh[topic]
-	b.mu.RUnlock()
+	// Get the notification channel for this topic — set at Subscribe
+	// time, never rewritten (only cleared on Close), so one Get is
+	// enough for the lifetime of the loop.
+	notifyCh, _ := b.notifyCh.Get(topic)
 
 	for {
 		if !sub.IsActive() {
@@ -278,10 +298,7 @@ func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriber
 			return
 		}
 
-		b.mu.RLock()
-		queue, ok := b.queues[topic]
-		b.mu.RUnlock()
-
+		queue, ok := b.queues.Get(topic)
 		if !ok {
 			continue
 		}
@@ -305,12 +322,12 @@ func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriber
 			b.metrics.RecordReceive(int64(len(msg.Payload)), duration)
 			if err != nil {
 				b.metrics.RecordFailed()
-				// Requeue if retry is enabled
+				// Requeue if retry is enabled. Queue.Enqueue is
+				// concurrency-safe internally; no need to take a
+				// broker-wide lock around it.
 				if entry.opts.RetryOnError && msg.CanRetry() {
 					msg.IncrementRetry()
-					b.mu.Lock()
 					_ = queue.Enqueue(msg) //nolint:errcheck
-					b.mu.Unlock()
 					b.metrics.RecordRetry()
 				}
 			} else {
@@ -322,7 +339,7 @@ func (b *Broker) consumeLoop(ctx context.Context, topic string, entry subscriber
 
 // notifySubscribers notifies all subscribers of a new message.
 func (b *Broker) notifySubscribers(ctx context.Context, topic string, msg *messaging.Message) {
-	subscribers := b.subscribers[topic]
+	subscribers, _ := b.subscribers.Get(topic)
 	for _, sub := range subscribers {
 		if sub.active {
 			go func(s subscriberEntry) {
@@ -346,15 +363,12 @@ func (b *Broker) GetMetrics() *messaging.BrokerMetrics {
 
 // DeclareQueue declares a queue.
 func (b *Broker) DeclareQueue(ctx context.Context, name string, opts ...messaging.QueueOption) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if !b.connected.Load() {
 		return messaging.ErrNotConnected
 	}
 
-	if _, ok := b.queues[name]; !ok {
-		b.queues[name] = NewQueue(name, b.config.DefaultQueueCapacity)
+	queue := NewQueue(name, b.config.DefaultQueueCapacity)
+	if _, stored := b.queues.PutIfAbsent(name, queue); stored {
 		b.metrics.RecordQueueDeclared()
 	}
 
@@ -378,14 +392,11 @@ func (b *Broker) EnqueueTaskBatch(ctx context.Context, queue string, tasks []*me
 
 // DequeueTask retrieves a task from a queue.
 func (b *Broker) DequeueTask(ctx context.Context, queue string, workerID string) (*messaging.Task, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if !b.connected.Load() {
 		return nil, messaging.ErrNotConnected
 	}
 
-	q, ok := b.queues[queue]
+	q, ok := b.queues.Get(queue)
 	if !ok {
 		return nil, messaging.ErrQueueNotFound
 	}
@@ -428,14 +439,10 @@ func (b *Broker) MoveToDeadLetter(ctx context.Context, task *messaging.Task, rea
 
 // GetQueueStats returns queue statistics.
 func (b *Broker) GetQueueStats(ctx context.Context, queue string) (*messaging.QueueStats, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	q, ok := b.queues[queue]
+	q, ok := b.queues.Get(queue)
 	if !ok {
 		return nil, messaging.ErrQueueNotFound
 	}
-
 	return &messaging.QueueStats{
 		Name:     queue,
 		Messages: int64(q.Len()),
@@ -444,35 +451,24 @@ func (b *Broker) GetQueueStats(ctx context.Context, queue string) (*messaging.Qu
 
 // GetQueueDepth returns the number of messages in a queue.
 func (b *Broker) GetQueueDepth(ctx context.Context, queue string) (int64, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	q, ok := b.queues[queue]
+	q, ok := b.queues.Get(queue)
 	if !ok {
 		return 0, messaging.ErrQueueNotFound
 	}
-
 	return int64(q.Len()), nil
 }
 
 // PurgeQueue removes all messages from a queue.
 func (b *Broker) PurgeQueue(ctx context.Context, queue string) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if q, ok := b.queues[queue]; ok {
+	if q, ok := b.queues.Get(queue); ok {
 		q.Clear()
 	}
-
 	return nil
 }
 
 // DeleteQueue deletes a queue.
 func (b *Broker) DeleteQueue(ctx context.Context, queue string) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	delete(b.queues, queue)
+	b.queues.Delete(queue)
 	return nil
 }
 
@@ -508,17 +504,23 @@ func (s *Subscription) Unsubscribe() error {
 	s.active = false
 	s.broker.metrics.RecordUnsubscription()
 
-	// Remove from broker's subscribers
-	s.broker.mu.Lock()
-	defer s.broker.mu.Unlock()
-
-	subscribers := s.broker.subscribers[s.topic]
-	for i, sub := range subscribers {
-		if sub.subID == s.id {
-			s.broker.subscribers[s.topic] = append(subscribers[:i], subscribers[i+1:]...)
-			break
+	// Remove from broker's subscribers. Store.Update keeps the
+	// read-modify-write atomic against concurrent Subscribe/Unsubscribe
+	// for the same topic.
+	s.broker.subscribers.Update(s.topic, func(cur []subscriberEntry, _ bool) ([]subscriberEntry, bool) {
+		for i, sub := range cur {
+			if sub.subID == s.id {
+				next := make([]subscriberEntry, 0, len(cur)-1)
+				next = append(next, cur[:i]...)
+				next = append(next, cur[i+1:]...)
+				if len(next) == 0 {
+					return nil, false // drop the empty entry
+				}
+				return next, true
+			}
 		}
-	}
+		return cur, true
+	})
 
 	return nil
 }

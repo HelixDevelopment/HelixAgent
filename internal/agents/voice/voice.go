@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,11 +28,14 @@ type Command struct {
 	Action      func(args []string) error
 }
 
-// Service manages voice recognition and commands
+// Service manages voice recognition and commands.
+// mu is Pattern Zeta: it guards the scalar recognizer interface and
+// the enabled flag. Command and alias stores have their own locking
+// via safe.Store.
 type Service struct {
 	recognizer Recognizer
-	commands   map[string]*Command
-	aliases    map[string]string
+	commands   *safe.Store[string, *Command]
+	aliases    *safe.Store[string, string]
 	logger     *logrus.Logger
 	mu         sync.RWMutex
 	enabled    bool
@@ -44,8 +48,8 @@ func NewService(logger *logrus.Logger) *Service {
 	}
 
 	s := &Service{
-		commands: make(map[string]*Command),
-		aliases:  make(map[string]string),
+		commands: safe.NewStore[string, *Command](),
+		aliases:  safe.NewStore[string, string](),
 		logger:   logger,
 		enabled:  true,
 	}
@@ -63,16 +67,12 @@ func (s *Service) SetRecognizer(r Recognizer) {
 
 // RegisterCommand registers a voice command
 func (s *Service) RegisterCommand(cmd *Command) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.commands[cmd.Name] = cmd
+	s.commands.Put(cmd.Name, cmd)
 }
 
 // RegisterAlias registers a command alias
 func (s *Service) RegisterAlias(alias, command string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.aliases[alias] = command
+	s.aliases.Put(alias, command)
 }
 
 // Enable enables voice commands
@@ -151,15 +151,13 @@ func (s *Service) ProcessCommand(text string) (*CommandResult, error) {
 	result.Args = args
 
 	// Find and execute command
-	s.mu.RLock()
-	command, ok := s.commands[cmd]
+	command, ok := s.commands.Get(cmd)
 	if !ok {
 		// Try aliases
-		if aliased, found := s.aliases[cmd]; found {
-			command, ok = s.commands[aliased]
+		if aliased, found := s.aliases.Get(cmd); found {
+			command, ok = s.commands.Get(aliased)
 		}
 	}
-	s.mu.RUnlock()
 
 	if !ok {
 		result.Error = fmt.Sprintf("unknown command: %s", cmd)
@@ -192,22 +190,12 @@ func (s *Service) parseCommand(text string) (string, []string) {
 
 // GetCommands returns all registered commands
 func (s *Service) GetCommands() []*Command {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	cmds := make([]*Command, 0, len(s.commands))
-	for _, cmd := range s.commands {
-		cmds = append(cmds, cmd)
-	}
-	return cmds
+	return s.commands.Values()
 }
 
 // GetCommand returns a specific command
 func (s *Service) GetCommand(name string) (*Command, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	cmd, ok := s.commands[name]
-	return cmd, ok
+	return s.commands.Get(name)
 }
 
 // registerDefaultCommands registers default voice commands

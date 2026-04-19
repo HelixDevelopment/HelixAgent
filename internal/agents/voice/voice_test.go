@@ -20,7 +20,7 @@ func TestNewService(t *testing.T) {
 	assert.NotNil(t, svc.aliases)
 	assert.NotNil(t, svc.logger)
 	assert.True(t, svc.enabled)
-	assert.Greater(t, len(svc.commands), 0) // Default commands registered
+	assert.Greater(t, svc.commands.Len(), 0) // Default commands registered
 }
 
 func TestService_SetRecognizer(t *testing.T) {

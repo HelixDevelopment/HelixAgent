@@ -15,7 +15,6 @@ internal/agents/subagent/orchestrator.go:13:Orchestrator
 internal/agents/swarm/swarm.go:267:Scratchpad
 internal/agents/swarm/swarm.go:374:Coordinator
 internal/agents/swarm/swarm.go:61:Swarm
-internal/agents/voice/voice.go:31:Service
 internal/agents/yolo/classifier.go:79:HeuristicClassifier
 internal/background/adaptive_worker_pool_test.go:211:mockNotificationService
 internal/background/adaptive_worker_pool_test.go:50:mockTaskQueue

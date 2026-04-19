@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/adapters"
 )
 
@@ -32,12 +34,30 @@ type InvalidationRule struct {
 	Handler func(event *Event) []string
 }
 
-// TagBasedInvalidation provides tag-based cache invalidation
+// TagBasedInvalidation provides tag-based cache invalidation.
+//
+// Concurrent-safe by construction (CONST-029): the (tagIndex, keyTags)
+// pair is held under a sentinel key in a single safe.Store so AddTag
+// and RemoveKey can mutate both maps atomically inside one Update
+// callback (Pattern Epsilon — joint atomicity via state-struct).
 type TagBasedInvalidation struct {
+	state   *safe.Store[string, *tagState]
+	metrics *InvalidationMetrics
+}
+
+// tagState is the joint state held under tagStateKey.
+type tagState struct {
 	tagIndex map[string]map[string]struct{} // tag -> keys
 	keyTags  map[string][]string            // key -> tags
-	mu       sync.RWMutex
-	metrics  *InvalidationMetrics
+}
+
+const tagStateKey = "_"
+
+func newTagState() *tagState {
+	return &tagState{
+		tagIndex: make(map[string]map[string]struct{}),
+		keyTags:  make(map[string][]string),
+	}
 }
 
 // InvalidationMetrics tracks invalidation statistics
@@ -51,64 +71,72 @@ type InvalidationMetrics struct {
 
 // NewTagBasedInvalidation creates a new tag-based invalidation strategy
 func NewTagBasedInvalidation() *TagBasedInvalidation {
+	store := safe.NewStore[string, *tagState]()
+	store.Put(tagStateKey, newTagState())
 	return &TagBasedInvalidation{
-		tagIndex: make(map[string]map[string]struct{}),
-		keyTags:  make(map[string][]string),
-		metrics:  &InvalidationMetrics{},
+		state:   store,
+		metrics: &InvalidationMetrics{},
 	}
+}
+
+// withState runs fn under the Store's write lock; fn may mutate the maps.
+func (i *TagBasedInvalidation) withState(fn func(*tagState)) {
+	i.state.Update(tagStateKey, func(s *tagState, _ bool) (*tagState, bool) {
+		if s == nil {
+			s = newTagState()
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // AddTag associates tags with a cache key
 func (i *TagBasedInvalidation) AddTag(key string, tags ...string) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	i.keyTags[key] = append(i.keyTags[key], tags...)
-
-	for _, tag := range tags {
-		if i.tagIndex[tag] == nil {
-			i.tagIndex[tag] = make(map[string]struct{})
+	i.withState(func(s *tagState) {
+		s.keyTags[key] = append(s.keyTags[key], tags...)
+		for _, tag := range tags {
+			if s.tagIndex[tag] == nil {
+				s.tagIndex[tag] = make(map[string]struct{})
+			}
+			s.tagIndex[tag][key] = struct{}{}
 		}
-		i.tagIndex[tag][key] = struct{}{}
-	}
+	})
 }
 
 // RemoveKey removes a key from all tag associations
 func (i *TagBasedInvalidation) RemoveKey(key string) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	tags := i.keyTags[key]
-	delete(i.keyTags, key)
-
-	for _, tag := range tags {
-		if keys, exists := i.tagIndex[tag]; exists {
-			delete(keys, key)
-			if len(keys) == 0 {
-				delete(i.tagIndex, tag)
+	i.withState(func(s *tagState) {
+		tags := s.keyTags[key]
+		delete(s.keyTags, key)
+		for _, tag := range tags {
+			if keys, exists := s.tagIndex[tag]; exists {
+				delete(keys, key)
+				if len(keys) == 0 {
+					delete(s.tagIndex, tag)
+				}
 			}
 		}
-	}
+	})
 }
 
 // InvalidateByTag returns all keys with the given tag
 func (i *TagBasedInvalidation) InvalidateByTag(tag string) []string {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
-	keys := i.tagIndex[tag]
-	if keys == nil {
+	var result []string
+	i.withState(func(s *tagState) {
+		keys := s.tagIndex[tag]
+		if keys == nil {
+			return
+		}
+		result = make([]string, 0, len(keys))
+		for key := range keys {
+			result = append(result, key)
+		}
+	})
+	if result == nil {
 		return nil
 	}
-
-	result := make([]string, 0, len(keys))
-	for key := range keys {
-		result = append(result, key)
-	}
-
 	atomic.AddInt64(&i.metrics.TagInvalidations, 1)
 	atomic.AddInt64(&i.metrics.KeysInvalidated, int64(len(result)))
-
 	return result
 }
 
@@ -133,33 +161,31 @@ func (i *TagBasedInvalidation) InvalidateByTags(tags ...string) []string {
 
 // GetTags returns all tags for a key
 func (i *TagBasedInvalidation) GetTags(key string) []string {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
-	tags := i.keyTags[key]
-	if tags == nil {
-		return nil
-	}
-
-	result := make([]string, len(tags))
-	copy(result, tags)
+	var result []string
+	i.withState(func(s *tagState) {
+		tags := s.keyTags[key]
+		if tags == nil {
+			return
+		}
+		result = make([]string, len(tags))
+		copy(result, tags)
+	})
 	return result
 }
 
 // GetKeys returns all keys for a tag
 func (i *TagBasedInvalidation) GetKeys(tag string) []string {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
-	keys := i.tagIndex[tag]
-	if keys == nil {
-		return nil
-	}
-
-	result := make([]string, 0, len(keys))
-	for key := range keys {
-		result = append(result, key)
-	}
+	var result []string
+	i.withState(func(s *tagState) {
+		keys := s.tagIndex[tag]
+		if keys == nil {
+			return
+		}
+		result = make([]string, 0, len(keys))
+		for key := range keys {
+			result = append(result, key)
+		}
+	})
 	return result
 }
 
@@ -187,12 +213,15 @@ func (i *TagBasedInvalidation) Name() string {
 // EventBus alias for backward compatibility
 type EventBus = adapters.EventBus
 
-// EventDrivenInvalidation invalidates cache based on system events
+// EventDrivenInvalidation invalidates cache based on system events.
+//
+// Concurrent-safe by construction (CONST-029): rules is a safe.Store
+// keyed by EventType; per-event rule slices are append-and-replace via
+// Update (Pattern Beta).
 type EventDrivenInvalidation struct {
 	eventBus *EventBus
 	cache    *TieredCache
-	rules    map[EventType][]InvalidationRule
-	mu       sync.RWMutex
+	rules    *safe.Store[EventType, []InvalidationRule]
 	metrics  *InvalidationMetrics
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -206,7 +235,7 @@ func NewEventDrivenInvalidation(eventBus *EventBus, cache *TieredCache) *EventDr
 	edi := &EventDrivenInvalidation{
 		eventBus: eventBus,
 		cache:    cache,
-		rules:    make(map[EventType][]InvalidationRule),
+		rules:    safe.NewStore[EventType, []InvalidationRule](),
 		metrics:  &InvalidationMetrics{},
 		ctx:      ctx,
 		cancel:   cancel,
@@ -252,18 +281,14 @@ func (i *EventDrivenInvalidation) Stop() {
 
 // AddRule adds an invalidation rule
 func (i *EventDrivenInvalidation) AddRule(rule InvalidationRule) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	i.rules[rule.EventType] = append(i.rules[rule.EventType], rule)
+	i.rules.Update(rule.EventType, func(curr []InvalidationRule, _ bool) ([]InvalidationRule, bool) {
+		return append(curr, rule), true
+	})
 }
 
 // RemoveRules removes all rules for an event type
 func (i *EventDrivenInvalidation) RemoveRules(eventType EventType) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	delete(i.rules, eventType)
+	i.rules.Delete(eventType)
 }
 
 func (i *EventDrivenInvalidation) registerDefaultRules() {
@@ -315,10 +340,7 @@ func (i *EventDrivenInvalidation) registerDefaultRules() {
 }
 
 func (i *EventDrivenInvalidation) handleEvent(ctx context.Context, event *Event) {
-	i.mu.RLock()
-	rules := i.rules[event.Type]
-	i.mu.RUnlock()
-
+	rules, _ := i.rules.Get(event.Type)
 	if len(rules) == 0 {
 		return
 	}
@@ -356,10 +378,7 @@ func (i *EventDrivenInvalidation) handleEvent(ctx context.Context, event *Event)
 
 // ShouldInvalidate implements InvalidationStrategy
 func (i *EventDrivenInvalidation) ShouldInvalidate(event *Event) []string {
-	i.mu.RLock()
-	rules := i.rules[event.Type]
-	i.mu.RUnlock()
-
+	rules, _ := i.rules.Get(event.Type)
 	if len(rules) == 0 {
 		return nil
 	}

@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/models"
 	"github.com/gin-gonic/gin"
@@ -13,21 +14,22 @@ import (
 
 // SessionHandler handles session management endpoints.
 //
-// All access to `sessions` AND to the per-session fields
-// (`session.Context`, `session.LastActivity`, `session.RequestCount`)
-// must go through `mu`. Previously the map and session fields were
-// all unsynchronised — `-race` caught concurrent-write crashes in
-// UpdateSessionContext (BUGFIX #29).
+// Writes to per-session fields (Status, Context, LastActivity,
+// RequestCount) must happen inside a Store.Update callback so the
+// mutation runs under the Store's write lock. Reads that copy
+// fields also go through Update so they are serialised with
+// concurrent writers (Pattern Beta). Previously the map and
+// session fields were all unsynchronised — `-race` caught
+// concurrent-write crashes in UpdateSessionContext (BUGFIX #29).
 type SessionHandler struct {
-	mu       sync.RWMutex
-	sessions map[string]*models.UserSession
+	sessions *safe.Store[string, *models.UserSession]
 	log      *logrus.Logger
 }
 
 // NewSessionHandler creates a new session handler
 func NewSessionHandler(log *logrus.Logger) *SessionHandler {
 	return &SessionHandler{
-		sessions: make(map[string]*models.UserSession),
+		sessions: safe.NewStore[string, *models.UserSession](),
 		log:      log,
 	}
 }
@@ -96,9 +98,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		CreatedAt:    now,
 	}
 
-	h.mu.Lock()
-	h.sessions[sessionID] = session
-	h.mu.Unlock()
+	h.sessions.Put(sessionID, session)
 
 	h.log.WithFields(logrus.Fields{
 		"session_id": sessionID,
@@ -125,38 +125,47 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	includeContext := c.Query("includeContext") == "true"
 
-	h.mu.Lock() // write lock because we may mutate session.Status below
-	session, exists := h.sessions[sessionID]
-	if !exists {
-		h.mu.Unlock()
+	var (
+		found    bool
+		response SessionResponse
+	)
+
+	// Update-as-read so that the expired-flip mutation and the
+	// field-snapshot both happen under the Store's write lock.
+	h.sessions.Update(sessionID, func(s *models.UserSession, ok bool) (*models.UserSession, bool) {
+		if !ok {
+			return nil, false
+		}
+		found = true
+
+		if time.Now().After(s.ExpiresAt) {
+			s.Status = "expired"
+		}
+
+		response = SessionResponse{
+			Success:      true,
+			Message:      "Session retrieved successfully",
+			SessionID:    s.ID,
+			UserID:       s.UserID,
+			Status:       s.Status,
+			RequestCount: s.RequestCount,
+			LastActivity: s.LastActivity,
+			ExpiresAt:    s.ExpiresAt,
+			CreatedAt:    s.CreatedAt,
+		}
+		if includeContext {
+			response.Context = s.Context
+		}
+		return s, true
+	})
+
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":      "session not found",
 			"session_id": sessionID,
 		})
 		return
 	}
-
-	// Check if session is expired
-	if time.Now().After(session.ExpiresAt) {
-		session.Status = "expired"
-	}
-
-	response := SessionResponse{
-		Success:      true,
-		Message:      "Session retrieved successfully",
-		SessionID:    session.ID,
-		UserID:       session.UserID,
-		Status:       session.Status,
-		RequestCount: session.RequestCount,
-		LastActivity: session.LastActivity,
-		ExpiresAt:    session.ExpiresAt,
-		CreatedAt:    session.CreatedAt,
-	}
-
-	if includeContext {
-		response.Context = session.Context
-	}
-	h.mu.Unlock()
 
 	c.JSON(http.StatusOK, response)
 }
@@ -166,10 +175,40 @@ func (h *SessionHandler) TerminateSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	graceful := c.Query("graceful") != "false" // Default to graceful
 
-	h.mu.Lock()
-	session, exists := h.sessions[sessionID]
-	if !exists {
-		h.mu.Unlock()
+	var (
+		found    bool
+		response SessionResponse
+	)
+
+	h.sessions.Update(sessionID, func(s *models.UserSession, ok bool) (*models.UserSession, bool) {
+		if !ok {
+			return nil, false
+		}
+		found = true
+
+		if graceful {
+			s.Status = "terminated"
+		}
+
+		response = SessionResponse{
+			Success:      true,
+			Message:      "Session terminated successfully",
+			SessionID:    sessionID,
+			UserID:       s.UserID,
+			Status:       "terminated",
+			RequestCount: s.RequestCount,
+			LastActivity: s.LastActivity,
+			ExpiresAt:    s.ExpiresAt,
+			CreatedAt:    s.CreatedAt,
+		}
+
+		if graceful {
+			return s, true
+		}
+		return nil, false // non-graceful → delete
+	})
+
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":      "session not found",
 			"session_id": sessionID,
@@ -178,28 +217,10 @@ func (h *SessionHandler) TerminateSession(c *gin.Context) {
 	}
 
 	if graceful {
-		// Graceful termination - mark as terminated but keep for reference
-		session.Status = "terminated"
 		h.log.WithField("session_id", sessionID).Info("Session terminated gracefully")
 	} else {
-		// Immediate termination - remove from memory
-		delete(h.sessions, sessionID)
 		h.log.WithField("session_id", sessionID).Info("Session terminated immediately")
 	}
-
-	// Snapshot response fields while holding the lock.
-	response := SessionResponse{
-		Success:      true,
-		Message:      "Session terminated successfully",
-		SessionID:    sessionID,
-		UserID:       session.UserID,
-		Status:       "terminated",
-		RequestCount: session.RequestCount,
-		LastActivity: session.LastActivity,
-		ExpiresAt:    session.ExpiresAt,
-		CreatedAt:    session.CreatedAt,
-	}
-	h.mu.Unlock()
 
 	c.JSON(http.StatusOK, response)
 }
@@ -209,33 +230,38 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 	userID := c.Query("user_id")
 	status := c.Query("status")
 
+	// Iterate keys and inspect each session under Update so the
+	// expired-flip mutation and field reads happen atomically.
 	var sessions []SessionResponse
-	h.mu.Lock() // write lock — session.Status may be mutated below
-	defer h.mu.Unlock()
-	for _, session := range h.sessions {
-		// Check if session is expired
-		if time.Now().After(session.ExpiresAt) && session.Status == "active" {
-			session.Status = "expired"
-		}
+	for _, id := range h.sessions.Keys() {
+		h.sessions.Update(id, func(s *models.UserSession, ok bool) (*models.UserSession, bool) {
+			if !ok {
+				return nil, false
+			}
 
-		// Filter by user_id if provided
-		if userID != "" && session.UserID != userID {
-			continue
-		}
+			if time.Now().After(s.ExpiresAt) && s.Status == "active" {
+				s.Status = "expired"
+			}
 
-		// Filter by status if provided
-		if status != "" && session.Status != status {
-			continue
-		}
+			// Filter by user_id if provided
+			if userID != "" && s.UserID != userID {
+				return s, true
+			}
+			// Filter by status if provided
+			if status != "" && s.Status != status {
+				return s, true
+			}
 
-		sessions = append(sessions, SessionResponse{
-			SessionID:    session.ID,
-			UserID:       session.UserID,
-			Status:       session.Status,
-			RequestCount: session.RequestCount,
-			LastActivity: session.LastActivity,
-			ExpiresAt:    session.ExpiresAt,
-			CreatedAt:    session.CreatedAt,
+			sessions = append(sessions, SessionResponse{
+				SessionID:    s.ID,
+				UserID:       s.UserID,
+				Status:       s.Status,
+				RequestCount: s.RequestCount,
+				LastActivity: s.LastActivity,
+				ExpiresAt:    s.ExpiresAt,
+				CreatedAt:    s.CreatedAt,
+			})
+			return s, true
 		})
 	}
 
@@ -247,32 +273,31 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 
 // UpdateSessionContext updates the session context (internal use)
 func (h *SessionHandler) UpdateSessionContext(sessionID string, context map[string]interface{}) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	session, exists := h.sessions[sessionID]
-	if !exists {
-		return nil
-	}
+	h.sessions.Update(sessionID, func(s *models.UserSession, ok bool) (*models.UserSession, bool) {
+		if !ok {
+			return nil, false
+		}
 
-	if session.Context == nil {
-		session.Context = make(map[string]interface{})
-	}
+		if s.Context == nil {
+			s.Context = make(map[string]interface{})
+		}
+		for k, v := range context {
+			s.Context[k] = v
+		}
 
-	for k, v := range context {
-		session.Context[k] = v
-	}
-
-	session.LastActivity = time.Now()
-	session.RequestCount++
+		s.LastActivity = time.Now()
+		s.RequestCount++
+		return s, true
+	})
 
 	return nil
 }
 
 // GetSessionByID returns a session by ID (internal use).
 // Returns a pointer; callers should treat the returned session as
-// read-only and not mutate fields without taking h.mu themselves.
+// read-only and not mutate fields without routing through
+// UpdateSessionContext (or another Update-callback path).
 func (h *SessionHandler) GetSessionByID(sessionID string) *models.UserSession {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return h.sessions[sessionID]
+	s, _ := h.sessions.Get(sessionID)
+	return s
 }

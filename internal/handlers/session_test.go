@@ -28,7 +28,7 @@ func TestNewSessionHandler(t *testing.T) {
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.sessions)
 	assert.NotNil(t, handler.log)
-	assert.Empty(t, handler.sessions)
+	assert.Equal(t, 0, handler.sessions.Len())
 }
 
 func TestSessionHandler_CreateSession(t *testing.T) {

@@ -75,7 +75,6 @@ internal/handlers/extended/ensemble.go:82:Task
 internal/handlers/extended/planning.go:119:PlanningHandlerExtensions
 internal/handlers/extended/planning.go:22:ExtendedPlanModeSession
 internal/handlers/protocol_sse.go:16:ProtocolSSEHandler
-internal/handlers/session.go:21:SessionHandler
 internal/http/pool.go:103:HTTPClientPool
 internal/http/pool.go:422:HostClient
 internal/knowledge/code_graph.go:124:CodeGraph

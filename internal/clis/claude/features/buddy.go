@@ -161,23 +161,26 @@ func (b *BuddySystem) generateName(species string) string {
 	return list[0]
 }
 
-// mulberry32 is a fast 32-bit PRNG
+// mulberry32 is a fast 32-bit PRNG. Originally ported from JavaScript
+// where `| 0` and `|= 0` force int32 coercion; in Go those are no-ops
+// on uint32 and were removed. Native uint32 wrap-around preserves the
+// algorithm's behaviour exactly.
 func mulberry32(seed uint32) func() float64 {
 	return func() float64 {
-		seed |= 0
-		seed = seed + 0x6D2B79F5 | 0
-		t := int32(seed^seed>>15) * (1 | int32(seed)) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
+		seed += 0x6D2B79F5
+		t := int32(seed^seed>>15) * (1 | int32(seed)) // #nosec G115 -- uint32 wrap is the intended behaviour of the PRNG
 		t = t + int32(int32(t^t>>7)*(61|int32(t))) ^ t
-		return float64(uint32(t^t>>14)) / 4294967296.0 // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
+		return float64(uint32(t^t>>14)) / 4294967296.0 // #nosec G115 -- uint32 wrap is the intended behaviour of the PRNG
 	}
 }
 
-// hashString creates a hash from a string
+// hashString creates a hash from a string (DJB2-style with shift-subtract).
+// The `hash = hash & hash` identity that used to live here was a
+// JavaScript-port artefact and was removed — Go's uint32 already truncates.
 func hashString(s string) uint32 {
 	var hash uint32 = 0
 	for _, c := range s {
-		hash = (hash << 5) - hash + uint32(c) // #nosec G115 -- integer conversion bounded by reachable resource limits; overflow is mathematically unreachable
-		hash = hash & hash
+		hash = (hash << 5) - hash + uint32(c) // #nosec G115 -- uint32 wrap is intentional hash behaviour
 	}
 	return uint32(math.Abs(float64(hash)))
 }

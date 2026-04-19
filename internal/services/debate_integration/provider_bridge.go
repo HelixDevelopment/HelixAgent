@@ -73,8 +73,10 @@ func (a *adaptedProvider) Complete(ctx context.Context, req *digitalvasicmodels.
 // CompleteStream implements llmprovider.LLMProvider
 //
 // Goroutine lifecycle: the forwarder goroutine exits when EITHER
-//   (a) internalCh closes, OR
-//   (b) ctx.Done() fires.
+//
+//	(a) internalCh closes, OR
+//	(b) ctx.Done() fires.
+//
 // Both the receive from internalCh and the send to externalCh are guarded
 // by ctx.Done() so a cancelled caller cannot pin this goroutine even if
 // the inner provider never closes internalCh. See BUGFIXES.md Issue #14.

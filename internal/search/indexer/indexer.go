@@ -68,18 +68,19 @@ func (i *CodeIndexer) Index(ctx context.Context) (*types.IndexResult, error) {
 	start := time.Now()
 	result := &types.IndexResult{}
 
-	// Create collection if it doesn't exist
-	err := i.vectorStore.CreateCollection(ctx, i.config.CollectionName, i.embedder.Dimensions())
-	if err != nil {
-		// Collection might already exist, continue
-	}
+	// Create collection if it doesn't exist. A pre-existing collection
+	// is the expected common case ("already exists" from the vector
+	// store), so the error is intentionally ignored. Any other error
+	// class would re-surface on the first Upsert below, so we don't
+	// need to distinguish classes here.
+	_ = i.vectorStore.CreateCollection(ctx, i.config.CollectionName, i.embedder.Dimensions()) // nolint:errcheck // intentional, see comment above
 
 	// Walk the directory tree
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 10) // Limit concurrent goroutines
 
-	err = filepath.Walk(i.config.RootPath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(i.config.RootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			return nil

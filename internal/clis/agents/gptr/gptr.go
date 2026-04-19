@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
@@ -17,9 +19,9 @@ import (
 // GPTR provides GPTR integration
 type GPTR struct {
 	*base.BaseIntegration
-	config  *Config
-	tasksMu sync.RWMutex
-	tasks   []Task
+	config *Config
+	tasks  *safe.Slice[Task]
+	nextID atomic.Int64
 }
 
 // Config holds GPTR configuration
@@ -69,7 +71,7 @@ func New() *GPTR {
 			MaxTokens: 4096,
 			Timeout:   60,
 		},
-		tasks: make([]Task, 0),
+		tasks: safe.NewSlice[Task](),
 	}
 }
 
@@ -105,17 +107,20 @@ func (g *GPTR) loadTasks() error {
 		return fmt.Errorf("read tasks: %w", err)
 	}
 
-	g.tasksMu.Lock()
-	defer g.tasksMu.Unlock()
+	var loaded []Task
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		return err
+	}
 
-	return json.Unmarshal(data, &g.tasks)
+	g.tasks.Replace(loaded)
+	g.nextID.Store(int64(len(loaded)))
+	return nil
 }
 
 // saveTasks saves tasks
 func (g *GPTR) saveTasks() error {
-	g.tasksMu.RLock()
-	data, err := json.MarshalIndent(g.tasks, "", "  ")
-	g.tasksMu.RUnlock()
+	snapshot := g.tasks.Snapshot()
+	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal tasks: %w", err)
 	}
@@ -173,17 +178,16 @@ func (g *GPTR) createTask(ctx context.Context, params map[string]interface{}) (i
 		return nil, fmt.Errorf("name and prompt required")
 	}
 
-	g.tasksMu.Lock()
+	id := g.nextID.Add(1)
 	task := Task{
-		ID:     fmt.Sprintf("task-%d", len(g.tasks)+1),
+		ID:     fmt.Sprintf("task-%d", id),
 		Name:   name,
 		Prompt: prompt,
 		Status: "created",
 		Tools:  []string{},
 	}
 
-	g.tasks = append(g.tasks, task)
-	g.tasksMu.Unlock()
+	g.tasks.Append(task)
 
 	if err := g.saveTasks(); err != nil {
 		return nil, err
@@ -197,10 +201,7 @@ func (g *GPTR) createTask(ctx context.Context, params map[string]interface{}) (i
 
 // listTasks lists tasks
 func (g *GPTR) listTasks(ctx context.Context) (interface{}, error) {
-	g.tasksMu.RLock()
-	tasks := make([]Task, len(g.tasks))
-	copy(tasks, g.tasks)
-	g.tasksMu.RUnlock()
+	tasks := g.tasks.Snapshot()
 
 	return map[string]interface{}{
 		"tasks": tasks,
@@ -215,19 +216,15 @@ func (g *GPTR) getResult(ctx context.Context, params map[string]interface{}) (in
 		return nil, fmt.Errorf("task_id required")
 	}
 
-	g.tasksMu.RLock()
-	defer g.tasksMu.RUnlock()
-
-	for _, task := range g.tasks {
-		if task.ID == taskID {
-			return map[string]interface{}{
-				"task":   task,
-				"result": task.Result,
-			}, nil
-		}
+	task, found := g.tasks.Find(func(t Task) bool { return t.ID == taskID })
+	if !found {
+		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
 
-	return nil, fmt.Errorf("task not found: %s", taskID)
+	return map[string]interface{}{
+		"task":   task,
+		"result": task.Result,
+	}, nil
 }
 
 // IsAvailable checks availability

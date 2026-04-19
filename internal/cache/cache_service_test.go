@@ -12,10 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"dev.helix.agent/internal/config"
-	"dev.helix.agent/internal/models"
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"dev.helix.agent/internal/config"
+	"dev.helix.agent/internal/models"
 )
 
 func TestNewCacheService_WithRedisConnectionFailure(t *testing.T) {
@@ -1208,7 +1210,7 @@ func TestCacheService_DeleteByPatternNilClient(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1228,7 +1230,7 @@ func TestCacheService_GenerateCacheKeyDirect(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	// Test generateCacheKey with various requests
@@ -1314,7 +1316,7 @@ func TestCacheService_GenerateCacheKeyDeterminism(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	req := &models.LLMRequest{
@@ -1345,7 +1347,7 @@ func TestCacheService_GenerateCacheKeyDifferentRequests(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	req1 := &models.LLMRequest{
@@ -1395,7 +1397,7 @@ func TestCacheService_HashStringDirect(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	testCases := []struct {
@@ -1428,7 +1430,7 @@ func TestCacheService_HashStringUniqueness(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	inputs := []string{
@@ -1464,7 +1466,7 @@ func TestCacheService_EnabledGetLLMResponse(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1496,7 +1498,7 @@ func TestCacheService_EnabledSetLLMResponse(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1535,7 +1537,7 @@ func TestCacheService_EnabledGetMemorySources(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1558,7 +1560,7 @@ func TestCacheService_EnabledSetMemorySources(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1588,7 +1590,7 @@ func TestCacheService_EnabledGetProviderHealth(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1611,7 +1613,7 @@ func TestCacheService_EnabledSetProviderHealth(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1641,7 +1643,7 @@ func TestCacheService_EnabledGetUserSession(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1664,7 +1666,7 @@ func TestCacheService_EnabledSetUserSession(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1708,7 +1710,7 @@ func TestCacheService_EnabledGetAPIKey(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1731,7 +1733,7 @@ func TestCacheService_EnabledSetAPIKey(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1761,7 +1763,7 @@ func TestCacheService_EnabledInvalidateUserCache(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1799,7 +1801,7 @@ func TestCacheService_EnabledInvalidateUserCacheWithEmptyKeySet(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1822,7 +1824,7 @@ func TestCacheService_EnabledSetUserData(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1858,7 +1860,7 @@ func TestCacheService_EnabledGetUserData(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1887,7 +1889,7 @@ func TestCacheService_EnabledDeleteUserData(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1925,7 +1927,7 @@ func TestCacheService_EnabledClearExpired(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1948,7 +1950,7 @@ func TestCacheService_EnabledGetHitCount(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1971,7 +1973,7 @@ func TestCacheService_EnabledGetStats(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -1997,7 +1999,7 @@ func TestCacheService_EnabledClose(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	// Close should work even with failed Redis connection
@@ -2010,7 +2012,7 @@ func TestCacheService_CloseWithNilClient(t *testing.T) {
 		redisClient: nil,
 		enabled:     false,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	err := service.Close()
@@ -2030,7 +2032,7 @@ func TestCacheService_DeleteByPatternWithRedisClient(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -2054,7 +2056,7 @@ func TestCacheService_IncrementHitCountDirect(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -2068,7 +2070,7 @@ func TestCacheService_GenerateCacheKeyWithNilRequest(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	// This will panic if not handled - catching panic
@@ -2087,7 +2089,7 @@ func TestCacheService_GenerateCacheKeyWithEmptyModelParams(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	req := &models.LLMRequest{
@@ -2127,7 +2129,7 @@ func TestCacheService_UserKeyTrackingEdgeCases(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	// Track same key multiple times (should only count once)
@@ -2152,7 +2154,7 @@ func TestCacheService_GetUserKeyCountThreadSafety(t *testing.T) {
 	service := &CacheService{
 		enabled:    true,
 		defaultTTL: 30 * time.Minute,
-		userKeys:   make(map[string]map[string]struct{}),
+		userKeys:   safe.NewStore[string, map[string]struct{}](),
 	}
 
 	userID := "thread-safe-user"
@@ -2207,7 +2209,7 @@ func TestCacheService_InvalidateUserCacheDeletesTrackedKeys(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()
@@ -2239,7 +2241,7 @@ func TestCacheService_MultipleTTLDefaults(t *testing.T) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	ctx := context.Background()

@@ -3,9 +3,11 @@ package cache
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +29,7 @@ func setupCacheServiceWithMiniRedis(t *testing.T) (*CacheService, *miniredis.Min
 		redisClient: &RedisClient{client: client},
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	t.Cleanup(func() {
@@ -739,7 +741,7 @@ func TestCacheService_DeleteByPattern_NilClient(t *testing.T) {
 	service := &CacheService{
 		redisClient: nil,
 		enabled:     true,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 	ctx := context.Background()
 
@@ -751,7 +753,7 @@ func TestCacheService_DeleteByPattern_NilInnerClient(t *testing.T) {
 	service := &CacheService{
 		redisClient: &RedisClient{client: nil},
 		enabled:     true,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 	ctx := context.Background()
 
@@ -785,6 +787,52 @@ func TestCacheService_ConcurrentUserKeyTracking(t *testing.T) {
 	// All unique keys should be tracked
 	expectedCount := numGoroutines * keysPerGoroutine
 	assert.Equal(t, expectedCount, service.GetUserKeyCount(userID))
+}
+
+// TestCacheService_UserKeys_RaceFree is the CONST-029 verification
+// test for the nested-map COW migration. Readers taking a Snapshot of
+// a user's key set while writers concurrently trackUserKey/
+// untrackUserKey must not trip the race detector, and the snapshot
+// must be stable for its reader (no mutation under the reader's feet).
+func TestCacheService_UserKeys_RaceFree(t *testing.T) {
+	service, _ := setupCacheServiceWithMiniRedis(t)
+
+	const writers = 8
+	const readers = 16
+	const iterations = 500
+
+	var wg sync.WaitGroup
+
+	for w := 0; w < writers; w++ {
+		wg.Add(1)
+		go func(base int) {
+			defer wg.Done()
+			userID := fmt.Sprintf("user-%d", base%4) // 4 overlapping users
+			for i := 0; i < iterations; i++ {
+				key := fmt.Sprintf("k-%d-%d", base, i)
+				service.trackUserKey(userID, key)
+				if i%3 == 0 && i > 0 {
+					service.untrackUserKey(userID, fmt.Sprintf("k-%d-%d", base, i-1))
+				}
+			}
+		}(w)
+	}
+
+	for r := 0; r < readers; r++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			userID := fmt.Sprintf("user-%d", idx%4)
+			for i := 0; i < iterations; i++ {
+				// GetUserKeyCount internally does a Get then len — the
+				// returned map must be a frozen snapshot so iterating
+				// it concurrently with other writers is safe.
+				_ = service.GetUserKeyCount(userID)
+			}
+		}(r)
+	}
+
+	wg.Wait()
 }
 
 func TestNewCacheConfig_Values(t *testing.T) {
@@ -853,7 +901,7 @@ func BenchmarkCacheService_HashString(b *testing.B) {
 		redisClient: &RedisClient{client: client},
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	inputs := []string{
@@ -881,7 +929,7 @@ func BenchmarkCacheService_GenerateCacheKey(b *testing.B) {
 		redisClient: &RedisClient{client: client},
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	reqs := []*models.LLMRequest{
@@ -917,7 +965,7 @@ func BenchmarkCacheService_TrackUserKey(b *testing.B) {
 		redisClient: &RedisClient{client: client},
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	b.ResetTimer()
@@ -939,7 +987,7 @@ func BenchmarkCacheService_GetUserKeyCount(b *testing.B) {
 		redisClient: &RedisClient{client: client},
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}
 
 	// Pre-populate

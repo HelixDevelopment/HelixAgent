@@ -17,7 +17,6 @@ internal/bigdata/datalake_test.go:24:mockS3Server
 internal/bigdata/debate_integration_test.go:19:mockBroker
 internal/bigdata/integration.go:74:inMemoryEventLog
 internal/bigdata/memory_integration_test.go:19:mockMemoryStore
-internal/cache/cache_service.go:16:CacheService
 internal/cache/tiered_cache.go:76:l1Cache
 internal/cache/tiered_cache.go:91:tagIndex
 internal/clis/continueagent/lsp_client.go:20:LSPClient

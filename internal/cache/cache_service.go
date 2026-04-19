@@ -5,23 +5,35 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/models"
 )
 
-// CacheService provides comprehensive caching functionality
+// CacheService provides comprehensive caching functionality.
+//
+// Concurrent-safe by construction (CONST-029):
+//
+//   - userKeys is a safe.Store keyed by userID; the stored value is an
+//     IMMUTABLE `map[string]struct{}` snapshot of the user's cache
+//     keys. Every mutation goes through safe.Store.Update and
+//     allocates a brand-new inner map (copy-on-write); readers that
+//     called Get receive a frozen snapshot they can iterate safely
+//     without any lock. This structurally prevents the "the lock only
+//     guarded the outer map, not the pointed-at struct" race class.
+//   - The old userKeysMu sync.RWMutex is retired.
 type CacheService struct {
 	redisClient *RedisClient
 	enabled     bool
 	defaultTTL  time.Duration
 
-	// userKeys tracks cache keys per user for efficient invalidation
-	// Maps userID -> set of cache keys
-	userKeys   map[string]map[string]struct{}
-	userKeysMu sync.RWMutex
+	// userKeys tracks cache keys per user for efficient invalidation.
+	// userID -> frozen set of cache keys (inner map is immutable
+	// after being stored).
+	userKeys *safe.Store[string, map[string]struct{}]
 }
 
 // CacheKey represents different types of cache keys
@@ -54,7 +66,7 @@ func NewCacheService(cfg *config.Config) (*CacheService, error) {
 		return &CacheService{
 			enabled:    false,
 			defaultTTL: 30 * time.Minute,
-			userKeys:   make(map[string]map[string]struct{}),
+			userKeys:   safe.NewStore[string, map[string]struct{}](),
 		}, fmt.Errorf("Redis connection failed, caching disabled: %w", err)
 	}
 
@@ -62,7 +74,7 @@ func NewCacheService(cfg *config.Config) (*CacheService, error) {
 		redisClient: redisClient,
 		enabled:     true,
 		defaultTTL:  30 * time.Minute,
-		userKeys:    make(map[string]map[string]struct{}),
+		userKeys:    safe.NewStore[string, map[string]struct{}](),
 	}, nil
 }
 
@@ -249,16 +261,11 @@ func (c *CacheService) InvalidateUserCache(ctx context.Context, userID string) e
 		return fmt.Errorf("userID cannot be empty")
 	}
 
-	// First, delete any keys tracked in the in-memory user key set.
-	// Wrapped in an IIFE so defer guarantees mutex release even if the
-	// map operations panic (OOM, corrupt hash, etc.).
-	userKeySet := func() map[string]struct{} {
-		c.userKeysMu.Lock()
-		defer c.userKeysMu.Unlock()
-		set := c.userKeys[userID]
-		delete(c.userKeys, userID)
-		return set
-	}()
+	// Atomically take-and-clear the user's tracked key set.
+	// Store.Delete returns the prior value and whether it was present;
+	// no other writer can see the half-emptied state because Delete
+	// holds the store's write lock for the whole take-and-clear.
+	userKeySet, _ := c.userKeys.Delete(userID)
 
 	// Delete all tracked keys from Redis
 	if len(userKeySet) > 0 {
@@ -314,47 +321,59 @@ func (c *CacheService) deleteByPattern(ctx context.Context, pattern string) erro
 	return nil
 }
 
-// trackUserKey associates a cache key with a user for later invalidation
+// trackUserKey associates a cache key with a user for later invalidation.
+// The inner set is treated as immutable; each mutation allocates a new
+// map via copy-on-write inside the Store.Update callback, so a reader
+// that already called Get holds a snapshot that cannot be mutated
+// underneath them.
 func (c *CacheService) trackUserKey(userID, cacheKey string) {
 	if userID == "" || cacheKey == "" {
 		return
 	}
-
-	c.userKeysMu.Lock()
-	defer c.userKeysMu.Unlock()
-
-	if c.userKeys[userID] == nil {
-		c.userKeys[userID] = make(map[string]struct{})
-	}
-	c.userKeys[userID][cacheKey] = struct{}{}
+	c.userKeys.Update(userID, func(cur map[string]struct{}, _ bool) (map[string]struct{}, bool) {
+		if _, already := cur[cacheKey]; already {
+			return cur, true
+		}
+		next := make(map[string]struct{}, len(cur)+1)
+		for k := range cur {
+			next[k] = struct{}{}
+		}
+		next[cacheKey] = struct{}{}
+		return next, true
+	})
 }
 
-// untrackUserKey removes a cache key from user tracking
+// untrackUserKey removes a cache key from user tracking. If the removal
+// empties the set the user entry is deleted from the outer store.
 func (c *CacheService) untrackUserKey(userID, cacheKey string) {
 	if userID == "" || cacheKey == "" {
 		return
 	}
-
-	c.userKeysMu.Lock()
-	defer c.userKeysMu.Unlock()
-
-	if keySet, exists := c.userKeys[userID]; exists {
-		delete(keySet, cacheKey)
-		if len(keySet) == 0 {
-			delete(c.userKeys, userID)
+	c.userKeys.Update(userID, func(cur map[string]struct{}, present bool) (map[string]struct{}, bool) {
+		if !present {
+			return nil, false
 		}
-	}
+		if _, ok := cur[cacheKey]; !ok {
+			return cur, true
+		}
+		if len(cur) == 1 {
+			return nil, false // drop the whole user entry
+		}
+		next := make(map[string]struct{}, len(cur)-1)
+		for k := range cur {
+			if k != cacheKey {
+				next[k] = struct{}{}
+			}
+		}
+		return next, true
+	})
 }
 
-// GetUserKeyCount returns the number of cached keys for a user (for testing/monitoring)
+// GetUserKeyCount returns the number of cached keys for a user (for testing/monitoring).
+// Reads a frozen inner-map snapshot; len is safe without holding any lock.
 func (c *CacheService) GetUserKeyCount(userID string) int {
-	c.userKeysMu.RLock()
-	defer c.userKeysMu.RUnlock()
-
-	if keySet, exists := c.userKeys[userID]; exists {
-		return len(keySet)
-	}
-	return 0
+	set, _ := c.userKeys.Get(userID)
+	return len(set)
 }
 
 // SetUserData caches user-specific data with tracking for invalidation

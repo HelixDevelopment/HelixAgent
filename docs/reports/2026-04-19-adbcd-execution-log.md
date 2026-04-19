@@ -180,7 +180,38 @@ These are **real cloud-provider API probes** — verifying 40+ configured API ke
 
 **No forbidden manual container commands were used.** Constitutional path honoured end-to-end.
 
-**Persistence:** the `nohup` launch detaches from the Claude-session TTY; the binary will keep running after this session ends. Containers orchestrated by the binary remain until the binary shuts down, which happens on SIGTERM. Operator can verify manually via `ps -p 506274`, `curl http://localhost:7061/v1/health` (once listening), `tail -f /tmp/helixagent.log`.
+**Persistence:** the `nohup` launch detaches from the Claude-session TTY; the binary will keep running after this session ends. Containers orchestrated by the binary remain until the binary shuts down, which happens on SIGTERM. Operator can verify manually via `ps -p 506274`, `curl http://localhost:7061/v1/health`, `tail -f /tmp/helixagent.log`.
+
+**2026-04-19 05:09:31 — HTTP server UP on :7061 (after ~9 minutes of provider verification)**.
+
+Smoke-test results (while this session was still in progress):
+
+```
+$ curl -s http://localhost:7061/v1/health
+{"providers":{"healthy":14,"total":25,"unhealthy":11},
+ "status":"healthy","timestamp":1776564588}
+
+$ curl -s http://localhost:7061/v1/models
+{"object":"list","data":[{"id":"helixagent-debate","object":"model",…]}
+
+$ curl -sw "%{http_code}\n" -o /dev/null http://localhost:7061/v1/monitoring/status
+200
+```
+
+**System is running for manual testing.** Skills loaded: 1,164 across 16 categories with 4,236 triggers. 14 of 25 providers healthy (11 unhealthy — expected: missing API keys / rate-limited / deprecated models).
+
+## Race-debt progress (4 of 8 packages closed during the post-D loop)
+
+| Package | Status | BUGFIX |
+|---|---|---|
+| `internal/agentic` | ✓ closed (test fixture isolation) | #21 |
+| `internal/agents/swarm` | ✓ closed (real prod race — `CreateTask` map) | #22 |
+| `internal/clis/agents/kodu` | ✓ closed (real prod race — `Kodu.context` unsync) | #23 |
+| `internal/formatters/providers/native` | ✓ closed (test fixture shared metadata) | #24 |
+| `internal/handlers` | open | — |
+| `internal/handlers/extended` | open | — |
+| `internal/notifications` | open | — |
+| `internal/verifier/adapters` | open | — |
 
 ## D — `make full-test-matrix` target
 

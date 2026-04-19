@@ -49,7 +49,6 @@ internal/clis/pool.go:13:InstancePool
 internal/concurrency/deadlock/detector.go:19:Detector
 internal/containers/lazy_integration.go:19:LazyOrchestrator
 internal/conversation/infinite_context.go:27:ContextCache
-internal/database/memory.go:15:MemoryDB
 internal/database/query_optimizer.go:17:QueryOptimizer
 internal/database/query_optimizer.go:65:QueryCache
 internal/embeddings/models/registry.go:81:EmbeddingModelRegistry

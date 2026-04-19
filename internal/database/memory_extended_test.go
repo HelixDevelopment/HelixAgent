@@ -180,7 +180,7 @@ func TestMemoryDB_Close_Multiple(t *testing.T) {
 
 	err := db.Close()
 	assert.NoError(t, err)
-	assert.False(t, db.enabled)
+	assert.False(t, db.enabled.Load())
 
 	// Second close should also work
 	err = db.Close()

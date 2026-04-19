@@ -10,7 +10,7 @@ import (
 func TestNewMemoryDB(t *testing.T) {
 	db := NewMemoryDB()
 	require.NotNil(t, db)
-	assert.True(t, db.enabled)
+	assert.True(t, db.enabled.Load())
 	assert.NotNil(t, db.data)
 }
 
@@ -56,8 +56,8 @@ func TestMemoryDB_Close(t *testing.T) {
 
 	err := db.Close()
 	assert.NoError(t, err)
-	assert.False(t, db.enabled)
-	assert.Nil(t, db.data)
+	assert.False(t, db.enabled.Load())
+	assert.Equal(t, 0, db.data.Len())
 }
 
 func TestMemoryDB_HealthCheck(t *testing.T) {

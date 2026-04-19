@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,11 +15,9 @@ import (
 // MemoryDB implements DB interface using in-memory storage
 // This is used when PostgreSQL is not available (standalone/testing mode)
 type MemoryDB struct {
-	mu      sync.RWMutex
-	data    map[string][]map[string]any
-	enabled bool
-	// rowData stores the last inserted/updated row for QueryRow operations
-	rowData map[string]map[string][]any
+	data    *safe.Store[string, []map[string]any]
+	rowData *safe.Store[string, map[string][]any]
+	enabled atomic.Bool
 }
 
 // memoryRow implements Row interface for in-memory queries
@@ -58,11 +58,12 @@ func (r *memoryRow) Scan(dest ...any) error {
 // NewMemoryDB creates a new in-memory database
 func NewMemoryDB() *MemoryDB {
 	log.Println("Using in-memory database (standalone mode)")
-	return &MemoryDB{
-		data:    make(map[string][]map[string]any),
-		rowData: make(map[string]map[string][]any),
-		enabled: true,
+	db := &MemoryDB{
+		data:    safe.NewStore[string, []map[string]any](),
+		rowData: safe.NewStore[string, map[string][]any](),
 	}
+	db.enabled.Store(true)
+	return db
 }
 
 // NewPostgresDBWithFallback tries PostgreSQL first, falls back to memory
@@ -93,15 +94,10 @@ func (m *MemoryDB) Exec(query string, args ...any) error {
 }
 
 func (m *MemoryDB) Query(query string, args ...any) ([]any, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	return nil, nil
 }
 
 func (m *MemoryDB) QueryRow(query string, args ...any) Row {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	// Parse simple queries to extract table and key
 	// Supports: SELECT ... FROM table WHERE id = ?
 	// This is a simplified implementation for standalone mode
@@ -110,33 +106,41 @@ func (m *MemoryDB) QueryRow(query string, args ...any) Row {
 		return &memoryRow{values: nil, err: fmt.Errorf("unable to parse query: %s", query)}
 	}
 
-	// Check if we have data for this table
-	if tableData, ok := m.rowData[table]; ok {
-		// Try to find a matching row based on args
+	var result Row = &memoryRow{values: nil, err: fmt.Errorf("no rows found")}
+
+	// Update-as-read so the inner map is inspected under the Store's
+	// write lock, serialising with concurrent StoreRow callers that
+	// mutate the same inner map in place.
+	m.rowData.Update(table, func(inner map[string][]any, ok bool) (map[string][]any, bool) {
+		if !ok {
+			return inner, false
+		}
 		if len(args) > 0 {
 			key := fmt.Sprintf("%v", args[0])
-			if row, found := tableData[key]; found {
-				return &memoryRow{values: row, err: nil}
+			if row, found := inner[key]; found {
+				result = &memoryRow{values: row, err: nil}
+				return inner, true
 			}
 		}
-		// Return first row if no specific key requested
-		for _, row := range tableData {
-			return &memoryRow{values: row, err: nil}
+		for _, row := range inner {
+			result = &memoryRow{values: row, err: nil}
+			return inner, true
 		}
-	}
+		return inner, true
+	})
 
-	return &memoryRow{values: nil, err: fmt.Errorf("no rows found")}
+	return result
 }
 
 // StoreRow stores a row in the in-memory database for later retrieval
 func (m *MemoryDB) StoreRow(table string, key string, values []any) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.rowData[table] == nil {
-		m.rowData[table] = make(map[string][]any)
-	}
-	m.rowData[table][key] = values
+	m.rowData.Update(table, func(inner map[string][]any, ok bool) (map[string][]any, bool) {
+		if !ok || inner == nil {
+			inner = make(map[string][]any)
+		}
+		inner[key] = values
+		return inner, true
+	})
 }
 
 // extractTableFromQuery extracts the table name from a SQL query
@@ -157,15 +161,13 @@ func extractTableFromQuery(query string) string {
 }
 
 func (m *MemoryDB) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.data = nil
-	m.enabled = false
+	m.data.Clear()
+	m.enabled.Store(false)
 	return nil
 }
 
 func (m *MemoryDB) HealthCheck() error {
-	if !m.enabled {
+	if !m.enabled.Load() {
 		return fmt.Errorf("memory database closed")
 	}
 	return nil

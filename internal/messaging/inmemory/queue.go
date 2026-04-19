@@ -4,6 +4,8 @@ import (
 	"container/heap"
 	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 )
 
@@ -153,25 +155,23 @@ func (pq *priorityQueue) Pop() interface{} {
 }
 
 // SimpleQueue is a simple FIFO queue without priority.
+// mu is Pattern Zeta: it serialises compound "cap-check-then-append"
+// (Enqueue) and "empty-check-then-pop" (Dequeue) so the capacity
+// invariant holds under concurrent callers. The backing store is a
+// safe.Slice; there is no bare map/slice adjacent to mu.
 type SimpleQueue struct {
 	name     string
-	items    []*messaging.Message
+	items    *safe.Slice[*messaging.Message]
 	capacity int
-	head     int
-	tail     int
-	count    int
-	mu       sync.RWMutex
+	mu       sync.Mutex
 }
 
 // NewSimpleQueue creates a new simple FIFO queue.
 func NewSimpleQueue(name string, capacity int) *SimpleQueue {
 	return &SimpleQueue{
 		name:     name,
-		items:    make([]*messaging.Message, capacity),
+		items:    safe.NewSlice[*messaging.Message](),
 		capacity: capacity,
-		head:     0,
-		tail:     0,
-		count:    0,
 	}
 }
 
@@ -180,13 +180,11 @@ func (q *SimpleQueue) Enqueue(msg *messaging.Message) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.count >= q.capacity {
+	if q.items.Len() >= q.capacity {
 		return messaging.NewBrokerError(messaging.ErrCodePublishFailed, "queue capacity exceeded", nil)
 	}
 
-	q.items[q.tail] = msg
-	q.tail = (q.tail + 1) % q.capacity
-	q.count++
+	q.items.Append(msg)
 	return nil
 }
 
@@ -195,44 +193,32 @@ func (q *SimpleQueue) Dequeue() (*messaging.Message, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.count == 0 {
+	snap := q.items.Snapshot()
+	if len(snap) == 0 {
 		return nil, nil
 	}
 
-	msg := q.items[q.head]
-	q.items[q.head] = nil // avoid memory leak
-	q.head = (q.head + 1) % q.capacity
-	q.count--
+	msg := snap[0]
+	q.items.Replace(snap[1:])
 	return msg, nil
 }
 
 // Peek returns the oldest message without removing it.
 func (q *SimpleQueue) Peek() (*messaging.Message, error) {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	if q.count == 0 {
-		return nil, nil
+	if v, ok := q.items.At(0); ok {
+		return v, nil
 	}
-
-	return q.items[q.head], nil
+	return nil, nil
 }
 
 // Len returns the number of messages in the queue.
 func (q *SimpleQueue) Len() int {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	return q.count
+	return q.items.Len()
 }
 
 // Clear removes all messages from the queue.
 func (q *SimpleQueue) Clear() {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.items = make([]*messaging.Message, q.capacity)
-	q.head = 0
-	q.tail = 0
-	q.count = 0
+	q.items.Clear()
 }
 
 // Name returns the queue name.
@@ -242,23 +228,23 @@ func (q *SimpleQueue) Name() string {
 
 // IsFull returns true if the queue is at capacity.
 func (q *SimpleQueue) IsFull() bool {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	return q.count >= q.capacity
+	return q.items.Len() >= q.capacity
 }
 
 // IsEmpty returns true if the queue is empty.
 func (q *SimpleQueue) IsEmpty() bool {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	return q.count == 0
+	return q.items.Len() == 0
 }
 
 // DelayedQueue is a queue that delays message delivery.
+// delayMu is Pattern Zeta: it serialises the compound
+// "snapshot-partition-replace" in ProcessDelayed so the two passes
+// (what's ready / what stays) both see a consistent view. The
+// backing delayed-items store is a safe.Slice.
 type DelayedQueue struct {
 	*Queue
-	delayedItems []*delayedItem
-	delayMu      sync.RWMutex
+	delayedItems *safe.Slice[*delayedItem]
+	delayMu      sync.Mutex
 }
 
 type delayedItem struct {
@@ -270,16 +256,13 @@ type delayedItem struct {
 func NewDelayedQueue(name string, capacity int) *DelayedQueue {
 	return &DelayedQueue{
 		Queue:        NewQueue(name, capacity),
-		delayedItems: make([]*delayedItem, 0),
+		delayedItems: safe.NewSlice[*delayedItem](),
 	}
 }
 
 // EnqueueDelayed adds a message with a delivery delay.
 func (q *DelayedQueue) EnqueueDelayed(msg *messaging.Message, delayNs int64) error {
-	q.delayMu.Lock()
-	defer q.delayMu.Unlock()
-
-	q.delayedItems = append(q.delayedItems, &delayedItem{
+	q.delayedItems.Append(&delayedItem{
 		message:   msg,
 		deliverAt: delayNs,
 	})
@@ -291,10 +274,11 @@ func (q *DelayedQueue) ProcessDelayed(nowNs int64) int {
 	q.delayMu.Lock()
 	defer q.delayMu.Unlock()
 
+	snap := q.delayedItems.Snapshot()
 	count := 0
-	remaining := make([]*delayedItem, 0, len(q.delayedItems))
+	remaining := make([]*delayedItem, 0, len(snap))
 
-	for _, item := range q.delayedItems {
+	for _, item := range snap {
 		if item.deliverAt <= nowNs {
 			if err := q.Enqueue(item.message); err == nil {
 				count++
@@ -304,13 +288,11 @@ func (q *DelayedQueue) ProcessDelayed(nowNs int64) int {
 		}
 	}
 
-	q.delayedItems = remaining
+	q.delayedItems.Replace(remaining)
 	return count
 }
 
 // DelayedCount returns the number of delayed messages.
 func (q *DelayedQueue) DelayedCount() int {
-	q.delayMu.RLock()
-	defer q.delayMu.RUnlock()
-	return len(q.delayedItems)
+	return q.delayedItems.Len()
 }

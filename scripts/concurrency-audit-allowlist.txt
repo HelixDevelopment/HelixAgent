@@ -116,8 +116,6 @@ internal/messaging/hub_test.go:419:hubTestMockBroker
 internal/messaging/hub_test.go:530:hubTestMockTaskQueueBroker
 internal/messaging/hub_test.go:649:hubTestMockEventStreamBroker
 internal/messaging/inmemory/broker.go:14:Broker
-internal/messaging/inmemory/queue.go:156:SimpleQueue
-internal/messaging/inmemory/queue.go:258:DelayedQueue
 internal/messaging/inmemory/stream.go:12:Topic
 internal/messaging/inmemory/stream.go:173:Partition
 internal/messaging/inmemory/stream.go:270:StreamBroker

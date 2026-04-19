@@ -6,17 +6,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"gopkg.in/yaml.v3"
 )
 
-// TemplateManager handles template CRUD operations
+// TemplateManager handles template CRUD operations.
+//
+// Concurrent-safe by construction (CONST-029): templates is a safe.Store.
+// Create / Update / Delete use Update for atomic check-then-set; Get
+// and List use direct lock-free reads.
 type TemplateManager struct {
 	templatesDir string
-	templates    map[string]*ContextTemplate
-	mu           sync.RWMutex
+	templates    *safe.Store[string, *ContextTemplate]
 }
 
 // Manager is an alias for TemplateManager for backward compatibility
@@ -46,7 +49,7 @@ func NewManager(config ManagerConfig) (*TemplateManager, error) {
 
 	m := &TemplateManager{
 		templatesDir: config.TemplatesDir,
-		templates:    make(map[string]*ContextTemplate),
+		templates:    safe.NewStore[string, *ContextTemplate](),
 	}
 
 	// Load built-in templates
@@ -68,35 +71,26 @@ func (m *TemplateManager) Create(template *ContextTemplate) error {
 		return fmt.Errorf("invalid template: %w", err)
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, exists := m.templates[template.Metadata.ID]; exists {
-		return fmt.Errorf("template with ID %s already exists", template.Metadata.ID)
-	}
-
 	template.Metadata.CreatedAt = time.Now()
 	template.Metadata.UpdatedAt = time.Now()
 
-	// Save to file
+	// Save to file (outside the Store lock to keep I/O out of the critical section)
 	if err := m.saveTemplate(template); err != nil {
 		return fmt.Errorf("failed to save template: %w", err)
 	}
 
-	m.templates[template.Metadata.ID] = template
+	if _, stored := m.templates.PutIfAbsent(template.Metadata.ID, template); !stored {
+		return fmt.Errorf("template with ID %s already exists", template.Metadata.ID)
+	}
 	return nil
 }
 
 // Get retrieves a template by ID
 func (m *TemplateManager) Get(id string) (*ContextTemplate, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	template, exists := m.templates[id]
+	template, exists := m.templates.Get(id)
 	if !exists {
 		return nil, fmt.Errorf("template %s not found", id)
 	}
-
 	return template, nil
 }
 
@@ -106,10 +100,7 @@ func (m *TemplateManager) Update(template *ContextTemplate) error {
 		return fmt.Errorf("invalid template: %w", err)
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, exists := m.templates[template.Metadata.ID]; !exists {
+	if !m.templates.Has(template.Metadata.ID) {
 		return fmt.Errorf("template %s not found", template.Metadata.ID)
 	}
 
@@ -119,66 +110,48 @@ func (m *TemplateManager) Update(template *ContextTemplate) error {
 		return fmt.Errorf("failed to save template: %w", err)
 	}
 
-	m.templates[template.Metadata.ID] = template
+	m.templates.Put(template.Metadata.ID, template)
 	return nil
 }
 
 // Delete deletes a template
 func (m *TemplateManager) Delete(id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, exists := m.templates[id]; !exists {
+	if !m.templates.Has(id) {
 		return fmt.Errorf("template %s not found", id)
 	}
 
-	// Delete file
 	path := m.getTemplatePath(id)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to delete template file: %w", err)
 	}
 
-	delete(m.templates, id)
+	m.templates.Delete(id)
 	return nil
 }
 
 // List returns all templates
 func (m *TemplateManager) List() []*ContextTemplate {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	list := make([]*ContextTemplate, 0, len(m.templates))
-	for _, template := range m.templates {
-		list = append(list, template)
-	}
-
-	return list
+	return m.templates.Values()
 }
 
 // ListByTag returns templates with a specific tag
 func (m *TemplateManager) ListByTag(tag string) []*ContextTemplate {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var list []*ContextTemplate
-	for _, template := range m.templates {
+	m.templates.Range(func(_ string, template *ContextTemplate) bool {
 		for _, t := range template.Metadata.Tags {
 			if strings.EqualFold(t, tag) {
 				list = append(list, template)
 				break
 			}
 		}
-	}
-
+		return true
+	})
 	return list
 }
 
 // ApplyTemplate applies a template with variables and returns the resolved context
 func (m *TemplateManager) ApplyTemplate(templateID string, variables map[string]string) (*ResolvedContext, error) {
-	m.mu.RLock()
-	template, exists := m.templates[templateID]
-	m.mu.RUnlock()
-
+	template, exists := m.templates.Get(templateID)
 	if !exists {
 		return nil, fmt.Errorf("template %s not found", templateID)
 	}
@@ -231,7 +204,7 @@ func (m *TemplateManager) loadBuiltInTemplates() error {
 				return err
 			}
 		}
-		m.templates[template.Metadata.ID] = template
+		m.templates.Put(template.Metadata.ID, template)
 	}
 
 	return nil
@@ -264,7 +237,7 @@ func (m *TemplateManager) loadUserTemplates() error {
 			continue
 		}
 
-		m.templates[template.Metadata.ID] = &template
+		m.templates.Put(template.Metadata.ID, &template)
 	}
 
 	return nil

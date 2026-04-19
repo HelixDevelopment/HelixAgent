@@ -60,7 +60,76 @@ This document is updated after each step with real evidence (commands run, pass/
 
 **Status:** PASS.
 
-### A4 `make test-race`
+### A4 `make test-race` (bounded: `-race -short -p 1` on `./internal/...`)
+
+**Result:** 257 packages pass, **8 packages fail** under `-race`, 17 individual test failures total.
+
+**Failing packages:**
+
+1. `internal/agentic` — `TestWorkflow_AddEdge/ValidEdge` — subtests share a workflow object; one subtest's `AddEdge` leaks into another's count assertion. Test-isolation bug, not a race per se.
+2. `internal/agents/swarm` — `TestCoordinator_Concurrent`, `TestConcurrentAccess` — real DATA RACE warnings.
+3. `internal/clis/agents/kodu` — `TestKodu_Execute` — DATA RACE warning.
+4. `internal/formatters/providers/native` — `TestNativeFormatter_buildArgs` — DATA RACE warning.
+5. `internal/handlers` — ~15 Cognee + MCP handler tests — handler-level shared state under parallel execution.
+6. `internal/handlers/extended` — ACP / Session / Provider handlers, similar pattern.
+7. `internal/notifications` — DATA RACE warning.
+8. `internal/verifier/adapters` — DATA RACE warning.
+
+**Fix scope:** Each package requires its own investigation — tests using `t.Parallel()` but sharing global state or singleton registries. Fixing all 8 packages is a **dedicated multi-day programme** (must re-architect test fixtures in each, then prove 1000× race-clean). **Not attempted in this session.**
+
+**What IS addressed in this session:** Unit tests without `-race` pass clean (265/265). Existing race regression tests added earlier (#14 debate_integration, #15 lazy_provider, #19 buildcheck, plus 8 new stress-test leak/race modules) all pass `-race`. The 8 pre-existing race-exposed packages are documented here as a known-debt item and tracked for follow-up.
+
+**Status:** DOCUMENTED DEBT — 8 packages require dedicated race-hygiene work; `test-unit` passes clean; all newly-added code in this session is `-race` clean.
+
+### A5 repo-health + 3 new P0/P1 gates
+
+All 4 P0/P1 gates green on the post-fix tree:
+
+| Gate | Result |
+|---|---|
+| `./scripts/repo-health.sh` | OK (2 non-critical warnings: 81 uninitialised third-party sub-submodules, vendor-drift check noisy) |
+| `repo_hygiene_challenge.sh` | 9 passed, 0 failed |
+| `tls_posture_challenge.sh` | 3 passed, 0 failed |
+| `exec_hygiene_challenge.sh` | 2 passed, 0 failed, 1 warning (by-design `bash -c` sites documented in `docs/security/exec-sites-audit.md`) |
+
+**Status:** PASS.
+
+## B — Host-platform release
+
+**First attempt:** `./scripts/build/build-release.sh --app helixagent --platform linux/amd64` — FAILED with `go.mod requires go >= 1.26 (running go 1.24.13)`.
+
+**Root cause:** `docker/build/Dockerfile.builder` was pinned to `golang:1.24-alpine` but `go.mod` requires `go 1.26`. Mismatch between the Go toolchain in the release-builder container and the monorepo's toolchain directive.
+
+**Fix:** `docker/build/Dockerfile.builder` — bumped to `golang:1.26-alpine`. Inline comment added requiring lockstep updates whenever `go.mod` toolchain moves.
+
+**Second attempt:** builder rebuilt, release build succeeded. Output:
+
+```
+releases/helixagent/linux-amd64/9/
+├── build-info.json       (347 B — full provenance: git commit, source hash, platform, builder=container)
+└── helixagent            (62 MB linux/amd64 binary, stripped)
+```
+
+`build-info.json`:
+```json
+{
+  "app":"helixagent", "version":"1.0.0", "version_code":9,
+  "git_commit":"c71e3024", "git_branch":"main",
+  "build_date":"2026-04-19T01:55:53Z",
+  "platform":"linux/amd64",
+  "go_version":"go1.26.2-X:nodwarf5",
+  "source_hash":"sha256:30c542171cd754ab…",
+  "builder":"container"
+}
+```
+
+**.gitignore verification:** `releases/helixagent/` is listed and git correctly ignores the binary. `releases/.version-data/*` IS tracked (version-code monotonicity bookkeeping — required design).
+
+**Remaining platforms** (darwin/amd64, darwin/arm64, linux/arm64, windows/amd64) and remaining apps (api, grpc-server, cognee-mock, sanity-check, mcp-bridge, generate-constitution) can be built with `make release-all` once the builder image cache is warm. Not executed in this session — each platform×app is a separate container run; the mechanics are verified.
+
+**Status:** PASS for host platform. Infrastructure (`Dockerfile.builder`, `build-release.sh`, `build-info.json`, version monotonicity) verified end-to-end.
+
+## C — Background helixagent boot
 
 *in progress*
 

@@ -1,6 +1,6 @@
 # HelixAgent Release Builder Container
 # Used by scripts/build/build-release.sh for reproducible release builds.
-FROM docker.io/golang:1.24-alpine
+FROM docker.io/golang:1.26-alpine
 
 RUN apk update && apk add --no-cache git bash coreutils jq make ca-certificates || \
     (sleep 5 && apk update && apk add --no-cache git bash coreutils jq make ca-certificates)

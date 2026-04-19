@@ -25,6 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // PoolConfig holds configuration for the HTTP client pool
@@ -99,10 +101,21 @@ func (m *PoolMetrics) AverageLatency() time.Duration {
 	return time.Duration(totalUs/count) * time.Microsecond
 }
 
-// HTTPClientPool manages reusable HTTP clients per host
+// HTTPClientPool manages reusable HTTP clients per host.
+//
+// Concurrent-safe by construction (CONST-029): clients is a safe.Store.
+// http.Client is goroutine-safe by design, so once stored a client can
+// be handed out lock-free.
+//
+// buildMu (sync.Mutex, no collection adjacency — audit-clean) serialises
+// transport.Clone() calls across all hosts. Without it, concurrent
+// transport.Clone() races with net/http's http2configureTransports
+// (sync.Once) writing to the original transport's tls.Config while
+// quic-go's dial path reads it via tls.Config.Clone() — race-detector-
+// caught in TestHTTP3ProviderTransport_RoundTrip_FallbackToHTTP.
 type HTTPClientPool struct {
-	clients   map[string]*http.Client
-	mu        sync.RWMutex
+	clients   *safe.Store[string, *http.Client]
+	buildMu   sync.Mutex // serialises transport.Clone() across hosts
 	config    *PoolConfig
 	metrics   *PoolMetrics
 	transport *http.Transport
@@ -140,42 +153,30 @@ func NewHTTPClientPool(config *PoolConfig) *HTTPClientPool {
 	}
 
 	return &HTTPClientPool{
-		clients:   make(map[string]*http.Client),
+		clients:   safe.NewStore[string, *http.Client](),
 		config:    config,
 		metrics:   &PoolMetrics{},
 		transport: transport,
 	}
 }
 
-// GetClient returns an HTTP client for the given host
-// If a client doesn't exist for the host, a new one is created
+// GetClient returns an HTTP client for the given host.
+// If a client doesn't exist for the host, a new one is created.
 func (p *HTTPClientPool) GetClient(host string) *http.Client {
-	p.mu.RLock()
-	client, exists := p.clients[host]
-	p.mu.RUnlock()
-
-	if exists {
+	if client, exists := p.clients.Get(host); exists {
 		return client
 	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	// Double-check after acquiring write lock
-	if client, exists = p.clients[host]; exists {
+	// Serialise transport.Clone() across hosts (see buildMu doc).
+	p.buildMu.Lock()
+	defer p.buildMu.Unlock()
+	if client, exists := p.clients.Get(host); exists {
 		return client
 	}
-
-	// Create new client with a cloned transport for per-host isolation.
-	// Clone() copies TLS config and dial settings but gives each host its
-	// own idle-connection pool, preventing one host's connection state from
-	// leaking into another's.
-	client = &http.Client{
+	client := &http.Client{
 		Transport: p.transport.Clone(),
 		Timeout:   p.config.ResponseHeaderTimeout + p.config.DialTimeout,
 	}
-
-	p.clients[host] = client
+	p.clients.Put(host, client)
 	return client
 }
 
@@ -344,9 +345,7 @@ func (p *HTTPClientPool) Metrics() *PoolMetrics {
 
 // ClientCount returns the number of clients in the pool
 func (p *HTTPClientPool) ClientCount() int {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return len(p.clients)
+	return p.clients.Len()
 }
 
 // CloseIdleConnections closes any idle connections
@@ -356,11 +355,8 @@ func (p *HTTPClientPool) CloseIdleConnections() {
 
 // Close closes the pool and all connections
 func (p *HTTPClientPool) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	p.transport.CloseIdleConnections()
-	p.clients = make(map[string]*http.Client)
+	p.clients.Clear()
 	return nil
 }
 

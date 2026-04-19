@@ -4,21 +4,35 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
 // Registry manages the collection of available skills.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - Per-collection safe.Store fields hold the skill index. Reads are
+//     lock-free.
+//   - writeMu serialises the rare multi-map writes (Load, RegisterSkill,
+//     Remove) so concurrent writers cannot tangle the four indexes.
+//     Readers do not take writeMu — momentary cross-map inconsistency
+//     during a Load is acceptable for the registry's read patterns
+//     (Search dedupes; Get/GetByCategory/GetByTrigger each touch one
+//     index).
+//   - stats is an atomic.Pointer[RegistryStats]; updateStats builds a
+//     fresh value and Stores it.
 type Registry struct {
-	mu         sync.RWMutex
-	skills     map[string]*Skill   // name -> skill
-	byCategory map[string][]*Skill // category -> skills
-	byTrigger  map[string][]*Skill // trigger -> skills
-	categories map[string]*SkillCategory
+	writeMu    sync.Mutex // serialises Load, Remove, RegisterSkill
+	skills     *safe.Store[string, *Skill]
+	byCategory *safe.Store[string, []*Skill]
+	byTrigger  *safe.Store[string, []*Skill]
+	categories *safe.Store[string, *SkillCategory]
 	parser     *Parser
 	config     *SkillConfig
-	stats      *RegistryStats
+	stats      atomic.Pointer[RegistryStats]
 	watcher    *DirectoryWatcher
 	log        *logrus.Logger
 }
@@ -37,16 +51,17 @@ func NewRegistry(config *SkillConfig) *Registry {
 		config = DefaultSkillConfig()
 	}
 
-	return &Registry{
-		skills:     make(map[string]*Skill),
-		byCategory: make(map[string][]*Skill),
-		byTrigger:  make(map[string][]*Skill),
-		categories: make(map[string]*SkillCategory),
+	r := &Registry{
+		skills:     safe.NewStore[string, *Skill](),
+		byCategory: safe.NewStore[string, []*Skill](),
+		byTrigger:  safe.NewStore[string, []*Skill](),
+		categories: safe.NewStore[string, *SkillCategory](),
 		parser:     NewParser(),
 		config:     config,
-		stats:      &RegistryStats{SkillsByCategory: make(map[string]int)},
 		log:        logrus.New(),
 	}
+	r.stats.Store(&RegistryStats{SkillsByCategory: make(map[string]int)})
+	return r
 }
 
 // SetLogger sets the logger for the registry.
@@ -56,8 +71,8 @@ func (r *Registry) SetLogger(log *logrus.Logger) {
 
 // Load loads all skills from the configured directory.
 func (r *Registry) Load(ctx context.Context) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 
 	r.log.WithField("directory", r.config.SkillsDirectory).Info("Loading skills")
 
@@ -67,22 +82,22 @@ func (r *Registry) Load(ctx context.Context) error {
 	}
 
 	// Clear existing data
-	r.skills = make(map[string]*Skill)
-	r.byCategory = make(map[string][]*Skill)
-	r.byTrigger = make(map[string][]*Skill)
+	r.skills.Clear()
+	r.byCategory.Clear()
+	r.byTrigger.Clear()
 
 	// Register each skill
 	for _, skill := range skills {
-		r.registerSkill(skill)
+		r.registerSkillLocked(skill)
 	}
 
 	// Update stats
-	r.updateStats()
+	r.updateStatsLocked()
 
 	r.log.WithFields(logrus.Fields{
-		"total":      len(r.skills),
-		"categories": len(r.byCategory),
-		"triggers":   len(r.byTrigger),
+		"total":      r.skills.Len(),
+		"categories": r.byCategory.Len(),
+		"triggers":   r.byTrigger.Len(),
 	}).Info("Skills loaded successfully")
 
 	return nil
@@ -90,8 +105,8 @@ func (r *Registry) Load(ctx context.Context) error {
 
 // LoadFromPath loads skills from a specific path.
 func (r *Registry) LoadFromPath(ctx context.Context, path string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 
 	skills, err := r.parser.ParseDirectory(path)
 	if err != nil {
@@ -99,38 +114,42 @@ func (r *Registry) LoadFromPath(ctx context.Context, path string) error {
 	}
 
 	for _, skill := range skills {
-		r.registerSkill(skill)
+		r.registerSkillLocked(skill)
 	}
 
-	r.updateStats()
+	r.updateStatsLocked()
 	return nil
 }
 
 // RegisterSkill registers a single skill.
 func (r *Registry) RegisterSkill(skill *Skill) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.registerSkill(skill)
-	r.updateStats()
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
+	r.registerSkillLocked(skill)
+	r.updateStatsLocked()
 }
 
-// registerSkill internal registration (caller must hold lock).
-func (r *Registry) registerSkill(skill *Skill) {
+// registerSkillLocked internal registration (caller must hold writeMu).
+func (r *Registry) registerSkillLocked(skill *Skill) {
 	if skill.Name == "" {
 		return
 	}
 
 	// Register by name
-	r.skills[skill.Name] = skill
+	r.skills.Put(skill.Name, skill)
 
 	// Register by category
 	if skill.Category != "" {
-		r.byCategory[skill.Category] = append(r.byCategory[skill.Category], skill)
+		r.byCategory.Update(skill.Category, func(curr []*Skill, _ bool) ([]*Skill, bool) {
+			return append(curr, skill), true
+		})
 	}
 
 	// Register by triggers
 	for _, trigger := range skill.TriggerPhrases {
-		r.byTrigger[trigger] = append(r.byTrigger[trigger], skill)
+		r.byTrigger.Update(trigger, func(curr []*Skill, _ bool) ([]*Skill, bool) {
+			return append(curr, skill), true
+		})
 	}
 
 	r.log.WithFields(logrus.Fields{
@@ -142,24 +161,15 @@ func (r *Registry) registerSkill(skill *Skill) {
 
 // Get retrieves a skill by name.
 func (r *Registry) Get(name string) (*Skill, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	skill, ok := r.skills[name]
-	return skill, ok
+	return r.skills.Get(name)
 }
 
 // GetByCategory retrieves all skills in a category.
 func (r *Registry) GetByCategory(category string) []*Skill {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	skills, ok := r.byCategory[category]
+	skills, ok := r.byCategory.Get(category)
 	if !ok {
 		return nil
 	}
-
-	// Return a copy
 	result := make([]*Skill, len(skills))
 	copy(result, skills)
 	return result
@@ -167,14 +177,10 @@ func (r *Registry) GetByCategory(category string) []*Skill {
 
 // GetByTrigger retrieves skills that match a trigger phrase.
 func (r *Registry) GetByTrigger(trigger string) []*Skill {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	skills, ok := r.byTrigger[trigger]
+	skills, ok := r.byTrigger.Get(trigger)
 	if !ok {
 		return nil
 	}
-
 	result := make([]*Skill, len(skills))
 	copy(result, skills)
 	return result
@@ -182,112 +188,109 @@ func (r *Registry) GetByTrigger(trigger string) []*Skill {
 
 // GetAll returns all registered skills.
 func (r *Registry) GetAll() []*Skill {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	result := make([]*Skill, 0, len(r.skills))
-	for _, skill := range r.skills {
-		result = append(result, skill)
-	}
-	return result
+	return r.skills.Values()
 }
 
 // GetCategories returns all category names.
 func (r *Registry) GetCategories() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	categories := make([]string, 0, len(r.byCategory))
-	for cat := range r.byCategory {
-		categories = append(categories, cat)
-	}
-	return categories
+	return r.byCategory.Keys()
 }
 
 // GetTriggers returns all trigger phrases.
 func (r *Registry) GetTriggers() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	triggers := make([]string, 0, len(r.byTrigger))
-	for trigger := range r.byTrigger {
-		triggers = append(triggers, trigger)
-	}
-	return triggers
+	return r.byTrigger.Keys()
 }
 
 // Remove removes a skill from the registry.
 func (r *Registry) Remove(name string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 
-	skill, ok := r.skills[name]
+	skill, ok := r.skills.Get(name)
 	if !ok {
 		return false
 	}
 
 	// Remove from main map
-	delete(r.skills, name)
+	r.skills.Delete(name)
 
 	// Remove from category index
 	if skill.Category != "" {
-		skills := r.byCategory[skill.Category]
-		for i, s := range skills {
-			if s.Name == name {
-				r.byCategory[skill.Category] = append(skills[:i], skills[i+1:]...)
-				break
+		r.byCategory.Update(skill.Category, func(skills []*Skill, present bool) ([]*Skill, bool) {
+			if !present {
+				return nil, false
 			}
-		}
+			for i, s := range skills {
+				if s.Name == name {
+					skills = append(skills[:i], skills[i+1:]...)
+					break
+				}
+			}
+			return skills, len(skills) > 0
+		})
 	}
 
 	// Remove from trigger index
 	for _, trigger := range skill.TriggerPhrases {
-		skills := r.byTrigger[trigger]
-		for i, s := range skills {
-			if s.Name == name {
-				r.byTrigger[trigger] = append(skills[:i], skills[i+1:]...)
-				break
+		r.byTrigger.Update(trigger, func(skills []*Skill, present bool) ([]*Skill, bool) {
+			if !present {
+				return nil, false
 			}
-		}
+			for i, s := range skills {
+				if s.Name == name {
+					skills = append(skills[:i], skills[i+1:]...)
+					break
+				}
+			}
+			return skills, len(skills) > 0
+		})
 	}
 
-	r.updateStats()
+	r.updateStatsLocked()
 	return true
 }
 
 // Stats returns registry statistics.
 func (r *Registry) Stats() *RegistryStats {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	// Return a copy
-	stats := &RegistryStats{
-		TotalSkills:      r.stats.TotalSkills,
-		SkillsByCategory: make(map[string]int),
-		TotalTriggers:    r.stats.TotalTriggers,
-		LoadedAt:         r.stats.LoadedAt,
-		LastUpdated:      r.stats.LastUpdated,
+	current := r.stats.Load()
+	if current == nil {
+		return &RegistryStats{SkillsByCategory: make(map[string]int)}
 	}
-	for k, v := range r.stats.SkillsByCategory {
+	stats := &RegistryStats{
+		TotalSkills:      current.TotalSkills,
+		SkillsByCategory: make(map[string]int, len(current.SkillsByCategory)),
+		TotalTriggers:    current.TotalTriggers,
+		LoadedAt:         current.LoadedAt,
+		LastUpdated:      current.LastUpdated,
+	}
+	for k, v := range current.SkillsByCategory {
 		stats.SkillsByCategory[k] = v
 	}
 	return stats
 }
 
-// updateStats recalculates registry statistics.
-func (r *Registry) updateStats() {
-	r.stats.TotalSkills = len(r.skills)
-	r.stats.TotalTriggers = len(r.byTrigger)
-	r.stats.LastUpdated = time.Now()
-
-	if r.stats.LoadedAt.IsZero() {
-		r.stats.LoadedAt = time.Now()
+// updateStatsLocked recalculates registry statistics. Caller must hold writeMu.
+func (r *Registry) updateStatsLocked() {
+	prev := r.stats.Load()
+	loadedAt := time.Time{}
+	if prev != nil {
+		loadedAt = prev.LoadedAt
 	}
-
-	r.stats.SkillsByCategory = make(map[string]int)
-	for cat, skills := range r.byCategory {
-		r.stats.SkillsByCategory[cat] = len(skills)
+	if loadedAt.IsZero() {
+		loadedAt = time.Now()
 	}
+	next := &RegistryStats{
+		TotalSkills:      r.skills.Len(),
+		TotalTriggers:    r.byTrigger.Len(),
+		LoadedAt:         loadedAt,
+		LastUpdated:      time.Now(),
+		SkillsByCategory: make(map[string]int, r.byCategory.Len()),
+	}
+	r.byCategory.Range(func(cat string, skills []*Skill) bool {
+		next.SkillsByCategory[cat] = len(skills)
+		return true
+	})
+	r.stats.Store(next)
 }
 
 // EnableHotReload enables automatic reloading of skills on file changes.
@@ -339,15 +342,12 @@ func (w *DirectoryWatcher) start() {
 
 // Search searches for skills matching a query.
 func (r *Registry) Search(query string) []*Skill {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	query = normalizeQuery(query)
 	matches := make([]*Skill, 0)
 	seen := make(map[string]bool)
 
 	// Search by trigger
-	for trigger, skills := range r.byTrigger {
+	r.byTrigger.Range(func(trigger string, skills []*Skill) bool {
 		if containsIgnoreCase(trigger, query) || containsIgnoreCase(query, trigger) {
 			for _, skill := range skills {
 				if !seen[skill.Name] {
@@ -356,23 +356,26 @@ func (r *Registry) Search(query string) []*Skill {
 				}
 			}
 		}
-	}
+		return true
+	})
 
 	// Search by name
-	for name, skill := range r.skills {
+	r.skills.Range(func(name string, skill *Skill) bool {
 		if !seen[name] && containsIgnoreCase(name, query) {
 			matches = append(matches, skill)
 			seen[name] = true
 		}
-	}
+		return true
+	})
 
 	// Search by description
-	for _, skill := range r.skills {
+	r.skills.Range(func(_ string, skill *Skill) bool {
 		if !seen[skill.Name] && containsIgnoreCase(skill.Description, query) {
 			matches = append(matches, skill)
 			seen[skill.Name] = true
 		}
-	}
+		return true
+	})
 
 	return matches
 }

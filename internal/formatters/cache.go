@@ -3,16 +3,15 @@ package formatters
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
 // FormatterCache caches formatting results
 type FormatterCache struct {
-	mu          sync.RWMutex
-	cache       map[string]*cacheEntry
+	cache       *safe.Store[string, *cacheEntry]
 	config      *CacheConfig
 	logger      *logrus.Logger
 	stopCleanup chan struct{}
@@ -25,7 +24,10 @@ type CacheConfig struct {
 	CleanupFreq time.Duration // Cleanup frequency
 }
 
-// cacheEntry represents a cached result
+// cacheEntry represents a cached result. Fields are set at
+// construction and never mutated afterwards, so a snapshot pointer
+// returned from the Store is safe to dereference without further
+// synchronisation.
 type cacheEntry struct {
 	result    *FormatResult
 	timestamp time.Time
@@ -34,7 +36,7 @@ type cacheEntry struct {
 // NewFormatterCache creates a new formatter cache
 func NewFormatterCache(config *CacheConfig, logger *logrus.Logger) *FormatterCache {
 	cache := &FormatterCache{
-		cache:       make(map[string]*cacheEntry),
+		cache:       safe.NewStore[string, *cacheEntry](),
 		config:      config,
 		logger:      logger,
 		stopCleanup: make(chan struct{}),
@@ -48,11 +50,8 @@ func NewFormatterCache(config *CacheConfig, logger *logrus.Logger) *FormatterCac
 
 // Get retrieves a cached result
 func (c *FormatterCache) Get(req *FormatRequest) (*FormatResult, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	key := c.cacheKey(req)
-	entry, exists := c.cache[key]
+	entry, exists := c.cache.Get(key)
 	if !exists {
 		return nil, false
 	}
@@ -69,38 +68,28 @@ func (c *FormatterCache) Get(req *FormatRequest) (*FormatResult, bool) {
 
 // Set stores a result in the cache
 func (c *FormatterCache) Set(req *FormatRequest, result *FormatResult) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Check if cache is full
-	if len(c.cache) >= c.config.MaxSize {
+	if c.cache.Len() >= c.config.MaxSize {
 		c.evictOldest()
 	}
 
 	key := c.cacheKey(req)
-	c.cache[key] = &cacheEntry{
+	c.cache.Put(key, &cacheEntry{
 		result:    result,
 		timestamp: time.Now(),
-	}
+	})
 
 	c.logger.Debugf("Cached result for key: %s", key[:8])
 }
 
 // Clear clears the cache
 func (c *FormatterCache) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.cache = make(map[string]*cacheEntry)
+	c.cache.Clear()
 	c.logger.Debug("Cache cleared")
 }
 
 // Size returns the number of cached entries
 func (c *FormatterCache) Size() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return len(c.cache)
+	return c.cache.Len()
 }
 
 // Stop stops the cleanup goroutine
@@ -124,16 +113,18 @@ func (c *FormatterCache) evictOldest() {
 	var oldestKey string
 	var oldestTime time.Time
 
-	for key, entry := range c.cache {
+	c.cache.Range(func(key string, entry *cacheEntry) bool {
 		if oldestKey == "" || entry.timestamp.Before(oldestTime) {
 			oldestKey = key
 			oldestTime = entry.timestamp
 		}
-	}
+		return true
+	})
 
 	if oldestKey != "" {
-		delete(c.cache, oldestKey)
-		c.logger.Debugf("Evicted oldest cache entry: %s", oldestKey[:8])
+		if _, existed := c.cache.Delete(oldestKey); existed {
+			c.logger.Debugf("Evicted oldest cache entry: %s", oldestKey[:8])
+		}
 	}
 }
 
@@ -154,20 +145,18 @@ func (c *FormatterCache) cleanupLoop() {
 
 // cleanup removes expired entries
 func (c *FormatterCache) cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	now := time.Now()
-	expired := make([]string, 0)
+	var expired []string
 
-	for key, entry := range c.cache {
+	c.cache.Range(func(key string, entry *cacheEntry) bool {
 		if now.Sub(entry.timestamp) > c.config.TTL {
 			expired = append(expired, key)
 		}
-	}
+		return true
+	})
 
 	for _, key := range expired {
-		delete(c.cache, key)
+		c.cache.Delete(key)
 	}
 
 	if len(expired) > 0 {
@@ -177,11 +166,8 @@ func (c *FormatterCache) cleanup() {
 
 // Stats returns cache statistics
 func (c *FormatterCache) Stats() CacheStats {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	return CacheStats{
-		Size:    len(c.cache),
+		Size:    c.cache.Len(),
 		MaxSize: c.config.MaxSize,
 		TTL:     c.config.TTL,
 	}

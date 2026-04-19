@@ -70,7 +70,6 @@ internal/features/capability.go:455:CapabilityRegistry
 internal/features/config.go:385:FeatureUsageTracker
 internal/features/config.go:64:FeatureContext
 internal/features/features.go:321:Registry
-internal/formatters/cache.go:13:FormatterCache
 internal/formatters/registry.go:35:FormatterRegistry
 internal/handlers/acp_handler.go:104:ACPHandler
 internal/handlers/agentic_handler.go:20:AgenticHandler

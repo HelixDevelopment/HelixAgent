@@ -145,7 +145,13 @@ func TestModelMetadataHandler_GetModel(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	// Register ALL routes up-front before any t.Parallel subtest
+	// dispatches a request (BUGFIX #36 — gin router-tree is not
+	// concurrent-registration-safe).
 	router.GET("/v1/models/metadata/:id", (&MockMetadataService{}).GetModel)
+	router.GET("/v1/models/not-found/:id", func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
+	})
 
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
@@ -164,10 +170,6 @@ func TestModelMetadataHandler_GetModel(t *testing.T) {
 
 	t.Run("NotFound", func(t *testing.T) {
 		t.Parallel()
-		router.GET("/v1/models/not-found/:id", func(c *gin.Context) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
-		})
-
 		req, _ := http.NewRequest("GET", "/v1/models/not-found/non-existent", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -201,7 +203,12 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	// Register ALL routes up-front before any t.Parallel subtest
+	// dispatches a request (BUGFIX #36).
 	router.GET("/v1/models/metadata/capability/:capability", (&MockMetadataService{}).GetModelsByCapability)
+	router.GET("/v1/models/invalid/capability/:capability", func(c *gin.Context) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid capability"})
+	})
 
 	t.Run("Success_Vision", func(t *testing.T) {
 		t.Parallel()
@@ -264,10 +271,6 @@ func TestModelMetadataHandler_GetModelsByCapability(t *testing.T) {
 
 	t.Run("InvalidCapability", func(t *testing.T) {
 		t.Parallel()
-		router.GET("/v1/models/invalid/capability/:capability", func(c *gin.Context) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid capability"})
-		})
-
 		req, _ := http.NewRequest("GET", "/v1/models/invalid/capability/invalid-capability", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -280,7 +283,16 @@ func TestModelMetadataHandler_GetProviderModels(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+
+	// Register ALL routes up-front in the outer test, before any
+	// parallel subtest can call router.ServeHTTP. gin's internal
+	// router-tree is not safe for concurrent registration, so a
+	// subtest calling router.GET() while a sibling subtest is
+	// dispatching a request races (race-debt BUGFIX #36).
 	router.GET("/v1/providers/:provider_id/models/metadata", (&MockMetadataService{}).GetProviderModels)
+	router.GET("/v1/providers/nomodels/models/metadata", func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No models found"})
+	})
 
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
@@ -299,10 +311,6 @@ func TestModelMetadataHandler_GetProviderModels(t *testing.T) {
 
 	t.Run("MissingProviderID", func(t *testing.T) {
 		t.Parallel()
-		router.GET("/v1/providers/nomodels/models/metadata", func(c *gin.Context) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "No models found"})
-		})
-
 		req, _ := http.NewRequest("GET", "/v1/providers/nomodels/models/metadata", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -376,7 +384,12 @@ func TestModelMetadataHandler_GetModelBenchmarks(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	// Register ALL routes up-front before any t.Parallel subtest
+	// dispatches a request (BUGFIX #36).
 	router.GET("/v1/models/metadata/:id/benchmarks", (&MockMetadataService{}).GetModelBenchmarks)
+	router.GET("/v1/models/nobenchmarks/benchmarks", func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
+	})
 
 	t.Run("Success", func(t *testing.T) {
 		t.Parallel()
@@ -394,10 +407,6 @@ func TestModelMetadataHandler_GetModelBenchmarks(t *testing.T) {
 
 	t.Run("MissingModelID", func(t *testing.T) {
 		t.Parallel()
-		router.GET("/v1/models/nobenchmarks/benchmarks", func(c *gin.Context) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Model not found"})
-		})
-
 		req, _ := http.NewRequest("GET", "/v1/models/nobenchmarks/benchmarks", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)

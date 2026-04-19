@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"dev.helix.agent/internal/models"
@@ -10,8 +11,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SessionHandler handles session management endpoints
+// SessionHandler handles session management endpoints.
+//
+// All access to `sessions` AND to the per-session fields
+// (`session.Context`, `session.LastActivity`, `session.RequestCount`)
+// must go through `mu`. Previously the map and session fields were
+// all unsynchronised — `-race` caught concurrent-write crashes in
+// UpdateSessionContext (BUGFIX #29).
 type SessionHandler struct {
+	mu       sync.RWMutex
 	sessions map[string]*models.UserSession
 	log      *logrus.Logger
 }
@@ -88,7 +96,9 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		CreatedAt:    now,
 	}
 
+	h.mu.Lock()
 	h.sessions[sessionID] = session
+	h.mu.Unlock()
 
 	h.log.WithFields(logrus.Fields{
 		"session_id": sessionID,
@@ -115,8 +125,10 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	includeContext := c.Query("includeContext") == "true"
 
+	h.mu.Lock() // write lock because we may mutate session.Status below
 	session, exists := h.sessions[sessionID]
 	if !exists {
+		h.mu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":      "session not found",
 			"session_id": sessionID,
@@ -144,6 +156,7 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 	if includeContext {
 		response.Context = session.Context
 	}
+	h.mu.Unlock()
 
 	c.JSON(http.StatusOK, response)
 }
@@ -153,8 +166,10 @@ func (h *SessionHandler) TerminateSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	graceful := c.Query("graceful") != "false" // Default to graceful
 
+	h.mu.Lock()
 	session, exists := h.sessions[sessionID]
 	if !exists {
+		h.mu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":      "session not found",
 			"session_id": sessionID,
@@ -172,7 +187,8 @@ func (h *SessionHandler) TerminateSession(c *gin.Context) {
 		h.log.WithField("session_id", sessionID).Info("Session terminated immediately")
 	}
 
-	c.JSON(http.StatusOK, SessionResponse{
+	// Snapshot response fields while holding the lock.
+	response := SessionResponse{
 		Success:      true,
 		Message:      "Session terminated successfully",
 		SessionID:    sessionID,
@@ -182,7 +198,10 @@ func (h *SessionHandler) TerminateSession(c *gin.Context) {
 		LastActivity: session.LastActivity,
 		ExpiresAt:    session.ExpiresAt,
 		CreatedAt:    session.CreatedAt,
-	})
+	}
+	h.mu.Unlock()
+
+	c.JSON(http.StatusOK, response)
 }
 
 // ListSessions handles GET /v1/sessions (admin endpoint)
@@ -191,6 +210,8 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 	status := c.Query("status")
 
 	var sessions []SessionResponse
+	h.mu.Lock() // write lock — session.Status may be mutated below
+	defer h.mu.Unlock()
 	for _, session := range h.sessions {
 		// Check if session is expired
 		if time.Now().After(session.ExpiresAt) && session.Status == "active" {
@@ -226,6 +247,8 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 
 // UpdateSessionContext updates the session context (internal use)
 func (h *SessionHandler) UpdateSessionContext(sessionID string, context map[string]interface{}) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	session, exists := h.sessions[sessionID]
 	if !exists {
 		return nil
@@ -245,7 +268,11 @@ func (h *SessionHandler) UpdateSessionContext(sessionID string, context map[stri
 	return nil
 }
 
-// GetSessionByID returns a session by ID (internal use)
+// GetSessionByID returns a session by ID (internal use).
+// Returns a pointer; callers should treat the returned session as
+// read-only and not mutate fields without taking h.mu themselves.
 func (h *SessionHandler) GetSessionByID(sessionID string) *models.UserSession {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return h.sessions[sessionID]
 }

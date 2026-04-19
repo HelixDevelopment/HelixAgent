@@ -1,5 +1,26 @@
 # Bug Fixes and Known Issues
 
+## Issue #29: `SessionHandler` unsynchronised session map + order-dependent subtests (BUGFIX 2026-04-19)
+
+### Issue
+The full-package `go test -race ./internal/...` sweep (run AFTER the race-debt programme closed #21–#28) surfaced an additional latent issue in `SessionHandler`:
+
+1. **Production race:** `SessionHandler.sessions` map and all per-session field accesses (`session.Context`, `session.Status`, `session.LastActivity`, `session.RequestCount`) had NO mutex protection at all. Concurrent HTTP handlers could race on both map writes and field writes.
+2. **Test-fixture race:** `TestSessionHandler_UpdateSessionContext` had 3 parallel subtests sharing one `sessionID` and asserting an ordered `RequestCount` (1, then 2). Running them in parallel produced nondeterministic counts.
+
+### Fix Applied
+`internal/handlers/session.go`:
+- Added `mu sync.RWMutex` to `SessionHandler`.
+- Guarded every `h.sessions` access (CreateSession, GetSession, TerminateSession, ListSessions, UpdateSessionContext, GetSessionByID) with the appropriate Lock / RLock.
+- GetSession / TerminateSession snapshot the response under the lock before releasing it, matching the pattern established by `DebateHandler` in BUGFIX #27.
+
+`internal/handlers/session_test.go`:
+- Removed `t.Parallel()` from the order-dependent subtests (outer test still parallel).
+
+**Verification:** `go test -race -short ./internal/handlers/ -p 1 -count=3` → ok, 8.2 s wall.
+
+---
+
 ## Issue #28: `AgentTeam` / `Task` JSON-serialisation race + order-dependent subtests (BUGFIX 2026-04-19)
 
 ### Issue

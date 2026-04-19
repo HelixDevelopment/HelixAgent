@@ -448,8 +448,12 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &createResp)
 	sessionID := createResp.SessionID
 
+	// Subtests are ORDER-DEPENDENT (each asserts RequestCount on a
+	// shared session, and the second expects the first's new_key
+	// still present). Running them in parallel produces flaky counts.
+	// Outer test still runs in parallel with other tests via the
+	// t.Parallel() at the top (BUGFIX #29).
 	t.Run("updates context successfully", func(t *testing.T) {
-		t.Parallel()
 		err := handler.UpdateSessionContext(sessionID, map[string]interface{}{
 			"new_key": "new_value",
 		})
@@ -462,7 +466,6 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	})
 
 	t.Run("updates context on existing context", func(t *testing.T) {
-		t.Parallel()
 		err := handler.UpdateSessionContext(sessionID, map[string]interface{}{
 			"another_key": 42,
 		})
@@ -476,7 +479,6 @@ func TestSessionHandler_UpdateSessionContext(t *testing.T) {
 	})
 
 	t.Run("returns nil for non-existent session", func(t *testing.T) {
-		t.Parallel()
 		err := handler.UpdateSessionContext("non-existent", map[string]interface{}{
 			"key": "value",
 		})

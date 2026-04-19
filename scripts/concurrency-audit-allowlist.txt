@@ -219,7 +219,6 @@ internal/services/plugin_system.go:57:RoundRobinLoadBalancer
 internal/services/plugin_system.go:66:FailoverManager
 internal/services/plugin_system.go:82:HealthChecker
 internal/services/plugin_system.go:862:ServiceRegistry
-internal/services/protocol_cache.go:15:ProtocolCache
 internal/services/protocol_discovery.go:19:ACPDiscoveryClient
 internal/services/protocol_federation.go:16:ProtocolDiscovery
 internal/services/protocol_monitor.go:38:ProtocolMonitor

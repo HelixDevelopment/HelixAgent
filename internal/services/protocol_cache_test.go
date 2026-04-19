@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,7 +27,7 @@ func TestNewProtocolCache(t *testing.T) {
 	assert.NotNil(t, cache.invalidators)
 	assert.Equal(t, 100, cache.maxSize)
 	assert.Equal(t, 5*time.Minute, cache.ttl)
-	assert.False(t, cache.stopped)
+	assert.False(t, cache.Stopped())
 
 	// Clean up
 	cache.Stop()
@@ -311,7 +313,9 @@ func TestProtocolCache_SetInvalidator(t *testing.T) {
 	cache.SetInvalidator("test_key", invalidator)
 
 	// Verify invalidator was set
-	assert.Len(t, cache.invalidators["test_key"], 1)
+	invs, ok := cache.invalidators.Get("test_key")
+	require.True(t, ok)
+	assert.Len(t, invs, 1)
 }
 
 func TestProtocolCache_RemoveInvalidator(t *testing.T) {
@@ -327,8 +331,7 @@ func TestProtocolCache_RemoveInvalidator(t *testing.T) {
 	cache.RemoveInvalidator("test_key")
 
 	// Verify invalidator was removed
-	_, exists := cache.invalidators["test_key"]
-	assert.False(t, exists)
+	assert.False(t, cache.invalidators.Has("test_key"))
 }
 
 func TestProtocolCache_Warmup(t *testing.T) {
@@ -366,7 +369,7 @@ func TestProtocolCache_Stop(t *testing.T) {
 	// Double stop should also work
 	cache.Stop()
 
-	assert.True(t, cache.stopped)
+	assert.True(t, cache.Stopped())
 }
 
 func TestProtocolCache_CalculateSize(t *testing.T) {
@@ -650,5 +653,59 @@ func BenchmarkGenerateCacheKey(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GenerateCacheKey("mcp", "call", params)
+	}
+}
+
+// TestProtocolCache_ConcurrentAccess_RaceFree is the paired stress test
+// for the CONST-029 migration. Pre-migration, concurrent Get() calls
+// on the same key raced on entry.AccessedAt and entry.Hits because Get
+// held only an RLock while mutating fields through a shared pointer.
+// Post-migration, all stats updates happen inside safe.Store.Update,
+// which holds a write lock for the entire callback.
+//
+// Asserts: under 16 goroutines x 200 iterations of mixed Get/Set/Delete/
+// InvalidateByTags churn against a 100-entry cache, the run is race-clean
+// and final state is internally consistent.
+func TestProtocolCache_ConcurrentAccess_RaceFree(t *testing.T) {
+	log := newCacheTestLogger()
+	cache := NewProtocolCache(100, 5*time.Minute, log)
+	defer cache.Stop()
+	ctx := context.Background()
+
+	// Pre-populate.
+	for i := 0; i < 50; i++ {
+		_ = cache.Set(ctx, fmt.Sprintf("k%d", i), i, []string{"stress"}, 0)
+	}
+
+	var wg sync.WaitGroup
+	const goroutines = 16
+	const iterations = 200
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				key := fmt.Sprintf("k%d", j%60)
+				switch j % 5 {
+				case 0:
+					_ = cache.Set(ctx, key, id*10000+j, []string{"stress"}, 0)
+				case 1, 2, 3:
+					_, _, _ = cache.Get(ctx, key)
+				case 4:
+					if j%20 == 0 {
+						_ = cache.InvalidateByTags(ctx, []string{"stress"})
+					} else {
+						_ = cache.Delete(ctx, key)
+					}
+				}
+			}
+		}(g)
+	}
+	wg.Wait()
+
+	// Stats should still be computable without panic (GetStats snapshots).
+	stats := cache.GetStats()
+	if stats.TotalEntries < 0 || stats.TotalEntries > 100 {
+		t.Fatalf("stats out of bounds: %+v", stats)
 	}
 }

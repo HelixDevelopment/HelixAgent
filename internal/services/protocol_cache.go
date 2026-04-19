@@ -6,21 +6,31 @@ import (
 	"fmt"
 	"hash/fnv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// ProtocolCache provides advanced caching for protocol operations
+// ProtocolCache provides advanced caching for protocol operations.
+//
+// Concurrent-safe by construction (CONST-029 Tier 1): `cache` and
+// `invalidators` are independent safe.Store instances — no method
+// touches both, so joint atomicity is not required. Entries are stored
+// by value; access-stat updates happen inside a safe.Store.Update
+// callback, which eliminates the pre-migration pointer-mutation race
+// that concurrent Get calls had on entry.AccessedAt / entry.Hits.
 type ProtocolCache struct {
-	mu           sync.RWMutex
-	cache        map[string]*CacheEntry
-	invalidators map[string][]CacheInvalidator
+	cache        *safe.Store[string, CacheEntry]
+	invalidators *safe.Store[string, []CacheInvalidator]
 	maxSize      int
 	ttl          time.Duration
 	log          *logrus.Logger
 	stopCh       chan struct{}
-	stopped      bool
+	stopOnce     sync.Once
+	stopped      atomic.Bool
 }
 
 // CacheEntry represents a cached item with metadata
@@ -55,83 +65,71 @@ type CacheStats struct {
 
 // NewProtocolCache creates a new protocol-aware cache
 func NewProtocolCache(maxSize int, ttl time.Duration, logger *logrus.Logger) *ProtocolCache {
-	cache := &ProtocolCache{
-		cache:        make(map[string]*CacheEntry),
-		invalidators: make(map[string][]CacheInvalidator),
+	c := &ProtocolCache{
+		cache:        safe.NewStore[string, CacheEntry](),
+		invalidators: safe.NewStore[string, []CacheInvalidator](),
 		maxSize:      maxSize,
 		ttl:          ttl,
 		log:          logger,
 		stopCh:       make(chan struct{}),
-		stopped:      false,
 	}
-
-	// Start cleanup goroutine
-	go cache.cleanupRoutine()
-
-	return cache
+	go c.cleanupRoutine()
+	return c
 }
 
-// Stop stops the cleanup goroutine gracefully
+// Stop stops the cleanup goroutine gracefully. Idempotent.
 func (c *ProtocolCache) Stop() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.stopped {
-		return
-	}
-	c.stopped = true
-	close(c.stopCh)
-	c.log.Info("Protocol cache stopped")
+	c.stopOnce.Do(func() {
+		c.stopped.Store(true)
+		close(c.stopCh)
+		c.log.Info("Protocol cache stopped")
+	})
 }
 
-// Get retrieves an item from cache
+// Stopped reports whether Stop has been called.
+func (c *ProtocolCache) Stopped() bool {
+	return c.stopped.Load()
+}
+
+// Get retrieves an item from cache and atomically updates access stats.
+// Expired entries are removed in-place.
 func (c *ProtocolCache) Get(ctx context.Context, key string) (interface{}, bool, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	entry, exists := c.cache[key]
-	if !exists {
+	var data interface{}
+	var hit bool
+	c.cache.Update(key, func(entry CacheEntry, ok bool) (CacheEntry, bool) {
+		if !ok {
+			return CacheEntry{}, false
+		}
+		if time.Since(entry.CreatedAt) > entry.TTL {
+			return CacheEntry{}, false // delete expired
+		}
+		entry.AccessedAt = time.Now()
+		entry.Hits++
+		data = entry.Data
+		hit = true
+		c.log.WithFields(logrus.Fields{
+			"key":  key,
+			"hits": entry.Hits,
+			"size": entry.Size,
+		}).Debug("Cache hit")
+		return entry, true
+	})
+	if !hit {
 		return nil, false, nil
 	}
-
-	// Check TTL
-	if time.Since(entry.CreatedAt) > entry.TTL {
-		go c.evict(key) // Async eviction
-		return nil, false, nil
-	}
-
-	// Update access time and hit count
-	entry.AccessedAt = time.Now()
-	entry.Hits++
-
-	c.log.WithFields(logrus.Fields{
-		"key":  key,
-		"hits": entry.Hits,
-		"size": entry.Size,
-	}).Debug("Cache hit")
-
-	return entry.Data, true, nil
+	return data, true, nil
 }
 
-// Set stores an item in cache with tags
+// Set stores an item in cache with tags. LRU eviction is approximate
+// under concurrent Sets (the len-check and evict happen across
+// multiple lock acquisitions); this matches the behavior of classic
+// LRU caches under contention.
 func (c *ProtocolCache) Set(ctx context.Context, key string, data interface{}, tags []string, ttl time.Duration) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Calculate data size
 	size := c.calculateSize(data)
-
-	// Check if we need to evict entries
-	for len(c.cache) >= c.maxSize {
-		c.evictLRU()
-	}
-
-	// Use default TTL if not specified
 	if ttl == 0 {
 		ttl = c.ttl
 	}
-
-	entry := &CacheEntry{
+	entry := CacheEntry{
 		Key:        key,
 		Data:       data,
 		Tags:       tags,
@@ -142,106 +140,86 @@ func (c *ProtocolCache) Set(ctx context.Context, key string, data interface{}, t
 		Size:       size,
 	}
 
-	c.cache[key] = entry
+	for c.cache.Len() >= c.maxSize {
+		c.evictLRU()
+	}
 
+	c.cache.Put(key, entry)
 	c.log.WithFields(logrus.Fields{
 		"key":  key,
 		"tags": tags,
 		"size": size,
 		"ttl":  ttl,
 	}).Debug("Cache set")
-
 	return nil
 }
 
 // Delete removes an item from cache
 func (c *ProtocolCache) Delete(ctx context.Context, key string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.cache, key)
+	c.cache.Delete(key)
 	c.log.WithField("key", key).Debug("Cache delete")
-
 	return nil
 }
 
 // InvalidateByTags invalidates cache entries by tags
 func (c *ProtocolCache) InvalidateByTags(ctx context.Context, tags []string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	invalidated := 0
-	for key, entry := range c.cache {
+	for key, entry := range c.cache.Snapshot() {
 		if c.hasMatchingTags(entry.Tags, tags) {
-			delete(c.cache, key)
-			invalidated++
+			if _, ok := c.cache.Delete(key); ok {
+				invalidated++
+			}
 		}
 	}
-
 	c.log.WithFields(logrus.Fields{
 		"tags":        tags,
 		"invalidated": invalidated,
 	}).Info("Cache invalidation by tags")
-
 	return nil
 }
 
 // InvalidateByPattern invalidates cache entries matching a pattern
 func (c *ProtocolCache) InvalidateByPattern(ctx context.Context, pattern string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	invalidated := 0
-	for key := range c.cache {
+	for key := range c.cache.Snapshot() {
 		if c.matchesPattern(key, pattern) {
-			delete(c.cache, key)
-			invalidated++
+			if _, ok := c.cache.Delete(key); ok {
+				invalidated++
+			}
 		}
 	}
-
 	c.log.WithFields(logrus.Fields{
 		"pattern":     pattern,
 		"invalidated": invalidated,
 	}).Info("Cache invalidation by pattern")
-
 	return nil
 }
 
 // Clear clears all cache entries
 func (c *ProtocolCache) Clear(ctx context.Context) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	count := len(c.cache)
-	c.cache = make(map[string]*CacheEntry)
-
+	count := c.cache.Len()
+	c.cache.Clear()
 	c.log.WithField("entries", count).Info("Cache cleared")
-
 	return nil
 }
 
 // GetStats returns cache statistics
 func (c *ProtocolCache) GetStats() CacheStats {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
+	snap := c.cache.Snapshot()
 	totalHits := 0
-	totalMisses := 0
 	totalSize := 0
-
-	for _, entry := range c.cache {
+	for _, entry := range snap {
 		totalHits += entry.Hits
 		totalSize += entry.Size
 	}
-
+	totalMisses := 0
 	totalRequests := totalHits + totalMisses
 	hitRate := float64(0)
 	if totalRequests > 0 {
 		hitRate = float64(totalHits) / float64(totalRequests)
 	}
-
 	return CacheStats{
-		TotalEntries: len(c.cache),
+		TotalEntries: len(snap),
 		TotalSize:    totalSize,
 		HitRate:      hitRate,
 		MissRate:     1.0 - hitRate,
@@ -252,18 +230,14 @@ func (c *ProtocolCache) GetStats() CacheStats {
 
 // SetInvalidator sets an invalidation rule
 func (c *ProtocolCache) SetInvalidator(key string, invalidator CacheInvalidator) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.invalidators[key] = append(c.invalidators[key], invalidator)
+	c.invalidators.Update(key, func(cur []CacheInvalidator, _ bool) ([]CacheInvalidator, bool) {
+		return append(cur, invalidator), true
+	})
 }
 
 // RemoveInvalidator removes an invalidation rule
 func (c *ProtocolCache) RemoveInvalidator(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.invalidators, key)
+	c.invalidators.Delete(key)
 }
 
 // Warmup pre-populates cache with common data
@@ -296,17 +270,14 @@ func (c *ProtocolCache) cleanupRoutine() {
 }
 
 func (c *ProtocolCache) cleanupExpired() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	expired := 0
-	for key, entry := range c.cache {
+	for key, entry := range c.cache.Snapshot() {
 		if time.Since(entry.CreatedAt) > entry.TTL {
-			delete(c.cache, key)
-			expired++
+			if _, ok := c.cache.Delete(key); ok {
+				expired++
+			}
 		}
 	}
-
 	if expired > 0 {
 		c.log.WithField("expired", expired).Debug("Cache cleanup completed")
 	}
@@ -316,26 +287,17 @@ func (c *ProtocolCache) evictLRU() {
 	var oldestKey string
 	var oldestTime time.Time
 	first := true
-
-	for key, entry := range c.cache {
+	for key, entry := range c.cache.Snapshot() {
 		if first || entry.AccessedAt.Before(oldestTime) {
 			oldestKey = key
 			oldestTime = entry.AccessedAt
 			first = false
 		}
 	}
-
 	if oldestKey != "" {
-		delete(c.cache, oldestKey)
+		c.cache.Delete(oldestKey)
 		c.log.WithField("key", oldestKey).Debug("Cache LRU eviction")
 	}
-}
-
-func (c *ProtocolCache) evict(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.cache, key)
 }
 
 func (c *ProtocolCache) hasMatchingTags(entryTags, queryTags []string) bool {

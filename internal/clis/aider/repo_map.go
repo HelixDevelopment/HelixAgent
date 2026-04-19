@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/go-enry/go-enry/v2"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/golang"
@@ -66,15 +66,15 @@ type RepoContext struct {
 }
 
 // SymbolCache caches symbol information.
+// Concurrent-safe by construction (CONST-029): data is a safe.Store.
 type SymbolCache struct {
-	data map[string][]*Symbol
-	mu   sync.RWMutex
+	data *safe.Store[string, []*Symbol]
 }
 
 // FileCache caches file content.
+// Concurrent-safe by construction (CONST-029): data is a safe.Store.
 type FileCache struct {
-	data map[string]*FileInfo
-	mu   sync.RWMutex
+	data *safe.Store[string, *FileInfo]
 }
 
 // FileInfo contains cached file information.
@@ -91,8 +91,8 @@ func NewRepoMap(rootDir string, mapTokens int) *RepoMap {
 		mapTokens:   mapTokens,
 		parsers:     make(map[string]*sitter.Parser),
 		queries:     make(map[string]string),
-		symbolCache: &SymbolCache{data: make(map[string][]*Symbol)},
-		fileCache:   &FileCache{data: make(map[string]*FileInfo)},
+		symbolCache: &SymbolCache{data: safe.NewStore[string, []*Symbol]()},
+		fileCache:   &FileCache{data: safe.NewStore[string, *FileInfo]()},
 		ignorePatterns: []string{
 			".git", "node_modules", "vendor", "__pycache__",
 			".venv", "venv", "*.min.js", "*.min.css",
@@ -622,29 +622,23 @@ func (rm *RepoMap) estimateTokens(content string) int {
 // SymbolCache methods
 
 func (c *SymbolCache) Get(file string) []*Symbol {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.data[file]
+	v, _ := c.data.Get(file)
+	return v
 }
 
 func (c *SymbolCache) Set(file string, symbols []*Symbol) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.data[file] = symbols
+	c.data.Put(file, symbols)
 }
 
 // FileCache methods
 
 func (c *FileCache) Get(file string) *FileInfo {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.data[file]
+	v, _ := c.data.Get(file)
+	return v
 }
 
 func (c *FileCache) Set(file string, info *FileInfo) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.data[file] = info
+	c.data.Put(file, info)
 }
 
 // Helper functions

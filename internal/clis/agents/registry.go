@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // AgentType represents the type of CLI agent
@@ -124,153 +126,132 @@ type AgentIntegration interface {
 	IsAvailable() bool
 }
 
-// Registry manages all agent integrations
+// Registry manages all agent integrations.
+// Both stores are Pattern Alpha — AgentIntegration instances and
+// the started bools are immutable at each individual entry level.
 type Registry struct {
-	mu      sync.RWMutex
-	agents  map[AgentType]AgentIntegration
-	started map[AgentType]bool
+	agents  *safe.Store[AgentType, AgentIntegration]
+	started *safe.Store[AgentType, bool]
 }
 
 // NewRegistry creates a new agent registry
 func NewRegistry() *Registry {
 	return &Registry{
-		agents:  make(map[AgentType]AgentIntegration),
-		started: make(map[AgentType]bool),
+		agents:  safe.NewStore[AgentType, AgentIntegration](),
+		started: safe.NewStore[AgentType, bool](),
 	}
 }
 
 // Register registers an agent integration
 func (r *Registry) Register(agent AgentIntegration) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	info := agent.Info()
-	if _, exists := r.agents[info.Type]; exists {
+	if _, stored := r.agents.PutIfAbsent(info.Type, agent); !stored {
 		return fmt.Errorf("agent %s already registered", info.Type)
 	}
-
-	r.agents[info.Type] = agent
 	return nil
 }
 
 // Get retrieves an agent integration
 func (r *Registry) Get(agentType AgentType) (AgentIntegration, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	agent, ok := r.agents[agentType]
-	return agent, ok
+	return r.agents.Get(agentType)
 }
 
 // List returns all registered agents
 func (r *Registry) List() []AgentInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var infos []AgentInfo
-	for _, agent := range r.agents {
+	r.agents.Range(func(_ AgentType, agent AgentIntegration) bool {
 		infos = append(infos, agent.Info())
-	}
-
+		return true
+	})
 	return infos
 }
 
 // ListAvailable returns all available agents
 func (r *Registry) ListAvailable() []AgentInfo {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var infos []AgentInfo
-	for _, agent := range r.agents {
+	r.agents.Range(func(_ AgentType, agent AgentIntegration) bool {
 		if agent.IsAvailable() {
 			infos = append(infos, agent.Info())
 		}
-	}
-
+		return true
+	})
 	return infos
 }
 
 // StartAll starts all registered agents
 func (r *Registry) StartAll(ctx context.Context) []error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	var errs []error
-	for agentType, agent := range r.agents {
+	for _, agentType := range r.agents.Keys() {
+		agent, ok := r.agents.Get(agentType)
+		if !ok {
+			continue
+		}
 		if err := agent.Start(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("failed to start %s: %w", agentType, err))
 		} else {
-			r.started[agentType] = true
+			r.started.Put(agentType, true)
 		}
 	}
-
 	return errs
 }
 
 // StopAll stops all registered agents
 func (r *Registry) StopAll(ctx context.Context) []error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	var errs []error
-	for agentType, agent := range r.agents {
+	for _, agentType := range r.agents.Keys() {
+		agent, ok := r.agents.Get(agentType)
+		if !ok {
+			continue
+		}
 		if err := agent.Stop(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop %s: %w", agentType, err))
 		} else {
-			delete(r.started, agentType)
+			r.started.Delete(agentType)
 		}
 	}
-
 	return errs
 }
 
 // Execute executes a command on a specific agent
 func (r *Registry) Execute(ctx context.Context, agentType AgentType, command string, params map[string]interface{}) (interface{}, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	agent, ok := r.agents[agentType]
+	agent, ok := r.agents.Get(agentType)
 	if !ok {
 		return nil, fmt.Errorf("agent %s not found", agentType)
 	}
-
 	return agent.Execute(ctx, command, params)
 }
 
 // HealthCheck checks health of all agents
 func (r *Registry) HealthCheck(ctx context.Context) map[AgentType]error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	results := make(map[AgentType]error)
-	for agentType, agent := range r.agents {
+	r.agents.Range(func(agentType AgentType, agent AgentIntegration) bool {
 		results[agentType] = agent.Health(ctx)
-	}
-
+		return true
+	})
 	return results
 }
 
 // GetStats returns statistics about the registry
 func (r *Registry) GetStats() map[string]interface{} {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	available := 0
-	started := 0
+	startedCount := 0
+	total := 0
 
-	for agentType, agent := range r.agents {
+	r.agents.Range(func(agentType AgentType, agent AgentIntegration) bool {
+		total++
 		if agent.IsAvailable() {
 			available++
 		}
-		if r.started[agentType] {
-			started++
+		if isStarted, ok := r.started.Get(agentType); ok && isStarted {
+			startedCount++
 		}
-	}
+		return true
+	})
 
 	return map[string]interface{}{
-		"total":     len(r.agents),
+		"total":     total,
 		"available": available,
-		"started":   started,
+		"started":   startedCount,
 	}
 }
 

@@ -2,28 +2,45 @@ package modelsdev
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// Cache provides in-memory caching for Models.dev data
+// Cache provides in-memory caching for Models.dev data.
+//
+// Concurrent-safe by construction (CONST-029): the (models, providers,
+// modelsByProvider) triple lives under a sentinel key in a single
+// safe.Store so SetModel / InvalidateProvider / cleanup can mutate the
+// three maps atomically inside one Update callback (Pattern Epsilon —
+// joint atomicity via state struct). lastRefresh and the hit/miss
+// counters are atomics; the cleanup goroutine is gated by stopCleanup.
 type Cache struct {
+	state       *safe.Store[string, *cacheState]
+	config      CacheConfig
+	hits        atomic.Int64
+	misses      atomic.Int64
+	lastRefresh atomic.Pointer[time.Time]
+	stopCleanup chan struct{}
+	cleanupDone chan struct{}
+}
+
+// cacheState is the joint mutable state held under cacheStateKey.
+type cacheState struct {
 	models           map[string]*CachedModel
 	providers        map[string]*CachedProvider
 	modelsByProvider map[string][]string // provider ID -> model IDs
+}
 
-	mu     sync.RWMutex
-	config CacheConfig
+const cacheStateKey = "_"
 
-	// Statistics
-	hits        int64
-	misses      int64
-	lastRefresh time.Time
-
-	// Cleanup management
-	stopCleanup chan struct{}
-	cleanupDone chan struct{}
+func newCacheState() *cacheState {
+	return &cacheState{
+		models:           make(map[string]*CachedModel),
+		providers:        make(map[string]*CachedProvider),
+		modelsByProvider: make(map[string][]string),
+	}
 }
 
 // NewCache creates a new cache instance
@@ -33,47 +50,65 @@ func NewCache(config *CacheConfig) *Cache {
 		config = &defaultConfig
 	}
 
-	// Ensure CleanupInterval has a valid value
 	if config.CleanupInterval <= 0 {
 		config.CleanupInterval = 10 * time.Minute
 	}
 
+	store := safe.NewStore[string, *cacheState]()
+	store.Put(cacheStateKey, newCacheState())
+
 	c := &Cache{
-		models:           make(map[string]*CachedModel),
-		providers:        make(map[string]*CachedProvider),
-		modelsByProvider: make(map[string][]string),
-		config:           *config,
-		stopCleanup:      make(chan struct{}),
-		cleanupDone:      make(chan struct{}),
+		state:       store,
+		config:      *config,
+		stopCleanup: make(chan struct{}),
+		cleanupDone: make(chan struct{}),
 	}
 
-	// Start background cleanup goroutine
 	go c.cleanupLoop()
-
 	return c
+}
+
+// withState runs fn under the state Store's write lock; fn may mutate the maps.
+func (c *Cache) withState(fn func(*cacheState)) {
+	c.state.Update(cacheStateKey, func(s *cacheState, _ bool) (*cacheState, bool) {
+		if s == nil {
+			s = newCacheState()
+		}
+		fn(s)
+		return s, true
+	})
 }
 
 // GetModel retrieves a model from cache
 func (c *Cache) GetModel(ctx context.Context, modelID string) (*Model, bool) {
-	c.mu.RLock()
-	cached, exists := c.models[modelID]
-	c.mu.RUnlock()
+	var (
+		result      *Model
+		found       bool
+		expiredID   string
+	)
+	c.withState(func(s *cacheState) {
+		cached, exists := s.models[modelID]
+		if !exists {
+			return
+		}
+		if cached.IsExpired() {
+			expiredID = modelID
+			return
+		}
+		atomic.AddInt64(&cached.HitCount, 1)
+		result = cached.Model
+		found = true
+	})
 
-	if !exists {
-		atomic.AddInt64(&c.misses, 1)
-		return nil, false
+	if found {
+		c.hits.Add(1)
+		return result, true
 	}
-
-	if cached.IsExpired() {
-		atomic.AddInt64(&c.misses, 1)
-		// Async cleanup of expired entry
-		go c.removeExpiredModel(modelID)
-		return nil, false
+	c.misses.Add(1)
+	if expiredID != "" {
+		go c.removeExpiredModel(expiredID)
 	}
-
-	atomic.AddInt64(&c.hits, 1)
-	atomic.AddInt64(&cached.HitCount, 1)
-	return cached.Model, true
+	return nil, false
 }
 
 // SetModel stores a model in cache
@@ -82,26 +117,23 @@ func (c *Cache) SetModel(ctx context.Context, model *Model) {
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.withState(func(s *cacheState) {
+		if len(s.models) >= c.config.MaxModels {
+			c.evictOldestModelsLocked(s, len(s.models)-c.config.MaxModels+1)
+		}
 
-	// Check if we need to evict entries
-	if len(c.models) >= c.config.MaxModels {
-		c.evictOldestModels(len(c.models) - c.config.MaxModels + 1)
-	}
+		now := time.Now()
+		s.models[model.ID] = &CachedModel{
+			Model:     model,
+			CachedAt:  now,
+			ExpiresAt: now.Add(c.config.ModelTTL),
+			HitCount:  0,
+		}
 
-	now := time.Now()
-	c.models[model.ID] = &CachedModel{
-		Model:     model,
-		CachedAt:  now,
-		ExpiresAt: now.Add(c.config.ModelTTL),
-		HitCount:  0,
-	}
-
-	// Update provider index
-	if model.Provider != "" {
-		c.modelsByProvider[model.Provider] = appendIfMissing(c.modelsByProvider[model.Provider], model.ID)
-	}
+		if model.Provider != "" {
+			s.modelsByProvider[model.Provider] = appendIfMissing(s.modelsByProvider[model.Provider], model.ID)
+		}
+	})
 }
 
 // SetModels stores multiple models in cache
@@ -110,57 +142,61 @@ func (c *Cache) SetModels(ctx context.Context, models []Model) {
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.withState(func(s *cacheState) {
+		now := time.Now()
+		expiresAt := now.Add(c.config.ModelTTL)
 
-	now := time.Now()
-	expiresAt := now.Add(c.config.ModelTTL)
-
-	for i := range models {
-		model := &models[i]
-		if model.ID == "" {
-			continue
+		for i := range models {
+			model := &models[i]
+			if model.ID == "" {
+				continue
+			}
+			if len(s.models) >= c.config.MaxModels {
+				c.evictOldestModelsLocked(s, 1)
+			}
+			s.models[model.ID] = &CachedModel{
+				Model:     model,
+				CachedAt:  now,
+				ExpiresAt: expiresAt,
+				HitCount:  0,
+			}
+			if model.Provider != "" {
+				s.modelsByProvider[model.Provider] = appendIfMissing(s.modelsByProvider[model.Provider], model.ID)
+			}
 		}
-
-		// Check capacity and evict if needed
-		if len(c.models) >= c.config.MaxModels {
-			c.evictOldestModels(1)
-		}
-
-		c.models[model.ID] = &CachedModel{
-			Model:     model,
-			CachedAt:  now,
-			ExpiresAt: expiresAt,
-			HitCount:  0,
-		}
-
-		// Update provider index
-		if model.Provider != "" {
-			c.modelsByProvider[model.Provider] = appendIfMissing(c.modelsByProvider[model.Provider], model.ID)
-		}
-	}
+	})
 }
 
 // GetProvider retrieves a provider from cache
 func (c *Cache) GetProvider(ctx context.Context, providerID string) (*Provider, bool) {
-	c.mu.RLock()
-	cached, exists := c.providers[providerID]
-	c.mu.RUnlock()
+	var (
+		result      *Provider
+		found       bool
+		expiredID   string
+	)
+	c.withState(func(s *cacheState) {
+		cached, exists := s.providers[providerID]
+		if !exists {
+			return
+		}
+		if cached.IsExpired() {
+			expiredID = providerID
+			return
+		}
+		atomic.AddInt64(&cached.HitCount, 1)
+		result = cached.Provider
+		found = true
+	})
 
-	if !exists {
-		atomic.AddInt64(&c.misses, 1)
-		return nil, false
+	if found {
+		c.hits.Add(1)
+		return result, true
 	}
-
-	if cached.IsExpired() {
-		atomic.AddInt64(&c.misses, 1)
-		go c.removeExpiredProvider(providerID)
-		return nil, false
+	c.misses.Add(1)
+	if expiredID != "" {
+		go c.removeExpiredProvider(expiredID)
 	}
-
-	atomic.AddInt64(&c.hits, 1)
-	atomic.AddInt64(&cached.HitCount, 1)
-	return cached.Provider, true
+	return nil, false
 }
 
 // SetProvider stores a provider in cache
@@ -169,21 +205,18 @@ func (c *Cache) SetProvider(ctx context.Context, provider *Provider) {
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Check if we need to evict entries
-	if len(c.providers) >= c.config.MaxProviders {
-		c.evictOldestProviders(len(c.providers) - c.config.MaxProviders + 1)
-	}
-
-	now := time.Now()
-	c.providers[provider.ID] = &CachedProvider{
-		Provider:  provider,
-		CachedAt:  now,
-		ExpiresAt: now.Add(c.config.ProviderTTL),
-		HitCount:  0,
-	}
+	c.withState(func(s *cacheState) {
+		if len(s.providers) >= c.config.MaxProviders {
+			c.evictOldestProvidersLocked(s, len(s.providers)-c.config.MaxProviders+1)
+		}
+		now := time.Now()
+		s.providers[provider.ID] = &CachedProvider{
+			Provider:  provider,
+			CachedAt:  now,
+			ExpiresAt: now.Add(c.config.ProviderTTL),
+			HitCount:  0,
+		}
+	})
 }
 
 // SetProviders stores multiple providers in cache
@@ -192,138 +225,117 @@ func (c *Cache) SetProviders(ctx context.Context, providers []Provider) {
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.withState(func(s *cacheState) {
+		now := time.Now()
+		expiresAt := now.Add(c.config.ProviderTTL)
 
-	now := time.Now()
-	expiresAt := now.Add(c.config.ProviderTTL)
-
-	for i := range providers {
-		provider := &providers[i]
-		if provider.ID == "" {
-			continue
+		for i := range providers {
+			provider := &providers[i]
+			if provider.ID == "" {
+				continue
+			}
+			if len(s.providers) >= c.config.MaxProviders {
+				c.evictOldestProvidersLocked(s, 1)
+			}
+			s.providers[provider.ID] = &CachedProvider{
+				Provider:  provider,
+				CachedAt:  now,
+				ExpiresAt: expiresAt,
+				HitCount:  0,
+			}
 		}
-
-		// Check capacity and evict if needed
-		if len(c.providers) >= c.config.MaxProviders {
-			c.evictOldestProviders(1)
-		}
-
-		c.providers[provider.ID] = &CachedProvider{
-			Provider:  provider,
-			CachedAt:  now,
-			ExpiresAt: expiresAt,
-			HitCount:  0,
-		}
-	}
+	})
 }
 
 // GetModelsByProvider returns all cached models for a provider
 func (c *Cache) GetModelsByProvider(ctx context.Context, providerID string) ([]*Model, bool) {
-	c.mu.RLock()
-	modelIDs, exists := c.modelsByProvider[providerID]
-	if !exists || len(modelIDs) == 0 {
-		c.mu.RUnlock()
-		return nil, false
-	}
-
-	models := make([]*Model, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		if cached, ok := c.models[modelID]; ok && !cached.IsExpired() {
-			models = append(models, cached.Model)
+	var models []*Model
+	c.withState(func(s *cacheState) {
+		modelIDs, exists := s.modelsByProvider[providerID]
+		if !exists || len(modelIDs) == 0 {
+			return
 		}
-	}
-	c.mu.RUnlock()
-
+		models = make([]*Model, 0, len(modelIDs))
+		for _, modelID := range modelIDs {
+			if cached, ok := s.models[modelID]; ok && !cached.IsExpired() {
+				models = append(models, cached.Model)
+			}
+		}
+	})
 	if len(models) == 0 {
 		return nil, false
 	}
-
 	return models, true
 }
 
 // GetAllModels returns all cached models
 func (c *Cache) GetAllModels(ctx context.Context) []*Model {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	models := make([]*Model, 0, len(c.models))
-	for _, cached := range c.models {
-		if !cached.IsExpired() {
-			models = append(models, cached.Model)
+	var models []*Model
+	c.withState(func(s *cacheState) {
+		models = make([]*Model, 0, len(s.models))
+		for _, cached := range s.models {
+			if !cached.IsExpired() {
+				models = append(models, cached.Model)
+			}
 		}
-	}
+	})
 	return models
 }
 
 // GetAllProviders returns all cached providers
 func (c *Cache) GetAllProviders(ctx context.Context) []*Provider {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	providers := make([]*Provider, 0, len(c.providers))
-	for _, cached := range c.providers {
-		if !cached.IsExpired() {
-			providers = append(providers, cached.Provider)
+	var providers []*Provider
+	c.withState(func(s *cacheState) {
+		providers = make([]*Provider, 0, len(s.providers))
+		for _, cached := range s.providers {
+			if !cached.IsExpired() {
+				providers = append(providers, cached.Provider)
+			}
 		}
-	}
+	})
 	return providers
 }
 
 // InvalidateModel removes a model from cache
 func (c *Cache) InvalidateModel(ctx context.Context, modelID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if cached, exists := c.models[modelID]; exists {
-		// Remove from provider index
-		if cached.Model.Provider != "" {
-			c.modelsByProvider[cached.Model.Provider] = removeString(c.modelsByProvider[cached.Model.Provider], modelID)
+	c.withState(func(s *cacheState) {
+		if cached, exists := s.models[modelID]; exists {
+			if cached.Model.Provider != "" {
+				s.modelsByProvider[cached.Model.Provider] = removeString(s.modelsByProvider[cached.Model.Provider], modelID)
+			}
+			delete(s.models, modelID)
 		}
-		delete(c.models, modelID)
-	}
+	})
 }
 
 // InvalidateProvider removes a provider and its models from cache
 func (c *Cache) InvalidateProvider(ctx context.Context, providerID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.providers, providerID)
-
-	// Remove all models for this provider
-	if modelIDs, exists := c.modelsByProvider[providerID]; exists {
-		for _, modelID := range modelIDs {
-			delete(c.models, modelID)
+	c.withState(func(s *cacheState) {
+		delete(s.providers, providerID)
+		if modelIDs, exists := s.modelsByProvider[providerID]; exists {
+			for _, modelID := range modelIDs {
+				delete(s.models, modelID)
+			}
+			delete(s.modelsByProvider, providerID)
 		}
-		delete(c.modelsByProvider, providerID)
-	}
+	})
 }
 
 // InvalidateAll clears the entire cache
 func (c *Cache) InvalidateAll(ctx context.Context) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.models = make(map[string]*CachedModel)
-	c.providers = make(map[string]*CachedProvider)
-	c.modelsByProvider = make(map[string][]string)
+	c.state.Put(cacheStateKey, newCacheState())
 }
 
 // UpdateLastRefresh updates the last refresh timestamp
 func (c *Cache) UpdateLastRefresh() {
-	c.mu.Lock()
-	c.lastRefresh = time.Now()
-	c.mu.Unlock()
+	now := time.Now()
+	c.lastRefresh.Store(&now)
 }
 
 // Stats returns current cache statistics
 func (c *Cache) Stats() CacheStats {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	hits := atomic.LoadInt64(&c.hits)
-	misses := atomic.LoadInt64(&c.misses)
+	hits := c.hits.Load()
+	misses := c.misses.Load()
 
 	var hitRate float64
 	total := hits + misses
@@ -331,27 +343,41 @@ func (c *Cache) Stats() CacheStats {
 		hitRate = float64(hits) / float64(total)
 	}
 
-	var oldestEntry time.Time
-	for _, cached := range c.models {
-		if oldestEntry.IsZero() || cached.CachedAt.Before(oldestEntry) {
-			oldestEntry = cached.CachedAt
+	var (
+		modelCount, providerCount int
+		oldestEntry               time.Time
+		memoryUsage               int64
+	)
+	c.withState(func(s *cacheState) {
+		modelCount = len(s.models)
+		providerCount = len(s.providers)
+		for _, cached := range s.models {
+			if oldestEntry.IsZero() || cached.CachedAt.Before(oldestEntry) {
+				oldestEntry = cached.CachedAt
+			}
 		}
-	}
-	for _, cached := range c.providers {
-		if oldestEntry.IsZero() || cached.CachedAt.Before(oldestEntry) {
-			oldestEntry = cached.CachedAt
+		for _, cached := range s.providers {
+			if oldestEntry.IsZero() || cached.CachedAt.Before(oldestEntry) {
+				oldestEntry = cached.CachedAt
+			}
 		}
+		memoryUsage = int64(modelCount*500 + providerCount*200)
+	})
+
+	var lastRefresh time.Time
+	if t := c.lastRefresh.Load(); t != nil {
+		lastRefresh = *t
 	}
 
 	return CacheStats{
-		ModelCount:       len(c.models),
-		ProviderCount:    len(c.providers),
+		ModelCount:       modelCount,
+		ProviderCount:    providerCount,
 		TotalHits:        hits,
 		TotalMisses:      misses,
 		HitRate:          hitRate,
-		LastRefresh:      c.lastRefresh,
+		LastRefresh:      lastRefresh,
 		OldestEntry:      oldestEntry,
-		MemoryUsageBytes: c.estimateMemoryUsage(),
+		MemoryUsageBytes: memoryUsage,
 	}
 }
 
@@ -381,70 +407,61 @@ func (c *Cache) cleanupLoop() {
 }
 
 func (c *Cache) cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	now := time.Now()
 
-	// Clean up expired models
-	for modelID, cached := range c.models {
-		if now.After(cached.ExpiresAt) {
-			if cached.Model.Provider != "" {
-				c.modelsByProvider[cached.Model.Provider] = removeString(c.modelsByProvider[cached.Model.Provider], modelID)
+	c.withState(func(s *cacheState) {
+		for modelID, cached := range s.models {
+			if now.After(cached.ExpiresAt) {
+				if cached.Model.Provider != "" {
+					s.modelsByProvider[cached.Model.Provider] = removeString(s.modelsByProvider[cached.Model.Provider], modelID)
+				}
+				delete(s.models, modelID)
 			}
-			delete(c.models, modelID)
 		}
-	}
-
-	// Clean up expired providers
-	for providerID, cached := range c.providers {
-		if now.After(cached.ExpiresAt) {
-			delete(c.providers, providerID)
+		for providerID, cached := range s.providers {
+			if now.After(cached.ExpiresAt) {
+				delete(s.providers, providerID)
+			}
 		}
-	}
-
-	// Clean up empty provider indices
-	for providerID, modelIDs := range c.modelsByProvider {
-		if len(modelIDs) == 0 {
-			delete(c.modelsByProvider, providerID)
+		for providerID, modelIDs := range s.modelsByProvider {
+			if len(modelIDs) == 0 {
+				delete(s.modelsByProvider, providerID)
+			}
 		}
-	}
+	})
 }
 
 func (c *Cache) removeExpiredModel(modelID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if cached, exists := c.models[modelID]; exists && cached.IsExpired() {
-		if cached.Model.Provider != "" {
-			c.modelsByProvider[cached.Model.Provider] = removeString(c.modelsByProvider[cached.Model.Provider], modelID)
+	c.withState(func(s *cacheState) {
+		if cached, exists := s.models[modelID]; exists && cached.IsExpired() {
+			if cached.Model.Provider != "" {
+				s.modelsByProvider[cached.Model.Provider] = removeString(s.modelsByProvider[cached.Model.Provider], modelID)
+			}
+			delete(s.models, modelID)
 		}
-		delete(c.models, modelID)
-	}
+	})
 }
 
 func (c *Cache) removeExpiredProvider(providerID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if cached, exists := c.providers[providerID]; exists && cached.IsExpired() {
-		delete(c.providers, providerID)
-	}
+	c.withState(func(s *cacheState) {
+		if cached, exists := s.providers[providerID]; exists && cached.IsExpired() {
+			delete(s.providers, providerID)
+		}
+	})
 }
 
-func (c *Cache) evictOldestModels(count int) {
-	// Simple LRU eviction based on CachedAt time
+// evictOldestModelsLocked must be called inside a withState callback.
+func (c *Cache) evictOldestModelsLocked(s *cacheState, count int) {
 	type modelEntry struct {
 		id       string
 		cachedAt time.Time
 	}
 
-	entries := make([]modelEntry, 0, len(c.models))
-	for id, cached := range c.models {
+	entries := make([]modelEntry, 0, len(s.models))
+	for id, cached := range s.models {
 		entries = append(entries, modelEntry{id: id, cachedAt: cached.CachedAt})
 	}
 
-	// Sort by CachedAt (oldest first)
 	for i := 0; i < len(entries)-1; i++ {
 		for j := i + 1; j < len(entries); j++ {
 			if entries[j].cachedAt.Before(entries[i].cachedAt) {
@@ -453,30 +470,29 @@ func (c *Cache) evictOldestModels(count int) {
 		}
 	}
 
-	// Evict oldest entries
 	for i := 0; i < count && i < len(entries); i++ {
 		modelID := entries[i].id
-		if cached, exists := c.models[modelID]; exists {
+		if cached, exists := s.models[modelID]; exists {
 			if cached.Model.Provider != "" {
-				c.modelsByProvider[cached.Model.Provider] = removeString(c.modelsByProvider[cached.Model.Provider], modelID)
+				s.modelsByProvider[cached.Model.Provider] = removeString(s.modelsByProvider[cached.Model.Provider], modelID)
 			}
-			delete(c.models, modelID)
+			delete(s.models, modelID)
 		}
 	}
 }
 
-func (c *Cache) evictOldestProviders(count int) {
+// evictOldestProvidersLocked must be called inside a withState callback.
+func (c *Cache) evictOldestProvidersLocked(s *cacheState, count int) {
 	type providerEntry struct {
 		id       string
 		cachedAt time.Time
 	}
 
-	entries := make([]providerEntry, 0, len(c.providers))
-	for id, cached := range c.providers {
+	entries := make([]providerEntry, 0, len(s.providers))
+	for id, cached := range s.providers {
 		entries = append(entries, providerEntry{id: id, cachedAt: cached.CachedAt})
 	}
 
-	// Sort by CachedAt (oldest first)
 	for i := 0; i < len(entries)-1; i++ {
 		for j := i + 1; j < len(entries); j++ {
 			if entries[j].cachedAt.Before(entries[i].cachedAt) {
@@ -485,15 +501,9 @@ func (c *Cache) evictOldestProviders(count int) {
 		}
 	}
 
-	// Evict oldest entries
 	for i := 0; i < count && i < len(entries); i++ {
-		delete(c.providers, entries[i].id)
+		delete(s.providers, entries[i].id)
 	}
-}
-
-func (c *Cache) estimateMemoryUsage() int64 {
-	// Rough estimate: ~500 bytes per model, ~200 bytes per provider
-	return int64(len(c.models)*500 + len(c.providers)*200)
 }
 
 // Helper functions

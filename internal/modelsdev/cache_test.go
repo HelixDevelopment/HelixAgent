@@ -15,9 +15,10 @@ func TestNewCache(t *testing.T) {
 	require.NotNil(t, cache)
 	defer func() { _ = cache.Close() }()
 
-	assert.NotNil(t, cache.models)
-	assert.NotNil(t, cache.providers)
-	assert.NotNil(t, cache.modelsByProvider)
+	assert.NotNil(t, cache.state)
+	stats := cache.Stats()
+	assert.Equal(t, 0, stats.ModelCount)
+	assert.Equal(t, 0, stats.ProviderCount)
 }
 
 func TestNewCache_WithConfig(t *testing.T) {

@@ -8,7 +8,6 @@ cmd/cognee-mock/main.go:26:CogneeMockServer
 cmd/grpc-server/main.go:25:LLMFacadeServer
 internal/agentic/workflow.go:120:WorkflowState
 internal/agents/dream/dreamer.go:129:Dreamer
-internal/agents/yolo/classifier.go:79:HeuristicClassifier
 internal/background/adaptive_worker_pool_test.go:211:mockNotificationService
 internal/background/adaptive_worker_pool_test.go:50:mockTaskQueue
 internal/background/events_test.go:160:MockMessagingHub

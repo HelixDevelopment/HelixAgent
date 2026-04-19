@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -75,12 +77,15 @@ type TrainingExample struct {
 	RiskLevel   RiskLevel     `json:"risk_level"`
 }
 
-// HeuristicClassifier uses rule-based heuristics for classification
+// HeuristicClassifier uses rule-based heuristics for classification.
+//
+// Concurrent-safe by construction (CONST-029): history is a safe.Store.
+// HistoryEntry field mutations route through Update; readers copy fields
+// out under Update to avoid Pattern Beta races.
 type HeuristicClassifier struct {
-	rules      []Rule
+	rules      []Rule // set once at construction
 	logger     *logrus.Logger
-	history    map[string]*HistoryEntry
-	historyMu  sync.RWMutex
+	history    *safe.Store[string, *HistoryEntry]
 	maxHistory int
 }
 
@@ -109,7 +114,7 @@ func NewHeuristicClassifier(logger *logrus.Logger) *HeuristicClassifier {
 
 	hc := &HeuristicClassifier{
 		logger:     logger,
-		history:    make(map[string]*HistoryEntry),
+		history:    safe.NewStore[string, *HistoryEntry](),
 		maxHistory: 1000,
 	}
 
@@ -299,59 +304,57 @@ func (h *HeuristicClassifier) assessToolRisk(toolName string) RiskLevel {
 
 // assessHistoryRisk assesses risk based on historical usage
 func (h *HeuristicClassifier) assessHistoryRisk(exec ToolExecution) RiskLevel {
-	h.historyMu.RLock()
-	defer h.historyMu.RUnlock()
-
-	entry, ok := h.history[exec.ToolName]
-	if !ok {
-		return RiskMedium // Unknown tool = medium risk
+	var (
+		risk     = RiskMedium
+		notFound bool
+	)
+	h.history.Update(exec.ToolName, func(entry *HistoryEntry, ok bool) (*HistoryEntry, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		if entry.SuccessRate < 0.5 {
+			risk = RiskHigh
+		} else if entry.Count > 10 && entry.SuccessRate > 0.9 {
+			risk = RiskLow
+		}
+		return entry, true
+	})
+	if notFound {
+		return RiskMedium
 	}
-
-	// If tool has low success rate, increase risk
-	if entry.SuccessRate < 0.5 {
-		return RiskHigh
-	}
-
-	// If tool is used frequently and successfully, lower risk
-	if entry.Count > 10 && entry.SuccessRate > 0.9 {
-		return RiskLow
-	}
-
-	return RiskMedium
+	return risk
 }
 
 // updateHistory updates the execution history
 func (h *HeuristicClassifier) updateHistory(toolName string, success bool) {
-	h.historyMu.Lock()
-	defer h.historyMu.Unlock()
-
-	entry, ok := h.history[toolName]
-	if !ok {
-		entry = &HistoryEntry{ToolName: toolName}
-		h.history[toolName] = entry
-	}
-
-	entry.Count++
-	entry.LastUsed = time.Now()
-
-	// Update success rate with exponential moving average
-	if success {
-		entry.SuccessRate = 0.9*entry.SuccessRate + 0.1
-	} else {
-		entry.SuccessRate = 0.9 * entry.SuccessRate
-	}
+	h.history.Update(toolName, func(entry *HistoryEntry, _ bool) (*HistoryEntry, bool) {
+		if entry == nil {
+			entry = &HistoryEntry{ToolName: toolName}
+		}
+		entry.Count++
+		entry.LastUsed = time.Now()
+		if success {
+			entry.SuccessRate = 0.9*entry.SuccessRate + 0.1
+		} else {
+			entry.SuccessRate = 0.9 * entry.SuccessRate
+		}
+		return entry, true
+	})
 }
 
-// GetHistory returns execution history
+// GetHistory returns execution history (a snapshot of value copies).
 func (h *HeuristicClassifier) GetHistory() map[string]*HistoryEntry {
-	h.historyMu.RLock()
-	defer h.historyMu.RUnlock()
-
-	// Return copy
 	history := make(map[string]*HistoryEntry)
-	for k, v := range h.history {
-		entry := *v
-		history[k] = &entry
+	for _, k := range h.history.Keys() {
+		h.history.Update(k, func(entry *HistoryEntry, ok bool) (*HistoryEntry, bool) {
+			if !ok {
+				return nil, false
+			}
+			copy := *entry
+			history[k] = &copy
+			return entry, true
+		})
 	}
 	return history
 }

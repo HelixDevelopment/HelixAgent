@@ -414,13 +414,14 @@ func PostJSON(ctx context.Context, url string, body io.Reader) (*http.Response, 
 	return pool.PostJSON(ctx, url, body)
 }
 
-// HostClient provides a client pre-configured for a specific host
+// HostClient provides a client pre-configured for a specific host.
+//
+// Concurrent-safe by construction (CONST-029): headers is a safe.Store.
 type HostClient struct {
 	pool    *HTTPClientPool
 	host    string
 	baseURL string
-	headers map[string]string
-	mu      sync.RWMutex
+	headers *safe.Store[string, string]
 }
 
 // NewHostClient creates a client for a specific host
@@ -434,15 +435,13 @@ func NewHostClient(pool *HTTPClientPool, baseURL string) (*HostClient, error) {
 		pool:    pool,
 		host:    parsed.Host,
 		baseURL: baseURL,
-		headers: make(map[string]string),
+		headers: safe.NewStore[string, string](),
 	}, nil
 }
 
 // SetHeader sets a default header for all requests
 func (c *HostClient) SetHeader(key, value string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.headers[key] = value
+	c.headers.Put(key, value)
 }
 
 // Do performs a request with default headers
@@ -453,11 +452,10 @@ func (c *HostClient) Do(ctx context.Context, method, path string, body io.Reader
 		return nil, err
 	}
 
-	c.mu.RLock()
-	for k, v := range c.headers {
+	c.headers.Range(func(k, v string) bool {
 		req.Header.Set(k, v)
-	}
-	c.mu.RUnlock()
+		return true
+	})
 
 	return c.pool.Do(req)
 }

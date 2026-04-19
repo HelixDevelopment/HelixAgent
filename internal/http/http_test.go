@@ -641,10 +641,10 @@ func TestHostClient_SetHeader(t *testing.T) {
 	client.SetHeader("Authorization", "Bearer token123")
 	client.SetHeader("X-Custom", "value")
 
-	client.mu.RLock()
-	assert.Equal(t, "Bearer token123", client.headers["Authorization"])
-	assert.Equal(t, "value", client.headers["X-Custom"])
-	client.mu.RUnlock()
+	gotAuth, _ := client.headers.Get("Authorization")
+	gotCustom, _ := client.headers.Get("X-Custom")
+	assert.Equal(t, "Bearer token123", gotAuth)
+	assert.Equal(t, "value", gotCustom)
 }
 
 func TestHostClient_Do(t *testing.T) {
@@ -1198,9 +1198,7 @@ func TestHostClient_HeaderConcurrency(t *testing.T) {
 	wg.Wait()
 
 	// Should not panic due to concurrent map access
-	client.mu.RLock()
-	assert.NotEmpty(t, client.headers)
-	client.mu.RUnlock()
+	assert.Greater(t, client.headers.Len(), 0)
 }
 
 // =============================================================================

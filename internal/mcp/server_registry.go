@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -78,9 +78,14 @@ const (
 )
 
 // ServerRegistry manages MCP servers.
+//
+// Concurrent-safe by construction (CONST-029): servers is a safe.Store.
+// Field mutations on *MCPServer (Enabled, Status) route through Update;
+// readers receive the live pointer (consistent with pre-migration
+// behaviour where readers held only an RLock and could observe field
+// updates between RUnlock and the subsequent field-access).
 type ServerRegistry struct {
-	servers    map[string]*MCPServer
-	mu         sync.RWMutex
+	servers    *safe.Store[string, *MCPServer]
 	log        *logrus.Logger
 	serversDir string
 }
@@ -88,7 +93,7 @@ type ServerRegistry struct {
 // NewServerRegistry creates a new MCP server registry.
 func NewServerRegistry(serversDir string) *ServerRegistry {
 	return &ServerRegistry{
-		servers:    make(map[string]*MCPServer),
+		servers:    safe.NewStore[string, *MCPServer](),
 		log:        logrus.New(),
 		serversDir: serversDir,
 	}
@@ -145,9 +150,7 @@ func (r *ServerRegistry) LoadServers() (int, error) {
 			RegisteredAt: time.Now(),
 		}
 
-		r.mu.Lock()
-		r.servers[config.Name] = server
-		r.mu.Unlock()
+		r.servers.Put(config.Name, server)
 
 		count++
 		r.log.WithFields(logrus.Fields{
@@ -177,88 +180,68 @@ func (r *ServerRegistry) loadServerConfig(path string) (*ServerConfig, error) {
 
 // Get returns a server by name.
 func (r *ServerRegistry) Get(name string) (*MCPServer, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	server, ok := r.servers[name]
-	return server, ok
+	return r.servers.Get(name)
 }
 
 // GetAll returns all registered servers.
 func (r *ServerRegistry) GetAll() []*MCPServer {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	servers := make([]*MCPServer, 0, len(r.servers))
-	for _, server := range r.servers {
-		servers = append(servers, server)
-	}
-	return servers
+	return r.servers.Values()
 }
 
 // GetEnabled returns all enabled servers.
 func (r *ServerRegistry) GetEnabled() []*MCPServer {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	servers := make([]*MCPServer, 0)
-	for _, server := range r.servers {
+	r.servers.Range(func(_ string, server *MCPServer) bool {
 		if server.Enabled {
 			servers = append(servers, server)
 		}
-	}
+		return true
+	})
 	return servers
 }
 
 // GetByStatus returns servers with the given status.
 func (r *ServerRegistry) GetByStatus(status ServerStatus) []*MCPServer {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	servers := make([]*MCPServer, 0)
-	for _, server := range r.servers {
+	r.servers.Range(func(_ string, server *MCPServer) bool {
 		if server.Status == status {
 			servers = append(servers, server)
 		}
-	}
+		return true
+	})
 	return servers
 }
 
 // Enable enables a server.
 func (r *ServerRegistry) Enable(name string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	server, ok := r.servers[name]
-	if !ok {
-		return fmt.Errorf("server not found: %s", name)
-	}
-	server.Enabled = true
-	return nil
+	return r.mutateServer(name, func(s *MCPServer) { s.Enabled = true })
 }
 
 // Disable disables a server.
 func (r *ServerRegistry) Disable(name string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	server, ok := r.servers[name]
-	if !ok {
-		return fmt.Errorf("server not found: %s", name)
-	}
-	server.Enabled = false
-	return nil
+	return r.mutateServer(name, func(s *MCPServer) { s.Enabled = false })
 }
 
 // UpdateStatus updates a server's status.
 func (r *ServerRegistry) UpdateStatus(name string, status ServerStatus) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	return r.mutateServer(name, func(s *MCPServer) { s.Status = status })
+}
 
-	server, ok := r.servers[name]
-	if !ok {
+// mutateServer atomically applies fn to the named server. Returns an error
+// if the server is not registered.
+func (r *ServerRegistry) mutateServer(name string, fn func(*MCPServer)) error {
+	var notFound bool
+	r.servers.Update(name, func(s *MCPServer, ok bool) (*MCPServer, bool) {
+		if !ok {
+			notFound = true
+			return nil, false
+		}
+		fn(s)
+		return s, true
+	})
+	if notFound {
 		return fmt.Errorf("server not found: %s", name)
 	}
-	server.Status = status
 	return nil
 }
 
@@ -267,36 +250,24 @@ func (r *ServerRegistry) Register(server *MCPServer) error {
 	if server.Config == nil || server.Config.Name == "" {
 		return fmt.Errorf("server config or name is empty")
 	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.servers[server.Config.Name]; exists {
+	server.RegisteredAt = time.Now()
+	if _, stored := r.servers.PutIfAbsent(server.Config.Name, server); !stored {
 		return fmt.Errorf("server already registered: %s", server.Config.Name)
 	}
-
-	server.RegisteredAt = time.Now()
-	r.servers[server.Config.Name] = server
 	return nil
 }
 
 // Remove removes a server from the registry.
 func (r *ServerRegistry) Remove(name string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.servers[name]; !ok {
+	if _, ok := r.servers.Delete(name); !ok {
 		return fmt.Errorf("server not found: %s", name)
 	}
-	delete(r.servers, name)
 	return nil
 }
 
 // Count returns the number of registered servers.
 func (r *ServerRegistry) Count() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return len(r.servers)
+	return r.servers.Len()
 }
 
 // Stats returns registry statistics.
@@ -320,16 +291,13 @@ type ServerInfo struct {
 
 // Stats returns statistics about registered servers.
 func (r *ServerRegistry) Stats() *RegistryStats {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	stats := &RegistryStats{
-		TotalServers: len(r.servers),
 		StatusCounts: make(map[ServerStatus]int),
-		ServerList:   make([]ServerInfo, 0, len(r.servers)),
+		ServerList:   make([]ServerInfo, 0),
 	}
 
-	for _, server := range r.servers {
+	r.servers.Range(func(_ string, server *MCPServer) bool {
+		stats.TotalServers++
 		if server.Enabled {
 			stats.EnabledCount++
 		}
@@ -349,20 +317,18 @@ func (r *ServerRegistry) Stats() *RegistryStats {
 			Enabled:     server.Enabled,
 			Featured:    featured,
 		})
-	}
+		return true
+	})
 
 	return stats
 }
 
 // ToMCPConfig generates MCP configuration for client use.
 func (r *ServerRegistry) ToMCPConfig() map[string]interface{} {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	mcpServers := make(map[string]interface{})
-	for _, server := range r.servers {
+	r.servers.Range(func(_ string, server *MCPServer) bool {
 		if !server.Enabled || len(server.Config.Packages) == 0 {
-			continue
+			return true
 		}
 
 		pkg := server.Config.Packages[0]
@@ -378,7 +344,8 @@ func (r *ServerRegistry) ToMCPConfig() map[string]interface{} {
 		// Use short name as key
 		shortName := filepath.Base(server.Path)
 		mcpServers[shortName] = serverConfig
-	}
+		return true
+	})
 
 	return map[string]interface{}{
 		"mcpServers": mcpServers,

@@ -91,7 +91,6 @@ internal/mcp/connection_pool.go:693:HTTPMCPTransport
 internal/mcp/connection_pool.go:72:MCPConnectionPool
 internal/mcp/mcp_test.go:29:MockMCPTransport
 internal/mcp/preinstaller.go:83:MCPPreinstaller
-internal/mcp/server_registry.go:81:ServerRegistry
 internal/mcp/servers/unified_manager.go:24:UnifiedServerManager
 internal/mcp/servers/unified_manager_test.go:20:MockServerAdapter
 internal/mcp/validation/validator.go:63:MCPValidator

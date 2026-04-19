@@ -372,16 +372,15 @@ func TestDebatePerformanceService_CleanupOldRecords(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Manually set old timestamps for some records
-	svc.recordsMu.Lock()
+	// Manually set old timestamps for some records (direct pointer mutation
+	// — acceptable in test setup since no concurrent access is happening).
 	count := 0
-	for _, record := range svc.records {
+	for _, record := range svc.records.Snapshot() {
 		if count < 3 {
 			record.CreatedAt = time.Now().Add(-2 * time.Hour)
 		}
 		count++
 	}
-	svc.recordsMu.Unlock()
 
 	// Cleanup records older than 1 hour
 	removed, err := svc.CleanupOldRecords(ctx, time.Hour)

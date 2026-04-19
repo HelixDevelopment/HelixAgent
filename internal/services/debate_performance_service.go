@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // PerformanceRecord holds a recorded performance entry
@@ -34,11 +35,13 @@ type PerformanceAggregation struct {
 	PerfTimeRange     TimeRange     `json:"time_range"`
 }
 
-// DebatePerformanceService provides performance metrics tracking and analysis
+// DebatePerformanceService provides performance metrics tracking and analysis.
+// Concurrent-safe by construction (CONST-029 Tier 1): records is a safe.Store.
+// PerformanceRecord values are immutable after creation (only read
+// post-insert), so pointer-sharing does not risk field-mutation races.
 type DebatePerformanceService struct {
 	logger        *logrus.Logger
-	records       map[string]*PerformanceRecord
-	recordsMu     sync.RWMutex
+	records       *safe.Store[string, *PerformanceRecord]
 	maxRecords    int
 	systemMetrics *SystemMetricsCollector
 }
@@ -52,7 +55,7 @@ type SystemMetricsCollector struct {
 func NewDebatePerformanceService(logger *logrus.Logger) *DebatePerformanceService {
 	return &DebatePerformanceService{
 		logger:     logger,
-		records:    make(map[string]*PerformanceRecord),
+		records:    safe.NewStore[string, *PerformanceRecord](),
 		maxRecords: 10000,
 		systemMetrics: &SystemMetricsCollector{
 			lastCPUTime: time.Now(),
@@ -67,7 +70,7 @@ func NewDebatePerformanceServiceWithMaxRecords(logger *logrus.Logger, maxRecords
 	}
 	return &DebatePerformanceService{
 		logger:     logger,
-		records:    make(map[string]*PerformanceRecord),
+		records:    safe.NewStore[string, *PerformanceRecord](),
 		maxRecords: maxRecords,
 		systemMetrics: &SystemMetricsCollector{
 			lastCPUTime: time.Now(),
@@ -160,14 +163,9 @@ func (dps *DebatePerformanceService) RecordMetrics(ctx context.Context, debateID
 		return fmt.Errorf("metrics cannot be nil")
 	}
 
-	dps.recordsMu.Lock()
-	defer dps.recordsMu.Unlock()
-
-	// Generate record ID
 	recordID := fmt.Sprintf("perf-%s-%d", debateID, time.Now().UnixNano())
 
-	// Check capacity and evict if needed
-	if len(dps.records) >= dps.maxRecords {
+	if dps.records.Len() >= dps.maxRecords {
 		dps.evictOldestRecord()
 	}
 
@@ -178,7 +176,7 @@ func (dps *DebatePerformanceService) RecordMetrics(ctx context.Context, debateID
 		CreatedAt: time.Now(),
 	}
 
-	dps.records[recordID] = record
+	dps.records.Put(recordID, record)
 
 	dps.logger.WithFields(logrus.Fields{
 		"record_id":     recordID,
@@ -196,7 +194,7 @@ func (dps *DebatePerformanceService) evictOldestRecord() {
 	var oldestID string
 	var oldestTime time.Time
 
-	for id, record := range dps.records {
+	for id, record := range dps.records.Snapshot() {
 		if oldestID == "" || record.CreatedAt.Before(oldestTime) {
 			oldestID = id
 			oldestTime = record.CreatedAt
@@ -204,7 +202,7 @@ func (dps *DebatePerformanceService) evictOldestRecord() {
 	}
 
 	if oldestID != "" {
-		delete(dps.records, oldestID)
+		dps.records.Delete(oldestID)
 	}
 }
 
@@ -232,8 +230,7 @@ func (dps *DebatePerformanceService) GetMetrics(ctx context.Context, timeRange T
 
 // GetAggregatedMetrics retrieves aggregated metrics for a time range
 func (dps *DebatePerformanceService) GetAggregatedMetrics(ctx context.Context, timeRange TimeRange) (*PerformanceAggregation, error) {
-	dps.recordsMu.RLock()
-	defer dps.recordsMu.RUnlock()
+	snap := dps.records.Snapshot()
 
 	aggregation := &PerformanceAggregation{
 		PerfTimeRange: timeRange,
@@ -247,7 +244,7 @@ func (dps *DebatePerformanceService) GetAggregatedMetrics(ctx context.Context, t
 	var peakCPU float64
 	var peakMemory uint64
 
-	for _, record := range dps.records {
+	for _, record := range snap {
 		// Filter by time range
 		if !timeRange.StartTime.IsZero() && record.CreatedAt.Before(timeRange.StartTime) {
 			continue
@@ -290,17 +287,13 @@ func (dps *DebatePerformanceService) GetAggregatedMetrics(ctx context.Context, t
 
 // GetMetricsByDebateID retrieves metrics for a specific debate
 func (dps *DebatePerformanceService) GetMetricsByDebateID(ctx context.Context, debateID string) ([]*PerformanceMetrics, error) {
-	dps.recordsMu.RLock()
-	defer dps.recordsMu.RUnlock()
-
 	metrics := make([]*PerformanceMetrics, 0)
-	for _, record := range dps.records {
+	for _, record := range dps.records.Snapshot() {
 		if record.DebateID == debateID {
 			metricsCopy := *record.Metrics
 			metrics = append(metrics, &metricsCopy)
 		}
 	}
-
 	return metrics, nil
 }
 
@@ -311,16 +304,14 @@ func (dps *DebatePerformanceService) GetCurrentResourceUsage() ResourceUsage {
 
 // CleanupOldRecords removes records older than maxAge
 func (dps *DebatePerformanceService) CleanupOldRecords(ctx context.Context, maxAge time.Duration) (int, error) {
-	dps.recordsMu.Lock()
-	defer dps.recordsMu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
 	removed := 0
 
-	for id, record := range dps.records {
+	for id, record := range dps.records.Snapshot() {
 		if record.CreatedAt.Before(cutoff) {
-			delete(dps.records, id)
-			removed++
+			if _, ok := dps.records.Delete(id); ok {
+				removed++
+			}
 		}
 	}
 
@@ -333,20 +324,16 @@ func (dps *DebatePerformanceService) CleanupOldRecords(ctx context.Context, maxA
 
 // GetRecordCount returns the total number of records
 func (dps *DebatePerformanceService) GetRecordCount() int {
-	dps.recordsMu.RLock()
-	defer dps.recordsMu.RUnlock()
-	return len(dps.records)
+	return dps.records.Len()
 }
 
 // GetStats returns performance service statistics
 func (dps *DebatePerformanceService) GetStats() map[string]interface{} {
-	dps.recordsMu.RLock()
-	defer dps.recordsMu.RUnlock()
-
 	currentUsage := dps.collectResourceUsage()
+	recordCount := dps.records.Len()
 
 	stats := map[string]interface{}{
-		"total_records":  len(dps.records),
+		"total_records":  recordCount,
 		"max_records":    dps.maxRecords,
 		"current_cpu":    currentUsage.CPU,
 		"current_memory": currentUsage.Memory,
@@ -355,14 +342,15 @@ func (dps *DebatePerformanceService) GetStats() map[string]interface{} {
 	// Calculate some aggregate stats
 	var totalQuality float64
 	var totalDuration time.Duration
-	for _, record := range dps.records {
+	snap := dps.records.Snapshot()
+	for _, record := range snap {
 		totalQuality += record.Metrics.QualityScore
 		totalDuration += record.Metrics.Duration
 	}
 
-	if len(dps.records) > 0 {
-		stats["average_quality"] = totalQuality / float64(len(dps.records))
-		stats["average_duration_ms"] = totalDuration.Milliseconds() / int64(len(dps.records))
+	if n := len(snap); n > 0 {
+		stats["average_quality"] = totalQuality / float64(n)
+		stats["average_duration_ms"] = totalDuration.Milliseconds() / int64(n)
 	}
 
 	return stats

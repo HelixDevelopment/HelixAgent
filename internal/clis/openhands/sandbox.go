@@ -9,9 +9,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
@@ -438,9 +438,11 @@ func WithEnv(env []string) ExecuteOption {
 }
 
 // SandboxManager manages multiple sandboxes.
+//
+// Concurrent-safe by construction (CONST-029): sandboxes is a safe.Store.
+// Sandbox has its own internal synchronisation for IsRunning / Stop.
 type SandboxManager struct {
-	sandboxes map[string]*Sandbox
-	mu        sync.RWMutex
+	sandboxes *safe.Store[string, *Sandbox]
 	client    *client.Client
 }
 
@@ -452,85 +454,60 @@ func NewSandboxManager() (*SandboxManager, error) {
 	}
 
 	return &SandboxManager{
-		sandboxes: make(map[string]*Sandbox),
+		sandboxes: safe.NewStore[string, *Sandbox](),
 		client:    cli,
 	}, nil
 }
 
 // Create creates a new sandbox.
 func (sm *SandboxManager) Create(id string, config SandboxConfig) (*Sandbox, error) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if _, exists := sm.sandboxes[id]; exists {
+	if sm.sandboxes.Has(id) {
 		return nil, fmt.Errorf("sandbox %s already exists", id)
 	}
-
 	sb, err := NewSandbox(sm.client, config)
 	if err != nil {
 		return nil, err
 	}
-
-	sm.sandboxes[id] = sb
+	if _, stored := sm.sandboxes.PutIfAbsent(id, sb); !stored {
+		return nil, fmt.Errorf("sandbox %s already exists", id)
+	}
 	return sb, nil
 }
 
 // Get retrieves a sandbox by ID.
 func (sm *SandboxManager) Get(id string) (*Sandbox, error) {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
-	sb, ok := sm.sandboxes[id]
+	sb, ok := sm.sandboxes.Get(id)
 	if !ok {
 		return nil, fmt.Errorf("sandbox %s not found", id)
 	}
-
 	return sb, nil
 }
 
 // Remove removes a sandbox.
 func (sm *SandboxManager) Remove(id string) error {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	sb, ok := sm.sandboxes[id]
+	sb, ok := sm.sandboxes.Delete(id)
 	if !ok {
 		return fmt.Errorf("sandbox %s not found", id)
 	}
-
-	// Stop if running
 	if sb.IsRunning() {
 		sb.Stop(context.Background())
 	}
-
-	delete(sm.sandboxes, id)
 	return nil
 }
 
 // List returns all sandbox IDs.
 func (sm *SandboxManager) List() []string {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
-	ids := make([]string, 0, len(sm.sandboxes))
-	for id := range sm.sandboxes {
-		ids = append(ids, id)
-	}
-
-	return ids
+	return sm.sandboxes.Keys()
 }
 
 // Cleanup stops and removes all sandboxes.
 func (sm *SandboxManager) Cleanup() {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
 	ctx := context.Background()
-	for _, sb := range sm.sandboxes {
+	sm.sandboxes.Range(func(_ string, sb *Sandbox) bool {
 		if sb.IsRunning() {
 			sb.Stop(ctx)
 		}
-	}
-
-	sm.sandboxes = make(map[string]*Sandbox)
+		return true
+	})
+	sm.sandboxes.Clear()
 }

@@ -10,16 +10,22 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
 
-// Kodu provides Kodu agent integration
+// Kodu provides Kodu agent integration.
+//
+// `context` holds mutable Codebase/Symbols/Relations state; concurrent
+// Execute calls (index → navigate → relations) mutate and read it, so
+// every access goes through `ctxMu`. See BUGFIX #23.
 type Kodu struct {
 	*base.BaseIntegration
 	config  *Config
 	context *Context
+	ctxMu   sync.RWMutex
 }
 
 // Config holds Kodu configuration
@@ -117,13 +123,17 @@ func (k *Kodu) loadContext() error {
 		return fmt.Errorf("read context: %w", err)
 	}
 
+	k.ctxMu.Lock()
+	defer k.ctxMu.Unlock()
 	return json.Unmarshal(data, &k.context)
 }
 
 // saveContext saves semantic context
 func (k *Kodu) saveContext() error {
 	contextPath := filepath.Join(k.GetWorkDir(), "context.json")
+	k.ctxMu.RLock()
 	data, err := json.MarshalIndent(k.context, "", "  ")
+	k.ctxMu.RUnlock()
 	if err != nil {
 		return fmt.Errorf("marshal context: %w", err)
 	}
@@ -185,7 +195,9 @@ func (k *Kodu) search(ctx context.Context, params map[string]interface{}) (inter
 
 	results := make([]map[string]interface{}, 0)
 
-	// Semantic search through codebase
+	// Semantic search through codebase — snapshot under read lock so
+	// concurrent index() cannot mutate while we range.
+	k.ctxMu.RLock()
 	for file, content := range k.context.Codebase {
 		if strings.Contains(strings.ToLower(content), strings.ToLower(query)) {
 			results = append(results, map[string]interface{}{
@@ -195,6 +207,7 @@ func (k *Kodu) search(ctx context.Context, params map[string]interface{}) (inter
 			})
 		}
 	}
+	k.ctxMu.RUnlock()
 
 	return map[string]interface{}{
 		"query":   query,
@@ -210,7 +223,9 @@ func (k *Kodu) explain(ctx context.Context, params map[string]interface{}) (inte
 		return nil, fmt.Errorf("file required")
 	}
 
+	k.ctxMu.RLock()
 	content, exists := k.context.Codebase[file]
+	k.ctxMu.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("file not in context: %s", file)
 	}
@@ -247,7 +262,7 @@ func (k *Kodu) index(ctx context.Context, params map[string]interface{}) (interf
 		directory = "."
 	}
 
-	// Index files
+	// Index files — every context mutation takes the write lock.
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -262,9 +277,11 @@ func (k *Kodu) index(ctx context.Context, params map[string]interface{}) (interf
 			return err
 		}
 
+		k.ctxMu.Lock()
 		k.context.Codebase[path] = string(content)
+		k.ctxMu.Unlock()
 
-		// Extract symbols (simplified)
+		// Extract symbols (simplified) — also takes ctxMu internally.
 		k.extractSymbols(path, string(content))
 
 		return nil
@@ -278,10 +295,14 @@ func (k *Kodu) index(ctx context.Context, params map[string]interface{}) (interf
 		return nil, err
 	}
 
+	k.ctxMu.RLock()
+	filesCount := len(k.context.Codebase)
+	symbolsCount := len(k.context.Symbols)
+	k.ctxMu.RUnlock()
 	return map[string]interface{}{
 		"directory": directory,
-		"files":     len(k.context.Codebase),
-		"symbols":   len(k.context.Symbols),
+		"files":     filesCount,
+		"symbols":   symbolsCount,
 		"status":    "indexed",
 	}, nil
 }
@@ -293,14 +314,17 @@ func (k *Kodu) navigate(ctx context.Context, params map[string]interface{}) (int
 		return nil, fmt.Errorf("symbol required")
 	}
 
+	k.ctxMu.RLock()
 	for _, s := range k.context.Symbols {
 		if s.Name == symbol {
+			k.ctxMu.RUnlock()
 			return map[string]interface{}{
 				"symbol": s,
 				"found":  true,
 			}, nil
 		}
 	}
+	k.ctxMu.RUnlock()
 
 	return map[string]interface{}{
 		"symbol": symbol,
@@ -316,11 +340,13 @@ func (k *Kodu) relations(ctx context.Context, params map[string]interface{}) (in
 	}
 
 	relations := make([]Relation, 0)
+	k.ctxMu.RLock()
 	for _, r := range k.context.Relations {
 		if r.From == symbol || r.To == symbol {
 			relations = append(relations, r)
 		}
 	}
+	k.ctxMu.RUnlock()
 
 	return map[string]interface{}{
 		"symbol":    symbol,
@@ -334,11 +360,13 @@ func (k *Kodu) findRelevantSymbols(query string) []Symbol {
 	relevant := make([]Symbol, 0)
 	queryLower := strings.ToLower(query)
 
+	k.ctxMu.RLock()
 	for _, symbol := range k.context.Symbols {
 		if strings.Contains(strings.ToLower(symbol.Name), queryLower) {
 			relevant = append(relevant, symbol)
 		}
 	}
+	k.ctxMu.RUnlock()
 
 	return relevant
 }
@@ -362,9 +390,12 @@ func (k *Kodu) extractSnippet(content, query string) string {
 	return content[start:end]
 }
 
-// extractSymbols extracts symbols from code (simplified)
+// extractSymbols extracts symbols from code (simplified).
+// Takes the write lock because it appends to k.context.Symbols.
 func (k *Kodu) extractSymbols(file, content string) {
 	lines := strings.Split(content, "\n")
+	k.ctxMu.Lock()
+	defer k.ctxMu.Unlock()
 	for i, line := range lines {
 		// Simple extraction - look for function definitions
 		if strings.HasPrefix(line, "func ") {

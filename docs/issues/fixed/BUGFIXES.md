@@ -1,5 +1,36 @@
 # Bug Fixes and Known Issues
 
+## Issue #23: Multiple data races in `kodu.Kodu.context` — unsynchronised semantic cache (BUGFIX 2026-04-19)
+
+### Issue
+`go test -race -run TestKodu_Execute ./internal/clis/agents/kodu/` surfaced multiple DATA RACE warnings across `Kodu.context`:
+
+```
+Write at … by goroutine 15:
+  Kodu.index.func1  kodu.go:265  (k.context.Codebase[path] = string(content))
+Read at … by goroutine 16:
+  Kodu.navigate     kodu.go:296  (range k.context.Symbols)
+```
+
+### Root Cause
+`Kodu.context` (containing `Codebase map`, `Symbols slice`, `Relations slice`) had **no synchronisation** despite:
+- `index()` writing `Codebase` + `Symbols` under `filepath.Walk`.
+- `navigate()`, `search()`, `explain()`, `relations()`, `findRelevantSymbols()` all READING those fields.
+- `Execute()` dispatching to any of these concurrently.
+
+### Fix Applied
+`internal/clis/agents/kodu/kodu.go`:
+
+- Added `ctxMu sync.RWMutex` field on `Kodu`.
+- Write lock (`Lock/Unlock`) around every mutation site: `loadContext`, `index` write paths, `extractSymbols` append.
+- Read lock (`RLock/RUnlock`) around every reader: `saveContext` marshal, `search` range, `explain` map read, `navigate` range, `relations` range, `findRelevantSymbols` range, and the post-index summary counts.
+
+**Verification:**
+- `go test -race -run TestKodu_Execute ./internal/clis/agents/kodu/ -p 1 -count=10` → 10/10 passes, 1.0 s wall.
+- Full package `-race -short` → ok, 1.0 s wall.
+
+---
+
 ## Issue #22: Data race in `swarm.Coordinator.CreateTask` — unlocked map read (BUGFIX 2026-04-19)
 
 ### Issue

@@ -91,7 +91,6 @@ internal/notifications/hub.go:34:NotificationHub
 internal/notifications/hub_test.go:18:MockSubscriber
 internal/notifications/websocket_server.go:29:WebSocketServer
 internal/notifications/websocket_server_test.go:21:MockWebSocketClient
-internal/optimization/context/summarizer.go:531:SummaryCache
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/optimization/optimizer.go:23:Service

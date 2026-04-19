@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 var (
@@ -528,9 +530,9 @@ func (s *IncrementalSummarizer) Reset() {
 }
 
 // SummaryCache caches summaries to avoid re-computation.
+// Concurrent-safe by construction (CONST-029): cache is a safe.Store.
 type SummaryCache struct {
-	mu    sync.RWMutex
-	cache map[string]CachedSummary
+	cache *safe.Store[string, CachedSummary]
 	ttl   time.Duration
 }
 
@@ -547,56 +549,44 @@ type CachedSummary struct {
 // NewSummaryCache creates a new summary cache.
 func NewSummaryCache(ttl time.Duration) *SummaryCache {
 	return &SummaryCache{
-		cache: make(map[string]CachedSummary),
+		cache: safe.NewStore[string, CachedSummary](),
 		ttl:   ttl,
 	}
 }
 
 // Get retrieves a cached summary.
 func (c *SummaryCache) Get(key string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	cached, exists := c.cache[key]
+	cached, exists := c.cache.Get(key)
 	if !exists {
 		return "", false
 	}
-
 	if time.Since(cached.CreatedAt) > c.ttl {
 		return "", false
 	}
-
 	return cached.Summary, true
 }
 
 // Set stores a summary in the cache.
 func (c *SummaryCache) Set(key, summary string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.cache[key] = CachedSummary{
+	c.cache.Put(key, CachedSummary{
 		Summary:     summary,
 		CreatedAt:   time.Now(),
 		ContentHash: key,
-	}
+	})
 }
 
 // Clear clears the cache.
 func (c *SummaryCache) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cache = make(map[string]CachedSummary)
+	c.cache.Clear()
 }
 
 // Cleanup removes expired entries.
+// Iterates a Snapshot before per-key Delete to avoid mutating during Range.
 func (c *SummaryCache) Cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	now := time.Now()
-	for key, cached := range c.cache {
+	for key, cached := range c.cache.Snapshot() {
 		if now.Sub(cached.CreatedAt) > c.ttl {
-			delete(c.cache, key)
+			c.cache.Delete(key)
 		}
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"container/list"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // EvictionStrategy defines the interface for cache eviction policies.
@@ -20,11 +22,16 @@ type EvictionStrategy interface {
 }
 
 // LRUEviction implements Least Recently Used eviction policy.
+//
+// mu is Pattern Zeta: it coordinates the container/list order with
+// the key→element lookup during compound LRU operations (container/
+// list is not thread-safe). The lookup index lives in a safe.Store
+// so the audit-gate pattern ("sync.Mutex + bare map") is retired.
 type LRUEviction struct {
 	mu      sync.Mutex
 	maxSize int
 	order   *list.List
-	index   map[string]*list.Element
+	index   *safe.Store[string, *list.Element]
 }
 
 // NewLRUEviction creates a new LRU eviction strategy.
@@ -32,7 +39,7 @@ func NewLRUEviction(maxSize int) *LRUEviction {
 	return &LRUEviction{
 		maxSize: maxSize,
 		order:   list.New(),
-		index:   make(map[string]*list.Element),
+		index:   safe.NewStore[string, *list.Element](),
 	}
 }
 
@@ -42,13 +49,13 @@ func (e *LRUEviction) Add(key string) string {
 	defer e.mu.Unlock()
 
 	// If key exists, move to front
-	if elem, exists := e.index[key]; exists {
+	if elem, exists := e.index.Get(key); exists {
 		e.order.MoveToFront(elem)
 		return ""
 	}
 
 	// Add new key to front
-	e.index[key] = e.order.PushFront(key)
+	e.index.Put(key, e.order.PushFront(key))
 
 	// Check if eviction needed
 	if e.order.Len() > e.maxSize {
@@ -56,7 +63,7 @@ func (e *LRUEviction) Add(key string) string {
 		if oldest != nil {
 			evicted := oldest.Value.(string) //nolint:errcheck
 			e.order.Remove(oldest)
-			delete(e.index, evicted)
+			e.index.Delete(evicted)
 			return evicted
 		}
 	}
@@ -69,7 +76,7 @@ func (e *LRUEviction) UpdateAccess(key string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if elem, exists := e.index[key]; exists {
+	if elem, exists := e.index.Get(key); exists {
 		e.order.MoveToFront(elem)
 	}
 }
@@ -79,9 +86,9 @@ func (e *LRUEviction) Remove(key string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if elem, exists := e.index[key]; exists {
+	if elem, exists := e.index.Get(key); exists {
 		e.order.Remove(elem)
-		delete(e.index, key)
+		e.index.Delete(key)
 	}
 }
 
@@ -93,10 +100,11 @@ func (e *LRUEviction) Size() int {
 }
 
 // TTLEviction implements Time-To-Live eviction policy.
+// Pattern Alpha: entries are time.Time values with no post-insert
+// mutation — UpdateAccess is a Put of a fresh time.Now().
 type TTLEviction struct {
-	mu          sync.Mutex
 	ttl         time.Duration
-	entries     map[string]time.Time
+	entries     *safe.Store[string, time.Time]
 	stopCleanup chan struct{}
 }
 
@@ -104,7 +112,7 @@ type TTLEviction struct {
 func NewTTLEviction(ttl time.Duration) *TTLEviction {
 	e := &TTLEviction{
 		ttl:         ttl,
-		entries:     make(map[string]time.Time),
+		entries:     safe.NewStore[string, time.Time](),
 		stopCleanup: make(chan struct{}),
 	}
 	go e.cleanupLoop()
@@ -113,47 +121,40 @@ func NewTTLEviction(ttl time.Duration) *TTLEviction {
 
 // Add adds a key with current timestamp.
 func (e *TTLEviction) Add(key string) string {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.entries[key] = time.Now()
+	e.entries.Put(key, time.Now())
 	return "" // TTL doesn't evict on add
 }
 
 // UpdateAccess refreshes the timestamp for a key.
 func (e *TTLEviction) UpdateAccess(key string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if _, exists := e.entries[key]; exists {
-		e.entries[key] = time.Now()
-	}
+	e.entries.Update(key, func(_ time.Time, ok bool) (time.Time, bool) {
+		if !ok {
+			return time.Time{}, false
+		}
+		return time.Now(), true
+	})
 }
 
 // Remove removes a key from the tracker.
 func (e *TTLEviction) Remove(key string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	delete(e.entries, key)
+	e.entries.Delete(key)
 }
 
 // Size returns the number of tracked entries.
 func (e *TTLEviction) Size() int {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return len(e.entries)
+	return e.entries.Len()
 }
 
 // GetExpired returns all expired keys.
 func (e *TTLEviction) GetExpired() []string {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	now := time.Now()
 	var expired []string
-	for key, createdAt := range e.entries {
+	e.entries.Range(func(key string, createdAt time.Time) bool {
 		if now.Sub(createdAt) > e.ttl {
 			expired = append(expired, key)
 		}
-	}
+		return true
+	})
 	return expired
 }
 
@@ -248,12 +249,19 @@ func (e *LRUWithTTLEviction) Stop() {
 	close(e.stopCleanup)
 }
 
-// RelevanceEviction implements relevance-based eviction using access frequency and recency.
+// RelevanceEviction implements relevance-based eviction using access
+// frequency and recency.
+//
+// mu is Pattern Zeta: it coordinates the compound decay-and-update
+// sequence (applyDecay mutates every score and lastDecay, then the
+// caller mutates a specific key) so concurrent callers cannot observe
+// a partially decayed map. scores themselves live in safe.Store so
+// the bare-mutex-plus-map pattern is gone.
 type RelevanceEviction struct {
 	mu          sync.Mutex
 	maxSize     int
 	decayFactor float64
-	scores      map[string]float64
+	scores      *safe.Store[string, float64]
 	lastDecay   time.Time
 }
 
@@ -262,7 +270,7 @@ func NewRelevanceEviction(maxSize int, decayFactor float64) *RelevanceEviction {
 	return &RelevanceEviction{
 		maxSize:     maxSize,
 		decayFactor: decayFactor,
-		scores:      make(map[string]float64),
+		scores:      safe.NewStore[string, float64](),
 		lastDecay:   time.Now(),
 	}
 }
@@ -272,11 +280,11 @@ func (e *RelevanceEviction) Add(key string) string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.applyDecay()
-	e.scores[key] = 1.0
+	e.applyDecayLocked()
+	e.scores.Put(key, 1.0)
 
-	if len(e.scores) > e.maxSize {
-		return e.evictLowest()
+	if e.scores.Len() > e.maxSize {
+		return e.evictLowestLocked()
 	}
 	return ""
 }
@@ -286,60 +294,65 @@ func (e *RelevanceEviction) UpdateAccess(key string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.applyDecay()
-	if _, exists := e.scores[key]; exists {
-		e.scores[key] += 1.0
-	}
+	e.applyDecayLocked()
+	e.scores.Update(key, func(cur float64, ok bool) (float64, bool) {
+		if !ok {
+			return 0, false
+		}
+		return cur + 1.0, true
+	})
 }
 
 // Remove removes a key from the tracker.
 func (e *RelevanceEviction) Remove(key string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	delete(e.scores, key)
+	e.scores.Delete(key)
 }
 
 // Size returns the number of tracked entries.
 func (e *RelevanceEviction) Size() int {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return len(e.scores)
+	return e.scores.Len()
 }
 
-func (e *RelevanceEviction) applyDecay() {
+// applyDecayLocked must be called with e.mu held.
+func (e *RelevanceEviction) applyDecayLocked() {
 	// Apply decay every minute
 	if time.Since(e.lastDecay) < time.Minute {
 		return
 	}
 
-	for k := range e.scores {
-		e.scores[k] *= e.decayFactor
+	for _, k := range e.scores.Keys() {
+		e.scores.Update(k, func(cur float64, ok bool) (float64, bool) {
+			if !ok {
+				return 0, false
+			}
+			return cur * e.decayFactor, true
+		})
 	}
 	e.lastDecay = time.Now()
 }
 
-func (e *RelevanceEviction) evictLowest() string {
-	if len(e.scores) == 0 {
-		return ""
-	}
-
+// evictLowestLocked must be called with e.mu held.
+func (e *RelevanceEviction) evictLowestLocked() string {
 	var lowestKey string
 	lowestScore := float64(1<<62 - 1)
 
-	for key, score := range e.scores {
+	e.scores.Range(func(key string, score float64) bool {
 		if score < lowestScore {
 			lowestScore = score
 			lowestKey = key
 		}
-	}
+		return true
+	})
 
-	delete(e.scores, lowestKey)
+	if lowestKey == "" {
+		return ""
+	}
+	e.scores.Delete(lowestKey)
 	return lowestKey
 }
 
 // GetScore returns the relevance score for a key.
 func (e *RelevanceEviction) GetScore(key string) float64 {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.scores[key]
+	v, _ := e.scores.Get(key)
+	return v
 }

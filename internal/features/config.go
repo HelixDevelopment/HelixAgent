@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // FeatureConfig holds the complete feature configuration
@@ -60,10 +62,16 @@ func DefaultFeatureConfig() *FeatureConfig {
 	}
 }
 
-// FeatureContext holds the resolved feature settings for a request
+// FeatureContext holds the resolved feature settings for a request.
+//
+// Concurrent-safe by construction (CONST-029): Features is a safe.Store.
+// JSON marshalling round-trips via the lowercase "features" object key,
+// preserving the wire format. The exported Features field type changed
+// from map[Feature]bool to *safe.Store[Feature, bool] — callers that
+// iterated the map should now use Snapshot()/Range().
 type FeatureContext struct {
-	// Features holds the enabled/disabled state of each feature
-	Features map[Feature]bool `json:"features"`
+	// Features holds the enabled/disabled state of each feature.
+	Features *safe.Store[Feature, bool] `json:"-"`
 
 	// AgentName is the detected or specified agent name
 	AgentName string `json:"agent_name,omitempty"`
@@ -76,9 +84,58 @@ type FeatureContext struct {
 
 	// RequestID for tracing
 	RequestID string `json:"request_id,omitempty"`
+}
 
-	// mu protects Features map
-	mu sync.RWMutex
+// snapshotFeatures returns a point-in-time copy of the feature map.
+// Callers iterate the snapshot lock-free.
+func (fc *FeatureContext) snapshotFeatures() map[Feature]bool {
+	if fc.Features == nil {
+		return nil
+	}
+	return fc.Features.Snapshot()
+}
+
+// MarshalJSON emits the features map alongside the scalar fields under the
+// "features" key (preserves the pre-migration JSON shape).
+func (fc *FeatureContext) MarshalJSON() ([]byte, error) {
+	type alias FeatureContext
+	return json.Marshal(struct {
+		Features map[Feature]bool `json:"features"`
+		*alias
+	}{
+		Features: fc.snapshotFeatures(),
+		alias:    (*alias)(fc),
+	})
+}
+
+// UnmarshalJSON restores the features map from the wire format and
+// rebuilds the safe.Store.
+func (fc *FeatureContext) UnmarshalJSON(data []byte) error {
+	type alias FeatureContext
+	aux := &struct {
+		Features map[Feature]bool `json:"features"`
+		*alias
+	}{
+		alias: (*alias)(fc),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	fc.Features = safe.NewStore[Feature, bool]()
+	for k, v := range aux.Features {
+		fc.Features.Put(k, v)
+	}
+	return nil
+}
+
+// featuresFromMap builds a fresh safe.Store from a plain map (helper
+// for the various NewFeatureContext constructors).
+func featuresFromMap(m map[Feature]bool) *safe.Store[Feature, bool] {
+	store := safe.NewStore[Feature, bool]()
+	for k, v := range m {
+		store.Put(k, v)
+	}
+	return store
 }
 
 // FeatureSource indicates where feature settings came from
@@ -103,7 +160,7 @@ func NewFeatureContext() *FeatureContext {
 	}
 
 	return &FeatureContext{
-		Features: features,
+		Features: featuresFromMap(features),
 		Source:   SourceGlobalDefault,
 	}
 }
@@ -135,7 +192,7 @@ func NewFeatureContextFromConfig(config *FeatureConfig, endpoint string) *Featur
 	}
 
 	return &FeatureContext{
-		Features: features,
+		Features: featuresFromMap(features),
 		Endpoint: endpoint,
 		Source:   SourceEndpointConfig,
 	}
@@ -143,20 +200,13 @@ func NewFeatureContextFromConfig(config *FeatureConfig, endpoint string) *Featur
 
 // IsEnabled checks if a feature is enabled
 func (fc *FeatureContext) IsEnabled(feature Feature) bool {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	if enabled, ok := fc.Features[feature]; ok {
-		return enabled
-	}
-	return false
+	enabled, _ := fc.Features.Get(feature)
+	return enabled
 }
 
 // SetEnabled sets the enabled state of a feature
 func (fc *FeatureContext) SetEnabled(feature Feature, enabled bool) {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-	fc.Features[feature] = enabled
+	fc.Features.Put(feature, enabled)
 }
 
 // EnableFeature enables a feature
@@ -171,29 +221,25 @@ func (fc *FeatureContext) DisableFeature(feature Feature) {
 
 // GetEnabledFeatures returns a list of enabled features
 func (fc *FeatureContext) GetEnabledFeatures() []Feature {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
 	var enabled []Feature
-	for f, isEnabled := range fc.Features {
+	fc.Features.Range(func(f Feature, isEnabled bool) bool {
 		if isEnabled {
 			enabled = append(enabled, f)
 		}
-	}
+		return true
+	})
 	return enabled
 }
 
 // GetDisabledFeatures returns a list of disabled features
 func (fc *FeatureContext) GetDisabledFeatures() []Feature {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
 	var disabled []Feature
-	for f, isEnabled := range fc.Features {
+	fc.Features.Range(func(f Feature, isEnabled bool) bool {
 		if !isEnabled {
 			disabled = append(disabled, f)
 		}
-	}
+		return true
+	})
 	return disabled
 }
 
@@ -202,11 +248,8 @@ func (fc *FeatureContext) ApplyAgentCapabilities(agentName string) {
 	capRegistry := GetCapabilityRegistry()
 	defaults := capRegistry.GetAgentFeatureDefaults(agentName)
 
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
 	for feature, enabled := range defaults {
-		fc.Features[feature] = enabled
+		fc.Features.Put(feature, enabled)
 	}
 
 	fc.AgentName = agentName
@@ -215,27 +258,16 @@ func (fc *FeatureContext) ApplyAgentCapabilities(agentName string) {
 
 // ApplyOverrides applies feature overrides from a map
 func (fc *FeatureContext) ApplyOverrides(overrides map[Feature]bool, source FeatureSource) {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
 	for feature, enabled := range overrides {
-		fc.Features[feature] = enabled
+		fc.Features.Put(feature, enabled)
 	}
 	fc.Source = source
 }
 
 // Clone creates a copy of the feature context
 func (fc *FeatureContext) Clone() *FeatureContext {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	features := make(map[Feature]bool)
-	for k, v := range fc.Features {
-		features[k] = v
-	}
-
 	return &FeatureContext{
-		Features:  features,
+		Features:  featuresFromMap(fc.snapshotFeatures()),
 		AgentName: fc.AgentName,
 		Source:    fc.Source,
 		Endpoint:  fc.Endpoint,
@@ -245,93 +277,70 @@ func (fc *FeatureContext) Clone() *FeatureContext {
 
 // Validate checks if the current feature combination is valid
 func (fc *FeatureContext) Validate() error {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	return GetRegistry().ValidateFeatureCombination(fc.Features)
+	return GetRegistry().ValidateFeatureCombination(fc.snapshotFeatures())
 }
 
 // ToJSON serializes the context to JSON
 func (fc *FeatureContext) ToJSON() ([]byte, error) {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
 	return json.Marshal(fc)
 }
 
 // FromJSON deserializes the context from JSON
 func (fc *FeatureContext) FromJSON(data []byte) error {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
 	return json.Unmarshal(data, fc)
 }
 
 // ToHeaders converts enabled features to HTTP headers
 func (fc *FeatureContext) ToHeaders() map[string]string {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
 	headers := make(map[string]string)
 	registry := GetRegistry()
 
-	for feature, enabled := range fc.Features {
+	fc.Features.Range(func(feature Feature, enabled bool) bool {
 		if info, ok := registry.GetFeature(feature); ok {
 			if enabled {
 				headers[info.HeaderName] = "true"
 			}
 		}
-	}
+		return true
+	})
 
 	return headers
 }
 
 // GetStreamingMethod returns the preferred streaming method
 func (fc *FeatureContext) GetStreamingMethod() string {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	// Priority: WebSocket > SSE > JSONL
-	if fc.Features[FeatureWebSocket] {
+	if fc.IsEnabled(FeatureWebSocket) {
 		return "websocket"
 	}
-	if fc.Features[FeatureSSE] {
+	if fc.IsEnabled(FeatureSSE) {
 		return "sse"
 	}
-	if fc.Features[FeatureJSONL] {
+	if fc.IsEnabled(FeatureJSONL) {
 		return "jsonl"
 	}
-	return "sse" // Default fallback
+	return "sse"
 }
 
 // GetCompressionMethod returns the preferred compression method
 func (fc *FeatureContext) GetCompressionMethod() string {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	// Priority: Brotli > Zstd > Gzip > none
-	if fc.Features[FeatureBrotli] {
+	if fc.IsEnabled(FeatureBrotli) {
 		return "br"
 	}
-	if fc.Features[FeatureZstd] {
+	if fc.IsEnabled(FeatureZstd) {
 		return "zstd"
 	}
-	if fc.Features[FeatureGzip] {
+	if fc.IsEnabled(FeatureGzip) {
 		return "gzip"
 	}
-	return "" // No compression
+	return ""
 }
 
 // GetTransportProtocol returns the preferred transport protocol
 func (fc *FeatureContext) GetTransportProtocol() string {
-	fc.mu.RLock()
-	defer fc.mu.RUnlock()
-
-	// Priority: HTTP/3 > HTTP/2
-	if fc.Features[FeatureHTTP3] {
+	if fc.IsEnabled(FeatureHTTP3) {
 		return "h3"
 	}
-	if fc.Features[FeatureHTTP2] {
+	if fc.IsEnabled(FeatureHTTP2) {
 		return "h2"
 	}
 	return "http/1.1"
@@ -381,10 +390,14 @@ type FeatureStats struct {
 	TotalRequests int64   `json:"total_requests"`
 }
 
-// FeatureUsageTracker tracks feature usage across requests
+// FeatureUsageTracker tracks feature usage across requests.
+//
+// Concurrent-safe by construction (CONST-029): stats is a safe.Store.
+// Field mutations on *FeatureStats route through Update; reads copy
+// the value out under Update to avoid Pattern Beta races on the
+// counter fields.
 type FeatureUsageTracker struct {
-	mu    sync.RWMutex
-	stats map[Feature]*FeatureStats
+	stats *safe.Store[Feature, *FeatureStats]
 }
 
 // globalTracker is the singleton usage tracker
@@ -395,13 +408,13 @@ var trackerOnce sync.Once
 func GetUsageTracker() *FeatureUsageTracker {
 	trackerOnce.Do(func() {
 		globalTracker = &FeatureUsageTracker{
-			stats: make(map[Feature]*FeatureStats),
+			stats: safe.NewStore[Feature, *FeatureStats](),
 		}
 		// Initialize stats for all features
 		for _, f := range GetRegistry().GetAllFeatures() {
-			globalTracker.stats[f.Name] = &FeatureStats{
+			globalTracker.stats.Put(f.Name, &FeatureStats{
 				Feature: f.Name,
-			}
+			})
 		}
 	})
 	return globalTracker
@@ -409,54 +422,59 @@ func GetUsageTracker() *FeatureUsageTracker {
 
 // RecordUsage records feature usage for a request
 func (t *FeatureUsageTracker) RecordUsage(fc *FeatureContext) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for feature, enabled := range fc.Features {
-		if stats, ok := t.stats[feature]; ok {
+	for feature, enabled := range fc.snapshotFeatures() {
+		t.stats.Update(feature, func(stats *FeatureStats, ok bool) (*FeatureStats, bool) {
+			if !ok {
+				return nil, false
+			}
 			stats.TotalRequests++
 			if enabled {
 				stats.EnabledCount++
 			} else {
 				stats.DisabledCount++
 			}
-		}
+			return stats, true
+		})
 	}
 }
 
 // GetStats returns usage statistics for all features
 func (t *FeatureUsageTracker) GetStats() []*FeatureStats {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	stats := make([]*FeatureStats, 0, len(t.stats))
-	for _, s := range t.stats {
-		statCopy := *s
-		stats = append(stats, &statCopy)
+	keys := t.stats.Keys()
+	stats := make([]*FeatureStats, 0, len(keys))
+	for _, k := range keys {
+		if s := t.GetFeatureStats(k); s != nil {
+			stats = append(stats, s)
+		}
 	}
 	return stats
 }
 
 // GetFeatureStats returns statistics for a specific feature
 func (t *FeatureUsageTracker) GetFeatureStats(feature Feature) *FeatureStats {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	if stats, ok := t.stats[feature]; ok {
-		statCopy := *stats
-		return &statCopy
-	}
-	return nil
+	var snapshot *FeatureStats
+	t.stats.Update(feature, func(stats *FeatureStats, ok bool) (*FeatureStats, bool) {
+		if !ok {
+			return nil, false
+		}
+		copy := *stats
+		snapshot = &copy
+		return stats, true
+	})
+	return snapshot
 }
 
 // ResetStats resets all usage statistics
 func (t *FeatureUsageTracker) ResetStats() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for _, s := range t.stats {
-		s.EnabledCount = 0
-		s.DisabledCount = 0
-		s.TotalRequests = 0
+	for _, k := range t.stats.Keys() {
+		t.stats.Update(k, func(s *FeatureStats, ok bool) (*FeatureStats, bool) {
+			if !ok {
+				return nil, false
+			}
+			s.EnabledCount = 0
+			s.DisabledCount = 0
+			s.TotalRequests = 0
+			return s, true
+		})
 	}
 }

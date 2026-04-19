@@ -42,7 +42,11 @@ func TestNativeFormatter_buildArgs(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
-	metadata := &formatters.FormatterMetadata{
+	// Each subtest constructs its OWN metadata below to avoid racing
+	// writes on metadata.SupportsCheck from parallel subtests
+	// (race-debt BUGFIX #24). The shared-metadata construction here is
+	// used only as a template for base fields.
+	metadataTemplate := &formatters.FormatterMetadata{
 		Name:      "test",
 		Type:      formatters.FormatterTypeNative,
 		Languages: []string{"test"},
@@ -97,9 +101,13 @@ func TestNativeFormatter_buildArgs(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			metadata.SupportsCheck = tc.supportsCheck
+			// Per-subtest copy so setting SupportsCheck never races
+			// with other parallel subtests (see the template-comment
+			// above).
+			localMeta := *metadataTemplate
+			localMeta.SupportsCheck = tc.supportsCheck
 			formatter := &NativeFormatter{
-				BaseFormatter: formatters.NewBaseFormatter(metadata),
+				BaseFormatter: formatters.NewBaseFormatter(&localMeta),
 				binaryPath:    "fake",
 				args:          tc.args,
 				stdinFlag:     tc.stdinFlag,

@@ -1,5 +1,17 @@
 # Bug Fixes and Known Issues
 
+## Issue #24: `TestNativeFormatter_buildArgs` shared-metadata race (BUGFIX 2026-04-19)
+
+### Issue
+Parallel subtests of `TestNativeFormatter_buildArgs` raced on `metadata.SupportsCheck = tc.supportsCheck` — all subtests shared a single `*FormatterMetadata` pointer and each subtest wrote the same field.
+
+### Fix Applied
+`internal/formatters/providers/native/native_test.go` — template `metadataTemplate` is read-only; each subtest takes a value-copy (`localMeta := *metadataTemplate`) and mutates the copy.
+
+**Verification:** 10/10 `-race` iterations clean.
+
+---
+
 ## Issue #23: Multiple data races in `kodu.Kodu.context` — unsynchronised semantic cache (BUGFIX 2026-04-19)
 
 ### Issue

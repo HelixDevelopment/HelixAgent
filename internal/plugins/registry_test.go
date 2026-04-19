@@ -20,7 +20,7 @@ func TestNewRegistry_Initialization(t *testing.T) {
 	registry := NewRegistry()
 	require.NotNil(t, registry)
 	assert.NotNil(t, registry.plugins)
-	assert.Empty(t, registry.plugins)
+	assert.Equal(t, 0, registry.plugins.Len())
 }
 
 func TestNewRegistry_EmptyList(t *testing.T) {

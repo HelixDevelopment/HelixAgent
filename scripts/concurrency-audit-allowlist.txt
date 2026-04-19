@@ -88,7 +88,6 @@ internal/llm/providers/qwen/qwen_acp.go:27:QwenACPProvider
 internal/llm/providers/zen/zen_cli.go:22:ZenCLIProvider
 internal/mcp/adapters/registry.go:99:AdapterRegistry
 internal/mcp/adapters/registry_test.go:14:MockMCPAdapter
-internal/mcp/bridge/bridge.go:48:Bridge
 internal/mcp/bridge/sse_bridge.go:238:SSEBridge
 internal/mcp/connection_pool_extra_test.go:322:MockMCPTransportWithInit
 internal/mcp/connection_pool.go:693:HTTPMCPTransport

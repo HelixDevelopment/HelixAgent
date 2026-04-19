@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
 
@@ -46,14 +47,14 @@ func DefaultConfig() *Config {
 
 // Bridge wraps an MCP server and exposes it over HTTP/SSE
 type Bridge struct {
-	config  *Config
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.ReadCloser
-	stderr  io.ReadCloser
-	mu      sync.Mutex
-	clients map[string]chan []byte
-	done    chan struct{}
+	config   *Config
+	cmd      *exec.Cmd
+	stdin    io.WriteCloser
+	stdout   io.ReadCloser
+	stderr   io.ReadCloser
+	stdinMu  sync.Mutex // serialises writes to stdin only
+	clients  *safe.Store[string, chan []byte]
+	done     chan struct{}
 }
 
 // New creates a new Bridge instance
@@ -63,7 +64,7 @@ func New(config *Config) *Bridge {
 	}
 	return &Bridge{
 		config:  config,
-		clients: make(map[string]chan []byte),
+		clients: safe.NewStore[string, chan []byte](),
 		done:    make(chan struct{}),
 	}
 }
@@ -177,15 +178,14 @@ func (b *Bridge) readResponses() {
 		copy(data, line)
 
 		// Broadcast to all SSE clients
-		b.mu.Lock()
-		for _, ch := range b.clients {
+		b.clients.Range(func(_ string, ch chan []byte) bool {
 			select {
 			case ch <- data:
 			default:
 				// Client channel full, skip
 			}
-		}
-		b.mu.Unlock()
+			return true
+		})
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -237,15 +237,11 @@ func (b *Bridge) handleSSE(w http.ResponseWriter, r *http.Request) {
 	clientID := uuid.New().String()
 	clientCh := make(chan []byte, 100)
 
-	b.mu.Lock()
-	b.clients[clientID] = clientCh
-	b.mu.Unlock()
+	b.clients.Put(clientID, clientCh)
 
 	// Cleanup on disconnect
 	defer func() {
-		b.mu.Lock()
-		delete(b.clients, clientID)
-		b.mu.Unlock()
+		b.clients.Delete(clientID)
 		close(clientCh)
 	}()
 
@@ -297,9 +293,9 @@ func (b *Bridge) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write to MCP stdin (NDJSON format - newline delimited)
-	b.mu.Lock()
+	b.stdinMu.Lock()
 	_, err = fmt.Fprintf(b.stdin, "%s\n", body)
-	b.mu.Unlock()
+	b.stdinMu.Unlock()
 
 	if err != nil {
 		http.Error(w, "Failed to write to MCP server", http.StatusInternalServerError)

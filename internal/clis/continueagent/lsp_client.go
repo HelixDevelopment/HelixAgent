@@ -9,14 +9,20 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 // LSPClient provides Language Server Protocol client functionality.
-// Ported from Continue.dev's LSP integration
+// Ported from Continue.dev's LSP integration.
+//
+// Concurrency model (CONST-029): handlers is a *safe.Store; requestID
+// is atomic.Uint64 (dropped the mu that previously guarded an
+// increment).
 type LSPClient struct {
 	// Server configuration
 	serverCmd  string
@@ -33,11 +39,10 @@ type LSPClient struct {
 	serverCapabilities ServerCapabilities
 
 	// Request tracking
-	requestID uint64
-	mu        sync.Mutex
+	requestID atomic.Uint64
 
 	// Notification handlers
-	handlers map[string]NotificationHandler
+	handlers *safe.Store[string, NotificationHandler]
 
 	// Control
 	ctx    context.Context
@@ -102,7 +107,7 @@ func NewLSPClient(serverCmd string, serverArgs []string, rootPath string) *LSPCl
 		serverCmd:  serverCmd,
 		serverArgs: serverArgs,
 		rootPath:   rootPath,
-		handlers:   make(map[string]NotificationHandler),
+		handlers:   safe.NewStore[string, NotificationHandler](),
 		ctx:        ctx,
 		cancel:     cancel,
 	}
@@ -173,7 +178,7 @@ func (c *LSPClient) GetCapabilities() ServerCapabilities {
 
 // RegisterHandler registers a notification handler.
 func (c *LSPClient) RegisterHandler(method string, handler NotificationHandler) {
-	c.handlers[method] = handler
+	c.handlers.Put(method, handler)
 }
 
 // TextDocumentDidOpen notifies the server a document was opened.
@@ -408,17 +413,14 @@ func (c *LSPClient) initialize(ctx context.Context) error {
 }
 
 func (c *LSPClient) call(ctx context.Context, method string, params, result interface{}) error {
-	c.mu.Lock()
-	c.requestID++
-	c.mu.Unlock()
-
+	c.requestID.Add(1)
 	return c.server.Call(ctx, method, params, result)
 }
 
 func (c *LSPClient) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
 	if req.Notif {
 		// Handle notification
-		if handler, ok := c.handlers[req.Method]; ok {
+		if handler, ok := c.handlers.Get(req.Method); ok {
 			if req.Params != nil {
 				handler(req.Method, *req.Params)
 			}

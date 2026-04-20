@@ -45,7 +45,7 @@ func TestLSPClient_RegisterHandler(t *testing.T) {
 	})
 
 	// Handler is stored under the exact method key.
-	handler, ok := c.handlers["textDocument/publishDiagnostics"]
+	handler, ok := c.handlers.Get("textDocument/publishDiagnostics")
 	require.True(t, ok, "handler must be registered")
 	require.NotNil(t, handler)
 
@@ -56,7 +56,7 @@ func TestLSPClient_RegisterHandler(t *testing.T) {
 
 	// Re-registering overwrites, not appends.
 	c.RegisterHandler("textDocument/publishDiagnostics", func(string, json.RawMessage) {})
-	assert.Len(t, c.handlers, 1)
+	assert.Equal(t, 1, c.handlers.Len())
 }
 
 func TestStdioConn_CloseIsNoOp(t *testing.T) {

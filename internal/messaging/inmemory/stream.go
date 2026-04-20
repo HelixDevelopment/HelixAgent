@@ -260,15 +260,20 @@ func (p *Partition) Len() int {
 }
 
 // StreamBroker is an in-memory event stream broker implementation.
+//
+// Concurrency model (CONST-029): topics and offsets are *safe.Store
+// containers. offsets' inner partition→offset maps are replaced via
+// Store.Update with copy-on-write. connected survives as a scalar
+// guarded by stateMu (Pattern Zeta) for Connect/Close's compound
+// "flip connected + close stopCh" flow.
 type StreamBroker struct {
-	topics    map[string]*Topic
+	topics    *safe.Store[string, *Topic]
 	metrics   *messaging.BrokerMetrics
 	connected bool
-	mu        sync.RWMutex
+	stateMu   sync.Mutex
 	stopCh    chan struct{}
 	config    *StreamConfig
-	offsets   map[string]map[int32]int64 // groupID -> partition -> offset
-	offsetsMu sync.RWMutex
+	offsets   *safe.Store[string, map[int32]int64] // groupID -> partition -> offset
 }
 
 // StreamConfig holds configuration for the stream broker.
@@ -295,18 +300,18 @@ func NewStreamBroker(config *StreamConfig) *StreamBroker {
 		config = DefaultStreamConfig()
 	}
 	return &StreamBroker{
-		topics:  make(map[string]*Topic),
+		topics:  safe.NewStore[string, *Topic](),
 		metrics: messaging.NewBrokerMetrics(),
 		config:  config,
 		stopCh:  make(chan struct{}),
-		offsets: make(map[string]map[int32]int64),
+		offsets: safe.NewStore[string, map[int32]int64](),
 	}
 }
 
 // Connect establishes a connection.
 func (b *StreamBroker) Connect(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.stateMu.Lock()
+	defer b.stateMu.Unlock()
 
 	b.metrics.RecordConnectionAttempt()
 	b.connected = true
@@ -317,8 +322,8 @@ func (b *StreamBroker) Connect(ctx context.Context) error {
 
 // Close closes the broker.
 func (b *StreamBroker) Close(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.stateMu.Lock()
+	defer b.stateMu.Unlock()
 
 	if !b.connected {
 		return nil
@@ -329,23 +334,24 @@ func (b *StreamBroker) Close(ctx context.Context) error {
 	b.metrics.RecordDisconnection()
 
 	// Close all topic subscribers
-	for _, topic := range b.topics {
+	b.topics.Range(func(_ string, topic *Topic) bool {
 		topic.subscribers.Range(func(_ int, sub topicSubscriber) bool {
 			if sub.ch != nil {
 				close(sub.ch)
 			}
 			return true
 		})
-	}
+		return true
+	})
 
-	b.topics = make(map[string]*Topic)
+	b.topics.Clear()
 	return nil
 }
 
 // HealthCheck checks if the broker is healthy.
 func (b *StreamBroker) HealthCheck(ctx context.Context) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+	b.stateMu.Lock()
+	defer b.stateMu.Unlock()
 
 	if !b.connected {
 		return messaging.ErrNotConnected
@@ -355,25 +361,26 @@ func (b *StreamBroker) HealthCheck(ctx context.Context) error {
 
 // IsConnected returns true if connected.
 func (b *StreamBroker) IsConnected() bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+	b.stateMu.Lock()
+	defer b.stateMu.Unlock()
 	return b.connected
 }
 
 // Publish publishes a message to a topic.
 func (b *StreamBroker) Publish(ctx context.Context, topicName string, message *messaging.Message, opts ...messaging.PublishOption) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if !b.IsConnected() {
 		return messaging.ErrNotConnected
 	}
 
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		topic = NewTopic(topicName, b.config.DefaultPartitions, b.config.DefaultRetention)
-		b.topics[topicName] = topic
-		b.metrics.RecordTopicCreated()
+		existing, stored := b.topics.PutIfAbsent(topicName, topic)
+		if !stored {
+			topic = existing
+		} else {
+			b.metrics.RecordTopicCreated()
+		}
 	}
 
 	start := time.Now()
@@ -396,19 +403,19 @@ func (b *StreamBroker) PublishBatch(ctx context.Context, topicName string, messa
 
 // Subscribe creates a subscription to a topic.
 func (b *StreamBroker) Subscribe(ctx context.Context, topicName string, handler messaging.MessageHandler, opts ...messaging.SubscribeOption) (messaging.Subscription, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if !b.IsConnected() {
 		return nil, messaging.ErrNotConnected
 	}
 
 	options := messaging.ApplySubscribeOptions(opts...)
 
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		topic = NewTopic(topicName, b.config.DefaultPartitions, b.config.DefaultRetention)
-		b.topics[topicName] = topic
+		existing, stored := b.topics.PutIfAbsent(topicName, topic)
+		if !stored {
+			topic = existing
+		}
 	}
 
 	eventHandler := func(ctx context.Context, event *messaging.Event) error {
@@ -445,45 +452,27 @@ func (b *StreamBroker) GetMetrics() *messaging.BrokerMetrics {
 
 // CreateTopic creates a new topic.
 func (b *StreamBroker) CreateTopic(ctx context.Context, name string, partitions int, replication int) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, ok := b.topics[name]; ok {
-		return nil // Topic already exists
+	topic := NewTopic(name, partitions, b.config.DefaultRetention)
+	if _, stored := b.topics.PutIfAbsent(name, topic); stored {
+		b.metrics.RecordTopicCreated()
 	}
-
-	b.topics[name] = NewTopic(name, partitions, b.config.DefaultRetention)
-	b.metrics.RecordTopicCreated()
 	return nil
 }
 
 // DeleteTopic deletes a topic.
 func (b *StreamBroker) DeleteTopic(ctx context.Context, name string) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	delete(b.topics, name)
+	b.topics.Delete(name)
 	return nil
 }
 
 // ListTopics lists all topics.
 func (b *StreamBroker) ListTopics(ctx context.Context) ([]string, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	topics := make([]string, 0, len(b.topics))
-	for name := range b.topics {
-		topics = append(topics, name)
-	}
-	return topics, nil
+	return b.topics.Keys(), nil
 }
 
 // GetTopicMetadata returns metadata for a topic.
 func (b *StreamBroker) GetTopicMetadata(ctx context.Context, topicName string) (*messaging.TopicMetadata, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		return nil, messaging.ErrTopicNotFound
 	}
@@ -539,17 +528,14 @@ func (b *StreamBroker) SubscribeEvents(ctx context.Context, topicName string, ha
 
 // StreamMessages returns a channel of messages from a topic.
 func (b *StreamBroker) StreamMessages(ctx context.Context, topicName string, opts ...messaging.StreamOption) (<-chan *messaging.Message, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if !b.connected {
+	if !b.IsConnected() {
 		return nil, messaging.ErrNotConnected
 	}
 
 	options := messaging.ApplyStreamOptions(opts...)
 	ch := make(chan *messaging.Message, options.BufferSize)
 
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		close(ch)
 		return ch, nil
@@ -618,25 +604,23 @@ func (b *StreamBroker) StreamEvents(ctx context.Context, topicName string, opts 
 
 // CommitOffset commits the offset for a topic partition.
 func (b *StreamBroker) CommitOffset(ctx context.Context, topic string, partition int32, offset int64) error {
-	b.offsetsMu.Lock()
-	defer b.offsetsMu.Unlock()
-
 	// Use a default group ID if not specified
 	groupID := "default"
-	if _, ok := b.offsets[groupID]; !ok {
-		b.offsets[groupID] = make(map[int32]int64)
-	}
-	b.offsets[groupID][partition] = offset
+	b.offsets.Update(groupID, func(cur map[int32]int64, _ bool) (map[int32]int64, bool) {
+		next := make(map[int32]int64, len(cur)+1)
+		for k, v := range cur {
+			next[k] = v
+		}
+		next[partition] = offset
+		return next, true
+	})
 	return nil
 }
 
 // GetOffset returns the current offset for a topic partition.
 func (b *StreamBroker) GetOffset(ctx context.Context, topic string, partition int32) (int64, error) {
-	b.offsetsMu.RLock()
-	defer b.offsetsMu.RUnlock()
-
 	groupID := "default"
-	if partitions, ok := b.offsets[groupID]; ok {
+	if partitions, ok := b.offsets.Get(groupID); ok {
 		if offset, ok := partitions[partition]; ok {
 			return offset, nil
 		}
@@ -657,10 +641,7 @@ func (b *StreamBroker) SeekToTimestamp(ctx context.Context, topic string, partit
 
 // SeekToBeginning seeks to the beginning of a topic partition.
 func (b *StreamBroker) SeekToBeginning(ctx context.Context, topicName string, partition int32) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		return messaging.ErrTopicNotFound
 	}
@@ -671,10 +652,7 @@ func (b *StreamBroker) SeekToBeginning(ctx context.Context, topicName string, pa
 
 // SeekToEnd seeks to the end of a topic partition.
 func (b *StreamBroker) SeekToEnd(ctx context.Context, topicName string, partition int32) error {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	topic, ok := b.topics[topicName]
+	topic, ok := b.topics.Get(topicName)
 	if !ok {
 		return messaging.ErrTopicNotFound
 	}
@@ -685,21 +663,13 @@ func (b *StreamBroker) SeekToEnd(ctx context.Context, topicName string, partitio
 
 // CreateConsumerGroup creates a consumer group.
 func (b *StreamBroker) CreateConsumerGroup(ctx context.Context, groupID string) error {
-	b.offsetsMu.Lock()
-	defer b.offsetsMu.Unlock()
-
-	if _, ok := b.offsets[groupID]; !ok {
-		b.offsets[groupID] = make(map[int32]int64)
-	}
+	b.offsets.PutIfAbsent(groupID, make(map[int32]int64))
 	return nil
 }
 
 // DeleteConsumerGroup deletes a consumer group.
 func (b *StreamBroker) DeleteConsumerGroup(ctx context.Context, groupID string) error {
-	b.offsetsMu.Lock()
-	defer b.offsetsMu.Unlock()
-
-	delete(b.offsets, groupID)
+	b.offsets.Delete(groupID)
 	return nil
 }
 
@@ -726,11 +696,9 @@ func (s *StreamSubscription) Unsubscribe() error {
 	s.active = false
 	s.broker.metrics.RecordUnsubscription()
 
-	s.broker.mu.Lock()
-	if topic, ok := s.broker.topics[s.topic]; ok {
+	if topic, ok := s.broker.topics.Get(s.topic); ok {
 		topic.Unsubscribe(s.groupID)
 	}
-	s.broker.mu.Unlock()
 
 	return nil
 }

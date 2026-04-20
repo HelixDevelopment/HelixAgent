@@ -444,11 +444,9 @@ func TestStreamSubscription(t *testing.T) {
 	_, _ = broker.Subscribe(context.Background(), "test-topic", handler)
 
 	// Get all subscriptions (internal check)
-	broker.mu.RLock()
-	if topic, exists := broker.topics["test-topic"]; exists {
-		assert.NotEmpty(t, topic.subscribers)
+	if topic, exists := broker.topics.Get("test-topic"); exists {
+		assert.Greater(t, topic.subscribers.Len(), 0)
 	}
-	broker.mu.RUnlock()
 }
 
 // Test selectPartition

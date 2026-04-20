@@ -461,3 +461,6 @@
 	path = cli_agents/HelixCode
 	url = git@github.com:HelixDevelopment/HelixCode.git
 	branch = main
+[submodule "docs/research/CL4R1T4S"]
+	path = docs/research/CL4R1T4S
+	url = git@github.com:elder-plinius/CL4R1T4S.git

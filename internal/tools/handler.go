@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ToolHandler defines the interface for tool execution
@@ -25,32 +27,29 @@ type ToolResult struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// ToolRegistry manages all tool handlers
+// ToolRegistry manages all tool handlers.
+//
+// Concurrent-safe by construction: handlers is a safe.Store so Register
+// and Get need no external lock; the prior RWMutex is gone.
 type ToolRegistry struct {
-	handlers map[string]ToolHandler
-	mu       sync.RWMutex
+	handlers *safe.Store[string, ToolHandler]
 }
 
 // NewToolRegistry creates a new tool registry
 func NewToolRegistry() *ToolRegistry {
 	return &ToolRegistry{
-		handlers: make(map[string]ToolHandler),
+		handlers: safe.NewStore[string, ToolHandler](),
 	}
 }
 
 // Register adds a tool handler to the registry
 func (r *ToolRegistry) Register(handler ToolHandler) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.handlers[strings.ToLower(handler.Name())] = handler
+	r.handlers.Put(strings.ToLower(handler.Name()), handler)
 }
 
 // Get returns a tool handler by name
 func (r *ToolRegistry) Get(name string) (ToolHandler, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	handler, ok := r.handlers[strings.ToLower(name)]
-	return handler, ok
+	return r.handlers.Get(strings.ToLower(name))
 }
 
 // Execute runs a tool by name with the given arguments

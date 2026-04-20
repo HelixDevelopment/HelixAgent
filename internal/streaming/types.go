@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -507,14 +508,18 @@ func (e *EventStreamWriter) WriteDone() error {
 // Implemented via Go channels with fan-in pattern
 // ============================================================================
 
-// MpscStream represents a multi-producer single-consumer stream
+// MpscStream represents a multi-producer single-consumer stream.
+//
+// Concurrency model (CONST-029): inputs is set at construction and
+// never mutated afterwards, so it is effectively immutable (Pattern
+// Alpha). started is an atomic.Bool and Start uses CompareAndSwap
+// for idempotent first-caller-wins semantics — no mutex needed.
 type MpscStream struct {
 	inputs  []chan *StreamChunk
 	output  chan *StreamChunk
 	done    chan struct{}
 	wg      sync.WaitGroup
-	started bool
-	mu      sync.Mutex
+	started atomic.Bool
 }
 
 // NewMpscStream creates a new MPSC stream
@@ -548,13 +553,9 @@ func (m *MpscStream) GetProducer(index int) chan<- *StreamChunk {
 
 // Start starts the fan-in goroutines
 func (m *MpscStream) Start(ctx context.Context) {
-	m.mu.Lock()
-	if m.started {
-		m.mu.Unlock()
+	if !m.started.CompareAndSwap(false, true) {
 		return
 	}
-	m.started = true
-	m.mu.Unlock()
 
 	// Fan-in: collect from all producers
 	for _, input := range m.inputs {

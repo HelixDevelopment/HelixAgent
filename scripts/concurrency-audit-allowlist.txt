@@ -134,7 +134,6 @@ internal/services/request_service.go:15:RequestService
 internal/services/request_service.go:50:ProviderMetrics
 internal/services/request_service.go:680:CircuitBreakerPattern
 internal/skills/protocol_adapter.go:28:ProtocolSkillAdapter
-internal/streaming/types.go:511:MpscStream
 internal/testing/helpers.go:25:MockMCPServer
 internal/testing/helpers.go:421:MockHTTPServer
 internal/tools/handler.go:29:ToolRegistry

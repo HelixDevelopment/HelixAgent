@@ -631,7 +631,7 @@ func TestMpscStream_DoubleStart(t *testing.T) {
 	mpsc.Start(ctx)
 	mpsc.Start(ctx) // Should be no-op
 
-	assert.True(t, mpsc.started)
+	assert.True(t, mpsc.started.Load())
 }
 
 func TestMpscStream_ContextCancel(t *testing.T) {

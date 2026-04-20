@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -106,7 +105,15 @@ type ThoughtEvaluator interface {
 	IsTerminal(ctx context.Context, thought *Thought) (bool, error)
 }
 
-// TreeOfThoughts implements the Tree of Thoughts reasoning framework
+// TreeOfThoughts implements the Tree of Thoughts reasoning framework.
+//
+// Concurrency model (CONST-029): Solve runs the search single-threaded
+// (generator/evaluator callbacks are awaited synchronously), so mu
+// was effectively redundant — it only guarded the initial reset in
+// Solve. Dropped. Callers must not invoke Solve concurrently on the
+// same instance; the type is not safe for concurrent Solve calls
+// and never was (most reads of iterations/bestScore/bestPath in the
+// loop were lock-free under the old design too).
 type TreeOfThoughts struct {
 	config     TreeOfThoughtsConfig
 	generator  ThoughtGenerator
@@ -115,7 +122,6 @@ type TreeOfThoughts struct {
 	bestPath   []*Thought
 	bestScore  float64
 	iterations int
-	mu         sync.RWMutex
 	logger     *logrus.Logger
 }
 
@@ -137,11 +143,9 @@ func NewTreeOfThoughts(config TreeOfThoughtsConfig, generator ThoughtGenerator, 
 
 // Solve attempts to solve a problem using Tree of Thoughts
 func (t *TreeOfThoughts) Solve(ctx context.Context, problem string) (*ToTResult, error) {
-	t.mu.Lock()
 	t.iterations = 0
 	t.bestPath = nil
 	t.bestScore = -1
-	t.mu.Unlock()
 
 	// Create timeout context
 	ctx, cancel := context.WithTimeout(ctx, t.config.Timeout)

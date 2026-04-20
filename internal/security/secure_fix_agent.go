@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
@@ -723,18 +722,23 @@ func (r *InputSanitizationRing) Check(ctx context.Context, input string) (bool, 
 	return true, "Input sanitization passed", nil
 }
 
-// RateLimitingRing implements rate limiting defense
+// RateLimitingRing implements rate limiting defense.
+//
+// Concurrency model (CONST-029): requests is a *safe.Store whose
+// per-key slices are replaced atomically via Update. Each call runs
+// the filter-out-expired + append-or-reject step inside the store's
+// internal write lock so two concurrent Check calls for the same key
+// cannot both skip the cap.
 type RateLimitingRing struct {
-	requests map[string][]time.Time
+	requests *safe.Store[string, []time.Time]
 	limit    int
 	window   time.Duration
-	mu       sync.Mutex
 }
 
 // NewRateLimitingRing creates a new rate limiting ring
 func NewRateLimitingRing(limit int, window time.Duration) *RateLimitingRing {
 	return &RateLimitingRing{
-		requests: make(map[string][]time.Time),
+		requests: safe.NewStore[string, []time.Time](),
 		limit:    limit,
 		window:   window,
 	}
@@ -747,26 +751,30 @@ func (r *RateLimitingRing) Name() string {
 
 // Check checks if rate limit is exceeded
 func (r *RateLimitingRing) Check(ctx context.Context, input string) (bool, string, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	// Use input hash as key (simplified)
 	key := fmt.Sprintf("%d", len(input)%100)
 	now := time.Now()
 	cutoff := now.Add(-r.window)
 
-	// Clean old requests
-	valid := make([]time.Time, 0)
-	for _, t := range r.requests[key] {
-		if t.After(cutoff) {
-			valid = append(valid, t)
+	var allowed bool
+	r.requests.Update(key, func(cur []time.Time, _ bool) ([]time.Time, bool) {
+		// Clean old requests.
+		valid := make([]time.Time, 0, len(cur))
+		for _, t := range cur {
+			if t.After(cutoff) {
+				valid = append(valid, t)
+			}
 		}
-	}
+		if len(valid) >= r.limit {
+			allowed = false
+			return valid, true
+		}
+		allowed = true
+		return append(valid, now), true
+	})
 
-	if len(valid) >= r.limit {
+	if !allowed {
 		return false, "Rate limit exceeded", nil
 	}
-
-	r.requests[key] = append(valid, now)
 	return true, "Rate limit check passed", nil
 }

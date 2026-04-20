@@ -50,9 +50,7 @@ func TestProcessor_RegisterHandler(t *testing.T) {
 
 	processor.RegisterHandler("test.message", handler)
 
-	processor.mu.RLock()
-	_, exists := processor.handlers["test.message"]
-	processor.mu.RUnlock()
+	_, exists := processor.handlers.Get("test.message")
 
 	assert.True(t, exists)
 }
@@ -565,9 +563,7 @@ func TestProcessor_GetMessagesByStatus(t *testing.T) {
 			},
 			Status: status,
 		}
-		processor.messagesMu.Lock()
-		processor.messages[dlqMsg.ID] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(dlqMsg.ID, dlqMsg)
 	}
 
 	t.Run("get pending messages", func(t *testing.T) {
@@ -616,9 +612,7 @@ func TestProcessor_ReprocessMessage_Full(t *testing.T) {
 			},
 			Status: StatusProcessed,
 		}
-		processor.messagesMu.Lock()
-		processor.messages[dlqMsg.ID] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(dlqMsg.ID, dlqMsg)
 
 		err := processor.ReprocessMessage(ctx, "test-reprocess-processed")
 		assert.Error(t, err)
@@ -645,9 +639,7 @@ func TestProcessor_ReprocessMessage_Full(t *testing.T) {
 			Status:        StatusPending,
 			FailureReason: "initial failure",
 		}
-		processor.messagesMu.Lock()
-		processor.messages[dlqMsg.ID] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(dlqMsg.ID, dlqMsg)
 
 		err = processor.ReprocessMessage(ctx, "test-reprocess-success")
 		require.NoError(t, err)
@@ -659,9 +651,7 @@ func TestProcessor_ReprocessMessage_Full(t *testing.T) {
 		assert.NotNil(t, received.Load())
 
 		// Verify status was updated
-		processor.messagesMu.RLock()
-		updatedMsg := processor.messages["test-reprocess-success"]
-		processor.messagesMu.RUnlock()
+		updatedMsg, _ := processor.messages.Get("test-reprocess-success")
 		assert.Equal(t, StatusProcessed, updatedMsg.Status)
 	})
 }
@@ -684,9 +674,7 @@ func TestProcessor_DiscardMessage_Full(t *testing.T) {
 			ID:     "test-discard-already",
 			Status: StatusDiscarded,
 		}
-		processor.messagesMu.Lock()
-		processor.messages[dlqMsg.ID] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(dlqMsg.ID, dlqMsg)
 
 		err := processor.DiscardMessage(ctx, "test-discard-already", "test reason")
 		assert.Error(t, err)
@@ -704,17 +692,13 @@ func TestProcessor_DiscardMessage_Full(t *testing.T) {
 			Status:        StatusPending,
 			FailureReason: "initial failure",
 		}
-		processor.messagesMu.Lock()
-		processor.messages[dlqMsg.ID] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(dlqMsg.ID, dlqMsg)
 
 		err := processor.DiscardMessage(ctx, "test-discard-success", "manually discarded")
 		require.NoError(t, err)
 
 		// Verify status was updated
-		processor.messagesMu.RLock()
-		updatedMsg := processor.messages["test-discard-success"]
-		processor.messagesMu.RUnlock()
+		updatedMsg, _ := processor.messages.Get("test-discard-success")
 		assert.Equal(t, StatusDiscarded, updatedMsg.Status)
 		assert.Equal(t, "manually discarded", updatedMsg.FailureDetails["discard_reason"])
 	})
@@ -742,9 +726,7 @@ func TestProcessor_PurgeProcessed(t *testing.T) {
 			ID:     id,
 			Status: status,
 		}
-		processor.messagesMu.Lock()
-		processor.messages[id] = dlqMsg
-		processor.messagesMu.Unlock()
+		processor.messages.Put(id, dlqMsg)
 	}
 
 	assert.Equal(t, 6, processor.GetMessageCount(ctx))
@@ -795,12 +777,13 @@ func TestProcessor_UpdateDLQMessage_QueueDepth(t *testing.T) {
 	assert.Equal(t, int64(3), metrics.CurrentQueueDepth)
 
 	// Mark one as processed
-	processor.messagesMu.Lock()
-	processor.messages["test-depth-1"].Status = StatusProcessed
-	processor.messagesMu.Unlock()
+	if m1, ok := processor.messages.Get("test-depth-1"); ok {
+		m1.Status = StatusProcessed
+	}
 
 	// Update to recalculate depth
-	err := processor.updateDLQMessage(ctx, processor.messages["test-depth-2"])
+	m2, _ := processor.messages.Get("test-depth-2")
+	err := processor.updateDLQMessage(ctx, m2)
 	require.NoError(t, err)
 
 	metrics = processor.GetMetrics()

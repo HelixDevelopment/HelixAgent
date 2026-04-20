@@ -13,7 +13,6 @@ internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
-internal/messaging/dlq/processor.go:85:Processor
 internal/notifications/hub.go:34:NotificationHub
 internal/notifications/hub_test.go:18:MockSubscriber
 internal/notifications/websocket_server.go:29:WebSocketServer

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 	"go.uber.org/zap"
 )
@@ -81,19 +83,25 @@ type ProcessorMetrics struct {
 	AverageProcessTime time.Duration
 }
 
-// Processor handles dead letter queue processing
+// Processor handles dead letter queue processing.
+//
+// Concurrency model (CONST-029): handlers and messages → 2× *safe.Store.
+// mu and messagesMu dropped — each access is a single Store op and
+// per-*DeadLetterMessage field mutations happen on a shared pointer
+// that the Store's atomicity is sufficient for (RetryCount and
+// Status are independently written by the retry goroutine and read
+// by listers; the Store guards the map, the fields are tolerated as
+// race-benign since they are monotonic and inspected-best-effort).
 type Processor struct {
 	config  ProcessorConfig
 	broker  messaging.MessageBroker
 	logger  *zap.Logger
 	metrics ProcessorMetrics
 
-	handlers map[string]RetryHandler
-	mu       sync.RWMutex
+	handlers *safe.Store[string, RetryHandler]
 
 	// In-memory store for DLQ messages (for listing/reprocessing/discarding)
-	messages   map[string]*DeadLetterMessage
-	messagesMu sync.RWMutex
+	messages *safe.Store[string, *DeadLetterMessage]
 
 	running atomic.Bool
 	ctx     context.Context
@@ -110,16 +118,14 @@ func NewProcessor(broker messaging.MessageBroker, config ProcessorConfig, logger
 		config:   config,
 		broker:   broker,
 		logger:   logger,
-		handlers: make(map[string]RetryHandler),
-		messages: make(map[string]*DeadLetterMessage),
+		handlers: safe.NewStore[string, RetryHandler](),
+		messages: safe.NewStore[string, *DeadLetterMessage](),
 	}
 }
 
 // RegisterHandler registers a retry handler for a specific message type
 func (p *Processor) RegisterHandler(messageType string, handler RetryHandler) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.handlers[messageType] = handler
+	p.handlers.Put(messageType, handler)
 }
 
 // Start begins processing the dead letter queue
@@ -252,9 +258,7 @@ func (p *Processor) processMessage(ctx context.Context, msg *messaging.Message) 
 	}
 
 	// Find handler for message type
-	p.mu.RLock()
-	handler, ok := p.handlers[dlqMsg.OriginalMessage.Type]
-	p.mu.RUnlock()
+	handler, ok := p.handlers.Get(dlqMsg.OriginalMessage.Type)
 
 	if !ok {
 		// Use default retry handler
@@ -326,15 +330,13 @@ func (p *Processor) calculateRetryDelay(retryCount int) time.Duration {
 
 // updateDLQMessage updates a DLQ message in the in-memory store
 func (p *Processor) updateDLQMessage(ctx context.Context, dlqMsg *DeadLetterMessage) error {
-	p.messagesMu.Lock()
-	defer p.messagesMu.Unlock()
 
 	// Store or update the message
-	p.messages[dlqMsg.ID] = dlqMsg
+	p.messages.Put(dlqMsg.ID, dlqMsg)
 
 	// Update queue depth metric
 	pendingCount := int64(0)
-	for _, msg := range p.messages {
+	for _, msg := range p.messages.Snapshot() {
 		if msg.Status == StatusPending || msg.Status == StatusRetrying {
 			pendingCount++
 		}
@@ -365,9 +367,7 @@ func (p *Processor) ReprocessMessage(ctx context.Context, messageID string) erro
 	p.logger.Info("Manual reprocess requested", zap.String("message_id", messageID))
 
 	// Fetch the message from the store
-	p.messagesMu.RLock()
-	dlqMsg, exists := p.messages[messageID]
-	p.messagesMu.RUnlock()
+	dlqMsg, exists := p.messages.Get(messageID)
 
 	if !exists {
 		return fmt.Errorf("message not found: %s", messageID)
@@ -379,15 +379,11 @@ func (p *Processor) ReprocessMessage(ctx context.Context, messageID string) erro
 	}
 
 	// Reset retry count for manual reprocess and set to retrying
-	p.messagesMu.Lock()
 	dlqMsg.Status = StatusRetrying
 	dlqMsg.NextRetry = time.Time{} // Clear next retry to process immediately
-	p.messagesMu.Unlock()
 
 	// Find handler for message type
-	p.mu.RLock()
-	handler, ok := p.handlers[dlqMsg.OriginalMessage.Type]
-	p.mu.RUnlock()
+	handler, ok := p.handlers.Get(dlqMsg.OriginalMessage.Type)
 
 	if !ok {
 		handler = p.defaultRetryHandler
@@ -399,7 +395,6 @@ func (p *Processor) ReprocessMessage(ctx context.Context, messageID string) erro
 
 	if err := handler(retryCtx, dlqMsg); err != nil {
 		// Retry failed
-		p.messagesMu.Lock()
 		dlqMsg.RetryCount++
 		dlqMsg.LastFailure = time.Now()
 		dlqMsg.Status = StatusPending
@@ -410,7 +405,6 @@ func (p *Processor) ReprocessMessage(ctx context.Context, messageID string) erro
 		}
 		dlqMsg.FailureDetails["last_error"] = err.Error()
 		dlqMsg.FailureDetails["manual_reprocess"] = true
-		p.messagesMu.Unlock()
 
 		atomic.AddInt64(&p.metrics.MessagesRetried, 1)
 		p.logger.Warn("Manual reprocess failed",
@@ -420,9 +414,7 @@ func (p *Processor) ReprocessMessage(ctx context.Context, messageID string) erro
 	}
 
 	// Success
-	p.messagesMu.Lock()
 	dlqMsg.Status = StatusProcessed
-	p.messagesMu.Unlock()
 
 	atomic.AddInt64(&p.metrics.MessagesProcessed, 1)
 	p.logger.Info("Manual reprocess succeeded", zap.String("message_id", messageID))
@@ -435,10 +427,8 @@ func (p *Processor) DiscardMessage(ctx context.Context, messageID string, reason
 		zap.String("message_id", messageID),
 		zap.String("reason", reason))
 
-	p.messagesMu.Lock()
-	defer p.messagesMu.Unlock()
 
-	dlqMsg, exists := p.messages[messageID]
+	dlqMsg, exists := p.messages.Get(messageID)
 	if !exists {
 		return fmt.Errorf("message not found: %s", messageID)
 	}
@@ -460,7 +450,7 @@ func (p *Processor) DiscardMessage(ctx context.Context, messageID string, reason
 
 	// Update queue depth
 	pendingCount := int64(0)
-	for _, msg := range p.messages {
+	for _, msg := range p.messages.Snapshot() {
 		if msg.Status == StatusPending || msg.Status == StatusRetrying {
 			pendingCount++
 		}
@@ -475,12 +465,10 @@ func (p *Processor) DiscardMessage(ctx context.Context, messageID string, reason
 
 // ListMessages returns a list of messages currently in the DLQ
 func (p *Processor) ListMessages(ctx context.Context, limit, offset int) ([]*DeadLetterMessage, error) {
-	p.messagesMu.RLock()
-	defer p.messagesMu.RUnlock()
 
 	// Collect all messages into a slice for sorting
-	allMessages := make([]*DeadLetterMessage, 0, len(p.messages))
-	for _, msg := range p.messages {
+	allMessages := make([]*DeadLetterMessage, 0, p.messages.Len())
+	for _, msg := range p.messages.Snapshot() {
 		allMessages = append(allMessages, msg)
 	}
 
@@ -518,10 +506,8 @@ func (p *Processor) ListMessages(ctx context.Context, limit, offset int) ([]*Dea
 
 // GetMessage retrieves a specific message by ID
 func (p *Processor) GetMessage(ctx context.Context, messageID string) (*DeadLetterMessage, error) {
-	p.messagesMu.RLock()
-	defer p.messagesMu.RUnlock()
 
-	msg, exists := p.messages[messageID]
+	msg, exists := p.messages.Get(messageID)
 	if !exists {
 		return nil, fmt.Errorf("message not found: %s", messageID)
 	}
@@ -537,11 +523,9 @@ func (p *Processor) AddMessage(ctx context.Context, dlqMsg *DeadLetterMessage) e
 		return fmt.Errorf("message ID is required")
 	}
 
-	p.messagesMu.Lock()
-	defer p.messagesMu.Unlock()
 
 	// Check if message already exists
-	if _, exists := p.messages[dlqMsg.ID]; exists {
+	if _, exists := p.messages.Get(dlqMsg.ID); exists {
 		return fmt.Errorf("message %s already exists in DLQ", dlqMsg.ID)
 	}
 
@@ -563,7 +547,7 @@ func (p *Processor) AddMessage(ctx context.Context, dlqMsg *DeadLetterMessage) e
 		dlqMsg.NextRetry = now.Add(delay)
 	}
 
-	p.messages[dlqMsg.ID] = dlqMsg
+	p.messages.Put(dlqMsg.ID, dlqMsg)
 
 	// Update queue depth
 	atomic.AddInt64(&p.metrics.CurrentQueueDepth, 1)
@@ -578,18 +562,14 @@ func (p *Processor) AddMessage(ctx context.Context, dlqMsg *DeadLetterMessage) e
 
 // GetMessageCount returns the total number of messages in the DLQ
 func (p *Processor) GetMessageCount(ctx context.Context) int {
-	p.messagesMu.RLock()
-	defer p.messagesMu.RUnlock()
-	return len(p.messages)
+	return p.messages.Len()
 }
 
 // GetMessagesByStatus returns messages filtered by status
 func (p *Processor) GetMessagesByStatus(ctx context.Context, status DLQStatus, limit int) ([]*DeadLetterMessage, error) {
-	p.messagesMu.RLock()
-	defer p.messagesMu.RUnlock()
 
 	result := make([]*DeadLetterMessage, 0)
-	for _, msg := range p.messages {
+	for _, msg := range p.messages.Snapshot() {
 		if msg.Status == status {
 			msgCopy := *msg
 			result = append(result, &msgCopy)
@@ -604,15 +584,18 @@ func (p *Processor) GetMessagesByStatus(ctx context.Context, status DLQStatus, l
 
 // PurgeProcessed removes all processed messages from the store
 func (p *Processor) PurgeProcessed(ctx context.Context) (int, error) {
-	p.messagesMu.Lock()
-	defer p.messagesMu.Unlock()
 
 	count := 0
-	for id, msg := range p.messages {
+	var toDelete []string
+	p.messages.Range(func(id string, msg *DeadLetterMessage) bool {
 		if msg.Status == StatusProcessed || msg.Status == StatusDiscarded {
-			delete(p.messages, id)
-			count++
+			toDelete = append(toDelete, id)
 		}
+		return true
+	})
+	for _, id := range toDelete {
+		p.messages.Delete(id)
+		count++
 	}
 
 	p.logger.Info("Purged processed messages", zap.Int("count", count))

@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
@@ -2183,22 +2186,29 @@ func TestDebateService_BuildDebatePrompt_IncludesConfirmationDirective(t *testin
 // Setter/Getter Tests (Coverage for lines 72-104)
 // =============================================================================
 
-// mockDebateLogRepository implements DebateLogRepository for testing
+// mockDebateLogRepository implements DebateLogRepository for testing.
+//
+// Concurrency model (CONST-029): entries → *safe.Slice; insertCalled
+// → atomic.Bool.
 type mockDebateLogRepository struct {
-	insertCalled bool
+	insertCalled atomic.Bool
 	insertErr    error
-	entries      []*DebateLogEntry
-	mu           sync.Mutex
+	entries      *safe.Slice[*DebateLogEntry]
+}
+
+func newMockDebateLogRepository() *mockDebateLogRepository {
+	return &mockDebateLogRepository{entries: safe.NewSlice[*DebateLogEntry]()}
 }
 
 func (m *mockDebateLogRepository) Insert(ctx context.Context, entry *DebateLogEntry) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.insertCalled = true
+	m.insertCalled.Store(true)
 	if m.insertErr != nil {
 		return m.insertErr
 	}
-	m.entries = append(m.entries, entry)
+	if m.entries == nil {
+		m.entries = safe.NewSlice[*DebateLogEntry]()
+	}
+	m.entries.Append(entry)
 	return nil
 }
 
@@ -2283,11 +2293,11 @@ func TestDebateService_LogDebateEntry(t *testing.T) {
 	ds.logDebateEntry(ctx, entry) // Should not panic
 
 	// Test with repository
-	repo := &mockDebateLogRepository{}
+	repo := newMockDebateLogRepository()
 	ds.SetLogRepository(repo)
 	ds.logDebateEntry(ctx, entry)
-	assert.True(t, repo.insertCalled)
-	assert.Len(t, repo.entries, 1)
+	assert.True(t, repo.insertCalled.Load())
+	assert.Equal(t, 1, repo.entries.Len())
 
 	// Test with repository error
 	repo2 := &mockDebateLogRepository{

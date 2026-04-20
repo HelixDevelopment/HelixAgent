@@ -3,7 +3,10 @@ package llm
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // HealthStatus represents the health state of a provider
@@ -50,16 +53,23 @@ func DefaultHealthMonitorConfig() HealthMonitorConfig {
 	}
 }
 
-// HealthMonitor monitors the health of multiple LLM providers
+// HealthMonitor monitors the health of multiple LLM providers.
+//
+// Concurrency model (CONST-029): providers/health → 2× *safe.Store;
+// listeners → *safe.Slice; running → atomic.Bool. healthMu
+// (Pattern Zeta, renamed from mu) serialises per-*ProviderHealth
+// field mutations in checkProvider/RecordSuccess/RecordFailure —
+// those mutations go through the shared pointer returned by
+// Store.Get and need a write-fence.
 type HealthMonitor struct {
-	mu        sync.RWMutex
-	providers map[string]LLMProvider
-	health    map[string]*ProviderHealth
+	providers *safe.Store[string, LLMProvider]
+	health    *safe.Store[string, *ProviderHealth]
+	healthMu  sync.Mutex
 	config    HealthMonitorConfig
 	ctx       context.Context
 	cancel    context.CancelFunc
-	running   bool
-	listeners []HealthListener
+	running   atomic.Bool
+	listeners *safe.Slice[HealthListener]
 }
 
 // HealthListener is called when provider health changes
@@ -68,10 +78,10 @@ type HealthListener func(providerID string, oldStatus, newStatus HealthStatus)
 // NewHealthMonitor creates a new health monitor
 func NewHealthMonitor(config HealthMonitorConfig) *HealthMonitor {
 	return &HealthMonitor{
-		providers: make(map[string]LLMProvider),
-		health:    make(map[string]*ProviderHealth),
+		providers: safe.NewStore[string, LLMProvider](),
+		health:    safe.NewStore[string, *ProviderHealth](),
 		config:    config,
-		listeners: make([]HealthListener, 0),
+		listeners: safe.NewSlice[HealthListener](),
 	}
 }
 
@@ -82,42 +92,33 @@ func NewDefaultHealthMonitor() *HealthMonitor {
 
 // RegisterProvider registers a provider for health monitoring
 func (hm *HealthMonitor) RegisterProvider(providerID string, provider LLMProvider) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	hm.providers[providerID] = provider
-	hm.health[providerID] = &ProviderHealth{
+	hm.providers.Put(providerID, provider)
+	hm.health.Put(providerID, &ProviderHealth{
 		ProviderID: providerID,
 		Status:     HealthStatusUnknown,
-	}
+	})
 }
 
 // UnregisterProvider removes a provider from health monitoring
 func (hm *HealthMonitor) UnregisterProvider(providerID string) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	delete(hm.providers, providerID)
-	delete(hm.health, providerID)
+	hm.providers.Delete(providerID)
+	hm.health.Delete(providerID)
 }
 
 // AddListener adds a listener for health status changes
 func (hm *HealthMonitor) AddListener(listener HealthListener) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-	hm.listeners = append(hm.listeners, listener)
+	hm.listeners.Append(listener)
 }
 
 // Start begins the health monitoring loop
 func (hm *HealthMonitor) Start() {
-	hm.mu.Lock()
-	if hm.running || !hm.config.Enabled {
-		hm.mu.Unlock()
+	if !hm.config.Enabled {
 		return
 	}
-	hm.running = true
+	if !hm.running.CompareAndSwap(false, true) {
+		return
+	}
 	hm.ctx, hm.cancel = context.WithCancel(context.Background())
-	hm.mu.Unlock()
 
 	// Run initial health check
 	hm.checkAllProviders()
@@ -128,14 +129,9 @@ func (hm *HealthMonitor) Start() {
 
 // Stop stops the health monitoring loop
 func (hm *HealthMonitor) Stop() {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	if !hm.running {
+	if !hm.running.CompareAndSwap(true, false) {
 		return
 	}
-
-	hm.running = false
 	if hm.cancel != nil {
 		hm.cancel()
 	}
@@ -143,9 +139,7 @@ func (hm *HealthMonitor) Stop() {
 
 // IsRunning returns true if the monitor is running
 func (hm *HealthMonitor) IsRunning() bool {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
-	return hm.running
+	return hm.running.Load()
 }
 
 // monitorLoop runs periodic health checks
@@ -165,12 +159,7 @@ func (hm *HealthMonitor) monitorLoop() {
 
 // checkAllProviders checks health of all registered providers
 func (hm *HealthMonitor) checkAllProviders() {
-	hm.mu.RLock()
-	providers := make(map[string]LLMProvider, len(hm.providers))
-	for id, p := range hm.providers {
-		providers[id] = p
-	}
-	hm.mu.RUnlock()
+	providers := hm.providers.Snapshot()
 
 	var wg sync.WaitGroup
 	for id, provider := range providers {
@@ -205,11 +194,10 @@ func (hm *HealthMonitor) checkProvider(providerID string, provider LLMProvider) 
 
 	latency := time.Since(start)
 
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	health, exists := hm.health[providerID]
+	hm.healthMu.Lock()
+	health, exists := hm.health.Get(providerID)
 	if !exists {
+		hm.healthMu.Unlock()
 		return
 	}
 
@@ -238,37 +226,40 @@ func (hm *HealthMonitor) checkProvider(providerID string, provider LLMProvider) 
 			health.Status = HealthStatusHealthy
 		}
 	}
+	newStatus := health.Status
+	hm.healthMu.Unlock()
 
 	// Notify listeners if status changed
-	if oldStatus != health.Status {
-		for _, listener := range hm.listeners {
-			go listener(providerID, oldStatus, health.Status)
+	if oldStatus != newStatus {
+		for _, listener := range hm.listeners.Snapshot() {
+			go listener(providerID, oldStatus, newStatus)
 		}
 	}
 }
 
 // GetHealth returns the health status of a specific provider
 func (hm *HealthMonitor) GetHealth(providerID string) (*ProviderHealth, bool) {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
-
-	health, exists := hm.health[providerID]
+	health, exists := hm.health.Get(providerID)
 	if !exists {
 		return nil, false
 	}
 
-	// Return a copy to prevent mutation
+	// Return a copy to prevent mutation; take healthMu to fence against
+	// concurrent writers in checkProvider.
+	hm.healthMu.Lock()
+	defer hm.healthMu.Unlock()
 	copy := *health
 	return &copy, true
 }
 
 // GetAllHealth returns health status for all providers
 func (hm *HealthMonitor) GetAllHealth() map[string]*ProviderHealth {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
+	hm.healthMu.Lock()
+	defer hm.healthMu.Unlock()
 
-	result := make(map[string]*ProviderHealth, len(hm.health))
-	for id, health := range hm.health {
+	snap := hm.health.Snapshot()
+	result := make(map[string]*ProviderHealth, len(snap))
+	for id, health := range snap {
 		copy := *health
 		result[id] = &copy
 	}
@@ -277,24 +268,25 @@ func (hm *HealthMonitor) GetAllHealth() map[string]*ProviderHealth {
 
 // GetHealthyProviders returns IDs of all healthy providers
 func (hm *HealthMonitor) GetHealthyProviders() []string {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
+	hm.healthMu.Lock()
+	defer hm.healthMu.Unlock()
 
 	var healthy []string
-	for id, health := range hm.health {
+	hm.health.Range(func(id string, health *ProviderHealth) bool {
 		if health.Status == HealthStatusHealthy {
 			healthy = append(healthy, id)
 		}
-	}
+		return true
+	})
 	return healthy
 }
 
 // IsHealthy returns true if the specified provider is healthy
 func (hm *HealthMonitor) IsHealthy(providerID string) bool {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
+	hm.healthMu.Lock()
+	defer hm.healthMu.Unlock()
 
-	health, exists := hm.health[providerID]
+	health, exists := hm.health.Get(providerID)
 	if !exists {
 		return false
 	}
@@ -303,11 +295,10 @@ func (hm *HealthMonitor) IsHealthy(providerID string) bool {
 
 // RecordSuccess manually records a successful operation for a provider
 func (hm *HealthMonitor) RecordSuccess(providerID string) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	health, exists := hm.health[providerID]
+	hm.healthMu.Lock()
+	health, exists := hm.health.Get(providerID)
 	if !exists {
+		hm.healthMu.Unlock()
 		return
 	}
 
@@ -315,10 +306,17 @@ func (hm *HealthMonitor) RecordSuccess(providerID string) {
 	health.SuccessCount++
 	health.LastSuccess = time.Now()
 
+	var transitioned bool
+	var oldStatus HealthStatus
 	if health.Status != HealthStatusHealthy && health.SuccessCount >= int64(hm.config.HealthyThreshold) {
-		oldStatus := health.Status
+		oldStatus = health.Status
 		health.Status = HealthStatusHealthy
-		for _, listener := range hm.listeners {
+		transitioned = true
+	}
+	hm.healthMu.Unlock()
+
+	if transitioned {
+		for _, listener := range hm.listeners.Snapshot() {
 			go listener(providerID, oldStatus, HealthStatusHealthy)
 		}
 	}
@@ -326,11 +324,10 @@ func (hm *HealthMonitor) RecordSuccess(providerID string) {
 
 // RecordFailure manually records a failed operation for a provider
 func (hm *HealthMonitor) RecordFailure(providerID string, err error) {
-	hm.mu.Lock()
-	defer hm.mu.Unlock()
-
-	health, exists := hm.health[providerID]
+	hm.healthMu.Lock()
+	health, exists := hm.health.Get(providerID)
 	if !exists {
+		hm.healthMu.Unlock()
 		return
 	}
 
@@ -340,30 +337,37 @@ func (hm *HealthMonitor) RecordFailure(providerID string, err error) {
 		health.LastError = err.Error()
 	}
 
+	var transitioned bool
+	var oldStatus, newStatus HealthStatus
 	if health.ConsecutiveFails >= hm.config.UnhealthyThreshold {
-		oldStatus := health.Status
-		if oldStatus != HealthStatusUnhealthy {
+		if health.Status != HealthStatusUnhealthy {
+			oldStatus = health.Status
 			health.Status = HealthStatusUnhealthy
-			for _, listener := range hm.listeners {
-				go listener(providerID, oldStatus, HealthStatusUnhealthy)
-			}
+			newStatus = HealthStatusUnhealthy
+			transitioned = true
 		}
 	} else if health.Status == HealthStatusHealthy {
-		oldStatus := health.Status
+		oldStatus = health.Status
 		health.Status = HealthStatusDegraded
-		for _, listener := range hm.listeners {
-			go listener(providerID, oldStatus, HealthStatusDegraded)
+		newStatus = HealthStatusDegraded
+		transitioned = true
+	}
+	hm.healthMu.Unlock()
+
+	if transitioned {
+		for _, listener := range hm.listeners.Snapshot() {
+			go listener(providerID, oldStatus, newStatus)
 		}
 	}
 }
 
 // GetAggregateHealth returns overall system health summary
 func (hm *HealthMonitor) GetAggregateHealth() AggregateHealth {
-	hm.mu.RLock()
-	defer hm.mu.RUnlock()
+	hm.healthMu.Lock()
+	defer hm.healthMu.Unlock()
 
 	agg := AggregateHealth{
-		TotalProviders:     len(hm.health),
+		TotalProviders:     hm.health.Len(),
 		HealthyProviders:   0,
 		DegradedProviders:  0,
 		UnhealthyProviders: 0,
@@ -371,7 +375,7 @@ func (hm *HealthMonitor) GetAggregateHealth() AggregateHealth {
 		Providers:          make(map[string]HealthStatus),
 	}
 
-	for id, health := range hm.health {
+	hm.health.Range(func(id string, health *ProviderHealth) bool {
 		agg.Providers[id] = health.Status
 		switch health.Status {
 		case HealthStatusHealthy:
@@ -383,7 +387,8 @@ func (hm *HealthMonitor) GetAggregateHealth() AggregateHealth {
 		case HealthStatusUnknown:
 			agg.UnknownProviders++
 		}
-	}
+		return true
+	})
 
 	// Determine overall status
 	if agg.HealthyProviders == agg.TotalProviders {
@@ -412,10 +417,7 @@ type AggregateHealth struct {
 
 // ForceCheck forces an immediate health check for a specific provider
 func (hm *HealthMonitor) ForceCheck(providerID string) error {
-	hm.mu.RLock()
-	provider, exists := hm.providers[providerID]
-	hm.mu.RUnlock()
-
+	provider, exists := hm.providers.Get(providerID)
 	if !exists {
 		return nil
 	}

@@ -8,19 +8,29 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// StandardBenchmarkRunner implements BenchmarkRunner
+// StandardBenchmarkRunner implements BenchmarkRunner.
+//
+// Concurrency model (CONST-029):
+//   - benchmarks/tasks/runs → *safe.Store (Store's internal lock
+//     serialises map mutations and lookups).
+//   - runMu (Pattern Zeta) serialises mutations to BenchmarkRun
+//     struct fields and the deep copies taken for GetRun/ListRuns/
+//     CompareRuns. The Store guards entry presence; runMu guards
+//     the per-entry struct so readers never observe torn state.
 type StandardBenchmarkRunner struct {
-	benchmarks   map[string]*Benchmark
-	tasks        map[string][]*BenchmarkTask // benchmark ID -> tasks
-	runs         map[string]*BenchmarkRun
+	benchmarks   *safe.Store[string, *Benchmark]
+	tasks        *safe.Store[string, []*BenchmarkTask]
+	runs         *safe.Store[string, *BenchmarkRun]
 	provider     LLMProvider
 	codeExecutor CodeExecutor
 	debateEval   DebateEvaluator
-	mu           sync.RWMutex
+	runMu        sync.Mutex
 	logger       *logrus.Logger
 }
 
@@ -31,9 +41,9 @@ func NewStandardBenchmarkRunner(provider LLMProvider, logger *logrus.Logger) *St
 	}
 
 	runner := &StandardBenchmarkRunner{
-		benchmarks: make(map[string]*Benchmark),
-		tasks:      make(map[string][]*BenchmarkTask),
-		runs:       make(map[string]*BenchmarkRun),
+		benchmarks: safe.NewStore[string, *Benchmark](),
+		tasks:      safe.NewStore[string, []*BenchmarkTask](),
+		runs:       safe.NewStore[string, *BenchmarkRun](),
 		provider:   provider,
 		logger:     logger,
 	}
@@ -54,9 +64,10 @@ func (r *StandardBenchmarkRunner) initBuiltInBenchmarks() {
 		Version:     "1.0.0",
 		CreatedAt:   time.Now(),
 	}
-	r.benchmarks[sweBench.ID] = sweBench
-	r.tasks[sweBench.ID] = r.createSWEBenchTasks()
-	sweBench.TaskCount = len(r.tasks[sweBench.ID])
+	r.benchmarks.Put(sweBench.ID, sweBench)
+	sweTasks := r.createSWEBenchTasks()
+	r.tasks.Put(sweBench.ID, sweTasks)
+	sweBench.TaskCount = len(sweTasks)
 
 	// HumanEval
 	humanEval := &Benchmark{
@@ -67,9 +78,10 @@ func (r *StandardBenchmarkRunner) initBuiltInBenchmarks() {
 		Version:     "1.0.0",
 		CreatedAt:   time.Now(),
 	}
-	r.benchmarks[humanEval.ID] = humanEval
-	r.tasks[humanEval.ID] = r.createHumanEvalTasks()
-	humanEval.TaskCount = len(r.tasks[humanEval.ID])
+	r.benchmarks.Put(humanEval.ID, humanEval)
+	heTasks := r.createHumanEvalTasks()
+	r.tasks.Put(humanEval.ID, heTasks)
+	humanEval.TaskCount = len(heTasks)
 
 	// MMLU
 	mmlu := &Benchmark{
@@ -80,9 +92,10 @@ func (r *StandardBenchmarkRunner) initBuiltInBenchmarks() {
 		Version:     "1.0.0",
 		CreatedAt:   time.Now(),
 	}
-	r.benchmarks[mmlu.ID] = mmlu
-	r.tasks[mmlu.ID] = r.createMMLUTasks()
-	mmlu.TaskCount = len(r.tasks[mmlu.ID])
+	r.benchmarks.Put(mmlu.ID, mmlu)
+	mmluTasks := r.createMMLUTasks()
+	r.tasks.Put(mmlu.ID, mmluTasks)
+	mmlu.TaskCount = len(mmluTasks)
 
 	// GSM8K
 	gsm8k := &Benchmark{
@@ -93,9 +106,10 @@ func (r *StandardBenchmarkRunner) initBuiltInBenchmarks() {
 		Version:     "1.0.0",
 		CreatedAt:   time.Now(),
 	}
-	r.benchmarks[gsm8k.ID] = gsm8k
-	r.tasks[gsm8k.ID] = r.createGSM8KTasks()
-	gsm8k.TaskCount = len(r.tasks[gsm8k.ID])
+	r.benchmarks.Put(gsm8k.ID, gsm8k)
+	gsmTasks := r.createGSM8KTasks()
+	r.tasks.Put(gsm8k.ID, gsmTasks)
+	gsm8k.TaskCount = len(gsmTasks)
 }
 
 func (r *StandardBenchmarkRunner) createSWEBenchTasks() []*BenchmarkTask {
@@ -314,13 +328,11 @@ func (r *StandardBenchmarkRunner) SetDebateEvaluator(evaluator DebateEvaluator) 
 
 // ListBenchmarks lists available benchmarks
 func (r *StandardBenchmarkRunner) ListBenchmarks(ctx context.Context) ([]*Benchmark, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	result := make([]*Benchmark, 0, len(r.benchmarks))
-	for _, b := range r.benchmarks {
+	result := make([]*Benchmark, 0, r.benchmarks.Len())
+	r.benchmarks.Range(func(_ string, b *Benchmark) bool {
 		result = append(result, b)
-	}
+		return true
+	})
 
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
@@ -331,10 +343,7 @@ func (r *StandardBenchmarkRunner) ListBenchmarks(ctx context.Context) ([]*Benchm
 
 // GetBenchmark gets a benchmark by ID
 func (r *StandardBenchmarkRunner) GetBenchmark(ctx context.Context, id string) (*Benchmark, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	b, ok := r.benchmarks[id]
+	b, ok := r.benchmarks.Get(id)
 	if !ok {
 		return nil, fmt.Errorf("benchmark not found: %s", id)
 	}
@@ -344,10 +353,7 @@ func (r *StandardBenchmarkRunner) GetBenchmark(ctx context.Context, id string) (
 
 // GetTasks gets tasks for a benchmark
 func (r *StandardBenchmarkRunner) GetTasks(ctx context.Context, benchmarkID string, config *BenchmarkConfig) ([]*BenchmarkTask, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	tasks, ok := r.tasks[benchmarkID]
+	tasks, ok := r.tasks.Get(benchmarkID)
 	if !ok {
 		return nil, fmt.Errorf("benchmark not found: %s", benchmarkID)
 	}
@@ -402,9 +408,6 @@ func (r *StandardBenchmarkRunner) GetTasks(ctx context.Context, benchmarkID stri
 
 // CreateRun creates a new benchmark run
 func (r *StandardBenchmarkRunner) CreateRun(ctx context.Context, run *BenchmarkRun) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if run.ID == "" {
 		run.ID = uuid.New().String()
 	}
@@ -412,10 +415,12 @@ func (r *StandardBenchmarkRunner) CreateRun(ctx context.Context, run *BenchmarkR
 		run.Config = DefaultBenchmarkConfig()
 	}
 
+	r.runMu.Lock()
 	run.Status = BenchmarkStatusPending
 	run.CreatedAt = time.Now()
+	r.runMu.Unlock()
 
-	r.runs[run.ID] = run
+	r.runs.Put(run.ID, run)
 
 	r.logger.WithFields(logrus.Fields{
 		"run_id":    run.ID,
@@ -428,31 +433,30 @@ func (r *StandardBenchmarkRunner) CreateRun(ctx context.Context, run *BenchmarkR
 
 // StartRun starts a benchmark run
 func (r *StandardBenchmarkRunner) StartRun(ctx context.Context, runID string) error {
-	r.mu.Lock()
-	run, ok := r.runs[runID]
+	run, ok := r.runs.Get(runID)
 	if !ok {
-		r.mu.Unlock()
 		return fmt.Errorf("run not found: %s", runID)
 	}
 
+	r.runMu.Lock()
 	if run.Status != BenchmarkStatusPending {
-		r.mu.Unlock()
+		r.runMu.Unlock()
 		return fmt.Errorf("run already started or completed")
 	}
-
 	now := time.Now()
 	run.Status = BenchmarkStatusRunning
 	run.StartTime = &now
+	r.runMu.Unlock()
 
 	// Get benchmark ID from type
 	var benchmarkID string
-	for id, b := range r.benchmarks {
+	r.benchmarks.Range(func(id string, b *Benchmark) bool {
 		if b.Type == run.BenchmarkType {
 			benchmarkID = id
-			break
+			return false
 		}
-	}
-	r.mu.Unlock()
+		return true
+	})
 
 	// Get tasks
 	tasks, err := r.GetTasks(ctx, benchmarkID, run.Config)
@@ -509,13 +513,14 @@ func (r *StandardBenchmarkRunner) executeRun(ctx context.Context, run *Benchmark
 	}
 
 	// Update run
-	r.mu.Lock()
+	summary := r.calculateSummary(results, tasks)
+	r.runMu.Lock()
 	now := time.Now()
 	run.Status = BenchmarkStatusCompleted
 	run.EndTime = &now
 	run.Results = results
-	run.Summary = r.calculateSummary(results, tasks)
-	r.mu.Unlock()
+	run.Summary = summary
+	r.runMu.Unlock()
 
 	r.logger.WithFields(logrus.Fields{
 		"run_id":    run.ID,
@@ -720,29 +725,33 @@ func (r *StandardBenchmarkRunner) calculateSummary(results []*BenchmarkResult, t
 // GetRun gets a benchmark run. Returns a deep copy to avoid data races
 // with concurrently-mutated shared state in executeRun.
 func (r *StandardBenchmarkRunner) GetRun(ctx context.Context, runID string) (*BenchmarkRun, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	run, ok := r.runs[runID]
+	run, ok := r.runs.Get(runID)
 	if !ok {
 		return nil, fmt.Errorf("run not found: %s", runID)
 	}
 
+	r.runMu.Lock()
+	defer r.runMu.Unlock()
 	return copyBenchmarkRun(run), nil
 }
 
 // ListRuns lists benchmark runs. Returns deep copies to avoid data races
 // with concurrently-mutated shared state in executeRun.
 func (r *StandardBenchmarkRunner) ListRuns(ctx context.Context, filter *RunFilter) ([]*BenchmarkRun, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	var sources []*BenchmarkRun
+	r.runs.Range(func(_ string, run *BenchmarkRun) bool {
+		sources = append(sources, run)
+		return true
+	})
 
+	r.runMu.Lock()
 	var result []*BenchmarkRun
-	for _, run := range r.runs {
+	for _, run := range sources {
 		if r.matchesFilter(run, filter) {
 			result = append(result, copyBenchmarkRun(run))
 		}
 	}
+	r.runMu.Unlock()
 
 	// Sort by creation time (newest first)
 	sort.Slice(result, func(i, j int) bool {
@@ -779,13 +788,13 @@ func (r *StandardBenchmarkRunner) matchesFilter(run *BenchmarkRun, filter *RunFi
 
 // CancelRun cancels a benchmark run
 func (r *StandardBenchmarkRunner) CancelRun(ctx context.Context, runID string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	run, ok := r.runs[runID]
+	run, ok := r.runs.Get(runID)
 	if !ok {
 		return fmt.Errorf("run not found: %s", runID)
 	}
+
+	r.runMu.Lock()
+	defer r.runMu.Unlock()
 
 	if run.Status != BenchmarkStatusRunning && run.Status != BenchmarkStatusPending {
 		return fmt.Errorf("cannot cancel run in status: %s", run.Status)
@@ -801,17 +810,18 @@ func (r *StandardBenchmarkRunner) CancelRun(ctx context.Context, runID string) e
 // CompareRuns compares two benchmark runs. Deep copies are taken under
 // the lock so the comparison logic operates on stable snapshots.
 func (r *StandardBenchmarkRunner) CompareRuns(ctx context.Context, runID1, runID2 string) (*RunComparison, error) {
-	r.mu.RLock()
-	raw1, ok1 := r.runs[runID1]
-	raw2, ok2 := r.runs[runID2]
+	raw1, ok1 := r.runs.Get(runID1)
+	raw2, ok2 := r.runs.Get(runID2)
+
 	var run1, run2 *BenchmarkRun
+	r.runMu.Lock()
 	if ok1 {
 		run1 = copyBenchmarkRun(raw1)
 	}
 	if ok2 {
 		run2 = copyBenchmarkRun(raw2)
 	}
-	r.mu.RUnlock()
+	r.runMu.Unlock()
 
 	if !ok1 {
 		return nil, fmt.Errorf("run not found: %s", runID1)
@@ -864,11 +874,8 @@ func (r *StandardBenchmarkRunner) CompareRuns(ctx context.Context, runID1, runID
 
 // AddBenchmark adds a custom benchmark
 func (r *StandardBenchmarkRunner) AddBenchmark(benchmark *Benchmark, tasks []*BenchmarkTask) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.benchmarks[benchmark.ID] = benchmark
-	r.tasks[benchmark.ID] = tasks
+	r.benchmarks.Put(benchmark.ID, benchmark)
+	r.tasks.Put(benchmark.ID, tasks)
 	benchmark.TaskCount = len(tasks)
 }
 

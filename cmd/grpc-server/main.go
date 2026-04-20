@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	llm "dev.helix.agent/internal/llm"
 	models "dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
@@ -21,17 +23,20 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// LLMFacadeServer implements the gRPC LLMFacade service
+// LLMFacadeServer implements the gRPC LLMFacade service.
+//
+// Concurrency model (CONST-029): providers and sessions are
+// *safe.Store — atomic per-key operations. ServerMetrics owns its
+// own atomics for counters; metricsMu survives for timestamp
+// serialisation and is not Pattern-A (no adjacent bare collection).
 type LLMFacadeServer struct {
 	pb.UnimplementedLLMFacadeServer
 
 	// Provider management
-	providers   map[string]*ProviderInfo
-	providersMu sync.RWMutex
+	providers *safe.Store[string, *ProviderInfo]
 
 	// Session management
-	sessions   map[string]*SessionInfo
-	sessionsMu sync.RWMutex
+	sessions *safe.Store[string, *SessionInfo]
 
 	// Metrics
 	metrics   *ServerMetrics
@@ -83,8 +88,8 @@ type ServerMetrics struct {
 // NewLLMFacadeServer creates a new gRPC server instance
 func NewLLMFacadeServer() *LLMFacadeServer {
 	return &LLMFacadeServer{
-		providers: make(map[string]*ProviderInfo),
-		sessions:  make(map[string]*SessionInfo),
+		providers: safe.NewStore[string, *ProviderInfo](),
+		sessions:  safe.NewStore[string, *SessionInfo](),
 		metrics:   &ServerMetrics{},
 		startTime: time.Now(),
 	}
@@ -290,20 +295,16 @@ func (s *LLMFacadeServer) Chat(req *pb.ChatRequest, stream grpc.ServerStreamingS
 
 // ListProviders returns all registered providers
 func (s *LLMFacadeServer) ListProviders(ctx context.Context, req *pb.ListProvidersRequest) (*pb.ListProvidersResponse, error) {
-	s.providersMu.RLock()
-	defer s.providersMu.RUnlock()
-
-	providers := make([]*pb.ProviderInfo, 0, len(s.providers))
-	for _, p := range s.providers {
+	providers := make([]*pb.ProviderInfo, 0, s.providers.Len())
+	s.providers.Range(func(_ string, p *ProviderInfo) bool {
 		// Filter by enabled status if requested
 		if req.EnabledOnly && !p.Enabled {
-			continue
+			return true
 		}
 		// Filter by provider type if specified
 		if req.ProviderType != "" && p.Type != req.ProviderType {
-			continue
+			return true
 		}
-
 		providers = append(providers, &pb.ProviderInfo{
 			Id:             p.ID,
 			Name:           p.Name,
@@ -316,7 +317,8 @@ func (s *LLMFacadeServer) ListProviders(ctx context.Context, req *pb.ListProvide
 			SuccessRate:    p.SuccessRate,
 			LastUpdated:    timestamppb.New(p.LastUpdated),
 		})
-	}
+		return true
+	})
 
 	return &pb.ListProvidersResponse{
 		Providers: providers,
@@ -332,20 +334,23 @@ func (s *LLMFacadeServer) AddProvider(ctx context.Context, req *pb.AddProviderRe
 		return nil, status.Error(codes.InvalidArgument, "provider type is required")
 	}
 
-	s.providersMu.Lock()
-	defer s.providersMu.Unlock()
-
 	id := uuid.New().String()
 
 	// Check if provider with same name already exists
-	for _, p := range s.providers {
+	var nameExists bool
+	s.providers.Range(func(_ string, p *ProviderInfo) bool {
 		if p.Name == req.Name {
-			return nil, status.Error(codes.AlreadyExists, "provider with this name already exists")
+			nameExists = true
+			return false
 		}
+		return true
+	})
+	if nameExists {
+		return nil, status.Error(codes.AlreadyExists, "provider with this name already exists")
 	}
 
 	now := time.Now()
-	s.providers[id] = &ProviderInfo{
+	s.providers.Put(id, &ProviderInfo{
 		ID:             id,
 		Name:           req.Name,
 		Type:           req.Type,
@@ -359,7 +364,7 @@ func (s *LLMFacadeServer) AddProvider(ctx context.Context, req *pb.AddProviderRe
 		Config:         req.Config,
 		RegisteredAt:   now,
 		LastUpdated:    now,
-	}
+	})
 
 	s.metricsMu.Lock()
 	s.metrics.ActiveProviders++
@@ -387,10 +392,7 @@ func (s *LLMFacadeServer) UpdateProvider(ctx context.Context, req *pb.UpdateProv
 		return nil, status.Error(codes.InvalidArgument, "provider id is required")
 	}
 
-	s.providersMu.Lock()
-	defer s.providersMu.Unlock()
-
-	existing, exists := s.providers[req.Id]
+	existing, exists := s.providers.Get(req.Id)
 	if !exists {
 		return nil, status.Error(codes.NotFound, "provider not found")
 	}
@@ -439,10 +441,7 @@ func (s *LLMFacadeServer) RemoveProvider(ctx context.Context, req *pb.RemoveProv
 		return nil, status.Error(codes.InvalidArgument, "provider id is required")
 	}
 
-	s.providersMu.Lock()
-	defer s.providersMu.Unlock()
-
-	provider, exists := s.providers[req.Id]
+	provider, exists := s.providers.Get(req.Id)
 	if !exists {
 		return nil, status.Error(codes.NotFound, "provider not found")
 	}
@@ -452,7 +451,7 @@ func (s *LLMFacadeServer) RemoveProvider(ctx context.Context, req *pb.RemoveProv
 		return nil, status.Error(codes.FailedPrecondition, "provider is still enabled; use force=true to remove")
 	}
 
-	delete(s.providers, req.Id)
+	s.providers.Delete(req.Id)
 
 	s.metricsMu.Lock()
 	if s.metrics.ActiveProviders > 0 {
@@ -468,17 +467,9 @@ func (s *LLMFacadeServer) RemoveProvider(ctx context.Context, req *pb.RemoveProv
 
 // HealthCheck returns the health status of the service
 func (s *LLMFacadeServer) HealthCheck(ctx context.Context, req *pb.HealthRequest) (*pb.HealthResponse, error) {
-	s.providersMu.RLock()
-	activeProviders := len(s.providers)
-	providersCopy := make(map[string]*ProviderInfo)
-	for k, v := range s.providers {
-		providersCopy[k] = v
-	}
-	s.providersMu.RUnlock()
-
-	s.sessionsMu.RLock()
-	activeSessions := len(s.sessions)
-	s.sessionsMu.RUnlock()
+	activeProviders := s.providers.Len()
+	providersCopy := s.providers.Snapshot()
+	activeSessions := s.sessions.Len()
 
 	// Determine overall status
 	overallStatus := "healthy"
@@ -601,9 +592,6 @@ func (s *LLMFacadeServer) GetMetrics(ctx context.Context, req *pb.MetricsRequest
 
 // CreateSession creates a new session
 func (s *LLMFacadeServer) CreateSession(ctx context.Context, req *pb.CreateSessionRequest) (*pb.SessionResponse, error) {
-	s.sessionsMu.Lock()
-	defer s.sessionsMu.Unlock()
-
 	sessionID := uuid.New().String()
 	now := time.Now()
 
@@ -613,7 +601,7 @@ func (s *LLMFacadeServer) CreateSession(ctx context.Context, req *pb.CreateSessi
 		expiresAt = now.Add(time.Duration(req.TtlHours) * time.Hour)
 	}
 
-	s.sessions[sessionID] = &SessionInfo{
+	s.sessions.Put(sessionID, &SessionInfo{
 		ID:            sessionID,
 		UserID:        req.UserId,
 		Status:        "active",
@@ -623,7 +611,7 @@ func (s *LLMFacadeServer) CreateSession(ctx context.Context, req *pb.CreateSessi
 		CreatedAt:     now,
 		UpdatedAt:     now,
 		ExpiresAt:     expiresAt,
-	}
+	})
 
 	s.metricsMu.Lock()
 	s.metrics.ActiveSessions++
@@ -643,10 +631,7 @@ func (s *LLMFacadeServer) CreateSession(ctx context.Context, req *pb.CreateSessi
 
 // GetSession retrieves session information
 func (s *LLMFacadeServer) GetSession(ctx context.Context, req *pb.GetSessionRequest) (*pb.SessionResponse, error) {
-	s.sessionsMu.RLock()
-	defer s.sessionsMu.RUnlock()
-
-	session, exists := s.sessions[req.SessionId]
+	session, exists := s.sessions.Get(req.SessionId)
 	if !exists {
 		return nil, status.Error(codes.NotFound, "session not found")
 	}
@@ -680,10 +665,7 @@ func (s *LLMFacadeServer) GetSession(ctx context.Context, req *pb.GetSessionRequ
 
 // TerminateSession terminates an active session
 func (s *LLMFacadeServer) TerminateSession(ctx context.Context, req *pb.TerminateSessionRequest) (*pb.SessionResponse, error) {
-	s.sessionsMu.Lock()
-	defer s.sessionsMu.Unlock()
-
-	session, exists := s.sessions[req.SessionId]
+	session, exists := s.sessions.Get(req.SessionId)
 	if !exists {
 		return nil, status.Error(codes.NotFound, "session not found")
 	}
@@ -696,7 +678,7 @@ func (s *LLMFacadeServer) TerminateSession(ctx context.Context, req *pb.Terminat
 	}
 
 	session.Status = "terminated"
-	delete(s.sessions, req.SessionId)
+	s.sessions.Delete(req.SessionId)
 
 	s.metricsMu.Lock()
 	if s.metrics.ActiveSessions > 0 {

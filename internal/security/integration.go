@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	obsmetrics "dev.helix.agent/internal/observability/metrics"
 	"github.com/sirupsen/logrus"
 )
@@ -658,34 +660,32 @@ func (a *DebateSecurityAdapter) IsHealthy() bool {
 	return a.healthy
 }
 
-// VerifierSecurityAdapter adapts LLMsVerifier to security verification
+// VerifierSecurityAdapter adapts LLMsVerifier to security verification.
+//
+// Concurrency model (CONST-029): providerScores is a *safe.Store.
+// Each Set/Get is atomic; GetVerificationStatus iterates via Range.
+// No mutex survives — there are no cross-key invariants.
 type VerifierSecurityAdapter struct {
 	// verifier would be the actual verifier
 	// verifier *verifier.StartupVerifier
-	providerScores map[string]float64
-	mu             sync.RWMutex
+	providerScores *safe.Store[string, float64]
 }
 
 // NewVerifierSecurityAdapter creates a new verifier security adapter
 func NewVerifierSecurityAdapter() *VerifierSecurityAdapter {
 	return &VerifierSecurityAdapter{
-		providerScores: make(map[string]float64),
+		providerScores: safe.NewStore[string, float64](),
 	}
 }
 
 // SetProviderScore sets a provider's security score
 func (a *VerifierSecurityAdapter) SetProviderScore(providerName string, score float64) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.providerScores[providerName] = score
+	a.providerScores.Put(providerName, score)
 }
 
 // GetProviderSecurityScore returns the security score for a provider
 func (a *VerifierSecurityAdapter) GetProviderSecurityScore(providerName string) float64 {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	if score, exists := a.providerScores[providerName]; exists {
+	if score, exists := a.providerScores.Get(providerName); exists {
 		return score
 	}
 	return 5.0 // Default score
@@ -698,12 +698,10 @@ func (a *VerifierSecurityAdapter) IsProviderTrusted(providerName string) bool {
 
 // GetVerificationStatus returns the current verification status
 func (a *VerifierSecurityAdapter) GetVerificationStatus() map[string]bool {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
 	status := make(map[string]bool)
-	for provider, score := range a.providerScores {
+	a.providerScores.Range(func(provider string, score float64) bool {
 		status[provider] = score >= 6.0
-	}
+		return true
+	})
 	return status
 }

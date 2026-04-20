@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 )
 
@@ -43,11 +45,13 @@ type QwenACPProvider struct {
 	startOnce sync.Once
 	startErr  error
 
-	// Response channels for async handling
-	responses map[int64]chan *acpResponse
-	respMu    sync.RWMutex
+	// Response channels for async handling. CONST-029: safe.Store
+	// serialises Put/Delete/Get without a caller-held lock.
+	responses *safe.Store[int64, chan *acpResponse]
 
-	// Streaming channel for session/update notifications
+	// Streaming channel for session/update notifications. streamMu is a
+	// scalar-mutex survivor (not Pattern-A — guards a chan, not a
+	// map/slice) so no migration is required.
 	streamCh chan string
 	streamMu sync.RWMutex
 }
@@ -174,7 +178,7 @@ func NewQwenACPProvider(config QwenACPConfig) *QwenACPProvider {
 		timeout:   config.Timeout,
 		maxTokens: config.MaxTokens,
 		cwd:       config.CWD,
-		responses: make(map[int64]chan *acpResponse),
+		responses: safe.NewStore[int64, chan *acpResponse](),
 	}
 }
 
@@ -283,10 +287,7 @@ func (p *QwenACPProvider) readResponses() {
 		}
 
 		// Handle responses (has ID)
-		p.respMu.RLock()
-		ch, ok := p.responses[resp.ID]
-		p.respMu.RUnlock()
-
+		ch, ok := p.responses.Get(resp.ID)
 		if ok {
 			select {
 			case ch <- &resp:
@@ -367,14 +368,9 @@ func (p *QwenACPProvider) sendRequest(ctx context.Context, method string, params
 
 	// Create response channel
 	respCh := make(chan *acpResponse, 1)
-	p.respMu.Lock()
-	p.responses[id] = respCh
-	p.respMu.Unlock()
-
+	p.responses.Put(id, respCh)
 	defer func() {
-		p.respMu.Lock()
-		delete(p.responses, id)
-		p.respMu.Unlock()
+		p.responses.Delete(id)
 	}()
 
 	// Send request

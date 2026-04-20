@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -161,7 +163,7 @@ func TestQwenACPProvider_Complete_NoPrompt(t *testing.T) {
 		maxTokens:   4096,
 		isRunning:   false,
 		initialized: false,
-		responses:   make(map[int64]chan *acpResponse),
+		responses:   safe.NewStore[int64, chan *acpResponse](),
 	}
 	// Mark as already attempted start with error
 	provider.startErr = fmt.Errorf("ACP not available for test")
@@ -191,7 +193,7 @@ func TestQwenACPProvider_Complete_NotStarted(t *testing.T) {
 		maxTokens:   4096,
 		isRunning:   false,
 		initialized: false,
-		responses:   make(map[int64]chan *acpResponse),
+		responses:   safe.NewStore[int64, chan *acpResponse](),
 	}
 
 	// Mark sync.Once as done and set the start error
@@ -397,7 +399,7 @@ func TestQwenACPProvider_Stop(t *testing.T) {
 	provider := &QwenACPProvider{
 		model:     "qwen-plus",
 		isRunning: true,
-		responses: make(map[int64]chan *acpResponse),
+		responses: safe.NewStore[int64, chan *acpResponse](),
 	}
 
 	// Stop should not panic even without a running process

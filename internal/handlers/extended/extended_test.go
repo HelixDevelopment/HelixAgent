@@ -141,7 +141,6 @@ func TestGetTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
-	handler.teamMu.Lock()
 	testTeam := &AgentTeam{
 		ID:        "test-team-123",
 		Name:      "Test Team",
@@ -150,8 +149,7 @@ func TestGetTeam(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	handler.teams[testTeam.ID] = testTeam
-	handler.teamMu.Unlock()
+	handler.teams.Put(testTeam.ID, testTeam)
 
 	tests := []struct {
 		name       string
@@ -197,18 +195,16 @@ func TestListTeams(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test teams
-	handler.teamMu.Lock()
-	handler.teams["team-1"] = &AgentTeam{
+	handler.teams.Put("team-1", &AgentTeam{
 		ID:     "team-1",
 		Name:   "Team One",
 		Status: TeamStatusActive,
-	}
-	handler.teams["team-2"] = &AgentTeam{
+	})
+	handler.teams.Put("team-2", &AgentTeam{
 		ID:     "team-2",
 		Name:   "Team Two",
 		Status: TeamStatusInactive,
-	}
-	handler.teamMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -258,14 +254,12 @@ func TestUpdateTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
-	handler.teamMu.Lock()
-	handler.teams["test-team"] = &AgentTeam{
+	handler.teams.Put("test-team", &AgentTeam{
 		ID:       "test-team",
 		Name:     "Original Name",
 		LeaderID: "leader-123",
 		Status:   TeamStatusActive,
-	}
-	handler.teamMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -333,13 +327,11 @@ func TestDeleteTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team
-	handler.teamMu.Lock()
-	handler.teams["test-team"] = &AgentTeam{
+	handler.teams.Put("test-team", &AgentTeam{
 		ID:     "test-team",
 		Name:   "Test Team",
 		Status: TeamStatusActive,
-	}
-	handler.teamMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -454,14 +446,12 @@ func TestGetTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
-	handler.taskMu.Lock()
-	handler.tasks["test-task"] = &Task{
+	handler.tasks.Put("test-task", &Task{
 		ID:        "test-task",
 		Title:     "Test Task",
 		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
-	}
-	handler.taskMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -507,24 +497,22 @@ func TestListTasks(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
-	handler.taskMu.Lock()
-	handler.tasks["task-1"] = &Task{
+	handler.tasks.Put("task-1", &Task{
 		ID:       "task-1",
 		Title:    "Task One",
 		Type:     "implementation",
 		Status:   AgentTaskStatusPending,
 		Priority: TaskPriorityHigh,
 		TeamID:   "team-a",
-	}
-	handler.tasks["task-2"] = &Task{
+	})
+	handler.tasks.Put("task-2", &Task{
 		ID:       "task-2",
 		Title:    "Task Two",
 		Type:     "testing",
 		Status:   AgentTaskStatusInProgress,
 		Priority: TaskPriorityMedium,
 		TeamID:   "team-b",
-	}
-	handler.taskMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -580,14 +568,12 @@ func TestUpdateTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
-	handler.taskMu.Lock()
-	handler.tasks["test-task"] = &Task{
+	handler.tasks.Put("test-task", &Task{
 		ID:        "test-task",
 		Title:     "Original Title",
 		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
-	}
-	handler.taskMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -641,18 +627,16 @@ func TestStopTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
-	handler.taskMu.Lock()
-	handler.tasks["pending-task"] = &Task{
+	handler.tasks.Put("pending-task", &Task{
 		ID:     "pending-task",
 		Title:  "Pending Task",
 		Status: AgentTaskStatusPending,
-	}
-	handler.tasks["completed-task"] = &Task{
+	})
+	handler.tasks.Put("completed-task", &Task{
 		ID:     "completed-task",
 		Title:  "Completed Task",
 		Status: AgentTaskStatusCompleted,
-	}
-	handler.taskMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -760,12 +744,10 @@ func TestListMessages(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test messages
-	handler.messageMu.Lock()
-	handler.messages["agent-1"] = []AgentMessage{
+	handler.messages.Put("agent-1", []AgentMessage{
 		{ID: "msg-1", FromID: "agent-2", Content: "Hello", Timestamp: time.Now()},
 		{ID: "msg-2", FromID: "agent-3", Content: "Hi there", Timestamp: time.Now().Add(-1 * time.Hour)},
-	}
-	handler.messageMu.Unlock()
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ensemble/messages", nil)
 	w := httptest.NewRecorder()

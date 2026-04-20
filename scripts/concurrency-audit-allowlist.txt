@@ -34,9 +34,8 @@ internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/synchronization/manager.go:17:SyncManager
 internal/handlers/agentic_handler.go:20:AgenticHandler
 internal/handlers/debate_handler.go:19:DebateHandler
-internal/handlers/extended/ensemble.go:204:EnsembleHandlerExtensions
-internal/handlers/extended/ensemble.go:24:AgentTeam
-internal/handlers/extended/ensemble.go:82:Task
+internal/handlers/extended/ensemble.go:26:AgentTeam
+internal/handlers/extended/ensemble.go:84:Task
 internal/handlers/extended/planning.go:24:ExtendedPlanModeSession
 internal/handlers/protocol_sse.go:16:ProtocolSSEHandler
 internal/knowledge/code_graph.go:124:CodeGraph

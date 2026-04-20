@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -200,15 +202,18 @@ type AgentMessage struct {
 }
 
 // EnsembleHandlerExtensions EXTENDS the existing EnsembleHandler
-// with team and task management capabilities from claude-code-source
+// with team and task management capabilities from claude-code-source.
+//
+// Concurrency model (CONST-029): teams, tasks, and messages are
+// safe.Store containers. Per-entry Team/Task mutations still go
+// through each struct's own mu (both are JSON-marshaled, so in-place
+// field updates under their own RWMutex remains the right pattern).
+// messages per-key append uses Update for atomic read-append-commit.
 type EnsembleHandlerExtensions struct {
 	coordinator *multi_instance.Coordinator
-	teams       map[string]*Team
-	teamMu      sync.RWMutex
-	tasks       map[string]*Task
-	taskMu      sync.RWMutex
-	messages    map[string][]AgentMessage
-	messageMu   sync.RWMutex
+	teams       *safe.Store[string, *Team]
+	tasks       *safe.Store[string, *Task]
+	messages    *safe.Store[string, []AgentMessage]
 	logger      *logrus.Logger
 }
 
@@ -219,9 +224,9 @@ func NewEnsembleHandlerExtensions(coordinator *multi_instance.Coordinator, logge
 	}
 	return &EnsembleHandlerExtensions{
 		coordinator: coordinator,
-		teams:       make(map[string]*Team),
-		tasks:       make(map[string]*Task),
-		messages:    make(map[string][]AgentMessage),
+		teams:       safe.NewStore[string, *Team](),
+		tasks:       safe.NewStore[string, *Task](),
+		messages:    safe.NewStore[string, []AgentMessage](),
 		logger:      logger,
 	}
 }
@@ -279,9 +284,7 @@ func (h *EnsembleHandlerExtensions) CreateTeam(c *gin.Context) {
 		UpdatedAt:   time.Now(),
 	}
 
-	h.teamMu.Lock()
-	h.teams[team.ID] = team
-	h.teamMu.Unlock()
+	h.teams.Put(team.ID, team)
 
 	h.logger.WithFields(logrus.Fields{
 		"team_id":      team.ID,
@@ -306,10 +309,7 @@ func (h *EnsembleHandlerExtensions) CreateTeam(c *gin.Context) {
 func (h *EnsembleHandlerExtensions) GetTeam(c *gin.Context) {
 	teamID := c.Param("team_id")
 
-	h.teamMu.RLock()
-	team, exists := h.teams[teamID]
-	h.teamMu.RUnlock()
-
+	team, exists := h.teams.Get(teamID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
@@ -330,15 +330,13 @@ func (h *EnsembleHandlerExtensions) GetTeam(c *gin.Context) {
 func (h *EnsembleHandlerExtensions) ListTeams(c *gin.Context) {
 	status := c.Query("status")
 
-	h.teamMu.RLock()
-	defer h.teamMu.RUnlock()
-
 	var teams []*Team
-	for _, team := range h.teams {
+	h.teams.Range(func(_ string, team *Team) bool {
 		if status == "" || string(team.Status) == status {
 			teams = append(teams, team)
 		}
-	}
+		return true
+	})
 
 	c.JSON(http.StatusOK, teams)
 }
@@ -367,17 +365,14 @@ type UpdateAgentTeamRequest struct {
 func (h *EnsembleHandlerExtensions) UpdateTeam(c *gin.Context) {
 	teamID := c.Param("team_id")
 
-	h.teamMu.Lock()
-	team, exists := h.teams[teamID]
+	team, exists := h.teams.Get(teamID)
 	if !exists {
-		h.teamMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
 
 	var req UpdateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.teamMu.Unlock()
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -404,8 +399,6 @@ func (h *EnsembleHandlerExtensions) UpdateTeam(c *gin.Context) {
 	team.UpdatedAt = time.Now()
 	team.mu.Unlock()
 
-	h.teamMu.Unlock()
-
 	c.JSON(http.StatusOK, team)
 }
 
@@ -425,32 +418,31 @@ func (h *EnsembleHandlerExtensions) DeleteTeam(c *gin.Context) {
 	teamID := c.Param("team_id")
 	force := c.Query("force") == "true"
 
-	h.teamMu.Lock()
-	team, exists := h.teams[teamID]
+	team, exists := h.teams.Get(teamID)
 	if !exists {
-		h.teamMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
 
 	// Check for active tasks
 	if !force {
-		h.taskMu.RLock()
-		for _, task := range h.tasks {
+		var hasActiveTasks bool
+		h.tasks.Range(func(_ string, task *Task) bool {
 			if task.TeamID == teamID && (task.Status == AgentTaskStatusInProgress || task.Status == AgentTaskStatusPending) {
-				h.taskMu.RUnlock()
-				h.teamMu.Unlock()
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "team has active tasks, use force=true to delete anyway",
-				})
-				return
+				hasActiveTasks = true
+				return false
 			}
+			return true
+		})
+		if hasActiveTasks {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "team has active tasks, use force=true to delete anyway",
+			})
+			return
 		}
-		h.taskMu.RUnlock()
 	}
 
-	delete(h.teams, teamID)
-	h.teamMu.Unlock()
+	h.teams.Delete(teamID)
 
 	h.logger.WithFields(logrus.Fields{
 		"team_id":   teamID,
@@ -523,9 +515,7 @@ func (h *EnsembleHandlerExtensions) CreateTask(c *gin.Context) {
 		CreatedAt:    time.Now(),
 	}
 
-	h.taskMu.Lock()
-	h.tasks[task.ID] = task
-	h.taskMu.Unlock()
+	h.tasks.Put(task.ID, task)
 
 	h.logger.WithFields(logrus.Fields{
 		"task_id":     task.ID,
@@ -551,10 +541,7 @@ func (h *EnsembleHandlerExtensions) CreateTask(c *gin.Context) {
 func (h *EnsembleHandlerExtensions) GetTask(c *gin.Context) {
 	taskID := c.Param("task_id")
 
-	h.taskMu.RLock()
-	task, exists := h.tasks[taskID]
-	h.taskMu.RUnlock()
-
+	task, exists := h.tasks.Get(taskID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
 		return
@@ -592,30 +579,27 @@ func (h *EnsembleHandlerExtensions) ListTasks(c *gin.Context) {
 		return
 	}
 
-	h.taskMu.RLock()
-	defer h.taskMu.RUnlock()
-
 	var tasks []*Task
-	for _, task := range h.tasks {
+	h.tasks.Range(func(_ string, task *Task) bool {
 		// Apply filters
 		if req.TeamID != "" && task.TeamID != req.TeamID {
-			continue
+			return true
 		}
 		if req.AssigneeID != "" && task.AssigneeID != req.AssigneeID {
-			continue
+			return true
 		}
 		if req.Status != "" && string(task.Status) != req.Status {
-			continue
+			return true
 		}
 		if req.Type != "" && task.Type != req.Type {
-			continue
+			return true
 		}
 		if req.Priority != "" && string(task.Priority) != req.Priority {
-			continue
+			return true
 		}
-
 		tasks = append(tasks, task)
-	}
+		return true
+	})
 
 	c.JSON(http.StatusOK, tasks)
 }
@@ -645,17 +629,14 @@ type UpdateAgentTaskRequest struct {
 func (h *EnsembleHandlerExtensions) UpdateTask(c *gin.Context) {
 	taskID := c.Param("task_id")
 
-	h.taskMu.Lock()
-	task, exists := h.tasks[taskID]
+	task, exists := h.tasks.Get(taskID)
 	if !exists {
-		h.taskMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
 		return
 	}
 
 	var req UpdateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.taskMu.Unlock()
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -696,8 +677,6 @@ func (h *EnsembleHandlerExtensions) UpdateTask(c *gin.Context) {
 	}
 	task.mu.Unlock()
 
-	h.taskMu.Unlock()
-
 	c.JSON(http.StatusOK, task)
 }
 
@@ -715,10 +694,8 @@ func (h *EnsembleHandlerExtensions) UpdateTask(c *gin.Context) {
 func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 	taskID := c.Param("task_id")
 
-	h.taskMu.Lock()
-	task, exists := h.tasks[taskID]
+	task, exists := h.tasks.Get(taskID)
 	if !exists {
-		h.taskMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
 		return
 	}
@@ -726,7 +703,6 @@ func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 	task.mu.Lock()
 	if task.Status != AgentTaskStatusInProgress && task.Status != AgentTaskStatusPending {
 		task.mu.Unlock()
-		h.taskMu.Unlock()
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("cannot stop task in status: %s", task.Status),
 		})
@@ -737,8 +713,6 @@ func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 	now := time.Now()
 	task.CompletedAt = &now
 	task.mu.Unlock()
-
-	h.taskMu.Unlock()
 
 	h.logger.WithFields(logrus.Fields{
 		"task_id":    taskID,
@@ -761,10 +735,7 @@ func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 func (h *EnsembleHandlerExtensions) GetTaskOutput(c *gin.Context) {
 	taskID := c.Param("task_id")
 
-	h.taskMu.RLock()
-	task, exists := h.tasks[taskID]
-	h.taskMu.RUnlock()
-
+	task, exists := h.tasks.Get(taskID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
 		return
@@ -837,13 +808,13 @@ func (h *EnsembleHandlerExtensions) SendMessage(c *gin.Context) {
 		ReadBy:    []string{},
 	}
 
-	h.messageMu.Lock()
 	recipientID := req.ToID
 	if recipientID == "" && req.TeamID != "" {
 		recipientID = req.TeamID // Broadcast to team
 	}
-	h.messages[recipientID] = append(h.messages[recipientID], message)
-	h.messageMu.Unlock()
+	h.messages.Update(recipientID, func(cur []AgentMessage, _ bool) ([]AgentMessage, bool) {
+		return append(cur, message), true
+	})
 
 	h.logger.WithFields(logrus.Fields{
 		"message_id": message.ID,
@@ -875,9 +846,7 @@ func (h *EnsembleHandlerExtensions) ListMessages(c *gin.Context) {
 		recipientID = teamID
 	}
 
-	h.messageMu.RLock()
-	messages := h.messages[recipientID]
-	h.messageMu.RUnlock()
+	messages, _ := h.messages.Get(recipientID)
 
 	// Filter by timestamp if provided
 	var filtered []AgentMessage

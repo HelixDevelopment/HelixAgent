@@ -7,16 +7,25 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/verifier"
 )
 
-// ExtendedProviderRegistry extends HelixAgent's provider registry with LLMsVerifier capabilities
+// ExtendedProviderRegistry extends HelixAgent's provider registry with LLMsVerifier capabilities.
+//
+// Concurrent-safe by construction: verifiedModels and providerHealth are
+// safe.Store. healthMu (Pattern Zeta, renamed from mu) survives only to
+// serialise per-*VerifiedModel / per-*ProviderHealthStatus field mutations
+// inside VerifyModel / recordProviderSuccess / recordProviderFailure —
+// it no longer pairs with any bare map or slice field, so the audit does
+// not flag the struct.
 type ExtendedProviderRegistry struct {
 	adapters            *ProviderAdapterRegistry
 	verificationService *verifier.VerificationService
-	verifiedModels      map[string]*VerifiedModel
-	providerHealth      map[string]*ProviderHealthStatus
-	mu                  sync.RWMutex
+	verifiedModels      *safe.Store[string, *VerifiedModel]
+	providerHealth      *safe.Store[string, *ProviderHealthStatus]
+	healthMu            sync.RWMutex
 	config              *ExtendedRegistryConfig
 	eventChan           chan *ProviderEvent
 	stopCh              chan struct{}
@@ -82,8 +91,8 @@ func NewExtendedProviderRegistry(cfg *ExtendedRegistryConfig) (*ExtendedProvider
 	return &ExtendedProviderRegistry{
 		adapters:            NewProviderAdapterRegistry(),
 		verificationService: verificationService,
-		verifiedModels:      make(map[string]*VerifiedModel),
-		providerHealth:      make(map[string]*ProviderHealthStatus),
+		verifiedModels:      safe.NewStore[string, *VerifiedModel](),
+		providerHealth:      safe.NewStore[string, *ProviderHealthStatus](),
 		config:              cfg,
 		eventChan:           make(chan *ProviderEvent, 100),
 		stopCh:              make(chan struct{}),
@@ -92,9 +101,6 @@ func NewExtendedProviderRegistry(cfg *ExtendedRegistryConfig) (*ExtendedProvider
 
 // Start starts the registry background services
 func (r *ExtendedProviderRegistry) Start() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	// Start health check loop
 	r.wg.Add(1)
 	go r.healthCheckLoop()
@@ -127,26 +133,22 @@ func (r *ExtendedProviderRegistry) RegisterProvider(ctx context.Context, provide
 	r.adapters.Register(adapter)
 
 	// Initialize health status
-	r.mu.Lock()
-	r.providerHealth[providerID] = &ProviderHealthStatus{
+	r.providerHealth.Put(providerID, &ProviderHealthStatus{
 		ProviderID:   providerID,
 		ProviderName: providerName,
 		Healthy:      true,
 		LastCheckAt:  time.Now(),
-	}
-	r.mu.Unlock()
+	})
 
 	// Register models
 	for _, modelID := range models {
-		r.mu.Lock()
-		r.verifiedModels[modelID] = &VerifiedModel{
+		r.verifiedModels.Put(modelID, &VerifiedModel{
 			ModelID:      modelID,
 			ModelName:    modelID,
 			ProviderID:   providerID,
 			ProviderName: providerName,
 			Verified:     false,
-		}
-		r.mu.Unlock()
+		})
 	}
 
 	// Auto-verify if enabled
@@ -168,15 +170,20 @@ func (r *ExtendedProviderRegistry) RegisterProvider(ctx context.Context, provide
 func (r *ExtendedProviderRegistry) UnregisterProvider(providerID string) {
 	r.adapters.Remove(providerID)
 
-	r.mu.Lock()
-	delete(r.providerHealth, providerID)
-	// Remove associated models
-	for modelID, model := range r.verifiedModels {
+	r.providerHealth.Delete(providerID)
+	// Remove associated models. Two-phase Range+Delete so we don't
+	// call Delete from inside the Range callback (which holds the
+	// Store's read lock).
+	var toDelete []string
+	r.verifiedModels.Range(func(modelID string, model *VerifiedModel) bool {
 		if model.ProviderID == providerID {
-			delete(r.verifiedModels, modelID)
+			toDelete = append(toDelete, modelID)
 		}
+		return true
+	})
+	for _, modelID := range toDelete {
+		r.verifiedModels.Delete(modelID)
 	}
-	r.mu.Unlock()
 
 	r.emitEvent("provider_unregistered", providerID, "", "Provider unregistered")
 }
@@ -200,8 +207,8 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 	}
 
 	// Update verified model
-	r.mu.Lock()
-	if model, ok := r.verifiedModels[modelID]; ok {
+	if model, ok := r.verifiedModels.Get(modelID); ok {
+		r.healthMu.Lock()
 		model.Verified = result.Verified
 		model.VerificationScore = result.OverallScore
 		model.LastVerifiedAt = time.Now()
@@ -214,8 +221,8 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 		for _, test := range result.Tests {
 			model.VerificationTests[test.Name] = test.Passed
 		}
+		r.healthMu.Unlock()
 	}
-	r.mu.Unlock()
 
 	eventType := "verification_passed"
 	if !result.Verified {
@@ -228,28 +235,22 @@ func (r *ExtendedProviderRegistry) VerifyModel(ctx context.Context, modelID, pro
 
 // GetVerifiedModel returns a verified model by ID
 func (r *ExtendedProviderRegistry) GetVerifiedModel(modelID string) (*VerifiedModel, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	model, ok := r.verifiedModels[modelID]
+	model, ok := r.verifiedModels.Get(modelID)
 	if !ok {
 		return nil, fmt.Errorf("model not found: %s", modelID)
 	}
-
 	return model, nil
 }
 
 // GetVerifiedModels returns all verified models
 func (r *ExtendedProviderRegistry) GetVerifiedModels() []*VerifiedModel {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	models := make([]*VerifiedModel, 0, len(r.verifiedModels))
-	for _, model := range r.verifiedModels {
+	models := make([]*VerifiedModel, 0)
+	r.verifiedModels.Range(func(_ string, model *VerifiedModel) bool {
 		if model.Verified {
 			models = append(models, model)
 		}
-	}
+		return true
+	})
 
 	// Sort by score descending
 	sort.Slice(models, func(i, j int) bool {
@@ -261,10 +262,7 @@ func (r *ExtendedProviderRegistry) GetVerifiedModels() []*VerifiedModel {
 
 // GetModelWithScoreSuffix returns model name with score suffix
 func (r *ExtendedProviderRegistry) GetModelWithScoreSuffix(modelID string) (string, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	model, ok := r.verifiedModels[modelID]
+	model, ok := r.verifiedModels.Get(modelID)
 	if !ok {
 		return modelID, fmt.Errorf("model not found: %s", modelID)
 	}
@@ -278,15 +276,13 @@ func (r *ExtendedProviderRegistry) GetModelWithScoreSuffix(modelID string) (stri
 
 // GetHealthyProviders returns all healthy providers
 func (r *ExtendedProviderRegistry) GetHealthyProviders() []*ProviderHealthStatus {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	healthy := make([]*ProviderHealthStatus, 0)
-	for _, health := range r.providerHealth {
+	r.providerHealth.Range(func(_ string, health *ProviderHealthStatus) bool {
 		if health.Healthy && !health.CircuitOpen {
 			healthy = append(healthy, health)
 		}
-	}
+		return true
+	})
 
 	// Sort by success rate descending
 	sort.Slice(healthy, func(i, j int) bool {
@@ -298,23 +294,16 @@ func (r *ExtendedProviderRegistry) GetHealthyProviders() []*ProviderHealthStatus
 
 // GetProviderHealth returns health status for a specific provider
 func (r *ExtendedProviderRegistry) GetProviderHealth(providerID string) (*ProviderHealthStatus, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	health, ok := r.providerHealth[providerID]
+	health, ok := r.providerHealth.Get(providerID)
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %s", providerID)
 	}
-
 	return health, nil
 }
 
 // Complete sends a completion request with verification and failover support
 func (r *ExtendedProviderRegistry) Complete(ctx context.Context, modelID, prompt string, options map[string]interface{}) (string, error) {
-	r.mu.RLock()
-	model, ok := r.verifiedModels[modelID]
-	r.mu.RUnlock()
-
+	model, ok := r.verifiedModels.Get(modelID)
 	if !ok {
 		return "", fmt.Errorf("model not found: %s", modelID)
 	}
@@ -330,9 +319,7 @@ func (r *ExtendedProviderRegistry) Complete(ctx context.Context, modelID, prompt
 	}
 
 	// Check health
-	r.mu.RLock()
-	health := r.providerHealth[model.ProviderID]
-	r.mu.RUnlock()
+	health, _ := r.providerHealth.Get(model.ProviderID)
 
 	if health != nil && health.CircuitOpen {
 		// Try failover if enabled
@@ -379,37 +366,35 @@ func (r *ExtendedProviderRegistry) completeWithFailover(ctx context.Context, mod
 
 // recordProviderSuccess records a successful provider request
 func (r *ExtendedProviderRegistry) recordProviderSuccess(providerID string, latencyMs float64) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if health, ok := r.providerHealth[providerID]; ok {
+	if health, ok := r.providerHealth.Get(providerID); ok {
+		r.healthMu.Lock()
 		health.Healthy = true
 		health.AvgResponseMs = int64(latencyMs)
 		health.ConsecutiveFails = 0
 		health.CircuitOpen = false
 		health.LastCheckAt = time.Now()
-
-		// Update success rate
 		totalRequests := float64(health.ConsecutiveFails) + 1
 		health.SuccessRate = 1.0 / totalRequests * 100
+		r.healthMu.Unlock()
 	}
 }
 
 // recordProviderFailure records a failed provider request
 func (r *ExtendedProviderRegistry) recordProviderFailure(providerID string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if health, ok := r.providerHealth[providerID]; ok {
+	var openedCircuit bool
+	if health, ok := r.providerHealth.Get(providerID); ok {
+		r.healthMu.Lock()
 		health.ConsecutiveFails++
 		health.LastCheckAt = time.Now()
-
-		// Open circuit breaker after threshold
 		if health.ConsecutiveFails >= 5 {
 			health.CircuitOpen = true
 			health.Healthy = false
-			r.emitEvent("circuit_opened", providerID, "", "Circuit breaker opened after 5 consecutive failures")
+			openedCircuit = true
 		}
+		r.healthMu.Unlock()
+	}
+	if openedCircuit {
+		r.emitEvent("circuit_opened", providerID, "", "Circuit breaker opened after 5 consecutive failures")
 	}
 }
 
@@ -466,12 +451,7 @@ func (r *ExtendedProviderRegistry) verificationLoop() {
 func (r *ExtendedProviderRegistry) runVerifications() {
 	ctx := context.Background()
 
-	r.mu.RLock()
-	models := make([]*VerifiedModel, 0, len(r.verifiedModels))
-	for _, model := range r.verifiedModels {
-		models = append(models, model)
-	}
-	r.mu.RUnlock()
+	models := r.verifiedModels.Values()
 
 	for _, model := range models {
 		if err := r.VerifyModel(ctx, model.ModelID, model.ProviderID); err != nil {

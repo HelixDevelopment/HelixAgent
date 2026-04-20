@@ -87,9 +87,7 @@ func TestExtendedProviderRegistry_RegisterProvider(t *testing.T) {
 	}
 
 	// Check health status was initialized
-	registry.mu.RLock()
-	health, ok := registry.providerHealth["openai"]
-	registry.mu.RUnlock()
+	health, ok := registry.providerHealth.Get("openai")
 	if !ok {
 		t.Error("health status not initialized")
 	}
@@ -189,11 +187,10 @@ func TestExtendedProviderRegistry_GetVerifiedModels(t *testing.T) {
 	_ = registry.VerifyModel(context.Background(), "model2", "test")
 
 	// Manually set models as verified since mock adapter responses may not pass all verification checks
-	registry.mu.Lock()
-	for _, model := range registry.verifiedModels {
+	registry.verifiedModels.Range(func(_ string, model *VerifiedModel) bool {
 		model.Verified = true
-	}
-	registry.mu.Unlock()
+		return true
+	})
 
 	models := registry.GetVerifiedModels()
 	if len(models) < 2 {
@@ -240,9 +237,8 @@ func TestExtendedProviderRegistry_GetHealthyProviders(t *testing.T) {
 	_ = registry.RegisterProvider(context.Background(), "unhealthy", "Unhealthy", "key", "url", []string{})
 
 	// Mark one as unhealthy
-	registry.mu.Lock()
-	registry.providerHealth["unhealthy"].Healthy = false
-	registry.mu.Unlock()
+	h_unhealthy, _ := registry.providerHealth.Get("unhealthy")
+	h_unhealthy.Healthy = false
 
 	healthy := registry.GetHealthyProviders()
 	if len(healthy) != 1 {
@@ -601,20 +597,16 @@ func TestExtendedRegistry_RecordProviderFailure(t *testing.T) {
 	providerID := "test-provider-failure"
 
 	// Initialize provider health
-	registry.mu.Lock()
-	registry.providerHealth[providerID] = &ProviderHealthStatus{
+	registry.providerHealth.Put(providerID, &ProviderHealthStatus{
 		ProviderID:       providerID,
 		Healthy:          true,
 		ConsecutiveFails: 0,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Record first failure
 	registry.recordProviderFailure(providerID)
 
-	registry.mu.RLock()
-	health := registry.providerHealth[providerID]
-	registry.mu.RUnlock()
+	health, _ := registry.providerHealth.Get(providerID)
 
 	if health.ConsecutiveFails != 1 {
 		t.Errorf("Expected 1 consecutive fail, got %d", health.ConsecutiveFails)
@@ -635,20 +627,16 @@ func TestExtendedRegistry_RecordProviderFailure_CircuitBreaker(t *testing.T) {
 	providerID := "test-provider-circuit"
 
 	// Initialize provider health
-	registry.mu.Lock()
-	registry.providerHealth[providerID] = &ProviderHealthStatus{
+	registry.providerHealth.Put(providerID, &ProviderHealthStatus{
 		ProviderID:       providerID,
 		Healthy:          true,
 		ConsecutiveFails: 4, // Already 4 failures
-	}
-	registry.mu.Unlock()
+	})
 
 	// Record 5th failure - should trigger circuit breaker
 	registry.recordProviderFailure(providerID)
 
-	registry.mu.RLock()
-	health := registry.providerHealth[providerID]
-	registry.mu.RUnlock()
+	health, _ := registry.providerHealth.Get(providerID)
 
 	if health.ConsecutiveFails != 5 {
 		t.Errorf("Expected 5 consecutive fails, got %d", health.ConsecutiveFails)
@@ -700,29 +688,27 @@ func TestExtendedRegistry_GetTopModels_WithModels(t *testing.T) {
 	defer registry.Stop()
 
 	// Add some verified models (Verified: true is required)
-	registry.mu.Lock()
-	registry.verifiedModels["model1"] = &VerifiedModel{
+	registry.verifiedModels.Put("model1", &VerifiedModel{
 		ModelID:      "model1",
 		ProviderName: "openai",
 		OverallScore: 90.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.verifiedModels["model2"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("model2", &VerifiedModel{
 		ModelID:      "model2",
 		ProviderName: "anthropic",
 		OverallScore: 85.0,
 		CodeVisible:  false,
 		Verified:     true,
-	}
-	registry.verifiedModels["model3"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("model3", &VerifiedModel{
 		ModelID:      "model3",
 		ProviderName: "openai",
 		OverallScore: 70.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Test without filters
 	req := &TopModelsRequest{Limit: 10}
@@ -741,20 +727,18 @@ func TestExtendedRegistry_GetTopModels_ProviderFilter(t *testing.T) {
 	defer registry.Stop()
 
 	// Add verified models
-	registry.mu.Lock()
-	registry.verifiedModels["model1"] = &VerifiedModel{
+	registry.verifiedModels.Put("model1", &VerifiedModel{
 		ModelID:      "model1",
 		ProviderName: "openai",
 		OverallScore: 90.0,
 		Verified:     true,
-	}
-	registry.verifiedModels["model2"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("model2", &VerifiedModel{
 		ModelID:      "model2",
 		ProviderName: "anthropic",
 		OverallScore: 85.0,
 		Verified:     true,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Filter by openai only
 	req := &TopModelsRequest{
@@ -779,20 +763,18 @@ func TestExtendedRegistry_GetTopModels_MinScoreFilter(t *testing.T) {
 	defer registry.Stop()
 
 	// Add verified models with different scores
-	registry.mu.Lock()
-	registry.verifiedModels["high"] = &VerifiedModel{
+	registry.verifiedModels.Put("high", &VerifiedModel{
 		ModelID:      "high",
 		ProviderName: "openai",
 		OverallScore: 90.0,
 		Verified:     true,
-	}
-	registry.verifiedModels["low"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("low", &VerifiedModel{
 		ModelID:      "low",
 		ProviderName: "openai",
 		OverallScore: 60.0,
 		Verified:     true,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Filter by minimum score
 	req := &TopModelsRequest{
@@ -814,22 +796,20 @@ func TestExtendedRegistry_GetTopModels_CodeVisibilityFilter(t *testing.T) {
 	defer registry.Stop()
 
 	// Add verified models
-	registry.mu.Lock()
-	registry.verifiedModels["visible"] = &VerifiedModel{
+	registry.verifiedModels.Put("visible", &VerifiedModel{
 		ModelID:      "visible",
 		ProviderName: "openai",
 		OverallScore: 90.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.verifiedModels["hidden"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("hidden", &VerifiedModel{
 		ModelID:      "hidden",
 		ProviderName: "openai",
 		OverallScore: 85.0,
 		CodeVisible:  false,
 		Verified:     true,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Filter by code visibility
 	req := &TopModelsRequest{
@@ -851,16 +831,14 @@ func TestExtendedRegistry_GetTopModels_LimitFilter(t *testing.T) {
 	defer registry.Stop()
 
 	// Add multiple verified models
-	registry.mu.Lock()
 	for i := 0; i < 10; i++ {
-		registry.verifiedModels[string(rune('a'+i))] = &VerifiedModel{
+		registry.verifiedModels.Put(string(rune('a'+i)), &VerifiedModel{
 			ModelID:      string(rune('a' + i)),
 			ProviderName: "openai",
 			OverallScore: 90.0,
 			Verified:     true,
-		}
+		})
 	}
-	registry.mu.Unlock()
 
 	// Limit to 3
 	req := &TopModelsRequest{
@@ -881,36 +859,34 @@ func TestExtendedRegistry_GetTopModels_CombinedFilters(t *testing.T) {
 	defer registry.Stop()
 
 	// Add verified models
-	registry.mu.Lock()
-	registry.verifiedModels["match"] = &VerifiedModel{
+	registry.verifiedModels.Put("match", &VerifiedModel{
 		ModelID:      "match",
 		ProviderName: "openai",
 		OverallScore: 90.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.verifiedModels["wrong_provider"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("wrong_provider", &VerifiedModel{
 		ModelID:      "wrong_provider",
 		ProviderName: "anthropic",
 		OverallScore: 95.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.verifiedModels["low_score"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("low_score", &VerifiedModel{
 		ModelID:      "low_score",
 		ProviderName: "openai",
 		OverallScore: 60.0,
 		CodeVisible:  true,
 		Verified:     true,
-	}
-	registry.verifiedModels["no_code"] = &VerifiedModel{
+	})
+	registry.verifiedModels.Put("no_code", &VerifiedModel{
 		ModelID:      "no_code",
 		ProviderName: "openai",
 		OverallScore: 92.0,
 		CodeVisible:  false,
 		Verified:     true,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Apply all filters
 	req := &TopModelsRequest{
@@ -951,21 +927,17 @@ func TestExtendedRegistry_RunHealthChecks(t *testing.T) {
 	registry.adapters.Register(adapter)
 
 	// Initialize provider health
-	registry.mu.Lock()
-	registry.providerHealth["test-health-check"] = &ProviderHealthStatus{
+	registry.providerHealth.Put("test-health-check", &ProviderHealthStatus{
 		ProviderID:       "test-health-check",
 		Healthy:          true,
 		ConsecutiveFails: 0,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Run health checks
 	registry.runHealthChecks()
 
 	// Verify provider is still healthy
-	registry.mu.RLock()
-	health := registry.providerHealth["test-health-check"]
-	registry.mu.RUnlock()
+	health, _ := registry.providerHealth.Get("test-health-check")
 
 	if health == nil {
 		t.Fatal("Provider health not found")
@@ -998,21 +970,17 @@ func TestExtendedRegistry_RunHealthChecks_NoHealthCheckEnabled(t *testing.T) {
 	registry.adapters.Register(adapter)
 
 	// Initialize provider health
-	registry.mu.Lock()
-	registry.providerHealth["test-health-disabled"] = &ProviderHealthStatus{
+	registry.providerHealth.Put("test-health-disabled", &ProviderHealthStatus{
 		ProviderID:       "test-health-disabled",
 		Healthy:          true,
 		ConsecutiveFails: 0,
-	}
-	registry.mu.Unlock()
+	})
 
 	// Run health checks
 	registry.runHealthChecks()
 
 	// Verify health is still good (health check returns nil when disabled)
-	registry.mu.RLock()
-	health := registry.providerHealth["test-health-disabled"]
-	registry.mu.RUnlock()
+	health, _ := registry.providerHealth.Get("test-health-disabled")
 
 	if health == nil {
 		t.Fatal("Provider health not found")

@@ -175,11 +175,11 @@ func TestEmbeddingModelRegistry_RegisterMultipleModels(t *testing.T) {
 		name := "model-" + string(rune('a'+i))
 		models[i] = NewMockEmbeddingModel(name, 768)
 		// Also add the config so it shows up in List()
-		registry.configs[name] = EmbeddingModelConfig{
+		registry.configs.Put(name, EmbeddingModelConfig{
 			Name:       name,
 			Provider:   "mock",
 			Dimensions: 768,
-		}
+		})
 		err := registry.Register(name, models[i])
 		require.NoError(t, err)
 	}
@@ -210,11 +210,11 @@ func TestEmbeddingModelRegistry_GetOrCreate_Concurrent(t *testing.T) {
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	// Add a local config that can be created
-	registry.configs["concurrent-test"] = EmbeddingModelConfig{
+	registry.configs.Put("concurrent-test", EmbeddingModelConfig{
 		Name:       "concurrent-test",
 		Provider:   "local",
 		Dimensions: 512,
-	}
+	})
 
 	var wg sync.WaitGroup
 	results := make(chan EmbeddingModel, 100)
@@ -337,7 +337,7 @@ func TestEmbeddingModelRegistry_Close_WithErrors(t *testing.T) {
 	assert.Error(t, err)
 
 	// Models map should be cleared regardless
-	assert.Empty(t, registry.models)
+	assert.Equal(t, 0, registry.models.Len())
 }
 
 // MockEmbeddingModelWithCloseError is a mock that returns an error on Close
@@ -1081,13 +1081,13 @@ func TestEmbeddingModelRegistry_ConfigOverride(t *testing.T) {
 	})
 
 	// Verify custom config was added
-	config, exists := registry.configs["custom-model"]
+	config, exists := registry.configs.Get("custom-model")
 	assert.True(t, exists)
 	assert.Equal(t, "custom-model", config.Name)
 	assert.Equal(t, 256, config.Dimensions)
 
 	// Verify default local-fallback still exists
-	_, exists = registry.configs["local-fallback"]
+	_, exists = registry.configs.Get("local-fallback")
 	assert.True(t, exists)
 }
 

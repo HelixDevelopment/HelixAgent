@@ -7,9 +7,6 @@ internal/clis/pool.go:13:InstancePool
 internal/concurrency/deadlock/detector.go:19:Detector
 internal/containers/lazy_integration.go:19:LazyOrchestrator
 internal/database/query_optimizer.go:71:QueryCache
-internal/embeddings/models/registry.go:81:EmbeddingModelRegistry
-internal/embeddings/models/registry_test.go:20:MockEmbeddingModel
-internal/embeddings/models/registry_test.go:95:MockEmbeddingCache
 internal/ensemble/background/worker_pool.go:33:WorkerPool
 internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/synchronization/manager.go:17:SyncManager

@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -78,13 +80,18 @@ func (lm *lazyModel) get() (EmbeddingModel, error) {
 }
 
 // EmbeddingModelRegistry manages multiple embedding models.
+//
+// Concurrency model (CONST-029): models/lazyModels/configs → 3×
+// *safe.Store. Registration serialises Put + Delete-the-other-kind
+// atomically via the Store's internal lock; GetOrCreate uses Get
+// followed by createModel() outside any lock, then PutIfAbsent to
+// publish without double-creating.
 type EmbeddingModelRegistry struct {
-	models        map[string]EmbeddingModel
-	lazyModels    map[string]*lazyModel
-	configs       map[string]EmbeddingModelConfig
+	models        *safe.Store[string, EmbeddingModel]
+	lazyModels    *safe.Store[string, *lazyModel]
+	configs       *safe.Store[string, EmbeddingModelConfig]
 	defaultModel  string
 	fallbackChain []string
-	mu            sync.RWMutex
 	logger        *logrus.Logger
 	cache         EmbeddingCache
 }
@@ -112,9 +119,9 @@ func NewEmbeddingModelRegistry(config RegistryConfig) *EmbeddingModelRegistry {
 	}
 
 	registry := &EmbeddingModelRegistry{
-		models:        make(map[string]EmbeddingModel),
-		lazyModels:    make(map[string]*lazyModel),
-		configs:       make(map[string]EmbeddingModelConfig),
+		models:        safe.NewStore[string, EmbeddingModel](),
+		lazyModels:    safe.NewStore[string, *lazyModel](),
+		configs:       safe.NewStore[string, EmbeddingModelConfig](),
 		defaultModel:  config.DefaultModel,
 		fallbackChain: config.FallbackChain,
 		logger:        config.Logger,
@@ -126,7 +133,7 @@ func NewEmbeddingModelRegistry(config RegistryConfig) *EmbeddingModelRegistry {
 
 	// Override with provided configs
 	for name, cfg := range config.Configs {
-		registry.configs[name] = cfg
+		registry.configs.Put(name, cfg)
 	}
 
 	// Set default fallback chain if not provided
@@ -150,7 +157,7 @@ func NewEmbeddingModelRegistry(config RegistryConfig) *EmbeddingModelRegistry {
 func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 	// OpenAI models
 	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
-		r.configs["openai-ada"] = EmbeddingModelConfig{
+		r.configs.Put("openai-ada", EmbeddingModelConfig{
 			Name:       "openai-ada",
 			Provider:   "openai",
 			ModelID:    "text-embedding-ada-002",
@@ -159,8 +166,8 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  100,
 			Timeout:    30 * time.Second,
 			APIKey:     apiKey,
-		}
-		r.configs["openai-3-small"] = EmbeddingModelConfig{
+		})
+		r.configs.Put("openai-3-small", EmbeddingModelConfig{
 			Name:       "openai-3-small",
 			Provider:   "openai",
 			ModelID:    "text-embedding-3-small",
@@ -169,8 +176,8 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  100,
 			Timeout:    30 * time.Second,
 			APIKey:     apiKey,
-		}
-		r.configs["openai-3-large"] = EmbeddingModelConfig{
+		})
+		r.configs.Put("openai-3-large", EmbeddingModelConfig{
 			Name:       "openai-3-large",
 			Provider:   "openai",
 			ModelID:    "text-embedding-3-large",
@@ -179,12 +186,12 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  100,
 			Timeout:    30 * time.Second,
 			APIKey:     apiKey,
-		}
+		})
 	}
 
 	// Ollama models
 	if url := os.Getenv("OLLAMA_URL"); url != "" {
-		r.configs["nomic-embed-text"] = EmbeddingModelConfig{
+		r.configs.Put("nomic-embed-text", EmbeddingModelConfig{
 			Name:       "nomic-embed-text",
 			Provider:   "ollama",
 			ModelID:    "nomic-embed-text",
@@ -193,8 +200,8 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  32,
 			Timeout:    60 * time.Second,
 			BaseURL:    url,
-		}
-		r.configs["bge-m3"] = EmbeddingModelConfig{
+		})
+		r.configs.Put("bge-m3", EmbeddingModelConfig{
 			Name:       "bge-m3",
 			Provider:   "ollama",
 			ModelID:    "bge-m3",
@@ -203,8 +210,8 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  32,
 			Timeout:    60 * time.Second,
 			BaseURL:    url,
-		}
-		r.configs["mxbai-embed-large"] = EmbeddingModelConfig{
+		})
+		r.configs.Put("mxbai-embed-large", EmbeddingModelConfig{
 			Name:       "mxbai-embed-large",
 			Provider:   "ollama",
 			ModelID:    "mxbai-embed-large",
@@ -213,12 +220,12 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  32,
 			Timeout:    60 * time.Second,
 			BaseURL:    url,
-		}
+		})
 	}
 
 	// Sentence Transformers (if service is running)
 	if url := os.Getenv("SENTENCE_TRANSFORMERS_URL"); url != "" {
-		r.configs["all-mpnet-base-v2"] = EmbeddingModelConfig{
+		r.configs.Put("all-mpnet-base-v2", EmbeddingModelConfig{
 			Name:       "all-mpnet-base-v2",
 			Provider:   "sentence-transformers",
 			ModelID:    "all-mpnet-base-v2",
@@ -227,8 +234,8 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  64,
 			Timeout:    30 * time.Second,
 			BaseURL:    url,
-		}
-		r.configs["all-minilm-l6-v2"] = EmbeddingModelConfig{
+		})
+		r.configs.Put("all-minilm-l6-v2", EmbeddingModelConfig{
 			Name:       "all-minilm-l6-v2",
 			Provider:   "sentence-transformers",
 			ModelID:    "all-MiniLM-L6-v2",
@@ -237,27 +244,24 @@ func (r *EmbeddingModelRegistry) loadDefaultConfigs() {
 			BatchSize:  128,
 			Timeout:    30 * time.Second,
 			BaseURL:    url,
-		}
+		})
 	}
 
 	// Local fallback (always available)
-	r.configs["local-fallback"] = EmbeddingModelConfig{
+	r.configs.Put("local-fallback", EmbeddingModelConfig{
 		Name:       "local-fallback",
 		Provider:   "local",
 		Dimensions: 1536,
 		MaxTokens:  100000,
 		BatchSize:  1000,
 		Timeout:    1 * time.Second,
-	}
+	})
 }
 
 // Register registers a new embedding model (eagerly, immediately available).
 func (r *EmbeddingModelRegistry) Register(name string, model EmbeddingModel) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.models[name] = model
-	delete(r.lazyModels, name) // remove any lazy registration for the same name
+	r.models.Put(name, model)
+	r.lazyModels.Delete(name) // remove any lazy registration for the same name
 	r.logger.WithField("model", name).Info("Embedding model registered")
 	return nil
 }
@@ -267,11 +271,8 @@ func (r *EmbeddingModelRegistry) Register(name string, model EmbeddingModel) err
 // via Get or GetOrCreate. This avoids initialization overhead for models
 // that may never be used during a session.
 func (r *EmbeddingModelRegistry) RegisterLazy(name string, factory func() (EmbeddingModel, error)) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.lazyModels[name] = &lazyModel{factory: factory}
-	delete(r.models, name) // remove any eager registration for the same name
+	r.lazyModels.Put(name, &lazyModel{factory: factory})
+	r.models.Delete(name) // remove any eager registration for the same name
 	r.logger.WithField("model", name).Info("Embedding model registered (lazy)")
 }
 
@@ -279,38 +280,31 @@ func (r *EmbeddingModelRegistry) RegisterLazy(name string, factory func() (Embed
 // models first, then lazy models (triggering initialization), and finally
 // falls back to config-based creation.
 func (r *EmbeddingModelRegistry) Get(name string) (EmbeddingModel, error) {
-	r.mu.RLock()
 	// Check eagerly registered models
-	if model, exists := r.models[name]; exists {
-		r.mu.RUnlock()
+	if model, exists := r.models.Get(name); exists {
 		return model, nil
 	}
 	// Check lazily registered models
-	if lm, exists := r.lazyModels[name]; exists {
-		r.mu.RUnlock()
+	if lm, exists := r.lazyModels.Get(name); exists {
 		model, err := lm.get()
 		if err != nil {
 			return nil, fmt.Errorf("lazy model init failed for %s: %w", name, err)
 		}
 		return model, nil
 	}
-	r.mu.RUnlock()
 
 	return r.GetOrCreate(name)
 }
 
 // GetOrCreate gets or creates an embedding model from config.
 func (r *EmbeddingModelRegistry) GetOrCreate(name string) (EmbeddingModel, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Double-check after acquiring write lock
-	if model, exists := r.models[name]; exists {
+	// Check already-registered eager models.
+	if model, exists := r.models.Get(name); exists {
 		return model, nil
 	}
 
-	// Check lazy models under write lock
-	if lm, exists := r.lazyModels[name]; exists {
+	// Check lazy models.
+	if lm, exists := r.lazyModels.Get(name); exists {
 		model, err := lm.get()
 		if err != nil {
 			return nil, fmt.Errorf("lazy model init failed for %s: %w", name, err)
@@ -318,7 +312,7 @@ func (r *EmbeddingModelRegistry) GetOrCreate(name string) (EmbeddingModel, error
 		return model, nil
 	}
 
-	config, exists := r.configs[name]
+	config, exists := r.configs.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("embedding model not configured: %s", name)
 	}
@@ -328,7 +322,13 @@ func (r *EmbeddingModelRegistry) GetOrCreate(name string) (EmbeddingModel, error
 		return nil, err
 	}
 
-	r.models[name] = model
+	// PutIfAbsent guards against a race where two goroutines
+	// both pass the Get check; the first publisher wins and the
+	// loser's model is discarded.
+	if existing, loaded := r.models.PutIfAbsent(name, model); loaded {
+		return existing, nil
+	}
+
 	r.logger.WithField("model", name).Info("Embedding model created")
 	return model, nil
 }
@@ -386,30 +386,26 @@ func (r *EmbeddingModelRegistry) EncodeSingleWithFallback(ctx context.Context, t
 
 // List returns all configured model names (config-based, eager, and lazy).
 func (r *EmbeddingModelRegistry) List() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	seen := make(map[string]struct{})
-	names := make([]string, 0, len(r.configs)+len(r.lazyModels))
-	for name := range r.configs {
+	names := make([]string, 0, r.configs.Len()+r.lazyModels.Len())
+	r.configs.Range(func(name string, _ EmbeddingModelConfig) bool {
 		names = append(names, name)
 		seen[name] = struct{}{}
-	}
-	for name := range r.lazyModels {
+		return true
+	})
+	r.lazyModels.Range(func(name string, _ *lazyModel) bool {
 		if _, ok := seen[name]; !ok {
 			names = append(names, name)
 		}
-	}
+		return true
+	})
 	return names
 }
 
 // Health checks the health of all models.
 func (r *EmbeddingModelRegistry) Health(ctx context.Context) map[string]error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	results := make(map[string]error)
-	for name, model := range r.models {
+	for name, model := range r.models.Snapshot() {
 		results[name] = model.Health(ctx)
 	}
 	return results
@@ -417,18 +413,15 @@ func (r *EmbeddingModelRegistry) Health(ctx context.Context) map[string]error {
 
 // Close closes all models (both eagerly and lazily initialized).
 func (r *EmbeddingModelRegistry) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	var lastErr error
-	for name, model := range r.models {
+	for name, model := range r.models.Snapshot() {
 		if err := model.Close(); err != nil {
 			r.logger.WithError(err).WithField("model", name).Warn("Error closing model")
 			lastErr = err
 		}
 	}
 	// Close any lazily initialized models
-	for name, lm := range r.lazyModels {
+	for name, lm := range r.lazyModels.Snapshot() {
 		if lm.model != nil {
 			if err := lm.model.Close(); err != nil {
 				r.logger.WithError(err).WithField("model", name).Warn("Error closing lazy model")
@@ -436,8 +429,8 @@ func (r *EmbeddingModelRegistry) Close() error {
 			}
 		}
 	}
-	r.models = make(map[string]EmbeddingModel)
-	r.lazyModels = make(map[string]*lazyModel)
+	r.models.Clear()
+	r.lazyModels.Clear()
 	return lastErr
 }
 

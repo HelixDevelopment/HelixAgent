@@ -8,24 +8,30 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// MockEmbeddingModel implements EmbeddingModel for testing
+// MockEmbeddingModel implements EmbeddingModel for testing.
+//
+// Concurrency model (CONST-029): error setters swap atomic.Pointer
+// values; embeddings is treated as immutable post-construction so
+// readers observe a stable snapshot without locking.
 type MockEmbeddingModel struct {
 	name        string
 	dimensions  int
 	maxTokens   int
 	provider    string
-	healthError error
-	encodeError error
+	healthError atomic.Pointer[error]
+	encodeError atomic.Pointer[error]
 	embeddings  [][]float32
-	mu          sync.RWMutex
 }
 
 func NewMockEmbeddingModel(name string, dimensions int) *MockEmbeddingModel {
@@ -44,17 +50,20 @@ func (m *MockEmbeddingModel) MaxTokens() int   { return m.maxTokens }
 func (m *MockEmbeddingModel) Provider() string { return m.provider }
 func (m *MockEmbeddingModel) Close() error     { return nil }
 
+func (m *MockEmbeddingModel) loadErr(p *atomic.Pointer[error]) error {
+	if ep := p.Load(); ep != nil {
+		return *ep
+	}
+	return nil
+}
+
 func (m *MockEmbeddingModel) Health(ctx context.Context) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.healthError
+	return m.loadErr(&m.healthError)
 }
 
 func (m *MockEmbeddingModel) EncodeSingle(ctx context.Context, text string) ([]float32, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.encodeError != nil {
-		return nil, m.encodeError
+	if err := m.loadErr(&m.encodeError); err != nil {
+		return nil, err
 	}
 	if len(m.embeddings) > 0 {
 		return m.embeddings[0], nil
@@ -63,10 +72,8 @@ func (m *MockEmbeddingModel) EncodeSingle(ctx context.Context, text string) ([]f
 }
 
 func (m *MockEmbeddingModel) Encode(ctx context.Context, texts []string) ([][]float32, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.encodeError != nil {
-		return nil, m.encodeError
+	if err := m.loadErr(&m.encodeError); err != nil {
+		return nil, err
 	}
 	embeddings := make([][]float32, len(texts))
 	for i := range texts {
@@ -80,46 +87,44 @@ func (m *MockEmbeddingModel) Encode(ctx context.Context, texts []string) ([][]fl
 }
 
 func (m *MockEmbeddingModel) SetHealthError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.healthError = err
+	if err == nil {
+		m.healthError.Store(nil)
+		return
+	}
+	m.healthError.Store(&err)
 }
 
 func (m *MockEmbeddingModel) SetEncodeError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.encodeError = err
+	if err == nil {
+		m.encodeError.Store(nil)
+		return
+	}
+	m.encodeError.Store(&err)
 }
 
-// MockEmbeddingCache implements EmbeddingCache for testing
+// MockEmbeddingCache implements EmbeddingCache for testing.
+//
+// Concurrency model (CONST-029): data → *safe.Store.
 type MockEmbeddingCache struct {
-	data map[string][]float32
-	mu   sync.RWMutex
+	data *safe.Store[string, []float32]
 }
 
 func NewMockEmbeddingCache() *MockEmbeddingCache {
 	return &MockEmbeddingCache{
-		data: make(map[string][]float32),
+		data: safe.NewStore[string, []float32](),
 	}
 }
 
 func (c *MockEmbeddingCache) Get(key string) ([]float32, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	val, ok := c.data[key]
-	return val, ok
+	return c.data.Get(key)
 }
 
 func (c *MockEmbeddingCache) Set(key string, embedding []float32, ttl time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.data[key] = embedding
+	c.data.Put(key, embedding)
 }
 
 func (c *MockEmbeddingCache) Delete(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.data, key)
+	c.data.Delete(key)
 }
 
 func TestNewEmbeddingModelRegistry(t *testing.T) {
@@ -195,11 +200,11 @@ func TestEmbeddingModelRegistry_loadDefaultConfigs(t *testing.T) {
 		t.Setenv("OPENAI_API_KEY", "test-key")
 		registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
-		_, exists := registry.configs["openai-ada"]
+		_, exists := registry.configs.Get("openai-ada")
 		assert.True(t, exists)
-		_, exists = registry.configs["openai-3-small"]
+		_, exists = registry.configs.Get("openai-3-small")
 		assert.True(t, exists)
-		_, exists = registry.configs["openai-3-large"]
+		_, exists = registry.configs.Get("openai-3-large")
 		assert.True(t, exists)
 	})
 
@@ -207,9 +212,9 @@ func TestEmbeddingModelRegistry_loadDefaultConfigs(t *testing.T) {
 		t.Setenv("OLLAMA_URL", "http://localhost:11434")
 		registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
-		_, exists := registry.configs["nomic-embed-text"]
+		_, exists := registry.configs.Get("nomic-embed-text")
 		assert.True(t, exists)
-		_, exists = registry.configs["bge-m3"]
+		_, exists = registry.configs.Get("bge-m3")
 		assert.True(t, exists)
 	})
 
@@ -217,15 +222,15 @@ func TestEmbeddingModelRegistry_loadDefaultConfigs(t *testing.T) {
 		t.Setenv("SENTENCE_TRANSFORMERS_URL", "http://localhost:8080")
 		registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
-		_, exists := registry.configs["all-mpnet-base-v2"]
+		_, exists := registry.configs.Get("all-mpnet-base-v2")
 		assert.True(t, exists)
-		_, exists = registry.configs["all-minilm-l6-v2"]
+		_, exists = registry.configs.Get("all-minilm-l6-v2")
 		assert.True(t, exists)
 	})
 
 	t.Run("local-fallback always exists", func(t *testing.T) {
 		registry := NewEmbeddingModelRegistry(RegistryConfig{})
-		_, exists := registry.configs["local-fallback"]
+		_, exists := registry.configs.Get("local-fallback")
 		assert.True(t, exists)
 	})
 }
@@ -253,7 +258,7 @@ func TestEmbeddingModelRegistry_Get(t *testing.T) {
 		{
 			name: "get existing model",
 			setup: func(r *EmbeddingModelRegistry) {
-				r.models["test"] = NewMockEmbeddingModel("test", 768)
+				r.models.Put("test", NewMockEmbeddingModel("test", 768))
 			},
 			modelName:   "test",
 			expectError: false,
@@ -261,11 +266,11 @@ func TestEmbeddingModelRegistry_Get(t *testing.T) {
 		{
 			name: "get creates model from config",
 			setup: func(r *EmbeddingModelRegistry) {
-				r.configs["local-test"] = EmbeddingModelConfig{
+				r.configs.Put("local-test", EmbeddingModelConfig{
 					Name:       "local-test",
 					Provider:   "local",
 					Dimensions: 512,
-				}
+				})
 			},
 			modelName:   "local-test",
 			expectError: false,
@@ -298,11 +303,11 @@ func TestEmbeddingModelRegistry_GetOrCreate(t *testing.T) {
 	registry := NewEmbeddingModelRegistry(RegistryConfig{})
 
 	// Add a local config
-	registry.configs["test-local"] = EmbeddingModelConfig{
+	registry.configs.Put("test-local", EmbeddingModelConfig{
 		Name:       "test-local",
 		Provider:   "local",
 		Dimensions: 256,
-	}
+	})
 
 	// First call should create the model
 	model1, err := registry.GetOrCreate("test-local")
@@ -488,7 +493,7 @@ func TestEmbeddingModelRegistry_Close(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify models map is cleared
-	assert.Empty(t, registry.models)
+	assert.Equal(t, 0, registry.models.Len())
 }
 
 // =============================================================================
@@ -889,11 +894,11 @@ func TestEmbeddingModelRegistry_Concurrent(t *testing.T) {
 
 	// Add local models that are fast
 	for i := 0; i < 5; i++ {
-		registry.configs[string(rune('a'+i))] = EmbeddingModelConfig{
+		registry.configs.Put(string(rune('a'+i)), EmbeddingModelConfig{
 			Name:       string(rune('a' + i)),
 			Provider:   "local",
 			Dimensions: 256,
-		}
+		})
 	}
 
 	var wg sync.WaitGroup

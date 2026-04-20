@@ -57,10 +57,10 @@ func TestLockWrapper_LockUnlock(t *testing.T) {
 
 	// Test lock and unlock
 	wrapper.Lock()
-	assert.NotEmpty(t, d.lockHolders)
+	assert.Greater(t, d.lockHolders.Len(), 0)
 
 	wrapper.Unlock()
-	assert.Empty(t, d.lockHolders)
+	assert.Equal(t, 0, d.lockHolders.Len())
 }
 
 func TestLockWrapper_ConcurrentAccess(t *testing.T) {
@@ -94,10 +94,8 @@ func TestDetector_DetectCycles_NoCycles(t *testing.T) {
 	d := NewDetector(5*time.Second, logger)
 
 	// Create a simple lock graph without cycles
-	d.mu.Lock()
-	d.lockGraph["A"] = []string{"B"}
-	d.lockGraph["B"] = []string{"C"}
-	d.mu.Unlock()
+	d.lockGraph.Put("A", []string{"B"})
+	d.lockGraph.Put("B", []string{"C"})
 
 	cycles := d.DetectCycles()
 	assert.Empty(t, cycles)
@@ -111,11 +109,9 @@ func TestDetector_DetectCycles_WithCycles(t *testing.T) {
 	d := NewDetector(5*time.Second, logger)
 
 	// Create a lock graph with a cycle: A -> B -> C -> A
-	d.mu.Lock()
-	d.lockGraph["A"] = []string{"B"}
-	d.lockGraph["B"] = []string{"C"}
-	d.lockGraph["C"] = []string{"A"}
-	d.mu.Unlock()
+	d.lockGraph.Put("A", []string{"B"})
+	d.lockGraph.Put("B", []string{"C"})
+	d.lockGraph.Put("C", []string{"A"})
 
 	cycles := d.DetectCycles()
 	assert.NotEmpty(t, cycles)

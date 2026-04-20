@@ -13,14 +13,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// Detector monitors lock acquisitions to detect potential deadlocks
+// Detector monitors lock acquisitions to detect potential deadlocks.
+//
+// Concurrency model (CONST-029): three graph maps migrate to
+// *safe.Store; per-entry slice mutations use Store.Update-based
+// copy-on-write. DetectCycles and Report use Snapshot() for a
+// consistent point-in-time view across all three stores.
 type Detector struct {
-	mu           sync.RWMutex
-	lockGraph    map[string][]string // Lock dependency graph
-	lockHolders  map[string]string   // Which goroutine holds which lock
-	waitForGraph map[string][]string // Goroutines waiting for locks
+	lockGraph    *safe.Store[string, []string] // Lock dependency graph
+	lockHolders  *safe.Store[string, string]   // Which goroutine holds which lock
+	waitForGraph *safe.Store[string, []string] // Goroutines waiting for locks
 	enabled      bool
 	maxWaitTime  time.Duration
 	logger       Logger
@@ -39,9 +45,9 @@ func NewDetector(maxWaitTime time.Duration, logger Logger) *Detector {
 	}
 
 	return &Detector{
-		lockGraph:    make(map[string][]string),
-		lockHolders:  make(map[string]string),
-		waitForGraph: make(map[string][]string),
+		lockGraph:    safe.NewStore[string, []string](),
+		lockHolders:  safe.NewStore[string, string](),
+		waitForGraph: safe.NewStore[string, []string](),
 		enabled:      true,
 		maxWaitTime:  maxWaitTime,
 		logger:       logger,
@@ -121,11 +127,8 @@ func (lw *LockWrapper) Unlock() {
 
 // wouldDeadlock checks if acquiring this lock would create a deadlock
 func (d *Detector) wouldDeadlock(goroutineID, lockName string) bool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	// Get the current lock holder
-	holder, held := d.lockHolders[lockName]
+	holder, held := d.lockHolders.Get(lockName)
 	if !held {
 		return false
 	}
@@ -143,60 +146,67 @@ func (d *Detector) wouldDeadlock(goroutineID, lockName string) bool {
 
 // recordWait records that a goroutine is waiting for a lock
 func (d *Detector) recordWait(goroutineID, lockName string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	d.waitForGraph[goroutineID] = append(d.waitForGraph[goroutineID], lockName)
+	d.waitForGraph.Update(goroutineID, func(cur []string, _ bool) ([]string, bool) {
+		return append(cur, lockName), true
+	})
 }
 
 // recordAcquire records that a goroutine acquired a lock
 func (d *Detector) recordAcquire(goroutineID, lockName string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	d.lockHolders[lockName] = goroutineID
+	d.lockHolders.Put(lockName, goroutineID)
 
 	// Remove from wait list
-	if waits, ok := d.waitForGraph[goroutineID]; ok {
-		for i, l := range waits {
+	d.waitForGraph.Update(goroutineID, func(cur []string, present bool) ([]string, bool) {
+		if !present {
+			return cur, false
+		}
+		for i, l := range cur {
 			if l == lockName {
-				d.waitForGraph[goroutineID] = append(waits[:i], waits[i+1:]...)
-				break
+				next := append([]string(nil), cur[:i]...)
+				next = append(next, cur[i+1:]...)
+				if len(next) == 0 {
+					return nil, false
+				}
+				return next, true
 			}
 		}
-	}
+		return cur, true
+	})
 
 	// Update lock graph
-	holder := d.lockHolders[lockName]
-	if holder != "" && holder != goroutineID {
-		d.lockGraph[holder] = append(d.lockGraph[holder], lockName)
+	if holder, ok := d.lockHolders.Get(lockName); ok && holder != "" && holder != goroutineID {
+		d.lockGraph.Update(holder, func(cur []string, _ bool) ([]string, bool) {
+			return append(cur, lockName), true
+		})
 	}
 }
 
 // recordRelease records that a goroutine released a lock
 func (d *Detector) recordRelease(goroutineID, lockName string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if d.lockHolders[lockName] == goroutineID {
-		delete(d.lockHolders, lockName)
-	}
+	d.lockHolders.Update(lockName, func(cur string, present bool) (string, bool) {
+		if !present || cur != goroutineID {
+			return cur, present
+		}
+		return "", false
+	})
 }
 
 // getLocksHeldBy returns all locks held by a goroutine
 func (d *Detector) getLocksHeldBy(goroutineID string) []string {
 	var locks []string
-	for lock, holder := range d.lockHolders {
+	d.lockHolders.Range(func(lock, holder string) bool {
 		if holder == goroutineID {
 			locks = append(locks, lock)
 		}
-	}
+		return true
+	})
 	return locks
 }
 
 // isWaitingFor checks if a goroutine is waiting for a specific lock
 func (d *Detector) isWaitingFor(goroutineID, lockName string) bool {
-	for _, l := range d.waitForGraph[goroutineID] {
+	waits, _ := d.waitForGraph.Get(goroutineID)
+	for _, l := range waits {
 		if l == lockName {
 			return true
 		}
@@ -206,8 +216,7 @@ func (d *Detector) isWaitingFor(goroutineID, lockName string) bool {
 
 // DetectCycles finds cycles in the lock dependency graph
 func (d *Detector) DetectCycles() [][]string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+	graph := d.lockGraph.Snapshot()
 
 	var cycles [][]string
 	visited := make(map[string]bool)
@@ -220,7 +229,7 @@ func (d *Detector) DetectCycles() [][]string {
 		recStack[node] = true
 		path = append(path, node)
 
-		for _, neighbor := range d.lockGraph[node] {
+		for _, neighbor := range graph[node] {
 			if !visited[neighbor] {
 				dfs(neighbor)
 			} else if recStack[neighbor] {
@@ -236,7 +245,7 @@ func (d *Detector) DetectCycles() [][]string {
 		recStack[node] = false
 	}
 
-	for node := range d.lockGraph {
+	for node := range graph {
 		if !visited[node] {
 			dfs(node)
 		}
@@ -265,15 +274,12 @@ func getGoroutineID() string {
 
 // Report generates a deadlock detection report
 func (d *Detector) Report() *Report {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	cycles := d.DetectCycles()
 
 	return &Report{
 		Cycles:             cycles,
-		LockGraph:          copyMap(d.lockGraph),
-		Holders:            copyStringMap(d.lockHolders),
+		LockGraph:          copyMap(d.lockGraph.Snapshot()),
+		Holders:            copyStringMap(d.lockHolders.Snapshot()),
 		Timestamp:          time.Now(),
 		PotentialDeadlocks: len(cycles) > 0,
 	}

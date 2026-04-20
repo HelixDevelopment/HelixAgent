@@ -121,7 +121,6 @@ internal/services/request_service.go:107:MetricsRegistry
 internal/services/request_service.go:15:RequestService
 internal/services/request_service.go:50:ProviderMetrics
 internal/services/request_service.go:680:CircuitBreakerPattern
-internal/testing/helpers.go:414:MockHTTPServer
 internal/tools/handler.go:29:ToolRegistry
 internal/verifier/adapters/extended_registry.go:14:ExtendedProviderRegistry
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter

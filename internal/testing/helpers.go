@@ -411,23 +411,22 @@ type MockHTTPResponse struct {
 }
 
 // MockHTTPServer creates a mock HTTP server with predefined responses.
+//
+// Concurrency model (CONST-029): Responses is *safe.Store; SetResponse
+// and lookup are atomic without any caller-held lock.
 type MockHTTPServer struct {
 	Server    *httptest.Server
-	Responses map[string]*MockHTTPResponse
-	mu        sync.RWMutex
+	Responses *safe.Store[string, *MockHTTPResponse]
 }
 
 // NewMockHTTPServer creates a new mock HTTP server
 func NewMockHTTPServer() *MockHTTPServer {
 	mock := &MockHTTPServer{
-		Responses: make(map[string]*MockHTTPResponse),
+		Responses: safe.NewStore[string, *MockHTTPResponse](),
 	}
 
 	mock.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mock.mu.RLock()
-		resp, exists := mock.Responses[r.URL.Path]
-		mock.mu.RUnlock()
-
+		resp, exists := mock.Responses.Get(r.URL.Path)
 		if !exists {
 			http.NotFound(w, r)
 			return
@@ -453,9 +452,7 @@ func NewMockHTTPServer() *MockHTTPServer {
 
 // SetResponse sets a response for a given path
 func (m *MockHTTPServer) SetResponse(path string, resp *MockHTTPResponse) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.Responses[path] = resp
+	m.Responses.Put(path, resp)
 }
 
 // URL returns the server URL

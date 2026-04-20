@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"golang.org/x/sync/semaphore"
 
 	"dev.helix.agent/internal/models"
@@ -18,15 +19,21 @@ import (
 // Capped at 2*NumCPU or 16, whichever is smaller.
 var maxParallelOperations = int64(min(2*runtime.NumCPU(), 16))
 
-// IntegrationOrchestrator coordinates MCP, LSP, and tool execution
+// IntegrationOrchestrator coordinates MCP, LSP, and tool execution.
+//
+// Concurrency: workflows is a safe.Store so registration, retrieval,
+// listing, and deletion need no external synchronisation. Each Workflow
+// value, once in the store, is mutated only by the single goroutine
+// currently executing it (executeWorkflow holds the only reference
+// during execution); publication before execution happens-before the
+// workflow pointer becomes visible via Put.
 type IntegrationOrchestrator struct {
 	mcpManager       *MCPManager
 	lspClient        *LSPClient
 	toolRegistry     *ToolRegistry
 	contextManager   *ContextManager
 	providerRegistry *ProviderRegistry
-	workflows        map[string]*Workflow
-	mu               sync.RWMutex
+	workflows        *safe.Store[string, *Workflow]
 }
 
 // Workflow represents a sequence of integrated operations
@@ -65,7 +72,7 @@ func NewIntegrationOrchestrator(mcpManager *MCPManager, lspClient *LSPClient, to
 		lspClient:      lspClient,
 		toolRegistry:   toolRegistry,
 		contextManager: contextManager,
-		workflows:      make(map[string]*Workflow),
+		workflows:      safe.NewStore[string, *Workflow](),
 	}
 }
 
@@ -109,9 +116,7 @@ func (io *IntegrationOrchestrator) ExecuteCodeAnalysis(ctx context.Context, file
 	}
 
 	// Register workflow in the map before execution
-	io.mu.Lock()
-	io.workflows[workflow.ID] = workflow
-	io.mu.Unlock()
+	io.workflows.Put(workflow.ID, workflow)
 
 	if err := io.executeWorkflow(ctx, workflow); err != nil {
 		return nil, err
@@ -152,9 +157,7 @@ func (io *IntegrationOrchestrator) ExecuteToolChain(ctx context.Context, toolCha
 	}
 
 	// Register workflow in the map before execution
-	io.mu.Lock()
-	io.workflows[workflow.ID] = workflow
-	io.mu.Unlock()
+	io.workflows.Put(workflow.ID, workflow)
 
 	if err := io.executeWorkflow(ctx, workflow); err != nil {
 		return nil, err
@@ -648,31 +651,19 @@ func (io *IntegrationOrchestrator) findExecutableSteps(steps []WorkflowStep, gra
 
 // GetWorkflow returns a workflow by ID, or nil if not found.
 func (io *IntegrationOrchestrator) GetWorkflow(id string) *Workflow {
-	io.mu.RLock()
-	defer io.mu.RUnlock()
-	return io.workflows[id]
+	wf, _ := io.workflows.Get(id)
+	return wf
 }
 
 // ListWorkflows returns the IDs of all registered workflows.
 func (io *IntegrationOrchestrator) ListWorkflows() []string {
-	io.mu.RLock()
-	defer io.mu.RUnlock()
-	ids := make([]string, 0, len(io.workflows))
-	for id := range io.workflows {
-		ids = append(ids, id)
-	}
-	return ids
+	return io.workflows.Keys()
 }
 
 // DeleteWorkflow removes a workflow by ID and returns true if it existed.
 func (io *IntegrationOrchestrator) DeleteWorkflow(id string) bool {
-	io.mu.Lock()
-	defer io.mu.Unlock()
-	if _, ok := io.workflows[id]; !ok {
-		return false
-	}
-	delete(io.workflows, id)
-	return true
+	_, existed := io.workflows.Delete(id)
+	return existed
 }
 
 // Data structures

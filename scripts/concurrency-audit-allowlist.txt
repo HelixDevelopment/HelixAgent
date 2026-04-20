@@ -23,7 +23,6 @@ internal/services/acp_manager.go:67:ACPClient
 internal/services/concurrency_alert_manager.go:505:ConcurrencyAlertManager
 internal/services/context_manager.go:36:ContextManager
 internal/services/debate_team_config.go:304:DebateTeamConfig
-internal/services/integration_orchestrator.go:22:IntegrationOrchestrator
 internal/services/lsp_manager.go:22:LSPManager
 internal/services/lsp_manager_test.go:1528:MockLSPServer
 internal/services/mcp_client.go:20:MCPClient

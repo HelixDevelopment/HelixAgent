@@ -1379,16 +1379,14 @@ func TestIntegrationOrchestrator_ConcurrentWorkflowAccess(t *testing.T) {
 			defer wg.Done()
 			id := fmt.Sprintf("workflow-%d", idx)
 			// Simulate what ExecuteCodeAnalysis / ExecuteToolChain do:
-			// write to the map under lock
-			orch.mu.Lock()
-			orch.workflows[id] = &Workflow{
+			// publish into the safe.Store
+			orch.workflows.Put(id, &Workflow{
 				ID:        id,
 				Name:      fmt.Sprintf("Workflow %d", idx),
 				Status:    "completed",
 				Results:   make(map[string]any),
 				CreatedAt: time.Now(),
-			}
-			orch.mu.Unlock()
+			})
 		}(i)
 	}
 	wg.Wait()
@@ -1426,13 +1424,11 @@ func TestIntegrationOrchestrator_ConcurrentWorkflowAccess(t *testing.T) {
 				_ = orch.ListWorkflows()
 			} else {
 				id := fmt.Sprintf("workflow-new-%d", idx)
-				orch.mu.Lock()
-				orch.workflows[id] = &Workflow{
+				orch.workflows.Put(id, &Workflow{
 					ID:     id,
 					Name:   fmt.Sprintf("New Workflow %d", idx),
 					Status: "pending",
-				}
-				orch.mu.Unlock()
+				})
 			}
 		}(i)
 	}
@@ -1458,9 +1454,7 @@ func TestIntegrationOrchestrator_GetWorkflow(t *testing.T) {
 	})
 
 	t.Run("found returns workflow", func(t *testing.T) {
-		orch.mu.Lock()
-		orch.workflows["test-wf"] = &Workflow{ID: "test-wf", Name: "Test"}
-		orch.mu.Unlock()
+		orch.workflows.Put("test-wf", &Workflow{ID: "test-wf", Name: "Test"})
 
 		wf := orch.GetWorkflow("test-wf")
 		require.NotNil(t, wf)
@@ -1478,10 +1472,8 @@ func TestIntegrationOrchestrator_ListWorkflows(t *testing.T) {
 	})
 
 	t.Run("with workflows", func(t *testing.T) {
-		orch.mu.Lock()
-		orch.workflows["wf-1"] = &Workflow{ID: "wf-1"}
-		orch.workflows["wf-2"] = &Workflow{ID: "wf-2"}
-		orch.mu.Unlock()
+		orch.workflows.Put("wf-1", &Workflow{ID: "wf-1"})
+		orch.workflows.Put("wf-2", &Workflow{ID: "wf-2"})
 
 		ids := orch.ListWorkflows()
 		assert.Len(t, ids, 2)
@@ -1499,9 +1491,7 @@ func TestIntegrationOrchestrator_DeleteWorkflow(t *testing.T) {
 	})
 
 	t.Run("delete existing returns true", func(t *testing.T) {
-		orch.mu.Lock()
-		orch.workflows["to-delete"] = &Workflow{ID: "to-delete"}
-		orch.mu.Unlock()
+		orch.workflows.Put("to-delete", &Workflow{ID: "to-delete"})
 
 		ok := orch.DeleteWorkflow("to-delete")
 		assert.True(t, ok)

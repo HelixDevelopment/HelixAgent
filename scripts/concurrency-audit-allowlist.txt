@@ -28,9 +28,5 @@ internal/services/protocol_federation.go:16:ProtocolDiscovery
 internal/services/provider_discovery.go:54:ProviderDiscovery
 internal/services/provider_discovery.go:72:DiscoveredProvider
 internal/services/provider_registry.go:72:ProviderRegistry
-internal/services/request_service.go:107:MetricsRegistry
-internal/services/request_service.go:15:RequestService
-internal/services/request_service.go:50:ProviderMetrics
-internal/services/request_service.go:680:CircuitBreakerPattern
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter
 internal/verifier/startup.go:89:StartupVerifier

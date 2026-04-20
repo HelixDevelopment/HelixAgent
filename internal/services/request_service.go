@@ -6,18 +6,23 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/models"
 )
 
-// RequestService handles LLM request routing and load balancing
+// RequestService handles LLM request routing and load balancing.
+//
+// Concurrent-safe by construction: providers is a safe.Store; the prior
+// sync.RWMutex is dropped.
 type RequestService struct {
-	providers map[string]LLMProvider
+	providers *safe.Store[string, LLMProvider]
 	ensemble  *EnsembleService
 	memory    *MemoryService
 	strategy  RoutingStrategy
-	mu        sync.RWMutex
 }
 
 // RoutingStrategy defines different routing approaches
@@ -46,95 +51,111 @@ type RoundRobinStrategy struct {
 	mu      sync.Mutex
 }
 
-// ProviderMetrics tracks performance metrics for a provider with rolling window
+// ProviderMetrics tracks performance metrics for a provider with rolling window.
+//
+// Concurrent-safe by construction: atomic counters for SuccessCount,
+// FailureCount, TotalLatencyMs; safe.Slice for LatencyHistory; lastUpdated
+// as atomic.Int64 Unix-nanos (time.Time not atomic). No bare map or
+// slice fields remain paired with a mutex.
 type ProviderMetrics struct {
-	SuccessCount   int64
-	FailureCount   int64
-	TotalLatencyMs int64
-	LatencyHistory []int64 // Rolling window of recent latencies
-	LastUpdated    time.Time
-	mu             sync.RWMutex
+	SuccessCount   atomic.Int64
+	FailureCount   atomic.Int64
+	TotalLatencyMs atomic.Int64
+	LatencyHistory *safe.Slice[int64] // Rolling window of recent latencies
+	lastUpdatedNs  atomic.Int64       // UnixNano; read via GetLastUpdated()
 }
+
+// NewProviderMetrics constructs a fresh ProviderMetrics. Prefer this over
+// a zero-value struct literal so LatencyHistory is initialised.
+func NewProviderMetrics() *ProviderMetrics {
+	pm := &ProviderMetrics{
+		LatencyHistory: safe.NewSlice[int64](),
+	}
+	pm.lastUpdatedNs.Store(time.Now().UnixNano())
+	return pm
+}
+
+// maxLatencyHistory bounds the rolling window of kept latencies.
+const maxLatencyHistory = 100
 
 // GetSuccessRate returns the success rate (0.0 to 1.0)
 func (pm *ProviderMetrics) GetSuccessRate() float64 {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	total := pm.SuccessCount + pm.FailureCount
+	success := pm.SuccessCount.Load()
+	failure := pm.FailureCount.Load()
+	total := success + failure
 	if total == 0 {
 		return 1.0 // Default to 1.0 for new providers
 	}
-	return float64(pm.SuccessCount) / float64(total)
+	return float64(success) / float64(total)
 }
 
 // GetAverageLatency returns the average latency in milliseconds
 func (pm *ProviderMetrics) GetAverageLatency() float64 {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	if len(pm.LatencyHistory) == 0 {
+	snap := pm.LatencyHistory.Snapshot()
+	if len(snap) == 0 {
 		return 1000.0 // Default latency for new providers
 	}
 	var sum int64
-	for _, lat := range pm.LatencyHistory {
+	for _, lat := range snap {
 		sum += lat
 	}
-	return float64(sum) / float64(len(pm.LatencyHistory))
+	return float64(sum) / float64(len(snap))
+}
+
+// GetLastUpdated returns the last-updated timestamp.
+func (pm *ProviderMetrics) GetLastUpdated() time.Time {
+	return time.Unix(0, pm.lastUpdatedNs.Load())
 }
 
 // RecordSuccess records a successful request with latency
 func (pm *ProviderMetrics) RecordSuccess(latencyMs int64) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-	pm.SuccessCount++
-	pm.TotalLatencyMs += latencyMs
-	pm.LastUpdated = time.Now()
-	// Maintain rolling window of last 100 latencies
-	pm.LatencyHistory = append(pm.LatencyHistory, latencyMs)
-	if len(pm.LatencyHistory) > 100 {
-		pm.LatencyHistory = pm.LatencyHistory[1:]
+	pm.SuccessCount.Add(1)
+	pm.TotalLatencyMs.Add(latencyMs)
+	pm.lastUpdatedNs.Store(time.Now().UnixNano())
+
+	// Maintain rolling window of last 100 latencies.
+	// Append+Snapshot+Replace is not atomic as a triple; under heavy
+	// concurrency the window may briefly hold 101-102 entries before
+	// trimming. Acceptable for a best-effort rolling window.
+	pm.LatencyHistory.Append(latencyMs)
+	snap := pm.LatencyHistory.Snapshot()
+	if len(snap) > maxLatencyHistory {
+		pm.LatencyHistory.Replace(snap[len(snap)-maxLatencyHistory:])
 	}
 }
 
 // RecordFailure records a failed request
 func (pm *ProviderMetrics) RecordFailure() {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-	pm.FailureCount++
-	pm.LastUpdated = time.Now()
+	pm.FailureCount.Add(1)
+	pm.lastUpdatedNs.Store(time.Now().UnixNano())
 }
 
-// MetricsRegistry is a thread-safe registry for provider metrics
+// MetricsRegistry is a thread-safe registry for provider metrics.
+//
+// Concurrent-safe by construction: metrics is a safe.Store. Store.Update
+// gives the atomic get-or-create-and-insert semantics that previously
+// needed double-checked locking.
 type MetricsRegistry struct {
-	metrics map[string]*ProviderMetrics
-	mu      sync.RWMutex
+	metrics *safe.Store[string, *ProviderMetrics]
 }
 
 // GlobalMetricsRegistry is the singleton metrics registry
 var GlobalMetricsRegistry = &MetricsRegistry{
-	metrics: make(map[string]*ProviderMetrics),
+	metrics: safe.NewStore[string, *ProviderMetrics](),
 }
 
 // GetMetrics returns metrics for a provider, creating if necessary
 func (mr *MetricsRegistry) GetMetrics(providerName string) *ProviderMetrics {
-	mr.mu.RLock()
-	if pm, exists := mr.metrics[providerName]; exists {
-		mr.mu.RUnlock()
-		return pm
-	}
-	mr.mu.RUnlock()
-
-	mr.mu.Lock()
-	defer mr.mu.Unlock()
-	// Double-check after acquiring write lock
-	if pm, exists := mr.metrics[providerName]; exists {
-		return pm
-	}
-	pm := &ProviderMetrics{
-		LatencyHistory: make([]int64, 0, 100),
-		LastUpdated:    time.Now(),
-	}
-	mr.metrics[providerName] = pm
-	return pm
+	var result *ProviderMetrics
+	mr.metrics.Update(providerName, func(existing *ProviderMetrics, present bool) (*ProviderMetrics, bool) {
+		if present {
+			result = existing
+			return existing, true
+		}
+		result = NewProviderMetrics()
+		return result, true
+	})
+	return result
 }
 
 // RecordRequest records the outcome of a request to the metrics registry
@@ -192,7 +213,7 @@ func NewRequestService(strategy string, ensemble *EnsembleService, memory *Memor
 	}
 
 	return &RequestService{
-		providers: make(map[string]LLMProvider),
+		providers: safe.NewStore[string, LLMProvider](),
 		ensemble:  ensemble,
 		memory:    memory,
 		strategy:  routingStrategy,
@@ -200,35 +221,19 @@ func NewRequestService(strategy string, ensemble *EnsembleService, memory *Memor
 }
 
 func (r *RequestService) RegisterProvider(name string, provider LLMProvider) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.providers[name] = provider
+	r.providers.Put(name, provider)
 }
 
 func (r *RequestService) RemoveProvider(name string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.providers, name)
+	r.providers.Delete(name)
 }
 
 func (r *RequestService) GetProviders() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	names := make([]string, 0, len(r.providers))
-	for name := range r.providers {
-		names = append(names, name)
-	}
-	return names
+	return r.providers.Keys()
 }
 
 func (r *RequestService) ProcessRequest(ctx context.Context, req *models.LLMRequest) (*models.LLMResponse, error) {
-	r.mu.RLock()
-	providers := make(map[string]LLMProvider)
-	for k, v := range r.providers {
-		providers[k] = v
-	}
-	r.mu.RUnlock()
+	providers := r.providers.Snapshot()
 
 	if len(providers) == 0 {
 		return nil, fmt.Errorf("no providers available")
@@ -257,12 +262,7 @@ func (r *RequestService) ProcessRequest(ctx context.Context, req *models.LLMRequ
 }
 
 func (r *RequestService) ProcessRequestStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
-	r.mu.RLock()
-	providers := make(map[string]LLMProvider)
-	for k, v := range r.providers {
-		providers[k] = v
-	}
-	r.mu.RUnlock()
+	providers := r.providers.Snapshot()
 
 	if len(providers) == 0 {
 		return nil, fmt.Errorf("no providers available")
@@ -571,9 +571,7 @@ func (s *LatencyBasedStrategy) SelectProvider(providers map[string]LLMProvider, 
 	for name := range providers {
 		metrics := registry.GetMetrics(name)
 
-		metrics.mu.RLock()
-		hasHistory := len(metrics.LatencyHistory) > 0
-		metrics.mu.RUnlock()
+		hasHistory := metrics.LatencyHistory.Len() > 0
 
 		if hasHistory {
 			avgLatency := metrics.GetAverageLatency()
@@ -660,8 +658,7 @@ func (r *RequestService) GetProviderHealth(name string) *ProviderHealth {
 func (r *RequestService) GetAllProviderHealth() map[string]*ProviderHealth {
 	// Return health information for all providers
 	health := make(map[string]*ProviderHealth)
-	r.mu.RLock()
-	for name := range r.providers {
+	r.providers.Range(func(name string, _ LLMProvider) bool {
 		health[name] = &ProviderHealth{
 			Name:         name,
 			Healthy:      true,
@@ -669,17 +666,19 @@ func (r *RequestService) GetAllProviderHealth() map[string]*ProviderHealth {
 			ResponseTime: 1000,
 			SuccessRate:  0.95,
 		}
-	}
-	r.mu.RUnlock()
+		return true
+	})
 	return health
 }
 
 // Advanced routing features
 
-// CircuitBreakerPattern implements circuit breaker for failing providers
+// CircuitBreakerPattern implements circuit breaker for failing providers.
+//
+// Concurrent-safe by construction: providers is a safe.Store; Store.Update
+// gives atomic get-or-create semantics. Previous sync.RWMutex dropped.
 type CircuitBreakerPattern struct {
-	providers map[string]*RequestCircuitBreaker
-	mu        sync.RWMutex
+	providers *safe.Store[string, *RequestCircuitBreaker]
 }
 
 type RequestCircuitBreaker struct {
@@ -704,38 +703,26 @@ const (
 
 func NewCircuitBreakerPattern() *CircuitBreakerPattern {
 	return &CircuitBreakerPattern{
-		providers: make(map[string]*RequestCircuitBreaker),
+		providers: safe.NewStore[string, *RequestCircuitBreaker](),
 	}
 }
 
 func (c *CircuitBreakerPattern) GetCircuitBreaker(name string) *RequestCircuitBreaker {
-	// First try with read lock
-	c.mu.RLock()
-	cb, exists := c.providers[name]
-	c.mu.RUnlock()
-
-	if exists {
-		return cb
-	}
-
-	// Need to create new circuit breaker - acquire write lock
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Double-check after acquiring write lock (another goroutine may have created it)
-	if cb, exists = c.providers[name]; exists {
-		return cb
-	}
-
-	cb = &RequestCircuitBreaker{
-		Name:             name,
-		State:            RequestStateClosed,
-		FailureThreshold: 5,
-		Timeout:          60 * time.Second,
-		RecoveryTimeout:  30 * time.Second,
-	}
-	c.providers[name] = cb
-
+	var cb *RequestCircuitBreaker
+	c.providers.Update(name, func(existing *RequestCircuitBreaker, present bool) (*RequestCircuitBreaker, bool) {
+		if present {
+			cb = existing
+			return existing, true
+		}
+		cb = &RequestCircuitBreaker{
+			Name:             name,
+			State:            RequestStateClosed,
+			FailureThreshold: 5,
+			Timeout:          60 * time.Second,
+			RecoveryTimeout:  30 * time.Second,
+		}
+		return cb, true
+	})
 	return cb
 }
 

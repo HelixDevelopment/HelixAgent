@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	safe "digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 )
 
@@ -764,101 +766,84 @@ func TestRequestService_UpdateProviderHealth(t *testing.T) {
 // Tests for ProviderMetrics
 func TestProviderMetrics(t *testing.T) {
 	t.Run("GetSuccessRate with no requests", func(t *testing.T) {
-		pm := &ProviderMetrics{}
+		pm := NewProviderMetrics()
 		rate := pm.GetSuccessRate()
 		assert.Equal(t, 1.0, rate, "should return 1.0 for new providers")
 	})
 
 	t.Run("GetSuccessRate with mixed results", func(t *testing.T) {
-		pm := &ProviderMetrics{
-			SuccessCount: 80,
-			FailureCount: 20,
-		}
+		pm := func() *ProviderMetrics { pm := NewProviderMetrics(); pm.SuccessCount.Store(80); pm.FailureCount.Store(20); return pm }()
 		rate := pm.GetSuccessRate()
 		assert.Equal(t, 0.8, rate)
 	})
 
 	t.Run("GetAverageLatency with no history", func(t *testing.T) {
-		pm := &ProviderMetrics{
-			LatencyHistory: []int64{},
-		}
+		pm := NewProviderMetrics()
 		latency := pm.GetAverageLatency()
 		assert.Equal(t, 1000.0, latency, "should return default 1000ms for new providers")
 	})
 
 	t.Run("GetAverageLatency with history", func(t *testing.T) {
-		pm := &ProviderMetrics{
-			LatencyHistory: []int64{100, 200, 300},
-		}
+		pm := NewProviderMetrics()
+		pm.LatencyHistory.Replace([]int64{100, 200, 300})
 		latency := pm.GetAverageLatency()
 		assert.Equal(t, 200.0, latency)
 	})
 
 	t.Run("RecordSuccess updates metrics", func(t *testing.T) {
-		pm := &ProviderMetrics{
-			LatencyHistory: make([]int64, 0, 100),
-		}
+		pm := NewProviderMetrics()
 		pm.RecordSuccess(150)
-		assert.Equal(t, int64(1), pm.SuccessCount)
-		assert.Equal(t, int64(150), pm.TotalLatencyMs)
-		assert.Len(t, pm.LatencyHistory, 1)
-		assert.Equal(t, int64(150), pm.LatencyHistory[0])
+		assert.Equal(t, int64(1), pm.SuccessCount.Load())
+		assert.Equal(t, int64(150), pm.TotalLatencyMs.Load())
+		assert.Equal(t, 1, pm.LatencyHistory.Len())
+		assert.Equal(t, int64(150), func() int64 {v,_:=pm.LatencyHistory.At(0); return v}())
 	})
 
 	t.Run("RecordSuccess maintains rolling window", func(t *testing.T) {
-		pm := &ProviderMetrics{
-			LatencyHistory: make([]int64, 100), // Pre-fill with 100 entries
-		}
+		pm := NewProviderMetrics()
+		pm.LatencyHistory.Replace(make([]int64, 100)) // pre-fill with 100 zero entries
 		pm.RecordSuccess(999)
-		assert.Len(t, pm.LatencyHistory, 100, "should maintain 100 entries")
-		assert.Equal(t, int64(999), pm.LatencyHistory[99], "newest entry should be at end")
+		assert.Equal(t, 100, pm.LatencyHistory.Len(), "should maintain 100 entries")
+		assert.Equal(t, int64(999), func() int64 {v,_:=pm.LatencyHistory.At(99); return v}(), "newest entry should be at end")
 	})
 
 	t.Run("RecordFailure updates metrics", func(t *testing.T) {
-		pm := &ProviderMetrics{}
+		pm := NewProviderMetrics()
 		pm.RecordFailure()
-		assert.Equal(t, int64(1), pm.FailureCount)
+		assert.Equal(t, int64(1), pm.FailureCount.Load())
 	})
 }
 
 // Tests for MetricsRegistry
 func TestMetricsRegistry(t *testing.T) {
 	t.Run("GetMetrics creates new entry", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 		pm := registry.GetMetrics("new-provider")
 		assert.NotNil(t, pm)
-		assert.Equal(t, int64(0), pm.SuccessCount)
+		assert.Equal(t, int64(0), pm.SuccessCount.Load())
 	})
 
 	t.Run("GetMetrics returns existing entry", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 		pm1 := registry.GetMetrics("provider")
-		pm1.SuccessCount = 42
+		pm1.SuccessCount.Store(42)
 		pm2 := registry.GetMetrics("provider")
-		assert.Equal(t, int64(42), pm2.SuccessCount)
+		assert.Equal(t, int64(42), pm2.SuccessCount.Load())
 	})
 
 	t.Run("RecordRequest updates metrics correctly", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 		registry.RecordRequest("test-provider", true, 100)
 		pm := registry.GetMetrics("test-provider")
-		assert.Equal(t, int64(1), pm.SuccessCount)
-		assert.Len(t, pm.LatencyHistory, 1)
+		assert.Equal(t, int64(1), pm.SuccessCount.Load())
+		assert.Equal(t, 1, pm.LatencyHistory.Len())
 
 		registry.RecordRequest("test-provider", false, 200)
-		assert.Equal(t, int64(1), pm.FailureCount)
+		assert.Equal(t, int64(1), pm.FailureCount.Load())
 	})
 
 	t.Run("thread safety", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 		done := make(chan bool)
 		for i := 0; i < 10; i++ {
 			go func(id int) {
@@ -872,16 +857,14 @@ func TestMetricsRegistry(t *testing.T) {
 			<-done
 		}
 		pm := registry.GetMetrics("concurrent-provider")
-		assert.Equal(t, int64(1000), pm.SuccessCount)
+		assert.Equal(t, int64(1000), pm.SuccessCount.Load())
 	})
 }
 
 // Tests for WeightedStrategy with metrics
 func TestWeightedStrategy_WithMetrics(t *testing.T) {
 	t.Run("prefers higher success rate providers", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 		// Provider 1: 90% success rate
 		for i := 0; i < 90; i++ {
@@ -919,9 +902,7 @@ func TestWeightedStrategy_WithMetrics(t *testing.T) {
 	})
 
 	t.Run("prefers lower latency providers", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 		// Both have 100% success rate, but different latencies
 		for i := 0; i < 100; i++ {
@@ -1045,9 +1026,7 @@ func TestHealthBasedStrategy_WithCircuitBreakers(t *testing.T) {
 // Tests for LatencyBasedStrategy with metrics
 func TestLatencyBasedStrategy_WithMetrics(t *testing.T) {
 	t.Run("selects lowest latency provider", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 		// Record different latencies
 		for i := 0; i < 10; i++ {
@@ -1077,9 +1056,7 @@ func TestLatencyBasedStrategy_WithMetrics(t *testing.T) {
 	})
 
 	t.Run("explores new providers without metrics", func(t *testing.T) {
-		registry := &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		registry := &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 		// Only record for one provider
 		registry.RecordRequest("known", true, 100)
@@ -1106,9 +1083,7 @@ func TestLatencyBasedStrategy_WithMetrics(t *testing.T) {
 // Integration tests for metrics recording
 func TestRequestService_MetricsRecording(t *testing.T) {
 	// Reset global metrics for clean test
-	GlobalMetricsRegistry = &MetricsRegistry{
-		metrics: make(map[string]*ProviderMetrics),
-	}
+	GlobalMetricsRegistry = &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 	t.Run("records success metrics", func(t *testing.T) {
 		service := NewRequestService("random", nil, nil)
@@ -1126,16 +1101,14 @@ func TestRequestService_MetricsRecording(t *testing.T) {
 
 		// Check metrics were recorded
 		pm := GlobalMetricsRegistry.GetMetrics("metrics-test")
-		assert.Equal(t, int64(1), pm.SuccessCount)
-		assert.Equal(t, int64(0), pm.FailureCount)
-		assert.Greater(t, len(pm.LatencyHistory), 0)
+		assert.Equal(t, int64(1), pm.SuccessCount.Load())
+		assert.Equal(t, int64(0), pm.FailureCount.Load())
+		assert.Greater(t, pm.LatencyHistory.Len(), 0)
 	})
 
 	t.Run("records failure metrics", func(t *testing.T) {
 		// Reset for this test
-		GlobalMetricsRegistry = &MetricsRegistry{
-			metrics: make(map[string]*ProviderMetrics),
-		}
+		GlobalMetricsRegistry = &MetricsRegistry{metrics: safe.NewStore[string, *ProviderMetrics]()}
 
 		service := NewRequestService("random", nil, nil)
 		service.RegisterProvider("failing-provider", &MockLLMProviderForRequest{
@@ -1151,7 +1124,7 @@ func TestRequestService_MetricsRecording(t *testing.T) {
 
 		// Check metrics were recorded
 		pm := GlobalMetricsRegistry.GetMetrics("failing-provider")
-		assert.Equal(t, int64(0), pm.SuccessCount)
-		assert.Equal(t, int64(1), pm.FailureCount)
+		assert.Equal(t, int64(0), pm.SuccessCount.Load())
+		assert.Equal(t, int64(1), pm.FailureCount.Load())
 	})
 }

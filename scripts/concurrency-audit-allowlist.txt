@@ -19,7 +19,6 @@ internal/services/concurrency_alert_manager.go:505:ConcurrencyAlertManager
 internal/services/context_manager.go:36:ContextManager
 internal/services/debate_team_config.go:304:DebateTeamConfig
 internal/services/lsp_manager.go:22:LSPManager
-internal/services/lsp_manager_test.go:1528:MockLSPServer
 internal/services/mcp_client.go:20:MCPClient
 internal/services/mcp_client.go:58:HTTPTransport
 internal/services/memory_service.go:32:MemoryService

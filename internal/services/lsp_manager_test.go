@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -1524,22 +1526,20 @@ func TestLSPManager_ContextCancellation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// MockLSPServer is a simple mock LSP server for testing
+// MockLSPServer is a simple mock LSP server for testing.
+// Concurrent-safe by construction: responses is a safe.Store, mu dropped.
 type MockLSPServer struct {
-	responses map[string]interface{}
-	mu        sync.Mutex
+	responses *safe.Store[string, interface{}]
 }
 
 func NewMockLSPServer() *MockLSPServer {
 	return &MockLSPServer{
-		responses: make(map[string]interface{}),
+		responses: safe.NewStore[string, interface{}](),
 	}
 }
 
 func (m *MockLSPServer) SetResponse(method string, response interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.responses[method] = response
+	m.responses.Put(method, response)
 }
 
 // TestWriteMessage tests message writing

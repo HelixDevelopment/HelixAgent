@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -72,12 +74,16 @@ type TieredCacheMetrics struct {
 	L1Evictions      int64
 }
 
-// l1Cache is the in-memory L1 cache
+// l1Cache is the in-memory L1 cache.
+//
+// Concurrency model (CONST-029): entries is a *safe.Store.
+// evictionMu (Pattern Zeta) serialises the compound "check size →
+// evict LRU → insert" flow in Set; readers use Get lock-free.
 type l1Cache struct {
-	entries map[string]*l1Entry
-	mu      sync.RWMutex
-	maxSize int
-	metrics *TieredCacheMetrics
+	entries    *safe.Store[string, *l1Entry]
+	evictionMu sync.Mutex
+	maxSize    int
+	metrics    *TieredCacheMetrics
 }
 
 type l1Entry struct {
@@ -87,48 +93,66 @@ type l1Entry struct {
 	hitCount  int64
 }
 
-// tagIndex maps tags to cache keys for efficient invalidation
+// tagIndex maps tags to cache keys for efficient invalidation.
+//
+// Concurrency model (CONST-029): index is a *safe.Store whose inner
+// per-tag key sets are replaced atomically via Store.Update with
+// copy-on-write.
 type tagIndex struct {
-	index map[string]map[string]struct{} // tag -> keys
-	mu    sync.RWMutex
+	index *safe.Store[string, map[string]struct{}] // tag -> keys
 }
 
 func newTagIndex() *tagIndex {
 	return &tagIndex{
-		index: make(map[string]map[string]struct{}),
+		index: safe.NewStore[string, map[string]struct{}](),
 	}
 }
 
 func (t *tagIndex) Add(key string, tags ...string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	for _, tag := range tags {
-		if t.index[tag] == nil {
-			t.index[tag] = make(map[string]struct{})
-		}
-		t.index[tag][key] = struct{}{}
+		t.index.Update(tag, func(cur map[string]struct{}, _ bool) (map[string]struct{}, bool) {
+			next := make(map[string]struct{}, len(cur)+1)
+			for k := range cur {
+				next[k] = struct{}{}
+			}
+			next[key] = struct{}{}
+			return next, true
+		})
 	}
 }
 
 func (t *tagIndex) Remove(key string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for tag, keys := range t.index {
-		delete(keys, key)
-		if len(keys) == 0 {
-			delete(t.index, tag)
+	var candidates []string
+	for tag, keys := range t.index.Snapshot() {
+		if _, has := keys[key]; has {
+			candidates = append(candidates, tag)
 		}
+	}
+	for _, tag := range candidates {
+		t.index.Update(tag, func(cur map[string]struct{}, present bool) (map[string]struct{}, bool) {
+			if !present {
+				return nil, false
+			}
+			if _, has := cur[key]; !has {
+				return cur, true
+			}
+			if len(cur) == 1 {
+				return nil, false
+			}
+			next := make(map[string]struct{}, len(cur)-1)
+			for k := range cur {
+				if k != key {
+					next[k] = struct{}{}
+				}
+			}
+			return next, true
+		})
 	}
 }
 
 func (t *tagIndex) GetKeys(tag string) []string {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	keys := t.index[tag]
-	if keys == nil {
+	keys, ok := t.index.Get(tag)
+	if !ok || keys == nil {
 		return nil
 	}
 
@@ -150,7 +174,7 @@ func NewTieredCache(redisClient *redis.Client, config *TieredCacheConfig) *Tiere
 
 	tc := &TieredCache{
 		l1: &l1Cache{
-			entries: make(map[string]*l1Entry),
+			entries: safe.NewStore[string, *l1Entry](),
 			maxSize: config.L1MaxSize,
 			metrics: metrics,
 		},
@@ -296,14 +320,17 @@ func (c *TieredCache) InvalidatePrefix(ctx context.Context, prefix string) (int,
 
 	// Invalidate L1
 	if c.config.EnableL1 {
-		c.l1.mu.Lock()
-		for key := range c.l1.entries {
+		var toDelete []string
+		c.l1.entries.Range(func(key string, _ *l1Entry) bool {
 			if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
-				delete(c.l1.entries, key)
-				count++
+				toDelete = append(toDelete, key)
 			}
+			return true
+		})
+		for _, key := range toDelete {
+			c.l1.entries.Delete(key)
+			count++
 		}
-		c.l1.mu.Unlock()
 	}
 
 	// Invalidate L2 using SCAN
@@ -336,9 +363,7 @@ func (c *TieredCache) InvalidatePrefix(ctx context.Context, prefix string) (int,
 
 // Metrics returns current cache metrics
 func (c *TieredCache) Metrics() *TieredCacheMetrics {
-	c.l1.mu.RLock()
-	l1Size := int64(len(c.l1.entries))
-	c.l1.mu.RUnlock()
+	l1Size := int64(c.l1.entries.Len())
 
 	return &TieredCacheMetrics{
 		L1Hits:           atomic.LoadInt64(&c.metrics.L1Hits),
@@ -378,10 +403,7 @@ func (c *TieredCache) Close() error {
 // L1 cache operations
 
 func (c *TieredCache) l1Get(key string) ([]byte, bool) {
-	c.l1.mu.RLock()
-	entry, exists := c.l1.entries[key]
-	c.l1.mu.RUnlock()
-
+	entry, exists := c.l1.entries.Get(key)
 	if !exists {
 		return nil, false
 	}
@@ -396,45 +418,44 @@ func (c *TieredCache) l1Get(key string) ([]byte, bool) {
 }
 
 func (c *TieredCache) l1Set(key string, value []byte, ttl time.Duration, tags []string) {
-	c.l1.mu.Lock()
-	defer c.l1.mu.Unlock()
+	c.l1.evictionMu.Lock()
+	defer c.l1.evictionMu.Unlock()
 
 	// Evict if at capacity
-	if len(c.l1.entries) >= c.l1.maxSize {
+	if c.l1.entries.Len() >= c.l1.maxSize {
 		c.l1EvictLRU()
 	}
 
-	c.l1.entries[key] = &l1Entry{
+	c.l1.entries.Put(key, &l1Entry{
 		value:     value,
 		expiresAt: time.Now().Add(ttl),
 		tags:      tags,
-	}
+	})
 
-	atomic.StoreInt64(&c.metrics.L1Size, int64(len(c.l1.entries)))
+	atomic.StoreInt64(&c.metrics.L1Size, int64(c.l1.entries.Len()))
 }
 
 func (c *TieredCache) l1Delete(key string) {
-	c.l1.mu.Lock()
-	defer c.l1.mu.Unlock()
-
-	delete(c.l1.entries, key)
-	atomic.StoreInt64(&c.metrics.L1Size, int64(len(c.l1.entries)))
+	c.l1.entries.Delete(key)
+	atomic.StoreInt64(&c.metrics.L1Size, int64(c.l1.entries.Len()))
 }
 
+// l1EvictLRU must be called with c.l1.evictionMu held.
 func (c *TieredCache) l1EvictLRU() {
 	// Find entry with lowest hit count (simple LRU approximation)
 	var lowestKey string
 	var lowestHits int64 = -1
 
-	for key, entry := range c.l1.entries {
+	c.l1.entries.Range(func(key string, entry *l1Entry) bool {
 		if lowestHits < 0 || entry.hitCount < lowestHits {
 			lowestKey = key
 			lowestHits = entry.hitCount
 		}
-	}
+		return true
+	})
 
 	if lowestKey != "" {
-		delete(c.l1.entries, lowestKey)
+		c.l1.entries.Delete(lowestKey)
 		atomic.AddInt64(&c.metrics.L1Evictions, 1)
 	}
 }
@@ -459,22 +480,23 @@ func (c *TieredCache) l1CleanupLoop() {
 }
 
 func (c *TieredCache) l1Cleanup() {
-	c.l1.mu.Lock()
-	defer c.l1.mu.Unlock()
-
 	now := time.Now()
-	expired := 0
+	var expiredKeys []string
 
-	for key, entry := range c.l1.entries {
+	c.l1.entries.Range(func(key string, entry *l1Entry) bool {
 		if now.After(entry.expiresAt) {
-			delete(c.l1.entries, key)
-			expired++
+			expiredKeys = append(expiredKeys, key)
 		}
+		return true
+	})
+
+	for _, key := range expiredKeys {
+		c.l1.entries.Delete(key)
 	}
 
-	if expired > 0 {
-		atomic.AddInt64(&c.metrics.Expirations, int64(expired))
-		atomic.StoreInt64(&c.metrics.L1Size, int64(len(c.l1.entries)))
+	if len(expiredKeys) > 0 {
+		atomic.AddInt64(&c.metrics.Expirations, int64(len(expiredKeys)))
+		atomic.StoreInt64(&c.metrics.L1Size, int64(c.l1.entries.Len()))
 	}
 }
 

@@ -682,9 +682,7 @@ func TestTieredCache_L1Cleanup(t *testing.T) {
 
 	// The cleanup should have caught the expired entry
 	// (value should no longer be in cache)
-	tc.l1.mu.RLock()
-	_, exists := tc.l1.entries["cleanup-test"]
-	tc.l1.mu.RUnlock()
+	_, exists := tc.l1.entries.Get("cleanup-test")
 	assert.False(t, exists)
 
 	// Verify expiration was tracked in metrics

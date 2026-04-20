@@ -394,10 +394,10 @@ func TestStartupVerifier_rankProviders(t *testing.T) {
 	sv.rankProviders(providers)
 
 	// Sorted by score descending (highest first) - NO OAuth priority
-	assert.Equal(t, "high", sv.rankedProviders[0].ID)
-	assert.Equal(t, "oauth", sv.rankedProviders[1].ID)
-	assert.Equal(t, "medium", sv.rankedProviders[2].ID)
-	assert.Equal(t, "low", sv.rankedProviders[3].ID)
+	assert.Equal(t, "high", func() *UnifiedProvider { s := sv.rankedProviders.Snapshot(); return s[0] }().ID)
+	assert.Equal(t, "oauth", func() *UnifiedProvider { s := sv.rankedProviders.Snapshot(); return s[1] }().ID)
+	assert.Equal(t, "medium", func() *UnifiedProvider { s := sv.rankedProviders.Snapshot(); return s[2] }().ID)
+	assert.Equal(t, "low", func() *UnifiedProvider { s := sv.rankedProviders.Snapshot(); return s[3] }().ID)
 }
 
 func TestStartupVerifier_selectDebateTeam(t *testing.T) {
@@ -412,9 +412,9 @@ func TestStartupVerifier_selectDebateTeam(t *testing.T) {
 	t.Run("single provider with LLM reuse", func(t *testing.T) {
 		// NEW BEHAVIOR: With only 1 provider, we REUSE its LLM to fill all positions
 		// No error - we fill all 3 positions * (1 primary + 1 fallback) = 6 slots
-		sv.rankedProviders = []*UnifiedProvider{
+		sv.rankedProviders.Replace([]*UnifiedProvider{
 			{ID: "p1", Type: "claude", Score: 9.0, Verified: true, Models: []UnifiedModel{{ID: "m1", Name: "Model 1"}}},
-		}
+		})
 
 		team, err := sv.selectDebateTeam()
 		require.NoError(t, err)
@@ -434,14 +434,14 @@ func TestStartupVerifier_selectDebateTeam(t *testing.T) {
 	})
 
 	t.Run("sufficient providers", func(t *testing.T) {
-		sv.rankedProviders = []*UnifiedProvider{
+		sv.rankedProviders.Replace([]*UnifiedProvider{
 			{ID: "p1", Type: "claude", Score: 9.0, AuthType: AuthTypeOAuth, Verified: true, Models: []UnifiedModel{{ID: "m1", Name: "M1"}}},
 			{ID: "p2", Type: "gemini", Score: 8.5, AuthType: AuthTypeAPIKey, Verified: true, Models: []UnifiedModel{{ID: "m2", Name: "M2"}}},
 			{ID: "p3", Type: "deepseek", Score: 8.0, AuthType: AuthTypeAPIKey, Verified: true, Models: []UnifiedModel{{ID: "m3", Name: "M3"}}},
 			{ID: "p4", Type: "mistral", Score: 7.5, AuthType: AuthTypeAPIKey, Verified: true, Models: []UnifiedModel{{ID: "m4", Name: "M4"}}},
 			{ID: "p5", Type: "zen", Score: 6.5, AuthType: AuthTypeFree, Verified: true, Models: []UnifiedModel{{ID: "m5", Name: "M5"}}},
 			{ID: "p6", Type: "ollama", Score: 5.0, AuthType: AuthTypeLocal, Verified: true, Models: []UnifiedModel{{ID: "m6", Name: "M6"}}},
-		}
+		})
 
 		team, err := sv.selectDebateTeam()
 		require.NoError(t, err)
@@ -451,12 +451,12 @@ func TestStartupVerifier_selectDebateTeam(t *testing.T) {
 	})
 
 	t.Run("low score providers excluded", func(t *testing.T) {
-		sv.rankedProviders = []*UnifiedProvider{
+		sv.rankedProviders.Replace([]*UnifiedProvider{
 			{ID: "p1", Type: "claude", Score: 9.0, Verified: true, Models: []UnifiedModel{{ID: "m1", Name: "M1"}}},
 			{ID: "p2", Type: "gemini", Score: 8.5, Verified: true, Models: []UnifiedModel{{ID: "m2", Name: "M2"}}},
 			{ID: "p3", Type: "deepseek", Score: 8.0, Verified: true, Models: []UnifiedModel{{ID: "m3", Name: "M3"}}},
 			{ID: "low", Type: "low", Score: 3.0, Verified: true, Models: []UnifiedModel{{ID: "ml", Name: "ML"}}}, // Below min score
-		}
+		})
 
 		team, err := sv.selectDebateTeam()
 		require.NoError(t, err)

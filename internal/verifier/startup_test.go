@@ -778,7 +778,7 @@ func TestDebateTeamSelection_LLMReuse(t *testing.T) {
 	sv := NewStartupVerifier(cfg, nil)
 
 	// Manually set up ranked providers with only 3 LLMs
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "provider1",
 			Name:     "Provider1",
@@ -802,7 +802,7 @@ func TestDebateTeamSelection_LLMReuse(t *testing.T) {
 				{ID: "model-c", Name: "Model C", Score: 7.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -826,7 +826,7 @@ func TestDebateTeamSelection_SingleLLMReuse(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "zen",
 			Name:     "Zen",
@@ -838,7 +838,7 @@ func TestDebateTeamSelection_SingleLLMReuse(t *testing.T) {
 				{ID: "grok-code", Name: "Grok Code", Score: 6.5},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -862,7 +862,7 @@ func TestDebateTeamSelection_ScoreBasedOnly(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "deepseek",
 			Name:     "DeepSeek",
@@ -885,7 +885,7 @@ func TestDebateTeamSelection_ScoreBasedOnly(t *testing.T) {
 				{ID: "claude-opus-4-5", Name: "Claude Opus", Score: 8.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -905,7 +905,7 @@ func TestDebateTeamSelection_SortedByScore(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "gemini",
 			Name:     "Gemini",
@@ -939,7 +939,7 @@ func TestDebateTeamSelection_SortedByScore(t *testing.T) {
 				{ID: "mistral-large", Name: "Mistral Large", Score: 8.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -959,7 +959,7 @@ func TestDebateTeamSelection_NoProviders(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{} // Empty
+	sv.rankedProviders.Replace(nil) // Empty
 
 	team, err := sv.selectDebateTeam()
 	assert.Error(t, err)
@@ -973,7 +973,7 @@ func TestDebateTeamSelection_UnverifiedExcluded(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "verified1",
 			Name:     "Verified1",
@@ -996,7 +996,7 @@ func TestDebateTeamSelection_UnverifiedExcluded(t *testing.T) {
 				{ID: "model-bad", Name: "Model Bad", Score: 9.5},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -1018,7 +1018,7 @@ func TestDebateTeamSelection_BelowMinScoreExcluded(t *testing.T) {
 	cfg.MinScore = 5.0
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "good",
 			Name:     "Good",
@@ -1041,7 +1041,7 @@ func TestDebateTeamSelection_BelowMinScoreExcluded(t *testing.T) {
 				{ID: "model-bad", Name: "Model Bad", Score: 4.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -1059,7 +1059,7 @@ func TestDebateTeamSelection_RolesAssigned(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "test",
 			Name:     "Test",
@@ -1071,7 +1071,7 @@ func TestDebateTeamSelection_RolesAssigned(t *testing.T) {
 				{ID: "test-model", Name: "Test Model", Score: 7.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -1090,7 +1090,7 @@ func TestDebateTeamSelection_MultipleModelsPerProvider(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "multi",
 			Name:     "Multi",
@@ -1104,7 +1104,7 @@ func TestDebateTeamSelection_MultipleModelsPerProvider(t *testing.T) {
 				{ID: "model-3", Name: "Model 3", Score: 8.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)
@@ -1131,7 +1131,7 @@ func TestDebateTeamSelection_ReusedLLMsAreSeparateInstances(t *testing.T) {
 	cfg := DefaultStartupConfig()
 	sv := NewStartupVerifier(cfg, nil)
 
-	sv.rankedProviders = []*UnifiedProvider{
+	sv.rankedProviders.Replace([]*UnifiedProvider{
 		{
 			ID:       "only",
 			Name:     "Only Provider",
@@ -1143,7 +1143,7 @@ func TestDebateTeamSelection_ReusedLLMsAreSeparateInstances(t *testing.T) {
 				{ID: "single-model", Name: "Single Model", Score: 8.0},
 			},
 		},
-	}
+	})
 
 	team, err := sv.selectDebateTeam()
 	require.NoError(t, err)

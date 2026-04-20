@@ -21,6 +21,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/junie"
 	"dev.helix.agent/internal/llm/providers/qwen"
 	"dev.helix.agent/internal/llm/providers/zen"
+	"digital.vasic.concurrency/pkg/safe"
 	"digital.vasic.llmsverifier/api_keys"
 	"github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
 	"github.com/sirupsen/logrus"
@@ -107,12 +108,15 @@ type StartupVerifier struct {
 	// Callback for re-exporting CLI agent configs after verification
 	onVerificationComplete func(ctx context.Context, result *StartupResult) error
 
-	// Results
-	providers       map[string]*UnifiedProvider
-	rankedProviders []*UnifiedProvider
+	// Results (concurrent-safe via safe.Store/Slice; see CONST-029)
+	providers       *safe.Store[string, *UnifiedProvider]
+	rankedProviders *safe.Slice[*UnifiedProvider]
 	debateTeam      *DebateTeamResult
 
-	// State
+	// State. mu (Pattern Zeta) serialises the compound "initialized +
+	// debateTeam + lastVerifyAt" publish barrier in Verify() with all
+	// readers in Get*. It no longer pairs with a bare map/slice field —
+	// providers and rankedProviders are safe.* now.
 	initialized  bool
 	lastVerifyAt time.Time
 	mu           sync.RWMutex
@@ -168,7 +172,8 @@ func NewStartupVerifier(cfg *StartupConfig, log *logrus.Logger) *StartupVerifier
 		scoringSvc:           scoringSvc,
 		enhancedScoring:      enhancedScoring,
 		subscriptionDetector: NewSubscriptionDetector(log),
-		providers:            make(map[string]*UnifiedProvider),
+		providers:            safe.NewStore[string, *UnifiedProvider](),
+		rankedProviders:      safe.NewSlice[*UnifiedProvider](),
 		oauthReader:          oauth_credentials.NewOAuthCredentialReader(),
 		log:                  log,
 	}
@@ -270,9 +275,9 @@ func (sv *StartupVerifier) VerifyAllProviders(ctx context.Context) (*StartupResu
 	// Compile results
 	result.CompletedAt = time.Now()
 	result.DurationMs = result.CompletedAt.Sub(result.StartedAt).Milliseconds()
-	result.RankedProviders = sv.rankedProviders
-	result.Providers = make([]*UnifiedProvider, 0, len(sv.providers))
-	for _, p := range sv.providers {
+	result.RankedProviders = sv.rankedProviders.Snapshot()
+	result.Providers = make([]*UnifiedProvider, 0, sv.providers.Len())
+	sv.providers.Range(func(_ string, p *UnifiedProvider) bool {
 		result.Providers = append(result.Providers, p)
 		if p.AuthType == AuthTypeAPIKey {
 			result.APIKeyProviders++
@@ -301,7 +306,8 @@ func (sv *StartupVerifier) VerifyAllProviders(ctx context.Context) (*StartupResu
 				result.FreeProviderCount++
 			}
 		}
-	}
+		return true
+	})
 
 	sv.initialized = true
 	sv.lastVerifyAt = time.Now()
@@ -761,7 +767,7 @@ func (sv *StartupVerifier) verifyProviders(ctx context.Context, discovered []*Pr
 				}
 				if provider != nil {
 					verified = append(verified, provider)
-					sv.providers[provider.ID] = provider
+					sv.providers.Put(provider.ID, provider)
 				}
 			}(disc)
 		}
@@ -781,7 +787,7 @@ func (sv *StartupVerifier) verifyProviders(ctx context.Context, discovered []*Pr
 			}
 			if provider != nil {
 				verified = append(verified, provider)
-				sv.providers[provider.ID] = provider
+				sv.providers.Put(provider.ID, provider)
 			}
 		}
 	}
@@ -1370,7 +1376,7 @@ func (sv *StartupVerifier) rankProviders(providers []*UnifiedProvider) {
 		return providers[i].Score > providers[j].Score
 	})
 
-	sv.rankedProviders = providers
+	sv.rankedProviders.Replace(providers)
 }
 
 // selectDebateTeam selects the 15 LLMs for the AI debate team
@@ -1379,7 +1385,8 @@ func (sv *StartupVerifier) rankProviders(providers []*UnifiedProvider) {
 // the strongest LLMs are REUSED to fill all positions.
 // IMPORTANT: NO OAuth priority - all providers sorted purely by score (highest first).
 func (sv *StartupVerifier) selectDebateTeam() (*DebateTeamResult, error) {
-	if len(sv.rankedProviders) == 0 {
+	ranked := sv.rankedProviders.Snapshot()
+	if len(ranked) == 0 {
 		return nil, fmt.Errorf("no verified providers available for debate team")
 	}
 
@@ -1396,7 +1403,7 @@ func (sv *StartupVerifier) selectDebateTeam() (*DebateTeamResult, error) {
 
 	// Collect ALL LLMs from ranked providers, sorted by score (already ranked)
 	var allLLMs []*DebateLLM
-	for _, provider := range sv.rankedProviders {
+	for _, provider := range ranked {
 		if !provider.Verified || provider.Score < sv.config.MinScore {
 			continue
 		}
@@ -1499,11 +1506,15 @@ func (sv *StartupVerifier) selectDebateTeam() (*DebateTeamResult, error) {
 	return team, nil
 }
 
-// GetRankedProviders returns providers ranked by score
+// GetRankedProviders returns providers ranked by score.
+// Returns nil (not an empty slice) when Verify has not yet populated the
+// result, preserving the pre-CONST-029 API contract.
 func (sv *StartupVerifier) GetRankedProviders() []*UnifiedProvider {
-	sv.mu.RLock()
-	defer sv.mu.RUnlock()
-	return sv.rankedProviders
+	snap := sv.rankedProviders.Snapshot()
+	if len(snap) == 0 {
+		return nil
+	}
+	return snap
 }
 
 // GetDebateTeam returns the selected debate team
@@ -1515,23 +1526,18 @@ func (sv *StartupVerifier) GetDebateTeam() *DebateTeamResult {
 
 // GetProvider returns a specific provider by ID
 func (sv *StartupVerifier) GetProvider(id string) (*UnifiedProvider, bool) {
-	sv.mu.RLock()
-	defer sv.mu.RUnlock()
-	p, ok := sv.providers[id]
-	return p, ok
+	return sv.providers.Get(id)
 }
 
 // GetVerifiedProviders returns all verified providers
 func (sv *StartupVerifier) GetVerifiedProviders() []*UnifiedProvider {
-	sv.mu.RLock()
-	defer sv.mu.RUnlock()
-
 	var verified []*UnifiedProvider
-	for _, p := range sv.providers {
+	sv.providers.Range(func(_ string, p *UnifiedProvider) bool {
 		if p.Verified {
 			verified = append(verified, p)
 		}
-	}
+		return true
+	})
 	return verified
 }
 

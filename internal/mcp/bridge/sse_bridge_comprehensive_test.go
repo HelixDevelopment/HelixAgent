@@ -1585,11 +1585,7 @@ func TestSSEBridge_PendingRequestCleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify pending requests map is empty after completion
-	bridge.pendingRequestsMux.RLock()
-	pendingCount := len(bridge.pendingRequests)
-	bridge.pendingRequestsMux.RUnlock()
-
-	assert.Equal(t, 0, pendingCount, "Pending requests should be cleaned up")
+	assert.Equal(t, 0, bridge.pendingRequests.Len(), "Pending requests should be cleaned up")
 }
 
 // ============================================================================
@@ -1627,9 +1623,7 @@ func TestSSEBridge_RemoveClientTwice(t *testing.T) {
 		ID:   "test-client",
 		Done: make(chan struct{}),
 	}
-	bridge.sseClientsMux.Lock()
-	bridge.sseClients["test-client"] = client
-	bridge.sseClientsMux.Unlock()
+	bridge.sseClients.Put("test-client", client)
 
 	// Remove twice - should not panic
 	bridge.removeSSEClient("test-client")

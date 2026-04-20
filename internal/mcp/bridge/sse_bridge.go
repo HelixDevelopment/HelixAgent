@@ -46,6 +46,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -253,14 +255,12 @@ type SSEBridge struct {
 	processReady bool
 	processDone  chan struct{}
 
-	// Request tracking for correlating responses
-	pendingRequests    map[interface{}]chan *JSONRPCResponse
-	pendingRequestsMux sync.RWMutex
-	nextRequestID      int64
+	// Request tracking for correlating responses (CONST-029: safe.Store)
+	pendingRequests *safe.Store[interface{}, chan *JSONRPCResponse]
+	nextRequestID   int64
 
-	// SSE client management
-	sseClients    map[string]*SSEClient
-	sseClientsMux sync.RWMutex
+	// SSE client management (CONST-029: safe.Store)
+	sseClients *safe.Store[string, *SSEClient]
 
 	// Shutdown coordination
 	shutdownOnce sync.Once
@@ -315,8 +315,8 @@ func NewSSEBridge(config SSEBridgeConfig) (*SSEBridge, error) {
 		state:           int32(StateIdle),
 		logger:          logger,
 		metrics:         &SSEBridgeMetrics{},
-		pendingRequests: make(map[interface{}]chan *JSONRPCResponse),
-		sseClients:      make(map[string]*SSEClient),
+		pendingRequests: safe.NewStore[interface{}, chan *JSONRPCResponse](),
+		sseClients:      safe.NewStore[string, *SSEClient](),
 		shutdownDone:    make(chan struct{}),
 		processDone:     make(chan struct{}),
 	}
@@ -646,10 +646,7 @@ func (b *SSEBridge) readStdout() {
 		// Check if this is a response to a pending request
 		if resp.ID != nil {
 			normalizedID := normalizeID(resp.ID)
-			b.pendingRequestsMux.RLock()
-			ch, exists := b.pendingRequests[normalizedID]
-			b.pendingRequestsMux.RUnlock()
-
+			ch, exists := b.pendingRequests.Get(normalizedID)
 			if exists {
 				select {
 				case ch <- &resp:
@@ -708,8 +705,7 @@ func (b *SSEBridge) monitorProcess() {
 	}
 
 	// Close pending requests
-	b.pendingRequestsMux.Lock()
-	for id, ch := range b.pendingRequests {
+	b.pendingRequests.Range(func(id interface{}, ch chan *JSONRPCResponse) bool {
 		select {
 		case ch <- &JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -722,9 +718,9 @@ func (b *SSEBridge) monitorProcess() {
 		default:
 		}
 		close(ch)
-		delete(b.pendingRequests, id)
-	}
-	b.pendingRequestsMux.Unlock()
+		return true
+	})
+	b.pendingRequests.Clear()
 
 	// Signal process done
 	select {
@@ -742,12 +738,11 @@ func (b *SSEBridge) broadcastToSSE(resp *JSONRPCResponse) {
 		return
 	}
 
-	b.sseClientsMux.RLock()
-	clients := make([]*SSEClient, 0, len(b.sseClients))
-	for _, client := range b.sseClients {
+	clients := make([]*SSEClient, 0, b.sseClients.Len())
+	b.sseClients.Range(func(_ string, client *SSEClient) bool {
 		clients = append(clients, client)
-	}
-	b.sseClientsMux.RUnlock()
+		return true
+	})
 
 	for _, client := range clients {
 		select {
@@ -809,9 +804,7 @@ func (b *SSEBridge) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Register client
-	b.sseClientsMux.Lock()
-	b.sseClients[clientID] = client
-	b.sseClientsMux.Unlock()
+	b.sseClients.Put(clientID, client)
 
 	atomic.AddInt64(&b.metrics.ActiveSSEConnections, 1)
 
@@ -854,12 +847,8 @@ func (b *SSEBridge) handleSSE(w http.ResponseWriter, r *http.Request) {
 
 // removeSSEClient removes an SSE client from the registry.
 func (b *SSEBridge) removeSSEClient(clientID string) {
-	b.sseClientsMux.Lock()
-	defer b.sseClientsMux.Unlock()
-
-	if client, exists := b.sseClients[clientID]; exists {
+	if client, ok := b.sseClients.Delete(clientID); ok {
 		close(client.Done)
-		delete(b.sseClients, clientID)
 		atomic.AddInt64(&b.metrics.ActiveSSEConnections, -1)
 	}
 }
@@ -961,16 +950,8 @@ func (b *SSEBridge) handleMessage(w http.ResponseWriter, r *http.Request) {
 	normalizedID := normalizeID(req.ID)
 
 	// Register pending request
-	b.pendingRequestsMux.Lock()
-	b.pendingRequests[normalizedID] = respChan
-	b.pendingRequestsMux.Unlock()
-
-	// Ensure cleanup
-	defer func() {
-		b.pendingRequestsMux.Lock()
-		delete(b.pendingRequests, normalizedID)
-		b.pendingRequestsMux.Unlock()
-	}()
+	b.pendingRequests.Put(normalizedID, respChan)
+	defer b.pendingRequests.Delete(normalizedID)
 
 	// Send to process
 	if err := b.sendToProcess(&req); err != nil {
@@ -1082,12 +1063,11 @@ func (b *SSEBridge) Shutdown(ctx context.Context) error {
 		close(b.shutdownDone)
 
 		// Close all SSE clients
-		b.sseClientsMux.Lock()
-		for id, client := range b.sseClients {
+		b.sseClients.Range(func(_ string, client *SSEClient) bool {
 			close(client.Done)
-			delete(b.sseClients, id)
-		}
-		b.sseClientsMux.Unlock()
+			return true
+		})
+		b.sseClients.Clear()
 
 		// Shutdown HTTP server
 		shutdownCtx, cancel := context.WithTimeout(ctx, b.config.ShutdownTimeout)
@@ -1182,16 +1162,8 @@ func (b *SSEBridge) SendRequest(ctx context.Context, method string, params inter
 	normalizedID := normalizeID(id)
 
 	// Register pending request
-	b.pendingRequestsMux.Lock()
-	b.pendingRequests[normalizedID] = respChan
-	b.pendingRequestsMux.Unlock()
-
-	// Ensure cleanup
-	defer func() {
-		b.pendingRequestsMux.Lock()
-		delete(b.pendingRequests, normalizedID)
-		b.pendingRequestsMux.Unlock()
-	}()
+	b.pendingRequests.Put(normalizedID, respChan)
+	defer b.pendingRequests.Delete(normalizedID)
 
 	// Send request
 	if err := b.sendToProcess(&req); err != nil {

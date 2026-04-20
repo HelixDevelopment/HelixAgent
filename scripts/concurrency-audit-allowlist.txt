@@ -40,7 +40,6 @@ internal/llm/health_monitor.go:54:HealthMonitor
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/mcp/adapters/registry.go:99:AdapterRegistry
 internal/mcp/adapters/registry_test.go:14:MockMCPAdapter
-internal/mcp/bridge/sse_bridge.go:238:SSEBridge
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/mcp/servers/unified_manager.go:24:UnifiedServerManager

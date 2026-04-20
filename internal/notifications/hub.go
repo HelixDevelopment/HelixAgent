@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/models"
@@ -30,7 +32,11 @@ type TaskNotification struct {
 	Task      *models.BackgroundTask `json:"task,omitempty"`
 }
 
-// NotificationHub is the central event distribution system
+// NotificationHub is the central event distribution system.
+//
+// Concurrency model (CONST-029): subscribers → *safe.Store with
+// Update-based COW for per-key slice appends/removes; globalSubs
+// → *safe.Slice. Both mutexes dropped entirely.
 type NotificationHub struct {
 	sseManager        *SSEManager
 	wsServer          *WebSocketServer
@@ -38,12 +44,10 @@ type NotificationHub struct {
 	pollingStore      *PollingStore
 
 	// Subscribers for task-specific events
-	subscribers   map[string][]Subscriber
-	subscribersMu sync.RWMutex
+	subscribers *safe.Store[string, []Subscriber]
 
 	// Global event subscribers
-	globalSubs   []Subscriber
-	globalSubsMu sync.RWMutex
+	globalSubs *safe.Slice[Subscriber]
 
 	logger *logrus.Logger
 	ctx    context.Context
@@ -114,8 +118,8 @@ func NewNotificationHub(
 		wsServer:          wsServer,
 		webhookDispatcher: webhookDispatcher,
 		pollingStore:      pollingStore,
-		subscribers:       make(map[string][]Subscriber),
-		globalSubs:        make([]Subscriber, 0),
+		subscribers:       safe.NewStore[string, []Subscriber](),
+		globalSubs:        safe.NewSlice[Subscriber](),
 		logger:            logger,
 		ctx:               ctx,
 		cancel:            cancel,
@@ -145,21 +149,18 @@ func (h *NotificationHub) Stop() error {
 	h.wg.Wait()
 
 	// Close all subscribers
-	h.subscribersMu.Lock()
-	for _, subs := range h.subscribers {
+	h.subscribers.Range(func(_ string, subs []Subscriber) bool {
 		for _, sub := range subs {
 			_ = sub.Close()
 		}
-	}
-	h.subscribers = make(map[string][]Subscriber)
-	h.subscribersMu.Unlock()
+		return true
+	})
+	h.subscribers.Clear()
 
-	h.globalSubsMu.Lock()
-	for _, sub := range h.globalSubs {
+	for _, sub := range h.globalSubs.Snapshot() {
 		_ = sub.Close()
 	}
-	h.globalSubs = nil
-	h.globalSubsMu.Unlock()
+	h.globalSubs.Clear()
 
 	return nil
 }
@@ -196,10 +197,9 @@ func (h *NotificationHub) NotifyTaskEvent(ctx context.Context, task *models.Back
 
 // Subscribe adds a subscriber for task events
 func (h *NotificationHub) Subscribe(taskID string, subscriber Subscriber) {
-	h.subscribersMu.Lock()
-	defer h.subscribersMu.Unlock()
-
-	h.subscribers[taskID] = append(h.subscribers[taskID], subscriber)
+	h.subscribers.Update(taskID, func(cur []Subscriber, _ bool) ([]Subscriber, bool) {
+		return append(cur, subscriber), true
+	})
 
 	h.logger.WithFields(logrus.Fields{
 		"task_id":       taskID,
@@ -210,38 +210,41 @@ func (h *NotificationHub) Subscribe(taskID string, subscriber Subscriber) {
 
 // Unsubscribe removes a subscriber
 func (h *NotificationHub) Unsubscribe(taskID string, subscriberID string) {
-	h.subscribersMu.Lock()
-	defer h.subscribersMu.Unlock()
-
-	subs := h.subscribers[taskID]
-	for i, sub := range subs {
-		if sub.ID() == subscriberID {
-			h.subscribers[taskID] = append(subs[:i], subs[i+1:]...)
-			_ = sub.Close()
-			break
+	var closed Subscriber
+	h.subscribers.Update(taskID, func(cur []Subscriber, present bool) ([]Subscriber, bool) {
+		if !present {
+			return cur, false
 		}
+		for i, sub := range cur {
+			if sub.ID() == subscriberID {
+				closed = sub
+				next := make([]Subscriber, 0, len(cur)-1)
+				next = append(next, cur[:i]...)
+				next = append(next, cur[i+1:]...)
+				if len(next) == 0 {
+					return nil, false
+				}
+				return next, true
+			}
+		}
+		return cur, true
+	})
+	if closed != nil {
+		_ = closed.Close()
 	}
 }
 
 // SubscribeGlobal adds a global subscriber for all task events
 func (h *NotificationHub) SubscribeGlobal(subscriber Subscriber) {
-	h.globalSubsMu.Lock()
-	defer h.globalSubsMu.Unlock()
-
-	h.globalSubs = append(h.globalSubs, subscriber)
+	h.globalSubs.Append(subscriber)
 }
 
 // UnsubscribeGlobal removes a global subscriber
 func (h *NotificationHub) UnsubscribeGlobal(subscriberID string) {
-	h.globalSubsMu.Lock()
-	defer h.globalSubsMu.Unlock()
-
-	for i, sub := range h.globalSubs {
-		if sub.ID() == subscriberID {
-			h.globalSubs = append(h.globalSubs[:i], h.globalSubs[i+1:]...)
-			_ = sub.Close()
-			break
-		}
+	if removed, ok := h.globalSubs.Delete(func(s Subscriber) bool {
+		return s.ID() == subscriberID
+	}); ok {
+		_ = removed.Close()
 	}
 }
 
@@ -303,9 +306,7 @@ func (h *NotificationHub) dispatchNotification(notification *TaskNotification) {
 	}
 
 	// Send to task-specific subscribers
-	h.subscribersMu.RLock()
-	taskSubs := h.subscribers[notification.TaskID]
-	h.subscribersMu.RUnlock()
+	taskSubs, _ := h.subscribers.Get(notification.TaskID)
 
 	for _, sub := range taskSubs {
 		if sub.IsActive() {
@@ -319,10 +320,7 @@ func (h *NotificationHub) dispatchNotification(notification *TaskNotification) {
 	}
 
 	// Send to global subscribers
-	h.globalSubsMu.RLock()
-	globalSubs := make([]Subscriber, len(h.globalSubs))
-	copy(globalSubs, h.globalSubs)
-	h.globalSubsMu.RUnlock()
+	globalSubs := h.globalSubs.Snapshot()
 
 	for _, sub := range globalSubs {
 		if sub.IsActive() {
@@ -350,11 +348,9 @@ func (h *NotificationHub) dispatchNotification(notification *TaskNotification) {
 
 // GetActiveSubscribers returns the count of active subscribers for a task
 func (h *NotificationHub) GetActiveSubscribers(taskID string) int {
-	h.subscribersMu.RLock()
-	defer h.subscribersMu.RUnlock()
-
+	subs, _ := h.subscribers.Get(taskID)
 	count := 0
-	for _, sub := range h.subscribers[taskID] {
+	for _, sub := range subs {
 		if sub.IsActive() {
 			count++
 		}
@@ -364,11 +360,9 @@ func (h *NotificationHub) GetActiveSubscribers(taskID string) int {
 
 // CleanupInactiveSubscribers removes inactive subscribers
 func (h *NotificationHub) CleanupInactiveSubscribers() {
-	h.subscribersMu.Lock()
-	defer h.subscribersMu.Unlock()
-
-	for taskID, subs := range h.subscribers {
-		activeSubs := make([]Subscriber, 0)
+	// Per-task cleanup: collect snapshot, rewrite each key via Update.
+	for taskID, subs := range h.subscribers.Snapshot() {
+		activeSubs := make([]Subscriber, 0, len(subs))
 		for _, sub := range subs {
 			if sub.IsActive() {
 				activeSubs = append(activeSubs, sub)
@@ -377,22 +371,19 @@ func (h *NotificationHub) CleanupInactiveSubscribers() {
 			}
 		}
 		if len(activeSubs) == 0 {
-			delete(h.subscribers, taskID)
+			h.subscribers.Delete(taskID)
 		} else {
-			h.subscribers[taskID] = activeSubs
+			h.subscribers.Put(taskID, activeSubs)
 		}
 	}
 
-	h.globalSubsMu.Lock()
-	defer h.globalSubsMu.Unlock()
-
 	activeSubs := make([]Subscriber, 0)
-	for _, sub := range h.globalSubs {
+	for _, sub := range h.globalSubs.Snapshot() {
 		if sub.IsActive() {
 			activeSubs = append(activeSubs, sub)
 		} else {
 			_ = sub.Close()
 		}
 	}
-	h.globalSubs = activeSubs
+	h.globalSubs.Replace(activeSubs)
 }

@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -14,33 +17,34 @@ import (
 	"dev.helix.agent/internal/models"
 )
 
-// MockSubscriber implements the Subscriber interface for testing
+// MockSubscriber implements the Subscriber interface for testing.
+//
+// Concurrency model (CONST-029): notifications → *safe.Slice;
+// active/closed → atomic.Bool; notifyErr → atomic.Pointer[error].
 type MockSubscriber struct {
 	id            string
 	notifyType    NotificationType
-	active        bool
-	notifications []*TaskNotification
-	mu            sync.Mutex
-	notifyErr     error
-	closed        bool
+	active        atomic.Bool
+	notifications *safe.Slice[*TaskNotification]
+	notifyErr     atomic.Pointer[error]
+	closed        atomic.Bool
 }
 
 func NewMockSubscriber(id string, notifyType NotificationType) *MockSubscriber {
-	return &MockSubscriber{
+	m := &MockSubscriber{
 		id:            id,
 		notifyType:    notifyType,
-		active:        true,
-		notifications: make([]*TaskNotification, 0),
+		notifications: safe.NewSlice[*TaskNotification](),
 	}
+	m.active.Store(true)
+	return m
 }
 
 func (m *MockSubscriber) Notify(ctx context.Context, notification *TaskNotification) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.notifyErr != nil {
-		return m.notifyErr
+	if ep := m.notifyErr.Load(); ep != nil {
+		return *ep
 	}
-	m.notifications = append(m.notifications, notification)
+	m.notifications.Append(notification)
 	return nil
 }
 
@@ -53,35 +57,34 @@ func (m *MockSubscriber) ID() string {
 }
 
 func (m *MockSubscriber) IsActive() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.active
+	return m.active.Load()
 }
 
 func (m *MockSubscriber) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.active = false
-	m.closed = true
+	m.active.Store(false)
+	m.closed.Store(true)
 	return nil
 }
 
 func (m *MockSubscriber) GetNotifications() []*TaskNotification {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return append([]*TaskNotification{}, m.notifications...)
+	return m.notifications.Snapshot()
 }
 
 func (m *MockSubscriber) SetActive(active bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.active = active
+	m.active.Store(active)
 }
 
 func (m *MockSubscriber) IsClosed() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.closed
+	return m.closed.Load()
+}
+
+// SetNotifyError configures the mock to return err from Notify.
+func (m *MockSubscriber) SetNotifyError(err error) {
+	if err == nil {
+		m.notifyErr.Store(nil)
+		return
+	}
+	m.notifyErr.Store(&err)
 }
 
 // Test helper to create a test logger

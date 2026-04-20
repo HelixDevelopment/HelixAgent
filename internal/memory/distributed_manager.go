@@ -4,14 +4,23 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/messaging"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// DistributedMemoryManager manages memory across multiple nodes with event sourcing
+// DistributedMemoryManager manages memory across multiple nodes with event sourcing.
+//
+// Concurrency model (CONST-029): subscribers → *safe.Slice; running →
+// atomic.Bool. mu (Pattern Zeta, RWMutex → Mutex) survives only to
+// serialise vectorClock mutations with the localManager write that
+// produced them — the compound "increment clock → local Add" must be
+// atomic so consumers see a monotonic event stream.
 type DistributedMemoryManager struct {
 	localManager     *Manager
 	nodeID           string
@@ -22,9 +31,9 @@ type DistributedMemoryManager struct {
 	logger           *logrus.Logger
 
 	// State
-	mu          sync.RWMutex
-	running     bool
-	subscribers []chan *MemoryEvent
+	mu          sync.Mutex
+	running     atomic.Bool
+	subscribers *safe.Slice[chan *MemoryEvent]
 }
 
 // NewDistributedMemoryManager creates a new distributed memory manager
@@ -51,7 +60,7 @@ func NewDistributedMemoryManager(
 		conflictResolver: conflictResolver,
 		kafkaPublisher:   kafkaPublisher,
 		logger:           logger,
-		subscribers:      make([]chan *MemoryEvent, 0),
+		subscribers:      safe.NewSlice[chan *MemoryEvent](),
 	}
 }
 
@@ -341,13 +350,13 @@ func (dmm *DistributedMemoryManager) Subscribe() <-chan *MemoryEvent {
 	defer dmm.mu.Unlock()
 
 	ch := make(chan *MemoryEvent, 100)
-	dmm.subscribers = append(dmm.subscribers, ch)
+	dmm.subscribers.Append(ch)
 	return ch
 }
 
 // notifySubscribers notifies all subscribers of a new event
 func (dmm *DistributedMemoryManager) notifySubscribers(event *MemoryEvent) {
-	for _, ch := range dmm.subscribers {
+	for _, ch := range dmm.subscribers.Snapshot() {
 		select {
 		case ch <- event:
 		default:
@@ -358,9 +367,14 @@ func (dmm *DistributedMemoryManager) notifySubscribers(event *MemoryEvent) {
 
 // GetVectorClock returns a copy of the current vector clock
 func (dmm *DistributedMemoryManager) GetVectorClock() VectorClock {
-	dmm.mu.RLock()
-	defer dmm.mu.RUnlock()
+	dmm.mu.Lock()
+	defer dmm.mu.Unlock()
+	return dmm.cloneVectorClockLocked()
+}
 
+// cloneVectorClockLocked returns a copy of the vector clock. Caller
+// must hold dmm.mu.
+func (dmm *DistributedMemoryManager) cloneVectorClockLocked() VectorClock {
 	vc := NewVectorClock()
 	for k, v := range dmm.vectorClock {
 		vc[k] = v
@@ -370,8 +384,8 @@ func (dmm *DistributedMemoryManager) GetVectorClock() VectorClock {
 
 // CreateSnapshot creates a snapshot of the current memory state
 func (dmm *DistributedMemoryManager) CreateSnapshot(ctx context.Context, userID string) (*MemorySnapshot, error) {
-	dmm.mu.RLock()
-	defer dmm.mu.RUnlock()
+	dmm.mu.Lock()
+	defer dmm.mu.Unlock()
 
 	// Get all memories for user
 	memories, err := dmm.localManager.GetUserMemories(ctx, userID, &ListOptions{
@@ -388,7 +402,7 @@ func (dmm *DistributedMemoryManager) CreateSnapshot(ctx context.Context, userID 
 		NodeID:      dmm.nodeID,
 		UserID:      userID,
 		Memories:    memories,
-		VectorClock: dmm.GetVectorClock(),
+		VectorClock: dmm.cloneVectorClockLocked(),
 	}
 
 	return snapshot, nil
@@ -396,11 +410,11 @@ func (dmm *DistributedMemoryManager) CreateSnapshot(ctx context.Context, userID 
 
 // GetSyncStatus returns the status of distributed memory synchronization
 func (dmm *DistributedMemoryManager) GetSyncStatus(ctx context.Context) map[string]interface{} {
-	dmm.mu.RLock()
-	defer dmm.mu.RUnlock()
+	dmm.mu.Lock()
+	defer dmm.mu.Unlock()
 
-	// Get vector clock
-	vc := dmm.GetVectorClock()
+	// Get vector clock (under our own lock — avoid nested GetVectorClock call)
+	vc := dmm.cloneVectorClockLocked()
 	vcMap := make(map[string]int64)
 	for node, count := range vc {
 		vcMap[node] = count
@@ -416,11 +430,11 @@ func (dmm *DistributedMemoryManager) GetSyncStatus(ctx context.Context) map[stri
 	// Local memory stats would require store.Count method; skip for now
 
 	// Get subscriber count
-	subscriberCount := len(dmm.subscribers)
+	subscriberCount := dmm.subscribers.Len()
 
 	return map[string]interface{}{
 		"node_id":           dmm.nodeID,
-		"running":           dmm.running,
+		"running":           dmm.running.Load(),
 		"vector_clock":      vcMap,
 		"event_count_24h":   eventCount,
 		"subscriber_count":  subscriberCount,

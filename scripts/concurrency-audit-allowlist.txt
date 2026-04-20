@@ -15,9 +15,6 @@ internal/llm/health_monitor.go:54:HealthMonitor
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
-internal/memory/distributed_manager.go:15:DistributedMemoryManager
-internal/memory/distributed_manager_test.go:18:mockBroker
-internal/memory/distributed_manager_test.go:81:mockEventLog
 internal/messaging/dlq/processor.go:85:Processor
 internal/messaging/hub.go:14:MessagingHub
 internal/messaging/hub_test.go:419:hubTestMockBroker

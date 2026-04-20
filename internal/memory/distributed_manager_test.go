@@ -3,9 +3,10 @@ package memory
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/messaging"
 	"github.com/stretchr/testify/assert"
@@ -15,10 +16,11 @@ import (
 // --- Mock implementations ---
 
 // mockBroker implements messaging.MessageBroker for testing.
+//
+// Concurrency model (CONST-029): published → *safe.Slice.
 type mockBroker struct {
-	mu             sync.Mutex
 	connected      bool
-	published      []*publishedMsg
+	published      *safe.Slice[*publishedMsg]
 	publishErr     error
 	subscriptions  []messaging.Subscription
 	healthCheckErr error
@@ -32,7 +34,7 @@ type publishedMsg struct {
 func newMockBroker() *mockBroker {
 	return &mockBroker{
 		connected: true,
-		published: make([]*publishedMsg, 0),
+		published: safe.NewSlice[*publishedMsg](),
 	}
 }
 
@@ -47,12 +49,10 @@ func (b *mockBroker) HealthCheck(_ context.Context) error {
 }
 
 func (b *mockBroker) Publish(_ context.Context, topic string, message *messaging.Message, _ ...messaging.PublishOption) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	if b.publishErr != nil {
 		return b.publishErr
 	}
-	b.published = append(b.published, &publishedMsg{topic: topic, message: message})
+	b.published.Append(&publishedMsg{topic: topic, message: message})
 	return nil
 }
 
@@ -70,39 +70,32 @@ func (b *mockBroker) Subscribe(_ context.Context, _ string, _ messaging.MessageH
 }
 
 func (b *mockBroker) getPublished() []*publishedMsg {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	result := make([]*publishedMsg, len(b.published))
-	copy(result, b.published)
-	return result
+	return b.published.Snapshot()
 }
 
 // mockEventLog implements EventLog for testing.
+//
+// Concurrency model (CONST-029): events → *safe.Slice.
 type mockEventLog struct {
-	mu     sync.Mutex
-	events []*MemoryEvent
+	events *safe.Slice[*MemoryEvent]
 	err    error
 }
 
 func newMockEventLog() *mockEventLog {
-	return &mockEventLog{events: make([]*MemoryEvent, 0)}
+	return &mockEventLog{events: safe.NewSlice[*MemoryEvent]()}
 }
 
 func (l *mockEventLog) Append(event *MemoryEvent) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	if l.err != nil {
 		return l.err
 	}
-	l.events = append(l.events, event)
+	l.events.Append(event)
 	return nil
 }
 
 func (l *mockEventLog) GetEvents(memoryID string) ([]*MemoryEvent, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	var result []*MemoryEvent
-	for _, e := range l.events {
+	for _, e := range l.events.Snapshot() {
 		if e.MemoryID == memoryID {
 			result = append(result, e)
 		}
@@ -111,10 +104,8 @@ func (l *mockEventLog) GetEvents(memoryID string) ([]*MemoryEvent, error) {
 }
 
 func (l *mockEventLog) GetEventsSince(timestamp time.Time) ([]*MemoryEvent, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	var result []*MemoryEvent
-	for _, e := range l.events {
+	for _, e := range l.events.Snapshot() {
 		if e.Timestamp.After(timestamp) || e.Timestamp.Equal(timestamp) {
 			result = append(result, e)
 		}
@@ -123,10 +114,8 @@ func (l *mockEventLog) GetEventsSince(timestamp time.Time) ([]*MemoryEvent, erro
 }
 
 func (l *mockEventLog) GetEventsForUser(userID string) ([]*MemoryEvent, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	var result []*MemoryEvent
-	for _, e := range l.events {
+	for _, e := range l.events.Snapshot() {
 		if e.UserID == userID {
 			result = append(result, e)
 		}
@@ -135,10 +124,8 @@ func (l *mockEventLog) GetEventsForUser(userID string) ([]*MemoryEvent, error) {
 }
 
 func (l *mockEventLog) GetEventsFromNode(nodeID string) ([]*MemoryEvent, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	var result []*MemoryEvent
-	for _, e := range l.events {
+	for _, e := range l.events.Snapshot() {
 		if e.NodeID == nodeID {
 			result = append(result, e)
 		}
@@ -220,10 +207,9 @@ func TestDistributedMemoryManager_AddMemory(t *testing.T) {
 		assert.Equal(t, TopicMemoryEvents, published[0].topic)
 
 		// Verify event was appended to log
-		eventLog.mu.Lock()
-		assert.Len(t, eventLog.events, 1)
-		assert.Equal(t, MemoryEventCreated, eventLog.events[0].EventType)
-		eventLog.mu.Unlock()
+		events := eventLog.events.Snapshot()
+		assert.Len(t, events, 1)
+		assert.Equal(t, MemoryEventCreated, events[0].EventType)
 
 		// Verify vector clock was incremented
 		vc := dmm.GetVectorClock()
@@ -312,10 +298,9 @@ func TestDistributedMemoryManager_UpdateMemory(t *testing.T) {
 		assert.Equal(t, int64(2), vc["test-node"])
 
 		// Verify event log has both events
-		eventLog.mu.Lock()
-		assert.Len(t, eventLog.events, 2)
-		assert.Equal(t, MemoryEventUpdated, eventLog.events[1].EventType)
-		eventLog.mu.Unlock()
+		events := eventLog.events.Snapshot()
+		assert.Len(t, events, 2)
+		assert.Equal(t, MemoryEventUpdated, events[1].EventType)
 	})
 
 	t.Run("UpdateNonExistent_Fails", func(t *testing.T) {
@@ -674,7 +659,7 @@ func TestDistributedMemoryManager_Subscribe(t *testing.T) {
 	ch2 := dmm.Subscribe()
 	require.NotNil(t, ch2)
 
-	assert.Len(t, dmm.subscribers, 2)
+	assert.Equal(t, 2, dmm.subscribers.Len())
 }
 
 func TestDistributedMemoryManager_Subscribe_ReceivesEvents(t *testing.T) {

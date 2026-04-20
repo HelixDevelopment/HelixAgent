@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,12 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockServerAdapter implements ServerAdapter for testing
+// MockServerAdapter implements ServerAdapter for testing.
+//
+// Concurrency model (CONST-029): connected → atomic.Bool; healthError
+// → atomic.Pointer[error]; tools is immutable post-ctor (Pattern Alpha).
 type MockServerAdapter struct {
-	connected   bool
-	healthError error
+	connected   atomic.Bool
+	healthError atomic.Pointer[error]
 	tools       []MCPTool
-	mu          sync.RWMutex
 }
 
 func NewMockAdapter() *MockServerAdapter {
@@ -33,28 +36,23 @@ func NewMockAdapter() *MockServerAdapter {
 }
 
 func (m *MockServerAdapter) Connect(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.connected = true
+	m.connected.Store(true)
 	return nil
 }
 
 func (m *MockServerAdapter) IsConnected() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.connected
+	return m.connected.Load()
 }
 
 func (m *MockServerAdapter) Health(ctx context.Context) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.healthError
+	if ep := m.healthError.Load(); ep != nil {
+		return *ep
+	}
+	return nil
 }
 
 func (m *MockServerAdapter) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.connected = false
+	m.connected.Store(false)
 	return nil
 }
 
@@ -63,9 +61,11 @@ func (m *MockServerAdapter) GetMCPTools() []MCPTool {
 }
 
 func (m *MockServerAdapter) SetHealthError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.healthError = err
+	if err == nil {
+		m.healthError.Store(nil)
+		return
+	}
+	m.healthError.Store(&err)
 }
 
 func TestNewUnifiedServerManager(t *testing.T) {
@@ -131,7 +131,7 @@ func TestUnifiedServerManager_loadDefaultConfigs(t *testing.T) {
 	manager := NewUnifiedServerManager(UnifiedManagerConfig{})
 
 	// Check Chroma config
-	chromaConfig, exists := manager.configs["chroma"]
+	chromaConfig, exists := manager.configs.Get("chroma")
 	assert.True(t, exists)
 	assert.Equal(t, "chroma", chromaConfig.Type)
 	assert.Equal(t, "http://chroma:8000", chromaConfig.BaseURL)
@@ -139,14 +139,14 @@ func TestUnifiedServerManager_loadDefaultConfigs(t *testing.T) {
 	assert.True(t, chromaConfig.Enabled)
 
 	// Check Qdrant config
-	qdrantConfig, exists := manager.configs["qdrant"]
+	qdrantConfig, exists := manager.configs.Get("qdrant")
 	assert.True(t, exists)
 	assert.Equal(t, "qdrant", qdrantConfig.Type)
 	assert.Equal(t, "http://qdrant:6333", qdrantConfig.BaseURL)
 	assert.Equal(t, "qdrant-key", qdrantConfig.APIKey)
 
 	// Check Weaviate config
-	weaviateConfig, exists := manager.configs["weaviate"]
+	weaviateConfig, exists := manager.configs.Get("weaviate")
 	assert.True(t, exists)
 	assert.Equal(t, "weaviate", weaviateConfig.Type)
 	assert.Equal(t, "http://weaviate:8080", weaviateConfig.BaseURL)
@@ -318,7 +318,7 @@ func TestUnifiedServerManager_GetAdapter(t *testing.T) {
 			setup: func(m *UnifiedServerManager) {
 				adapter := NewMockAdapter()
 				_ = adapter.Connect(context.Background())
-				m.adapters["test"] = adapter
+				m.adapters.Put("test", adapter)
 			},
 			adapterName: "test",
 			expectError: false,
@@ -326,11 +326,11 @@ func TestUnifiedServerManager_GetAdapter(t *testing.T) {
 		{
 			name: "lazy initialize adapter",
 			setup: func(m *UnifiedServerManager) {
-				m.configs["chroma"] = ServerAdapterConfig{
+				m.configs.Put("chroma", ServerAdapterConfig{
 					Type:    "chroma",
 					BaseURL: chromaServer.URL,
 					Enabled: true,
-				}
+				})
 			},
 			adapterName: "chroma",
 			expectError: false,
@@ -346,11 +346,11 @@ func TestUnifiedServerManager_GetAdapter(t *testing.T) {
 		{
 			name: "adapter disabled",
 			setup: func(m *UnifiedServerManager) {
-				m.configs["disabled"] = ServerAdapterConfig{
+				m.configs.Put("disabled", ServerAdapterConfig{
 					Type:    "chroma",
 					BaseURL: "http://localhost:8000",
 					Enabled: false,
-				}
+				})
 			},
 			adapterName: "disabled",
 			expectError: true,
@@ -438,9 +438,7 @@ func TestUnifiedServerManager_GetTypedAdapters_WrongType(t *testing.T) {
 	mockAdapter := NewMockAdapter()
 	_ = mockAdapter.Connect(context.Background())
 
-	manager.mu.Lock()
-	manager.adapters["chroma"] = mockAdapter
-	manager.mu.Unlock()
+	manager.adapters.Put("chroma", mockAdapter)
 
 	_, err := manager.GetChromaAdapter(context.Background())
 	assert.Error(t, err)
@@ -473,10 +471,8 @@ func TestUnifiedServerManager_ListConnectedAdapters(t *testing.T) {
 	disconnectedAdapter := NewMockAdapter()
 	// Don't connect this one
 
-	manager.mu.Lock()
-	manager.adapters["connected"] = connectedAdapter
-	manager.adapters["disconnected"] = disconnectedAdapter
-	manager.mu.Unlock()
+	manager.adapters.Put("connected", connectedAdapter)
+	manager.adapters.Put("disconnected", disconnectedAdapter)
 
 	connected := manager.ListConnectedAdapters()
 	assert.Len(t, connected, 1)
@@ -499,11 +495,9 @@ func TestUnifiedServerManager_GetAllTools(t *testing.T) {
 	disconnectedAdapter.tools = []MCPTool{{Name: "tool4"}}
 	// Don't connect this one
 
-	manager.mu.Lock()
-	manager.adapters["adapter1"] = adapter1
-	manager.adapters["adapter2"] = adapter2
-	manager.adapters["disconnected"] = disconnectedAdapter
-	manager.mu.Unlock()
+	manager.adapters.Put("adapter1", adapter1)
+	manager.adapters.Put("adapter2", adapter2)
+	manager.adapters.Put("disconnected", disconnectedAdapter)
 
 	tools := manager.GetAllTools()
 	assert.Len(t, tools, 3) // Only tools from connected adapters
@@ -540,10 +534,8 @@ func TestUnifiedServerManager_Health(t *testing.T) {
 	_ = unhealthyAdapter.Connect(context.Background())
 	unhealthyAdapter.SetHealthError(errors.New("unhealthy"))
 
-	manager.mu.Lock()
-	manager.adapters["healthy"] = healthyAdapter
-	manager.adapters["unhealthy"] = unhealthyAdapter
-	manager.mu.Unlock()
+	manager.adapters.Put("healthy", healthyAdapter)
+	manager.adapters.Put("unhealthy", unhealthyAdapter)
 
 	results := manager.Health(context.Background())
 	assert.Len(t, results, 2)
@@ -557,9 +549,7 @@ func TestUnifiedServerManager_RegisterAdapter(t *testing.T) {
 	mockAdapter := NewMockAdapter()
 	manager.RegisterAdapter("custom", mockAdapter)
 
-	manager.mu.RLock()
-	registered, exists := manager.adapters["custom"]
-	manager.mu.RUnlock()
+	registered, exists := manager.adapters.Get("custom")
 
 	assert.True(t, exists)
 	assert.Equal(t, mockAdapter, registered)
@@ -570,14 +560,12 @@ func TestUnifiedServerManager_UnregisterAdapter(t *testing.T) {
 
 	mockAdapter := NewMockAdapter()
 	_ = mockAdapter.Connect(context.Background())
-	manager.adapters["test"] = mockAdapter
+	manager.adapters.Put("test", mockAdapter)
 
 	err := manager.UnregisterAdapter("test")
 	assert.NoError(t, err)
 
-	manager.mu.RLock()
-	_, exists := manager.adapters["test"]
-	manager.mu.RUnlock()
+	_, exists := manager.adapters.Get("test")
 
 	assert.False(t, exists)
 }
@@ -598,10 +586,8 @@ func TestUnifiedServerManager_Close(t *testing.T) {
 	adapter2 := NewMockAdapter()
 	_ = adapter2.Connect(context.Background())
 
-	manager.mu.Lock()
-	manager.adapters["adapter1"] = adapter1
-	manager.adapters["adapter2"] = adapter2
-	manager.mu.Unlock()
+	manager.adapters.Put("adapter1", adapter1)
+	manager.adapters.Put("adapter2", adapter2)
 
 	err := manager.Close()
 	assert.NoError(t, err)
@@ -611,9 +597,7 @@ func TestUnifiedServerManager_Close(t *testing.T) {
 	assert.False(t, adapter2.IsConnected())
 
 	// Verify adapters map is cleared
-	manager.mu.RLock()
-	assert.Empty(t, manager.adapters)
-	manager.mu.RUnlock()
+	assert.Equal(t, 0, manager.adapters.Len())
 }
 
 func TestUnifiedServerManager_GetAdapterStatuses(t *testing.T) {
@@ -1001,7 +985,7 @@ func TestUnifiedServerManager_HealthCheckLoop(t *testing.T) {
 
 	mockAdapter := NewMockAdapter()
 	_ = mockAdapter.Connect(context.Background())
-	manager.adapters["test"] = mockAdapter
+	manager.adapters.Put("test", mockAdapter)
 
 	// Start the health check loop
 	go manager.healthCheckLoop()

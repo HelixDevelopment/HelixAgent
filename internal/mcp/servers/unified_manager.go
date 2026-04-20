@@ -5,8 +5,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -21,10 +22,14 @@ type ServerAdapter interface {
 }
 
 // UnifiedServerManager manages all MCP server adapters.
+//
+// Concurrency model (CONST-029): adapters/configs → 2× *safe.Store;
+// mu dropped entirely — GetAdapter uses Get → createAdapter outside
+// any lock → PutIfAbsent to publish atomically without double-
+// creating.
 type UnifiedServerManager struct {
-	adapters     map[string]ServerAdapter
-	configs      map[string]ServerAdapterConfig
-	mu           sync.RWMutex
+	adapters     *safe.Store[string, ServerAdapter]
+	configs      *safe.Store[string, ServerAdapterConfig]
 	logger       *logrus.Logger
 	lazyInit     bool
 	healthPeriod time.Duration
@@ -60,8 +65,8 @@ func NewUnifiedServerManager(config UnifiedManagerConfig) *UnifiedServerManager 
 	}
 
 	manager := &UnifiedServerManager{
-		adapters:     make(map[string]ServerAdapter),
-		configs:      make(map[string]ServerAdapterConfig),
+		adapters:     safe.NewStore[string, ServerAdapter](),
+		configs:      safe.NewStore[string, ServerAdapterConfig](),
 		logger:       config.Logger,
 		lazyInit:     config.LazyInit,
 		healthPeriod: config.HealthPeriod,
@@ -73,7 +78,7 @@ func NewUnifiedServerManager(config UnifiedManagerConfig) *UnifiedServerManager 
 
 	// Override with provided configs
 	for name, cfg := range config.Configs {
-		manager.configs[name] = cfg
+		manager.configs.Put(name, cfg)
 	}
 
 	return manager
@@ -83,35 +88,35 @@ func NewUnifiedServerManager(config UnifiedManagerConfig) *UnifiedServerManager 
 func (m *UnifiedServerManager) loadDefaultConfigs() {
 	// ChromaDB
 	if url := os.Getenv("CHROMA_URL"); url != "" {
-		m.configs["chroma"] = ServerAdapterConfig{
+		m.configs.Put("chroma", ServerAdapterConfig{
 			Type:      "chroma",
 			BaseURL:   url,
 			AuthToken: os.Getenv("CHROMA_AUTH_TOKEN"),
 			Timeout:   30 * time.Second,
 			Enabled:   true,
-		}
+		})
 	}
 
 	// Qdrant
 	if url := os.Getenv("QDRANT_URL"); url != "" {
-		m.configs["qdrant"] = ServerAdapterConfig{
+		m.configs.Put("qdrant", ServerAdapterConfig{
 			Type:    "qdrant",
 			BaseURL: url,
 			APIKey:  os.Getenv("QDRANT_API_KEY"),
 			Timeout: 30 * time.Second,
 			Enabled: true,
-		}
+		})
 	}
 
 	// Weaviate
 	if url := os.Getenv("WEAVIATE_URL"); url != "" {
-		m.configs["weaviate"] = ServerAdapterConfig{
+		m.configs.Put("weaviate", ServerAdapterConfig{
 			Type:    "weaviate",
 			BaseURL: url,
 			APIKey:  os.Getenv("WEAVIATE_API_KEY"),
 			Timeout: 30 * time.Second,
 			Enabled: true,
-		}
+		})
 	}
 
 	// Add more default configs as needed
@@ -119,10 +124,7 @@ func (m *UnifiedServerManager) loadDefaultConfigs() {
 
 // Initialize initializes all configured adapters.
 func (m *UnifiedServerManager) Initialize(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for name, config := range m.configs {
+	for name, config := range m.configs.Snapshot() {
 		if !config.Enabled {
 			continue
 		}
@@ -143,7 +145,7 @@ func (m *UnifiedServerManager) Initialize(ctx context.Context) error {
 			continue
 		}
 
-		m.adapters[name] = adapter
+		m.adapters.Put(name, adapter)
 		m.logger.WithField("adapter", name).Info("Adapter initialized successfully")
 	}
 
@@ -185,24 +187,11 @@ func (m *UnifiedServerManager) createAdapter(name string, config ServerAdapterCo
 
 // GetAdapter returns an adapter by name, initializing it if necessary (lazy init).
 func (m *UnifiedServerManager) GetAdapter(ctx context.Context, name string) (ServerAdapter, error) {
-	m.mu.RLock()
-	adapter, exists := m.adapters[name]
-	m.mu.RUnlock()
-
-	if exists && adapter.IsConnected() {
+	if adapter, exists := m.adapters.Get(name); exists && adapter.IsConnected() {
 		return adapter, nil
 	}
 
-	// Lazy initialization
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Double-check after acquiring write lock
-	if adapter, exists = m.adapters[name]; exists && adapter.IsConnected() {
-		return adapter, nil
-	}
-
-	config, exists := m.configs[name]
+	config, exists := m.configs.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("adapter not configured: %s", name)
 	}
@@ -220,7 +209,16 @@ func (m *UnifiedServerManager) GetAdapter(ctx context.Context, name string) (Ser
 		return nil, fmt.Errorf("failed to connect adapter %s: %w", name, err)
 	}
 
-	m.adapters[name] = adapter
+	// PutIfAbsent prevents a double-create race: if a concurrent goroutine
+	// already published a connected adapter, we discard ours and use theirs.
+	if existing, loaded := m.adapters.PutIfAbsent(name, adapter); loaded {
+		if existing.IsConnected() {
+			_ = adapter.Close()
+			return existing, nil
+		}
+		// Existing entry is stale (not connected); replace it.
+		m.adapters.Put(name, adapter)
+	}
 	m.logger.WithField("adapter", name).Info("Adapter lazy-initialized successfully")
 
 	return adapter, nil
@@ -267,41 +265,30 @@ func (m *UnifiedServerManager) GetWeaviateAdapter(ctx context.Context) (*Weaviat
 
 // ListAdapters returns a list of all configured adapter names.
 func (m *UnifiedServerManager) ListAdapters() []string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	names := make([]string, 0, len(m.configs))
-	for name := range m.configs {
-		names = append(names, name)
-	}
-	return names
+	return m.configs.Keys()
 }
 
 // ListConnectedAdapters returns a list of connected adapter names.
 func (m *UnifiedServerManager) ListConnectedAdapters() []string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	names := make([]string, 0)
-	for name, adapter := range m.adapters {
+	m.adapters.Range(func(name string, adapter ServerAdapter) bool {
 		if adapter.IsConnected() {
 			names = append(names, name)
 		}
-	}
+		return true
+	})
 	return names
 }
 
 // GetAllTools returns all MCP tools from all connected adapters.
 func (m *UnifiedServerManager) GetAllTools() []MCPTool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var tools []MCPTool
-	for _, adapter := range m.adapters {
+	m.adapters.Range(func(_ string, adapter ServerAdapter) bool {
 		if adapter.IsConnected() {
 			tools = append(tools, adapter.GetMCPTools()...)
 		}
-	}
+		return true
+	})
 	return tools
 }
 
@@ -316,13 +303,11 @@ func (m *UnifiedServerManager) GetToolsByAdapter(ctx context.Context, name strin
 
 // Health checks the health of all adapters.
 func (m *UnifiedServerManager) Health(ctx context.Context) map[string]error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	results := make(map[string]error)
-	for name, adapter := range m.adapters {
+	m.adapters.Range(func(name string, adapter ServerAdapter) bool {
 		results[name] = adapter.Health(ctx)
-	}
+		return true
+	})
 	return results
 }
 
@@ -352,17 +337,12 @@ func (m *UnifiedServerManager) healthCheckLoop() {
 
 // RegisterAdapter registers a custom adapter.
 func (m *UnifiedServerManager) RegisterAdapter(name string, adapter ServerAdapter) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.adapters[name] = adapter
+	m.adapters.Put(name, adapter)
 }
 
 // UnregisterAdapter removes an adapter.
 func (m *UnifiedServerManager) UnregisterAdapter(name string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	adapter, exists := m.adapters[name]
+	adapter, exists := m.adapters.Delete(name)
 	if !exists {
 		return fmt.Errorf("adapter not found: %s", name)
 	}
@@ -371,7 +351,6 @@ func (m *UnifiedServerManager) UnregisterAdapter(name string) error {
 		m.logger.WithError(err).WithField("adapter", name).Warn("Error closing adapter")
 	}
 
-	delete(m.adapters, name)
 	return nil
 }
 
@@ -379,18 +358,16 @@ func (m *UnifiedServerManager) UnregisterAdapter(name string) error {
 func (m *UnifiedServerManager) Close() error {
 	close(m.stopChan)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	var lastErr error
-	for name, adapter := range m.adapters {
+	m.adapters.Range(func(name string, adapter ServerAdapter) bool {
 		if err := adapter.Close(); err != nil {
 			m.logger.WithError(err).WithField("adapter", name).Warn("Error closing adapter")
 			lastErr = err
 		}
-	}
+		return true
+	})
 
-	m.adapters = make(map[string]ServerAdapter)
+	m.adapters.Clear()
 	return lastErr
 }
 
@@ -406,19 +383,16 @@ type AdapterStatus struct {
 
 // GetAdapterStatuses returns the status of all adapters.
 func (m *UnifiedServerManager) GetAdapterStatuses(ctx context.Context) []AdapterStatus {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	statuses := make([]AdapterStatus, 0, m.configs.Len())
 
-	statuses := make([]AdapterStatus, 0, len(m.configs))
-
-	for name, config := range m.configs {
+	for name, config := range m.configs.Snapshot() {
 		status := AdapterStatus{
 			Name:    name,
 			Type:    config.Type,
 			Enabled: config.Enabled,
 		}
 
-		if adapter, exists := m.adapters[name]; exists {
+		if adapter, exists := m.adapters.Get(name); exists {
 			status.Connected = adapter.IsConnected()
 			if err := adapter.Health(ctx); err != nil {
 				status.Error = err.Error()

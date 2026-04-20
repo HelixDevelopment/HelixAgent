@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // CannedErrorPatterns contains patterns that indicate a model is returning
@@ -138,7 +140,12 @@ type BatchVerificationRequest struct {
 	Provider string `json:"provider"`
 }
 
-// VerificationService manages all verification operations
+// VerificationService manages all verification operations.
+//
+// Concurrency model (CONST-029): verificationCache is a *safe.Store.
+// mu survives to serialise providerFunc / testMode scalar mutations —
+// not Pattern-A (no bare map/slice sits beside it anymore).
+// statsMu guards stats-pointer-field mutations — also not Pattern-A.
 type VerificationService struct {
 	config       *Config
 	providerFunc func(ctx context.Context, modelID, provider, prompt string) (string, error)
@@ -146,7 +153,7 @@ type VerificationService struct {
 	testMode     bool // When true, disables quality validation checks
 
 	// Storage for verification results and statistics
-	verificationCache map[string]*VerificationStatus
+	verificationCache *safe.Store[string, *VerificationStatus]
 	stats             *VerificationStats
 	statsMu           sync.RWMutex
 }
@@ -155,7 +162,7 @@ type VerificationService struct {
 func NewVerificationService(cfg *Config) *VerificationService {
 	return &VerificationService{
 		config:            cfg,
-		verificationCache: make(map[string]*VerificationStatus),
+		verificationCache: safe.NewStore[string, *VerificationStatus](),
 		stats: &VerificationStats{
 			TotalVerifications: 0,
 			SuccessfulCount:    0,
@@ -271,8 +278,7 @@ func (s *VerificationService) storeVerificationResult(result *ServiceVerificatio
 	cacheKey := fmt.Sprintf("%s:%s", result.Provider, result.ModelID)
 
 	// Store in cache
-	s.mu.Lock()
-	s.verificationCache[cacheKey] = &VerificationStatus{
+	s.verificationCache.Put(cacheKey, &VerificationStatus{
 		ModelID:            result.ModelID,
 		Provider:           result.Provider,
 		Status:             result.Status,
@@ -286,8 +292,7 @@ func (s *VerificationService) storeVerificationResult(result *ServiceVerificatio
 		VerificationTimeMs: result.VerificationTimeMs,
 		StartedAt:          result.StartedAt,
 		CompletedAt:        result.CompletedAt,
-	}
-	s.mu.Unlock()
+	})
 
 	// Update statistics
 	s.statsMu.Lock()
@@ -886,17 +891,17 @@ type VerificationStatus struct {
 
 // GetVerificationStatus returns the status of a verification (by model ID only)
 func (s *VerificationService) GetVerificationStatus(ctx context.Context, modelID string) (*VerificationStatus, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// Search for any verification with this model ID (any provider)
-	for key, status := range s.verificationCache {
-		if strings.HasSuffix(key, ":"+modelID) || strings.HasPrefix(key, modelID+":") {
-			return status, nil
+	var found *VerificationStatus
+	s.verificationCache.Range(func(key string, status *VerificationStatus) bool {
+		if strings.HasSuffix(key, ":"+modelID) || strings.HasPrefix(key, modelID+":") || status.ModelID == modelID {
+			found = status
+			return false
 		}
-		if status.ModelID == modelID {
-			return status, nil
-		}
+		return true
+	})
+	if found != nil {
+		return found, nil
 	}
 
 	// Not found - return not_found status
@@ -919,10 +924,7 @@ func (s *VerificationService) GetVerificationStatus(ctx context.Context, modelID
 func (s *VerificationService) GetVerificationStatusByProvider(ctx context.Context, modelID, provider string) (*VerificationStatus, error) {
 	cacheKey := fmt.Sprintf("%s:%s", provider, modelID)
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if status, ok := s.verificationCache[cacheKey]; ok {
+	if status, ok := s.verificationCache.Get(cacheKey); ok {
 		return status, nil
 	}
 
@@ -1021,30 +1023,24 @@ Do you see my code? Please respond with "Yes, I can see your code" if you can se
 
 // InvalidateVerification invalidates a previous verification
 func (s *VerificationService) InvalidateVerification(modelID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Remove all verifications for this model ID (any provider)
-	keysToDelete := make([]string, 0)
-	for key, status := range s.verificationCache {
+	var keysToDelete []string
+	s.verificationCache.Range(func(key string, status *VerificationStatus) bool {
 		if status.ModelID == modelID {
 			keysToDelete = append(keysToDelete, key)
 		}
-	}
+		return true
+	})
 
 	for _, key := range keysToDelete {
-		delete(s.verificationCache, key)
+		s.verificationCache.Delete(key)
 	}
 }
 
 // InvalidateVerificationByProvider invalidates a specific provider's verification
 func (s *VerificationService) InvalidateVerificationByProvider(modelID, provider string) {
 	cacheKey := fmt.Sprintf("%s:%s", provider, modelID)
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.verificationCache, cacheKey)
+	s.verificationCache.Delete(cacheKey)
 }
 
 // VerificationStats represents verification statistics
@@ -1073,13 +1069,11 @@ func (s *VerificationService) GetStats(ctx context.Context) (*VerificationStats,
 
 // GetAllVerifications returns all cached verification results
 func (s *VerificationService) GetAllVerifications(ctx context.Context) ([]*VerificationStatus, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	results := make([]*VerificationStatus, 0, len(s.verificationCache))
-	for _, status := range s.verificationCache {
+	results := make([]*VerificationStatus, 0, s.verificationCache.Len())
+	s.verificationCache.Range(func(_ string, status *VerificationStatus) bool {
 		results = append(results, status)
-	}
+		return true
+	})
 	return results, nil
 }
 
@@ -1099,8 +1093,5 @@ func (s *VerificationService) ResetStats() {
 
 // ClearCache clears all cached verification results
 func (s *VerificationService) ClearCache() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.verificationCache = make(map[string]*VerificationStatus)
+	s.verificationCache.Clear()
 }

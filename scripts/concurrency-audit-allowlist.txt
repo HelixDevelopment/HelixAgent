@@ -117,5 +117,4 @@ internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter
 internal/verifier/discovery.go:15:ModelDiscoveryService
 internal/verifier/enhanced_scoring.go:63:EnhancedScoringService
 internal/verifier/health.go:145:HealthService
-internal/verifier/service.go:142:VerificationService
 internal/verifier/startup.go:89:StartupVerifier

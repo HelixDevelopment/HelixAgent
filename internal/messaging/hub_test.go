@@ -3,8 +3,11 @@ package messaging
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +42,7 @@ func TestNewMessagingHub(t *testing.T) {
 		assert.NotNil(t, hub.eventRegistry)
 		assert.NotNil(t, hub.subscriptions)
 		assert.NotNil(t, hub.stopCh)
-		assert.False(t, hub.connected)
+		assert.False(t, hub.connected.Load())
 	})
 
 	t.Run("with custom config", func(t *testing.T) {
@@ -88,7 +91,7 @@ func TestMessagingHub_IsConnected(t *testing.T) {
 
 	assert.False(t, hub.IsConnected())
 
-	hub.connected = true
+	hub.connected.Store(true)
 	assert.True(t, hub.IsConnected())
 }
 
@@ -415,26 +418,27 @@ func TestGlobalHub(t *testing.T) {
 // Mock Implementations for Comprehensive Testing
 // =============================================================================
 
-// hubTestMockBroker implements MessageBroker for hub testing
+// hubTestMockBroker implements MessageBroker for hub testing.
+//
+// Concurrency model (CONST-029): connected → atomic.Bool; publishedMsgs
+// → *safe.Slice; subscriptions → *safe.Store.
 type hubTestMockBroker struct {
-	mu             sync.Mutex
-	connected      bool
+	connected      atomic.Bool
 	connectError   error
 	closeError     error
 	publishError   error
 	subscribeError error
 	healthCheckErr error
-	publishedMsgs  []*Message
-	subscriptions  map[string]*hubTestMockSubscription
+	publishedMsgs  *safe.Slice[*Message]
+	subscriptions  *safe.Store[string, *hubTestMockSubscription]
 	metrics        *BrokerMetrics
 	bType          BrokerType
 }
 
 func newHubTestMockBroker() *hubTestMockBroker {
 	return &hubTestMockBroker{
-		connected:     false,
-		publishedMsgs: make([]*Message, 0),
-		subscriptions: make(map[string]*hubTestMockSubscription),
+		publishedMsgs: safe.NewSlice[*Message](),
+		subscriptions: safe.NewStore[string, *hubTestMockSubscription](),
 		metrics:       NewBrokerMetrics(),
 		bType:         BrokerTypeInMemory,
 	}
@@ -444,32 +448,28 @@ func (m *hubTestMockBroker) Connect(ctx context.Context) error {
 	if m.connectError != nil {
 		return m.connectError
 	}
-	m.connected = true
+	m.connected.Store(true)
 	return nil
 }
 
 func (m *hubTestMockBroker) Close(ctx context.Context) error {
-	m.connected = false
+	m.connected.Store(false)
 	return m.closeError
 }
 
 func (m *hubTestMockBroker) Publish(ctx context.Context, topic string, msg *Message, opts ...PublishOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.publishError != nil {
 		return m.publishError
 	}
-	m.publishedMsgs = append(m.publishedMsgs, msg)
+	m.publishedMsgs.Append(msg)
 	return nil
 }
 
 func (m *hubTestMockBroker) PublishBatch(ctx context.Context, topic string, messages []*Message, opts ...PublishOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.publishError != nil {
 		return m.publishError
 	}
-	m.publishedMsgs = append(m.publishedMsgs, messages...)
+	m.publishedMsgs.AppendAll(messages...)
 	return nil
 }
 
@@ -482,7 +482,7 @@ func (m *hubTestMockBroker) Subscribe(ctx context.Context, topic string, handler
 		topic:  topic,
 		active: true,
 	}
-	m.subscriptions[topic] = sub
+	m.subscriptions.Put(topic, sub)
 	return sub, nil
 }
 
@@ -491,7 +491,7 @@ func (m *hubTestMockBroker) HealthCheck(ctx context.Context) error {
 }
 
 func (m *hubTestMockBroker) IsConnected() bool {
-	return m.connected
+	return m.connected.Load()
 }
 
 func (m *hubTestMockBroker) BrokerType() BrokerType {
@@ -526,11 +526,13 @@ func (s *hubTestMockSubscription) ID() string {
 	return s.id
 }
 
-// hubTestMockTaskQueueBroker implements TaskQueueBroker for hub testing
+// hubTestMockTaskQueueBroker implements TaskQueueBroker for hub testing.
+//
+// Concurrency model (CONST-029): enqueuedTasks → *safe.Slice;
+// taskSubscription → atomic.Pointer[hubTestMockSubscription].
 type hubTestMockTaskQueueBroker struct {
 	*hubTestMockBroker
-	taskMu           sync.Mutex
-	enqueuedTasks    []*Task
+	enqueuedTasks    *safe.Slice[*Task]
 	enqueueError     error
 	dequeueError     error
 	ackError         error
@@ -539,13 +541,13 @@ type hubTestMockTaskQueueBroker struct {
 	queueStatsError  error
 	queueDepth       int64
 	queueDepthError  error
-	taskSubscription *hubTestMockSubscription
+	taskSubscription atomic.Pointer[hubTestMockSubscription]
 }
 
 func newHubTestMockTaskQueueBroker() *hubTestMockTaskQueueBroker {
 	return &hubTestMockTaskQueueBroker{
 		hubTestMockBroker: newHubTestMockBroker(),
-		enqueuedTasks:     make([]*Task, 0),
+		enqueuedTasks:     safe.NewSlice[*Task](),
 		queueStats: &QueueStats{
 			Name:          "test-queue",
 			Messages:      10,
@@ -560,22 +562,18 @@ func (m *hubTestMockTaskQueueBroker) DeclareQueue(ctx context.Context, name stri
 }
 
 func (m *hubTestMockTaskQueueBroker) EnqueueTask(ctx context.Context, queue string, task *Task) error {
-	m.taskMu.Lock()
-	defer m.taskMu.Unlock()
 	if m.enqueueError != nil {
 		return m.enqueueError
 	}
-	m.enqueuedTasks = append(m.enqueuedTasks, task)
+	m.enqueuedTasks.Append(task)
 	return nil
 }
 
 func (m *hubTestMockTaskQueueBroker) EnqueueTaskBatch(ctx context.Context, queue string, tasks []*Task) error {
-	m.taskMu.Lock()
-	defer m.taskMu.Unlock()
 	if m.enqueueError != nil {
 		return m.enqueueError
 	}
-	m.enqueuedTasks = append(m.enqueuedTasks, tasks...)
+	m.enqueuedTasks.AppendAll(tasks...)
 	return nil
 }
 
@@ -583,9 +581,8 @@ func (m *hubTestMockTaskQueueBroker) DequeueTask(ctx context.Context, queue stri
 	if m.dequeueError != nil {
 		return nil, m.dequeueError
 	}
-	if len(m.enqueuedTasks) > 0 {
-		task := m.enqueuedTasks[0]
-		m.enqueuedTasks = m.enqueuedTasks[1:]
+	if task, ok := m.enqueuedTasks.At(0); ok {
+		m.enqueuedTasks.Delete(func(t *Task) bool { return t == task })
 		return task, nil
 	}
 	return nil, nil
@@ -622,7 +619,7 @@ func (m *hubTestMockTaskQueueBroker) GetQueueDepth(ctx context.Context, queue st
 }
 
 func (m *hubTestMockTaskQueueBroker) PurgeQueue(ctx context.Context, queue string) error {
-	m.enqueuedTasks = make([]*Task, 0)
+	m.enqueuedTasks.Clear()
 	return nil
 }
 
@@ -639,35 +636,34 @@ func (m *hubTestMockTaskQueueBroker) SubscribeTasks(ctx context.Context, queue s
 		topic:  queue,
 		active: true,
 	}
-	m.taskMu.Lock()
-	m.taskSubscription = sub
-	m.taskMu.Unlock()
+	m.taskSubscription.Store(sub)
 	return sub, nil
 }
 
-// hubTestMockEventStreamBroker implements EventStreamBroker for hub testing
+// hubTestMockEventStreamBroker implements EventStreamBroker for hub testing.
+//
+// Concurrency model (CONST-029): publishedEvents and topics → *safe.Slice.
 type hubTestMockEventStreamBroker struct {
 	*hubTestMockBroker
-	eventMu           sync.Mutex
-	publishedEvents   []*Event
+	publishedEvents   *safe.Slice[*Event]
 	publishEventError error
 	topicMetadata     *TopicMetadata
 	topicMetadataErr  error
 	eventChan         chan *Event
 	createTopicError  error
 	deleteTopicError  error
-	topics            []string
+	topics            *safe.Slice[string]
 }
 
 func newHubTestMockEventStreamBroker() *hubTestMockEventStreamBroker {
 	return &hubTestMockEventStreamBroker{
 		hubTestMockBroker: newHubTestMockBroker(),
-		publishedEvents:   make([]*Event, 0),
+		publishedEvents:   safe.NewSlice[*Event](),
 		topicMetadata: &TopicMetadata{
 			Name: "test-topic",
 		},
 		eventChan: make(chan *Event, 10),
-		topics:    []string{"topic1", "topic2"},
+		topics:    safe.NewSlice[string]("topic1", "topic2"),
 	}
 }
 
@@ -675,7 +671,7 @@ func (m *hubTestMockEventStreamBroker) CreateTopic(ctx context.Context, name str
 	if m.createTopicError != nil {
 		return m.createTopicError
 	}
-	m.topics = append(m.topics, name)
+	m.topics.Append(name)
 	return nil
 }
 
@@ -684,7 +680,7 @@ func (m *hubTestMockEventStreamBroker) DeleteTopic(ctx context.Context, name str
 }
 
 func (m *hubTestMockEventStreamBroker) ListTopics(ctx context.Context) ([]string, error) {
-	return m.topics, nil
+	return m.topics.Snapshot(), nil
 }
 
 func (m *hubTestMockEventStreamBroker) GetTopicMetadata(ctx context.Context, topic string) (*TopicMetadata, error) {
@@ -703,22 +699,18 @@ func (m *hubTestMockEventStreamBroker) DeleteConsumerGroup(ctx context.Context, 
 }
 
 func (m *hubTestMockEventStreamBroker) PublishEvent(ctx context.Context, topic string, event *Event) error {
-	m.eventMu.Lock()
-	defer m.eventMu.Unlock()
 	if m.publishEventError != nil {
 		return m.publishEventError
 	}
-	m.publishedEvents = append(m.publishedEvents, event)
+	m.publishedEvents.Append(event)
 	return nil
 }
 
 func (m *hubTestMockEventStreamBroker) PublishEventBatch(ctx context.Context, topic string, events []*Event) error {
-	m.eventMu.Lock()
-	defer m.eventMu.Unlock()
 	if m.publishEventError != nil {
 		return m.publishEventError
 	}
-	m.publishedEvents = append(m.publishedEvents, events...)
+	m.publishedEvents.AppendAll(events...)
 	return nil
 }
 
@@ -894,10 +886,10 @@ func TestMessagingHub_Close_WithAllBrokers(t *testing.T) {
 func TestMessagingHub_Close_WithActiveSubscriptions(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 
@@ -916,10 +908,10 @@ func TestMessagingHub_Close_WithActiveSubscriptions(t *testing.T) {
 func TestMessagingHub_EnqueueTask_WithConnectedTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	task := NewTask("test.task", []byte(`{"key":"value"}`))
@@ -927,8 +919,8 @@ func TestMessagingHub_EnqueueTask_WithConnectedTaskQueue(t *testing.T) {
 	err := hub.EnqueueTask(ctx, "test-queue", task)
 
 	assert.NoError(t, err)
-	assert.Len(t, taskQueue.enqueuedTasks, 1)
-	assert.Equal(t, task.ID, taskQueue.enqueuedTasks[0].ID)
+	assert.Equal(t, 1, taskQueue.enqueuedTasks.Len())
+	assert.Equal(t, task.ID, taskQueue.enqueuedTasks.Snapshot()[0].ID)
 }
 
 func TestMessagingHub_EnqueueTask_WithTaskQueueError_FallsBackToInMemory(t *testing.T) {
@@ -937,15 +929,15 @@ func TestMessagingHub_EnqueueTask_WithTaskQueueError_FallsBackToInMemory(t *test
 	hub := NewMessagingHub(config)
 
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 	taskQueue.enqueueError = NewBrokerError(ErrCodePublishFailed, "publish failed", nil)
 
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	task := NewTask("test.task", []byte(`{"key":"value"}`))
@@ -953,17 +945,17 @@ func TestMessagingHub_EnqueueTask_WithTaskQueueError_FallsBackToInMemory(t *test
 	err := hub.EnqueueTask(ctx, "test-queue", task)
 
 	assert.NoError(t, err)
-	assert.Len(t, fallback.publishedMsgs, 1)
+	assert.Equal(t, 1, fallback.publishedMsgs.Len())
 	assert.Greater(t, hub.GetMetrics().FallbackUsages.Load(), int64(0))
 }
 
 func TestMessagingHub_EnqueueTask_NoTaskQueue_UsesFallback(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	task := NewTask("test.task", []byte(`{"key":"value"}`))
@@ -971,16 +963,16 @@ func TestMessagingHub_EnqueueTask_NoTaskQueue_UsesFallback(t *testing.T) {
 	err := hub.EnqueueTask(ctx, "test-queue", task)
 
 	assert.NoError(t, err)
-	assert.Len(t, fallback.publishedMsgs, 1)
+	assert.Equal(t, 1, fallback.publishedMsgs.Len())
 }
 
 func TestMessagingHub_EnqueueTaskBatch_WithConnectedTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	tasks := []*Task{
@@ -992,16 +984,16 @@ func TestMessagingHub_EnqueueTaskBatch_WithConnectedTaskQueue(t *testing.T) {
 	err := hub.EnqueueTaskBatch(ctx, "test-queue", tasks)
 
 	assert.NoError(t, err)
-	assert.Len(t, taskQueue.enqueuedTasks, 3)
+	assert.Equal(t, 3, taskQueue.enqueuedTasks.Len())
 }
 
 func TestMessagingHub_EnqueueTaskBatch_UsesFallback(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	tasks := []*Task{
@@ -1012,16 +1004,16 @@ func TestMessagingHub_EnqueueTaskBatch_UsesFallback(t *testing.T) {
 	err := hub.EnqueueTaskBatch(ctx, "test-queue", tasks)
 
 	assert.NoError(t, err)
-	assert.Len(t, fallback.publishedMsgs, 2)
+	assert.Equal(t, 2, fallback.publishedMsgs.Len())
 }
 
 func TestMessagingHub_PublishEvent_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	event := NewEvent(EventTypeLLMRequestStarted, "test-source", []byte(`{"key":"value"}`))
@@ -1029,8 +1021,8 @@ func TestMessagingHub_PublishEvent_WithConnectedEventStream(t *testing.T) {
 	err := hub.PublishEvent(ctx, "test-topic", event)
 
 	assert.NoError(t, err)
-	assert.Len(t, eventStream.publishedEvents, 1)
-	assert.Equal(t, event.ID, eventStream.publishedEvents[0].ID)
+	assert.Equal(t, 1, eventStream.publishedEvents.Len())
+	assert.Equal(t, event.ID, eventStream.publishedEvents.Snapshot()[0].ID)
 }
 
 func TestMessagingHub_PublishEvent_WithEventStreamError_FallsBack(t *testing.T) {
@@ -1039,15 +1031,15 @@ func TestMessagingHub_PublishEvent_WithEventStreamError_FallsBack(t *testing.T) 
 	hub := NewMessagingHub(config)
 
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 	eventStream.publishEventError = NewBrokerError(ErrCodePublishFailed, "publish failed", nil)
 
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	event := NewEvent(EventTypeLLMRequestStarted, "test-source", []byte(`{"key":"value"}`))
@@ -1055,16 +1047,16 @@ func TestMessagingHub_PublishEvent_WithEventStreamError_FallsBack(t *testing.T) 
 	err := hub.PublishEvent(ctx, "test-topic", event)
 
 	assert.NoError(t, err)
-	assert.Len(t, fallback.publishedMsgs, 1)
+	assert.Equal(t, 1, fallback.publishedMsgs.Len())
 }
 
 func TestMessagingHub_PublishEventBatch_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	events := []*Event{
@@ -1075,16 +1067,16 @@ func TestMessagingHub_PublishEventBatch_WithConnectedEventStream(t *testing.T) {
 	err := hub.PublishEventBatch(ctx, "test-topic", events)
 
 	assert.NoError(t, err)
-	assert.Len(t, eventStream.publishedEvents, 2)
+	assert.Equal(t, 2, eventStream.publishedEvents.Len())
 }
 
 func TestMessagingHub_SubscribeTasks_WithConnectedTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, task *Task) error {
@@ -1101,10 +1093,10 @@ func TestMessagingHub_SubscribeTasks_WithConnectedTaskQueue(t *testing.T) {
 func TestMessagingHub_SubscribeTasks_UsesFallback(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, task *Task) error {
@@ -1120,10 +1112,10 @@ func TestMessagingHub_SubscribeTasks_UsesFallback(t *testing.T) {
 func TestMessagingHub_SubscribeEvents_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, event *Event) error {
@@ -1140,10 +1132,10 @@ func TestMessagingHub_SubscribeEvents_WithConnectedEventStream(t *testing.T) {
 func TestMessagingHub_SubscribeEvents_UsesFallback(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, event *Event) error {
@@ -1159,10 +1151,10 @@ func TestMessagingHub_SubscribeEvents_UsesFallback(t *testing.T) {
 func TestMessagingHub_DeclareQueue_WithConnectedTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	err := hub.DeclareQueue(ctx, "new-queue")
@@ -1173,10 +1165,10 @@ func TestMessagingHub_DeclareQueue_WithConnectedTaskQueue(t *testing.T) {
 func TestMessagingHub_GetQueueStats_WithConnectedTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	stats, err := hub.GetQueueStats(ctx, "test-queue")
@@ -1189,25 +1181,25 @@ func TestMessagingHub_GetQueueStats_WithConnectedTaskQueue(t *testing.T) {
 func TestMessagingHub_CreateTopic_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	err := hub.CreateTopic(ctx, "new-topic", 3, 1)
 
 	assert.NoError(t, err)
-	assert.Contains(t, eventStream.topics, "new-topic")
+	assert.Contains(t, eventStream.topics.Snapshot(), "new-topic")
 }
 
 func TestMessagingHub_GetTopicMetadata_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	metadata, err := hub.GetTopicMetadata(ctx, "test-topic")
@@ -1220,10 +1212,10 @@ func TestMessagingHub_GetTopicMetadata_WithConnectedEventStream(t *testing.T) {
 func TestMessagingHub_StreamEvents_WithConnectedEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	ch, err := hub.StreamEvents(ctx, "test-topic")
@@ -1235,13 +1227,13 @@ func TestMessagingHub_StreamEvents_WithConnectedEventStream(t *testing.T) {
 func TestMessagingHub_HealthCheck_WithConnectedBrokers(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	err := hub.HealthCheck(ctx)
@@ -1252,11 +1244,11 @@ func TestMessagingHub_HealthCheck_WithConnectedBrokers(t *testing.T) {
 func TestMessagingHub_HealthCheck_TaskQueueError(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 	taskQueue.healthCheckErr = NewBrokerError(ErrCodeConnectionFailed, "health check failed", nil)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	err := hub.HealthCheck(ctx)
@@ -1267,10 +1259,10 @@ func TestMessagingHub_HealthCheck_TaskQueueError(t *testing.T) {
 func TestMessagingHub_Publish_RoutesToTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 
@@ -1282,16 +1274,16 @@ func TestMessagingHub_Publish_RoutesToTaskQueue(t *testing.T) {
 	err := hub.Publish(ctx, "helixagent.tasks.test", msg)
 
 	assert.NoError(t, err)
-	assert.Len(t, taskQueue.enqueuedTasks, 1)
+	assert.Equal(t, 1, taskQueue.enqueuedTasks.Len())
 }
 
 func TestMessagingHub_Publish_RoutesToEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 
@@ -1303,16 +1295,16 @@ func TestMessagingHub_Publish_RoutesToEventStream(t *testing.T) {
 	err := hub.Publish(ctx, "helixagent.events.test", msg)
 
 	assert.NoError(t, err)
-	assert.Len(t, eventStream.publishedEvents, 1)
+	assert.Equal(t, 1, eventStream.publishedEvents.Len())
 }
 
 func TestMessagingHub_Subscribe_RoutesToTaskQueue(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, msg *Message) error {
@@ -1329,10 +1321,10 @@ func TestMessagingHub_Subscribe_RoutesToTaskQueue(t *testing.T) {
 func TestMessagingHub_Subscribe_RoutesToEventStream(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, msg *Message) error {
@@ -1349,10 +1341,10 @@ func TestMessagingHub_Subscribe_RoutesToEventStream(t *testing.T) {
 func TestMessagingHub_Subscribe_UsesFallbackForUnknownPrefix(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	handler := func(ctx context.Context, msg *Message) error {
@@ -1373,10 +1365,10 @@ func TestMessagingHub_Subscribe_UsesFallbackForUnknownPrefix(t *testing.T) {
 func TestMessagingHub_ConcurrentEnqueueTask(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
@@ -1392,16 +1384,16 @@ func TestMessagingHub_ConcurrentEnqueueTask(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, taskQueue.enqueuedTasks, taskCount)
+	assert.Equal(t, taskCount, taskQueue.enqueuedTasks.Len())
 }
 
 func TestMessagingHub_ConcurrentPublishEvent(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	eventStream := newHubTestMockEventStreamBroker()
-	eventStream.connected = true
+	eventStream.connected.Store(true)
 
 	hub.SetEventStreamBroker(eventStream)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
@@ -1417,16 +1409,16 @@ func TestMessagingHub_ConcurrentPublishEvent(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Len(t, eventStream.publishedEvents, eventCount)
+	assert.Equal(t, eventCount, eventStream.publishedEvents.Len())
 }
 
 func TestMessagingHub_ConcurrentSubscribe(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
@@ -1451,10 +1443,10 @@ func TestMessagingHub_ConcurrentSubscribe(t *testing.T) {
 func TestMessagingHub_MetricsRecording_EnqueueTask(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	taskQueue := newHubTestMockTaskQueueBroker()
-	taskQueue.connected = true
+	taskQueue.connected.Store(true)
 
 	hub.SetTaskQueueBroker(taskQueue)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	task := NewTask("test.task", []byte(`{"key":"value"}`))
@@ -1470,10 +1462,10 @@ func TestMessagingHub_MetricsRecording_EnqueueTask(t *testing.T) {
 func TestMessagingHub_MetricsRecording_FallbackUsage(t *testing.T) {
 	hub := NewMessagingHub(DefaultHubConfig())
 	fallback := newHubTestMockBroker()
-	fallback.connected = true
+	fallback.connected.Store(true)
 
 	hub.SetFallbackBroker(fallback)
-	hub.connected = true
+	hub.connected.Store(true)
 
 	ctx := context.Background()
 	task := NewTask("test.task", []byte(`{"key":"value"}`))

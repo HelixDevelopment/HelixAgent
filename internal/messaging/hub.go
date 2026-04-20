@@ -6,11 +6,16 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // MessagingHub provides a unified interface for all messaging operations.
 // It combines task queuing (RabbitMQ) and event streaming (Kafka) with
 // an in-memory fallback for testing and development.
+//
+// Concurrency model (CONST-029): subscriptions → *safe.Store; connected
+// → atomic.Bool. No survivor mutex.
 type MessagingHub struct {
 	// taskQueue is the task queue broker (RabbitMQ).
 	taskQueue TaskQueueBroker
@@ -33,12 +38,10 @@ type MessagingHub struct {
 	eventRegistry *EventRegistry
 
 	// subscriptions tracks active subscriptions.
-	subscriptions map[string]Subscription
-	// mu protects subscriptions.
-	mu sync.RWMutex
+	subscriptions *safe.Store[string, Subscription]
 
 	// state
-	connected bool
+	connected atomic.Bool
 	stopCh    chan struct{}
 	closeOnce sync.Once
 	wg        sync.WaitGroup
@@ -118,7 +121,7 @@ func NewMessagingHub(config *HubConfig) *MessagingHub {
 		metrics:       NewHubMetrics(),
 		taskRegistry:  NewTaskRegistry(),
 		eventRegistry: NewEventRegistry(),
-		subscriptions: make(map[string]Subscription),
+		subscriptions: safe.NewStore[string, Subscription](),
 		stopCh:        make(chan struct{}),
 	}
 }
@@ -158,7 +161,7 @@ func (h *MessagingHub) Initialize(ctx context.Context) error {
 		return errs.ErrorOrNil()
 	}
 
-	h.connected = true
+	h.connected.Store(true)
 
 	// Start health check goroutine with WaitGroup tracking to prevent leaks.
 	h.wg.Add(1)
@@ -181,14 +184,13 @@ func (h *MessagingHub) Close(ctx context.Context) error {
 	var errs MultiError
 
 	// Unsubscribe all subscriptions
-	h.mu.Lock()
-	for _, sub := range h.subscriptions {
+	h.subscriptions.Range(func(_ string, sub Subscription) bool {
 		if err := sub.Unsubscribe(); err != nil {
 			errs.Add(err)
 		}
-	}
-	h.subscriptions = make(map[string]Subscription)
-	h.mu.Unlock()
+		return true
+	})
+	h.subscriptions.Clear()
 
 	// Close brokers
 	if h.taskQueue != nil {
@@ -207,7 +209,7 @@ func (h *MessagingHub) Close(ctx context.Context) error {
 		}
 	}
 
-	h.connected = false
+	h.connected.Store(false)
 	return errs.ErrorOrNil()
 }
 
@@ -255,7 +257,7 @@ func (h *MessagingHub) GetMessageBroker() MessageBroker {
 
 // IsConnected returns true if the hub is connected.
 func (h *MessagingHub) IsConnected() bool {
-	return h.connected
+	return h.connected.Load()
 }
 
 // HealthCheck checks the health of all brokers.
@@ -588,9 +590,7 @@ func (h *MessagingHub) GetMetrics() *HubMetrics {
 // Helper methods
 
 func (h *MessagingHub) trackSubscription(topic string, sub Subscription) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.subscriptions[topic] = sub
+	h.subscriptions.Put(topic, sub)
 	h.metrics.RecordSubscription()
 }
 

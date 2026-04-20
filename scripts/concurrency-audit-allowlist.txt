@@ -14,10 +14,6 @@ internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/messaging/dlq/processor.go:85:Processor
-internal/messaging/hub.go:14:MessagingHub
-internal/messaging/hub_test.go:419:hubTestMockBroker
-internal/messaging/hub_test.go:530:hubTestMockTaskQueueBroker
-internal/messaging/hub_test.go:649:hubTestMockEventStreamBroker
 internal/messaging/migration.go:152:MigrationManager
 internal/messaging/migration_test.go:147:mockMessageBroker
 internal/messaging/migration_test.go:15:mockLegacyQueue

@@ -1027,10 +1027,7 @@ func TestConnectionPool_RegisterServer(t *testing.T) {
 		err := pool.RegisterServer(config)
 		require.NoError(t, err)
 
-		pool.mu.RLock()
-		conn := pool.connections["test-server"]
-		pool.mu.RUnlock()
-
+		conn, _ := pool.connections.Get("test-server")
 		assert.Equal(t, 60*time.Second, conn.Config.Timeout)
 	})
 
@@ -1045,10 +1042,7 @@ func TestConnectionPool_RegisterServer(t *testing.T) {
 		err := pool.RegisterServer(config)
 		require.NoError(t, err)
 
-		pool.mu.RLock()
-		conn := pool.connections["test-server"]
-		pool.mu.RUnlock()
-
+		conn, _ := pool.connections.Get("test-server")
 		assert.Equal(t, StatusConnectionPending, conn.Status)
 	})
 }
@@ -1122,11 +1116,9 @@ func TestConnectionPool_CloseConnection(t *testing.T) {
 		_ = pool.RegisterServer(MCPServerConfig{Name: "test-server", Type: MCPServerTypeRemote})
 
 		// Manually set up a mock transport
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.Transport = NewMockMCPTransport()
 		conn.Status = StatusConnectionConnected
-		pool.mu.Unlock()
 
 		err := pool.CloseConnection("test-server")
 		require.NoError(t, err)
@@ -1186,11 +1178,9 @@ func TestConnectionPool_HealthCheck(t *testing.T) {
 		_ = pool.RegisterServer(MCPServerConfig{Name: "test-server", Type: MCPServerTypeRemote})
 
 		// Manually set up connection
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.Status = StatusConnectionConnected
 		conn.Transport = NewMockMCPTransport()
-		pool.mu.Unlock()
 
 		ctx := context.Background()
 		results := pool.HealthCheck(ctx)

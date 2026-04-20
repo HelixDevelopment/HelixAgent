@@ -69,10 +69,14 @@ type MCPTransportInterface interface {
 	IsConnected() bool
 }
 
-// MCPConnectionPool manages lazy-initialized MCP server connections
+// MCPConnectionPool manages lazy-initialized MCP server connections.
+//
+// Concurrency model (CONST-029): connections is a *safe.Store —
+// each RegisterServer / GetConnection / Remove / Close iteration
+// is atomic. mu dropped; per-connection state still lives inside
+// each MCPConnection's own mu.
 type MCPConnectionPool struct {
-	connections  map[string]*MCPConnection
-	mu           sync.RWMutex
+	connections  *safe.Store[string, *MCPConnection]
 	preinstaller *MCPPreinstaller
 	config       *MCPPoolConfig
 	logger       *logrus.Logger
@@ -128,7 +132,7 @@ func NewConnectionPool(preinstaller *MCPPreinstaller, config *MCPPoolConfig, log
 	}
 
 	pool := &MCPConnectionPool{
-		connections:  make(map[string]*MCPConnection),
+		connections:  safe.NewStore[string, *MCPConnection](),
 		preinstaller: preinstaller,
 		config:       config,
 		logger:       logger,
@@ -140,25 +144,21 @@ func NewConnectionPool(preinstaller *MCPPreinstaller, config *MCPPoolConfig, log
 
 // RegisterServer registers an MCP server configuration
 func (p *MCPConnectionPool) RegisterServer(config MCPServerConfig) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	if p.closed.Load() {
 		return fmt.Errorf("pool is closed")
-	}
-
-	if _, exists := p.connections[config.Name]; exists {
-		return fmt.Errorf("server %s already registered", config.Name)
 	}
 
 	if config.Timeout <= 0 {
 		config.Timeout = p.config.ConnectionTimeout
 	}
 
-	p.connections[config.Name] = &MCPConnection{
+	newConn := &MCPConnection{
 		Config:   config,
 		Status:   StatusConnectionPending,
 		LastUsed: time.Now(),
+	}
+	if _, stored := p.connections.PutIfAbsent(config.Name, newConn); !stored {
+		return fmt.Errorf("server %s already registered", config.Name)
 	}
 
 	p.logger.WithField("server", config.Name).Debug("MCP server registered")
@@ -167,10 +167,7 @@ func (p *MCPConnectionPool) RegisterServer(config MCPServerConfig) error {
 
 // GetConnection returns an existing connection or lazily creates a new one
 func (p *MCPConnectionPool) GetConnection(ctx context.Context, name string) (*MCPConnection, error) {
-	p.mu.RLock()
-	conn, exists := p.connections[name]
-	p.mu.RUnlock()
-
+	conn, exists := p.connections.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("server %s not registered", name)
 	}
@@ -420,10 +417,7 @@ func (p *MCPConnectionPool) waitForConnection(ctx context.Context, name string) 
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			p.mu.RLock()
-			conn, exists := p.connections[name]
-			p.mu.RUnlock()
-
+			conn, exists := p.connections.Get(name)
 			if !exists {
 				return fmt.Errorf("server %s not found", name)
 			}
@@ -453,11 +447,7 @@ func (p *MCPConnectionPool) WarmUp(ctx context.Context, servers []string) error 
 
 	if len(servers) == 0 {
 		// Warm up all registered servers
-		p.mu.RLock()
-		for name := range p.connections {
-			servers = append(servers, name)
-		}
-		p.mu.RUnlock()
+		servers = p.connections.Keys()
 	}
 
 	p.logger.WithField("servers", servers).Info("Warming up MCP connections")
@@ -493,26 +483,20 @@ func (p *MCPConnectionPool) WarmUp(ctx context.Context, servers []string) error 
 
 // HealthCheck performs health checks on all connections
 func (p *MCPConnectionPool) HealthCheck(ctx context.Context) map[string]bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
 	results := make(map[string]bool)
-	for name, conn := range p.connections {
+	p.connections.Range(func(name string, conn *MCPConnection) bool {
 		conn.mu.Lock()
 		healthy := conn.Status == StatusConnectionConnected && conn.Transport != nil && conn.Transport.IsConnected()
 		conn.mu.Unlock()
 		results[name] = healthy
-	}
-
+		return true
+	})
 	return results
 }
 
 // CloseConnection closes a specific connection
 func (p *MCPConnectionPool) CloseConnection(name string) error {
-	p.mu.Lock()
-	conn, exists := p.connections[name]
-	p.mu.Unlock()
-
+	conn, exists := p.connections.Get(name)
 	if !exists {
 		return fmt.Errorf("server %s not found", name)
 	}
@@ -541,16 +525,11 @@ func (p *MCPConnectionPool) CloseConnection(name string) error {
 
 // Close closes all connections and shuts down the pool
 func (p *MCPConnectionPool) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.closed.Load() {
+	if !p.closed.CompareAndSwap(false, true) {
 		return nil
 	}
 
-	p.closed.Store(true)
-
-	for name, conn := range p.connections {
+	p.connections.Range(func(name string, conn *MCPConnection) bool {
 		conn.mu.Lock()
 		if conn.Transport != nil {
 			_ = conn.Transport.Close()
@@ -562,7 +541,8 @@ func (p *MCPConnectionPool) Close() error {
 		conn.mu.Unlock()
 
 		p.logger.WithField("server", name).Debug("MCP connection closed during shutdown")
-	}
+		return true
+	})
 
 	p.logger.Info("MCP connection pool closed")
 	return nil
@@ -583,22 +563,12 @@ func (p *MCPConnectionPool) GetMetrics() *PoolMetrics {
 
 // ListServers returns all registered server names
 func (p *MCPConnectionPool) ListServers() []string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	servers := make([]string, 0, len(p.connections))
-	for name := range p.connections {
-		servers = append(servers, name)
-	}
-	return servers
+	return p.connections.Keys()
 }
 
 // GetServerStatus returns the status of a server
 func (p *MCPConnectionPool) GetServerStatus(name string) (ConnectionStatus, error) {
-	p.mu.RLock()
-	conn, exists := p.connections[name]
-	p.mu.RUnlock()
-
+	conn, exists := p.connections.Get(name)
 	if !exists {
 		return "", fmt.Errorf("server %s not found", name)
 	}

@@ -44,12 +44,10 @@ func TestConnectionPool_waitForConnection(t *testing.T) {
 
 		// Simulate connection becoming connected after a delay
 		time.Sleep(100 * time.Millisecond)
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.mu.Lock()
 		conn.Status = StatusConnectionConnected
 		conn.mu.Unlock()
-		pool.mu.Unlock()
 
 		<-done
 		assert.NoError(t, waitErr)
@@ -77,13 +75,11 @@ func TestConnectionPool_waitForConnection(t *testing.T) {
 
 		// Simulate connection failure
 		time.Sleep(100 * time.Millisecond)
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.mu.Lock()
 		conn.Status = StatusConnectionFailed
 		conn.LastError = fmt.Errorf("connection refused")
 		conn.mu.Unlock()
-		pool.mu.Unlock()
 
 		<-done
 		assert.Error(t, waitErr)
@@ -112,12 +108,10 @@ func TestConnectionPool_waitForConnection(t *testing.T) {
 
 		// Simulate connection being closed
 		time.Sleep(100 * time.Millisecond)
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.mu.Lock()
 		conn.Status = StatusConnectionClosed
 		conn.mu.Unlock()
-		pool.mu.Unlock()
 
 		<-done
 		assert.Error(t, waitErr)
@@ -566,12 +560,10 @@ func TestConnectionPool_GetConnection_Connecting(t *testing.T) {
 		require.NoError(t, err)
 
 		// Set status to connecting
-		pool.mu.Lock()
-		conn := pool.connections["test-server"]
+		conn, _ := pool.connections.Get("test-server")
 		conn.mu.Lock()
 		conn.Status = StatusConnectionConnecting
 		conn.mu.Unlock()
-		pool.mu.Unlock()
 
 		// Start GetConnection in a goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -588,13 +580,11 @@ func TestConnectionPool_GetConnection_Connecting(t *testing.T) {
 
 		// Simulate connection completing
 		time.Sleep(100 * time.Millisecond)
-		pool.mu.Lock()
-		conn = pool.connections["test-server"]
+		conn, _ = pool.connections.Get("test-server")
 		conn.mu.Lock()
 		conn.Status = StatusConnectionConnected
 		conn.Transport = NewMockMCPTransport()
 		conn.mu.Unlock()
-		pool.mu.Unlock()
 
 		<-done
 		assert.NoError(t, getErr)

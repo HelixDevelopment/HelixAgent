@@ -8,21 +8,28 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
-// Broker implements the messaging.MessageBroker interface for RabbitMQ
+// Broker implements the messaging.MessageBroker interface for RabbitMQ.
+//
+// Concurrency model (CONST-029): subscriptions / exchanges / queues
+// are safe.Store containers. mu survives as a Pattern Zeta lock to
+// serialise conn + pubChannel mutations across Connect /
+// restoreChannels / Close / Subscribe / IsConnected / Publish.
 type Broker struct {
 	config        *Config
 	logger        *zap.Logger
 	conn          *Connection
 	pubChannel    *amqp.Channel
 	mu            sync.RWMutex
-	subscriptions map[string]*rabbitSubscription
-	exchanges     map[string]bool
-	queues        map[string]bool
+	subscriptions *safe.Store[string, *rabbitSubscription]
+	exchanges     *safe.Store[string, bool]
+	queues        *safe.Store[string, bool]
 	metrics       *messaging.BrokerMetrics
 	closed        atomic.Bool
 	subCounter    atomic.Int64
@@ -81,9 +88,9 @@ func NewBroker(config *Config, logger *zap.Logger) *Broker {
 	return &Broker{
 		config:        config,
 		logger:        logger,
-		subscriptions: make(map[string]*rabbitSubscription),
-		exchanges:     make(map[string]bool),
-		queues:        make(map[string]bool),
+		subscriptions: safe.NewStore[string, *rabbitSubscription](),
+		exchanges:     safe.NewStore[string, bool](),
+		queues:        safe.NewStore[string, bool](),
 		metrics:       messaging.NewBrokerMetrics(),
 	}
 }
@@ -205,11 +212,12 @@ func (b *Broker) restoreChannels() {
 	}
 
 	// Restore subscriptions
-	for _, sub := range b.subscriptions {
+	b.subscriptions.Range(func(_ string, sub *rabbitSubscription) bool {
 		if sub.active.Load() {
 			go b.restoreSubscription(sub)
 		}
-	}
+		return true
+	})
 }
 
 // restoreSubscription recreates a subscription after reconnection
@@ -280,7 +288,7 @@ func (b *Broker) Close(ctx context.Context) error {
 	defer b.mu.Unlock()
 
 	// Cancel all subscriptions
-	for _, sub := range b.subscriptions {
+	b.subscriptions.Range(func(_ string, sub *rabbitSubscription) bool {
 		// Only close if not already unsubscribed (Unsubscribe closes cancelCh)
 		if sub.active.Swap(false) {
 			close(sub.cancelCh)
@@ -288,7 +296,8 @@ func (b *Broker) Close(ctx context.Context) error {
 		if sub.channel != nil {
 			_ = sub.channel.Close()
 		}
-	}
+		return true
+	})
 
 	// Close publisher channel
 	if b.pubChannel != nil {
@@ -540,7 +549,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 	}
 	sub.active.Store(true)
 
-	b.subscriptions[topic] = sub
+	b.subscriptions.Put(topic, sub)
 	b.metrics.RecordSubscription()
 
 	// Start message consumer
@@ -619,7 +628,7 @@ func (b *Broker) consumeMessages(ctx context.Context, sub *rabbitSubscription, d
 
 // ensureExchange ensures an exchange exists
 func (b *Broker) ensureExchange(name string) error {
-	if b.exchanges[name] {
+	if v, _ := b.exchanges.Get(name); v {
 		return nil
 	}
 
@@ -635,7 +644,7 @@ func (b *Broker) ensureExchange(name string) error {
 		return fmt.Errorf("failed to declare exchange %s: %w", name, err)
 	}
 
-	b.exchanges[name] = true
+	b.exchanges.Put(name, true)
 	return nil
 }
 

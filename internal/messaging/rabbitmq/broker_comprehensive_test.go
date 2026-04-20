@@ -741,14 +741,14 @@ func TestBroker_ExchangeTracking(t *testing.T) {
 	broker := NewBroker(nil, nil)
 
 	assert.NotNil(t, broker.exchanges)
-	assert.Empty(t, broker.exchanges)
+	assert.Equal(t, 0, broker.exchanges.Len())
 }
 
 func TestBroker_QueueTracking(t *testing.T) {
 	broker := NewBroker(nil, nil)
 
 	assert.NotNil(t, broker.queues)
-	assert.Empty(t, broker.queues)
+	assert.Equal(t, 0, broker.queues.Len())
 }
 
 // ============================================================================

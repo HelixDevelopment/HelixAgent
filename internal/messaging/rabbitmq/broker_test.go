@@ -176,7 +176,7 @@ func TestBroker_Close_WithSubscriptions(t *testing.T) {
 		cancelCh: make(chan struct{}),
 	}
 	sub.active.Store(true)
-	broker.subscriptions["test.topic"] = sub
+	broker.subscriptions.Put("test.topic", sub)
 
 	ctx := context.Background()
 	err := broker.Close(ctx)
@@ -1062,9 +1062,9 @@ func TestNewBroker_InitializesInternalMaps(t *testing.T) {
 	assert.NotNil(t, broker.exchanges)
 	assert.NotNil(t, broker.queues)
 	assert.NotNil(t, broker.metrics)
-	assert.Empty(t, broker.subscriptions)
-	assert.Empty(t, broker.exchanges)
-	assert.Empty(t, broker.queues)
+	assert.Equal(t, 0, broker.subscriptions.Len())
+	assert.Equal(t, 0, broker.exchanges.Len())
+	assert.Equal(t, 0, broker.queues.Len())
 }
 
 // ============================================================================
@@ -1527,19 +1527,20 @@ func TestBroker_Close_WithMultipleSubscriptions(t *testing.T) {
 			cancelCh: make(chan struct{}),
 		}
 		sub.active.Store(true)
-		broker.subscriptions["topic."+string(rune('0'+i))] = sub
+		broker.subscriptions.Put("topic."+string(rune('0'+i)), sub)
 	}
 
-	assert.Len(t, broker.subscriptions, 5)
+	assert.Equal(t, 5, broker.subscriptions.Len())
 
 	ctx := context.Background()
 	err := broker.Close(ctx)
 	assert.NoError(t, err)
 
 	// All subscriptions should be deactivated
-	for _, sub := range broker.subscriptions {
+	broker.subscriptions.Range(func(_ string, sub *rabbitSubscription) bool {
 		assert.False(t, sub.active.Load())
-	}
+		return true
+	})
 }
 
 func TestConnection_MultipleCallbacks(t *testing.T) {

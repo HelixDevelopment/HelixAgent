@@ -10,21 +10,27 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 )
 
 // SyncManager manages distributed state synchronization.
+//
+// Concurrency model (CONST-029): locks and crdts → 2× *safe.Store.
+// The former SyncManager.mu is dropped — each access site is a
+// single Put/Get/Delete or Range iteration. Per-lock state (held /
+// renewStop) remains guarded by DistributedLock.mu.
 type SyncManager struct {
 	db     *sql.DB
 	logger *log.Logger
 	nodeID string
 
 	// Distributed locks
-	locks map[string]*DistributedLock
-	mu    sync.RWMutex
+	locks *safe.Store[string, *DistributedLock]
 
 	// CRDTs
-	crdts map[string]CRDT
+	crdts *safe.Store[string, CRDT]
 
 	// Control
 	ctx    context.Context
@@ -67,8 +73,8 @@ func NewSyncManager(db *sql.DB, logger *log.Logger, nodeID string) *SyncManager 
 		db:     db,
 		logger: logger,
 		nodeID: nodeID,
-		locks:  make(map[string]*DistributedLock),
-		crdts:  make(map[string]CRDT),
+		locks:  safe.NewStore[string, *DistributedLock](),
+		crdts:  safe.NewStore[string, CRDT](),
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -130,9 +136,7 @@ func (sm *SyncManager) AcquireLock(
 	}
 
 	// Store in local registry
-	sm.mu.Lock()
-	sm.locks[name] = lock
-	sm.mu.Unlock()
+	sm.locks.Put(name, lock)
 
 	// Start renewal goroutine
 	go sm.renewLock(lock)
@@ -166,9 +170,7 @@ func (sm *SyncManager) ReleaseLock(lock *DistributedLock) error {
 	)
 
 	// Remove from local registry
-	sm.mu.Lock()
-	delete(sm.locks, lock.Name)
-	sm.mu.Unlock()
+	sm.locks.Delete(lock.Name)
 
 	sm.logger.Printf("Released lock %s", lock.Name)
 
@@ -177,10 +179,7 @@ func (sm *SyncManager) ReleaseLock(lock *DistributedLock) error {
 
 // IsLocked checks if a lock is held.
 func (sm *SyncManager) IsLocked(name string) bool {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
-	lock, ok := sm.locks[name]
+	lock, ok := sm.locks.Get(name)
 	if !ok {
 		return false
 	}
@@ -248,13 +247,10 @@ func (sm *SyncManager) ListLocks(ctx context.Context) ([]*LockInfo, error) {
 func (sm *SyncManager) GetCRDT(ctx context.Context, crdtType, key string) (CRDT, error) {
 	// Check local cache
 	cacheKey := fmt.Sprintf("%s:%s", crdtType, key)
-	sm.mu.RLock()
-	crdt, ok := sm.crdts[cacheKey]
-	sm.mu.RUnlock()
-
-	if ok {
+	if crdt, ok := sm.crdts.Get(cacheKey); ok {
 		return crdt, nil
 	}
+	var crdt CRDT
 
 	// Load from database
 	var stateJSON, vectorClockJSON []byte
@@ -288,9 +284,7 @@ func (sm *SyncManager) GetCRDT(ctx context.Context, crdtType, key string) (CRDT,
 	}
 
 	// Cache locally
-	sm.mu.Lock()
-	sm.crdts[cacheKey] = crdt
-	sm.mu.Unlock()
+	sm.crdts.Put(cacheKey, crdt)
 
 	return crdt, nil
 }
@@ -332,9 +326,7 @@ func (sm *SyncManager) MergeCRDTs(ctx context.Context, local, remote CRDT) (CRDT
 
 	// Update cache
 	cacheKey := fmt.Sprintf("%s:%s", merged.Type(), merged.Key())
-	sm.mu.Lock()
-	sm.crdts[cacheKey] = merged
-	sm.mu.Unlock()
+	sm.crdts.Put(cacheKey, merged)
 
 	return merged, nil
 }
@@ -344,12 +336,11 @@ func (sm *SyncManager) Close() error {
 	sm.cancel()
 
 	// Release all held locks
-	sm.mu.RLock()
-	locks := make([]*DistributedLock, 0, len(sm.locks))
-	for _, lock := range sm.locks {
+	locks := make([]*DistributedLock, 0, sm.locks.Len())
+	sm.locks.Range(func(_ string, lock *DistributedLock) bool {
 		locks = append(locks, lock)
-	}
-	sm.mu.RUnlock()
+		return true
+	})
 
 	for _, lock := range locks {
 		sm.ReleaseLock(lock)

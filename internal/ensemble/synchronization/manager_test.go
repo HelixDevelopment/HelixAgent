@@ -64,19 +64,17 @@ func SKIP_TestSyncManager_IsLocked_NoDB(t *testing.T) {
 	defer sm.Close()
 
 	// Without DB, AcquireLock will fail, so we manually add a lock
-	sm.mu.Lock()
-	sm.locks["test-lock"] = &DistributedLock{
+	sm.locks.Put("test-lock", &DistributedLock{
 		Name:      "test-lock",
 		held:      true,
 		renewStop: make(chan struct{}),
-	}
-	sm.mu.Unlock()
+	})
 
 	assert.True(t, sm.IsLocked("test-lock"))
 	assert.False(t, sm.IsLocked("non-existent"))
 
 	// Clean up manually to avoid panic on close
-	delete(sm.locks, "test-lock")
+	sm.locks.Delete("test-lock")
 }
 
 func SKIP_TestSyncManager_IsLocked_NotHeld(t *testing.T) {
@@ -84,13 +82,11 @@ func SKIP_TestSyncManager_IsLocked_NotHeld(t *testing.T) {
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
 
-	sm.mu.Lock()
-	sm.locks["test-lock"] = &DistributedLock{
+	sm.locks.Put("test-lock", &DistributedLock{
 		Name:      "test-lock",
 		held:      false,
 		renewStop: make(chan struct{}),
-	}
-	sm.mu.Unlock()
+	})
 
 	assert.False(t, sm.IsLocked("test-lock"))
 }
@@ -145,18 +141,14 @@ func SKIP_TestSyncManager_ReleaseLock_Manual(t *testing.T) {
 		renewStop: make(chan struct{}),
 	}
 
-	sm.mu.Lock()
-	sm.locks["test-lock"] = lock
-	sm.mu.Unlock()
+	sm.locks.Put("test-lock", lock)
 
 	err := sm.ReleaseLock(lock)
 	assert.NoError(t, err)
 	assert.False(t, lock.held)
 
 	// Verify lock was removed from map
-	sm.mu.RLock()
-	_, exists := sm.locks["test-lock"]
-	sm.mu.RUnlock()
+	_, exists := sm.locks.Get("test-lock")
 	assert.False(t, exists)
 }
 
@@ -194,28 +186,25 @@ func SKIP_TestSyncManager_Close(t *testing.T) {
 	sm := NewSyncManager(nil, logger, "test-node")
 
 	// Add some locks
-	sm.mu.Lock()
-	sm.locks["lock-1"] = &DistributedLock{
+	sm.locks.Put("lock-1", &DistributedLock{
 		Name:      "lock-1",
 		held:      true,
 		renewStop: make(chan struct{}),
-	}
-	sm.locks["lock-2"] = &DistributedLock{
+	})
+	sm.locks.Put("lock-2", &DistributedLock{
 		Name:      "lock-2",
 		held:      true,
 		renewStop: make(chan struct{}),
-	}
-	sm.mu.Unlock()
+	})
 
 	err := sm.Close()
 	assert.NoError(t, err)
 
 	// Verify all locks were released
-	sm.mu.RLock()
-	for _, lock := range sm.locks {
+	sm.locks.Range(func(_ string, lock *DistributedLock) bool {
 		assert.False(t, lock.held)
-	}
-	sm.mu.RUnlock()
+		return true
+	})
 }
 
 // GCounter Tests

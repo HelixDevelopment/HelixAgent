@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ScoringResult represents the scoring result for a model
@@ -49,11 +51,14 @@ type ModelWithScore struct {
 	ScoreSuffix  string  `json:"score_suffix"`
 }
 
-// ScoringService manages model scoring operations
+// ScoringService manages model scoring operations.
+//
+// Concurrency model (CONST-029): cache is a *safe.Store; Get/Put are
+// atomic. No cross-key invariants — TTL check + return is a single
+// read against a committed pointer.
 type ScoringService struct {
 	weights  *ScoreWeights
-	cache    map[string]*ScoringResult
-	cacheMu  sync.RWMutex
+	cache    *safe.Store[string, *ScoringResult]
 	cacheTTL time.Duration
 }
 
@@ -77,7 +82,7 @@ func NewScoringService(cfg *Config) (*ScoringService, error) {
 
 	return &ScoringService{
 		weights:  weights,
-		cache:    make(map[string]*ScoringResult),
+		cache:    safe.NewStore[string, *ScoringResult](),
 		cacheTTL: cacheTTL,
 	}, nil
 }
@@ -85,14 +90,11 @@ func NewScoringService(cfg *Config) (*ScoringService, error) {
 // CalculateScore calculates comprehensive score for a model
 func (s *ScoringService) CalculateScore(ctx context.Context, modelID string) (*ScoringResult, error) {
 	// Check cache first
-	s.cacheMu.RLock()
-	if cached, ok := s.cache[modelID]; ok {
+	if cached, ok := s.cache.Get(modelID); ok {
 		if time.Since(cached.CalculatedAt) < s.cacheTTL {
-			s.cacheMu.RUnlock()
 			return cached, nil
 		}
 	}
-	s.cacheMu.RUnlock()
 
 	// Calculate basic score
 	return s.calculateBasicScore(ctx, modelID)
@@ -128,9 +130,7 @@ func (s *ScoringService) calculateBasicScore(ctx context.Context, modelID string
 	}
 
 	// Update cache
-	s.cacheMu.Lock()
-	s.cache[modelID] = result
-	s.cacheMu.Unlock()
+	s.cache.Put(modelID, result)
 
 	return result, nil
 }
@@ -238,13 +238,11 @@ func (s *ScoringService) BatchCalculateScores(ctx context.Context, modelIDs []st
 
 // GetTopModels returns top scoring models
 func (s *ScoringService) GetTopModels(ctx context.Context, limit int) ([]*ModelWithScore, error) {
-	s.cacheMu.RLock()
-	defer s.cacheMu.RUnlock()
-
-	models := make([]*ScoringResult, 0, len(s.cache))
-	for _, result := range s.cache {
+	models := make([]*ScoringResult, 0, s.cache.Len())
+	s.cache.Range(func(_ string, result *ScoringResult) bool {
 		models = append(models, result)
-	}
+		return true
+	})
 
 	// Sort by score descending
 	sort.Slice(models, func(i, j int) bool {
@@ -275,15 +273,13 @@ func (s *ScoringService) GetTopModels(ctx context.Context, limit int) ([]*ModelW
 
 // GetModelsByScoreRange returns models within a score range
 func (s *ScoringService) GetModelsByScoreRange(ctx context.Context, minScore, maxScore float64, limit int) ([]*ModelWithScore, error) {
-	s.cacheMu.RLock()
-	defer s.cacheMu.RUnlock()
-
 	filtered := make([]*ScoringResult, 0)
-	for _, result := range s.cache {
+	s.cache.Range(func(_ string, result *ScoringResult) bool {
 		if result.OverallScore >= minScore && result.OverallScore <= maxScore {
 			filtered = append(filtered, result)
 		}
-	}
+		return true
+	})
 
 	// Sort by score descending
 	sort.Slice(filtered, func(i, j int) bool {
@@ -325,9 +321,7 @@ func (s *ScoringService) UpdateWeights(weights *ScoreWeights) error {
 	s.weights = weights
 
 	// Clear cache when weights change
-	s.cacheMu.Lock()
-	s.cache = make(map[string]*ScoringResult)
-	s.cacheMu.Unlock()
+	s.cache.Clear()
 
 	return nil
 }
@@ -349,16 +343,12 @@ func (s *ScoringService) GetModelNameWithScore(ctx context.Context, modelID, mod
 
 // InvalidateCache invalidates the score cache for a model
 func (s *ScoringService) InvalidateCache(modelID string) {
-	s.cacheMu.Lock()
-	delete(s.cache, modelID)
-	s.cacheMu.Unlock()
+	s.cache.Delete(modelID)
 }
 
 // InvalidateAllCache clears all cached scores
 func (s *ScoringService) InvalidateAllCache() {
-	s.cacheMu.Lock()
-	s.cache = make(map[string]*ScoringResult)
-	s.cacheMu.Unlock()
+	s.cache.Clear()
 }
 
 // DefaultWeights returns the default scoring weights
@@ -590,11 +580,7 @@ func (s *ScoringService) calculateRecencyScore(modelID string) float64 { //nolin
 
 // GetModelScore retrieves a cached score or calculates a new one
 func (s *ScoringService) GetModelScore(ctx context.Context, modelID string) (*ScoringResult, error) {
-	s.cacheMu.RLock()
-	result, ok := s.cache[modelID]
-	s.cacheMu.RUnlock()
-
-	if ok {
+	if result, ok := s.cache.Get(modelID); ok {
 		return result, nil
 	}
 
@@ -609,34 +595,23 @@ func (s *ScoringService) ClearCache() {
 
 // GetAllScores returns all cached scoring results
 func (s *ScoringService) GetAllScores() []*ScoringResult {
-	s.cacheMu.RLock()
-	defer s.cacheMu.RUnlock()
-
-	results := make([]*ScoringResult, 0, len(s.cache))
-	for _, result := range s.cache {
+	results := make([]*ScoringResult, 0, s.cache.Len())
+	s.cache.Range(func(_ string, result *ScoringResult) bool {
 		results = append(results, result)
-	}
+		return true
+	})
 	return results
 }
 
 // CacheSize returns the number of items in the cache
 func (s *ScoringService) CacheSize() int {
-	s.cacheMu.RLock()
-	defer s.cacheMu.RUnlock()
-	return len(s.cache)
+	return s.cache.Len()
 }
 
 // GetAvailableModels returns all model IDs that have been scored (dynamically discovered)
 // DYNAMIC: Returns models from cache - no hardcoded list
 func (s *ScoringService) GetAvailableModels() []string {
-	s.cacheMu.RLock()
-	defer s.cacheMu.RUnlock()
-
-	models := make([]string, 0, len(s.cache))
-	for modelID := range s.cache {
-		models = append(models, modelID)
-	}
-	return models
+	return s.cache.Keys()
 }
 
 // computeWeightedScore calculates a weighted score from components
@@ -740,9 +715,7 @@ func (s *ScoringService) ApplyResponseQualityPenalty(ctx context.Context, modelI
 	}
 
 	// Update cache with penalized score
-	s.cacheMu.Lock()
-	s.cache[modelID] = penalizedResult
-	s.cacheMu.Unlock()
+	s.cache.Put(modelID, penalizedResult)
 
 	return penalizedResult, nil
 }

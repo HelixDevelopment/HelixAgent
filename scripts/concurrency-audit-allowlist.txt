@@ -86,8 +86,7 @@ internal/plugins/reload.go:17:Reloader
 internal/rag/advanced.go:138:AdvancedRAG
 internal/search/indexer/indexer.go:46:CodeIndexer
 internal/security/redteam.go:16:DeepTeamRedTeamer
-internal/security/secure_fix_agent.go:145:SecureFixAgent
-internal/security/secure_fix_agent.go:734:RateLimitingRing
+internal/security/secure_fix_agent.go:727:RateLimitingRing
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient

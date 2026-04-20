@@ -843,7 +843,7 @@ func TestSecureFixAgent_RegisterScanner_Multiple(t *testing.T) {
 	agent.RegisterScanner(scanner1)
 	agent.RegisterScanner(scanner2)
 
-	assert.Len(t, agent.scanners, 2)
+	assert.Equal(t, 2, agent.scanners.Len())
 }
 
 func TestSecureFixAgent_RegisterScanner_Concurrent(t *testing.T) {
@@ -863,7 +863,7 @@ func TestSecureFixAgent_RegisterScanner_Concurrent(t *testing.T) {
 	}
 	wg.Wait()
 
-	assert.Equal(t, 10, len(agent.scanners))
+	assert.Equal(t, 10, agent.scanners.Len())
 }
 
 // =============================================================================

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -141,15 +142,19 @@ type FixValidator interface {
 	ValidateFix(ctx context.Context, vuln *Vulnerability, fix *SecurityFix) (bool, error)
 }
 
-// SecureFixAgent implements autonomous security hardening
+// SecureFixAgent implements autonomous security hardening.
+//
+// Concurrency model (CONST-029): scanners is a safe.Slice (append-
+// only from RegisterScanner, snapshotted for each scan pass).
+// vulnerabilities and fixes are safe.Store containers — atomic
+// per-key writes during the detect/repair loop. No mutex survives.
 type SecureFixAgent struct {
 	config          SecureFixAgentConfig
-	scanners        []VulnerabilityScanner
+	scanners        *safe.Slice[VulnerabilityScanner]
 	generator       FixGenerator
 	validator       FixValidator
-	vulnerabilities map[string]*Vulnerability
-	fixes           map[string]*SecurityFix
-	mu              sync.RWMutex
+	vulnerabilities *safe.Store[string, *Vulnerability]
+	fixes           *safe.Store[string, *SecurityFix]
 	logger          *logrus.Logger
 }
 
@@ -162,20 +167,18 @@ func NewSecureFixAgent(config SecureFixAgentConfig, generator FixGenerator, vali
 
 	return &SecureFixAgent{
 		config:          config,
-		scanners:        make([]VulnerabilityScanner, 0),
+		scanners:        safe.NewSlice[VulnerabilityScanner](),
 		generator:       generator,
 		validator:       validator,
-		vulnerabilities: make(map[string]*Vulnerability),
-		fixes:           make(map[string]*SecurityFix),
+		vulnerabilities: safe.NewStore[string, *Vulnerability](),
+		fixes:           safe.NewStore[string, *SecurityFix](),
 		logger:          logger,
 	}
 }
 
 // RegisterScanner registers a vulnerability scanner
 func (a *SecureFixAgent) RegisterScanner(scanner VulnerabilityScanner) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.scanners = append(a.scanners, scanner)
+	a.scanners.Append(scanner)
 }
 
 // DetectRepairValidate implements the full security loop
@@ -191,7 +194,7 @@ func (a *SecureFixAgent) DetectRepairValidate(ctx context.Context, code string, 
 	}
 
 	// 1. DETECT - Scan for vulnerabilities
-	for _, scanner := range a.scanners {
+	for _, scanner := range a.scanners.Snapshot() {
 		vulns, err := scanner.Scan(ctx, code, language)
 		if err != nil {
 			a.logger.Warnf("Scanner %s failed: %v", scanner.Name(), err)
@@ -201,9 +204,7 @@ func (a *SecureFixAgent) DetectRepairValidate(ctx context.Context, code string, 
 		for _, vuln := range vulns {
 			if a.shouldReport(vuln) {
 				result.Vulnerabilities = append(result.Vulnerabilities, vuln)
-				a.mu.Lock()
-				a.vulnerabilities[vuln.ID] = vuln
-				a.mu.Unlock()
+				a.vulnerabilities.Put(vuln.ID, vuln)
 			}
 		}
 	}
@@ -231,9 +232,7 @@ func (a *SecureFixAgent) DetectRepairValidate(ctx context.Context, code string, 
 
 			if fix.Validated {
 				result.Fixes = append(result.Fixes, fix)
-				a.mu.Lock()
-				a.fixes[vuln.ID] = fix
-				a.mu.Unlock()
+				a.fixes.Put(vuln.ID, fix)
 			}
 		}
 	}
@@ -274,18 +273,12 @@ func (a *SecureFixAgent) ApplyFix(code string, fix *SecurityFix) (string, error)
 
 // GetVulnerability retrieves a vulnerability by ID
 func (a *SecureFixAgent) GetVulnerability(id string) (*Vulnerability, bool) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	vuln, exists := a.vulnerabilities[id]
-	return vuln, exists
+	return a.vulnerabilities.Get(id)
 }
 
 // GetFix retrieves a fix by vulnerability ID
 func (a *SecureFixAgent) GetFix(vulnID string) (*SecurityFix, bool) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	fix, exists := a.fixes[vulnID]
-	return fix, exists
+	return a.fixes.Get(vulnID)
 }
 
 // SecurityResult holds the result of security operations

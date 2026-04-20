@@ -15,7 +15,6 @@ internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
-internal/optimization/optimizer.go:23:Service
 internal/planning/hiplan.go:145:HiPlan
 internal/planning/mcts.go:27:MCTSNode
 internal/planning/tree_of_thoughts.go:110:TreeOfThoughts

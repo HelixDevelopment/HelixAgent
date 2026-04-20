@@ -5,9 +5,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/optimization/gptcache"
 	"dev.helix.agent/internal/optimization/guidance"
@@ -34,11 +35,18 @@ type Service struct {
 	guidanceClient   *guidance.Client
 	lmqlClient       *lmql.Client
 
-	// Service availability tracking
-	mu               sync.RWMutex
-	serviceStatus    map[string]bool
-	lastHealthCheck  map[string]time.Time
-	unavailableUntil map[string]time.Time
+	// Service availability tracking.
+	//
+	// Concurrency model (CONST-029): three maps migrate to *safe.Store.
+	// mu dropped — CheckServiceAvailability's compound "check
+	// lastHealthCheck → probe availability → update both maps" is
+	// acceptable without a coordinating mutex: stale reads between
+	// the two stores are at worst a second health-check call and
+	// cannot produce inconsistent state (each Put is atomic, and
+	// readers tolerate the ~millisecond skew).
+	serviceStatus    *safe.Store[string, bool]
+	lastHealthCheck  *safe.Store[string, time.Time]
+	unavailableUntil *safe.Store[string, time.Time]
 
 	// Metrics
 	cacheHits   int64
@@ -57,9 +65,9 @@ func NewService(config *Config) (*Service, error) {
 
 	s := &Service{
 		config:           config,
-		serviceStatus:    make(map[string]bool),
-		lastHealthCheck:  make(map[string]time.Time),
-		unavailableUntil: make(map[string]time.Time),
+		serviceStatus:    safe.NewStore[string, bool](),
+		lastHealthCheck:  safe.NewStore[string, time.Time](),
+		unavailableUntil: safe.NewStore[string, time.Time](),
 	}
 
 	// Initialize native Go components
@@ -368,32 +376,21 @@ func (s *Service) GetCacheStats() map[string]interface{} {
 // GetServiceStatus returns the status of all external services.
 func (s *Service) GetServiceStatus(ctx context.Context) map[string]bool {
 	s.checkServiceHealth(ctx)
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	status := make(map[string]bool)
-	for k, v := range s.serviceStatus {
-		status[k] = v
-	}
-	return status
+	return s.serviceStatus.Snapshot()
 }
 
 // isServiceAvailable checks if a service is available.
 func (s *Service) isServiceAvailable(service string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// Check if service is marked unavailable
-	if until, ok := s.unavailableUntil[service]; ok {
+	if until, ok := s.unavailableUntil.Get(service); ok {
 		if time.Now().Before(until) {
 			return false
 		}
 	}
 
 	// Check cached status
-	if status, ok := s.serviceStatus[service]; ok {
-		if lastCheck, ok := s.lastHealthCheck[service]; ok {
+	if status, ok := s.serviceStatus.Get(service); ok {
+		if lastCheck, ok := s.lastHealthCheck.Get(service); ok {
 			if time.Since(lastCheck) < s.config.Fallback.HealthCheckInterval {
 				return status
 			}
@@ -405,43 +402,40 @@ func (s *Service) isServiceAvailable(service string) bool {
 
 // checkServiceHealth checks the health of all services.
 func (s *Service) checkServiceHealth(ctx context.Context) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	now := time.Now()
 	checkInterval := s.config.Fallback.HealthCheckInterval
 
 	// Helper function to check if health check is needed
 	needsCheck := func(service string) bool {
-		if lastCheck, ok := s.lastHealthCheck[service]; ok {
+		if lastCheck, ok := s.lastHealthCheck.Get(service); ok {
 			return time.Since(lastCheck) >= checkInterval
 		}
 		return true
 	}
 
 	if s.sglangClient != nil && needsCheck("sglang") {
-		s.serviceStatus["sglang"] = s.sglangClient.IsAvailable(ctx)
-		s.lastHealthCheck["sglang"] = now
+		s.serviceStatus.Put("sglang", s.sglangClient.IsAvailable(ctx))
+		s.lastHealthCheck.Put("sglang", now)
 	}
 
 	if s.llamaindexClient != nil && needsCheck("llamaindex") {
-		s.serviceStatus["llamaindex"] = s.llamaindexClient.IsAvailable(ctx)
-		s.lastHealthCheck["llamaindex"] = now
+		s.serviceStatus.Put("llamaindex", s.llamaindexClient.IsAvailable(ctx))
+		s.lastHealthCheck.Put("llamaindex", now)
 	}
 
 	if s.langchainClient != nil && needsCheck("langchain") {
-		s.serviceStatus["langchain"] = s.langchainClient.IsAvailable(ctx)
-		s.lastHealthCheck["langchain"] = now
+		s.serviceStatus.Put("langchain", s.langchainClient.IsAvailable(ctx))
+		s.lastHealthCheck.Put("langchain", now)
 	}
 
 	if s.guidanceClient != nil && needsCheck("guidance") {
-		s.serviceStatus["guidance"] = s.guidanceClient.IsAvailable(ctx)
-		s.lastHealthCheck["guidance"] = now
+		s.serviceStatus.Put("guidance", s.guidanceClient.IsAvailable(ctx))
+		s.lastHealthCheck.Put("guidance", now)
 	}
 
 	if s.lmqlClient != nil && needsCheck("lmql") {
-		s.serviceStatus["lmql"] = s.lmqlClient.IsAvailable(ctx)
-		s.lastHealthCheck["lmql"] = now
+		s.serviceStatus.Put("lmql", s.lmqlClient.IsAvailable(ctx))
+		s.lastHealthCheck.Put("lmql", now)
 	}
 }
 
@@ -449,10 +443,8 @@ func (s *Service) checkServiceHealth(ctx context.Context) {
 //
 //nolint:unused
 func (s *Service) markServiceUnavailable(service string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.serviceStatus[service] = false
-	s.unavailableUntil[service] = time.Now().Add(s.config.Fallback.RetryUnavailableAfter)
+	s.serviceStatus.Put(service, false)
+	s.unavailableUntil.Put(service, time.Now().Add(s.config.Fallback.RetryUnavailableAfter))
 }
 
 // isComplexTask heuristically determines if a task is complex.

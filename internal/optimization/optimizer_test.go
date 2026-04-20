@@ -595,10 +595,8 @@ func TestServiceMarkServiceUnavailable(t *testing.T) {
 
 	svc.markServiceUnavailable("test-service")
 
-	svc.mu.RLock()
-	status := svc.serviceStatus["test-service"]
-	until := svc.unavailableUntil["test-service"]
-	svc.mu.RUnlock()
+	status, _ := svc.serviceStatus.Get("test-service")
+	until, _ := svc.unavailableUntil.Get("test-service")
 
 	assert.False(t, status)
 	assert.True(t, until.After(time.Now()))
@@ -633,10 +631,8 @@ func TestServiceIsServiceAvailable_CachedStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set cached status
-	svc.mu.Lock()
-	svc.serviceStatus["cached-service"] = true
-	svc.lastHealthCheck["cached-service"] = time.Now()
-	svc.mu.Unlock()
+	svc.serviceStatus.Put("cached-service", true)
+	svc.lastHealthCheck.Put("cached-service", time.Now())
 
 	// Should return cached status
 	assert.True(t, svc.isServiceAvailable("cached-service"))
@@ -1218,14 +1214,12 @@ func TestServiceChainedOptimization(t *testing.T) {
 	require.NoError(t, err)
 
 	// Mark services as available
-	svc.mu.Lock()
-	svc.serviceStatus["llamaindex"] = true
-	svc.serviceStatus["langchain"] = true
-	svc.serviceStatus["sglang"] = true
-	svc.lastHealthCheck["llamaindex"] = time.Now()
-	svc.lastHealthCheck["langchain"] = time.Now()
-	svc.lastHealthCheck["sglang"] = time.Now()
-	svc.mu.Unlock()
+	svc.serviceStatus.Put("llamaindex", true)
+	svc.serviceStatus.Put("langchain", true)
+	svc.serviceStatus.Put("sglang", true)
+	svc.lastHealthCheck.Put("llamaindex", time.Now())
+	svc.lastHealthCheck.Put("langchain", time.Now())
+	svc.lastHealthCheck.Put("sglang", time.Now())
 
 	ctx := context.Background()
 

@@ -5,16 +5,22 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 )
 
 // Topic is an in-memory topic implementation for event streaming.
+//
+// Concurrency model (CONST-029): partitions is set at construction
+// and never mutated (Pattern Alpha). subscribers is a *safe.Slice —
+// Subscribe appends, Unsubscribe finds-and-deletes via predicate,
+// and Publish iterates via Range. No mu survives.
 type Topic struct {
 	name        string
 	partitions  []*Partition
-	subscribers []topicSubscriber
+	subscribers *safe.Slice[topicSubscriber]
 	retention   time.Duration
-	mu          sync.RWMutex
 }
 
 // topicSubscriber holds a topic subscriber.
@@ -34,7 +40,7 @@ func NewTopic(name string, partitionCount int, retention time.Duration) *Topic {
 	return &Topic{
 		name:        name,
 		partitions:  partitions,
-		subscribers: make([]topicSubscriber, 0),
+		subscribers: safe.NewSlice[topicSubscriber](),
 		retention:   retention,
 	}
 }
@@ -51,9 +57,6 @@ func (t *Topic) PartitionCount() int {
 
 // Publish publishes a message to the topic.
 func (t *Topic) Publish(msg *messaging.Message) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	// Determine partition based on key or round-robin
 	partitionID := t.selectPartition(msg)
 	partition := t.partitions[partitionID]
@@ -67,7 +70,7 @@ func (t *Topic) Publish(msg *messaging.Message) error {
 	msg.Offset = offset
 
 	// Notify subscribers
-	for _, sub := range t.subscribers {
+	t.subscribers.Range(func(_ int, sub topicSubscriber) bool {
 		if sub.active && sub.ch != nil {
 			event, _ := messaging.EventFromMessage(msg) //nolint:errcheck
 			select {
@@ -76,7 +79,8 @@ func (t *Topic) Publish(msg *messaging.Message) error {
 				// Channel full, skip
 			}
 		}
-	}
+		return true
+	})
 
 	return nil
 }
@@ -104,11 +108,8 @@ func (t *Topic) selectPartition(msg *messaging.Message) int {
 
 // Subscribe subscribes to events from the topic.
 func (t *Topic) Subscribe(handler messaging.EventHandler, groupID string) chan *messaging.Event {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	ch := make(chan *messaging.Event, 1000)
-	t.subscribers = append(t.subscribers, topicSubscriber{
+	t.subscribers.Append(topicSubscriber{
 		handler: handler,
 		groupID: groupID,
 		active:  true,
@@ -120,24 +121,16 @@ func (t *Topic) Subscribe(handler messaging.EventHandler, groupID string) chan *
 
 // Unsubscribe removes a subscriber.
 func (t *Topic) Unsubscribe(groupID string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for i, sub := range t.subscribers {
-		if sub.groupID == groupID {
-			sub.active = false //nolint:govet
-			close(sub.ch)
-			t.subscribers = append(t.subscribers[:i], t.subscribers[i+1:]...)
-			return
-		}
+	removed, ok := t.subscribers.Delete(func(sub topicSubscriber) bool {
+		return sub.groupID == groupID
+	})
+	if ok {
+		close(removed.ch)
 	}
 }
 
 // Read reads messages from a partition starting at an offset.
 func (t *Topic) Read(partitionID int, offset int64, maxCount int) ([]*messaging.Message, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	if partitionID < 0 || partitionID >= len(t.partitions) {
 		return nil, messaging.NewBrokerError(messaging.ErrCodeInvalidConfig, "invalid partition", nil)
 	}
@@ -147,9 +140,6 @@ func (t *Topic) Read(partitionID int, offset int64, maxCount int) ([]*messaging.
 
 // GetHighWatermark returns the high watermark for a partition.
 func (t *Topic) GetHighWatermark(partitionID int) int64 {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	if partitionID < 0 || partitionID >= len(t.partitions) {
 		return 0
 	}
@@ -159,9 +149,6 @@ func (t *Topic) GetHighWatermark(partitionID int) int64 {
 
 // GetLowWatermark returns the low watermark for a partition.
 func (t *Topic) GetLowWatermark(partitionID int) int64 {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
 	if partitionID < 0 || partitionID >= len(t.partitions) {
 		return 0
 	}
@@ -337,11 +324,12 @@ func (b *StreamBroker) Close(ctx context.Context) error {
 
 	// Close all topic subscribers
 	for _, topic := range b.topics {
-		for _, sub := range topic.subscribers {
+		topic.subscribers.Range(func(_ int, sub topicSubscriber) bool {
 			if sub.ch != nil {
 				close(sub.ch)
 			}
-		}
+			return true
+		})
 	}
 
 	b.topics = make(map[string]*Topic)

@@ -26,41 +26,40 @@ import (
 // Test Helpers and Mocks
 // ============================================================================
 
-// MockMCPTransport implements MCPTransportInterface for testing
+// MockMCPTransport implements MCPTransportInterface for testing.
+//
+// Concurrent-safe by construction (CONST-029): sentMessages is a safe.Slice;
+// connected is an atomic.Bool; call counters are atomic.Int64. The send/
+// receive error fields are set once at construction and never mutated, so
+// they are safe to read without synchronisation.
 type MockMCPTransport struct {
-	connected      bool
+	connected      atomic.Bool
 	sendError      error
 	receiveError   error
 	receiveData    interface{}
-	sentMessages   []interface{}
-	mu             sync.Mutex
-	sendCallCount  int
-	closeCallCount int
+	sentMessages   *safe.Slice[interface{}]
+	sendCallCount  atomic.Int64
+	closeCallCount atomic.Int64
 }
 
 func NewMockMCPTransport() *MockMCPTransport {
-	return &MockMCPTransport{
-		connected:    true,
-		sentMessages: make([]interface{}, 0),
+	m := &MockMCPTransport{
+		sentMessages: safe.NewSlice[interface{}](),
 	}
+	m.connected.Store(true)
+	return m
 }
 
 func (m *MockMCPTransport) Send(ctx context.Context, message interface{}) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.sendCallCount++
+	m.sendCallCount.Add(1)
 	if m.sendError != nil {
 		return m.sendError
 	}
-	m.sentMessages = append(m.sentMessages, message)
+	m.sentMessages.Append(message)
 	return nil
 }
 
 func (m *MockMCPTransport) Receive(ctx context.Context) (interface{}, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.receiveError != nil {
 		return nil, m.receiveError
 	}
@@ -83,23 +82,17 @@ func (m *MockMCPTransport) Receive(ctx context.Context) (interface{}, error) {
 }
 
 func (m *MockMCPTransport) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.closeCallCount++
-	m.connected = false
+	m.closeCallCount.Add(1)
+	m.connected.Store(false)
 	return nil
 }
 
 func (m *MockMCPTransport) IsConnected() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.connected
+	return m.connected.Load()
 }
 
 func (m *MockMCPTransport) GetSentMessages() []interface{} {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.sentMessages
+	return m.sentMessages.Snapshot()
 }
 
 // createTestLogger creates a logger for testing (discards output)

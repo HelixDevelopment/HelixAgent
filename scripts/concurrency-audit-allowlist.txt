@@ -11,8 +11,6 @@ internal/handlers/extended/planning.go:24:ExtendedPlanModeSession
 internal/knowledge/code_graph.go:124:CodeGraph
 internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker
-internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
-internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/planning/mcts.go:27:MCTSNode

@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -156,18 +156,16 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
 		// Create a mock transport that responds correctly to initialization
-		mockTransport := &MockMCPTransportWithInit{
-			connected: true,
-			initResponse: map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      1,
-				"result": map[string]interface{}{
-					"protocolVersion": "2024-11-05",
-					"capabilities":    map[string]interface{}{},
-					"serverInfo": map[string]interface{}{
-						"name":    "test-server",
-						"version": "1.0.0",
-					},
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.initResponse = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"result": map[string]interface{}{
+				"protocolVersion": "2024-11-05",
+				"capabilities":    map[string]interface{}{},
+				"serverInfo": map[string]interface{}{
+					"name":    "test-server",
+					"version": "1.0.0",
 				},
 			},
 		}
@@ -185,16 +183,14 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify the initialization messages were sent
-		assert.Len(t, mockTransport.sentMessages, 2) // initialize request + initialized notification
+		assert.Equal(t, 2, mockTransport.sentMessages.Len()) // initialize request + initialized notification
 	})
 
 	t.Run("Returns error on send failure", func(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
-		mockTransport := &MockMCPTransportWithInit{
-			connected: true,
-			sendError: fmt.Errorf("send failed"),
-		}
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.sendError = fmt.Errorf("send failed")
 
 		conn := &MCPConnection{
 			Config: MCPServerConfig{
@@ -213,10 +209,8 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 	t.Run("Returns error on receive failure", func(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
-		mockTransport := &MockMCPTransportWithInit{
-			connected:    true,
-			receiveError: fmt.Errorf("receive failed"),
-		}
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.receiveError = fmt.Errorf("receive failed")
 
 		conn := &MCPConnection{
 			Config: MCPServerConfig{
@@ -235,10 +229,8 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 	t.Run("Returns error on invalid response format", func(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
-		mockTransport := &MockMCPTransportWithInit{
-			connected:    true,
-			initResponse: "invalid response", // Not a map
-		}
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.initResponse = "invalid response" // Not a map
 
 		conn := &MCPConnection{
 			Config: MCPServerConfig{
@@ -257,15 +249,13 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 	t.Run("Returns error when response contains error object", func(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
-		mockTransport := &MockMCPTransportWithInit{
-			connected: true,
-			initResponse: map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      1,
-				"error": map[string]interface{}{
-					"code":    -32600,
-					"message": "Invalid Request",
-				},
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.initResponse = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"error": map[string]interface{}{
+				"code":    -32600,
+				"message": "Invalid Request",
 			},
 		}
 
@@ -286,17 +276,15 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 	t.Run("Returns error when initialized notification fails", func(t *testing.T) {
 		pool := NewConnectionPool(nil, nil, createTestLogger())
 
-		mockTransport := &MockMCPTransportWithInit{
-			connected: true,
-			initResponse: map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      1,
-				"result": map[string]interface{}{
-					"protocolVersion": "2024-11-05",
-				},
+		mockTransport := newMockMCPTransportWithInit()
+		mockTransport.initResponse = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"result": map[string]interface{}{
+				"protocolVersion": "2024-11-05",
 			},
-			failOnSecondSend: true, // Fail when sending initialized notification
 		}
+		mockTransport.failOnSecondSend = true // Fail when sending initialized notification
 
 		conn := &MCPConnection{
 			Config: MCPServerConfig{
@@ -313,26 +301,39 @@ func TestConnectionPool_initializeMCPConnection(t *testing.T) {
 	})
 }
 
-// MockMCPTransportWithInit is a mock transport for testing initialization
+// MockMCPTransportWithInit is a mock transport for testing initialization.
+//
+// Concurrent-safe by construction (CONST-029): sentMessages is a safe.Slice;
+// connected is an atomic.Bool; sendCount is an atomic.Int64. sendError,
+// receiveError, initResponse, and failOnSecondSend are set once at
+// construction (via newMockMCPTransportWithInit or inline field-assign
+// after construction) and not mutated concurrently with reads.
 type MockMCPTransportWithInit struct {
-	connected        bool
+	connected        atomic.Bool
 	sendError        error
 	receiveError     error
 	initResponse     interface{}
-	sentMessages     []interface{}
+	sentMessages     *safe.Slice[interface{}]
 	failOnSecondSend bool
-	sendCount        int
-	mu               sync.Mutex
+	sendCount        atomic.Int64
+}
+
+// newMockMCPTransportWithInit constructs a MockMCPTransportWithInit with
+// the common fields. Use this instead of &MockMCPTransportWithInit{} so
+// the safe.Slice is initialised and connected is set to true by default.
+func newMockMCPTransportWithInit() *MockMCPTransportWithInit {
+	m := &MockMCPTransportWithInit{
+		sentMessages: safe.NewSlice[interface{}](),
+	}
+	m.connected.Store(true)
+	return m
 }
 
 func (m *MockMCPTransportWithInit) Send(ctx context.Context, message interface{}) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	count := m.sendCount.Add(1)
+	m.sentMessages.Append(message)
 
-	m.sendCount++
-	m.sentMessages = append(m.sentMessages, message)
-
-	if m.failOnSecondSend && m.sendCount > 1 {
+	if m.failOnSecondSend && count > 1 {
 		return fmt.Errorf("send failed on second call")
 	}
 
@@ -340,9 +341,6 @@ func (m *MockMCPTransportWithInit) Send(ctx context.Context, message interface{}
 }
 
 func (m *MockMCPTransportWithInit) Receive(ctx context.Context) (interface{}, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.receiveError != nil {
 		return nil, m.receiveError
 	}
@@ -350,12 +348,12 @@ func (m *MockMCPTransportWithInit) Receive(ctx context.Context) (interface{}, er
 }
 
 func (m *MockMCPTransportWithInit) Close() error {
-	m.connected = false
+	m.connected.Store(false)
 	return nil
 }
 
 func (m *MockMCPTransportWithInit) IsConnected() bool {
-	return m.connected
+	return m.connected.Load()
 }
 
 // ============================================================================

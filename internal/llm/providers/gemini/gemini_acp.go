@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 )
 
@@ -44,8 +46,11 @@ type GeminiACPProvider struct {
 	startOnce sync.Once
 	startErr  error
 
-	responses map[int64]chan *geminiACPResponse
-	respMu    sync.RWMutex
+	// responses maps pending request IDs to their reply channels. The
+	// store is lock-free for the reader goroutine's dispatch path
+	// (readResponses) and the sender's register/unregister pair
+	// (sendRequest).
+	responses *safe.Store[int64, chan *geminiACPResponse]
 }
 
 // ACP message types for Gemini
@@ -182,7 +187,7 @@ func NewGeminiACPProvider(config GeminiACPConfig) *GeminiACPProvider {
 		maxTokens: config.MaxTokens,
 		cwd:       config.CWD,
 		apiKey:    config.APIKey,
-		responses: make(map[int64]chan *geminiACPResponse),
+		responses: safe.NewStore[int64, chan *geminiACPResponse](),
 	}
 }
 
@@ -281,10 +286,7 @@ func (p *GeminiACPProvider) readResponses() {
 			continue
 		}
 
-		p.respMu.RLock()
-		ch, ok := p.responses[resp.ID]
-		p.respMu.RUnlock()
-
+		ch, ok := p.responses.Get(resp.ID)
 		if ok {
 			select {
 			case ch <- &resp:
@@ -328,14 +330,10 @@ func (p *GeminiACPProvider) sendRequest(ctx context.Context, method string, para
 	}
 
 	respCh := make(chan *geminiACPResponse, 1)
-	p.respMu.Lock()
-	p.responses[id] = respCh
-	p.respMu.Unlock()
+	p.responses.Put(id, respCh)
 
 	defer func() {
-		p.respMu.Lock()
-		delete(p.responses, id)
-		p.respMu.Unlock()
+		p.responses.Delete(id)
 	}()
 
 	reqBytes, err := json.Marshal(req)

@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // MemoryEntry represents stored memory
@@ -22,16 +23,18 @@ type MemoryEntry struct {
 	CreatedAt time.Time              `json:"created_at"`
 }
 
-// CogneeMockServer is an in-memory Cognee implementation
+// CogneeMockServer is an in-memory Cognee implementation.
+//
+// Concurrency model (CONST-029): memories is a *safe.Store; appends
+// use Update for read-modify-write atomicity.
 type CogneeMockServer struct {
-	memories map[string][]MemoryEntry
-	mu       sync.RWMutex
+	memories *safe.Store[string, []MemoryEntry]
 	port     int
 }
 
 func NewCogneeMockServer(port int) *CogneeMockServer {
 	return &CogneeMockServer{
-		memories: make(map[string][]MemoryEntry),
+		memories: safe.NewStore[string, []MemoryEntry](),
 		port:     port,
 	}
 }
@@ -77,9 +80,9 @@ func (s *CogneeMockServer) handleAdd(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	s.mu.Lock()
-	s.memories[dataset] = append(s.memories[dataset], entry)
-	s.mu.Unlock()
+	s.memories.Update(dataset, func(cur []MemoryEntry, _ bool) ([]MemoryEntry, bool) {
+		return append(cur, entry), true
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -114,9 +117,7 @@ func (s *CogneeMockServer) handleSearch(w http.ResponseWriter, r *http.Request) 
 		dataset = "default"
 	}
 
-	s.mu.RLock()
-	memories := s.memories[dataset]
-	s.mu.RUnlock()
+	memories, _ := s.memories.Get(dataset)
 
 	// Simple keyword matching for search
 	var results []map[string]interface{}
@@ -184,12 +185,7 @@ func (s *CogneeMockServer) handleInsights(w http.ResponseWriter, r *http.Request
 }
 
 func (s *CogneeMockServer) handleDatasets(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	datasets := make([]string, 0, len(s.memories))
-	for ds := range s.memories {
-		datasets = append(datasets, ds)
-	}
-	s.mu.RUnlock()
+	datasets := s.memories.Keys()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{

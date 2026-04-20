@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/adapters/containers"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/models"
@@ -91,12 +93,13 @@ type CogneeStats struct {
 	ErrorCount             int64
 }
 
-// FeedbackLoop manages the self-improvement feedback mechanism
+// FeedbackLoop manages the self-improvement feedback mechanism.
+//
+// Concurrency model (CONST-029): history → *safe.Slice. mu dropped.
 type FeedbackLoop struct {
-	mu        sync.RWMutex
 	enabled   bool
 	threshold float64
-	history   []FeedbackEntry
+	history   *safe.Slice[FeedbackEntry]
 }
 
 // FeedbackEntry represents a single feedback interaction
@@ -273,7 +276,7 @@ func NewCogneeService(cfg *config.Config, logger *logrus.Logger) *CogneeService 
 		feedbackLoop: &FeedbackLoop{
 			enabled:   serviceConfig.EnableFeedbackLoop,
 			threshold: 0.8,
-			history:   make([]FeedbackEntry, 0),
+			history:   safe.NewSlice[FeedbackEntry](),
 		},
 	}
 
@@ -323,7 +326,7 @@ func NewCogneeServiceWithConfig(cfg *CogneeServiceConfig, logger *logrus.Logger)
 		feedbackLoop: &FeedbackLoop{
 			enabled:   cfg.EnableFeedbackLoop,
 			threshold: 0.8,
-			history:   make([]FeedbackEntry, 0),
+			history:   safe.NewSlice[FeedbackEntry](),
 		},
 	}
 }
@@ -1631,9 +1634,7 @@ func (s *CogneeService) ProvideFeedback(ctx context.Context, queryID, query, res
 		Timestamp:    time.Now(),
 	}
 
-	s.feedbackLoop.mu.Lock()
-	s.feedbackLoop.history = append(s.feedbackLoop.history, entry)
-	s.feedbackLoop.mu.Unlock()
+	s.feedbackLoop.history.Append(entry)
 
 	// Store feedback in Cognee for learning
 	if approved {

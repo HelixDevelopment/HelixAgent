@@ -62,7 +62,7 @@ func TestReloader_ReloadPluginConfig_TooFrequent(t *testing.T) {
 	reloader := NewReloader(registry, configMgr, lifecycle)
 
 	// Simulate a recent reload
-	reloader.lastReload["test-plugin"] = time.Now()
+	reloader.lastReload.Put("test-plugin", time.Now())
 
 	ctx := context.Background()
 	err = reloader.ReloadPluginConfig(ctx, "test-plugin")
@@ -86,7 +86,7 @@ func TestReloader_GetLastReloadTime(t *testing.T) {
 
 	t.Run("returns time for reloaded plugin", func(t *testing.T) {
 		now := time.Now()
-		reloader.lastReload["test-plugin"] = now
+		reloader.lastReload.Put("test-plugin", now)
 
 		reloadTime, exists := reloader.GetLastReloadTime("test-plugin")
 		assert.True(t, exists)
@@ -116,7 +116,7 @@ func TestReloader_ForceReload_ClearsLastReload(t *testing.T) {
 	reloader := NewReloader(registry, configMgr, lifecycle)
 
 	// Set a last reload time
-	reloader.lastReload["test-plugin"] = time.Now()
+	reloader.lastReload.Put("test-plugin", time.Now())
 
 	// ForceReload should clear it and then fail (plugin not found)
 	err := reloader.ForceReload("test-plugin")
@@ -125,7 +125,7 @@ func TestReloader_ForceReload_ClearsLastReload(t *testing.T) {
 	assert.Error(t, err)
 
 	// But lastReload should have been cleared
-	_, exists := reloader.lastReload["test-plugin"]
+	_, exists := reloader.lastReload.Get("test-plugin")
 	assert.False(t, exists)
 }
 
@@ -158,9 +158,7 @@ func TestReloader_ConcurrentAccess(t *testing.T) {
 			pluginName := "test-plugin"
 			reloader.GetLastReloadTime(pluginName)
 
-			reloader.mu.Lock()
-			reloader.lastReload[pluginName] = time.Now()
-			reloader.mu.Unlock()
+			reloader.lastReload.Put(pluginName, time.Now())
 
 			done <- true
 		}(i)
@@ -242,7 +240,7 @@ func TestReloader_ForceReload_ResetsDelay(t *testing.T) {
 	reloader := NewReloader(registry, configMgr, lifecycle)
 
 	// Set a very recent reload time (would normally block)
-	reloader.lastReload["test-plugin"] = time.Now()
+	reloader.lastReload.Put("test-plugin", time.Now())
 
 	// ForceReload should clear lastReload and attempt reload
 	// (will fail due to config validation, but exercises the code)
@@ -254,7 +252,7 @@ func TestReloader_ForceReload_ResetsDelay(t *testing.T) {
 	assert.NotContains(t, err.Error(), "reload too frequent")
 
 	// lastReload should be cleared
-	_, exists := reloader.lastReload["test-plugin"]
+	_, exists := reloader.lastReload.Get("test-plugin")
 	assert.False(t, exists)
 }
 

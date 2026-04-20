@@ -82,7 +82,6 @@ internal/planning/hiplan.go:145:HiPlan
 internal/planning/mcts.go:27:MCTSNode
 internal/planning/tree_of_thoughts.go:110:TreeOfThoughts
 internal/plugins/health.go:12:HealthMonitor
-internal/plugins/reload.go:17:Reloader
 internal/rag/advanced.go:138:AdvancedRAG
 internal/search/indexer/indexer.go:46:CodeIndexer
 internal/security/redteam.go:16:DeepTeamRedTeamer

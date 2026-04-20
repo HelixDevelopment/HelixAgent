@@ -9,17 +9,27 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/utils"
 	"github.com/fsnotify/fsnotify"
 )
 
-// Reloader handles hot-reloading of plugin configurations without service interruption
+// Reloader handles hot-reloading of plugin configurations without service interruption.
+//
+// Concurrency model (CONST-029): lastReload is a *safe.Store whose
+// Get/Put are atomic. mu (sync.Mutex) survives as a Pattern Zeta
+// serialisation lock — it guarantees that the compound "check delay
+// → load+validate config → Init plugin → record reload time" flow
+// runs as one critical section per plugin. Without it, two concurrent
+// reloads for the same plugin could both pass the delay check and
+// then race on plugin.Init.
 type Reloader struct {
 	registry    *Registry
 	configMgr   *ConfigManager
 	lifecycle   *LifecycleManager
-	mu          sync.RWMutex
-	lastReload  map[string]time.Time
+	mu          sync.Mutex
+	lastReload  *safe.Store[string, time.Time]
 	reloadDelay time.Duration
 }
 
@@ -28,7 +38,7 @@ func NewReloader(registry *Registry, configMgr *ConfigManager, lifecycle *Lifecy
 		registry:    registry,
 		configMgr:   configMgr,
 		lifecycle:   lifecycle,
-		lastReload:  make(map[string]time.Time),
+		lastReload:  safe.NewStore[string, time.Time](),
 		reloadDelay: 5 * time.Second, // Minimum delay between reloads
 	}
 }
@@ -38,7 +48,7 @@ func (r *Reloader) ReloadPluginConfig(ctx context.Context, pluginName string) er
 	defer r.mu.Unlock()
 
 	// Check reload delay
-	if last, exists := r.lastReload[pluginName]; exists {
+	if last, exists := r.lastReload.Get(pluginName); exists {
 		if time.Since(last) < r.reloadDelay {
 			return fmt.Errorf("reload too frequent for plugin %s", pluginName)
 		}
@@ -65,7 +75,7 @@ func (r *Reloader) ReloadPluginConfig(ctx context.Context, pluginName string) er
 		return fmt.Errorf("failed to apply new configuration: %w", err)
 	}
 
-	r.lastReload[pluginName] = time.Now()
+	r.lastReload.Put(pluginName, time.Now())
 	utils.GetLogger().Infof("Successfully reloaded configuration for plugin %s", pluginName)
 	return nil
 }
@@ -168,17 +178,11 @@ func (r *Reloader) WatchForConfigChanges(ctx context.Context, configDir string) 
 }
 
 func (r *Reloader) GetLastReloadTime(pluginName string) (time.Time, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	time, exists := r.lastReload[pluginName]
-	return time, exists
+	return r.lastReload.Get(pluginName)
 }
 
 func (r *Reloader) ForceReload(pluginName string) error {
-	r.mu.Lock()
-	delete(r.lastReload, pluginName)
-	r.mu.Unlock()
+	r.lastReload.Delete(pluginName)
 
 	ctx := context.Background()
 	return r.ReloadPluginConfig(ctx, pluginName)

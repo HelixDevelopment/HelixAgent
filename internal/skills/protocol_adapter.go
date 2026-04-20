@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
@@ -25,13 +26,19 @@ const (
 )
 
 // ProtocolSkillAdapter adapts skills for use with various protocols.
+//
+// Concurrency model (CONST-029): the three protocol registries are
+// safe.Store containers; each Register*/Get* operation is atomic
+// without any caller-held lock. The previous mu only guarded each
+// individual store's lookup/insert, and never needed to enforce a
+// cross-store invariant — the three protocols are independent views
+// of the same underlying skill.
 type ProtocolSkillAdapter struct {
 	service          *Service
 	providerRegistry *services.ProviderRegistry
-	mcpTools         map[string]*MCPSkillTool
-	acpActions       map[string]*ACPSkillAction
-	lspCommands      map[string]*LSPSkillCommand
-	mu               sync.RWMutex
+	mcpTools         *safe.Store[string, *MCPSkillTool]
+	acpActions       *safe.Store[string, *ACPSkillAction]
+	lspCommands      *safe.Store[string, *LSPSkillCommand]
 	log              *logrus.Logger
 }
 
@@ -83,9 +90,9 @@ type SkillToolResult struct {
 func NewProtocolSkillAdapter(service *Service) *ProtocolSkillAdapter {
 	return &ProtocolSkillAdapter{
 		service:     service,
-		mcpTools:    make(map[string]*MCPSkillTool),
-		acpActions:  make(map[string]*ACPSkillAction),
-		lspCommands: make(map[string]*LSPSkillCommand),
+		mcpTools:    safe.NewStore[string, *MCPSkillTool](),
+		acpActions:  safe.NewStore[string, *ACPSkillAction](),
+		lspCommands: safe.NewStore[string, *LSPSkillCommand](),
 		log:         logrus.New(),
 	}
 }
@@ -102,9 +109,6 @@ func (a *ProtocolSkillAdapter) SetProviderRegistry(registry *services.ProviderRe
 
 // RegisterAllSkillsAsTools registers all skills as protocol tools.
 func (a *ProtocolSkillAdapter) RegisterAllSkillsAsTools() error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	skills := a.service.GetAllSkills()
 	for _, skill := range skills {
 		a.registerSkillAsMCPTool(skill)
@@ -137,7 +141,7 @@ func (a *ProtocolSkillAdapter) registerSkillAsMCPTool(skill *Skill) {
 		},
 		Skill: skill,
 	}
-	a.mcpTools[skill.Name] = tool
+	a.mcpTools.Put(skill.Name, tool)
 }
 
 // registerSkillAsACPAction registers a skill as an ACP action.
@@ -151,7 +155,7 @@ func (a *ProtocolSkillAdapter) registerSkillAsACPAction(skill *Skill) {
 		},
 		Skill: skill,
 	}
-	a.acpActions[skill.Name] = action
+	a.acpActions.Put(skill.Name, action)
 }
 
 // registerSkillAsLSPCommand registers a skill as an LSP command.
@@ -162,42 +166,36 @@ func (a *ProtocolSkillAdapter) registerSkillAsLSPCommand(skill *Skill) {
 		Arguments: []string{"query", "context"},
 		Skill:     skill,
 	}
-	a.lspCommands[skill.Name] = command
+	a.lspCommands.Put(skill.Name, command)
 }
 
 // GetMCPTools returns all skills as MCP tools.
 func (a *ProtocolSkillAdapter) GetMCPTools() []*MCPSkillTool {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	tools := make([]*MCPSkillTool, 0, len(a.mcpTools))
-	for _, tool := range a.mcpTools {
+	tools := make([]*MCPSkillTool, 0, a.mcpTools.Len())
+	a.mcpTools.Range(func(_ string, tool *MCPSkillTool) bool {
 		tools = append(tools, tool)
-	}
+		return true
+	})
 	return tools
 }
 
 // GetACPActions returns all skills as ACP actions.
 func (a *ProtocolSkillAdapter) GetACPActions() []*ACPSkillAction {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	actions := make([]*ACPSkillAction, 0, len(a.acpActions))
-	for _, action := range a.acpActions {
+	actions := make([]*ACPSkillAction, 0, a.acpActions.Len())
+	a.acpActions.Range(func(_ string, action *ACPSkillAction) bool {
 		actions = append(actions, action)
-	}
+		return true
+	})
 	return actions
 }
 
 // GetLSPCommands returns all skills as LSP commands.
 func (a *ProtocolSkillAdapter) GetLSPCommands() []*LSPSkillCommand {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	commands := make([]*LSPSkillCommand, 0, len(a.lspCommands))
-	for _, cmd := range a.lspCommands {
+	commands := make([]*LSPSkillCommand, 0, a.lspCommands.Len())
+	a.lspCommands.Range(func(_ string, cmd *LSPSkillCommand) bool {
 		commands = append(commands, cmd)
-	}
+		return true
+	})
 	return commands
 }
 
@@ -627,17 +625,15 @@ func sanitizeIdentifier(s string) string {
 
 // ToMCPToolList converts skills to MCP tool list format.
 func (a *ProtocolSkillAdapter) ToMCPToolList() ([]byte, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	tools := make([]map[string]interface{}, 0, len(a.mcpTools))
-	for _, tool := range a.mcpTools {
+	tools := make([]map[string]interface{}, 0, a.mcpTools.Len())
+	a.mcpTools.Range(func(_ string, tool *MCPSkillTool) bool {
 		tools = append(tools, map[string]interface{}{
 			"name":        tool.Name,
 			"description": tool.Description,
 			"inputSchema": tool.InputSchema,
 		})
-	}
+		return true
+	})
 
 	return json.Marshal(map[string]interface{}{
 		"tools": tools,
@@ -646,17 +642,15 @@ func (a *ProtocolSkillAdapter) ToMCPToolList() ([]byte, error) {
 
 // ToACPActionList converts skills to ACP action list format.
 func (a *ProtocolSkillAdapter) ToACPActionList() ([]byte, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	actions := make([]map[string]interface{}, 0, len(a.acpActions))
-	for _, action := range a.acpActions {
+	actions := make([]map[string]interface{}, 0, a.acpActions.Len())
+	a.acpActions.Range(func(_ string, action *ACPSkillAction) bool {
 		actions = append(actions, map[string]interface{}{
 			"name":        action.Name,
 			"description": action.Description,
 			"parameters":  action.Parameters,
 		})
-	}
+		return true
+	})
 
 	return json.Marshal(map[string]interface{}{
 		"actions": actions,
@@ -665,17 +659,15 @@ func (a *ProtocolSkillAdapter) ToACPActionList() ([]byte, error) {
 
 // ToLSPCommandList converts skills to LSP command list format.
 func (a *ProtocolSkillAdapter) ToLSPCommandList() ([]byte, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	commands := make([]map[string]interface{}, 0, len(a.lspCommands))
-	for _, cmd := range a.lspCommands {
+	commands := make([]map[string]interface{}, 0, a.lspCommands.Len())
+	a.lspCommands.Range(func(_ string, cmd *LSPSkillCommand) bool {
 		commands = append(commands, map[string]interface{}{
 			"command":   cmd.Command,
 			"title":     cmd.Title,
 			"arguments": cmd.Arguments,
 		})
-	}
+		return true
+	})
 
 	return json.Marshal(map[string]interface{}{
 		"commands": commands,

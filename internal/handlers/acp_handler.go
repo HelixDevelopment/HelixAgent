@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
@@ -100,14 +102,17 @@ type ACPSessionUpdateParams struct {
 	Message   *ACPMessage            `json:"message,omitempty"`
 }
 
-// ACPHandler handles ACP (Agent Communication Protocol) endpoints
+// ACPHandler handles ACP (Agent Communication Protocol) endpoints.
+//
+// Concurrency model (CONST-029): agents and sessions are *safe.Store
+// containers. agentsMu / sessionsMu dropped — all handler paths are
+// independent Get / Put / Delete operations with no cross-store
+// invariants.
 type ACPHandler struct {
 	providerRegistry *services.ProviderRegistry
 	logger           *logrus.Logger
-	agents           map[string]*ACPAgent
-	sessions         map[string]*ACPSession
-	agentsMu         sync.RWMutex
-	sessionsMu       sync.RWMutex
+	agents           *safe.Store[string, *ACPAgent]
+	sessions         *safe.Store[string, *ACPSession]
 	stopCleanup      chan struct{}
 	cleanupWg        sync.WaitGroup
 }
@@ -117,8 +122,8 @@ func NewACPHandler(providerRegistry *services.ProviderRegistry, logger *logrus.L
 	h := &ACPHandler{
 		providerRegistry: providerRegistry,
 		logger:           logger,
-		agents:           make(map[string]*ACPAgent),
-		sessions:         make(map[string]*ACPSession),
+		agents:           safe.NewStore[string, *ACPAgent](),
+		sessions:         safe.NewStore[string, *ACPSession](),
 		stopCleanup:      make(chan struct{}),
 	}
 
@@ -243,7 +248,7 @@ func (h *ACPHandler) initializeAgents() {
 	}
 
 	for i := range agents {
-		h.agents[agents[i].ID] = &agents[i]
+		h.agents.Put(agents[i].ID, &agents[i])
 	}
 }
 
@@ -345,20 +350,18 @@ func (h *ACPHandler) handleAgentList(c *gin.Context, msg *JSONRPCMessage) {
 		return
 	}
 
-	h.agentsMu.RLock()
-	defer h.agentsMu.RUnlock()
-
-	agents := make([]*ACPAgent, 0, len(h.agents))
-	for _, agent := range h.agents {
+	agents := make([]*ACPAgent, 0, h.agents.Len())
+	h.agents.Range(func(_ string, agent *ACPAgent) bool {
 		// Apply filter if provided
 		if params.Filter != "" {
 			if !strings.Contains(strings.ToLower(agent.Name), strings.ToLower(params.Filter)) &&
 				!strings.Contains(strings.ToLower(agent.Description), strings.ToLower(params.Filter)) {
-				continue
+				return true
 			}
 		}
 		agents = append(agents, agent)
-	}
+		return true
+	})
 
 	result := map[string]interface{}{
 		"agents": agents,
@@ -375,10 +378,7 @@ func (h *ACPHandler) handleAgentGet(c *gin.Context, msg *JSONRPCMessage) {
 		return
 	}
 
-	h.agentsMu.RLock()
-	agent, exists := h.agents[params.AgentID]
-	h.agentsMu.RUnlock()
-
+	agent, exists := h.agents.Get(params.AgentID)
 	if !exists {
 		h.sendJSONRPCError(c, msg.ID, -32602, "Agent not found", fmt.Sprintf("Agent ID: %s", params.AgentID))
 		return
@@ -396,9 +396,7 @@ func (h *ACPHandler) handleAgentExecute(c *gin.Context, msg *JSONRPCMessage) {
 	}
 
 	// Validate agent exists
-	h.agentsMu.RLock()
-	agent, exists := h.agents[params.AgentID]
-	h.agentsMu.RUnlock()
+	agent, exists := h.agents.Get(params.AgentID)
 
 	if !exists {
 		h.sendJSONRPCError(c, msg.ID, -32602, "Agent not found", fmt.Sprintf("Agent ID: %s", params.AgentID))
@@ -441,11 +439,7 @@ func (h *ACPHandler) handleSessionCreate(c *gin.Context, msg *JSONRPCMessage) {
 	}
 
 	// Validate agent exists
-	h.agentsMu.RLock()
-	_, exists := h.agents[params.AgentID]
-	h.agentsMu.RUnlock()
-
-	if !exists {
+	if _, exists := h.agents.Get(params.AgentID); !exists {
 		h.sendJSONRPCError(c, msg.ID, -32602, "Agent not found", fmt.Sprintf("Agent ID: %s", params.AgentID))
 		return
 	}
@@ -461,9 +455,7 @@ func (h *ACPHandler) handleSessionCreate(c *gin.Context, msg *JSONRPCMessage) {
 		History:   []ACPMessage{},
 	}
 
-	h.sessionsMu.Lock()
-	h.sessions[sessionID] = session
-	h.sessionsMu.Unlock()
+	h.sessions.Put(sessionID, session)
 
 	result := map[string]interface{}{
 		"session_id": sessionID,
@@ -481,26 +473,30 @@ func (h *ACPHandler) handleSessionUpdate(c *gin.Context, msg *JSONRPCMessage) {
 		return
 	}
 
-	h.sessionsMu.Lock()
-	session, exists := h.sessions[params.SessionID]
-	if !exists {
-		h.sessionsMu.Unlock()
+	var session *ACPSession
+	var found bool
+	h.sessions.Update(params.SessionID, func(cur *ACPSession, present bool) (*ACPSession, bool) {
+		if !present {
+			return nil, false
+		}
+		found = true
+		cp := *cur
+		if params.Context != nil {
+			cp.Context = params.Context
+		}
+		if params.Message != nil {
+			cp.History = append([]ACPMessage(nil), cur.History...)
+			cp.History = append(cp.History, *params.Message)
+		}
+		cp.UpdatedAt = time.Now().Unix()
+		session = &cp
+		return &cp, true
+	})
+
+	if !found {
 		h.sendJSONRPCError(c, msg.ID, -32602, "Session not found", fmt.Sprintf("Session ID: %s", params.SessionID))
 		return
 	}
-
-	// Update context if provided
-	if params.Context != nil {
-		session.Context = params.Context
-	}
-
-	// Add message to history if provided
-	if params.Message != nil {
-		session.History = append(session.History, *params.Message)
-	}
-
-	session.UpdatedAt = time.Now().Unix()
-	h.sessionsMu.Unlock()
 
 	result := map[string]interface{}{
 		"session_id":  params.SessionID,
@@ -520,14 +516,7 @@ func (h *ACPHandler) handleSessionClose(c *gin.Context, msg *JSONRPCMessage) {
 		return
 	}
 
-	h.sessionsMu.Lock()
-	_, exists := h.sessions[params.SessionID]
-	if exists {
-		delete(h.sessions, params.SessionID)
-	}
-	h.sessionsMu.Unlock()
-
-	if !exists {
+	if _, ok := h.sessions.Delete(params.SessionID); !ok {
 		h.sendJSONRPCError(c, msg.ID, -32602, "Session not found", fmt.Sprintf("Session ID: %s", params.SessionID))
 		return
 	}
@@ -544,8 +533,8 @@ func (h *ACPHandler) handleHealth(c *gin.Context, msg *JSONRPCMessage) {
 		"status":        "healthy",
 		"service":       "acp",
 		"version":       "1.0.0",
-		"agent_count":   len(h.agents),
-		"session_count": len(h.sessions),
+		"agent_count":   h.agents.Len(),
+		"session_count": h.sessions.Len(),
 		"timestamp":     time.Now().Unix(),
 	}
 	h.sendJSONRPCResult(c, msg.ID, result)
@@ -576,17 +565,18 @@ func (h *ACPHandler) Health(c *gin.Context) {
 		"status":      "healthy",
 		"service":     "acp",
 		"version":     "1.0.0",
-		"agent_count": len(h.agents),
+		"agent_count": h.agents.Len(),
 		"timestamp":   time.Now().Unix(),
 	})
 }
 
 // ListAgents returns all available agents
 func (h *ACPHandler) ListAgents(c *gin.Context) {
-	agents := make([]*ACPAgent, 0, len(h.agents))
-	for _, agent := range h.agents {
+	agents := make([]*ACPAgent, 0, h.agents.Len())
+	h.agents.Range(func(_ string, agent *ACPAgent) bool {
 		agents = append(agents, agent)
-	}
+		return true
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"agents": agents,
@@ -598,7 +588,7 @@ func (h *ACPHandler) ListAgents(c *gin.Context) {
 func (h *ACPHandler) GetAgent(c *gin.Context) {
 	agentID := c.Param("agent_id")
 
-	agent, exists := h.agents[agentID]
+	agent, exists := h.agents.Get(agentID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":    "agent not found",
@@ -621,7 +611,7 @@ func (h *ACPHandler) Execute(c *gin.Context) {
 	}
 
 	// Validate agent exists
-	agent, exists := h.agents[req.AgentID]
+	agent, exists := h.agents.Get(req.AgentID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":    "agent not found",
@@ -919,16 +909,18 @@ func (h *ACPHandler) sessionCleanupWorker() {
 
 // cleanupOldSessions removes sessions older than 24 hours
 func (h *ACPHandler) cleanupOldSessions() {
-	h.sessionsMu.Lock()
-	defer h.sessionsMu.Unlock()
-
 	now := time.Now().Unix()
 	cutoff := now - (24 * 3600) // 24 hours in seconds
 
-	for id, session := range h.sessions {
+	var expired []string
+	h.sessions.Range(func(id string, session *ACPSession) bool {
 		if session.UpdatedAt < cutoff {
-			delete(h.sessions, id)
-			h.logger.Debugf("Cleaned up old session: %s", id)
+			expired = append(expired, id)
 		}
+		return true
+	})
+	for _, id := range expired {
+		h.sessions.Delete(id)
+		h.logger.Debugf("Cleaned up old session: %s", id)
 	}
 }

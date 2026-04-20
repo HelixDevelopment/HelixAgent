@@ -24,7 +24,7 @@ func TestNewACPHandler(t *testing.T) {
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.agents)
 	assert.Equal(t, logger, handler.logger)
-	assert.Len(t, handler.agents, 6, "Should have 6 built-in agents")
+	assert.Equal(t, 6, handler.agents.Len(), "Should have 6 built-in agents")
 }
 
 // TestACPHandler_HandleJSONRPC_Initialize tests the initialize method

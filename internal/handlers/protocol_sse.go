@@ -938,12 +938,11 @@ func (h *ProtocolSSEHandler) executeACPToolViaHandler(name string, args map[stri
 		// Call ACP handler's agent/list method
 		// We need to simulate a JSON-RPC call
 		// For now, use the existing ListAgents logic
-		h.acpHandler.agentsMu.RLock()
-		agents := make([]*ACPAgent, 0, len(h.acpHandler.agents))
-		for _, agent := range h.acpHandler.agents {
+		agents := make([]*ACPAgent, 0, h.acpHandler.agents.Len())
+		h.acpHandler.agents.Range(func(_ string, agent *ACPAgent) bool {
 			agents = append(agents, agent)
-		}
-		h.acpHandler.agentsMu.RUnlock()
+			return true
+		})
 
 		data, err := json.Marshal(map[string]interface{}{
 			"agents": agents,
@@ -960,9 +959,7 @@ func (h *ProtocolSSEHandler) executeACPToolViaHandler(name string, args map[stri
 
 		// Call ACP handler's agent/execute method
 		// We need to call executeAgentTask directly
-		h.acpHandler.agentsMu.RLock()
-		agent, exists := h.acpHandler.agents[agentID]
-		h.acpHandler.agentsMu.RUnlock()
+		agent, exists := h.acpHandler.agents.Get(agentID)
 
 		if !exists {
 			return "", fmt.Errorf("agent not found: %s", agentID)

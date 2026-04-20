@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 )
 
@@ -44,8 +46,11 @@ type JunieACPProvider struct {
 	startOnce sync.Once
 	startErr  error
 
-	responses map[int64]chan *junieACPResponse
-	respMu    sync.RWMutex
+	// responses maps pending request IDs to their reply channels. The
+	// store is lock-free for the reader goroutine's dispatch path
+	// (readResponses) and the sender's register/unregister pair
+	// (sendRequest).
+	responses *safe.Store[int64, chan *junieACPResponse]
 }
 
 // ACP message types for Junie
@@ -173,7 +178,7 @@ func NewJunieACPProvider(config JunieACPConfig) *JunieACPProvider {
 		maxTokens: config.MaxTokens,
 		cwd:       config.CWD,
 		apiKey:    config.APIKey,
-		responses: make(map[int64]chan *junieACPResponse),
+		responses: safe.NewStore[int64, chan *junieACPResponse](),
 	}
 }
 
@@ -272,10 +277,7 @@ func (p *JunieACPProvider) readResponses() {
 			continue
 		}
 
-		p.respMu.RLock()
-		ch, ok := p.responses[resp.ID]
-		p.respMu.RUnlock()
-
+		ch, ok := p.responses.Get(resp.ID)
 		if ok {
 			select {
 			case ch <- &resp:
@@ -319,14 +321,10 @@ func (p *JunieACPProvider) sendRequest(ctx context.Context, method string, param
 	}
 
 	respCh := make(chan *junieACPResponse, 1)
-	p.respMu.Lock()
-	p.responses[id] = respCh
-	p.respMu.Unlock()
+	p.responses.Put(id, respCh)
 
 	defer func() {
-		p.respMu.Lock()
-		delete(p.responses, id)
-		p.respMu.Unlock()
+		p.responses.Delete(id)
 	}()
 
 	reqBytes, err := json.Marshal(req)

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"digital.vasic.containers/pkg/health"
 	"digital.vasic.containers/pkg/lifecycle"
 	"digital.vasic.containers/pkg/logging"
@@ -17,10 +18,10 @@ import (
 func newTestOrchestrator(t *testing.T) *LazyOrchestrator {
 	t.Helper()
 	return &LazyOrchestrator{
-		services:      make(map[string]*ServiceDefinition),
-		booters:       make(map[string]*lifecycle.LazyBooter),
-		started:       make(map[string]bool),
-		failed:        make(map[string]error),
+		services:      safe.NewStore[string, *ServiceDefinition](),
+		booters:       safe.NewStore[string, *lifecycle.LazyBooter](),
+		started:       safe.NewStore[string, bool](),
+		failed:        safe.NewStore[string, error](),
 		healthChecker: health.NewDefaultChecker(),
 		logger:        logging.NopLogger{},
 		workDir:       t.TempDir(),
@@ -71,12 +72,14 @@ func TestLazyOrchestrator_RegisterService(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify service is registered
-	assert.Contains(t, orch.services, "test-svc")
-	assert.Equal(t, "test-svc", orch.services["test-svc"].Name)
-	assert.Equal(t, "Test service", orch.services["test-svc"].Description)
+	registered, ok := orch.services.Get("test-svc")
+	assert.True(t, ok)
+	assert.Equal(t, "test-svc", registered.Name)
+	assert.Equal(t, "Test service", registered.Description)
 
 	// Verify booter was created
-	assert.Contains(t, orch.booters, "test-svc")
+	_, hasBooter := orch.booters.Get("test-svc")
+	assert.True(t, hasBooter)
 }
 
 func TestLazyOrchestrator_RegisterService_Defaults(t *testing.T) {
@@ -90,7 +93,7 @@ func TestLazyOrchestrator_RegisterService_Defaults(t *testing.T) {
 	err := orch.RegisterService(svc)
 	require.NoError(t, err)
 
-	registered := orch.services["defaults-svc"]
+	registered, _ := orch.services.Get("defaults-svc")
 	assert.Equal(t, 5*time.Minute, registered.StartTimeout)
 	assert.Equal(t, 30*time.Second, registered.StopTimeout)
 	assert.Equal(t, "free", registered.CostModel)
@@ -110,7 +113,7 @@ func TestLazyOrchestrator_RegisterService_CustomTimeouts(t *testing.T) {
 	err := orch.RegisterService(svc)
 	require.NoError(t, err)
 
-	registered := orch.services["custom-svc"]
+	registered, _ := orch.services.Get("custom-svc")
 	assert.Equal(t, 10*time.Minute, registered.StartTimeout)
 	assert.Equal(t, 1*time.Minute, registered.StopTimeout)
 	assert.Equal(t, "paid", registered.CostModel)
@@ -163,7 +166,8 @@ func TestLazyOrchestrator_RegisterService_Duplicate(t *testing.T) {
 	err = orch.RegisterService(svc2)
 	require.NoError(t, err)
 
-	assert.Equal(t, "second", orch.services["dup-svc"].Description)
+	registered, _ := orch.services.Get("dup-svc")
+	assert.Equal(t, "second", registered.Description)
 }
 
 func TestLazyOrchestrator_RegisterService_MultipleServices(t *testing.T) {
@@ -187,8 +191,8 @@ func TestLazyOrchestrator_RegisterService_MultipleServices(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	assert.Len(t, orch.services, 3)
-	assert.Len(t, orch.booters, 3)
+	assert.Equal(t, 3, orch.services.Len())
+	assert.Equal(t, 3, orch.booters.Len())
 }
 
 // --- GetServiceStatus ---

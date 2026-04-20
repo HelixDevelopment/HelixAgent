@@ -6,25 +6,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"digital.vasic.containers/pkg/compose"
 	"digital.vasic.containers/pkg/health"
 	"digital.vasic.containers/pkg/lifecycle"
 	"digital.vasic.containers/pkg/logging"
 )
 
-// LazyOrchestrator manages lazy container service startup for HelixAgent
+// LazyOrchestrator manages lazy container service startup for HelixAgent.
+//
+// Concurrency model (CONST-029): services/booters/started/failed → 4×
+// *safe.Store. No survivor mutex — each mutation is a single atomic
+// Put/Delete on the relevant store.
 type LazyOrchestrator struct {
-	services      map[string]*ServiceDefinition
-	booters       map[string]*lifecycle.LazyBooter
+	services      *safe.Store[string, *ServiceDefinition]
+	booters       *safe.Store[string, *lifecycle.LazyBooter]
 	orchestrator  compose.ComposeOrchestrator
 	healthChecker *health.DefaultChecker
 	logger        logging.Logger
-	mu            sync.RWMutex
-	started       map[string]bool
-	failed        map[string]error
+	started       *safe.Store[string, bool]
+	failed        *safe.Store[string, error]
 	workDir       string
 }
 
@@ -71,10 +74,10 @@ func NewLazyOrchestrator(workDir string, logger logging.Logger) (*LazyOrchestrat
 	}
 
 	return &LazyOrchestrator{
-		services:      make(map[string]*ServiceDefinition),
-		booters:       make(map[string]*lifecycle.LazyBooter),
-		started:       make(map[string]bool),
-		failed:        make(map[string]error),
+		services:      safe.NewStore[string, *ServiceDefinition](),
+		booters:       safe.NewStore[string, *lifecycle.LazyBooter](),
+		started:       safe.NewStore[string, bool](),
+		failed:        safe.NewStore[string, error](),
 		orchestrator:  orch,
 		healthChecker: health.NewDefaultChecker(),
 		logger:        logger,
@@ -133,9 +136,6 @@ func (lo *LazyOrchestrator) RegisterNVIDIARAG() error {
 
 // RegisterService registers a service for lazy loading
 func (lo *LazyOrchestrator) RegisterService(svc *ServiceDefinition) error {
-	lo.mu.Lock()
-	defer lo.mu.Unlock()
-
 	if svc.Name == "" {
 		return fmt.Errorf("service name is required")
 	}
@@ -154,13 +154,13 @@ func (lo *LazyOrchestrator) RegisterService(svc *ServiceDefinition) error {
 		svc.CostModel = "free"
 	}
 
-	lo.services[svc.Name] = svc
+	lo.services.Put(svc.Name, svc)
 
 	// Create lazy booter for this service
 	startFn := func() error {
 		return lo.startServiceInternal(svc)
 	}
-	lo.booters[svc.Name] = lifecycle.NewLazyBooter(startFn)
+	lo.booters.Put(svc.Name, lifecycle.NewLazyBooter(startFn))
 
 	lo.logger.Info("registered lazy service: %s (category=%s, cost=%s)",
 		svc.Name, svc.Category, svc.CostModel)
@@ -170,10 +170,8 @@ func (lo *LazyOrchestrator) RegisterService(svc *ServiceDefinition) error {
 
 // StartService starts a service and its dependencies on-demand
 func (lo *LazyOrchestrator) StartService(ctx context.Context, name string) error {
-	lo.mu.RLock()
-	svc, exists := lo.services[name]
-	booter, hasBooter := lo.booters[name]
-	lo.mu.RUnlock()
+	svc, exists := lo.services.Get(name)
+	booter, hasBooter := lo.booters.Get(name)
 
 	if !exists {
 		return fmt.Errorf("service not found: %s", name)
@@ -199,15 +197,12 @@ func (lo *LazyOrchestrator) StartService(ctx context.Context, name string) error
 
 // GetServiceStatus returns the current status of a service
 func (lo *LazyOrchestrator) GetServiceStatus(name string) (*ServiceStatus, error) {
-	lo.mu.RLock()
-	defer lo.mu.RUnlock()
-
-	svc, exists := lo.services[name]
+	svc, exists := lo.services.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("service not found: %s", name)
 	}
 
-	booter, hasBooter := lo.booters[name]
+	booter, hasBooter := lo.booters.Get(name)
 	status := &ServiceStatus{
 		Name:        svc.Name,
 		Category:    svc.Category,
@@ -228,13 +223,11 @@ func (lo *LazyOrchestrator) GetServiceStatus(name string) (*ServiceStatus, error
 
 // ListServices returns all registered services
 func (lo *LazyOrchestrator) ListServices() []*ServiceDefinition {
-	lo.mu.RLock()
-	defer lo.mu.RUnlock()
-
-	result := make([]*ServiceDefinition, 0, len(lo.services))
-	for _, svc := range lo.services {
+	result := make([]*ServiceDefinition, 0, lo.services.Len())
+	lo.services.Range(func(_ string, svc *ServiceDefinition) bool {
 		result = append(result, svc)
-	}
+		return true
+	})
 	return result
 }
 
@@ -252,17 +245,14 @@ func (lo *LazyOrchestrator) startServiceInternal(svc *ServiceDefinition) error {
 
 	// Check if compose file exists
 	if _, err := os.Stat(svc.ComposeFile); os.IsNotExist(err) {
-		lo.mu.Lock()
-		lo.failed[svc.Name] = fmt.Errorf("compose file not found: %s", svc.ComposeFile)
-		lo.mu.Unlock()
-		return lo.failed[svc.Name]
+		missing := fmt.Errorf("compose file not found: %s", svc.ComposeFile)
+		lo.failed.Put(svc.Name, missing)
+		return missing
 	}
 
 	// Start the service
 	if err := lo.orchestrator.Up(ctx, project, compose.WithUpDetach(true), compose.WithWait(true)); err != nil {
-		lo.mu.Lock()
-		lo.failed[svc.Name] = err
-		lo.mu.Unlock()
+		lo.failed.Put(svc.Name, err)
 		return fmt.Errorf("compose up failed: %w", err)
 	}
 
@@ -273,9 +263,7 @@ func (lo *LazyOrchestrator) startServiceInternal(svc *ServiceDefinition) error {
 		}
 	}
 
-	lo.mu.Lock()
-	lo.started[svc.Name] = true
-	lo.mu.Unlock()
+	lo.started.Put(svc.Name, true)
 
 	lo.logger.Info("lazy service started successfully: %s", svc.Name)
 	return nil

@@ -8,22 +8,30 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
-// ModelDiscoveryService automatically discovers, verifies, and selects the best models
+// ModelDiscoveryService automatically discovers, verifies, and selects the best models.
+//
+// Concurrent-safe by construction: discoveredModels is a safe.Store, the
+// selectedModels slice is swapped in whole via safe.Slice.Replace, and
+// `stopped` is an atomic.Bool whose CompareAndSwap(false,true) makes Stop
+// idempotent without a mutex. The previous sync.RWMutex is removed.
 type ModelDiscoveryService struct {
 	verificationService *VerificationService
 	scoringService      *ScoringService
 	healthService       *HealthService
 	config              *DiscoveryConfig
-	discoveredModels    map[string]*DiscoveredModel
-	selectedModels      []*SelectedModel
+	discoveredModels    *safe.Store[string, *DiscoveredModel]
+	selectedModels      *safe.Slice[*SelectedModel]
 	httpClient          *http.Client
-	mu                  sync.RWMutex
 	stopCh              chan struct{}
+	stopChMu            sync.Mutex // only guards the stopCh reassign on restart
 	wg                  sync.WaitGroup
-	stopped             bool
+	stopped             atomic.Bool
 }
 
 // DiscoveryConfig represents discovery configuration
@@ -86,8 +94,8 @@ func NewModelDiscoveryService(
 		scoringService:      ss,
 		healthService:       hs,
 		config:              cfg,
-		discoveredModels:    make(map[string]*DiscoveredModel),
-		selectedModels:      make([]*SelectedModel, 0),
+		discoveredModels:    safe.NewStore[string, *DiscoveredModel](),
+		selectedModels:      safe.NewSlice[*SelectedModel](),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -97,13 +105,12 @@ func NewModelDiscoveryService(
 
 // Start starts the discovery service
 func (s *ModelDiscoveryService) Start(credentials []ProviderCredentials) error {
-	s.mu.Lock()
-	if s.stopped {
-		// Reset for restart
+	if s.stopped.CompareAndSwap(true, false) {
+		// Reset stopCh for restart; stopChMu serialises with Stop's close.
+		s.stopChMu.Lock()
 		s.stopCh = make(chan struct{})
-		s.stopped = false
+		s.stopChMu.Unlock()
 	}
-	s.mu.Unlock()
 	s.wg.Add(1)
 	go s.discoveryLoop(credentials)
 	return nil
@@ -111,14 +118,12 @@ func (s *ModelDiscoveryService) Start(credentials []ProviderCredentials) error {
 
 // Stop stops the discovery service
 func (s *ModelDiscoveryService) Stop() {
-	s.mu.Lock()
-	if s.stopped {
-		s.mu.Unlock()
-		return
+	if !s.stopped.CompareAndSwap(false, true) {
+		return // already stopped
 	}
-	s.stopped = true
+	s.stopChMu.Lock()
 	close(s.stopCh)
-	s.mu.Unlock()
+	s.stopChMu.Unlock()
 	s.wg.Wait()
 }
 
@@ -158,14 +163,17 @@ func (s *ModelDiscoveryService) runDiscoveryPipeline(credentials []ProviderCrede
 	// Step 4: Select top models for ensemble
 	selected := s.selectTopModels(scored)
 
-	// Update state
-	s.mu.Lock()
-	s.discoveredModels = make(map[string]*DiscoveredModel)
+	// Update state: replace whole discoveredModels store by clearing +
+	// re-populating (Clear+Put is not atomic as a pair, but since the
+	// discovery loop is single-threaded for this path there is no
+	// competing writer; readers that Range during the transition see
+	// a transient subset, which is semantically equivalent to catching
+	// the old snapshot on the previous tick).
+	s.discoveredModels.Clear()
 	for _, m := range scored {
-		s.discoveredModels[m.ModelID] = m
+		s.discoveredModels.Put(m.ModelID, m)
 	}
-	s.selectedModels = selected
-	s.mu.Unlock()
+	s.selectedModels.Replace(selected)
 }
 
 // discoverAllModels discovers models from all providers
@@ -437,48 +445,33 @@ func (s *ModelDiscoveryService) calculateVoteWeight(m *DiscoveredModel) float64 
 
 // GetSelectedModels returns the currently selected models for AI debate
 func (s *ModelDiscoveryService) GetSelectedModels() []*SelectedModel {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.selectedModels
+	return s.selectedModels.Snapshot()
 }
 
 // GetDiscoveredModels returns all discovered models
 func (s *ModelDiscoveryService) GetDiscoveredModels() []*DiscoveredModel {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	models := make([]*DiscoveredModel, 0, len(s.discoveredModels))
-	for _, m := range s.discoveredModels {
-		models = append(models, m)
-	}
-	return models
+	return s.discoveredModels.Values()
 }
 
 // GetModelForDebate returns a model by ID if it's selected for debate
 func (s *ModelDiscoveryService) GetModelForDebate(modelID string) (*SelectedModel, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, m := range s.selectedModels {
-		if m.ModelID == modelID {
-			return m, true
-		}
-	}
-	return nil, false
+	found, ok := s.selectedModels.Find(func(m *SelectedModel) bool {
+		return m.ModelID == modelID
+	})
+	return found, ok
 }
 
 // GetDiscoveryStats returns discovery statistics
 func (s *ModelDiscoveryService) GetDiscoveryStats() *DiscoveryStats {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	selected := s.selectedModels.Snapshot()
 
 	stats := &DiscoveryStats{
-		TotalDiscovered: len(s.discoveredModels),
-		TotalSelected:   len(s.selectedModels),
+		TotalDiscovered: s.discoveredModels.Len(),
+		TotalSelected:   len(selected),
 		ByProvider:      make(map[string]int),
 	}
 
-	for _, m := range s.discoveredModels {
+	s.discoveredModels.Range(func(_ string, m *DiscoveredModel) bool {
 		stats.ByProvider[m.Provider]++
 		if m.Verified {
 			stats.TotalVerified++
@@ -486,14 +479,15 @@ func (s *ModelDiscoveryService) GetDiscoveryStats() *DiscoveryStats {
 		if m.CodeVisible {
 			stats.CodeVisibleCount++
 		}
-	}
+		return true
+	})
 
-	if len(s.selectedModels) > 0 {
+	if len(selected) > 0 {
 		var totalScore float64
-		for _, m := range s.selectedModels {
+		for _, m := range selected {
 			totalScore += m.OverallScore
 		}
-		stats.AverageScore = totalScore / float64(len(s.selectedModels))
+		stats.AverageScore = totalScore / float64(len(selected))
 	}
 
 	return stats

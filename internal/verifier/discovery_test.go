@@ -627,35 +627,34 @@ func TestDiscoveryStats_Calculation(t *testing.T) {
 	svc := NewModelDiscoveryService(vs, ss, hs, cfg)
 
 	// Manually add some discovered models
-	svc.mu.Lock()
-	svc.discoveredModels["model1"] = &DiscoveredModel{
+	model1 := &DiscoveredModel{
 		ModelID:      "model1",
 		Provider:     "openai",
 		Verified:     true,
 		CodeVisible:  true,
 		OverallScore: 9.0,
 	}
-	svc.discoveredModels["model2"] = &DiscoveredModel{
+	svc.discoveredModels.Put("model1", model1)
+	svc.discoveredModels.Put("model2", &DiscoveredModel{
 		ModelID:      "model2",
 		Provider:     "anthropic",
 		Verified:     true,
 		CodeVisible:  false,
 		OverallScore: 8.0,
-	}
-	svc.discoveredModels["model3"] = &DiscoveredModel{
+	})
+	svc.discoveredModels.Put("model3", &DiscoveredModel{
 		ModelID:      "model3",
 		Provider:     "openai",
 		Verified:     false,
 		CodeVisible:  false,
 		OverallScore: 5.0,
-	}
-	svc.selectedModels = []*SelectedModel{
+	})
+	svc.selectedModels.Replace([]*SelectedModel{
 		{
-			DiscoveredModel: svc.discoveredModels["model1"],
+			DiscoveredModel: model1,
 			Rank:            1,
 		},
-	}
-	svc.mu.Unlock()
+	})
 
 	stats := svc.GetDiscoveryStats()
 
@@ -684,8 +683,7 @@ func TestModelDiscoveryService_GetModelForDebate_Found(t *testing.T) {
 	svc := NewModelDiscoveryService(nil, nil, nil, nil)
 
 	// Add a selected model
-	svc.mu.Lock()
-	svc.selectedModels = []*SelectedModel{
+	svc.selectedModels.Replace([]*SelectedModel{
 		{
 			DiscoveredModel: &DiscoveredModel{
 				ModelID:  "test-model",
@@ -693,8 +691,7 @@ func TestModelDiscoveryService_GetModelForDebate_Found(t *testing.T) {
 			},
 			Selected: true,
 		},
-	}
-	svc.mu.Unlock()
+	})
 
 	model, found := svc.GetModelForDebate("test-model")
 	if !found {

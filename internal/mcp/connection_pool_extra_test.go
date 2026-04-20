@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -626,11 +627,11 @@ func TestHTTPMCPTransport_SendReceive_Integration(t *testing.T) {
 		defer server.Close()
 
 		transport := &HTTPMCPTransport{
-			baseURL:   server.URL,
-			headers:   map[string]string{"X-Test": "value"},
-			connected: true,
-			client:    &http.Client{Timeout: 10 * time.Second},
+			baseURL: server.URL,
+			headers: safe.NewStoreFromMap(map[string]string{"X-Test": "value"}),
+			client:  &http.Client{Timeout: 10 * time.Second},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 
@@ -665,14 +666,14 @@ func TestHTTPMCPTransport_SendReceive_Integration(t *testing.T) {
 
 		transport := &HTTPMCPTransport{
 			baseURL: server.URL,
-			headers: map[string]string{
+			headers: safe.NewStoreFromMap(map[string]string{
 				"X-Header-1":    "value1",
 				"X-Header-2":    "value2",
 				"Authorization": "Bearer token123",
-			},
-			connected: true,
-			client:    &http.Client{},
+			}),
+			client: &http.Client{},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		err := transport.Send(ctx, map[string]string{})

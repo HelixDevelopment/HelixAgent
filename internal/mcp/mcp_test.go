@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1404,9 +1405,7 @@ func TestStdioMCPTransport_IsConnected(t *testing.T) {
 
 func TestHTTPMCPTransport_Send(t *testing.T) {
 	t.Run("Returns error when not connected", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected: false,
-		}
+		transport := &HTTPMCPTransport{}
 
 		ctx := context.Background()
 		err := transport.Send(ctx, map[string]string{"test": "data"})
@@ -1429,11 +1428,11 @@ func TestHTTPMCPTransport_Send(t *testing.T) {
 		defer server.Close()
 
 		transport := &HTTPMCPTransport{
-			baseURL:   server.URL,
-			headers:   map[string]string{"X-Custom": "header"},
-			connected: true,
-			client:    &http.Client{},
+			baseURL: server.URL,
+			headers: safe.NewStoreFromMap(map[string]string{"X-Custom": "header"}),
+			client:  &http.Client{},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		message := map[string]string{"test": "data"}
@@ -1457,10 +1456,10 @@ func TestHTTPMCPTransport_Send(t *testing.T) {
 		defer server.Close()
 
 		transport := &HTTPMCPTransport{
-			baseURL:   server.URL,
-			connected: true,
-			client:    &http.Client{},
+			baseURL: server.URL,
+			client:  &http.Client{},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		err := transport.Send(ctx, map[string]string{"test": "data"})
@@ -1477,24 +1476,24 @@ func TestHTTPMCPTransport_Send(t *testing.T) {
 		defer server.Close()
 
 		transport := &HTTPMCPTransport{
-			baseURL:   server.URL,
-			connected: true,
-			client:    &http.Client{},
+			baseURL: server.URL,
+			client:  &http.Client{},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		err := transport.Send(ctx, map[string]string{})
 		require.NoError(t, err)
 
-		assert.NotEmpty(t, transport.responseData)
+		payload := transport.responseData.Load()
+		require.NotNil(t, payload)
+		assert.NotEmpty(t, *payload)
 	})
 }
 
 func TestHTTPMCPTransport_Receive(t *testing.T) {
 	t.Run("Returns error when not connected", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected: false,
-		}
+		transport := &HTTPMCPTransport{}
 
 		ctx := context.Background()
 		msg, err := transport.Receive(ctx)
@@ -1504,10 +1503,8 @@ func TestHTTPMCPTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("Returns error when no response data", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected:    true,
-			responseData: nil,
-		}
+		transport := &HTTPMCPTransport{}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		msg, err := transport.Receive(ctx)
@@ -1517,10 +1514,10 @@ func TestHTTPMCPTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("Parses and returns response data", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected:    true,
-			responseData: []byte(`{"jsonrpc":"2.0","id":1,"result":{"value":"test"}}`),
-		}
+		transport := &HTTPMCPTransport{}
+		transport.connected.Store(true)
+		payload := []byte(`{"jsonrpc":"2.0","id":1,"result":{"value":"test"}}`)
+		transport.responseData.Store(&payload)
 
 		ctx := context.Background()
 		msg, err := transport.Receive(ctx)
@@ -1532,39 +1529,37 @@ func TestHTTPMCPTransport_Receive(t *testing.T) {
 	})
 
 	t.Run("Clears response data after receive", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected:    true,
-			responseData: []byte(`{"test":"data"}`),
-		}
+		transport := &HTTPMCPTransport{}
+		transport.connected.Store(true)
+		payload := []byte(`{"test":"data"}`)
+		transport.responseData.Store(&payload)
 
 		ctx := context.Background()
 		_, err := transport.Receive(ctx)
 		require.NoError(t, err)
 
-		assert.Nil(t, transport.responseData)
+		assert.Nil(t, transport.responseData.Load())
 	})
 }
 
 func TestHTTPMCPTransport_Close(t *testing.T) {
 	t.Run("Sets connected to false", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected: true,
-		}
+		transport := &HTTPMCPTransport{}
+		transport.connected.Store(true)
 
 		err := transport.Close()
 		require.NoError(t, err)
-		assert.False(t, transport.connected)
+		assert.False(t, transport.connected.Load())
 	})
 }
 
 func TestHTTPMCPTransport_IsConnected(t *testing.T) {
 	t.Run("Returns connected state", func(t *testing.T) {
-		transport := &HTTPMCPTransport{
-			connected: true,
-		}
+		transport := &HTTPMCPTransport{}
+		transport.connected.Store(true)
 		assert.True(t, transport.IsConnected())
 
-		transport.connected = false
+		transport.connected.Store(false)
 		assert.False(t, transport.IsConnected())
 	})
 }
@@ -1780,10 +1775,10 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("HTTP transport handles connection errors", func(t *testing.T) {
 		transport := &HTTPMCPTransport{
-			baseURL:   "http://localhost:99999", // Invalid port
-			connected: true,
-			client:    &http.Client{Timeout: 100 * time.Millisecond},
+			baseURL: "http://localhost:99999", // Invalid port
+			client:  &http.Client{Timeout: 100 * time.Millisecond},
 		}
+		transport.connected.Store(true)
 
 		ctx := context.Background()
 		err := transport.Send(ctx, map[string]string{})

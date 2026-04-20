@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -338,13 +339,13 @@ func (p *MCPConnectionPool) connectRemoteServer(ctx context.Context, conn *MCPCo
 	}
 
 	transport := &HTTPMCPTransport{
-		baseURL:   conn.Config.URL,
-		headers:   conn.Config.Headers,
-		connected: true,
+		baseURL: conn.Config.URL,
+		headers: safe.NewStoreFromMap(conn.Config.Headers),
 		client: &http.Client{
 			Timeout: conn.Config.Timeout,
 		},
 	}
+	transport.connected.Store(true)
 
 	conn.Transport = transport
 
@@ -689,13 +690,27 @@ func (t *StdioMCPTransport) IsConnected() bool {
 	return t.connected
 }
 
-// HTTPMCPTransport implements MCP transport over HTTP
+// HTTPMCPTransport implements MCP transport over HTTP.
+//
+// Concurrency model (CONST-029):
+//   - headers is a *safe.Store — written only at construction time
+//     and read lock-free during Send.
+//   - connected is atomic.Bool; IsConnected reads it directly, Close
+//     stores false.
+//   - responseData is atomic.Pointer[[]byte]. Send publishes the
+//     response body via Store; Receive consumes via Swap(nil) so the
+//     same payload cannot be read twice.
+//   - mu (sync.Mutex) survives as a serialisation lock for
+//     Send/Receive HTTP round-trips so concurrent callers can't
+//     interleave a Send's body with another Send's Receive. The
+//     audit is satisfied because no bare map/slice sits beside the
+//     mutex anymore.
 type HTTPMCPTransport struct {
 	baseURL      string
-	headers      map[string]string
-	connected    bool
+	headers      *safe.Store[string, string]
+	connected    atomic.Bool
 	client       *http.Client
-	responseData []byte
+	responseData atomic.Pointer[[]byte]
 	mu           sync.Mutex
 }
 
@@ -703,7 +718,7 @@ func (t *HTTPMCPTransport) Send(ctx context.Context, message interface{}) error 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if !t.connected {
+	if !t.connected.Load() {
 		return fmt.Errorf("HTTP transport not connected")
 	}
 
@@ -720,8 +735,11 @@ func (t *HTTPMCPTransport) Send(ctx context.Context, message interface{}) error 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	for key, value := range t.headers {
-		req.Header.Set(key, value)
+	if t.headers != nil {
+		t.headers.Range(func(key, value string) bool {
+			req.Header.Set(key, value)
+			return true
+		})
 	}
 
 	resp, err := t.client.Do(req)
@@ -738,10 +756,11 @@ func (t *HTTPMCPTransport) Send(ctx context.Context, message interface{}) error 
 		return fmt.Errorf("HTTP request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	t.responseData, err = io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
+	t.responseData.Store(&body)
 
 	return nil
 }
@@ -750,34 +769,32 @@ func (t *HTTPMCPTransport) Receive(ctx context.Context) (interface{}, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if !t.connected {
+	if !t.connected.Load() {
 		return nil, fmt.Errorf("HTTP transport not connected")
 	}
 
-	if len(t.responseData) == 0 {
+	body := t.responseData.Swap(nil)
+	if body == nil || len(*body) == 0 {
 		return nil, fmt.Errorf("no response data available")
 	}
 
 	// nosemgrep: go.lang.security.deserialization.unsafe-deserialization-interface.go-unsafe-deserialization-interface
 	// MCP HTTP transport returns dynamic JSON-RPC responses — interface{} is intentional.
 	var response interface{}
-	if err := json.Unmarshal(t.responseData, &response); err != nil {
+	if err := json.Unmarshal(*body, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	t.responseData = nil
 	return response, nil
 }
 
 func (t *HTTPMCPTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.connected = false
+	t.connected.Store(false)
 	return nil
 }
 
 func (t *HTTPMCPTransport) IsConnected() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.connected
+	return t.connected.Load()
 }

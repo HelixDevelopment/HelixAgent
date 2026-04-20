@@ -1358,9 +1358,7 @@ func TestSparkBatchProcessor_ProcessConversationDataset_InputPathExists_SparkSub
 	defer s.Close()
 
 	// Pre-populate the input path
-	s.mu.Lock()
-	s.objects["test-bucket/data/input"] = []byte("input data")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/data/input", []byte("input data"))
 
 	dlc, _ := newTestDataLakeClientFromServer(t, s)
 	processor := NewSparkBatchProcessor("spark://localhost:7077", dlc, "/scripts", logrus.New())
@@ -1404,13 +1402,11 @@ func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_HasOldDirectories(t *t
 
 	// Pre-populate output directories with objects that have old timestamps
 	// ListDirectories("output") lists prefix "output/" and extracts dir names from child keys
-	s.mu.Lock()
-	s.objects["test-bucket/output/old-job/output.json"] = []byte("old data")
-	s.timestamps["test-bucket/output/old-job/output.json"] = oldTime
+	s.objects.Put("test-bucket/output/old-job/output.json", []byte("old data"))
+	s.timestamps.Put("test-bucket/output/old-job/output.json", oldTime)
 	// Also create the directory marker object so GetMetadata("output/old-job/") -> StatObject("output/old-job") succeeds
-	s.objects["test-bucket/output/old-job"] = []byte("")
-	s.timestamps["test-bucket/output/old-job"] = oldTime
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/output/old-job", []byte(""))
+	s.timestamps.Put("test-bucket/output/old-job", oldTime)
 
 	dlc, _ := newTestDataLakeClientFromServer(t, s)
 	processor := NewSparkBatchProcessor("spark://localhost:7077", dlc, "output", logrus.New())
@@ -1427,18 +1423,16 @@ func TestSparkBatchProcessor_CleanupOldResults_WithMockS3_MixedOldAndNew(t *test
 
 	oldTime := time.Now().Add(-48 * time.Hour)
 
-	s.mu.Lock()
 	// Old directory
-	s.objects["test-bucket/output/old-job/output.json"] = []byte("old data")
-	s.timestamps["test-bucket/output/old-job/output.json"] = oldTime
-	s.objects["test-bucket/output/old-job"] = []byte("")
-	s.timestamps["test-bucket/output/old-job"] = oldTime
+	s.objects.Put("test-bucket/output/old-job/output.json", []byte("old data"))
+	s.timestamps.Put("test-bucket/output/old-job/output.json", oldTime)
+	s.objects.Put("test-bucket/output/old-job", []byte(""))
+	s.timestamps.Put("test-bucket/output/old-job", oldTime)
 
 	// New directory (recent timestamp, default is time.Now())
-	s.objects["test-bucket/output/new-job/output.json"] = []byte("new data")
-	s.objects["test-bucket/output/new-job"] = []byte("")
+	s.objects.Put("test-bucket/output/new-job/output.json", []byte("new data"))
+	s.objects.Put("test-bucket/output/new-job", []byte(""))
 	// No timestamp override -> uses time.Now() which is recent
-	s.mu.Unlock()
 
 	dlc, _ := newTestDataLakeClientFromServer(t, s)
 	processor := NewSparkBatchProcessor("spark://localhost:7077", dlc, "output", logrus.New())

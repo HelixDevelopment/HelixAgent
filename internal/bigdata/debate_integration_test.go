@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/conversation"
 	"dev.helix.agent/internal/messaging"
 	"github.com/sirupsen/logrus"
@@ -16,10 +18,13 @@ import (
 )
 
 // mockBroker implements messaging.MessageBroker for testing.
+//
+// Concurrency model (CONST-029): published → *safe.Slice; mu remains
+// (Pattern Zeta) for the scalar last-subscribe handler/topic fields.
 type mockBroker struct {
 	mu             sync.Mutex
 	connected      bool
-	published      []*publishedMsg
+	published      *safe.Slice[*publishedMsg]
 	publishErr     error
 	subscribeErr   error
 	lastHandler    messaging.MessageHandler
@@ -36,7 +41,7 @@ type publishedMsg struct {
 func newMockBroker() *mockBroker {
 	return &mockBroker{
 		connected: true,
-		published: make([]*publishedMsg, 0),
+		published: safe.NewSlice[*publishedMsg](),
 		mockSub:   newMockSubscription("test-sub", "test-topic"),
 	}
 }
@@ -56,12 +61,10 @@ func (mb *mockBroker) Publish(
 	message *messaging.Message,
 	_ ...messaging.PublishOption,
 ) error {
-	mb.mu.Lock()
-	defer mb.mu.Unlock()
 	if mb.publishErr != nil {
 		return mb.publishErr
 	}
-	mb.published = append(mb.published, &publishedMsg{topic: topic, message: message})
+	mb.published.Append(&publishedMsg{topic: topic, message: message})
 	return nil
 }
 
@@ -97,11 +100,7 @@ func (mb *mockBroker) Subscribe(
 }
 
 func (mb *mockBroker) getPublished() []*publishedMsg {
-	mb.mu.Lock()
-	defer mb.mu.Unlock()
-	cp := make([]*publishedMsg, len(mb.published))
-	copy(cp, mb.published)
-	return cp
+	return mb.published.Snapshot()
 }
 
 // mockSubscription implements messaging.Subscription for testing.

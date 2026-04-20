@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -20,18 +21,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockS3Server implements a minimal S3-compatible server for testing
+// mockS3Server implements a minimal S3-compatible server for testing.
+//
+// Concurrency model (CONST-029): objects and timestamps are safe.Store
+// instances; the Store's internal lock serialises all handler paths.
 type mockS3Server struct {
-	mu         sync.RWMutex
-	objects    map[string][]byte    // bucket/key -> content
-	timestamps map[string]time.Time // bucket/key -> last modified time
+	objects    *safe.Store[string, []byte]    // bucket/key -> content
+	timestamps *safe.Store[string, time.Time] // bucket/key -> last modified time
 	server     *httptest.Server
 }
 
 func newMockS3Server() *mockS3Server {
 	s := &mockS3Server{
-		objects:    make(map[string][]byte),
-		timestamps: make(map[string]time.Time),
+		objects:    safe.NewStore[string, []byte](),
+		timestamps: safe.NewStore[string, time.Time](),
 	}
 
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,11 +53,9 @@ func newMockS3Server() *mockS3Server {
 				w.WriteHeader(http.StatusOK)
 			} else {
 				// StatObject
-				s.mu.RLock()
 				fullKey := bucket + "/" + key
-				data, exists := s.objects[fullKey]
-				ts, hasTS := s.timestamps[fullKey]
-				s.mu.RUnlock()
+				data, exists := s.objects.Get(fullKey)
+				ts, hasTS := s.timestamps.Get(fullKey)
 				if exists {
 					w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 					w.Header().Set("Content-Type", "application/json")
@@ -82,9 +83,7 @@ func newMockS3Server() *mockS3Server {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
-				s.mu.Lock()
-				s.objects[bucket+"/"+key] = body
-				s.mu.Unlock()
+				s.objects.Put(bucket+"/"+key, body)
 				w.Header().Set("ETag", `"mock-etag"`)
 				w.WriteHeader(http.StatusOK)
 			}
@@ -92,7 +91,6 @@ func newMockS3Server() *mockS3Server {
 		case "GET":
 			if key == "" {
 				// ListObjectsV2
-				s.mu.RLock()
 				prefix := r.URL.Query().Get("prefix")
 				type Content struct {
 					Key          string `xml:"Key"`
@@ -104,11 +102,11 @@ func newMockS3Server() *mockS3Server {
 					Contents []Content `xml:"Contents"`
 				}
 				result := ListResult{}
-				for objKey, data := range s.objects {
+				for objKey, data := range s.objects.Snapshot() {
 					if strings.HasPrefix(objKey, bucket+"/"+prefix) {
 						actualKey := strings.TrimPrefix(objKey, bucket+"/")
 						modTime := time.Now().UTC()
-						if tsList, hasTsList := s.timestamps[objKey]; hasTsList {
+						if tsList, hasTsList := s.timestamps.Get(objKey); hasTsList {
 							modTime = tsList.UTC()
 						}
 						result.Contents = append(result.Contents, Content{
@@ -118,17 +116,14 @@ func newMockS3Server() *mockS3Server {
 						})
 					}
 				}
-				s.mu.RUnlock()
 				w.Header().Set("Content-Type", "application/xml")
 				xmlData, _ := xml.Marshal(result)
 				_, _ = w.Write(xmlData)
 			} else {
 				// GetObject
-				s.mu.RLock()
 				fullKey := bucket + "/" + key
-				data, exists := s.objects[fullKey]
-				tsGet, hasTSGet := s.timestamps[fullKey]
-				s.mu.RUnlock()
+				data, exists := s.objects.Get(fullKey)
+				tsGet, hasTSGet := s.timestamps.Get(fullKey)
 				if exists {
 					w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 					w.Header().Set("Content-Type", "application/json")
@@ -146,9 +141,7 @@ func newMockS3Server() *mockS3Server {
 			}
 
 		case "DELETE":
-			s.mu.Lock()
-			delete(s.objects, bucket+"/"+key)
-			s.mu.Unlock()
+			s.objects.Delete(bucket + "/" + key)
 			w.WriteHeader(http.StatusNoContent)
 
 		default:
@@ -227,10 +220,8 @@ func TestDataLakeClient_ArchiveConversation_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify the object was stored
-	s.mu.RLock()
 	key := "test-bucket/conversations/year=2025/month=06/day=15/conversation_conv-test-1.json"
-	data, exists := s.objects[key]
-	s.mu.RUnlock()
+	data, exists := s.objects.Get(key)
 	assert.True(t, exists)
 	assert.NotEmpty(t, data)
 }
@@ -246,9 +237,7 @@ func TestDataLakeClient_GetConversation_Success(t *testing.T) {
 		MessageCount:   3,
 	}
 	data, _ := json.Marshal(archive)
-	s.mu.Lock()
-	s.objects["test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-get-1.json"] = data
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-get-1.json", data)
 
 	result, err := dlc.GetConversation(
 		context.Background(),
@@ -279,9 +268,7 @@ func TestDataLakeClient_PathExists_True(t *testing.T) {
 	dlc, s := newTestDataLakeClient(t)
 	defer s.Close()
 
-	s.mu.Lock()
-	s.objects["test-bucket/data/test-path"] = []byte("content")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/data/test-path", []byte("content"))
 
 	exists, err := dlc.PathExists(context.Background(), "data/test-path")
 	assert.NoError(t, err)
@@ -302,9 +289,7 @@ func TestDataLakeClient_DeleteConversation_Success(t *testing.T) {
 	defer s.Close()
 
 	key := "test-bucket/conversations/year=2025/month=06/day=15/conversation_conv-del-1.json"
-	s.mu.Lock()
-	s.objects[key] = []byte(`{"conversation_id":"conv-del-1"}`)
-	s.mu.Unlock()
+	s.objects.Put(key, []byte(`{"conversation_id":"conv-del-1"}`))
 
 	err := dlc.DeleteConversation(
 		context.Background(),
@@ -355,9 +340,7 @@ func TestDataLakeClient_DeletePath_NonRecursive(t *testing.T) {
 	dlc, s := newTestDataLakeClient(t)
 	defer s.Close()
 
-	s.mu.Lock()
-	s.objects["test-bucket/some/path/file.json"] = []byte("data")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/some/path/file.json", []byte("data"))
 
 	err := dlc.DeletePath(context.Background(), "some/path/file.json", false)
 	assert.NoError(t, err)
@@ -367,11 +350,9 @@ func TestDataLakeClient_DeletePath_Recursive(t *testing.T) {
 	dlc, s := newTestDataLakeClient(t)
 	defer s.Close()
 
-	s.mu.Lock()
-	s.objects["test-bucket/dir/file1.json"] = []byte("data1")
-	s.objects["test-bucket/dir/file2.json"] = []byte("data2")
-	s.objects["test-bucket/dir/subdir/file3.json"] = []byte("data3")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/dir/file1.json", []byte("data1"))
+	s.objects.Put("test-bucket/dir/file2.json", []byte("data2"))
+	s.objects.Put("test-bucket/dir/subdir/file3.json", []byte("data3"))
 
 	err := dlc.DeletePath(context.Background(), "dir", true)
 	assert.NoError(t, err)
@@ -382,11 +363,9 @@ func TestDataLakeClient_ListConversations_Success(t *testing.T) {
 	defer s.Close()
 
 	// Pre-populate conversations for a date range
-	s.mu.Lock()
-	s.objects["test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-a.json"] = []byte("{}")
-	s.objects["test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-b.json"] = []byte("{}")
-	s.objects["test-bucket/conversations/year=2025/month=01/day=02/conversation_conv-c.json"] = []byte("{}")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-a.json", []byte("{}"))
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=01/conversation_conv-b.json", []byte("{}"))
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=02/conversation_conv-c.json", []byte("{}"))
 
 	ids, err := dlc.ListConversations(
 		context.Background(),
@@ -402,11 +381,9 @@ func TestDataLakeClient_GetStorageStats_Success(t *testing.T) {
 	defer s.Close()
 
 	// Pre-populate various objects
-	s.mu.Lock()
-	s.objects["test-bucket/conversations/year=2025/month=01/day=01/conv1.json"] = make([]byte, 1024)
-	s.objects["test-bucket/conversations/year=2025/month=01/day=01/conv2.json"] = make([]byte, 2048)
-	s.objects["test-bucket/debates/year=2025/month=01/day=01/debate1.json"] = make([]byte, 512)
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=01/conv1.json", make([]byte, 1024))
+	s.objects.Put("test-bucket/conversations/year=2025/month=01/day=01/conv2.json", make([]byte, 2048))
+	s.objects.Put("test-bucket/debates/year=2025/month=01/day=01/debate1.json", make([]byte, 512))
 
 	stats, err := dlc.GetStorageStats(context.Background())
 	assert.NoError(t, err)
@@ -417,10 +394,8 @@ func TestDataLakeClient_ListDirectories_Success(t *testing.T) {
 	dlc, s := newTestDataLakeClient(t)
 	defer s.Close()
 
-	s.mu.Lock()
-	s.objects["test-bucket/output/dir1/file.json"] = []byte("data1")
-	s.objects["test-bucket/output/dir2/file.json"] = []byte("data2")
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/output/dir1/file.json", []byte("data1"))
+	s.objects.Put("test-bucket/output/dir2/file.json", []byte("data2"))
 
 	dirs, err := dlc.ListDirectories(context.Background(), "output/")
 	assert.NoError(t, err)
@@ -443,9 +418,7 @@ func TestDataLakeClient_GetMetadata_ExistingObject(t *testing.T) {
 	dlc, s := newTestDataLakeClient(t)
 	defer s.Close()
 
-	s.mu.Lock()
-	s.objects["test-bucket/data/file.json"] = []byte(`{"key": "value"}`)
-	s.mu.Unlock()
+	s.objects.Put("test-bucket/data/file.json", []byte(`{"key": "value"}`))
 
 	metadata, err := dlc.GetMetadata(context.Background(), "data/file.json")
 	assert.NoError(t, err)

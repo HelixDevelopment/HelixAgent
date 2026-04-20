@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sync"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/memory"
 	"dev.helix.agent/internal/messaging"
@@ -16,9 +17,10 @@ import (
 )
 
 // mockMemoryStore implements memory.MemoryStore for testing.
+//
+// Concurrency model (CONST-029): memories → *safe.Store.
 type mockMemoryStore struct {
-	mu        sync.Mutex
-	memories  map[string]*memory.Memory
+	memories  *safe.Store[string, *memory.Memory]
 	addErr    error
 	getErr    error
 	updateErr error
@@ -28,27 +30,23 @@ type mockMemoryStore struct {
 
 func newMockMemoryStore() *mockMemoryStore {
 	return &mockMemoryStore{
-		memories: make(map[string]*memory.Memory),
+		memories: safe.NewStore[string, *memory.Memory](),
 	}
 }
 
 func (ms *mockMemoryStore) Add(_ context.Context, mem *memory.Memory) error {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
 	if ms.addErr != nil {
 		return ms.addErr
 	}
-	ms.memories[mem.ID] = mem
+	ms.memories.Put(mem.ID, mem)
 	return nil
 }
 
 func (ms *mockMemoryStore) Get(_ context.Context, id string) (*memory.Memory, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
 	if ms.getErr != nil {
 		return nil, ms.getErr
 	}
-	mem, ok := ms.memories[id]
+	mem, ok := ms.memories.Get(id)
 	if !ok {
 		return nil, errors.New("memory not found")
 	}
@@ -56,22 +54,18 @@ func (ms *mockMemoryStore) Get(_ context.Context, id string) (*memory.Memory, er
 }
 
 func (ms *mockMemoryStore) Update(_ context.Context, mem *memory.Memory) error {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
 	if ms.updateErr != nil {
 		return ms.updateErr
 	}
-	ms.memories[mem.ID] = mem
+	ms.memories.Put(mem.ID, mem)
 	return nil
 }
 
 func (ms *mockMemoryStore) Delete(_ context.Context, id string) error {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
 	if ms.deleteErr != nil {
 		return ms.deleteErr
 	}
-	delete(ms.memories, id)
+	ms.memories.Delete(id)
 	return nil
 }
 
@@ -80,15 +74,14 @@ func (ms *mockMemoryStore) Search(
 	_ string,
 	_ *memory.SearchOptions,
 ) ([]*memory.Memory, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
 	if ms.searchErr != nil {
 		return nil, ms.searchErr
 	}
 	result := make([]*memory.Memory, 0)
-	for _, m := range ms.memories {
+	ms.memories.Range(func(_ string, m *memory.Memory) bool {
 		result = append(result, m)
-	}
+		return true
+	})
 	return result, nil
 }
 
@@ -147,15 +140,12 @@ func (ms *mockMemoryStore) Close() error {
 }
 
 func (ms *mockMemoryStore) getStoredMemory(id string) *memory.Memory {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	return ms.memories[id]
+	mem, _ := ms.memories.Get(id)
+	return mem
 }
 
 func (ms *mockMemoryStore) count() int {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	return len(ms.memories)
+	return ms.memories.Len()
 }
 
 // Helper to create a real memory.Manager with a mock store.
@@ -711,9 +701,7 @@ func TestMemoryIntegration_UpdateMemory_WithDistributedMemoryReal(t *testing.T) 
 	require.NoError(t, err)
 
 	// Clear published messages
-	broker.mu.Lock()
-	broker.published = broker.published[:0]
-	broker.mu.Unlock()
+	broker.published.Clear()
 
 	// Update it
 	mem.Content = "updated distributed content"
@@ -743,9 +731,7 @@ func TestMemoryIntegration_DeleteMemory_WithDistributedMemoryReal(t *testing.T) 
 	require.NoError(t, err)
 
 	// Clear published messages
-	broker.mu.Lock()
-	broker.published = broker.published[:0]
-	broker.mu.Unlock()
+	broker.published.Clear()
 
 	// Delete
 	err = mi.DeleteMemory(ctx, "mem-del-dist")

@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -125,16 +128,23 @@ type MemorySummary struct {
 	Tags     []string `json:"tags"`
 }
 
-// Dreamer is the memory consolidation engine
+// Dreamer is the memory consolidation engine.
+//
+// Concurrency model (CONST-029):
+//   - sessions → *safe.Slice, memories → *safe.Store (lock-free reads).
+//   - running → atomic.Bool for Start/Stop idempotency via CAS.
+//   - mu (RWMutex) survives Pattern-Zeta: guards the DreamTrigger
+//     compound (LastDreamTime/SessionCount/Locked), the *d.current
+//     pointer, and per-session Phases appends during executePhase.
 type Dreamer struct {
 	config   DreamerConfig
 	logger   *logrus.Logger
 	trigger  DreamTrigger
-	sessions []DreamSession
-	memories map[string]MemoryEntry
+	sessions *safe.Slice[DreamSession]
+	memories *safe.Store[string, MemoryEntry]
 	current  *DreamSession
 	mu       sync.RWMutex
-	running  bool
+	running  atomic.Bool
 	stopCh   chan struct{}
 
 	// Callbacks
@@ -153,8 +163,8 @@ func NewDreamer(config DreamerConfig, logger *logrus.Logger) *Dreamer {
 			TimeThreshold: config.TimeThreshold,
 			MinSessions:   config.MinSessions,
 		},
-		sessions:        make([]DreamSession, 0),
-		memories:        make(map[string]MemoryEntry),
+		sessions:        safe.NewSlice[DreamSession](),
+		memories:        safe.NewStore[string, MemoryEntry](),
 		stopCh:          make(chan struct{}),
 		onPhaseStart:    func(p DreamPhase) {},
 		onPhaseEnd:      func(p DreamPhase, success bool, details string) {},
@@ -178,27 +188,24 @@ func (d *Dreamer) SetCallbacks(
 
 // Start starts the Dream system
 func (d *Dreamer) Start(ctx context.Context) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if d.running {
-		return fmt.Errorf("Dreamer already running")
-	}
-
 	if !d.config.Enabled {
 		d.logger.Info("Dream system is disabled")
 		return nil
 	}
 
+	if !d.running.CompareAndSwap(false, true) {
+		return fmt.Errorf("Dreamer already running")
+	}
+
 	// Ensure memory directory exists
 	if err := os.MkdirAll(d.config.MemoryDir, 0750); err != nil {
+		d.running.Store(false)
 		return fmt.Errorf("failed to create memory directory: %w", err)
 	}
 
 	// Load existing memories
 	d.loadMemories()
 
-	d.running = true
 	go d.run(ctx)
 
 	d.logger.Info("Dream system started")
@@ -207,15 +214,11 @@ func (d *Dreamer) Start(ctx context.Context) error {
 
 // Stop stops the Dream system
 func (d *Dreamer) Stop() error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if !d.running {
+	if !d.running.CompareAndSwap(true, false) {
 		return nil
 	}
 
 	close(d.stopCh)
-	d.running = false
 
 	// Save memories
 	d.saveMemories()
@@ -226,9 +229,7 @@ func (d *Dreamer) Stop() error {
 
 // IsRunning returns true if the dreamer is running
 func (d *Dreamer) IsRunning() bool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.running
+	return d.running.Load()
 }
 
 // run is the main dream loop
@@ -325,7 +326,6 @@ func (d *Dreamer) Dream(ctx context.Context) (*DreamSession, error) {
 	session.State = DreamStateCompleted
 	now := time.Now()
 	session.CompletedAt = &now
-	d.sessions = append(d.sessions, *session)
 
 	// Update trigger
 	d.trigger.LastDreamTime = now
@@ -333,7 +333,10 @@ func (d *Dreamer) Dream(ctx context.Context) (*DreamSession, error) {
 	d.trigger.Locked = false
 
 	d.current = nil
+	completed := *session
 	d.mu.Unlock()
+
+	d.sessions.Append(completed)
 
 	d.logger.Infof("Dream session %s completed", session.ID)
 
@@ -468,9 +471,6 @@ func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error
 
 // AddMemory adds a new memory
 func (d *Dreamer) AddMemory(entry MemoryEntry) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	if entry.ID == "" {
 		entry.ID = generateMemoryID()
 	}
@@ -478,7 +478,7 @@ func (d *Dreamer) AddMemory(entry MemoryEntry) error {
 	entry.CreatedAt = time.Now()
 	entry.UpdatedAt = entry.CreatedAt
 
-	d.memories[entry.ID] = entry
+	d.memories.Put(entry.ID, entry)
 	d.onMemoryAdded(entry)
 
 	return nil
@@ -486,66 +486,60 @@ func (d *Dreamer) AddMemory(entry MemoryEntry) error {
 
 // UpdateMemory updates an existing memory
 func (d *Dreamer) UpdateMemory(id string, updates map[string]interface{}) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	memory, exists := d.memories[id]
-	if !exists {
+	var (
+		notFound bool
+		updated  MemoryEntry
+	)
+	d.memories.Update(id, func(cur MemoryEntry, present bool) (MemoryEntry, bool) {
+		if !present {
+			notFound = true
+			return cur, false
+		}
+		if content, ok := updates["content"].(string); ok {
+			cur.Content = content
+		}
+		if confidence, ok := updates["confidence"].(float64); ok {
+			cur.Confidence = confidence
+		}
+		if tags, ok := updates["tags"].([]string); ok {
+			cur.Tags = tags
+		}
+		cur.UpdatedAt = time.Now()
+		updated = cur
+		return cur, true
+	})
+	if notFound {
 		return fmt.Errorf("memory not found: %s", id)
 	}
 
-	// Apply updates
-	if content, ok := updates["content"].(string); ok {
-		memory.Content = content
-	}
-	if confidence, ok := updates["confidence"].(float64); ok {
-		memory.Confidence = confidence
-	}
-	if tags, ok := updates["tags"].([]string); ok {
-		memory.Tags = tags
-	}
-
-	memory.UpdatedAt = time.Now()
-	d.memories[id] = memory
-	d.onMemoryUpdated(memory)
-
+	d.onMemoryUpdated(updated)
 	return nil
 }
 
 // GetMemory retrieves a memory by ID
 func (d *Dreamer) GetMemory(id string) (MemoryEntry, bool) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	memory, exists := d.memories[id]
-	return memory, exists
+	return d.memories.Get(id)
 }
 
 // GetMemoriesByCategory returns memories in a category
 func (d *Dreamer) GetMemoriesByCategory(category string) []MemoryEntry {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	var result []MemoryEntry
-	for _, memory := range d.memories {
+	d.memories.Range(func(_ string, memory MemoryEntry) bool {
 		if memory.Category == category {
 			result = append(result, memory)
 		}
-	}
-
+		return true
+	})
 	return result
 }
 
 // GetAllMemories returns all memories
 func (d *Dreamer) GetAllMemories() []MemoryEntry {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	result := make([]MemoryEntry, 0, len(d.memories))
-	for _, memory := range d.memories {
+	snap := d.memories.Snapshot()
+	result := make([]MemoryEntry, 0, len(snap))
+	for _, memory := range snap {
 		result = append(result, memory)
 	}
-
 	return result
 }
 
@@ -564,12 +558,7 @@ func (d *Dreamer) GetCurrentSession() *DreamSession {
 
 // GetSessions returns all dream sessions
 func (d *Dreamer) GetSessions() []DreamSession {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	result := make([]DreamSession, len(d.sessions))
-	copy(result, d.sessions)
-	return result
+	return d.sessions.Snapshot()
 }
 
 // loadMemories loads memories from disk
@@ -595,15 +584,15 @@ func (d *Dreamer) loadMemories() {
 			continue
 		}
 
-		d.memories[memory.ID] = memory
+		d.memories.Put(memory.ID, memory)
 	}
 
-	d.logger.Infof("Loaded %d memories", len(d.memories))
+	d.logger.Infof("Loaded %d memories", d.memories.Len())
 }
 
 // saveMemories saves memories to disk
 func (d *Dreamer) saveMemories() {
-	for id, memory := range d.memories {
+	for id, memory := range d.memories.Snapshot() {
 		path := filepath.Join(d.config.MemoryDir, fmt.Sprintf("%s.json", id))
 
 		data, err := json.MarshalIndent(memory, "", "  ")
@@ -620,14 +609,15 @@ func (d *Dreamer) saveMemories() {
 
 // updateMemoryIndex updates the MEMORY.md file
 func (d *Dreamer) updateMemoryIndex() {
+	snap := d.memories.Snapshot()
 	index := MemoryIndex{
 		Version:     "1.0",
 		LastUpdated: time.Now(),
 		Categories:  []string{"pattern", "fact", "preference", "project"},
-		Entries:     make([]MemorySummary, 0, len(d.memories)),
+		Entries:     make([]MemorySummary, 0, len(snap)),
 	}
 
-	for _, memory := range d.memories {
+	for _, memory := range snap {
 		index.Entries = append(index.Entries, MemorySummary{
 			ID:       memory.ID,
 			Category: memory.Category,

@@ -34,7 +34,7 @@ func TestNewDreamer(t *testing.T) {
 	assert.NotNil(t, dreamer.sessions)
 	assert.NotNil(t, dreamer.memories)
 	assert.NotNil(t, dreamer.stopCh)
-	assert.False(t, dreamer.running)
+	assert.False(t, dreamer.running.Load())
 }
 
 func TestDreamer_SetCallbacks(t *testing.T) {

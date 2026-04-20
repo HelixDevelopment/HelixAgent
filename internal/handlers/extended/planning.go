@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -115,11 +117,17 @@ type PlanExecutionResult struct {
 }
 
 // PlanningHandlerExtensions provides extended planning functionality
-// This EXTENDS the existing PlanningHandler with claude-code-source features
+// This EXTENDS the existing PlanningHandler with claude-code-source features.
+//
+// Concurrency model (CONST-029): sessions is a *safe.Store. Each
+// session's internal state is still guarded by its own
+// ExtendedPlanModeSession.mu (out of scope here — that struct carries
+// JSON-marshaled slices, so it can't be trivially migrated in this
+// pass). The handler-level store serialises Put / Get / Delete and
+// has no cross-key invariants.
 type PlanningHandlerExtensions struct {
-	sessions   map[string]*PlanModeSession
-	sessionsMu sync.RWMutex
-	logger     *logrus.Logger
+	sessions *safe.Store[string, *PlanModeSession]
+	logger   *logrus.Logger
 }
 
 // NewPlanningHandlerExtensions creates new planning handler extensions
@@ -128,7 +136,7 @@ func NewPlanningHandlerExtensions(logger *logrus.Logger) *PlanningHandlerExtensi
 		logger = logrus.New()
 	}
 	return &PlanningHandlerExtensions{
-		sessions: make(map[string]*PlanModeSession),
+		sessions: safe.NewStore[string, *PlanModeSession](),
 		logger:   logger,
 	}
 }
@@ -194,9 +202,7 @@ func (h *PlanningHandlerExtensions) EnterPlanMode(c *gin.Context) {
 	session.Steps = steps
 	session.Status = PlanModeStatusReview
 
-	h.sessionsMu.Lock()
-	h.sessions[session.ID] = session
-	h.sessionsMu.Unlock()
+	h.sessions.Put(session.ID, session)
 
 	h.logger.WithFields(logrus.Fields{
 		"session_id": session.ID,
@@ -236,10 +242,7 @@ type UpdatePlanRequest struct {
 func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
-	h.sessionsMu.RLock()
-	session, exists := h.sessions[sessionID]
-	h.sessionsMu.RUnlock()
-
+	session, exists := h.sessions.Get(sessionID)
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -296,10 +299,7 @@ func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
-	h.sessionsMu.RLock()
-	session, exists := h.sessions[sessionID]
-	h.sessionsMu.RUnlock()
-
+	session, exists := h.sessions.Get(sessionID)
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -336,10 +336,7 @@ func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 func (h *PlanningHandlerExtensions) GetPlanStatus(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
-	h.sessionsMu.RLock()
-	session, exists := h.sessions[sessionID]
-	h.sessionsMu.RUnlock()
-
+	session, exists := h.sessions.Get(sessionID)
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -364,10 +361,7 @@ func (h *PlanningHandlerExtensions) GetPlanStatus(c *gin.Context) {
 func (h *PlanningHandlerExtensions) PausePlan(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
-	h.sessionsMu.RLock()
-	session, exists := h.sessions[sessionID]
-	h.sessionsMu.RUnlock()
-
+	session, exists := h.sessions.Get(sessionID)
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
@@ -401,10 +395,8 @@ func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 	sessionID := c.Param("session_id")
 	save := c.Query("save") == "true"
 
-	h.sessionsMu.Lock()
-	session, exists := h.sessions[sessionID]
+	session, exists := h.sessions.Get(sessionID)
 	if !exists {
-		h.sessionsMu.Unlock()
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "plan session not found"})
 		return
 	}
@@ -416,8 +408,7 @@ func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 		h.logger.WithField("session_id", sessionID).Info("Saving completed plan to history")
 	}
 
-	delete(h.sessions, sessionID)
-	h.sessionsMu.Unlock()
+	h.sessions.Delete(sessionID)
 
 	h.logger.WithField("session_id", sessionID).Info("Exited plan mode")
 

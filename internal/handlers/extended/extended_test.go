@@ -856,15 +856,13 @@ func TestGetPlanStatus(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	handler.sessionsMu.Lock()
 	testSession := &ExtendedPlanModeSession{
 		ID:        "test-session",
 		Objective: "Test objective",
 		Status:    PlanModeStatusPlanning,
 		Steps:     []PlanStep{{ID: "step-1", Description: "Step 1"}},
 	}
-	handler.sessions[testSession.ID] = testSession
-	handler.sessionsMu.Unlock()
+	handler.sessions.Put(testSession.ID, testSession)
 
 	tests := []struct {
 		name       string
@@ -910,15 +908,13 @@ func TestUpdatePlan(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	handler.sessionsMu.Lock()
-	handler.sessions["test-session"] = &ExtendedPlanModeSession{
+	handler.sessions.Put("test-session", &ExtendedPlanModeSession{
 		ID:     "test-session",
 		Status: PlanModeStatusPlanning,
 		Steps: []PlanStep{
 			{ID: "step-1", Description: "Original Step 1"},
 		},
-	}
-	handler.sessionsMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -967,16 +963,14 @@ func TestPausePlan(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create test sessions
-	handler.sessionsMu.Lock()
-	handler.sessions["executing-session"] = &ExtendedPlanModeSession{
+	handler.sessions.Put("executing-session", &ExtendedPlanModeSession{
 		ID:     "executing-session",
 		Status: PlanModeStatusExecuting,
-	}
-	handler.sessions["completed-session"] = &ExtendedPlanModeSession{
+	})
+	handler.sessions.Put("completed-session", &ExtendedPlanModeSession{
 		ID:     "completed-session",
 		Status: PlanModeStatusCompleted,
-	}
-	handler.sessionsMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string
@@ -1019,12 +1013,10 @@ func TestExitPlanMode(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	handler.sessionsMu.Lock()
-	handler.sessions["test-session"] = &ExtendedPlanModeSession{
+	handler.sessions.Put("test-session", &ExtendedPlanModeSession{
 		ID:     "test-session",
 		Status: PlanModeStatusCompleted,
-	}
-	handler.sessionsMu.Unlock()
+	})
 
 	tests := []struct {
 		name       string

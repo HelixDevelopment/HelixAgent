@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
@@ -458,9 +460,14 @@ func TestCircuitBreaker_ConcurrentAccess(t *testing.T) {
 }
 
 // logrusWarnHook captures logrus Warn-level entries for test assertions.
+//
+// Concurrency model (CONST-029): entries → *safe.Slice.
 type logrusWarnHook struct {
-	mu      sync.Mutex
-	entries []string
+	entries *safe.Slice[string]
+}
+
+func newLogrusWarnHook() *logrusWarnHook {
+	return &logrusWarnHook{entries: safe.NewSlice[string]()}
 }
 
 func (h *logrusWarnHook) Levels() []logrus.Level {
@@ -468,18 +475,18 @@ func (h *logrusWarnHook) Levels() []logrus.Level {
 }
 
 func (h *logrusWarnHook) Fire(entry *logrus.Entry) error {
-	h.mu.Lock()
-	h.entries = append(h.entries, entry.Message)
-	h.mu.Unlock()
+	if h.entries == nil {
+		h.entries = safe.NewSlice[string]()
+	}
+	h.entries.Append(entry.Message)
 	return nil
 }
 
 func (h *logrusWarnHook) messages() []string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	cp := make([]string, len(h.entries))
-	copy(cp, h.entries)
-	return cp
+	if h.entries == nil {
+		return nil
+	}
+	return h.entries.Snapshot()
 }
 
 // TestCircuitBreaker_ListenerNotifyTimeout_TransitionTo verifies that a
@@ -490,7 +497,7 @@ func TestCircuitBreaker_ListenerNotifyTimeout_TransitionTo(t *testing.T) {
 	listenerNotifyTimeoutNs.Store(int64(50 * time.Millisecond))
 	defer listenerNotifyTimeoutNs.Store(orig)
 
-	hook := &logrusWarnHook{}
+	hook := newLogrusWarnHook()
 	logrus.AddHook(hook)
 	defer logrus.StandardLogger().ReplaceHooks(logrus.LevelHooks{})
 
@@ -535,7 +542,7 @@ func TestCircuitBreaker_ListenerNotifyTimeout_Reset(t *testing.T) {
 	listenerNotifyTimeoutNs.Store(int64(50 * time.Millisecond))
 	defer listenerNotifyTimeoutNs.Store(orig)
 
-	hook := &logrusWarnHook{}
+	hook := newLogrusWarnHook()
 	logrus.AddHook(hook)
 	defer logrus.StandardLogger().ReplaceHooks(logrus.LevelHooks{})
 

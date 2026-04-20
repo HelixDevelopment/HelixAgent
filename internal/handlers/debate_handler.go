@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -15,7 +17,12 @@ import (
 	"dev.helix.agent/internal/skills"
 )
 
-// DebateHandler handles debate API endpoints
+// DebateHandler handles debate API endpoints.
+//
+// Concurrency model (CONST-029): activeDebates → *safe.Store. The
+// stateMu (Pattern Zeta, renamed from mu) survives only to serialise
+// per-*debateState field mutations that happen through the shared
+// pointer returned by Store.Get.
 type DebateHandler struct {
 	debateService           *services.DebateService
 	advancedDebate          *services.AdvancedDebateService
@@ -24,8 +31,8 @@ type DebateHandler struct {
 	logger                  *logrus.Logger
 
 	// In-memory storage for active debates (in production, use database)
-	activeDebates map[string]*debateState
-	mu            sync.RWMutex
+	activeDebates *safe.Store[string, *debateState]
+	stateMu       sync.Mutex
 }
 
 type debateState struct {
@@ -49,7 +56,7 @@ func NewDebateHandler(debateService *services.DebateService, advancedDebate *ser
 		debateService:  debateService,
 		advancedDebate: advancedDebate,
 		logger:         logger,
-		activeDebates:  make(map[string]*debateState),
+		activeDebates:  safe.NewStore[string, *debateState](),
 	}
 }
 
@@ -234,16 +241,14 @@ func (h *DebateHandler) CreateDebate(c *gin.Context) {
 	}
 
 	// Store debate state
-	h.mu.Lock()
-	h.activeDebates[debateID] = &debateState{
+	h.activeDebates.Put(debateID, &debateState{
 		Config:                    config,
 		ValidationConfig:          validationConfig,
 		EnableMultiPassValidation: req.EnableMultiPassValidation,
 		Status:                    "pending",
 		StartTime:                 time.Now(),
 		skillsContext:             skillsCtx,
-	}
-	h.mu.Unlock()
+	})
 
 	// Start debate asynchronously
 	go h.runDebate(debateID, config, validationConfig)
@@ -262,14 +267,14 @@ func (h *DebateHandler) CreateDebate(c *gin.Context) {
 
 // runDebate executes the debate asynchronously
 func (h *DebateHandler) runDebate(debateID string, config *services.DebateConfig, validationConfig *services.ValidationConfig) {
-	h.mu.Lock()
-	if state, exists := h.activeDebates[debateID]; exists {
+	h.stateMu.Lock()
+	if state, exists := h.activeDebates.Get(debateID); exists {
 		state.Status = "running"
 		if validationConfig != nil {
 			state.CurrentPhase = string(services.PhaseInitialResponse)
 		}
 	}
-	h.mu.Unlock()
+	h.stateMu.Unlock()
 
 	// Conduct the debate
 	var result *services.DebateResult
@@ -301,10 +306,10 @@ func (h *DebateHandler) runDebate(debateID string, config *services.DebateConfig
 		}
 	}
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.stateMu.Lock()
+	defer h.stateMu.Unlock()
 
-	if state, exists := h.activeDebates[debateID]; exists {
+	if state, exists := h.activeDebates.Get(debateID); exists {
 		now := time.Now()
 		state.EndTime = &now
 
@@ -363,10 +368,10 @@ func (e *debateError) Error() string {
 func (h *DebateHandler) GetDebate(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
 	if !exists {
-		h.mu.RUnlock()
+		h.stateMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -418,7 +423,7 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 			"phases":              state.MultiPassResult.Phases,
 		}
 	}
-	h.mu.RUnlock()
+	h.stateMu.Unlock()
 
 	c.JSON(http.StatusOK, response)
 }
@@ -428,10 +433,10 @@ func (h *DebateHandler) GetDebate(c *gin.Context) {
 func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
 	if !exists {
-		h.mu.RUnlock()
+		h.stateMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -479,7 +484,7 @@ func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 		status["quality_improvement"] = state.MultiPassResult.QualityImprovement
 		status["phases_completed"] = len(state.MultiPassResult.Phases)
 	}
-	h.mu.RUnlock()
+	h.stateMu.Unlock()
 
 	c.JSON(http.StatusOK, status)
 }
@@ -489,10 +494,10 @@ func (h *DebateHandler) GetDebateStatus(c *gin.Context) {
 func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
 	if !exists {
-		h.mu.RUnlock()
+		h.stateMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -505,7 +510,7 @@ func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 	// responding so we do not hold RLock across c.JSON.
 	status := state.Status
 	result := state.Result
-	h.mu.RUnlock()
+	h.stateMu.Unlock()
 
 	if status != "completed" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -533,11 +538,11 @@ func (h *DebateHandler) GetDebateResults(c *gin.Context) {
 func (h *DebateHandler) ListDebates(c *gin.Context) {
 	status := c.Query("status")
 
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.stateMu.Lock()
+	defer h.stateMu.Unlock()
 
 	debates := make([]gin.H, 0)
-	for id, state := range h.activeDebates {
+	for id, state := range h.activeDebates.Snapshot() {
 		if status != "" && state.Status != status {
 			continue
 		}
@@ -566,10 +571,10 @@ func (h *DebateHandler) ListDebates(c *gin.Context) {
 func (h *DebateHandler) DeleteDebate(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.stateMu.Lock()
+	defer h.stateMu.Unlock()
 
-	if _, exists := h.activeDebates[debateID]; !exists {
+	if _, exists := h.activeDebates.Get(debateID); !exists {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"message":   "Debate not found",
@@ -579,7 +584,7 @@ func (h *DebateHandler) DeleteDebate(c *gin.Context) {
 		return
 	}
 
-	delete(h.activeDebates, debateID)
+	h.activeDebates.Delete(debateID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Debate deleted",
@@ -591,9 +596,9 @@ func (h *DebateHandler) DeleteDebate(c *gin.Context) {
 func (h *DebateHandler) ApproveDebate(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
+	h.stateMu.Unlock()
 
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -616,9 +621,9 @@ func (h *DebateHandler) ApproveDebate(c *gin.Context) {
 		return
 	}
 
-	h.mu.Lock()
+	h.stateMu.Lock()
 	state.Status = "running"
-	h.mu.Unlock()
+	h.stateMu.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Debate approved and resumed",
@@ -631,9 +636,9 @@ func (h *DebateHandler) ApproveDebate(c *gin.Context) {
 func (h *DebateHandler) RejectDebate(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
+	h.stateMu.Unlock()
 
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -650,14 +655,14 @@ func (h *DebateHandler) RejectDebate(c *gin.Context) {
 	}
 	_ = c.ShouldBindJSON(&req) //nolint:errcheck
 
-	h.mu.Lock()
+	h.stateMu.Lock()
 	state.Status = "rejected"
 	if req.Reason != "" {
 		state.Error = "Rejected: " + req.Reason
 	}
 	now := time.Now()
 	state.EndTime = &now
-	h.mu.Unlock()
+	h.stateMu.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Debate rejected",
@@ -671,9 +676,9 @@ func (h *DebateHandler) RejectDebate(c *gin.Context) {
 func (h *DebateHandler) GetDebateGates(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
+	h.stateMu.Unlock()
 
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -698,9 +703,9 @@ func (h *DebateHandler) GetDebateGates(c *gin.Context) {
 func (h *DebateHandler) GetDebateAudit(c *gin.Context) {
 	debateID := c.Param("id")
 
-	h.mu.RLock()
-	state, exists := h.activeDebates[debateID]
-	h.mu.RUnlock()
+	h.stateMu.Lock()
+	state, exists := h.activeDebates.Get(debateID)
+	h.stateMu.Unlock()
 
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{

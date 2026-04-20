@@ -248,10 +248,9 @@ func TestDebateHandlerUnit_GetDebate_Success(t *testing.T) {
 	router, handler := setupDebateUnitTest()
 
 	// Pre-populate a debate
-	handler.mu.Lock()
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
-	handler.activeDebates["test-debate-1"] = &debateState{
+	handler.activeDebates.Put("test-debate-1", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "test-debate-1",
 			Topic:     "Test topic",
@@ -271,8 +270,7 @@ func TestDebateHandlerUnit_GetDebate_Success(t *testing.T) {
 				FinalPosition: "Agreement reached",
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/test-debate-1", nil)
@@ -323,8 +321,7 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["running-debate"] = &debateState{
+	handler.activeDebates.Put("running-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "running-debate",
 			Topic:     "Running topic",
@@ -335,8 +332,8 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 		StartTime:                 now,
 		EnableMultiPassValidation: true,
 		CurrentPhase:              "validation",
-	}
-	handler.activeDebates["completed-debate"] = &debateState{
+	})
+	handler.activeDebates.Put("completed-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "completed-debate",
 			Topic:     "Completed topic",
@@ -351,8 +348,8 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 			QualityImprovement: 0.15,
 			Phases:             []*services.PhaseResult{},
 		},
-	}
-	handler.activeDebates["failed-debate"] = &debateState{
+	})
+	handler.activeDebates.Put("failed-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "failed-debate",
 			Topic:    "Failed topic",
@@ -361,8 +358,7 @@ func TestDebateHandlerUnit_GetDebateStatus_Success(t *testing.T) {
 		Error:     "provider timeout",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		debateID       string
@@ -438,8 +434,7 @@ func TestDebateHandlerUnit_GetDebateResults_Success(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["completed-with-result"] = &debateState{
+	handler.activeDebates.Put("completed-with-result", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "completed-with-result",
 			Topic:    "Test topic",
@@ -456,8 +451,7 @@ func TestDebateHandlerUnit_GetDebateResults_Success(t *testing.T) {
 				FinalPosition: "We agree.",
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/completed-with-result/results", nil)
@@ -478,16 +472,14 @@ func TestDebateHandlerUnit_GetDebateResults_NotCompleted(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["running-debate"] = &debateState{
+	handler.activeDebates.Put("running-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "running-debate",
 			Topic:    "Running topic",
 		},
 		Status:    "running",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/running-debate/results", nil)
@@ -505,8 +497,7 @@ func TestDebateHandlerUnit_GetDebateResults_NoResult(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["completed-no-result"] = &debateState{
+	handler.activeDebates.Put("completed-no-result", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "completed-no-result",
 			Topic:    "Weird topic",
@@ -515,8 +506,7 @@ func TestDebateHandlerUnit_GetDebateResults_NoResult(t *testing.T) {
 		StartTime: now,
 		EndTime:   &endTime,
 		Result:    nil,
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/completed-no-result/results", nil)
@@ -547,24 +537,22 @@ func TestDebateHandlerUnit_ListDebates_Success(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["debate-1"] = &debateState{
+	handler.activeDebates.Put("debate-1", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-1", Topic: "Topic 1"},
 		Status:    "running",
 		StartTime: now,
-	}
-	handler.activeDebates["debate-2"] = &debateState{
+	})
+	handler.activeDebates.Put("debate-2", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-2", Topic: "Topic 2"},
 		Status:    "completed",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.activeDebates["debate-3"] = &debateState{
+	})
+	handler.activeDebates.Put("debate-3", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-3", Topic: "Topic 3"},
 		Status:    "pending",
 		StartTime: now,
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates", nil)
@@ -590,19 +578,17 @@ func TestDebateHandlerUnit_ListDebates_WithStatusFilter(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["debate-1"] = &debateState{
+	handler.activeDebates.Put("debate-1", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-1", Topic: "Topic 1"},
 		Status:    "running",
 		StartTime: now,
-	}
-	handler.activeDebates["debate-2"] = &debateState{
+	})
+	handler.activeDebates.Put("debate-2", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-2", Topic: "Topic 2"},
 		Status:    "completed",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		query         string
@@ -637,13 +623,11 @@ func TestDebateHandlerUnit_DeleteDebate_Success(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["deletable-debate"] = &debateState{
+	handler.activeDebates.Put("deletable-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "deletable-debate", Topic: "Topic"},
 		Status:    "completed",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/v1/debates/deletable-debate", nil)
@@ -659,9 +643,7 @@ func TestDebateHandlerUnit_DeleteDebate_Success(t *testing.T) {
 	assert.Equal(t, "deletable-debate", response["debate_id"])
 
 	// Verify debate was deleted
-	handler.mu.RLock()
-	_, exists := handler.activeDebates["deletable-debate"]
-	handler.mu.RUnlock()
+	_, exists := handler.activeDebates.Get("deletable-debate")
 	assert.False(t, exists)
 }
 
@@ -683,13 +665,11 @@ func TestDebateHandlerUnit_ApproveDebate_Success(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["paused-debate"] = &debateState{
+	handler.activeDebates.Put("paused-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "paused-debate", Topic: "Topic"},
 		Status:    "paused",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/debates/paused-debate/approve", nil)
@@ -705,9 +685,7 @@ func TestDebateHandlerUnit_ApproveDebate_Success(t *testing.T) {
 	assert.Equal(t, "running", response["status"])
 
 	// Verify status was updated
-	handler.mu.RLock()
-	state := handler.activeDebates["paused-debate"]
-	handler.mu.RUnlock()
+	state, _ := handler.activeDebates.Get("paused-debate")
 	assert.Equal(t, "running", state.Status)
 }
 
@@ -729,13 +707,11 @@ func TestDebateHandlerUnit_ApproveDebate_InvalidStatus(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["running-debate"] = &debateState{
+	handler.activeDebates.Put("running-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "running-debate", Topic: "Topic"},
 		Status:    "running",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/debates/running-debate/approve", nil)
@@ -750,13 +726,11 @@ func TestDebateHandlerUnit_RejectDebate_Success(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["pending-debate"] = &debateState{
+	handler.activeDebates.Put("pending-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "pending-debate", Topic: "Topic"},
 		Status:    "paused",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	reqBody := map[string]interface{}{"reason": "Quality concerns"}
 	body, _ := json.Marshal(reqBody)
@@ -777,9 +751,7 @@ func TestDebateHandlerUnit_RejectDebate_Success(t *testing.T) {
 	assert.Equal(t, "Quality concerns", response["reason"])
 
 	// Verify status and error were updated
-	handler.mu.RLock()
-	state := handler.activeDebates["pending-debate"]
-	handler.mu.RUnlock()
+	state, _ := handler.activeDebates.Get("pending-debate")
 	assert.Equal(t, "rejected", state.Status)
 	assert.Contains(t, state.Error, "Quality concerns")
 	assert.NotNil(t, state.EndTime)
@@ -803,13 +775,11 @@ func TestDebateHandlerUnit_RejectDebate_NoReason(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["pending-debate"] = &debateState{
+	handler.activeDebates.Put("pending-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "pending-debate", Topic: "Topic"},
 		Status:    "paused",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/debates/pending-debate/reject", nil)
@@ -829,14 +799,12 @@ func TestDebateHandlerUnit_GetDebateGates_Success(t *testing.T) {
 	t.Parallel()
 	router, handler := setupDebateUnitTest()
 
-	handler.mu.Lock()
-	handler.activeDebates["gated-debate"] = &debateState{
+	handler.activeDebates.Put("gated-debate", &debateState{
 		Config:       &services.DebateConfig{DebateID: "gated-debate", Topic: "Topic"},
 		Status:       "pending_approval",
 		CurrentPhase: "validation",
 		StartTime:    time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/gated-debate/gates", nil)
@@ -876,16 +844,14 @@ func TestDebateHandlerUnit_GetDebateAudit_Success(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["audited-debate"] = &debateState{
+	handler.activeDebates.Put("audited-debate", &debateState{
 		Config:       &services.DebateConfig{DebateID: "audited-debate", Topic: "Topic"},
 		Status:       "completed",
 		StartTime:    now,
 		EndTime:      &endTime,
 		CurrentPhase: "final_conclusion",
 		Result:       &services.DebateResult{DebateID: "audited-debate"},
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/audited-debate/audit", nil)
@@ -961,13 +927,11 @@ func TestDebateHandlerUnit_ConcurrentAccess(t *testing.T) {
 	_, handler := setupDebateUnitTest()
 
 	// Pre-populate a debate
-	handler.mu.Lock()
-	handler.activeDebates["concurrent-test"] = &debateState{
+	handler.activeDebates.Put("concurrent-test", &debateState{
 		Config:    &services.DebateConfig{DebateID: "concurrent-test", Topic: "Topic"},
 		Status:    "running",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	// Run concurrent reads and writes
 	done := make(chan bool, 20)
@@ -976,9 +940,7 @@ func TestDebateHandlerUnit_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func() {
 			for j := 0; j < 50; j++ {
-				handler.mu.RLock()
-				_ = handler.activeDebates["concurrent-test"]
-				handler.mu.RUnlock()
+				_, _ = handler.activeDebates.Get("concurrent-test")
 			}
 			done <- true
 		}()
@@ -988,9 +950,11 @@ func TestDebateHandlerUnit_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			for j := 0; j < 25; j++ {
-				handler.mu.Lock()
-				handler.activeDebates["concurrent-test"].Status = "running"
-				handler.mu.Unlock()
+				handler.stateMu.Lock()
+				if st, ok := handler.activeDebates.Get("concurrent-test"); ok {
+					st.Status = "running"
+				}
+				handler.stateMu.Unlock()
 			}
 			done <- true
 		}(i)
@@ -1067,9 +1031,7 @@ func TestDebateHandlerUnit_ParticipantDefaults(t *testing.T) {
 	debateID := response["debate_id"].(string)
 
 	// Check stored debate config has correct defaults
-	handler.mu.RLock()
-	state := handler.activeDebates[debateID]
-	handler.mu.RUnlock()
+	state, _ := handler.activeDebates.Get(debateID)
 
 	require.NotNil(t, state)
 	require.NotNil(t, state.Config)
@@ -1096,8 +1058,7 @@ func TestDebateHandlerUnit_GetDebate_WithMultiPassResults(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(2 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["multipass-completed"] = &debateState{
+	handler.activeDebates.Put("multipass-completed", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "multipass-completed",
 			Topic:     "Completed multi-pass debate",
@@ -1132,8 +1093,7 @@ func TestDebateHandlerUnit_GetDebate_WithMultiPassResults(t *testing.T) {
 				},
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/multipass-completed", nil)
@@ -1224,8 +1184,7 @@ func TestDebateHandlerUnit_GetDebate_WithSkillsUsed(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(2 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["skills-debate"] = &debateState{
+	handler.activeDebates.Put("skills-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "skills-debate", Topic: "Topic"},
 		Status:    "completed",
 		StartTime: now,
@@ -1241,8 +1200,7 @@ func TestDebateHandlerUnit_GetDebate_WithSkillsUsed(t *testing.T) {
 				},
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/debates/skills-debate", nil)

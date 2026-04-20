@@ -290,11 +290,9 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 	assert.Contains(t, statusResponse, "start_time")
 
 	// Manually update debate status for testing
-	debateHandler.mu.Lock()
-	if state, exists := debateHandler.activeDebates[debateID]; exists {
+	if state, exists := debateHandler.activeDebates.Get(debateID); exists {
 		state.Status = "paused"
 	}
-	debateHandler.mu.Unlock()
 
 	// Test approve
 	w3 := httptest.NewRecorder()

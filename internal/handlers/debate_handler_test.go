@@ -161,8 +161,7 @@ func TestGetDebate(t *testing.T) {
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
-	handler.mu.Lock()
-	handler.activeDebates["test-debate-1"] = &debateState{
+	handler.activeDebates.Put("test-debate-1", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "test-debate-1",
 			Topic:     "Test topic",
@@ -170,8 +169,7 @@ func TestGetDebate(t *testing.T) {
 		},
 		Status:    "running",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -219,8 +217,7 @@ func TestGetDebateStatus(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["running-debate"] = &debateState{
+	handler.activeDebates.Put("running-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "running-debate",
 			Topic:     "Running topic",
@@ -229,8 +226,8 @@ func TestGetDebateStatus(t *testing.T) {
 		},
 		Status:    "running",
 		StartTime: now,
-	}
-	handler.activeDebates["completed-debate"] = &debateState{
+	})
+	handler.activeDebates.Put("completed-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "completed-debate",
 			Topic:     "Completed topic",
@@ -239,8 +236,8 @@ func TestGetDebateStatus(t *testing.T) {
 		Status:    "completed",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.activeDebates["failed-debate"] = &debateState{
+	})
+	handler.activeDebates.Put("failed-debate", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "failed-debate",
 			Topic:    "Failed topic",
@@ -249,8 +246,7 @@ func TestGetDebateStatus(t *testing.T) {
 		Error:     "provider timeout",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -322,8 +318,7 @@ func TestGetDebateResults(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["completed-with-result"] = &debateState{
+	handler.activeDebates.Put("completed-with-result", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "completed-with-result",
 			Topic:    "Test topic",
@@ -340,16 +335,16 @@ func TestGetDebateResults(t *testing.T) {
 				FinalPosition: "We agree on this.",
 			},
 		},
-	}
-	handler.activeDebates["running-no-result"] = &debateState{
+	})
+	handler.activeDebates.Put("running-no-result", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "running-no-result",
 			Topic:    "Running topic",
 		},
 		Status:    "running",
 		StartTime: now,
-	}
-	handler.activeDebates["completed-no-result"] = &debateState{
+	})
+	handler.activeDebates.Put("completed-no-result", &debateState{
 		Config: &services.DebateConfig{
 			DebateID: "completed-no-result",
 			Topic:    "Weird topic",
@@ -358,8 +353,7 @@ func TestGetDebateResults(t *testing.T) {
 		StartTime: now,
 		EndTime:   &endTime,
 		Result:    nil, // No result despite completion
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -421,24 +415,22 @@ func TestListDebates(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["debate-1"] = &debateState{
+	handler.activeDebates.Put("debate-1", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-1", Topic: "Topic 1"},
 		Status:    "running",
 		StartTime: now,
-	}
-	handler.activeDebates["debate-2"] = &debateState{
+	})
+	handler.activeDebates.Put("debate-2", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-2", Topic: "Topic 2"},
 		Status:    "completed",
 		StartTime: now,
 		EndTime:   &endTime,
-	}
-	handler.activeDebates["debate-3"] = &debateState{
+	})
+	handler.activeDebates.Put("debate-3", &debateState{
 		Config:    &services.DebateConfig{DebateID: "debate-3", Topic: "Topic 3"},
 		Status:    "pending",
 		StartTime: now,
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -504,13 +496,11 @@ func TestDeleteDebate(t *testing.T) {
 	router, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
-	handler.mu.Lock()
-	handler.activeDebates["deletable-debate"] = &debateState{
+	handler.activeDebates.Put("deletable-debate", &debateState{
 		Config:    &services.DebateConfig{DebateID: "deletable-debate", Topic: "Topic"},
 		Status:    "completed",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -547,9 +537,7 @@ func TestDeleteDebate(t *testing.T) {
 				assert.Equal(t, tt.debateID, response["debate_id"])
 
 				// Verify debate was actually deleted
-				handler.mu.RLock()
-				_, exists := handler.activeDebates[tt.debateID]
-				handler.mu.RUnlock()
+				_, exists := handler.activeDebates.Get(tt.debateID)
 				assert.False(t, exists)
 			}
 		})
@@ -563,8 +551,7 @@ func TestDebateRouteRegistration(t *testing.T) {
 	// Pre-populate a debate for routes that need it
 	now := time.Now()
 	endTime := now.Add(5 * time.Minute)
-	handler.mu.Lock()
-	handler.activeDebates["test-id"] = &debateState{
+	handler.activeDebates.Put("test-id", &debateState{
 		Config:    &services.DebateConfig{DebateID: "test-id", Topic: "Test topic"},
 		Status:    "completed",
 		StartTime: now,
@@ -574,8 +561,7 @@ func TestDebateRouteRegistration(t *testing.T) {
 			Topic:    "Test topic",
 			Success:  true,
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	// Test all route patterns exist
 	routes := []struct {
@@ -597,13 +583,11 @@ func TestDebateRouteRegistration(t *testing.T) {
 			// removes entries that other subtests need to read.
 			// Re-create the debate for DELETE test (since it gets deleted)
 			if route.method == http.MethodDelete {
-				handler.mu.Lock()
-				handler.activeDebates["test-id"] = &debateState{
+				handler.activeDebates.Put("test-id", &debateState{
 					Config:    &services.DebateConfig{DebateID: "test-id", Topic: "Test topic"},
 					Status:    "completed",
 					StartTime: now,
-				}
-				handler.mu.Unlock()
+				})
 			}
 
 			var req *http.Request
@@ -653,9 +637,7 @@ func TestParticipantDefaults(t *testing.T) {
 	debateID := response["debate_id"].(string)
 
 	// Check stored debate config has correct defaults
-	handler.mu.RLock()
-	state := handler.activeDebates[debateID]
-	handler.mu.RUnlock()
+	state, _ := handler.activeDebates.Get(debateID)
 
 	require.NotNil(t, state)
 	require.NotNil(t, state.Config)
@@ -685,13 +667,11 @@ func TestConcurrentDebateAccess(t *testing.T) {
 	_, handler := setupDebateTestRouter()
 
 	// Pre-populate a debate
-	handler.mu.Lock()
-	handler.activeDebates["concurrent-test"] = &debateState{
+	handler.activeDebates.Put("concurrent-test", &debateState{
 		Config:    &services.DebateConfig{DebateID: "concurrent-test", Topic: "Topic"},
 		Status:    "running",
 		StartTime: time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	// Concurrent reads and writes
 	done := make(chan bool)
@@ -700,9 +680,7 @@ func TestConcurrentDebateAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func() {
 			for j := 0; j < 100; j++ {
-				handler.mu.RLock()
-				_ = handler.activeDebates["concurrent-test"]
-				handler.mu.RUnlock()
+				_, _ = handler.activeDebates.Get("concurrent-test")
 			}
 			done <- true
 		}()
@@ -712,9 +690,11 @@ func TestConcurrentDebateAccess(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		go func(id int) {
 			for j := 0; j < 50; j++ {
-				handler.mu.Lock()
-				handler.activeDebates["concurrent-test"].Status = "running"
-				handler.mu.Unlock()
+				handler.stateMu.Lock()
+				if st, ok := handler.activeDebates.Get("concurrent-test"); ok {
+					st.Status = "running"
+				}
+				handler.stateMu.Unlock()
 			}
 			done <- true
 		}(i)
@@ -892,8 +872,7 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 	endTime := now.Add(2 * time.Minute)
 
 	// Pre-populate a debate with multi-pass validation enabled
-	handler.mu.Lock()
-	handler.activeDebates["multipass-debate-1"] = &debateState{
+	handler.activeDebates.Put("multipass-debate-1", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "multipass-debate-1",
 			Topic:     "Multi-pass validation test",
@@ -908,8 +887,8 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 		Status:                    "running",
 		CurrentPhase:              "validation",
 		StartTime:                 now,
-	}
-	handler.activeDebates["multipass-completed"] = &debateState{
+	})
+	handler.activeDebates.Put("multipass-completed", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "multipass-completed",
 			Topic:     "Completed multi-pass debate",
@@ -956,8 +935,7 @@ func TestGetDebateWithMultiPassValidation(t *testing.T) {
 				},
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string
@@ -1025,8 +1003,7 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 	now := time.Now()
 	endTime := now.Add(2 * time.Minute)
 
-	handler.mu.Lock()
-	handler.activeDebates["running-multipass"] = &debateState{
+	handler.activeDebates.Put("running-multipass", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "running-multipass",
 			Topic:     "Running multi-pass debate",
@@ -1037,8 +1014,8 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 		Status:                    "running",
 		CurrentPhase:              "polish_improve",
 		StartTime:                 now,
-	}
-	handler.activeDebates["completed-multipass"] = &debateState{
+	})
+	handler.activeDebates.Put("completed-multipass", &debateState{
 		Config: &services.DebateConfig{
 			DebateID:  "completed-multipass",
 			Topic:     "Completed multi-pass debate",
@@ -1059,8 +1036,7 @@ func TestGetDebateStatusWithMultiPassValidation(t *testing.T) {
 				{Phase: services.PhaseFinalConclusion},
 			},
 		},
-	}
-	handler.mu.Unlock()
+	})
 
 	tests := []struct {
 		name           string

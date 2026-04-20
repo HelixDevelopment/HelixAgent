@@ -5,14 +5,12 @@
 #
 internal/clis/pool.go:13:InstancePool
 internal/ensemble/background/worker_pool.go:33:WorkerPool
-internal/handlers/debate_handler.go:19:DebateHandler
 internal/handlers/extended/ensemble.go:26:AgentTeam
 internal/handlers/extended/ensemble.go:84:Task
 internal/handlers/extended/planning.go:24:ExtendedPlanModeSession
 internal/knowledge/code_graph.go:124:CodeGraph
 internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker
-internal/llm/circuit_breaker_test.go:461:logrusWarnHook
 internal/llm/health_monitor.go:54:HealthMonitor
 internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/mcp/adapters/registry.go:99:AdapterRegistry

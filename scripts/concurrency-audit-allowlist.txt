@@ -33,7 +33,6 @@ internal/handlers/debate_handler.go:19:DebateHandler
 internal/handlers/extended/ensemble.go:26:AgentTeam
 internal/handlers/extended/ensemble.go:84:Task
 internal/handlers/extended/planning.go:24:ExtendedPlanModeSession
-internal/handlers/protocol_sse.go:16:ProtocolSSEHandler
 internal/knowledge/code_graph.go:124:CodeGraph
 internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker

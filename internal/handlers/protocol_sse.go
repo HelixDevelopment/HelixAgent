@@ -4,15 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// ProtocolSSEHandler handles SSE connections for MCP/ACP/LSP/Embeddings/Vision/Cognee/RAG/Formatters/Monitoring protocols
+// ProtocolSSEHandler handles SSE connections for MCP/ACP/LSP/Embeddings/Vision/Cognee/RAG/Formatters/Monitoring protocols.
+//
+// Concurrency model (CONST-029): clients is a *safe.Store whose
+// per-protocol inner-map values are replaced via Store.Update with
+// copy-on-write semantics. Register and unregister each rebuild the
+// inner set from scratch, so concurrent readers via Snapshot always
+// see a frozen committed map.
 type ProtocolSSEHandler struct {
 	mcpHandler        *MCPHandler
 	acpHandler        *ACPHandler
@@ -25,8 +32,7 @@ type ProtocolSSEHandler struct {
 	logger            *logrus.Logger
 
 	// SSE client management
-	clients   map[string]map[chan []byte]struct{}
-	clientsMu sync.RWMutex
+	clients *safe.Store[string, map[chan []byte]struct{}]
 }
 
 // NewProtocolSSEHandler creates a new protocol SSE handler
@@ -45,7 +51,7 @@ func NewProtocolSSEHandler(
 		embeddingHandler: embeddingHandler,
 		cogneeHandler:    cogneeHandler,
 		logger:           logger,
-		clients:          make(map[string]map[chan []byte]struct{}),
+		clients:          safe.NewStore[string, map[chan []byte]struct{}](),
 	}
 }
 
@@ -283,13 +289,15 @@ func (h *ProtocolSSEHandler) handleSSEConnection(
 	clientChan := make(chan []byte, 100)
 	clientID := uuid.New().String()
 
-	// Register client
-	h.clientsMu.Lock()
-	if h.clients[protocol] == nil {
-		h.clients[protocol] = make(map[chan []byte]struct{})
-	}
-	h.clients[protocol][clientChan] = struct{}{}
-	h.clientsMu.Unlock()
+	// Register client via COW Update on the per-protocol inner set.
+	h.clients.Update(protocol, func(cur map[chan []byte]struct{}, _ bool) (map[chan []byte]struct{}, bool) {
+		next := make(map[chan []byte]struct{}, len(cur)+1)
+		for k := range cur {
+			next[k] = struct{}{}
+		}
+		next[clientChan] = struct{}{}
+		return next, true
+	})
 
 	h.logger.WithFields(logrus.Fields{
 		"protocol":  protocol,
@@ -298,9 +306,18 @@ func (h *ProtocolSSEHandler) handleSSEConnection(
 
 	// Cleanup on disconnect
 	defer func() {
-		h.clientsMu.Lock()
-		delete(h.clients[protocol], clientChan)
-		h.clientsMu.Unlock()
+		h.clients.Update(protocol, func(cur map[chan []byte]struct{}, present bool) (map[chan []byte]struct{}, bool) {
+			if !present {
+				return nil, false
+			}
+			next := make(map[chan []byte]struct{}, len(cur))
+			for k := range cur {
+				if k != clientChan {
+					next[k] = struct{}{}
+				}
+			}
+			return next, true
+		})
 		close(clientChan)
 		h.logger.WithField("client_id", clientID).Info("SSE client disconnected")
 	}()

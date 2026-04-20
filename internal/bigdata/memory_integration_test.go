@@ -661,7 +661,7 @@ func newTestMemoryIntegrationWithDistributed(
 	logger.SetLevel(logrus.DebugLevel)
 
 	// Create real distributed memory manager
-	eventLog := &inMemoryEventLog{}
+	eventLog := newInMemoryEventLog()
 	conflictResolver := memory.NewCRDTResolver("merge_all")
 	nodeID := "test-node-1"
 	distMgr := memory.NewDistributedMemoryManager(

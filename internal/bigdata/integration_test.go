@@ -436,7 +436,7 @@ func TestBigDataIntegration_FullLifecycle_AllDisabled(t *testing.T) {
 
 func TestInMemoryEventLog_Append(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 
 	event := &memory.MemoryEvent{
 		EventID:  "evt-1",
@@ -447,12 +447,12 @@ func TestInMemoryEventLog_Append(t *testing.T) {
 
 	err := log.Append(event)
 	assert.NoError(t, err)
-	assert.Len(t, log.events, 1)
+	assert.Equal(t, 1, log.events.Len())
 }
 
 func TestInMemoryEventLog_GetEvents(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 
 	_ = log.Append(&memory.MemoryEvent{MemoryID: "mem-1", EventID: "evt-1"})
 	_ = log.Append(&memory.MemoryEvent{MemoryID: "mem-2", EventID: "evt-2"})
@@ -465,7 +465,7 @@ func TestInMemoryEventLog_GetEvents(t *testing.T) {
 
 func TestInMemoryEventLog_GetEvents_NoMatch(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 
 	_ = log.Append(&memory.MemoryEvent{MemoryID: "mem-1", EventID: "evt-1"})
 
@@ -476,7 +476,7 @@ func TestInMemoryEventLog_GetEvents_NoMatch(t *testing.T) {
 
 func TestInMemoryEventLog_GetEventsSince(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 	now := time.Now()
 
 	_ = log.Append(&memory.MemoryEvent{
@@ -499,7 +499,7 @@ func TestInMemoryEventLog_GetEventsSince(t *testing.T) {
 
 func TestInMemoryEventLog_GetEventsForUser(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-1", UserID: "user-a"})
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-2", UserID: "user-b"})
@@ -512,7 +512,7 @@ func TestInMemoryEventLog_GetEventsForUser(t *testing.T) {
 
 func TestInMemoryEventLog_GetEventsFromNode(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-1", NodeID: "node-1"})
 	_ = log.Append(&memory.MemoryEvent{EventID: "evt-2", NodeID: "node-2"})
@@ -1026,7 +1026,7 @@ func TestBigDataIntegration_Initialize_AllSuccessfulComponents(t *testing.T) {
 
 func TestInMemoryEventLog_ConcurrentAppendAndRead(t *testing.T) {
 	t.Parallel()
-	log := &inMemoryEventLog{}
+	log := newInMemoryEventLog()
 	done := make(chan bool, 2)
 
 	// Writer goroutine

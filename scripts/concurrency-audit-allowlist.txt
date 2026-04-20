@@ -15,7 +15,6 @@ internal/background/worker_pool.go:53:AdaptiveWorkerPool
 internal/benchmark/runner.go:16:StandardBenchmarkRunner
 internal/bigdata/datalake_test.go:24:mockS3Server
 internal/bigdata/debate_integration_test.go:19:mockBroker
-internal/bigdata/integration.go:74:inMemoryEventLog
 internal/bigdata/memory_integration_test.go:19:mockMemoryStore
 internal/cache/tiered_cache.go:76:l1Cache
 internal/cache/tiered_cache.go:91:tagIndex

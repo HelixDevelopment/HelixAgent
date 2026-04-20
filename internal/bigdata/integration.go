@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/analytics"
 	"dev.helix.agent/internal/conversation"
 	"dev.helix.agent/internal/knowledge"
@@ -70,64 +72,67 @@ func (c *providerRegistryLLMClient) Complete(ctx context.Context, prompt string,
 	return "", 0, errors.New("all LLM providers failed compression")
 }
 
-// inMemoryEventLog implements memory.EventLog with in-memory storage
+// inMemoryEventLog implements memory.EventLog with in-memory storage.
+//
+// Concurrency model (CONST-029): events is a *safe.Slice — Append is
+// atomic, the filter-by-predicate scans use Range. No mu needed.
 type inMemoryEventLog struct {
-	mu     sync.RWMutex
-	events []*memory.MemoryEvent
+	events *safe.Slice[*memory.MemoryEvent]
+}
+
+// newInMemoryEventLog constructs an inMemoryEventLog ready to use.
+func newInMemoryEventLog() *inMemoryEventLog {
+	return &inMemoryEventLog{
+		events: safe.NewSlice[*memory.MemoryEvent](),
+	}
 }
 
 func (d *inMemoryEventLog) Append(event *memory.MemoryEvent) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.events = append(d.events, event)
+	d.events.Append(event)
 	return nil
 }
 
 func (d *inMemoryEventLog) GetEvents(memoryID string) ([]*memory.MemoryEvent, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	var result []*memory.MemoryEvent
-	for _, event := range d.events {
+	d.events.Range(func(_ int, event *memory.MemoryEvent) bool {
 		if event.MemoryID == memoryID {
 			result = append(result, event)
 		}
-	}
+		return true
+	})
 	return result, nil
 }
 
 func (d *inMemoryEventLog) GetEventsSince(timestamp time.Time) ([]*memory.MemoryEvent, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	var result []*memory.MemoryEvent
-	for _, event := range d.events {
+	d.events.Range(func(_ int, event *memory.MemoryEvent) bool {
 		if event.Timestamp.After(timestamp) {
 			result = append(result, event)
 		}
-	}
+		return true
+	})
 	return result, nil
 }
 
 func (d *inMemoryEventLog) GetEventsForUser(userID string) ([]*memory.MemoryEvent, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	var result []*memory.MemoryEvent
-	for _, event := range d.events {
+	d.events.Range(func(_ int, event *memory.MemoryEvent) bool {
 		if event.UserID == userID {
 			result = append(result, event)
 		}
-	}
+		return true
+	})
 	return result, nil
 }
 
 func (d *inMemoryEventLog) GetEventsFromNode(nodeID string) ([]*memory.MemoryEvent, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	var result []*memory.MemoryEvent
-	for _, event := range d.events {
+	d.events.Range(func(_ int, event *memory.MemoryEvent) bool {
 		if event.NodeID == nodeID {
 			result = append(result, event)
 		}
-	}
+		return true
+	})
 	return result, nil
 }
 
@@ -303,7 +308,7 @@ func NewBigDataIntegration(
 			}
 			store := memory.NewInMemoryStore()
 			localManager := memory.NewManager(store, nil, nil, nil, nil, logger)
-			eventLog := &inMemoryEventLog{}
+			eventLog := newInMemoryEventLog()
 			conflictResolver := memory.NewCRDTResolver("merge_all")
 			nodeID := fmt.Sprintf("node-%d", time.Now().Unix())
 			manager := memory.NewDistributedMemoryManager(
@@ -463,7 +468,7 @@ func (bdi *BigDataIntegration) initializeDistributedMemory(ctx context.Context) 
 	localManager := memory.NewManager(store, nil, nil, nil, nil, bdi.logger)
 
 	// Create in-memory event log
-	eventLog := &inMemoryEventLog{}
+	eventLog := newInMemoryEventLog()
 
 	// Create CRDT resolver
 	conflictResolver := memory.NewCRDTResolver("merge_all")

@@ -315,23 +315,21 @@ func TestHandler_CleanupOldReplays(t *testing.T) {
 	handler := NewHandler(broker, config, logger)
 
 	// Add completed replays
-	handler.mu.Lock()
-	handler.activeReplays["old-1"] = &ReplayProgress{
+	handler.activeReplays.Put("old-1", &ReplayProgress{
 		RequestID: "old-1",
 		Status:    ReplayStatusCompleted,
 		EndTime:   time.Now().Add(-2 * time.Hour),
-	}
-	handler.activeReplays["old-2"] = &ReplayProgress{
+	})
+	handler.activeReplays.Put("old-2", &ReplayProgress{
 		RequestID: "old-2",
 		Status:    ReplayStatusFailed,
 		EndTime:   time.Now().Add(-2 * time.Hour),
-	}
-	handler.activeReplays["recent"] = &ReplayProgress{
+	})
+	handler.activeReplays.Put("recent", &ReplayProgress{
 		RequestID: "recent",
 		Status:    ReplayStatusCompleted,
 		EndTime:   time.Now(),
-	}
-	handler.mu.Unlock()
+	})
 
 	// Cleanup replays older than 1 hour
 	removed := handler.CleanupOldReplays(1 * time.Hour)

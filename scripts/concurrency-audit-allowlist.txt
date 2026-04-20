@@ -62,7 +62,6 @@ internal/messaging/inmemory/stream.go:270:StreamBroker
 internal/messaging/migration.go:152:MigrationManager
 internal/messaging/migration_test.go:147:mockMessageBroker
 internal/messaging/migration_test.go:15:mockLegacyQueue
-internal/messaging/replay/handler.go:96:Handler
 internal/notifications/hub.go:34:NotificationHub
 internal/notifications/hub_test.go:18:MockSubscriber
 internal/notifications/websocket_server.go:29:WebSocketServer

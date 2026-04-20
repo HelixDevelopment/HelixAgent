@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/messaging"
 	"go.uber.org/zap"
@@ -92,14 +93,18 @@ type ReplayProgress struct {
 	Rate            float64      `json:"rate_per_second"`
 }
 
-// Handler handles message replay operations
+// Handler handles message replay operations.
+//
+// Concurrency model (CONST-029): activeReplays is a *safe.Store.
+// Per-entry ReplayProgress mutations under Store.Update's lock
+// preserve the pre-migration read-modify-write semantics. No survivor
+// mutex.
 type Handler struct {
 	config ReplayConfig
 	broker messaging.MessageBroker
 	logger *zap.Logger
 
-	activeReplays map[string]*ReplayProgress
-	mu            sync.RWMutex
+	activeReplays *safe.Store[string, *ReplayProgress]
 
 	semaphore chan struct{}
 }
@@ -110,7 +115,7 @@ func NewHandler(broker messaging.MessageBroker, config ReplayConfig, logger *zap
 		config:        config,
 		broker:        broker,
 		logger:        logger,
-		activeReplays: make(map[string]*ReplayProgress),
+		activeReplays: safe.NewStore[string, *ReplayProgress](),
 		semaphore:     make(chan struct{}, config.MaxConcurrentReplays),
 	}
 }
@@ -122,21 +127,16 @@ func (h *Handler) StartReplay(ctx context.Context, req *ReplayRequest) (*ReplayP
 		return nil, fmt.Errorf("invalid replay request: %w", err)
 	}
 
-	// Check if replay with this ID already exists
-	h.mu.Lock()
-	if _, exists := h.activeReplays[req.ID]; exists {
-		h.mu.Unlock()
-		return nil, fmt.Errorf("replay with ID %s already exists", req.ID)
-	}
-
-	// Create progress tracker
+	// Check if replay with this ID already exists. Use PutIfAbsent for
+	// atomic "reject if present else install" semantics.
 	progress := &ReplayProgress{
 		RequestID: req.ID,
 		Status:    ReplayStatusPending,
 		StartTime: time.Now(),
 	}
-	h.activeReplays[req.ID] = progress
-	h.mu.Unlock()
+	if _, stored := h.activeReplays.PutIfAbsent(req.ID, progress); !stored {
+		return nil, fmt.Errorf("replay with ID %s already exists", req.ID)
+	}
 
 	// Try to acquire semaphore
 	select {
@@ -376,35 +376,36 @@ func (h *Handler) matchesFilter(msg *messaging.Message, filter *ReplayFilter) bo
 
 // updateStatus updates the status of a replay operation
 func (h *Handler) updateStatus(requestID string, status ReplayStatus, message string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	if progress, ok := h.activeReplays[requestID]; ok {
-		progress.Status = status
-		progress.ErrorMessage = message
-		if status == ReplayStatusCompleted || status == ReplayStatusFailed || status == ReplayStatusCancelled {
-			progress.EndTime = time.Now()
+	h.activeReplays.Update(requestID, func(cur *ReplayProgress, ok bool) (*ReplayProgress, bool) {
+		if !ok {
+			return nil, false
 		}
-	}
+		cp := *cur
+		cp.Status = status
+		cp.ErrorMessage = message
+		if status == ReplayStatusCompleted || status == ReplayStatusFailed || status == ReplayStatusCancelled {
+			cp.EndTime = time.Now()
+		}
+		return &cp, true
+	})
 }
 
 // updateProgressFields updates the LastProcessedID and Rate fields with proper synchronization
 func (h *Handler) updateProgressFields(requestID string, lastProcessedID string, rate float64) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	if progress, ok := h.activeReplays[requestID]; ok {
-		progress.LastProcessedID = lastProcessedID
-		progress.Rate = rate
-	}
+	h.activeReplays.Update(requestID, func(cur *ReplayProgress, ok bool) (*ReplayProgress, bool) {
+		if !ok {
+			return nil, false
+		}
+		cp := *cur
+		cp.LastProcessedID = lastProcessedID
+		cp.Rate = rate
+		return &cp, true
+	})
 }
 
 // GetProgress returns the progress of a replay operation
 func (h *Handler) GetProgress(requestID string) (*ReplayProgress, error) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	progress, ok := h.activeReplays[requestID]
+	progress, ok := h.activeReplays.Get(requestID)
 	if !ok {
 		return nil, fmt.Errorf("replay %s not found", requestID)
 	}
@@ -416,21 +417,31 @@ func (h *Handler) GetProgress(requestID string) (*ReplayProgress, error) {
 
 // CancelReplay cancels an ongoing replay operation
 func (h *Handler) CancelReplay(requestID string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	var notRunning bool
+	var found bool
+	h.activeReplays.Update(requestID, func(cur *ReplayProgress, ok bool) (*ReplayProgress, bool) {
+		if !ok {
+			return nil, false
+		}
+		found = true
+		if cur.Status != ReplayStatusRunning && cur.Status != ReplayStatusPending {
+			notRunning = true
+			return cur, true
+		}
+		cp := *cur
+		cp.Status = ReplayStatusCancelled
+		cp.ErrorMessage = "cancelled by user"
+		cp.EndTime = time.Now()
+		return &cp, true
+	})
 
-	progress, ok := h.activeReplays[requestID]
-	if !ok {
+	if !found {
 		return fmt.Errorf("replay %s not found", requestID)
 	}
-
-	if progress.Status != ReplayStatusRunning && progress.Status != ReplayStatusPending {
+	if notRunning {
+		progress, _ := h.activeReplays.Get(requestID)
 		return fmt.Errorf("replay %s is not running (status: %s)", requestID, progress.Status)
 	}
-
-	progress.Status = ReplayStatusCancelled
-	progress.ErrorMessage = "cancelled by user"
-	progress.EndTime = time.Now()
 
 	h.logger.Info("Replay cancelled", zap.String("request_id", requestID))
 	return nil
@@ -438,37 +449,35 @@ func (h *Handler) CancelReplay(requestID string) error {
 
 // ListReplays returns all active and recent replay operations
 func (h *Handler) ListReplays() []*ReplayProgress {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	replays := make([]*ReplayProgress, 0, len(h.activeReplays))
-	for _, progress := range h.activeReplays {
+	replays := make([]*ReplayProgress, 0, h.activeReplays.Len())
+	h.activeReplays.Range(func(_ string, progress *ReplayProgress) bool {
 		progressCopy := *progress
 		replays = append(replays, &progressCopy)
-	}
+		return true
+	})
 	return replays
 }
 
 // CleanupOldReplays removes completed/failed replays older than maxAge
 func (h *Handler) CleanupOldReplays(maxAge time.Duration) int {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
-	removed := 0
+	var toRemove []string
 
-	for id, progress := range h.activeReplays {
+	h.activeReplays.Range(func(id string, progress *ReplayProgress) bool {
 		if progress.Status == ReplayStatusCompleted ||
 			progress.Status == ReplayStatusFailed ||
 			progress.Status == ReplayStatusCancelled {
 			if !progress.EndTime.IsZero() && progress.EndTime.Before(cutoff) {
-				delete(h.activeReplays, id)
-				removed++
+				toRemove = append(toRemove, id)
 			}
 		}
+		return true
+	})
+	for _, id := range toRemove {
+		h.activeReplays.Delete(id)
 	}
 
-	return removed
+	return len(toRemove)
 }
 
 // ReplayHTTPHandler provides HTTP endpoints for replay operations

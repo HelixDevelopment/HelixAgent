@@ -139,6 +139,88 @@ GOMAXPROCS=2 nice -n 19 go test -run "TestLoad_GoroutineLeakDetection" \
     ./tests/load/ -count=1 -p 1 > /dev/null 2>&1
 check "Load test goroutine leak detection passes" $?
 
+# --- Section 6: CONST-029 Pattern-A drained blockers ---
+
+log_section "Section 6: CONST-029 Structural Safety (Drained Blockers)"
+
+# 6.1: EnhancedBM25Index uses atomic.Pointer[bm25State]
+grep -q "atomic.Pointer\[bm25State\]" "$PROJECT_ROOT/internal/rag/qdrant_enhanced.go"
+check "EnhancedBM25Index uses atomic.Pointer[bm25State] (Pattern Gamma+Epsilon)" $?
+
+# 6.2: EnhancedBM25Index race-free verification test present
+grep -q "TestEnhancedBM25Index_RaceFree" "$PROJECT_ROOT/internal/rag/qdrant_enhanced_test.go"
+check "EnhancedBM25Index has TestEnhancedBM25Index_RaceFree verification test" $?
+
+# 6.3: WorkflowState mutex retired; Snapshot API present
+grep -q "func (s \*WorkflowState) Snapshot() \*WorkflowState" "$PROJECT_ROOT/internal/agentic/workflow.go"
+check "WorkflowState exposes Snapshot() for cross-goroutine reads" $?
+
+# 6.4: WorkflowState snapshot verification test present
+grep -q "TestWorkflowState_Snapshot" "$PROJECT_ROOT/internal/agentic/workflow_test.go"
+check "WorkflowState has TestWorkflowState_Snapshot verification test" $?
+
+# 6.5: RepoMap mutex retired; Snapshot API present
+grep -q "func (r \*RepoMap) Snapshot() \*RepoMap" "$PROJECT_ROOT/internal/tools/repomap/repomap.go"
+check "RepoMap exposes Snapshot() for cross-goroutine reads" $?
+
+# 6.6: CacheService userKeys is safe.Store
+grep -q "userKeys \*safe.Store" "$PROJECT_ROOT/internal/cache/cache_service.go"
+check "CacheService.userKeys migrated to safe.Store" $?
+
+# 6.7: CacheService has COW-based race-free verification test
+grep -q "TestCacheService_UserKeys_RaceFree" "$PROJECT_ROOT/internal/cache/cache_service_unit_test.go"
+check "CacheService has TestCacheService_UserKeys_RaceFree verification test" $?
+
+# 6.8: Broker (inmemory) migrated to safe.Store + atomic.Bool
+grep -q "queues      \*safe.Store" "$PROJECT_ROOT/internal/messaging/inmemory/broker.go"
+check "Broker (inmemory).queues migrated to safe.Store" $?
+
+grep -q "connected   atomic.Bool" "$PROJECT_ROOT/internal/messaging/inmemory/broker.go"
+check "Broker (inmemory).connected migrated to atomic.Bool" $?
+
+# 6.9: Broker race-free verification test present
+grep -q "TestBroker_RaceFree" "$PROJECT_ROOT/internal/messaging/inmemory/broker_test.go"
+check "Broker (inmemory) has TestBroker_RaceFree verification test" $?
+
+# 6.10: ConcurrencyMonitor migrated to safe.* + atomic.Bool
+grep -q "listeners            \*safe.Slice" "$PROJECT_ROOT/internal/services/concurrency_monitor.go"
+check "ConcurrencyMonitor.listeners migrated to safe.Slice" $?
+
+grep -q "running              atomic.Bool" "$PROJECT_ROOT/internal/services/concurrency_monitor.go"
+check "ConcurrencyMonitor.running migrated to atomic.Bool" $?
+
+# 6.11: DebateService intent caches migrated to safe.Store
+grep -q "intentCache         \*safe.Store" "$PROJECT_ROOT/internal/services/debate_service.go"
+check "DebateService.intentCache migrated to safe.Store" $?
+
+grep -q "func (ds \*DebateService) initCaches()" "$PROJECT_ROOT/internal/services/debate_service.go"
+check "DebateService has initCaches() helper for struct-literal fixtures" $?
+
+# 6.12: BootManager Results migrated to safe.Store
+grep -q "Results        \*safe.Store" "$PROJECT_ROOT/internal/services/boot_manager.go"
+check "BootManager.Results migrated to safe.Store" $?
+
+# 6.13: Run the per-site race-free verification tests
+GOMAXPROCS=2 nice -n 19 go test -race -run "TestEnhancedBM25Index_RaceFree" \
+    ./internal/rag/ -count=1 -p 1 > /dev/null 2>&1
+check "EnhancedBM25Index race-free test passes under -race" $?
+
+GOMAXPROCS=2 nice -n 19 go test -race -run "TestWorkflowState_Snapshot" \
+    ./internal/agentic/ -count=1 -p 1 > /dev/null 2>&1
+check "WorkflowState snapshot test passes under -race" $?
+
+GOMAXPROCS=2 nice -n 19 go test -race -run "TestRepoMap_Snapshot" \
+    ./internal/tools/repomap/ -count=1 -p 1 > /dev/null 2>&1
+check "RepoMap snapshot test passes under -race" $?
+
+GOMAXPROCS=2 nice -n 19 go test -race -run "TestBroker_RaceFree" \
+    ./internal/messaging/inmemory/ -count=1 -p 1 > /dev/null 2>&1
+check "Broker (inmemory) race-free test passes under -race" $?
+
+# 6.14: The concurrency-audit gate itself is green (no new Pattern-A regressions)
+bash "$PROJECT_ROOT/scripts/concurrency-audit.sh" > /dev/null 2>&1
+check "Concurrency audit gate green (no new Pattern-A regressions)" $?
+
 # --- Summary ---
 
 log_section "Challenge Summary"

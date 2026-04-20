@@ -123,21 +123,45 @@ Storing `*T` in `Store[K, *T]` protects only the map's integrity — it does not
 
 ## Migration Order
 
-Pattern-A sites identified for migration (priority order):
+The initial drain plan had a loose priority table. That table is now
+obsolete — the campaign is in the home stretch and tracked by the
+numeric `scripts/concurrency-audit-allowlist.txt` ledger. Use
+`scripts/migration/status.sh` and `scripts/migration/next.sh` to pick
+the next site.
 
-| Priority | Site                           | File                                                    |
-|----------|--------------------------------|---------------------------------------------------------|
-| 1        | `SessionHandler`               | `internal/handlers/session.go`                          |
-| 1        | `EnhancedScoringService`       | `internal/verifier/enhanced_scoring.go`                 |
-| 2        | `InstancePool`                 | `internal/clis/pool.go`                                 |
-| 2        | `ProviderRegistry`             | `internal/services/provider_registry.go`                |
-| 2        | `Broker`                       | `internal/messaging/inmemory/broker.go`                 |
-| 3        | `AdaptiveWorkerPool`           | `internal/background/worker_pool.go`                    |
-| 3        | `CacheService` (`userKeys`)    | `internal/cache/cache_service.go`                       |
-| 3        | `AgentTeam`, `Task`            | `internal/handlers/extended/ensemble.go`                |
-| 4        | `Kairos`, `Cursor`, `Windsurf`, `Kodu` | `internal/agents/...`, `internal/clis/agents/...` |
+### Campaign status (as of 2026-04-20)
 
-Each migration is its own PR with: (a) the code change, (b) paired race test that would have caught the pre-migration bug, (c) BUGFIXES.md entry referencing the structural fix.
+**Baseline:** 254 Pattern-A sites allowlisted on 2026-04-18.
+**Remaining:** 154 (see `scripts/concurrency-audit-allowlist.txt`).
+**Drained:** 100 (≈39%).
+
+**High-profile drained blockers (required dedicated sessions):**
+
+| Site                       | Pattern                          | Commit |
+|----------------------------|----------------------------------|--------|
+| `EnhancedBM25Index`        | Gamma+Epsilon atomic.Pointer     | `e8f060d7` |
+| `WorkflowState`            | Drop defensive mu, Snapshot API  | `cee91a10` |
+| `RepoMap`                  | Drop defensive mu, Snapshot API  | `6ad11250` |
+| `CacheService` (userKeys)  | COW nested-map inside safe.Store | `2be8afc3` |
+| `Broker` (inmemory)        | 4× safe.Store + atomic.Bool + Zeta regMu | `34b7eaef` |
+| `ConcurrencyMonitor`       | Delta + Gamma atomic.Bool        | `e575503a` |
+| `DebateService`            | 4× safe.Store + idempotent initCaches | `a115139b` |
+| `BootManager`              | safe.Store + inline COW          | `d76bdd5f` |
+
+**Still pending blockers (each needs a dedicated session):**
+
+| Site                     | Complexity                                       |
+|--------------------------|--------------------------------------------------|
+| `ProtocolDiscovery`      | 25+ test fixtures + direct field accesses        |
+| `ACPDiscoveryClient`     | 60+ test-file direct accesses                    |
+| `LSPClient`              | Multi-map joint atomicity, long file             |
+| `MCPClient`              | HTTP transport + protocol state                  |
+| `ACPManager` / `ACPClient` | Compound protocol state across two sibling structs |
+
+Each migration is its own commit with: (a) the code change, (b) paired
+race test that would have caught the pre-migration bug, (c) allowlist
+decrement in the same commit. When the work touches a public API or
+notable invariant, a BUGFIXES.md entry is cut per CONST-028.
 
 ## Enforcement
 

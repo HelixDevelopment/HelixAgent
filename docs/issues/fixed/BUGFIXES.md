@@ -956,4 +956,41 @@ Changed mock provider latency from 10ms to 150ms (above the 100ms threshold). Th
 
 ---
 
-Last Updated: April 16, 2026
+---
+
+## Issue #39: CONST-029 Pattern-A Blocker Drain — 8 Structural Race Classes Retired
+
+### Issue
+The CONST-029 audit flagged 254 struct definitions that paired a `sync.Mutex`/`sync.RWMutex` with at least one bare `map[K]V` or `[]T` field — the review-caught bug class that shipped 18+ prior BUGFIXES entries. Eight of those sites had complex test coupling or deep protocol integration and were deferred as blockers; the 2026-04-20 session drained them.
+
+### Sites Drained and Structural Fix
+
+| Site | File | Pattern | Latent race retired |
+|------|------|---------|---------------------|
+| `EnhancedBM25Index` | `internal/rag/qdrant_enhanced.go` | Gamma+Epsilon (atomic.Pointer[bm25State], four maps + scalars in one immutable snapshot) | AddDocument/Search shared mu but per-doc termFreqs inner maps could alias across snapshots; migration forces copy-on-write |
+| `WorkflowState` | `internal/agentic/workflow.go` | Drop defensive mu; single-owner invariant documented; added Snapshot() | Lock was silencing -race for handler-spawned goroutines without protecting anything the executor-owns-state invariant already covered |
+| `RepoMap` | `internal/tools/repomap/repomap.go` | Same as WorkflowState — single-writer via Map(), Snapshot() for cross-goroutine readers | Same class |
+| `CacheService.userKeys` | `internal/cache/cache_service.go` | safe.Store[string, map[string]struct{}] with COW inner sets | Pre-migration: outer mutex guarded the outer map but each user's inner set escaped on Get; GetUserKeyCount racing with trackUserKey could see partial mutation |
+| `Broker` (inmemory) | `internal/messaging/inmemory/broker.go` | 4× safe.Store + atomic.Bool + Pattern Zeta regMu for Publish/Subscribe check-create | Concurrent Publish to a new topic could both decide to create the queue-on-demand under the prior `mu.Lock` because only the final guard was atomic |
+| `ConcurrencyMonitor` | `internal/services/concurrency_monitor.go` | Delta + Gamma (atomic.Bool with CompareAndSwap for Start/Stop idempotency) | checkConcurrency wrote state and start times separately under the shared mu — a Reset mid-transition could flip state=true with no start time |
+| `DebateService` (4 intent caches) | `internal/services/debate_service.go` | 4× safe.Store + idempotent initCaches() called at method entry and by both constructors | Pre-migration Lock hold across three conditional reads (codeIntentCache / enhancedIntentCache / intentAttempted) serialised correctness but also serialised performance — LLM-classification hot path now parallelises cleanly |
+| `BootManager` | `internal/services/boot_manager.go` | safe.Store[string, *BootResult] with Store.Update COW for in-place BootResult field mutations | Pre-migration mutated BootResult fields through aliased pointers while readers held other pointers — the mutex guarded the map not the struct |
+
+### Fix Applied
+- Each site ships one commit containing: struct migration, all test-fixture rewrites, a new verification test (typically `Test*_RaceFree` running 8 writers × 16 readers under `-race`), and the allowlist decrement in the same commit.
+- Total changes: +1,000 insertions / −680 deletions across 8 commits (`e8f060d7..d76bdd5f`).
+- Test suite remains green under `go test -race`.
+
+### Files
+- 8 source files listed above plus their adjacent `_test.go` companions (44 test files affected, the largest being `internal/cache/cache_service_test.go` with 34 inline fixture rewrites).
+- `docs/development/concurrency-playbook.md` — campaign-status table replaces the obsolete priority table; remaining blockers documented.
+- `scripts/concurrency-audit-allowlist.txt` — decremented from 162 → 154 across the 8 commits.
+
+### Verification
+- `make ci-validate-all` (audit gate) — green.
+- `go build ./...` — clean across main module.
+- `GOMAXPROCS=2 go test -race -count=1 ./internal/...` — green for every migrated package.
+
+---
+
+Last Updated: April 20, 2026

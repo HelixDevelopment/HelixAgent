@@ -6,6 +6,8 @@ package features
 import (
 	"strings"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // AgentCapability defines the features supported by a CLI agent
@@ -451,10 +453,13 @@ var agentCapabilities = map[string]*AgentCapability{
 	},
 }
 
-// CapabilityRegistry provides thread-safe access to agent capabilities
+// CapabilityRegistry provides thread-safe access to agent capabilities.
+//
+// Concurrency model (CONST-029): capabilities is a *safe.Store,
+// populated once under capabilityRegistryOnce and read lock-free
+// thereafter. No mu needed because there are no post-init writes.
 type CapabilityRegistry struct {
-	mu           sync.RWMutex
-	capabilities map[string]*AgentCapability
+	capabilities *safe.Store[string, *AgentCapability]
 }
 
 // globalCapabilityRegistry is the singleton capability registry
@@ -465,12 +470,12 @@ var capabilityRegistryOnce sync.Once
 func GetCapabilityRegistry() *CapabilityRegistry {
 	capabilityRegistryOnce.Do(func() {
 		globalCapabilityRegistry = &CapabilityRegistry{
-			capabilities: make(map[string]*AgentCapability),
+			capabilities: safe.NewStore[string, *AgentCapability](),
 		}
 		// Copy all capabilities
 		for k, v := range agentCapabilities {
 			cap := *v
-			globalCapabilityRegistry.capabilities[k] = &cap
+			globalCapabilityRegistry.capabilities.Put(k, &cap)
 		}
 	})
 	return globalCapabilityRegistry
@@ -478,29 +483,22 @@ func GetCapabilityRegistry() *CapabilityRegistry {
 
 // GetCapability returns capability info for an agent
 func (r *CapabilityRegistry) GetCapability(agentName string) (*AgentCapability, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
-	return cap, ok
+	return r.capabilities.Get(strings.ToLower(agentName))
 }
 
 // GetAllCapabilities returns all registered agent capabilities
 func (r *CapabilityRegistry) GetAllCapabilities() []*AgentCapability {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	caps := make([]*AgentCapability, 0, len(r.capabilities))
-	for _, c := range r.capabilities {
+	caps := make([]*AgentCapability, 0, r.capabilities.Len())
+	r.capabilities.Range(func(_ string, c *AgentCapability) bool {
 		caps = append(caps, c)
-	}
+		return true
+	})
 	return caps
 }
 
 // IsFeatureSupported checks if an agent supports a specific feature
 func (r *CapabilityRegistry) IsFeatureSupported(agentName string, feature Feature) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		// Unknown agent - assume basic HTTP/2 support
 		return isBasicFeature(feature)
@@ -525,10 +523,7 @@ func (r *CapabilityRegistry) IsFeatureSupported(agentName string, feature Featur
 
 // IsFeaturePreferred checks if an agent prefers a specific feature
 func (r *CapabilityRegistry) IsFeaturePreferred(agentName string, feature Feature) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		return false
 	}
@@ -544,13 +539,10 @@ func (r *CapabilityRegistry) IsFeaturePreferred(agentName string, feature Featur
 
 // GetAgentFeatureDefaults returns the default feature settings for an agent
 func (r *CapabilityRegistry) GetAgentFeatureDefaults(agentName string) map[Feature]bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	defaults := make(map[Feature]bool)
 	registry := GetRegistry()
 
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		// Unknown agent - return global defaults for basic features only
 		for _, f := range registry.GetAllFeatures() {
@@ -585,10 +577,7 @@ func (r *CapabilityRegistry) GetAgentFeatureDefaults(agentName string) map[Featu
 
 // GetSupportedStreamingMethods returns streaming methods supported by an agent
 func (r *CapabilityRegistry) GetSupportedStreamingMethods(agentName string) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		return []string{"sse", "jsonl"} // Default streaming methods
 	}
@@ -598,10 +587,7 @@ func (r *CapabilityRegistry) GetSupportedStreamingMethods(agentName string) []st
 
 // GetSupportedCompression returns compression methods supported by an agent
 func (r *CapabilityRegistry) GetSupportedCompression(agentName string) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		return []string{"gzip"} // Default compression
 	}
@@ -611,10 +597,7 @@ func (r *CapabilityRegistry) GetSupportedCompression(agentName string) []string 
 
 // GetTransportProtocol returns the transport protocol for an agent
 func (r *CapabilityRegistry) GetTransportProtocol(agentName string) string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	cap, ok := r.capabilities[strings.ToLower(agentName)]
+	cap, ok := r.capabilities.Get(strings.ToLower(agentName))
 	if !ok {
 		return "http2" // Default transport
 	}
@@ -624,26 +607,22 @@ func (r *CapabilityRegistry) GetTransportProtocol(agentName string) string {
 
 // GetAgentsByFeature returns agents that support a specific feature
 func (r *CapabilityRegistry) GetAgentsByFeature(feature Feature) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var agents []string
-	for name, cap := range r.capabilities {
+	r.capabilities.Range(func(name string, cap *AgentCapability) bool {
 		for _, f := range cap.SupportedFeatures {
 			if f == feature {
 				agents = append(agents, name)
 				break
 			}
 		}
-	}
+		return true
+	})
 	return agents
 }
 
 // RegisterCapability adds or updates an agent capability
 func (r *CapabilityRegistry) RegisterCapability(cap *AgentCapability) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.capabilities[strings.ToLower(cap.AgentName)] = cap
+	r.capabilities.Put(strings.ToLower(cap.AgentName), cap)
 }
 
 // isBasicFeature returns true for features that are universally supported
@@ -672,16 +651,13 @@ func (c *AgentCapability) Description() string {
 
 // FullFeatureAgents returns agents that support all advanced features
 func (r *CapabilityRegistry) FullFeatureAgents() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var agents []string
 	advancedFeatures := []Feature{
 		FeatureGraphQL, FeatureTOON, FeatureHTTP3,
 		FeatureBrotli, FeatureWebSocket, FeatureDebate,
 	}
 
-	for name, cap := range r.capabilities {
+	r.capabilities.Range(func(name string, cap *AgentCapability) bool {
 		supportsAll := true
 		for _, required := range advancedFeatures {
 			found := false
@@ -699,6 +675,7 @@ func (r *CapabilityRegistry) FullFeatureAgents() []string {
 		if supportsAll {
 			agents = append(agents, name)
 		}
-	}
+		return true
+	})
 	return agents
 }

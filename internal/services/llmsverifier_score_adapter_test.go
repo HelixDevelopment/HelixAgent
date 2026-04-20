@@ -143,9 +143,7 @@ func TestScoreAdapterGetProviderScore(t *testing.T) {
 
 	t.Run("normalizes_scores_above_10", func(t *testing.T) {
 		// LLMsVerifier uses 0-100 scale, adapter normalizes to 0-10
-		adapter.mu.Lock()
-		adapter.providerScores["high-score-provider"] = 85.0
-		adapter.mu.Unlock()
+		adapter.providerScores.Put("high-score-provider", 85.0)
 
 		score, found := adapter.GetProviderScore("high-score-provider")
 		assert.True(t, found)

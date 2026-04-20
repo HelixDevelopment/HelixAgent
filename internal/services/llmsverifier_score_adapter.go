@@ -7,18 +7,26 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/verifier"
 	"github.com/sirupsen/logrus"
 )
 
-// LLMsVerifierScoreAdapter implements LLMsVerifierScoreProvider interface
-// It connects ProviderDiscovery to the actual LLMsVerifier scoring system
+// LLMsVerifierScoreAdapter implements LLMsVerifierScoreProvider interface.
+// It connects ProviderDiscovery to the actual LLMsVerifier scoring system.
+//
+// Concurrency model (CONST-029): providerScores and modelScores are
+// *safe.Store containers. The "use higher score" check-max-update
+// pattern runs under safe.Store.Update for atomicity. refreshMu
+// survives as a Pattern Zeta lock for the refresh-flow's
+// lastRefresh + refreshInterval check-then-update.
 type LLMsVerifierScoreAdapter struct {
 	scoringService  *verifier.ScoringService
 	verificationSvc *verifier.VerificationService
-	providerScores  map[string]float64 // Cached provider scores
-	modelScores     map[string]float64 // Cached model scores
-	mu              sync.RWMutex
+	providerScores  *safe.Store[string, float64] // Cached provider scores
+	modelScores     *safe.Store[string, float64] // Cached model scores
+	refreshMu       sync.Mutex
 	log             *logrus.Logger
 	lastRefresh     time.Time
 	refreshInterval time.Duration
@@ -37,8 +45,8 @@ func NewLLMsVerifierScoreAdapter(
 	adapter := &LLMsVerifierScoreAdapter{
 		scoringService:  scoringService,
 		verificationSvc: verificationSvc,
-		providerScores:  make(map[string]float64),
-		modelScores:     make(map[string]float64),
+		providerScores:  safe.NewStore[string, float64](),
+		modelScores:     safe.NewStore[string, float64](),
 		log:             log,
 		refreshInterval: 5 * time.Minute,
 	}
@@ -62,39 +70,39 @@ func (a *LLMsVerifierScoreAdapter) initializeFromVerificationCache() {
 		return
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	for _, v := range verifications {
 		if v.Verified && v.Score > 0 {
 			// Store by model ID
-			a.modelScores[v.ModelID] = v.Score
+			a.modelScores.Put(v.ModelID, v.Score)
 
-			// Also aggregate by provider
-			if existingScore, ok := a.providerScores[v.Provider]; ok {
-				// Use the higher score for the provider
-				if v.Score > existingScore {
-					a.providerScores[v.Provider] = v.Score
-				}
-			} else {
-				a.providerScores[v.Provider] = v.Score
-			}
+			// Aggregate by provider — use the higher score.
+			a.putMaxProviderScore(v.Provider, v.Score)
 		}
 	}
 
+	a.refreshMu.Lock()
 	a.lastRefresh = time.Now()
+	a.refreshMu.Unlock()
 	a.log.WithFields(logrus.Fields{
-		"provider_scores": len(a.providerScores),
-		"model_scores":    len(a.modelScores),
+		"provider_scores": a.providerScores.Len(),
+		"model_scores":    a.modelScores.Len(),
 	}).Info("LLMsVerifier scores initialized from cache")
+}
+
+// putMaxProviderScore installs score for provider if it's higher than
+// the existing score (or no existing score). Atomic via Store.Update.
+func (a *LLMsVerifierScoreAdapter) putMaxProviderScore(provider string, score float64) {
+	a.providerScores.Update(provider, func(cur float64, present bool) (float64, bool) {
+		if !present || score > cur {
+			return score, true
+		}
+		return cur, true
+	})
 }
 
 // GetProviderScore returns the LLMsVerifier score for a provider (0-10)
 func (a *LLMsVerifierScoreAdapter) GetProviderScore(providerType string) (float64, bool) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	score, found := a.providerScores[providerType]
+	score, found := a.providerScores.Get(providerType)
 	if found {
 		// Normalize score to 0-10 range if needed (LLMsVerifier uses 0-100)
 		if score > 10 {
@@ -107,10 +115,7 @@ func (a *LLMsVerifierScoreAdapter) GetProviderScore(providerType string) (float6
 
 // GetModelScore returns the LLMsVerifier score for a specific model
 func (a *LLMsVerifierScoreAdapter) GetModelScore(modelID string) (float64, bool) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	score, found := a.modelScores[modelID]
+	score, found := a.modelScores.Get(modelID)
 	if found {
 		// Normalize score to 0-10 range if needed (LLMsVerifier uses 0-100)
 		if score > 10 {
@@ -124,9 +129,12 @@ func (a *LLMsVerifierScoreAdapter) GetModelScore(modelID string) (float64, bool)
 // RefreshScores refreshes scores from LLMsVerifier
 func (a *LLMsVerifierScoreAdapter) RefreshScores(ctx context.Context) error {
 	// Check if refresh is needed
+	a.refreshMu.Lock()
 	if time.Since(a.lastRefresh) < a.refreshInterval {
+		a.refreshMu.Unlock()
 		return nil
 	}
+	a.refreshMu.Unlock()
 
 	a.log.Info("Refreshing LLMsVerifier scores")
 
@@ -137,22 +145,15 @@ func (a *LLMsVerifierScoreAdapter) RefreshScores(ctx context.Context) error {
 			return err
 		}
 
-		a.mu.Lock()
 		for _, v := range verifications {
 			if v.Verified && v.Score > 0 {
-				a.modelScores[v.ModelID] = v.Score
-
-				if existingScore, ok := a.providerScores[v.Provider]; ok {
-					if v.Score > existingScore {
-						a.providerScores[v.Provider] = v.Score
-					}
-				} else {
-					a.providerScores[v.Provider] = v.Score
-				}
+				a.modelScores.Put(v.ModelID, v.Score)
+				a.putMaxProviderScore(v.Provider, v.Score)
 			}
 		}
+		a.refreshMu.Lock()
 		a.lastRefresh = time.Now()
-		a.mu.Unlock()
+		a.refreshMu.Unlock()
 	}
 
 	// Use ScoringService to calculate/refresh scores
@@ -180,9 +181,6 @@ func (a *LLMsVerifierScoreAdapter) refreshFromScoringService(ctx context.Context
 		return
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	for _, modelID := range knownModels {
 		result, err := a.scoringService.CalculateScore(ctx, modelID)
 		if err != nil {
@@ -190,25 +188,19 @@ func (a *LLMsVerifierScoreAdapter) refreshFromScoringService(ctx context.Context
 			continue
 		}
 		if result != nil && result.OverallScore > 0 {
-			a.modelScores[modelID] = result.OverallScore
+			a.modelScores.Put(modelID, result.OverallScore)
 
 			// Map model to provider DYNAMICALLY
 			provider := inferProviderFromModel(modelID)
 			if provider != "" {
-				if existingScore, ok := a.providerScores[provider]; ok {
-					if result.OverallScore > existingScore {
-						a.providerScores[provider] = result.OverallScore
-					}
-				} else {
-					a.providerScores[provider] = result.OverallScore
-				}
+				a.putMaxProviderScore(provider, result.OverallScore)
 			}
 		}
 	}
 
 	a.log.WithFields(logrus.Fields{
-		"provider_scores": len(a.providerScores),
-		"model_scores":    len(a.modelScores),
+		"provider_scores": a.providerScores.Len(),
+		"model_scores":    a.modelScores.Len(),
 	}).Debug("Refreshed scores from ScoringService")
 }
 
@@ -238,19 +230,8 @@ func (a *LLMsVerifierScoreAdapter) getKnownModelsFromVerifications() []string {
 
 // UpdateScore updates the score for a specific model/provider after verification
 func (a *LLMsVerifierScoreAdapter) UpdateScore(provider, modelID string, score float64) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	a.modelScores[modelID] = score
-
-	// Update provider score if this is higher
-	if existingScore, ok := a.providerScores[provider]; ok {
-		if score > existingScore {
-			a.providerScores[provider] = score
-		}
-	} else {
-		a.providerScores[provider] = score
-	}
+	a.modelScores.Put(modelID, score)
+	a.putMaxProviderScore(provider, score)
 
 	a.log.WithFields(logrus.Fields{
 		"provider": provider,
@@ -261,30 +242,21 @@ func (a *LLMsVerifierScoreAdapter) UpdateScore(provider, modelID string, score f
 
 // GetAllProviderScores returns all cached provider scores
 func (a *LLMsVerifierScoreAdapter) GetAllProviderScores() map[string]float64 {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	result := make(map[string]float64)
-	for k, v := range a.providerScores {
-		result[k] = v
-	}
-	return result
+	return a.providerScores.Snapshot()
 }
 
 // GetBestProvider returns the provider with the highest score
 func (a *LLMsVerifierScoreAdapter) GetBestProvider() (string, float64) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
 	var bestProvider string
 	var bestScore float64
 
-	for provider, score := range a.providerScores {
+	a.providerScores.Range(func(provider string, score float64) bool {
 		if score > bestScore {
 			bestProvider = provider
 			bestScore = score
 		}
-	}
+		return true
+	})
 
 	return bestProvider, bestScore
 }

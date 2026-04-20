@@ -7,7 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -141,14 +144,16 @@ type HierarchicalPlan struct {
 	CompletedAt *time.Time             `json:"completed_at,omitempty"`
 }
 
-// HiPlan implements Hierarchical Planning
+// HiPlan implements Hierarchical Planning.
+//
+// Concurrency model (CONST-029): milestoneLibrary → *safe.Store;
+// currentPlan → atomic.Pointer[HierarchicalPlan]. mu dropped.
 type HiPlan struct {
 	config           HiPlanConfig
 	generator        MilestoneGenerator
 	executor         StepExecutor
-	currentPlan      *HierarchicalPlan
-	milestoneLibrary map[string]*Milestone
-	mu               sync.RWMutex
+	currentPlan      atomic.Pointer[HierarchicalPlan]
+	milestoneLibrary *safe.Store[string, *Milestone]
 	logger           *logrus.Logger
 }
 
@@ -163,7 +168,7 @@ func NewHiPlan(config HiPlanConfig, generator MilestoneGenerator, executor StepE
 		config:           config,
 		generator:        generator,
 		executor:         executor,
-		milestoneLibrary: make(map[string]*Milestone),
+		milestoneLibrary: safe.NewStore[string, *Milestone](),
 		logger:           logger,
 	}
 }
@@ -209,9 +214,7 @@ func (h *HiPlan) CreatePlan(ctx context.Context, goal string) (*HierarchicalPlan
 		Metadata:   make(map[string]interface{}),
 	}
 
-	h.mu.Lock()
-	h.currentPlan = plan
-	h.mu.Unlock()
+	h.currentPlan.Store(plan)
 
 	return plan, nil
 }
@@ -692,22 +695,15 @@ Format as bullet points.`, context)
 
 // AddToLibrary adds a milestone to the library for reuse
 func (h *HiPlan) AddToLibrary(milestone *Milestone) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.milestoneLibrary[milestone.ID] = milestone
+	h.milestoneLibrary.Put(milestone.ID, milestone)
 }
 
 // GetFromLibrary retrieves a milestone from the library
 func (h *HiPlan) GetFromLibrary(id string) (*Milestone, bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	m, exists := h.milestoneLibrary[id]
-	return m, exists
+	return h.milestoneLibrary.Get(id)
 }
 
 // GetCurrentPlan returns the current plan
 func (h *HiPlan) GetCurrentPlan() *HierarchicalPlan {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return h.currentPlan
+	return h.currentPlan.Load()
 }

@@ -2,19 +2,24 @@ package plugins
 
 import (
 	"context"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/utils"
 )
 
-// HealthMonitor manages plugin health checks and circuit breaking
+// HealthMonitor manages plugin health checks and circuit breaking.
+//
+// Concurrency model (CONST-029): healthStatus → *safe.Store. mu
+// dropped — the per-plugin compound "read → mutate → write" in
+// checkPlugin is expressed as a single Store.Update closure that
+// runs under the Store's internal write lock.
 type HealthMonitor struct {
 	registry      *Registry
 	checkInterval time.Duration
 	timeout       time.Duration
-	mu            sync.RWMutex
-	healthStatus  map[string]PluginHealth
+	healthStatus  *safe.Store[string, PluginHealth]
 }
 
 type PluginHealth struct {
@@ -32,7 +37,7 @@ func NewHealthMonitor(registry *Registry, checkInterval, timeout time.Duration) 
 		registry:      registry,
 		checkInterval: checkInterval,
 		timeout:       timeout,
-		healthStatus:  make(map[string]PluginHealth),
+		healthStatus:  safe.NewStore[string, PluginHealth](),
 	}
 }
 
@@ -71,43 +76,43 @@ func (h *HealthMonitor) checkPlugin(ctx context.Context, name string) {
 	err := plugin.HealthCheck(checkCtx)
 	responseTime := time.Since(start)
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	var circuitOpened bool
+	var failures int
+	h.healthStatus.Update(name, func(cur PluginHealth, _ bool) (PluginHealth, bool) {
+		cur.Name = name
+		cur.LastCheck = time.Now()
+		cur.ResponseTime = responseTime
 
-	health := h.healthStatus[name]
-	health.Name = name
-	health.LastCheck = time.Now()
-	health.ResponseTime = responseTime
+		if err != nil {
+			cur.ErrorCount++
+			cur.ConsecutiveFailures++
+			cur.Status = "unhealthy"
 
-	if err != nil {
-		health.ErrorCount++
-		health.ConsecutiveFailures++
-		health.Status = "unhealthy"
-
-		if health.ConsecutiveFailures >= 3 {
-			health.CircuitOpen = true
-			utils.GetLogger().Warnf("Plugin %s circuit breaker opened after %d failures", name, health.ConsecutiveFailures)
-		}
-	} else {
-		health.ConsecutiveFailures = 0
-		health.CircuitOpen = false
-
-		if responseTime > 5*time.Second {
-			health.Status = "degraded"
+			if cur.ConsecutiveFailures >= 3 {
+				cur.CircuitOpen = true
+				circuitOpened = true
+				failures = cur.ConsecutiveFailures
+			}
 		} else {
-			health.Status = "healthy"
-		}
-	}
+			cur.ConsecutiveFailures = 0
+			cur.CircuitOpen = false
 
-	h.healthStatus[name] = health
+			if responseTime > 5*time.Second {
+				cur.Status = "degraded"
+			} else {
+				cur.Status = "healthy"
+			}
+		}
+		return cur, true
+	})
+
+	if circuitOpened {
+		utils.GetLogger().Warnf("Plugin %s circuit breaker opened after %d failures", name, failures)
+	}
 }
 
 func (h *HealthMonitor) GetHealth(name string) (PluginHealth, bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	health, exists := h.healthStatus[name]
-	return health, exists
+	return h.healthStatus.Get(name)
 }
 
 func (h *HealthMonitor) IsHealthy(name string) bool {

@@ -34,12 +34,10 @@ func TestHealthMonitor_GetHealth(t *testing.T) {
 	})
 
 	t.Run("get health after manual set", func(t *testing.T) {
-		monitor.mu.Lock()
-		monitor.healthStatus["test-plugin"] = PluginHealth{
+		monitor.healthStatus.Put("test-plugin", PluginHealth{
 			Name:   "test-plugin",
 			Status: "healthy",
-		}
-		monitor.mu.Unlock()
+		})
 
 		health, exists := monitor.GetHealth("test-plugin")
 		assert.True(t, exists)
@@ -57,37 +55,31 @@ func TestHealthMonitor_IsHealthy(t *testing.T) {
 	})
 
 	t.Run("healthy plugin", func(t *testing.T) {
-		monitor.mu.Lock()
-		monitor.healthStatus["healthy-plugin"] = PluginHealth{
+		monitor.healthStatus.Put("healthy-plugin", PluginHealth{
 			Name:        "healthy-plugin",
 			Status:      "healthy",
 			CircuitOpen: false,
-		}
-		monitor.mu.Unlock()
+		})
 
 		assert.True(t, monitor.IsHealthy("healthy-plugin"))
 	})
 
 	t.Run("degraded plugin not healthy", func(t *testing.T) {
-		monitor.mu.Lock()
-		monitor.healthStatus["degraded-plugin"] = PluginHealth{
+		monitor.healthStatus.Put("degraded-plugin", PluginHealth{
 			Name:        "degraded-plugin",
 			Status:      "degraded",
 			CircuitOpen: false,
-		}
-		monitor.mu.Unlock()
+		})
 
 		assert.False(t, monitor.IsHealthy("degraded-plugin"))
 	})
 
 	t.Run("circuit open not healthy", func(t *testing.T) {
-		monitor.mu.Lock()
-		monitor.healthStatus["circuit-open"] = PluginHealth{
+		monitor.healthStatus.Put("circuit-open", PluginHealth{
 			Name:        "circuit-open",
 			Status:      "healthy",
 			CircuitOpen: true,
-		}
-		monitor.mu.Unlock()
+		})
 
 		assert.False(t, monitor.IsHealthy("circuit-open"))
 	})

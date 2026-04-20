@@ -533,13 +533,11 @@ func TestLifecycleManager_MonitorPlugin_UnhealthyRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set the plugin as unhealthy
-	health.mu.Lock()
-	health.healthStatus["unhealthy-test"] = PluginHealth{
+	health.healthStatus.Put("unhealthy-test", PluginHealth{
 		Name:        "unhealthy-test",
 		Status:      "unhealthy",
 		CircuitOpen: true,
-	}
-	health.mu.Unlock()
+	})
 
 	// Start the plugin
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -669,13 +667,11 @@ func TestLifecycleManager_MonitorPlugin_TriggersRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set the plugin as unhealthy
-	health.mu.Lock()
-	health.healthStatus["trigger-restart"] = PluginHealth{
+	health.healthStatus.Put("trigger-restart", PluginHealth{
 		Name:        "trigger-restart",
 		Status:      "unhealthy",
 		CircuitOpen: true,
-	}
-	health.mu.Unlock()
+	})
 
 	// Wait for the 30s ticker to fire - but we can't easily wait that long in a test
 	// Instead, just verify the plugin is running

@@ -71,13 +71,11 @@ func TestMetricsCollector_CollectMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	// Manually set health status
-	health.mu.Lock()
-	health.healthStatus["metrics-test-plugin"] = PluginHealth{
+	health.healthStatus.Put("metrics-test-plugin", PluginHealth{
 		Name:        "metrics-test-plugin",
 		Status:      "healthy",
 		CircuitOpen: false,
-	}
-	health.mu.Unlock()
+	})
 
 	// This should not panic
 	collector.collectMetrics()
@@ -120,18 +118,16 @@ func TestMetricsCollector_CollectMetricsWithMixedHealth(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set mixed health statuses
-	health.mu.Lock()
-	health.healthStatus["healthy-plugin"] = PluginHealth{
+	health.healthStatus.Put("healthy-plugin", PluginHealth{
 		Name:        "healthy-plugin",
 		Status:      "healthy",
 		CircuitOpen: false,
-	}
-	health.healthStatus["unhealthy-plugin"] = PluginHealth{
+	})
+	health.healthStatus.Put("unhealthy-plugin", PluginHealth{
 		Name:        "unhealthy-plugin",
 		Status:      "unhealthy",
 		CircuitOpen: true,
-	}
-	health.mu.Unlock()
+	})
 
 	// Collect metrics - should handle both healthy and unhealthy
 	collector.collectMetrics()
@@ -149,13 +145,11 @@ func TestMetricsCollector_PeriodicCollection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set health
-	health.mu.Lock()
-	health.healthStatus["periodic-test"] = PluginHealth{
+	health.healthStatus.Put("periodic-test", PluginHealth{
 		Name:        "periodic-test",
 		Status:      "healthy",
 		CircuitOpen: false,
-	}
-	health.mu.Unlock()
+	})
 
 	collector := NewMetricsCollector(registry, health)
 	collector.StartCollection()
@@ -258,13 +252,11 @@ func TestMetricsCollector_PeriodicCollection_ShortInterval(t *testing.T) {
 		_ = registry.Register(plugin)
 
 		// Set health status
-		health.mu.Lock()
-		health.healthStatus[name] = PluginHealth{
+		health.healthStatus.Put(name, PluginHealth{
 			Name:        name,
 			Status:      "healthy",
 			CircuitOpen: false,
-		}
-		health.mu.Unlock()
+		})
 	}
 
 	collector := NewMetricsCollector(registry, health)

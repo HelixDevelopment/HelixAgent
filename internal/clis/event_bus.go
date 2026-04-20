@@ -5,20 +5,33 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // EventBus provides pub/sub event routing between agent instances.
+//
+// Concurrency model (CONST-029):
+//   - subscribers/topics → *safe.Store with Update-based COW
+//     for the per-key slice appends and filtered removes.
+//   - wildcards → *safe.Slice.
+//   - dispatchMu (Pattern Zeta, RWMutex) serialises dispatch
+//     (RLock) against Close's channel-close pass (Lock) so
+//     senders cannot race with channel closers.
+//   - closed atomic.Bool short-circuits sendToSub once Close
+//     starts, and closeOnce keeps Close idempotent.
 type EventBus struct {
 	// Subscribers by event type
-	subscribers map[EventType][]*Subscription
+	subscribers *safe.Store[EventType, []*Subscription]
 
 	// Wildcard subscribers (receive all events)
-	wildcards []*Subscription
+	wildcards *safe.Slice[*Subscription]
 
 	// Topic-based subscribers
-	topics map[string][]*Subscription
+	topics *safe.Store[string, []*Subscription]
 
-	mu sync.RWMutex
+	// Serialises dispatch vs channel-close in Close.
+	dispatchMu sync.RWMutex
 
 	// Event channel for async publishing
 	eventCh chan *Event
@@ -48,8 +61,9 @@ func NewEventBus() *EventBus {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	eb := &EventBus{
-		subscribers: make(map[EventType][]*Subscription),
-		topics:      make(map[string][]*Subscription),
+		subscribers: safe.NewStore[EventType, []*Subscription](),
+		topics:      safe.NewStore[string, []*Subscription](),
+		wildcards:   safe.NewSlice[*Subscription](),
 		eventCh:     make(chan *Event, 1000),
 		ctx:         ctx,
 		cancel:      cancel,
@@ -64,47 +78,42 @@ func NewEventBus() *EventBus {
 
 // Subscribe creates a subscription for a specific event type.
 func (eb *EventBus) Subscribe(eventType EventType, bufferSize int) *Subscription {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
-
 	sub := &Subscription{
 		ID:        generateEventID(),
 		EventType: eventType,
 		Ch:        make(chan *Event, bufferSize),
 	}
 
-	eb.subscribers[eventType] = append(eb.subscribers[eventType], sub)
+	eb.subscribers.Update(eventType, func(cur []*Subscription, _ bool) ([]*Subscription, bool) {
+		return append(cur, sub), true
+	})
 
 	return sub
 }
 
 // SubscribeTopic creates a subscription for a topic.
 func (eb *EventBus) SubscribeTopic(topic string, bufferSize int) *Subscription {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
-
 	sub := &Subscription{
 		ID:    generateEventID(),
 		Topic: topic,
 		Ch:    make(chan *Event, bufferSize),
 	}
 
-	eb.topics[topic] = append(eb.topics[topic], sub)
+	eb.topics.Update(topic, func(cur []*Subscription, _ bool) ([]*Subscription, bool) {
+		return append(cur, sub), true
+	})
 
 	return sub
 }
 
 // SubscribeWildcard creates a subscription for all events.
 func (eb *EventBus) SubscribeWildcard(bufferSize int) *Subscription {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
-
 	sub := &Subscription{
 		ID: generateEventID(),
 		Ch: make(chan *Event, bufferSize),
 	}
 
-	eb.wildcards = append(eb.wildcards, sub)
+	eb.wildcards.Append(sub)
 
 	return sub
 }
@@ -122,40 +131,61 @@ func (eb *EventBus) SubscribeFiltered(
 
 // Unsubscribe removes a subscription.
 func (eb *EventBus) Unsubscribe(sub *Subscription) {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
+	var closed *Subscription
 
 	// Remove from event type subscribers
 	if sub.EventType != "" {
-		subs := eb.subscribers[sub.EventType]
-		for i, s := range subs {
-			if s.ID == sub.ID {
-				eb.subscribers[sub.EventType] = append(subs[:i], subs[i+1:]...)
-				close(s.Ch)
-				break
+		eb.subscribers.Update(sub.EventType, func(cur []*Subscription, present bool) ([]*Subscription, bool) {
+			if !present {
+				return cur, false
 			}
-		}
+			for i, s := range cur {
+				if s.ID == sub.ID {
+					closed = s
+					next := make([]*Subscription, 0, len(cur)-1)
+					next = append(next, cur[:i]...)
+					next = append(next, cur[i+1:]...)
+					if len(next) == 0 {
+						return nil, false
+					}
+					return next, true
+				}
+			}
+			return cur, true
+		})
 	}
 
 	// Remove from topic subscribers
-	if sub.Topic != "" {
-		subs := eb.topics[sub.Topic]
-		for i, s := range subs {
-			if s.ID == sub.ID {
-				eb.topics[sub.Topic] = append(subs[:i], subs[i+1:]...)
-				close(s.Ch)
-				break
+	if closed == nil && sub.Topic != "" {
+		eb.topics.Update(sub.Topic, func(cur []*Subscription, present bool) ([]*Subscription, bool) {
+			if !present {
+				return cur, false
 			}
-		}
+			for i, s := range cur {
+				if s.ID == sub.ID {
+					closed = s
+					next := make([]*Subscription, 0, len(cur)-1)
+					next = append(next, cur[:i]...)
+					next = append(next, cur[i+1:]...)
+					if len(next) == 0 {
+						return nil, false
+					}
+					return next, true
+				}
+			}
+			return cur, true
+		})
 	}
 
 	// Remove from wildcards
-	for i, s := range eb.wildcards {
-		if s.ID == sub.ID {
-			eb.wildcards = append(eb.wildcards[:i], eb.wildcards[i+1:]...)
-			close(s.Ch)
-			break
+	if closed == nil {
+		if removed, ok := eb.wildcards.Delete(func(s *Subscription) bool { return s.ID == sub.ID }); ok {
+			closed = removed
 		}
+	}
+
+	if closed != nil {
+		close(closed.Ch)
 	}
 }
 
@@ -178,11 +208,11 @@ func (eb *EventBus) PublishSync(event *Event) {
 
 // dispatch routes an event to all matching subscribers.
 func (eb *EventBus) dispatch(event *Event) {
-	eb.mu.RLock()
-	defer eb.mu.RUnlock()
+	eb.dispatchMu.RLock()
+	defer eb.dispatchMu.RUnlock()
 
 	// Send to type-specific subscribers
-	if subs, ok := eb.subscribers[event.Type]; ok {
+	if subs, ok := eb.subscribers.Get(event.Type); ok {
 		for _, sub := range subs {
 			eb.sendToSub(sub, event)
 		}
@@ -190,7 +220,7 @@ func (eb *EventBus) dispatch(event *Event) {
 
 	// Send to topic subscribers
 	if topic, ok := event.Metadata["topic"].(string); ok {
-		if subs, ok := eb.topics[topic]; ok {
+		if subs, ok := eb.topics.Get(topic); ok {
 			for _, sub := range subs {
 				eb.sendToSub(sub, event)
 			}
@@ -198,7 +228,7 @@ func (eb *EventBus) dispatch(event *Event) {
 	}
 
 	// Send to wildcards
-	for _, sub := range eb.wildcards {
+	for _, sub := range eb.wildcards.Snapshot() {
 		eb.sendToSub(sub, event)
 	}
 }
@@ -253,22 +283,27 @@ func (eb *EventBus) Close() error {
 		//    is inside dispatch()/sendToSub() when we close channels below.
 		eb.wg.Wait()
 
-		// 4. Now safe to close all subscriber channels under lock.
-		eb.mu.Lock()
-		for _, subs := range eb.subscribers {
+		// 4. Now safe to close all subscriber channels. Take dispatchMu
+		//    in write mode — any in-flight dispatch() has already
+		//    bailed via the closed.Load check in sendToSub, so this is
+		//    just a fence for the race detector.
+		eb.dispatchMu.Lock()
+		defer eb.dispatchMu.Unlock()
+		eb.subscribers.Range(func(_ EventType, subs []*Subscription) bool {
 			for _, sub := range subs {
 				close(sub.Ch)
 			}
-		}
-		for _, subs := range eb.topics {
+			return true
+		})
+		eb.topics.Range(func(_ string, subs []*Subscription) bool {
 			for _, sub := range subs {
 				close(sub.Ch)
 			}
-		}
-		for _, sub := range eb.wildcards {
+			return true
+		})
+		for _, sub := range eb.wildcards.Snapshot() {
 			close(sub.Ch)
 		}
-		eb.mu.Unlock()
 	})
 
 	return nil
@@ -276,23 +311,23 @@ func (eb *EventBus) Close() error {
 
 // GetStats returns statistics about the event bus.
 func (eb *EventBus) GetStats() map[string]interface{} {
-	eb.mu.RLock()
-	defer eb.mu.RUnlock()
-
 	totalSubs := 0
-	for _, subs := range eb.subscribers {
+	eb.subscribers.Range(func(_ EventType, subs []*Subscription) bool {
 		totalSubs += len(subs)
-	}
-	for _, subs := range eb.topics {
+		return true
+	})
+	eb.topics.Range(func(_ string, subs []*Subscription) bool {
 		totalSubs += len(subs)
-	}
-	totalSubs += len(eb.wildcards)
+		return true
+	})
+	wildcardLen := eb.wildcards.Len()
+	totalSubs += wildcardLen
 
 	return map[string]interface{}{
 		"total_subscriptions": totalSubs,
-		"event_types":         len(eb.subscribers),
-		"topics":              len(eb.topics),
-		"wildcards":           len(eb.wildcards),
+		"event_types":         eb.subscribers.Len(),
+		"topics":              eb.topics.Len(),
+		"wildcards":           wildcardLen,
 	}
 }
 

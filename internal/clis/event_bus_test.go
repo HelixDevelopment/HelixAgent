@@ -91,17 +91,15 @@ func TestEventBus_Unsubscribe(t *testing.T) {
 	sub := eb.Subscribe(EventTypeStatus, 10)
 
 	// Verify subscription exists
-	eb.mu.RLock()
-	assert.Len(t, eb.subscribers[EventTypeStatus], 1)
-	eb.mu.RUnlock()
+	existing, _ := eb.subscribers.Get(EventTypeStatus)
+	assert.Len(t, existing, 1)
 
 	// Unsubscribe
 	eb.Unsubscribe(sub)
 
 	// Verify subscription removed
-	eb.mu.RLock()
-	assert.Len(t, eb.subscribers[EventTypeStatus], 0)
-	eb.mu.RUnlock()
+	removed, _ := eb.subscribers.Get(EventTypeStatus)
+	assert.Len(t, removed, 0)
 }
 
 func TestEventBus_Publish(t *testing.T) {

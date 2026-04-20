@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/adapters/containers"
 )
 
@@ -59,11 +61,18 @@ type MCPValidationReport struct {
 	Summary         string                          `json:"summary"`
 }
 
-// MCPValidator validates MCP servers
+// MCPValidator validates MCP servers.
+//
+// Concurrency model (CONST-029): requirements and envCache are
+// written only during NewMCPValidator (loadRequirements /
+// loadEnvCache) and read lock-free afterwards — they are effectively
+// immutable, so the bare-map form is safe without a mutex. results
+// is populated concurrently by the fan-out of validateMCP
+// goroutines and migrates to *safe.Store. No mutex survives because
+// the three maps have no cross-key invariants.
 type MCPValidator struct {
 	requirements     map[string]*MCPRequirement
-	results          map[string]*MCPValidationResult
-	mu               sync.RWMutex
+	results          *safe.Store[string, *MCPValidationResult]
 	envCache         map[string]string
 	timeout          time.Duration
 	ContainerAdapter *containers.Adapter
@@ -73,7 +82,7 @@ type MCPValidator struct {
 func NewMCPValidator() *MCPValidator {
 	v := &MCPValidator{
 		requirements: make(map[string]*MCPRequirement),
-		results:      make(map[string]*MCPValidationResult),
+		results:      safe.NewStore[string, *MCPValidationResult](),
 		envCache:     make(map[string]string),
 		timeout:      30 * time.Second,
 	}
@@ -514,10 +523,8 @@ func (v *MCPValidator) ValidateAll(ctx context.Context) *MCPValidationReport {
 	}()
 
 	for result := range resultChan {
-		v.mu.Lock()
-		v.results[result.Name] = result
+		v.results.Put(result.Name, result)
 		report.Results[result.Name] = result
-		v.mu.Unlock()
 
 		if result.CanEnable {
 			report.WorkingMCPs++
@@ -620,29 +627,24 @@ func (v *MCPValidator) checkLocalService(service string) bool {
 
 // GetEnabledMCPs returns list of MCPs that should be enabled
 func (v *MCPValidator) GetEnabledMCPs() []string {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
 	var enabled []string
-	for name, result := range v.results {
+	v.results.Range(func(name string, result *MCPValidationResult) bool {
 		if result.CanEnable {
 			enabled = append(enabled, name)
 		}
-	}
+		return true
+	})
 	return enabled
 }
 
 // GetMCPConfig returns the MCP configuration for enabled MCPs
 func (v *MCPValidator) GetMCPConfig(name string) *MCPRequirement {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
 	return v.requirements[name]
 }
 
 // GenerateReport generates a human-readable report
 func (v *MCPValidator) GenerateReport() string {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+	results := v.results.Snapshot()
 
 	var sb strings.Builder
 	sb.WriteString("=" + strings.Repeat("=", 78) + "\n")
@@ -654,7 +656,7 @@ func (v *MCPValidator) GenerateReport() string {
 	disabled := 0
 	failed := 0
 
-	for _, result := range v.results {
+	for _, result := range results {
 		switch result.Status {
 		case "works":
 			working++
@@ -666,12 +668,12 @@ func (v *MCPValidator) GenerateReport() string {
 	}
 
 	sb.WriteString(fmt.Sprintf("Summary: %d total, %d working, %d disabled, %d failed\n\n",
-		len(v.results), working, disabled, failed))
+		len(results), working, disabled, failed))
 
 	// Working MCPs
 	sb.WriteString("WORKING MCPs (Enabled):\n")
 	sb.WriteString("-" + strings.Repeat("-", 78) + "\n")
-	for name, result := range v.results {
+	for name, result := range results {
 		if result.Status == "works" {
 			req := v.requirements[name]
 			sb.WriteString(fmt.Sprintf("  ✓ %-25s [%s] %s\n", name, req.Category, req.Description))
@@ -681,7 +683,7 @@ func (v *MCPValidator) GenerateReport() string {
 	// Disabled MCPs
 	sb.WriteString("\nDISABLED MCPs (Missing Requirements):\n")
 	sb.WriteString("-" + strings.Repeat("-", 78) + "\n")
-	for name, result := range v.results {
+	for name, result := range results {
 		if result.Status == "disabled" || result.Status == "missing_deps" {
 			req := v.requirements[name]
 			sb.WriteString(fmt.Sprintf("  ✗ %-25s [%s] %s\n", name, req.Category, result.Reason))
@@ -695,16 +697,14 @@ func (v *MCPValidator) GenerateReport() string {
 
 // ToJSON returns the validation results as JSON
 func (v *MCPValidator) ToJSON() ([]byte, error) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
+	results := v.results.Snapshot()
 	report := &MCPValidationReport{
 		GeneratedAt: time.Now(),
-		TotalMCPs:   len(v.results),
-		Results:     v.results,
+		TotalMCPs:   len(results),
+		Results:     results,
 	}
 
-	for _, result := range v.results {
+	for _, result := range results {
 		if result.CanEnable {
 			report.WorkingMCPs++
 			report.EnabledMCPList = append(report.EnabledMCPList, result.Name)

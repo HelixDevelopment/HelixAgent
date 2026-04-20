@@ -199,7 +199,7 @@ func TestStreamingChunker_Reset(t *testing.T) {
 	chunker.Reset()
 
 	assert.Equal(t, 0, chunker.buffer.Len())
-	assert.Empty(t, chunker.chunks)
+	assert.Equal(t, 0, chunker.chunks.Len())
 	assert.Equal(t, 0, chunker.tokenCount)
 }
 

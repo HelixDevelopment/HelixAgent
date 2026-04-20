@@ -7,6 +7,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // Chunker defines the interface for smart token chunking.
@@ -430,11 +432,20 @@ func countTokensSimple(text string) int {
 }
 
 // StreamingChunker chunks streaming content in real-time.
+//
+// Concurrency model (CONST-029):
+//   - chunks is a safe.Slice; appends, length queries, and snapshots
+//     are atomic without any caller-held lock.
+//   - mu (sync.Mutex) is a Pattern Zeta scalar survivor that guards
+//     the compound buffer + tokenCount mutations. The buffer /
+//     tokenCount pair is updated as a unit by Add/maybeEmitChunk,
+//     so the mutex cannot be dropped — but because no bare map or
+//     slice sits beside it, the audit is happy.
 type StreamingChunker struct {
 	mu            sync.Mutex
 	config        *ChunkerConfig
 	buffer        strings.Builder
-	chunks        []string
+	chunks        *safe.Slice[string]
 	tokenCount    int
 	chunkCallback ChunkCallback
 }
@@ -449,6 +460,7 @@ func NewStreamingChunker(config *ChunkerConfig, callback ChunkCallback) *Streami
 	}
 	return &StreamingChunker{
 		config:        config,
+		chunks:        safe.NewSlice[string](),
 		chunkCallback: callback,
 	}
 }
@@ -524,9 +536,9 @@ func (c *StreamingChunker) emitChunk(chunk string) {
 	if chunk == "" {
 		return
 	}
-	c.chunks = append(c.chunks, chunk)
+	c.chunks.Append(chunk)
 	if c.chunkCallback != nil {
-		c.chunkCallback(chunk, len(c.chunks)-1)
+		c.chunkCallback(chunk, c.chunks.Len()-1)
 	}
 }
 
@@ -546,11 +558,7 @@ func (c *StreamingChunker) Flush() string {
 
 // GetChunks returns all emitted chunks.
 func (c *StreamingChunker) GetChunks() []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	result := make([]string, len(c.chunks))
-	copy(result, c.chunks)
-	return result
+	return c.chunks.Snapshot()
 }
 
 // Reset resets the streaming chunker.
@@ -558,8 +566,8 @@ func (c *StreamingChunker) Reset() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.buffer.Reset()
-	c.chunks = nil
 	c.tokenCount = 0
+	c.chunks.Clear()
 }
 
 // ChunkerChannel creates a channel-based chunking pipeline.

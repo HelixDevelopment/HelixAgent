@@ -187,12 +187,12 @@ func TestClient_GetSession(t *testing.T) {
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
 	// Create a session first
-	client.sessions["test-session"] = &Session{
+	client.sessions.Put("test-session", &Session{
 		ID:           "test-session",
 		SystemPrompt: "Test prompt",
 		CreatedAt:    time.Now(),
 		LastUsedAt:   time.Now(),
-	}
+	})
 
 	session, err := client.GetSession(context.Background(), "test-session")
 
@@ -226,13 +226,13 @@ func TestClient_ContinueSession(t *testing.T) {
 	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
 
 	// Create session first
-	client.sessions["session-123"] = &Session{
+	client.sessions.Put("session-123", &Session{
 		ID:           "session-123",
 		SystemPrompt: "You are helpful",
 		History:      []Message{},
 		CreatedAt:    time.Now(),
 		LastUsedAt:   time.Now(),
-	}
+	})
 
 	response, err := client.ContinueSession(context.Background(), "session-123", "Help me with coding")
 
@@ -248,7 +248,7 @@ func TestClient_DeleteSession(t *testing.T) {
 	t.Parallel()
 	client := NewClient(&ClientConfig{BaseURL: "http://localhost", Timeout: 5 * time.Second})
 
-	client.sessions["to-delete"] = &Session{ID: "to-delete"}
+	client.sessions.Put("to-delete", &Session{ID: "to-delete"})
 
 	err := client.DeleteSession(context.Background(), "to-delete")
 
@@ -311,8 +311,8 @@ func TestClient_CleanupSessions(t *testing.T) {
 
 	// Add stale and fresh sessions
 	oldTime := time.Now().Add(-2 * time.Hour)
-	client.sessions["stale"] = &Session{ID: "stale", LastUsedAt: oldTime}
-	client.sessions["fresh"] = &Session{ID: "fresh", LastUsedAt: time.Now()}
+	client.sessions.Put("stale", &Session{ID: "stale", LastUsedAt: oldTime})
+	client.sessions.Put("fresh", &Session{ID: "fresh", LastUsedAt: time.Now()})
 
 	removed := client.CleanupSessions(context.Background(), 1*time.Hour)
 
@@ -428,13 +428,13 @@ func TestClient_SessionHistory(t *testing.T) {
 	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
 
 	// Create session
-	client.sessions["history-test"] = &Session{
+	client.sessions.Put("history-test", &Session{
 		ID:           "history-test",
 		SystemPrompt: "You are helpful",
 		History:      []Message{},
 		CreatedAt:    time.Now(),
 		LastUsedAt:   time.Now(),
-	}
+	})
 
 	// Multiple interactions
 	for i := 0; i < 5; i++ {
@@ -537,11 +537,11 @@ func TestClient_ListSessions(t *testing.T) {
 
 	// Create sessions
 	for i := 0; i < 5; i++ {
-		client.sessions[fmt.Sprintf("session-%d", i)] = &Session{
+		client.sessions.Put(fmt.Sprintf("session-%d", i), &Session{
 			ID:         fmt.Sprintf("session-%d", i),
 			CreatedAt:  time.Now(),
 			LastUsedAt: time.Now(),
-		}
+		})
 	}
 
 	ctx := context.Background()
@@ -557,24 +557,24 @@ func TestClient_SessionExpiry(t *testing.T) {
 	// Create old sessions
 	oldTime := time.Now().Add(-24 * time.Hour)
 	for i := 0; i < 3; i++ {
-		client.sessions[fmt.Sprintf("old-%d", i)] = &Session{
+		client.sessions.Put(fmt.Sprintf("old-%d", i), &Session{
 			ID:         fmt.Sprintf("old-%d", i),
 			LastUsedAt: oldTime,
-		}
+		})
 	}
 
 	// Create recent sessions
 	for i := 0; i < 2; i++ {
-		client.sessions[fmt.Sprintf("new-%d", i)] = &Session{
+		client.sessions.Put(fmt.Sprintf("new-%d", i), &Session{
 			ID:         fmt.Sprintf("new-%d", i),
 			LastUsedAt: time.Now(),
-		}
+		})
 	}
 
 	// Cleanup sessions older than 1 hour
 	removed := client.CleanupSessions(context.Background(), 1*time.Hour)
 	assert.Equal(t, 3, removed)
-	assert.Equal(t, 2, len(client.sessions))
+	assert.Equal(t, 2, client.sessions.Len())
 }
 
 // TestClient_WarmPrefixWithLongContent tests prefix warming with long content
@@ -730,13 +730,13 @@ func BenchmarkClient_SessionContinue(b *testing.B) {
 	client := NewClient(&ClientConfig{BaseURL: server.URL, Timeout: 5 * time.Second})
 	ctx := context.Background()
 
-	client.sessions["bench-session"] = &Session{
+	client.sessions.Put("bench-session", &Session{
 		ID:           "bench-session",
 		SystemPrompt: "You are helpful",
 		History:      []Message{},
 		CreatedAt:    time.Now(),
 		LastUsedAt:   time.Now(),
-	}
+	})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

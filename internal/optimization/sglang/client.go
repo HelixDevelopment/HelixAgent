@@ -11,16 +11,26 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // Client is an HTTP client for the SGLang service.
+//
+// Concurrency model (CONST-029): sessions → *safe.Store. sessionMu
+// (Pattern Zeta) survives narrowly to serialise per-*Session field
+// reads/writes across the HTTP-unlock-relock pattern in
+// ContinueSession — concurrent ContinueSession calls on the same
+// session ID would otherwise race on the shared History slice. The
+// mutex is NOT adjacent to any bare map/slice (sessions migrated
+// to safe.Store), so the audit is satisfied.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
 
 	// Session management
-	mu       sync.RWMutex
-	sessions map[string]*Session
+	sessions  *safe.Store[string, *Session]
+	sessionMu sync.Mutex
 }
 
 // Session represents a multi-turn conversation session.
@@ -62,7 +72,7 @@ func NewClient(config *ClientConfig) *Client {
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
 		},
-		sessions: make(map[string]*Session),
+		sessions: safe.NewStore[string, *Session](),
 	}
 }
 
@@ -205,9 +215,6 @@ func (c *Client) CompleteWithSystem(ctx context.Context, systemPrompt, userPromp
 
 // CreateSession creates a new conversation session.
 func (c *Client) CreateSession(ctx context.Context, sessionID, systemPrompt string) (*Session, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	session := &Session{
 		ID:           sessionID,
 		SystemPrompt: systemPrompt,
@@ -221,16 +228,13 @@ func (c *Client) CreateSession(ctx context.Context, sessionID, systemPrompt stri
 		_, _ = c.WarmPrefix(ctx, systemPrompt) //nolint:errcheck
 	}
 
-	c.sessions[sessionID] = session
+	c.sessions.Put(sessionID, session)
 	return session, nil
 }
 
 // GetSession retrieves a session by ID.
 func (c *Client) GetSession(ctx context.Context, sessionID string) (*Session, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	session, ok := c.sessions[sessionID]
+	session, ok := c.sessions.Get(sessionID)
 	if !ok {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
@@ -239,24 +243,25 @@ func (c *Client) GetSession(ctx context.Context, sessionID string) (*Session, er
 
 // ContinueSession continues a conversation in an existing session.
 func (c *Client) ContinueSession(ctx context.Context, sessionID, userMessage string) (string, error) {
-	c.mu.Lock()
-	session, ok := c.sessions[sessionID]
+	session, ok := c.sessions.Get(sessionID)
 	if !ok {
-		c.mu.Unlock()
 		return "", fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	// Build messages with system prompt and history
+	// Build messages with system prompt and history under sessionMu so
+	// that concurrent callers on the same session ID see a consistent
+	// history snapshot.
+	c.sessionMu.Lock()
 	messages := []Message{}
 	if session.SystemPrompt != "" {
 		messages = append(messages, Message{Role: "system", Content: session.SystemPrompt})
 	}
 	messages = append(messages, session.History...)
 	messages = append(messages, Message{Role: "user", Content: userMessage})
+	c.sessionMu.Unlock()
 
-	c.mu.Unlock()
-
-	// Perform completion
+	// Perform completion outside the lock so the HTTP call does not
+	// block other sessions.
 	result, err := c.Complete(ctx, &CompletionRequest{
 		Messages: messages,
 	})
@@ -270,37 +275,31 @@ func (c *Client) ContinueSession(ctx context.Context, sessionID, userMessage str
 
 	assistantMessage := result.Choices[0].Message.Content
 
-	// Update session history
-	c.mu.Lock()
+	// Update session history under sessionMu.
+	c.sessionMu.Lock()
 	session.History = append(session.History, Message{Role: "user", Content: userMessage})
 	session.History = append(session.History, Message{Role: "assistant", Content: assistantMessage})
 	session.LastUsedAt = time.Now()
-	c.mu.Unlock()
+	c.sessionMu.Unlock()
 
 	return assistantMessage, nil
 }
 
 // DeleteSession deletes a session.
 func (c *Client) DeleteSession(ctx context.Context, sessionID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, exists := c.sessions[sessionID]; !exists {
+	if _, ok := c.sessions.Delete(sessionID); !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
-	delete(c.sessions, sessionID)
 	return nil
 }
 
 // ListSessions returns all active sessions.
 func (c *Client) ListSessions(ctx context.Context) []*Session {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	sessions := make([]*Session, 0, len(c.sessions))
-	for _, session := range c.sessions {
+	sessions := make([]*Session, 0, c.sessions.Len())
+	c.sessions.Range(func(_ string, session *Session) bool {
 		sessions = append(sessions, session)
-	}
+		return true
+	})
 	return sessions
 }
 
@@ -349,20 +348,18 @@ func (c *Client) WarmPrefixes(ctx context.Context, prefixes []string) error {
 
 // CleanupSessions removes stale sessions.
 func (c *Client) CleanupSessions(ctx context.Context, maxAge time.Duration) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
-	removed := 0
-
-	for id, session := range c.sessions {
+	var toDelete []string
+	c.sessions.Range(func(id string, session *Session) bool {
 		if session.LastUsedAt.Before(cutoff) {
-			delete(c.sessions, id)
-			removed++
+			toDelete = append(toDelete, id)
 		}
+		return true
+	})
+	for _, id := range toDelete {
+		c.sessions.Delete(id)
 	}
-
-	return removed
+	return len(toDelete)
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {

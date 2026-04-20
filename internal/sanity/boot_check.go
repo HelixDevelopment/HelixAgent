@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,12 +52,18 @@ type BootCheckReport struct {
 	ReadyToStart    bool          `json:"ready_to_start"`
 }
 
-// BootChecker performs sanity checks at system boot
+// BootChecker performs sanity checks at system boot.
+//
+// Concurrency model (CONST-029): results is a safe.Slice. The four
+// infrastructure checks launched from RunAllChecks execute in parallel
+// and each call addResult → chunks.Append, which is internally
+// serialised. generateReport iterates a Snapshot so concurrent appends
+// cannot tear the report. No Pattern-Zeta survivor mutex is needed
+// because no other shared fields require joint atomicity with results.
 type BootChecker struct {
 	config     *BootCheckConfig
 	httpClient *http.Client
-	results    []CheckResult
-	mu         sync.Mutex
+	results    *safe.Slice[CheckResult]
 }
 
 // BootCheckConfig contains configuration for boot checks
@@ -98,7 +105,7 @@ func NewBootChecker(config *BootCheckConfig) *BootChecker {
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
 		},
-		results: make([]CheckResult, 0),
+		results: safe.NewSlice[CheckResult](),
 	}
 }
 
@@ -507,24 +514,21 @@ func (bc *BootChecker) checkExternalProvider(ctx context.Context, name, url, env
 
 // addResult safely adds a result to the list
 func (bc *BootChecker) addResult(result CheckResult) {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
-	bc.results = append(bc.results, result)
+	bc.results.Append(result)
 }
 
 // generateReport generates the final report
 func (bc *BootChecker) generateReport(start time.Time) *BootCheckReport {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
+	snapshot := bc.results.Snapshot()
 
 	report := &BootCheckReport{
 		Timestamp:   start,
 		Duration:    time.Since(start),
-		TotalChecks: len(bc.results),
-		Results:     bc.results,
+		TotalChecks: len(snapshot),
+		Results:     snapshot,
 	}
 
-	for _, result := range bc.results {
+	for _, result := range snapshot {
 		switch result.Status {
 		case StatusPassed:
 			report.PassedChecks++

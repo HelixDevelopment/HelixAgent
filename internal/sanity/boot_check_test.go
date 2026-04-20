@@ -30,7 +30,7 @@ func TestNewBootChecker(t *testing.T) {
 	assert.NotNil(t, checker.config)
 	assert.NotNil(t, checker.httpClient)
 	assert.NotNil(t, checker.results)
-	assert.Equal(t, 0, len(checker.results))
+	assert.Equal(t, 0, checker.results.Len())
 }
 
 func TestNewBootChecker_WithConfig(t *testing.T) {
@@ -108,8 +108,9 @@ func TestBootChecker_AddResult(t *testing.T) {
 
 	checker.addResult(result)
 
-	assert.Len(t, checker.results, 1)
-	assert.Equal(t, "Test", checker.results[0].Name)
+	assert.Equal(t, 1, checker.results.Len())
+	first, _ := checker.results.At(0)
+	assert.Equal(t, "Test", first.Name)
 }
 
 func TestBootChecker_AddResult_Concurrent(t *testing.T) {
@@ -134,7 +135,7 @@ func TestBootChecker_AddResult_Concurrent(t *testing.T) {
 		<-done
 	}
 
-	assert.Len(t, checker.results, numResults)
+	assert.Equal(t, numResults, checker.results.Len())
 }
 
 func TestBootChecker_GenerateReport(t *testing.T) {
@@ -198,9 +199,9 @@ func TestBootChecker_CheckEnvironmentVariables(t *testing.T) {
 	checker.checkEnvironmentVariables()
 
 	// Should have one result
-	assert.Len(t, checker.results, 1)
+	assert.Equal(t, 1, checker.results.Len())
 
-	result := checker.results[0]
+	result, _ := checker.results.At(0)
 	assert.Equal(t, "Environment Variables", result.Name)
 	assert.Equal(t, "Configuration", result.Category)
 	assert.True(t, result.Critical)
@@ -213,9 +214,9 @@ func TestBootChecker_CheckRequiredFiles(t *testing.T) {
 	checker.checkRequiredFiles()
 
 	// Should have one result
-	assert.Len(t, checker.results, 1)
+	assert.Equal(t, 1, checker.results.Len())
 
-	result := checker.results[0]
+	result, _ := checker.results.At(0)
 	assert.Equal(t, "Configuration Files", result.Name)
 	assert.Equal(t, "Configuration", result.Category)
 	assert.False(t, result.Critical)
@@ -228,9 +229,9 @@ func TestBootChecker_CheckDiskSpace(t *testing.T) {
 	checker.checkDiskSpace()
 
 	// Should have one result
-	require.Len(t, checker.results, 1)
+	require.Equal(t, 1, checker.results.Len())
 
-	result := checker.results[0]
+	result, _ := checker.results.At(0)
 	assert.Equal(t, "Disk Space", result.Name)
 	assert.Equal(t, "System", result.Category)
 	assert.Equal(t, StatusPassed, result.Status)
@@ -245,9 +246,9 @@ func TestBootChecker_CheckPortAvailability(t *testing.T) {
 	checker.checkPortAvailability()
 
 	// Should have one result
-	require.Len(t, checker.results, 1)
+	require.Equal(t, 1, checker.results.Len())
 
-	result := checker.results[0]
+	result, _ := checker.results.At(0)
 	assert.Equal(t, "Port Availability", result.Name)
 	assert.Equal(t, "Network", result.Category)
 }
@@ -312,8 +313,9 @@ func TestBootChecker_CheckExternalProvider_NoAPIKey(t *testing.T) {
 	// This should skip because no API key is set
 	checker.checkExternalProvider(ctx, "TestProvider", "https://example.com", "NONEXISTENT_API_KEY_123")
 
-	require.Len(t, checker.results, 1)
-	assert.Equal(t, StatusSkipped, checker.results[0].Status)
+	require.Equal(t, 1, checker.results.Len())
+	first, _ := checker.results.At(0)
+	assert.Equal(t, StatusSkipped, first.Status)
 }
 
 func TestBootCheckReport_JSON(t *testing.T) {

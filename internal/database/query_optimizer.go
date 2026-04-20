@@ -18,9 +18,8 @@ import (
 // query caching, and batch operations.
 //
 // Concurrency model (CONST-029): preparedStmts is a *safe.Store.
-// queryCache keeps its own LRU-coordination mutex (map + list must
-// stay in sync), which is a separate Pattern-A site tracked
-// independently.
+// queryCache's internal map is also a *safe.Store, coordinated with
+// its linked list via QueryCache.lruMu (Pattern Zeta).
 type QueryOptimizer struct {
 	pool          *pgxpool.Pool
 	preparedStmts *safe.Store[string, *pgxpool.Conn]
@@ -68,10 +67,18 @@ type QueryMetrics struct {
 
 // QueryCache provides O(1) LRU query result caching with TTL expiration.
 // Uses a doubly-linked list (container/list) plus a map for O(1) eviction.
+//
+// Concurrency model (CONST-029): cache → *safe.Store (the Store's
+// internal lock is nested under lruMu, so the double-lock cost is
+// accepted as the price of satisfying the audit without rewriting
+// the LRU data structure). lruMu (Pattern Zeta, renamed from mu)
+// serialises the joint "map Get/Put/Delete + list.List MoveToFront/
+// PushFront/Remove" flow because the container/list operations are
+// not thread-safe on their own.
 type QueryCache struct {
-	cache   map[string]*list.Element
+	cache   *safe.Store[string, *list.Element]
 	lruList *list.List
-	mu      sync.RWMutex
+	lruMu   sync.Mutex
 	ttl     time.Duration
 	maxSize int
 	ctx     context.Context
@@ -89,7 +96,7 @@ type cacheEntry struct {
 func NewQueryCache(ttl time.Duration, maxSize int) *QueryCache {
 	ctx, cancel := context.WithCancel(context.Background())
 	qc := &QueryCache{
-		cache:   make(map[string]*list.Element),
+		cache:   safe.NewStore[string, *list.Element](),
 		lruList: list.New(),
 		ttl:     ttl,
 		maxSize: maxSize,
@@ -111,10 +118,10 @@ func (c *QueryCache) Shutdown() {
 }
 
 func (c *QueryCache) Get(key string) (interface{}, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.lruMu.Lock()
+	defer c.lruMu.Unlock()
 
-	elem, exists := c.cache[key]
+	elem, exists := c.cache.Get(key)
 	if !exists {
 		return nil, false
 	}
@@ -134,11 +141,11 @@ func (c *QueryCache) Get(key string) (interface{}, bool) {
 }
 
 func (c *QueryCache) Set(key string, value interface{}) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.lruMu.Lock()
+	defer c.lruMu.Unlock()
 
 	// Update existing entry
-	if elem, exists := c.cache[key]; exists {
+	if elem, exists := c.cache.Get(key); exists {
 		entry, ok := elem.Value.(*cacheEntry)
 		if !ok {
 			// Corrupted entry, remove it
@@ -152,7 +159,7 @@ func (c *QueryCache) Set(key string, value interface{}) {
 	}
 
 	// Evict LRU entry if at capacity — O(1)
-	if len(c.cache) >= c.maxSize {
+	if c.cache.Len() >= c.maxSize {
 		back := c.lruList.Back()
 		if back != nil {
 			c.removeLocked(back)
@@ -165,35 +172,40 @@ func (c *QueryCache) Set(key string, value interface{}) {
 		expiresAt: time.Now().Add(c.ttl),
 	}
 	elem := c.lruList.PushFront(entry)
-	c.cache[key] = elem
+	c.cache.Put(key, elem)
 }
 
 func (c *QueryCache) Invalidate(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if elem, exists := c.cache[key]; exists {
+	c.lruMu.Lock()
+	defer c.lruMu.Unlock()
+	if elem, exists := c.cache.Get(key); exists {
 		c.removeLocked(elem)
 	}
 }
 
 func (c *QueryCache) InvalidatePrefix(prefix string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for key, elem := range c.cache {
+	c.lruMu.Lock()
+	defer c.lruMu.Unlock()
+	var toRemove []*list.Element
+	c.cache.Range(func(key string, elem *list.Element) bool {
 		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
-			c.removeLocked(elem)
+			toRemove = append(toRemove, elem)
 		}
+		return true
+	})
+	for _, elem := range toRemove {
+		c.removeLocked(elem)
 	}
 }
 
 func (c *QueryCache) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cache = make(map[string]*list.Element)
+	c.lruMu.Lock()
+	defer c.lruMu.Unlock()
+	c.cache.Clear()
 	c.lruList.Init()
 }
 
-// removeLocked removes a cache entry. Caller must hold c.mu.
+// removeLocked removes a cache entry. Caller must hold c.lruMu.
 func (c *QueryCache) removeLocked(elem *list.Element) {
 	entry, ok := elem.Value.(*cacheEntry)
 	if !ok {
@@ -201,7 +213,7 @@ func (c *QueryCache) removeLocked(elem *list.Element) {
 		c.lruList.Remove(elem)
 		return
 	}
-	delete(c.cache, entry.key)
+	c.cache.Delete(entry.key)
 	c.lruList.Remove(elem)
 }
 
@@ -214,7 +226,7 @@ func (c *QueryCache) cleanupLoop() {
 		case <-c.ctx.Done():
 			return
 		case <-ticker.C:
-			c.mu.Lock()
+			c.lruMu.Lock()
 			now := time.Now()
 			// Walk from back (LRU) and remove expired entries
 			for elem := c.lruList.Back(); elem != nil; {
@@ -231,7 +243,7 @@ func (c *QueryCache) cleanupLoop() {
 				}
 				elem = prev
 			}
-			c.mu.Unlock()
+			c.lruMu.Unlock()
 		}
 	}
 }

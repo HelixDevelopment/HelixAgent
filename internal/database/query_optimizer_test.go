@@ -168,9 +168,7 @@ func TestQueryCache_Eviction(t *testing.T) {
 	assert.Equal(t, "value4", val4)
 
 	// Total entries should be maxSize
-	cache.mu.RLock()
-	assert.Equal(t, 3, len(cache.cache))
-	cache.mu.RUnlock()
+	assert.Equal(t, 3, cache.cache.Len())
 }
 
 func TestNewQueryOptimizer_WithNilConfig(t *testing.T) {

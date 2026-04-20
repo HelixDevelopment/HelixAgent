@@ -157,9 +157,16 @@ func (t *Topic) GetLowWatermark(partitionID int) int64 {
 }
 
 // Partition is an in-memory partition implementation.
+//
+// Concurrency model (CONST-029): messages is a *safe.Slice.
+// mu survives as a Pattern Zeta lock because Append's compound
+// "trim-if-full → compute-offset → append → bump highWatermark"
+// sequence must stay atomic across all three fields. Read uses a
+// Snapshot under RLock for a consistent view against concurrent
+// Appends.
 type Partition struct {
 	id            int
-	messages      []*messaging.Message
+	messages      *safe.Slice[*messaging.Message]
 	capacity      int
 	lowWatermark  int64
 	highWatermark int64
@@ -170,7 +177,7 @@ type Partition struct {
 func NewPartition(id int, capacity int) *Partition {
 	return &Partition{
 		id:            id,
-		messages:      make([]*messaging.Message, 0, capacity),
+		messages:      safe.NewSlice[*messaging.Message](),
 		capacity:      capacity,
 		lowWatermark:  0,
 		highWatermark: 0,
@@ -188,17 +195,17 @@ func (p *Partition) Append(msg *messaging.Message) (int64, error) {
 	defer p.mu.Unlock()
 
 	// Compact if at capacity
-	if len(p.messages) >= p.capacity {
-		// Remove oldest half
-		half := len(p.messages) / 2
-		p.messages = p.messages[half:]
+	if p.messages.Len() >= p.capacity {
+		snap := p.messages.Snapshot()
+		half := len(snap) / 2
+		p.messages.Replace(snap[half:])
 		p.lowWatermark += int64(half)
 	}
 
 	offset := p.highWatermark
 	msg.Offset = offset
 	msg.Partition = int32(p.id) // #nosec G115 - partition ID fits in int32
-	p.messages = append(p.messages, msg)
+	p.messages.Append(msg)
 	p.highWatermark++
 
 	return offset, nil
@@ -222,13 +229,14 @@ func (p *Partition) Read(offset int64, maxCount int) ([]*messaging.Message, erro
 		startIndex = 0
 	}
 
+	snap := p.messages.Snapshot()
 	endIndex := startIndex + maxCount
-	if endIndex > len(p.messages) {
-		endIndex = len(p.messages)
+	if endIndex > len(snap) {
+		endIndex = len(snap)
 	}
 
 	result := make([]*messaging.Message, endIndex-startIndex)
-	copy(result, p.messages[startIndex:endIndex])
+	copy(result, snap[startIndex:endIndex])
 	return result, nil
 }
 
@@ -248,9 +256,7 @@ func (p *Partition) LowWatermark() int64 {
 
 // Len returns the number of messages in the partition.
 func (p *Partition) Len() int {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return len(p.messages)
+	return p.messages.Len()
 }
 
 // StreamBroker is an in-memory event stream broker implementation.

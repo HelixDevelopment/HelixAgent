@@ -48,10 +48,15 @@ func newTestWorkerPool(
 	}
 }
 
-// mockTaskQueue implements TaskQueue interface for testing
+// mockTaskQueue implements TaskQueue interface for testing.
+//
+// Concurrency model (CONST-029): mu (Pattern Zeta) serialises the
+// compound "scan tasks → mutate task → update counters" flow in
+// Dequeue/Requeue; counters and tasks live alongside each other so
+// a single mutex keeps their transitions consistent.
 type mockTaskQueue struct {
-	mu            sync.RWMutex
-	tasks         []*models.BackgroundTask
+	mu            sync.Mutex
+	tasks         *safe.Slice[*models.BackgroundTask]
 	pendingCount  int64
 	runningCount  int64
 	dequeueErr    error
@@ -63,7 +68,7 @@ type mockTaskQueue struct {
 
 func newMockTaskQueue() *mockTaskQueue {
 	return &mockTaskQueue{
-		tasks: make([]*models.BackgroundTask, 0),
+		tasks: safe.NewSlice[*models.BackgroundTask](),
 	}
 }
 
@@ -73,7 +78,7 @@ func (m *mockTaskQueue) Enqueue(ctx context.Context, task *models.BackgroundTask
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.tasks = append(m.tasks, task)
+	m.tasks.Append(task)
 	m.pendingCount++
 	return nil
 }
@@ -87,11 +92,12 @@ func (m *mockTaskQueue) Dequeue(ctx context.Context, workerID string, requiremen
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for i, task := range m.tasks {
+	for _, task := range m.tasks.Snapshot() {
 		if task.Status == models.TaskStatusPending {
 			task.Status = models.TaskStatusRunning
 			task.WorkerID = &workerID
-			m.tasks = append(m.tasks[:i], m.tasks[i+1:]...)
+			target := task
+			m.tasks.Delete(func(t *models.BackgroundTask) bool { return t == target })
 			m.pendingCount--
 			m.runningCount++
 			return task, nil
@@ -101,10 +107,8 @@ func (m *mockTaskQueue) Dequeue(ctx context.Context, workerID string, requiremen
 }
 
 func (m *mockTaskQueue) Peek(ctx context.Context, count int) ([]*models.BackgroundTask, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	var result []*models.BackgroundTask
-	for _, task := range m.tasks {
+	for _, task := range m.tasks.Snapshot() {
 		if task.Status == models.TaskStatusPending {
 			result = append(result, task)
 			if len(result) >= count {
@@ -121,7 +125,7 @@ func (m *mockTaskQueue) Requeue(ctx context.Context, taskID string, delay time.D
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, task := range m.tasks {
+	for _, task := range m.tasks.Snapshot() {
 		if task.ID == taskID {
 			task.Status = models.TaskStatusPending
 			task.WorkerID = nil
@@ -131,7 +135,7 @@ func (m *mockTaskQueue) Requeue(ctx context.Context, taskID string, delay time.D
 		}
 	}
 	// Task might have been removed - create new entry
-	m.tasks = append(m.tasks, &models.BackgroundTask{ID: taskID, Status: models.TaskStatusPending})
+	m.tasks.Append(&models.BackgroundTask{ID: taskID, Status: models.TaskStatusPending})
 	m.pendingCount++
 	return nil
 }
@@ -144,27 +148,30 @@ func (m *mockTaskQueue) MoveToDeadLetter(ctx context.Context, taskID string, rea
 }
 
 func (m *mockTaskQueue) GetPendingCount(ctx context.Context) (int64, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.pendingCount, nil
 }
 
 func (m *mockTaskQueue) GetRunningCount(ctx context.Context) (int64, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.runningCount, nil
 }
 
 func (m *mockTaskQueue) GetQueueDepth(ctx context.Context) (map[models.TaskPriority]int64, error) {
+	m.mu.Lock()
+	pending := m.pendingCount
+	m.mu.Unlock()
 	return map[models.TaskPriority]int64{
-		models.TaskPriorityNormal: m.pendingCount,
+		models.TaskPriorityNormal: pending,
 	}, nil
 }
 
 func (m *mockTaskQueue) AddTask(task *models.BackgroundTask) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.tasks = append(m.tasks, task)
+	m.tasks.Append(task)
 	if task.Status == models.TaskStatusPending {
 		m.pendingCount++
 	}
@@ -209,13 +216,15 @@ func (m *mockStuckDetector) SetStuck(isStuck bool, reason string) {
 	m.stuckReason = reason
 }
 
-// mockNotificationService implements NotificationService interface for testing
+// mockNotificationService implements NotificationService interface for testing.
+//
+// Concurrency model (CONST-029): events → *safe.Slice, per-task
+// client lists → *safe.Store with Update-based append.
 type mockNotificationService struct {
-	mu         sync.Mutex
-	events     []notificationEvent
+	events     *safe.Slice[notificationEvent]
 	notifyErr  error
-	sseClients map[string][]chan<- []byte
-	wsClients  map[string][]WebSocketClient
+	sseClients *safe.Store[string, []chan<- []byte]
+	wsClients  *safe.Store[string, []WebSocketClient]
 }
 
 type notificationEvent struct {
@@ -226,9 +235,9 @@ type notificationEvent struct {
 
 func newMockNotificationService() *mockNotificationService {
 	return &mockNotificationService{
-		events:     make([]notificationEvent, 0),
-		sseClients: make(map[string][]chan<- []byte),
-		wsClients:  make(map[string][]WebSocketClient),
+		events:     safe.NewSlice[notificationEvent](),
+		sseClients: safe.NewStore[string, []chan<- []byte](),
+		wsClients:  safe.NewStore[string, []WebSocketClient](),
 	}
 }
 
@@ -236,9 +245,7 @@ func (m *mockNotificationService) NotifyTaskEvent(ctx context.Context, task *mod
 	if m.notifyErr != nil {
 		return m.notifyErr
 	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.events = append(m.events, notificationEvent{
+	m.events.Append(notificationEvent{
 		taskID:    task.ID,
 		eventType: event,
 		data:      data,
@@ -247,9 +254,9 @@ func (m *mockNotificationService) NotifyTaskEvent(ctx context.Context, task *mod
 }
 
 func (m *mockNotificationService) RegisterSSEClient(ctx context.Context, taskID string, client chan<- []byte) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.sseClients[taskID] = append(m.sseClients[taskID], client)
+	m.sseClients.Update(taskID, func(cur []chan<- []byte, _ bool) ([]chan<- []byte, bool) {
+		return append(cur, client), true
+	})
 	return nil
 }
 
@@ -258,9 +265,9 @@ func (m *mockNotificationService) UnregisterSSEClient(ctx context.Context, taskI
 }
 
 func (m *mockNotificationService) RegisterWebSocketClient(ctx context.Context, taskID string, client WebSocketClient) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.wsClients[taskID] = append(m.wsClients[taskID], client)
+	m.wsClients.Update(taskID, func(cur []WebSocketClient, _ bool) ([]WebSocketClient, bool) {
+		return append(cur, client), true
+	})
 	return nil
 }
 
@@ -269,9 +276,7 @@ func (m *mockNotificationService) BroadcastToTask(ctx context.Context, taskID st
 }
 
 func (m *mockNotificationService) GetEvents() []notificationEvent {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.events
+	return m.events.Snapshot()
 }
 
 // Helper to create a test logger

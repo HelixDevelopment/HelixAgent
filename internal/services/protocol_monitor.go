@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,21 +35,34 @@ var metricsCollectorInstance = &systemMetricsCollector{}
 // DefaultAlertHistoryLimit is the default maximum number of alerts to retain in history
 const DefaultAlertHistoryLimit = 1000
 
-// ProtocolMonitor provides performance monitoring and alerting for protocols
+// ProtocolMonitor provides performance monitoring and alerting for protocols.
+//
+// Concurrent-safe by construction (CONST-029):
+//   - `metrics`, `alerts`, and `alertHistory` are safe.Store/safe.Slice.
+//   - Per-*ProtocolMetrics field mutations are serialised by ProtocolMetrics.mu
+//     (internal to that struct) so readers and writers of the same pointer
+//     do not race even though the Store hands out the pointer directly.
+//   - `alertLimitMu` is a narrow mutex that only serialises alertLimit
+//     changes with the concurrent history-trim path in storeAlert; it
+//     does not pair with any map/slice field (they are all safe.*).
 type ProtocolMonitor struct {
-	mu           sync.RWMutex
-	metrics      map[string]*ProtocolMetrics
-	alerts       []*AlertRule
+	metrics      *safe.Store[string, *ProtocolMetrics]
+	alerts       *safe.Slice[*AlertRule]
 	alertChan    chan *Alert
 	stopChan     chan struct{}
 	logger       *logrus.Logger
-	alertHistory []*Alert
-	alertMu      sync.RWMutex
+	alertHistory *safe.Slice[*Alert]
+	alertLimitMu sync.Mutex
 	alertLimit   int
 }
 
-// ProtocolMetrics represents performance metrics for a protocol
+// ProtocolMetrics represents performance metrics for a protocol.
+//
+// Thread-safe: the unexported mu serialises all mutations and copying
+// reads of the counter fields below. Callers obtain a pointer from the
+// monitor's safe.Store and must take mu before mutating any field.
 type ProtocolMetrics struct {
+	mu                 sync.Mutex
 	Protocol           string
 	TotalRequests      int64
 	SuccessfulRequests int64
@@ -141,12 +155,12 @@ type AlertFilter struct {
 // NewProtocolMonitor creates a new protocol monitor
 func NewProtocolMonitor(logger *logrus.Logger) *ProtocolMonitor {
 	monitor := &ProtocolMonitor{
-		metrics:      make(map[string]*ProtocolMetrics),
-		alerts:       []*AlertRule{},
+		metrics:      safe.NewStore[string, *ProtocolMetrics](),
+		alerts:       safe.NewSlice[*AlertRule](),
 		alertChan:    make(chan *Alert, 100),
 		stopChan:     make(chan struct{}),
 		logger:       logger,
-		alertHistory: make([]*Alert, 0, DefaultAlertHistoryLimit),
+		alertHistory: safe.NewSlice[*Alert](),
 		alertLimit:   DefaultAlertHistoryLimit,
 	}
 
@@ -159,17 +173,15 @@ func NewProtocolMonitor(logger *logrus.Logger) *ProtocolMonitor {
 
 // RecordRequest records a protocol request
 func (m *ProtocolMonitor) RecordRequest(ctx context.Context, protocol string, duration time.Duration, success bool, errorMsg string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	metrics, exists := m.metrics[protocol]
-	if !exists {
-		metrics = &ProtocolMetrics{
+	metrics := m.getOrCreateMetrics(protocol, func() *ProtocolMetrics {
+		return &ProtocolMetrics{
 			Protocol:   protocol,
 			MinLatency: time.Hour, // Initialize to a large value
 		}
-		m.metrics[protocol] = metrics
-	}
+	})
+
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
 
 	metrics.TotalRequests++
 	metrics.LastRequestTime = time.Now()
@@ -209,59 +221,78 @@ func (m *ProtocolMonitor) RecordRequest(ctx context.Context, protocol string, du
 	}).Debug("Protocol request recorded")
 }
 
+// getOrCreateMetrics atomically fetches or creates the *ProtocolMetrics
+// entry for the protocol. The returned pointer is safe to mutate through
+// its own mu after the call returns.
+func (m *ProtocolMonitor) getOrCreateMetrics(protocol string, factory func() *ProtocolMetrics) *ProtocolMetrics {
+	var result *ProtocolMetrics
+	m.metrics.Update(protocol, func(existing *ProtocolMetrics, present bool) (*ProtocolMetrics, bool) {
+		if present {
+			result = existing
+			return existing, true
+		}
+		result = factory()
+		return result, true
+	})
+	return result
+}
+
 // UpdateConnections updates connection count for a protocol
 func (m *ProtocolMonitor) UpdateConnections(protocol string, count int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	metrics, exists := m.metrics[protocol]
-	if !exists {
-		metrics = &ProtocolMetrics{Protocol: protocol}
-		m.metrics[protocol] = metrics
-	}
-
+	metrics := m.getOrCreateMetrics(protocol, func() *ProtocolMetrics {
+		return &ProtocolMetrics{Protocol: protocol}
+	})
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
 	metrics.ActiveConnections = count
 }
 
 // UpdateCacheStats updates cache statistics
 func (m *ProtocolMonitor) UpdateCacheStats(protocol string, hitRate float64) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	metrics, exists := m.metrics[protocol]
-	if !exists {
-		metrics = &ProtocolMetrics{Protocol: protocol}
-		m.metrics[protocol] = metrics
-	}
-
+	metrics := m.getOrCreateMetrics(protocol, func() *ProtocolMetrics {
+		return &ProtocolMetrics{Protocol: protocol}
+	})
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
 	metrics.CacheHitRate = hitRate
 }
 
 // UpdateResourceUsage updates resource usage statistics
 func (m *ProtocolMonitor) UpdateResourceUsage(protocol string, usage SystemResourceUsage) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	metrics, exists := m.metrics[protocol]
-	if !exists {
-		metrics = &ProtocolMetrics{Protocol: protocol}
-		m.metrics[protocol] = metrics
-	}
-
+	metrics := m.getOrCreateMetrics(protocol, func() *ProtocolMetrics {
+		return &ProtocolMetrics{Protocol: protocol}
+	})
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
 	metrics.ResourceUsage = usage
 }
 
 // GetMetrics returns metrics for a protocol
 func (m *ProtocolMonitor) GetMetrics(protocol string) (*ProtocolMetrics, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	metrics, exists := m.metrics[protocol]
+	metrics, exists := m.metrics.Get(protocol)
 	if !exists {
 		return nil, fmt.Errorf("no metrics found for protocol: %s", protocol)
 	}
 
-	// Return a copy to avoid race conditions
+	return copyMetricsLocked(metrics), nil
+}
+
+// GetAllMetrics returns metrics for all protocols
+func (m *ProtocolMonitor) GetAllMetrics() map[string]*ProtocolMetrics {
+	result := make(map[string]*ProtocolMetrics)
+	m.metrics.Range(func(protocol string, metrics *ProtocolMetrics) bool {
+		result[protocol] = copyMetricsLocked(metrics)
+		return true
+	})
+	return result
+}
+
+// copyMetricsLocked takes metrics.mu and returns a deep copy (excluding mu).
+// The returned pointer is safe to return to a caller — the new ProtocolMetrics
+// has its own zero-value mu.
+func copyMetricsLocked(metrics *ProtocolMetrics) *ProtocolMetrics {
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
 	return &ProtocolMetrics{
 		Protocol:           metrics.Protocol,
 		TotalRequests:      metrics.TotalRequests,
@@ -276,42 +307,12 @@ func (m *ProtocolMonitor) GetMetrics(protocol string) (*ProtocolMetrics, error) 
 		ActiveConnections:  metrics.ActiveConnections,
 		CacheHitRate:       metrics.CacheHitRate,
 		ResourceUsage:      metrics.ResourceUsage,
-	}, nil
-}
-
-// GetAllMetrics returns metrics for all protocols
-func (m *ProtocolMonitor) GetAllMetrics() map[string]*ProtocolMetrics {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	result := make(map[string]*ProtocolMetrics)
-	for protocol, metrics := range m.metrics {
-		result[protocol] = &ProtocolMetrics{
-			Protocol:           metrics.Protocol,
-			TotalRequests:      metrics.TotalRequests,
-			SuccessfulRequests: metrics.SuccessfulRequests,
-			FailedRequests:     metrics.FailedRequests,
-			AverageLatency:     metrics.AverageLatency,
-			MinLatency:         metrics.MinLatency,
-			MaxLatency:         metrics.MaxLatency,
-			Throughput:         metrics.Throughput,
-			LastRequestTime:    metrics.LastRequestTime,
-			ErrorRate:          metrics.ErrorRate,
-			ActiveConnections:  metrics.ActiveConnections,
-			CacheHitRate:       metrics.CacheHitRate,
-			ResourceUsage:      metrics.ResourceUsage,
-		}
 	}
-
-	return result
 }
 
 // AddAlertRule adds an alert rule
 func (m *ProtocolMonitor) AddAlertRule(rule *AlertRule) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.alerts = append(m.alerts, rule)
+	m.alerts.Append(rule)
 	m.logger.WithFields(logrus.Fields{
 		"ruleId":   rule.ID,
 		"name":     rule.Name,
@@ -321,15 +322,8 @@ func (m *ProtocolMonitor) AddAlertRule(rule *AlertRule) {
 
 // RemoveAlertRule removes an alert rule
 func (m *ProtocolMonitor) RemoveAlertRule(ruleID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for i, rule := range m.alerts {
-		if rule.ID == ruleID {
-			m.alerts = append(m.alerts[:i], m.alerts[i+1:]...)
-			m.logger.WithField("ruleId", ruleID).Info("Alert rule removed")
-			return
-		}
+	if _, removed := m.alerts.Delete(func(r *AlertRule) bool { return r.ID == ruleID }); removed {
+		m.logger.WithField("ruleId", ruleID).Info("Alert rule removed")
 	}
 }
 
@@ -344,18 +338,16 @@ func (m *ProtocolMonitor) GetAlerts(limit int) []*Alert {
 
 // GetAlertsFiltered returns alerts from stored history with filtering support
 func (m *ProtocolMonitor) GetAlertsFiltered(filter *AlertFilter) []*Alert {
-	m.alertMu.RLock()
-	defer m.alertMu.RUnlock()
-
 	if filter == nil {
 		filter = &AlertFilter{}
 	}
 
+	history := m.alertHistory.Snapshot()
 	result := make([]*Alert, 0)
 
 	// Iterate in reverse order to get most recent alerts first
-	for i := len(m.alertHistory) - 1; i >= 0; i-- {
-		alert := m.alertHistory[i]
+	for i := len(history) - 1; i >= 0; i-- {
+		alert := history[i]
 
 		// Apply filters
 		if !m.matchesFilter(alert, filter) {
@@ -416,68 +408,66 @@ func (m *ProtocolMonitor) matchesFilter(alert *Alert, filter *AlertFilter) bool 
 	return true
 }
 
-// storeAlert adds an alert to the history with limit enforcement
+// storeAlert adds an alert to the history with limit enforcement.
+// alertLimitMu is held for the append-and-trim sequence so a concurrent
+// SetAlertLimit cannot race with this trim.
 func (m *ProtocolMonitor) storeAlert(alert *Alert) {
-	m.alertMu.Lock()
-	defer m.alertMu.Unlock()
+	m.alertLimitMu.Lock()
+	defer m.alertLimitMu.Unlock()
 
-	// Add to history
-	m.alertHistory = append(m.alertHistory, alert)
+	m.alertHistory.Append(alert)
 
 	// Enforce limit by removing oldest alerts if exceeded
-	if len(m.alertHistory) > m.alertLimit {
-		// Remove the oldest alerts to get back to limit
-		excess := len(m.alertHistory) - m.alertLimit
-		m.alertHistory = m.alertHistory[excess:]
+	snapshot := m.alertHistory.Snapshot()
+	if len(snapshot) > m.alertLimit {
+		excess := len(snapshot) - m.alertLimit
+		m.alertHistory.Replace(snapshot[excess:])
 	}
 }
 
 // GetAlertCount returns the current number of stored alerts
 func (m *ProtocolMonitor) GetAlertCount() int {
-	m.alertMu.RLock()
-	defer m.alertMu.RUnlock()
-	return len(m.alertHistory)
+	return m.alertHistory.Len()
 }
 
 // SetAlertLimit sets the maximum number of alerts to retain
 func (m *ProtocolMonitor) SetAlertLimit(limit int) {
-	m.alertMu.Lock()
-	defer m.alertMu.Unlock()
-
 	if limit < 1 {
 		limit = 1
 	}
 
+	m.alertLimitMu.Lock()
+	defer m.alertLimitMu.Unlock()
+
 	m.alertLimit = limit
 
 	// Trim history if current size exceeds new limit
-	if len(m.alertHistory) > limit {
-		excess := len(m.alertHistory) - limit
-		m.alertHistory = m.alertHistory[excess:]
+	snapshot := m.alertHistory.Snapshot()
+	if len(snapshot) > limit {
+		excess := len(snapshot) - limit
+		m.alertHistory.Replace(snapshot[excess:])
 	}
 }
 
 // ClearAlerts removes all alerts from history
 func (m *ProtocolMonitor) ClearAlerts() {
-	m.alertMu.Lock()
-	defer m.alertMu.Unlock()
-	m.alertHistory = make([]*Alert, 0, m.alertLimit)
+	m.alertHistory.Clear()
 }
 
 // ResolveAlert marks an alert as resolved
 func (m *ProtocolMonitor) ResolveAlert(alertID string) bool {
-	m.alertMu.Lock()
-	defer m.alertMu.Unlock()
-
-	for _, alert := range m.alertHistory {
-		if alert.ID == alertID && !alert.Resolved {
-			alert.Resolved = true
+	resolved := false
+	m.alertHistory.UpdateAt(
+		func(a *Alert) bool { return a.ID == alertID && !a.Resolved },
+		func(a *Alert) *Alert {
+			a.Resolved = true
 			now := time.Now()
-			alert.ResolvedAt = &now
-			return true
-		}
-	}
-	return false
+			a.ResolvedAt = &now
+			resolved = true
+			return a
+		},
+	)
+	return resolved
 }
 
 // Alerts returns a channel for receiving alerts
@@ -510,14 +500,7 @@ func (m *ProtocolMonitor) collectSystemMetrics() {
 	// Collect actual system-level metrics
 	usage := collectRealSystemMetrics()
 
-	m.mu.RLock()
-	protocols := make([]string, 0, len(m.metrics))
-	for protocol := range m.metrics {
-		protocols = append(protocols, protocol)
-	}
-	m.mu.RUnlock()
-
-	for _, protocol := range protocols {
+	for _, protocol := range m.metrics.Keys() {
 		m.UpdateResourceUsage(protocol, usage)
 	}
 }
@@ -677,10 +660,7 @@ func (m *ProtocolMonitor) alertChecker() {
 }
 
 func (m *ProtocolMonitor) checkAlerts() {
-	m.mu.RLock()
-	alerts := make([]*AlertRule, len(m.alerts))
-	copy(alerts, m.alerts)
-	m.mu.RUnlock()
+	alerts := m.alerts.Snapshot()
 
 	for _, rule := range alerts {
 		if !rule.Enabled {
@@ -692,7 +672,7 @@ func (m *ProtocolMonitor) checkAlerts() {
 			continue
 		}
 
-		metrics, exists := m.metrics[rule.Protocol]
+		metrics, exists := m.metrics.Get(rule.Protocol)
 		if !exists {
 			continue
 		}
@@ -700,6 +680,7 @@ func (m *ProtocolMonitor) checkAlerts() {
 		var currentValue float64
 		var triggered bool
 
+		metrics.mu.Lock()
 		switch rule.Condition {
 		case ConditionErrorRateAbove:
 			currentValue = metrics.ErrorRate
@@ -711,6 +692,7 @@ func (m *ProtocolMonitor) checkAlerts() {
 			currentValue = float64(metrics.TotalRequests)
 			triggered = currentValue > rule.Threshold
 		}
+		metrics.mu.Unlock()
 
 		if triggered {
 			alert := &Alert{

@@ -205,10 +205,10 @@ func TestProtocolMonitor_AddAlertRule(t *testing.T) {
 	monitor.AddAlertRule(rule)
 
 	// Verify rule was added
-	monitor.mu.RLock()
-	assert.Len(t, monitor.alerts, 1)
-	assert.Equal(t, "test-rule", monitor.alerts[0].ID)
-	monitor.mu.RUnlock()
+	assert.Equal(t, 1, monitor.alerts.Len())
+	first, ok := monitor.alerts.At(0)
+	require.True(t, ok)
+	assert.Equal(t, "test-rule", first.ID)
 }
 
 func TestProtocolMonitor_RemoveAlertRule(t *testing.T) {
@@ -228,9 +228,7 @@ func TestProtocolMonitor_RemoveAlertRule(t *testing.T) {
 	t.Run("remove existing rule", func(t *testing.T) {
 		monitor.RemoveAlertRule("remove-rule")
 
-		monitor.mu.RLock()
-		assert.Len(t, monitor.alerts, 0)
-		monitor.mu.RUnlock()
+		assert.Equal(t, 0, monitor.alerts.Len())
 	})
 
 	t.Run("remove non-existent rule", func(t *testing.T) {

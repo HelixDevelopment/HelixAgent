@@ -35,7 +35,6 @@ internal/services/plugin_system.go:82:HealthChecker
 internal/services/plugin_system.go:862:ServiceRegistry
 internal/services/protocol_discovery.go:19:ACPDiscoveryClient
 internal/services/protocol_federation.go:16:ProtocolDiscovery
-internal/services/protocol_monitor.go:38:ProtocolMonitor
 internal/services/provider_discovery.go:54:ProviderDiscovery
 internal/services/provider_discovery.go:72:DiscoveredProvider
 internal/services/provider_registry.go:72:ProviderRegistry

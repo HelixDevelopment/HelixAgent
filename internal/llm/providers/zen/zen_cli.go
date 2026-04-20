@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/modelsdev"
 	"dev.helix.agent/internal/utils"
@@ -31,9 +33,10 @@ type ZenCLIProvider struct {
 	availableModels     []string
 	modelsDiscovered    bool
 	modelsDiscoveryOnce sync.Once
-	// Models that failed direct API validation
-	failedAPIModels map[string]bool
-	failedAPIMu     sync.RWMutex
+	// failedAPIModels tracks models that failed direct API validation.
+	// CONST-029: safe.Store — lookups/inserts are atomic without any
+	// caller-held lock.
+	failedAPIModels *safe.Store[string, bool]
 }
 
 // ZenCLIConfig holds configuration for the CLI provider
@@ -77,7 +80,7 @@ func NewZenCLIProvider(config ZenCLIConfig) *ZenCLIProvider {
 		model:           config.Model,
 		timeout:         config.Timeout,
 		maxOutputTokens: config.MaxOutputTokens,
-		failedAPIModels: make(map[string]bool),
+		failedAPIModels: safe.NewStore[string, bool](),
 	}
 
 	// Note: Model discovery is lazy - only triggered when GetBestAvailableModel() is called
@@ -103,7 +106,7 @@ func NewZenCLIProviderWithUnavailableCLI(model string, err error) *ZenCLIProvide
 		maxOutputTokens: 4096,
 		cliAvailable:    false,
 		cliCheckErr:     err,
-		failedAPIModels: make(map[string]bool),
+		failedAPIModels: safe.NewStore[string, bool](),
 	}
 	// Force the sync.Once to be completed so IsCLIAvailable() returns our set values
 	p.cliCheckOnce.Do(func() {})
@@ -148,16 +151,13 @@ func (p *ZenCLIProvider) GetCLIError() error {
 
 // MarkModelAsFailedAPI marks a model as having failed direct API validation
 func (p *ZenCLIProvider) MarkModelAsFailedAPI(model string) {
-	p.failedAPIMu.Lock()
-	p.failedAPIModels[model] = true
-	p.failedAPIMu.Unlock()
+	p.failedAPIModels.Put(model, true)
 }
 
 // IsModelFailedAPI checks if a model has failed direct API validation
 func (p *ZenCLIProvider) IsModelFailedAPI(model string) bool {
-	p.failedAPIMu.RLock()
-	defer p.failedAPIMu.RUnlock()
-	return p.failedAPIModels[model]
+	v, _ := p.failedAPIModels.Get(model)
+	return v
 }
 
 // ShouldUseCLIFacade determines if CLI facade should be used for a model

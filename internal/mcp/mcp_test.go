@@ -284,10 +284,10 @@ func TestNewPreinstaller(t *testing.T) {
 		preinstaller, err := NewPreinstaller(config)
 
 		require.NoError(t, err)
-		assert.Equal(t, len(StandardMCPPackages), len(preinstaller.statuses))
+		assert.Equal(t, len(StandardMCPPackages), preinstaller.statuses.Len())
 
 		for _, pkg := range StandardMCPPackages {
-			status, ok := preinstaller.statuses[pkg.Name]
+			status, ok := preinstaller.statuses.Get(pkg.Name)
 			assert.True(t, ok, "Status should exist for package %s", pkg.Name)
 			assert.Equal(t, StatusPending, status.Status)
 		}
@@ -330,9 +330,9 @@ func TestPreinstaller_IsInstalled(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually set status to installed
-		preinstaller.mu.Lock()
-		preinstaller.statuses["filesystem"].Status = StatusInstalled
-		preinstaller.mu.Unlock()
+		mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+			s.Status = StatusInstalled
+		})
 
 		result := preinstaller.IsInstalled("filesystem")
 		assert.True(t, result)
@@ -448,10 +448,10 @@ func TestPreinstaller_GetInstalledPath(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually set status to installed with path
-		preinstaller.mu.Lock()
-		preinstaller.statuses["filesystem"].Status = StatusInstalled
-		preinstaller.statuses["filesystem"].InstallPath = "/path/to/install"
-		preinstaller.mu.Unlock()
+		mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+			s.Status = StatusInstalled
+			s.InstallPath = "/path/to/install"
+		})
 
 		path, err := preinstaller.GetInstalledPath("filesystem")
 		require.NoError(t, err)
@@ -554,9 +554,9 @@ func TestPreinstaller_WaitForPackage(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually set status to installed
-		preinstaller.mu.Lock()
-		preinstaller.statuses["filesystem"].Status = StatusInstalled
-		preinstaller.mu.Unlock()
+		mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+			s.Status = StatusInstalled
+		})
 
 		ctx := context.Background()
 		err = preinstaller.WaitForPackage(ctx, "filesystem")
@@ -569,10 +569,10 @@ func TestPreinstaller_WaitForPackage(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually set status to failed
-		preinstaller.mu.Lock()
-		preinstaller.statuses["filesystem"].Status = StatusFailed
-		preinstaller.statuses["filesystem"].Error = fmt.Errorf("install failed")
-		preinstaller.mu.Unlock()
+		mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+			s.Status = StatusFailed
+			s.Error = fmt.Errorf("install failed")
+		})
 
 		ctx := context.Background()
 		err = preinstaller.WaitForPackage(ctx, "filesystem")
@@ -586,9 +586,9 @@ func TestPreinstaller_WaitForPackage(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually set status to unavailable
-		preinstaller.mu.Lock()
-		preinstaller.statuses["filesystem"].Status = StatusUnavailable
-		preinstaller.mu.Unlock()
+		mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+			s.Status = StatusUnavailable
+		})
 
 		ctx := context.Background()
 		err = preinstaller.WaitForPackage(ctx, "filesystem")
@@ -631,9 +631,9 @@ func TestPreinstaller_WaitForPackage(t *testing.T) {
 		// Update status in background after a short delay
 		go func() {
 			time.Sleep(200 * time.Millisecond)
-			preinstaller.mu.Lock()
-			preinstaller.statuses["filesystem"].Status = StatusInstalled
-			preinstaller.mu.Unlock()
+			mutatePackageStatusForTest(preinstaller, "filesystem", func(s *PackageStatus) {
+				s.Status = StatusInstalled
+			})
 		}()
 
 		err = preinstaller.WaitForPackage(ctx, "filesystem")
@@ -701,7 +701,9 @@ func TestPreinstaller_calculateProgress(t *testing.T) {
 		preinstaller, err := NewPreinstaller(config)
 		require.NoError(t, err)
 
-		preinstaller.statuses["pkg1"].Status = StatusInstalled
+		mutatePackageStatusForTest(preinstaller, "pkg1", func(s *PackageStatus) {
+			s.Status = StatusInstalled
+		})
 
 		progress := preinstaller.calculateProgress()
 		assert.Equal(t, 0.5, progress)
@@ -717,8 +719,12 @@ func TestPreinstaller_calculateProgress(t *testing.T) {
 		preinstaller, err := NewPreinstaller(config)
 		require.NoError(t, err)
 
-		preinstaller.statuses["pkg1"].Status = StatusInstalled
-		preinstaller.statuses["pkg2"].Status = StatusFailed
+		mutatePackageStatusForTest(preinstaller, "pkg1", func(s *PackageStatus) {
+			s.Status = StatusInstalled
+		})
+		mutatePackageStatusForTest(preinstaller, "pkg2", func(s *PackageStatus) {
+			s.Status = StatusFailed
+		})
 
 		progress := preinstaller.calculateProgress()
 		assert.Equal(t, 1.0, progress)
@@ -733,7 +739,9 @@ func TestPreinstaller_calculateProgress(t *testing.T) {
 		preinstaller, err := NewPreinstaller(config)
 		require.NoError(t, err)
 
-		preinstaller.statuses["pkg1"].Status = StatusUnavailable
+		mutatePackageStatusForTest(preinstaller, "pkg1", func(s *PackageStatus) {
+			s.Status = StatusUnavailable
+		})
 
 		progress := preinstaller.calculateProgress()
 		assert.Equal(t, 1.0, progress)
@@ -1731,7 +1739,7 @@ func TestEdgeCases(t *testing.T) {
 		preinstaller, err := NewPreinstaller(config)
 
 		require.NoError(t, err)
-		assert.Empty(t, preinstaller.statuses)
+		assert.Equal(t, 0, preinstaller.statuses.Len())
 	})
 
 	t.Run("Pool metrics are thread-safe", func(t *testing.T) {

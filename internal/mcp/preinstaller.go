@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -79,13 +80,20 @@ type PackageStatus struct {
 	Duration    time.Duration
 }
 
-// MCPPreinstaller handles pre-installation of MCP npm packages
+// MCPPreinstaller handles pre-installation of MCP npm packages.
+//
+// Concurrency model (CONST-029):
+//   - statuses is a safe.Store; each individual entry read/write is
+//     atomic. Mutations use Store.Update with a copy-on-write closure
+//     so readers (via Store.Get) never see partially written fields.
+//   - No Pattern-Zeta survivor mutex: every compound operation can be
+//     expressed as a single Update on the entry's pointer, or as an
+//     independent Get+onProgress callback that snapshots via Range.
 type MCPPreinstaller struct {
 	packages    []MCPPackage
 	installDir  string
 	logger      *logrus.Logger
-	statuses    map[string]*PackageStatus
-	mu          sync.RWMutex
+	statuses    *safe.Store[string, *PackageStatus]
 	npxPath     string
 	nodePath    string
 	npmPath     string
@@ -134,7 +142,7 @@ func NewPreinstaller(config PreinstallerConfig) (*MCPPreinstaller, error) {
 		packages:    config.Packages,
 		installDir:  config.InstallDir,
 		logger:      config.Logger,
-		statuses:    make(map[string]*PackageStatus),
+		statuses:    safe.NewStore[string, *PackageStatus](),
 		concurrency: config.Concurrency,
 		timeout:     config.Timeout,
 		onProgress:  config.OnProgress,
@@ -142,10 +150,10 @@ func NewPreinstaller(config PreinstallerConfig) (*MCPPreinstaller, error) {
 
 	// Initialize statuses
 	for _, pkg := range config.Packages {
-		p.statuses[pkg.Name] = &PackageStatus{
+		p.statuses.Put(pkg.Name, &PackageStatus{
 			Package: pkg,
 			Status:  StatusPending,
-		}
+		})
 	}
 
 	// Find node/npm/npx paths
@@ -318,13 +326,17 @@ func (p *MCPPreinstaller) installPackage(ctx context.Context, pkg MCPPackage) er
 	}
 
 	duration := time.Since(startTime)
-	p.mu.Lock()
-	if status, ok := p.statuses[pkg.Name]; ok {
-		status.Duration = duration
-		status.InstallPath = nodeModulesDir
-		status.InstalledAt = time.Now()
-	}
-	p.mu.Unlock()
+	now := time.Now()
+	p.statuses.Update(pkg.Name, func(cur *PackageStatus, present bool) (*PackageStatus, bool) {
+		if !present {
+			return nil, false
+		}
+		cp := *cur
+		cp.Duration = duration
+		cp.InstallPath = nodeModulesDir
+		cp.InstalledAt = now
+		return &cp, true
+	})
 
 	p.updateStatus(pkg.Name, StatusInstalled, nodeModulesDir, nil)
 
@@ -355,41 +367,48 @@ func (p *MCPPreinstaller) isPackageInstalled(pkgDir string, npmPkg string) bool 
 	return false
 }
 
-// updateStatus updates the installation status of a package
+// updateStatus updates the installation status of a package. The
+// entry is replaced under safe.Store.Update so readers never observe
+// a half-written PackageStatus.
 func (p *MCPPreinstaller) updateStatus(name string, status InstallStatus, path string, err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if s, ok := p.statuses[name]; ok {
-		s.Status = status
-		if path != "" {
-			s.InstallPath = path
+	p.statuses.Update(name, func(cur *PackageStatus, present bool) (*PackageStatus, bool) {
+		if !present {
+			return nil, false
 		}
-		s.Error = err
-	}
+		cp := *cur
+		cp.Status = status
+		if path != "" {
+			cp.InstallPath = path
+		}
+		cp.Error = err
+		return &cp, true
+	})
 
 	if p.onProgress != nil {
 		p.onProgress(name, status, p.calculateProgress())
 	}
 }
 
-// calculateProgress calculates installation progress (0.0 to 1.0)
+// calculateProgress calculates installation progress (0.0 to 1.0).
 func (p *MCPPreinstaller) calculateProgress() float64 {
 	completed := 0
-	for _, status := range p.statuses {
+	total := 0
+	p.statuses.Range(func(_ string, status *PackageStatus) bool {
+		total++
 		if status.Status == StatusInstalled || status.Status == StatusFailed || status.Status == StatusUnavailable {
 			completed++
 		}
+		return true
+	})
+	if total == 0 {
+		return 0
 	}
-	return float64(completed) / float64(len(p.statuses))
+	return float64(completed) / float64(total)
 }
 
 // IsInstalled checks if a package is installed
 func (p *MCPPreinstaller) IsInstalled(name string) bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	if status, ok := p.statuses[name]; ok {
+	if status, ok := p.statuses.Get(name); ok {
 		return status.Status == StatusInstalled
 	}
 	return false
@@ -405,16 +424,14 @@ func (p *MCPPreinstaller) WaitForPackage(ctx context.Context, name string) error
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			p.mu.RLock()
-			status, ok := p.statuses[name]
+			status, ok := p.statuses.Get(name)
 			if !ok {
-				p.mu.RUnlock()
 				return fmt.Errorf("package %s not found", name)
 			}
-			// Copy values while holding the lock to avoid race conditions
+			// status is the committed pointer from the Store; its fields
+			// are frozen because updateStatus replaces via copy-on-write.
 			currentStatus := status.Status
 			statusError := status.Error
-			p.mu.RUnlock()
 
 			switch currentStatus {
 			case StatusInstalled:
@@ -430,10 +447,7 @@ func (p *MCPPreinstaller) WaitForPackage(ctx context.Context, name string) error
 
 // GetStatus returns the status of a package
 func (p *MCPPreinstaller) GetStatus(name string) (*PackageStatus, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	status, ok := p.statuses[name]
+	status, ok := p.statuses.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("package %s not found", name)
 	}
@@ -445,23 +459,18 @@ func (p *MCPPreinstaller) GetStatus(name string) (*PackageStatus, error) {
 
 // GetAllStatuses returns the status of all packages
 func (p *MCPPreinstaller) GetAllStatuses() map[string]*PackageStatus {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
 	result := make(map[string]*PackageStatus)
-	for name, status := range p.statuses {
+	p.statuses.Range(func(name string, status *PackageStatus) bool {
 		statusCopy := *status
 		result[name] = &statusCopy
-	}
+		return true
+	})
 	return result
 }
 
 // GetInstalledPath returns the install path for a package
 func (p *MCPPreinstaller) GetInstalledPath(name string) (string, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	status, ok := p.statuses[name]
+	status, ok := p.statuses.Get(name)
 	if !ok {
 		return "", fmt.Errorf("package %s not found", name)
 	}
@@ -475,10 +484,7 @@ func (p *MCPPreinstaller) GetInstalledPath(name string) (string, error) {
 
 // GetPackageCommand returns the command to run an MCP server
 func (p *MCPPreinstaller) GetPackageCommand(name string) ([]string, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	status, ok := p.statuses[name]
+	status, ok := p.statuses.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("package %s not found", name)
 	}

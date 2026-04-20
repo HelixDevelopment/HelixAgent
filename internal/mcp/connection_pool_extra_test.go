@@ -735,10 +735,10 @@ func TestConnectionPool_WithPreinstaller_WaitsForInstallation(t *testing.T) {
 		// Simulate package being installed in background
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			preinstaller.mu.Lock()
-			preinstaller.statuses["test-server"].Status = StatusInstalled
-			preinstaller.statuses["test-server"].InstallPath = tempDir
-			preinstaller.mu.Unlock()
+			mutatePackageStatusForTest(preinstaller, "test-server", func(s *PackageStatus) {
+				s.Status = StatusInstalled
+				s.InstallPath = tempDir
+			})
 		}()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)

@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/models"
@@ -51,7 +52,14 @@ func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 	}
 }
 
-// CircuitBreaker implements the circuit breaker pattern for LLM providers
+// CircuitBreaker implements the circuit breaker pattern for LLM providers.
+//
+// Concurrency: the mu survives as Pattern Zeta — state, counters, and
+// timestamps have joint invariants (e.g., a state flip to Open must be
+// paired with a lastStateChange update and a zeroed halfOpenRequests) so
+// a single mutex still serialises them. What is removed from the bare
+// map/slice Pattern-A is the listeners map: it now lives in a safe.Store
+// and mu no longer guards it, so the audit is satisfied.
 type CircuitBreaker struct {
 	mu                   sync.RWMutex
 	provider             LLMProvider
@@ -68,8 +76,8 @@ type CircuitBreaker struct {
 	totalRequests        int64
 	totalFailures        int64
 	totalSuccesses       int64
-	listeners            map[int]CircuitBreakerListener
-	nextListenerID       int
+	listeners            *safe.Store[int64, CircuitBreakerListener]
+	nextListenerID       atomic.Int64
 }
 
 // MaxCircuitBreakerListeners limits listener count to prevent memory leaks
@@ -80,15 +88,16 @@ type CircuitBreakerListener func(providerID string, oldState, newState CircuitSt
 
 // NewCircuitBreaker creates a new circuit breaker for a provider
 func NewCircuitBreaker(providerID string, provider LLMProvider, config CircuitBreakerConfig) *CircuitBreaker {
-	return &CircuitBreaker{
+	cb := &CircuitBreaker{
 		provider:        provider,
 		providerID:      providerID,
 		config:          config,
 		state:           CircuitClosed,
 		lastStateChange: time.Now(),
-		listeners:       make(map[int]CircuitBreakerListener),
-		nextListenerID:  1,
+		listeners:       safe.NewStore[int64, CircuitBreakerListener](),
 	}
+	cb.nextListenerID.Store(1)
+	return cb
 }
 
 // NewDefaultCircuitBreaker creates a circuit breaker with default config
@@ -99,41 +108,34 @@ func NewDefaultCircuitBreaker(providerID string, provider LLMProvider) *CircuitB
 // AddListener adds a listener for state changes and returns an ID for removal.
 // Returns -1 and logs a warning if max listeners reached (listener not added).
 func (cb *CircuitBreaker) AddListener(listener CircuitBreakerListener) int {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-	// PERFORMANCE FIX: Limit listener count to prevent memory leaks
-	if len(cb.listeners) >= MaxCircuitBreakerListeners {
+	// PERFORMANCE FIX: Limit listener count to prevent memory leaks.
+	// Store.Len() + Store.Put() is not atomic together; the cap check
+	// is best-effort and may admit one or two extra under heavy churn,
+	// which is acceptable for a 100-slot warning threshold.
+	if cb.listeners.Len() >= MaxCircuitBreakerListeners {
 		logrus.Warnf("circuit breaker %s: listener limit reached (%d), listener not added",
 			cb.providerID, MaxCircuitBreakerListeners)
 		return -1
 	}
-	id := cb.nextListenerID
-	cb.nextListenerID++
-	cb.listeners[id] = listener
-	if len(cb.listeners) > MaxCircuitBreakerListeners*80/100 {
+	id := cb.nextListenerID.Add(1) - 1 // start IDs at 1 (matches old semantics)
+	cb.listeners.Put(id, listener)
+	if cb.listeners.Len() > MaxCircuitBreakerListeners*80/100 {
 		logrus.Warnf("circuit breaker %s: listener count %d approaching max %d",
-			cb.providerID, len(cb.listeners), MaxCircuitBreakerListeners)
+			cb.providerID, cb.listeners.Len(), MaxCircuitBreakerListeners)
 	}
-	return id
+	return int(id)
 }
 
 // RemoveListener removes a listener by its ID. Returns true if found and removed.
 // PERFORMANCE FIX: Added to prevent memory leaks from unremoved listeners.
 func (cb *CircuitBreaker) RemoveListener(id int) bool {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-	if _, exists := cb.listeners[id]; exists {
-		delete(cb.listeners, id)
-		return true
-	}
-	return false
+	_, existed := cb.listeners.Delete(int64(id))
+	return existed
 }
 
 // ListenerCount returns the current number of registered listeners.
 func (cb *CircuitBreaker) ListenerCount() int {
-	cb.mu.RLock()
-	defer cb.mu.RUnlock()
-	return len(cb.listeners)
+	return cb.listeners.Len()
 }
 
 // Complete wraps the provider's Complete method with circuit breaker logic
@@ -305,11 +307,10 @@ func (cb *CircuitBreaker) transitionTo(newState CircuitState) {
 	}
 
 	// CONCURRENCY FIX: Notify listeners with timeout to prevent goroutine leaks
-	// PERFORMANCE FIX: Copy listeners map to slice to avoid holding lock during notification
-	listeners := make([]CircuitBreakerListener, 0, len(cb.listeners))
-	for _, listener := range cb.listeners {
-		listeners = append(listeners, listener)
-	}
+	// PERFORMANCE FIX: Snapshot listeners via safe.Store.Values to avoid
+	// holding cb.mu during notification (listeners is independently
+	// synchronised via its own Store, so this read does not need mu).
+	listeners := cb.listeners.Values()
 
 	for _, listener := range listeners {
 		go func(l CircuitBreakerListener) {
@@ -386,14 +387,11 @@ func (cb *CircuitBreaker) Reset() {
 	cb.halfOpenRequests = 0
 	cb.lastStateChange = time.Now()
 
-	// CONCURRENCY FIX: Make a copy of listeners before unlocking
-	// PERFORMANCE FIX: Copy map to slice to avoid holding lock during notification
+	// CONCURRENCY FIX: snapshot listeners before unlocking (via safe.Store,
+	// which needs no external lock — decoupled from cb.mu).
 	var listeners []CircuitBreakerListener
 	if oldState != CircuitClosed {
-		listeners = make([]CircuitBreakerListener, 0, len(cb.listeners))
-		for _, listener := range cb.listeners {
-			listeners = append(listeners, listener)
-		}
+		listeners = cb.listeners.Values()
 	}
 	providerID := cb.providerID
 
@@ -442,17 +440,21 @@ func (cb *CircuitBreaker) IsHalfOpen() bool {
 	return cb.state == CircuitHalfOpen
 }
 
-// CircuitBreakerManager manages multiple circuit breakers
+// CircuitBreakerManager manages multiple circuit breakers.
+//
+// Concurrent-safe by construction: breakers is a safe.Store, so the
+// prior sync.RWMutex is dropped entirely. Reads (Get, GetAllStats,
+// GetAvailableProviders, ResetAll) iterate via Range/Values; writes
+// (Register, Unregister) use Put/Delete.
 type CircuitBreakerManager struct {
-	mu       sync.RWMutex
-	breakers map[string]*CircuitBreaker
+	breakers *safe.Store[string, *CircuitBreaker]
 	config   CircuitBreakerConfig
 }
 
 // NewCircuitBreakerManager creates a new manager
 func NewCircuitBreakerManager(config CircuitBreakerConfig) *CircuitBreakerManager {
 	return &CircuitBreakerManager{
-		breakers: make(map[string]*CircuitBreaker),
+		breakers: safe.NewStore[string, *CircuitBreaker](),
 		config:   config,
 	}
 }
@@ -464,62 +466,47 @@ func NewDefaultCircuitBreakerManager() *CircuitBreakerManager {
 
 // Register registers a provider with a circuit breaker
 func (cbm *CircuitBreakerManager) Register(providerID string, provider LLMProvider) *CircuitBreaker {
-	cbm.mu.Lock()
-	defer cbm.mu.Unlock()
-
 	cb := NewCircuitBreaker(providerID, provider, cbm.config)
-	cbm.breakers[providerID] = cb
+	cbm.breakers.Put(providerID, cb)
 	return cb
 }
 
 // Get returns the circuit breaker for a provider
 func (cbm *CircuitBreakerManager) Get(providerID string) (*CircuitBreaker, bool) {
-	cbm.mu.RLock()
-	defer cbm.mu.RUnlock()
-
-	cb, exists := cbm.breakers[providerID]
-	return cb, exists
+	return cbm.breakers.Get(providerID)
 }
 
 // Unregister removes a provider's circuit breaker
 func (cbm *CircuitBreakerManager) Unregister(providerID string) {
-	cbm.mu.Lock()
-	defer cbm.mu.Unlock()
-	delete(cbm.breakers, providerID)
+	cbm.breakers.Delete(providerID)
 }
 
 // GetAllStats returns stats for all circuit breakers
 func (cbm *CircuitBreakerManager) GetAllStats() map[string]CircuitBreakerStats {
-	cbm.mu.RLock()
-	defer cbm.mu.RUnlock()
-
 	stats := make(map[string]CircuitBreakerStats)
-	for id, cb := range cbm.breakers {
+	cbm.breakers.Range(func(id string, cb *CircuitBreaker) bool {
 		stats[id] = cb.GetStats()
-	}
+		return true
+	})
 	return stats
 }
 
 // GetAvailableProviders returns IDs of providers with closed circuits
 func (cbm *CircuitBreakerManager) GetAvailableProviders() []string {
-	cbm.mu.RLock()
-	defer cbm.mu.RUnlock()
-
 	var available []string
-	for id, cb := range cbm.breakers {
+	cbm.breakers.Range(func(id string, cb *CircuitBreaker) bool {
 		if cb.IsClosed() || cb.IsHalfOpen() {
 			available = append(available, id)
 		}
-	}
+		return true
+	})
 	return available
 }
 
 // ResetAll resets all circuit breakers
 func (cbm *CircuitBreakerManager) ResetAll() {
-	cbm.mu.RLock()
-	defer cbm.mu.RUnlock()
-
-	for _, cb := range cbm.breakers {
+	cbm.breakers.Range(func(_ string, cb *CircuitBreaker) bool {
 		cb.Reset()
-	}
+		return true
+	})
 }

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +46,7 @@ func (m *mockBroker) GetMetrics() *messaging.BrokerMetrics {
 
 func TestContextCache_PutAndGet(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}
@@ -77,7 +79,7 @@ func TestContextCache_PutAndGet(t *testing.T) {
 
 func TestContextCache_Get_Expired(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     1 * time.Millisecond, // Very short TTL
 	}
@@ -88,19 +90,19 @@ func TestContextCache_Get_Expired(t *testing.T) {
 		CachedAt:       time.Now().Add(-1 * time.Second), // Already expired
 	}
 
-	cache.cache["conv-expired"] = cached
+	cache.cache.Put("conv-expired", cached)
 
 	// Should return nil for expired entry
 	result := cache.Get("conv-expired")
 	assert.Nil(t, result)
 
 	// Entry should be removed from cache
-	assert.Equal(t, 0, len(cache.cache))
+	assert.Equal(t, 0, cache.cache.Len())
 }
 
 func TestContextCache_Get_NotFound(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}
@@ -111,7 +113,7 @@ func TestContextCache_Get_NotFound(t *testing.T) {
 
 func TestContextCache_Eviction(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 3,
 		ttl:     30 * time.Minute,
 	}
@@ -145,7 +147,7 @@ func TestContextCache_Eviction(t *testing.T) {
 
 func TestContextCache_Clear(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}
@@ -164,7 +166,7 @@ func TestContextCache_Clear(t *testing.T) {
 
 func TestContextCache_Size(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}
@@ -469,7 +471,7 @@ func TestInfiniteContextEngine_ReplayConversation_Cached(t *testing.T) {
 
 func TestContextCache_PutOverwrite(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}
@@ -494,7 +496,7 @@ func TestContextCache_PutOverwrite(t *testing.T) {
 
 func TestContextCache_Get_IncreasesAccessCount(t *testing.T) {
 	cache := &ContextCache{
-		cache:   make(map[string]*CachedContext),
+		cache:   safe.NewStore[string, *CachedContext](),
 		maxSize: 10,
 		ttl:     30 * time.Minute,
 	}

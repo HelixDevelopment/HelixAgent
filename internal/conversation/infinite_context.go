@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
@@ -23,12 +25,17 @@ type InfiniteContextEngine struct {
 	mu            sync.RWMutex
 }
 
-// ContextCache provides LRU caching for replayed conversations
+// ContextCache provides LRU caching for replayed conversations.
+//
+// Concurrency model (CONST-029): cache is a *safe.Store whose entries
+// are mutated atomically via Update. The previous implementation held
+// an RLock while calling delete(map, ...) and mutating
+// cached.AccessCount — both are unsafe writes under an RLock. The
+// Update-based rewrite fixes that latent bug.
 type ContextCache struct {
-	cache   map[string]*CachedContext
+	cache   *safe.Store[string, *CachedContext]
 	maxSize int
 	ttl     time.Duration
-	mu      sync.RWMutex
 }
 
 // CachedContext represents a cached conversation context
@@ -55,7 +62,7 @@ func NewInfiniteContextEngine(
 		kafkaConsumer: kafkaConsumer,
 		compressor:    compressor,
 		cache: &ContextCache{
-			cache:   make(map[string]*CachedContext),
+			cache:   safe.NewStore[string, *CachedContext](),
 			maxSize: 100,
 			ttl:     30 * time.Minute,
 		},
@@ -336,67 +343,60 @@ func (ice *InfiniteContextEngine) countTokens(messages []MessageData) int64 {
 
 // ContextCache methods
 
-// Get retrieves cached context
+// Get retrieves cached context. TTL-expired entries are removed
+// in-line, and AccessCount is incremented atomically.
 func (cc *ContextCache) Get(conversationID string) *CachedContext {
-	cc.mu.RLock()
-	defer cc.mu.RUnlock()
-
-	cached, exists := cc.cache[conversationID]
-	if !exists {
-		return nil
-	}
-
-	// Check TTL
-	if time.Since(cached.CachedAt) > cc.ttl {
-		// Expired
-		delete(cc.cache, conversationID)
-		return nil
-	}
-
-	cached.AccessCount++
-	return cached
+	var result *CachedContext
+	cc.cache.Update(conversationID, func(cached *CachedContext, present bool) (*CachedContext, bool) {
+		if !present {
+			return nil, false
+		}
+		if time.Since(cached.CachedAt) > cc.ttl {
+			// Expired: drop the entry.
+			return nil, false
+		}
+		cached.AccessCount++
+		result = cached
+		return cached, true
+	})
+	return result
 }
 
-// Put stores context in cache
+// Put stores context in cache. If the cache is at capacity, the
+// oldest entry is evicted first. The evict+put pair is not atomic;
+// under heavy contention the cache size may transiently exceed
+// maxSize by one — a soft cap is acceptable for this LRU.
 func (cc *ContextCache) Put(conversationID string, context *CachedContext) {
-	cc.mu.Lock()
-	defer cc.mu.Unlock()
-
-	// Evict oldest if cache full
-	if len(cc.cache) >= cc.maxSize {
+	if cc.cache.Len() >= cc.maxSize {
 		cc.evictOldest()
 	}
-
-	cc.cache[conversationID] = context
+	cc.cache.Put(conversationID, context)
 }
 
 // evictOldest removes the least recently accessed item
 func (cc *ContextCache) evictOldest() {
 	var oldestID string
-	var oldestTime time.Time = time.Now()
+	oldestTime := time.Now()
 
-	for id, cached := range cc.cache {
+	cc.cache.Range(func(id string, cached *CachedContext) bool {
 		if cached.CachedAt.Before(oldestTime) {
 			oldestTime = cached.CachedAt
 			oldestID = id
 		}
-	}
+		return true
+	})
 
 	if oldestID != "" {
-		delete(cc.cache, oldestID)
+		cc.cache.Delete(oldestID)
 	}
 }
 
 // Clear clears the cache
 func (cc *ContextCache) Clear() {
-	cc.mu.Lock()
-	defer cc.mu.Unlock()
-	cc.cache = make(map[string]*CachedContext)
+	cc.cache.Clear()
 }
 
 // Size returns cache size
 func (cc *ContextCache) Size() int {
-	cc.mu.RLock()
-	defer cc.mu.RUnlock()
-	return len(cc.cache)
+	return cc.cache.Len()
 }

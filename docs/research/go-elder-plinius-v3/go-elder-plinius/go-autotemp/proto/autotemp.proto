@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package autotemp;
+
+option go_package = "github.com/elder-plinius/go-autotemp/proto;autotempproto";
+
+// AutoTempService provides temperature optimization for LLM prompts.
+// The service runs the same prompt at multiple temperatures and
+// selects the best output using multi-judge structured scoring.
+service AutoTempService {
+  // Run performs temperature optimization on a prompt.
+  rpc Run(RunRequest) returns (RunResponse);
+
+  // RunAdvanced performs UCB bandit optimization.
+  rpc RunAdvanced(RunAdvancedRequest) returns (RunResponse);
+
+  // Evaluate evaluates a single output with multiple judges.
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse);
+
+  // Benchmark runs evaluation across a dataset.
+  rpc Benchmark(BenchmarkRequest) returns (BenchmarkResponse);
+
+  // StreamRun performs optimization and streams progress updates.
+  rpc StreamRun(RunRequest) returns (stream ProgressUpdate);
+
+  // GetUsage returns current token usage statistics.
+  rpc GetUsage(UsageRequest) returns (UsageResponse);
+
+  // Health checks service health.
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // GetVersion returns service version info.
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+}
+
+// RunRequest is a standard temperature optimization request.
+message RunRequest {
+  string prompt = 1;
+  repeated float temperatures = 2;
+  float top_p = 3;
+  bool auto_select = 4;
+  int32 judges = 5;
+  string model_version = 6;
+}
+
+// RunAdvancedRequest is an advanced UCB bandit optimization request.
+message RunAdvancedRequest {
+  string prompt = 1;
+  repeated float temperatures = 2;
+  float top_p = 3;
+  bool auto_select = 4;
+  int32 judges = 5;
+  string model_version = 6;
+  int32 rounds = 7;
+  float exploration_c = 8;
+}
+
+// EvaluateRequest evaluates a single output.
+message EvaluateRequest {
+  string prompt = 1;
+  string output = 2;
+  float temperature = 3;
+  float top_p = 4;
+  int32 judges = 5;
+  string model_version = 6;
+}
+
+// BenchmarkRequest runs evaluation across a dataset.
+message BenchmarkRequest {
+  repeated BenchmarkItem dataset = 1;
+  repeated float temperatures = 2;
+  float top_p = 3;
+  bool advanced = 4;
+  int32 rounds = 5;
+  int32 judges = 6;
+  repeated string models = 7;
+  string csv_path = 8;
+}
+
+message BenchmarkItem {
+  string prompt = 1;
+  string reference = 2;
+}
+
+// UsageRequest requests current token usage.
+message UsageRequest {}
+
+// HealthRequest requests health status.
+message HealthRequest {}
+
+// VersionRequest requests version info.
+message VersionRequest {}
+
+// RunResponse contains the optimization result.
+message RunResponse {
+  string best_output = 1;
+  float best_temperature = 2;
+  float best_overall_score = 3;
+  ScoreBreakdown best_scores = 4;
+  repeated TemperatureResult results = 5;
+  string summary = 6;
+  TokenUsage usage = 7;
+  float estimated_cost_usd = 8;
+}
+
+// TemperatureResult contains results for a single temperature.
+message TemperatureResult {
+  float temperature = 1;
+  string output = 2;
+  ScoreBreakdown scores = 3;
+  float overall_score = 4;
+  bool is_best = 5;
+}
+
+// EvaluateResponse contains evaluation results.
+message EvaluateResponse {
+  ScoreBreakdown scores = 1;
+  float overall_score = 2;
+  repeated JudgeScore judge_scores = 3;
+  TokenUsage usage = 4;
+}
+
+message JudgeScore {
+  int32 judge_id = 1;
+  float relevance = 2;
+  float clarity = 3;
+  float utility = 4;
+  float creativity = 5;
+  float coherence = 6;
+  float safety = 7;
+  float overall = 8;
+}
+
+// BenchmarkResponse contains benchmark results.
+message BenchmarkResponse {
+  repeated ModelBenchmark model_results = 1;
+  string summary = 2;
+}
+
+message ModelBenchmark {
+  string model_name = 1;
+  float mean_overall = 2;
+  float mean_overall_ci_low = 3;
+  float mean_overall_ci_high = 4;
+  map<string, float> metric_means = 5;
+  int32 num_items = 6;
+  TokenUsage tokens = 7;
+  float estimated_cost_usd = 8;
+}
+
+// ProgressUpdate streams progress for long-running operations.
+message ProgressUpdate {
+  string stage = 1;
+  string status = 2;
+  string message = 3;
+  float percent_complete = 4;
+  int64 duration_ms = 5;
+}
+
+// UsageResponse contains token usage statistics.
+message UsageResponse {
+  TokenUsage totals = 1;
+  float estimated_cost_usd = 2;
+  string model_version = 3;
+}
+
+// HealthResponse contains health status.
+message HealthResponse {
+  string status = 1;
+  string service = 2;
+  string version = 3;
+  int64 uptime_ms = 4;
+}
+
+// VersionResponse contains version information.
+message VersionResponse {
+  string service = 1;
+  string version = 2;
+  string commit = 3;
+  string go_version = 4;
+  string python_version = 5;
+}
+
+// ScoreBreakdown contains multi-dimensional scores.
+message ScoreBreakdown {
+  float relevance = 1;
+  float clarity = 2;
+  float utility = 3;
+  float creativity = 4;
+  float coherence = 5;
+  float safety = 6;
+  float overall = 7;
+}
+
+// TokenUsage tracks LLM token consumption.
+message TokenUsage {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 total_tokens = 3;
+}

@@ -1,0 +1,283 @@
+syntax = "proto3";
+
+package eos;
+
+option go_package = "github.com/elder-plinius/go-eos/proto;eosproto";
+
+// EosService provides Discord bot orchestration for open-source developer
+// recruitment, skill matching, and project discovery.
+service EosService {
+  // Authenticate authenticates a user with the Discord OAuth2 flow.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+
+  // MatchSkills matches a user's skills to open-source projects.
+  rpc MatchSkills(MatchSkillsRequest) returns (MatchSkillsResponse);
+
+  // DiscoverProjects discovers projects based on criteria.
+  rpc DiscoverProjects(DiscoverRequest) returns (DiscoverResponse);
+
+  // JoinProject adds a user to a project.
+  rpc JoinProject(JoinProjectRequest) returns (JoinProjectResponse);
+
+  // LeaveProject removes a user from a project.
+  rpc LeaveProject(LeaveProjectRequest) returns (LeaveProjectResponse);
+
+  // GetProject returns project details.
+  rpc GetProject(GetProjectRequest) returns (Project);
+
+  // ListProjects lists all available projects.
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+
+  // GetNotifications gets notifications for a user.
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+
+  // MarkNotificationRead marks a notification as read.
+  rpc MarkNotificationRead(MarkReadRequest) returns (MarkReadResponse);
+
+  // SendNotification sends a notification to a user.
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+
+  // OnboardUser completes the user onboarding process.
+  rpc OnboardUser(OnboardRequest) returns (OnboardResponse);
+
+  // GetUserProfile gets a user's profile.
+  rpc GetUserProfile(GetProfileRequest) returns (UserProfile);
+
+  // UpdateUserProfile updates a user's profile.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UserProfile);
+
+  // SearchUsers searches for users by skills.
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+
+  // Health checks service health.
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // GetVersion returns version info.
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+}
+
+message AuthenticateRequest {
+  string discord_token = 1;
+  string guild_id = 2;
+}
+
+message AuthenticateResponse {
+  string session_token = 1;
+  UserProfile user = 2;
+  bool is_new_user = 3;
+}
+
+message UserProfile {
+  string user_id = 1;
+  string discord_username = 2;
+  string display_name = 3;
+  string email = 4;
+  repeated string skills = 5;
+  repeated string languages = 6;
+  string experience_level = 7; // beginner, intermediate, advanced, expert
+  string bio = 8;
+  string github_username = 9;
+  string availability = 10; // full-time, part-time, weekends, occasional
+  repeated string interests = 11;
+  bool onboarding_complete = 12;
+  int64 joined_at = 13;
+}
+
+message MatchSkillsRequest {
+  string user_id = 1;
+  int32 max_results = 2;
+  repeated string skill_filters = 3;
+}
+
+message MatchSkillsResponse {
+  repeated ProjectMatch matches = 1;
+  float overall_match_score = 2;
+}
+
+message ProjectMatch {
+  Project project = 1;
+  float match_score = 2;
+  repeated string matched_skills = 3;
+  repeated string missing_skills = 4;
+}
+
+message Project {
+  string project_id = 1;
+  string name = 2;
+  string description = 3;
+  string status = 4; // recruiting, active, paused, completed
+  repeated string tech_stack = 5;
+  repeated string required_skills = 6;
+  repeated string nice_to_have = 7;
+  string difficulty = 8; // beginner, intermediate, advanced
+  int32 max_contributors = 9;
+  int32 current_contributors = 10;
+  string lead_user_id = 11;
+  string lead_username = 12;
+  string repository_url = 13;
+  int64 created_at = 14;
+  int64 updated_at = 15;
+  repeated string discord_channels = 16;
+}
+
+message DiscoverRequest {
+  repeated string skills = 1;
+  repeated string languages = 2;
+  string difficulty = 3;
+  string status = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message DiscoverResponse {
+  repeated Project projects = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message JoinProjectRequest {
+  string user_id = 1;
+  string project_id = 2;
+  string role = 3;
+  string message = 4;
+}
+
+message JoinProjectResponse {
+  bool success = 1;
+  string project_channel_id = 2;
+  string message = 3;
+}
+
+message LeaveProjectRequest {
+  string user_id = 1;
+  string project_id = 2;
+  string reason = 3;
+}
+
+message LeaveProjectResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetProjectRequest {
+  string project_id = 1;
+}
+
+message ListProjectsRequest {
+  string status = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  int32 total = 2;
+}
+
+message GetNotificationsRequest {
+  string user_id = 1;
+  bool unread_only = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetNotificationsResponse {
+  repeated Notification notifications = 1;
+  int32 unread_count = 2;
+}
+
+message Notification {
+  string notification_id = 1;
+  string user_id = 2;
+  string type = 3; // project_invite, project_update, match_found, mention
+  string title = 4;
+  string body = 5;
+  string project_id = 6;
+  bool read = 7;
+  int64 created_at = 8;
+}
+
+message MarkReadRequest {
+  string notification_id = 1;
+}
+
+message MarkReadResponse {
+  bool success = 1;
+}
+
+message SendNotificationRequest {
+  string user_id = 1;
+  string type = 2;
+  string title = 3;
+  string body = 4;
+  string project_id = 5;
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+  bool delivered = 2;
+}
+
+message OnboardRequest {
+  string user_id = 1;
+  repeated string skills = 2;
+  repeated string languages = 3;
+  string experience_level = 4;
+  string bio = 5;
+  string github_username = 6;
+  string availability = 7;
+  repeated string interests = 8;
+}
+
+message OnboardResponse {
+  bool success = 1;
+  repeated ProjectMatch initial_matches = 2;
+  string welcome_message = 3;
+}
+
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  repeated string skills = 2;
+  repeated string languages = 3;
+  string experience_level = 4;
+  string bio = 5;
+  string github_username = 6;
+  string availability = 7;
+  repeated string interests = 8;
+}
+
+message SearchUsersRequest {
+  repeated string skills = 1;
+  string experience_level = 2;
+  string availability = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message SearchUsersResponse {
+  repeated UserProfile users = 1;
+  int32 total = 2;
+}
+
+message HealthRequest {}
+message VersionRequest {}
+
+message HealthResponse {
+  string status = 1;
+  string service = 2;
+  string version = 3;
+  int64 uptime_ms = 4;
+}
+
+message VersionResponse {
+  string service = 1;
+  string version = 2;
+  string commit = 3;
+  string go_version = 4;
+  string python_version = 5;
+}

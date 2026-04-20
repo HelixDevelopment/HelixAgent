@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package obliteratus;
+
+option go_package = "github.com/elder-plinius/go-obliteratus/proto;obliteratusproto";
+
+// OBLITERATUS is an advanced open-source toolkit for understanding and
+// removing refusal behaviors from large language models. It implements
+// abliteration -- a family of techniques that identify and surgically
+// remove the internal representations responsible for content refusal.
+service ObliteratusService {
+  // Obliterate removes refusal directions from a model.
+  rpc Obliterate(ObliterateRequest) returns (stream ProgressUpdate);
+
+  // GetAvailableMethods returns all supported abliteration methods.
+  rpc GetAvailableMethods(MethodsRequest) returns (MethodsResponse);
+
+  // GetMethodDetails returns details about a specific method.
+  rpc GetMethodDetails(MethodDetailsRequest) returns (MethodDetailsResponse);
+
+  // AnalyzeModel analyzes a model's refusal structure without modifying it.
+  rpc AnalyzeModel(AnalyzeRequest) returns (AnalysisResult);
+
+  // StreamAnalysis performs analysis with streaming progress updates.
+  rpc StreamAnalysis(AnalyzeRequest) returns (stream ProgressUpdate);
+
+  // Health checks service health.
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // GetVersion returns service version info.
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+
+  // CancelOperation cancels a running obliteration.
+  rpc CancelOperation(CancelRequest) returns (CancelResponse);
+}
+
+// ObliterateRequest configures a model abliteration run.
+message ObliterateRequest {
+  // Model name (HuggingFace model ID or local path)
+  string model_name = 1;
+
+  // Output directory for the abliterated model
+  string output_dir = 2;
+
+  // Abliteration method to use
+  string method = 3;
+
+  // Device: "auto", "cuda", "cpu", "cuda:0", etc.
+  string device = 4;
+
+  // Data type: "float16", "float32", "bfloat16"
+  string dtype = 5;
+
+  // Whether to trust remote code for model loading
+  bool trust_remote_code = 6;
+
+  // Custom harmful prompts (optional)
+  repeated string harmful_prompts = 7;
+
+  // Custom harmless prompts (optional)
+  repeated string harmless_prompts = 8;
+
+  // Override number of directions
+  int32 n_directions = 9;
+
+  // Override direction extraction method
+  string direction_method = 10;
+
+  // Override norm preservation
+  bool norm_preserve = 11;
+
+  // Override regularization strength
+  float regularization = 12;
+
+  // Override refinement passes
+  int32 refinement_passes = 13;
+
+  // Whether to push result to HuggingFace Hub
+  string push_to_hub = 14;
+
+  // HuggingFace Hub token
+  string hub_token = 15;
+
+  // Maximum sequence length
+  int32 max_seq_length = 16;
+}
+
+// MethodsRequest requests available methods.
+message MethodsRequest {}
+
+// MethodDetailsRequest requests details for a specific method.
+message MethodDetailsRequest {
+  string method = 1;
+}
+
+// AnalyzeRequest configures model analysis.
+message AnalyzeRequest {
+  string model_name = 1;
+  string device = 2;
+  string dtype = 3;
+  bool trust_remote_code = 4;
+  repeated string harmful_prompts = 5;
+  repeated string harmless_prompts = 6;
+  int32 max_seq_length = 7;
+}
+
+// CancelRequest cancels an operation.
+message CancelRequest {
+  string operation_id = 1;
+}
+
+// ProgressUpdate streams progress for long-running operations.
+message ProgressUpdate {
+  string stage = 1;           // summon, probe, distill, excise, verify, rebirth
+  string status = 2;          // running, done, error
+  string message = 3;
+  float percent_complete = 4;
+  int64 duration_ms = 5;
+  map<string, string> details = 6;
+}
+
+// MethodsResponse contains available abliteration methods.
+message MethodsResponse {
+  repeated MethodInfo methods = 1;
+}
+
+message MethodInfo {
+  string name = 1;
+  string label = 2;
+  string description = 3;
+  int32 n_directions = 4;
+  string direction_method = 5;
+  bool norm_preserve = 6;
+}
+
+// MethodDetailsResponse contains detailed method information.
+message MethodDetailsResponse {
+  string name = 1;
+  string label = 2;
+  string description = 3;
+  int32 n_directions = 4;
+  string direction_method = 5;
+  bool norm_preserve = 6;
+  float regularization = 7;
+  int32 refinement_passes = 8;
+  bool project_biases = 9;
+  bool use_chat_template = 10;
+  bool use_whitened_svd = 11;
+  map<string, string> parameters = 12;
+}
+
+// AnalysisResult contains model analysis results.
+message AnalysisResult {
+  string model_name = 1;
+  string architecture = 2;
+  int32 num_layers = 3;
+  int32 num_heads = 4;
+  int32 hidden_size = 5;
+  int64 total_params = 6;
+
+  repeated RefusalDirection refusal_directions = 7;
+  repeated string strong_layers = 8;
+
+  // Quality metrics
+  float perplexity = 9;
+  float coherence_score = 10;
+  float refusal_rate = 11;
+  float kl_divergence = 12;
+
+  // Alignment analysis
+  string detected_alignment = 13;
+  string concept_geometry = 14;
+  float cross_layer_alignment = 15;
+  float defense_robustness = 16;
+
+  int64 analysis_duration_ms = 17;
+}
+
+message RefusalDirection {
+  int32 layer_index = 1;
+  float norm = 2;
+  repeated float direction = 3;
+}
+
+// HealthResponse contains health status.
+message HealthResponse {
+  string status = 1;
+  string service = 2;
+  string version = 3;
+  int64 uptime_ms = 4;
+}
+
+// VersionResponse contains version information.
+message VersionResponse {
+  string service = 1;
+  string version = 2;
+  string commit = 3;
+  string go_version = 4;
+  string python_version = 5;
+}
+
+// CancelResponse confirms cancellation.
+message CancelResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// HealthRequest and VersionRequest are empty messages
+message HealthRequest {}
+message VersionRequest {}
+message CancelRequest_default {}

@@ -1,0 +1,257 @@
+syntax = "proto3";
+
+package almeche;
+
+option go_package = "github.com/elder-plinius/go-almeche/proto;almecheproto";
+
+// AlmechEService provides speech-to-CAD generation pipeline.
+// Transforms spoken ideas into physical objects through AI-driven
+// CAD prompt generation and optional 3D printing.s
+// TODO: Add support for anthropomorphic data collection and
+// integration with digital twin applications.
+service AlmechEService {
+  // ProcessSpeech converts speech input to a 3D CAD model.
+  // Pipeline: Speech-to-Text -> CAD Generation -> Export
+  rpc ProcessSpeech(ProcessSpeechRequest) returns (stream ProgressUpdate);
+
+  // GenerateCAD generates a CAD prompt from a text description.
+  rpc GenerateCAD(GenerateCADRequest) returns (GenerateCADResponse);
+
+  // ExportModel exports a generated CAD model to a specific format.
+  rpc ExportModel(ExportRequest) returns (ExportResponse);
+
+  // TextToSpeech converts text to speech output.
+  rpc TextToSpeech(TextToSpeechRequest) returns (TextToSpeechResponse);
+
+  // GetAvailableMaterials returns available 3D printing materials.
+  rpc GetAvailableMaterials(MaterialsRequest) returns (MaterialsResponse);
+
+  // EstimateCost estimates the cost of 3D printing an object.
+  rpc EstimateCost(EstimateRequest) returns (EstimateResponse);
+
+  // Health checks service health.
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // GetVersion returns version info.
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+}
+
+message ProcessSpeechRequest {
+  // Raw audio bytes (PCM, WAV, or FLAC)
+  bytes audio_data = 1;
+
+  // Audio format: "wav", "pcm", "flac"
+  string audio_format = 2;
+
+  // Sample rate in Hz (e.g., 16000, 44100)
+  int32 sample_rate = 3;
+
+  // Target CAD format for export (optional, defaults to STL)
+  string target_format = 4;
+
+  // Whether to include 3D printing cost estimate
+  bool include_estimate = 5;
+
+  // Preferred 3D printing material (optional)
+  string material = 6;
+
+  // Scale factor for the output model (1.0 = original size)
+  float scale = 7;
+}
+
+message GenerateCADRequest {
+  // Natural language description of the object
+  string description = 1;
+
+  // Target CAD format: "stl", "obj", "ply", "step", "iges"
+  string target_format = 2;
+
+  // Complexity level: "low", "medium", "high"
+  string complexity = 3;
+
+  // Whether to include 3D printing cost estimate
+  bool include_estimate = 4;
+
+  // Preferred material (optional)
+  string material = 5;
+
+  // Scale factor for the output model
+  float scale = 6;
+}
+
+message GenerateCADResponse {
+  // Generated CAD prompt
+  string cad_prompt = 1;
+
+  // Generated 3D model data
+  bytes model_data = 2;
+
+  // Model format
+  string model_format = 3;
+
+  // Model dimensions in mm (width, height, depth)
+  repeated float dimensions_mm = 4;
+
+  // Model volume in cubic centimeters
+  float volume_cm3 = 5;
+
+  // Number of triangles/faces
+  int32 face_count = 6;
+
+  // Estimated print time in minutes
+  float estimated_print_time_min = 7;
+
+  // Cost estimate (if requested)
+  CostEstimate cost_estimate = 8;
+
+  // Stage results
+  repeated StageResult stages = 9;
+}
+
+message ExportRequest {
+  // Model data to export
+  bytes model_data = 1;
+
+  // Source format
+  string source_format = 2;
+
+  // Target format: "stl", "obj", "ply", "step", "iges", "3mf"
+  string target_format = 3;
+
+  // Export options
+  ExportOptions options = 4;
+}
+
+message ExportOptions {
+  // Whether to binary encode (vs ASCII)
+  bool binary = 1;
+
+  // Precision for ASCII formats
+  int32 precision = 2;
+
+  // Transform: scale
+  float scale = 3;
+
+  // Transform: rotation in degrees (x, y, z)
+  repeated float rotation_deg = 4;
+}
+
+message ExportResponse {
+  // Exported model data
+  bytes exported_data = 1;
+
+  // Target format
+  string target_format = 2;
+
+  // File size in bytes
+  int64 file_size = 3;
+}
+
+message TextToSpeechRequest {
+  // Text to convert to speech
+  string text = 1;
+
+  // Voice ID (optional, uses default if empty)
+  string voice_id = 2;
+
+  // Speed: 0.5 to 2.0 (1.0 = normal)
+  float speed = 3;
+}
+
+message TextToSpeechResponse {
+  // Audio data (WAV format)
+  bytes audio_data = 1;
+
+  // Duration in seconds
+  float duration_sec = 2;
+}
+
+message MaterialsRequest {}
+
+message MaterialsResponse {
+  repeated Material materials = 1;
+}
+
+message Material {
+  string name = 1;
+  string type = 2; // PLA, ABS, PETG, TPU, Nylon, Resin
+  float density_g_cm3 = 3;
+  float cost_per_kg_usd = 4;
+  float min_layer_height_mm = 5;
+  float max_temp_c = 6;
+  string color_options = 7;
+  string description = 8;
+  bool supports_multicolor = 9;
+}
+
+message EstimateRequest {
+  // Model volume in cubic centimeters
+  float volume_cm3 = 1;
+
+  // Material name
+  string material = 2;
+
+  // Infill percentage (0-100)
+  float infill_percent = 3;
+
+  // Layer height in mm
+  float layer_height_mm = 4;
+}
+
+message EstimateResponse {
+  // Material weight in grams
+  float material_weight_g = 1;
+
+  // Material cost in USD
+  float material_cost_usd = 2;
+
+  // Estimated print time in minutes
+  float print_time_min = 3;
+
+  // Electricity cost estimate in USD
+  float electricity_cost_usd = 4;
+
+  // Total cost in USD
+  float total_cost_usd = 5;
+}
+
+message CostEstimate {
+  float material_weight_g = 1;
+  float material_cost_usd = 2;
+  float print_time_min = 3;
+  float total_cost_usd = 4;
+}
+
+message StageResult {
+  string stage = 1;      // speech_to_text, text_to_cad, cad_generation, export
+  string status = 2;     // success, failure, running
+  string message = 3;
+  int64 duration_ms = 4;
+}
+
+message ProgressUpdate {
+  string stage = 1;
+  string status = 2;
+  string message = 3;
+  float percent_complete = 4;
+  int64 duration_ms = 5;
+  bytes intermediate_data = 6; // Partial model data during generation
+}
+
+message HealthRequest {}
+message VersionRequest {}
+
+message HealthResponse {
+  string status = 1;
+  string service = 2;
+  string version = 3;
+  int64 uptime_ms = 4;
+}
+
+message VersionResponse {
+  string service = 1;
+  string version = 2;
+  string commit = 3;
+  string go_version = 4;
+  string python_version = 5;
+}

@@ -3,84 +3,82 @@ package messaging
 import (
 	"context"
 	"errors"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // mockLegacyQueue implements LegacyTaskQueue for testing.
+//
+// Concurrency model (CONST-029): tasks → *safe.Store; counters →
+// atomic.Int64.
 type mockLegacyQueue struct {
-	mu            sync.RWMutex
-	tasks         map[string]*LegacyTask
+	tasks         *safe.Store[string, *LegacyTask]
 	enqueueErr    error
 	dequeueErr    error
 	completeErr   error
 	failErr       error
 	migrateErr    error
-	enqueueCalled int
-	taskCounter   int
+	enqueueCalled atomic.Int64
+	taskCounter   atomic.Int64
 }
 
 func newMockLegacyQueue() *mockLegacyQueue {
 	return &mockLegacyQueue{
-		tasks: make(map[string]*LegacyTask),
+		tasks: safe.NewStore[string, *LegacyTask](),
 	}
 }
 
 func (m *mockLegacyQueue) Enqueue(ctx context.Context, taskType string, payload []byte, priority int) (string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.enqueueErr != nil {
 		return "", m.enqueueErr
 	}
 
-	m.taskCounter++
-	m.enqueueCalled++
+	m.taskCounter.Add(1)
+	m.enqueueCalled.Add(1)
 	id := generateMessageID()
-	m.tasks[id] = &LegacyTask{
+	m.tasks.Put(id, &LegacyTask{
 		ID:        id,
 		Type:      taskType,
 		Payload:   payload,
 		Priority:  priority,
 		Status:    "pending",
 		CreatedAt: time.Now(),
-	}
+	})
 	return id, nil
 }
 
 func (m *mockLegacyQueue) Dequeue(ctx context.Context, workerID string) (*LegacyTask, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.dequeueErr != nil {
 		return nil, m.dequeueErr
 	}
 
-	for _, task := range m.tasks {
+	var picked *LegacyTask
+	m.tasks.Range(func(_ string, task *LegacyTask) bool {
 		if task.Status == "pending" {
 			task.Status = "processing"
 			task.WorkerID = workerID
 			now := time.Now()
 			task.StartedAt = &now
-			return task, nil
+			picked = task
+			return false
 		}
-	}
-	return nil, nil
+		return true
+	})
+	return picked, nil
 }
 
 func (m *mockLegacyQueue) Complete(ctx context.Context, taskID string, result []byte) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.completeErr != nil {
 		return m.completeErr
 	}
 
-	if task, ok := m.tasks[taskID]; ok {
+	if task, ok := m.tasks.Get(taskID); ok {
 		task.Status = "completed"
 		task.Result = result
 		now := time.Now()
@@ -90,14 +88,11 @@ func (m *mockLegacyQueue) Complete(ctx context.Context, taskID string, result []
 }
 
 func (m *mockLegacyQueue) Fail(ctx context.Context, taskID string, err error) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.failErr != nil {
 		return m.failErr
 	}
 
-	if task, ok := m.tasks[taskID]; ok {
+	if task, ok := m.tasks.Get(taskID); ok {
 		task.Status = "failed"
 		if err != nil {
 			task.Error = err.Error()
@@ -107,127 +102,104 @@ func (m *mockLegacyQueue) Fail(ctx context.Context, taskID string, err error) er
 }
 
 func (m *mockLegacyQueue) GetPendingTasks(ctx context.Context) ([]*LegacyTask, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var pending []*LegacyTask
-	for _, task := range m.tasks {
+	m.tasks.Range(func(_ string, task *LegacyTask) bool {
 		if task.Status == "pending" && !task.Migrated {
 			pending = append(pending, task)
 		}
-	}
+		return true
+	})
 	return pending, nil
 }
 
 func (m *mockLegacyQueue) GetTask(ctx context.Context, taskID string) (*LegacyTask, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	if task, ok := m.tasks[taskID]; ok {
+	if task, ok := m.tasks.Get(taskID); ok {
 		return task, nil
 	}
 	return nil, nil
 }
 
 func (m *mockLegacyQueue) MarkMigrated(ctx context.Context, taskID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.migrateErr != nil {
 		return m.migrateErr
 	}
 
-	if task, ok := m.tasks[taskID]; ok {
+	if task, ok := m.tasks.Get(taskID); ok {
 		task.Migrated = true
 	}
 	return nil
 }
 
 // mockMessageBroker implements MessageBroker for testing.
+//
+// Concurrency model (CONST-029): messages → *safe.Slice; counters →
+// atomic.Int64; connected → atomic.Bool.
 type mockMessageBroker struct {
-	mu              sync.RWMutex
-	connected       bool
-	messages        []*Message
+	connected       atomic.Bool
+	messages        *safe.Slice[*Message]
 	publishErr      error
 	subscribeErr    error
-	publishCalled   int
-	subscribeCalled int
+	publishCalled   atomic.Int64
+	subscribeCalled atomic.Int64
 	brokerType      BrokerType
 }
 
 func newMockMessageBroker(brokerType BrokerType) *mockMessageBroker {
 	return &mockMessageBroker{
-		messages:   make([]*Message, 0),
+		messages:   safe.NewSlice[*Message](),
 		brokerType: brokerType,
 	}
 }
 
 func (m *mockMessageBroker) Connect(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.connected = true
+	m.connected.Store(true)
 	return nil
 }
 
 func (m *mockMessageBroker) Close(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.connected = false
+	m.connected.Store(false)
 	return nil
 }
 
 func (m *mockMessageBroker) HealthCheck(ctx context.Context) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if !m.connected {
+	if !m.connected.Load() {
 		return errors.New("not connected")
 	}
 	return nil
 }
 
 func (m *mockMessageBroker) IsConnected() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.connected
+	return m.connected.Load()
 }
 
 func (m *mockMessageBroker) Publish(ctx context.Context, topic string, message *Message, opts ...PublishOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.publishErr != nil {
 		return m.publishErr
 	}
 
-	m.publishCalled++
-	m.messages = append(m.messages, message)
+	m.publishCalled.Add(1)
+	m.messages.Append(message)
 	return nil
 }
 
 func (m *mockMessageBroker) PublishBatch(ctx context.Context, topic string, messages []*Message, opts ...PublishOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.publishErr != nil {
 		return m.publishErr
 	}
 
 	for _, msg := range messages {
-		m.publishCalled++
-		m.messages = append(m.messages, msg)
+		m.publishCalled.Add(1)
+		m.messages.Append(msg)
 	}
 	return nil
 }
 
 func (m *mockMessageBroker) Subscribe(ctx context.Context, topic string, handler MessageHandler, opts ...SubscribeOption) (Subscription, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.subscribeErr != nil {
 		return nil, m.subscribeErr
 	}
 
-	m.subscribeCalled++
+	m.subscribeCalled.Add(1)
 	return &mockSubscription{topic: topic, active: true}, nil
 }
 
@@ -364,7 +336,7 @@ func TestMigrationManager_EnqueueTask_Legacy(t *testing.T) {
 	taskID, err := m.EnqueueTask(ctx, "test", []byte(`{"key":"value"}`), 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, taskID)
-	assert.Equal(t, 1, legacyQueue.enqueueCalled)
+	assert.Equal(t, int64(1), legacyQueue.enqueueCalled.Load())
 }
 
 func TestMigrationManager_EnqueueTask_Messaging(t *testing.T) {
@@ -378,7 +350,7 @@ func TestMigrationManager_EnqueueTask_Messaging(t *testing.T) {
 	taskID, err := m.EnqueueTask(ctx, "test", []byte(`{"key":"value"}`), 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, taskID)
-	assert.Equal(t, 1, rabbitBroker.publishCalled)
+	assert.Equal(t, int64(1), rabbitBroker.publishCalled.Load())
 }
 
 func TestMigrationManager_EnqueueTask_DualWrite(t *testing.T) {
@@ -397,8 +369,8 @@ func TestMigrationManager_EnqueueTask_DualWrite(t *testing.T) {
 	taskID, err := m.EnqueueTask(ctx, "llm_request", []byte(`{"prompt":"hello"}`), 8)
 	require.NoError(t, err)
 	assert.NotEmpty(t, taskID)
-	assert.Equal(t, 1, legacyQueue.enqueueCalled)
-	assert.Equal(t, 1, rabbitBroker.publishCalled)
+	assert.Equal(t, int64(1), legacyQueue.enqueueCalled.Load())
+	assert.Equal(t, int64(1), rabbitBroker.publishCalled.Load())
 
 	metrics := m.GetMetrics()
 	assert.Equal(t, int64(1), metrics.DualWriteCount.Load())
@@ -423,7 +395,7 @@ func TestMigrationManager_EnqueueTask_DualWrite_RabbitMQFailure(t *testing.T) {
 	taskID, err := m.EnqueueTask(ctx, "test", []byte(`{}`), 5)
 	require.NoError(t, err)
 	assert.NotEmpty(t, taskID)
-	assert.Equal(t, 1, legacyQueue.enqueueCalled)
+	assert.Equal(t, int64(1), legacyQueue.enqueueCalled.Load())
 
 	metrics := m.GetMetrics()
 	assert.Equal(t, int64(1), metrics.DiscrepanciesFound.Load())
@@ -496,11 +468,11 @@ func TestMigrationManager_MigratePendingTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify
-	assert.Equal(t, 3, rabbitBroker.publishCalled)
+	assert.Equal(t, int64(3), rabbitBroker.publishCalled.Load())
 	assert.Equal(t, int64(3), m.GetMetrics().TasksMigrated.Load())
 
 	// Verify tasks marked as migrated
-	for _, task := range legacyQueue.tasks {
+	for _, task := range legacyQueue.tasks.Snapshot() {
 		assert.True(t, task.Migrated, "task %s should be marked as migrated", task.ID)
 	}
 }

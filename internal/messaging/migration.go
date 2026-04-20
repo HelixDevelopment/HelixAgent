@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"go.uber.org/zap"
 )
 
@@ -149,6 +151,11 @@ type MigrationMetrics struct {
 }
 
 // MigrationManager handles the transition between task queue systems.
+//
+// Concurrency model (CONST-029): errorWindow → *safe.Slice; mu
+// (RWMutex) survives to serialise broker pointer setters / reads
+// (broker fields are scalar interfaces, not Pattern-A collections,
+// so they stay alongside mu).
 type MigrationManager struct {
 	config       *MigrationConfig
 	legacyQueue  LegacyTaskQueue
@@ -157,8 +164,7 @@ type MigrationManager struct {
 	metrics      *MigrationMetrics
 	logger       *zap.Logger
 	mu           sync.RWMutex
-	errorWindow  []time.Time
-	windowMu     sync.Mutex
+	errorWindow  *safe.Slice[time.Time]
 }
 
 // NewMigrationManager creates a new migration manager.
@@ -173,7 +179,7 @@ func NewMigrationManager(cfg *MigrationConfig, logger *zap.Logger) *MigrationMan
 		config:      cfg,
 		metrics:     &MigrationMetrics{},
 		logger:      logger,
-		errorWindow: make([]time.Time, 0),
+		errorWindow: safe.NewSlice[time.Time](),
 	}
 	m.metrics.CurrentMode.Store(int32(cfg.Mode)) // #nosec G115 - mode enum fits in int32
 	return m
@@ -457,21 +463,21 @@ func (m *MigrationManager) recordError() {
 		return
 	}
 
-	m.windowMu.Lock()
-	defer m.windowMu.Unlock()
-
 	now := time.Now()
 	windowStart := now.Add(-time.Minute)
 
-	// Clean old entries
-	cleaned := make([]time.Time, 0)
-	for _, t := range m.errorWindow {
+	// Clean old entries + append new. Snapshot + Replace gives us a
+	// single-writer-at-a-time atomic swap under safe.Slice's internal
+	// lock; no need for a separate windowMu.
+	snap := m.errorWindow.Snapshot()
+	cleaned := make([]time.Time, 0, len(snap)+1)
+	for _, t := range snap {
 		if t.After(windowStart) {
 			cleaned = append(cleaned, t)
 		}
 	}
 	cleaned = append(cleaned, now)
-	m.errorWindow = cleaned
+	m.errorWindow.Replace(cleaned)
 
 	m.metrics.ErrorsPerMinute.Store(int64(len(cleaned)))
 

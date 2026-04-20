@@ -8,8 +8,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // EnhancedScoreComponents represents the 7-component scoring system
@@ -59,17 +60,21 @@ type EnhancedScoringResult struct {
 	Latency           time.Duration   `json:"latency,omitempty"`
 }
 
-// EnhancedScoringService provides advanced scoring for debate team selection
+// EnhancedScoringService provides advanced scoring for debate team selection.
+//
+// Concurrent-safe by construction: cache and providerScores are safe.Store.
+// Both cacheMu and providerScoresMu dropped entirely. The previous
+// updateProviderScore running-average write-under-lock is now a
+// Store.Update closure (atomic read-then-compute-then-store for a single
+// key). The diversity-count read over cache is a snapshot via Range.
 type EnhancedScoringService struct {
 	weights  *EnhancedScoreWeights
-	cache    map[string]*EnhancedScoringResult
-	cacheMu  sync.RWMutex
+	cache    *safe.Store[string, *EnhancedScoringResult]
 	cacheTTL time.Duration
 	baseSvc  *ScoringService
 
 	// Provider-level aggregations
-	providerScores   map[string]float64
-	providerScoresMu sync.RWMutex
+	providerScores *safe.Store[string, float64]
 }
 
 // DefaultEnhancedWeights returns the default 7-component weights
@@ -89,10 +94,10 @@ func DefaultEnhancedWeights() *EnhancedScoreWeights {
 func NewEnhancedScoringService(baseSvc *ScoringService) *EnhancedScoringService {
 	return &EnhancedScoringService{
 		weights:        DefaultEnhancedWeights(),
-		cache:          make(map[string]*EnhancedScoringResult),
+		cache:          safe.NewStore[string, *EnhancedScoringResult](),
 		cacheTTL:       6 * time.Hour,
 		baseSvc:        baseSvc,
-		providerScores: make(map[string]float64),
+		providerScores: safe.NewStore[string, float64](),
 	}
 }
 
@@ -101,14 +106,11 @@ func (es *EnhancedScoringService) CalculateEnhancedScore(ctx context.Context, mo
 	cacheKey := provider.ID + ":" + model.ID
 
 	// Check cache
-	es.cacheMu.RLock()
-	if cached, ok := es.cache[cacheKey]; ok {
+	if cached, ok := es.cache.Get(cacheKey); ok {
 		if time.Since(cached.CalculatedAt) < es.cacheTTL {
-			es.cacheMu.RUnlock()
 			return cached, nil
 		}
 	}
-	es.cacheMu.RUnlock()
 
 	// Calculate individual components
 	components := es.calculateComponents(model, provider)
@@ -144,9 +146,7 @@ func (es *EnhancedScoringService) CalculateEnhancedScore(ctx context.Context, mo
 	}
 
 	// Update cache
-	es.cacheMu.Lock()
-	es.cache[cacheKey] = result
-	es.cacheMu.Unlock()
+	es.cache.Put(cacheKey, result)
 
 	// Update provider average
 	es.updateProviderScore(provider.ID, overallScore)
@@ -549,21 +549,21 @@ func (es *EnhancedScoringService) calculateConfidenceScore(model *UnifiedModel, 
 // calculateDiversityBonus calculates diversity bonus for team selection
 // Based on Document 003: "Productive Chaos" philosophy with diversity metric.
 //
-// Ranges over es.cache, which is protected by cacheMu — NOT
-// providerScoresMu. Previously this held the wrong lock, so concurrent
-// CalculateEnhancedScore callers writing to the cache raced with the
-// diversity scan (BUGFIX #38).
+// Ranges over es.cache via safe.Store.Range — the Store's own lock
+// serialises this scan with concurrent CalculateEnhancedScore writes.
+// Historical BUGFIX #38 (wrong-lock) no longer applicable after the
+// CONST-029 migration: there is only one lock (the Store's internal
+// one) and it is correctly held during both Range and Put.
 func (es *EnhancedScoringService) calculateDiversityBonus(providerID, modelID string) float64 {
-	es.cacheMu.RLock()
-	defer es.cacheMu.RUnlock()
-
 	// Count how many models from this provider are already in cache
 	providerCount := 0
-	for key := range es.cache {
-		if strings.HasPrefix(key, providerID+":") {
+	prefix := providerID + ":"
+	es.cache.Range(func(key string, _ *EnhancedScoringResult) bool {
+		if strings.HasPrefix(key, prefix) {
 			providerCount++
 		}
-	}
+		return true
+	})
 
 	// Less represented providers get bonus (encourages diversity)
 	switch {
@@ -578,29 +578,22 @@ func (es *EnhancedScoringService) calculateDiversityBonus(providerID, modelID st
 	}
 }
 
-// updateProviderScore updates the average score for a provider
+// updateProviderScore updates the average score for a provider.
+// Store.Update is an atomic read-compute-write for a single key, so
+// two concurrent callers for the same providerID compute their
+// running-average against each other's latest value, not a stale one.
 func (es *EnhancedScoringService) updateProviderScore(providerID string, score float64) {
-	es.providerScoresMu.Lock()
-	defer es.providerScoresMu.Unlock()
-
-	current, exists := es.providerScores[providerID]
-	if exists {
-		// Running average
-		es.providerScores[providerID] = (current + score) / 2
-	} else {
-		es.providerScores[providerID] = score
-	}
+	es.providerScores.Update(providerID, func(current float64, present bool) (float64, bool) {
+		if present {
+			return (current + score) / 2, true
+		}
+		return score, true
+	})
 }
 
 // GetTopScoringModels returns the top N models by enhanced score
 func (es *EnhancedScoringService) GetTopScoringModels(limit int) []*EnhancedScoringResult {
-	es.cacheMu.RLock()
-	defer es.cacheMu.RUnlock()
-
-	results := make([]*EnhancedScoringResult, 0, len(es.cache))
-	for _, result := range es.cache {
-		results = append(results, result)
-	}
+	results := es.cache.Values()
 
 	// Sort by overall score (with diversity bonus)
 	sort.Slice(results, func(i, j int) bool {
@@ -618,15 +611,13 @@ func (es *EnhancedScoringService) GetTopScoringModels(limit int) []*EnhancedScor
 
 // GetModelsBySpecialization returns models with a specific specialization
 func (es *EnhancedScoringService) GetModelsBySpecialization(specialization string, limit int) []*EnhancedScoringResult {
-	es.cacheMu.RLock()
-	defer es.cacheMu.RUnlock()
-
 	results := make([]*EnhancedScoringResult, 0)
-	for _, result := range es.cache {
+	es.cache.Range(func(_ string, result *EnhancedScoringResult) bool {
 		if result.SpecializationTag == specialization {
 			results = append(results, result)
 		}
-	}
+		return true
+	})
 
 	// Sort by overall score
 	sort.Slice(results, func(i, j int) bool {
@@ -643,16 +634,14 @@ func (es *EnhancedScoringService) GetModelsBySpecialization(specialization strin
 // SelectDebateTeamFromScores selects the optimal 12 LLMs for debate from scored models
 // Based on research: 12 specialized agents for comprehensive debate
 func (es *EnhancedScoringService) SelectDebateTeamFromScores(minScore float64) []*EnhancedScoringResult {
-	es.cacheMu.RLock()
-	defer es.cacheMu.RUnlock()
-
-	// Filter by minimum score
+	// Filter by minimum score (snapshot via Range)
 	eligible := make([]*EnhancedScoringResult, 0)
-	for _, result := range es.cache {
+	es.cache.Range(func(_ string, result *EnhancedScoringResult) bool {
 		if result.OverallScore >= minScore {
 			eligible = append(eligible, result)
 		}
-	}
+		return true
+	})
 
 	// Sort by score with diversity bonus
 	sort.Slice(eligible, func(i, j int) bool {

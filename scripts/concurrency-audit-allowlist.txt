@@ -39,5 +39,4 @@ internal/services/request_service.go:50:ProviderMetrics
 internal/services/request_service.go:680:CircuitBreakerPattern
 internal/verifier/adapters/extended_registry.go:14:ExtendedProviderRegistry
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter
-internal/verifier/enhanced_scoring.go:63:EnhancedScoringService
 internal/verifier/startup.go:89:StartupVerifier

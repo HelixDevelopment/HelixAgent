@@ -303,22 +303,16 @@ func TestEnhancedScoringService_CalculateDiversityBonus(t *testing.T) {
 	t.Run("bonus decreases with more models", func(t *testing.T) {
 		// Simulate adding models to cache — guarded by cacheMu so the
 		// concurrent reader in calculateDiversityBonus is safe.
-		svc.cacheMu.Lock()
-		svc.cache["provider-a:model-1"] = &EnhancedScoringResult{}
-		svc.cacheMu.Unlock()
+		svc.cache.Put("provider-a:model-1", &EnhancedScoringResult{})
 
 		bonus1 := svc.calculateDiversityBonus("provider-a", "model-2")
 		assert.Equal(t, 0.2, bonus1)
 
-		svc.cacheMu.Lock()
-		svc.cache["provider-a:model-2"] = &EnhancedScoringResult{}
-		svc.cacheMu.Unlock()
+		svc.cache.Put("provider-a:model-2", &EnhancedScoringResult{})
 		bonus2 := svc.calculateDiversityBonus("provider-a", "model-3")
 		assert.Equal(t, 0.1, bonus2)
 
-		svc.cacheMu.Lock()
-		svc.cache["provider-a:model-3"] = &EnhancedScoringResult{}
-		svc.cacheMu.Unlock()
+		svc.cache.Put("provider-a:model-3", &EnhancedScoringResult{})
 		bonus3 := svc.calculateDiversityBonus("provider-a", "model-4")
 		assert.Equal(t, 0.0, bonus3)
 	})
@@ -329,24 +323,24 @@ func TestEnhancedScoringService_GetTopScoringModels(t *testing.T) {
 	svc := NewEnhancedScoringService(nil)
 
 	// Add some cached results
-	svc.cache["provider-a:model-1"] = &EnhancedScoringResult{
+	svc.cache.Put("provider-a:model-1", &EnhancedScoringResult{
 		ModelID:        "model-1",
 		Provider:       "provider-a",
 		OverallScore:   8.5,
 		DiversityBonus: 0.2,
-	}
-	svc.cache["provider-b:model-2"] = &EnhancedScoringResult{
+	})
+	svc.cache.Put("provider-b:model-2", &EnhancedScoringResult{
 		ModelID:        "model-2",
 		Provider:       "provider-b",
 		OverallScore:   9.0,
 		DiversityBonus: 0.5,
-	}
-	svc.cache["provider-c:model-3"] = &EnhancedScoringResult{
+	})
+	svc.cache.Put("provider-c:model-3", &EnhancedScoringResult{
 		ModelID:        "model-3",
 		Provider:       "provider-c",
 		OverallScore:   7.5,
 		DiversityBonus: 0.5,
-	}
+	})
 
 	t.Run("returns top models sorted by score", func(t *testing.T) {
 		t.Parallel()
@@ -377,12 +371,12 @@ func TestEnhancedScoringService_SelectDebateTeamFromScores(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		provider := "provider-" + string(rune('a'+i%5))
 		modelID := "model-" + string(rune('0'+i))
-		svc.cache[provider+":"+modelID] = &EnhancedScoringResult{
+		svc.cache.Put(provider+":"+modelID, &EnhancedScoringResult{
 			ModelID:        modelID,
 			Provider:       provider,
 			OverallScore:   5.0 + float64(i%5),
 			DiversityBonus: 0.1,
-		}
+		})
 	}
 
 	t.Run("selects up to 12 models", func(t *testing.T) {

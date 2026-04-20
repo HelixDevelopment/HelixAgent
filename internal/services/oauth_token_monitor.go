@@ -5,7 +5,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -59,18 +62,20 @@ func initOTMMetrics() {
 	})
 }
 
-// OAuthTokenMonitor monitors OAuth token expiry and sends alerts
+// OAuthTokenMonitor monitors OAuth token expiry and sends alerts.
+//
+// Concurrency model (CONST-029): listeners is *safe.Slice;
+// tokenStatus is *safe.Store; running is atomic.Bool.
 type OAuthTokenMonitor struct {
-	mu              sync.RWMutex
 	logger          *logrus.Logger
 	checkInterval   time.Duration
 	expiryThreshold time.Duration // Alert when token expires within this duration
-	listeners       []OAuthTokenAlertListener
+	listeners       *safe.Slice[OAuthTokenAlertListener]
 	stopCh          chan struct{}
-	running         bool
+	running         atomic.Bool
 
 	// Token status cache
-	tokenStatus map[string]*TokenStatus
+	tokenStatus *safe.Store[string, *TokenStatus]
 }
 
 // OAuthTokenAlertListener is called when token alerts occur
@@ -121,29 +126,22 @@ func NewOAuthTokenMonitor(logger *logrus.Logger, config OAuthTokenMonitorConfig)
 		logger:          logger,
 		checkInterval:   config.CheckInterval,
 		expiryThreshold: config.ExpiryThreshold,
-		listeners:       make([]OAuthTokenAlertListener, 0),
+		listeners:       safe.NewSlice[OAuthTokenAlertListener](),
 		stopCh:          make(chan struct{}),
-		tokenStatus:     make(map[string]*TokenStatus),
+		tokenStatus:     safe.NewStore[string, *TokenStatus](),
 	}
 }
 
 // AddAlertListener adds a listener for alerts
 func (otm *OAuthTokenMonitor) AddAlertListener(listener OAuthTokenAlertListener) {
-	otm.mu.Lock()
-	defer otm.mu.Unlock()
-	otm.listeners = append(otm.listeners, listener)
+	otm.listeners.Append(listener)
 }
 
 // Start starts the monitoring loop
 func (otm *OAuthTokenMonitor) Start(ctx context.Context) {
-	otm.mu.Lock()
-	if otm.running {
-		otm.mu.Unlock()
+	if !otm.running.CompareAndSwap(false, true) {
 		return
 	}
-	otm.running = true
-	otm.stopCh = make(chan struct{})
-	otm.mu.Unlock()
 
 	otm.logger.Info("OAuth token monitor started")
 
@@ -169,12 +167,8 @@ func (otm *OAuthTokenMonitor) Start(ctx context.Context) {
 
 // Stop stops the monitoring loop
 func (otm *OAuthTokenMonitor) Stop() {
-	otm.mu.Lock()
-	defer otm.mu.Unlock()
-
-	if otm.running {
+	if otm.running.CompareAndSwap(true, false) {
 		close(otm.stopCh)
-		otm.running = false
 	}
 }
 
@@ -371,9 +365,7 @@ func (otm *OAuthTokenMonitor) checkQwenToken() {
 
 // updateTokenStatus updates the token status cache
 func (otm *OAuthTokenMonitor) updateTokenStatus(provider string, status *TokenStatus) {
-	otm.mu.Lock()
-	defer otm.mu.Unlock()
-	otm.tokenStatus[provider] = status
+	otm.tokenStatus.Put(provider, status)
 
 	otm.logger.WithFields(logrus.Fields{
 		"provider":   provider,
@@ -388,13 +380,10 @@ func (otm *OAuthTokenMonitor) updateTokenStatus(provider string, status *TokenSt
 func (otm *OAuthTokenMonitor) sendAlert(alert OAuthTokenAlert) {
 	otmTokenAlertsTotal.WithLabelValues(alert.Provider, alert.Severity).Inc()
 
-	otm.mu.RLock()
-	listeners := otm.listeners
-	otm.mu.RUnlock()
-
-	for _, listener := range listeners {
+	otm.listeners.Range(func(_ int, listener OAuthTokenAlertListener) bool {
 		go listener(alert)
-	}
+		return true
+	})
 
 	logLevel := logrus.WarnLevel
 	if alert.Severity == "critical" || alert.Severity == "expired" {
@@ -414,14 +403,11 @@ func (otm *OAuthTokenMonitor) sendAlert(alert OAuthTokenAlert) {
 
 // GetStatus returns the current status of all OAuth tokens
 func (otm *OAuthTokenMonitor) GetStatus() OAuthTokenStatus {
-	otm.mu.RLock()
-	defer otm.mu.RUnlock()
-
 	tokens := make(map[string]*TokenStatus)
 	allValid := true
 	expiringCount := 0
 
-	for provider, status := range otm.tokenStatus {
+	otm.tokenStatus.Range(func(provider string, status *TokenStatus) bool {
 		tokens[provider] = status
 		if !status.Valid {
 			allValid = false
@@ -431,7 +417,8 @@ func (otm *OAuthTokenMonitor) GetStatus() OAuthTokenStatus {
 				expiringCount++
 			}
 		}
-	}
+		return true
+	})
 
 	return OAuthTokenStatus{
 		Healthy:       allValid && expiringCount == 0,

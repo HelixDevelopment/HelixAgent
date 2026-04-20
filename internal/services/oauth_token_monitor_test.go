@@ -14,9 +14,7 @@ import (
 func waitUntilOAuthMonitorRunning(t *testing.T, monitor *OAuthTokenMonitor) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		monitor.mu.Lock()
-		defer monitor.mu.Unlock()
-		return monitor.running
+		return monitor.running.Load()
 	}, 2*time.Second, time.Millisecond)
 }
 
@@ -54,7 +52,7 @@ func TestOAuthTokenMonitor_AlertListener(t *testing.T) {
 			alertReceived <- alert
 		})
 
-		assert.Len(t, monitor.listeners, 1)
+		assert.Equal(t, 1, monitor.listeners.Len())
 	})
 }
 

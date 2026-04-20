@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -23,17 +25,16 @@ type WebSocketClientInterface interface {
 
 // WebSocketServer manages WebSocket connections.
 //
-// Lock ordering: clientsMu MUST be acquired before globalClientsMu.
-// Never acquire globalClientsMu while holding clientsMu, or deadlock will occur.
-// Broadcast operations acquire only one lock at a time (clients then global).
+// Concurrency model (CONST-029): task-specific clients →
+// *safe.Store[taskID, map[clientID]Client] with Update-based COW for
+// the inner per-task client map; globalClients → *safe.Store. Both
+// mutexes dropped entirely.
 type WebSocketServer struct {
-	// Task-specific clients
-	clients   map[string]map[string]WebSocketClientInterface
-	clientsMu sync.RWMutex
+	// Task-specific clients (taskID → clientID → Client)
+	clients *safe.Store[string, map[string]WebSocketClientInterface]
 
-	// Global clients
-	globalClients   map[string]WebSocketClientInterface
-	globalClientsMu sync.RWMutex
+	// Global clients (clientID → Client)
+	globalClients *safe.Store[string, WebSocketClientInterface]
 
 	// Configuration
 	config   *WebSocketConfig
@@ -78,8 +79,8 @@ func NewWebSocketServer(config *WebSocketConfig, logger *logrus.Logger) *WebSock
 	ctx, cancel := context.WithCancel(context.Background())
 
 	server := &WebSocketServer{
-		clients:       make(map[string]map[string]WebSocketClientInterface),
-		globalClients: make(map[string]WebSocketClientInterface),
+		clients:       safe.NewStore[string, map[string]WebSocketClientInterface](),
+		globalClients: safe.NewStore[string, WebSocketClientInterface](),
 		config:        config,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  config.ReadBufferSize,
@@ -118,21 +119,19 @@ func (s *WebSocketServer) Stop() error {
 	s.wg.Wait()
 
 	// Close all clients
-	s.clientsMu.Lock()
-	for taskID, clients := range s.clients {
+	s.clients.Range(func(_ string, clients map[string]WebSocketClientInterface) bool {
 		for _, client := range clients {
 			_ = client.Close()
 		}
-		delete(s.clients, taskID)
-	}
-	s.clientsMu.Unlock()
+		return true
+	})
+	s.clients.Clear()
 
-	s.globalClientsMu.Lock()
-	for _, client := range s.globalClients {
+	s.globalClients.Range(func(_ string, client WebSocketClientInterface) bool {
 		_ = client.Close()
-	}
-	s.globalClients = make(map[string]WebSocketClientInterface)
-	s.globalClientsMu.Unlock()
+		return true
+	})
+	s.globalClients.Clear()
 
 	return nil
 }
@@ -179,13 +178,14 @@ func (s *WebSocketServer) HandleConnection(c *gin.Context) {
 
 // RegisterClient registers a client for a specific task
 func (s *WebSocketServer) RegisterClient(taskID string, client WebSocketClientInterface) error {
-	s.clientsMu.Lock()
-	defer s.clientsMu.Unlock()
-
-	if s.clients[taskID] == nil {
-		s.clients[taskID] = make(map[string]WebSocketClientInterface)
-	}
-	s.clients[taskID][client.ID()] = client
+	s.clients.Update(taskID, func(cur map[string]WebSocketClientInterface, _ bool) (map[string]WebSocketClientInterface, bool) {
+		next := make(map[string]WebSocketClientInterface, len(cur)+1)
+		for k, v := range cur {
+			next[k] = v
+		}
+		next[client.ID()] = client
+		return next, true
+	})
 
 	s.logger.WithFields(logrus.Fields{
 		"task_id":   taskID,
@@ -197,51 +197,51 @@ func (s *WebSocketServer) RegisterClient(taskID string, client WebSocketClientIn
 
 // UnregisterClient removes a client from a task
 func (s *WebSocketServer) UnregisterClient(taskID, clientID string) error {
-	s.clientsMu.Lock()
-	defer s.clientsMu.Unlock()
-
-	if clients, exists := s.clients[taskID]; exists {
-		if client, ok := clients[clientID]; ok {
-			_ = client.Close()
-			delete(clients, clientID)
+	var closed WebSocketClientInterface
+	s.clients.Update(taskID, func(cur map[string]WebSocketClientInterface, present bool) (map[string]WebSocketClientInterface, bool) {
+		if !present {
+			return cur, false
 		}
-		if len(clients) == 0 {
-			delete(s.clients, taskID)
+		client, ok := cur[clientID]
+		if !ok {
+			return cur, true
 		}
+		closed = client
+		if len(cur) == 1 {
+			return nil, false
+		}
+		next := make(map[string]WebSocketClientInterface, len(cur)-1)
+		for k, v := range cur {
+			if k != clientID {
+				next[k] = v
+			}
+		}
+		return next, true
+	})
+	if closed != nil {
+		_ = closed.Close()
 	}
-
 	return nil
 }
 
 // RegisterGlobalClient registers a global client
 func (s *WebSocketServer) RegisterGlobalClient(client WebSocketClientInterface) error {
-	s.globalClientsMu.Lock()
-	defer s.globalClientsMu.Unlock()
-
-	s.globalClients[client.ID()] = client
-
+	s.globalClients.Put(client.ID(), client)
 	s.logger.WithField("client_id", client.ID()).Debug("Global WebSocket client registered")
 	return nil
 }
 
 // UnregisterGlobalClient removes a global client
 func (s *WebSocketServer) UnregisterGlobalClient(clientID string) error {
-	s.globalClientsMu.Lock()
-	defer s.globalClientsMu.Unlock()
-
-	if client, exists := s.globalClients[clientID]; exists {
+	if client, ok := s.globalClients.Delete(clientID); ok {
 		_ = client.Close()
-		delete(s.globalClients, clientID)
 	}
-
 	return nil
 }
 
 // Broadcast sends a message to all clients watching a task
 func (s *WebSocketServer) Broadcast(taskID string, data []byte) {
-	s.clientsMu.RLock()
-	clients := s.clients[taskID]
-	s.clientsMu.RUnlock()
+	clients, _ := s.clients.Get(taskID)
 
 	for _, client := range clients {
 		if err := client.Send(data); err != nil {
@@ -255,29 +255,26 @@ func (s *WebSocketServer) Broadcast(taskID string, data []byte) {
 
 // BroadcastAll sends a message to all connected clients
 func (s *WebSocketServer) BroadcastAll(data []byte) {
-	s.clientsMu.RLock()
-	for _, clients := range s.clients {
+	s.clients.Range(func(_ string, clients map[string]WebSocketClientInterface) bool {
 		for _, client := range clients {
 			if err := client.Send(data); err != nil {
 				s.logger.WithError(err).Debug("Failed to send to WebSocket client")
 			}
 		}
-	}
-	s.clientsMu.RUnlock()
+		return true
+	})
 
 	s.broadcastGlobal(data)
 }
 
 // broadcastGlobal sends data to all global clients
 func (s *WebSocketServer) broadcastGlobal(data []byte) {
-	s.globalClientsMu.RLock()
-	defer s.globalClientsMu.RUnlock()
-
-	for _, client := range s.globalClients {
+	s.globalClients.Range(func(_ string, client WebSocketClientInterface) bool {
 		if err := client.Send(data); err != nil {
 			s.logger.WithError(err).Debug("Failed to send to global WebSocket client")
 		}
-	}
+		return true
+	})
 }
 
 // readLoop reads messages from a WebSocket client
@@ -353,26 +350,18 @@ func (s *WebSocketServer) pingLoop(client *WebSocketClient) {
 
 // GetClientCount returns the number of clients for a task
 func (s *WebSocketServer) GetClientCount(taskID string) int {
-	s.clientsMu.RLock()
-	defer s.clientsMu.RUnlock()
-
-	return len(s.clients[taskID])
+	clients, _ := s.clients.Get(taskID)
+	return len(clients)
 }
 
 // GetTotalClientCount returns the total number of connected clients
 func (s *WebSocketServer) GetTotalClientCount() int {
-	s.clientsMu.RLock()
 	taskCount := 0
-	for _, clients := range s.clients {
+	s.clients.Range(func(_ string, clients map[string]WebSocketClientInterface) bool {
 		taskCount += len(clients)
-	}
-	s.clientsMu.RUnlock()
-
-	s.globalClientsMu.RLock()
-	globalCount := len(s.globalClients)
-	s.globalClientsMu.RUnlock()
-
-	return taskCount + globalCount
+		return true
+	})
+	return taskCount + s.globalClients.Len()
 }
 
 // WebSocketMessage represents an incoming WebSocket message

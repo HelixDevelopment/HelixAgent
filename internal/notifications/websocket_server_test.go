@@ -7,8 +7,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -17,39 +20,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockWebSocketClient implements WebSocketClientInterface for testing
+// MockWebSocketClient implements WebSocketClientInterface for testing.
+//
+// Concurrency model (CONST-029): messages → *safe.Slice; closed →
+// atomic.Bool; sendErr → atomic.Pointer[error].
 type MockWebSocketClient struct {
 	id       string
-	messages [][]byte
-	mu       sync.Mutex
-	closed   bool
-	sendErr  error
+	messages *safe.Slice[[]byte]
+	closed   atomic.Bool
+	sendErr  atomic.Pointer[error]
 }
 
 func NewMockWebSocketClient(id string) *MockWebSocketClient {
 	return &MockWebSocketClient{
 		id:       id,
-		messages: make([][]byte, 0),
+		messages: safe.NewSlice[[]byte](),
 	}
 }
 
 func (m *MockWebSocketClient) Send(data []byte) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.closed {
+	if m.closed.Load() {
 		return nil
 	}
-	if m.sendErr != nil {
-		return m.sendErr
+	if ep := m.sendErr.Load(); ep != nil {
+		return *ep
 	}
-	m.messages = append(m.messages, data)
+	m.messages.Append(data)
 	return nil
 }
 
 func (m *MockWebSocketClient) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.closed = true
+	m.closed.Store(true)
 	return nil
 }
 
@@ -58,15 +59,20 @@ func (m *MockWebSocketClient) ID() string {
 }
 
 func (m *MockWebSocketClient) GetMessages() [][]byte {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return append([][]byte{}, m.messages...)
+	return m.messages.Snapshot()
 }
 
 func (m *MockWebSocketClient) IsClosed() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.closed
+	return m.closed.Load()
+}
+
+// SetSendError configures the mock to return err from Send.
+func (m *MockWebSocketClient) SetSendError(err error) {
+	if err == nil {
+		m.sendErr.Store(nil)
+		return
+	}
+	m.sendErr.Store(&err)
 }
 
 // Tests for DefaultWebSocketConfig

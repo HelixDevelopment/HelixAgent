@@ -13,8 +13,6 @@ internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
-internal/notifications/websocket_server.go:29:WebSocketServer
-internal/notifications/websocket_server_test.go:21:MockWebSocketClient
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/optimization/optimizer.go:23:Service

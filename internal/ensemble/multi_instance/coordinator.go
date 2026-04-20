@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/background"
 	"dev.helix.agent/internal/ensemble/synchronization"
@@ -20,13 +22,16 @@ import (
 
 // Coordinator manages multiple agent instances for ensemble execution.
 //
-// Lock ordering (MUST be followed to prevent deadlocks):
-//  1. Coordinator.mu (outermost)
-//  2. EnsembleSession.mu
-//  3. WorkerPool.mu
-//  4. EventBus.mu (innermost)
+// Concurrency model (CONST-029): sessions → *safe.Store. The former
+// Coordinator.mu is dropped — individual session-field mutations in
+// ExecuteSession/CancelSession are handled as in pre-existing code
+// without explicit locking (they write through the shared session
+// pointer); the Store guards only the ID → session map.
 //
-// Never acquire a higher-numbered lock while holding a lower-numbered lock.
+// Lock ordering (legacy, for session-internal locks):
+//  1. EnsembleSession.mu (if re-introduced)
+//  2. WorkerPool.mu
+//  3. EventBus.mu (innermost)
 type Coordinator struct {
 	db          *sql.DB
 	logger      *log.Logger
@@ -34,8 +39,7 @@ type Coordinator struct {
 	syncMgr     *synchronization.SyncManager
 
 	// Active sessions
-	sessions map[string]*EnsembleSession
-	mu       sync.RWMutex
+	sessions *safe.Store[string, *EnsembleSession]
 
 	// Load balancer
 	loadBalancer LoadBalancer
@@ -226,7 +230,7 @@ func NewCoordinator(
 		logger:        logger,
 		instanceMgr:   instanceMgr,
 		syncMgr:       syncMgr,
-		sessions:      make(map[string]*EnsembleSession),
+		sessions:      safe.NewStore[string, *EnsembleSession](),
 		loadBalancer:  NewRoundRobinBalancer(),
 		healthMonitor: NewHealthMonitor(),
 		workerPool:    background.NewWorkerPool(100),
@@ -342,9 +346,7 @@ func (c *Coordinator) CreateSession(
 	}
 
 	// Register session
-	c.mu.Lock()
-	c.sessions[session.ID] = session
-	c.mu.Unlock()
+	c.sessions.Put(session.ID, session)
 
 	// Subscribe to session events
 	session.MessageBus.sessionID = session.ID
@@ -428,17 +430,14 @@ func (c *Coordinator) GetSession(id string) (*EnsembleSession, error) {
 
 // ListSessions returns all sessions matching the filter.
 func (c *Coordinator) ListSessions(status SessionStatus) []*EnsembleSession {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	var result []*EnsembleSession
-	for _, session := range c.sessions {
+	c.sessions.Range(func(_ string, session *EnsembleSession) bool {
 		if status != "" && session.Status != status {
-			continue
+			return true
 		}
 		result = append(result, session)
-	}
-
+		return true
+	})
 	return result
 }
 
@@ -931,14 +930,10 @@ func (c *Coordinator) calculateAgreement(results map[string]*AgentResult) float6
 }
 
 func (c *Coordinator) getSession(id string) (*EnsembleSession, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	session, ok := c.sessions[id]
+	session, ok := c.sessions.Get(id)
 	if !ok {
 		return nil, fmt.Errorf("session %s not found", id)
 	}
-
 	return session, nil
 }
 
@@ -1095,12 +1090,11 @@ func (c *Coordinator) healthMonitorLoop() {
 }
 
 func (c *Coordinator) checkSessionHealth() {
-	c.mu.RLock()
-	sessions := make([]*EnsembleSession, 0, len(c.sessions))
-	for _, s := range c.sessions {
+	sessions := make([]*EnsembleSession, 0, c.sessions.Len())
+	c.sessions.Range(func(_ string, s *EnsembleSession) bool {
 		sessions = append(sessions, s)
-	}
-	c.mu.RUnlock()
+		return true
+	})
 
 	for _, session := range sessions {
 		if session.Status != SessionStatusActive {

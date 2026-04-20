@@ -5,7 +5,6 @@
 #
 internal/clis/pool.go:13:InstancePool
 internal/ensemble/background/worker_pool.go:33:WorkerPool
-internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/synchronization/manager.go:17:SyncManager
 internal/handlers/debate_handler.go:19:DebateHandler
 internal/handlers/extended/ensemble.go:26:AgentTeam

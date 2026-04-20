@@ -102,9 +102,7 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 		Status:   SessionStatusCreating,
 	}
 
-	coord.mu.Lock()
-	coord.sessions[session.ID] = session
-	coord.mu.Unlock()
+	coord.sessions.Put(session.ID, session)
 
 	mock.ExpectExec("UPDATE ensemble_sessions SET status = .* started_at").
 		WithArgs(SessionStatusActive, "test-session").
@@ -160,9 +158,7 @@ func TestCoordinator_GetSession(t *testing.T) {
 		Status: SessionStatusActive,
 	}
 
-	coord.mu.Lock()
-	coord.sessions[session.ID] = session
-	coord.mu.Unlock()
+	coord.sessions.Put(session.ID, session)
 
 	// Get existing session
 	retrieved, err := coord.GetSession("test-session")
@@ -198,11 +194,9 @@ func TestCoordinator_ListSessions(t *testing.T) {
 		{ID: "3", Status: SessionStatusActive},
 	}
 
-	coord.mu.Lock()
 	for _, s := range sessions {
-		coord.sessions[s.ID] = s
+		coord.sessions.Put(s.ID, s)
 	}
-	coord.mu.Unlock()
 
 	// List all
 	all := coord.ListSessions("")
@@ -238,9 +232,7 @@ func TestCoordinator_CancelSession(t *testing.T) {
 		Status: SessionStatusActive,
 	}
 
-	coord.mu.Lock()
-	coord.sessions[session.ID] = session
-	coord.mu.Unlock()
+	coord.sessions.Put(session.ID, session)
 
 	mock.ExpectExec("UPDATE ensemble_sessions SET status = .* WHERE id = .").
 		WithArgs(SessionStatusCancelled, "test-session").

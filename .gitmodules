@@ -464,3 +464,15 @@
 [submodule "docs/research/CL4R1T4S"]
 	path = docs/research/CL4R1T4S
 	url = git@github.com:elder-plinius/CL4R1T4S.git
+[submodule "docs/research/AutoRedTeam"]
+	path = docs/research/AutoRedTeam
+	url = git@github.com:elder-plinius/AutoRedTeam.git
+[submodule "docs/research/LEAKHUB"]
+	path = docs/research/LEAKHUB
+	url = git@github.com:elder-plinius/LEAKHUB.git
+[submodule "docs/research/Gandalf-Solutions"]
+	path = docs/research/Gandalf-Solutions
+	url = git@github.com:elder-plinius/Gandalf-Solutions.git
+[submodule "docs/research/CLAUDE-CODE-SYSTEM-PROMPT"]
+	path = docs/research/CLAUDE-CODE-SYSTEM-PROMPT
+	url = git@github.com:elder-plinius/CLAUDE-CODE-SYSTEM-PROMPT.git

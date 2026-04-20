@@ -17,14 +17,15 @@ import (
 func TestNewMockResourceMonitor(t *testing.T) {
 	mock := NewMockResourceMonitor()
 	require.NotNil(t, mock)
-	assert.NotNil(t, mock.systemResources)
+	sys := mock.systemResources.Load()
+	require.NotNil(t, sys)
 	assert.NotNil(t, mock.processResources)
 
 	// Verify default values
-	assert.Equal(t, 8, mock.systemResources.TotalCPUCores)
-	assert.Equal(t, float64(6), mock.systemResources.AvailableCPUCores)
-	assert.Equal(t, int64(16384), mock.systemResources.TotalMemoryMB)
-	assert.Equal(t, int64(8192), mock.systemResources.AvailableMemoryMB)
+	assert.Equal(t, 8, sys.TotalCPUCores)
+	assert.Equal(t, float64(6), sys.AvailableCPUCores)
+	assert.Equal(t, int64(16384), sys.TotalMemoryMB)
+	assert.Equal(t, int64(8192), sys.AvailableMemoryMB)
 }
 
 func TestMockResourceMonitor_GetSystemResources(t *testing.T) {

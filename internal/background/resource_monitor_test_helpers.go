@@ -1,49 +1,53 @@
 package background
 
 import (
-	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/models"
 )
 
 // MockResourceMonitor provides a mock implementation for testing.
 // This should only be used in tests, not in production code.
+//
+// Concurrency model (CONST-029): systemResources → atomic.Pointer
+// (whole struct swap); processResources → *safe.Store.
 type MockResourceMonitor struct {
-	systemResources  *SystemResources
-	processResources map[int]*models.ResourceSnapshot
-	mu               sync.RWMutex
+	systemResources  atomic.Pointer[SystemResources]
+	processResources *safe.Store[int, *models.ResourceSnapshot]
 }
 
 // NewMockResourceMonitor creates a new mock resource monitor with default values
 func NewMockResourceMonitor() *MockResourceMonitor {
-	return &MockResourceMonitor{
-		systemResources: &SystemResources{
-			TotalCPUCores:     8,
-			AvailableCPUCores: 6,
-			TotalMemoryMB:     16384,
-			AvailableMemoryMB: 8192,
-			CPULoadPercent:    25,
-			MemoryUsedPercent: 50,
-		},
-		processResources: make(map[int]*models.ResourceSnapshot),
+	m := &MockResourceMonitor{
+		processResources: safe.NewStore[int, *models.ResourceSnapshot](),
 	}
+	m.systemResources.Store(&SystemResources{
+		TotalCPUCores:     8,
+		AvailableCPUCores: 6,
+		TotalMemoryMB:     16384,
+		AvailableMemoryMB: 8192,
+		CPULoadPercent:    25,
+		MemoryUsedPercent: 50,
+	})
+	return m
 }
 
 // GetSystemResources returns the mock system resources
 func (m *MockResourceMonitor) GetSystemResources() (*SystemResources, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	resources := *m.systemResources
+	cur := m.systemResources.Load()
+	if cur == nil {
+		return &SystemResources{}, nil
+	}
+	resources := *cur
 	return &resources, nil
 }
 
 // GetProcessResources returns mock resources for a process
 func (m *MockResourceMonitor) GetProcessResources(pid int) (*models.ResourceSnapshot, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	if snapshot, exists := m.processResources[pid]; exists {
+	if snapshot, exists := m.processResources.Get(pid); exists {
 		return snapshot, nil
 	}
 
@@ -82,16 +86,12 @@ func (m *MockResourceMonitor) IsResourceAvailable(requirements ResourceRequireme
 
 // SetSystemResources sets the mock system resources for testing
 func (m *MockResourceMonitor) SetSystemResources(resources *SystemResources) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.systemResources = resources
+	m.systemResources.Store(resources)
 }
 
 // SetProcessResources sets mock resources for a process for testing
 func (m *MockResourceMonitor) SetProcessResources(pid int, snapshot *models.ResourceSnapshot) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.processResources[pid] = snapshot
+	m.processResources.Put(pid, snapshot)
 }
 
 // SetResourceAvailable allows configuring whether resources are available (for testing edge cases)

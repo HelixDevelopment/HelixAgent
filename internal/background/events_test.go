@@ -3,9 +3,10 @@ package background
 import (
 	"context"
 	"encoding/json"
-	"sync"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -158,25 +159,30 @@ func TestDefaultTaskEventPublisherConfig(t *testing.T) {
 
 // MockMessagingHub provides a mock for testing.
 type MockMessagingHub struct {
-	events      []*messaging.Event
-	mu          sync.Mutex
+	events      *safe.Slice[*messaging.Event]
 	shouldError bool
+}
+
+func newMockMessagingHub() *MockMessagingHub {
+	return &MockMessagingHub{events: safe.NewSlice[*messaging.Event]()}
 }
 
 func (m *MockMessagingHub) PublishEvent(ctx context.Context, topic string, event *messaging.Event) error {
 	if m.shouldError {
 		return messaging.NewBrokerError(messaging.ErrCodePublishFailed, "mock error", nil)
 	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.events = append(m.events, event)
+	if m.events == nil {
+		m.events = safe.NewSlice[*messaging.Event]()
+	}
+	m.events.Append(event)
 	return nil
 }
 
 func (m *MockMessagingHub) GetPublishedEvents() []*messaging.Event {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.events
+	if m.events == nil {
+		return nil
+	}
+	return m.events.Snapshot()
 }
 
 func TestTaskEventPublisher_Publish_Disabled(t *testing.T) {

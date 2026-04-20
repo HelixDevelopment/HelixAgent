@@ -368,10 +368,10 @@ func TestHealthService_GetFastestProvider(t *testing.T) {
 	svc.AddProvider("fast", "Fast")
 
 	// Manually set latency via providerHealth map
-	svc.mu.Lock()
-	svc.providerHealth["slow"].AvgResponseMs = 500
-	svc.providerHealth["fast"].AvgResponseMs = 100
-	svc.mu.Unlock()
+	slowH, _ := svc.providerHealth.Get("slow")
+	slowH.AvgResponseMs = 500
+	fastH, _ := svc.providerHealth.Get("fast")
+	fastH.AvgResponseMs = 100
 
 	fastest, err := svc.GetFastestProvider([]string{"slow", "fast"})
 	if err != nil {
@@ -408,9 +408,8 @@ func TestHealthService_GetProviderLatency(t *testing.T) {
 	svc.AddProvider("test", "Test")
 
 	// Set latency manually
-	svc.mu.Lock()
-	svc.providerHealth["test"].AvgResponseMs = 100
-	svc.mu.Unlock()
+	testH, _ := svc.providerHealth.Get("test")
+	testH.AvgResponseMs = 100
 
 	latency, err := svc.GetProviderLatency("test")
 	if err != nil {
@@ -791,9 +790,7 @@ func TestHealthService_HealthCheckLoop_WithCancel(t *testing.T) {
 	svc.Stop()
 
 	// Verify service is stopped
-	svc.mu.RLock()
-	running := svc.running
-	svc.mu.RUnlock()
+	running := svc.running.Load()
 
 	if running {
 		t.Error("service should not be running after Stop()")
@@ -806,13 +803,12 @@ func TestHealthService_UptimePercentCalculation(t *testing.T) {
 	svc.AddProvider("test", "test")
 
 	// Manually set success and failure counts
-	svc.mu.Lock()
-	svc.providerHealth["test"].SuccessCount = 9
-	svc.providerHealth["test"].FailureCount = 1
+	testH2, _ := svc.providerHealth.Get("test")
+	testH2.SuccessCount = 9
+	testH2.FailureCount = 1
 	// Manually calculate uptime
 	total := float64(10)
-	svc.providerHealth["test"].UptimePercent = float64(9) / total * 100
-	svc.mu.Unlock()
+	testH2.UptimePercent = float64(9) / total * 100
 
 	health, _ := svc.GetProviderHealth("test")
 	if health.UptimePercent != 90.0 {
@@ -862,10 +858,10 @@ func TestHealthService_GetFastestProvider_MultipleWithSameLatency(t *testing.T) 
 	svc.AddProvider("p2", "P2")
 
 	// Set same latency for both
-	svc.mu.Lock()
-	svc.providerHealth["p1"].AvgResponseMs = 100
-	svc.providerHealth["p2"].AvgResponseMs = 100
-	svc.mu.Unlock()
+	p1H, _ := svc.providerHealth.Get("p1")
+	p1H.AvgResponseMs = 100
+	p2H, _ := svc.providerHealth.Get("p2")
+	p2H.AvgResponseMs = 100
 
 	fastest, err := svc.GetFastestProvider([]string{"p1", "p2"})
 	if err != nil {

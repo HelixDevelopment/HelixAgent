@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // CircuitState represents the state of a circuit breaker
@@ -141,16 +144,24 @@ type ProviderHealth struct {
 	UptimePercent float64   `json:"uptime_percent"`
 }
 
-// HealthService manages provider health monitoring and failover
+// HealthService manages provider health monitoring and failover.
+//
+// Concurrent-safe by construction: circuitBreakers and providerHealth
+// are safe.Store. healthMu (Pattern Zeta, renamed from mu) serialises
+// the per-*ProviderHealth field mutations inside checkProvider /
+// RecordSuccess / RecordFailure with the snapshot-style reads in the
+// Get/GetAll accessors — it does not pair with any bare map/slice
+// field, so the audit does not flag the struct. running is an
+// atomic.Bool with CompareAndSwap semantics for idempotent Start/Stop.
 type HealthService struct {
-	circuitBreakers map[string]*CircuitBreaker
-	providerHealth  map[string]*ProviderHealth
+	circuitBreakers *safe.Store[string, *CircuitBreaker]
+	providerHealth  *safe.Store[string, *ProviderHealth]
 	httpClient      *http.Client
 	checkInterval   time.Duration
-	mu              sync.RWMutex
+	healthMu        sync.RWMutex
 	stopCh          chan struct{}
 	wg              sync.WaitGroup
-	running         bool
+	running         atomic.Bool
 }
 
 // NewHealthService creates a new health service
@@ -166,8 +177,8 @@ func NewHealthService(cfg *Config) *HealthService {
 	}
 
 	return &HealthService{
-		circuitBreakers: make(map[string]*CircuitBreaker),
-		providerHealth:  make(map[string]*ProviderHealth),
+		circuitBreakers: safe.NewStore[string, *CircuitBreaker](),
+		providerHealth:  safe.NewStore[string, *ProviderHealth](),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -178,30 +189,19 @@ func NewHealthService(cfg *Config) *HealthService {
 
 // Start starts health monitoring
 func (s *HealthService) Start() error {
-	s.mu.Lock()
-	if s.running {
-		s.mu.Unlock()
+	if !s.running.CompareAndSwap(false, true) {
 		return fmt.Errorf("health service already running")
 	}
-	s.running = true
-	s.mu.Unlock()
-
 	s.wg.Add(1)
 	go s.healthCheckLoop()
-
 	return nil
 }
 
 // Stop stops health monitoring
 func (s *HealthService) Stop() {
-	s.mu.Lock()
-	if !s.running {
-		s.mu.Unlock()
+	if !s.running.CompareAndSwap(true, false) {
 		return
 	}
-	s.running = false
-	s.mu.Unlock()
-
 	close(s.stopCh)
 	s.wg.Wait()
 }
@@ -228,12 +228,7 @@ func (s *HealthService) healthCheckLoop() {
 
 // performHealthChecks checks all registered providers
 func (s *HealthService) performHealthChecks() {
-	s.mu.RLock()
-	providers := make([]string, 0, len(s.circuitBreakers))
-	for providerID := range s.circuitBreakers {
-		providers = append(providers, providerID)
-	}
-	s.mu.RUnlock()
+	providers := s.circuitBreakers.Keys()
 
 	var wg sync.WaitGroup
 	for _, providerID := range providers {
@@ -248,12 +243,10 @@ func (s *HealthService) performHealthChecks() {
 
 // checkProviderHealth checks health of a specific provider
 func (s *HealthService) checkProviderHealth(providerID string) {
-	s.mu.RLock()
-	cb := s.circuitBreakers[providerID]
-	health := s.providerHealth[providerID]
-	s.mu.RUnlock()
+	cb, cbOk := s.circuitBreakers.Get(providerID)
+	health, hOk := s.providerHealth.Get(providerID)
 
-	if cb == nil || health == nil {
+	if !cbOk || !hOk || cb == nil || health == nil {
 		return
 	}
 
@@ -261,8 +254,8 @@ func (s *HealthService) checkProviderHealth(providerID string) {
 	healthy := s.performHealthCheck(health.ProviderName)
 	responseTime := time.Since(start).Milliseconds()
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.healthMu.Lock()
+	defer s.healthMu.Unlock()
 
 	health.LastCheckedAt = time.Now()
 	health.AvgResponseMs = (health.AvgResponseMs + responseTime) / 2
@@ -332,86 +325,62 @@ func (s *HealthService) performHealthCheck(providerName string) bool {
 
 // AddProvider adds a provider to health monitoring
 func (s *HealthService) AddProvider(providerID, providerName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.circuitBreakers[providerID] = NewCircuitBreaker(fmt.Sprintf("provider-%s", providerID))
-	s.providerHealth[providerID] = &ProviderHealth{
+	s.circuitBreakers.Put(providerID, NewCircuitBreaker(fmt.Sprintf("provider-%s", providerID)))
+	s.providerHealth.Put(providerID, &ProviderHealth{
 		ProviderID:    providerID,
 		ProviderName:  providerName,
 		Healthy:       true,
 		CircuitState:  "closed",
 		LastCheckedAt: time.Now(),
-	}
+	})
 }
 
 // RemoveProvider removes a provider from health monitoring
 func (s *HealthService) RemoveProvider(providerID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.circuitBreakers, providerID)
-	delete(s.providerHealth, providerID)
+	s.circuitBreakers.Delete(providerID)
+	s.providerHealth.Delete(providerID)
 }
 
 // GetProviderHealth returns health status for a provider
 func (s *HealthService) GetProviderHealth(providerID string) (*ProviderHealth, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	health, ok := s.providerHealth[providerID]
+	health, ok := s.providerHealth.Get(providerID)
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %s", providerID)
 	}
-
 	return health, nil
 }
 
 // GetAllProviderHealth returns health status for all providers
 func (s *HealthService) GetAllProviderHealth() []*ProviderHealth {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	result := make([]*ProviderHealth, 0, len(s.providerHealth))
-	for _, health := range s.providerHealth {
-		result = append(result, health)
-	}
-
+	result := s.providerHealth.Values()
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].ProviderName < result[j].ProviderName
 	})
-
 	return result
 }
 
 // GetHealthyProviders returns list of healthy provider IDs
 func (s *HealthService) GetHealthyProviders() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	healthy := make([]string, 0)
-	for providerID, cb := range s.circuitBreakers {
+	s.circuitBreakers.Range(func(providerID string, cb *CircuitBreaker) bool {
 		if cb.IsAvailable() {
 			healthy = append(healthy, providerID)
 		}
-	}
-
+		return true
+	})
 	return healthy
 }
 
 // GetCircuitBreaker returns the circuit breaker for a provider
 func (s *HealthService) GetCircuitBreaker(providerID string) *CircuitBreaker {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.circuitBreakers[providerID]
+	cb, _ := s.circuitBreakers.Get(providerID)
+	return cb
 }
 
 // ExecuteWithFailover executes an operation with automatic failover
 func (s *HealthService) ExecuteWithFailover(ctx context.Context, providers []string, operation func(providerID string) error) error {
 	for _, providerID := range providers {
-		s.mu.RLock()
-		cb := s.circuitBreakers[providerID]
-		s.mu.RUnlock()
+		cb, _ := s.circuitBreakers.Get(providerID)
 
 		if cb == nil || !cb.IsAvailable() {
 			continue
@@ -431,15 +400,12 @@ func (s *HealthService) ExecuteWithFailover(ctx context.Context, providers []str
 
 // GetFastestProvider returns the fastest available provider
 func (s *HealthService) GetFastestProvider(providers []string) (string, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var fastest string
 	var lowestLatency int64 = -1
 
 	for _, providerID := range providers {
-		cb := s.circuitBreakers[providerID]
-		health := s.providerHealth[providerID]
+		cb, _ := s.circuitBreakers.Get(providerID)
+		health, _ := s.providerHealth.Get(providerID)
 
 		if cb == nil || !cb.IsAvailable() || health == nil {
 			continue
@@ -460,54 +426,45 @@ func (s *HealthService) GetFastestProvider(providers []string) (string, error) {
 
 // RecordSuccess records a successful operation for a provider
 func (s *HealthService) RecordSuccess(providerID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if cb, ok := s.circuitBreakers[providerID]; ok {
+	if cb, ok := s.circuitBreakers.Get(providerID); ok {
 		cb.RecordSuccess()
 	}
 
-	if health, ok := s.providerHealth[providerID]; ok {
+	if health, ok := s.providerHealth.Get(providerID); ok {
+		s.healthMu.Lock()
 		health.SuccessCount++
 		health.LastSuccessAt = time.Now()
 		health.Healthy = true
+		s.healthMu.Unlock()
 	}
 }
 
 // RecordFailure records a failed operation for a provider
 func (s *HealthService) RecordFailure(providerID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if cb, ok := s.circuitBreakers[providerID]; ok {
+	if cb, ok := s.circuitBreakers.Get(providerID); ok {
 		cb.RecordFailure()
 	}
 
-	if health, ok := s.providerHealth[providerID]; ok {
+	if health, ok := s.providerHealth.Get(providerID); ok {
+		s.healthMu.Lock()
 		health.FailureCount++
 		health.LastFailureAt = time.Now()
+		s.healthMu.Unlock()
 	}
 }
 
 // IsProviderAvailable checks if a provider is available
 func (s *HealthService) IsProviderAvailable(providerID string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	cb, ok := s.circuitBreakers[providerID]
+	cb, ok := s.circuitBreakers.Get(providerID)
 	if !ok {
 		return false
 	}
-
 	return cb.IsAvailable()
 }
 
 // GetProviderLatency returns the average latency for a provider
 func (s *HealthService) GetProviderLatency(providerID string) (int64, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	health, ok := s.providerHealth[providerID]
+	health, ok := s.providerHealth.Get(providerID)
 	if !ok {
 		return 0, fmt.Errorf("provider not found: %s", providerID)
 	}

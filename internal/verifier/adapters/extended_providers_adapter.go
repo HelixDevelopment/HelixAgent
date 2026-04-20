@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 
 	verifier "dev.helix.agent/internal/verifier"
@@ -43,15 +44,23 @@ func DefaultExtendedProviderConfig() *ExtendedProviderConfig {
 }
 
 // ExtendedProvidersAdapter handles verification for newly added LLM providers
-// (Grok, Perplexity, Cohere, AI21, Together, Fireworks, Anyscale, DeepInfra, Lepton, SambaNova)
+// (Grok, Perplexity, Cohere, AI21, Together, Fireworks, Anyscale, DeepInfra, Lepton, SambaNova).
+//
+// Concurrency model (CONST-029): verifiedModels and providerResults
+// are safe.Store containers. Concurrent VerifyProvider calls publish
+// results into both stores atomically without any caller-held lock.
+// The previous design relied on a shared mu, but verifyModel's write
+// to epa.verifiedModels was actually guarded by a local modelsMu
+// (scoped to one provider's verification) — concurrent verifications
+// of different providers therefore raced on epa.verifiedModels;
+// safe.Store resolves that latent hazard.
 type ExtendedProvidersAdapter struct {
 	config     *ExtendedProviderConfig
 	httpClient *http.Client
 
 	// Cached results
-	mu              sync.RWMutex
-	verifiedModels  map[string]*verifier.UnifiedModel
-	providerResults map[string]*verifier.UnifiedProvider
+	verifiedModels  *safe.Store[string, *verifier.UnifiedModel]
+	providerResults *safe.Store[string, *verifier.UnifiedProvider]
 }
 
 // NewExtendedProvidersAdapter creates a new extended providers adapter
@@ -65,8 +74,8 @@ func NewExtendedProvidersAdapter(config *ExtendedProviderConfig) *ExtendedProvid
 		httpClient: &http.Client{
 			Timeout: config.VerificationTimeout,
 		},
-		verifiedModels:  make(map[string]*verifier.UnifiedModel),
-		providerResults: make(map[string]*verifier.UnifiedProvider),
+		verifiedModels:  safe.NewStore[string, *verifier.UnifiedModel](),
+		providerResults: safe.NewStore[string, *verifier.UnifiedProvider](),
 	}
 }
 
@@ -164,8 +173,8 @@ func (epa *ExtendedProvidersAdapter) VerifyProvider(ctx context.Context, req *Pr
 
 			modelsMu.Lock()
 			models = append(models, *model)
-			epa.verifiedModels[fmt.Sprintf("%s:%s", req.ProviderID, mID)] = model
 			modelsMu.Unlock()
+			epa.verifiedModels.Put(fmt.Sprintf("%s:%s", req.ProviderID, mID), model)
 		}(modelID)
 	}
 
@@ -218,9 +227,7 @@ func (epa *ExtendedProvidersAdapter) VerifyProvider(ctx context.Context, req *Pr
 	}
 
 	// Cache result
-	epa.mu.Lock()
-	epa.providerResults[req.ProviderID] = provider
-	epa.mu.Unlock()
+	epa.providerResults.Put(req.ProviderID, provider)
 
 	extLog.WithFields(logrus.Fields{
 		"provider":        req.ProviderID,
@@ -738,14 +745,7 @@ func (epa *ExtendedProvidersAdapter) getAPIKey(envVars []string) string {
 
 // GetVerifiedProviders returns cached verified providers
 func (epa *ExtendedProvidersAdapter) GetVerifiedProviders() map[string]*verifier.UnifiedProvider {
-	epa.mu.RLock()
-	defer epa.mu.RUnlock()
-
-	result := make(map[string]*verifier.UnifiedProvider, len(epa.providerResults))
-	for k, v := range epa.providerResults {
-		result[k] = v
-	}
-	return result
+	return epa.providerResults.Snapshot()
 }
 
 // Helper functions

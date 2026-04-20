@@ -11,20 +11,25 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 )
 
 // InstanceManager manages the lifecycle of CLI agent instances.
+//
+// Concurrency model (CONST-029): pools and instances are *safe.Store
+// instances; the Store's internal lock serialises access. Metrics use
+// atomic.AddUint64 / atomic.LoadUint64 and need no lock.
 type InstanceManager struct {
 	db     *sql.DB
 	logger *log.Logger
 
 	// Instance pools by type for efficient reuse
-	pools map[AgentType]*InstancePool
+	pools *safe.Store[AgentType, *InstancePool]
 
 	// Active instances (both idle and active)
-	instances map[string]*AgentInstance
-	mu        sync.RWMutex
+	instances *safe.Store[string, *AgentInstance]
 
 	// Event bus for instance events
 	eventBus *EventBus
@@ -53,8 +58,8 @@ func NewInstanceManager(db *sql.DB, logger *log.Logger) (*InstanceManager, error
 	im := &InstanceManager{
 		db:              db,
 		logger:          logger,
-		pools:           make(map[AgentType]*InstancePool),
-		instances:       make(map[string]*AgentInstance),
+		pools:           safe.NewStore[AgentType, *InstancePool](),
+		instances:       safe.NewStore[string, *AgentInstance](),
 		eventBus:        NewEventBus(),
 		workerPool:      NewWorkerPool(100),
 		healthCheckStop: make(chan struct{}),
@@ -114,9 +119,7 @@ func (m *InstanceManager) CreateInstance(
 	}
 
 	// Register in memory
-	m.mu.Lock()
-	m.instances[instance.ID] = instance
-	m.mu.Unlock()
+	m.instances.Put(instance.ID, instance)
 
 	// Update metrics
 	atomic.AddUint64(&m.createdCount, 1)
@@ -161,7 +164,7 @@ func (m *InstanceManager) AcquireInstance(
 	agentType AgentType,
 ) (*AgentInstance, error) {
 	// Try to get from pool first
-	if pool, ok := m.pools[agentType]; ok {
+	if pool, ok := m.pools.Get(agentType); ok {
 		if instance, err := pool.Acquire(ctx); err == nil {
 			m.logger.Printf("Acquired instance %s from pool", instance.ID)
 			return instance, nil
@@ -186,7 +189,7 @@ func (m *InstanceManager) ReleaseInstance(ctx context.Context, instance *AgentIn
 	instance.UpdatedAt = time.Now()
 
 	// Try to return to pool
-	if pool, ok := m.pools[instance.Type]; ok {
+	if pool, ok := m.pools.Get(instance.Type); ok {
 		if err := pool.Release(instance); err == nil {
 			m.logger.Printf("Released instance %s to pool", instance.ID)
 			return nil
@@ -199,10 +202,7 @@ func (m *InstanceManager) ReleaseInstance(ctx context.Context, instance *AgentIn
 
 // GetInstance retrieves an instance by ID.
 func (m *InstanceManager) GetInstance(id string) (*AgentInstance, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	instance, ok := m.instances[id]
+	instance, ok := m.instances.Get(id)
 	if !ok {
 		return nil, fmt.Errorf("instance %s not found", id)
 	}
@@ -212,29 +212,24 @@ func (m *InstanceManager) GetInstance(id string) (*AgentInstance, error) {
 
 // ListInstances returns all instances matching the filter.
 func (m *InstanceManager) ListInstances(status InstanceStatus, agentType AgentType) []*AgentInstance {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var result []*AgentInstance
-	for _, instance := range m.instances {
+	m.instances.Range(func(_ string, instance *AgentInstance) bool {
 		if status != "" && instance.Status != status {
-			continue
+			return true
 		}
 		if agentType != "" && instance.Type != agentType {
-			continue
+			return true
 		}
 		result = append(result, instance)
-	}
+		return true
+	})
 
 	return result
 }
 
 // TerminateInstance terminates an instance.
 func (m *InstanceManager) TerminateInstance(ctx context.Context, id string) error {
-	m.mu.Lock()
-	instance, exists := m.instances[id]
-	m.mu.Unlock()
-
+	instance, exists := m.instances.Get(id)
 	if !exists {
 		return fmt.Errorf("instance %s not found", id)
 	}
@@ -273,9 +268,7 @@ func (m *InstanceManager) TerminateInstance(ctx context.Context, id string) erro
 	}
 
 	// Remove from memory
-	m.mu.Lock()
-	delete(m.instances, id)
-	m.mu.Unlock()
+	m.instances.Delete(id)
 
 	// Update metrics
 	atomic.AddUint64(&m.destroyedCount, 1)
@@ -395,15 +388,11 @@ func (m *InstanceManager) IsAgentTypeAvailable(agentType AgentType) bool {
 
 // GetMetrics returns manager metrics.
 func (m *InstanceManager) GetMetrics() map[string]interface{} {
-	m.mu.RLock()
-	activeCount := len(m.instances)
-	m.mu.RUnlock()
-
 	return map[string]interface{}{
 		"created_total":   atomic.LoadUint64(&m.createdCount),
 		"destroyed_total": atomic.LoadUint64(&m.destroyedCount),
-		"active_count":    activeCount,
-		"pool_count":      len(m.pools),
+		"active_count":    m.instances.Len(),
+		"pool_count":      m.pools.Len(),
 	}
 }
 
@@ -414,12 +403,11 @@ func (m *InstanceManager) Close() error {
 
 	// Terminate all instances
 	ctx := context.Background()
-	m.mu.RLock()
-	instances := make([]*AgentInstance, 0, len(m.instances))
-	for _, inst := range m.instances {
+	instances := make([]*AgentInstance, 0, m.instances.Len())
+	m.instances.Range(func(_ string, inst *AgentInstance) bool {
 		instances = append(instances, inst)
-	}
-	m.mu.RUnlock()
+		return true
+	})
 
 	var wg sync.WaitGroup
 	for _, instance := range instances {
@@ -608,9 +596,7 @@ func (m *InstanceManager) recoverInstances(ctx context.Context) error {
 		inst.EventCh = make(chan *Event, 10)
 
 		// Register in memory
-		m.mu.Lock()
-		m.instances[inst.ID] = &inst
-		m.mu.Unlock()
+		m.instances.Put(inst.ID, &inst)
 
 		// Restart event loops
 		go m.instanceEventLoop(&inst)

@@ -115,7 +115,7 @@ func TestInstanceManager_AcquireInstance(t *testing.T) {
 			EventCh:    make(chan *Event, 10),
 		}, nil
 	})
-	im.pools[TypeAider] = pool
+	im.pools.Put(TypeAider, pool)
 
 	ctx := context.Background()
 	instance, err := im.AcquireInstance(ctx, TypeAider)
@@ -163,17 +163,13 @@ func TestInstanceManager_ReleaseInstance(t *testing.T) {
 		EventCh:    make(chan *Event, 10),
 	}
 
-	im.mu.Lock()
-	im.instances[instance.ID] = instance
-	im.mu.Unlock()
+	im.instances.Put(instance.ID, instance)
 
 	ctx := context.Background()
 	err = im.ReleaseInstance(ctx, instance)
 	require.NoError(t, err)
 
-	im.mu.RLock()
 	status := instance.Status
-	im.mu.RUnlock()
 	assert.Contains(t, []InstanceStatus{StatusIdle, StatusTerminated, StatusTerminating}, status,
 		"ReleaseInstance should set idle or trigger termination")
 	assert.Equal(t, "", instance.SessionID)
@@ -208,9 +204,7 @@ func TestInstanceManager_GetInstance(t *testing.T) {
 		Status: StatusIdle,
 	}
 
-	im.mu.Lock()
-	im.instances[instance.ID] = instance
-	im.mu.Unlock()
+	im.instances.Put(instance.ID, instance)
 
 	// Get existing instance
 	retrieved, err := im.GetInstance("test-instance")
@@ -252,11 +246,9 @@ func TestInstanceManager_ListInstances(t *testing.T) {
 		{ID: "3", Type: TypeAider, Status: StatusIdle},
 	}
 
-	im.mu.Lock()
 	for _, inst := range instances {
-		im.instances[inst.ID] = inst
+		im.instances.Put(inst.ID, inst)
 	}
-	im.mu.Unlock()
 
 	// List all
 	all := im.ListInstances("", "")
@@ -307,9 +299,7 @@ func TestInstanceManager_TerminateInstance(t *testing.T) {
 		EventCh:    make(chan *Event, 10),
 	}
 
-	im.mu.Lock()
-	im.instances[instance.ID] = instance
-	im.mu.Unlock()
+	im.instances.Put(instance.ID, instance)
 
 	// Expect database update
 	mock.ExpectExec("UPDATE agent_instances SET status = .*, terminated_at = NOW()").
@@ -321,9 +311,7 @@ func TestInstanceManager_TerminateInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify instance removed
-	im.mu.RLock()
-	_, exists := im.instances["test-instance"]
-	im.mu.RUnlock()
+	_, exists := im.instances.Get("test-instance")
 	assert.False(t, exists)
 
 	im.Close()
@@ -362,9 +350,7 @@ func TestInstanceManager_SendRequest(t *testing.T) {
 		EventCh:    make(chan *Event, 10),
 	}
 
-	im.mu.Lock()
-	im.instances[instance.ID] = instance
-	im.mu.Unlock()
+	im.instances.Put(instance.ID, instance)
 
 	// Start response handler
 	go func() {
@@ -426,9 +412,7 @@ func TestInstanceManager_BroadcastRequest(t *testing.T) {
 			ResponseCh: make(chan *Response, 10),
 			EventCh:    make(chan *Event, 10),
 		}
-		im.mu.Lock()
-		im.instances[inst.ID] = inst
-		im.mu.Unlock()
+		im.instances.Put(inst.ID, inst)
 
 		// Start response handler
 		go func(id string, reqCh chan *Request, respCh chan *Response) {
@@ -639,7 +623,7 @@ func BenchmarkInstanceManager_AcquireRelease(b *testing.B) {
 			EventCh:    make(chan *Event, 10),
 		}, nil
 	})
-	im.pools[TypeAider] = pool
+	im.pools.Put(TypeAider, pool)
 
 	ctx := context.Background()
 

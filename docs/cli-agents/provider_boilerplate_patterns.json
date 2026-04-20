@@ -1,0 +1,117 @@
+{
+  "description": "Provider-boilerplate pattern catalog. Used by LLMsVerifier (future work, awaiting approved PR into the LLMsVerifier submodule) to strip provider-injected safety/refusal boilerplate before scoring response quality. Patterns derived from docs/research/CL4R1T4S/ (ANTHROPIC, OPENAI, GOOGLE, XAI, MISTRAL, MOONSHOT, MINIMAX) plus our own observed provider response traces.",
+  "version": "1.0.0",
+  "source": "docs/research/CL4R1T4S/ @ 2026-04-20 + observed traces",
+  "categories": {
+    "refusal_opening": {
+      "intent": "Provider-prepended apology / refusal preambles that dilute the signal content.",
+      "patterns": [
+        "^I cannot\\b",
+        "^I can't\\b",
+        "^I'm sorry\\b",
+        "^I apologize\\b",
+        "^I'm (?:not able|unable)\\b",
+        "^As an AI\\b",
+        "^As a (?:language|large language) model\\b",
+        "^I don't have the ability\\b",
+        "^Unfortunately,?\\s",
+        "^I must decline"
+      ],
+      "applies_to": ["OpenAI", "Anthropic", "Google", "Mistral", "Moonshot"],
+      "strip_strategy": "If the response is majority-refusal (pattern covers > 80% of first paragraph), tag with 'refused' and score 0. If it's a hedging preamble followed by substantive content, strip only the preamble sentence."
+    },
+    "disclaimers_trailing": {
+      "intent": "Trailing disclaimers / cautions.",
+      "patterns": [
+        "(?i)please consult (?:a |an |your )?(?:professional|doctor|lawyer|expert)\\b",
+        "(?i)this is not (?:medical|legal|financial) advice\\b",
+        "(?i)always consult (?:a |an |)(?:qualified )?professional\\b",
+        "(?i)make sure to (?:verify|double-check)\\b"
+      ],
+      "applies_to": ["OpenAI", "Anthropic", "Google"],
+      "strip_strategy": "Remove matched sentence; do not penalise score."
+    },
+    "safety_warnings_inline": {
+      "intent": "Inline safety preambles interrupting flow.",
+      "patterns": [
+        "(?i)it's important to note that\\b",
+        "(?i)please note that\\b",
+        "(?i)it's worth mentioning\\b",
+        "(?i)i should mention\\b"
+      ],
+      "applies_to": ["OpenAI", "Anthropic"],
+      "strip_strategy": "Remove the interjection but keep the following content. Do not penalise score."
+    },
+    "capability_hedging": {
+      "intent": "Hedging language about model limits.",
+      "patterns": [
+        "(?i)my knowledge (?:cutoff|cut-off|cuts off)\\b",
+        "(?i)as of my (?:last |)training\\b",
+        "(?i)I don't have (?:real-?time|current|up-to-date) (?:information|data)\\b",
+        "(?i)(?:my|the) (?:training|knowledge) (?:data |)only goes\\b"
+      ],
+      "applies_to": ["OpenAI", "Anthropic", "Mistral"],
+      "strip_strategy": "Keep one instance per response; strip duplicates. Penalise score by 0.1 per extra instance beyond the first."
+    },
+    "tool_scaffolding_echo": {
+      "intent": "Echo of tool-calling scaffolding that leaked into text.",
+      "patterns": [
+        "(?i)<tool_use>",
+        "(?i)<function_call",
+        "(?i)\\{\"name\":\\s*\"",
+        "(?i)\\[TOOL_CALLS\\]"
+      ],
+      "applies_to": ["OpenAI", "Mistral", "Moonshot"],
+      "strip_strategy": "If tool-calling was requested but echoed as text, the provider returned malformed output — tag as 'tool_parse_error' and penalise by 0.5."
+    },
+    "chain_of_thought_leakage": {
+      "intent": "Reasoning-token leakage into user-facing content.",
+      "patterns": [
+        "(?i)<thinking>",
+        "(?i)<reasoning>",
+        "(?i)^(?:Let me think|Thinking step by step|Let's think about this)\\b"
+      ],
+      "applies_to": ["Anthropic", "OpenAI", "Moonshot", "xAI"],
+      "strip_strategy": "For providers that expose reasoning channels separately, strip leaked tags from user content. For providers that use inline CoT intentionally (Moonshot K2 Thinking), skip this pattern."
+    },
+    "persona_preamble": {
+      "intent": "System-prompt persona echo.",
+      "patterns": [
+        "^I am (?:Claude|ChatGPT|Gemini|Grok|Mistral|Kimi|MiniMax)\\b",
+        "^Hello! I'm (?:Claude|ChatGPT|Gemini|Grok)\\b",
+        "(?i)^As (?:Claude|ChatGPT|Gemini|Grok)\\b"
+      ],
+      "applies_to": ["all"],
+      "strip_strategy": "Strip when it appears as response opening. Indicates provider echoed its own system prompt into the answer."
+    }
+  },
+  "false_positive_guards": {
+    "intent": "Do NOT strip these even if they match a pattern — they are legitimate content.",
+    "patterns": [
+      "(?i)I cannot (?:recommend|see|find|find an?|read|access) the ",
+      "(?i)(?:implementing|writing|testing|debugging) I'm not able to "
+    ],
+    "note": "Refusal patterns are easy to false-positive on legitimate prose. The detector must apply patterns only to the opening sentence of a response, not mid-response."
+  },
+  "test_corpus_plan": {
+    "intent": "How to test the detector against real data.",
+    "sources": [
+      "docs/research/CL4R1T4S/ANTHROPIC/*.txt — Anthropic refusal/safety language samples",
+      "docs/research/CL4R1T4S/OPENAI/*.mkd — OpenAI response-shape samples",
+      "LLMsVerifier/examples/responses/ — captured provider traces",
+      "tests/fixtures/provider-responses/ — handcrafted edge cases"
+    ],
+    "metrics": [
+      "precision of refusal classification",
+      "recall of refusal classification",
+      "false-positive rate on code-review / technical responses (which frequently use 'I cannot' legitimately)"
+    ]
+  },
+  "integration_notes": {
+    "target_package": "digital.vasic.llmsverifier/scoring",
+    "suggested_filename": "boilerplate_detector.go",
+    "api_sketch": "func StripBoilerplate(providerName, response string) (stripped string, hits []Hit)",
+    "scoring_hook": "call from scoring/integration_simplified.go:computeQualityScore before length/keyword passes",
+    "status": "DATA ONLY. The Go implementation must be a separate approved PR into the LLMsVerifier submodule — this repo does not vendor LLMsVerifier, and crossing module boundaries is out of scope for the CL4R1T4S research-integration deliverable."
+  }
+}

@@ -102,14 +102,24 @@ var CLIAgentRegistry = map[string]*CLIAgent{
 		SystemPrompt:   "You are Claude Code, Anthropic's official CLI for Claude. You are an interactive CLI tool that helps users with software engineering tasks.",
 	},
 	"Cline": {
-		Name:           "Cline",
-		Description:    "Autonomous coding agent for VS Code",
-		Language:       "TypeScript",
-		ConfigFormat:   "Proto/gRPC",
-		APIPattern:     "OpenAI-compatible",
-		EntryPoint:     "cline",
-		Features:       []string{"vscode-extension", "browser-interaction", "autonomous-agent", "multi-model"},
-		ToolSupport:    []string{"Bash", "Read", "Write", "Edit", "Glob", "Grep", "Git", "WebFetch", "Symbols", "References", "Definition"},
+		Name:         "Cline",
+		Description:  "Autonomous coding agent for VS Code",
+		Language:     "TypeScript",
+		ConfigFormat: "Proto/gRPC",
+		APIPattern:   "OpenAI-compatible",
+		EntryPoint:   "cline",
+		Features:     []string{"vscode-extension", "browser-interaction", "autonomous-agent", "multi-model", "plan-mode", "act-mode", "sub-tasks"},
+		// ToolSupport canonicalised from docs/research/CL4R1T4S/CLINE/Cline.md
+		// (14 native tools: execute_command → Bash, read_file → Read,
+		// write_to_file → Write, replace_in_file → Edit, search_files →
+		// Grep, list_files → Glob, browser_action → Browser, web_fetch →
+		// WebFetch, use_mcp_tool + access_mcp_resource + load_mcp_documentation
+		// → MCP, ask_followup_question → Ask, attempt_completion → Complete,
+		// new_task → Task, plan_mode_respond → Plan).
+		// LSP-style tools (Symbols/References/Definition) come from Cline's
+		// VS Code host, not the prompt itself, but are available when
+		// Cline runs in that host (its primary deployment target).
+		ToolSupport:    []string{"Bash", "Read", "Write", "Edit", "Glob", "Grep", "Git", "Browser", "WebFetch", "MCP", "Ask", "Complete", "Task", "Plan", "Symbols", "References", "Definition"},
 		Protocols:      []string{"OpenAI", "MCP", "gRPC"},
 		ConfigLocation: "~/.cline/config.json",
 		SystemPrompt:   "You are Cline, an autonomous coding agent. You can browse the web, interact with files, and execute commands to help the user.",

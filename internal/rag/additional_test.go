@@ -39,7 +39,7 @@ func TestAdvancedRAG_HybridSearch(t *testing.T) {
 		// Since HybridSearch depends on pipeline.Search which needs a real vector DB,
 		// we test the internal components that HybridSearch uses
 		assert.NotNil(t, rag)
-		assert.True(t, rag.initialized)
+		assert.True(t, rag.initialized.Load())
 	})
 }
 

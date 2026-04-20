@@ -8,7 +8,9 @@ import (
 	"math"
 	"sort"
 	"strings"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -134,13 +136,18 @@ func DefaultAdvancedRAGConfig() AdvancedRAGConfig {
 	}
 }
 
-// AdvancedRAG provides advanced RAG techniques
+// AdvancedRAG provides advanced RAG techniques.
+//
+// Concurrency model (CONST-029): synonyms is a *safe.Store populated
+// once in Initialize and read lock-free thereafter; initialized is
+// atomic.Bool with CompareAndSwap for idempotent Initialize. config
+// is frozen at construction so per-method read-locking around it is
+// unnecessary.
 type AdvancedRAG struct {
-	mu          sync.RWMutex
 	config      AdvancedRAGConfig
 	pipeline    *Pipeline
-	synonyms    map[string][]string
-	initialized bool
+	synonyms    *safe.Store[string, []string]
+	initialized atomic.Bool
 }
 
 // NewAdvancedRAG creates a new advanced RAG instance
@@ -148,21 +155,18 @@ func NewAdvancedRAG(config AdvancedRAGConfig, pipeline *Pipeline) *AdvancedRAG {
 	return &AdvancedRAG{
 		config:   config,
 		pipeline: pipeline,
-		synonyms: make(map[string][]string),
+		synonyms: safe.NewStore[string, []string](),
 	}
 }
 
 // Initialize initializes the advanced RAG components
 func (a *AdvancedRAG) Initialize(ctx context.Context) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.initialized {
+	if !a.initialized.CompareAndSwap(false, true) {
 		return nil
 	}
 
 	// Initialize synonym dictionary with common programming terms
-	a.synonyms = map[string][]string{
+	synonyms := map[string][]string{
 		"function": {"func", "method", "procedure", "subroutine"},
 		"variable": {"var", "parameter", "argument", "field"},
 		"class":    {"type", "struct", "object", "interface"},
@@ -184,8 +188,10 @@ func (a *AdvancedRAG) Initialize(ctx context.Context) error {
 		"schema":   {"model", "structure", "definition"},
 		"vector":   {"embedding", "representation", "array"},
 	}
+	for k, v := range synonyms {
+		a.synonyms.Put(k, v)
+	}
 
-	a.initialized = true
 	logrus.Info("Advanced RAG initialized")
 	return nil
 }
@@ -200,9 +206,6 @@ type HybridSearchResult struct {
 
 // HybridSearch performs hybrid search combining vector and keyword search
 func (a *AdvancedRAG) HybridSearch(ctx context.Context, query string, topK int) ([]HybridSearchResult, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
 	config := a.config.HybridSearch
 
 	// Perform vector search
@@ -306,9 +309,6 @@ func (a *AdvancedRAG) calculateKeywordScore(queryTerms, contentTerms []string, c
 
 // ExpandQuery expands a query using various techniques
 func (a *AdvancedRAG) ExpandQuery(ctx context.Context, query string) []ExpandedQuery {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
 	config := a.config.QueryExpansion
 	expansions := []ExpandedQuery{{Query: query, Weight: 1.0, Type: "original"}}
 
@@ -320,7 +320,7 @@ func (a *AdvancedRAG) ExpandQuery(ctx context.Context, query string) []ExpandedQ
 	terms := tokenize(query)
 	for _, term := range terms {
 		termLower := strings.ToLower(term)
-		if synonymList, ok := a.synonyms[termLower]; ok {
+		if synonymList, ok := a.synonyms.Get(termLower); ok {
 			for _, synonym := range synonymList {
 				if len(expansions) >= config.MaxExpansions+1 {
 					break
@@ -408,9 +408,7 @@ type ReRankedResult struct {
 
 // ReRank re-ranks search results using cross-encoder scoring
 func (a *AdvancedRAG) ReRank(ctx context.Context, query string, results []PipelineSearchResult) ([]ReRankedResult, error) {
-	a.mu.RLock()
 	config := a.config.ReRanker
-	a.mu.RUnlock()
 
 	if len(results) == 0 {
 		return []ReRankedResult{}, nil
@@ -509,9 +507,7 @@ type CompressedContext struct {
 
 // CompressContext compresses search results into a condensed context
 func (a *AdvancedRAG) CompressContext(ctx context.Context, query string, results []PipelineSearchResult) (*CompressedContext, error) {
-	a.mu.RLock()
 	config := a.config.ContextualCompression
-	a.mu.RUnlock()
 
 	if len(results) == 0 {
 		return &CompressedContext{}, nil

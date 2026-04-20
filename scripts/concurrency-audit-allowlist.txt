@@ -76,7 +76,6 @@ internal/planning/hiplan.go:145:HiPlan
 internal/planning/mcts.go:27:MCTSNode
 internal/planning/tree_of_thoughts.go:110:TreeOfThoughts
 internal/plugins/health.go:12:HealthMonitor
-internal/rag/advanced.go:138:AdvancedRAG
 internal/search/indexer/indexer.go:46:CodeIndexer
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager

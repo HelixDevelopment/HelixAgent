@@ -65,7 +65,7 @@ func TestNewAdvancedRAG(t *testing.T) {
 	assert.Equal(t, config, rag.config)
 	assert.Equal(t, pipeline, rag.pipeline)
 	assert.NotNil(t, rag.synonyms)
-	assert.False(t, rag.initialized)
+	assert.False(t, rag.initialized.Load())
 }
 
 func TestAdvancedRAG_Initialize(t *testing.T) {
@@ -76,13 +76,16 @@ func TestAdvancedRAG_Initialize(t *testing.T) {
 	err := rag.Initialize(ctx)
 
 	assert.NoError(t, err)
-	assert.True(t, rag.initialized)
-	assert.NotEmpty(t, rag.synonyms)
+	assert.True(t, rag.initialized.Load())
+	assert.Greater(t, rag.synonyms.Len(), 0)
 
 	// Verify synonym dictionary
-	assert.Contains(t, rag.synonyms["function"], "method")
-	assert.Contains(t, rag.synonyms["variable"], "parameter")
-	assert.Contains(t, rag.synonyms["error"], "exception")
+	fn, _ := rag.synonyms.Get("function")
+	assert.Contains(t, fn, "method")
+	va, _ := rag.synonyms.Get("variable")
+	assert.Contains(t, va, "parameter")
+	er, _ := rag.synonyms.Get("error")
+	assert.Contains(t, er, "exception")
 
 	// Test idempotent initialization
 	err = rag.Initialize(ctx)

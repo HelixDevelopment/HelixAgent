@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // BrokerMetrics holds metrics for a message broker.
@@ -488,11 +490,23 @@ func (s *MetricsSnapshot) WithTopicStats(stats []TopicMetadata) *MetricsSnapshot
 	return s
 }
 
+// maxCollectorSnapshots bounds the in-memory snapshot history kept by
+// MetricsCollector.Start; older snapshots are dropped FIFO.
+const maxCollectorSnapshots = 1000
+
 // MetricsCollector collects metrics from multiple brokers.
+//
+// Concurrency model (CONST-029): brokers is a safe.Store, snapshots
+// is a safe.Slice; no bare mu survives. Register/Unregister operate
+// atomically on the store; Collect iterates a Snapshot of the store
+// so new brokers registered mid-scan are either entirely included or
+// entirely excluded. Start's tick handler appends snapshots and then
+// does a trim-replace via Snapshot → slice-tail → Replace; the
+// trim-replace pair is not atomic across concurrent Starts, but
+// MetricsCollector is designed for a single Start per instance.
 type MetricsCollector struct {
-	brokers   map[string]MessageBroker
-	snapshots []*MetricsSnapshot
-	mu        sync.RWMutex
+	brokers   *safe.Store[string, MessageBroker]
+	snapshots *safe.Slice[*MetricsSnapshot]
 	interval  time.Duration
 	stopCh    chan struct{}
 }
@@ -500,33 +514,28 @@ type MetricsCollector struct {
 // NewMetricsCollector creates a new metrics collector.
 func NewMetricsCollector(interval time.Duration) *MetricsCollector {
 	return &MetricsCollector{
-		brokers:  make(map[string]MessageBroker),
-		interval: interval,
-		stopCh:   make(chan struct{}),
+		brokers:   safe.NewStore[string, MessageBroker](),
+		snapshots: safe.NewSlice[*MetricsSnapshot](),
+		interval:  interval,
+		stopCh:    make(chan struct{}),
 	}
 }
 
 // Register registers a broker for metrics collection.
 func (c *MetricsCollector) Register(name string, broker MessageBroker) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.brokers[name] = broker
+	c.brokers.Put(name, broker)
 }
 
 // Unregister removes a broker from metrics collection.
 func (c *MetricsCollector) Unregister(name string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.brokers, name)
+	c.brokers.Delete(name)
 }
 
 // Collect collects metrics from all registered brokers.
 func (c *MetricsCollector) Collect() []*MetricsSnapshot {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	snapshots := make([]*MetricsSnapshot, 0, len(c.brokers))
-	for _, broker := range c.brokers {
+	brokers := c.brokers.Snapshot()
+	snapshots := make([]*MetricsSnapshot, 0, len(brokers))
+	for _, broker := range brokers {
 		snapshot := NewMetricsSnapshot(broker.BrokerType(), broker.GetMetrics())
 		snapshots = append(snapshots, snapshot)
 	}
@@ -542,14 +551,14 @@ func (c *MetricsCollector) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				snapshots := c.Collect()
-				c.mu.Lock()
-				c.snapshots = append(c.snapshots, snapshots...)
-				// Keep last 1000 snapshots
-				if len(c.snapshots) > 1000 {
-					c.snapshots = c.snapshots[len(c.snapshots)-1000:]
+				for _, s := range c.Collect() {
+					c.snapshots.Append(s)
 				}
-				c.mu.Unlock()
+				// Keep the last maxCollectorSnapshots entries.
+				if c.snapshots.Len() > maxCollectorSnapshots {
+					snap := c.snapshots.Snapshot()
+					c.snapshots.Replace(snap[len(snap)-maxCollectorSnapshots:])
+				}
 			case <-c.stopCh:
 				return
 			}
@@ -564,9 +573,5 @@ func (c *MetricsCollector) Stop() {
 
 // GetSnapshots returns collected snapshots.
 func (c *MetricsCollector) GetSnapshots() []*MetricsSnapshot {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	result := make([]*MetricsSnapshot, len(c.snapshots))
-	copy(result, c.snapshots)
-	return result
+	return c.snapshots.Snapshot()
 }

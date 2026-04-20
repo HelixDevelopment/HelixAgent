@@ -108,7 +108,6 @@ internal/services/protocol_federation.go:16:ProtocolDiscovery
 internal/services/protocol_monitor.go:38:ProtocolMonitor
 internal/services/provider_discovery.go:54:ProviderDiscovery
 internal/services/provider_discovery.go:72:DiscoveredProvider
-internal/services/provider_health_monitor.go:60:ProviderHealthMonitor
 internal/services/provider_registry.go:72:ProviderRegistry
 internal/services/request_service.go:107:MetricsRegistry
 internal/services/request_service.go:15:RequestService

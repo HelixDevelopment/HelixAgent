@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -56,19 +59,24 @@ func initPHMMetrics() {
 	})
 }
 
-// ProviderHealthMonitor performs periodic health checks on all providers
+// ProviderHealthMonitor performs periodic health checks on all providers.
+//
+// Concurrency model (CONST-029): listeners is a *safe.Slice;
+// healthStatus is a *safe.Store; running is atomic.Bool. All per-
+// provider status mutations in updateStatus run through Store.Update
+// with a copy-on-write closure so concurrent checks never see a
+// half-written MonitoredProviderHealth.
 type ProviderHealthMonitor struct {
-	mu            sync.RWMutex
 	registry      *ProviderRegistry
 	logger        *logrus.Logger
 	checkInterval time.Duration
 	healthTimeout time.Duration
-	listeners     []ProviderHealthAlertListener
+	listeners     *safe.Slice[ProviderHealthAlertListener]
 	stopCh        chan struct{}
-	running       bool
+	running       atomic.Bool
 
 	// Health status cache
-	healthStatus map[string]*MonitoredProviderHealth
+	healthStatus *safe.Store[string, *MonitoredProviderHealth]
 }
 
 // ProviderHealthAlertListener is called when health alerts occur
@@ -123,29 +131,22 @@ func NewProviderHealthMonitor(registry *ProviderRegistry, logger *logrus.Logger,
 		logger:        logger,
 		checkInterval: config.CheckInterval,
 		healthTimeout: config.HealthTimeout,
-		listeners:     make([]ProviderHealthAlertListener, 0),
+		listeners:     safe.NewSlice[ProviderHealthAlertListener](),
 		stopCh:        make(chan struct{}),
-		healthStatus:  make(map[string]*MonitoredProviderHealth),
+		healthStatus:  safe.NewStore[string, *MonitoredProviderHealth](),
 	}
 }
 
 // AddAlertListener adds a listener for alerts
 func (phm *ProviderHealthMonitor) AddAlertListener(listener ProviderHealthAlertListener) {
-	phm.mu.Lock()
-	defer phm.mu.Unlock()
-	phm.listeners = append(phm.listeners, listener)
+	phm.listeners.Append(listener)
 }
 
 // Start starts the monitoring loop
 func (phm *ProviderHealthMonitor) Start(ctx context.Context) {
-	phm.mu.Lock()
-	if phm.running {
-		phm.mu.Unlock()
+	if !phm.running.CompareAndSwap(false, true) {
 		return
 	}
-	phm.running = true
-	phm.stopCh = make(chan struct{})
-	phm.mu.Unlock()
 
 	phm.logger.Info("Provider health monitor started")
 
@@ -171,12 +172,8 @@ func (phm *ProviderHealthMonitor) Start(ctx context.Context) {
 
 // Stop stops the monitoring loop
 func (phm *ProviderHealthMonitor) Stop() {
-	phm.mu.Lock()
-	defer phm.mu.Unlock()
-
-	if phm.running {
+	if phm.running.CompareAndSwap(true, false) {
 		close(phm.stopCh)
-		phm.running = false
 	}
 }
 
@@ -200,13 +197,12 @@ func (phm *ProviderHealthMonitor) checkAllProviders(ctx context.Context) {
 	wg.Wait()
 
 	// Count unhealthy providers
-	phm.mu.RLock()
-	for _, status := range phm.healthStatus {
+	phm.healthStatus.Range(func(_ string, status *MonitoredProviderHealth) bool {
 		if !status.Healthy {
 			unhealthyCount++
 		}
-	}
-	phm.mu.RUnlock()
+		return true
+	})
 
 	phmUnhealthyProvidersGauge.Set(float64(unhealthyCount))
 
@@ -265,48 +261,48 @@ func (phm *ProviderHealthMonitor) updateStatus(providerID string, healthy bool, 
 	var alertData ProviderHealthAlert
 	var consecutiveFails int
 
-	// Update status under lock
-	phm.mu.Lock()
-	status, exists := phm.healthStatus[providerID]
-	if !exists {
-		status = &MonitoredProviderHealth{
-			ProviderID: providerID,
+	// Update status under Store.Update closure — atomic read-mutate-commit.
+	phm.healthStatus.Update(providerID, func(cur *MonitoredProviderHealth, present bool) (*MonitoredProviderHealth, bool) {
+		var status MonitoredProviderHealth
+		if present {
+			status = *cur
+		} else {
+			status.ProviderID = providerID
 		}
-		phm.healthStatus[providerID] = status
-	}
 
-	status.LastCheck = time.Now()
-	status.CheckCount++
-	status.ResponseTime = responseTime
+		status.LastCheck = time.Now()
+		status.CheckCount++
+		status.ResponseTime = responseTime
 
-	if healthy {
-		status.Healthy = true
-		status.LastSuccess = time.Now()
-		status.LastError = ""
-		status.ConsecutiveFails = 0
-		phmHealthCheckGauge.WithLabelValues(providerID).Set(1)
-	} else {
-		status.Healthy = false
-		status.LastError = errMsg
-		status.ConsecutiveFails++
-		status.FailCount++
-		phmHealthCheckGauge.WithLabelValues(providerID).Set(0)
+		if healthy {
+			status.Healthy = true
+			status.LastSuccess = time.Now()
+			status.LastError = ""
+			status.ConsecutiveFails = 0
+			phmHealthCheckGauge.WithLabelValues(providerID).Set(1)
+		} else {
+			status.Healthy = false
+			status.LastError = errMsg
+			status.ConsecutiveFails++
+			status.FailCount++
+			phmHealthCheckGauge.WithLabelValues(providerID).Set(0)
 
-		// Prepare alert after threshold (will send after releasing lock)
-		if status.ConsecutiveFails == 3 {
-			shouldAlert = true
-			alertData = ProviderHealthAlert{
-				Type:             "provider_unhealthy",
-				ProviderID:       providerID,
-				Message:          fmt.Sprintf("Provider has failed %d consecutive health checks", status.ConsecutiveFails),
-				Timestamp:        time.Now(),
-				ConsecutiveFails: status.ConsecutiveFails,
-				LastError:        errMsg,
+			// Prepare alert after threshold (will send after Update commits).
+			if status.ConsecutiveFails == 3 {
+				shouldAlert = true
+				alertData = ProviderHealthAlert{
+					Type:             "provider_unhealthy",
+					ProviderID:       providerID,
+					Message:          fmt.Sprintf("Provider has failed %d consecutive health checks", status.ConsecutiveFails),
+					Timestamp:        time.Now(),
+					ConsecutiveFails: status.ConsecutiveFails,
+					LastError:        errMsg,
+				}
 			}
 		}
-	}
-	consecutiveFails = status.ConsecutiveFails
-	phm.mu.Unlock()
+		consecutiveFails = status.ConsecutiveFails
+		return &status, true
+	})
 
 	// Send alert outside of lock to prevent deadlock
 	if shouldAlert {
@@ -346,13 +342,10 @@ func isProviderUnconfiguredError(errMsg string) bool {
 func (phm *ProviderHealthMonitor) sendAlert(alert ProviderHealthAlert) {
 	phmHealthAlertsTotal.Inc()
 
-	phm.mu.RLock()
-	listeners := phm.listeners
-	phm.mu.RUnlock()
-
-	for _, listener := range listeners {
+	phm.listeners.Range(func(_ int, listener ProviderHealthAlertListener) bool {
 		go listener(alert)
-	}
+		return true
+	})
 
 	// Use appropriate log level based on error type
 	// Unconfigured providers are warnings, not errors
@@ -372,14 +365,11 @@ func (phm *ProviderHealthMonitor) sendAlert(alert ProviderHealthAlert) {
 
 // GetStatus returns the current health status of all providers
 func (phm *ProviderHealthMonitor) GetStatus() ProviderHealthOverallStatus {
-	phm.mu.RLock()
-	defer phm.mu.RUnlock()
-
 	providers := make(map[string]*MonitoredProviderHealth)
 	healthyCount := 0
 	unhealthyCount := 0
 
-	for providerID, status := range phm.healthStatus {
+	phm.healthStatus.Range(func(providerID string, status *MonitoredProviderHealth) bool {
 		statusCopy := *status
 		providers[providerID] = &statusCopy
 		if status.Healthy {
@@ -387,7 +377,8 @@ func (phm *ProviderHealthMonitor) GetStatus() ProviderHealthOverallStatus {
 		} else {
 			unhealthyCount++
 		}
-	}
+		return true
+	})
 
 	return ProviderHealthOverallStatus{
 		Healthy:        unhealthyCount == 0,
@@ -411,10 +402,7 @@ type ProviderHealthOverallStatus struct {
 
 // GetProviderStatus returns the health status of a specific provider
 func (phm *ProviderHealthMonitor) GetProviderStatus(providerID string) (*MonitoredProviderHealth, bool) {
-	phm.mu.RLock()
-	defer phm.mu.RUnlock()
-
-	status, exists := phm.healthStatus[providerID]
+	status, exists := phm.healthStatus.Get(providerID)
 	if !exists {
 		return nil, false
 	}

@@ -5,22 +5,28 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// MockMCPAdapter implements MCPAdapter for testing
+// MockMCPAdapter implements MCPAdapter for testing.
+//
+// Concurrency model (CONST-029): callResults → *safe.Store, callError
+// → atomic.Pointer[error], callCount → atomic.Int64. Remaining fields
+// are immutable post-construction.
 type MockMCPAdapter struct {
 	name         string
 	version      string
 	description  string
 	capabilities []string
 	tools        []ToolDefinition
-	callResults  map[string]*ToolResult
-	callError    error
-	callCount    int
-	mu           sync.Mutex
+	callResults  *safe.Store[string, *ToolResult]
+	callError    atomic.Pointer[error]
+	callCount    atomic.Int64
 }
 
 func NewMockMCPAdapter(name string) *MockMCPAdapter {
@@ -41,7 +47,7 @@ func NewMockMCPAdapter(name string) *MockMCPAdapter {
 				},
 			},
 		},
-		callResults: make(map[string]*ToolResult),
+		callResults: safe.NewStore[string, *ToolResult](),
 	}
 }
 
@@ -59,15 +65,13 @@ func (m *MockMCPAdapter) ListTools() []ToolDefinition {
 }
 
 func (m *MockMCPAdapter) CallTool(ctx context.Context, name string, args map[string]interface{}) (*ToolResult, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.callCount++
+	m.callCount.Add(1)
 
-	if m.callError != nil {
-		return nil, m.callError
+	if ep := m.callError.Load(); ep != nil {
+		return nil, *ep
 	}
 
-	if result, ok := m.callResults[name]; ok {
+	if result, ok := m.callResults.Get(name); ok {
 		return result, nil
 	}
 
@@ -77,21 +81,19 @@ func (m *MockMCPAdapter) CallTool(ctx context.Context, name string, args map[str
 }
 
 func (m *MockMCPAdapter) SetToolResult(toolName string, result *ToolResult) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.callResults[toolName] = result
+	m.callResults.Put(toolName, result)
 }
 
 func (m *MockMCPAdapter) SetError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.callError = err
+	if err == nil {
+		m.callError.Store(nil)
+		return
+	}
+	m.callError.Store(&err)
 }
 
 func (m *MockMCPAdapter) GetCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.callCount
+	return int(m.callCount.Load())
 }
 
 // TestNewAdapterRegistry tests registry creation
@@ -101,8 +103,8 @@ func TestNewAdapterRegistry(t *testing.T) {
 	assert.NotNil(t, registry)
 	assert.NotNil(t, registry.adapters)
 	assert.NotNil(t, registry.metadata)
-	assert.Empty(t, registry.adapters)
-	assert.Empty(t, registry.metadata)
+	assert.Equal(t, 0, registry.adapters.Len())
+	assert.Equal(t, 0, registry.metadata.Len())
 }
 
 // TestAdapterRegistryRegister tests adapter registration

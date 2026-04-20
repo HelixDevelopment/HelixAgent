@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ServerInfo contains information about an MCP server.
@@ -96,30 +98,32 @@ func (la *lazyAdapter) get() (MCPAdapter, error) {
 }
 
 // AdapterRegistry manages MCP adapters.
+//
+// Concurrency model (CONST-029): adapters/lazyAdapters/metadata → 3×
+// *safe.Store. mu dropped — each method is a single Put/Get/Delete or
+// a Range/Snapshot iteration. lazyAdapter retains its own sync.Once
+// for factory-fires-once semantics (not Pattern-A).
 type AdapterRegistry struct {
-	adapters     map[string]MCPAdapter
-	lazyAdapters map[string]*lazyAdapter
-	metadata     map[string]AdapterMetadata
-	mu           sync.RWMutex
+	adapters     *safe.Store[string, MCPAdapter]
+	lazyAdapters *safe.Store[string, *lazyAdapter]
+	metadata     *safe.Store[string, AdapterMetadata]
 }
 
 // NewAdapterRegistry creates a new adapter registry.
 func NewAdapterRegistry() *AdapterRegistry {
 	return &AdapterRegistry{
-		adapters:     make(map[string]MCPAdapter),
-		lazyAdapters: make(map[string]*lazyAdapter),
-		metadata:     make(map[string]AdapterMetadata),
+		adapters:     safe.NewStore[string, MCPAdapter](),
+		lazyAdapters: safe.NewStore[string, *lazyAdapter](),
+		metadata:     safe.NewStore[string, AdapterMetadata](),
 	}
 }
 
 // Register registers an adapter eagerly (immediately available).
 func (r *AdapterRegistry) Register(name string, adapter MCPAdapter, metadata AdapterMetadata) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.adapters[name] = adapter
-	r.metadata[name] = metadata
+	r.adapters.Put(name, adapter)
+	r.metadata.Put(name, metadata)
 	// Remove any lazy registration for the same name to avoid confusion
-	delete(r.lazyAdapters, name)
+	r.lazyAdapters.Delete(name)
 }
 
 // RegisterLazy registers an adapter factory for deferred initialization.
@@ -127,26 +131,21 @@ func (r *AdapterRegistry) Register(name string, adapter MCPAdapter, metadata Ada
 // via Get or CallTool. This avoids initialization overhead for adapters
 // that may never be used during a session.
 func (r *AdapterRegistry) RegisterLazy(name string, factory AdapterFactory, metadata AdapterMetadata) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.lazyAdapters[name] = &lazyAdapter{factory: factory}
-	r.metadata[name] = metadata
+	r.lazyAdapters.Put(name, &lazyAdapter{factory: factory})
+	r.metadata.Put(name, metadata)
 	// Remove any eager registration for the same name
-	delete(r.adapters, name)
+	r.adapters.Delete(name)
 }
 
 // Get retrieves an adapter by name. For lazily registered adapters,
 // this triggers initialization on the first call.
 func (r *AdapterRegistry) Get(name string) (MCPAdapter, bool) {
-	r.mu.RLock()
 	// Check eagerly registered adapters first
-	if adapter, ok := r.adapters[name]; ok {
-		r.mu.RUnlock()
+	if adapter, ok := r.adapters.Get(name); ok {
 		return adapter, true
 	}
 	// Check lazily registered adapters
-	la, ok := r.lazyAdapters[name]
-	r.mu.RUnlock()
+	la, ok := r.lazyAdapters.Get(name)
 	if !ok {
 		return nil, false
 	}
@@ -159,54 +158,46 @@ func (r *AdapterRegistry) Get(name string) (MCPAdapter, bool) {
 
 // GetMetadata retrieves adapter metadata.
 func (r *AdapterRegistry) GetMetadata(name string) (AdapterMetadata, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	metadata, ok := r.metadata[name]
-	return metadata, ok
+	return r.metadata.Get(name)
 }
 
 // List returns all registered adapter names (both eager and lazy).
 func (r *AdapterRegistry) List() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	seen := make(map[string]struct{}, len(r.adapters)+len(r.lazyAdapters))
-	names := make([]string, 0, len(r.adapters)+len(r.lazyAdapters))
-	for name := range r.adapters {
+	seen := make(map[string]struct{}, r.adapters.Len()+r.lazyAdapters.Len())
+	names := make([]string, 0, r.adapters.Len()+r.lazyAdapters.Len())
+	r.adapters.Range(func(name string, _ MCPAdapter) bool {
 		names = append(names, name)
 		seen[name] = struct{}{}
-	}
-	for name := range r.lazyAdapters {
+		return true
+	})
+	r.lazyAdapters.Range(func(name string, _ *lazyAdapter) bool {
 		if _, ok := seen[name]; !ok {
 			names = append(names, name)
 		}
-	}
+		return true
+	})
 	return names
 }
 
 // ListByCategory returns adapters in a category.
 func (r *AdapterRegistry) ListByCategory(category AdapterCategory) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	var names []string
-	for name, meta := range r.metadata {
+	r.metadata.Range(func(name string, meta AdapterMetadata) bool {
 		if meta.Category == category {
 			names = append(names, name)
 		}
-	}
+		return true
+	})
 	return names
 }
 
 // ListAll returns all adapter metadata.
 func (r *AdapterRegistry) ListAll() []AdapterMetadata {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	result := make([]AdapterMetadata, 0, len(r.metadata))
-	for _, meta := range r.metadata {
+	result := make([]AdapterMetadata, 0, r.metadata.Len())
+	r.metadata.Range(func(_ string, meta AdapterMetadata) bool {
 		result = append(result, meta)
-	}
+		return true
+	})
 	return result
 }
 
@@ -325,7 +316,7 @@ func GetDefaultRegistry() *AdapterRegistry {
 	defaultRegistryOnce.Do(func() {
 		r := NewAdapterRegistry()
 		for _, meta := range AvailableAdapters {
-			r.metadata[meta.Name] = meta
+			r.metadata.Put(meta.Name, meta)
 		}
 		defaultRegistry = r
 		// Keep the deprecated package-level var in sync for backward compatibility.
@@ -388,9 +379,6 @@ type AdapterSearchOptions struct {
 
 // Search searches adapters with the given options
 func (r *AdapterRegistry) Search(opts AdapterSearchOptions) []AdapterSearchResult {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	if opts.MaxResults <= 0 {
 		opts.MaxResults = 50
 	}
@@ -537,9 +525,6 @@ func sortAdapterResults(results []AdapterSearchResult) {
 
 // SearchByCapability searches adapters by capability keywords
 func (r *AdapterRegistry) SearchByCapability(capability string) []AdapterMetadata {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	capLower := strings.ToLower(capability)
 	var results []AdapterMetadata
 
@@ -561,9 +546,6 @@ func (r *AdapterRegistry) SearchByCapability(capability string) []AdapterMetadat
 
 // GetAdapterSuggestions returns adapter suggestions based on partial input
 func (r *AdapterRegistry) GetAdapterSuggestions(prefix string, maxSuggestions int) []AdapterMetadata {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	if maxSuggestions <= 0 {
 		maxSuggestions = 10
 	}

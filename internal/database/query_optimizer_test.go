@@ -251,7 +251,7 @@ func TestQueryOptimizer_Close(t *testing.T) {
 
 	err := optimizer.Close()
 	assert.NoError(t, err)
-	assert.Empty(t, optimizer.preparedStmts)
+	assert.Equal(t, 0, optimizer.preparedStmts.Len())
 }
 
 func TestActiveProvider_Fields(t *testing.T) {

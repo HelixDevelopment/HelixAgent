@@ -8,16 +8,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // QueryOptimizer provides optimized query execution with prepared statements,
-// query caching, and batch operations
+// query caching, and batch operations.
+//
+// Concurrency model (CONST-029): preparedStmts is a *safe.Store.
+// queryCache keeps its own LRU-coordination mutex (map + list must
+// stay in sync), which is a separate Pattern-A site tracked
+// independently.
 type QueryOptimizer struct {
 	pool          *pgxpool.Pool
-	preparedStmts map[string]*pgxpool.Conn
-	stmtMu        sync.RWMutex
+	preparedStmts *safe.Store[string, *pgxpool.Conn]
 	queryCache    *QueryCache
 	metrics       *QueryMetrics
 	config        *OptimizerConfig
@@ -243,7 +249,7 @@ func NewQueryOptimizer(pool *pgxpool.Pool, config *OptimizerConfig) *QueryOptimi
 
 	return &QueryOptimizer{
 		pool:          pool,
-		preparedStmts: make(map[string]*pgxpool.Conn),
+		preparedStmts: safe.NewStore[string, *pgxpool.Conn](),
 		queryCache:    cache,
 		metrics:       &QueryMetrics{},
 		config:        config,
@@ -629,11 +635,7 @@ func (o *QueryOptimizer) InvalidateCacheKey(key string) {
 
 // Close closes the query optimizer and releases resources
 func (o *QueryOptimizer) Close() error {
-	o.stmtMu.Lock()
-	defer o.stmtMu.Unlock()
-
 	// Clear prepared statement cache
-	o.preparedStmts = make(map[string]*pgxpool.Conn)
-
+	o.preparedStmts.Clear()
 	return nil
 }

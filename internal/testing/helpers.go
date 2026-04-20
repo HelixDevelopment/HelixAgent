@@ -13,8 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ============================================================================
@@ -22,18 +25,21 @@ import (
 // ============================================================================
 
 // MockMCPServer provides a mock MCP server for testing purposes.
+//
+// Concurrency model (CONST-029): Handlers and RequestLog are
+// *safe.Store / *safe.Slice containers; requestCount is atomic.Int64.
+// No mu survives because the three fields have no cross-key
+// invariants — each handler registration, request log append, and
+// counter increment is an independent atomic op.
 type MockMCPServer struct {
 	// Server is the underlying HTTP test server
 	Server *httptest.Server
 
 	// Handlers maps method names to handler functions
-	Handlers map[string]MockMethodHandler
+	Handlers *safe.Store[string, MockMethodHandler]
 
 	// RequestLog stores all received requests
-	RequestLog []MockMCPRequest
-
-	// mu protects concurrent access
-	mu sync.RWMutex
+	RequestLog *safe.Slice[MockMCPRequest]
 
 	// InitializeResponse is the response to return for initialize
 	InitializeResponse *MCPInitializeResponse
@@ -48,7 +54,7 @@ type MockMCPServer struct {
 	FailAfter int
 
 	// requestCount tracks total requests
-	requestCount int
+	requestCount atomic.Int64
 }
 
 // MockMethodHandler is a handler for a specific MCP method
@@ -132,8 +138,8 @@ type MCPTool struct {
 // NewMockMCPServer creates a new mock MCP server with default configuration.
 func NewMockMCPServer() *MockMCPServer {
 	mock := &MockMCPServer{
-		Handlers:   make(map[string]MockMethodHandler),
-		RequestLog: make([]MockMCPRequest, 0),
+		Handlers:   safe.NewStore[string, MockMethodHandler](),
+		RequestLog: safe.NewSlice[MockMCPRequest](),
 		InitializeResponse: &MCPInitializeResponse{
 			ProtocolVersion: "2024-11-05",
 			Capabilities: MCPCapabilities{
@@ -182,7 +188,7 @@ func NewMockMCPServer() *MockMCPServer {
 // setupDefaultHandlers sets up default method handlers
 func (m *MockMCPServer) setupDefaultHandlers() {
 	// Initialize handler
-	m.Handlers["initialize"] = func(req *MockMCPRequest) (*MCPResponse, error) {
+	m.Handlers.Put("initialize", func(req *MockMCPRequest) (*MCPResponse, error) {
 		result, err := json.Marshal(m.InitializeResponse)
 		if err != nil {
 			return nil, err
@@ -192,10 +198,10 @@ func (m *MockMCPServer) setupDefaultHandlers() {
 			ID:      req.ID,
 			Result:  result,
 		}, nil
-	}
+	})
 
 	// Tools list handler
-	m.Handlers["tools/list"] = func(req *MockMCPRequest) (*MCPResponse, error) {
+	m.Handlers.Put("tools/list", func(req *MockMCPRequest) (*MCPResponse, error) {
 		result, err := json.Marshal(m.DefaultToolsResponse)
 		if err != nil {
 			return nil, err
@@ -205,10 +211,10 @@ func (m *MockMCPServer) setupDefaultHandlers() {
 			ID:      req.ID,
 			Result:  result,
 		}, nil
-	}
+	})
 
 	// Tools call handler
-	m.Handlers["tools/call"] = func(req *MockMCPRequest) (*MCPResponse, error) {
+	m.Handlers.Put("tools/call", func(req *MockMCPRequest) (*MCPResponse, error) {
 		// Parse the tool call
 		var params struct {
 			Name      string                 `json:"name"`
@@ -267,17 +273,17 @@ func (m *MockMCPServer) setupDefaultHandlers() {
 				},
 			}, nil
 		}
-	}
+	})
 
 	// Ping handler
-	m.Handlers["ping"] = func(req *MockMCPRequest) (*MCPResponse, error) {
+	m.Handlers.Put("ping", func(req *MockMCPRequest) (*MCPResponse, error) {
 		result, _ := json.Marshal("pong") //nolint:errcheck
 		return &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result:  result,
 		}, nil
-	}
+	})
 }
 
 // handleRequest processes incoming requests
@@ -304,14 +310,11 @@ func (m *MockMCPServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	req.Time = time.Now()
 
 	// Log request
-	m.mu.Lock()
-	m.RequestLog = append(m.RequestLog, req)
-	m.requestCount++
-	currentCount := m.requestCount
-	m.mu.Unlock()
+	m.RequestLog.Append(req)
+	currentCount := m.requestCount.Add(1)
 
 	// Check if we should fail
-	if m.FailAfter > 0 && currentCount > m.FailAfter {
+	if m.FailAfter > 0 && currentCount > int64(m.FailAfter) {
 		resp := &MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -332,9 +335,7 @@ func (m *MockMCPServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find handler
-	m.mu.RLock()
-	handler, exists := m.Handlers[req.Method]
-	m.mu.RUnlock()
+	handler, exists := m.Handlers.Get(req.Method)
 
 	var resp *MCPResponse
 	if exists {
@@ -377,31 +378,23 @@ func (m *MockMCPServer) Close() {
 
 // AddHandler adds a custom handler for a method
 func (m *MockMCPServer) AddHandler(method string, handler MockMethodHandler) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.Handlers[method] = handler
+	m.Handlers.Put(method, handler)
 }
 
 // GetRequests returns all logged requests
 func (m *MockMCPServer) GetRequests() []MockMCPRequest {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return append([]MockMCPRequest{}, m.RequestLog...)
+	return m.RequestLog.Snapshot()
 }
 
 // GetRequestCount returns the total number of requests
 func (m *MockMCPServer) GetRequestCount() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.requestCount
+	return int(m.requestCount.Load())
 }
 
 // Reset clears the request log and count
 func (m *MockMCPServer) Reset() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.RequestLog = make([]MockMCPRequest, 0)
-	m.requestCount = 0
+	m.RequestLog.Clear()
+	m.requestCount.Store(0)
 }
 
 // ============================================================================

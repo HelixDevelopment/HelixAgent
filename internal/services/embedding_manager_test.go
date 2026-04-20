@@ -288,10 +288,8 @@ func TestEmbeddingManager_VectorSearch(t *testing.T) {
 
 	t.Run("finds stored embeddings in cache", func(t *testing.T) {
 		// Manually add embeddings to cache
-		manager.mu.Lock()
-		manager.embeddingCache["stored_emb:test-id-1"] = []float64{0.1, 0.2, 0.3}
-		manager.embeddingCache["stored_emb:test-id-2"] = []float64{0.15, 0.25, 0.35}
-		manager.mu.Unlock()
+		manager.embeddingCache.Put("stored_emb:test-id-1", []float64{0.1, 0.2, 0.3})
+		manager.embeddingCache.Put("stored_emb:test-id-2", []float64{0.15, 0.25, 0.35})
 
 		req := VectorSearchRequest{
 			Vector:    []float64{0.1, 0.2, 0.3},
@@ -708,22 +706,16 @@ func TestEmbeddingManager_ClearCache(t *testing.T) {
 
 	t.Run("clears cache successfully", func(t *testing.T) {
 		// Add something to the cache first
-		manager.mu.Lock()
-		manager.embeddingCache["test-key"] = []float64{1.0, 2.0, 3.0}
-		manager.mu.Unlock()
+		manager.embeddingCache.Put("test-key", []float64{1.0, 2.0, 3.0})
 
 		// Verify cache has data
-		manager.mu.RLock()
-		assert.Len(t, manager.embeddingCache, 1)
-		manager.mu.RUnlock()
+		assert.Equal(t, 1, manager.embeddingCache.Len())
 
 		// Clear the cache
 		manager.ClearCache()
 
 		// Verify cache is empty
-		manager.mu.RLock()
-		assert.Len(t, manager.embeddingCache, 0)
-		manager.mu.RUnlock()
+		assert.Equal(t, 0, manager.embeddingCache.Len())
 	})
 
 	t.Run("clears empty cache without error", func(t *testing.T) {
@@ -731,10 +723,8 @@ func TestEmbeddingManager_ClearCache(t *testing.T) {
 		manager.ClearCache()
 
 		// Should still have empty map
-		manager.mu.RLock()
 		assert.NotNil(t, manager.embeddingCache)
-		assert.Len(t, manager.embeddingCache, 0)
-		manager.mu.RUnlock()
+		assert.Equal(t, 0, manager.embeddingCache.Len())
 	})
 }
 

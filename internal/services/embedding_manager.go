@@ -10,14 +10,18 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/database"
 	"github.com/sirupsen/logrus"
 )
 
-// EmbeddingManager handles embedding generation and vector database operations
+// EmbeddingManager handles embedding generation and vector database operations.
+//
+// Concurrency model (CONST-029): embeddingCache → *safe.Store. mu
+// dropped.
 type EmbeddingManager struct {
 	repo           *database.ModelMetadataRepository
 	cache          CacheInterface
@@ -25,8 +29,7 @@ type EmbeddingManager struct {
 	vectorProvider string
 	openAIKey      string
 	httpClient     *http.Client
-	mu             sync.RWMutex
-	embeddingCache map[string][]float64
+	embeddingCache *safe.Store[string, []float64]
 }
 
 // EmbeddingRequest represents a request to generate embeddings
@@ -132,7 +135,7 @@ func NewEmbeddingManagerWithConfig(repo *database.ModelMetadataRepository, cache
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
-		embeddingCache: make(map[string][]float64),
+		embeddingCache: safe.NewStore[string, []float64](),
 	}
 }
 
@@ -324,16 +327,13 @@ func (m *EmbeddingManager) getCacheKey(text, model string) string {
 
 // getCachedEmbedding retrieves a cached embedding
 func (m *EmbeddingManager) getCachedEmbedding(key string) []float64 {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.embeddingCache[key]
+	emb, _ := m.embeddingCache.Get(key)
+	return emb
 }
 
 // setCachedEmbedding stores an embedding in cache
 func (m *EmbeddingManager) setCachedEmbedding(key string, embedding []float64) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.embeddingCache[key] = embedding
+	m.embeddingCache.Put(key, embedding)
 }
 
 // GenerateEmbeddings generates embeddings for text (compatibility method)
@@ -492,8 +492,7 @@ func (e *EmbeddingManager) VectorSearch(ctx context.Context, req VectorSearchReq
 
 	// Search in cached embeddings
 	var results []VectorSearchResult
-	e.mu.RLock()
-	for key, embedding := range e.embeddingCache {
+	e.embeddingCache.Range(func(key string, embedding []float64) bool {
 		if len(key) > 11 && key[:11] == "stored_emb:" {
 			score := e.cosineSimilarity(queryVector, embedding)
 			if score >= threshold {
@@ -505,8 +504,8 @@ func (e *EmbeddingManager) VectorSearch(ctx context.Context, req VectorSearchReq
 				})
 			}
 		}
-	}
-	e.mu.RUnlock()
+		return true
+	})
 
 	// Sort by score descending
 	for i := 0; i < len(results)-1; i++ {
@@ -534,9 +533,7 @@ func (e *EmbeddingManager) VectorSearch(ctx context.Context, req VectorSearchReq
 
 // GetEmbeddingStats returns statistics about embedding usage
 func (e *EmbeddingManager) GetEmbeddingStats(ctx context.Context) (map[string]interface{}, error) {
-	e.mu.RLock()
-	cacheSize := len(e.embeddingCache)
-	e.mu.RUnlock()
+	cacheSize := e.embeddingCache.Len()
 
 	stats := map[string]interface{}{
 		"cachedEmbeddings": cacheSize,
@@ -764,9 +761,7 @@ func (m *EmbeddingManager) RefreshAllEmbeddings(ctx context.Context) error {
 	}
 
 	// Clear embedding cache on refresh
-	m.mu.Lock()
-	m.embeddingCache = make(map[string][]float64)
-	m.mu.Unlock()
+	m.embeddingCache.Clear()
 
 	m.log.WithFields(logrus.Fields{
 		"refreshedCount": refreshedCount,
@@ -804,8 +799,6 @@ func (m *EmbeddingManager) refreshEmbeddingProvider(ctx context.Context, provide
 
 // ClearCache clears the embedding cache
 func (m *EmbeddingManager) ClearCache() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.embeddingCache = make(map[string][]float64)
+	m.embeddingCache.Clear()
 	m.log.Info("Embedding cache cleared")
 }

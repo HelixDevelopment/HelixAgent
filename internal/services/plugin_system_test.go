@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,9 +120,7 @@ func TestHighAvailabilityManager_GetInstance(t *testing.T) {
 			Status:    StatusHealthy,
 			LoadScore: 10,
 		}
-		ham.mu.Lock()
-		ham.instances[instance.ID] = instance
-		ham.mu.Unlock()
+		ham.instances.Put(instance.ID, instance)
 
 		selected, err := ham.GetInstance("lsp")
 		require.NoError(t, err)
@@ -147,9 +146,7 @@ func TestHighAvailabilityManager_UpdateInstanceLoad(t *testing.T) {
 		err := ham.UpdateInstanceLoad("load-test", 75)
 		require.NoError(t, err)
 
-		ham.mu.RLock()
-		assert.Equal(t, 75, ham.instances["load-test"].LoadScore)
-		ham.mu.RUnlock()
+		assert.Equal(t, 75, pluginSystemTestGet(ham.instances, "load-test").LoadScore)
 	})
 
 	t.Run("update load for non-existent instance", func(t *testing.T) {
@@ -300,10 +297,8 @@ func TestFailoverManager_RegisterInstance(t *testing.T) {
 
 	fm.RegisterInstance(instance)
 
-	fm.mu.RLock()
-	assert.Len(t, fm.failoverGroups["mcp"], 1)
-	assert.Equal(t, instance, fm.activeInstances["mcp"])
-	fm.mu.RUnlock()
+	assert.Len(t, pluginSystemTestGet(fm.failoverGroups, "mcp"), 1)
+	assert.Equal(t, instance, pluginSystemTestGet(fm.activeInstances, "mcp"))
 }
 
 func TestFailoverManager_UnregisterInstance(t *testing.T) {
@@ -319,9 +314,7 @@ func TestFailoverManager_UnregisterInstance(t *testing.T) {
 
 	fm.UnregisterInstance("fm-unreg")
 
-	fm.mu.RLock()
-	assert.Len(t, fm.failoverGroups["mcp"], 0)
-	fm.mu.RUnlock()
+	assert.Len(t, pluginSystemTestGet(fm.failoverGroups, "mcp"), 0)
 }
 
 func TestFailoverManager_HandleInstanceFailure(t *testing.T) {
@@ -347,9 +340,7 @@ func TestFailoverManager_HandleInstanceFailure(t *testing.T) {
 	fm.HandleInstanceFailure(primary)
 
 	// Backup should be promoted
-	fm.mu.RLock()
-	active := fm.activeInstances["mcp"]
-	fm.mu.RUnlock()
+	active := pluginSystemTestGet(fm.activeInstances, "mcp")
 
 	assert.NotNil(t, active)
 }
@@ -418,10 +409,8 @@ func TestHealthChecker_RegisterInstance(t *testing.T) {
 
 	hc.RegisterInstance("hc-inst-1", "localhost", 7061)
 
-	hc.mu.RLock()
-	status, exists := hc.healthChecks["hc-inst-1"]
-	instanceInfo, infoExists := hc.instanceRegistry["hc-inst-1"]
-	hc.mu.RUnlock()
+	status, exists := hc.healthChecks.Get("hc-inst-1")
+	instanceInfo, infoExists := hc.instanceRegistry.Get("hc-inst-1")
 
 	assert.True(t, exists)
 	assert.True(t, status.IsHealthy)
@@ -479,10 +468,8 @@ func TestHealthChecker_UnregisterInstance(t *testing.T) {
 	hc.RegisterInstance("hc-unreg", "localhost", 7061)
 	hc.UnregisterInstance("hc-unreg")
 
-	hc.mu.RLock()
-	_, healthExists := hc.healthChecks["hc-unreg"]
-	_, infoExists := hc.instanceRegistry["hc-unreg"]
-	hc.mu.RUnlock()
+	_, healthExists := hc.healthChecks.Get("hc-unreg")
+	_, infoExists := hc.instanceRegistry.Get("hc-unreg")
 
 	assert.False(t, healthExists)
 	assert.False(t, infoExists)
@@ -537,9 +524,7 @@ func TestHealthChecker_SetHTTPClient(t *testing.T) {
 
 	hc.SetHTTPClient(customClient)
 
-	hc.mu.RLock()
 	assert.Equal(t, customClient, hc.httpClient)
-	hc.mu.RUnlock()
 }
 
 func TestHealthChecker_Stop(t *testing.T) {
@@ -841,9 +826,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 		// Healthy update on already healthy instance - no goroutine spawned
 		ham.handleHealthUpdate("healthy-test", true)
 
-		ham.mu.RLock()
-		status := ham.instances["healthy-test"].Status
-		ham.mu.RUnlock()
+		status := pluginSystemTestGet(ham.instances, "healthy-test").Status
 		assert.Equal(t, StatusHealthy, status)
 	})
 
@@ -863,9 +846,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 		// Healthy update on unhealthy instance - no goroutine spawned for recovery
 		ham.handleHealthUpdate("recover-test", true)
 
-		ham.mu.RLock()
-		status := ham.instances["recover-test"].Status
-		ham.mu.RUnlock()
+		status := pluginSystemTestGet(ham.instances, "recover-test").Status
 		assert.Equal(t, StatusHealthy, status)
 	})
 
@@ -886,9 +867,7 @@ func TestHighAvailabilityManager_HandleHealthUpdate(t *testing.T) {
 		ham.handleHealthUpdate("fail-test", false)
 
 		// The status should be unhealthy (set before goroutine)
-		ham.mu.RLock()
-		status := ham.instances["fail-test"].Status
-		ham.mu.RUnlock()
+		status := pluginSystemTestGet(ham.instances, "fail-test").Status
 		// Status should have been changed to unhealthy
 		assert.True(t, status == StatusUnhealthy || status == StatusStarting,
 			"Status should be unhealthy or starting, got %d", status)
@@ -920,24 +899,18 @@ func TestFailoverManager_CheckFailoverStatus(t *testing.T) {
 		// Should not panic or change anything
 		fm.checkFailoverStatus()
 
-		fm.mu.RLock()
-		active := fm.activeInstances["mcp"]
-		fm.mu.RUnlock()
+		active := pluginSystemTestGet(fm.activeInstances, "mcp")
 		assert.Equal(t, "primary", active.ID)
 	})
 
 	t.Run("check failover status with unhealthy active", func(t *testing.T) {
 		// Make primary unhealthy - checkFailoverStatus only logs, doesn't promote
-		fm.mu.Lock()
 		primary.Status = StatusUnhealthy
-		fm.mu.Unlock()
 
 		// Should not panic, just logs warning
 		fm.checkFailoverStatus()
 
-		fm.mu.RLock()
-		active := fm.activeInstances["mcp"]
-		fm.mu.RUnlock()
+		active := pluginSystemTestGet(fm.activeInstances, "mcp")
 		// Active remains the same (checkFailoverStatus only logs)
 		assert.Equal(t, "primary", active.ID)
 	})
@@ -959,9 +932,7 @@ func TestHealthChecker_PerformHealthChecks(t *testing.T) {
 		hc.performHealthChecks(healthUpdateFunc)
 
 		// Check that the health check was updated
-		hc.mu.RLock()
-		status := hc.healthChecks["perf-check-inst"]
-		hc.mu.RUnlock()
+		status := pluginSystemTestGet(hc.healthChecks, "perf-check-inst")
 
 		// Should have at least 1 failure after the check
 		assert.GreaterOrEqual(t, status.ConsecutiveFailures, 0)
@@ -1167,9 +1138,7 @@ func TestHealthChecker_CheckInstanceHealth(t *testing.T) {
 		hc.RegisterInstanceWithProtocol("clear-error-test", host, port, "tcp")
 
 		// Set an error manually
-		hc.mu.Lock()
-		hc.healthChecks["clear-error-test"].Error = "previous error"
-		hc.mu.Unlock()
+		pluginSystemTestGet(hc.healthChecks, "clear-error-test").Error = "previous error"
 
 		// Successful health check should clear the error
 		healthy := hc.checkInstanceHealth("clear-error-test")
@@ -1417,4 +1386,17 @@ func TestRandomLoadBalancer_UpdateLoad(t *testing.T) {
 	lb.UpdateLoad("instance-1", 50)
 	lb.UpdateLoad("instance-2", 100)
 	lb.UpdateLoad("", 0) // edge case: empty instance ID
+}
+
+
+// Test-only helpers for plugin_system_test.go after CONST-029 migration.
+// These translate the legacy `obj.field["K"]` map-indexed access into the
+// new safe.Store.Get(...) call while preserving the zero-value-on-miss
+// ergonomic of map reads.
+
+// pluginSystemTestGet returns the stored value for key in a safe.Store,
+// or the zero value if absent.
+func pluginSystemTestGet[K comparable, V any](s *safe.Store[K, V], k K) V {
+    v, _ := s.Get(k)
+    return v
 }

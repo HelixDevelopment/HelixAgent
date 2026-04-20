@@ -10,13 +10,20 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
-// HighAvailabilityManager provides high availability features with load balancing and failover
+// HighAvailabilityManager provides high availability features with load balancing and failover.
+//
+// Concurrent-safe by construction (CONST-029): instances is a safe.Store;
+// statusMu (Pattern Zeta) serialises per-*ServiceInstance Status /
+// LastHealth / LoadScore mutations in handleHealthUpdate and
+// UpdateInstanceLoad. statusMu is not paired with any bare map/slice
+// field.
 type HighAvailabilityManager struct {
-	mu              sync.RWMutex
-	instances       map[string]*ServiceInstance
+	statusMu        sync.Mutex
+	instances       *safe.Store[string, *ServiceInstance]
 	loadBalancer    LoadBalancer
 	failoverManager *FailoverManager
 	healthChecker   *HealthChecker
@@ -53,20 +60,29 @@ type LoadBalancer interface {
 	UpdateLoad(instanceID string, loadScore int)
 }
 
-// RoundRobinLoadBalancer implements round-robin load balancing
+// RoundRobinLoadBalancer implements round-robin load balancing.
+//
+// Concurrent-safe by construction: lastUsed is a safe.Store; Store.Update
+// is used for the atomic read-increment-write cycle in SelectInstance.
 type RoundRobinLoadBalancer struct {
-	mu       sync.Mutex
-	lastUsed map[string]int // protocol -> last used index
+	lastUsed *safe.Store[string, int] // protocol -> last used index
 }
 
 // LeastLoadedLoadBalancer implements least-loaded load balancing
 type LeastLoadedLoadBalancer struct{}
 
-// FailoverManager handles automatic failover
+// FailoverManager handles automatic failover.
+//
+// Concurrent-safe by construction: failoverGroups holds per-protocol
+// slices via safe.Store (with Update-based COW for append/remove);
+// activeInstances is a safe.Store. groupMu (Pattern Zeta, sync.Mutex)
+// serialises the "unregister from failoverGroups + promote new active"
+// compound operation across the two stores; it does not pair with any
+// bare map/slice field.
 type FailoverManager struct {
-	mu                sync.RWMutex
-	failoverGroups    map[string][]*ServiceInstance
-	activeInstances   map[string]*ServiceInstance
+	groupMu           sync.Mutex
+	failoverGroups    *safe.Store[string, []*ServiceInstance]
+	activeInstances   *safe.Store[string, *ServiceInstance]
 	failoverThreshold time.Duration
 	logger            *logrus.Logger
 }
@@ -78,14 +94,21 @@ type InstanceInfo struct {
 	Protocol string
 }
 
-// HealthChecker performs health checks on service instances
+// HealthChecker performs health checks on service instances.
+//
+// Concurrent-safe by construction: healthChecks and instanceRegistry
+// are safe.Store. statusMu (Pattern Zeta) serialises the per-
+// *HealthStatus field mutations inside performHealthChecks and
+// checkInstanceHealth (ConsecutiveFailures / IsHealthy / LastCheck /
+// ResponseTime / Error). statusMu does not pair with any bare map or
+// slice field.
 type HealthChecker struct {
-	mu                 sync.RWMutex
+	statusMu           sync.Mutex
 	checkInterval      time.Duration
 	timeout            time.Duration
 	unhealthyThreshold int
-	healthChecks       map[string]*HealthStatus
-	instanceRegistry   map[string]*InstanceInfo
+	healthChecks       *safe.Store[string, *HealthStatus]
+	instanceRegistry   *safe.Store[string, *InstanceInfo]
 	httpClient         *http.Client
 	logger             *logrus.Logger
 }
@@ -103,7 +126,7 @@ type HealthStatus struct {
 // NewHighAvailabilityManager creates a new HA manager
 func NewHighAvailabilityManager(logger *logrus.Logger) *HighAvailabilityManager {
 	return &HighAvailabilityManager{
-		instances:       make(map[string]*ServiceInstance),
+		instances:       safe.NewStore[string, *ServiceInstance](),
 		loadBalancer:    &LeastLoadedLoadBalancer{},
 		failoverManager: NewFailoverManager(logger),
 		healthChecker:   NewHealthChecker(logger),
@@ -114,16 +137,19 @@ func NewHighAvailabilityManager(logger *logrus.Logger) *HighAvailabilityManager 
 
 // RegisterInstance registers a new service instance
 func (ham *HighAvailabilityManager) RegisterInstance(instance *ServiceInstance) error {
-	ham.mu.Lock()
-	defer ham.mu.Unlock()
-
-	if _, exists := ham.instances[instance.ID]; exists {
+	var duplicate bool
+	ham.instances.Update(instance.ID, func(existing *ServiceInstance, present bool) (*ServiceInstance, bool) {
+		if present {
+			duplicate = true
+			return existing, true
+		}
+		instance.Status = StatusStarting
+		instance.LastHealth = time.Now()
+		return instance, true
+	})
+	if duplicate {
 		return fmt.Errorf("instance %s already registered", instance.ID)
 	}
-
-	instance.Status = StatusStarting
-	instance.LastHealth = time.Now()
-	ham.instances[instance.ID] = instance
 
 	// Register with failover manager
 	ham.failoverManager.RegisterInstance(instance)
@@ -143,14 +169,9 @@ func (ham *HighAvailabilityManager) RegisterInstance(instance *ServiceInstance) 
 
 // UnregisterInstance removes a service instance
 func (ham *HighAvailabilityManager) UnregisterInstance(instanceID string) error {
-	ham.mu.Lock()
-	defer ham.mu.Unlock()
-
-	if _, exists := ham.instances[instanceID]; !exists {
+	if _, existed := ham.instances.Delete(instanceID); !existed {
 		return fmt.Errorf("instance %s not registered", instanceID)
 	}
-
-	delete(ham.instances, instanceID)
 
 	// Unregister from failover manager
 	ham.failoverManager.UnregisterInstance(instanceID)
@@ -164,14 +185,13 @@ func (ham *HighAvailabilityManager) UnregisterInstance(instanceID string) error 
 
 // GetInstance selects an available instance for a protocol
 func (ham *HighAvailabilityManager) GetInstance(protocol string) (*ServiceInstance, error) {
-	ham.mu.RLock()
 	var instances []*ServiceInstance
-	for _, instance := range ham.instances {
+	ham.instances.Range(func(_ string, instance *ServiceInstance) bool {
 		if instance.Protocol == protocol && instance.Status == StatusHealthy {
 			instances = append(instances, instance)
 		}
-	}
-	ham.mu.RUnlock()
+		return true
+	})
 
 	if len(instances) == 0 {
 		return nil, fmt.Errorf("no healthy instances available for protocol %s", protocol)
@@ -191,15 +211,14 @@ func (ham *HighAvailabilityManager) GetInstance(protocol string) (*ServiceInstan
 
 // UpdateInstanceLoad updates the load score for an instance
 func (ham *HighAvailabilityManager) UpdateInstanceLoad(instanceID string, loadScore int) error {
-	ham.mu.Lock()
-	defer ham.mu.Unlock()
-
-	instance, exists := ham.instances[instanceID]
+	instance, exists := ham.instances.Get(instanceID)
 	if !exists {
 		return fmt.Errorf("instance %s not found", instanceID)
 	}
 
+	ham.statusMu.Lock()
 	instance.LoadScore = loadScore
+	ham.statusMu.Unlock()
 	ham.loadBalancer.UpdateLoad(instanceID, loadScore)
 
 	return nil
@@ -207,29 +226,18 @@ func (ham *HighAvailabilityManager) UpdateInstanceLoad(instanceID string, loadSc
 
 // GetAllInstances returns all registered instances
 func (ham *HighAvailabilityManager) GetAllInstances() []*ServiceInstance {
-	ham.mu.RLock()
-	defer ham.mu.RUnlock()
-
-	instances := make([]*ServiceInstance, 0, len(ham.instances))
-	for _, instance := range ham.instances {
-		instances = append(instances, instance)
-	}
-
-	return instances
+	return ham.instances.Values()
 }
 
 // GetInstancesByProtocol returns instances for a specific protocol
 func (ham *HighAvailabilityManager) GetInstancesByProtocol(protocol string) []*ServiceInstance {
-	ham.mu.RLock()
-	defer ham.mu.RUnlock()
-
 	var instances []*ServiceInstance
-	for _, instance := range ham.instances {
+	ham.instances.Range(func(_ string, instance *ServiceInstance) bool {
 		if instance.Protocol == protocol {
 			instances = append(instances, instance)
 		}
-	}
-
+		return true
+	})
 	return instances
 }
 
@@ -258,15 +266,14 @@ func (ham *HighAvailabilityManager) Stop() {
 // Private methods
 
 func (ham *HighAvailabilityManager) handleHealthUpdate(instanceID string, healthy bool) {
-	ham.mu.Lock()
-	defer ham.mu.Unlock()
-
-	instance, exists := ham.instances[instanceID]
+	instance, exists := ham.instances.Get(instanceID)
 	if !exists {
 		return
 	}
 
+	ham.statusMu.Lock()
 	oldStatus := instance.Status
+	triggerFailover := false
 
 	if healthy {
 		if instance.Status != StatusHealthy {
@@ -277,19 +284,23 @@ func (ham *HighAvailabilityManager) handleHealthUpdate(instanceID string, health
 		if instance.Status == StatusHealthy {
 			instance.Status = StatusUnhealthy
 			ham.logger.WithField("instanceId", instanceID).Warn("Instance became unhealthy")
-
-			// Trigger failover
-			go ham.failoverManager.HandleInstanceFailure(instance)
+			triggerFailover = true
 		}
 	}
 
 	instance.LastHealth = time.Now()
+	newStatus := instance.Status
+	ham.statusMu.Unlock()
 
-	if oldStatus != instance.Status {
+	if triggerFailover {
+		go ham.failoverManager.HandleInstanceFailure(instance)
+	}
+
+	if oldStatus != newStatus {
 		ham.logger.WithFields(logrus.Fields{
 			"instanceId": instanceID,
 			"oldStatus":  oldStatus,
-			"newStatus":  instance.Status,
+			"newStatus":  newStatus,
 		}).Info("Instance status changed")
 	}
 }
@@ -298,20 +309,19 @@ func (ham *HighAvailabilityManager) handleHealthUpdate(instanceID string, health
 
 // SelectInstance selects an instance using round-robin
 func (rr *RoundRobinLoadBalancer) SelectInstance(protocol string, instances []*ServiceInstance) *ServiceInstance {
-	rr.mu.Lock()
-	defer rr.mu.Unlock()
-
 	if len(instances) == 0 {
 		return nil
 	}
 
 	if rr.lastUsed == nil {
-		rr.lastUsed = make(map[string]int)
+		rr.lastUsed = safe.NewStore[string, int]()
 	}
 
-	lastIndex := rr.lastUsed[protocol]
-	nextIndex := (lastIndex + 1) % len(instances)
-	rr.lastUsed[protocol] = nextIndex
+	var nextIndex int
+	rr.lastUsed.Update(protocol, func(lastIndex int, _ bool) (int, bool) {
+		nextIndex = (lastIndex + 1) % len(instances)
+		return nextIndex, true
+	})
 
 	return instances[nextIndex]
 }
@@ -351,8 +361,8 @@ func (ll *LeastLoadedLoadBalancer) UpdateLoad(instanceID string, loadScore int) 
 // NewFailoverManager creates a new failover manager
 func NewFailoverManager(logger *logrus.Logger) *FailoverManager {
 	return &FailoverManager{
-		failoverGroups:    make(map[string][]*ServiceInstance),
-		activeInstances:   make(map[string]*ServiceInstance),
+		failoverGroups:    safe.NewStore[string, []*ServiceInstance](),
+		activeInstances:   safe.NewStore[string, *ServiceInstance](),
 		failoverThreshold: 30 * time.Second,
 		logger:            logger,
 	}
@@ -360,15 +370,13 @@ func NewFailoverManager(logger *logrus.Logger) *FailoverManager {
 
 // RegisterInstance registers an instance with the failover manager
 func (fm *FailoverManager) RegisterInstance(instance *ServiceInstance) {
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
-
 	protocol := instance.Protocol
-	fm.failoverGroups[protocol] = append(fm.failoverGroups[protocol], instance)
+	fm.failoverGroups.Update(protocol, func(cur []*ServiceInstance, _ bool) ([]*ServiceInstance, bool) {
+		return append(append([]*ServiceInstance(nil), cur...), instance), true
+	})
 
 	// If this is the first instance or current active is unhealthy, make it active
-	if _, exists := fm.activeInstances[protocol]; !exists {
-		fm.activeInstances[protocol] = instance
+	if _, swapped := fm.activeInstances.PutIfAbsent(protocol, instance); swapped {
 		fm.logger.WithFields(logrus.Fields{
 			"protocol":   protocol,
 			"instanceId": instance.ID,
@@ -376,19 +384,27 @@ func (fm *FailoverManager) RegisterInstance(instance *ServiceInstance) {
 	}
 }
 
-// UnregisterInstance removes an instance from failover management
+// UnregisterInstance removes an instance from failover management.
+// Uses a two-phase Snapshot then Update pattern because the Range
+// callback cannot call Put on the same Store (Range holds the Store's
+// read lock, Put needs the write lock — classic upgrade deadlock).
 func (fm *FailoverManager) UnregisterInstance(instanceID string) {
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
+	fm.groupMu.Lock()
+	defer fm.groupMu.Unlock()
 
-	// Remove from all failover groups
-	for protocol, instances := range fm.failoverGroups {
+	// Phase 1: snapshot outside the callback.
+	snapshot := fm.failoverGroups.Snapshot()
+	// Phase 2: for each protocol containing the instance, rebuild the
+	// slice and republish. Also promote a new active instance if we
+	// removed the current active.
+	for protocol, instances := range snapshot {
 		for i, instance := range instances {
 			if instance.ID == instanceID {
-				fm.failoverGroups[protocol] = append(instances[:i], instances[i+1:]...)
+				next := append([]*ServiceInstance(nil), instances[:i]...)
+				next = append(next, instances[i+1:]...)
+				fm.failoverGroups.Put(protocol, next)
 
-				// If this was the active instance, promote another
-				if active, exists := fm.activeInstances[protocol]; exists && active.ID == instanceID {
+				if active, exists := fm.activeInstances.Get(protocol); exists && active.ID == instanceID {
 					fm.promoteNewActive(protocol)
 				}
 				break
@@ -399,13 +415,13 @@ func (fm *FailoverManager) UnregisterInstance(instanceID string) {
 
 // HandleInstanceFailure handles failure of an instance
 func (fm *FailoverManager) HandleInstanceFailure(instance *ServiceInstance) {
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
+	fm.groupMu.Lock()
+	defer fm.groupMu.Unlock()
 
 	protocol := instance.Protocol
 
 	// If this was the active instance, promote a backup
-	if active, exists := fm.activeInstances[protocol]; exists && active.ID == instance.ID {
+	if active, exists := fm.activeInstances.Get(protocol); exists && active.ID == instance.ID {
 		fm.logger.WithFields(logrus.Fields{
 			"protocol":   protocol,
 			"instanceId": instance.ID,
@@ -438,13 +454,14 @@ func (fm *FailoverManager) Stop() {
 	// Cleanup handled by context cancellation
 }
 
+// promoteNewActive requires fm.groupMu to be held by the caller.
 func (fm *FailoverManager) promoteNewActive(protocol string) {
-	instances := fm.failoverGroups[protocol]
+	instances, _ := fm.failoverGroups.Get(protocol)
 
 	// Find a healthy backup instance
 	for _, instance := range instances {
 		if instance.Status == StatusHealthy {
-			fm.activeInstances[protocol] = instance
+			fm.activeInstances.Put(protocol, instance)
 			fm.logger.WithFields(logrus.Fields{
 				"protocol":   protocol,
 				"instanceId": instance.ID,
@@ -457,10 +474,7 @@ func (fm *FailoverManager) promoteNewActive(protocol string) {
 }
 
 func (fm *FailoverManager) checkFailoverStatus() {
-	fm.mu.RLock()
-	defer fm.mu.RUnlock()
-
-	for protocol, active := range fm.activeInstances {
+	fm.activeInstances.Range(func(protocol string, active *ServiceInstance) bool {
 		if active.Status != StatusHealthy {
 			// Active instance is not healthy, should have been handled by failure detection
 			fm.logger.WithFields(logrus.Fields{
@@ -469,7 +483,8 @@ func (fm *FailoverManager) checkFailoverStatus() {
 				"status":         active.Status,
 			}).Warn("Active instance is not healthy")
 		}
-	}
+		return true
+	})
 }
 
 // HealthChecker implementation
@@ -505,8 +520,8 @@ func NewHealthCheckerWithConfig(logger *logrus.Logger, config *HealthCheckerConf
 		checkInterval:      config.CheckInterval,
 		timeout:            config.Timeout,
 		unhealthyThreshold: config.UnhealthyThreshold,
-		healthChecks:       make(map[string]*HealthStatus),
-		instanceRegistry:   make(map[string]*InstanceInfo),
+		healthChecks:       safe.NewStore[string, *HealthStatus](),
+		instanceRegistry:   safe.NewStore[string, *InstanceInfo](),
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
 			Transport: &http.Transport{
@@ -528,20 +543,17 @@ func (hc *HealthChecker) RegisterInstance(instanceID, address string, port int) 
 
 // RegisterInstanceWithProtocol registers an instance for health checking with a specific protocol
 func (hc *HealthChecker) RegisterInstanceWithProtocol(instanceID, address string, port int, protocol string) {
-	hc.mu.Lock()
-	defer hc.mu.Unlock()
-
-	hc.healthChecks[instanceID] = &HealthStatus{
+	hc.healthChecks.Put(instanceID, &HealthStatus{
 		InstanceID: instanceID,
 		LastCheck:  time.Now(),
 		IsHealthy:  true, // Assume healthy initially
-	}
+	})
 
-	hc.instanceRegistry[instanceID] = &InstanceInfo{
+	hc.instanceRegistry.Put(instanceID, &InstanceInfo{
 		Address:  address,
 		Port:     port,
 		Protocol: protocol,
-	}
+	})
 
 	hc.logger.WithFields(logrus.Fields{
 		"instanceId": instanceID,
@@ -553,11 +565,8 @@ func (hc *HealthChecker) RegisterInstanceWithProtocol(instanceID, address string
 
 // UnregisterInstance removes an instance from health checking
 func (hc *HealthChecker) UnregisterInstance(instanceID string) {
-	hc.mu.Lock()
-	defer hc.mu.Unlock()
-
-	delete(hc.healthChecks, instanceID)
-	delete(hc.instanceRegistry, instanceID)
+	hc.healthChecks.Delete(instanceID)
+	hc.instanceRegistry.Delete(instanceID)
 
 	hc.logger.WithField("instanceId", instanceID).Debug("Instance unregistered from health checking")
 }
@@ -585,17 +594,11 @@ func (hc *HealthChecker) Stop() {
 }
 
 func (hc *HealthChecker) performHealthChecks(healthUpdateFunc func(string, bool)) {
-	hc.mu.Lock()
-	instances := make(map[string]*HealthStatus)
-	for k, v := range hc.healthChecks {
-		instances[k] = v
-	}
-	hc.mu.Unlock()
-
-	for instanceID, status := range instances {
+	hc.healthChecks.Range(func(instanceID string, status *HealthStatus) bool {
 		healthy := hc.checkInstanceHealth(instanceID)
-		oldHealthy := status.IsHealthy
 
+		hc.statusMu.Lock()
+		oldHealthy := status.IsHealthy
 		if healthy {
 			status.ConsecutiveFailures = 0
 			status.IsHealthy = true
@@ -605,21 +608,20 @@ func (hc *HealthChecker) performHealthChecks(healthUpdateFunc func(string, bool)
 				status.IsHealthy = false
 			}
 		}
-
 		status.LastCheck = time.Now()
+		newHealthy := status.IsHealthy
+		hc.statusMu.Unlock()
 
-		// Notify if health status changed
-		if oldHealthy != status.IsHealthy {
-			healthUpdateFunc(instanceID, status.IsHealthy)
+		if oldHealthy != newHealthy {
+			healthUpdateFunc(instanceID, newHealthy)
 		}
-	}
+		return true
+	})
 }
 
 func (hc *HealthChecker) checkInstanceHealth(instanceID string) bool {
-	hc.mu.RLock()
-	instanceInfo, exists := hc.instanceRegistry[instanceID]
-	status := hc.healthChecks[instanceID]
-	hc.mu.RUnlock()
+	instanceInfo, exists := hc.instanceRegistry.Get(instanceID)
+	status, _ := hc.healthChecks.Get(instanceID)
 
 	if !exists || instanceInfo == nil {
 		hc.logger.WithField("instanceId", instanceID).Warn("Instance not found in registry")
@@ -645,17 +647,19 @@ func (hc *HealthChecker) checkInstanceHealth(instanceID string) bool {
 
 	responseTime := time.Since(startTime)
 
-	// Update status with response time and error
-	hc.mu.Lock()
+	// Update status with response time and error under statusMu so
+	// concurrent performHealthChecks iterations on the same status
+	// pointer don't race with counter mutations.
 	if status != nil {
+		hc.statusMu.Lock()
 		status.ResponseTime = responseTime
 		if checkErr != nil {
 			status.Error = checkErr.Error()
 		} else {
 			status.Error = ""
 		}
+		hc.statusMu.Unlock()
 	}
-	hc.mu.Unlock()
 
 	hc.logger.WithFields(logrus.Fields{
 		"instanceId":   instanceID,
@@ -722,26 +726,23 @@ func (hc *HealthChecker) checkTCPHealth(info *InstanceInfo) (bool, error) {
 
 // GetInstanceInfo returns the instance information for a given instance ID
 func (hc *HealthChecker) GetInstanceInfo(instanceID string) *InstanceInfo {
-	hc.mu.RLock()
-	defer hc.mu.RUnlock()
-
-	return hc.instanceRegistry[instanceID]
+	info, _ := hc.instanceRegistry.Get(instanceID)
+	return info
 }
 
 // GetHealthStatus returns the health status for a given instance ID
 func (hc *HealthChecker) GetHealthStatus(instanceID string) *HealthStatus {
-	hc.mu.RLock()
-	defer hc.mu.RUnlock()
-
-	return hc.healthChecks[instanceID]
+	status, _ := hc.healthChecks.Get(instanceID)
+	return status
 }
 
-// SetHTTPClient allows setting a custom HTTP client (useful for testing)
+// SetHTTPClient allows setting a custom HTTP client (useful for testing).
+// Protected by statusMu to serialise with any concurrent health-check loop
+// reading hc.httpClient via checkHTTPHealth. Single writer expected.
 func (hc *HealthChecker) SetHTTPClient(client *http.Client) {
-	hc.mu.Lock()
-	defer hc.mu.Unlock()
-
+	hc.statusMu.Lock()
 	hc.httpClient = client
+	hc.statusMu.Unlock()
 }
 
 // Circuit Breaker for fault tolerance
@@ -859,9 +860,15 @@ func (cb *CircuitBreaker) onSuccess() {
 
 // Service Registry for service discovery
 
+// ServiceRegistry provides service discovery with per-type endpoint lists.
+//
+// Concurrent-safe by construction: services is a safe.Store whose values
+// are immutable endpoint slices — RegisterService / UnregisterService
+// use Store.Update COW to swap in a fresh slice rather than mutating the
+// existing one, so concurrent DiscoverServices readers always get a
+// consistent snapshot without external locking.
 type ServiceRegistry struct {
-	mu       sync.RWMutex
-	services map[string][]*ServiceEndpoint
+	services *safe.Store[string, []*ServiceEndpoint]
 	logger   *logrus.Logger
 }
 
@@ -876,17 +883,16 @@ type ServiceEndpoint struct {
 // NewServiceRegistry creates a new service registry
 func NewServiceRegistry(logger *logrus.Logger) *ServiceRegistry {
 	return &ServiceRegistry{
-		services: make(map[string][]*ServiceEndpoint),
+		services: safe.NewStore[string, []*ServiceEndpoint](),
 		logger:   logger,
 	}
 }
 
 // RegisterService registers a service endpoint
 func (sr *ServiceRegistry) RegisterService(serviceType string, endpoint *ServiceEndpoint) {
-	sr.mu.Lock()
-	defer sr.mu.Unlock()
-
-	sr.services[serviceType] = append(sr.services[serviceType], endpoint)
+	sr.services.Update(serviceType, func(cur []*ServiceEndpoint, _ bool) ([]*ServiceEndpoint, bool) {
+		return append(append([]*ServiceEndpoint(nil), cur...), endpoint), true
+	})
 
 	sr.logger.WithFields(logrus.Fields{
 		"serviceType": serviceType,
@@ -898,27 +904,27 @@ func (sr *ServiceRegistry) RegisterService(serviceType string, endpoint *Service
 
 // UnregisterService removes a service endpoint
 func (sr *ServiceRegistry) UnregisterService(serviceType, endpointID string) {
-	sr.mu.Lock()
-	defer sr.mu.Unlock()
-
-	endpoints := sr.services[serviceType]
-	for i, endpoint := range endpoints {
-		if endpoint.ID == endpointID {
-			sr.services[serviceType] = append(endpoints[:i], endpoints[i+1:]...)
-			break
+	sr.services.Update(serviceType, func(endpoints []*ServiceEndpoint, present bool) ([]*ServiceEndpoint, bool) {
+		if !present {
+			return nil, false
 		}
-	}
+		for i, endpoint := range endpoints {
+			if endpoint.ID == endpointID {
+				next := append([]*ServiceEndpoint(nil), endpoints[:i]...)
+				next = append(next, endpoints[i+1:]...)
+				return next, true
+			}
+		}
+		return endpoints, true
+	})
 }
 
 // DiscoverServices discovers service endpoints
 func (sr *ServiceRegistry) DiscoverServices(serviceType string) []*ServiceEndpoint {
-	sr.mu.RLock()
-	defer sr.mu.RUnlock()
-
-	endpoints := sr.services[serviceType]
+	endpoints, _ := sr.services.Get(serviceType)
+	// Caller may mutate the returned slice; return a defensive copy.
 	result := make([]*ServiceEndpoint, len(endpoints))
 	copy(result, endpoints)
-
 	return result
 }
 

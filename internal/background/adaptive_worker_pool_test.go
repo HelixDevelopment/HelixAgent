@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,13 +36,13 @@ func newTestWorkerPool(
 		config:          config,
 		queue:           queue,
 		repository:      repository,
-		executors:       make(map[string]TaskExecutor),
+		executors:       safe.NewStore[string, TaskExecutor](),
 		resourceMonitor: resourceMonitor,
 		stuckDetector:   stuckDetector,
 		notifier:        notifier,
 		logger:          logger,
 		metrics:         getTestMetrics(), // Use shared metrics
-		workers:         make(map[string]*Worker),
+		workers:         safe.NewStore[string, *Worker](),
 		ctx:             ctx,
 		cancel:          cancel,
 	}
@@ -345,10 +347,7 @@ func TestAdaptiveWorkerPool_RegisterExecutor(t *testing.T) {
 		executor := &mockTaskExecutor{}
 		pool.RegisterExecutor("test-task", executor)
 
-		pool.executorsMu.RLock()
-		registered := pool.executors["test-task"]
-		pool.executorsMu.RUnlock()
-
+		registered, _ := pool.executors.Get("test-task")
 		assert.NotNil(t, registered)
 		assert.Equal(t, executor, registered)
 	})
@@ -362,10 +361,7 @@ func TestAdaptiveWorkerPool_RegisterExecutor(t *testing.T) {
 		pool.RegisterExecutor("test-task", executor1)
 		pool.RegisterExecutor("test-task", executor2)
 
-		pool.executorsMu.RLock()
-		registered := pool.executors["test-task"]
-		pool.executorsMu.RUnlock()
-
+		registered, _ := pool.executors.Get("test-task")
 		assert.Equal(t, executor2, registered)
 	})
 
@@ -376,11 +372,7 @@ func TestAdaptiveWorkerPool_RegisterExecutor(t *testing.T) {
 		pool.RegisterExecutor("type-2", &mockTaskExecutor{})
 		pool.RegisterExecutor("type-3", &mockTaskExecutor{})
 
-		pool.executorsMu.RLock()
-		count := len(pool.executors)
-		pool.executorsMu.RUnlock()
-
-		assert.Equal(t, 3, count)
+		assert.Equal(t, 3, pool.executors.Len())
 	})
 }
 

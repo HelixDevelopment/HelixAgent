@@ -5,12 +5,11 @@
 #
 cmd/cognee-mock/main.go:26:CogneeMockServer
 internal/agents/dream/dreamer.go:129:Dreamer
-internal/background/adaptive_worker_pool_test.go:211:mockNotificationService
-internal/background/adaptive_worker_pool_test.go:50:mockTaskQueue
+internal/background/adaptive_worker_pool_test.go:213:mockNotificationService
+internal/background/adaptive_worker_pool_test.go:52:mockTaskQueue
 internal/background/events_test.go:160:MockMessagingHub
 internal/background/resource_monitor_test_helpers.go:12:MockResourceMonitor
 internal/background/task_queue_test.go:18:mockTaskRepository
-internal/background/worker_pool.go:53:AdaptiveWorkerPool
 internal/benchmark/runner.go:16:StandardBenchmarkRunner
 internal/bigdata/datalake_test.go:24:mockS3Server
 internal/bigdata/debate_integration_test.go:19:mockBroker

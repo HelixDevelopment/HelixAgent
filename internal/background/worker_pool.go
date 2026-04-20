@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
@@ -49,20 +51,22 @@ func DefaultWorkerPoolConfig() *WorkerPoolConfig {
 	}
 }
 
-// AdaptiveWorkerPool manages background task execution with auto-scaling
+// AdaptiveWorkerPool manages background task execution with auto-scaling.
+//
+// Concurrency model (CONST-029): executors and workers are *safe.Store
+// containers; the two mutexes are dropped. Per-worker state still
+// lives behind each Worker's own mu fields.
 type AdaptiveWorkerPool struct {
 	config          *WorkerPoolConfig
 	queue           TaskQueue
 	repository      TaskRepository
-	executors       map[string]TaskExecutor
-	executorsMu     sync.RWMutex
+	executors       *safe.Store[string, TaskExecutor]
 	resourceMonitor ResourceMonitor
 	stuckDetector   StuckDetector
 	notifier        NotificationService
 	logger          *logrus.Logger
 	metrics         *WorkerPoolMetrics
-	workers         map[string]*Worker
-	workersMu       sync.RWMutex
+	workers         *safe.Store[string, *Worker]
 	activeCount     int32
 
 	// queueDepth tracks the current number of pending tasks for backpressure monitoring.
@@ -236,13 +240,13 @@ func NewAdaptiveWorkerPool(
 		config:          config,
 		queue:           queue,
 		repository:      repository,
-		executors:       make(map[string]TaskExecutor),
+		executors:       safe.NewStore[string, TaskExecutor](),
 		resourceMonitor: resourceMonitor,
 		stuckDetector:   stuckDetector,
 		notifier:        notifier,
 		logger:          logger,
 		metrics:         nil, // Use extracted module's metrics instead
-		workers:         make(map[string]*Worker),
+		workers:         safe.NewStore[string, *Worker](),
 		ctx:             ctx,
 		cancel:          cancel,
 		extractedPool:   extractedPool,
@@ -252,9 +256,7 @@ func NewAdaptiveWorkerPool(
 
 // RegisterExecutor registers a task executor for a task type
 func (wp *AdaptiveWorkerPool) RegisterExecutor(taskType string, executor TaskExecutor) {
-	wp.executorsMu.Lock()
-	defer wp.executorsMu.Unlock()
-	wp.executors[taskType] = executor
+	wp.executors.Put(taskType, executor)
 	wp.logger.WithField("task_type", taskType).Debug("Registered task executor")
 
 	// Also register with extracted pool
@@ -317,11 +319,10 @@ func (wp *AdaptiveWorkerPool) Stop(gracePeriod time.Duration) error {
 	} else {
 		// Fallback to original implementation
 		// Signal all workers to stop (using safe signalStop to prevent double-close panic)
-		wp.workersMu.Lock()
-		for _, worker := range wp.workers {
+		wp.workers.Range(func(_ string, worker *Worker) bool {
 			worker.signalStop()
-		}
-		wp.workersMu.Unlock()
+			return true
+		})
 
 		// Wait with timeout
 		done := make(chan struct{})
@@ -360,16 +361,14 @@ func (wp *AdaptiveWorkerPool) GetActiveTaskCount() int {
 	if wp.extractedPool != nil {
 		return wp.extractedPool.GetActiveTaskCount()
 	}
-	wp.workersMu.RLock()
-	defer wp.workersMu.RUnlock()
-
 	count := 0
-	for _, worker := range wp.workers {
+	wp.workers.Range(func(_ string, worker *Worker) bool {
 		// CONCURRENCY FIX: Use thread-safe accessor
 		if worker.Status() == workerStateBusy {
 			count++
 		}
-	}
+		return true
+	})
 	return count
 }
 
@@ -384,11 +383,8 @@ func (wp *AdaptiveWorkerPool) GetWorkerStatus() []WorkerStatus {
 		}
 		return statuses
 	}
-	wp.workersMu.RLock()
-	defer wp.workersMu.RUnlock()
-
-	statuses := make([]WorkerStatus, 0, len(wp.workers))
-	for _, worker := range wp.workers {
+	statuses := make([]WorkerStatus, 0, wp.workers.Len())
+	wp.workers.Range(func(_ string, worker *Worker) bool {
 		var avgDuration time.Duration
 		completed := atomic.LoadInt64(&worker.TasksCompleted)
 		if completed > 0 {
@@ -406,7 +402,8 @@ func (wp *AdaptiveWorkerPool) GetWorkerStatus() []WorkerStatus {
 			TasksFailed:     atomic.LoadInt64(&worker.TasksFailed),
 			AvgTaskDuration: avgDuration,
 		})
-	}
+		return true
+	})
 	return statuses
 }
 
@@ -441,16 +438,15 @@ func (wp *AdaptiveWorkerPool) Scale(targetCount int) error {
 		// Workers will stop themselves via idle timeout
 		// or we can explicitly stop some
 		// CONCURRENCY FIX: Use thread-safe accessors and signalStop
-		wp.workersMu.Lock()
 		stopped := 0
-		for _, worker := range wp.workers {
+		wp.workers.Range(func(_ string, worker *Worker) bool {
 			if worker.Status() == workerStateIdle && stopped < -diff {
 				if worker.signalStop() {
 					stopped++
 				}
 			}
-		}
-		wp.workersMu.Unlock()
+			return stopped < -diff
+		})
 	}
 
 	return nil
@@ -473,9 +469,7 @@ func (wp *AdaptiveWorkerPool) spawnWorker() {
 		// stopOnce and stopChanDone are zero-initialized
 	}
 
-	wp.workersMu.Lock()
-	wp.workers[workerID] = worker
-	wp.workersMu.Unlock()
+	wp.workers.Put(workerID, worker)
 
 	atomic.AddInt32(&wp.activeCount, 1)
 	if wp.metrics != nil {
@@ -496,9 +490,7 @@ func (wp *AdaptiveWorkerPool) workerLoop(worker *Worker) {
 		if wp.metrics != nil {
 			wp.metrics.WorkersActive.Dec()
 		}
-		wp.workersMu.Lock()
-		delete(wp.workers, worker.ID)
-		wp.workersMu.Unlock()
+		wp.workers.Delete(worker.ID)
 		// CONCURRENCY FIX: Use thread-safe setter
 		worker.setStatus(workerStateStopped)
 	}()
@@ -564,10 +556,7 @@ func (wp *AdaptiveWorkerPool) executeTask(worker *Worker, task *models.Backgroun
 	}).Debug("Starting task execution")
 
 	// Get executor
-	wp.executorsMu.RLock()
-	executor, exists := wp.executors[task.TaskType]
-	wp.executorsMu.RUnlock()
-
+	executor, exists := wp.executors.Get(task.TaskType)
 	if !exists {
 		wp.handleTaskError(task, worker, fmt.Errorf("no executor registered for task type: %s", task.TaskType))
 		return
@@ -931,10 +920,7 @@ func (wp *AdaptiveWorkerPool) heartbeatMonitorLoop() {
 
 // updateHeartbeats updates heartbeats for running tasks
 func (wp *AdaptiveWorkerPool) updateHeartbeats() {
-	wp.workersMu.RLock()
-	defer wp.workersMu.RUnlock()
-
-	for _, worker := range wp.workers {
+	wp.workers.Range(func(_ string, worker *Worker) bool {
 		// CONCURRENCY FIX: Use thread-safe accessors
 		currentTask := worker.CurrentTask()
 		if currentTask != nil && worker.Status() == workerStateBusy {
@@ -942,7 +928,8 @@ func (wp *AdaptiveWorkerPool) updateHeartbeats() {
 				wp.logger.WithError(err).WithField("task_id", currentTask.ID).Debug("Failed to update heartbeat")
 			}
 		}
-	}
+		return true
+	})
 }
 
 // calculateWorkerRequirements calculates resource requirements for dequeuing

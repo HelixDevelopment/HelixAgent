@@ -1218,10 +1218,8 @@ func TestInMemoryContinuousEvaluator_CompareRuns_Success(t *testing.T) {
 	require.NoError(t, evaluator.CreateRun(ctx, run2))
 
 	// Manually set results
-	evaluator.mu.Lock()
-	evaluator.runs[run1.ID].Results = run1.Results
-	evaluator.runs[run2.ID].Results = run2.Results
-	evaluator.mu.Unlock()
+	if r, _ := evaluator.runs.Get(run1.ID); r != nil { r.Results = run1.Results }
+	if r, _ := evaluator.runs.Get(run2.ID); r != nil { r.Results = run2.Results }
 
 	comparison, err := evaluator.CompareRuns(ctx, run1.ID, run2.ID)
 	require.NoError(t, err)
@@ -1258,10 +1256,8 @@ func TestInMemoryContinuousEvaluator_CompareRuns_NoSignificantChanges(t *testing
 	require.NoError(t, evaluator.CreateRun(ctx, run1))
 	require.NoError(t, evaluator.CreateRun(ctx, run2))
 
-	evaluator.mu.Lock()
-	evaluator.runs[run1.ID].Results = run1.Results
-	evaluator.runs[run2.ID].Results = run2.Results
-	evaluator.mu.Unlock()
+	if r, _ := evaluator.runs.Get(run1.ID); r != nil { r.Results = run1.Results }
+	if r, _ := evaluator.runs.Get(run2.ID); r != nil { r.Results = run2.Results }
 
 	comparison, err := evaluator.CompareRuns(ctx, run1.ID, run2.ID)
 	require.NoError(t, err)
@@ -1964,10 +1960,14 @@ func TestInMemoryContinuousEvaluator_CheckForRegressions(t *testing.T) {
 	require.NoError(t, evaluator.StartRun(ctx, run1.ID))
 	time.Sleep(100 * time.Millisecond)
 
-	// Manually set high pass rate
+	// Manually set high pass rate. Take evaluator.mu because executeRun
+	// mutates run.Results asynchronously and the test needs to synchronise
+	// with it (Pattern Zeta survivor on the evaluator).
 	evaluator.mu.Lock()
-	evaluator.runs[run1.ID].Results.PassRate = 0.95
-	evaluator.runs[run1.ID].Results.MetricScores["accuracy"] = 0.95
+	if r, _ := evaluator.runs.Get(run1.ID); r != nil {
+		r.Results.PassRate = 0.95
+		r.Results.MetricScores["accuracy"] = 0.95
+	}
 	evaluator.mu.Unlock()
 
 	// Create second run with low pass rate
@@ -1984,12 +1984,15 @@ func TestInMemoryContinuousEvaluator_CheckForRegressions(t *testing.T) {
 
 	// Manually set low pass rate to trigger regression
 	evaluator.mu.Lock()
-	evaluator.runs[run2.ID].Results.PassRate = 0.80
-	evaluator.runs[run2.ID].Results.MetricScores["accuracy"] = 0.75
+	r2, _ := evaluator.runs.Get(run2.ID)
+	if r2 != nil {
+		r2.Results.PassRate = 0.80
+		r2.Results.MetricScores["accuracy"] = 0.75
+	}
 	evaluator.mu.Unlock()
 
 	// Manually trigger regression check
-	evaluator.checkForRegressions(ctx, evaluator.runs[run2.ID])
+	evaluator.checkForRegressions(ctx, r2)
 
 	// Check alerts were created
 	alerts, err := alertManager.List(ctx, &AlertFilter{Types: []AlertType{AlertTypeRegression}})

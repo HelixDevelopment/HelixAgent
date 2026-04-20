@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -17,15 +19,21 @@ type LLMEvaluator interface {
 	Evaluate(ctx context.Context, prompt, response, expected string, metrics []string) (map[string]float64, error)
 }
 
-// InMemoryContinuousEvaluator implements ContinuousEvaluator
+// InMemoryContinuousEvaluator implements ContinuousEvaluator.
+//
+// Concurrency model (CONST-029): runs/datasets/samples/schedules → 4×
+// *safe.Store. mu (Pattern Zeta, RWMutex → Mutex) survives only to
+// serialise compound "check dataset exists → register run" transitions
+// and EvaluationRun-pointer field mutations that happen through the
+// shared pointer returned by Store.Get.
 type InMemoryContinuousEvaluator struct {
-	runs         map[string]*EvaluationRun
-	datasets     map[string]*Dataset
-	samples      map[string][]*DatasetSample // dataset ID -> samples
-	schedules    map[string]*schedule
+	runs         *safe.Store[string, *EvaluationRun]
+	datasets     *safe.Store[string, *Dataset]
+	samples      *safe.Store[string, []*DatasetSample] // dataset ID -> samples
+	schedules    *safe.Store[string, *schedule]
 	evaluator    LLMEvaluator
 	registry     PromptRegistry
-	mu           sync.RWMutex
+	mu           sync.Mutex
 	logger       *logrus.Logger
 	alertManager AlertManager
 }
@@ -43,10 +51,10 @@ func NewInMemoryContinuousEvaluator(evaluator LLMEvaluator, registry PromptRegis
 		logger = logrus.New()
 	}
 	return &InMemoryContinuousEvaluator{
-		runs:         make(map[string]*EvaluationRun),
-		datasets:     make(map[string]*Dataset),
-		samples:      make(map[string][]*DatasetSample),
-		schedules:    make(map[string]*schedule),
+		runs:         safe.NewStore[string, *EvaluationRun](),
+		datasets:     safe.NewStore[string, *Dataset](),
+		samples:      safe.NewStore[string, []*DatasetSample](),
+		schedules:    safe.NewStore[string, *schedule](),
 		evaluator:    evaluator,
 		registry:     registry,
 		alertManager: alertManager,
@@ -67,7 +75,7 @@ func (e *InMemoryContinuousEvaluator) CreateRun(ctx context.Context, run *Evalua
 	}
 
 	// Validate dataset exists
-	if _, ok := e.datasets[run.Dataset]; !ok {
+	if _, ok := e.datasets.Get(run.Dataset); !ok {
 		return fmt.Errorf("dataset not found: %s", run.Dataset)
 	}
 
@@ -78,7 +86,7 @@ func (e *InMemoryContinuousEvaluator) CreateRun(ctx context.Context, run *Evalua
 	run.Status = EvaluationStatusPending
 	run.CreatedAt = time.Now()
 
-	e.runs[run.ID] = run
+	e.runs.Put(run.ID, run)
 
 	e.logger.WithFields(logrus.Fields{
 		"id":      run.ID,
@@ -92,7 +100,7 @@ func (e *InMemoryContinuousEvaluator) CreateRun(ctx context.Context, run *Evalua
 // StartRun starts an evaluation run
 func (e *InMemoryContinuousEvaluator) StartRun(ctx context.Context, runID string) error {
 	e.mu.Lock()
-	run, ok := e.runs[runID]
+	run, ok := e.runs.Get(runID)
 	if !ok {
 		e.mu.Unlock()
 		return fmt.Errorf("run not found: %s", runID)
@@ -107,7 +115,7 @@ func (e *InMemoryContinuousEvaluator) StartRun(ctx context.Context, runID string
 	run.Status = EvaluationStatusRunning
 	run.StartTime = &now
 
-	samples := e.samples[run.Dataset]
+	samples, _ := e.samples.Get(run.Dataset)
 	e.mu.Unlock()
 
 	// Run evaluation asynchronously
@@ -391,8 +399,8 @@ func (e *InMemoryContinuousEvaluator) checkForRegressions(ctx context.Context, r
 
 	// Find previous run with same prompt/model
 	var previousRun *EvaluationRun
-	e.mu.RLock()
-	for _, r := range e.runs {
+	e.mu.Lock()
+	for _, r := range e.runs.Snapshot() {
 		if r.ID != run.ID &&
 			r.PromptName == run.PromptName &&
 			r.ModelName == run.ModelName &&
@@ -425,7 +433,7 @@ func (e *InMemoryContinuousEvaluator) checkForRegressions(ctx context.Context, r
 		}
 		prevRunID = previousRun.ID
 	}
-	e.mu.RUnlock()
+	e.mu.Unlock()
 
 	if previousRun == nil || prevRunID == "" {
 		return
@@ -478,10 +486,10 @@ func (e *InMemoryContinuousEvaluator) checkForRegressions(ctx context.Context, r
 
 // GetRun gets evaluation run status
 func (e *InMemoryContinuousEvaluator) GetRun(ctx context.Context, runID string) (*EvaluationRun, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-	run, ok := e.runs[runID]
+	run, ok := e.runs.Get(runID)
 	if !ok {
 		return nil, fmt.Errorf("run not found: %s", runID)
 	}
@@ -494,11 +502,11 @@ func (e *InMemoryContinuousEvaluator) GetRun(ctx context.Context, runID string) 
 
 // ListRuns lists evaluation runs
 func (e *InMemoryContinuousEvaluator) ListRuns(ctx context.Context, filter *EvaluationFilter) ([]*EvaluationRun, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
 	var result []*EvaluationRun
-	for _, run := range e.runs {
+	for _, run := range e.runs.Snapshot() {
 		if e.matchesFilter(run, filter) {
 			// Return a shallow copy to avoid races after the lock is released.
 			cp := *run
@@ -550,13 +558,11 @@ func (e *InMemoryContinuousEvaluator) ScheduleRun(ctx context.Context, run *Eval
 		return err
 	}
 
-	e.mu.Lock()
-	e.schedules[run.ID] = &schedule{
+	e.schedules.Put(run.ID, &schedule{
 		run:    run,
 		cron:   scheduleExpr,
 		stopCh: make(chan struct{}),
-	}
-	e.mu.Unlock()
+	})
 
 	// Start scheduler (simplified - in production use proper cron library)
 	//nolint:gosec // G118: scheduler loop owns its own lifecycle, intentionally decoupled from the caller context
@@ -566,9 +572,9 @@ func (e *InMemoryContinuousEvaluator) ScheduleRun(ctx context.Context, run *Eval
 }
 
 func (e *InMemoryContinuousEvaluator) runScheduler(runID string) {
-	e.mu.RLock()
-	sched, ok := e.schedules[runID]
-	e.mu.RUnlock()
+	e.mu.Lock()
+	sched, ok := e.schedules.Get(runID)
+	e.mu.Unlock()
 
 	if !ok {
 		return
@@ -610,10 +616,10 @@ func (e *InMemoryContinuousEvaluator) runScheduler(runID string) {
 
 // CompareRuns compares two evaluation runs
 func (e *InMemoryContinuousEvaluator) CompareRuns(ctx context.Context, runID1, runID2 string) (*RunComparison, error) {
-	e.mu.RLock()
-	run1, ok1 := e.runs[runID1]
-	run2, ok2 := e.runs[runID2]
-	e.mu.RUnlock()
+	e.mu.Lock()
+	run1, ok1 := e.runs.Get(runID1)
+	run2, ok2 := e.runs.Get(runID2)
+	e.mu.Unlock()
 
 	if !ok1 {
 		return nil, fmt.Errorf("run not found: %s", runID1)
@@ -677,18 +683,18 @@ func (e *InMemoryContinuousEvaluator) CreateDataset(ctx context.Context, dataset
 	dataset.CreatedAt = time.Now()
 	dataset.UpdatedAt = time.Now()
 
-	e.datasets[dataset.ID] = dataset
-	e.samples[dataset.ID] = make([]*DatasetSample, 0)
+	e.datasets.Put(dataset.ID, dataset)
+	e.samples.Put(dataset.ID, make([]*DatasetSample, 0))
 
 	return nil
 }
 
 // GetDataset retrieves a dataset
 func (e *InMemoryContinuousEvaluator) GetDataset(ctx context.Context, id string) (*Dataset, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-	dataset, ok := e.datasets[id]
+	dataset, ok := e.datasets.Get(id)
 	if !ok {
 		return nil, fmt.Errorf("dataset not found: %s", id)
 	}
@@ -701,7 +707,7 @@ func (e *InMemoryContinuousEvaluator) AddSamples(ctx context.Context, datasetID 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	dataset, ok := e.datasets[datasetID]
+	dataset, ok := e.datasets.Get(datasetID)
 	if !ok {
 		return fmt.Errorf("dataset not found: %s", datasetID)
 	}
@@ -710,10 +716,13 @@ func (e *InMemoryContinuousEvaluator) AddSamples(ctx context.Context, datasetID 
 		if sample.ID == "" {
 			sample.ID = uuid.New().String()
 		}
-		e.samples[datasetID] = append(e.samples[datasetID], sample)
+		e.samples.Update(datasetID, func(cur []*DatasetSample, _ bool) ([]*DatasetSample, bool) {
+			return append(cur, sample), true
+		})
 	}
 
-	dataset.SampleCount = len(e.samples[datasetID])
+	cur, _ := e.samples.Get(datasetID)
+	dataset.SampleCount = len(cur)
 	dataset.UpdatedAt = time.Now()
 
 	return nil

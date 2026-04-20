@@ -27,9 +27,7 @@ func TestInMemoryContinuousEvaluator_ScheduleRun(t *testing.T) {
 	assert.NotEmpty(t, run.ID)
 
 	// Verify the schedule was stored (same-package access)
-	evaluator.mu.RLock()
-	sched, ok := evaluator.schedules[run.ID]
-	evaluator.mu.RUnlock()
+	sched, ok := evaluator.schedules.Get(run.ID)
 
 	require.True(t, ok, "Schedule should be stored")
 	assert.Equal(t, "0 * * * *", sched.cron)
@@ -52,9 +50,7 @@ func TestInMemoryContinuousEvaluator_ScheduleRun_InvalidRun(t *testing.T) {
 	assert.Error(t, err)
 
 	// No schedule should be stored
-	evaluator.mu.RLock()
-	_, ok := evaluator.schedules[run.ID]
-	evaluator.mu.RUnlock()
+	_, ok := evaluator.schedules.Get(run.ID)
 	assert.False(t, ok)
 }
 

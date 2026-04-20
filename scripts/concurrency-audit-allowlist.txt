@@ -12,7 +12,6 @@ internal/knowledge/code_graph.go:124:CodeGraph
 internal/llm/circuit_breaker.go:446:CircuitBreakerManager
 internal/llm/circuit_breaker.go:55:CircuitBreaker
 internal/llm/health_monitor.go:54:HealthMonitor
-internal/llmops/evaluator.go:21:InMemoryContinuousEvaluator
 internal/mcp/connection_pool_extra_test.go:317:MockMCPTransportWithInit
 internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/messaging/dlq/processor.go:85:Processor

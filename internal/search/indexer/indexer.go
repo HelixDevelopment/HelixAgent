@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/search/chunker"
 	"dev.helix.agent/internal/search/types"
 )
@@ -42,14 +44,17 @@ func DefaultConfig() Config {
 	}
 }
 
-// CodeIndexer manages the indexing pipeline
+// CodeIndexer manages the indexing pipeline.
+//
+// Concurrent-safe by construction: indexedFiles is a safe.Store so
+// IndexFile and DeleteFile need no external lock. The mutex that
+// previously guarded the map is removed.
 type CodeIndexer struct {
 	embedder     types.Embedder
 	vectorStore  types.VectorStore
 	chunker      types.Chunker
 	config       Config
-	mu           sync.RWMutex
-	indexedFiles map[string]time.Time
+	indexedFiles *safe.Store[string, time.Time]
 }
 
 // NewCodeIndexer creates a new code indexer
@@ -59,7 +64,7 @@ func NewCodeIndexer(embedder types.Embedder, store types.VectorStore, config Con
 		vectorStore:  store,
 		chunker:      chunker.NewSimpleChunker(config.ChunkSize, config.ChunkOverlap),
 		config:       config,
-		indexedFiles: make(map[string]time.Time),
+		indexedFiles: safe.NewStore[string, time.Time](),
 	}
 }
 
@@ -192,9 +197,7 @@ func (i *CodeIndexer) IndexFile(ctx context.Context, path string) error {
 	}
 
 	// Update indexed files
-	i.mu.Lock()
-	i.indexedFiles[path] = time.Now()
-	i.mu.Unlock()
+	i.indexedFiles.Put(path, time.Now())
 
 	return nil
 }
@@ -203,10 +206,7 @@ func (i *CodeIndexer) IndexFile(ctx context.Context, path string) error {
 // Note: This removes the file from the indexed files map. Full vector store deletion
 // would require tracking all chunk IDs per file, which is not currently implemented.
 func (i *CodeIndexer) DeleteFile(ctx context.Context, path string) error {
-	i.mu.Lock()
-	delete(i.indexedFiles, path)
-	i.mu.Unlock()
-
+	i.indexedFiles.Delete(path)
 	return nil
 }
 

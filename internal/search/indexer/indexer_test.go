@@ -266,9 +266,7 @@ func TestCodeIndexer_IndexFile(t *testing.T) {
 	assert.NotEmpty(t, store.upsertedDocs)
 
 	// Should track indexed file
-	idx.mu.RLock()
-	_, tracked := idx.indexedFiles[filePath]
-	idx.mu.RUnlock()
+	_, tracked := idx.indexedFiles.Get(filePath)
 	assert.True(t, tracked)
 }
 
@@ -358,16 +356,12 @@ func TestCodeIndexer_DeleteFile(t *testing.T) {
 	idx := NewCodeIndexer(emb, store, cfg)
 
 	// Add a file to the tracked map
-	idx.mu.Lock()
-	idx.indexedFiles["test.go"] = time.Now()
-	idx.mu.Unlock()
+	idx.indexedFiles.Put("test.go", time.Now())
 
 	err := idx.DeleteFile(context.Background(), "test.go")
 	require.NoError(t, err)
 
-	idx.mu.RLock()
-	_, found := idx.indexedFiles["test.go"]
-	idx.mu.RUnlock()
+	_, found := idx.indexedFiles.Get("test.go")
 	assert.False(t, found, "file should be removed from indexed files")
 }
 

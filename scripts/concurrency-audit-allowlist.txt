@@ -16,7 +16,6 @@ internal/mcp/mcp_test.go:30:MockMCPTransport
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/planning/mcts.go:27:MCTSNode
-internal/search/indexer/indexer.go:46:CodeIndexer
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient

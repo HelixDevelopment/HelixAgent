@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/database"
 	"dev.helix.agent/internal/modelsdev"
 	"github.com/sirupsen/logrus"
@@ -111,10 +113,11 @@ func (m *MockModelMetadataRepository) CreateBenchmark(ctx context.Context, bench
 	return nil
 }
 
-// MockCache implements CacheInterface
+// MockCache implements CacheInterface.
+//
+// Concurrency model (CONST-029): models → *safe.Store. mu dropped.
 type MockCache struct {
-	mu                  sync.RWMutex
-	models              map[string]*database.ModelMetadata
+	models              *safe.Store[string, *database.ModelMetadata]
 	getFunc             func(ctx context.Context, modelID string) (*database.ModelMetadata, bool, error)
 	setFunc             func(ctx context.Context, modelID string, metadata *database.ModelMetadata) error
 	deleteFunc          func(ctx context.Context, modelID string) error
@@ -132,7 +135,7 @@ type MockCache struct {
 
 func NewMockCache() *MockCache {
 	return &MockCache{
-		models: make(map[string]*database.ModelMetadata),
+		models: safe.NewStore[string, *database.ModelMetadata](),
 	}
 }
 
@@ -140,9 +143,7 @@ func (c *MockCache) Get(ctx context.Context, modelID string) (*database.ModelMet
 	if c.getFunc != nil {
 		return c.getFunc(ctx, modelID)
 	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	model, exists := c.models[modelID]
+	model, exists := c.models.Get(modelID)
 	return model, exists, nil
 }
 
@@ -150,9 +151,7 @@ func (c *MockCache) Set(ctx context.Context, modelID string, metadata *database.
 	if c.setFunc != nil {
 		return c.setFunc(ctx, modelID, metadata)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.models[modelID] = metadata
+	c.models.Put(modelID, metadata)
 	return nil
 }
 
@@ -160,9 +159,7 @@ func (c *MockCache) Delete(ctx context.Context, modelID string) error {
 	if c.deleteFunc != nil {
 		return c.deleteFunc(ctx, modelID)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.models, modelID)
+	c.models.Delete(modelID)
 	return nil
 }
 
@@ -170,9 +167,7 @@ func (c *MockCache) Clear(ctx context.Context) error {
 	if c.clearFunc != nil {
 		return c.clearFunc(ctx)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.models = make(map[string]*database.ModelMetadata)
+	c.models.Clear()
 	return nil
 }
 
@@ -180,20 +175,16 @@ func (c *MockCache) Size(ctx context.Context) (int, error) {
 	if c.sizeFunc != nil {
 		return c.sizeFunc(ctx)
 	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.models), nil
+	return c.models.Len(), nil
 }
 
 func (c *MockCache) GetBulk(ctx context.Context, modelIDs []string) (map[string]*database.ModelMetadata, error) {
 	if c.getBulkFunc != nil {
 		return c.getBulkFunc(ctx, modelIDs)
 	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	result := make(map[string]*database.ModelMetadata)
 	for _, id := range modelIDs {
-		if model, exists := c.models[id]; exists {
+		if model, exists := c.models.Get(id); exists {
 			result[id] = model
 		}
 	}
@@ -204,10 +195,8 @@ func (c *MockCache) SetBulk(ctx context.Context, models map[string]*database.Mod
 	if c.setBulkFunc != nil {
 		return c.setBulkFunc(ctx, models)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	for id, model := range models {
-		c.models[id] = model
+		c.models.Put(id, model)
 	}
 	return nil
 }
@@ -313,7 +302,7 @@ func TestInMemoryCache_Get(t *testing.T) {
 			ModelID:   "test-model",
 			ModelName: "Test Model",
 		}
-		cache.models["test-model"] = testModel
+		cache.models.Put("test-model", testModel)
 
 		model, exists, err := cache.Get(ctx, "test-model")
 		require.NoError(t, err)
@@ -385,7 +374,7 @@ func TestInMemoryCache_Delete(t *testing.T) {
 	cache := NewInMemoryCache(1 * time.Hour)
 	ctx := context.Background()
 
-	cache.models["delete-me"] = &database.ModelMetadata{ModelID: "delete-me"}
+	cache.models.Put("delete-me", &database.ModelMetadata{ModelID: "delete-me"})
 
 	err := cache.Delete(ctx, "delete-me")
 	require.NoError(t, err)
@@ -398,8 +387,8 @@ func TestInMemoryCache_Clear(t *testing.T) {
 	cache := NewInMemoryCache(1 * time.Hour)
 	ctx := context.Background()
 
-	cache.models["model1"] = &database.ModelMetadata{ModelID: "model1"}
-	cache.models["model2"] = &database.ModelMetadata{ModelID: "model2"}
+	cache.models.Put("model1", &database.ModelMetadata{ModelID: "model1"})
+	cache.models.Put("model2", &database.ModelMetadata{ModelID: "model2"})
 
 	err := cache.Clear(ctx)
 	require.NoError(t, err)
@@ -416,8 +405,8 @@ func TestInMemoryCache_Size(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, size)
 
-	cache.models["m1"] = &database.ModelMetadata{}
-	cache.models["m2"] = &database.ModelMetadata{}
+	cache.models.Put("m1", &database.ModelMetadata{})
+	cache.models.Put("m2", &database.ModelMetadata{})
 
 	size, err = cache.Size(ctx)
 	require.NoError(t, err)
@@ -428,9 +417,9 @@ func TestInMemoryCache_GetBulk(t *testing.T) {
 	cache := NewInMemoryCache(1 * time.Hour)
 	ctx := context.Background()
 
-	cache.models["model1"] = &database.ModelMetadata{ModelID: "model1"}
-	cache.models["model2"] = &database.ModelMetadata{ModelID: "model2"}
-	cache.models["model3"] = &database.ModelMetadata{ModelID: "model3"}
+	cache.models.Put("model1", &database.ModelMetadata{ModelID: "model1"})
+	cache.models.Put("model2", &database.ModelMetadata{ModelID: "model2"})
+	cache.models.Put("model3", &database.ModelMetadata{ModelID: "model3"})
 
 	result, err := cache.GetBulk(ctx, []string{"model1", "model3", "non-existent"})
 	require.NoError(t, err)
@@ -521,7 +510,7 @@ func TestInMemoryCache_ConcurrentAccess(t *testing.T) {
 func TestModelMetadataService_GetModel_CacheHit(t *testing.T) {
 	cache := NewMockCache()
 	cachedModel := &database.ModelMetadata{ModelID: "cached-model", ModelName: "Cached Model"}
-	cache.models["cached-model"] = cachedModel
+	cache.models.Put("cached-model", cachedModel)
 
 	service := &ModelMetadataService{
 		cache:  cache,
@@ -813,8 +802,8 @@ func TestModelMetadataService_GetProviderModels(t *testing.T) {
 
 func TestModelMetadataService_CompareModels(t *testing.T) {
 	cache := NewMockCache()
-	cache.models["model1"] = &database.ModelMetadata{ModelID: "model1", ModelName: "Model 1"}
-	cache.models["model2"] = &database.ModelMetadata{ModelID: "model2", ModelName: "Model 2"}
+	cache.models.Put("model1", &database.ModelMetadata{ModelID: "model1", ModelName: "Model 1"})
+	cache.models.Put("model2", &database.ModelMetadata{ModelID: "model2", ModelName: "Model 2"})
 
 	service := &ModelMetadataService{
 		cache:  cache,
@@ -831,7 +820,7 @@ func TestModelMetadataService_CompareModels(t *testing.T) {
 
 func TestModelMetadataService_CompareModels_SomeNotFound(t *testing.T) {
 	cache := NewMockCache()
-	cache.models["model1"] = &database.ModelMetadata{ModelID: "model1"}
+	cache.models.Put("model1", &database.ModelMetadata{ModelID: "model1"})
 	// model2 not in cache
 
 	repo := &MockModelMetadataRepository{
@@ -1116,7 +1105,7 @@ func BenchmarkModelMetadataCache_Get(b *testing.B) {
 	ctx := context.Background()
 
 	for i := 0; i < 1000; i++ {
-		cache.models[string(rune(i))] = &database.ModelMetadata{ModelID: string(rune(i))}
+		cache.models.Put(string(rune(i)), &database.ModelMetadata{ModelID: string(rune(i))})
 	}
 
 	b.ResetTimer()
@@ -1140,7 +1129,7 @@ func BenchmarkInMemoryCache_GetBulk(b *testing.B) {
 	ctx := context.Background()
 
 	for i := 0; i < 1000; i++ {
-		cache.models[string(rune(i))] = &database.ModelMetadata{ModelID: string(rune(i))}
+		cache.models.Put(string(rune(i)), &database.ModelMetadata{ModelID: string(rune(i))})
 	}
 
 	ids := make([]string, 100)

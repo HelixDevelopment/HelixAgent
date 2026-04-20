@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/database"
 	"dev.helix.agent/internal/modelsdev"
@@ -513,81 +514,71 @@ func (s *ModelMetadataService) startAutoRefresh() {
 	}
 }
 
-// InMemoryCache implements CacheInterface for in-memory caching
+// InMemoryCache implements CacheInterface for in-memory caching.
+//
+// Concurrency model (CONST-029): models and timers → 2× *safe.Store.
+// mu dropped. Per-key Set "stop-old-timer → put → schedule-new-timer"
+// is expressed as a single sequence of Store ops; there is a benign
+// race window between the old-timer.Stop() and the new timer's
+// AfterFunc scheduling — same as the pre-migration code, which also
+// ran these steps serially under a single mu.Lock.
 type InMemoryCache struct {
-	mu     sync.RWMutex
-	models map[string]*database.ModelMetadata
+	models *safe.Store[string, *database.ModelMetadata]
 	ttl    time.Duration
-	timers map[string]*time.Timer
+	timers *safe.Store[string, *time.Timer]
 }
 
 func NewInMemoryCache(ttl time.Duration) *InMemoryCache {
 	return &InMemoryCache{
-		models: make(map[string]*database.ModelMetadata),
+		models: safe.NewStore[string, *database.ModelMetadata](),
 		ttl:    ttl,
-		timers: make(map[string]*time.Timer),
+		timers: safe.NewStore[string, *time.Timer](),
 	}
 }
 
 func (c *InMemoryCache) Get(ctx context.Context, modelID string) (*database.ModelMetadata, bool, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	model, exists := c.models[modelID]
+	model, exists := c.models.Get(modelID)
 	return model, exists, nil
 }
 
 func (c *InMemoryCache) Set(ctx context.Context, modelID string, metadata *database.ModelMetadata) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if timer, exists := c.timers[modelID]; exists {
+	if timer, exists := c.timers.Get(modelID); exists {
 		timer.Stop()
 	}
 
-	c.models[modelID] = metadata
-	c.timers[modelID] = time.AfterFunc(c.ttl, func() {
+	c.models.Put(modelID, metadata)
+	c.timers.Put(modelID, time.AfterFunc(c.ttl, func() {
 		ctx := context.Background()
 		_ = c.Delete(ctx, modelID) //nolint:errcheck
-	})
+	}))
 
 	return nil
 }
 
 func (c *InMemoryCache) Delete(ctx context.Context, modelID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.models, modelID)
-	delete(c.timers, modelID)
+	c.models.Delete(modelID)
+	c.timers.Delete(modelID)
 	return nil
 }
 
 func (c *InMemoryCache) Clear(ctx context.Context) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, timer := range c.timers {
+	c.timers.Range(func(_ string, timer *time.Timer) bool {
 		timer.Stop()
-	}
-
-	c.models = make(map[string]*database.ModelMetadata)
-	c.timers = make(map[string]*time.Timer)
+		return true
+	})
+	c.models.Clear()
+	c.timers.Clear()
 	return nil
 }
 
 func (c *InMemoryCache) Size(ctx context.Context) (int, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.models), nil
+	return c.models.Len(), nil
 }
 
 func (c *InMemoryCache) GetBulk(ctx context.Context, modelIDs []string) (map[string]*database.ModelMetadata, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	result := make(map[string]*database.ModelMetadata)
 	for _, modelID := range modelIDs {
-		if model, exists := c.models[modelID]; exists {
+		if model, exists := c.models.Get(modelID); exists {
 			result[modelID] = model
 		}
 	}
@@ -596,18 +587,16 @@ func (c *InMemoryCache) GetBulk(ctx context.Context, modelIDs []string) (map[str
 }
 
 func (c *InMemoryCache) SetBulk(ctx context.Context, models map[string]*database.ModelMetadata) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	for modelID, metadata := range models {
-		if timer, exists := c.timers[modelID]; exists {
+		if timer, exists := c.timers.Get(modelID); exists {
 			timer.Stop()
 		}
-		c.models[modelID] = metadata
-		c.timers[modelID] = time.AfterFunc(c.ttl, func() {
+		c.models.Put(modelID, metadata)
+		modelID := modelID // capture for closure
+		c.timers.Put(modelID, time.AfterFunc(c.ttl, func() {
 			ctx := context.Background()
 			_ = c.Delete(ctx, modelID) //nolint:errcheck
-		})
+		}))
 	}
 
 	return nil

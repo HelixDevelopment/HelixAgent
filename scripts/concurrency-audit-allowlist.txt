@@ -31,7 +31,6 @@ internal/embeddings/models/registry_test.go:95:MockEmbeddingCache
 internal/ensemble/background/worker_pool.go:33:WorkerPool
 internal/ensemble/multi_instance/coordinator.go:30:Coordinator
 internal/ensemble/synchronization/manager.go:17:SyncManager
-internal/handlers/agentic_handler.go:20:AgenticHandler
 internal/handlers/debate_handler.go:19:DebateHandler
 internal/handlers/extended/ensemble.go:26:AgentTeam
 internal/handlers/extended/ensemble.go:84:Task

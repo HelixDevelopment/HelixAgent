@@ -3,8 +3,9 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -19,8 +20,7 @@ import (
 //	GET  /v1/agentic/workflows/:id - get workflow status
 type AgenticHandler struct {
 	logger    *logrus.Logger
-	workflows map[string]*workflowRecord
-	mu        sync.RWMutex
+	workflows *safe.Store[string, *workflowRecord]
 }
 
 // workflowRecord tracks a workflow execution and its result.
@@ -42,7 +42,7 @@ func NewAgenticHandler(logger *logrus.Logger) *AgenticHandler {
 	}
 	return &AgenticHandler{
 		logger:    logger,
-		workflows: make(map[string]*workflowRecord),
+		workflows: safe.NewStore[string, *workflowRecord](),
 	}
 }
 
@@ -272,9 +272,7 @@ func (h *AgenticHandler) CreateWorkflow(c *gin.Context) {
 	}
 
 	// Store record
-	h.mu.Lock()
-	h.workflows[wf.ID] = record
-	h.mu.Unlock()
+	h.workflows.Put(wf.ID, record)
 
 	h.logger.WithFields(logrus.Fields{
 		"workflow_id": wf.ID,
@@ -297,10 +295,7 @@ func (h *AgenticHandler) CreateWorkflow(c *gin.Context) {
 func (h *AgenticHandler) GetWorkflow(c *gin.Context) {
 	id := c.Param("id")
 
-	h.mu.RLock()
-	record, exists := h.workflows[id]
-	h.mu.RUnlock()
-
+	record, exists := h.workflows.Get(id)
 	if !exists {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{
 			Error: "workflow not found: " + id,

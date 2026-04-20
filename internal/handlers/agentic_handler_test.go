@@ -333,9 +333,7 @@ func TestAgenticHandler_GetWorkflow_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the workflow was stored
-	h.mu.RLock()
-	_, exists := h.workflows[createResp.ID]
-	h.mu.RUnlock()
+	_, exists := h.workflows.Get(createResp.ID)
 	require.True(t, exists, "workflow should be stored")
 
 	// Now GET it

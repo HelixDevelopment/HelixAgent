@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // HTTP helpers to avoid import issues in tests
@@ -533,40 +535,39 @@ func getFloat64Option(options map[string]interface{}, key string, defaultVal flo
 	return defaultVal
 }
 
-// ProviderAdapterRegistry manages multiple provider adapters
+// ProviderAdapterRegistry manages multiple provider adapters.
+//
+// Concurrency model (CONST-029): adapters is a *safe.Store; each
+// Register/Get/Remove/GetAll is atomic without any caller-held lock.
+// The health-check scan copies the adapter list out via Snapshot
+// before issuing any network calls so slow probes cannot block
+// concurrent Register/Remove.
 type ProviderAdapterRegistry struct {
-	adapters map[string]*ProviderAdapter
-	mu       sync.RWMutex
+	adapters *safe.Store[string, *ProviderAdapter]
 }
 
 // NewProviderAdapterRegistry creates a new adapter registry
 func NewProviderAdapterRegistry() *ProviderAdapterRegistry {
 	return &ProviderAdapterRegistry{
-		adapters: make(map[string]*ProviderAdapter),
+		adapters: safe.NewStore[string, *ProviderAdapter](),
 	}
 }
 
 // Register registers a provider adapter
 func (r *ProviderAdapterRegistry) Register(adapter *ProviderAdapter) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.adapters[adapter.GetProviderID()] = adapter
+	r.adapters.Put(adapter.GetProviderID(), adapter)
 }
 
 // Get retrieves a provider adapter by ID
 func (r *ProviderAdapterRegistry) Get(providerID string) (*ProviderAdapter, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	adapter, ok := r.adapters[providerID]
-	return adapter, ok
+	return r.adapters.Get(providerID)
 }
 
 // GetAll returns all registered adapters
 func (r *ProviderAdapterRegistry) GetAll() []*ProviderAdapter {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	adapters := make([]*ProviderAdapter, 0, len(r.adapters))
-	for _, adapter := range r.adapters {
+	snap := r.adapters.Snapshot()
+	adapters := make([]*ProviderAdapter, 0, len(snap))
+	for _, adapter := range snap {
 		adapters = append(adapters, adapter)
 	}
 	return adapters
@@ -574,19 +575,12 @@ func (r *ProviderAdapterRegistry) GetAll() []*ProviderAdapter {
 
 // Remove removes a provider adapter
 func (r *ProviderAdapterRegistry) Remove(providerID string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.adapters, providerID)
+	r.adapters.Delete(providerID)
 }
 
 // GetHealthyAdapters returns all healthy adapters
 func (r *ProviderAdapterRegistry) GetHealthyAdapters(ctx context.Context) []*ProviderAdapter {
-	r.mu.RLock()
-	adapters := make([]*ProviderAdapter, 0, len(r.adapters))
-	for _, adapter := range r.adapters {
-		adapters = append(adapters, adapter)
-	}
-	r.mu.RUnlock()
+	adapters := r.GetAll()
 
 	healthy := make([]*ProviderAdapter, 0)
 	for _, adapter := range adapters {

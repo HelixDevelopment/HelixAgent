@@ -143,7 +143,6 @@ internal/tools/handler.go:29:ToolRegistry
 internal/verifier/adapters/extended_providers_adapter.go:47:ExtendedProvidersAdapter
 internal/verifier/adapters/extended_registry.go:14:ExtendedProviderRegistry
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter
-internal/verifier/adapters/provider_adapter.go:537:ProviderAdapterRegistry
 internal/verifier/discovery.go:15:ModelDiscoveryService
 internal/verifier/enhanced_scoring.go:63:EnhancedScoringService
 internal/verifier/health.go:145:HealthService

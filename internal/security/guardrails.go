@@ -8,19 +8,32 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
-// StandardGuardrailPipeline provides a comprehensive guardrail system
-// Integrates with HelixAgent's provider registry and debate system
+// StandardGuardrailPipeline provides a comprehensive guardrail system.
+// Integrates with HelixAgent's provider registry and debate system.
+//
+// Concurrency model (CONST-029): inputGuardrails and outputGuardrails
+// are safe.Slice containers (append-only at runtime, snapshotted for
+// each Check call). auditLogger lives behind atomic.Pointer so
+// SetAuditLogger and the audit-emission path don't need a mutex.
+// pipelineStats owns its own mu/sync.Map and is independent.
 type StandardGuardrailPipeline struct {
-	inputGuardrails  []Guardrail
-	outputGuardrails []Guardrail
+	inputGuardrails  *safe.Slice[Guardrail]
+	outputGuardrails *safe.Slice[Guardrail]
 	config           *GuardrailPipelineConfig
 	logger           *logrus.Logger
 	stats            *pipelineStats
-	auditLogger      AuditLogger
-	mu               sync.RWMutex
+	auditLogger      atomic.Pointer[auditLoggerHolder]
+}
+
+// auditLoggerHolder wraps AuditLogger in a concrete pointer type so
+// we can swap it via atomic.Pointer without requiring the interface
+// to be a pointer type itself.
+type auditLoggerHolder struct {
+	logger AuditLogger
 }
 
 // GuardrailPipelineConfig configures the pipeline
@@ -74,8 +87,8 @@ func NewStandardGuardrailPipeline(config *GuardrailPipelineConfig, logger *logru
 	}
 
 	return &StandardGuardrailPipeline{
-		inputGuardrails:  make([]Guardrail, 0),
-		outputGuardrails: make([]Guardrail, 0),
+		inputGuardrails:  safe.NewSlice[Guardrail](),
+		outputGuardrails: safe.NewSlice[Guardrail](),
 		config:           config,
 		logger:           logger,
 		stats:            &pipelineStats{},
@@ -84,45 +97,32 @@ func NewStandardGuardrailPipeline(config *GuardrailPipelineConfig, logger *logru
 
 // SetAuditLogger sets the audit logger
 func (p *StandardGuardrailPipeline) SetAuditLogger(logger AuditLogger) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.auditLogger = logger
+	p.auditLogger.Store(&auditLoggerHolder{logger: logger})
 }
 
 // AddGuardrail adds a guardrail to the pipeline
 func (p *StandardGuardrailPipeline) AddGuardrail(guardrail Guardrail) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	switch guardrail.Type() {
 	case GuardrailTypeInput:
-		p.inputGuardrails = append(p.inputGuardrails, guardrail)
+		p.inputGuardrails.Append(guardrail)
 	case GuardrailTypeOutput:
-		p.outputGuardrails = append(p.outputGuardrails, guardrail)
+		p.outputGuardrails.Append(guardrail)
 	default:
 		// Add to both by default
-		p.inputGuardrails = append(p.inputGuardrails, guardrail)
-		p.outputGuardrails = append(p.outputGuardrails, guardrail)
+		p.inputGuardrails.Append(guardrail)
+		p.outputGuardrails.Append(guardrail)
 	}
 }
 
 // CheckInput checks input through all input guardrails
 func (p *StandardGuardrailPipeline) CheckInput(ctx context.Context, input string, metadata map[string]interface{}) ([]*GuardrailResult, error) {
-	p.mu.RLock()
-	guardrails := make([]Guardrail, len(p.inputGuardrails))
-	copy(guardrails, p.inputGuardrails)
-	p.mu.RUnlock()
-
+	guardrails := p.inputGuardrails.Snapshot()
 	return p.runGuardrails(ctx, guardrails, input, metadata)
 }
 
 // CheckOutput checks output through all output guardrails
 func (p *StandardGuardrailPipeline) CheckOutput(ctx context.Context, output string, metadata map[string]interface{}) ([]*GuardrailResult, error) {
-	p.mu.RLock()
-	guardrails := make([]Guardrail, len(p.outputGuardrails))
-	copy(guardrails, p.outputGuardrails)
-	p.mu.RUnlock()
-
+	guardrails := p.outputGuardrails.Snapshot()
 	return p.runGuardrails(ctx, guardrails, output, metadata)
 }
 
@@ -265,9 +265,11 @@ func (p *StandardGuardrailPipeline) logTriggered(ctx context.Context, g Guardrai
 	}).Info("Guardrail triggered")
 
 	// Log audit event
-	p.mu.RLock()
-	auditLogger := p.auditLogger
-	p.mu.RUnlock()
+	holder := p.auditLogger.Load()
+	var auditLogger AuditLogger
+	if holder != nil {
+		auditLogger = holder.logger
+	}
 
 	if auditLogger != nil {
 		event := &AuditEvent{

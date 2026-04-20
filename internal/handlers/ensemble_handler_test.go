@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +27,7 @@ func setupEnsembleSessionRouter(t *testing.T) (*EnsembleHandler, *gin.Engine) {
 
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -310,7 +312,7 @@ func TestEnsembleHandler_CreateTeam_MissingName(t *testing.T) {
 	t.Parallel()
 	handler := &EnsembleHandler{
 		logger: logrus.New(),
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 	teamRouter := gin.New()
 	teamRouter.POST("/teams", handler.CreateTeam)
@@ -334,7 +336,7 @@ func TestEnsembleHandler_ExecuteAgent_AllTypes(t *testing.T) {
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	agentTypes := []AgentType{
@@ -381,7 +383,7 @@ func TestEnsembleHandler_CalculateConsensus_ZeroThreshold(t *testing.T) {
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	results := []AgentResult{
@@ -400,7 +402,7 @@ func TestEnsembleHandler_CalculateConsensus_Unanimous(t *testing.T) {
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	results := []AgentResult{

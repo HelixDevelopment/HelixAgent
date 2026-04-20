@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/multi_instance"
 	"github.com/gin-gonic/gin"
@@ -92,13 +94,19 @@ type AgentResult struct {
 }
 
 // EnsembleHandler handles ensemble-related endpoints.
+//
+// Concurrency model (CONST-029): teams is a *safe.Store. Multi-field
+// mutations (name/description/agents updates, agent append/remove)
+// use safe.Store.Update with a copy-on-write closure so readers via
+// Get see either the pre- or post-update Team pointer but never
+// partial writes. No survivor mutex because all compound operations
+// fit in a single Update closure.
 type EnsembleHandler struct {
 	coordinator *multi_instance.Coordinator
 	logger      *logrus.Logger
 
 	// Team management
-	teams   map[string]*Team
-	teamsMu sync.RWMutex
+	teams *safe.Store[string, *Team]
 }
 
 // NewEnsembleHandler creates a new ensemble handler.
@@ -106,7 +114,7 @@ func NewEnsembleHandler(coordinator *multi_instance.Coordinator, logger *logrus.
 	return &EnsembleHandler{
 		coordinator: coordinator,
 		logger:      logger,
-		teams:       make(map[string]*Team),
+		teams:       safe.NewStore[string, *Team](),
 	}
 }
 
@@ -331,9 +339,7 @@ func (h *EnsembleHandler) CreateTeam(c *gin.Context) {
 		}
 	}
 
-	h.teamsMu.Lock()
-	h.teams[team.ID] = team
-	h.teamsMu.Unlock()
+	h.teams.Put(team.ID, team)
 
 	h.logger.Infof("Created team: %s (%s)", team.Name, team.ID)
 
@@ -348,11 +354,8 @@ func (h *EnsembleHandler) CreateTeam(c *gin.Context) {
 
 // ListTeams lists all teams
 func (h *EnsembleHandler) ListTeams(c *gin.Context) {
-	h.teamsMu.RLock()
-	defer h.teamsMu.RUnlock()
-
 	var teams []gin.H
-	for _, team := range h.teams {
+	h.teams.Range(func(_ string, team *Team) bool {
 		teams = append(teams, gin.H{
 			"id":          team.ID,
 			"name":        team.Name,
@@ -360,7 +363,8 @@ func (h *EnsembleHandler) ListTeams(c *gin.Context) {
 			"agent_count": len(team.Agents),
 			"created_at":  team.CreatedAt,
 		})
-	}
+		return true
+	})
 
 	c.JSON(http.StatusOK, teams)
 }
@@ -369,10 +373,7 @@ func (h *EnsembleHandler) ListTeams(c *gin.Context) {
 func (h *EnsembleHandler) GetTeam(c *gin.Context) {
 	id := c.Param("id")
 
-	h.teamsMu.RLock()
-	team, exists := h.teams[id]
-	h.teamsMu.RUnlock()
-
+	team, exists := h.teams.Get(id)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
@@ -399,47 +400,47 @@ func (h *EnsembleHandler) UpdateTeam(c *gin.Context) {
 		return
 	}
 
-	h.teamsMu.Lock()
-	team, exists := h.teams[id]
-	if !exists {
-		h.teamsMu.Unlock()
+	var updated *Team
+	var found bool
+	h.teams.Update(id, func(cur *Team, present bool) (*Team, bool) {
+		if !present {
+			return nil, false
+		}
+		cp := *cur
+		if req.Name != "" {
+			cp.Name = req.Name
+		}
+		if req.Description != "" {
+			cp.Description = req.Description
+		}
+		if req.Agents != nil {
+			cp.Agents = req.Agents
+		}
+		if req.Config != nil {
+			cp.Config = *req.Config
+		}
+		cp.UpdatedAt = time.Now()
+		updated = &cp
+		found = true
+		return &cp, true
+	})
+
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
 
-	if req.Name != "" {
-		team.Name = req.Name
-	}
-	if req.Description != "" {
-		team.Description = req.Description
-	}
-	if req.Agents != nil {
-		team.Agents = req.Agents
-	}
-	if req.Config != nil {
-		team.Config = *req.Config
-	}
-
-	team.UpdatedAt = time.Now()
-	h.teamsMu.Unlock()
-
-	c.JSON(http.StatusOK, team)
+	c.JSON(http.StatusOK, updated)
 }
 
 // DeleteTeam deletes a team
 func (h *EnsembleHandler) DeleteTeam(c *gin.Context) {
 	id := c.Param("id")
 
-	h.teamsMu.Lock()
-	_, exists := h.teams[id]
-	if !exists {
-		h.teamsMu.Unlock()
+	if _, ok := h.teams.Delete(id); !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
-
-	delete(h.teams, id)
-	h.teamsMu.Unlock()
 
 	h.logger.Infof("Deleted team: %s", id)
 
@@ -460,17 +461,23 @@ func (h *EnsembleHandler) AddAgentToTeam(c *gin.Context) {
 		agent.ID = fmt.Sprintf("agent_%d", time.Now().UnixNano())
 	}
 
-	h.teamsMu.Lock()
-	team, exists := h.teams[teamID]
-	if !exists {
-		h.teamsMu.Unlock()
+	var found bool
+	h.teams.Update(teamID, func(cur *Team, present bool) (*Team, bool) {
+		if !present {
+			return nil, false
+		}
+		cp := *cur
+		cp.Agents = append([]AgentDefinition(nil), cur.Agents...)
+		cp.Agents = append(cp.Agents, agent)
+		cp.UpdatedAt = time.Now()
+		found = true
+		return &cp, true
+	})
+
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
-
-	team.Agents = append(team.Agents, agent)
-	team.UpdatedAt = time.Now()
-	h.teamsMu.Unlock()
 
 	h.logger.Infof("Added agent %s to team %s", agent.ID, teamID)
 
@@ -482,31 +489,39 @@ func (h *EnsembleHandler) RemoveAgentFromTeam(c *gin.Context) {
 	teamID := c.Param("id")
 	agentID := c.Param("agentId")
 
-	h.teamsMu.Lock()
-	team, exists := h.teams[teamID]
-	if !exists {
-		h.teamsMu.Unlock()
+	var teamFound, agentFound bool
+	h.teams.Update(teamID, func(cur *Team, present bool) (*Team, bool) {
+		if !present {
+			return nil, false
+		}
+		teamFound = true
+		cp := *cur
+		// Copy Agents so we don't mutate the shared pre-update slice.
+		agents := make([]AgentDefinition, 0, len(cur.Agents))
+		for _, a := range cur.Agents {
+			if a.ID == agentID {
+				agentFound = true
+				continue
+			}
+			agents = append(agents, a)
+		}
+		if !agentFound {
+			// Keep the existing pointer unchanged.
+			return cur, true
+		}
+		cp.Agents = agents
+		cp.UpdatedAt = time.Now()
+		return &cp, true
+	})
+
+	if !teamFound {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
-
-	found := false
-	for i, agent := range team.Agents {
-		if agent.ID == agentID {
-			team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		h.teamsMu.Unlock()
+	if !agentFound {
 		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
 		return
 	}
-
-	team.UpdatedAt = time.Now()
-	h.teamsMu.Unlock()
 
 	h.logger.Infof("Removed agent %s from team %s", agentID, teamID)
 
@@ -523,10 +538,7 @@ func (h *EnsembleHandler) ExecuteTeam(c *gin.Context) {
 		return
 	}
 
-	h.teamsMu.RLock()
-	team, exists := h.teams[teamID]
-	h.teamsMu.RUnlock()
-
+	team, exists := h.teams.Get(teamID)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return

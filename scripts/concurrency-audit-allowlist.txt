@@ -38,7 +38,6 @@ internal/features/capability.go:455:CapabilityRegistry
 internal/handlers/acp_handler.go:104:ACPHandler
 internal/handlers/agentic_handler.go:20:AgenticHandler
 internal/handlers/debate_handler.go:19:DebateHandler
-internal/handlers/ensemble_handler.go:95:EnsembleHandler
 internal/handlers/extended/ensemble.go:204:EnsembleHandlerExtensions
 internal/handlers/extended/ensemble.go:24:AgentTeam
 internal/handlers/extended/ensemble.go:82:Task

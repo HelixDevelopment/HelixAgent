@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +23,7 @@ func setupEnsembleHandlerTest(t *testing.T) (*EnsembleHandler, *gin.Engine) {
 	// Create handler without coordinator for team tests
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -96,18 +98,18 @@ func TestListTeams(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create some teams
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:          "team1",
 		Name:        "Team 1",
 		Description: "First team",
 		Agents:      []AgentDefinition{{ID: "a1", Name: "Agent 1", Type: AgentTypePrimary}},
-	}
-	handler.teams["team2"] = &Team{
+	})
+	putTeamForTest(handler, "team2", &Team{
 		ID:          "team2",
 		Name:        "Team 2",
 		Description: "Second team",
 		Agents:      []AgentDefinition{},
-	}
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ensemble/teams", nil)
 	w := httptest.NewRecorder()
@@ -128,12 +130,12 @@ func TestGetTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:          "team1",
 		Name:        "Team 1",
 		Description: "First team",
 		Agents:      []AgentDefinition{{ID: "a1", Name: "Agent 1", Type: AgentTypePrimary}},
-	}
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ensemble/teams/team1", nil)
 	w := httptest.NewRecorder()
@@ -167,11 +169,11 @@ func TestUpdateTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:          "team1",
 		Name:        "Team 1",
 		Description: "First team",
-	}
+	})
 
 	reqBody := UpdateTeamRequest{
 		Name:        "Updated Team",
@@ -215,10 +217,10 @@ func TestDeleteTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:   "team1",
 		Name: "Team 1",
-	}
+	})
 
 	req := httptest.NewRequest(http.MethodDelete, "/ensemble/teams/team1", nil)
 	w := httptest.NewRecorder()
@@ -228,9 +230,7 @@ func TestDeleteTeam(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Verify team was deleted
-	handler.teamsMu.RLock()
-	_, exists := handler.teams["team1"]
-	handler.teamsMu.RUnlock()
+	_, exists := getTeamForTest(handler, "team1")
 	assert.False(t, exists)
 }
 
@@ -251,11 +251,11 @@ func TestAddAgentToTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:     "team1",
 		Name:   "Team 1",
 		Agents: []AgentDefinition{},
-	}
+	})
 
 	agent := AgentDefinition{
 		Name: "New Agent",
@@ -299,14 +299,14 @@ func TestRemoveAgentFromTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with agents
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:   "team1",
 		Name: "Team 1",
 		Agents: []AgentDefinition{
 			{ID: "agent1", Name: "Agent 1"},
 			{ID: "agent2", Name: "Agent 2"},
 		},
-	}
+	})
 
 	req := httptest.NewRequest(http.MethodDelete, "/ensemble/teams/team1/agents/agent1", nil)
 	w := httptest.NewRecorder()
@@ -316,9 +316,7 @@ func TestRemoveAgentFromTeam(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Verify agent was removed
-	handler.teamsMu.RLock()
-	team := handler.teams["team1"]
-	handler.teamsMu.RUnlock()
+	team, _ := getTeamForTest(handler, "team1")
 	assert.Len(t, team.Agents, 1)
 }
 
@@ -339,11 +337,11 @@ func TestRemoveAgentFromTeam_AgentNotFound(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:     "team1",
 		Name:   "Team 1",
 		Agents: []AgentDefinition{{ID: "agent1", Name: "Agent 1"}},
-	}
+	})
 
 	req := httptest.NewRequest(http.MethodDelete, "/ensemble/teams/team1/agents/nonexistent", nil)
 	w := httptest.NewRecorder()
@@ -358,7 +356,7 @@ func TestExecuteTeam(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with agents
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:   "team1",
 		Name: "Team 1",
 		Agents: []AgentDefinition{
@@ -371,7 +369,7 @@ func TestExecuteTeam(t *testing.T) {
 			Timeout:            60,
 			EnableVoting:       true,
 		},
-	}
+	})
 
 	reqBody := TeamExecutionRequest{
 		Task: "Test task",
@@ -417,11 +415,11 @@ func TestExecuteTeam_NoAgents(t *testing.T) {
 	handler, router := setupEnsembleHandlerTest(t)
 
 	// Create a team with no agents
-	handler.teams["team1"] = &Team{
+	putTeamForTest(handler, "team1", &Team{
 		ID:     "team1",
 		Name:   "Team 1",
 		Agents: []AgentDefinition{},
-	}
+	})
 
 	reqBody := TeamExecutionRequest{Task: "Test task"}
 	body, _ := json.Marshal(reqBody)
@@ -511,7 +509,7 @@ func BenchmarkCreateTeam(b *testing.B) {
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -538,15 +536,15 @@ func BenchmarkListTeams(b *testing.B) {
 	logger.SetLevel(logrus.ErrorLevel)
 	handler := &EnsembleHandler{
 		logger: logger,
-		teams:  make(map[string]*Team),
+		teams:  safe.NewStore[string, *Team](),
 	}
 
 	// Create 100 teams
 	for i := 0; i < 100; i++ {
-		handler.teams[fmt.Sprintf("team%d", i)] = &Team{
+		putTeamForTest(handler, fmt.Sprintf("team%d", i), &Team{
 			ID:   fmt.Sprintf("team%d", i),
 			Name: fmt.Sprintf("Team %d", i),
-		}
+		})
 	}
 
 	gin.SetMode(gin.TestMode)

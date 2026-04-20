@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -55,16 +58,19 @@ func initCBMMetrics() {
 	})
 }
 
-// CircuitBreakerMonitor monitors circuit breaker states and provides alerts
+// CircuitBreakerMonitor monitors circuit breaker states and provides alerts.
+//
+// Concurrency model (CONST-029): listeners is a *safe.Slice; running
+// is atomic.Bool with CompareAndSwap for idempotent Start/Stop.
+// No mu survives — there are no compound cross-field invariants.
 type CircuitBreakerMonitor struct {
-	mu             sync.RWMutex
 	manager        *llm.CircuitBreakerManager
 	logger         *logrus.Logger
 	checkInterval  time.Duration
 	alertThreshold int // Number of open circuits to trigger alert
-	listeners      []CircuitBreakerAlertListener
+	listeners      *safe.Slice[CircuitBreakerAlertListener]
 	stopCh         chan struct{}
-	running        bool
+	running        atomic.Bool
 }
 
 // CircuitBreakerAlertListener is called when circuit breaker alerts occur
@@ -106,28 +112,21 @@ func NewCircuitBreakerMonitor(manager *llm.CircuitBreakerManager, logger *logrus
 		logger:         logger,
 		checkInterval:  config.CheckInterval,
 		alertThreshold: config.AlertThreshold,
-		listeners:      make([]CircuitBreakerAlertListener, 0),
+		listeners:      safe.NewSlice[CircuitBreakerAlertListener](),
 		stopCh:         make(chan struct{}),
 	}
 }
 
 // AddAlertListener adds a listener for alerts
 func (cbm *CircuitBreakerMonitor) AddAlertListener(listener CircuitBreakerAlertListener) {
-	cbm.mu.Lock()
-	defer cbm.mu.Unlock()
-	cbm.listeners = append(cbm.listeners, listener)
+	cbm.listeners.Append(listener)
 }
 
 // Start starts the monitoring loop
 func (cbm *CircuitBreakerMonitor) Start(ctx context.Context) {
-	cbm.mu.Lock()
-	if cbm.running {
-		cbm.mu.Unlock()
+	if !cbm.running.CompareAndSwap(false, true) {
 		return
 	}
-	cbm.running = true
-	cbm.stopCh = make(chan struct{})
-	cbm.mu.Unlock()
 
 	cbm.logger.Info("Circuit breaker monitor started")
 
@@ -153,12 +152,8 @@ func (cbm *CircuitBreakerMonitor) Start(ctx context.Context) {
 
 // Stop stops the monitoring loop
 func (cbm *CircuitBreakerMonitor) Stop() {
-	cbm.mu.Lock()
-	defer cbm.mu.Unlock()
-
-	if cbm.running {
+	if cbm.running.CompareAndSwap(true, false) {
 		close(cbm.stopCh)
-		cbm.running = false
 	}
 }
 
@@ -230,13 +225,10 @@ func (cbm *CircuitBreakerMonitor) checkCircuitBreakers() {
 func (cbm *CircuitBreakerMonitor) sendAlert(alert CircuitBreakerAlert) {
 	cbmAlertsTotal.Inc()
 
-	cbm.mu.RLock()
-	listeners := cbm.listeners
-	cbm.mu.RUnlock()
-
-	for _, listener := range listeners {
+	cbm.listeners.Range(func(_ int, listener CircuitBreakerAlertListener) bool {
 		go listener(alert)
-	}
+		return true
+	})
 
 	cbm.logger.WithFields(logrus.Fields{
 		"type":       alert.Type,

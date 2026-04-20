@@ -82,7 +82,6 @@ internal/search/indexer/indexer.go:46:CodeIndexer
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient
-internal/services/circuit_breaker_monitor.go:59:CircuitBreakerMonitor
 internal/services/cognee_service.go:95:FeedbackLoop
 internal/services/concurrency_alert_manager.go:505:ConcurrencyAlertManager
 internal/services/context_manager.go:36:ContextManager

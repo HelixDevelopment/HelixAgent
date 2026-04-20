@@ -16,9 +16,7 @@ import (
 func waitUntilCircuitBreakerMonitorRunning(t *testing.T, monitor *CircuitBreakerMonitor) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		monitor.mu.RLock()
-		defer monitor.mu.RUnlock()
-		return monitor.running
+		return monitor.running.Load()
 	}, 2*time.Second, time.Millisecond)
 }
 
@@ -58,7 +56,7 @@ func TestCircuitBreakerMonitor_AlertListener(t *testing.T) {
 			alertReceived <- alert
 		})
 
-		assert.Len(t, monitor.listeners, 1)
+		assert.Equal(t, 1, monitor.listeners.Len())
 	})
 }
 

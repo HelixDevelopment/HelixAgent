@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/llm/providers/ai21"
@@ -50,11 +52,16 @@ type LLMsVerifierScoreProvider interface {
 	RefreshScores(ctx context.Context) error
 }
 
-// ProviderDiscovery handles automatic detection of LLM providers from environment variables
+// ProviderDiscovery handles automatic detection of LLM providers from environment variables.
+//
+// Concurrent-safe by construction: providers and scores are safe.Store.
+// configMu (Pattern Zeta, renamed from mu) serialises verifierScores /
+// useDynamicScoring scalar fields; it no longer pairs with any bare
+// map/slice field.
 type ProviderDiscovery struct {
-	providers         map[string]*DiscoveredProvider
-	scores            map[string]*ProviderScore
-	mu                sync.RWMutex
+	providers         *safe.Store[string, *DiscoveredProvider]
+	scores            *safe.Store[string, *ProviderScore]
+	configMu          sync.RWMutex
 	log               *logrus.Logger
 	verifyOnStartup   bool
 	verifierScores    LLMsVerifierScoreProvider // Dynamic LLMsVerifier score provider
@@ -286,8 +293,8 @@ func NewProviderDiscovery(log *logrus.Logger, verifyOnStartup bool) *ProviderDis
 	}
 
 	return &ProviderDiscovery{
-		providers:         make(map[string]*DiscoveredProvider),
-		scores:            make(map[string]*ProviderScore),
+		providers:         safe.NewStore[string, *DiscoveredProvider](),
+		scores:            safe.NewStore[string, *ProviderScore](),
 		log:               log,
 		verifyOnStartup:   verifyOnStartup,
 		useDynamicScoring: true, // Enable dynamic LLMsVerifier scoring by default
@@ -296,8 +303,8 @@ func NewProviderDiscovery(log *logrus.Logger, verifyOnStartup bool) *ProviderDis
 
 // SetVerifierScoreProvider sets the LLMsVerifier score provider for dynamic scoring
 func (pd *ProviderDiscovery) SetVerifierScoreProvider(provider LLMsVerifierScoreProvider) {
-	pd.mu.Lock()
-	defer pd.mu.Unlock()
+	pd.configMu.Lock()
+	defer pd.configMu.Unlock()
 	pd.verifierScores = provider
 	pd.useDynamicScoring = provider != nil
 
@@ -308,15 +315,15 @@ func (pd *ProviderDiscovery) SetVerifierScoreProvider(provider LLMsVerifierScore
 
 // EnableDynamicScoring enables or disables dynamic LLMsVerifier scoring
 func (pd *ProviderDiscovery) EnableDynamicScoring(enabled bool) {
-	pd.mu.Lock()
-	defer pd.mu.Unlock()
+	pd.configMu.Lock()
+	defer pd.configMu.Unlock()
 	pd.useDynamicScoring = enabled && pd.verifierScores != nil
 }
 
 // DiscoverProviders scans environment variables and discovers available providers
 func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) {
-	pd.mu.Lock()
-	defer pd.mu.Unlock()
+	pd.configMu.Lock()
+	defer pd.configMu.Unlock()
 
 	discovered := make([]*DiscoveredProvider, 0)
 	seen := make(map[string]bool) // Track already discovered provider types
@@ -370,7 +377,7 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 			}
 		}
 
-		pd.providers[mapping.ProviderName] = dp
+		pd.providers.Put(mapping.ProviderName, dp)
 		discovered = append(discovered, dp)
 		seen[mapping.ProviderName] = true
 	}
@@ -378,7 +385,7 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 	// Discover OAuth-based providers (Claude Code and Qwen Code CLI)
 	oauthProviders := pd.discoverOAuthProviders(seen)
 	for _, dp := range oauthProviders {
-		pd.providers[dp.Name] = dp
+		pd.providers.Put(dp.Name, dp)
 		discovered = append(discovered, dp)
 		seen[dp.Name] = true
 	}
@@ -795,12 +802,11 @@ func (pd *ProviderDiscovery) createOpenAICompatibleProvider(mapping ProviderMapp
 
 // VerifyAllProviders verifies all discovered providers and updates their status
 func (pd *ProviderDiscovery) VerifyAllProviders(ctx context.Context) map[string]*DiscoveredProvider {
-	pd.mu.Lock()
-	providers := make([]*DiscoveredProvider, 0, len(pd.providers))
-	for _, p := range pd.providers {
+	providers := make([]*DiscoveredProvider, 0, pd.providers.Len())
+	pd.providers.Range(func(_ string, p *DiscoveredProvider) bool {
 		providers = append(providers, p)
-	}
-	pd.mu.Unlock()
+		return true
+	})
 
 	// Verify providers concurrently
 	var wg sync.WaitGroup
@@ -1148,8 +1154,7 @@ func (pd *ProviderDiscovery) calculateProviderScore(provider *DiscoveredProvider
 	}
 
 	// Store detailed score
-	pd.mu.Lock()
-	pd.scores[provider.Name] = &ProviderScore{
+	pd.scores.Put(provider.Name, &ProviderScore{
 		Provider:        provider.Name,
 		OverallScore:    totalScore,
 		ResponseSpeed:   responseBonus,
@@ -1157,8 +1162,7 @@ func (pd *ProviderDiscovery) calculateProviderScore(provider *DiscoveredProvider
 		Reliability:     baseScore * 0.5,
 		VerifiedWorking: provider.Verified,
 		ScoredAt:        time.Now(),
-	}
-	pd.mu.Unlock()
+	})
 
 	pd.log.WithFields(logrus.Fields{
 		"provider":     provider.Name,
@@ -1217,8 +1221,8 @@ func getBaseScoreForProvider(providerType string) float64 {
 
 // GetBestProviders returns the top N verified providers sorted by score
 func (pd *ProviderDiscovery) GetBestProviders(n int) []*DiscoveredProvider {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
+	pd.configMu.RLock()
+	defer pd.configMu.RUnlock()
 
 	// Collect verified providers with their scores (thread-safe read)
 	type providerWithScore struct {
@@ -1226,7 +1230,7 @@ func (pd *ProviderDiscovery) GetBestProviders(n int) []*DiscoveredProvider {
 		score    float64
 	}
 	verified := make([]providerWithScore, 0)
-	for _, p := range pd.providers {
+	pd.providers.Range(func(_ string, p *DiscoveredProvider) bool {
 		p.mu.RLock()
 		isVerified := p.Verified
 		isHealthy := p.Status == ProviderStatusHealthy
@@ -1235,7 +1239,8 @@ func (pd *ProviderDiscovery) GetBestProviders(n int) []*DiscoveredProvider {
 		if isVerified && isHealthy {
 			verified = append(verified, providerWithScore{provider: p, score: score})
 		}
-	}
+		return true
+	})
 
 	// Sort by score (descending)
 	sort.Slice(verified, func(i, j int) bool {
@@ -1257,21 +1262,22 @@ func (pd *ProviderDiscovery) GetBestProviders(n int) []*DiscoveredProvider {
 
 // GetAllProviders returns all discovered providers
 func (pd *ProviderDiscovery) GetAllProviders() []*DiscoveredProvider {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
+	pd.configMu.RLock()
+	defer pd.configMu.RUnlock()
 
 	// Collect providers with their scores (thread-safe read)
 	type providerWithScore struct {
 		provider *DiscoveredProvider
 		score    float64
 	}
-	items := make([]providerWithScore, 0, len(pd.providers))
-	for _, p := range pd.providers {
+	items := make([]providerWithScore, 0, pd.providers.Len())
+	pd.providers.Range(func(_ string, p *DiscoveredProvider) bool {
 		p.mu.RLock()
 		score := p.Score
 		p.mu.RUnlock()
 		items = append(items, providerWithScore{provider: p, score: score})
-	}
+		return true
+	})
 
 	// Sort by score
 	sort.Slice(items, func(i, j int) bool {
@@ -1289,16 +1295,12 @@ func (pd *ProviderDiscovery) GetAllProviders() []*DiscoveredProvider {
 
 // GetProviderByName returns a specific discovered provider
 func (pd *ProviderDiscovery) GetProviderByName(name string) *DiscoveredProvider {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
-	return pd.providers[name]
+	v, _ := pd.providers.Get(name); return v
 }
 
 // GetProviderScore returns the score for a provider
 func (pd *ProviderDiscovery) GetProviderScore(name string) *ProviderScore {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
-	return pd.scores[name]
+	v, _ := pd.scores.Get(name); return v
 }
 
 // GetDebateGroupProviders returns providers suitable for the debate AI group
@@ -1315,14 +1317,14 @@ func (pd *ProviderDiscovery) GetDebateGroupProviders(minProviders, maxProviders 
 
 // Summary returns a summary of discovered and verified providers
 func (pd *ProviderDiscovery) Summary() map[string]interface{} {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
+	pd.configMu.RLock()
+	defer pd.configMu.RUnlock()
 
 	var healthy, rateLimited, authFailed, unhealthy, unknown int
 	var totalScore float64
 	providerList := make([]map[string]interface{}, 0)
 
-	for _, p := range pd.providers {
+	pd.providers.Range(func(_ string, p *DiscoveredProvider) bool {
 		// Lock provider for reading its verification fields
 		p.mu.RLock()
 		status := p.Status
@@ -1353,7 +1355,8 @@ func (pd *ProviderDiscovery) Summary() map[string]interface{} {
 			"verified": verified,
 			"error":    errStr,
 		})
-	}
+		return true
+	})
 
 	// Sort by score
 	sort.Slice(providerList, func(i, j int) bool {
@@ -1367,7 +1370,7 @@ func (pd *ProviderDiscovery) Summary() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_discovered": len(pd.providers),
+		"total_discovered": pd.providers.Len(),
 		"healthy":          healthy,
 		"rate_limited":     rateLimited,
 		"auth_failed":      authFailed,
@@ -1381,15 +1384,15 @@ func (pd *ProviderDiscovery) Summary() map[string]interface{} {
 
 // RegisterToRegistry registers all verified providers to a ProviderRegistry
 func (pd *ProviderDiscovery) RegisterToRegistry(registry *ProviderRegistry) error {
-	pd.mu.RLock()
-	defer pd.mu.RUnlock()
+	pd.configMu.RLock()
+	defer pd.configMu.RUnlock()
 
 	registered := 0
-	for _, p := range pd.providers {
+	pd.providers.Range(func(_ string, p *DiscoveredProvider) bool {
 		if p.Verified && p.Status == ProviderStatusHealthy && p.Provider != nil {
 			if err := registry.RegisterProvider(p.Name, p.Provider); err != nil {
 				pd.log.WithError(err).Warnf("Failed to register provider %s", p.Name)
-				continue
+				return true
 			}
 			registered++
 			pd.log.WithFields(logrus.Fields{
@@ -1397,7 +1400,8 @@ func (pd *ProviderDiscovery) RegisterToRegistry(registry *ProviderRegistry) erro
 				"score":    p.Score,
 			}).Info("Registered verified provider to registry")
 		}
-	}
+		return true
+	})
 
 	pd.log.Infof("Registered %d verified providers to registry", registered)
 	return nil

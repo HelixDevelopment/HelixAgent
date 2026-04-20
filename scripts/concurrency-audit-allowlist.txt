@@ -77,7 +77,6 @@ internal/messaging/hub_test.go:649:hubTestMockEventStreamBroker
 internal/messaging/inmemory/stream.go:12:Topic
 internal/messaging/inmemory/stream.go:173:Partition
 internal/messaging/inmemory/stream.go:270:StreamBroker
-internal/messaging/kafka/broker.go:17:Broker
 internal/messaging/metrics.go:492:MetricsCollector
 internal/messaging/migration.go:152:MigrationManager
 internal/messaging/migration_test.go:147:mockMessageBroker

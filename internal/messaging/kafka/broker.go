@@ -8,18 +8,32 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/messaging"
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )
 
-// Broker implements the messaging.MessageBroker interface for Kafka
+// Broker implements the messaging.MessageBroker interface for Kafka.
+//
+// Concurrency model (CONST-029):
+//   - writers / readers are safe.Store containers; each individual
+//     lookup, insert, and delete is atomic without any caller-held lock.
+//   - closed / connected / subCounter are atomic primitives.
+//   - regMu (sync.Mutex) is a Pattern Zeta scalar survivor. It
+//     serialises multi-store compound operations that must stay
+//     atomic across keys — specifically Connect's "connect-then-mark",
+//     Subscribe's "check-connected → create-reader → launch-goroutine
+//     → store-subscription" sequence, and Close's "swap-closed →
+//     range+close every writer/reader" teardown. Because no bare
+//     map/slice sits beside regMu, the audit is happy.
 type Broker struct {
 	config     *Config
 	logger     *zap.Logger
-	writers    map[string]*kafka.Writer
-	readers    map[string]*kafkaSubscription
-	mu         sync.RWMutex
+	writers    *safe.Store[string, *kafka.Writer]
+	readers    *safe.Store[string, *kafkaSubscription]
+	regMu      sync.Mutex
 	metrics    *messaging.BrokerMetrics
 	closed     atomic.Bool
 	connected  atomic.Bool
@@ -77,16 +91,16 @@ func NewBroker(config *Config, logger *zap.Logger) *Broker {
 	return &Broker{
 		config:  config,
 		logger:  logger,
-		writers: make(map[string]*kafka.Writer),
-		readers: make(map[string]*kafkaSubscription),
+		writers: safe.NewStore[string, *kafka.Writer](),
+		readers: safe.NewStore[string, *kafkaSubscription](),
 		metrics: messaging.NewBrokerMetrics(),
 	}
 }
 
 // Connect establishes connection to Kafka
 func (b *Broker) Connect(ctx context.Context) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.regMu.Lock()
+	defer b.regMu.Unlock()
 
 	if b.connected.Load() {
 		return nil
@@ -124,28 +138,32 @@ func (b *Broker) Close(ctx context.Context) error {
 		return nil
 	}
 
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.regMu.Lock()
+	defer b.regMu.Unlock()
 
 	var errs []error
 
-	// Close all writers
-	for topic, writer := range b.writers {
+	// Close all writers.
+	b.writers.Range(func(topic string, writer *kafka.Writer) bool {
 		if err := writer.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("failed to close writer for %s: %w", topic, err))
 		}
-	}
+		return true
+	})
 
-	// Close all readers
-	for topic, sub := range b.readers {
+	// Close all readers.
+	b.readers.Range(func(topic string, sub *kafkaSubscription) bool {
 		sub.active.Store(false)
 		if sub.cancelFn != nil {
 			sub.cancelFn()
 		}
-		if err := sub.reader.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("failed to close reader for %s: %w", topic, err))
+		if sub.reader != nil {
+			if err := sub.reader.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("failed to close reader for %s: %w", topic, err))
+			}
 		}
-	}
+		return true
+	})
 
 	b.connected.Store(false)
 	b.metrics.RecordDisconnection()
@@ -183,16 +201,17 @@ func (b *Broker) IsConnected() bool {
 	return b.connected.Load()
 }
 
-// getOrCreateWriter gets or creates a writer for a topic
+// getOrCreateWriter gets or creates a writer for a topic. Concurrent
+// callers for the same topic converge on a single writer instance via
+// Store.PutIfAbsent — at most one caller's freshly allocated writer is
+// retained; any losing allocations are unused struct copies with no
+// active connections, so there is no resource leak.
 func (b *Broker) getOrCreateWriter(topic string) *kafka.Writer {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if writer, ok := b.writers[topic]; ok {
+	if writer, ok := b.writers.Get(topic); ok {
 		return writer
 	}
 
-	writer := &kafka.Writer{
+	candidate := &kafka.Writer{
 		Addr:                   kafka.TCP(b.config.Brokers...),
 		Topic:                  topic,
 		Balancer:               &kafka.LeastBytes{},
@@ -204,7 +223,7 @@ func (b *Broker) getOrCreateWriter(topic string) *kafka.Writer {
 		AllowAutoTopicCreation: true,
 	}
 
-	b.writers[topic] = writer
+	writer, _ := b.writers.PutIfAbsent(topic, candidate)
 	return writer
 }
 
@@ -336,8 +355,8 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 		return nil, fmt.Errorf("handler is required")
 	}
 
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.regMu.Lock()
+	defer b.regMu.Unlock()
 
 	if !b.connected.Load() {
 		return nil, fmt.Errorf("not connected to Kafka")
@@ -386,7 +405,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic string, handler messaging.
 	}
 	sub.active.Store(true)
 
-	b.readers[topic] = sub
+	b.readers.Put(topic, sub)
 	b.metrics.RecordSubscription()
 
 	// Start consumer

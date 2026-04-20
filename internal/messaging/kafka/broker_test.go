@@ -127,6 +127,8 @@ func TestKafkaBroker_NewBroker_NilConfig(t *testing.T) {
 	assert.NotNil(t, broker.logger)
 	assert.NotNil(t, broker.writers)
 	assert.NotNil(t, broker.readers)
+	assert.Equal(t, 0, broker.writers.Len())
+	assert.Equal(t, 0, broker.readers.Len())
 	assert.NotNil(t, broker.metrics)
 	assert.False(t, broker.closed.Load())
 	assert.False(t, broker.connected.Load())
@@ -158,8 +160,8 @@ func TestKafkaBroker_NewBroker_NilLogger(t *testing.T) {
 func TestKafkaBroker_NewBroker_InitializesEmptyMaps(t *testing.T) {
 	broker := NewBroker(nil, nil)
 
-	assert.Empty(t, broker.writers)
-	assert.Empty(t, broker.readers)
+	assert.Equal(t, 0, broker.writers.Len())
+	assert.Equal(t, 0, broker.readers.Len())
 }
 
 func TestKafkaBroker_Close_WhenNotConnected(t *testing.T) {
@@ -1093,7 +1095,7 @@ func TestKafkaBroker_Close_WithWriters(t *testing.T) {
 	assert.NotNil(t, writer)
 
 	// Verify writer is in the map
-	assert.Len(t, broker.writers, 1)
+	assert.Equal(t, 1, broker.writers.Len())
 
 	// Close the broker - this will close all writers
 	ctx := context.Background()
@@ -1146,7 +1148,7 @@ func TestKafkaBroker_Close_WithMultipleWriters(t *testing.T) {
 	broker.getOrCreateWriter("topic-2")
 	broker.getOrCreateWriter("topic-3")
 
-	assert.Len(t, broker.writers, 3)
+	assert.Equal(t, 3, broker.writers.Len())
 
 	// Close the broker
 	ctx := context.Background()
@@ -1239,7 +1241,7 @@ func TestKafkaBroker_GetOrCreateWriter_MultipleTopics(t *testing.T) {
 	}
 
 	// Verify each topic has its own writer
-	assert.Len(t, broker.writers, len(topics))
+	assert.Equal(t, len(topics), broker.writers.Len())
 
 	// Verify each writer is correctly configured
 	for i, topic := range topics {
@@ -1253,7 +1255,7 @@ func TestKafkaBroker_GetOrCreateWriter_MultipleTopics(t *testing.T) {
 	}
 
 	// Verify still the same number of writers
-	assert.Len(t, broker.writers, len(topics))
+	assert.Equal(t, len(topics), broker.writers.Len())
 }
 
 func TestKafkaBroker_NewBroker_AllConfigFields(t *testing.T) {

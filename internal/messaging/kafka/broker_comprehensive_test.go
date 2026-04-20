@@ -109,6 +109,8 @@ func TestNewBroker_NilConfig_UsesDefaults(t *testing.T) {
 	assert.NotNil(t, broker.metrics)
 	assert.NotNil(t, broker.writers)
 	assert.NotNil(t, broker.readers)
+	assert.Equal(t, 0, broker.writers.Len())
+	assert.Equal(t, 0, broker.readers.Len())
 }
 
 func TestNewBroker_NilLogger_UsesNop(t *testing.T) {
@@ -146,8 +148,8 @@ func TestNewBroker_InitialState(t *testing.T) {
 
 func TestNewBroker_EmptyMaps(t *testing.T) {
 	broker := NewBroker(nil, nil)
-	assert.Empty(t, broker.writers)
-	assert.Empty(t, broker.readers)
+	assert.Equal(t, 0, broker.writers.Len())
+	assert.Equal(t, 0, broker.readers.Len())
 }
 
 func TestNewBroker_MetricsInitialized(t *testing.T) {

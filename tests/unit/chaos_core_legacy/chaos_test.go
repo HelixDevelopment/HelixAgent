@@ -1,7 +1,10 @@
-// Package core provides chaos engineering tests that validate the system's
-// resilience to intermittent failures, timeouts, and resource exhaustion.
-// These tests use local mock providers to avoid requiring external services.
-package core
+// Previously tests/chaos/core/chaos_test.go. CONST-030 forbids in-process
+// mocks in non-unit tests; this file exercises a local mockProvider and
+// mockCircuitBreaker to validate retry / cb semantics under synthetic
+// failure injection — pure package-level unit logic. Real chaos
+// engineering requires toxiproxy against a live service and is
+// separate work (Pattern-2 in the audit). PR30 of the CONST-030 campaign.
+package chaos_core_legacy_test
 
 import (
 	"context"

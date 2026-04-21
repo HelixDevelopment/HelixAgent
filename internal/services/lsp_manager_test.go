@@ -40,6 +40,11 @@ func TestNewLSPManager(t *testing.T) {
 	assert.NotNil(t, manager.connections)
 	assert.NotNil(t, manager.servers)
 	assert.NotNil(t, manager.config)
+	// CONST-029: collections are safe.Store so a non-zero server count
+	// after NewLSPManager (driven by initializeServers) implies the
+	// store is usable.
+	assert.Greater(t, manager.servers.Len(), 0)
+	assert.Equal(t, 0, manager.connections.Len())
 }
 
 // TestNewLSPManagerWithConfig tests LSP manager creation with custom config
@@ -1974,4 +1979,56 @@ func TestLSPManager_SetFileExistsFunc(t *testing.T) {
 		manager.SetFileExistsFunc(defaultFunc)
 		// Should not panic
 	})
+}
+
+// TestLSPManager_ConcurrentMessageID_NoRace verifies the messageID
+// counter — migrated from a plain int64 (with external atomic.AddInt64
+// calls) to atomic.Int64 in the CONST-029 drain — is safe under
+// concurrent use and produces exactly N distinct monotonic IDs for N
+// goroutines.
+//
+// Run under `go test -race` to catch any regression to a non-atomic
+// read/write. The previous bare int64 + atomic.AddInt64 combination
+// was flagged as a latent race because unsynchronised reads (from
+// other goroutines observing the field value directly) could see torn
+// values on 32-bit platforms. atomic.Int64 encapsulates both the
+// storage and the access primitives.
+func TestLSPManager_ConcurrentMessageID_NoRace(t *testing.T) {
+	const goroutines = 64
+	log := newLSPTestLogger()
+	manager := NewLSPManager(nil, nil, log)
+
+	var wg sync.WaitGroup
+	seenCh := make(chan int64, goroutines)
+
+	start := make(chan struct{})
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			seenCh <- manager.nextMessageID()
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+	close(seenCh)
+
+	// Collect and verify:
+	//   - exactly `goroutines` IDs were produced
+	//   - they are pairwise distinct
+	//   - the final counter value equals `goroutines`
+	seen := make(map[int64]struct{}, goroutines)
+	for id := range seenCh {
+		if _, dup := seen[id]; dup {
+			t.Fatalf("duplicate message ID %d — race in nextMessageID()", id)
+		}
+		seen[id] = struct{}{}
+	}
+
+	assert.Equal(t, goroutines, len(seen),
+		"expected %d distinct message IDs, got %d", goroutines, len(seen))
+	assert.Equal(t, int64(goroutines), manager.messageID.Load(),
+		"final counter must equal number of goroutines that invoked it")
 }

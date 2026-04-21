@@ -13,21 +13,36 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/database"
 	"dev.helix.agent/internal/utils"
 	"github.com/sirupsen/logrus"
 )
 
-// LSPManager handles LSP (Language Server Protocol) operations
+// LSPManager handles LSP (Language Server Protocol) operations.
+//
+// CONST-029: bare `sync.RWMutex + map` pairs were retired in favour of
+// safe.Store (Pattern A) and atomic.Int64 for the JSON-RPC message ID
+// counter. The previous messageID int64 field was racy — writers used
+// atomic.AddInt64 but concurrent readers across goroutines could still
+// observe torn or stale values on 32-bit architectures; atomic.Int64
+// makes the ordering guarantees explicit.
 type LSPManager struct {
 	repo        *database.ModelMetadataRepository
 	cache       CacheInterface
 	log         *logrus.Logger
-	connections map[string]*LSPConnection
-	servers     map[string]*LSPServer
-	mu          sync.RWMutex
-	messageID   int64
+	connections *safe.Store[string, *LSPConnection]
+	servers     *safe.Store[string, *LSPServer]
+	messageID   atomic.Int64
 	config      *LSPConfig
+	// connStartMu narrowly serialises "check connection + start server +
+	// register" so that two concurrent callers for the same serverID
+	// cannot both spawn the LSP server process. Pattern Zeta per the
+	// concurrency-playbook: the collections themselves are safe.Store,
+	// but the compound invariant ("one child process per serverID")
+	// requires its own critical section.
+	connStartMu sync.Mutex
 }
 
 // LSPConfig holds configuration for the LSP manager
@@ -348,8 +363,8 @@ func NewLSPManagerWithConfig(repo *database.ModelMetadataRepository, cache Cache
 		repo:        repo,
 		cache:       cache,
 		log:         log,
-		connections: make(map[string]*LSPConnection),
-		servers:     make(map[string]*LSPServer),
+		connections: safe.NewStore[string, *LSPConnection](),
+		servers:     safe.NewStore[string, *LSPServer](),
 		config:      config,
 	}
 
@@ -454,7 +469,7 @@ func (m *LSPManager) initializeServers() {
 			}
 		}
 
-		m.servers[def.id] = server
+		m.servers.Put(def.id, server)
 	}
 }
 
@@ -497,11 +512,9 @@ func (m *LSPManager) SetFileExistsFunc(fn func(string) bool) {
 
 // ListLSPServers lists all configured LSP servers
 func (m *LSPManager) ListLSPServers(ctx context.Context) ([]LSPServer, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	servers := make([]LSPServer, 0, len(m.servers))
-	for _, server := range m.servers {
+	snapshot := m.servers.Snapshot()
+	servers := make([]LSPServer, 0, len(snapshot))
+	for _, server := range snapshot {
 		servers = append(servers, *server)
 	}
 
@@ -511,10 +524,7 @@ func (m *LSPManager) ListLSPServers(ctx context.Context) ([]LSPServer, error) {
 
 // GetLSPServer gets a specific LSP server by ID
 func (m *LSPManager) GetLSPServer(ctx context.Context, serverID string) (*LSPServer, error) {
-	m.mu.RLock()
-	server, exists := m.servers[serverID]
-	m.mu.RUnlock()
-
+	server, exists := m.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not found", serverID)
 	}
@@ -522,19 +532,27 @@ func (m *LSPManager) GetLSPServer(ctx context.Context, serverID string) (*LSPSer
 	return server, nil
 }
 
-// getOrCreateConnection gets an existing connection or creates a new one
+// getOrCreateConnection gets an existing connection or creates a new one.
+//
+// Concurrency note: the original implementation held a single m.mu.Lock
+// across both the "is there a live connection?" check and the "start a
+// new server + register it" write. With safe.Store each lookup/write
+// is individually atomic but a racing caller could start two LSP server
+// processes for the same serverID. The connStartMu mutex below narrowly
+// preserves the "one process per serverID" invariant without protecting
+// the servers/connections collections themselves (those are safe.Store).
 func (m *LSPManager) getOrCreateConnection(ctx context.Context, serverID string) (*LSPConnection, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.connStartMu.Lock()
+	defer m.connStartMu.Unlock()
 
 	// Check for existing connection
-	if conn, exists := m.connections[serverID]; exists && conn.connected {
+	if conn, exists := m.connections.Get(serverID); exists && conn.connected {
 		conn.lastUsed = time.Now()
 		return conn, nil
 	}
 
 	// Get server config
-	server, exists := m.servers[serverID]
+	server, exists := m.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not found", serverID)
 	}
@@ -553,7 +571,7 @@ func (m *LSPManager) getOrCreateConnection(ctx context.Context, serverID string)
 		return nil, fmt.Errorf("failed to start LSP server %s: %w", serverID, err)
 	}
 
-	m.connections[serverID] = conn
+	m.connections.Put(serverID, conn)
 	return conn, nil
 }
 
@@ -711,9 +729,14 @@ func (m *LSPManager) initializeConnection(ctx context.Context, conn *LSPConnecti
 	return nil
 }
 
-// nextMessageID generates the next message ID atomically
+// nextMessageID generates the next message ID atomically.
+//
+// Uses atomic.Int64.Add to guarantee that concurrent LSP requests
+// observe monotonically-increasing, non-repeating IDs on all
+// architectures (the previous int64 field + atomic.AddInt64 combo was
+// racy on 32-bit platforms for plain reads).
 func (m *LSPManager) nextMessageID() int64 {
-	return atomic.AddInt64(&m.messageID, 1)
+	return m.messageID.Add(1)
 }
 
 // sendRequest sends a JSON-RPC request and waits for response
@@ -1271,11 +1294,11 @@ func (m *LSPManager) SyncLSPServer(ctx context.Context, serverID string) error {
 
 // GetLSPStats returns statistics about LSP usage
 func (m *LSPManager) GetLSPStats(ctx context.Context) (map[string]interface{}, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	serverSnap := m.servers.Snapshot()
+	connSnap := m.connections.Snapshot()
 
-	servers := make([]LSPServer, 0, len(m.servers))
-	for _, server := range m.servers {
+	servers := make([]LSPServer, 0, len(serverSnap))
+	for _, server := range serverSnap {
 		servers = append(servers, *server)
 	}
 
@@ -1294,7 +1317,7 @@ func (m *LSPManager) GetLSPStats(ctx context.Context) (map[string]interface{}, e
 		}
 	}
 
-	for _, conn := range m.connections {
+	for _, conn := range connSnap {
 		if conn.connected {
 			connectedCount++
 		}
@@ -1369,26 +1392,27 @@ func (m *LSPManager) refreshLSPServer(ctx context.Context, serverID string) erro
 	// Check if binary is available
 	binaryPath, available := m.findBinary(server.Command)
 
-	m.mu.Lock()
-	if s, exists := m.servers[serverID]; exists {
-		s.BinaryPath = binaryPath
-		s.Available = available
+	// Update stored server metadata atomically. The stored value is a
+	// pointer so mutating fields in place mirrors the original
+	// semantics (callers holding a previously-returned *LSPServer will
+	// observe the fresh values), while Update() ensures the lookup and
+	// mutation are serialised with concurrent Put/Delete on the store.
+	m.servers.Update(serverID, func(current *LSPServer, present bool) (*LSPServer, bool) {
+		if !present || current == nil {
+			return current, present
+		}
+		current.BinaryPath = binaryPath
+		current.Available = available
 		now := time.Now()
-		s.LastSync = &now
-	}
-	m.mu.Unlock()
+		current.LastSync = &now
+		return current, true
+	})
 
-	// If there's an existing connection, check its health
-	m.mu.RLock()
-	conn, hasConnection := m.connections[serverID]
-	m.mu.RUnlock()
-
-	if hasConnection && conn != nil {
+	// If there's an existing connection, check its health.
+	if conn, hasConnection := m.connections.Get(serverID); hasConnection && conn != nil {
 		if !conn.connected {
 			// Connection is dead, remove it
-			m.mu.Lock()
-			delete(m.connections, serverID)
-			m.mu.Unlock()
+			m.connections.Delete(serverID)
 		}
 	}
 
@@ -1414,32 +1438,24 @@ func (m *LSPManager) refreshLSPServer(ctx context.Context, serverID string) erro
 
 // Close closes a specific LSP server connection
 func (m *LSPManager) Close(serverID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	conn, exists := m.connections[serverID]
-	if !exists {
+	conn, existed := m.connections.Delete(serverID)
+	if !existed {
 		return fmt.Errorf("no connection for server %s", serverID)
 	}
-
-	err := conn.Close()
-	delete(m.connections, serverID)
-	return err
+	return conn.Close()
 }
 
 // CloseAll closes all LSP server connections
 func (m *LSPManager) CloseAll() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	snapshot := m.connections.Snapshot()
+	m.connections.Clear()
 
 	var errors []error
-	for serverID, conn := range m.connections {
+	for serverID, conn := range snapshot {
 		if err := conn.Close(); err != nil {
 			errors = append(errors, fmt.Errorf("failed to close %s: %w", serverID, err))
 		}
 	}
-
-	m.connections = make(map[string]*LSPConnection)
 
 	if len(errors) > 0 {
 		return fmt.Errorf("errors closing connections: %v", errors)
@@ -1531,23 +1547,18 @@ func (c *LSPConnection) IsConnected() bool {
 
 // GetConnection returns the connection for a server (for testing)
 func (m *LSPManager) GetConnection(serverID string) *LSPConnection {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.connections[serverID]
+	conn, _ := m.connections.Get(serverID)
+	return conn
 }
 
 // AddServer adds a custom server configuration (for testing)
 func (m *LSPManager) AddServer(server *LSPServer) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.servers[server.ID] = server
+	m.servers.Put(server.ID, server)
 }
 
 // SetConnection sets a connection for a server (for testing)
 func (m *LSPManager) SetConnection(serverID string, conn *LSPConnection) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.connections[serverID] = conn
+	m.connections.Put(serverID, conn)
 }
 
 // GetConfig returns the current configuration

@@ -28,6 +28,7 @@ require (
 	digital.vasic.memory v0.0.0-00010101000000-000000000000
 	digital.vasic.messaging v0.0.0-00010101000000-000000000000
 	digital.vasic.models v0.0.0
+	digital.vasic.normalize v0.0.0-00010101000000-000000000000
 	digital.vasic.optimization v0.0.0-00010101000000-000000000000
 	digital.vasic.planning v0.0.0-00010101000000-000000000000
 	digital.vasic.plugins v0.0.0-00010101000000-000000000000
@@ -289,5 +290,7 @@ replace digital.vasic.docprocessor => ./DocProcessor
 replace digital.vasic.llmorchestrator => ./LLMOrchestrator
 
 replace digital.vasic.visionengine => ./VisionEngine
+
+replace digital.vasic.normalize => ./Normalize
 
 replace github.com/HelixDevelopment/HelixAgent/Toolkit => ./Toolkit

@@ -476,3 +476,6 @@
 [submodule "docs/research/CLAUDE-CODE-SYSTEM-PROMPT"]
 	path = docs/research/CLAUDE-CODE-SYSTEM-PROMPT
 	url = git@github.com:elder-plinius/CLAUDE-CODE-SYSTEM-PROMPT.git
+[submodule "Normalize"]
+	path = Normalize
+	url = git@github.com:vasic-digital/Normalize.git

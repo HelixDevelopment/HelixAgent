@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
+	"digital.vasic.normalize"
 	"github.com/sirupsen/logrus"
 )
 
@@ -481,7 +482,7 @@ func (g *PromptInjectionGuardrail) Check(ctx context.Context, content string, me
 	// character-split, reversal) and stego-mutation (zero-width,
 	// fullwidth, whitespace-channel) attacks no longer evade the literal
 	// regexes. A match on any variant counts as a trigger.
-	normalized := Normalize(content)
+	normalized := normalize.Normalize(content)
 
 	matches := 0
 	for _, variant := range normalized.Variants {
@@ -566,7 +567,7 @@ func (g *ContentSafetyGuardrail) Type() GuardrailType {
 }
 
 func (g *ContentSafetyGuardrail) Check(ctx context.Context, content string, metadata map[string]interface{}) (*GuardrailResult, error) {
-	normalized := Normalize(content)
+	normalized := normalize.Normalize(content)
 	matches := 0
 	seenTopics := make(map[string]struct{})
 	var matchedTopics []string
@@ -674,7 +675,7 @@ func (g *SystemPromptProtector) Check(ctx context.Context, content string, metad
 	// Scan every normalised variant so stego-style zero-width /
 	// fullwidth / homoglyph variants of "show your system prompt"
 	// don't evade the literal regexes.
-	normalized := Normalize(content)
+	normalized := normalize.Normalize(content)
 	for _, variant := range normalized.Variants {
 		for _, pattern := range g.leakagePatterns {
 			if pattern.MatchString(variant) {

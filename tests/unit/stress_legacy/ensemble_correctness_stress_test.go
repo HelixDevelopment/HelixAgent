@@ -1,7 +1,13 @@
 //go:build stress
 // +build stress
 
-package stress
+// Previously tests/stress/... — demoted to unit package under CONST-030.
+// Stress tests of in-process concurrency primitives (semaphore / pool /
+// cache saturation, circuit-breaker storms, goroutine growth) that
+// exercise local mock providers and invokers. Keeping the mocks in the
+// unit tree per the audit's Pattern-4 disposition for stress tests.
+// PR33 of the CONST-030 compliance campaign.
+package stress_legacy_test
 
 import (
 	"context"

@@ -1,4 +1,7 @@
-package stress
+// Previously tests/stress/debate_concurrent_stress_test.go — sibling
+// depends on stressMockInvoker defined in debate_stress_test.go; moved
+// together with PR33 batch.
+package stress_legacy_test
 
 import (
 	"context"

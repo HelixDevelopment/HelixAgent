@@ -113,12 +113,12 @@ $ jq '.total_rules, .version' CONSTITUTION.json
 ## Remaining known issues (honest inventory — for future sessions)
 
 ### Big-ticket
-1. ~~**Phase-A method implementation**~~ — **COMPLETE**. All 9 modules graduated to FUNCTIONAL status with minimum-viable surfaces (seeded defaults + injectable backends + unit tests under `-race`). PliniusCommon at `517205b`; the other 8 bumped in HelixAgent commit `fce0ef17`. Deeper implementation (full-spec ~2wk/module) can continue on the now-functional baselines.
+1. ~~**Phase-A method implementation**~~ — **COMPLETE**. All 9 modules graduated to FUNCTIONAL status with minimum-viable surfaces (seeded defaults + injectable backends + unit tests under `-race`). PliniusCommon at `517205b`; the other 8 bumped in HelixAgent commit `fce0ef17`. Wave 5 extended coverage: **130 additional test functions + 22 benchmarks** across all 9 modules (HelixAgent commit `69730c72`). Deeper implementation (full-spec ~2wk/module) can continue on the now-functional baselines.
+2. ~~**Research-tree Go CVEs**~~ — **CLOSED**. `go-plinius-common/go.mod` bumped grpc 1.64→1.79.3 + x/net 0.22→0.48 (commit `04dbf6ed`). 5 alerts resolved; remaining 22 research modules had no grpc/x-net deps.
+3. ~~**Python/pip CVEs**~~ — **CLOSED**. `mcp-servers/postgres-mcp/ingest/uv.lock` rebuilt via `uv lock --upgrade` (commit `c2d6ee17`). ~129 alerts resolved: python-dotenv 1.1.1→1.2.2, langchain-core 0.3.75→1.3.0, cryptography→46.0.7, urllib3 2.5→2.6.3, scrapy 2.13.3→2.15.0, orjson 3.11.3→3.11.8, pyasn1 0.6.1→0.6.3, pyopenssl 25.1→26.0.
 
 ### Deferred by-design
-2. **`docs/research/go-elder-plinius-v3/` frozen** — 5 Go Dependabot alerts there, but the tree is intentionally not maintained until Phase-A.
-3. **Python/pip ecosystem CVEs in `mcp-servers/postgres-mcp/ingest/uv.lock`** — 129 alerts, needs `uv lock --upgrade` campaign.
-4. **`github.com/docker/docker@v28.5.2+incompatible`** — 2 CVEs, no upstream fix.
+4. **`github.com/docker/docker@v28.5.2+incompatible`** — 2 CVEs, no upstream fix. Monitor upstream for a patched release.
 
 ### User-side / ops
 5. **Cohere API key** observed 429 rate-limited during verification — may just be a trial-key daily quota issue.

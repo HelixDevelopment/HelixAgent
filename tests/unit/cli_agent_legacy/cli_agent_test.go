@@ -1,7 +1,9 @@
-// Package integration provides comprehensive integration tests for CLI agent functionality.
-// This file tests the complete flow from CLI agent configuration to request handling,
-// including agent registry, protocol support, request parsing, and response formatting.
-package integration
+// Previously tests/integration/cli_agent_integration_test.go. CONST-030
+// forbids mocks in non-unit tests; this file exclusively tests CLI-agent
+// registry wiring, protocol parsing, and request/response shaping through
+// local MockMCPTransport / MockLSPTransport fakes and in-process
+// httptest.NewRecorder. PR26 of the CONST-030 compliance campaign.
+package cli_agent_legacy_test
 
 import (
 	"bytes"

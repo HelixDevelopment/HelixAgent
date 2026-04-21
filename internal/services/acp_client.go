@@ -12,18 +12,35 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/models"
 	"github.com/sirupsen/logrus"
 )
 
-// LSPClient implements a real Language Server Protocol client
+// LSPClient implements a real Language Server Protocol client.
+//
+// CONST-029: the pre-existing `sync.RWMutex + map` fields (servers,
+// capabilities, diagnostics) were retired in favour of safe.Store
+// (Pattern A) from digital.vasic.concurrency/pkg/safe. The compound
+// invariant in ConnectServer ("check connection + start LSP child
+// process + register") is preserved with a narrow connStartMu
+// (Pattern Zeta) so two racing callers for the same serverID cannot
+// both spawn the transport process — a constraint the store-level
+// locks do not express.
 type LSPClient struct {
-	servers      map[string]*LSPServerConnection
-	capabilities map[string]*LSPCapabilities
-	diagnostics  map[string][]*ACPDiagnostic // URI -> diagnostics
+	servers      *safe.Store[string, *LSPServerConnection]
+	capabilities *safe.Store[string, *LSPCapabilities]
+	diagnostics  *safe.Store[string, []*ACPDiagnostic] // URI -> diagnostics
 	messageID    atomic.Int64
-	mu           sync.RWMutex
-	logger       *logrus.Logger
+	// connStartMu narrowly serialises "check server + start transport +
+	// initialize + register" so that two concurrent callers for the
+	// same serverID cannot both spawn the LSP server process. Pattern
+	// Zeta per the concurrency-playbook: the collections themselves are
+	// safe.Store, but the compound invariant ("one child process per
+	// serverID") requires its own critical section.
+	connStartMu sync.Mutex
+	logger      *logrus.Logger
 }
 
 // ACPDiagnostic represents a diagnostic from the LSP/ACP server (extends LSPDiagnostic)
@@ -253,9 +270,9 @@ type Location struct {
 // NewLSPClient creates a new LSP client
 func NewLSPClient(logger *logrus.Logger) *LSPClient {
 	client := &LSPClient{
-		servers:      make(map[string]*LSPServerConnection),
-		capabilities: make(map[string]*LSPCapabilities),
-		diagnostics:  make(map[string][]*ACPDiagnostic),
+		servers:      safe.NewStore[string, *LSPServerConnection](),
+		capabilities: safe.NewStore[string, *LSPCapabilities](),
+		diagnostics:  safe.NewStore[string, []*ACPDiagnostic](),
 		logger:       logger,
 	}
 	client.messageID.Store(1)
@@ -264,10 +281,13 @@ func NewLSPClient(logger *logrus.Logger) *LSPClient {
 
 // ConnectServer connects to an LSP server
 func (c *LSPClient) ConnectServer(ctx context.Context, serverID, name, language, command string, args []string, workspace string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	// Pattern Zeta: serialise the full "check + spawn + initialize +
+	// register" sequence so two concurrent callers cannot both start a
+	// child process for the same serverID.
+	c.connStartMu.Lock()
+	defer c.connStartMu.Unlock()
 
-	if _, exists := c.servers[serverID]; exists {
+	if _, exists := c.servers.Get(serverID); exists {
 		return fmt.Errorf("LSP server %s already connected", serverID)
 	}
 
@@ -294,7 +314,7 @@ func (c *LSPClient) ConnectServer(ctx context.Context, serverID, name, language,
 		return fmt.Errorf("failed to initialize LSP server: %w", err)
 	}
 
-	c.servers[serverID] = connection
+	c.servers.Put(serverID, connection)
 	c.logger.WithFields(logrus.Fields{
 		"serverId": serverID,
 		"language": language,
@@ -305,11 +325,8 @@ func (c *LSPClient) ConnectServer(ctx context.Context, serverID, name, language,
 
 // DisconnectServer disconnects from an LSP server
 func (c *LSPClient) DisconnectServer(serverID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	connection, exists := c.servers[serverID]
-	if !exists {
+	connection, existed := c.servers.Delete(serverID)
+	if !existed {
 		return fmt.Errorf("LSP server %s not connected", serverID)
 	}
 
@@ -338,18 +355,13 @@ func (c *LSPClient) DisconnectServer(serverID string) error {
 		c.logger.WithError(err).Warn("Error closing LSP transport")
 	}
 
-	delete(c.servers, serverID)
-
 	c.logger.WithField("serverId", serverID).Info("Disconnected from LSP server")
 	return nil
 }
 
 // OpenFile opens a file for LSP operations
 func (c *LSPClient) OpenFile(ctx context.Context, serverID, uri, languageID, content string) error {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -390,10 +402,7 @@ func (c *LSPClient) OpenFile(ctx context.Context, serverID, uri, languageID, con
 
 // UpdateFile updates file content
 func (c *LSPClient) UpdateFile(ctx context.Context, serverID, uri, content string) error {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -436,10 +445,7 @@ func (c *LSPClient) UpdateFile(ctx context.Context, serverID, uri, content strin
 
 // CloseFile closes a file
 func (c *LSPClient) CloseFile(ctx context.Context, serverID, uri string) error {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -471,10 +477,7 @@ func (c *LSPClient) CloseFile(ctx context.Context, serverID, uri string) error {
 
 // GetCompletion requests completion at a position
 func (c *LSPClient) GetCompletion(ctx context.Context, serverID, uri string, line, character int) (*CompletionList, error) {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -524,10 +527,7 @@ func (c *LSPClient) GetCompletion(ctx context.Context, serverID, uri string, lin
 
 // GetHover requests hover information at a position
 func (c *LSPClient) GetHover(ctx context.Context, serverID, uri string, line, character int) (*Hover, error) {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -577,10 +577,7 @@ func (c *LSPClient) GetHover(ctx context.Context, serverID, uri string, line, ch
 
 // GetDefinition finds the definition of a symbol
 func (c *LSPClient) GetDefinition(ctx context.Context, serverID, uri string, line, character int) (*Location, error) {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -630,23 +627,12 @@ func (c *LSPClient) GetDefinition(ctx context.Context, serverID, uri string, lin
 
 // ListServers returns all connected LSP servers
 func (c *LSPClient) ListServers() []*LSPServerConnection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	servers := make([]*LSPServerConnection, 0, len(c.servers))
-	for _, server := range c.servers {
-		servers = append(servers, server)
-	}
-
-	return servers
+	return c.servers.Values()
 }
 
 // GetServerCapabilities returns capabilities for a server
 func (c *LSPClient) GetServerCapabilities(serverID string) (*LSPCapabilities, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	connection, exists := c.servers[serverID]
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("LSP server %s not connected", serverID)
 	}
@@ -656,14 +642,11 @@ func (c *LSPClient) GetServerCapabilities(serverID string) (*LSPCapabilities, er
 
 // HealthCheck performs health checks on all connected servers
 func (c *LSPClient) HealthCheck(ctx context.Context) map[string]bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	results := make(map[string]bool)
-	for serverID, connection := range c.servers {
+	snap := c.servers.Snapshot()
+	results := make(map[string]bool, len(snap))
+	for serverID, connection := range snap {
 		results[serverID] = connection.Transport.IsConnected()
 	}
-
 	return results
 }
 
@@ -677,10 +660,7 @@ func (c *LSPClient) StartServer(ctx context.Context) error {
 func (c *LSPClient) GetDiagnostics(ctx context.Context, filePath string) ([]*models.Diagnostic, error) {
 	uri := fmt.Sprintf("file://%s", filePath)
 
-	c.mu.RLock()
-	lspDiags, exists := c.diagnostics[uri]
-	c.mu.RUnlock()
-
+	lspDiags, exists := c.diagnostics.Get(uri)
 	if !exists || len(lspDiags) == 0 {
 		return []*models.Diagnostic{}, nil
 	}
@@ -715,14 +695,11 @@ func (c *LSPClient) GetDiagnostics(ctx context.Context, filePath string) ([]*mod
 
 // HandlePublishDiagnostics handles incoming textDocument/publishDiagnostics notifications
 func (c *LSPClient) HandlePublishDiagnostics(params *ACPPublishDiagnosticsParams) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if params == nil {
 		return
 	}
 
-	c.diagnostics[params.URI] = params.Diagnostics
+	c.diagnostics.Put(params.URI, params.Diagnostics)
 	c.logger.WithFields(logrus.Fields{
 		"uri":   params.URI,
 		"count": len(params.Diagnostics),
@@ -731,16 +708,12 @@ func (c *LSPClient) HandlePublishDiagnostics(params *ACPPublishDiagnosticsParams
 
 // ClearDiagnostics clears diagnostics for a specific file
 func (c *LSPClient) ClearDiagnostics(uri string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.diagnostics, uri)
+	c.diagnostics.Delete(uri)
 }
 
 // ClearAllDiagnostics clears all stored diagnostics
 func (c *LSPClient) ClearAllDiagnostics() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.diagnostics = make(map[string][]*ACPDiagnostic)
+	c.diagnostics.Clear()
 }
 
 // GetCodeIntelligence provides code intelligence for a file

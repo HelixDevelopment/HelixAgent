@@ -1,5 +1,14 @@
 package bigdata
 
+// CONST-030: these tests exercise MemoryIntegration against an in-process
+// mockMemoryStore implementing memory.MemoryStore and a mockBroker
+// implementing messaging.MessageBroker. They test pure in-process wiring
+// — add/get/update/delete round-trips, broker event publication on memory
+// events, JSON serialisation — with no network, DB, or external store
+// dependency. Unit tests by definition. File was previously named
+// memory_integration_test.go; renamed so it is not swept into the audit's
+// non-unit surface (*_integration_test.go).
+
 import (
 	"context"
 	"encoding/json"

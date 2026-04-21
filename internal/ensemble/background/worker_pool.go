@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"dev.helix.agent/internal/clis"
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
 
@@ -37,7 +38,7 @@ type WorkerPool struct {
 	// Pool configuration
 	size              int
 	queueSize         int
-	maxPendingResults int64 // hard cap on pendingResults size; 0 = use default
+	maxPendingResults atomic.Int64 // hard cap on pendingResults size; 0 = use default
 
 	// Task queue
 	taskQueue chan *clis.Task
@@ -52,11 +53,12 @@ type WorkerPool struct {
 	pendingResults sync.Map // taskID -> chan *TaskResult
 	pendingCount   int64    // atomic; current number of entries in pendingResults
 
-	// Workers
-	workers []*Worker
+	// Workers — mutated only inside Start() / Stop() serialised by startStopMu.
+	workers     *safe.Slice[*Worker]
+	startStopMu sync.Mutex // serialises Start/Stop state transitions
 
-	// Instance assignment
-	instanceAssignments map[string]string // taskID -> instanceID
+	// Instance assignment — concurrent-safe map for taskID -> instanceID.
+	instanceAssignments *safe.Store[string, string]
 
 	// Metrics
 	tasksSubmitted uint64
@@ -69,10 +71,9 @@ type WorkerPool struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
-	mu     sync.RWMutex
 
-	// Running flag
-	running bool
+	// Running flag (atomic)
+	running atomic.Bool
 }
 
 // Worker represents a single worker.
@@ -101,8 +102,8 @@ func NewWorkerPool(size int) *WorkerPool {
 		queueSize:           size * 10,
 		taskQueue:           make(chan *clis.Task, size*10),
 		resultQueue:         make(chan *TaskResult, size*10),
-		workers:             make([]*Worker, 0, size),
-		instanceAssignments: make(map[string]string),
+		workers:             safe.NewSlice[*Worker](),
+		instanceAssignments: safe.NewStore[string, string](),
 		ctx:                 ctx,
 		cancel:              cancel,
 	}
@@ -118,10 +119,10 @@ func NewWorkerPoolWithDB(db *sql.DB, logger *log.Logger, size int) *WorkerPool {
 
 // Start initializes and starts all workers.
 func (wp *WorkerPool) Start(ctx context.Context) error {
-	wp.mu.Lock()
-	defer wp.mu.Unlock()
+	wp.startStopMu.Lock()
+	defer wp.startStopMu.Unlock()
 
-	if wp.running {
+	if !wp.running.CompareAndSwap(false, true) {
 		return fmt.Errorf("worker pool already running")
 	}
 
@@ -132,7 +133,7 @@ func (wp *WorkerPool) Start(ctx context.Context) error {
 			pool: wp,
 			quit: make(chan struct{}),
 		}
-		wp.workers = append(wp.workers, worker)
+		wp.workers.Append(worker)
 
 		wp.wg.Add(1)
 		go worker.run()
@@ -145,8 +146,6 @@ func (wp *WorkerPool) Start(ctx context.Context) error {
 	// Start maintenance loop
 	wp.wg.Add(1)
 	go wp.maintenanceLoop()
-
-	wp.running = true
 
 	if wp.logger != nil {
 		wp.logger.Printf("Worker pool started with %d workers", wp.size)
@@ -199,8 +198,8 @@ func (wp *WorkerPool) PendingCount() int64 {
 
 // maxPending returns the configured cap, falling back to the package default.
 func (wp *WorkerPool) maxPending() int64 {
-	if wp.maxPendingResults > 0 {
-		return wp.maxPendingResults
+	if v := wp.maxPendingResults.Load(); v > 0 {
+		return v
 	}
 	return DefaultMaxPendingResults
 }
@@ -209,9 +208,7 @@ func (wp *WorkerPool) maxPending() int64 {
 // before Start or while no SubmitAsync calls are in flight. Zero restores
 // the default.
 func (wp *WorkerPool) SetMaxPendingResults(n int64) {
-	wp.mu.Lock()
-	defer wp.mu.Unlock()
-	wp.maxPendingResults = n
+	wp.maxPendingResults.Store(n)
 }
 
 // storePending registers a per-task delivery channel under admission control.
@@ -416,12 +413,9 @@ func (wp *WorkerPool) ListTasks(
 
 // GetStats returns pool statistics.
 func (wp *WorkerPool) GetStats() map[string]interface{} {
-	wp.mu.RLock()
-	defer wp.mu.RUnlock()
-
 	return map[string]interface{}{
 		"size":                wp.size,
-		"running":             wp.running,
+		"running":             wp.running.Load(),
 		"queue_depth":         len(wp.taskQueue),
 		"queue_capacity":      cap(wp.taskQueue),
 		"tasks_submitted":     atomic.LoadUint64(&wp.tasksSubmitted),
@@ -439,20 +433,19 @@ func (wp *WorkerPool) GetStats() map[string]interface{} {
 // them to finish, and only then closes channels — ensuring no goroutine
 // writes to a closed channel.
 func (wp *WorkerPool) Stop() error {
-	wp.mu.Lock()
-	if !wp.running {
-		wp.mu.Unlock()
+	wp.startStopMu.Lock()
+	defer wp.startStopMu.Unlock()
+
+	if !wp.running.CompareAndSwap(true, false) {
 		return nil
 	}
-	wp.running = false
-	wp.mu.Unlock()
 
 	// Step 1: Signal all goroutines to stop via context cancellation.
 	// Workers, collectResults, and maintenanceLoop all select on ctx.Done().
 	wp.cancel()
 
 	// Step 2: Signal workers via quit channels as a secondary signal.
-	for _, worker := range wp.workers {
+	for _, worker := range wp.workers.Snapshot() {
 		select {
 		case <-worker.quit:
 			// Already closed
@@ -480,9 +473,7 @@ func (wp *WorkerPool) Stop() error {
 // Internal methods
 
 func (wp *WorkerPool) isRunning() bool {
-	wp.mu.RLock()
-	defer wp.mu.RUnlock()
-	return wp.running
+	return wp.running.Load()
 }
 
 func (wp *WorkerPool) persistTask(ctx context.Context, task *clis.Task) error {

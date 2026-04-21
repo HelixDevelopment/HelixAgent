@@ -26,7 +26,7 @@ func TestNewWorkerPool(t *testing.T) {
 	assert.NotNil(t, pool.instanceAssignments)
 	assert.NotNil(t, pool.ctx)
 	assert.NotNil(t, pool.cancel)
-	assert.False(t, pool.running)
+	assert.False(t, pool.running.Load())
 }
 
 func TestNewWorkerPoolWithDB(t *testing.T) {
@@ -44,8 +44,8 @@ func TestWorkerPool_Start(t *testing.T) {
 	ctx := context.Background()
 	err := pool.Start(ctx)
 	require.NoError(t, err)
-	assert.True(t, pool.running)
-	assert.Len(t, pool.workers, 2)
+	assert.True(t, pool.running.Load())
+	assert.Equal(t, 2, pool.workers.Len())
 
 	// Test double start
 	err = pool.Start(ctx)
@@ -294,9 +294,7 @@ func TestWorkerPool_Submit_ContextCancelled(t *testing.T) {
 	// so Submit proceeds past the isRunning check. This avoids workers
 	// draining the queue while we fill it.
 	pool := NewWorkerPool(1)
-	pool.mu.Lock()
-	pool.running = true
-	pool.mu.Unlock()
+	pool.running.Store(true)
 
 	// Fill the queue completely
 	for i := 0; i < pool.queueSize; i++ {
@@ -322,9 +320,7 @@ func TestWorkerPool_Submit_ContextCancelled(t *testing.T) {
 	assert.Error(t, err)
 
 	// Mark as not running (we never started workers)
-	pool.mu.Lock()
-	pool.running = false
-	pool.mu.Unlock()
+	pool.running.Store(false)
 }
 
 // Test Submit with defaults

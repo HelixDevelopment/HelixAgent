@@ -19,8 +19,8 @@ import (
 // Concurrency model (CONST-029): attacks is a *safe.Store whose
 // per-type slices are appended atomically via Update. mu survives
 // as a Pattern Zeta lock serialising scalar-interface mutation
-// (auditLogger / debateTarget / verifier) — the audit is satisfied
-// because no bare map/slice sits beside it.
+// (auditLogger / debateTarget / verifier / guardrails) — the audit
+// is satisfied because no bare map/slice sits beside it.
 type DeepTeamRedTeamer struct {
 	attacks     *safe.Store[AttackType, []*Attack]
 	config      *RedTeamConfig
@@ -28,10 +28,21 @@ type DeepTeamRedTeamer struct {
 	auditLogger AuditLogger
 
 	// Integration with existing systems
-	debateTarget DebateTarget     // Use AI debate for attack evaluation
-	verifier     ProviderVerifier // Use LLMsVerifier for provider health
+	debateTarget DebateTarget          // Use AI debate for attack evaluation
+	verifier     ProviderVerifier      // Use LLMsVerifier for provider health
+	guardrails   GuardrailInputChecker // Pipeline replayed against fixtures
 
 	mu sync.RWMutex
+}
+
+// GuardrailInputChecker is the minimal surface RunFixtureSuite needs to
+// replay fixtures through a guardrail pipeline. StandardGuardrailPipeline
+// satisfies this interface via its existing CheckInput method; tests
+// may supply a fake implementation.
+type GuardrailInputChecker interface {
+	CheckInput(
+		ctx context.Context, input string, metadata map[string]interface{},
+	) ([]*GuardrailResult, error)
 }
 
 // DebateTarget represents the AI debate system as a target for evaluation

@@ -1,4 +1,8 @@
-package e2e
+// Package ai_debate_legacy holds the former tests/e2e/ai_debate_e2e_test.go
+// demoted to a unit test. CONST-030 forbids in-process mocks in E2E
+// tests, and this file wires a MockDebateService directly (never
+// touching :7061). PR24 of the CONST-030 compliance campaign.
+package ai_debate_legacy_test
 
 import (
 	"context"
@@ -10,14 +14,12 @@ import (
 
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/services"
-	"dev.helix.agent/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestAIDebateSystem_E2E tests the complete AI debate system end-to-end
+// TestAIDebateSystem_E2E tests the debate configuration + mock service flow.
 func TestAIDebateSystem_E2E(t *testing.T) {
-	testutil.RequireServer(t)
 
 	// Create temporary directory for test configurations
 	tempDir, err := os.MkdirTemp("", "ai-debate-e2e-test")

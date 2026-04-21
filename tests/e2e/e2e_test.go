@@ -1,8 +1,14 @@
+// Package e2e contains the end-to-end test suite. CONST-030 mandates all
+// non-unit tests execute against a live HelixAgent on :7061 — any
+// in-process mock is a violation. The in-process `TestE2ENewServicesWorkflow`
+// subtree that used a local `MockTool` wired directly into
+// `services.NewMCPManager` / `LSPClient` / `ContextManager` /
+// `IntegrationOrchestrator` was demoted to
+// `tests/unit/e2e_services_legacy/` in PR23 of the CONST-030 campaign.
 package e2e
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,19 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/testutil"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestE2EUserWorkflow tests complete user workflows
-// Note: These tests require a running HelixAgent server on localhost:7061
-// To run these tests:
-// 1. Start the server: make run-dev
-// 2. Run E2E tests: make test-e2e
-// 3. Or run all tests: make test-all-types
+// TestE2EUserWorkflow tests complete user workflows against the live HelixAgent.
+// Requires a running server on localhost:7061. Probe + skip is done by
+// `testutil.RequireServer(t)`.
 func TestE2EUserWorkflow(t *testing.T) {
 	testutil.RequireServer(t)
 
@@ -61,7 +62,6 @@ func TestE2EUserWorkflow(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
-		// Accept various status codes since providers might not be configured
 		if resp.StatusCode == http.StatusOK {
 			var chatResp map[string]interface{}
 			err = json.NewDecoder(resp.Body).Decode(&chatResp)
@@ -72,10 +72,8 @@ func TestE2EUserWorkflow(t *testing.T) {
 
 			choices := chatResp["choices"].([]interface{})
 			assert.Greater(t, len(choices), 0)
-
-			t.Logf("✅ Chat workflow completed successfully")
 		} else {
-			t.Logf("⚠️  Chat workflow returned status %d (may be expected if providers not configured)", resp.StatusCode)
+			t.Logf("chat workflow returned status %d (may be expected if providers not configured)", resp.StatusCode)
 		}
 	})
 
@@ -90,8 +88,8 @@ func TestE2EUserWorkflow(t *testing.T) {
 		err = json.NewDecoder(resp.Body).Decode(&providersResp)
 		require.NoError(t, err)
 
-		providers := providersResp["providers"].([]interface{})
-		t.Logf("✅ Found %d providers", len(providers))
+		providers, _ := providersResp["providers"].([]interface{})
+		_ = providers
 
 		// Step 2: Test ensemble completion
 		ensembleRequest := map[string]interface{}{
@@ -117,10 +115,8 @@ func TestE2EUserWorkflow(t *testing.T) {
 
 			assert.Equal(t, "ensemble.completion", ensembleResp["object"])
 			assert.NotNil(t, ensembleResp["ensemble"])
-
-			t.Logf("✅ Ensemble workflow completed successfully")
 		} else {
-			t.Logf("⚠️  Ensemble workflow returned status %d", resp.StatusCode)
+			t.Logf("ensemble workflow returned status %d", resp.StatusCode)
 		}
 	})
 
@@ -147,9 +143,8 @@ func TestE2EUserWorkflow(t *testing.T) {
 
 			// Should contain SSE data
 			assert.Contains(t, string(body), "data:")
-			t.Logf("✅ Streaming workflow completed: received %d bytes", len(body))
 		} else {
-			t.Logf("⚠️  Streaming workflow returned status %d", resp.StatusCode)
+			t.Logf("streaming workflow returned status %d", resp.StatusCode)
 		}
 	})
 
@@ -185,12 +180,10 @@ func TestE2EUserWorkflow(t *testing.T) {
 		// Should contain Prometheus metrics
 		assert.Contains(t, string(body), "# HELP")
 		assert.Contains(t, string(body), "# TYPE")
-
-		t.Logf("✅ Monitoring workflow completed: metrics size %d bytes", len(body))
 	})
 }
 
-// TestE2EErrorHandling tests error scenarios end-to-end
+// TestE2EErrorHandling tests error scenarios end-to-end against :7061.
 func TestE2EErrorHandling(t *testing.T) {
 	testutil.RequireServer(t)
 
@@ -240,7 +233,7 @@ func TestE2EErrorHandling(t *testing.T) {
 	})
 }
 
-// TestE2EPerformance tests performance characteristics
+// TestE2EPerformance tests performance characteristics against :7061.
 func TestE2EPerformance(t *testing.T) {
 	testutil.RequireServer(t)
 
@@ -292,249 +285,9 @@ func TestE2EPerformance(t *testing.T) {
 
 		if successCount > 0 {
 			avgDuration := totalDuration / time.Duration(successCount)
-			t.Logf("✅ Concurrent requests: %d/%d successful, avg duration: %v",
-				successCount, concurrency, avgDuration)
-
 			// Performance assertion - should respond within reasonable time
 			assert.Less(t, avgDuration, 30*time.Second, "Average response time should be reasonable")
-		} else {
-			t.Logf("⚠️  No concurrent requests succeeded (may be expected if providers not configured)")
+			_ = avgDuration
 		}
 	})
-}
-
-// TestE2ENewServicesWorkflow tests end-to-end workflows using the new services
-func TestE2ENewServicesWorkflow(t *testing.T) {
-	testutil.RequireServer(t)
-
-	t.Run("CompleteCodeAnalysisWorkflow", func(t *testing.T) {
-		// Initialize all services
-		logger := logrus.New()
-		logger.SetLevel(logrus.PanicLevel)
-		mcpManager := services.NewMCPManager(nil, nil, logger)
-		lspClient := services.NewLSPClient(logger)
-		toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
-		contextManager := services.NewContextManager(100)
-		orchestrator := services.NewIntegrationOrchestrator(mcpManager, lspClient, toolRegistry, contextManager)
-
-		// Register test tools
-		codeAnalysisTool := &MockTool{
-			name:        "code-analysis",
-			description: "Analyzes code for issues",
-			parameters:  map[string]interface{}{"code": map[string]interface{}{"type": "string"}},
-		}
-
-		refactorTool := &MockTool{
-			name:        "refactor",
-			description: "Refactors code",
-			parameters:  map[string]interface{}{"code": map[string]interface{}{"type": "string"}, "action": map[string]interface{}{"type": "string"}},
-		}
-
-		err := toolRegistry.RegisterCustomTool(codeAnalysisTool)
-		require.NoError(t, err)
-		err = toolRegistry.RegisterCustomTool(refactorTool)
-		require.NoError(t, err)
-
-		// Add context about the code
-		contextEntry := &services.ContextEntry{
-			ID:       "code-context",
-			Type:     "lsp",
-			Source:   "/tmp/example.go",
-			Content:  "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello World\")\n}",
-			Priority: 8,
-		}
-		err = contextManager.AddEntry(contextEntry)
-		require.NoError(t, err)
-
-		// Execute code analysis workflow
-		intelligence, err := orchestrator.ExecuteCodeAnalysis(context.Background(), "/tmp/example.go", "go")
-		if err != nil {
-			t.Logf("Code analysis failed (may be expected in test env): %v", err)
-		} else {
-			assert.NotNil(t, intelligence)
-			assert.Equal(t, "/tmp/example.go", intelligence.FilePath)
-			t.Logf("✅ Code analysis workflow completed")
-		}
-
-		// Test tool chain execution
-		toolChain := []services.IntegrationToolExecution{
-			{
-				ToolName:   "code-analysis",
-				Parameters: map[string]interface{}{"toolName": "code-analysis", "code": "func test() {}"},
-				MaxRetries: 1,
-			},
-			{
-				ToolName:   "refactor",
-				Parameters: map[string]interface{}{"toolName": "refactor", "code": "func test() {}", "action": "rename"},
-				MaxRetries: 1,
-				DependsOn:  []string{"tool_0"},
-			},
-		}
-
-		results, err := orchestrator.ExecuteToolChain(context.Background(), toolChain)
-		if err != nil {
-			t.Logf("Tool chain execution failed: %v", err)
-		} else {
-			assert.NotEmpty(t, results)
-			t.Logf("✅ Tool chain workflow completed with %d results", len(results))
-		}
-
-		// Test parallel operations
-		operations := []services.Operation{
-			{
-				ID:         "analysis-op",
-				Type:       "tool",
-				Name:       "code-analysis",
-				Parameters: map[string]interface{}{"toolName": "code-analysis", "code": "function analyze() {}"},
-			},
-			{
-				ID:         "refactor-op",
-				Type:       "tool",
-				Name:       "refactor",
-				Parameters: map[string]interface{}{"toolName": "refactor", "code": "function old() {}", "action": "modernize"},
-			},
-		}
-
-		parallelResults, err := orchestrator.ExecuteParallelOperations(context.Background(), operations)
-		if err != nil {
-			t.Logf("Parallel operations failed: %v", err)
-		} else {
-			assert.Len(t, parallelResults, len(operations))
-			t.Logf("✅ Parallel operations completed with %d results", len(parallelResults))
-		}
-
-		// Verify context management
-		builtContext, err := contextManager.BuildContext("code_completion", 1000)
-		if err != nil {
-			t.Logf("Context building failed: %v", err)
-		} else {
-			assert.NotEmpty(t, builtContext)
-			t.Logf("✅ Context management working with %d entries", len(builtContext))
-		}
-	})
-
-	t.Run("CompleteMCP_LSP_IntegrationWorkflow", func(t *testing.T) {
-		// Test MCP server registration and tool discovery
-		logger := logrus.New()
-		logger.SetLevel(logrus.PanicLevel)
-		mcpManager := services.NewMCPManager(nil, nil, logger)
-
-		serverConfig := map[string]interface{}{
-			"name":    "filesystem-mcp",
-			"command": []interface{}{"echo", "filesystem-server"},
-		}
-
-		err := mcpManager.RegisterServer(serverConfig)
-		if err != nil {
-			t.Logf("MCP server registration failed (expected in test env): %v", err)
-		}
-
-		tools := mcpManager.ListTools()
-		t.Logf("✅ MCP manager has %d tools available", len(tools))
-
-		// Test LSP client initialization
-		lspClient := services.NewLSPClient(logger)
-
-		// Test tool registry with MCP and LSP
-		toolRegistry := services.NewToolRegistry(mcpManager, lspClient)
-
-		registryTools := toolRegistry.ListTools()
-		t.Logf("✅ Tool registry has %d tools from all sources", len(registryTools))
-
-		// Test context manager with different entry types
-		contextManager := services.NewContextManager(100)
-
-		entries := []*services.ContextEntry{
-			{
-				ID:       "mcp-context",
-				Type:     "mcp",
-				Source:   "filesystem-server",
-				Content:  "File system analysis results",
-				Priority: 7,
-			},
-			{
-				ID:       "lsp-context",
-				Type:     "lsp",
-				Source:   "/tmp/main.go",
-				Content:  "LSP diagnostics and symbols",
-				Priority: 9,
-			},
-			{
-				ID:       "tool-context",
-				Type:     "tool",
-				Source:   "code-formatter",
-				Content:  "Code formatting applied",
-				Priority: 5,
-			},
-		}
-
-		for _, entry := range entries {
-			err := contextManager.AddEntry(entry)
-			assert.NoError(t, err)
-		}
-
-		// Test context retrieval and conflict detection
-		conflicts := contextManager.DetectConflicts()
-		t.Logf("✅ Context manager detected %d conflicts", len(conflicts))
-
-		// Test different context building scenarios
-		scenarios := []string{"code_completion", "tool_execution", "chat"}
-		for _, scenario := range scenarios {
-			context, err := contextManager.BuildContext(scenario, 1000)
-			if err != nil {
-				t.Logf("Context building failed for %s: %v", scenario, err)
-			} else {
-				t.Logf("✅ Built context for %s with %d entries", scenario, len(context))
-			}
-		}
-	})
-}
-
-// Mock Tool for E2E testing
-type MockTool struct {
-	name        string
-	description string
-	parameters  map[string]interface{}
-	source      string
-}
-
-func (m *MockTool) Name() string {
-	return m.name
-}
-
-func (m *MockTool) Description() string {
-	return m.description
-}
-
-func (m *MockTool) Parameters() map[string]interface{} {
-	return m.parameters
-}
-
-func (m *MockTool) Execute(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	// Simulate realistic tool execution with some processing time
-	time.Sleep(10 * time.Millisecond)
-
-	result := map[string]interface{}{
-		"tool":      m.name,
-		"params":    params,
-		"result":    "success",
-		"timestamp": time.Now().Unix(),
-		"message":   fmt.Sprintf("Executed %s successfully", m.name),
-	}
-
-	// Add tool-specific results
-	switch m.name {
-	case "code-analysis":
-		result["issues"] = []string{"No issues found"}
-		result["complexity"] = "low"
-	case "refactor":
-		result["changes"] = 3
-		result["improvements"] = []string{"Better naming", "Reduced complexity"}
-	}
-
-	return result, nil
-}
-
-func (m *MockTool) Source() string {
-	return m.source
 }

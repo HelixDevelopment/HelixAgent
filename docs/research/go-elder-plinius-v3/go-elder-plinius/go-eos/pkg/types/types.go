@@ -77,6 +77,9 @@ func (o *AuthenticateOptions) Validate() error {
 	return nil
 }
 
+// Defaults applies default values for unset fields.
+func (o *AuthenticateOptions) Defaults() {}
+
 // AuthenticateResult represents authenticateresult data.
 type AuthenticateResult struct {
 	SessionToken string
@@ -120,6 +123,9 @@ type DiscoverOptions struct {
 	PageSize int
 }
 
+// Validate checks that the DiscoverOptions is valid.
+func (o *DiscoverOptions) Validate() error { return nil }
+
 // Defaults applies default values for unset fields.
 func (o *DiscoverOptions) Defaults() {
 	if o.PageSize == 0 { o.PageSize = 20 }
@@ -140,6 +146,9 @@ func (o *JoinProjectOptions) Validate() error {
 	}
 	return nil
 }
+
+// Defaults applies default values for unset fields.
+func (o *JoinProjectOptions) Defaults() {}
 
 // JoinResult represents joinresult data.
 type JoinResult struct {
@@ -167,6 +176,9 @@ func (o *OnboardOptions) Validate() error {
 	}
 	return nil
 }
+
+// Defaults applies default values for unset fields.
+func (o *OnboardOptions) Defaults() {}
 
 // OnboardResult represents onboardresult data.
 type OnboardResult struct {

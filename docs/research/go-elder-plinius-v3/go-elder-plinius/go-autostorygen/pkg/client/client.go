@@ -55,10 +55,6 @@ func (c *Client) Config() *config.Config { return c.cfg }
 
 // GenerateStory Generate complete story.
 func (c *Client) GenerateStory(ctx context.Context, cfg StoryConfig) (*Story, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "autostorygen", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "autostorygen",
 		"GenerateStory requires backend service integration")
 }
@@ -71,20 +67,12 @@ func (c *Client) GenerateChapter(ctx context.Context, story Story, chapterNum in
 
 // GeneratePlot Generate plot outline.
 func (c *Client) GeneratePlot(ctx context.Context, cfg StoryConfig) (*PlotArc, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "autostorygen", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "autostorygen",
 		"GeneratePlot requires backend service integration")
 }
 
 // GenerateCharacters Generate characters.
 func (c *Client) GenerateCharacters(ctx context.Context, cfg StoryConfig) ([]Character, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "autostorygen", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "autostorygen",
 		"GenerateCharacters requires backend service integration")
 }
@@ -97,7 +85,7 @@ func (c *Client) ExpandScene(ctx context.Context, scene Scene, wordCount int) (*
 
 // GenerateDialogue Generate dialogue.
 func (c *Client) GenerateDialogue(ctx context.Context, characters []string, context string, tone string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "autostorygen",
+	return "", errors.New(errors.ErrCodeUnimplemented, "autostorygen",
 		"GenerateDialogue requires backend service integration")
 }
 

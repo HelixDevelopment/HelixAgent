@@ -75,7 +75,7 @@ func (c *Client) ReviewCode(ctx context.Context, opts ReviewOptions) (*ReviewRes
 
 // GeneratePRDescription Generate PR description.
 func (c *Client) GeneratePRDescription(ctx context.Context, diff string, title string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "gitgpt",
+	return "", errors.New(errors.ErrCodeUnimplemented, "gitgpt",
 		"GeneratePRDescription requires backend service integration")
 }
 

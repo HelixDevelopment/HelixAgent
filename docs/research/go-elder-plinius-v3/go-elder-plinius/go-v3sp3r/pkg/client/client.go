@@ -55,10 +55,6 @@ func (c *Client) Config() *config.Config { return c.cfg }
 
 // Connect Connect to Flipper Zero via BLE.
 func (c *Client) Connect(ctx context.Context, cfg BLEConfig) error {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "v3sp3r", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return errors.New(errors.ErrCodeUnimplemented, "v3sp3r",
 		"Connect requires backend service integration")
 }
@@ -71,17 +67,13 @@ func (c *Client) Disconnect(ctx context.Context) error {
 
 // GenerateCommand Generate command from natural language.
 func (c *Client) GenerateCommand(ctx context.Context, req CommandRequest) (*CommandResult, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "v3sp3r", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "v3sp3r",
 		"GenerateCommand requires backend service integration")
 }
 
 // ExecuteCommand Execute command on device.
 func (c *Client) ExecuteCommand(ctx context.Context, command string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "v3sp3r",
+	return "", errors.New(errors.ErrCodeUnimplemented, "v3sp3r",
 		"ExecuteCommand requires backend service integration")
 }
 

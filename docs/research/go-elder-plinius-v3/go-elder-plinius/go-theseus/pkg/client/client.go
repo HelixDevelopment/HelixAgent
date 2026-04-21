@@ -55,10 +55,6 @@ func (c *Client) Config() *config.Config { return c.cfg }
 
 // CreateAgent Create autonomous agent.
 func (c *Client) CreateAgent(ctx context.Context, cfg AgentConfig) (*Agent, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "theseus", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "theseus",
 		"CreateAgent requires backend service integration")
 }
@@ -77,10 +73,6 @@ func (c *Client) GetAgent(ctx context.Context, agentID string) (*Agent, error) {
 
 // RunBenchmark Run benchmark.
 func (c *Client) RunBenchmark(ctx context.Context, cfg BenchmarkConfig) (*BenchmarkResult, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "theseus", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "theseus",
 		"RunBenchmark requires backend service integration")
 }

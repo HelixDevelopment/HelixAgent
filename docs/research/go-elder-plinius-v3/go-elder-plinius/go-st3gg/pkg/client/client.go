@@ -87,7 +87,7 @@ func (c *Client) Analyze(ctx context.Context, carrier []byte) (*AnalyzeResult, e
 
 // GetCapacity Get embedding capacity.
 func (c *Client) GetCapacity(ctx context.Context, carrier []byte, method string) (int64, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "st3gg",
+	return 0, errors.New(errors.ErrCodeUnimplemented, "st3gg",
 		"GetCapacity requires backend service integration")
 }
 

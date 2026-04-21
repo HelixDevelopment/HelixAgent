@@ -76,10 +76,10 @@ func (c *Client) MatchSkills(ctx context.Context, opts MatchSkillsOptions) (*Mat
 // DiscoverProjects Discover projects by criteria.
 func (c *Client) DiscoverProjects(ctx context.Context, opts DiscoverOptions) ([]*Project, int, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "eos", "invalid parameters", err)
+		return nil, 0, errors.Wrap(errors.ErrCodeInvalidArgument, "eos", "invalid parameters", err)
 	}
 	opts.Defaults()
-	return nil, errors.New(errors.ErrCodeUnimplemented, "eos",
+	return nil, 0, errors.New(errors.ErrCodeUnimplemented, "eos",
 		"DiscoverProjects requires backend service integration")
 }
 

@@ -132,3 +132,13 @@ type PlotArc struct {
 	Exposition string
 }
 
+// StoryAnalysis represents a structural analysis of a generated story.
+type StoryAnalysis struct {
+	WordCount int
+	ChapterCount int
+	Themes []string
+	Pacing string
+	Strengths []string
+	Weaknesses []string
+}
+

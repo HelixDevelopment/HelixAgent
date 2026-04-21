@@ -67,3 +67,17 @@ type Issue struct {
 	Suggestion string
 }
 
+// Defaults applies default values for unset fields.
+func (o *CommitOptions) Defaults() {}
+
+// Defaults applies default values for unset fields.
+func (o *ReviewOptions) Defaults() {}
+
+// RepoStats represents aggregate stats about a repository.
+type RepoStats struct {
+	Commits int
+	Contributors int
+	Languages map[string]int
+	LastCommit string
+}
+

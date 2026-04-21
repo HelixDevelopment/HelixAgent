@@ -61,10 +61,6 @@ func (c *Client) GetWeather(ctx context.Context, location string) (*WeatherData,
 
 // BuildContext Build environmental context.
 func (c *Client) BuildContext(ctx context.Context, cfg ContextConfig) (*ContextResult, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "tempest", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "tempest",
 		"BuildContext requires backend service integration")
 }
@@ -72,10 +68,10 @@ func (c *Client) BuildContext(ctx context.Context, cfg ContextConfig) (*ContextR
 // AugmentPrompt Augment prompt with context.
 func (c *Client) AugmentPrompt(ctx context.Context, opts AugmentOptions) (string, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "tempest", "invalid parameters", err)
+		return "", errors.Wrap(errors.ErrCodeInvalidArgument, "tempest", "invalid parameters", err)
 	}
 	opts.Defaults()
-	return nil, errors.New(errors.ErrCodeUnimplemented, "tempest",
+	return "", errors.New(errors.ErrCodeUnimplemented, "tempest",
 		"AugmentPrompt requires backend service integration")
 }
 

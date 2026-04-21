@@ -102,3 +102,17 @@ func (s *StegoMethod) CapacityMB() float64 {
 	return s.Capacity / (1024 * 1024)
 }
 
+// Defaults applies default values for unset fields.
+func (o *EmbedOptions) Defaults() {}
+
+// Defaults applies default values for unset fields.
+func (o *ExtractOptions) Defaults() {}
+
+// MethodComparison represents a comparison between steganography methods.
+type MethodComparison struct {
+	Method string
+	Capacity int64
+	Quality float64
+	Detectability float64
+}
+

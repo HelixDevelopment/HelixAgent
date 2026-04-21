@@ -95,3 +95,9 @@ type RepoStats struct {
 	RecentActivity string
 }
 
+// Defaults applies default values for unset fields.
+func (o *CommitOptions) Defaults() {}
+
+// Defaults applies default values for unset fields.
+func (o *ReviewOptions) Defaults() {}
+

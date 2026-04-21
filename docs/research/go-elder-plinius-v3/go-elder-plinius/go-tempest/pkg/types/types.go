@@ -55,3 +55,6 @@ func (o *AugmentOptions) Validate() error {
 	return nil
 }
 
+// Defaults applies default values for unset fields.
+func (o *AugmentOptions) Defaults() {}
+

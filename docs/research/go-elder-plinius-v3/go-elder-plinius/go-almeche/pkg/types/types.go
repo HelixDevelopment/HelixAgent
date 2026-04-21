@@ -96,6 +96,14 @@ type ExportOptions struct {
 	RotationDeg []float64
 }
 
+// Validate checks that the ExportOptions is valid.
+func (o *ExportOptions) Validate() error {
+	if len(o.ModelData) == 0 {
+		return fmt.Errorf("model_data is required")
+	}
+	return nil
+}
+
 // Defaults applies default values for unset fields.
 func (o *ExportOptions) Defaults() {
 	if o.Scale == 0 { o.Scale = 1.0 }
@@ -124,6 +132,11 @@ func (o *TextToSpeechOptions) Validate() error {
 		return fmt.Errorf("speed must be between 0.5 and 2.0")
 	}
 	return nil
+}
+
+// Defaults applies default values for unset fields.
+func (o *TextToSpeechOptions) Defaults() {
+	if o.Speed == 0 { o.Speed = 1.0 }
 }
 
 // TextToSpeechResult represents texttospeechresult data.

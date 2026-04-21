@@ -68,10 +68,10 @@ func (c *Client) GetByModel(ctx context.Context, model string) ([]PromptEntry, e
 // Search Search prompt archive.
 func (c *Client) Search(ctx context.Context, opts SearchOptions) ([]PromptEntry, int, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "mixtral-prompt-leak", "invalid parameters", err)
+		return nil, 0, errors.Wrap(errors.ErrCodeInvalidArgument, "mixtral-prompt-leak", "invalid parameters", err)
 	}
 	opts.Defaults()
-	return nil, errors.New(errors.ErrCodeUnimplemented, "mixtral-prompt-leak",
+	return nil, 0, errors.New(errors.ErrCodeUnimplemented, "mixtral-prompt-leak",
 		"Search requires backend service integration")
 }
 

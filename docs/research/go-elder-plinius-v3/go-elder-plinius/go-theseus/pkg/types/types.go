@@ -85,3 +85,10 @@ type BenchmarkResult struct {
 	AgentID string
 }
 
+// ArenaResult represents the result of an arena competition.
+type ArenaResult struct {
+	WinnerID string
+	Scores map[string]float64
+	Details string
+}
+

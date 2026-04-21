@@ -75,7 +75,7 @@ func (c *Client) ReviewCode(ctx context.Context, opts ReviewOptions) (*ReviewRes
 
 // GeneratePRDescription Generate PR description.
 func (c *Client) GeneratePRDescription(ctx context.Context, diff string, title string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "gitty",
+	return "", errors.New(errors.ErrCodeUnimplemented, "gitty",
 		"GeneratePRDescription requires backend service integration")
 }
 
@@ -93,7 +93,7 @@ func (c *Client) AnalyzeRepo(ctx context.Context, repoPath string) (*RepoStats, 
 
 // GenerateChangelog Generate changelog.
 func (c *Client) GenerateChangelog(ctx context.Context, commits []string, style string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "gitty",
+	return "", errors.New(errors.ErrCodeUnimplemented, "gitty",
 		"GenerateChangelog requires backend service integration")
 }
 

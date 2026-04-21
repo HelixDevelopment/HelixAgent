@@ -55,10 +55,6 @@ func (c *Client) Config() *config.Config { return c.cfg }
 
 // GenerateTeam Generate multi-agent team from idea.
 func (c *Client) GenerateTeam(ctx context.Context, cfg TeamConfig) (*GeneratedTeam, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "leda", "invalid parameters", err)
-	}
-	opts.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "leda",
 		"GenerateTeam requires backend service integration")
 }
@@ -77,13 +73,13 @@ func (c *Client) ExecuteChain(ctx context.Context, team GeneratedTeam, input str
 
 // GenerateScript Generate executable Python script.
 func (c *Client) GenerateScript(ctx context.Context, team GeneratedTeam) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "leda",
+	return "", errors.New(errors.ErrCodeUnimplemented, "leda",
 		"GenerateScript requires backend service integration")
 }
 
 // ValidateChain Validate agent dependencies.
 func (c *Client) ValidateChain(ctx context.Context, team GeneratedTeam) (error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "leda",
+	return errors.New(errors.ErrCodeUnimplemented, "leda",
 		"ValidateChain requires backend service integration")
 }
 

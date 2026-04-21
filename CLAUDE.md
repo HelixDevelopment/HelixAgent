@@ -219,6 +219,22 @@ All HTTP handlers with background goroutines implement graceful shutdown via `sy
 
 Diagrams: `docs/diagrams/src/goroutine-lifecycle.puml`, `docs/diagrams/src/concurrency-lifecycle.mmd`.
 
+### Red-Team Fixtures (defensive use only)
+
+`internal/security/redteam/fixtures/` — 7 YAML files, one per attack
+class (`jailbreak`, `abliteration_probe`, `filter_bypass`,
+`stego_mutation`, `genetic_seed`, `system_prompt_extraction`,
+`role_reversal`). Consumed by `DeepTeamRedTeamer.RunFixtureSuite(ctx, class)`
+which replays every fixture through `StandardGuardrailPipeline` and
+asserts the expected guardrail blocks it.
+
+**Policy:**
+- Defensive use only — fixtures verify HelixAgent's guardrails block
+  the attack classes they describe.
+- Directory is `export-ignore` in `.gitattributes`; `git archive` skips it.
+- Challenge: `./challenges/scripts/redteam_fixtures_challenge.sh`.
+- Make target: `make test-redteam-fixtures`.
+
 ### Release Build System
 - **Version Package**: `internal/version/` — single source of truth, set via `-ldflags -X` at build time
 - **Container Builds**: All release builds run inside `helixagent-builder` container (golang:1.24-alpine)

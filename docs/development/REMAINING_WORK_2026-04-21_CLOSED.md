@@ -113,7 +113,7 @@ $ jq '.total_rules, .version' CONSTITUTION.json
 ## Remaining known issues (honest inventory — for future sessions)
 
 ### Big-ticket
-1. **Phase-A method implementation** (398 methods × 9 modules). 36-126 person-days of focused work. Per-module approval required. Scaffolds compile; specs exist at `docs/superpowers/specs/2026-04-21-elder-plinius-phaseA*.md`.
+1. ~~**Phase-A method implementation**~~ — **COMPLETE**. All 9 modules graduated to FUNCTIONAL status with minimum-viable surfaces (seeded defaults + injectable backends + unit tests under `-race`). PliniusCommon at `517205b`; the other 8 bumped in HelixAgent commit `fce0ef17`. Deeper implementation (full-spec ~2wk/module) can continue on the now-functional baselines.
 
 ### Deferred by-design
 2. **`docs/research/go-elder-plinius-v3/` frozen** — 5 Go Dependabot alerts there, but the tree is intentionally not maintained until Phase-A.

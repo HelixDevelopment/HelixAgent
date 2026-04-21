@@ -1,4 +1,10 @@
-package security
+// Previously tests/security/debate_security_test.go. CONST-030 forbids
+// mocks in non-unit tests; this file exclusively probes the
+// `digital.vasic.debate` protocol / topology / reflexion / voting packages
+// against a local securityMockInvoker with canned PhaseResponse objects.
+// Moved to the unit tree with no code change except package rename
+// (security -> debate_security_legacy_test). PR27 of the CONST-030 campaign.
+package debate_security_legacy_test
 
 import (
 	"context"

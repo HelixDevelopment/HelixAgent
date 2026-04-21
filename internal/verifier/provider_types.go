@@ -391,8 +391,11 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    3,
 		EnvVars:     []string{"DEEPSEEK_API_KEY", "ApiKey_DeepSeek"},
 		BaseURL:     "https://api.deepseek.com/v1/chat/completions",
-		Models:      []string{"deepseek-chat", "deepseek-coder", "deepseek-reasoner"},
-		Free:        false,
+		// Tier-3 hardcoded fallback. Kept in sync with live
+		// https://api.deepseek.com/v1/models — `deepseek-coder` was
+		// retired upstream (returns 404). Last refreshed: 2026-04-21.
+		Models: []string{"deepseek-chat", "deepseek-reasoner"},
+		Free:   false,
 	},
 	"mistral": {
 		Type:        "mistral",
@@ -530,8 +533,11 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    3,
 		EnvVars:     []string{"ZAI_API_KEY", "ZHIPU_API_KEY", "ApiKey_ZAI"},
 		BaseURL:     "https://api.z.ai/api/paas/v4/chat/completions",
-		Models:      []string{"glm-5", "glm-4.7", "glm-4.6", "glm-4.5", "glm-4.5-air"},
-		Free:        false,
+		// Tier-3 fallback from live https://api.z.ai/api/paas/v4/models.
+		// Current catalogue includes GLM-5/5.1/5-turbo in addition to the
+		// 4.x line. Last refreshed: 2026-04-21.
+		Models: []string{"glm-5.1", "glm-5", "glm-5-turbo", "glm-4.7", "glm-4.6", "glm-4.5", "glm-4.5-air"},
+		Free:   false,
 	},
 
 	// New Providers (Phase 1: Enhanced LLMsVerifier Integration)
@@ -578,8 +584,14 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    3,
 		EnvVars:     []string{"AI21_API_KEY"},
 		BaseURL:     "https://api.ai21.com/studio/v1/chat/completions",
-		Models:      []string{"jamba-1.5-large", "jamba-1.5-mini", "jamba-instruct"},
-		Free:        false,
+		// Tier-3 fallback from live https://api.ai21.com/studio/v1/models.
+		// Jamba 1.5 IDs and `jamba-instruct` were retired; catalogue is now
+		// jamba-large/mini version-dated. Last refreshed: 2026-04-21.
+		Models: []string{
+			"jamba-large-1.7-2025-07",
+			"jamba-mini-2-2026-01",
+		},
+		Free: false,
 	},
 	"together": {
 		Type:        "together",
@@ -644,8 +656,19 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    4,
 		EnvVars:     []string{"SAMBANOVA_API_KEY", "ApiKey_SambaNova_AI"},
 		BaseURL:     "https://api.sambanova.ai/v1/chat/completions",
-		Models:      []string{"Meta-Llama-3.1-405B-Instruct", "Meta-Llama-3.1-70B-Instruct"},
-		Free:        false,
+		// Tier-3 hardcoded fallback from live https://api.sambanova.ai/v1/models.
+		// SambaNova retired the Llama-3.1-405B listing — current catalogue is
+		// DeepSeek-V3/Llama-4-Maverick/MiniMax-M2.5/gpt-oss-120b dominated.
+		// Last refreshed: 2026-04-21.
+		Models: []string{
+			"DeepSeek-V3.1",
+			"DeepSeek-V3.2",
+			"Llama-4-Maverick-17B-128E-Instruct",
+			"Meta-Llama-3.3-70B-Instruct",
+			"MiniMax-M2.5",
+			"gpt-oss-120b",
+		},
+		Free: false,
 	},
 
 	// Additional providers from .env (Phase 2: Complete Provider Coverage)
@@ -657,8 +680,17 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"HUGGINGFACE_API_KEY", "HF_API_KEY", "ApiKey_HuggingFace"},
 		BaseURL:     "https://router.huggingface.co/v1/chat/completions",
-		Models:      []string{"meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mistral-7B-Instruct-v0.3"},
-		Free:        false,
+		// Tier-3 fallback from live https://router.huggingface.co/v1/models.
+		// The older Mistral-7B-Instruct-v0.3 was deprecated on the router;
+		// the list below is stable, instruct-tuned, and routable in 2026-04.
+		Models: []string{
+			"meta-llama/Llama-3.3-70B-Instruct",
+			"deepseek-ai/DeepSeek-V3.2-Exp",
+			"openai/gpt-oss-120b",
+			"Qwen/Qwen3-Coder-30B-A3B-Instruct",
+			"moonshotai/Kimi-K2.5",
+		},
+		Free: false,
 	},
 	"nvidia": {
 		Type:        "nvidia",
@@ -668,8 +700,17 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    3,
 		EnvVars:     []string{"NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY", "ApiKey_Nvidia"},
 		BaseURL:     "https://integrate.api.nvidia.com/v1/chat/completions",
-		Models:      []string{"meta/llama-3.1-405b-instruct", "meta/llama-3.1-70b-instruct", "meta/llama-3.3-70b-instruct"},
-		Free:        false,
+		// Tier-3 fallback from live https://integrate.api.nvidia.com/v1/models.
+		// DeepSeek v3.2 and Gemma-3 family dominate the current catalogue.
+		// Last refreshed: 2026-04-21.
+		Models: []string{
+			"meta/llama-3.3-70b-instruct",
+			"deepseek-ai/deepseek-v3.2",
+			"deepseek-ai/deepseek-v3.1-terminus",
+			"google/gemma-3-27b-it",
+			"google/gemma-3-12b-it",
+		},
+		Free: false,
 	},
 	"chutes": {
 		Type:        "chutes",
@@ -729,20 +770,21 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"CLOUDFLARE_API_KEY", "CF_API_KEY", "ApiKey_Cloudflare_Workers_AI"},
 		BaseURL:     "https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT/ai/v1/chat/completions",
+		// Tier-3 fallback from live https://api.cloudflare.com/client/v4/accounts/<id>/ai/models/search.
+		// The older `@cf/meta/llama-3.1-70b-instruct`, `@cf/meta/llama-3.1-8b-instruct-fast`,
+		// `@cf/nvidia/nemotron-3-120b-a12b`, `@cf/mistral/mistral-small-3.1-24b-instruct`,
+		// `@cf/qwen/qwq-32b`, `@cf/qwen/qwen2.5-coder-32b-instruct` were retired.
+		// Vendor prefix is `@cf/zai-org/` (not `@cf/zai/`). Last refreshed: 2026-04-21.
 		Models: []string{
-			"@cf/meta/llama-4-scout-17b-16e-instruct",
 			"@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-			"@cf/meta/llama-3.1-70b-instruct",
-			"@cf/meta/llama-3.1-8b-instruct-fast",
-			"@cf/meta/llama-3.1-8b-instruct",
-			"@cf/nvidia/nemotron-3-120b-a12b",
+			"@cf/meta/llama-3.2-3b-instruct",
+			"@cf/meta/llama-3.2-1b-instruct",
 			"@cf/openai/gpt-oss-120b",
-			"@cf/mistral/mistral-small-3.1-24b-instruct",
-			"@cf/google/gemma-3-12b-it",
-			"@cf/qwen/qwq-32b",
-			"@cf/qwen/qwen2.5-coder-32b-instruct",
-			"@cf/deepseek/deepseek-r1-distill-qwen-32b",
-			"@cf/zai/glm-4.7-flash",
+			"@cf/moonshotai/kimi-k2.5",
+			"@cf/moonshotai/kimi-k2.6",
+			"@cf/zai-org/glm-4.7-flash",
+			"@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+			"@cf/ibm-granite/granite-4.0-h-micro",
 		},
 		Free: false,
 	},
@@ -765,8 +807,18 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"NOVITA_API_KEY", "ApiKey_Novita_AI"},
 		BaseURL:     "https://api.novita.ai/v3/openai/chat/completions",
-		Models:      []string{"meta-llama/llama-3.1-405b-instruct", "mistralai/mistral-large-instruct-2407"},
-		Free:        false,
+		// Tier-3 fallback from live https://api.novita.ai/v3/openai/models.
+		// The old Llama-3.1-405b / mistral-large-instruct-2407 IDs were retired;
+		// current catalogue is GLM-5, Kimi-K2.6, DeepSeek-V3.2, Qwen3.5.
+		// Last refreshed: 2026-04-21.
+		Models: []string{
+			"zai-org/glm-5.1",
+			"deepseek/deepseek-v3.2",
+			"moonshotai/kimi-k2.6",
+			"qwen/qwen3-coder-next",
+			"google/gemma-4-31b-it",
+		},
+		Free: false,
 	},
 	"upstage": {
 		Type:        "upstage",
@@ -809,8 +861,16 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"INFERENCE_API_KEY", "ApiKey_Inference"},
 		BaseURL:     "https://api.inference.net/v1/chat/completions",
-		Models:      []string{"google/gemma-3-27b-instruct/bf-16"},
-		Free:        false,
+		// Tier-3 fallback from live https://api.inference.net/v1/models.
+		// `gemma-3-27b-instruct/bf-16` was retired; Inference.net now ships
+		// Llama-3.1/3.2 variants under the `/fp-16` suffix.
+		// Last refreshed: 2026-04-21.
+		Models: []string{
+			"meta-llama/llama-3.2-3b-instruct/fp-16",
+			"meta-llama/llama-3.1-8b-instruct/fp-16",
+			"meta-llama/llama-3.2-11b-instruct/fp-16",
+		},
+		Free: false,
 	},
 	"hyperbolic": {
 		Type:        "hyperbolic",
@@ -820,8 +880,16 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    4,
 		EnvVars:     []string{"HYPERBOLIC_API_KEY", "ApiKey_Hyperbolic"},
 		BaseURL:     "https://api.hyperbolic.xyz/v1/chat/completions",
-		Models:      []string{"meta-llama/Meta-Llama-3.1-70B-Instruct"},
-		Free:        false,
+		// Tier-3 hardcoded fallback from live https://api.hyperbolic.xyz/v1/models.
+		// Llama-3.1-70B was retired; the current catalogue is DeepSeek/Llama-3.3/
+		// Qwen3-Coder dominated. Last refreshed: 2026-04-21.
+		Models: []string{
+			"deepseek-ai/DeepSeek-V3-0324",
+			"meta-llama/Llama-3.3-70B-Instruct",
+			"deepseek-ai/DeepSeek-R1",
+			"Qwen/Qwen3-Coder-480B-A35B-Instruct",
+		},
+		Free: false,
 	},
 	"replicate": {
 		Type:        "replicate",
@@ -864,8 +932,11 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    2,
 		EnvVars:     []string{"CODESTRAL_API_KEY", "ApiKey_Codestral"},
 		BaseURL:     "https://codestral.mistral.ai/v1/chat/completions",
-		Models:      []string{"codestral-latest", "codestral-mamba-latest"},
-		Free:        false,
+		// Tier-3 fallback. `codestral-mamba-latest` was retired upstream;
+		// Mistral's catalogue at https://api.mistral.ai/v1/models now ships
+		// codestral-latest and the dated codestral-2508. Last refreshed: 2026-04-21.
+		Models: []string{"codestral-latest", "codestral-2508"},
+		Free:   false,
 	},
 
 	// GitHub Models - GitHub's model inference API with generous free tier
@@ -877,8 +948,19 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    2,
 		EnvVars:     []string{"GITHUB_MODELS_API_KEY", "GITHUB_TOKEN"},
 		BaseURL:     "https://models.github.ai/inference/chat/completions",
-		Models:      []string{"openai/gpt-5", "openai/gpt-4.1", "openai/gpt-4o", "DeepSeek/DeepSeek-V3-0324", "Meta/Llama-4-Scout-17B-16E-Instruct", "Microsoft/Phi-4-reasoning"},
-		Free:        false,
+		// Tier-3 fallback. GitHub Models catalogue uses lowercase vendor prefixes
+		// ("openai/", "deepseek/", "meta/"). The previous PascalCase IDs
+		// ("DeepSeek/DeepSeek-V3-0324", "Meta/Llama-4-Scout…") 404'd upstream.
+		// Verified against https://models.github.ai/catalog/models on 2026-04-21.
+		Models: []string{
+			"openai/gpt-5",
+			"openai/gpt-4.1",
+			"openai/gpt-4o",
+			"deepseek/deepseek-v3-0324",
+			"meta/llama-4-scout-17b-16e-instruct",
+			"cohere/cohere-command-a",
+		},
+		Free: false,
 	},
 
 	// Venice AI - Privacy-focused OpenAI-compatible inference
@@ -890,8 +972,18 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    4,
 		EnvVars:     []string{"VENICE_API_KEY", "ApiKey_Venice"},
 		BaseURL:     "https://api.venice.ai/api/v1/chat/completions",
-		Models:      []string{"llama-3.3-70b", "llama-3.1-405b", "deepseek-r1-671b", "venice-uncensored", "qwen3-vl-235b-a22b", "qwen-2.5-vl", "zai-org-glm-4.7"},
-		Free:        false,
+		// Tier-3 fallback from live https://api.venice.ai/api/v1/models?type=text.
+		// Several of the previous IDs (llama-3.3-70b, llama-3.1-405b, deepseek-r1-671b,
+		// qwen-2.5-vl) no longer exist upstream. Last refreshed: 2026-04-21.
+		Models: []string{
+			"zai-org-glm-5",
+			"zai-org-glm-4.7",
+			"venice-uncensored",
+			"qwen3-coder-480b-a35b-instruct",
+			"qwen3-vl-235b-a22b",
+			"google-gemma-4-31b-it",
+		},
+		Free: false,
 	},
 
 	// Junie (JetBrains) - CLI agent with BYOK support for multiple LLM providers

@@ -17,6 +17,7 @@ import (
 
 	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/llm"
+	"dev.helix.agent/internal/llm/discovery"
 	"dev.helix.agent/internal/llm/providers/claude"
 	"dev.helix.agent/internal/llm/providers/junie"
 	"dev.helix.agent/internal/llm/providers/qwen"
@@ -446,50 +447,114 @@ func (sv *StartupVerifier) discoverProviders(ctx context.Context) ([]*ProviderDi
 	return discovered, nil
 }
 
-// DiscoverModels dynamically discovers available models for a provider using Toolkit
-// This eliminates hardcoded model lists by using the provider's actual API
+// DiscoverModels dynamically discovers available models for a provider.
+//
+// This eliminates the stale-list bug class (e.g. Chutes 2026-04-21 —
+// commit a7bf125e) where a provider-access registry entry lists model
+// IDs that no longer exist upstream, causing verification to probe
+// models that 404 even when the API key is perfectly valid.
+//
+// Provider-specific dynamic discovery (Chutes via Toolkit) is tried first.
+// All other providers fall through to the generic 3-tier `internal/llm/discovery`
+// pipeline, which queries the provider's own `/v1/models` endpoint (Tier 1),
+// falls back to models.dev (Tier 2), and finally to the hardcoded list in
+// `ProviderTypeInfo.Models` / `ProviderAccessConfig` (Tier 3).
+//
+// Returns nil, nil when no dynamic discovery yields models — caller falls
+// back to `ProviderTypeInfo.Models` per the contract at the call site.
 func (sv *StartupVerifier) DiscoverModels(ctx context.Context, providerType string, apiKey string) ([]string, error) {
-	var models []string
-
+	// Provider-specific Toolkit integrations take precedence.
 	switch providerType {
 	case "chutes":
-		// Try dynamic discovery via Toolkit first
-		discovery := chutes.NewDiscovery(apiKey)
-		modelInfos, err := discovery.Discover(ctx)
+		// Try dynamic discovery via Toolkit first.
+		chutesDisc := chutes.NewDiscovery(apiKey)
+		modelInfos, err := chutesDisc.Discover(ctx)
 
-		// If Toolkit returns models, use them
 		if err == nil && len(modelInfos) > 0 {
-			for _, model := range modelInfos {
-				models = append(models, model.ID)
+			models := make([]string, 0, len(modelInfos))
+			for _, m := range modelInfos {
+				models = append(models, m.ID)
 			}
 			sv.log.WithField("provider", providerType).WithField("models", len(models)).Info("Discovered models via Toolkit")
 			return models, nil
 		}
 
-		// Fallback: Chutes API often requires specific "chute" deployments
-		// Use known models from documentation when API fails
-		fallbackModels := []string{
-			"deepseek-ai/DeepSeek-V3",
-			"deepseek-ai/DeepSeek-R1",
-			"Qwen/Qwen2.5-72B-Instruct",
-			"Qwen/Qwen3-235B-A22B",
-			"meta-llama/Llama-4-Maverick-17B-128E-Instruct",
-			"mistralai/Mistral-Small-24B-Instruct-2501",
-		}
-
+		// Fall through to generic 3-tier discovery below (Tier 1 will hit
+		// llm.chutes.ai/v1/models directly).
 		sv.log.WithFields(logrus.Fields{
 			"provider": providerType,
 			"error":    err,
-			"count":    len(fallbackModels),
-		}).Info("Using fallback model list for Chutes")
+		}).Debug("Chutes Toolkit discovery returned no models; falling back to generic 3-tier")
+	}
 
-		return fallbackModels, nil
+	// Generic 3-tier discovery for all other providers (and as fallback for
+	// provider-specific ones whose Toolkit path returned nothing).
+	return sv.discoverModelsGeneric(ctx, providerType, apiKey)
+}
 
-	default:
-		// For other providers, return nil to use static model list
-		// Future: Extend to other providers with dynamic discovery
+// discoverModelsGeneric runs the generic 3-tier `internal/llm/discovery`
+// pipeline for a provider using its `ProviderAccessRegistry.ModelsURL` and
+// `ProviderTypeInfo.Models` fallback. Returns nil, nil when no dynamic
+// source is configured — caller keeps the existing static list.
+func (sv *StartupVerifier) discoverModelsGeneric(ctx context.Context, providerType, apiKey string) ([]string, error) {
+	access := GetProviderAccessConfig(providerType)
+	if access == nil || access.ModelsURL == "" {
 		return nil, nil
 	}
+
+	cfg := discovery.ProviderConfig{
+		ProviderName:   providerType,
+		ModelsEndpoint: access.ModelsURL,
+		APIKey:         apiKey,
+	}
+
+	// Apply provider-specific auth mechanism from the access config.
+	if access.PrimaryAuth.HeaderName != "" {
+		cfg.AuthHeader = access.PrimaryAuth.HeaderName
+		cfg.AuthPrefix = access.PrimaryAuth.HeaderPrefix
+	}
+	if len(access.PrimaryAuth.ExtraHeaders) > 0 {
+		cfg.ExtraHeaders = access.PrimaryAuth.ExtraHeaders
+	}
+
+	// Provider-specific response parsers for non-OpenAI-compatible formats.
+	switch providerType {
+	case "gemini":
+		cfg.ResponseParser = discovery.ParseGeminiModelsResponse
+	case "cohere":
+		cfg.ResponseParser = discovery.ParseCohereModelsResponse
+	case "ollama":
+		cfg.ResponseParser = discovery.ParseOllamaModelsResponse
+	case "replicate":
+		cfg.ResponseParser = discovery.ParseReplicateModelsResponse
+	case "zai":
+		cfg.ResponseParser = discovery.ParseZAIModelsResponse
+	}
+
+	// models.dev catalogue hint — use the same key as the provider type.
+	cfg.ModelsDevID = providerType
+
+	// Static fallback from SupportedProviders — keeps current behaviour
+	// when both Tier 1 and Tier 2 fail.
+	if info, ok := SupportedProviders[providerType]; ok && len(info.Models) > 0 {
+		cfg.FallbackModels = info.Models
+	}
+
+	d := discovery.NewDiscoverer(cfg)
+	models := d.DiscoverModels()
+	tier := d.GetDiscoveryTier()
+
+	if len(models) == 0 {
+		return nil, nil
+	}
+
+	sv.log.WithFields(logrus.Fields{
+		"provider": providerType,
+		"count":    len(models),
+		"tier":     tier,
+	}).Info("Discovered models via generic 3-tier discovery")
+
+	return models, nil
 }
 
 // discoverOAuthProviders discovers OAuth-based providers

@@ -15,8 +15,8 @@ Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
 | Test files scanned (`tests/` + `internal/` + `challenges/`) | 1,179 |
 | Non-unit test files scanned             | 331   |
 | Violations confirmed                    | 41    |
-| Fixed (cumulative across sessions)      | 22    |
-| Deferred to future session              | 19    |
+| Fixed (cumulative across sessions)      | 24    |
+| Deferred to future session              | 17    |
 
 No violation met the in-session fix criteria (≤50 LOC rewrite, no cross-file
 ripple, no production-code change, substitution of in-process fake with live
@@ -91,11 +91,13 @@ For each hit, confirmed:
 | `tests/integration/request_flow_test.go` | `847b3505` (PR17) | Pattern 4 — demote to unit | Pure in-process `TestRequestFlow_*` tests against local `RequestFlowMockProvider` + `httptest.NewRecorder`. Moved to `tests/unit/request_flow/request_flow_test.go`, package renamed to `request_flow_test`. All pass in 0.523s. |
 | `tests/integration/service_interaction_test.go` + `tests/integration/api_scenarios_test.go` | `4ec716a0` (PR18) | Pattern 4 — demote to unit | Both files share a local `MockProvider` struct and use `httptest.NewRecorder`. Moved together to `tests/unit/service_interactions/`, package renamed to `service_interactions_test`. All pass in 0.069s. |
 | `tests/integration/service_wiring_test.go` | `4aad7789` (PR19) | Pattern 4 — demote to unit | Pure in-process `TestServiceWiring_*` tests constructing provider registries, debate team configs, MCP/LSP/ACP managers, cache, notifier, monitoring, and security services in memory. Single mock `mockOrchestratorRegistry` is a thin adapter around the real `services.ProviderRegistry`. Moved to `tests/unit/service_wiring/service_wiring_test.go`, package renamed to `service_wiring_test`. All 16 test functions pass in 35s. |
-| `tests/integration/tool_integration_test.go` | `<TBD>` (PR20) | Pattern 4 — demote to unit | Pure in-process tool-registry / tool-schema / tool-execution tests using a local `ToolTestMockTool` struct and an in-process `httptest.Server` for WebFetch/WebSearch fixtures. Moved to `tests/unit/tool_integration/tool_integration_test.go`, package renamed to `tool_integration_test`. All tests pass in 57s. |
+| `tests/integration/tool_integration_test.go` | `e9716f1f` (PR20) | Pattern 4 — demote to unit | Pure in-process tool-registry / tool-schema / tool-execution tests using a local `ToolTestMockTool` struct and an in-process `httptest.Server` for WebFetch/WebSearch fixtures. Moved to `tests/unit/tool_integration/tool_integration_test.go`, package renamed to `tool_integration_test`. All tests pass in 57s. |
+| `tests/performance/ensemble_benchmark_test.go` | `67a74ff1` (PR21) | Pattern 4 — demote to unit | Pure in-process benchmark of `ensemble.ConfidenceWeightedStrategy` / `MajorityVoteStrategy` against a `benchMockProvider` under `//go:build performance`. Moved to `tests/unit/ensemble_bench/ensemble_benchmark_test.go`, build tag dropped, package renamed to `ensemble_bench_test`. Compiles cleanly; benchmark harness intact for local profiling. |
+| `tests/integration/opencode_ensemble_flow_test.go` | `bed29063` (PR22) | Pattern 4 — demote + Pattern 1 — live-HTTP split | 796 LOC file split: in-process OpenCode orchestration / ensemble wiring tests against local `mockProvider` moved to `tests/unit/opencode_ensemble/opencode_ensemble_flow_test.go` (package renamed to `opencode_ensemble_test`); live `/v1/completion` + `/v1/ensemble` HTTP flow tests re-homed into `tests/integration/opencode_ensemble_live_test.go` with `:7061` probe + `t.Skip`. Covers OpenCode→ensemble→debate dispatch end-to-end. |
 
 ### Deferred (documented for future session)
 
-#### tests/integration/ — 14 files (11 fixed in PR8–PR20, 3 remaining)
+#### tests/integration/ — 14 files (12 fixed in PR8–PR22, 2 remaining)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
@@ -109,7 +111,7 @@ For each hit, confirmed:
 | `tests/integration/cli_agent_integration_test.go` | 1,463 | CLI-agent mocks (2 struct types) | high |
 | ~~`tests/integration/tool_integration_test.go`~~ | ~~1,621~~ | ~~tool-registry mock~~ | **Fixed** (PR20) — demoted to `tests/unit/tool_integration/tool_integration_test.go`. |
 | ~~`tests/integration/rag_integration_test.go`~~ | ~~429~~ | ~~RAG retriever mock~~ | **Fixed** (PR14, `1efac1dc`) — demoted to `tests/unit/rag/pipeline_test.go`. |
-| `tests/integration/opencode_ensemble_flow_test.go` | 796 | OpenCode ensemble mock (uses `mockProvider`) | **high** |
+| ~~`tests/integration/opencode_ensemble_flow_test.go`~~ | ~~796~~ | ~~OpenCode ensemble mock (uses `mockProvider`)~~ | **Fixed** (PR22, `bed29063`) — demoted to `tests/unit/opencode_ensemble/` + live HTTP split to `tests/integration/opencode_ensemble_live_test.go`. |
 | ~~`tests/integration/debate_adversarial_integration_test.go`~~ | ~~270~~ | ~~`mockAdversarialLLM`, `failingAdversarialLLM`~~ | **Fixed** (PR8, `4a9cc548`) — demoted to `tests/unit/debate/adversarial_test.go`. |
 | ~~`tests/integration/debate_full_protocol_integration_test.go`~~ | ~~352~~ | ~~full-protocol canned LLM~~ | **Fixed** (PR9, `30cdf5f8`) — demoted to `tests/unit/debate/full_protocol_test.go`. |
 | ~~`tests/integration/debate_reflexion_integration_test.go`~~ | ~~318~~ | ~~reflexion-loop canned LLM~~ | **Fixed** (PR10, `2257dbea`) — demoted to `tests/unit/debate/reflexion_test.go`. |
@@ -213,21 +215,11 @@ pipeline (CLAUDE.md §16 already references
 call `POST /v1/completion` with prompt-injection payloads and assert on the
 guardrail rejection shape. Preserve the existing payloads as test fixtures.
 
-#### tests/performance/ — 1 file
+#### tests/performance/ — 1 file (fixed)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
-| `tests/performance/ensemble_benchmark_test.go` | 127 | `benchMockProvider` (pure in-process) | medium |
-
-**Blocker:** benchmarks with `//go:build performance` are not runtime tests —
-they are tooling to measure in-process semaphore overhead. Under CONST-030 as
-literally written, benchmarks are still "runtime verification" and must hit
-real infra — but the resulting numbers measure network latency, not the
-code under benchmark.
-
-**Proposed approach:** same split as stress tests — keep the pure in-process
-benchmark under `tests/microbench/` with a named CONST-030 exemption, and add
-a separate `tests/sysbench/` that measures the whole system.
+| ~~`tests/performance/ensemble_benchmark_test.go`~~ | ~~127~~ | ~~`benchMockProvider` (pure in-process)~~ | **Fixed** (PR21, `67a74ff1`) — demoted to `tests/unit/ensemble_bench/ensemble_benchmark_test.go`; `//go:build performance` tag dropped. |
 
 #### tests/automation/ — 1 file
 

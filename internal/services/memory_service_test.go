@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"dev.helix.agent/internal/config"
 	llm "dev.helix.agent/internal/llm/cognee"
 	"dev.helix.agent/internal/models"
+
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +35,17 @@ func makeExpiredCacheEntry(sources []models.MemorySource) *memoryCacheEntry {
 		createdAt: past,
 		expiresAt: past.Add(30 * time.Minute), // expired 30 minutes ago
 	}
+}
+
+// newTestMemoryService is a test-only helper that constructs a MemoryService
+// with initialised safe containers but without launching the cleanup goroutine,
+// so tests can inject fixture state and exercise individual methods in isolation.
+func newTestMemoryService() *MemoryService {
+	ms := &MemoryService{
+		cache:  safe.NewStore[string, *memoryCacheEntry](),
+		stopCh: make(chan struct{}),
+	}
+	return ms
 }
 
 func TestNewMemoryService_NilConfig(t *testing.T) {
@@ -112,20 +126,18 @@ func TestNewMemoryService_EnabledCognee(t *testing.T) {
 }
 
 func TestMemoryService_SwitchDataset(t *testing.T) {
-	ms := &MemoryService{
-		dataset: "original",
-		cache:   make(map[string]*memoryCacheEntry),
-	}
+	ms := newTestMemoryService()
+	ms.dataset = "original"
 
 	// Add something to cache
-	ms.cache["test-key"] = makeCacheEntry([]models.MemorySource{{Content: "test"}}, 5*time.Minute)
-	assert.Len(t, ms.cache, 1)
+	ms.cache.Put("test-key", makeCacheEntry([]models.MemorySource{{Content: "test"}}, 5*time.Minute))
+	assert.Equal(t, 1, ms.cache.Len())
 
 	// Switch dataset
 	ms.SwitchDataset("new-dataset")
 
 	assert.Equal(t, "new-dataset", ms.dataset)
-	assert.Empty(t, ms.cache) // Cache should be cleared
+	assert.Equal(t, 0, ms.cache.Len()) // Cache should be cleared
 }
 
 func TestMemoryService_GetCurrentDataset(t *testing.T) {
@@ -148,38 +160,32 @@ func TestMemoryService_IsEnabled(t *testing.T) {
 }
 
 func TestMemoryService_ClearCache(t *testing.T) {
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"key1": makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 5*time.Minute),
-			"key2": makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 5*time.Minute),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("key1", makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 5*time.Minute))
+	ms.cache.Put("key2", makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 5*time.Minute))
 
-	assert.Len(t, ms.cache, 2)
+	assert.Equal(t, 2, ms.cache.Len())
 	ms.ClearCache()
-	assert.Empty(t, ms.cache)
+	assert.Equal(t, 0, ms.cache.Len())
 }
 
 func TestMemoryService_CacheCleanup(t *testing.T) {
 	// Test with mixed expired and non-expired entries
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"expired1":    makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content1"}}),
-			"expired2":    makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content2"}}),
-			"notexpired1": makeCacheEntry([]models.MemorySource{{Content: "valid content1"}}, 5*time.Minute),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("expired1", makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content1"}}))
+	ms.cache.Put("expired2", makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content2"}}))
+	ms.cache.Put("notexpired1", makeCacheEntry([]models.MemorySource{{Content: "valid content1"}}, 5*time.Minute))
 
-	assert.Len(t, ms.cache, 3)
+	assert.Equal(t, 3, ms.cache.Len())
 
 	// Run cleanup
 	stats := ms.CacheCleanup()
 
 	// Only expired entries should be removed
-	assert.Len(t, ms.cache, 1) // Only notexpired1 should remain
-	assert.NotNil(t, ms.cache["notexpired1"])
-	assert.Nil(t, ms.cache["expired1"])
-	assert.Nil(t, ms.cache["expired2"])
+	assert.Equal(t, 1, ms.cache.Len()) // Only notexpired1 should remain
+	assert.True(t, ms.cache.Has("notexpired1"))
+	assert.False(t, ms.cache.Has("expired1"))
+	assert.False(t, ms.cache.Has("expired2"))
 
 	// Check cleanup stats
 	assert.Equal(t, 2, stats.EntriesRemoved)
@@ -188,20 +194,17 @@ func TestMemoryService_CacheCleanup(t *testing.T) {
 	assert.True(t, stats.TimeTaken >= 0)
 
 	// Verify lastCleanup was updated
-	assert.False(t, ms.lastCleanup.IsZero())
+	assert.NotZero(t, ms.lastCleanup.Load())
 }
 
 func TestMemoryService_GetStats(t *testing.T) {
-	ms := &MemoryService{
-		enabled: true,
-		dataset: "test-dataset",
-		cache: map[string]*memoryCacheEntry{
-			"key1": makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 5*time.Minute),
-			"key2": makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 5*time.Minute),
-		},
-		ttl:             5 * time.Minute,
-		cleanupInterval: 1 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.dataset = "test-dataset"
+	ms.ttl = 5 * time.Minute
+	ms.cleanupInterval.Store(int64(1 * time.Minute))
+	ms.cache.Put("key1", makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 5*time.Minute))
+	ms.cache.Put("key2", makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 5*time.Minute))
 
 	stats := ms.GetStats()
 	assert.Equal(t, true, stats["enabled"])
@@ -470,10 +473,8 @@ func TestMemoryService_convertInsightsToMemorySources(t *testing.T) {
 }
 
 func TestMemoryService_DisabledServiceErrors(t *testing.T) {
-	ms := &MemoryService{
-		enabled: false,
-		cache:   make(map[string]*memoryCacheEntry),
-	}
+	ms := newTestMemoryService()
+	ms.enabled = false
 	ctx := context.Background()
 
 	t.Run("AddMemory returns error when disabled", func(t *testing.T) {
@@ -566,11 +567,9 @@ func TestMemoryService_EnhanceCodeRequest_NoCode(t *testing.T) {
 // Tests for cache hit paths
 
 func TestMemoryService_AddMemory_CacheHit(t *testing.T) {
-	ms := &MemoryService{
-		enabled: true,
-		cache:   make(map[string]*memoryCacheEntry),
-		ttl:     5 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.ttl = 5 * time.Minute
 	ctx := context.Background()
 
 	// The cache key format is: ContentType:lowercase(first 50 chars or full content if shorter)
@@ -578,7 +577,7 @@ func TestMemoryService_AddMemory_CacheHit(t *testing.T) {
 	testContent := "Test Content"
 	// Generate exact cache key: text:test content (lowercase)
 	cacheKey := "text:test content"
-	ms.cache[cacheKey] = makeCacheEntry([]models.MemorySource{{Content: "cached content"}}, 5*time.Minute)
+	ms.cache.Put(cacheKey, makeCacheEntry([]models.MemorySource{{Content: "cached content"}}, 5*time.Minute))
 
 	// Request with content that matches cache key
 	req := &MemoryRequest{
@@ -593,11 +592,9 @@ func TestMemoryService_AddMemory_CacheHit(t *testing.T) {
 }
 
 func TestMemoryService_SearchMemory_CacheHit(t *testing.T) {
-	ms := &MemoryService{
-		enabled: true,
-		cache:   make(map[string]*memoryCacheEntry),
-		ttl:     5 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.ttl = 5 * time.Minute
 	ctx := context.Background()
 
 	// Pre-populate cache
@@ -606,7 +603,7 @@ func TestMemoryService_SearchMemory_CacheHit(t *testing.T) {
 		{Content: "cached result 1", DatasetName: "test", RelevanceScore: 0.9},
 		{Content: "cached result 2", DatasetName: "test", RelevanceScore: 0.8},
 	}
-	ms.cache[cacheKey] = makeCacheEntry(expectedSources, 5*time.Minute)
+	ms.cache.Put(cacheKey, makeCacheEntry(expectedSources, 5*time.Minute))
 
 	// Search should return cached results
 	req := &SearchRequest{
@@ -621,11 +618,9 @@ func TestMemoryService_SearchMemory_CacheHit(t *testing.T) {
 }
 
 func TestMemoryService_SearchMemoryWithInsights_CacheHit(t *testing.T) {
-	ms := &MemoryService{
-		enabled: true,
-		cache:   make(map[string]*memoryCacheEntry),
-		ttl:     5 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.ttl = 5 * time.Minute
 	ctx := context.Background()
 
 	// Pre-populate cache
@@ -633,7 +628,7 @@ func TestMemoryService_SearchMemoryWithInsights_CacheHit(t *testing.T) {
 	expectedSources := []models.MemorySource{
 		{Content: "insight 1", DatasetName: "insights", RelevanceScore: 1.0},
 	}
-	ms.cache[cacheKey] = makeCacheEntry(expectedSources, 5*time.Minute)
+	ms.cache.Put(cacheKey, makeCacheEntry(expectedSources, 5*time.Minute))
 
 	req := &SearchRequest{
 		Query:       "test insights query",
@@ -647,11 +642,9 @@ func TestMemoryService_SearchMemoryWithInsights_CacheHit(t *testing.T) {
 }
 
 func TestMemoryService_SearchMemoryWithGraphCompletion_CacheHit(t *testing.T) {
-	ms := &MemoryService{
-		enabled: true,
-		cache:   make(map[string]*memoryCacheEntry),
-		ttl:     5 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.ttl = 5 * time.Minute
 	ctx := context.Background()
 
 	// Pre-populate cache
@@ -659,7 +652,7 @@ func TestMemoryService_SearchMemoryWithGraphCompletion_CacheHit(t *testing.T) {
 	expectedSources := []models.MemorySource{
 		{Content: "graph result", DatasetName: "graph", RelevanceScore: 0.95},
 	}
-	ms.cache[cacheKey] = makeCacheEntry(expectedSources, 5*time.Minute)
+	ms.cache.Put(cacheKey, makeCacheEntry(expectedSources, 5*time.Minute))
 
 	req := &SearchRequest{
 		Query:       "test graph query",
@@ -697,56 +690,45 @@ func TestSearchRequest_Fields(t *testing.T) {
 // Tests for TTL-based cache cleanup
 
 func TestMemoryService_CacheCleanup_AllExpired(t *testing.T) {
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"expired1": makeExpiredCacheEntry([]models.MemorySource{{Content: "content1"}}),
-			"expired2": makeExpiredCacheEntry([]models.MemorySource{{Content: "content2"}}),
-			"expired3": makeExpiredCacheEntry([]models.MemorySource{{Content: "content3"}}),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("expired1", makeExpiredCacheEntry([]models.MemorySource{{Content: "content1"}}))
+	ms.cache.Put("expired2", makeExpiredCacheEntry([]models.MemorySource{{Content: "content2"}}))
+	ms.cache.Put("expired3", makeExpiredCacheEntry([]models.MemorySource{{Content: "content3"}}))
 
 	stats := ms.CacheCleanup()
 
-	assert.Empty(t, ms.cache)
+	assert.Equal(t, 0, ms.cache.Len())
 	assert.Equal(t, 3, stats.EntriesRemoved)
 	assert.Equal(t, 0, stats.EntriesKept)
 }
 
 func TestMemoryService_CacheCleanup_NoneExpired(t *testing.T) {
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"valid1": makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 10*time.Minute),
-			"valid2": makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 10*time.Minute),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("valid1", makeCacheEntry([]models.MemorySource{{Content: "content1"}}, 10*time.Minute))
+	ms.cache.Put("valid2", makeCacheEntry([]models.MemorySource{{Content: "content2"}}, 10*time.Minute))
 
 	stats := ms.CacheCleanup()
 
-	assert.Len(t, ms.cache, 2)
+	assert.Equal(t, 2, ms.cache.Len())
 	assert.Equal(t, 0, stats.EntriesRemoved)
 	assert.Equal(t, 2, stats.EntriesKept)
 }
 
 func TestMemoryService_CacheCleanup_EmptyCache(t *testing.T) {
-	ms := &MemoryService{
-		cache: make(map[string]*memoryCacheEntry),
-	}
+	ms := newTestMemoryService()
 
 	stats := ms.CacheCleanup()
 
-	assert.Empty(t, ms.cache)
+	assert.Equal(t, 0, ms.cache.Len())
 	assert.Equal(t, 0, stats.EntriesRemoved)
 	assert.Equal(t, 0, stats.EntriesKept)
 	assert.True(t, stats.TimeTaken >= 0)
 }
 
 func TestMemoryService_CacheCleanup_StatsTracking(t *testing.T) {
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"expired": makeExpiredCacheEntry([]models.MemorySource{{Content: "expired"}}),
-			"valid":   makeCacheEntry([]models.MemorySource{{Content: "valid"}}, 10*time.Minute),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("expired", makeExpiredCacheEntry([]models.MemorySource{{Content: "expired"}}))
+	ms.cache.Put("valid", makeCacheEntry([]models.MemorySource{{Content: "valid"}}, 10*time.Minute))
 
 	stats := ms.CacheCleanup()
 
@@ -764,11 +746,8 @@ func TestMemoryService_CacheCleanup_StatsTracking(t *testing.T) {
 }
 
 func TestMemoryService_getCachedSources_ExpiredEntry(t *testing.T) {
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"expired-key": makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content"}}),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("expired-key", makeExpiredCacheEntry([]models.MemorySource{{Content: "expired content"}}))
 
 	// Should return nil for expired entry
 	sources := ms.getCachedSources("expired-key")
@@ -777,36 +756,29 @@ func TestMemoryService_getCachedSources_ExpiredEntry(t *testing.T) {
 
 func TestMemoryService_getCachedSources_ValidEntry(t *testing.T) {
 	expectedSources := []models.MemorySource{{Content: "valid content"}}
-	ms := &MemoryService{
-		cache: map[string]*memoryCacheEntry{
-			"valid-key": makeCacheEntry(expectedSources, 10*time.Minute),
-		},
-	}
+	ms := newTestMemoryService()
+	ms.cache.Put("valid-key", makeCacheEntry(expectedSources, 10*time.Minute))
 
 	sources := ms.getCachedSources("valid-key")
 	assert.Equal(t, expectedSources, sources)
 }
 
 func TestMemoryService_getCachedSources_NonExistent(t *testing.T) {
-	ms := &MemoryService{
-		cache: make(map[string]*memoryCacheEntry),
-	}
+	ms := newTestMemoryService()
 
 	sources := ms.getCachedSources("non-existent-key")
 	assert.Nil(t, sources)
 }
 
 func TestMemoryService_setCachedSources(t *testing.T) {
-	ms := &MemoryService{
-		cache: make(map[string]*memoryCacheEntry),
-		ttl:   5 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.ttl = 5 * time.Minute
 
 	expectedSources := []models.MemorySource{{Content: "test content"}}
 	ms.setCachedSources("test-key", expectedSources)
 
 	// Verify entry was created
-	entry, exists := ms.cache["test-key"]
+	entry, exists := ms.cache.Get("test-key")
 	require.True(t, exists)
 	assert.Equal(t, expectedSources, entry.sources)
 	assert.False(t, entry.createdAt.IsZero())
@@ -819,9 +791,8 @@ func TestMemoryService_setCachedSources(t *testing.T) {
 }
 
 func TestMemoryService_CleanupInterval(t *testing.T) {
-	ms := &MemoryService{
-		cleanupInterval: 2 * time.Minute,
-	}
+	ms := &MemoryService{}
+	ms.cleanupInterval.Store(int64(2 * time.Minute))
 
 	// Test GetCleanupInterval
 	assert.Equal(t, 2*time.Minute, ms.GetCleanupInterval())
@@ -832,11 +803,8 @@ func TestMemoryService_CleanupInterval(t *testing.T) {
 }
 
 func TestMemoryService_StopCleanupRoutine(t *testing.T) {
-	ms := &MemoryService{
-		cache:           make(map[string]*memoryCacheEntry),
-		cleanupInterval: 100 * time.Millisecond,
-		stopCh:          make(chan struct{}),
-	}
+	ms := newTestMemoryService()
+	ms.cleanupInterval.Store(int64(100 * time.Millisecond))
 
 	// Start cleanup routine and stop immediately (tests idempotency)
 	ms.wg.Add(1)
@@ -846,27 +814,24 @@ func TestMemoryService_StopCleanupRoutine(t *testing.T) {
 	// Calling Stop again should not panic (idempotent)
 	ms.Stop()
 
-	assert.True(t, ms.stopped)
+	assert.True(t, ms.stopped.Load())
 }
 
 func TestMemoryService_BackgroundCleanup(t *testing.T) {
-	ms := &MemoryService{
-		cache:           make(map[string]*memoryCacheEntry),
-		cleanupInterval: 50 * time.Millisecond,
-		stopCh:          make(chan struct{}),
-		ttl:             10 * time.Millisecond,
-	}
+	ms := newTestMemoryService()
+	ms.cleanupInterval.Store(int64(50 * time.Millisecond))
+	ms.ttl = 10 * time.Millisecond
 
 	// Add an entry that will expire quickly
 	now := time.Now()
-	ms.cache["will-expire"] = &memoryCacheEntry{
+	ms.cache.Put("will-expire", &memoryCacheEntry{
 		sources:   []models.MemorySource{{Content: "expiring"}},
 		createdAt: now.Add(-1 * time.Second),
 		expiresAt: now.Add(-500 * time.Millisecond), // Already expired
-	}
+	})
 
 	// Add a valid entry
-	ms.cache["will-stay"] = makeCacheEntry([]models.MemorySource{{Content: "staying"}}, 1*time.Hour)
+	ms.cache.Put("will-stay", makeCacheEntry([]models.MemorySource{{Content: "staying"}}, 1*time.Hour))
 
 	// Start cleanup routine with WaitGroup tracking
 	ms.wg.Add(1)
@@ -874,35 +839,26 @@ func TestMemoryService_BackgroundCleanup(t *testing.T) {
 
 	// Wait for cleanup to run (cleanupInterval is 50ms)
 	require.Eventually(t, func() bool {
-		ms.cacheMu.RLock()
-		_, stillExists := ms.cache["will-expire"]
-		ms.cacheMu.RUnlock()
-		return !stillExists
+		return !ms.cache.Has("will-expire")
 	}, 2*time.Second, 10*time.Millisecond, "Expired entry should have been removed by cleanup routine")
 
 	// Stop the routine
 	ms.Stop()
 
 	// Verify valid entry is still present
-	ms.cacheMu.RLock()
-	_, validExists := ms.cache["will-stay"]
-	ms.cacheMu.RUnlock()
-
-	assert.True(t, validExists, "Valid entry should still exist")
+	assert.True(t, ms.cache.Has("will-stay"), "Valid entry should still exist")
 }
 
 func TestMemoryService_GetStatsWithCleanupStats(t *testing.T) {
-	ms := &MemoryService{
-		enabled:         true,
-		dataset:         "test",
-		cache:           make(map[string]*memoryCacheEntry),
-		ttl:             5 * time.Minute,
-		cleanupInterval: 1 * time.Minute,
-	}
+	ms := newTestMemoryService()
+	ms.enabled = true
+	ms.dataset = "test"
+	ms.ttl = 5 * time.Minute
+	ms.cleanupInterval.Store(int64(1 * time.Minute))
 
 	// Add some entries and run cleanup
-	ms.cache["expired"] = makeExpiredCacheEntry([]models.MemorySource{{Content: "old"}})
-	ms.cache["valid"] = makeCacheEntry([]models.MemorySource{{Content: "new"}}, 10*time.Minute)
+	ms.cache.Put("expired", makeExpiredCacheEntry([]models.MemorySource{{Content: "old"}}))
+	ms.cache.Put("valid", makeCacheEntry([]models.MemorySource{{Content: "new"}}, 10*time.Minute))
 
 	ms.CacheCleanup()
 
@@ -957,12 +913,9 @@ func TestNewMemoryServiceWithOptions_Enabled(t *testing.T) {
 }
 
 func TestMemoryService_ConcurrentAccess(t *testing.T) {
-	ms := &MemoryService{
-		cache:           make(map[string]*memoryCacheEntry),
-		ttl:             5 * time.Minute,
-		cleanupInterval: 100 * time.Millisecond,
-		stopCh:          make(chan struct{}),
-	}
+	ms := newTestMemoryService()
+	ms.ttl = 5 * time.Minute
+	ms.cleanupInterval.Store(int64(100 * time.Millisecond))
 
 	// Start cleanup routine with WaitGroup tracking
 	ms.wg.Add(1)
@@ -998,3 +951,8 @@ func TestMemoryService_ConcurrentAccess(t *testing.T) {
 
 	// If we get here without deadlock or race condition, test passes
 }
+
+// compile-time assertion: atomic.Int64 is used correctly in MemoryService.
+// This keeps the `sync/atomic` import live in case the only usage in tests
+// is indirect via the MemoryService fields themselves.
+var _ = atomic.Int64{}

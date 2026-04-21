@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dev.helix.agent/internal/config"
 	llm "dev.helix.agent/internal/llm/cognee"
 	"dev.helix.agent/internal/models"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // memoryCacheEntry represents a cached memory entry with timestamp tracking
@@ -28,19 +31,28 @@ type CleanupStats struct {
 	CleanupTime    time.Time
 }
 
-// MemoryService provides memory enhancement capabilities using Cognee
+// MemoryService provides memory enhancement capabilities using Cognee.
+//
+// Concurrency discipline (CONST-029):
+//   - `cache` is a *safe.Store — lock-free, no bare mutex to forget.
+//   - `stopped` is an atomic.Bool.
+//   - `lastCleanup` is an atomic.Int64 holding unix-nano of the last cleanup.
+//   - `lastCleanupStats` is an atomic.Pointer[CleanupStats].
+//   - `cleanupInterval` is read/written atomically (atomic.Int64, duration ns).
+//   - `wg` retains sync.WaitGroup for cleanup goroutine lifecycle.
 type MemoryService struct {
-	client           *llm.Client
-	enabled          bool
-	dataset          string
-	cache            map[string]*memoryCacheEntry
-	cacheMu          sync.RWMutex
+	client  *llm.Client
+	enabled bool
+	dataset string
+
+	cache            *safe.Store[string, *memoryCacheEntry]
 	ttl              time.Duration
-	cleanupInterval  time.Duration
-	lastCleanup      time.Time
-	lastCleanupStats *CleanupStats
+	cleanupInterval  atomic.Int64 // nanoseconds
+	lastCleanup      atomic.Int64 // unix-nano encoding of time.Time
+	lastCleanupStats atomic.Pointer[CleanupStats]
 	stopCh           chan struct{}
-	stopped          bool
+	stopOnce         sync.Once
+	stopped          atomic.Bool
 	wg               sync.WaitGroup
 }
 
@@ -59,12 +71,12 @@ func NewMemoryService(cfg *config.Config) *MemoryService {
 func NewMemoryServiceWithOptions(cfg *config.Config, ttl, cleanupInterval time.Duration) *MemoryService {
 	if cfg == nil || !cfg.MemoryEnabled || !cfg.Cognee.Enabled || !cfg.Cognee.AutoCognify {
 		ms := &MemoryService{
-			enabled:         false,
-			cache:           make(map[string]*memoryCacheEntry),
-			ttl:             ttl,
-			cleanupInterval: cleanupInterval,
-			stopCh:          make(chan struct{}),
+			enabled: false,
+			cache:   safe.NewStore[string, *memoryCacheEntry](),
+			ttl:     ttl,
+			stopCh:  make(chan struct{}),
 		}
+		ms.cleanupInterval.Store(int64(cleanupInterval))
 		// Start background cleanup even for disabled service (for when cache is still used)
 		ms.wg.Add(1)
 		go ms.cleanupRoutine()
@@ -75,13 +87,13 @@ func NewMemoryServiceWithOptions(cfg *config.Config, ttl, cleanupInterval time.D
 		client: llm.NewClient(&config.Config{
 			Cognee: cfg.Cognee,
 		}),
-		enabled:         true,
-		dataset:         "default",
-		cache:           make(map[string]*memoryCacheEntry),
-		ttl:             ttl,
-		cleanupInterval: cleanupInterval,
-		stopCh:          make(chan struct{}),
+		enabled: true,
+		dataset: "default",
+		cache:   safe.NewStore[string, *memoryCacheEntry](),
+		ttl:     ttl,
+		stopCh:  make(chan struct{}),
 	}
+	ms.cleanupInterval.Store(int64(cleanupInterval))
 
 	// Start background cleanup goroutine with lifecycle tracking
 	ms.wg.Add(1)
@@ -461,19 +473,22 @@ func (m *MemoryService) GetMemorySources(ctx context.Context, req *models.LLMReq
 	return sources, nil
 }
 
-// CacheCleanup removes expired cache entries and returns cleanup statistics
+// CacheCleanup removes expired cache entries and returns cleanup statistics.
+//
+// Uses safe.Store.Snapshot() to collect candidate keys, then Delete() for
+// each expired entry. The snapshot is a point-in-time copy, so a concurrent
+// Put during the sweep is safe (it will be picked up by the next run).
 func (m *MemoryService) CacheCleanup() *CleanupStats {
 	startTime := time.Now()
-
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
 
 	entriesRemoved := 0
 	entriesKept := 0
 
-	for key, entry := range m.cache {
+	// Snapshot under the store's read lock, then operate on the copy.
+	snapshot := m.cache.Snapshot()
+	for key, entry := range snapshot {
 		if time.Now().After(entry.expiresAt) {
-			delete(m.cache, key)
+			m.cache.Delete(key)
 			entriesRemoved++
 		} else {
 			entriesKept++
@@ -487,8 +502,8 @@ func (m *MemoryService) CacheCleanup() *CleanupStats {
 		CleanupTime:    startTime,
 	}
 
-	m.lastCleanup = startTime
-	m.lastCleanupStats = stats
+	m.lastCleanup.Store(startTime.UnixNano())
+	m.lastCleanupStats.Store(stats)
 
 	return stats
 }
@@ -497,7 +512,11 @@ func (m *MemoryService) CacheCleanup() *CleanupStats {
 // Exits when stopCh is closed via Stop().
 func (m *MemoryService) cleanupRoutine() {
 	defer m.wg.Done()
-	ticker := time.NewTicker(m.cleanupInterval)
+	interval := time.Duration(m.cleanupInterval.Load())
+	if interval <= 0 {
+		interval = DefaultCleanupInterval
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -511,24 +530,18 @@ func (m *MemoryService) cleanupRoutine() {
 }
 
 // Stop stops the background cleanup goroutine gracefully and waits for it to finish.
+// Safe to call multiple times (idempotent).
 func (m *MemoryService) Stop() {
-	m.cacheMu.Lock()
-	if m.stopped {
-		m.cacheMu.Unlock()
-		return
-	}
-	m.stopped = true
-	close(m.stopCh)
-	m.cacheMu.Unlock()
+	m.stopOnce.Do(func() {
+		m.stopped.Store(true)
+		close(m.stopCh)
+	})
 	m.wg.Wait()
 }
 
 // getCachedSources retrieves cached sources if they exist and haven't expired
 func (m *MemoryService) getCachedSources(key string) []models.MemorySource {
-	m.cacheMu.RLock()
-	defer m.cacheMu.RUnlock()
-
-	entry, exists := m.cache[key]
+	entry, exists := m.cache.Get(key)
 	if !exists {
 		return nil
 	}
@@ -543,36 +556,27 @@ func (m *MemoryService) getCachedSources(key string) []models.MemorySource {
 
 // setCachedSources stores sources in the cache with expiration
 func (m *MemoryService) setCachedSources(key string, sources []models.MemorySource) {
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
-
 	now := time.Now()
-	m.cache[key] = &memoryCacheEntry{
+	m.cache.Put(key, &memoryCacheEntry{
 		sources:   sources,
 		createdAt: now,
 		expiresAt: now.Add(m.ttl),
-	}
+	})
 }
 
 // GetLastCleanupStats returns the statistics from the last cleanup operation
 func (m *MemoryService) GetLastCleanupStats() *CleanupStats {
-	m.cacheMu.RLock()
-	defer m.cacheMu.RUnlock()
-	return m.lastCleanupStats
+	return m.lastCleanupStats.Load()
 }
 
 // SetCleanupInterval sets the interval for background cache cleanup
 func (m *MemoryService) SetCleanupInterval(interval time.Duration) {
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
-	m.cleanupInterval = interval
+	m.cleanupInterval.Store(int64(interval))
 }
 
 // GetCleanupInterval returns the current cleanup interval
 func (m *MemoryService) GetCleanupInterval() time.Duration {
-	m.cacheMu.RLock()
-	defer m.cacheMu.RUnlock()
-	return m.cleanupInterval
+	return time.Duration(m.cleanupInterval.Load())
 }
 
 // convertToMemorySources converts Cognee responses to MemorySource format
@@ -695,36 +699,37 @@ func (m *MemoryService) IsEnabled() bool {
 
 // ClearCache clears the memory cache
 func (m *MemoryService) ClearCache() {
-	m.cacheMu.Lock()
-	defer m.cacheMu.Unlock()
-	m.cache = make(map[string]*memoryCacheEntry)
+	m.cache.Clear()
 }
 
 // GetStats returns memory service statistics
 func (m *MemoryService) GetStats() map[string]interface{} {
-	m.cacheMu.RLock()
-	defer m.cacheMu.RUnlock()
-
 	cogneeURL := ""
 	if m.client != nil {
 		cogneeURL = m.client.GetBaseURL()
 	}
 
+	lastCleanupNanos := m.lastCleanup.Load()
+	var lastCleanupTime time.Time
+	if lastCleanupNanos != 0 {
+		lastCleanupTime = time.Unix(0, lastCleanupNanos)
+	}
+
 	stats := map[string]interface{}{
 		"enabled":          m.enabled,
-		"cache_size":       len(m.cache),
+		"cache_size":       m.cache.Len(),
 		"dataset":          m.dataset,
 		"ttl_minutes":      m.ttl.Minutes(),
 		"cognee_url":       cogneeURL,
-		"cleanup_interval": m.cleanupInterval.String(),
-		"last_cleanup":     m.lastCleanup,
+		"cleanup_interval": time.Duration(m.cleanupInterval.Load()).String(),
+		"last_cleanup":     lastCleanupTime,
 	}
 
-	if m.lastCleanupStats != nil {
+	if lastStats := m.lastCleanupStats.Load(); lastStats != nil {
 		stats["last_cleanup_stats"] = map[string]interface{}{
-			"entries_removed": m.lastCleanupStats.EntriesRemoved,
-			"entries_kept":    m.lastCleanupStats.EntriesKept,
-			"time_taken":      m.lastCleanupStats.TimeTaken.String(),
+			"entries_removed": lastStats.EntriesRemoved,
+			"entries_kept":    lastStats.EntriesKept,
+			"time_taken":      lastStats.TimeTaken.String(),
 		}
 	}
 

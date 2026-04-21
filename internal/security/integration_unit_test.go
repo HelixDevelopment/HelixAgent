@@ -1,3 +1,12 @@
+// CONST-030: these tests exercise the in-process SecurityIntegration
+// wiring (audit logger, guardrails, red-team, MCP/tool permissioning)
+// against canned `mockDebateSecurityEvaluator` / verifier doubles.
+// Assertions are on in-process handler state — no live backend is
+// contacted. Unit-level per CONST-030; renamed from integration_test.go
+// to integration_unit_test.go (PR12) so the filename no longer matches
+// the `*_integration_test.go` non-unit classification surface.
+// Guardrail pipeline and live-system security scenarios are covered by
+// `redteam_fixtures_realpipeline_test.go` and the security challenge.
 package security
 
 import (

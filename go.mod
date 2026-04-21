@@ -33,6 +33,7 @@ require (
 	digital.vasic.planning v0.0.0-00010101000000-000000000000
 	digital.vasic.plugins v0.0.0-00010101000000-000000000000
 	digital.vasic.rag v0.0.0-00010101000000-000000000000
+	digital.vasic.redteam v0.0.0-00010101000000-000000000000
 	digital.vasic.security v0.0.0-00010101000000-000000000000
 	digital.vasic.selfimprove v0.0.0-00010101000000-000000000000
 	digital.vasic.storage v0.0.0-00010101000000-000000000000
@@ -292,5 +293,7 @@ replace digital.vasic.llmorchestrator => ./LLMOrchestrator
 replace digital.vasic.visionengine => ./VisionEngine
 
 replace digital.vasic.normalize => ./Normalize
+
+replace digital.vasic.redteam => ./RedTeam
 
 replace github.com/HelixDevelopment/HelixAgent/Toolkit => ./Toolkit

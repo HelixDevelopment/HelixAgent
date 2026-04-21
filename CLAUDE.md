@@ -250,19 +250,23 @@ Diagrams: `docs/diagrams/src/goroutine-lifecycle.puml`, `docs/diagrams/src/concu
 
 ### Red-Team Fixtures (defensive use only)
 
-`internal/security/redteam/fixtures/` — 7 YAML files, one per attack
-class (`jailbreak`, `abliteration_probe`, `filter_bypass`,
+Fixture harness lives in the `RedTeam/` submodule
+(`digital.vasic.redteam`, `git@github.com:vasic-digital/RedTeam.git`,
+mirrored on GitLab). 7 YAML files under `RedTeam/fixtures/`, one per
+attack class (`jailbreak`, `abliteration_probe`, `filter_bypass`,
 `stego_mutation`, `genetic_seed`, `system_prompt_extraction`,
-`role_reversal`). Consumed by `DeepTeamRedTeamer.RunFixtureSuite(ctx, class)`
-which replays every fixture through `StandardGuardrailPipeline` and
-asserts the expected guardrail blocks it.
+`role_reversal`) — 47 fixtures total. Consumed by
+`DeepTeamRedTeamer.RunFixtureSuite(ctx, class)` in
+`internal/security/redteam_fixtures.go`, which replays every fixture
+through `StandardGuardrailPipeline` and asserts the expected guardrail
+blocks it.
 
 **Policy:**
 - Defensive use only — fixtures verify HelixAgent's guardrails block
   the attack classes they describe.
-- Directory is `export-ignore` in `.gitattributes`; `git archive` skips it.
 - Challenge: `./challenges/scripts/redteam_fixtures_challenge.sh`.
-- Make target: `make test-redteam-fixtures`.
+- Make target: `make test-redteam-fixtures` (runs the submodule package
+  tests + the in-process real-pipeline assertions).
 
 ### Release Build System
 - **Version Package**: `internal/version/` — single source of truth, set via `-ldflags -X` at build time

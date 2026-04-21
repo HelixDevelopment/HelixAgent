@@ -1969,7 +1969,8 @@ full-test-matrix:
 
 .PHONY: test-redteam-fixtures
 test-redteam-fixtures:
-	@echo "==> Running red-team fixture regression suite"
+	@echo "==> Running red-team fixture loader tests (RedTeam submodule)"
+	cd RedTeam && GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -count=1 -p 1 ./...
+	@echo "==> Running red-team fixture regression suite (HelixAgent consumer)"
 	GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -count=1 -p 1 \
-		./internal/security/redteam/fixtures/... \
 		./internal/security -run 'RunFixtureSuite|FixtureLoader|LoadByClass|LoadAll|DefaultPipeline_' -v

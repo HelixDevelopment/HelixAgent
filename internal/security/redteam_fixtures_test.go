@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"dev.helix.agent/internal/security/redteam/fixtures"
+	redteam "digital.vasic.redteam"
 )
 
 // alwaysBlockPipeline is a test double for GuardrailInputChecker that
@@ -44,7 +44,7 @@ func TestDeepTeamRedTeamer_RunFixtureSuite_Jailbreak_BlocksAll(t *testing.T) {
 	rt := NewDeepTeamRedTeamer(nil, nil)
 	rt.AttachGuardrails(alwaysBlockPipeline{})
 
-	report, err := rt.RunFixtureSuite(context.Background(), fixtures.AttackClassJailbreak)
+	report, err := rt.RunFixtureSuite(context.Background(), redteam.AttackClassJailbreak)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 
@@ -62,7 +62,7 @@ func TestDeepTeamRedTeamer_RunFixtureSuite_NoGuardrails_Errors(t *testing.T) {
 	t.Parallel()
 
 	rt := NewDeepTeamRedTeamer(nil, nil)
-	_, err := rt.RunFixtureSuite(context.Background(), fixtures.AttackClassJailbreak)
+	_, err := rt.RunFixtureSuite(context.Background(), redteam.AttackClassJailbreak)
 	require.Error(t, err)
 }
 
@@ -85,7 +85,7 @@ func TestDeepTeamRedTeamer_RunFixtureSuite_PassingPromptCountsAsPassed(t *testin
 	// With no fixtures populated, this is trivially Total == 0.
 	// The test asserts the wiring: when the pipeline does not block,
 	// the report must NOT increment Blocked.
-	report, err := rt.RunFixtureSuite(context.Background(), fixtures.AttackClassJailbreak)
+	report, err := rt.RunFixtureSuite(context.Background(), redteam.AttackClassJailbreak)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 

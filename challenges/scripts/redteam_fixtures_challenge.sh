@@ -40,7 +40,7 @@ section() {
     printf '\n=== %s ===\n' "$1"
 }
 
-FIXTURES_DIR="internal/security/redteam/fixtures"
+FIXTURES_DIR="RedTeam/fixtures"
 EXPECTED_CLASSES=(
     jailbreak
     abliteration_probe
@@ -87,17 +87,16 @@ for class in "${EXPECTED_CLASSES[@]}"; do
     fi
 done
 
-section "Section 4: .gitattributes excludes fixtures from git-archive"
-if grep -qE "^internal/security/redteam/fixtures/\*\*[[:space:]]+export-ignore" \
-    .gitattributes 2>/dev/null; then
-    pass ".gitattributes marks fixtures directory as export-ignore"
+section "Section 4: Fixtures live in the extracted RedTeam submodule"
+if [ -f "RedTeam/fixtures.go" ] && [ -f "RedTeam/go.mod" ]; then
+    pass "RedTeam submodule present with loader and go.mod"
 else
-    fail ".gitattributes does NOT mark fixtures directory as export-ignore"
+    fail "RedTeam submodule is MISSING (run: git submodule update --init --recursive)"
 fi
 
 section "Section 5: Fixture loader compiles and its tests pass"
-if GOMAXPROCS=2 nice -n 19 ionice -c 3 \
-    go test -count=1 -p 1 ./internal/security/redteam/fixtures/... >/tmp/redteam_fixtures_loader.log 2>&1; then
+if (cd RedTeam && GOMAXPROCS=2 nice -n 19 ionice -c 3 \
+    go test -count=1 -p 1 ./...) >/tmp/redteam_fixtures_loader.log 2>&1; then
     pass "loader package tests pass"
 else
     fail "loader package tests FAILED (see /tmp/redteam_fixtures_loader.log)"

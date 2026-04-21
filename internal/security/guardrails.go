@@ -358,7 +358,8 @@ type PromptInjectionGuardrail struct {
 // NewPromptInjectionGuardrail creates a prompt injection guardrail.
 //
 // Patterns cover seven documented attack classes (see
-// internal/security/redteam/fixtures/*.yaml): jailbreak, role_reversal,
+// RedTeam/fixtures/*.yaml in the digital.vasic.redteam submodule):
+// jailbreak, role_reversal,
 // abliteration_probe, filter_bypass, stego_mutation, genetic_seed, and
 // system_prompt_extraction. Filter-bypass and stego-mutation variants
 // are handled by passing prompts through Normalize() before matching,

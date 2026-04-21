@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"dev.helix.agent/internal/security/redteam/fixtures"
+	redteam "digital.vasic.redteam"
 )
 
 // FixtureSuiteReport summarises a RunFixtureSuite invocation. Total is
@@ -17,7 +17,7 @@ import (
 // fixtures that slipped through, so a regression surfaces the payload
 // rather than only the count.
 type FixtureSuiteReport struct {
-	AttackClass   fixtures.AttackClass
+	AttackClass   redteam.AttackClass
 	Total         int
 	Blocked       int
 	Passed        int
@@ -51,7 +51,7 @@ func (rt *DeepTeamRedTeamer) AttachGuardrails(pipeline GuardrailInputChecker) {
 // Total == 0, Blocked == 0, Passed == 0 — a trivially-passing report.
 // Once the corpus is populated, the same assertions become substantive.
 func (rt *DeepTeamRedTeamer) RunFixtureSuite(
-	ctx context.Context, class fixtures.AttackClass,
+	ctx context.Context, class redteam.AttackClass,
 ) (*FixtureSuiteReport, error) {
 	rt.mu.RLock()
 	pipeline := rt.guardrails
@@ -64,7 +64,7 @@ func (rt *DeepTeamRedTeamer) RunFixtureSuite(
 		)
 	}
 
-	loaded, err := fixtures.LoadByClass(class)
+	loaded, err := redteam.LoadByClass(class)
 	if err != nil {
 		return nil, fmt.Errorf("redteam: load fixtures for %q: %w", class, err)
 	}
@@ -101,7 +101,7 @@ func (rt *DeepTeamRedTeamer) RunFixtureSuite(
 // any guardrail in the pipeline, plus a note used only for logging
 // when the fixture passes (e.g., no results, pipeline error).
 func (rt *DeepTeamRedTeamer) runSingleFixture(
-	ctx context.Context, pipeline GuardrailInputChecker, fixture fixtures.Fixture,
+	ctx context.Context, pipeline GuardrailInputChecker, fixture redteam.Fixture,
 ) (blocked bool, note string) {
 	results, err := pipeline.CheckInput(ctx, fixture.Prompt, map[string]interface{}{
 		"fixture_id":   fixture.ID,

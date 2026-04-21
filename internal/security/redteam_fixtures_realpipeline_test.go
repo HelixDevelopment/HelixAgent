@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"dev.helix.agent/internal/security/redteam/fixtures"
+	redteam "digital.vasic.redteam"
 )
 
 // These tests drive the real StandardGuardrailPipeline (CreateDefaultPipeline)
@@ -28,7 +28,7 @@ func newSilentTestLogger() *logrus.Logger {
 }
 
 func runRealPipelineFixtureSuite(
-	t *testing.T, class fixtures.AttackClass,
+	t *testing.T, class redteam.AttackClass,
 ) *FixtureSuiteReport {
 	t.Helper()
 
@@ -62,37 +62,37 @@ func assertAllBlocked(t *testing.T, report *FixtureSuiteReport) {
 
 func TestDefaultPipeline_Jailbreak_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassJailbreak))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassJailbreak))
 }
 
 func TestDefaultPipeline_AbliterationProbe_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassAbliterationProbe))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassAbliterationProbe))
 }
 
 func TestDefaultPipeline_FilterBypass_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassFilterBypass))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassFilterBypass))
 }
 
 func TestDefaultPipeline_StegoMutation_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassStegoMutation))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassStegoMutation))
 }
 
 func TestDefaultPipeline_GeneticSeed_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassGeneticSeed))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassGeneticSeed))
 }
 
 func TestDefaultPipeline_SystemPromptExtraction_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassSystemPromptExtraction))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassSystemPromptExtraction))
 }
 
 func TestDefaultPipeline_RoleReversal_BlocksAllFixtures(t *testing.T) {
 	t.Parallel()
-	assertAllBlocked(t, runRealPipelineFixtureSuite(t, fixtures.AttackClassRoleReversal))
+	assertAllBlocked(t, runRealPipelineFixtureSuite(t, redteam.AttackClassRoleReversal))
 }
 
 // TestDefaultPipeline_OverallBlockRate_100Percent is the aggregate assertion
@@ -101,7 +101,7 @@ func TestDefaultPipeline_OverallBlockRate_100Percent(t *testing.T) {
 	t.Parallel()
 
 	var total, blocked int
-	for _, class := range fixtures.SupportedAttackClasses() {
+	for _, class := range redteam.SupportedAttackClasses() {
 		r := runRealPipelineFixtureSuite(t, class)
 		total += r.Total
 		blocked += r.Blocked

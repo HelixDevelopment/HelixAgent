@@ -479,3 +479,6 @@
 [submodule "Normalize"]
 	path = Normalize
 	url = git@github.com:vasic-digital/Normalize.git
+[submodule "RedTeam"]
+	path = RedTeam
+	url = git@github.com:vasic-digital/RedTeam.git

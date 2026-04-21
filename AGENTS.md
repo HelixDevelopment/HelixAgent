@@ -105,11 +105,28 @@ This rule strengthens and supersedes CONST-025.
 
 ### CONST-031: Authorized Remote Distribution Hosts
 
-Authorized remote distribution hosts (via Containers module SSH orchestrator):
+Remote distribution hosts are registered **dynamically** via `CONTAINERS_REMOTE_HOST_N_*` environment variables in `Containers/.env`. N iterates 1..100; the loader (`Containers/pkg/envconfig/parser.go`) stops at the first absent `_NAME`. Adding an Nth host = append six env vars — no code change required. The `.env` file is the sole source of truth; **no host name is hardcoded in source, tests, challenges, or other governance docs**.
 
-- `thinker.local` — user `milosvasic`, port 22, podman runtime, labels `storage=fast,memory=high`
-- `amber.local` — user `milosvasic`, port 22, podman runtime, labels `storage=fast,memory=high`
+**Per-host env var keys (each N):**
 
-Configured in `Containers/.env` (`CONTAINERS_REMOTE_HOST_1_*` / `CONTAINERS_REMOTE_HOST_2_*`). Enable with `CONTAINERS_REMOTE_ENABLED=true`.
+- `CONTAINERS_REMOTE_HOST_N_NAME` (required)
+- `CONTAINERS_REMOTE_HOST_N_ADDRESS`
+- `CONTAINERS_REMOTE_HOST_N_PORT`
+- `CONTAINERS_REMOTE_HOST_N_USER`
+- `CONTAINERS_REMOTE_HOST_N_KEY` (or use ssh-agent)
+- `CONTAINERS_REMOTE_HOST_N_PASSWORD` (optional; key-based auth preferred)
+- `CONTAINERS_REMOTE_HOST_N_RUNTIME` (`docker`/`podman`/`k8s`)
+- `CONTAINERS_REMOTE_HOST_N_LABELS` (comma-separated `key=value`)
+- `CONTAINERS_REMOTE_HOST_N_GPU_AUTOPROBE` (optional)
 
-Every non-unit test run and every production deployment MUST use these hosts when remote distribution is enabled. Additional hosts MUST be added via `Containers/.env` and documented in this section before use. Direct `docker`/`podman` commands, manual container start/stop, or ad-hoc remote hosts are strictly prohibited.
+Audit the currently configured set:
+
+```bash
+grep '^CONTAINERS_REMOTE_HOST_' Containers/.env
+```
+
+Enable with `CONTAINERS_REMOTE_ENABLED=true`. Every non-unit test run and every production deployment MUST use whichever hosts are currently configured when remote distribution is enabled.
+
+Direct `docker`/`podman` commands, manual container start/stop, and ad-hoc remote hosts outside the `.env` mechanism are strictly prohibited per the Mandatory Container Orchestration Flow.
+
+**Snapshot (2026-04-21)**: configured hosts are `thinker.local` and `amber.local`. Snapshot reflects `.env` state at that date; N scales freely to any number of hosts ≥ 1.

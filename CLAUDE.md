@@ -41,7 +41,7 @@ Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and *
 19. **Bugfix Documentation (CONST-028)** — All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with root cause analysis, affected files, fix description, and verification test reference. Every fix must have a corresponding verification test.
 20. **Concurrent-Safe Containers (CONST-029)** — Any struct field that is a mutable collection (map, slice, channel-map) and is accessed concurrently MUST use `safe.Store[K,V]` or `safe.Slice[T]` from `digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map` / `sync.Mutex + slice` combinations in shared state are prohibited for new code. Rationale: bare-mutex patterns are a review-caught bug class; the primitives make forgetting the lock structurally impossible (there is no lock to forget). Full discipline and migration table: `docs/development/concurrency-playbook.md`. Enforced via `scripts/concurrency-audit.sh` under `make ci-validate-all`. Existing sites migrate per the playbook's priority order; allowlist is temporary.
 21. **Real Infrastructure for All Non-Unit Tests (CONST-030)** — Mocks, stubs, fakes, placeholders, and hardcoded data MAY be used ONLY in unit tests (files ending `_test.go` run under `go test -short`). ALL other test types — integration, E2E, functional, security, stress, chaos, challenge, benchmark, HelixQA, and any runtime verification — MUST execute against the REAL running HelixAgent system with REAL containers, REAL databases, REAL Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls. To enable this: before every non-unit test run, the HelixAgent binary MUST build, distribute, and boot all containers per the Mandatory Container Orchestration Flow. Non-unit tests that cannot connect to real services MUST skip (not fail). Violations of this rule are critical infrastructure failures and block merge. This rule strengthens and supersedes CONST-025.
-22. **Authorized Remote Distribution Hosts (CONST-031)** — The authorized remote hosts for container distribution via the Containers module's SSH-based distribution orchestrator are `thinker.local` and `amber.local`. Both are user-level podman hosts reachable on port 22 as user `milosvasic`, with labels `storage=fast,memory=high`. Every non-unit test run and every production deployment MUST use these hosts when `CONTAINERS_REMOTE_ENABLED=true`. Additional hosts MUST be added via `Containers/.env` (`CONTAINERS_REMOTE_HOST_N_*`) and documented in this rule before use. Direct `docker`/`podman` commands, manual container start/stop, or ad-hoc remote hosts are strictly prohibited per the Mandatory Container Orchestration Flow.
+22. **Authorized Remote Distribution Hosts (CONST-031)** — Remote distribution hosts are registered **dynamically** via `CONTAINERS_REMOTE_HOST_N_*` environment variables in `Containers/.env`. N iterates 1..100; the loader (`Containers/pkg/envconfig/parser.go`) stops at the first absent `_NAME`. Adding an Nth host means appending six env vars — no code change required, N scales freely. The `.env` file is the sole source of truth for the enrolment set; **no host name is hardcoded anywhere else in the repo** (source, tests, challenges, or other governance docs). Current set is whatever is in `.env` at this moment — run `grep '^CONTAINERS_REMOTE_HOST_' Containers/.env` to audit. Every non-unit test run and every production deployment MUST use this dynamic set when `CONTAINERS_REMOTE_ENABLED=true`. Direct `docker`/`podman` commands, manual container start/stop, and ad-hoc remote hosts outside the `.env` mechanism are strictly prohibited per the Mandatory Container Orchestration Flow. At the time of this rule's introduction (2026-04-21) the configured hosts were `thinker.local` and `amber.local` — this is a point-in-time snapshot, not a limit.
 
 ## Git Rules
 
@@ -145,14 +145,30 @@ make monitoring-reset-circuits / force-health-check
 
 ### Remote Distribution Hosts
 
-Container distribution via SSH targets (per CONST-031):
+Container distribution targets are loaded **dynamically** from `Containers/.env` via `CONTAINERS_REMOTE_HOST_N_*` entries (N=1..100; see `Containers/pkg/envconfig/parser.go`). Adding a host = append six env vars. No code change; no hardcoded list elsewhere.
 
-| Host | Role | Runtime | Labels |
-|------|------|---------|--------|
-| `thinker.local` | fast-storage / high-memory worker | podman (rootless) | `storage=fast,memory=high` |
-| `amber.local` | fast-storage / high-memory worker | podman (rootless) | `storage=fast,memory=high` |
+**Audit the current set:**
+```bash
+grep '^CONTAINERS_REMOTE_HOST_' Containers/.env
+```
 
-Configuration: `Containers/.env` (`CONTAINERS_REMOTE_HOST_1_*` → thinker; `CONTAINERS_REMOTE_HOST_2_*` → amber). Enable with `CONTAINERS_REMOTE_ENABLED=true`. The HelixAgent binary boots containers to these hosts automatically; `make build` → `./bin/helixagent` is the only acceptable entry point. Direct SSH/docker/podman commands are prohibited.
+**Per-host env vars (each N):**
+
+| Var suffix | Purpose |
+|-----------|---------|
+| `_NAME` | Short name (required; loader stops at first absent NAME) |
+| `_ADDRESS` | Hostname or IP |
+| `_PORT` | SSH port (typically 22) |
+| `_USER` | SSH user |
+| `_KEY` | SSH private-key path (optional if ssh-agent is configured) |
+| `_PASSWORD` | SSH password (optional; key-based auth preferred) |
+| `_RUNTIME` | `docker`/`podman`/`k8s` |
+| `_LABELS` | Comma-separated `key=value` tags for scheduler (e.g. `storage=fast,memory=high`) |
+| `_GPU_AUTOPROBE` | Optional; set to auto-detect GPU availability |
+
+Enable with `CONTAINERS_REMOTE_ENABLED=true`. The HelixAgent binary boots containers to these hosts automatically; `make build` → `./bin/helixagent` is the only acceptable entry point. Direct SSH/docker/podman commands are prohibited per CONST-031 and the Mandatory Container Orchestration Flow.
+
+**Current snapshot (2026-04-21)**: `thinker.local` + `amber.local` — both user-level podman, `storage=fast,memory=high`. Snapshot reflects `.env` state at that date; check the audit command above for the authoritative current list.
 
 ## Architecture
 

@@ -276,10 +276,11 @@ func TestContextManager_Cleanup(t *testing.T) {
 	}
 	_ = cm.AddEntry(entry)
 
-	// Manually set timestamp to old
-	cm.mu.Lock()
-	cm.entries["old_entry"].Timestamp = time.Now().Add(-48 * time.Hour)
-	cm.mu.Unlock()
+	// Manually set timestamp to old. Entry pointer is shared so the
+	// mutation is visible to subsequent safe.Store reads.
+	if e, ok := cm.entries.Get("old_entry"); ok {
+		e.Timestamp = time.Now().Add(-48 * time.Hour)
+	}
 
 	// Add recent entry
 	_ = cm.AddEntry(&ContextEntry{
@@ -648,11 +649,11 @@ func TestContextManager_EvictLowPriorityEntries(t *testing.T) {
 			})
 		}
 
-		initialCount := len(cm.entries)
+		initialCount := cm.entries.Len()
 		err := cm.evictLowPriorityEntries()
 		assert.NoError(t, err)
 		// Should have evicted some entries
-		assert.LessOrEqual(t, len(cm.entries), initialCount)
+		assert.LessOrEqual(t, cm.entries.Len(), initialCount)
 	})
 }
 
@@ -805,13 +806,11 @@ func TestContextManager_GetEntry_DecompressionError(t *testing.T) {
 	cm := NewContextManager(100)
 
 	// Add entry directly with invalid compressed data
-	cm.mu.Lock()
-	cm.entries["corrupted"] = &ContextEntry{
+	cm.entries.Put("corrupted", &ContextEntry{
 		ID:             "corrupted",
 		Compressed:     true,
 		CompressedData: []byte("invalid gzip data"),
-	}
-	cm.mu.Unlock()
+	})
 
 	// GetEntry should return nil, false when decompression fails
 	entry, exists := cm.GetEntry("corrupted")
@@ -831,15 +830,13 @@ func TestContextManager_BuildContext_WithCorruptedEntry(t *testing.T) {
 	})
 
 	// Add a corrupted compressed entry directly
-	cm.mu.Lock()
-	cm.entries["corrupted"] = &ContextEntry{
+	cm.entries.Put("corrupted", &ContextEntry{
 		ID:             "corrupted",
 		Type:           "lsp",
 		Compressed:     true,
 		CompressedData: []byte("invalid gzip data"),
 		Priority:       8,
-	}
-	cm.mu.Unlock()
+	})
 
 	// BuildContext should skip the corrupted entry
 	entries, err := cm.BuildContext("code_completion", 1000)
@@ -1101,7 +1098,7 @@ func TestContextManager_AddEntry_EvictionNeeded(t *testing.T) {
 	}
 
 	// Should have evicted low priority entry
-	assert.LessOrEqual(t, len(cm.entries), 2)
+	assert.LessOrEqual(t, cm.entries.Len(), 2)
 }
 
 func TestContextManager_CompressEntry_Branches(t *testing.T) {
@@ -1199,15 +1196,15 @@ func TestContextManager_BuildContext_WithCompressedEntries(t *testing.T) {
 	}
 	err := cm.compressEntry(entry)
 	require.NoError(t, err)
-	cm.entries[entry.ID] = entry
+	cm.entries.Put(entry.ID, entry)
 
 	// Add a normal entry
-	cm.entries["normal-1"] = &ContextEntry{
+	cm.entries.Put("normal-1", &ContextEntry{
 		ID:       "normal-1",
 		Content:  "Normal content",
 		Type:     "test",
 		Priority: 5,
-	}
+	})
 
 	// Build context should decompress entries
 	ctx, buildErr := cm.BuildContext("test", 1000)

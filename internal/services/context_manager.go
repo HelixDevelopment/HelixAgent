@@ -8,8 +8,9 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // ContextEntry represents a single context item
@@ -32,12 +33,12 @@ type ContextCacheEntry struct {
 	TTL       time.Duration
 }
 
-// ContextManager manages context for LLM requests
+// ContextManager manages context for LLM requests.
+// Concurrent-safe by construction: entries/cache are safe.Store instances,
+// eliminating the "forgot to take the lock" bug class (CONST-029).
 type ContextManager struct {
-	mu                   sync.RWMutex
-	entries              map[string]*ContextEntry
-	cache                map[string]*ContextCacheEntry // For LSP, MCP, tool results
-	cacheMu              sync.RWMutex
+	entries              *safe.Store[string, *ContextEntry]
+	cache                *safe.Store[string, *ContextCacheEntry] // For LSP, MCP, tool results
 	maxSize              int
 	compressionThreshold int // Compress entries larger than this
 }
@@ -45,8 +46,8 @@ type ContextManager struct {
 // NewContextManager creates a new context manager
 func NewContextManager(maxSize int) *ContextManager {
 	return &ContextManager{
-		entries:              make(map[string]*ContextEntry),
-		cache:                make(map[string]*ContextCacheEntry),
+		entries:              safe.NewStore[string, *ContextEntry](),
+		cache:                safe.NewStore[string, *ContextCacheEntry](),
 		maxSize:              maxSize,
 		compressionThreshold: 1024, // 1KB
 	}
@@ -54,9 +55,6 @@ func NewContextManager(maxSize int) *ContextManager {
 
 // AddEntry adds a context entry
 func (cm *ContextManager) AddEntry(entry *ContextEntry) error {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
 	// Compress if needed
 	if len(entry.Content) > cm.compressionThreshold {
 		if err := cm.compressEntry(entry); err != nil {
@@ -65,24 +63,21 @@ func (cm *ContextManager) AddEntry(entry *ContextEntry) error {
 	}
 
 	// Check size limits
-	if len(cm.entries) >= cm.maxSize {
+	if cm.entries.Len() >= cm.maxSize {
 		if err := cm.evictLowPriorityEntries(); err != nil {
 			return fmt.Errorf("failed to evict entries: %w", err)
 		}
 	}
 
 	entry.Timestamp = time.Now()
-	cm.entries[entry.ID] = entry
+	cm.entries.Put(entry.ID, entry)
 
 	return nil
 }
 
 // GetEntry retrieves a context entry
 func (cm *ContextManager) GetEntry(id string) (*ContextEntry, bool) {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-
-	entry, exists := cm.entries[id]
+	entry, exists := cm.entries.Get(id)
 	if !exists {
 		return nil, false
 	}
@@ -99,10 +94,7 @@ func (cm *ContextManager) GetEntry(id string) (*ContextEntry, bool) {
 
 // UpdateEntry updates an existing entry
 func (cm *ContextManager) UpdateEntry(id string, content string, metadata map[string]interface{}) error {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	entry, exists := cm.entries[id]
+	entry, exists := cm.entries.Get(id)
 	if !exists {
 		return fmt.Errorf("entry %s not found", id)
 	}
@@ -118,25 +110,25 @@ func (cm *ContextManager) UpdateEntry(id string, content string, metadata map[st
 		}
 	}
 
+	// Put back (same pointer, but keeps API explicit).
+	cm.entries.Put(id, entry)
+
 	return nil
 }
 
 // RemoveEntry removes a context entry
 func (cm *ContextManager) RemoveEntry(id string) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	delete(cm.entries, id)
+	_, _ = cm.entries.Delete(id)
 }
 
 // BuildContext builds optimized context for an LLM request
 func (cm *ContextManager) BuildContext(requestType string, maxTokens int) ([]*ContextEntry, error) {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
+	// Snapshot entries for lock-free processing
+	snap := cm.entries.Snapshot()
 
 	// Get all entries
-	entries := make([]*ContextEntry, 0, len(cm.entries))
-	for _, entry := range cm.entries {
+	entries := make([]*ContextEntry, 0, len(snap))
+	for _, entry := range snap {
 		entries = append(entries, entry)
 	}
 
@@ -165,22 +157,16 @@ func (cm *ContextManager) BuildContext(requestType string, maxTokens int) ([]*Co
 
 // CacheResult caches a result from LSP, MCP, or tool execution
 func (cm *ContextManager) CacheResult(key string, result interface{}, ttl time.Duration) {
-	cm.cacheMu.Lock()
-	defer cm.cacheMu.Unlock()
-
-	cm.cache[key] = &ContextCacheEntry{
+	cm.cache.Put(key, &ContextCacheEntry{
 		Data:      result,
 		Timestamp: time.Now(),
 		TTL:       ttl,
-	}
+	})
 }
 
 // GetCachedResult retrieves a cached result
 func (cm *ContextManager) GetCachedResult(key string) (interface{}, bool) {
-	cm.cacheMu.RLock()
-	defer cm.cacheMu.RUnlock()
-
-	entry, exists := cm.cache[key]
+	entry, exists := cm.cache.Get(key)
 	if !exists {
 		return nil, false
 	}
@@ -195,14 +181,14 @@ func (cm *ContextManager) GetCachedResult(key string) (interface{}, bool) {
 
 // DetectConflicts detects conflicting information in context
 func (cm *ContextManager) DetectConflicts() []Conflict {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
+	// Snapshot for safe iteration
+	snap := cm.entries.Snapshot()
 
 	conflicts := []Conflict{}
 
 	// Group entries by source
 	sourceMap := make(map[string][]*ContextEntry)
-	for _, entry := range cm.entries {
+	for _, entry := range snap {
 		sourceMap[entry.Source] = append(sourceMap[entry.Source], entry)
 	}
 
@@ -214,27 +200,27 @@ func (cm *ContextManager) DetectConflicts() []Conflict {
 	}
 
 	// Check for cross-source conflicts
-	crossSourceConflicts := cm.detectCrossSourceConflicts()
+	crossSourceConflicts := cm.detectCrossSourceConflicts(snap)
 	conflicts = append(conflicts, crossSourceConflicts...)
 
 	// Check for temporal conflicts
-	temporalConflicts := cm.detectTemporalConflicts()
+	temporalConflicts := cm.detectTemporalConflicts(snap)
 	conflicts = append(conflicts, temporalConflicts...)
 
 	// Check for semantic conflicts
-	semanticConflicts := cm.detectSemanticConflicts()
+	semanticConflicts := cm.detectSemanticConflicts(snap)
 	conflicts = append(conflicts, semanticConflicts...)
 
 	return conflicts
 }
 
 // detectCrossSourceConflicts finds conflicts between different sources
-func (cm *ContextManager) detectCrossSourceConflicts() []Conflict {
+func (cm *ContextManager) detectCrossSourceConflicts(snap map[string]*ContextEntry) []Conflict {
 	conflicts := []Conflict{}
 
 	// Group entries by type
 	typeMap := make(map[string][]*ContextEntry)
-	for _, entry := range cm.entries {
+	for _, entry := range snap {
 		typeMap[entry.Type] = append(typeMap[entry.Type], entry)
 	}
 
@@ -283,14 +269,14 @@ func (cm *ContextManager) detectCrossSourceConflicts() []Conflict {
 }
 
 // detectTemporalConflicts finds conflicts due to stale data
-func (cm *ContextManager) detectTemporalConflicts() []Conflict {
+func (cm *ContextManager) detectTemporalConflicts(snap map[string]*ContextEntry) []Conflict {
 	conflicts := []Conflict{}
 	now := time.Now()
 	staleThreshold := 1 * time.Hour
 
 	// Group entries by subject
 	subjectMap := make(map[string][]*ContextEntry)
-	for _, entry := range cm.entries {
+	for _, entry := range snap {
 		subject := cm.extractSubject(entry)
 		if subject != "" {
 			subjectMap[subject] = append(subjectMap[subject], entry)
@@ -330,7 +316,7 @@ func (cm *ContextManager) detectTemporalConflicts() []Conflict {
 }
 
 // detectSemanticConflicts finds contradictory semantic information
-func (cm *ContextManager) detectSemanticConflicts() []Conflict {
+func (cm *ContextManager) detectSemanticConflicts(snap map[string]*ContextEntry) []Conflict {
 	conflicts := []Conflict{}
 
 	// Define known semantic fields that should be consistent
@@ -338,7 +324,7 @@ func (cm *ContextManager) detectSemanticConflicts() []Conflict {
 
 	// Group entries by subject
 	subjectMap := make(map[string][]*ContextEntry)
-	for _, entry := range cm.entries {
+	for _, entry := range snap {
 		subject := cm.extractSubject(entry)
 		if subject != "" {
 			subjectMap[subject] = append(subjectMap[subject], entry)
@@ -462,25 +448,20 @@ func (cm *ContextManager) calculateTemporalSeverity(age time.Duration) string {
 
 // Cleanup removes expired entries
 func (cm *ContextManager) Cleanup() {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	cm.cacheMu.Lock()
-	defer cm.cacheMu.Unlock()
-
 	now := time.Now()
 
-	// Clean context entries (keep recent ones)
-	for id, entry := range cm.entries {
+	// Clean context entries (keep recent ones) — snapshot then delete to
+	// avoid calling back into the store from within Range's read lock.
+	for id, entry := range cm.entries.Snapshot() {
 		if now.Sub(entry.Timestamp) > 24*time.Hour {
-			delete(cm.entries, id)
+			_, _ = cm.entries.Delete(id)
 		}
 	}
 
 	// Clean cache
-	for key, entry := range cm.cache {
+	for key, entry := range cm.cache.Snapshot() {
 		if now.Sub(entry.Timestamp) > entry.TTL {
-			delete(cm.cache, key)
+			_, _ = cm.cache.Delete(key)
 		}
 	}
 }
@@ -530,7 +511,9 @@ func (cm *ContextManager) decompressEntry(entry *ContextEntry) error {
 }
 
 func (cm *ContextManager) evictLowPriorityEntries() error {
-	if len(cm.entries) == 0 {
+	// Snapshot entries for safe iteration
+	snap := cm.entries.Snapshot()
+	if len(snap) == 0 {
 		return nil
 	}
 
@@ -543,7 +526,7 @@ func (cm *ContextManager) evictLowPriorityEntries() error {
 	var candidates []entryWithID
 	minPriority := 10
 
-	for id, entry := range cm.entries {
+	for id, entry := range snap {
 		if entry.Priority < minPriority {
 			minPriority = entry.Priority
 			candidates = []entryWithID{{id, entry}}
@@ -558,7 +541,7 @@ func (cm *ContextManager) evictLowPriorityEntries() error {
 			return candidates[i].entry.Timestamp.Before(candidates[j].entry.Timestamp)
 		})
 
-		delete(cm.entries, candidates[0].id)
+		_, _ = cm.entries.Delete(candidates[0].id)
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -18,14 +19,26 @@ var (
 	ErrEmptyContext = errors.New("context is empty")
 )
 
+// windowState is the immutable state published under ContextWindow.state.
+// Every mutation produces a fresh *windowState via CAS swap; readers load
+// a stable snapshot without any lock. The invariant
+// `tokenCount == Σ entries[i].TokenCount` is preserved structurally —
+// each writer constructs a consistent state before publication.
+type windowState struct {
+	entries    []ContextEntry
+	tokenCount int
+	lastAccess time.Time
+}
+
 // ContextWindow manages the context window for LLM interactions.
+//
+// CONST-029: backed by atomic.Pointer[windowState] instead of a mu +
+// bare slice + int triple. Writes are a CAS-loop over a fresh
+// windowState; reads are a single Load. No bare mutex to forget.
 type ContextWindow struct {
-	mu           sync.RWMutex
-	entries      []ContextEntry
-	config       *WindowConfig
-	tokenCount   int
-	lastAccess   time.Time
-	eventHandler WindowEventHandler
+	state        atomic.Pointer[windowState]
+	config       *WindowConfig                          // constructor-set, read-only
+	eventHandler atomic.Pointer[WindowEventHandler] // cold-path swap
 }
 
 // ContextEntry represents an entry in the context window.
@@ -142,25 +155,28 @@ func NewContextWindow(config *WindowConfig) *ContextWindow {
 	if config == nil {
 		config = DefaultWindowConfig()
 	}
-	return &ContextWindow{
-		entries:    make([]ContextEntry, 0),
-		config:     config,
-		lastAccess: time.Now(),
+	w := &ContextWindow{
+		config: config,
 	}
+	w.state.Store(&windowState{
+		entries:    make([]ContextEntry, 0),
+		tokenCount: 0,
+		lastAccess: time.Now(),
+	})
+	return w
 }
 
 // SetEventHandler sets the event handler.
 func (w *ContextWindow) SetEventHandler(handler WindowEventHandler) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.eventHandler = handler
+	if handler == nil {
+		w.eventHandler.Store(nil)
+		return
+	}
+	w.eventHandler.Store(&handler)
 }
 
 // Add adds an entry to the context window.
 func (w *ContextWindow) Add(entry ContextEntry) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	if entry.TokenCount == 0 {
 		entry.TokenCount = estimateTokens(entry.Content)
 	}
@@ -171,23 +187,46 @@ func (w *ContextWindow) Add(entry ContextEntry) error {
 		entry.ID = generateID()
 	}
 
-	// Check if adding would exceed limit
 	availableTokens := w.config.MaxTokens - w.config.ReserveTokens
-	if w.tokenCount+entry.TokenCount > availableTokens {
-		// Try to evict entries
-		needed := w.tokenCount + entry.TokenCount - availableTokens
-		if err := w.evictTokens(needed); err != nil {
-			w.emitEvent(EventTypeOverflow, nil)
+
+	for {
+		prev := w.state.Load()
+
+		// Decide eviction plan against the observed snapshot.
+		entries := prev.entries
+		tokenCount := prev.tokenCount
+		overflow := false
+
+		if tokenCount+entry.TokenCount > availableTokens {
+			needed := tokenCount + entry.TokenCount - availableTokens
+			newEntries, evicted, ok := w.planEviction(entries, needed)
+			if !ok {
+				overflow = true
+			} else {
+				entries = newEntries
+				tokenCount -= evicted
+			}
+		}
+
+		if overflow {
+			w.emitEvent(EventTypeOverflow, nil, prev.tokenCount)
 			return ErrContextOverflow
 		}
+
+		nextEntries := make([]ContextEntry, 0, len(entries)+1)
+		nextEntries = append(nextEntries, entries...)
+		nextEntries = append(nextEntries, entry)
+
+		next := &windowState{
+			entries:    nextEntries,
+			tokenCount: tokenCount + entry.TokenCount,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			w.emitEvent(EventTypeEntryAdded, &entry, next.tokenCount)
+			return nil
+		}
 	}
-
-	w.entries = append(w.entries, entry)
-	w.tokenCount += entry.TokenCount
-	w.lastAccess = time.Now()
-
-	w.emitEvent(EventTypeEntryAdded, &entry)
-	return nil
 }
 
 // AddMessage adds a message to the context window.
@@ -211,21 +250,17 @@ func (w *ContextWindow) AddSystemPrompt(content string) error {
 
 // Get returns all entries in the context window.
 func (w *ContextWindow) Get() []ContextEntry {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	result := make([]ContextEntry, len(w.entries))
-	copy(result, w.entries)
+	snap := w.state.Load()
+	result := make([]ContextEntry, len(snap.entries))
+	copy(result, snap.entries)
 	return result
 }
 
 // GetMessages returns entries formatted as messages.
 func (w *ContextWindow) GetMessages() []map[string]string {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	messages := make([]map[string]string, len(w.entries))
-	for i, entry := range w.entries {
+	snap := w.state.Load()
+	messages := make([]map[string]string, len(snap.entries))
+	for i, entry := range snap.entries {
 		messages[i] = map[string]string{
 			"role":    entry.Role,
 			"content": entry.Content,
@@ -236,204 +271,227 @@ func (w *ContextWindow) GetMessages() []map[string]string {
 
 // TokenCount returns the current token count.
 func (w *ContextWindow) TokenCount() int {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	return w.tokenCount
+	return w.state.Load().tokenCount
 }
 
 // AvailableTokens returns the number of tokens available.
 func (w *ContextWindow) AvailableTokens() int {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	return w.config.MaxTokens - w.config.ReserveTokens - w.tokenCount
+	return w.config.MaxTokens - w.config.ReserveTokens - w.state.Load().tokenCount
 }
 
 // UsageRatio returns the context window usage ratio (0-1).
 func (w *ContextWindow) UsageRatio() float64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
 	maxUsable := w.config.MaxTokens - w.config.ReserveTokens
 	if maxUsable <= 0 {
 		return 1.0
 	}
-	return float64(w.tokenCount) / float64(maxUsable)
+	return float64(w.state.Load().tokenCount) / float64(maxUsable)
 }
 
 // Clear clears all entries from the context window.
 func (w *ContextWindow) Clear() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.entries = make([]ContextEntry, 0)
-	w.tokenCount = 0
+	for {
+		prev := w.state.Load()
+		next := &windowState{
+			entries:    make([]ContextEntry, 0),
+			tokenCount: 0,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			return
+		}
+	}
 }
 
 // ClearExceptPinned clears all except pinned entries.
 func (w *ContextWindow) ClearExceptPinned() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	var preserved []ContextEntry
-	preservedTokens := 0
-
-	for _, entry := range w.entries {
-		if entry.Pinned {
-			preserved = append(preserved, entry)
-			preservedTokens += entry.TokenCount
+	for {
+		prev := w.state.Load()
+		var preserved []ContextEntry
+		preservedTokens := 0
+		for _, entry := range prev.entries {
+			if entry.Pinned {
+				preserved = append(preserved, entry)
+				preservedTokens += entry.TokenCount
+			}
+		}
+		next := &windowState{
+			entries:    preserved,
+			tokenCount: preservedTokens,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			return
 		}
 	}
-
-	w.entries = preserved
-	w.tokenCount = preservedTokens
 }
 
 // RemoveEntry removes an entry by ID.
 func (w *ContextWindow) RemoveEntry(id string) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	for i, entry := range w.entries {
-		if entry.ID == id {
-			w.entries = append(w.entries[:i], w.entries[i+1:]...)
-			w.tokenCount -= entry.TokenCount
-			w.emitEvent(EventTypeEntryEvicted, &entry)
+	for {
+		prev := w.state.Load()
+		idx := -1
+		for i, entry := range prev.entries {
+			if entry.ID == id {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			return false
+		}
+		removed := prev.entries[idx]
+		nextEntries := make([]ContextEntry, 0, len(prev.entries)-1)
+		nextEntries = append(nextEntries, prev.entries[:idx]...)
+		nextEntries = append(nextEntries, prev.entries[idx+1:]...)
+		next := &windowState{
+			entries:    nextEntries,
+			tokenCount: prev.tokenCount - removed.TokenCount,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			w.emitEvent(EventTypeEntryEvicted, &removed, next.tokenCount)
 			return true
 		}
 	}
-	return false
 }
 
 // UpdateEntry updates an existing entry.
 func (w *ContextWindow) UpdateEntry(id string, newContent string) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	for i, entry := range w.entries {
-		if entry.ID == id {
-			oldTokens := entry.TokenCount
-			newTokens := estimateTokens(newContent)
-
-			// Check if update would exceed limit
-			tokenDiff := newTokens - oldTokens
-			if tokenDiff > 0 && w.tokenCount+tokenDiff > w.config.MaxTokens-w.config.ReserveTokens {
-				return ErrContextOverflow
+	for {
+		prev := w.state.Load()
+		idx := -1
+		for i, entry := range prev.entries {
+			if entry.ID == id {
+				idx = i
+				break
 			}
+		}
+		if idx < 0 {
+			return errors.New("entry not found")
+		}
+		oldTokens := prev.entries[idx].TokenCount
+		newTokens := estimateTokens(newContent)
+		tokenDiff := newTokens - oldTokens
+		if tokenDiff > 0 && prev.tokenCount+tokenDiff > w.config.MaxTokens-w.config.ReserveTokens {
+			return ErrContextOverflow
+		}
 
-			w.entries[i].Content = newContent
-			w.entries[i].TokenCount = newTokens
-			w.tokenCount += tokenDiff
+		nextEntries := make([]ContextEntry, len(prev.entries))
+		copy(nextEntries, prev.entries)
+		nextEntries[idx].Content = newContent
+		nextEntries[idx].TokenCount = newTokens
+		updated := nextEntries[idx]
 
-			w.emitEvent(EventTypeEntryUpdated, &w.entries[i])
+		next := &windowState{
+			entries:    nextEntries,
+			tokenCount: prev.tokenCount + tokenDiff,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			w.emitEvent(EventTypeEntryUpdated, &updated, next.tokenCount)
 			return nil
 		}
 	}
-	return errors.New("entry not found")
 }
 
-// evictTokens evicts entries to free at least the specified number of tokens.
-func (w *ContextWindow) evictTokens(tokensNeeded int) error {
-	evicted := 0
-
+// planEviction computes the post-eviction entry list for the currently
+// configured eviction policy. Returns (newEntries, evictedTokens, ok).
+// ok == false means eviction could not free enough tokens — caller
+// signals overflow.
+func (w *ContextWindow) planEviction(entries []ContextEntry, tokensNeeded int) ([]ContextEntry, int, bool) {
 	switch w.config.EvictionPolicy {
-	case EvictionPolicyFIFO:
-		evicted = w.evictFIFO(tokensNeeded)
-	case EvictionPolicyLRU:
-		evicted = w.evictLRU(tokensNeeded)
 	case EvictionPolicyPriority:
-		evicted = w.evictByPriority(tokensNeeded)
+		return w.planEvictByPriority(entries, tokensNeeded)
+	case EvictionPolicyLRU:
+		// LRU currently approximated by FIFO (see legacy implementation).
+		return w.planEvictFIFO(entries, tokensNeeded)
+	case EvictionPolicyFIFO:
+		fallthrough
 	default:
-		evicted = w.evictFIFO(tokensNeeded)
+		return w.planEvictFIFO(entries, tokensNeeded)
 	}
-
-	if evicted < tokensNeeded {
-		return ErrContextOverflow
-	}
-	return nil
 }
 
-func (w *ContextWindow) evictFIFO(tokensNeeded int) int {
+func (w *ContextWindow) planEvictFIFO(entries []ContextEntry, tokensNeeded int) ([]ContextEntry, int, bool) {
 	evicted := 0
-	preserveFrom := len(w.entries) - w.config.PreserveLastN
+	preserveFrom := len(entries) - w.config.PreserveLastN
+	remaining := make([]ContextEntry, 0, len(entries))
 
-	var remaining []ContextEntry
-	for i, entry := range w.entries {
-		// Preserve pinned, system prompts (if configured), and last N
+	for i, entry := range entries {
 		if entry.Pinned || (w.config.PreserveSystemPrompt && entry.Role == "system") || i >= preserveFrom {
 			remaining = append(remaining, entry)
 			continue
 		}
-
 		if evicted >= tokensNeeded {
 			remaining = append(remaining, entry)
 			continue
 		}
-
 		evicted += entry.TokenCount
-		w.emitEvent(EventTypeEntryEvicted, &entry)
+		evictedEntry := entry
+		w.emitEvent(EventTypeEntryEvicted, &evictedEntry, 0)
 	}
 
-	w.entries = remaining
-	w.tokenCount -= evicted
-	return evicted
+	if evicted < tokensNeeded {
+		return entries, 0, false
+	}
+	return remaining, evicted, true
 }
 
-func (w *ContextWindow) evictLRU(tokensNeeded int) int {
-	// For LRU, we use timestamp as a proxy for "recently used"
-	// In a more complete implementation, we'd track access times
-	return w.evictFIFO(tokensNeeded)
-}
-
-func (w *ContextWindow) evictByPriority(tokensNeeded int) int {
+func (w *ContextWindow) planEvictByPriority(entries []ContextEntry, tokensNeeded int) ([]ContextEntry, int, bool) {
 	evicted := 0
-	preserveFrom := len(w.entries) - w.config.PreserveLastN
+	current := entries
+	preserveFrom := len(entries) - w.config.PreserveLastN
 
-	// Sort by priority (lowest first) while preserving order for same priority
-	// We'll do multiple passes, evicting lowest priority first
 	for priority := PriorityLow; priority <= PriorityCritical && evicted < tokensNeeded; priority++ {
-		var remaining []ContextEntry
-		for i, entry := range w.entries {
+		remaining := make([]ContextEntry, 0, len(current))
+		for i, entry := range current {
 			if entry.Priority != priority || entry.Pinned || i >= preserveFrom {
 				remaining = append(remaining, entry)
 				continue
 			}
-
 			if evicted >= tokensNeeded {
 				remaining = append(remaining, entry)
 				continue
 			}
-
 			evicted += entry.TokenCount
-			w.emitEvent(EventTypeEntryEvicted, &entry)
+			evictedEntry := entry
+			w.emitEvent(EventTypeEntryEvicted, &evictedEntry, 0)
 		}
-		w.entries = remaining
+		current = remaining
 	}
 
-	w.tokenCount -= evicted
-	return evicted
+	if evicted < tokensNeeded {
+		return entries, 0, false
+	}
+	return current, evicted, true
 }
 
-func (w *ContextWindow) emitEvent(eventType WindowEventType, entry *ContextEntry) {
-	if w.eventHandler == nil {
+func (w *ContextWindow) emitEvent(eventType WindowEventType, entry *ContextEntry, tokenCount int) {
+	handlerPtr := w.eventHandler.Load()
+	if handlerPtr == nil {
 		return
 	}
-	w.eventHandler(&WindowEvent{
+	handler := *handlerPtr
+	if handler == nil {
+		return
+	}
+	handler(&WindowEvent{
 		Type:       eventType,
 		Timestamp:  time.Now(),
 		Entry:      entry,
-		TokenCount: w.tokenCount,
+		TokenCount: tokenCount,
 	})
 }
 
 // Snapshot returns a snapshot of the context window.
 func (w *ContextWindow) Snapshot() *WindowSnapshot {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	entries := make([]ContextEntry, len(w.entries))
-	copy(entries, w.entries)
-
+	snap := w.state.Load()
+	entries := make([]ContextEntry, len(snap.entries))
+	copy(entries, snap.entries)
 	return &WindowSnapshot{
 		Entries:    entries,
-		TokenCount: w.tokenCount,
+		TokenCount: snap.tokenCount,
 		Timestamp:  time.Now(),
 		Config:     *w.config,
 	}
@@ -453,12 +511,19 @@ type WindowSnapshot struct {
 
 // RestoreFromSnapshot restores the context window from a snapshot.
 func (w *ContextWindow) RestoreFromSnapshot(snapshot *WindowSnapshot) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	w.entries = make([]ContextEntry, len(snapshot.Entries))
-	copy(w.entries, snapshot.Entries)
-	w.tokenCount = snapshot.TokenCount
+	for {
+		prev := w.state.Load()
+		entries := make([]ContextEntry, len(snapshot.Entries))
+		copy(entries, snapshot.Entries)
+		next := &windowState{
+			entries:    entries,
+			tokenCount: snapshot.TokenCount,
+			lastAccess: time.Now(),
+		}
+		if w.state.CompareAndSwap(prev, next) {
+			return
+		}
+	}
 }
 
 // Helper functions
@@ -498,26 +563,25 @@ type WindowStats struct {
 
 // Stats returns statistics about the context window.
 func (w *ContextWindow) Stats() *WindowStats {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
+	snap := w.state.Load()
 
 	stats := &WindowStats{
-		TotalEntries:    len(w.entries),
-		TotalTokens:     w.tokenCount,
-		AvailableTokens: w.config.MaxTokens - w.config.ReserveTokens - w.tokenCount,
+		TotalEntries:    len(snap.entries),
+		TotalTokens:     snap.tokenCount,
+		AvailableTokens: w.config.MaxTokens - w.config.ReserveTokens - snap.tokenCount,
 		MessagesByRole:  make(map[string]int),
 	}
 
-	if len(w.entries) > 0 {
-		stats.AverageEntrySize = float64(w.tokenCount) / float64(len(w.entries))
+	if len(snap.entries) > 0 {
+		stats.AverageEntrySize = float64(snap.tokenCount) / float64(len(snap.entries))
 	}
 
 	maxUsable := w.config.MaxTokens - w.config.ReserveTokens
 	if maxUsable > 0 {
-		stats.UsageRatio = float64(w.tokenCount) / float64(maxUsable)
+		stats.UsageRatio = float64(snap.tokenCount) / float64(maxUsable)
 	}
 
-	for _, entry := range w.entries {
+	for _, entry := range snap.entries {
 		stats.MessagesByRole[entry.Role]++
 		if entry.Pinned {
 			stats.PinnedEntries++

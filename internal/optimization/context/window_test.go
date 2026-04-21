@@ -25,8 +25,8 @@ func TestNewContextWindow(t *testing.T) {
 	window := NewContextWindow(nil)
 
 	assert.NotNil(t, window)
-	assert.Empty(t, window.entries)
-	assert.Equal(t, 0, window.tokenCount)
+	assert.Empty(t, window.Get())
+	assert.Equal(t, 0, window.TokenCount())
 }
 
 func TestContextWindow_Add(t *testing.T) {
@@ -42,8 +42,8 @@ func TestContextWindow_Add(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(window.entries))
-	assert.Greater(t, window.tokenCount, 0)
+	assert.Equal(t, 1, len(window.Get()))
+	assert.Greater(t, window.TokenCount(), 0)
 }
 
 func TestContextWindow_AddMessage(t *testing.T) {
@@ -53,9 +53,9 @@ func TestContextWindow_AddMessage(t *testing.T) {
 	err := window.AddMessage("user", "Test message")
 
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(window.entries))
-	assert.Equal(t, "user", window.entries[0].Role)
-	assert.Equal(t, "Test message", window.entries[0].Content)
+	assert.Equal(t, 1, len(window.Get()))
+	assert.Equal(t, "user", window.Get()[0].Role)
+	assert.Equal(t, "Test message", window.Get()[0].Content)
 }
 
 func TestContextWindow_AddSystemPrompt(t *testing.T) {
@@ -67,9 +67,9 @@ func TestContextWindow_AddSystemPrompt(t *testing.T) {
 	err := window.AddSystemPrompt("You are a helpful assistant")
 
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(window.entries))
-	assert.Equal(t, "system", window.entries[0].Role)
-	assert.True(t, window.entries[0].Pinned)
+	assert.Equal(t, 1, len(window.Get()))
+	assert.Equal(t, "system", window.Get()[0].Role)
+	assert.True(t, window.Get()[0].Pinned)
 }
 
 func TestContextWindow_Get(t *testing.T) {
@@ -144,8 +144,8 @@ func TestContextWindow_Clear(t *testing.T) {
 
 	window.Clear()
 
-	assert.Empty(t, window.entries)
-	assert.Equal(t, 0, window.tokenCount)
+	assert.Empty(t, window.Get())
+	assert.Equal(t, 0, window.TokenCount())
 }
 
 func TestContextWindow_ClearExceptPinned(t *testing.T) {
@@ -162,8 +162,8 @@ func TestContextWindow_ClearExceptPinned(t *testing.T) {
 
 	window.ClearExceptPinned()
 
-	assert.Equal(t, 1, len(window.entries))
-	assert.Equal(t, "system", window.entries[0].Role)
+	assert.Equal(t, 1, len(window.Get()))
+	assert.Equal(t, "system", window.Get()[0].Role)
 }
 
 func TestContextWindow_RemoveEntry(t *testing.T) {
@@ -175,8 +175,8 @@ func TestContextWindow_RemoveEntry(t *testing.T) {
 	removed := window.RemoveEntry("entry-1")
 
 	assert.True(t, removed)
-	assert.Equal(t, 1, len(window.entries))
-	assert.Equal(t, "entry-2", window.entries[0].ID)
+	assert.Equal(t, 1, len(window.Get()))
+	assert.Equal(t, "entry-2", window.Get()[0].ID)
 }
 
 func TestContextWindow_RemoveEntry_NotFound(t *testing.T) {
@@ -197,7 +197,7 @@ func TestContextWindow_UpdateEntry(t *testing.T) {
 	err := window.UpdateEntry("entry-1", "Updated content")
 
 	require.NoError(t, err)
-	assert.Equal(t, "Updated content", window.entries[0].Content)
+	assert.Equal(t, "Updated content", window.Get()[0].Content)
 }
 
 func TestContextWindow_UpdateEntry_NotFound(t *testing.T) {
@@ -263,7 +263,7 @@ func TestContextWindow_Eviction_Priority(t *testing.T) {
 
 	// High priority should still be present
 	found := false
-	for _, entry := range window.entries {
+	for _, entry := range window.Get() {
 		if entry.Priority == PriorityHigh {
 			found = true
 			break
@@ -309,7 +309,7 @@ func TestContextWindow_Snapshot(t *testing.T) {
 	snapshot := window.Snapshot()
 
 	assert.Len(t, snapshot.Entries, 2)
-	assert.Equal(t, window.tokenCount, snapshot.TokenCount)
+	assert.Equal(t, window.TokenCount(), snapshot.TokenCount)
 	assert.NotZero(t, snapshot.Timestamp)
 }
 
@@ -324,8 +324,8 @@ func TestContextWindow_RestoreFromSnapshot(t *testing.T) {
 
 	window.RestoreFromSnapshot(snapshot)
 
-	assert.Len(t, window.entries, 1)
-	assert.Equal(t, "Original message", window.entries[0].Content)
+	assert.Len(t, window.Get(), 1)
+	assert.Equal(t, "Original message", window.Get()[0].Content)
 }
 
 func TestContextWindow_Stats(t *testing.T) {
@@ -509,7 +509,7 @@ func TestContextWindow_Eviction_Priority_LowEvictedFirst(t *testing.T) {
 
 	// High-priority entry must remain
 	found := false
-	for _, e := range window.entries {
+	for _, e := range window.Get() {
 		if e.Priority == PriorityHigh {
 			found = true
 			break

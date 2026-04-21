@@ -1,7 +1,8 @@
-// Package integration provides advanced debate system integration tests.
-// These tests validate the DebatePerformanceOptimizer including caching,
-// parallel execution, early termination, fallback chains, and stats tracking.
-package integration
+// Previously tests/integration/debate_advanced_integration_test.go.
+// Demoted alongside provider_test.go in PR25 of the CONST-030 compliance
+// campaign — the file exclusively wires DebatePerformanceOptimizer
+// against local MockLLMProvider siblings, never touches the network.
+package provider_legacy_test
 
 import (
 	"context"

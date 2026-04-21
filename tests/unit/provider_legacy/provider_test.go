@@ -1,6 +1,10 @@
-// Package integration provides comprehensive LLM provider integration tests
-// These tests verify the provider system including registry, selection, health, discovery, and verification
-package integration
+// Package provider_legacy holds the former
+// tests/integration/provider_integration_test.go demoted to a unit test.
+// CONST-030 forbids in-process mocks in non-unit tests; the file
+// exclusively exercises llm.LLMProvider / verifier / services registry
+// wiring against a local MockLLMProvider (testify/mock) with no network
+// round-trip. PR25 of the CONST-030 compliance campaign.
+package provider_legacy_test
 
 import (
 	"context"

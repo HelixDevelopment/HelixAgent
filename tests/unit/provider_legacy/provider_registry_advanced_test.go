@@ -1,7 +1,8 @@
-// Package integration provides advanced provider registry integration tests.
-// These tests validate concurrent access, duplicate handling, error messages,
-// and multi-provider registration scenarios using real ProviderRegistry instances.
-package integration
+// Previously tests/integration/provider_registry_advanced_integration_test.go.
+// Demoted alongside provider_test.go in PR25 of the CONST-030 compliance
+// campaign — the file exercises services.ProviderRegistry against local
+// MockLLMProvider siblings in-process only.
+package provider_legacy_test
 
 import (
 	"context"

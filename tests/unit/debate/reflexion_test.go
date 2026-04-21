@@ -1,4 +1,10 @@
-package integration
+// CONST-030: these tests exercise the in-process reflexion.ReflexionLoop,
+// EpisodicMemoryBuffer, AccumulatedWisdom, and ReflectionGenerator against
+// canned mockTestExecutor / mockLLMClient / failingLLMClient doubles. They
+// assert on protocol-internal invariants (attempt counting, wisdom pattern
+// extraction, FIFO eviction, fallback shape) — unit-level per CONST-030.
+// Demoted from tests/integration/ (PR10).
+package debate_test
 
 import (
 	"context"

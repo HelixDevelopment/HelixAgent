@@ -73,6 +73,7 @@ For each hit, confirmed:
 | File | Commit | Pattern | Notes |
 |------|--------|---------|-------|
 | `internal/handlers/handlers_integration_test.go` | (pending commit, PR2) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 987 LOC → 402 LOC. All 14 `TestIntegration_*` cases now dial `tcp://localhost:7061`, skip cleanly when unreachable, and drive real HTTP round-trips against `/v1/health`, `/v1/chat/completions`, `/v1/models`, `/v1/debates/*`, `/v1/mcp/*`. Removed `MockLLMProvider` wiring, `setupIntegrationTest()` helper, orphan `mockSkillsService`. Compile + skip-path verified with :7061 down. |
+| `internal/services/services_integration_test.go` | (pending commit, PR1) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 803 LOC → 466 LOC. `integrationMockProvider` deleted. All 12 `TestServicesIntegration_*` cases now probe `/v1/health` via `isHelixAgentAvailable(t)` and `skipUnlessLive(t)`, driving live HTTP against `/v1/debates`, `/v1/ensemble`, `/v1/chat/completions`, `/v1/discovery/providers`. Companion `internal/services/suspiciously_fast_response_verification_test.go` dropped `TestIntegrationMockProviderLatency_...` (mock no longer exists); 3 boundary unit tests of `IsSuspiciouslyFastResponse` retained & verified green. `TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider` removed — in-process registry CRUD is not exposed over HTTP; invariant belongs in a unit test. Compile (`go build`), vet (`go vet`) and skip-path (`12/12 SKIP`) verified with :7061 down. |
 
 ### Deferred (documented for future session)
 
@@ -225,7 +226,7 @@ automation is the Makefile itself.
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
-| `internal/services/services_integration_test.go` | 803 | `integrationMockProvider` | **critical** — explicitly cited in CLAUDE.md §16 as a known violation |
+| ~~`internal/services/services_integration_test.go`~~ | ~~803~~ | ~~`integrationMockProvider`~~ | **Fixed this session** (PR1) — see table above. |
 | `internal/services/integration_orchestrator_test.go` | ~ | `mockProvider` | high |
 | ~~`internal/handlers/handlers_integration_test.go`~~ | ~~987~~ | ~~HTTP handler mocks~~ | **Fixed this session** (PR2) — see table above. |
 | `internal/bigdata/memory_integration_test.go` | 938 | memory backend mocks | high |

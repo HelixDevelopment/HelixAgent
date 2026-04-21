@@ -11,20 +11,23 @@ import (
 // Verification Tests for IsSuspiciouslyFastResponse
 // =============================================================================
 //
-// BUGFIX #31: Integration test mock providers had 10ms latency with short
-// response strings (< 100 chars). IsSuspiciouslyFastResponse checks:
-//   responseTime < 100ms && contentLength < 100
-// This caused ALL integration debate tests to fail because mock responses
-// triggered the "suspiciously fast response" validation designed to detect
-// real-world cached error responses from LLMs.
+// BUGFIX #31 context: integration tests previously used an in-process
+// `integrationMockProvider` with a 10ms default latency. Combined with short
+// canned response strings (< 100 chars), responses tripped
+// IsSuspiciouslyFastResponse's double-condition check
+// (responseTime < 100ms && contentLength < 100), which is designed to detect
+// real-world cached error responses from LLMs. Bumping the mock latency to
+// 150ms fixed the false positives.
 //
-// ROOT CAUSE: integrationMockProvider.latency was 10ms (default), and response
-// strings were 8-56 chars. Both thresholds were violated simultaneously.
+// CONST-030 COMPLIANCE (2026-04-21): `integrationMockProvider` has been
+// removed from services_integration_test.go (that file now lives on the
+// live HelixAgent on :7061). The `TestIntegrationMockProviderLatency_...`
+// regression test that guarded the mock's latency is therefore no longer
+// applicable and has been deleted — the threshold itself is still guarded
+// by the three boundary tests below, which exercise the
+// IsSuspiciouslyFastResponse function directly with no provider wiring.
 //
-// FIX: Increased integrationMockProvider.latency to 150ms to simulate realistic
-// LLM response times, ensuring integration tests never trigger this check.
-//
-// These verification tests ensure the threshold logic never regresses.
+// These unit tests ensure the threshold logic never regresses.
 
 func TestIsSuspiciouslyFastResponse_ThresholdBoundaries(t *testing.T) {
 	t.Parallel()
@@ -100,15 +103,6 @@ func TestIsSuspiciouslyFastResponse_ThresholdBoundaries(t *testing.T) {
 			assert.Equal(t, tt.expected, result, "%s (time=%v, len=%d)", tt.reason, tt.responseTime, tt.contentLength)
 		})
 	}
-}
-
-func TestIntegrationMockProviderLatency_IsNotSuspiciouslyFast(t *testing.T) {
-	t.Parallel()
-
-	provider := newIntegrationMockProvider("test", "short", 0.9)
-
-	assert.GreaterOrEqual(t, provider.latency, 100*time.Millisecond,
-		"integrationMockProvider latency must be >= 100ms to avoid IsSuspiciouslyFastResponse detection")
 }
 
 func TestIsSuspiciouslyFastResponse_NeverRejectsRealisticLatency(t *testing.T) {

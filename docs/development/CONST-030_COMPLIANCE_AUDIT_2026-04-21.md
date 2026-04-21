@@ -15,8 +15,8 @@ Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
 | Test files scanned (`tests/` + `internal/` + `challenges/`) | 1,179 |
 | Non-unit test files scanned             | 331   |
 | Violations confirmed                    | 41    |
-| Fixed (cumulative across sessions)      | 8     |
-| Deferred to future session              | 33    |
+| Fixed (cumulative across sessions)      | 15    |
+| Deferred to future session              | 26    |
 
 No violation met the in-session fix criteria (≤50 LOC rewrite, no cross-file
 ripple, no production-code change, substitution of in-process fake with live
@@ -79,10 +79,17 @@ For each hit, confirmed:
 | `internal/services/integration_orchestrator_test.go` | `4cffaea1` + `5e7f8b9c` (PR5) | Pattern 4 — demote to unit | Pure in-process tests of `IntegrationOrchestrator` private methods with `MockLLMProviderForOrchestrator` stub. Renamed to `integration_orchestrator_unit_test.go` (new file pulled in on `5e7f8b9c`, old file deleted in `4cffaea1`). Vet clean. Pre-existing `TestIntegrationOrchestrator_executeOperation_ToolType` nil-pointer failure (`&ToolRegistry{}` zero-value post-CONST-029) is unrelated to the rename. |
 | `internal/bigdata/debate_integration_test.go` | `6f80c369` (PR6) | Pattern 4 — demote to unit | Pure in-process `DebateIntegration` tests against `mockBroker` / `mockSubscription` implementing `messaging.MessageBroker`. Renamed to `debate_broker_unit_test.go`. 16 test functions pass. |
 | `internal/bigdata/memory_integration_test.go` | `b1451b8a` (PR7) | Pattern 4 — demote to unit | Pure in-process `MemoryIntegration` tests against `mockMemoryStore` / `mockBroker`. Renamed to `memory_store_unit_test.go`. 25 test functions pass. |
+| `tests/integration/debate_adversarial_integration_test.go` | `4a9cc548` (PR8) | Pattern 4 — demote to unit | Pure in-process `AdversarialProtocol` tests with canned `mockAdversarialLLM` / `failingAdversarialLLM` responses. Moved to `tests/unit/debate/adversarial_test.go`, package `integration` → `debate_test`. 3 test functions pass. |
+| `tests/integration/debate_full_protocol_integration_test.go` | `30cdf5f8` (PR9) | Pattern 4 — demote to unit | Pure in-process 8-phase debate `Protocol` tests with a canned `mockInvoker`. Moved to `tests/unit/debate/full_protocol_test.go`. 5 test functions (fast subset verified). |
+| `tests/integration/debate_reflexion_integration_test.go` | `2257dbea` (PR10) | Pattern 4 — demote to unit | Pure in-process `ReflexionLoop` / `EpisodicMemoryBuffer` / `AccumulatedWisdom` / `ReflectionGenerator` tests with canned `mockTestExecutor` / `mockLLMClient` / `failingLLMClient`. Moved to `tests/unit/debate/reflexion_test.go`. 4 test functions pass (3.6s wall). |
+| `internal/bigdata/integration_test.go` | `99be187b` (PR11) | Pattern 4 — demote to unit | Pure in-process `bigdata.Integration` tests (`DefaultIntegrationConfig`, lazy integration, infinite-context / cross-learning wiring, health checks) against `mockLLMProvider`. Renamed to `integration_unit_test.go`. go vet clean. |
+| `internal/security/integration_test.go` | `9b0fbcd1` (PR12) | Pattern 4 — demote to unit | Pure in-process `SecurityIntegration` tests (audit logger, guardrails, red-team gate, MCP trust, tool permissions) against `mockDebateSecurityEvaluator`. Renamed to `integration_unit_test.go`. 12 `TestSecurityIntegration_*` pass. |
+| `tests/integration/provider_verification_comprehensive_test.go` | `9d70b037` (PR13) | Pattern 1 — dead-code removal | Removed unused `MockLLMProviderForVerification` stub. Remaining tests already exercise the REAL `verifier.StartupVerifier.VerifyAllProviders` against live providers gated by `testutil.RequireAPIKey(t, "deepseek")` and `testing.Short()` skips. |
+| `tests/integration/rag_integration_test.go` | `1efac1dc` (PR14) | Pattern 4 — demote to unit | Pure in-process `rag.Pipeline` / `rag.AdvancedRAG` tests (chunking, query expansion, re-ranking, embedding registry) against `MockEmbeddingModel`. Moved to `tests/unit/rag/pipeline_test.go`, package `integration` → `rag_test`. All tests pass (0.17s). |
 
 ### Deferred (documented for future session)
 
-#### tests/integration/ — 14 files
+#### tests/integration/ — 14 files (4 fixed in PR8–PR14, 10 remaining)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
@@ -92,14 +99,14 @@ For each hit, confirmed:
 | `tests/integration/service_interaction_test.go` | 295 | multi-service mock graph | medium |
 | `tests/integration/request_flow_test.go` | 1,402 | end-to-end request-flow mocks (uses `mockProvider`) | **high** |
 | `tests/integration/provider_integration_test.go` | 1,246 | `mockProvider` per-test (uses `integrationMockProvider`-style pattern) | **high** |
-| `tests/integration/provider_verification_comprehensive_test.go` | 274 | comprehensive verification with canned provider | high |
+| ~~`tests/integration/provider_verification_comprehensive_test.go`~~ | ~~274~~ | ~~comprehensive verification with canned provider~~ | **Fixed** (PR13, `9d70b037`) — dead-mock removal; tests already CONST-030-compliant against live providers. |
 | `tests/integration/cli_agent_integration_test.go` | 1,463 | CLI-agent mocks (2 struct types) | high |
 | `tests/integration/tool_integration_test.go` | 1,621 | tool-registry mock | high |
-| `tests/integration/rag_integration_test.go` | 429 | RAG retriever mock | medium |
+| ~~`tests/integration/rag_integration_test.go`~~ | ~~429~~ | ~~RAG retriever mock~~ | **Fixed** (PR14, `1efac1dc`) — demoted to `tests/unit/rag/pipeline_test.go`. |
 | `tests/integration/opencode_ensemble_flow_test.go` | 796 | OpenCode ensemble mock (uses `mockProvider`) | **high** |
-| `tests/integration/debate_adversarial_integration_test.go` | 270 | `mockAdversarialLLM`, `failingAdversarialLLM` | medium — tests in-process protocol parser |
-| `tests/integration/debate_full_protocol_integration_test.go` | 352 | full-protocol canned LLM | medium |
-| `tests/integration/debate_reflexion_integration_test.go` | 318 | reflexion-loop canned LLM | medium |
+| ~~`tests/integration/debate_adversarial_integration_test.go`~~ | ~~270~~ | ~~`mockAdversarialLLM`, `failingAdversarialLLM`~~ | **Fixed** (PR8, `4a9cc548`) — demoted to `tests/unit/debate/adversarial_test.go`. |
+| ~~`tests/integration/debate_full_protocol_integration_test.go`~~ | ~~352~~ | ~~full-protocol canned LLM~~ | **Fixed** (PR9, `30cdf5f8`) — demoted to `tests/unit/debate/full_protocol_test.go`. |
+| ~~`tests/integration/debate_reflexion_integration_test.go`~~ | ~~318~~ | ~~reflexion-loop canned LLM~~ | **Fixed** (PR10, `2257dbea`) — demoted to `tests/unit/debate/reflexion_test.go`. |
 
 **Blocker for every file above:** tests call an in-process interface (e.g.
 `agents.AdversarialProtocol`, `services.Orchestrator`) with canned LLM
@@ -227,7 +234,7 @@ emulates (already enforced by CONST-018 "No GitHub Actions..." — we run
 everything via make). Likely the file can be largely deleted, as the real
 automation is the Makefile itself.
 
-#### internal/ — 9 files (7 fixed, 2 remaining)
+#### internal/ — 9 files (9 fixed, 0 remaining)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
@@ -236,10 +243,10 @@ automation is the Makefile itself.
 | ~~`internal/handlers/handlers_integration_test.go`~~ | ~~987~~ | ~~HTTP handler mocks~~ | **Fixed** (PR2, `186f3c9c`) — see Fixed table above. |
 | ~~`internal/bigdata/memory_integration_test.go`~~ | ~~938~~ | ~~memory backend mocks~~ | **Fixed** (PR7, `b1451b8a`) — demoted to unit (rename). |
 | ~~`internal/bigdata/debate_integration_test.go`~~ | ~~510~~ | ~~debate backend mocks~~ | **Fixed** (PR6, `6f80c369`) — demoted to unit (rename). |
-| `internal/bigdata/integration_test.go` | ~ | bigdata service mocks | medium |
+| ~~`internal/bigdata/integration_test.go`~~ | ~ | ~~bigdata service mocks~~ | **Fixed** (PR11, `99be187b`) — demoted to unit (rename). |
 | ~~`internal/adapters/auth/integration_test.go`~~ | ~ | ~~auth adapter mocks~~ | **Fixed** (PR4, `f357f0b2`) — demoted to unit (rename). |
 | ~~`internal/adapters/mcp/integration_test.go`~~ | ~ | ~~MCP adapter mocks~~ | **Fixed** (PR3, `f2f45511`) — demoted to unit (rename). |
-| `internal/security/integration_test.go` | ~ | security integration mocks | high |
+| ~~`internal/security/integration_test.go`~~ | ~ | ~~security integration mocks~~ | **Fixed** (PR12, `9b0fbcd1`) — demoted to unit (rename). |
 
 **Proposed approach:** these are the highest-ROI files to fix because they
 live next to production code, so CI/lint/vet coverage will keep them honest

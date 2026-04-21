@@ -14,8 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -209,45 +211,46 @@ func (am *ConcurrencyAlertManager) checkRateLimit(channel string) bool {
 		return true
 	}
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	// Get or create tracker for this channel
-	tracker, exists := am.rateLimitTrackers[channel]
-	if !exists {
-		tracker = &rateLimitTracker{
-			count:       0,
-			windowStart: time.Now(),
+	allowed := true
+	// Atomic read-modify-write through safe.Store.Update avoids the classic
+	// get-then-put race when two goroutines race to increment the counter.
+	am.rateLimitTrackers.Update(channel, func(tracker *rateLimitTracker, present bool) (*rateLimitTracker, bool) {
+		if !present {
+			tracker = &rateLimitTracker{
+				count:       0,
+				windowStart: time.Now(),
+			}
 		}
-		am.rateLimitTrackers[channel] = tracker
-	}
 
-	now := time.Now()
-	windowStart := now.Add(-am.config.RateLimitWindow)
+		now := time.Now()
+		windowStart := now.Add(-am.config.RateLimitWindow)
 
-	// Reset counter if window has passed
-	if tracker.windowStart.Before(windowStart) {
-		tracker.count = 0
-		tracker.windowStart = now
-	}
-
-	// Check if we've reached the limit
-	if tracker.count >= am.config.RateLimitMaxAlerts {
-		// Check burst allowance
-		if tracker.count >= am.config.RateLimitMaxAlerts+am.config.RateLimitBurstSize {
-			// Record rate limit hit
-			RecordRateLimitHit(channel)
-			return false
+		// Reset counter if window has passed
+		if tracker.windowStart.Before(windowStart) {
+			tracker.count = 0
+			tracker.windowStart = now
 		}
-		// Allow burst but mark as pending reset
-		tracker.resetPending = true
-	} else {
-		tracker.resetPending = false
-	}
 
-	// Increment counter
-	tracker.count++
-	return true
+		// Check if we've reached the limit
+		if tracker.count >= am.config.RateLimitMaxAlerts {
+			// Check burst allowance
+			if tracker.count >= am.config.RateLimitMaxAlerts+am.config.RateLimitBurstSize {
+				// Record rate limit hit
+				RecordRateLimitHit(channel)
+				allowed = false
+				return tracker, true
+			}
+			// Allow burst but mark as pending reset
+			tracker.resetPending = true
+		} else {
+			tracker.resetPending = false
+		}
+
+		// Increment counter
+		tracker.count++
+		return tracker, true
+	})
+	return allowed
 }
 
 // recordRateLimitUsage records that an alert was sent (already accounted for in checkRateLimit, but separate for clarity)
@@ -262,21 +265,17 @@ func (am *ConcurrencyAlertManager) checkCircuitBreaker(channel string) bool {
 		return true
 	}
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	// Get or create circuit breaker state for this channel
-	cb, exists := am.circuitBreakerStates[channel]
-	if !exists {
-		cb = &circuitBreakerState{
-			state:           "closed",
-			failures:        0,
-			successes:       0,
-			lastFailure:     time.Time{},
-			lastStateChange: time.Now(),
-		}
-		am.circuitBreakerStates[channel] = cb
-		// Update Prometheus metric for initial closed state
+	// Atomic insert-if-absent so two racing callers see the same pointer.
+	newCB := &circuitBreakerState{
+		state:           "closed",
+		failures:        0,
+		successes:       0,
+		lastFailure:     time.Time{},
+		lastStateChange: time.Now(),
+	}
+	cb, stored := am.circuitBreakerStates.PutIfAbsent(channel, newCB)
+	if stored {
+		// First insertion — publish the initial closed state metric.
 		UpdateCircuitBreakerState(channel, circuitBreakerStateToInt("closed"))
 	}
 
@@ -312,10 +311,7 @@ func (am *ConcurrencyAlertManager) recordCircuitBreakerSuccess(channel string) {
 		return
 	}
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	cb, exists := am.circuitBreakerStates[channel]
+	cb, exists := am.circuitBreakerStates.Get(channel)
 	if !exists {
 		return
 	}
@@ -354,20 +350,16 @@ func (am *ConcurrencyAlertManager) recordCircuitBreakerFailure(channel string) {
 		return
 	}
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	cb, exists := am.circuitBreakerStates[channel]
-	if !exists {
-		cb = &circuitBreakerState{
-			state:           "closed",
-			failures:        0,
-			successes:       0,
-			lastFailure:     time.Time{},
-			lastStateChange: time.Now(),
-		}
-		am.circuitBreakerStates[channel] = cb
-		// Update Prometheus metric for initial closed state
+	newCB := &circuitBreakerState{
+		state:           "closed",
+		failures:        0,
+		successes:       0,
+		lastFailure:     time.Time{},
+		lastStateChange: time.Now(),
+	}
+	cb, stored := am.circuitBreakerStates.PutIfAbsent(channel, newCB)
+	if stored {
+		// First insertion — publish the initial closed state metric.
 		UpdateCircuitBreakerState(channel, circuitBreakerStateToInt("closed"))
 	}
 
@@ -450,19 +442,20 @@ func (am *ConcurrencyAlertManager) shouldSendToChannel(channel string, escalatio
 // getOrCreateTracking gets tracking info for an alert key, creating if needed
 // Returns repeat count and escalation level to avoid needing to read from tracking after release
 func (am *ConcurrencyAlertManager) getOrCreateTracking(alertKey string) (repeatCount int, escalationLevel int) {
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	tracking, exists := am.alertTracking[alertKey]
-	if !exists {
-		now := time.Now()
-		tracking = &alertTrackingInfo{
-			lastSentTime:    now,
-			repeatCount:     1,
-			escalationLevel: 0,
-			firstSeenTime:   now,
-		}
-		am.alertTracking[alertKey] = tracking
+	// Atomic insert-if-absent: two racing callers both observe the same
+	// *alertTrackingInfo and then synchronise on its inner mutex below.
+	now := time.Now()
+	fresh := &alertTrackingInfo{
+		lastSentTime:    now,
+		repeatCount:     1,
+		escalationLevel: 0,
+		firstSeenTime:   now,
+	}
+	// PutIfAbsent returns (value, stored): stored == true when we just
+	// inserted `fresh` (first time for this key); stored == false when an
+	// existing entry was already present and `value` is that existing one.
+	tracking, stored := am.alertTracking.PutIfAbsent(alertKey, fresh)
+	if stored {
 		return 1, 0
 	}
 
@@ -474,11 +467,11 @@ func (am *ConcurrencyAlertManager) getOrCreateTracking(alertKey string) (repeatC
 	windowStart := time.Now().Add(-am.config.EscalationWindow)
 	if tracking.firstSeenTime.Before(windowStart) {
 		// Reset tracking if first seen outside escalation window
-		now := time.Now()
+		reset := time.Now()
 		tracking.repeatCount = 1
 		tracking.escalationLevel = 0
-		tracking.firstSeenTime = now
-		tracking.lastSentTime = now
+		tracking.firstSeenTime = reset
+		tracking.lastSentTime = reset
 	} else {
 		tracking.repeatCount++
 	}
@@ -488,10 +481,7 @@ func (am *ConcurrencyAlertManager) getOrCreateTracking(alertKey string) (repeatC
 
 // updateTrackingEscalationLevel updates the escalation level for an alert key thread-safely
 func (am *ConcurrencyAlertManager) updateTrackingEscalationLevel(alertKey string, level int) {
-	am.mu.RLock()
-	tracking, exists := am.alertTracking[alertKey]
-	am.mu.RUnlock()
-
+	tracking, exists := am.alertTracking.Get(alertKey)
 	if !exists {
 		return
 	}
@@ -501,34 +491,45 @@ func (am *ConcurrencyAlertManager) updateTrackingEscalationLevel(alertKey string
 	tracking.mu.Unlock()
 }
 
-// ConcurrencyAlertManager handles sending concurrency alerts with deduplication and cooldown
+// ConcurrencyAlertManager handles sending concurrency alerts with deduplication and cooldown.
+//
+// Concurrent-safe by construction (CONST-029): the six collections below are
+// each a safe.Store, so no outer sync.Mutex is required to coordinate their
+// reads and writes. Per-entry pointer fields (e.g. alertTrackingInfo,
+// circuitBreakerState) continue to carry their own sync.RWMutex — the
+// safe.Store guarantee is about map integrity only, not inner mutation of
+// pointer values.
+//
+// Lifecycle state (running / stopCh) is coordinated separately by stateMu —
+// Start/Stop must observe and swap both fields under the same lock.
 type ConcurrencyAlertManager struct {
 	config     ConcurrencyAlertManagerConfig
 	logger     *logrus.Logger
 	httpClient *http.Client
-	mu         sync.RWMutex
 
 	// Alert tracking for deduplication, cooldown, and escalation
-	alertTracking map[string]*alertTrackingInfo // alertKey -> tracking info
+	alertTracking *safe.Store[string, *alertTrackingInfo] // alertKey -> tracking info
 
-	// Per-provider thresholds (overrides)
-	providerThresholds map[string]float64
+	// Per-provider thresholds (overrides). Populated at construction from
+	// config; only read thereafter, so safe.Store suffices.
+	providerThresholds *safe.Store[string, float64]
 
 	// Rate limiting trackers per channel
-	rateLimitTrackers map[string]*rateLimitTracker // channel -> tracker
+	rateLimitTrackers *safe.Store[string, *rateLimitTracker] // channel -> tracker
 
 	// Circuit breaker states per channel
-	circuitBreakerStates map[string]*circuitBreakerState // channel -> state
+	circuitBreakerStates *safe.Store[string, *circuitBreakerState] // channel -> state
 
 	// Delivery attempts for retry logic
-	deliveryAttempts map[string]*deliveryAttempt // attempt key -> attempt
+	deliveryAttempts *safe.Store[string, *deliveryAttempt] // attempt key -> attempt
 
 	// Dead letter queue for permanently failed alerts
-	deadLetterAlerts map[string]*deadLetterAlert // channel:alertKey -> dead letter alert
+	deadLetterAlerts *safe.Store[string, *deadLetterAlert] // channel:alertKey -> dead letter alert
 
-	// Cleanup ticker
+	// Lifecycle: running is an atomic bool; stopCh is swapped under stateMu.
+	stateMu sync.Mutex
 	stopCh  chan struct{}
-	running bool
+	running atomic.Bool
 }
 
 // NewConcurrencyAlertManager creates a new alert manager
@@ -537,16 +538,21 @@ func NewConcurrencyAlertManager(config ConcurrencyAlertManagerConfig, logger *lo
 		logger = logrus.New()
 	}
 
+	providerThresholds := safe.NewStore[string, float64]()
+	for k, v := range config.ProviderThresholds {
+		providerThresholds.Put(k, v)
+	}
+
 	return &ConcurrencyAlertManager{
 		config:               config,
 		logger:               logger,
 		httpClient:           &http.Client{Timeout: config.WebhookTimeout},
-		alertTracking:        make(map[string]*alertTrackingInfo),
-		providerThresholds:   config.ProviderThresholds,
-		rateLimitTrackers:    make(map[string]*rateLimitTracker),
-		circuitBreakerStates: make(map[string]*circuitBreakerState),
-		deliveryAttempts:     make(map[string]*deliveryAttempt),
-		deadLetterAlerts:     make(map[string]*deadLetterAlert),
+		alertTracking:        safe.NewStore[string, *alertTrackingInfo](),
+		providerThresholds:   providerThresholds,
+		rateLimitTrackers:    safe.NewStore[string, *rateLimitTracker](),
+		circuitBreakerStates: safe.NewStore[string, *circuitBreakerState](),
+		deliveryAttempts:     safe.NewStore[string, *deliveryAttempt](),
+		deadLetterAlerts:     safe.NewStore[string, *deadLetterAlert](),
 		stopCh:               make(chan struct{}),
 	}
 }
@@ -632,14 +638,15 @@ func (am *ConcurrencyAlertManager) HandleAlert(alert ConcurrencyAlert) {
 
 // Start starts the cleanup background goroutine
 func (am *ConcurrencyAlertManager) Start(ctx context.Context) {
-	am.mu.Lock()
-	if am.running {
-		am.mu.Unlock()
+	am.stateMu.Lock()
+	if am.running.Load() {
+		am.stateMu.Unlock()
 		return
 	}
-	am.running = true
+	am.running.Store(true)
 	am.stopCh = make(chan struct{})
-	am.mu.Unlock()
+	stopCh := am.stopCh
+	am.stateMu.Unlock()
 
 	am.logger.Info("Concurrency alert manager started")
 
@@ -652,7 +659,7 @@ func (am *ConcurrencyAlertManager) Start(ctx context.Context) {
 		case <-ctx.Done():
 			am.logger.Info("Concurrency alert manager stopped (context cancelled)")
 			return
-		case <-am.stopCh:
+		case <-stopCh:
 			am.logger.Info("Concurrency alert manager stopped")
 			return
 		case <-ticker.C:
@@ -665,12 +672,12 @@ func (am *ConcurrencyAlertManager) Start(ctx context.Context) {
 
 // Stop stops the alert manager
 func (am *ConcurrencyAlertManager) Stop() {
-	am.mu.Lock()
-	defer am.mu.Unlock()
+	am.stateMu.Lock()
+	defer am.stateMu.Unlock()
 
-	if am.running {
+	if am.running.Load() {
 		close(am.stopCh)
-		am.running = false
+		am.running.Store(false)
 	}
 }
 
@@ -686,10 +693,7 @@ func (am *ConcurrencyAlertManager) generateAlertKey(alert ConcurrencyAlert) stri
 
 // isInCooldown checks if an alert is in cooldown period
 func (am *ConcurrencyAlertManager) isInCooldown(alertKey string) bool {
-	am.mu.RLock()
-	tracking, exists := am.alertTracking[alertKey]
-	am.mu.RUnlock()
-
+	tracking, exists := am.alertTracking.Get(alertKey)
 	if !exists {
 		return false
 	}
@@ -704,23 +708,20 @@ func (am *ConcurrencyAlertManager) isInCooldown(alertKey string) bool {
 
 // recordAlertSent updates the last sent time for an alert
 func (am *ConcurrencyAlertManager) recordAlertSent(alertKey string) {
-	am.mu.Lock()
-	tracking, exists := am.alertTracking[alertKey]
-	if !exists {
-		// This shouldn't happen if getOrCreateTracking was called first
-		// But create tracking just in case
-		now := time.Now()
-		tracking = &alertTrackingInfo{
-			lastSentTime:    now,
-			repeatCount:     1,
-			escalationLevel: 0,
-			firstSeenTime:   now,
-		}
-		am.alertTracking[alertKey] = tracking
-		am.mu.Unlock()
+	// PutIfAbsent handles the "tracking missing" edge case atomically; if
+	// it was already present, we fall through and update its inner mutex.
+	now := time.Now()
+	fresh := &alertTrackingInfo{
+		lastSentTime:    now,
+		repeatCount:     1,
+		escalationLevel: 0,
+		firstSeenTime:   now,
+	}
+	tracking, stored := am.alertTracking.PutIfAbsent(alertKey, fresh)
+	if stored {
+		// We just inserted the fresh tracking with lastSentTime==now.
 		return
 	}
-	am.mu.Unlock()
 
 	// CONCURRENCY FIX: Lock tracking for safe access to lastSentTime
 	tracking.mu.Lock()
@@ -728,41 +729,47 @@ func (am *ConcurrencyAlertManager) recordAlertSent(alertKey string) {
 	tracking.mu.Unlock()
 }
 
-// CleanupOldRecords removes old alert records
+// CleanupOldRecords removes old alert records.
+//
+// cleanupOldEntries walks three independent safe.Stores. A
+// concurrent insert between pass 1 and pass 2 is acceptable
+// because cleanup is advisory, not a correctness invariant —
+// the entry will simply be inspected in the next cleanup cycle.
 func (am *ConcurrencyAlertManager) CleanupOldRecords(maxAge time.Duration) {
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
 	cutoff := time.Now().Add(-maxAge)
 	alertCount := 0
 	attemptCount := 0
 	deadLetterCount := 0
 
-	// Clean up old alert tracking
-	// CONCURRENCY FIX: Lock each tracking for safe access to lastSentTime
-	for key, tracking := range am.alertTracking {
+	// Pass 1: alert tracking. Snapshot first so per-entry mutex acquisition
+	// below does not contend with the Store's read lock.
+	for key, tracking := range am.alertTracking.Snapshot() {
 		tracking.mu.RLock()
 		lastSent := tracking.lastSentTime
 		tracking.mu.RUnlock()
 		if lastSent.Before(cutoff) {
-			delete(am.alertTracking, key)
-			alertCount++
+			if _, existed := am.alertTracking.Delete(key); existed {
+				alertCount++
+			}
 		}
 	}
 
-	// Clean up old delivery attempts (should be removed by processRetries, but just in case)
-	for key, attempt := range am.deliveryAttempts {
+	// Pass 2: delivery attempts (should be removed by processRetries, but
+	// re-check here as a defensive sweep).
+	for key, attempt := range am.deliveryAttempts.Snapshot() {
 		if attempt.lastAttempt.Before(cutoff) {
-			delete(am.deliveryAttempts, key)
-			attemptCount++
+			if _, existed := am.deliveryAttempts.Delete(key); existed {
+				attemptCount++
+			}
 		}
 	}
 
-	// Clean up old dead letter alerts
-	for key, deadLetter := range am.deadLetterAlerts {
+	// Pass 3: dead letter alerts.
+	for key, deadLetter := range am.deadLetterAlerts.Snapshot() {
 		if deadLetter.addedAt.Before(cutoff) {
-			delete(am.deadLetterAlerts, key)
-			deadLetterCount++
+			if _, existed := am.deadLetterAlerts.Delete(key); existed {
+				deadLetterCount++
+			}
 		}
 	}
 
@@ -775,31 +782,35 @@ func (am *ConcurrencyAlertManager) CleanupOldRecords(maxAge time.Duration) {
 		})
 		// Update metrics for changed queues
 		if attemptCount > 0 {
-			am.updateRetryQueueMetricsLocked()
+			am.updateRetryQueueMetrics()
 		}
 		if deadLetterCount > 0 {
-			am.updateDeadLetterQueueMetricsLocked()
+			am.updateDeadLetterQueueMetrics()
 		}
 	}
 }
 
-// GetAlertStats returns statistics about sent alerts
-// GetAlertStats returns statistics about sent alerts
+// GetAlertStats returns statistics about sent alerts.
+//
+// Independent snapshot passes: acceptable for advisory stats even if a
+// concurrent insert lands between passes (same visibility contract as
+// CleanupOldRecords).
 func (am *ConcurrencyAlertManager) GetAlertStats() map[string]interface{} {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
+	alertSnap := am.alertTracking.Snapshot()
+	attemptsSnap := am.deliveryAttempts.Snapshot()
+	deadLetterSnap := am.deadLetterAlerts.Snapshot()
 
 	stats := map[string]interface{}{
-		"total_alerts":           len(am.alertTracking),
+		"total_alerts":           len(alertSnap),
 		"providers":              make(map[string]int),
 		"types":                  make(map[string]int),
-		"retry_queue_size":       len(am.deliveryAttempts),
-		"dead_letter_queue_size": len(am.deadLetterAlerts),
+		"retry_queue_size":       len(attemptsSnap),
+		"dead_letter_queue_size": len(deadLetterSnap),
 		"channels":               make(map[string]map[string]int),
 	}
 
 	// Count alerts by provider and type
-	for key := range am.alertTracking {
+	for key := range alertSnap {
 		// Simple parsing - could be enhanced
 		if len(key) > 0 {
 			// key format: concurrency_type_provider_saturation
@@ -816,14 +827,14 @@ func (am *ConcurrencyAlertManager) GetAlertStats() map[string]interface{} {
 
 	// Count retry queue by channel
 	retryByChannel := make(map[string]int)
-	for _, attempt := range am.deliveryAttempts {
+	for _, attempt := range attemptsSnap {
 		retryByChannel[attempt.channel]++
 	}
 	stats["retry_queue_by_channel"] = retryByChannel
 
 	// Count dead letter queue by channel
 	deadLetterByChannel := make(map[string]int)
-	for _, deadLetter := range am.deadLetterAlerts {
+	for _, deadLetter := range deadLetterSnap {
 		deadLetterByChannel[deadLetter.channel]++
 	}
 	stats["dead_letter_queue_by_channel"] = deadLetterByChannel
@@ -866,8 +877,6 @@ func (am *ConcurrencyAlertManager) scheduleRetry(channel string, alert Concurren
 			"attempts": attempts,
 		})
 		// Move to dead letter queue
-		am.mu.Lock()
-		defer am.mu.Unlock()
 		failureError := "max retries exceeded"
 		if lastError != nil {
 			failureError = fmt.Sprintf("max retries exceeded: %v", lastError)
@@ -879,34 +888,37 @@ func (am *ConcurrencyAlertManager) scheduleRetry(channel string, alert Concurren
 	alertKey := am.generateAlertKey(alert)
 	retryKey := fmt.Sprintf("%s:%s", channel, alertKey)
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	// Check if already exists (maybe update)
-	attempt, exists := am.deliveryAttempts[retryKey]
-	if !exists {
-		attempt = &deliveryAttempt{
-			channel:     channel,
-			alert:       alert,
-			attempts:    attempts,
-			lastAttempt: time.Now(),
-			nextRetry:   time.Now().Add(am.calculateRetryDelay(attempts)),
+	// Atomic upsert — Update either inserts a new attempt or overwrites
+	// the existing one under a single write lock.
+	var nextRetry time.Time
+	am.deliveryAttempts.Update(retryKey, func(cur *deliveryAttempt, present bool) (*deliveryAttempt, bool) {
+		now := time.Now()
+		nr := now.Add(am.calculateRetryDelay(attempts))
+		if !present {
+			cur = &deliveryAttempt{
+				channel:     channel,
+				alert:       alert,
+				attempts:    attempts,
+				lastAttempt: now,
+				nextRetry:   nr,
+			}
+		} else {
+			cur.attempts = attempts
+			cur.lastAttempt = now
+			cur.nextRetry = nr
 		}
-		am.deliveryAttempts[retryKey] = attempt
-	} else {
-		attempt.attempts = attempts
-		attempt.lastAttempt = time.Now()
-		attempt.nextRetry = time.Now().Add(am.calculateRetryDelay(attempts))
-	}
+		nextRetry = cur.nextRetry
+		return cur, true
+	})
 
 	am.logger.Debug("Scheduled retry for alert", logrus.Fields{
 		"channel":    channel,
 		"type":       alert.Type,
 		"provider":   alert.Provider,
 		"attempts":   attempts,
-		"next_retry": attempt.nextRetry,
+		"next_retry": nextRetry,
 	})
-	am.updateRetryQueueMetricsLocked()
+	am.updateRetryQueueMetrics()
 }
 
 // processRetries processes pending retry attempts
@@ -915,24 +927,28 @@ func (am *ConcurrencyAlertManager) processRetries() {
 		return
 	}
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
 	now := time.Now()
-	for key, attempt := range am.deliveryAttempts {
+	// Snapshot first: the Delete below would deadlock inside Range.
+	changed := false
+	for key, attempt := range am.deliveryAttempts.Snapshot() {
 		if attempt.nextRetry.After(now) {
 			continue
 		}
-		// Ready for retry
-		// Copy values to avoid data race
+		// Ready for retry. Copy values to avoid data race.
 		channel := attempt.channel
 		alert := attempt.alert
 		attempts := attempt.attempts
-		// Remove from map before attempting (will be re-added if fails)
-		delete(am.deliveryAttempts, key)
-		am.updateRetryQueueMetricsLocked()
+		// Remove from store before attempting (will be re-added if fails).
+		// Delete returns false if another goroutine got there first — safe to skip.
+		if _, existed := am.deliveryAttempts.Delete(key); !existed {
+			continue
+		}
+		changed = true
 		// Execute retry asynchronously
 		go am.retryDelivery(channel, alert, attempts)
+	}
+	if changed {
+		am.updateRetryQueueMetrics()
 	}
 }
 
@@ -1029,18 +1045,18 @@ func (am *ConcurrencyAlertManager) removeDeliveryAttempt(channel string, alert C
 	alertKey := am.generateAlertKey(alert)
 	retryKey := fmt.Sprintf("%s:%s", channel, alertKey)
 
-	am.mu.Lock()
-	defer am.mu.Unlock()
-	delete(am.deliveryAttempts, retryKey)
-	am.updateRetryQueueMetricsLocked()
+	if _, existed := am.deliveryAttempts.Delete(retryKey); existed {
+		am.updateRetryQueueMetrics()
+	}
 }
 
-// updateRetryQueueMetricsLocked updates Prometheus metrics for retry queue sizes per channel
-// Caller must hold am.mu lock
-func (am *ConcurrencyAlertManager) updateRetryQueueMetricsLocked() {
+// updateRetryQueueMetrics updates Prometheus metrics for retry queue sizes
+// per channel. Snapshots the delivery attempts store; acceptable for metric
+// reporting even if a concurrent insert lands between the two passes.
+func (am *ConcurrencyAlertManager) updateRetryQueueMetrics() {
 	// Count delivery attempts per channel
 	channelCounts := make(map[string]int)
-	for _, attempt := range am.deliveryAttempts {
+	for _, attempt := range am.deliveryAttempts.Snapshot() {
 		channelCounts[attempt.channel]++
 	}
 
@@ -1049,20 +1065,16 @@ func (am *ConcurrencyAlertManager) updateRetryQueueMetricsLocked() {
 		UpdateRetryQueueSize(channel, count)
 	}
 
-	// Also update channels with zero retries (set to 0)
-	// This ensures metrics reflect reality even when queue is empty
-	// We'll update all known channels (from circuit breaker states or rate limit trackers)
-	// For simplicity, we'll just update the channels that have counts
-	// Channels with zero will naturally have no gauge update (they keep last value)
-	// In a more complete implementation, we'd track all known channels
+	// Channels with zero will naturally have no gauge update (they keep last
+	// value). In a more complete implementation, we'd track all known channels.
 }
 
-// updateDeadLetterQueueMetricsLocked updates Prometheus metrics for dead letter queue sizes per channel
-// Caller must hold am.mu lock
-func (am *ConcurrencyAlertManager) updateDeadLetterQueueMetricsLocked() {
+// updateDeadLetterQueueMetrics updates Prometheus metrics for dead letter
+// queue sizes per channel.
+func (am *ConcurrencyAlertManager) updateDeadLetterQueueMetrics() {
 	// Count dead letter alerts per channel
 	channelCounts := make(map[string]int)
-	for _, deadLetter := range am.deadLetterAlerts {
+	for _, deadLetter := range am.deadLetterAlerts.Snapshot() {
 		channelCounts[deadLetter.channel]++
 	}
 
@@ -1073,30 +1085,35 @@ func (am *ConcurrencyAlertManager) updateDeadLetterQueueMetricsLocked() {
 }
 
 // addToDeadLetterQueue adds an alert to the dead letter queue
-// Caller must hold am.mu lock
 func (am *ConcurrencyAlertManager) addToDeadLetterQueue(channel string, alert ConcurrencyAlert, attempts int, failureError string) {
 	alertKey := am.generateAlertKey(alert)
 	deadLetterKey := fmt.Sprintf("%s:%s", channel, alertKey)
 
-	// Check if already exists (update)
-	if _, exists := am.deadLetterAlerts[deadLetterKey]; exists {
-		// Already in dead letter queue, just update timestamp
-		am.deadLetterAlerts[deadLetterKey].lastAttempt = time.Now()
-		am.deadLetterAlerts[deadLetterKey].addedAt = time.Now()
-		am.deadLetterAlerts[deadLetterKey].failureError = failureError
-		am.deadLetterAlerts[deadLetterKey].attempts = attempts
+	inserted := false
+	// Atomic upsert: if already present, refresh fields; otherwise insert.
+	am.deadLetterAlerts.Update(deadLetterKey, func(cur *deadLetterAlert, present bool) (*deadLetterAlert, bool) {
+		now := time.Now()
+		if present {
+			cur.lastAttempt = now
+			cur.addedAt = now
+			cur.failureError = failureError
+			cur.attempts = attempts
+			return cur, true
+		}
+		inserted = true
+		return &deadLetterAlert{
+			channel:      channel,
+			alert:        alert,
+			attempts:     attempts,
+			lastAttempt:  now,
+			failureError: failureError,
+			addedAt:      now,
+		}, true
+	})
+
+	if !inserted {
 		return
 	}
-
-	deadLetter := &deadLetterAlert{
-		channel:      channel,
-		alert:        alert,
-		attempts:     attempts,
-		lastAttempt:  time.Now(),
-		failureError: failureError,
-		addedAt:      time.Now(),
-	}
-	am.deadLetterAlerts[deadLetterKey] = deadLetter
 
 	am.logger.Warning("Alert moved to dead letter queue", logrus.Fields{
 		"channel":  channel,
@@ -1107,16 +1124,14 @@ func (am *ConcurrencyAlertManager) addToDeadLetterQueue(channel string, alert Co
 	})
 
 	// Update metrics
-	am.updateDeadLetterQueueMetricsLocked()
+	am.updateDeadLetterQueueMetrics()
 }
 
 // GetDeadLetterAlerts returns all alerts currently in the dead letter queue
 func (am *ConcurrencyAlertManager) GetDeadLetterAlerts() []map[string]interface{} {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
-
-	alerts := make([]map[string]interface{}, 0, len(am.deadLetterAlerts))
-	for key, deadLetter := range am.deadLetterAlerts {
+	snap := am.deadLetterAlerts.Snapshot()
+	alerts := make([]map[string]interface{}, 0, len(snap))
+	for key, deadLetter := range snap {
 		alert := map[string]interface{}{
 			"key":           key,
 			"channel":       deadLetter.channel,
@@ -1135,17 +1150,12 @@ func (am *ConcurrencyAlertManager) GetDeadLetterAlerts() []map[string]interface{
 
 // RetryDeadLetterAlert attempts to retry an alert from the dead letter queue
 func (am *ConcurrencyAlertManager) RetryDeadLetterAlert(key string) bool {
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	deadLetter, exists := am.deadLetterAlerts[key]
-	if !exists {
+	// Atomic remove — only one caller wins the retry.
+	deadLetter, existed := am.deadLetterAlerts.Delete(key)
+	if !existed {
 		return false
 	}
-
-	// Remove from dead letter queue
-	delete(am.deadLetterAlerts, key)
-	am.updateDeadLetterQueueMetricsLocked()
+	am.updateDeadLetterQueueMetrics()
 
 	// Determine sendFunc based on channel
 	var sendFunc func() error
@@ -1170,11 +1180,9 @@ func (am *ConcurrencyAlertManager) RetryDeadLetterAlert(key string) bool {
 
 // GetRetryQueueAlerts returns all alerts currently in the retry queue
 func (am *ConcurrencyAlertManager) GetRetryQueueAlerts() []map[string]interface{} {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
-
-	alerts := make([]map[string]interface{}, 0, len(am.deliveryAttempts))
-	for key, attempt := range am.deliveryAttempts {
+	snap := am.deliveryAttempts.Snapshot()
+	alerts := make([]map[string]interface{}, 0, len(snap))
+	for key, attempt := range snap {
 		alert := map[string]interface{}{
 			"key":          key,
 			"channel":      attempt.channel,
@@ -1192,16 +1200,10 @@ func (am *ConcurrencyAlertManager) GetRetryQueueAlerts() []map[string]interface{
 
 // CancelRetryAttempt cancels a scheduled retry attempt
 func (am *ConcurrencyAlertManager) CancelRetryAttempt(key string) bool {
-	am.mu.Lock()
-	defer am.mu.Unlock()
-
-	_, exists := am.deliveryAttempts[key]
-	if !exists {
+	if _, existed := am.deliveryAttempts.Delete(key); !existed {
 		return false
 	}
-
-	delete(am.deliveryAttempts, key)
-	am.updateRetryQueueMetricsLocked()
+	am.updateRetryQueueMetrics()
 	return true
 }
 
@@ -1212,9 +1214,7 @@ func (am *ConcurrencyAlertManager) checkDeadLetterQueueThresholds() {
 		return
 	}
 
-	am.mu.RLock()
-	queueSize := len(am.deadLetterAlerts)
-	am.mu.RUnlock()
+	queueSize := am.deadLetterAlerts.Len()
 
 	// Determine which threshold(s) are crossed
 	warningThreshold := am.config.DeadLetterQueueWarningThreshold
@@ -1711,8 +1711,7 @@ func (am *ConcurrencyAlertManager) AsListener() ConcurrencyAlertListener {
 
 // GetProviderThreshold returns the alert threshold for a provider
 func (am *ConcurrencyAlertManager) GetProviderThreshold(provider string) (float64, bool) {
-	threshold, ok := am.providerThresholds[provider]
-	return threshold, ok
+	return am.providerThresholds.Get(provider)
 }
 
 // getEnv returns environment variable or default

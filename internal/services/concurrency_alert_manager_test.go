@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -759,12 +760,12 @@ func TestConcurrencyAlertManager_ResilienceIntegration(t *testing.T) {
 	// Create test server that works initially then fails
 	var requestCount int
 	var mu sync.Mutex
-	shouldFail := false
+	var shouldFail atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		requestCount++
 		mu.Unlock()
-		if shouldFail {
+		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusOK)
@@ -823,7 +824,7 @@ func TestConcurrencyAlertManager_ResilienceIntegration(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Phase 2: Make server start failing
-	shouldFail = true
+	shouldFail.Store(true)
 	// Send alerts to trigger circuit breaker with small delays
 	for i := 0; i < 3; i++ {
 		manager.HandleAlert(alert)
@@ -1141,33 +1142,28 @@ func TestConcurrencyAlertManager_DeadLetterQueueThresholdMonitoring(t *testing.T
 
 	// Helper to add alerts to dead letter queue
 	addDeadLetterAlert := func(channel string, alert ConcurrencyAlert) {
-		manager.mu.Lock()
 		alertKey := manager.generateAlertKey(alert)
 		deadLetterKey := fmt.Sprintf("%s:%s", channel, alertKey)
-		manager.deadLetterAlerts[deadLetterKey] = &deadLetterAlert{
+		manager.deadLetterAlerts.Put(deadLetterKey, &deadLetterAlert{
 			channel:      channel,
 			alert:        alert,
 			attempts:     1,
 			lastAttempt:  time.Now(),
 			failureError: "test",
 			addedAt:      time.Now(),
-		}
-		manager.mu.Unlock()
+		})
 	}
 
 	// Helper to check if alert key exists in alertTracking
 	hasAlertKey := func(key string) bool {
-		manager.mu.RLock()
-		defer manager.mu.RUnlock()
-		_, exists := manager.alertTracking[key]
-		return exists
+		return manager.alertTracking.Has(key)
 	}
 
 	// Helper to get last sent time for alert key
 	getLastSentTime := func(key string) time.Time {
-		manager.mu.RLock()
-		defer manager.mu.RUnlock()
-		if tracking, exists := manager.alertTracking[key]; exists {
+		if tracking, exists := manager.alertTracking.Get(key); exists {
+			tracking.mu.RLock()
+			defer tracking.mu.RUnlock()
 			return tracking.lastSentTime
 		}
 		return time.Time{}
@@ -1234,9 +1230,7 @@ func TestConcurrencyAlertManager_DeadLetterQueueThresholdMonitoring(t *testing.T
 	assert.True(t, hasAlertKey(warningKey), "Warning alert should still be tracked")
 
 	// Clean up dead letter queue
-	manager.mu.Lock()
-	manager.deadLetterAlerts = make(map[string]*deadLetterAlert)
-	manager.mu.Unlock()
+	manager.deadLetterAlerts.Clear()
 	time.Sleep(150 * time.Millisecond) // Wait for tick
 
 	t.Logf("Dead letter queue threshold monitoring test completed")
@@ -1661,18 +1655,16 @@ func TestConcurrencyAlertManager_Metrics_ThresholdBreach(t *testing.T) {
 
 	// Helper to add alerts to dead letter queue (mirroring internal logic)
 	addDeadLetterAlert := func(channel string, alert ConcurrencyAlert) {
-		manager.mu.Lock()
 		alertKey := manager.generateAlertKey(alert)
 		deadLetterKey := fmt.Sprintf("%s:%s", channel, alertKey)
-		manager.deadLetterAlerts[deadLetterKey] = &deadLetterAlert{
+		manager.deadLetterAlerts.Put(deadLetterKey, &deadLetterAlert{
 			channel:      channel,
 			alert:        alert,
 			attempts:     1,
 			lastAttempt:  time.Now(),
 			failureError: "test",
 			addedAt:      time.Now(),
-		}
-		manager.mu.Unlock()
+		})
 	}
 
 	// Initially queue is empty, no threshold breaches
@@ -1745,8 +1737,6 @@ func TestConcurrencyAlertManager_Metrics_ThresholdBreach(t *testing.T) {
 	assert.Equal(t, 1.0, criticalBreaches, "Should have one critical breach after reaching critical threshold")
 
 	// Clean up dead letter queue
-	manager.mu.Lock()
-	manager.deadLetterAlerts = make(map[string]*deadLetterAlert)
-	manager.mu.Unlock()
+	manager.deadLetterAlerts.Clear()
 	time.Sleep(150 * time.Millisecond) // Wait for monitoring tick
 }

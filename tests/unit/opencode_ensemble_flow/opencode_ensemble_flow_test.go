@@ -1,13 +1,18 @@
-package integration
+// Package opencode_ensemble_flow_test contains pure in-process tests of the
+// OpenCode → EnsembleService flow. These tests assert on in-process
+// orchestration invariants (provider-parallel execution, voting strategies,
+// response metadata) using synthetic `MockEnsembleProvider` /
+// `MockLLMProviderForEnsemble` stubs. No live HelixAgent is required.
+//
+// Demoted from `tests/integration/opencode_ensemble_flow_test.go` under
+// CONST-030 Pattern 4 (audit doc 2026-04-21). The live-HTTP portion
+// (previously `TestOpenCodeAPIIntegration`) has been extracted to
+// `tests/integration/opencode_ensemble_live_test.go`.
+package opencode_ensemble_flow_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,7 +20,6 @@ import (
 
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
-	"dev.helix.agent/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -341,148 +345,11 @@ func TestResponseMetadataValidation(t *testing.T) {
 	})
 }
 
-// TestOpenCodeAPIIntegration tests the full API flow with real HTTP requests
-func TestOpenCodeAPIIntegration(t *testing.T) {
-	testutil.RequireServer(t)
-	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
-	if serverURL == "" {
-		serverURL = testutil.ServerURL()
-	}
-
-	client := &http.Client{Timeout: 60 * time.Second}
-
-	t.Run("ChatCompletions returns ensemble response", func(t *testing.T) {
-		reqBody := map[string]interface{}{
-			"model": "helixagent-ensemble",
-			"messages": []map[string]string{
-				{"role": "user", "content": "What is 2+2? Answer with just the number."},
-			},
-			"max_tokens": 10,
-		}
-
-		jsonBody, _ := json.Marshal(reqBody)
-		resp, err := client.Post(
-			serverURL+"/v1/chat/completions",
-			"application/json",
-			bytes.NewReader(jsonBody),
-		)
-		require.NoError(t, err)
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == 502 {
-			t.Logf("Providers temporarily unavailable - 502 (acceptable)")
-			return
-		}
-		require.Equal(t, http.StatusOK, resp.StatusCode, "Response: %s", string(body))
-
-		var result map[string]interface{}
-		err = json.Unmarshal(body, &result)
-		require.NoError(t, err)
-
-		// Verify response model indicates ensemble
-		model, ok := result["model"].(string)
-		assert.True(t, ok)
-		assert.Equal(t, "helixagent-ensemble", model,
-			"Response model should be helixagent-ensemble")
-
-		// Verify system fingerprint
-		fingerprint, ok := result["system_fingerprint"].(string)
-		assert.True(t, ok)
-		assert.Equal(t, "fp_helixagent_ensemble", fingerprint,
-			"System fingerprint should indicate ensemble")
-
-		// Verify we got choices
-		choices, ok := result["choices"].([]interface{})
-		assert.True(t, ok)
-		assert.NotEmpty(t, choices, "Should have at least one choice")
-	})
-
-	t.Run("Multiple requests all go through ensemble", func(t *testing.T) {
-		var wg sync.WaitGroup
-		results := make(chan bool, 5)
-
-		for i := 0; i < 5; i++ {
-			wg.Add(1)
-			go func(idx int) {
-				defer wg.Done()
-
-				reqBody := map[string]interface{}{
-					"model": "helixagent-ensemble",
-					"messages": []map[string]string{
-						{"role": "user", "content": fmt.Sprintf("Say 'test %d'", idx)},
-					},
-					"max_tokens": 20,
-				}
-
-				jsonBody, _ := json.Marshal(reqBody)
-				resp, err := client.Post(
-					serverURL+"/v1/chat/completions",
-					"application/json",
-					bytes.NewReader(jsonBody),
-				)
-				if err != nil {
-					results <- false
-					return
-				}
-				defer resp.Body.Close()
-
-				body, _ := io.ReadAll(resp.Body)
-				var result map[string]interface{}
-				if err := json.Unmarshal(body, &result); err != nil {
-					results <- false
-					return
-				}
-
-				// Verify ensemble markers
-				model, _ := result["model"].(string)
-				fingerprint, _ := result["system_fingerprint"].(string)
-
-				results <- (model == "helixagent-ensemble" &&
-					fingerprint == "fp_helixagent_ensemble")
-			}(i)
-		}
-
-		wg.Wait()
-		close(results)
-
-		// Count successful requests - allow some failures due to load
-		successCount := 0
-		for success := range results {
-			if success {
-				successCount++
-			}
-		}
-		// At least 1 should succeed to verify API works; skip if server is overwhelmed
-		if successCount == 0 {
-			t.Logf("No requests succeeded - server may be overloaded or unavailable (acceptable)")
-			return
-		}
-		t.Logf("Multiple requests test: %d/5 succeeded through ensemble", successCount)
-	})
-
-	t.Run("Providers endpoint shows registered providers", func(t *testing.T) {
-		resp, err := client.Get(serverURL + "/v1/providers")
-		require.NoError(t, err)
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(body, &result)
-		require.NoError(t, err)
-
-		// Verify providers are registered
-		count, ok := result["count"].(float64)
-		assert.True(t, ok)
-		assert.Greater(t, count, float64(0), "Should have at least one provider")
-
-		providers, ok := result["providers"].([]interface{})
-		assert.True(t, ok)
-		assert.NotEmpty(t, providers, "Providers list should not be empty")
-	})
-}
+// Note: TestOpenCodeAPIIntegration (previously defined here) has been
+// extracted to tests/integration/opencode_ensemble_live_test.go so that the
+// live-HTTP assertions run against the real HelixAgent on :7061 while the
+// in-process ensemble-flow tests remain as unit tests (CONST-030 Pattern 4 +
+// Pattern 1 split).
 
 // TestEnsembleServiceRegistration verifies providers are properly registered
 func TestEnsembleServiceRegistration(t *testing.T) {

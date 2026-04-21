@@ -1,7 +1,8 @@
-//go:build performance
-// +build performance
-
-package performance
+// Package ensemble_bench contains pure in-process benchmarks of the
+// llm.RunEnsembleWithProviders primitive. These benchmarks measure
+// semaphore/scheduler overhead with synthetic in-memory providers and do NOT
+// require a running HelixAgent (CONST-030 unit-tier: mocks allowed).
+package ensemble_bench
 
 import (
 	"context"

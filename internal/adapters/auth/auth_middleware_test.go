@@ -1,5 +1,13 @@
 package auth
 
+// CONST-030: these tests exercise pure in-process Go functions and gin
+// middleware — APIKeyValidator, bearer-token extraction, JWT signing /
+// parsing, scope checks, OAuth credential manager with on-disk JSON —
+// with no network, database, or external dependency. They are unit tests
+// by definition. File was previously named integration_test.go (the
+// conventional test for integration.go); renamed so it is not swept into
+// the audit's non-unit surface (*_integration_test.go).
+
 import (
 	"context"
 	"errors"

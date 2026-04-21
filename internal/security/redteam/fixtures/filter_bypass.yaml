@@ -1,0 +1,19 @@
+# internal/security/redteam/fixtures/filter_bypass.yaml
+#
+# DEFENSIVE USE ONLY. These fixtures are input to
+# DeepTeamRedTeamer + StandardGuardrailPipeline regression tests.
+# They verify HelixAgent blocks these attacks. Never execute against
+# a live model without the guardrail pipeline in front.
+#
+# Source module (Bucket-3a): go-p4rs3lt0ngv3 (filter-bypass-class
+# payloads -- encoding/cipher/unicode-style input perturbations).
+# Upstream corpus was a scaffold-only README.md documenting a Go
+# client API for 159+ text transforms; no executable adversarial
+# prompts were present. Fixture list is empty pending real corpus
+# ingestion via the DeepTeamRedTeamer ingestion path (see design
+# Phase 5).
+
+attack_class: filter_bypass
+version: 1
+date_added: 2026-04-21
+fixtures: []

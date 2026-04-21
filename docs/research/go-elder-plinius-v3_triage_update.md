@@ -79,3 +79,23 @@ are not fixable by a global sed/regex pass — each needs targeted work.
 - Original triage: `docs/research/go-elder-plinius-v3_triage.md`
 - Intake of integration plan: `docs/research/inbox/2026-04-20_go-elder-plinius_integration_plan.md`
 - Scaffolds: `docs/research/go-elder-plinius-v3/go-elder-plinius/`
+
+## 2026-04-21 — Bucket-3a retirement + fixture lift
+
+Per design `docs/superpowers/specs/2026-04-21-remaining-work-execution-design.md`
+§Phase-0, the 9 offensive Bucket-3a scaffolds were removed from the
+repo and their prompt corpora lifted into
+`internal/security/redteam/fixtures/` as defensive-use regression
+fixtures for `DeepTeamRedTeamer` + `StandardGuardrailPipeline`.
+
+Removed:
+- go-l1b3rt4s, go-obliteratus, go-g0dm0d3, go-dioscuri,
+  go-p4rs3lt0ngv3, go-glossopetrae, go-misc-prompthacks,
+  go-basilisktoken, go-autoredteam
+
+Rationale: publication as public `vasic-digital` libraries would be
+detection-evasion distribution; brand association with a defensive
+product creates a direct policy conflict. Internal hardening use is
+an acceptable dual-use framing (security research + defensive use).
+
+Fixture consumer: see Phase 5 in the design spec.

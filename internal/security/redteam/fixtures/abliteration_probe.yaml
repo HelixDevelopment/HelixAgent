@@ -1,0 +1,18 @@
+# internal/security/redteam/fixtures/abliteration_probe.yaml
+#
+# DEFENSIVE USE ONLY. These fixtures are input to
+# DeepTeamRedTeamer + StandardGuardrailPipeline regression tests.
+# They verify HelixAgent blocks these attacks. Never execute against
+# a live model without the guardrail pipeline in front.
+#
+# Source module (Bucket-3a): go-obliteratus (abliteration-probe-class
+# payloads -- refusal-direction removal probes).
+# Upstream corpus was scaffold-only README.md + .proto files
+# documenting a Go client API; no executable adversarial prompts
+# were present. Fixture list is empty pending real corpus ingestion
+# via the DeepTeamRedTeamer ingestion path (see design Phase 5).
+
+attack_class: abliteration_probe
+version: 1
+date_added: 2026-04-21
+fixtures: []

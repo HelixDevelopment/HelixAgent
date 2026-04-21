@@ -1,0 +1,18 @@
+# internal/security/redteam/fixtures/jailbreak.yaml
+#
+# DEFENSIVE USE ONLY. These fixtures are input to
+# DeepTeamRedTeamer + StandardGuardrailPipeline regression tests.
+# They verify HelixAgent blocks these attacks. Never execute against
+# a live model without the guardrail pipeline in front.
+#
+# Source modules (Bucket-3a): go-l1b3rt4s, go-g0dm0d3, go-dioscuri,
+# go-autoredteam (jailbreak-class payloads).
+# Upstream corpora were scaffold-only README.md files documenting
+# Go client APIs; no executable adversarial prompts were present.
+# Fixture list is empty pending real corpus ingestion via the
+# DeepTeamRedTeamer ingestion path (see design Phase 5).
+
+attack_class: jailbreak
+version: 1
+date_added: 2026-04-21
+fixtures: []

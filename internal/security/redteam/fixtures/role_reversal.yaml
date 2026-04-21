@@ -1,0 +1,18 @@
+# internal/security/redteam/fixtures/role_reversal.yaml
+#
+# DEFENSIVE USE ONLY. These fixtures are input to
+# DeepTeamRedTeamer + StandardGuardrailPipeline regression tests.
+# They verify HelixAgent blocks these attacks. Never execute against
+# a live model without the guardrail pipeline in front.
+#
+# Source modules (Bucket-3a): go-autoredteam (role-reversal-class
+# payloads) and residual go-misc-prompthacks split (role-reversal
+# subset). Upstream corpora were scaffold-only README.md files
+# documenting Go client APIs; no executable adversarial prompts
+# were present. Fixture list is empty pending real corpus ingestion
+# via the DeepTeamRedTeamer ingestion path (see design Phase 5).
+
+attack_class: role_reversal
+version: 1
+date_added: 2026-04-21
+fixtures: []

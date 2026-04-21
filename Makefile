@@ -1972,4 +1972,4 @@ test-redteam-fixtures:
 	@echo "==> Running red-team fixture regression suite"
 	GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -count=1 -p 1 \
 		./internal/security/redteam/fixtures/... \
-		./internal/security -run 'RunFixtureSuite|FixtureLoader|LoadByClass|LoadAll' -v
+		./internal/security -run 'RunFixtureSuite|FixtureLoader|LoadByClass|LoadAll|DefaultPipeline_' -v

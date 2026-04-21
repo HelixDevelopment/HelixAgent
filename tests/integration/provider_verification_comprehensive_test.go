@@ -250,25 +250,9 @@ func TestProviderVerification_DebateTeamUsesVerifiedProviders(t *testing.T) {
 	}
 }
 
-// MockLLMProviderForVerification is a mock implementation for testing
-type MockLLMProviderForVerification struct{}
-
-func (m *MockLLMProviderForVerification) Complete(ctx context.Context, req interface{}) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *MockLLMProviderForVerification) CompleteStream(ctx context.Context, req interface{}) (<-chan interface{}, error) {
-	return nil, nil
-}
-
-func (m *MockLLMProviderForVerification) HealthCheck() error {
-	return nil
-}
-
-func (m *MockLLMProviderForVerification) GetCapabilities() interface{} {
-	return nil
-}
-
-func (m *MockLLMProviderForVerification) ValidateConfig(config map[string]interface{}) (bool, []string) {
-	return true, nil
-}
+// CONST-030: previously this file defined a `MockLLMProviderForVerification`
+// stub that implemented `interface{}`-typed methods and was not referenced
+// anywhere in the test body (dead code). Removed (PR13). The remaining
+// tests exercise the REAL `verifier.StartupVerifier.VerifyAllProviders`
+// against live providers gated by `testutil.RequireAPIKey(t, "deepseek")`
+// and `testing.Short()` skips — already CONST-030-compliant.

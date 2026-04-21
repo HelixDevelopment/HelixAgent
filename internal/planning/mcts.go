@@ -9,8 +9,10 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,8 +25,85 @@ const (
 	MCTSNodeStateTerminal   MCTSNodeState = "terminal"
 )
 
-// MCTSNode represents a node in the MCTS tree
+// MCTSNode represents a node in the MCTS tree.
+//
+// CONST-029: Visits and TotalReward are stored as atomics for lock-free
+// updates from parallel backpropagation; the historical JSON wire format
+// (plain int / float64 under `visits` / `total_reward`) is preserved via
+// custom MarshalJSON / UnmarshalJSON. Children is a *safe.Slice; Metadata
+// is a *safe.Store. Accessor methods Visits() / TotalReward() expose the
+// values via the historical int / float64 contract.
 type MCTSNode struct {
+	ID        string        `json:"id"`
+	ParentID  string        `json:"parent_id,omitempty"`
+	State     interface{}   `json:"state"`
+	Action    string        `json:"action,omitempty"`
+	NodeState MCTSNodeState `json:"node_state"`
+	Depth     int           `json:"depth"`
+	CreatedAt time.Time     `json:"created_at"`
+
+	// Hot-path counters: lock-free under parallel backpropagation.
+	visits      atomic.Int64
+	totalReward atomic.Uint64 // math.Float64bits storage
+
+	// Children and Metadata are concurrent-safe containers; internal code
+	// uses Append / Range / Snapshot instead of direct slice/map ops.
+	Children *safe.Slice[*MCTSNode]      `json:"-"`
+	Metadata *safe.Store[string, interface{}] `json:"-"`
+}
+
+// Visits returns the visit count.
+func (n *MCTSNode) Visits() int {
+	return int(n.visits.Load())
+}
+
+// TotalReward returns the accumulated reward.
+func (n *MCTSNode) TotalReward() float64 {
+	return math.Float64frombits(n.totalReward.Load())
+}
+
+// SetVisits overrides the visit count (test-only helper).
+func (n *MCTSNode) SetVisits(v int) {
+	n.visits.Store(int64(v))
+}
+
+// SetTotalReward overrides the accumulated reward (test-only helper).
+func (n *MCTSNode) SetTotalReward(r float64) {
+	n.totalReward.Store(math.Float64bits(r))
+}
+
+// AverageReward returns the average reward for this node.
+func (n *MCTSNode) AverageReward() float64 {
+	v := n.visits.Load()
+	if v == 0 {
+		return 0
+	}
+	return math.Float64frombits(n.totalReward.Load()) / float64(v)
+}
+
+// AddReward adds a reward to the node. Lock-free under parallel backprop.
+func (n *MCTSNode) AddReward(reward float64) {
+	n.visits.Add(1)
+	for {
+		prev := n.totalReward.Load()
+		next := math.Float64bits(math.Float64frombits(prev) + reward)
+		if n.totalReward.CompareAndSwap(prev, next) {
+			return
+		}
+	}
+}
+
+// ChildrenSnapshot returns the children as a plain slice (copy); safe for
+// iteration without holding any lock.
+func (n *MCTSNode) ChildrenSnapshot() []*MCTSNode {
+	if n.Children == nil {
+		return nil
+	}
+	return n.Children.Snapshot()
+}
+
+// mctsNodeJSON is the wire-format shape (historical fields preserved).
+type mctsNodeJSON struct {
 	ID          string                 `json:"id"`
 	ParentID    string                 `json:"parent_id,omitempty"`
 	State       interface{}            `json:"state"`
@@ -36,25 +115,55 @@ type MCTSNode struct {
 	Depth       int                    `json:"depth"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   time.Time              `json:"created_at"`
-	mu          sync.RWMutex
 }
 
-// AverageReward returns the average reward for this node
-func (n *MCTSNode) AverageReward() float64 {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-	if n.Visits == 0 {
-		return 0
+// MarshalJSON preserves the public /v1/planning/mcts wire format.
+func (n *MCTSNode) MarshalJSON() ([]byte, error) {
+	var children []*MCTSNode
+	if n.Children != nil {
+		children = n.Children.Snapshot()
 	}
-	return n.TotalReward / float64(n.Visits)
+	var metadata map[string]interface{}
+	if n.Metadata != nil {
+		metadata = n.Metadata.Snapshot()
+	}
+	return json.Marshal(&mctsNodeJSON{
+		ID:          n.ID,
+		ParentID:    n.ParentID,
+		State:       n.State,
+		Action:      n.Action,
+		Visits:      int(n.visits.Load()),
+		TotalReward: math.Float64frombits(n.totalReward.Load()),
+		Children:    children,
+		NodeState:   n.NodeState,
+		Depth:       n.Depth,
+		Metadata:    metadata,
+		CreatedAt:   n.CreatedAt,
+	})
 }
 
-// AddReward adds a reward to the node
-func (n *MCTSNode) AddReward(reward float64) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.Visits++
-	n.TotalReward += reward
+// UnmarshalJSON restores a node from its wire format.
+func (n *MCTSNode) UnmarshalJSON(data []byte) error {
+	var tmp mctsNodeJSON
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	n.ID = tmp.ID
+	n.ParentID = tmp.ParentID
+	n.State = tmp.State
+	n.Action = tmp.Action
+	n.NodeState = tmp.NodeState
+	n.Depth = tmp.Depth
+	n.CreatedAt = tmp.CreatedAt
+	n.visits.Store(int64(tmp.Visits))
+	n.totalReward.Store(math.Float64bits(tmp.TotalReward))
+	if len(tmp.Children) > 0 {
+		n.Children = safe.NewSlice(tmp.Children...)
+	}
+	if len(tmp.Metadata) > 0 {
+		n.Metadata = safe.NewStoreFromMap(tmp.Metadata)
+	}
+	return nil
 }
 
 // MCTSConfig holds configuration for MCTS
@@ -171,7 +280,8 @@ func (m *MCTS) Search(ctx context.Context, initialState interface{}) (*MCTSResul
 		NodeState: MCTSNodeStateUnexpanded,
 		Depth:     0,
 		CreatedAt: time.Now(),
-		Metadata:  make(map[string]interface{}),
+		Children:  safe.NewSlice[*MCTSNode](),
+		Metadata:  safe.NewStore[string, interface{}](),
 	}
 
 	// Main MCTS loop
@@ -220,7 +330,7 @@ func (m *MCTS) Search(ctx context.Context, initialState interface{}) (*MCTSResul
 		BestPath:        bestPath,
 		TotalIterations: m.iterations,
 		Duration:        time.Since(startTime),
-		RootVisits:      m.root.Visits,
+		RootVisits:      m.root.Visits(),
 		TreeSize:        m.countNodes(m.root),
 	}
 
@@ -236,9 +346,13 @@ func (m *MCTS) Search(ctx context.Context, initialState interface{}) (*MCTSResul
 func (m *MCTS) selectNode(ctx context.Context, node *MCTSNode) *MCTSNode {
 	current := node
 
-	for current.NodeState == MCTSNodeStateExpanded && len(current.Children) > 0 {
+	for {
+		children := current.ChildrenSnapshot()
+		if current.NodeState != MCTSNodeStateExpanded || len(children) == 0 {
+			break
+		}
 		// Check if any child is unexpanded
-		for _, child := range current.Children {
+		for _, child := range children {
 			if child.NodeState == MCTSNodeStateUnexpanded {
 				return child
 			}
@@ -261,11 +375,9 @@ func (m *MCTS) UCTValue(node *MCTSNode, parentVisits int) float64 {
 		return 0
 	}
 
-	node.mu.RLock()
-	visits := node.Visits
-	reward := node.TotalReward
+	visits := int(node.visits.Load())
+	reward := math.Float64frombits(node.totalReward.Load())
 	depth := node.Depth
-	node.mu.RUnlock()
 
 	if visits == 0 {
 		return math.Inf(1) // Prioritize unvisited nodes
@@ -292,27 +404,23 @@ func (m *MCTS) UCTValue(node *MCTSNode, parentVisits int) float64 {
 
 // selectBestChild selects the best child using UCB1 or UCT-DP
 func (m *MCTS) selectBestChild(node *MCTSNode) *MCTSNode {
-	if len(node.Children) == 0 {
+	children := node.ChildrenSnapshot()
+	if len(children) == 0 {
 		return nil
 	}
 
 	var bestChild *MCTSNode
 	bestValue := math.Inf(-1)
 
-	node.mu.RLock()
-	parentVisits := node.Visits
-	node.mu.RUnlock()
-
+	parentVisits := int(node.visits.Load())
 	if parentVisits == 0 {
 		parentVisits = 1
 	}
 
-	for _, child := range node.Children {
-		child.mu.RLock()
-		visits := child.Visits
-		reward := child.TotalReward
+	for _, child := range children {
+		visits := int(child.visits.Load())
+		reward := math.Float64frombits(child.totalReward.Load())
 		depth := child.Depth
-		child.mu.RUnlock()
 
 		if visits == 0 {
 			// Prioritize unvisited nodes
@@ -373,7 +481,9 @@ func (m *MCTS) expand(ctx context.Context, node *MCTSNode) (*MCTSNode, error) {
 	}
 
 	// Create child nodes
-	node.mu.Lock()
+	if node.Children == nil {
+		node.Children = safe.NewSlice[*MCTSNode]()
+	}
 	for i, action := range actions {
 		newState, err := m.actionGen.ApplyAction(ctx, node.State, action)
 		if err != nil {
@@ -388,16 +498,17 @@ func (m *MCTS) expand(ctx context.Context, node *MCTSNode) (*MCTSNode, error) {
 			NodeState: MCTSNodeStateUnexpanded,
 			Depth:     node.Depth + 1,
 			CreatedAt: time.Now(),
-			Metadata:  make(map[string]interface{}),
+			Children:  safe.NewSlice[*MCTSNode](),
+			Metadata:  safe.NewStore[string, interface{}](),
 		}
-		node.Children = append(node.Children, child)
+		node.Children.Append(child)
 	}
 	node.NodeState = MCTSNodeStateExpanded
-	node.mu.Unlock()
 
 	// Return a random unexpanded child
-	if len(node.Children) > 0 {
-		return node.Children[m.rng.Intn(len(node.Children))], nil
+	children := node.ChildrenSnapshot()
+	if len(children) > 0 {
+		return children[m.rng.Intn(len(children))], nil
 	}
 
 	return node, nil
@@ -436,7 +547,7 @@ func (m *MCTS) findParent(root *MCTSNode, parentID string) *MCTSNode {
 		return root
 	}
 
-	for _, child := range root.Children {
+	for _, child := range root.ChildrenSnapshot() {
 		if found := m.findParent(child, parentID); found != nil {
 			return found
 		}
@@ -450,12 +561,16 @@ func (m *MCTS) getBestPath() []*MCTSNode {
 	path := []*MCTSNode{m.root}
 	current := m.root
 
-	for len(current.Children) > 0 {
+	for {
+		children := current.ChildrenSnapshot()
+		if len(children) == 0 {
+			break
+		}
 		// Select child with highest average reward
 		var bestChild *MCTSNode
 		bestReward := math.Inf(-1)
 
-		for _, child := range current.Children {
+		for _, child := range children {
 			avgReward := child.AverageReward()
 			if avgReward > bestReward {
 				bestReward = avgReward
@@ -480,7 +595,7 @@ func (m *MCTS) countNodes(node *MCTSNode) int {
 		return 0
 	}
 	count := 1
-	for _, child := range node.Children {
+	for _, child := range node.ChildrenSnapshot() {
 		count += m.countNodes(child)
 	}
 	return count

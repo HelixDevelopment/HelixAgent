@@ -10,7 +10,6 @@ internal/handlers/extended/planning.go:24:ExtendedPlanModeSession
 internal/knowledge/code_graph.go:124:CodeGraph
 internal/optimization/context/window.go:22:ContextWindow
 internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
-internal/planning/mcts.go:27:MCTSNode
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient

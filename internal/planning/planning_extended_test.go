@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestMCTS_UCTValue_Unvisited(t *testing.T) {
 	config := DefaultMCTSConfig()
 	mcts := NewMCTS(config, nil, nil, nil, nil)
 
-	node := &MCTSNode{Visits: 0}
+	node := &MCTSNode{}
 	value := mcts.UCTValue(node, 10)
 	assert.True(t, value > 1e10, "unvisited node should get infinity value")
 }
@@ -36,7 +37,9 @@ func TestMCTS_UCTValue_Normal(t *testing.T) {
 	config.UseUCTDP = false
 	mcts := NewMCTS(config, nil, nil, nil, nil)
 
-	node := &MCTSNode{Visits: 10, TotalReward: 7.0}
+	node := &MCTSNode{}
+	node.SetVisits(10)
+	node.SetTotalReward(7.0)
 	value := mcts.UCTValue(node, 100)
 
 	// exploitation = 7.0/10 = 0.7
@@ -51,8 +54,12 @@ func TestMCTS_UCTValue_WithDepthPreference(t *testing.T) {
 	config.MaxDepth = 10
 	mcts := NewMCTS(config, nil, nil, nil, nil)
 
-	shallow := &MCTSNode{Visits: 10, TotalReward: 5.0, Depth: 1}
-	deep := &MCTSNode{Visits: 10, TotalReward: 5.0, Depth: 8}
+	shallow := &MCTSNode{Depth: 1}
+	shallow.SetVisits(10)
+	shallow.SetTotalReward(5.0)
+	deep := &MCTSNode{Depth: 8}
+	deep.SetVisits(10)
+	deep.SetTotalReward(5.0)
 
 	shallowValue := mcts.UCTValue(shallow, 100)
 	deepValue := mcts.UCTValue(deep, 100)
@@ -66,7 +73,9 @@ func TestMCTS_UCTValue_ZeroParentVisits(t *testing.T) {
 	config.UseUCTDP = false
 	mcts := NewMCTS(config, nil, nil, nil, nil)
 
-	node := &MCTSNode{Visits: 5, TotalReward: 3.0}
+	node := &MCTSNode{}
+	node.SetVisits(5)
+	node.SetTotalReward(3.0)
 	value := mcts.UCTValue(node, 0)
 
 	// Should use parentVisits = 1 as minimum
@@ -77,14 +86,15 @@ func TestMCTS_CountNodes(t *testing.T) {
 	config := DefaultMCTSConfig()
 	mcts := NewMCTS(config, nil, nil, nil, nil)
 
+	c11 := &MCTSNode{ID: "c1-1"}
+	c1 := &MCTSNode{
+		ID:       "c1",
+		Children: safe.NewSlice[*MCTSNode](c11),
+	}
+	c2 := &MCTSNode{ID: "c2"}
 	root := &MCTSNode{
-		ID: "root",
-		Children: []*MCTSNode{
-			{ID: "c1", Children: []*MCTSNode{
-				{ID: "c1-1"},
-			}},
-			{ID: "c2"},
-		},
+		ID:       "root",
+		Children: safe.NewSlice[*MCTSNode](c1, c2),
 	}
 
 	count := mcts.countNodes(root)
@@ -101,7 +111,7 @@ func TestMCTS_FindParent(t *testing.T) {
 	child := &MCTSNode{ID: "child"}
 	root := &MCTSNode{
 		ID:       "root",
-		Children: []*MCTSNode{child},
+		Children: safe.NewSlice[*MCTSNode](child),
 	}
 
 	found := mcts.findParent(root, "root")
@@ -147,8 +157,8 @@ func TestMCTSNode_AddReward_Concurrent(t *testing.T) {
 		<-done
 	}
 
-	assert.Equal(t, 10, node.Visits)
-	assert.InDelta(t, 5.0, node.TotalReward, 0.001)
+	assert.Equal(t, 10, node.Visits())
+	assert.InDelta(t, 5.0, node.TotalReward(), 0.001)
 }
 
 // =============================================================================

@@ -2,12 +2,14 @@ package planning
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // MockThoughtGenerator implements ThoughtGenerator for testing
@@ -278,19 +280,15 @@ func TestMCTS_Search_WithRollout(t *testing.T) {
 }
 
 func TestMCTSNode_AverageReward(t *testing.T) {
-	node := &MCTSNode{
-		Visits:      10,
-		TotalReward: 7.5,
-	}
+	node := &MCTSNode{}
+	node.SetVisits(10)
+	node.SetTotalReward(7.5)
 
 	assert.Equal(t, 0.75, node.AverageReward())
 }
 
 func TestMCTSNode_AverageReward_ZeroVisits(t *testing.T) {
-	node := &MCTSNode{
-		Visits:      0,
-		TotalReward: 0,
-	}
+	node := &MCTSNode{}
 
 	assert.Equal(t, 0.0, node.AverageReward())
 }
@@ -301,8 +299,8 @@ func TestMCTSNode_AddReward(t *testing.T) {
 	node.AddReward(0.5)
 	node.AddReward(0.7)
 
-	assert.Equal(t, 2, node.Visits)
-	assert.Equal(t, 1.2, node.TotalReward)
+	assert.Equal(t, 2, node.Visits())
+	assert.InDelta(t, 1.2, node.TotalReward(), 0.0001)
 }
 
 func TestMCTSResult_MarshalJSON(t *testing.T) {
@@ -315,6 +313,39 @@ func TestMCTSResult_MarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, string(data), "duration_ms")
 	assert.Contains(t, string(data), "3000")
+}
+
+// TestMCTSNode_JSONRoundTrip guarantees the public /v1/planning/mcts wire
+// format is preserved after the CONST-029 migration to atomic-backed
+// visits/totalReward and safe.Slice children / safe.Store metadata.
+func TestMCTSNode_JSONRoundTrip(t *testing.T) {
+	original := &MCTSNode{
+		ID:        "root",
+		ParentID:  "",
+		State:     "initial",
+		Action:    "start",
+		NodeState: MCTSNodeStateExpanded,
+		Depth:     0,
+		CreatedAt: time.Date(2026, 4, 21, 12, 0, 0, 0, time.UTC),
+	}
+	original.SetVisits(5)
+	original.SetTotalReward(2.25)
+
+	data, err := json.Marshal(original)
+	require.NoError(t, err)
+
+	// Wire-format contract: "visits" and "total_reward" are top-level keys.
+	assert.Contains(t, string(data), `"visits":5`)
+	assert.Contains(t, string(data), `"total_reward":2.25`)
+
+	var restored MCTSNode
+	require.NoError(t, json.Unmarshal(data, &restored))
+
+	assert.Equal(t, original.ID, restored.ID)
+	assert.Equal(t, original.NodeState, restored.NodeState)
+	assert.Equal(t, original.Depth, restored.Depth)
+	assert.Equal(t, 5, restored.Visits())
+	assert.InDelta(t, 2.25, restored.TotalReward(), 0.0001)
 }
 
 // HiPlan Tests
@@ -540,10 +571,9 @@ func TestLLMThoughtEvaluator_IsTerminal(t *testing.T) {
 // =============================================================================
 
 func BenchmarkMCTSNode_AverageReward(b *testing.B) {
-	node := &MCTSNode{
-		Visits:      1000,
-		TotalReward: 750.0,
-	}
+	node := &MCTSNode{}
+	node.SetVisits(1000)
+	node.SetTotalReward(750.0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = node.AverageReward()

@@ -382,17 +382,13 @@ func TestACPClient_CloseAll(t *testing.T) {
 	log := newACPManagerTestLogger()
 	client := NewACPClient(5*time.Second, 1, log)
 
-	// Add some mock connections
-	client.wsConnsMu.Lock()
-	client.wsConns["ws://test1"] = nil
-	client.wsConns["ws://test2"] = nil
-	client.wsConnsMu.Unlock()
+	// Add some mock connections (post-CONST-029: safe.Store, no bare mutex).
+	client.wsConns.Put("ws://test1", nil)
+	client.wsConns.Put("ws://test2", nil)
 
 	client.CloseAll()
 
-	client.wsConnsMu.RLock()
-	assert.Empty(t, client.wsConns)
-	client.wsConnsMu.RUnlock()
+	assert.Equal(t, 0, client.wsConns.Len())
 }
 
 // ========== ACPManager Tests ==========
@@ -429,8 +425,10 @@ func TestNewACPManagerWithConfig(t *testing.T) {
 
 	require.NotNil(t, manager)
 	assert.Equal(t, cfg, manager.config)
-	assert.Len(t, manager.servers, 1)
-	assert.Equal(t, "server-1", manager.servers["server-1"].ID)
+	assert.Equal(t, 1, manager.servers.Len())
+	s, ok := manager.servers.Get("server-1")
+	require.True(t, ok)
+	assert.Equal(t, "server-1", s.ID)
 }
 
 func TestNewACPManagerWithConfig_NilConfig(t *testing.T) {
@@ -438,7 +436,7 @@ func TestNewACPManagerWithConfig_NilConfig(t *testing.T) {
 	manager := NewACPManagerWithConfig(nil, nil, log, nil)
 
 	require.NotNil(t, manager)
-	assert.Empty(t, manager.servers)
+	assert.Equal(t, 0, manager.servers.Len())
 }
 
 func TestACPManager_RegisterServer(t *testing.T) {
@@ -948,13 +946,18 @@ func TestACPManager_GetACPStats_WithServers(t *testing.T) {
 	}
 	manager := NewACPManagerWithConfig(nil, nil, log, cfg)
 
-	// Add capabilities to enabled server
-	manager.serversMu.Lock()
-	manager.servers["server-1"].Capabilities = []ACPCapability{
-		{Name: "cap1"},
-		{Name: "cap2"},
-	}
-	manager.serversMu.Unlock()
+	// Add capabilities to enabled server (post-CONST-029: safe.Store.Update
+	// serialises the per-key read-modify-write, replacing the bare mutex).
+	manager.servers.Update("server-1", func(current *ACPServer, present bool) (*ACPServer, bool) {
+		if !present || current == nil {
+			return nil, false
+		}
+		current.Capabilities = []ACPCapability{
+			{Name: "cap1"},
+			{Name: "cap2"},
+		}
+		return current, true
+	})
 
 	ctx := context.Background()
 	stats, err := manager.GetACPStats(ctx)

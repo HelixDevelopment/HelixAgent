@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/database"
@@ -18,15 +19,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ACPManager handles ACP (Agent Client Protocol) operations
+// ACPManager handles ACP (Agent Client Protocol) operations.
+//
+// CONST-029 migration: the `sync.RWMutex + map[string]*ACPServer` combination
+// was retired in favour of safe.Store (Pattern A). Every read/write of the
+// servers collection now goes through safe.Store's internal RWMutex, so
+// there is no bare mutex for callers to forget. No compound invariant
+// spans multiple collection operations (RegisterServer is a simple Put;
+// SyncACPServer's read-modify-write runs through safe.Store.Update which
+// serialises per-key updates internally), so no ambient mu is retained.
 type ACPManager struct {
 	repo       *database.ModelMetadataRepository
 	cache      CacheInterface
 	log        *logrus.Logger
 	config     *config.ACPConfig
 	client     *ACPClient
-	servers    map[string]*ACPServer
-	serversMu  sync.RWMutex
+	servers    *safe.Store[string, *ACPServer]
 	httpClient *http.Client
 }
 
@@ -63,12 +71,22 @@ type ACPResponse struct {
 	Timestamp time.Time   `json:"timestamp"`
 }
 
-// ACPClient handles HTTP and WebSocket communication with ACP servers
+// ACPClient handles HTTP and WebSocket communication with ACP servers.
+//
+// CONST-029 migration: the `sync.RWMutex + map[string]*websocket.Conn`
+// combination was retired in favour of safe.Store (Pattern A). The
+// previous dial-then-register path (Lock → check → Dial → store →
+// Unlock) held the mutex across a network dial, which is both a
+// responsiveness hazard and the exact kind of compound-invariant
+// critical section the playbook highlights. The new implementation
+// dials without holding any lock and then uses safe.Store.Update to
+// atomically install the new connection only if no other goroutine
+// raced ahead; if a race is detected, the late arrival is closed so
+// we never leak a socket.
 type ACPClient struct {
 	httpClient *http.Client
 	wsDialer   *websocket.Dialer
-	wsConns    map[string]*websocket.Conn
-	wsConnsMu  sync.RWMutex
+	wsConns    *safe.Store[string, *websocket.Conn]
 	timeout    time.Duration
 	maxRetries int
 	log        *logrus.Logger
@@ -113,7 +131,7 @@ func NewACPClient(timeout time.Duration, maxRetries int, log *logrus.Logger) *AC
 		wsDialer: &websocket.Dialer{
 			HandshakeTimeout: timeout,
 		},
-		wsConns:    make(map[string]*websocket.Conn),
+		wsConns:    safe.NewStore[string, *websocket.Conn](),
 		timeout:    timeout,
 		maxRetries: maxRetries,
 		log:        log,
@@ -179,21 +197,37 @@ func (c *ACPClient) ExecuteHTTP(ctx context.Context, serverURL string, req ACPPr
 	return nil, lastErr
 }
 
-// ExecuteWS executes an ACP action via WebSocket
+// ExecuteWS executes an ACP action via WebSocket.
+//
+// CONST-029: we avoid holding any lock across the dial. The previous
+// implementation serialised all concurrent ExecuteWS calls behind
+// c.wsConnsMu.Lock() during the DialContext, which is both a
+// responsiveness hazard and awkward with safe.Store. The new flow:
+//  1. Fast path — safe.Store.Get: if a cached conn exists, reuse it.
+//  2. Slow path — DialContext without any lock held.
+//  3. safe.Store.Update: install atomically unless a racing goroutine
+//     got there first, in which case we close our late arrival and
+//     reuse the winner's connection to avoid leaking sockets.
 func (c *ACPClient) ExecuteWS(ctx context.Context, serverURL string, req ACPProtocolRequest) (*ACPProtocolResponse, error) {
-	c.wsConnsMu.Lock()
-	conn, exists := c.wsConns[serverURL]
+	conn, exists := c.wsConns.Get(serverURL)
 	if !exists || conn == nil {
-		// Establish new connection
-		var err error
-		conn, _, err = c.wsDialer.DialContext(ctx, serverURL, nil)
+		dialed, _, err := c.wsDialer.DialContext(ctx, serverURL, nil)
 		if err != nil {
-			c.wsConnsMu.Unlock()
 			return nil, fmt.Errorf("failed to connect to WebSocket: %w", err)
 		}
-		c.wsConns[serverURL] = conn
+		// Atomically install only if no other goroutine raced ahead.
+		c.wsConns.Update(serverURL, func(current *websocket.Conn, present bool) (*websocket.Conn, bool) {
+			if present && current != nil {
+				// A concurrent caller already installed a connection;
+				// close ours and use theirs.
+				_ = dialed.Close()
+				conn = current
+				return current, true
+			}
+			conn = dialed
+			return dialed, true
+		})
 	}
-	c.wsConnsMu.Unlock()
 
 	// Send request
 	if err := conn.WriteJSON(req); err != nil {
@@ -255,24 +289,18 @@ func (c *ACPClient) GetServerInfo(ctx context.Context, serverURL string) (*ACPSe
 
 // CloseAll closes all WebSocket connections
 func (c *ACPClient) CloseAll() {
-	c.wsConnsMu.Lock()
-	defer c.wsConnsMu.Unlock()
-
-	for url, conn := range c.wsConns {
+	snapshot := c.wsConns.Snapshot()
+	c.wsConns.Clear()
+	for _, conn := range snapshot {
 		if conn != nil {
 			_ = conn.Close()
 		}
-		delete(c.wsConns, url)
 	}
 }
 
 func (c *ACPClient) closeWSConn(serverURL string) {
-	c.wsConnsMu.Lock()
-	defer c.wsConnsMu.Unlock()
-
-	if conn, exists := c.wsConns[serverURL]; exists && conn != nil {
+	if conn, existed := c.wsConns.Delete(serverURL); existed && conn != nil {
 		_ = conn.Close()
-		delete(c.wsConns, serverURL)
 	}
 }
 
@@ -301,7 +329,7 @@ func NewACPManagerWithConfig(repo *database.ModelMetadataRepository, cache Cache
 		log:     log,
 		config:  cfg,
 		client:  NewACPClient(timeout, maxRetries, log),
-		servers: make(map[string]*ACPServer),
+		servers: safe.NewStore[string, *ACPServer](),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -310,12 +338,12 @@ func NewACPManagerWithConfig(repo *database.ModelMetadataRepository, cache Cache
 	// Load servers from config
 	if cfg != nil {
 		for _, serverCfg := range cfg.Servers {
-			m.servers[serverCfg.ID] = &ACPServer{
+			m.servers.Put(serverCfg.ID, &ACPServer{
 				ID:      serverCfg.ID,
 				Name:    serverCfg.Name,
 				URL:     serverCfg.URL,
 				Enabled: serverCfg.Enabled,
-			}
+			})
 		}
 	}
 
@@ -331,10 +359,7 @@ func (m *ACPManager) RegisterServer(server *ACPServer) error {
 		return fmt.Errorf("server URL is required")
 	}
 
-	m.serversMu.Lock()
-	defer m.serversMu.Unlock()
-
-	m.servers[server.ID] = server
+	m.servers.Put(server.ID, server)
 	m.log.WithFields(logrus.Fields{
 		"serverId": server.ID,
 		"name":     server.Name,
@@ -346,32 +371,26 @@ func (m *ACPManager) RegisterServer(server *ACPServer) error {
 
 // UnregisterServer removes an ACP server
 func (m *ACPManager) UnregisterServer(serverID string) error {
-	m.serversMu.Lock()
-	defer m.serversMu.Unlock()
-
-	if _, exists := m.servers[serverID]; !exists {
+	if _, existed := m.servers.Delete(serverID); !existed {
 		return fmt.Errorf("ACP server %s not found", serverID)
 	}
 
-	delete(m.servers, serverID)
 	m.log.WithField("serverId", serverID).Info("Unregistered ACP server")
-
 	return nil
 }
 
 // ListACPServers lists all configured ACP servers
 func (m *ACPManager) ListACPServers(ctx context.Context) ([]*ACPServer, error) {
-	m.serversMu.RLock()
-	defer m.serversMu.RUnlock()
+	snapshot := m.servers.Snapshot()
 
 	// If no servers are registered, return empty list
-	if len(m.servers) == 0 {
+	if len(snapshot) == 0 {
 		m.log.Info("No ACP servers configured")
 		return []*ACPServer{}, nil
 	}
 
-	servers := make([]*ACPServer, 0, len(m.servers))
-	for _, server := range m.servers {
+	servers := make([]*ACPServer, 0, len(snapshot))
+	for _, server := range snapshot {
 		servers = append(servers, server)
 	}
 
@@ -381,10 +400,7 @@ func (m *ACPManager) ListACPServers(ctx context.Context) ([]*ACPServer, error) {
 
 // GetACPServer gets a specific ACP server by ID
 func (m *ACPManager) GetACPServer(ctx context.Context, serverID string) (*ACPServer, error) {
-	m.serversMu.RLock()
-	defer m.serversMu.RUnlock()
-
-	server, exists := m.servers[serverID]
+	server, exists := m.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("ACP server %s not found", serverID)
 	}
@@ -493,20 +509,22 @@ func (m *ACPManager) SyncACPServer(ctx context.Context, serverID string) error {
 		return fmt.Errorf("failed to fetch server info: %w", err)
 	}
 
-	// Update server with fetched info
-	m.serversMu.Lock()
-	defer m.serversMu.Unlock()
-
-	if s, exists := m.servers[serverID]; exists {
-		s.Version = info.Version
-		s.Capabilities = info.Capabilities
-		now := time.Now()
-		s.LastSync = &now
-
-		if info.Name != "" {
-			s.Name = info.Name
+	// Atomic read-modify-write through safe.Store.Update: serialises
+	// per-key mutation with concurrent readers so field updates are
+	// published consistently.
+	m.servers.Update(serverID, func(current *ACPServer, present bool) (*ACPServer, bool) {
+		if !present || current == nil {
+			return nil, false
 		}
-	}
+		current.Version = info.Version
+		current.Capabilities = info.Capabilities
+		now := time.Now()
+		current.LastSync = &now
+		if info.Name != "" {
+			current.Name = info.Name
+		}
+		return current, true
+	})
 
 	m.log.WithFields(logrus.Fields{
 		"serverId":     serverID,

@@ -1,4 +1,10 @@
-package chaos
+// Previously tests/chaos/provider_fallout_chaos_test.go. CONST-030
+// forbids in-process mocks in non-unit tests; this file exercises
+// a local chaosMockProvider to simulate per-provider outages against
+// the ensemble worker-pool fallback chain — pure package-level unit
+// logic. True fallout chaos needs toxiproxy / live containers against
+// :7061. Moved to the unit tree in PR32 of the CONST-030 campaign.
+package chaos_provider_legacy_test
 
 // Provider-fallout chaos test — opt-in. Simulates each LLM provider
 // going offline in sequence while the ensemble is under load, and

@@ -1,4 +1,9 @@
-package integration
+// CONST-030: these tests exercise the in-process debate Protocol against a
+// canned `mockInvoker` (no live LLM). They assert on in-process invariants:
+// 8-phase execution order, early-consensus exit, timeout & cancellation
+// handling, and multi-topology compatibility. All are unit-level per
+// CONST-030. Demoted from tests/integration/ (PR9).
+package debate_test
 
 import (
 	"context"

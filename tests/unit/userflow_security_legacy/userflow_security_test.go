@@ -1,4 +1,9 @@
-package security
+// Previously tests/security/userflow_security_test.go. CONST-030 forbids
+// mocks in non-unit tests; this file wires a local securityMockAPIAdapter
+// (no-op HTTP / WebSocket methods) through the userflow harness in
+// memory — zero live HelixAgent interaction. PR28 of the CONST-030
+// compliance campaign.
+package userflow_security_legacy_test
 
 import (
 	"context"

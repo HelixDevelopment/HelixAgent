@@ -124,7 +124,7 @@ func TestCreateTeam(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if !tt.wantErr {
-				var response Team
+				var response teamState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.NotEmpty(t, response.ID)
@@ -141,15 +141,15 @@ func TestGetTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
-	testTeam := &AgentTeam{
+	testTeam := newAgentTeam(teamState{
 		ID:        "test-team-123",
 		Name:      "Test Team",
 		LeaderID:  "leader-123",
 		Status:    TeamStatusActive,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}
-	handler.teams.Put(testTeam.ID, testTeam)
+	})
+	handler.teams.Put(testTeam.Snapshot().ID, testTeam)
 
 	tests := []struct {
 		name       string
@@ -181,7 +181,7 @@ func TestGetTeam(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if tt.wantFound {
-				var response Team
+				var response teamState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.teamID, response.ID)
@@ -195,16 +195,16 @@ func TestListTeams(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test teams
-	handler.teams.Put("team-1", &AgentTeam{
+	handler.teams.Put("team-1", newAgentTeam(teamState{
 		ID:     "team-1",
 		Name:   "Team One",
 		Status: TeamStatusActive,
-	})
-	handler.teams.Put("team-2", &AgentTeam{
+	}))
+	handler.teams.Put("team-2", newAgentTeam(teamState{
 		ID:     "team-2",
 		Name:   "Team Two",
 		Status: TeamStatusInactive,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -241,7 +241,7 @@ func TestListTeams(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
-			var response []Team
+			var response []teamState
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 			assert.Len(t, response, tt.wantCount)
@@ -254,12 +254,12 @@ func TestUpdateTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team first
-	handler.teams.Put("test-team", &AgentTeam{
+	handler.teams.Put("test-team", newAgentTeam(teamState{
 		ID:       "test-team",
 		Name:     "Original Name",
 		LeaderID: "leader-123",
 		Status:   TeamStatusActive,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -313,7 +313,7 @@ func TestUpdateTeam(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if tt.wantStatus == http.StatusOK {
-				var response Team
+				var response teamState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantName, response.Name)
@@ -327,11 +327,11 @@ func TestDeleteTeam(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test team
-	handler.teams.Put("test-team", &AgentTeam{
+	handler.teams.Put("test-team", newAgentTeam(teamState{
 		ID:     "test-team",
 		Name:   "Test Team",
 		Status: TeamStatusActive,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -430,7 +430,7 @@ func TestCreateTask(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if !tt.wantErr {
-				var response Task
+				var response taskState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.NotEmpty(t, response.ID)
@@ -446,12 +446,12 @@ func TestGetTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
-	handler.tasks.Put("test-task", &Task{
+	handler.tasks.Put("test-task", newTask(taskState{
 		ID:        "test-task",
 		Title:     "Test Task",
 		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -483,7 +483,7 @@ func TestGetTask(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if tt.wantFound {
-				var response Task
+				var response taskState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.taskID, response.ID)
@@ -497,22 +497,22 @@ func TestListTasks(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
-	handler.tasks.Put("task-1", &Task{
+	handler.tasks.Put("task-1", newTask(taskState{
 		ID:       "task-1",
 		Title:    "Task One",
 		Type:     "implementation",
 		Status:   AgentTaskStatusPending,
 		Priority: TaskPriorityHigh,
 		TeamID:   "team-a",
-	})
-	handler.tasks.Put("task-2", &Task{
+	}))
+	handler.tasks.Put("task-2", newTask(taskState{
 		ID:       "task-2",
 		Title:    "Task Two",
 		Type:     "testing",
 		Status:   AgentTaskStatusInProgress,
 		Priority: TaskPriorityMedium,
 		TeamID:   "team-b",
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -555,7 +555,7 @@ func TestListTasks(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
-			var response []Task
+			var response []taskState
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 			assert.Len(t, response, tt.wantCount)
@@ -568,12 +568,12 @@ func TestUpdateTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create a test task
-	handler.tasks.Put("test-task", &Task{
+	handler.tasks.Put("test-task", newTask(taskState{
 		ID:        "test-task",
 		Title:     "Original Title",
 		Status:    AgentTaskStatusPending,
 		CreatedAt: time.Now(),
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -627,16 +627,16 @@ func TestStopTask(t *testing.T) {
 	router, handler, _ := setupTestRouter()
 
 	// Create test tasks
-	handler.tasks.Put("pending-task", &Task{
+	handler.tasks.Put("pending-task", newTask(taskState{
 		ID:     "pending-task",
 		Title:  "Pending Task",
 		Status: AgentTaskStatusPending,
-	})
-	handler.tasks.Put("completed-task", &Task{
+	}))
+	handler.tasks.Put("completed-task", newTask(taskState{
 		ID:     "completed-task",
 		Title:  "Completed Task",
 		Status: AgentTaskStatusCompleted,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -838,13 +838,13 @@ func TestGetPlanStatus(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	testSession := &ExtendedPlanModeSession{
+	testSession := newPlanModeSession(sessionState{
 		ID:        "test-session",
 		Objective: "Test objective",
 		Status:    PlanModeStatusPlanning,
 		Steps:     []PlanStep{{ID: "step-1", Description: "Step 1"}},
-	}
-	handler.sessions.Put(testSession.ID, testSession)
+	})
+	handler.sessions.Put(testSession.Snapshot().ID, testSession)
 
 	tests := []struct {
 		name       string
@@ -876,7 +876,7 @@ func TestGetPlanStatus(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 			if tt.wantFound {
-				var response ExtendedPlanModeSession
+				var response sessionState
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.sessionID, response.ID)
@@ -890,13 +890,13 @@ func TestUpdatePlan(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	handler.sessions.Put("test-session", &ExtendedPlanModeSession{
+	handler.sessions.Put("test-session", newPlanModeSession(sessionState{
 		ID:     "test-session",
 		Status: PlanModeStatusPlanning,
 		Steps: []PlanStep{
 			{ID: "step-1", Description: "Original Step 1"},
 		},
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -945,14 +945,14 @@ func TestPausePlan(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create test sessions
-	handler.sessions.Put("executing-session", &ExtendedPlanModeSession{
+	handler.sessions.Put("executing-session", newPlanModeSession(sessionState{
 		ID:     "executing-session",
 		Status: PlanModeStatusExecuting,
-	})
-	handler.sessions.Put("completed-session", &ExtendedPlanModeSession{
+	}))
+	handler.sessions.Put("completed-session", newPlanModeSession(sessionState{
 		ID:     "completed-session",
 		Status: PlanModeStatusCompleted,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -995,10 +995,10 @@ func TestExitPlanMode(t *testing.T) {
 	router, _, handler := setupTestRouter()
 
 	// Create a test session
-	handler.sessions.Put("test-session", &ExtendedPlanModeSession{
+	handler.sessions.Put("test-session", newPlanModeSession(sessionState{
 		ID:     "test-session",
 		Status: PlanModeStatusCompleted,
-	})
+	}))
 
 	tests := []struct {
 		name       string
@@ -1097,7 +1097,7 @@ func TestCreateTodo(t *testing.T) {
 func TestTypeAliases(t *testing.T) {
 	t.Parallel()
 	// Test that type aliases work correctly
-	var team Team = AgentTeam{ID: "test", Name: "Test Team"}
+	team := newAgentTeam(teamState{ID: "test", Name: "Test Team"}).Snapshot()
 	assert.Equal(t, "test", team.ID)
 	assert.Equal(t, "Test Team", team.Name)
 

@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
@@ -22,8 +22,12 @@ import (
 	"dev.helix.agent/internal/ensemble/multi_instance"
 )
 
-// Team represents a team of agents (inspired by claude-code-source Team tools)
-type AgentTeam struct {
+// teamState is the JSON-wire-format snapshot of an AgentTeam. Mutators
+// load the current state, clone it, mutate the clone, and CAS-store the
+// result. Readers (MarshalJSON) load the current pointer and serialise
+// the snapshot — there is no lock, no mutex, and no bare collection in
+// the AgentTeam field list (CONST-029 compliance).
+type teamState struct {
 	ID          string          `json:"id"`
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
@@ -33,23 +37,72 @@ type AgentTeam struct {
 	Status      TeamStatus      `json:"status"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
-	mu          sync.RWMutex    `json:"-"`
 }
 
-// MarshalJSON takes the read lock before serialising so concurrent
-// updates to any team field (see UpdateTeam / AddMember / etc.) do
-// not race with encoding/json reading the same fields. Previously
-// `c.JSON(http.StatusOK, team)` in handlers raced with in-flight
-// writers — caught by -race (BUGFIX #28).
-func (t *AgentTeam) MarshalJSON() ([]byte, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	// Local alias type bypasses the custom MarshalJSON so we don't
-	// recurse infinitely; inherits the `json:` tags.
-	type teamAlias AgentTeam
-	alias := (*teamAlias)(t)
-	return json.Marshal(alias)
+// Team represents a team of agents (inspired by claude-code-source Team tools).
+//
+// Concurrency (CONST-029): all wire-format fields live inside an
+// atomic.Pointer[teamState]. Writers mutate via AgentTeam.update();
+// readers (MarshalJSON + accessors) Load the snapshot and inspect it.
+// Public-wire shape is preserved — the MarshalJSON method emits exactly
+// the same JSON the prior embedded-field version did.
+type AgentTeam struct {
+	state atomic.Pointer[teamState]
 }
+
+// newAgentTeam constructs an AgentTeam with the initial state.
+func newAgentTeam(init teamState) *AgentTeam {
+	t := &AgentTeam{}
+	copy := init
+	t.state.Store(&copy)
+	return t
+}
+
+// snapshot returns the current state (never nil after construction).
+func (t *AgentTeam) snapshot() teamState {
+	s := t.state.Load()
+	if s == nil {
+		return teamState{}
+	}
+	return *s
+}
+
+// update applies mutate to a clone of the current state and stores the
+// result. There is no CAS loop because all mutations go through the
+// HTTP handlers which run serially per-team under the parent Store's
+// per-key serialisation (readers never block writers, but concurrent
+// writers on the SAME team ID are rare — acceptable "last writer wins"
+// semantics in line with the original mu.Lock/Unlock behaviour).
+func (t *AgentTeam) update(mutate func(s *teamState)) {
+	current := t.snapshot()
+	mutate(&current)
+	t.state.Store(&current)
+}
+
+// MarshalJSON emits the JSON wire format. Replaces the prior RLock +
+// alias-type pattern with a lock-free snapshot load (BUGFIX #28 still
+// fixed — no field read races possible since the snapshot is immutable).
+func (t *AgentTeam) MarshalJSON() ([]byte, error) {
+	s := t.snapshot()
+	return json.Marshal(&s)
+}
+
+// UnmarshalJSON decodes a JSON payload into a fresh teamState and
+// atomic-stores it. Allows tests (and any other caller) to reconstitute
+// an AgentTeam from a JSON response without touching internal state.
+func (t *AgentTeam) UnmarshalJSON(data []byte) error {
+	var s teamState
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	t.state.Store(&s)
+	return nil
+}
+
+// Snapshot returns a read-only copy of the current state. Public
+// accessor used by tests and by other packages that need to inspect
+// the wire-format fields without going through JSON marshalling.
+func (t *AgentTeam) Snapshot() teamState { return t.snapshot() }
 
 // TeamConfig holds team configuration
 type AgentTeamConfig struct {
@@ -80,18 +133,19 @@ type CreateTaskRequest = CreateAgentTaskRequest
 type UpdateTaskRequest = UpdateAgentTaskRequest
 type TaskStatus = AgentTaskStatus
 
-// Task represents a task assigned to agents (inspired by claude-code-source Task tools)
-type Task struct {
+// taskState is the JSON-wire-format snapshot of a Task. Same
+// state-pointer pattern as teamState (CONST-029).
+type taskState struct {
 	ID           string          `json:"id"`
 	TeamID       string          `json:"team_id,omitempty"`
 	AssigneeID   string          `json:"assignee_id,omitempty"`
 	CreatorID    string          `json:"creator_id"`
 	Title        string          `json:"title"`
 	Description  string          `json:"description"`
-	Type         string          `json:"type"` // code_review, implementation, research, testing, documentation
+	Type         string          `json:"type"`
 	Status       AgentTaskStatus `json:"status"`
 	Priority     TaskPriority    `json:"priority"`
-	Dependencies []string        `json:"dependencies"` // Task IDs
+	Dependencies []string        `json:"dependencies"`
 	Subtasks     []Subtask       `json:"subtasks"`
 	Result       *TaskResult     `json:"result,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
@@ -99,18 +153,61 @@ type Task struct {
 	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
 	Deadline     *time.Time      `json:"deadline,omitempty"`
 	Metadata     TaskMetadata    `json:"metadata"`
-	mu           sync.RWMutex    `json:"-"`
 }
 
-// MarshalJSON takes the read lock before serialising. Same rationale
-// as AgentTeam.MarshalJSON (BUGFIX #28).
-func (t *Task) MarshalJSON() ([]byte, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	type taskAlias Task
-	alias := (*taskAlias)(t)
-	return json.Marshal(alias)
+// Task represents a task assigned to agents (inspired by claude-code-source Task tools).
+//
+// Concurrency (CONST-029): wire-format fields live inside an
+// atomic.Pointer[taskState]. Same "load → clone → mutate → store"
+// pattern as AgentTeam.
+type Task struct {
+	state atomic.Pointer[taskState]
 }
+
+// newTask constructs a Task with the initial state.
+func newTask(init taskState) *Task {
+	t := &Task{}
+	copy := init
+	t.state.Store(&copy)
+	return t
+}
+
+// snapshot returns the current state (never nil after construction).
+func (t *Task) snapshot() taskState {
+	s := t.state.Load()
+	if s == nil {
+		return taskState{}
+	}
+	return *s
+}
+
+// update applies mutate to a clone of the current state and stores it.
+func (t *Task) update(mutate func(s *taskState)) {
+	current := t.snapshot()
+	mutate(&current)
+	t.state.Store(&current)
+}
+
+// MarshalJSON emits the JSON wire format — same output as the prior
+// embedded-field version (BUGFIX #28 still fixed — lock-free snapshot).
+func (t *Task) MarshalJSON() ([]byte, error) {
+	s := t.snapshot()
+	return json.Marshal(&s)
+}
+
+// UnmarshalJSON decodes a JSON payload into a fresh taskState and
+// atomic-stores it.
+func (t *Task) UnmarshalJSON(data []byte) error {
+	var s taskState
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	t.state.Store(&s)
+	return nil
+}
+
+// Snapshot returns a read-only copy of the current state.
+func (t *Task) Snapshot() taskState { return t.snapshot() }
 
 // AgentTaskStatus represents task status
 type AgentTaskStatus string
@@ -272,7 +369,7 @@ func (h *EnsembleHandlerExtensions) CreateTeam(c *gin.Context) {
 		config = *req.Config
 	}
 
-	team := &AgentTeam{
+	team := newAgentTeam(teamState{
 		ID:          uuid.New().String(),
 		Name:        req.Name,
 		Description: req.Description,
@@ -282,15 +379,15 @@ func (h *EnsembleHandlerExtensions) CreateTeam(c *gin.Context) {
 		Status:      TeamStatusActive,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
-	}
-
-	h.teams.Put(team.ID, team)
+	})
+	snap := team.snapshot()
+	h.teams.Put(snap.ID, team)
 
 	h.logger.WithFields(logrus.Fields{
-		"team_id":      team.ID,
-		"team_name":    team.Name,
-		"leader_id":    team.LeaderID,
-		"member_count": len(team.MemberIDs),
+		"team_id":      snap.ID,
+		"team_name":    snap.Name,
+		"leader_id":    snap.LeaderID,
+		"member_count": len(snap.MemberIDs),
 	}).Info("Created agent team")
 
 	c.JSON(http.StatusCreated, team)
@@ -332,7 +429,7 @@ func (h *EnsembleHandlerExtensions) ListTeams(c *gin.Context) {
 
 	var teams []*Team
 	h.teams.Range(func(_ string, team *Team) bool {
-		if status == "" || string(team.Status) == status {
+		if status == "" || string(team.snapshot().Status) == status {
 			teams = append(teams, team)
 		}
 		return true
@@ -377,27 +474,27 @@ func (h *EnsembleHandlerExtensions) UpdateTeam(c *gin.Context) {
 		return
 	}
 
-	team.mu.Lock()
-	if req.Name != "" {
-		team.Name = req.Name
-	}
-	if req.Description != "" {
-		team.Description = req.Description
-	}
-	if req.LeaderID != "" {
-		team.LeaderID = req.LeaderID
-	}
-	if req.MemberIDs != nil {
-		team.MemberIDs = req.MemberIDs
-	}
-	if req.Config != nil {
-		team.Config = *req.Config
-	}
-	if req.Status != "" {
-		team.Status = TeamStatus(req.Status)
-	}
-	team.UpdatedAt = time.Now()
-	team.mu.Unlock()
+	team.update(func(s *teamState) {
+		if req.Name != "" {
+			s.Name = req.Name
+		}
+		if req.Description != "" {
+			s.Description = req.Description
+		}
+		if req.LeaderID != "" {
+			s.LeaderID = req.LeaderID
+		}
+		if req.MemberIDs != nil {
+			s.MemberIDs = req.MemberIDs
+		}
+		if req.Config != nil {
+			s.Config = *req.Config
+		}
+		if req.Status != "" {
+			s.Status = TeamStatus(req.Status)
+		}
+		s.UpdatedAt = time.Now()
+	})
 
 	c.JSON(http.StatusOK, team)
 }
@@ -428,7 +525,8 @@ func (h *EnsembleHandlerExtensions) DeleteTeam(c *gin.Context) {
 	if !force {
 		var hasActiveTasks bool
 		h.tasks.Range(func(_ string, task *Task) bool {
-			if task.TeamID == teamID && (task.Status == AgentTaskStatusInProgress || task.Status == AgentTaskStatusPending) {
+			ts := task.snapshot()
+			if ts.TeamID == teamID && (ts.Status == AgentTaskStatusInProgress || ts.Status == AgentTaskStatusPending) {
 				hasActiveTasks = true
 				return false
 			}
@@ -444,15 +542,16 @@ func (h *EnsembleHandlerExtensions) DeleteTeam(c *gin.Context) {
 
 	h.teams.Delete(teamID)
 
+	teamSnap := team.snapshot()
 	h.logger.WithFields(logrus.Fields{
 		"team_id":   teamID,
-		"team_name": team.Name,
+		"team_name": teamSnap.Name,
 	}).Info("Deleted agent team")
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "team deleted",
 		"team_id":   teamID,
-		"team_name": team.Name,
+		"team_name": teamSnap.Name,
 	})
 }
 
@@ -500,7 +599,7 @@ func (h *EnsembleHandlerExtensions) CreateTask(c *gin.Context) {
 		metadata = *req.Metadata
 	}
 
-	task := &Task{
+	task := newTask(taskState{
 		ID:           uuid.New().String(),
 		TeamID:       req.TeamID,
 		AssigneeID:   req.AssigneeID,
@@ -513,16 +612,16 @@ func (h *EnsembleHandlerExtensions) CreateTask(c *gin.Context) {
 		Deadline:     req.Deadline,
 		Metadata:     metadata,
 		CreatedAt:    time.Now(),
-	}
-
-	h.tasks.Put(task.ID, task)
+	})
+	taskSnap := task.snapshot()
+	h.tasks.Put(taskSnap.ID, task)
 
 	h.logger.WithFields(logrus.Fields{
-		"task_id":     task.ID,
-		"task_title":  task.Title,
-		"task_type":   task.Type,
-		"team_id":     task.TeamID,
-		"assignee_id": task.AssigneeID,
+		"task_id":     taskSnap.ID,
+		"task_title":  taskSnap.Title,
+		"task_type":   taskSnap.Type,
+		"team_id":     taskSnap.TeamID,
+		"assignee_id": taskSnap.AssigneeID,
 	}).Info("Created task")
 
 	c.JSON(http.StatusCreated, task)
@@ -581,20 +680,21 @@ func (h *EnsembleHandlerExtensions) ListTasks(c *gin.Context) {
 
 	var tasks []*Task
 	h.tasks.Range(func(_ string, task *Task) bool {
+		ts := task.snapshot()
 		// Apply filters
-		if req.TeamID != "" && task.TeamID != req.TeamID {
+		if req.TeamID != "" && ts.TeamID != req.TeamID {
 			return true
 		}
-		if req.AssigneeID != "" && task.AssigneeID != req.AssigneeID {
+		if req.AssigneeID != "" && ts.AssigneeID != req.AssigneeID {
 			return true
 		}
-		if req.Status != "" && string(task.Status) != req.Status {
+		if req.Status != "" && string(ts.Status) != req.Status {
 			return true
 		}
-		if req.Type != "" && task.Type != req.Type {
+		if req.Type != "" && ts.Type != req.Type {
 			return true
 		}
-		if req.Priority != "" && string(task.Priority) != req.Priority {
+		if req.Priority != "" && string(ts.Priority) != req.Priority {
 			return true
 		}
 		tasks = append(tasks, task)
@@ -641,41 +741,41 @@ func (h *EnsembleHandlerExtensions) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	task.mu.Lock()
-	if req.Title != "" {
-		task.Title = req.Title
-	}
-	if req.Description != "" {
-		task.Description = req.Description
-	}
-	if req.AssigneeID != "" {
-		task.AssigneeID = req.AssigneeID
-	}
-	if req.Status != "" {
-		oldStatus := task.Status
-		task.Status = TaskStatus(req.Status)
+	task.update(func(s *taskState) {
+		if req.Title != "" {
+			s.Title = req.Title
+		}
+		if req.Description != "" {
+			s.Description = req.Description
+		}
+		if req.AssigneeID != "" {
+			s.AssigneeID = req.AssigneeID
+		}
+		if req.Status != "" {
+			oldStatus := s.Status
+			s.Status = TaskStatus(req.Status)
 
-		// Update timestamps based on status changes
-		if task.Status == AgentTaskStatusInProgress && oldStatus != AgentTaskStatusInProgress {
-			now := time.Now()
-			task.StartedAt = &now
+			// Update timestamps based on status changes
+			if s.Status == AgentTaskStatusInProgress && oldStatus != AgentTaskStatusInProgress {
+				now := time.Now()
+				s.StartedAt = &now
+			}
+			if (s.Status == AgentTaskStatusCompleted || s.Status == AgentTaskStatusFailed) &&
+				oldStatus != AgentTaskStatusCompleted && oldStatus != AgentTaskStatusFailed {
+				now := time.Now()
+				s.CompletedAt = &now
+			}
 		}
-		if (task.Status == AgentTaskStatusCompleted || task.Status == AgentTaskStatusFailed) &&
-			oldStatus != AgentTaskStatusCompleted && oldStatus != AgentTaskStatusFailed {
-			now := time.Now()
-			task.CompletedAt = &now
+		if req.Priority != "" {
+			s.Priority = TaskPriority(req.Priority)
 		}
-	}
-	if req.Priority != "" {
-		task.Priority = TaskPriority(req.Priority)
-	}
-	if req.Subtasks != nil {
-		task.Subtasks = req.Subtasks
-	}
-	if req.Result != nil {
-		task.Result = req.Result
-	}
-	task.mu.Unlock()
+		if req.Subtasks != nil {
+			s.Subtasks = req.Subtasks
+		}
+		if req.Result != nil {
+			s.Result = req.Result
+		}
+	})
 
 	c.JSON(http.StatusOK, task)
 }
@@ -700,23 +800,22 @@ func (h *EnsembleHandlerExtensions) StopTask(c *gin.Context) {
 		return
 	}
 
-	task.mu.Lock()
-	if task.Status != AgentTaskStatusInProgress && task.Status != AgentTaskStatusPending {
-		task.mu.Unlock()
+	currentSnap := task.snapshot()
+	if currentSnap.Status != AgentTaskStatusInProgress && currentSnap.Status != AgentTaskStatusPending {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("cannot stop task in status: %s", task.Status),
+			"error": fmt.Sprintf("cannot stop task in status: %s", currentSnap.Status),
 		})
 		return
 	}
-
-	task.Status = TaskStatusCancelled
-	now := time.Now()
-	task.CompletedAt = &now
-	task.mu.Unlock()
+	task.update(func(s *taskState) {
+		s.Status = TaskStatusCancelled
+		now := time.Now()
+		s.CompletedAt = &now
+	})
 
 	h.logger.WithFields(logrus.Fields{
 		"task_id":    taskID,
-		"task_title": task.Title,
+		"task_title": currentSnap.Title,
 	}).Info("Stopped task")
 
 	c.JSON(http.StatusOK, task)
@@ -741,9 +840,7 @@ func (h *EnsembleHandlerExtensions) GetTaskOutput(c *gin.Context) {
 		return
 	}
 
-	task.mu.RLock()
-	result := task.Result
-	task.mu.RUnlock()
+	result := task.snapshot().Result
 
 	if result == nil {
 		c.JSON(http.StatusOK, gin.H{

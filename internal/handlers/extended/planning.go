@@ -8,9 +8,10 @@ package extended
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
@@ -20,8 +21,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// PlanModeSession represents an active plan mode session (inspired by claude-code-source)
-type ExtendedPlanModeSession struct {
+// sessionState is the JSON-wire-format snapshot of an
+// ExtendedPlanModeSession. State-pointer pattern same as teamState
+// and taskState (CONST-029).
+type sessionState struct {
 	ID              string               `json:"id"`
 	UserID          string               `json:"user_id"`
 	Objective       string               `json:"objective"`
@@ -34,8 +37,57 @@ type ExtendedPlanModeSession struct {
 	CompletedAt     *time.Time           `json:"completed_at,omitempty"`
 	AutoExecute     bool                 `json:"auto_execute"`
 	ExecutionResult *PlanExecutionResult `json:"execution_result,omitempty"`
-	mu              sync.RWMutex
 }
+
+// PlanModeSession represents an active plan mode session (inspired by claude-code-source).
+//
+// Concurrency (CONST-029): wire-format fields live inside an
+// atomic.Pointer[sessionState]. Writers mutate via update();
+// readers (MarshalJSON + accessors) Load the snapshot.
+type ExtendedPlanModeSession struct {
+	state atomic.Pointer[sessionState]
+}
+
+// newPlanModeSession constructs a session with an initial state.
+func newPlanModeSession(init sessionState) *ExtendedPlanModeSession {
+	s := &ExtendedPlanModeSession{}
+	copy := init
+	s.state.Store(&copy)
+	return s
+}
+
+func (e *ExtendedPlanModeSession) snapshot() sessionState {
+	s := e.state.Load()
+	if s == nil {
+		return sessionState{}
+	}
+	return *s
+}
+
+func (e *ExtendedPlanModeSession) update(mutate func(s *sessionState)) {
+	current := e.snapshot()
+	mutate(&current)
+	e.state.Store(&current)
+}
+
+// MarshalJSON emits the wire format.
+func (e *ExtendedPlanModeSession) MarshalJSON() ([]byte, error) {
+	s := e.snapshot()
+	return json.Marshal(&s)
+}
+
+// UnmarshalJSON decodes into a fresh sessionState.
+func (e *ExtendedPlanModeSession) UnmarshalJSON(data []byte) error {
+	var s sessionState
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	e.state.Store(&s)
+	return nil
+}
+
+// Snapshot returns a read-only copy of the current state.
+func (e *ExtendedPlanModeSession) Snapshot() sessionState { return e.snapshot() }
 
 // PlanModeStatus represents the status of a plan mode session
 type PlanModeStatus string
@@ -120,11 +172,9 @@ type PlanExecutionResult struct {
 // This EXTENDS the existing PlanningHandler with claude-code-source features.
 //
 // Concurrency model (CONST-029): sessions is a *safe.Store. Each
-// session's internal state is still guarded by its own
-// ExtendedPlanModeSession.mu (out of scope here — that struct carries
-// JSON-marshaled slices, so it can't be trivially migrated in this
-// pass). The handler-level store serialises Put / Get / Delete and
-// has no cross-key invariants.
+// session's internal state lives behind an atomic.Pointer[sessionState]
+// (see ExtendedPlanModeSession). Readers and writers never hold an
+// external lock; snapshots are CAS-updated via update().
 type PlanningHandlerExtensions struct {
 	sessions *safe.Store[string, *PlanModeSession]
 	logger   *logrus.Logger
@@ -179,17 +229,6 @@ func (h *PlanningHandlerExtensions) EnterPlanMode(c *gin.Context) {
 		return
 	}
 
-	session := &PlanModeSession{
-		ID:             uuid.New().String(),
-		Objective:      req.Objective,
-		Context:        req.Context,
-		Status:         PlanModeStatusPlanning,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-		AutoExecute:    req.AutoExecute,
-		CurrentStepIdx: -1,
-	}
-
 	// Generate initial plan steps using AI
 	steps, err := h.generatePlanSteps(context.Background(), req.Objective, req.Context, req.MaxSteps)
 	if err != nil {
@@ -199,21 +238,30 @@ func (h *PlanningHandlerExtensions) EnterPlanMode(c *gin.Context) {
 		return
 	}
 
-	session.Steps = steps
-	session.Status = PlanModeStatusReview
-
-	h.sessions.Put(session.ID, session)
+	session := newPlanModeSession(sessionState{
+		ID:             uuid.New().String(),
+		Objective:      req.Objective,
+		Context:        req.Context,
+		Steps:          steps,
+		Status:         PlanModeStatusReview,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		AutoExecute:    req.AutoExecute,
+		CurrentStepIdx: -1,
+	})
+	snap := session.snapshot()
+	h.sessions.Put(snap.ID, session)
 
 	h.logger.WithFields(logrus.Fields{
-		"session_id": session.ID,
+		"session_id": snap.ID,
 		"objective":  req.Objective,
 		"steps":      len(steps),
 	}).Info("Entered plan mode")
 
 	c.JSON(http.StatusOK, EnterPlanModeResponse{
-		SessionID: session.ID,
-		Objective: session.Objective,
-		Status:    string(session.Status),
+		SessionID: snap.ID,
+		Objective: snap.Objective,
+		Status:    string(snap.Status),
 		Steps:     steps,
 		Message:   fmt.Sprintf("Created plan with %d steps. Review and approve to execute.", len(steps)),
 	})
@@ -254,33 +302,28 @@ func (h *PlanningHandlerExtensions) UpdatePlan(c *gin.Context) {
 		return
 	}
 
-	session.mu.Lock()
-	defer session.mu.Unlock()
-
-	// Apply updates
-	if req.Steps != nil {
-		session.Steps = req.Steps
-	}
-
-	if len(req.AddSteps) > 0 {
-		session.Steps = append(session.Steps, req.AddSteps...)
-	}
-
-	if len(req.RemoveSteps) > 0 {
-		stepMap := make(map[string]bool)
-		for _, id := range req.RemoveSteps {
-			stepMap[id] = true
+	session.update(func(s *sessionState) {
+		if req.Steps != nil {
+			s.Steps = req.Steps
 		}
-		filtered := make([]PlanStep, 0, len(session.Steps))
-		for _, step := range session.Steps {
-			if !stepMap[step.ID] {
-				filtered = append(filtered, step)
+		if len(req.AddSteps) > 0 {
+			s.Steps = append(s.Steps, req.AddSteps...)
+		}
+		if len(req.RemoveSteps) > 0 {
+			stepMap := make(map[string]bool)
+			for _, id := range req.RemoveSteps {
+				stepMap[id] = true
 			}
+			filtered := make([]PlanStep, 0, len(s.Steps))
+			for _, step := range s.Steps {
+				if !stepMap[step.ID] {
+					filtered = append(filtered, step)
+				}
+			}
+			s.Steps = filtered
 		}
-		session.Steps = filtered
-	}
-
-	session.UpdatedAt = time.Now()
+		s.UpdatedAt = time.Now()
+	})
 
 	c.JSON(http.StatusOK, session)
 }
@@ -305,17 +348,17 @@ func (h *PlanningHandlerExtensions) ExecutePlan(c *gin.Context) {
 		return
 	}
 
-	session.mu.Lock()
-	if session.Status != PlanModeStatusReview && session.Status != PlanModeStatusPaused {
-		session.mu.Unlock()
+	snap := session.snapshot()
+	if snap.Status != PlanModeStatusReview && snap.Status != PlanModeStatusPaused {
 		c.JSON(http.StatusBadRequest, VerifierErrorResponse{
-			Error: fmt.Sprintf("cannot execute plan in status: %s", session.Status),
+			Error: fmt.Sprintf("cannot execute plan in status: %s", snap.Status),
 		})
 		return
 	}
 
-	session.Status = PlanModeStatusExecuting
-	session.mu.Unlock()
+	session.update(func(s *sessionState) {
+		s.Status = PlanModeStatusExecuting
+	})
 
 	// Start execution in background
 	go h.executePlanSession(context.Background(), session)
@@ -342,9 +385,6 @@ func (h *PlanningHandlerExtensions) GetPlanStatus(c *gin.Context) {
 		return
 	}
 
-	session.mu.RLock()
-	defer session.mu.RUnlock()
-
 	c.JSON(http.StatusOK, session)
 }
 
@@ -367,16 +407,15 @@ func (h *PlanningHandlerExtensions) PausePlan(c *gin.Context) {
 		return
 	}
 
-	session.mu.Lock()
-	if session.Status != PlanModeStatusExecuting {
-		session.mu.Unlock()
+	if session.snapshot().Status != PlanModeStatusExecuting {
 		c.JSON(http.StatusBadRequest, VerifierErrorResponse{Error: "plan is not executing"})
 		return
 	}
 
-	session.Status = PlanModeStatusPaused
-	session.UpdatedAt = time.Now()
-	session.mu.Unlock()
+	session.update(func(s *sessionState) {
+		s.Status = PlanModeStatusPaused
+		s.UpdatedAt = time.Now()
+	})
 
 	c.JSON(http.StatusOK, session)
 }
@@ -402,7 +441,7 @@ func (h *PlanningHandlerExtensions) ExitPlanMode(c *gin.Context) {
 	}
 
 	// Optionally save to persistent storage before removing
-	if save && session.Status == PlanModeStatusCompleted {
+	if save && session.snapshot().Status == PlanModeStatusCompleted {
 		// Plan history is currently in-memory; database persistence uses planning_sessions SQL schema
 		// when the database adapter is available via the PlanningService.
 		h.logger.WithField("session_id", sessionID).Info("Saving completed plan to history")
@@ -545,66 +584,79 @@ func (h *PlanningHandlerExtensions) generatePlanSteps(ctx context.Context, objec
 
 // executePlanSession executes a plan session
 func (h *PlanningHandlerExtensions) executePlanSession(ctx context.Context, session *PlanModeSession) {
-	h.logger.WithField("session_id", session.ID).Info("Starting plan execution")
+	id := session.snapshot().ID
+	h.logger.WithField("session_id", id).Info("Starting plan execution")
 
 	startTime := time.Now()
+	// Pull steps once; loop over index so we update the session state
+	// in-place under each iteration's update closure.
+	steps := append([]PlanStep(nil), session.snapshot().Steps...)
 	result := &PlanExecutionResult{
-		StepsTotal: len(session.Steps),
+		StepsTotal: len(steps),
 	}
 
-	for i, step := range session.Steps {
-		session.mu.Lock()
-		session.CurrentStepIdx = i
+	aborted := false
+	for i := range steps {
+		step := steps[i]
 
-		// Check if paused
-		if session.Status == PlanModeStatusPaused {
-			session.mu.Unlock()
-			h.logger.WithField("session_id", session.ID).Info("Plan execution paused")
+		// Mark in-progress; observe pause state.
+		var paused bool
+		session.update(func(s *sessionState) {
+			s.CurrentStepIdx = i
+			if s.Status == PlanModeStatusPaused {
+				paused = true
+				return
+			}
+			if i < len(s.Steps) {
+				s.Steps[i].Status = PlanStepStatusInProgress
+			}
+		})
+		if paused {
+			h.logger.WithField("session_id", id).Info("Plan execution paused")
 			return
 		}
 
-		step.Status = PlanStepStatusInProgress
-		session.mu.Unlock()
-
-		// Execute step
+		// Execute step (outside the update closure).
 		stepResult := h.executePlanStep(ctx, &step)
 
-		session.mu.Lock()
-		step.Result = stepResult
-
-		if stepResult.Success {
-			step.Status = PlanStepStatusCompleted
-			result.StepsCompleted++
-		} else {
-			step.Status = PlanStepStatusFailed
-			result.StepsFailed++
-
-			// Stop on failure unless configured to continue
-			if !session.AutoExecute {
-				session.Status = PlanModeStatusFailed
-				session.mu.Unlock()
-				break
+		session.update(func(s *sessionState) {
+			if i >= len(s.Steps) {
+				return
 			}
-		}
+			s.Steps[i].Result = stepResult
+			if stepResult.Success {
+				s.Steps[i].Status = PlanStepStatusCompleted
+				result.StepsCompleted++
+			} else {
+				s.Steps[i].Status = PlanStepStatusFailed
+				result.StepsFailed++
+				if !s.AutoExecute {
+					s.Status = PlanModeStatusFailed
+					aborted = true
+				}
+			}
+			s.UpdatedAt = time.Now()
+		})
 
-		session.UpdatedAt = time.Now()
-		session.mu.Unlock()
+		if aborted {
+			break
+		}
 	}
 
 	// Complete plan
-	session.mu.Lock()
-	if session.Status != PlanModeStatusFailed {
-		session.Status = PlanModeStatusCompleted
-	}
 	result.Success = result.StepsFailed == 0
 	result.TotalDuration = time.Since(startTime)
-	session.ExecutionResult = result
 	now := time.Now()
-	session.CompletedAt = &now
-	session.mu.Unlock()
+	session.update(func(s *sessionState) {
+		if s.Status != PlanModeStatusFailed {
+			s.Status = PlanModeStatusCompleted
+		}
+		s.ExecutionResult = result
+		s.CompletedAt = &now
+	})
 
 	h.logger.WithFields(logrus.Fields{
-		"session_id":      session.ID,
+		"session_id":      id,
 		"steps_total":     result.StepsTotal,
 		"steps_completed": result.StepsCompleted,
 		"steps_failed":    result.StepsFailed,

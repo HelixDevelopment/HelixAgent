@@ -15,8 +15,8 @@ Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
 | Test files scanned (`tests/` + `internal/` + `challenges/`) | 1,179 |
 | Non-unit test files scanned             | 331   |
 | Violations confirmed                    | 41    |
-| Fixed in-session                        | 0     |
-| Deferred to dedicated session           | 41    |
+| Fixed in-session                        | 1     |
+| Deferred to dedicated session           | 40    |
 
 No violation met the in-session fix criteria (≤50 LOC rewrite, no cross-file
 ripple, no production-code change, substitution of in-process fake with live
@@ -70,7 +70,9 @@ For each hit, confirmed:
 
 ### Fixed this session
 
-None. See Summary for rationale.
+| File | Commit | Pattern | Notes |
+|------|--------|---------|-------|
+| `internal/handlers/handlers_integration_test.go` | (pending commit, PR2) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 987 LOC → 402 LOC. All 14 `TestIntegration_*` cases now dial `tcp://localhost:7061`, skip cleanly when unreachable, and drive real HTTP round-trips against `/v1/health`, `/v1/chat/completions`, `/v1/models`, `/v1/debates/*`, `/v1/mcp/*`. Removed `MockLLMProvider` wiring, `setupIntegrationTest()` helper, orphan `mockSkillsService`. Compile + skip-path verified with :7061 down. |
 
 ### Deferred (documented for future session)
 
@@ -225,7 +227,7 @@ automation is the Makefile itself.
 |------|-----|----------------|----------|
 | `internal/services/services_integration_test.go` | 803 | `integrationMockProvider` | **critical** — explicitly cited in CLAUDE.md §16 as a known violation |
 | `internal/services/integration_orchestrator_test.go` | ~ | `mockProvider` | high |
-| `internal/handlers/handlers_integration_test.go` | 987 | HTTP handler mocks | **critical** — handlers must be tested via real HTTP |
+| ~~`internal/handlers/handlers_integration_test.go`~~ | ~~987~~ | ~~HTTP handler mocks~~ | **Fixed this session** (PR2) — see table above. |
 | `internal/bigdata/memory_integration_test.go` | 938 | memory backend mocks | high |
 | `internal/bigdata/debate_integration_test.go` | 510 | debate backend mocks | high |
 | `internal/bigdata/integration_test.go` | ~ | bigdata service mocks | medium |

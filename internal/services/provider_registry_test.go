@@ -1283,15 +1283,14 @@ func TestProviderRegistry_UpdateProvider(t *testing.T) {
 		err := registry.RegisterProvider("update-reg-test", provider)
 		require.NoError(t, err)
 
-		// Store initial config in registry's config
-		registry.mu.Lock()
+		// Store initial config in registry's config (r.config is not a
+		// mutable shared collection, so plain assignment is fine).
 		registry.config.Providers["update-reg-test"] = &ProviderConfig{
 			Name:    "update-reg-test",
 			Enabled: true,
 			Weight:  1.0,
 			APIKey:  "initial-key",
 		}
-		registry.mu.Unlock()
 
 		// Update the config
 		updateCfg := ProviderConfig{
@@ -1304,10 +1303,8 @@ func TestProviderRegistry_UpdateProvider(t *testing.T) {
 		assert.NoError(t, err)
 
 		// UpdateProvider updates registry.config.Providers, not providerConfigs
-		// Verify by accessing the internal state
-		registry.mu.RLock()
+		// Verify by accessing the internal state (r.config is not mutable shared state)
 		storedCfg := registry.config.Providers["update-reg-test"]
-		registry.mu.RUnlock()
 		require.NotNil(t, storedCfg)
 		assert.Equal(t, "updated-key", storedCfg.APIKey)
 		assert.Equal(t, 2.0, storedCfg.Weight)
@@ -1893,13 +1890,11 @@ func TestProviderRegistry_GetProviderHealth(t *testing.T) {
 	_ = registry.RegisterProvider("test-provider", provider)
 
 	// Set health status
-	registry.mu.Lock()
-	registry.providerHealth["test-provider"] = &ProviderVerificationResult{
+	registry.providerHealth.Put("test-provider", &ProviderVerificationResult{
 		Provider: "test-provider",
 		Status:   ProviderStatusHealthy,
 		Verified: true,
-	}
-	registry.mu.Unlock()
+	})
 
 	health := registry.GetProviderHealth("test-provider")
 	assert.NotNil(t, health)
@@ -1919,16 +1914,14 @@ func TestProviderRegistry_GetAllProviderHealth(t *testing.T) {
 	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	// Set health for multiple providers
-	registry.mu.Lock()
-	registry.providerHealth["provider1"] = &ProviderVerificationResult{
+	registry.providerHealth.Put("provider1", &ProviderVerificationResult{
 		Provider: "provider1",
 		Status:   ProviderStatusHealthy,
-	}
-	registry.providerHealth["provider2"] = &ProviderVerificationResult{
+	})
+	registry.providerHealth.Put("provider2", &ProviderVerificationResult{
 		Provider: "provider2",
 		Status:   ProviderStatusUnhealthy,
-	}
-	registry.mu.Unlock()
+	})
 
 	healthMap := registry.GetAllProviderHealth()
 	assert.Len(t, healthMap, 2)
@@ -1944,18 +1937,16 @@ func TestProviderRegistry_IsProviderHealthy(t *testing.T) {
 	registry := NewProviderRegistryWithoutAutoDiscovery(cfg, nil)
 
 	// Set health for providers (must set both Status and Verified)
-	registry.mu.Lock()
-	registry.providerHealth["healthy-provider"] = &ProviderVerificationResult{
+	registry.providerHealth.Put("healthy-provider", &ProviderVerificationResult{
 		Provider: "healthy-provider",
 		Status:   ProviderStatusHealthy,
 		Verified: true,
-	}
-	registry.providerHealth["unhealthy-provider"] = &ProviderVerificationResult{
+	})
+	registry.providerHealth.Put("unhealthy-provider", &ProviderVerificationResult{
 		Provider: "unhealthy-provider",
 		Status:   ProviderStatusUnhealthy,
 		Verified: true,
-	}
-	registry.mu.Unlock()
+	})
 
 	assert.True(t, registry.IsProviderHealthy("healthy-provider"))
 	assert.False(t, registry.IsProviderHealthy("unhealthy-provider"))

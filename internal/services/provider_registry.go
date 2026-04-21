@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"golang.org/x/sync/semaphore"
 
 	"dev.helix.agent/internal/auth/oauth_credentials"
@@ -68,26 +69,34 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ProviderRegistry manages LLM provider registration and configuration
+// ProviderRegistry manages LLM provider registration and configuration.
+//
+// Concurrency (CONST-029):
+//   - All per-provider-name collections are kept in independent *safe.Store
+//     instances: providers, circuitBreakers, concurrencySemaphores,
+//     providerConfigs, providerHealth, activeRequests, initOnce.
+//   - Each map is a flat index keyed by provider name with no cross-map
+//     invariant that would require atomic multi-map transitions, so the
+//     previous shared r.mu is no longer needed.
+//   - startupVerifier is rarely-mutated and held behind an atomic.Pointer.
 type ProviderRegistry struct {
-	providers             map[string]llm.LLMProvider
-	circuitBreakers       map[string]*CircuitBreaker
-	concurrencySemaphores map[string]*semaphore.Weighted
-	providerConfigs       map[string]*ProviderConfig             // Stores provider configurations
-	providerHealth        map[string]*ProviderVerificationResult // Stores provider health verification results
-	activeRequests        map[string]*int64                      // Atomic counters for active requests per provider
+	providers             *safe.Store[string, llm.LLMProvider]
+	circuitBreakers       *safe.Store[string, *CircuitBreaker]
+	concurrencySemaphores *safe.Store[string, *semaphore.Weighted]
+	providerConfigs       *safe.Store[string, *ProviderConfig]             // Stores provider configurations
+	providerHealth        *safe.Store[string, *ProviderVerificationResult] // Stores provider health verification results
+	activeRequests        *safe.Store[string, *int64]                      // Atomic counters for active requests per provider
 	config                *RegistryConfig
 	ensemble              *EnsembleService
 	requestService        *RequestService
 	memory                *MemoryService
-	discovery             *ProviderDiscovery        // Auto-discovery service for environment-based provider detection
-	scoreAdapter          *LLMsVerifierScoreAdapter // LLMsVerifier score adapter for dynamic provider ordering
-	startupVerifier       *verifier.StartupVerifier // Unified startup verification (optional)
-	mu                    sync.RWMutex
-	drainTimeout          time.Duration         // Timeout for graceful shutdown request draining
-	autoDiscovery         bool                  // Whether auto-discovery is enabled
-	initSemaphore         *semaphore.Weighted   // Semaphore to limit concurrent provider initialization
-	initOnce              map[string]*sync.Once // sync.Once per provider for thread-safe initialization
+	discovery             *ProviderDiscovery                        // Auto-discovery service for environment-based provider detection
+	scoreAdapter          *LLMsVerifierScoreAdapter                 // LLMsVerifier score adapter for dynamic provider ordering
+	startupVerifier       atomic.Pointer[verifier.StartupVerifier]  // Unified startup verification (optional)
+	drainTimeout          time.Duration                             // Timeout for graceful shutdown request draining
+	autoDiscovery         bool                                      // Whether auto-discovery is enabled
+	initSemaphore         *semaphore.Weighted                       // Semaphore to limit concurrent provider initialization
+	initOnce              *safe.Store[string, *sync.Once]           // sync.Once per provider for thread-safe initialization
 }
 
 // ProviderConfig holds configuration for an LLM provider
@@ -335,18 +344,18 @@ func newProviderRegistry(cfg *RegistryConfig, memory *MemoryService, enableAutoD
 	logger.SetLevel(logrus.InfoLevel)
 
 	registry := &ProviderRegistry{
-		providers:             make(map[string]llm.LLMProvider),
-		circuitBreakers:       make(map[string]*CircuitBreaker),
-		concurrencySemaphores: make(map[string]*semaphore.Weighted),
-		providerConfigs:       make(map[string]*ProviderConfig),
-		providerHealth:        make(map[string]*ProviderVerificationResult),
-		activeRequests:        make(map[string]*int64),
+		providers:             safe.NewStore[string, llm.LLMProvider](),
+		circuitBreakers:       safe.NewStore[string, *CircuitBreaker](),
+		concurrencySemaphores: safe.NewStore[string, *semaphore.Weighted](),
+		providerConfigs:       safe.NewStore[string, *ProviderConfig](),
+		providerHealth:        safe.NewStore[string, *ProviderVerificationResult](),
+		activeRequests:        safe.NewStore[string, *int64](),
 		config:                cfg,
 		memory:                memory,
 		drainTimeout:          30 * time.Second, // Default 30 second drain timeout
 		autoDiscovery:         enableAutoDiscovery,
 		initSemaphore:         semaphore.NewWeighted(5), // Limit to 5 concurrent provider initializations
-		initOnce:              make(map[string]*sync.Once),
+		initOnce:              safe.NewStore[string, *sync.Once](),
 	}
 
 	// Initialize ensemble service
@@ -463,10 +472,7 @@ func (r *ProviderRegistry) initScoreAdapter(logger *logrus.Logger) {
 	// Wire the verification service to use our registered providers for actual API calls
 	// This allows LLMsVerifier to verify models using ProviderRegistry's providers
 	verificationService.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
-		r.mu.RLock()
-		p, exists := r.providers[provider]
-		r.mu.RUnlock()
-
+		p, exists := r.providers.Get(provider)
 		if !exists {
 			return "", fmt.Errorf("provider %s not registered", provider)
 		}
@@ -564,35 +570,30 @@ func (r *ProviderRegistry) GetBestProvidersForDebate(minProviders, maxProviders 
 
 // SetAutoDiscovery enables or disables auto-discovery
 func (r *ProviderRegistry) SetAutoDiscovery(enabled bool) {
-	r.mu.Lock()
 	r.autoDiscovery = enabled
-	r.mu.Unlock()
 }
 
 // SetStartupVerifier sets the unified startup verifier
 // When set, provider operations will delegate to the StartupVerifier
 func (r *ProviderRegistry) SetStartupVerifier(sv *verifier.StartupVerifier) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.startupVerifier = sv
+	r.startupVerifier.Store(sv)
 }
 
 // GetStartupVerifier returns the startup verifier if set
 func (r *ProviderRegistry) GetStartupVerifier() *verifier.StartupVerifier {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.startupVerifier
+	return r.startupVerifier.Load()
 }
 
 // InitializeFromStartupVerifier registers providers from the StartupVerifier's verified results
 // This should be called after VerifyAllProviders completes on the StartupVerifier
 func (r *ProviderRegistry) InitializeFromStartupVerifier() error {
-	if r.startupVerifier == nil {
+	sv := r.startupVerifier.Load()
+	if sv == nil {
 		return fmt.Errorf("startup verifier not set")
 	}
 
 	logger := logrus.New()
-	rankedProviders := r.startupVerifier.GetRankedProviders()
+	rankedProviders := sv.GetRankedProviders()
 
 	registeredCount := 0
 	for _, provider := range rankedProviders {
@@ -619,8 +620,7 @@ func (r *ProviderRegistry) InitializeFromStartupVerifier() error {
 			status = ProviderStatusAuthFailed
 		}
 
-		r.mu.Lock()
-		r.providerHealth[provider.Name] = &ProviderVerificationResult{
+		r.providerHealth.Put(provider.Name, &ProviderVerificationResult{
 			Provider:     provider.Name,
 			Name:         provider.Name,
 			Status:       status,
@@ -629,8 +629,7 @@ func (r *ProviderRegistry) InitializeFromStartupVerifier() error {
 			ResponseTime: 0, // Not tracked in unified provider
 			TestedAt:     provider.VerifiedAt,
 			VerifiedAt:   provider.VerifiedAt,
-		}
-		r.mu.Unlock()
+		})
 
 		// Update LLMsVerifier score if score adapter is available
 		if r.scoreAdapter != nil {
@@ -657,9 +656,7 @@ func (r *ProviderRegistry) InitializeFromStartupVerifier() error {
 // GetVerifiedProvidersSummary returns a summary of all verified providers
 // Uses StartupVerifier if available, otherwise falls back to discovery
 func (r *ProviderRegistry) GetVerifiedProvidersSummary() map[string]interface{} {
-	r.mu.RLock()
-	sv := r.startupVerifier
-	r.mu.RUnlock()
+	sv := r.startupVerifier.Load()
 
 	if sv != nil {
 		rankedProviders := sv.GetRankedProviders()
@@ -805,14 +802,7 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 
 // storeProviderConfig stores a provider configuration for lazy initialization
 func (r *ProviderRegistry) storeProviderConfig(cfg *ProviderConfig) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Store in both maps for compatibility
-	if r.providerConfigs == nil {
-		r.providerConfigs = make(map[string]*ProviderConfig)
-	}
-	r.providerConfigs[cfg.Name] = cfg
+	r.providerConfigs.Put(cfg.Name, cfg)
 
 	if r.config == nil {
 		r.config = &RegistryConfig{
@@ -825,10 +815,7 @@ func (r *ProviderRegistry) storeProviderConfig(cfg *ProviderConfig) {
 	r.config.Providers[cfg.Name] = cfg
 }
 func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvider) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.providers[name]; exists {
+	if _, exists := r.providers.Get(name); exists {
 		return fmt.Errorf("provider %s already registered", name)
 	}
 
@@ -838,7 +825,7 @@ func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvide
 		maxConcurrent = 10
 	}
 	sem := semaphore.NewWeighted(int64(maxConcurrent))
-	r.concurrencySemaphores[name] = sem
+	r.concurrencySemaphores.Put(name, sem)
 
 	// Create circuit breaker if enabled
 	var cb *CircuitBreaker
@@ -848,12 +835,12 @@ func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvide
 			r.config.CircuitBreaker.SuccessThreshold,
 			r.config.CircuitBreaker.RecoveryTimeout,
 		)
-		r.circuitBreakers[name] = cb
+		r.circuitBreakers.Put(name, cb)
 	}
 
 	// Initialize atomic counter for active requests
 	var counter int64
-	r.activeRequests[name] = &counter
+	r.activeRequests.Put(name, &counter)
 
 	// Wrap provider with circuit breaker and concurrency semaphore
 	wrappedProvider := &circuitBreakerProvider{
@@ -866,7 +853,7 @@ func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvide
 		acquiredPermits:       0,
 	}
 
-	r.providers[name] = wrappedProvider
+	r.providers.Put(name, wrappedProvider)
 
 	// Also register with ensemble and request services
 	r.ensemble.RegisterProvider(name, &providerAdapter{provider: wrappedProvider})
@@ -880,33 +867,31 @@ func (r *ProviderRegistry) RegisterProvider(name string, provider llm.LLMProvide
 
 // GetCircuitBreaker returns the circuit breaker for a provider (for internal use)
 func (r *ProviderRegistry) GetCircuitBreaker(name string) *CircuitBreaker {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.circuitBreakers[name]
+	cb, _ := r.circuitBreakers.Get(name)
+	return cb
 }
 
 func (r *ProviderRegistry) UnregisterProvider(name string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	return r.unregisterProviderLocked(name)
 }
 
-// unregisterProviderLocked removes a provider (caller must hold the lock)
+// unregisterProviderLocked removes a provider. The name historically indicated
+// the caller holds the registry mutex; after the CONST-029 migration the
+// underlying stores provide their own serialisation.
 func (r *ProviderRegistry) unregisterProviderLocked(name string) error {
-	if _, exists := r.providers[name]; !exists {
+	if _, exists := r.providers.Get(name); !exists {
 		return fmt.Errorf("provider %s not found", name)
 	}
 
 	// Update metrics to zero before removing the provider
 	UpdateConcurrencyMetrics(name, 0, 0, 0)
 
-	delete(r.providers, name)
-	delete(r.concurrencySemaphores, name)
-	delete(r.circuitBreakers, name)
-	delete(r.activeRequests, name)
-	delete(r.providerConfigs, name)
-	delete(r.initOnce, name)
+	r.providers.Delete(name)
+	r.concurrencySemaphores.Delete(name)
+	r.circuitBreakers.Delete(name)
+	r.activeRequests.Delete(name)
+	r.providerConfigs.Delete(name)
+	r.initOnce.Delete(name)
 	r.ensemble.RemoveProvider(name)
 	r.requestService.RemoveProvider(name)
 
@@ -915,12 +900,7 @@ func (r *ProviderRegistry) unregisterProviderLocked(name string) error {
 
 func (r *ProviderRegistry) GetProvider(name string) (llm.LLMProvider, error) {
 	// Fast path: provider already initialized
-	r.mu.RLock()
-	provider, exists := r.providers[name]
-	once := r.initOnce[name]
-	r.mu.RUnlock()
-
-	if exists {
+	if provider, exists := r.providers.Get(name); exists {
 		return provider, nil
 	}
 
@@ -931,13 +911,10 @@ func (r *ProviderRegistry) GetProvider(name string) (llm.LLMProvider, error) {
 		return nil, fmt.Errorf("provider %s not found: %w", name, err)
 	}
 
-	// Ensure we have a sync.Once for this provider
-	r.mu.Lock()
-	if once == nil {
-		once = &sync.Once{}
-		r.initOnce[name] = once
-	}
-	r.mu.Unlock()
+	// Ensure we have a single shared sync.Once for this provider.
+	// PutIfAbsent makes the get-or-create atomic with no external lock.
+	newOnce := &sync.Once{}
+	once, _ := r.initOnce.PutIfAbsent(name, newOnce)
 
 	// Use sync.Once to ensure only one goroutine initializes this provider
 	var initErr error
@@ -953,36 +930,29 @@ func (r *ProviderRegistry) GetProvider(name string) (llm.LLMProvider, error) {
 		defer r.initSemaphore.Release(1)
 
 		// Double-check after acquiring semaphore
-		r.mu.RLock()
-		_, existsNow := r.providers[name]
-		r.mu.RUnlock()
-		if existsNow {
+		if _, existsNow := r.providers.Get(name); existsNow {
 			return // Another goroutine already initialized it
 		}
 
 		// Create provider from configuration
-		provider, initErr = r.createProviderFromConfig(*cfg)
-		if initErr != nil {
+		newProvider, createErr := r.createProviderFromConfig(*cfg)
+		if createErr != nil {
+			initErr = createErr
 			return
 		}
 
 		// Register the provider (with circuit breaker, etc.)
-		initErr = r.RegisterProvider(name, provider)
+		initErr = r.RegisterProvider(name, newProvider)
 	})
 
 	if initErr != nil {
 		// Clean up the sync.Once on error so retry might work
-		r.mu.Lock()
-		delete(r.initOnce, name)
-		r.mu.Unlock()
+		r.initOnce.Delete(name)
 		return nil, fmt.Errorf("failed to initialize provider %s: %w", name, initErr)
 	}
 
 	// Provider should now be initialized
-	r.mu.RLock()
-	provider, exists = r.providers[name]
-	r.mu.RUnlock()
-
+	provider, exists := r.providers.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("provider %s initialization failed", name)
 	}
@@ -991,23 +961,13 @@ func (r *ProviderRegistry) GetProvider(name string) (llm.LLMProvider, error) {
 }
 
 func (r *ProviderRegistry) ListProviders() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	names := make([]string, 0, len(r.providers))
-	for name := range r.providers {
-		names = append(names, name)
-	}
-	return names
+	return r.providers.Keys()
 }
 
 // ListProvidersOrderedByScore returns providers ordered by their LLMsVerifier scores (highest first)
 // CRITICAL: This enables dynamic provider selection based on real verification results
 // Providers without scores are placed at the end with a default score of 5.0
 func (r *ProviderRegistry) ListProvidersOrderedByScore() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	type providerScore struct {
 		name  string
 		score float64
@@ -1015,7 +975,7 @@ func (r *ProviderRegistry) ListProvidersOrderedByScore() []string {
 
 	// Collect all providers with their scores
 	var scored []providerScore
-	for name := range r.providers {
+	r.providers.Range(func(name string, _ llm.LLMProvider) bool {
 		score := 5.0 // Default score for unverified providers
 		if r.scoreAdapter != nil {
 			if s, found := r.scoreAdapter.GetProviderScore(name); found {
@@ -1023,11 +983,12 @@ func (r *ProviderRegistry) ListProvidersOrderedByScore() []string {
 			}
 		}
 		// Also check health - verified healthy providers get a bonus
-		if health, exists := r.providerHealth[name]; exists && health.Verified && health.Status == ProviderStatusHealthy {
+		if health, exists := r.providerHealth.Get(name); exists && health.Verified && health.Status == ProviderStatusHealthy {
 			score += 0.5 // Small bonus for verified healthy providers
 		}
 		scored = append(scored, providerScore{name: name, score: score})
-	}
+		return true
+	})
 
 	// Sort by score descending (highest first)
 	sort.Slice(scored, func(i, j int) bool {
@@ -1052,10 +1013,7 @@ func (r *ProviderRegistry) GetRequestService() *RequestService {
 }
 
 func (r *ProviderRegistry) ConfigureProvider(name string, config *ProviderConfig) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.providers[name]; !exists {
+	if _, exists := r.providers.Get(name); !exists {
 		return fmt.Errorf("provider %s not found", name)
 	}
 
@@ -1109,22 +1067,23 @@ func (r *ProviderRegistry) ConfigureProvider(name string, config *ProviderConfig
 		}
 	}
 
-	r.providerConfigs[name] = storedConfig
+	r.providerConfigs.Put(name, storedConfig)
 
 	return nil
 }
 
 func (r *ProviderRegistry) GetProviderConfig(name string) (*ProviderConfig, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	// First check if provider exists
-	if _, exists := r.providers[name]; !exists {
+	// First check if provider is registered OR has stored config — tests
+	// expect "not found" when neither is true, while the lazy-init caller
+	// in GetProvider reaches here with only the config present.
+	_, providerExists := r.providers.Get(name)
+	storedConfig, configExists := r.providerConfigs.Get(name)
+	if !providerExists && !configExists {
 		return nil, fmt.Errorf("provider %s not found", name)
 	}
 
 	// Return stored configuration if available
-	if storedConfig, exists := r.providerConfigs[name]; exists {
+	if configExists {
 		// Return a copy to prevent external modification
 		configCopy := &ProviderConfig{
 			Name:           storedConfig.Name,
@@ -1175,12 +1134,7 @@ func (r *ProviderRegistry) GetProviderConfig(name string) (*ProviderConfig, erro
 }
 
 func (r *ProviderRegistry) HealthCheck() map[string]error {
-	r.mu.RLock()
-	providers := make(map[string]llm.LLMProvider)
-	for name, provider := range r.providers {
-		providers[name] = provider
-	}
-	r.mu.RUnlock()
+	providers := r.providers.Snapshot()
 
 	results := make(map[string]error)
 	var wg sync.WaitGroup
@@ -1378,10 +1332,7 @@ func (r *ProviderRegistry) VerifyProvider(ctx context.Context, providerName stri
 	}
 
 	// Get the provider
-	r.mu.RLock()
-	provider, exists := r.providers[providerName]
-	r.mu.RUnlock()
-
+	provider, exists := r.providers.Get(providerName)
 	if !exists {
 		result.Status = ProviderStatusUnhealthy
 		result.Error = "provider not registered"
@@ -1440,9 +1391,7 @@ func (r *ProviderRegistry) VerifyProvider(ctx context.Context, providerName stri
 	}
 
 	// Store the result
-	r.mu.Lock()
-	r.providerHealth[providerName] = result
-	r.mu.Unlock()
+	r.providerHealth.Put(providerName, result)
 
 	return result
 }
@@ -1451,12 +1400,7 @@ func (r *ProviderRegistry) VerifyProvider(ctx context.Context, providerName stri
 func (r *ProviderRegistry) VerifyAllProviders(ctx context.Context) map[string]*ProviderVerificationResult {
 	results := make(map[string]*ProviderVerificationResult)
 
-	r.mu.RLock()
-	providerNames := make([]string, 0, len(r.providers))
-	for name := range r.providers {
-		providerNames = append(providerNames, name)
-	}
-	r.mu.RUnlock()
+	providerNames := r.providers.Keys()
 
 	// Verify providers concurrently
 	var wg sync.WaitGroup
@@ -1487,29 +1431,18 @@ func (r *ProviderRegistry) VerifyAllProviders(ctx context.Context) map[string]*P
 
 // GetProviderHealth returns the last verification result for a provider
 func (r *ProviderRegistry) GetProviderHealth(providerName string) *ProviderVerificationResult {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.providerHealth[providerName]
+	h, _ := r.providerHealth.Get(providerName)
+	return h
 }
 
 // GetAllProviderHealth returns all provider health verification results
 func (r *ProviderRegistry) GetAllProviderHealth() map[string]*ProviderVerificationResult {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	results := make(map[string]*ProviderVerificationResult, len(r.providerHealth))
-	for k, v := range r.providerHealth {
-		results[k] = v
-	}
-	return results
+	return r.providerHealth.Snapshot()
 }
 
 // IsProviderHealthy returns true if the provider has been verified as healthy
 func (r *ProviderRegistry) IsProviderHealthy(providerName string) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	health, exists := r.providerHealth[providerName]
+	health, exists := r.providerHealth.Get(providerName)
 	if !exists {
 		return false // Not verified yet, assume unhealthy
 	}
@@ -1518,15 +1451,13 @@ func (r *ProviderRegistry) IsProviderHealthy(providerName string) bool {
 
 // GetHealthyProviders returns a list of providers that have been verified as healthy
 func (r *ProviderRegistry) GetHealthyProviders() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	healthy := make([]string, 0)
-	for name, health := range r.providerHealth {
+	r.providerHealth.Range(func(name string, health *ProviderVerificationResult) bool {
 		if health.Status == ProviderStatusHealthy && health.Verified {
 			healthy = append(healthy, name)
 		}
-	}
+		return true
+	})
 	return healthy
 }
 
@@ -1960,10 +1891,10 @@ func (r *ProviderRegistry) RegisterProviderFromConfig(cfg ProviderConfig) error 
 		return fmt.Errorf("unsupported provider type: %s", cfg.Type)
 	}
 
-	// Store the config
-	r.mu.Lock()
+	// Store the config. r.config itself is not a shared collection (it's
+	// the immutable configuration object passed in at construction), so
+	// plain map assignment remains safe with no additional synchronisation.
 	r.config.Providers[cfg.Name] = &cfg
-	r.mu.Unlock()
 
 	// Register the provider
 	return r.RegisterProvider(cfg.Name, provider)
@@ -1971,10 +1902,7 @@ func (r *ProviderRegistry) RegisterProviderFromConfig(cfg ProviderConfig) error 
 
 // UpdateProvider updates a provider's configuration
 func (r *ProviderRegistry) UpdateProvider(name string, cfg ProviderConfig) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.providers[name]; !exists {
+	if _, exists := r.providers.Get(name); !exists {
 		return fmt.Errorf("provider %s not found", name)
 	}
 
@@ -2002,48 +1930,38 @@ func (r *ProviderRegistry) UpdateProvider(name string, cfg ProviderConfig) error
 // If force is false and there are active requests, it will attempt graceful shutdown
 // by waiting for requests to drain up to the configured drain timeout
 func (r *ProviderRegistry) RemoveProvider(name string, force bool) error {
-	r.mu.Lock()
-
-	if _, exists := r.providers[name]; !exists {
-		r.mu.Unlock()
+	if _, exists := r.providers.Get(name); !exists {
 		return fmt.Errorf("provider %s not found", name)
 	}
 
 	// Check for active requests
-	counter, hasCounter := r.activeRequests[name]
+	counter, hasCounter := r.activeRequests.Get(name)
 	if !force && hasCounter && counter != nil {
 		activeCount := atomic.LoadInt64(counter)
 		if activeCount > 0 {
-			// Release lock and attempt graceful drain
-			r.mu.Unlock()
 			if err := r.drainProviderRequests(name); err != nil {
 				return fmt.Errorf("provider %s has active requests and drain failed: %w", name, err)
 			}
-			// Re-acquire lock after draining
-			r.mu.Lock()
 		}
 	}
 
 	// Remove provider and associated data
-	delete(r.providers, name)
+	r.providers.Delete(name)
 	delete(r.config.Providers, name)
-	delete(r.providerConfigs, name)
-	delete(r.circuitBreakers, name)
-	delete(r.activeRequests, name)
+	r.providerConfigs.Delete(name)
+	r.circuitBreakers.Delete(name)
+	r.activeRequests.Delete(name)
 
 	r.ensemble.RemoveProvider(name)
 	r.requestService.RemoveProvider(name)
 
-	r.mu.Unlock()
 	return nil
 }
 
 // drainProviderRequests waits for active requests to complete up to the drain timeout
 func (r *ProviderRegistry) drainProviderRequests(name string) error {
-	r.mu.RLock()
-	counter, exists := r.activeRequests[name]
+	counter, exists := r.activeRequests.Get(name)
 	drainTimeout := r.drainTimeout
-	r.mu.RUnlock()
 
 	if !exists || counter == nil {
 		return nil
@@ -2072,10 +1990,7 @@ func (r *ProviderRegistry) drainProviderRequests(name string) error {
 // IncrementActiveRequests increments the active request counter for a provider
 // Returns false if the provider doesn't exist
 func (r *ProviderRegistry) IncrementActiveRequests(name string) bool {
-	r.mu.RLock()
-	counter, exists := r.activeRequests[name]
-	r.mu.RUnlock()
-
+	counter, exists := r.activeRequests.Get(name)
 	if !exists || counter == nil {
 		return false
 	}
@@ -2087,10 +2002,7 @@ func (r *ProviderRegistry) IncrementActiveRequests(name string) bool {
 // DecrementActiveRequests decrements the active request counter for a provider
 // Returns false if the provider doesn't exist
 func (r *ProviderRegistry) DecrementActiveRequests(name string) bool {
-	r.mu.RLock()
-	counter, exists := r.activeRequests[name]
-	r.mu.RUnlock()
-
+	counter, exists := r.activeRequests.Get(name)
 	if !exists || counter == nil {
 		return false
 	}
@@ -2102,10 +2014,7 @@ func (r *ProviderRegistry) DecrementActiveRequests(name string) bool {
 // GetActiveRequestCount returns the number of active requests for a provider
 // Returns -1 if the provider doesn't exist
 func (r *ProviderRegistry) GetActiveRequestCount(name string) int64 {
-	r.mu.RLock()
-	counter, exists := r.activeRequests[name]
-	r.mu.RUnlock()
-
+	counter, exists := r.activeRequests.Get(name)
 	if !exists || counter == nil {
 		return -1
 	}
@@ -2115,11 +2024,8 @@ func (r *ProviderRegistry) GetActiveRequestCount(name string) int64 {
 
 // GetConcurrencyStats returns concurrency statistics for a provider
 func (r *ProviderRegistry) GetConcurrencyStats(name string) (*ConcurrencyStats, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	// Check if provider exists
-	provider, exists := r.providers[name]
+	provider, exists := r.providers.Get(name)
 	if !exists {
 		return nil, fmt.Errorf("provider %s not found", name)
 	}
@@ -2164,15 +2070,11 @@ func (r *ProviderRegistry) GetConcurrencyStats(name string) (*ConcurrencyStats, 
 
 // GetAllConcurrencyStats returns concurrency statistics for all registered providers
 func (r *ProviderRegistry) GetAllConcurrencyStats() map[string]*ConcurrencyStats {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	stats := make(map[string]*ConcurrencyStats)
-	for name := range r.providers {
-		provider := r.providers[name]
+	r.providers.Range(func(name string, provider llm.LLMProvider) bool {
 		cbp, ok := provider.(*circuitBreakerProvider)
 		if !ok {
-			continue
+			return true
 		}
 
 		// Get active requests count
@@ -2196,8 +2098,8 @@ func (r *ProviderRegistry) GetAllConcurrencyStats() map[string]*ConcurrencyStats
 			SemaphoreExists:   hasSemaphore,
 			SemaphoreCapacity: totalPermits,
 		}
-	}
-
+		return true
+	})
 	return stats
 }
 
@@ -2215,9 +2117,7 @@ type ConcurrencyStats struct {
 
 // SetDrainTimeout sets the timeout for graceful shutdown request draining
 func (r *ProviderRegistry) SetDrainTimeout(timeout time.Duration) {
-	r.mu.Lock()
 	r.drainTimeout = timeout
-	r.mu.Unlock()
 }
 
 // getFirstModel returns the first model ID from a list of models

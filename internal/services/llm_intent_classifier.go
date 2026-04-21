@@ -118,7 +118,8 @@ func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, er
 	}
 
 	// Get any available provider, but skip test/mock providers
-	for name := range lic.providerRegistry.providers {
+	var selected llm.LLMProvider
+	for _, name := range lic.providerRegistry.providers.Keys() {
 		// Skip providers that look like test/mock providers
 		// This ensures we only use real LLM providers for intent classification
 		nameLower := strings.ToLower(name)
@@ -134,8 +135,12 @@ func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, er
 		}
 		provider, err := lic.providerRegistry.GetProvider(name)
 		if err == nil && provider != nil {
-			return provider, nil
+			selected = provider
+			break
 		}
+	}
+	if selected != nil {
+		return selected, nil
 	}
 
 	return nil, fmt.Errorf("no LLM providers available")

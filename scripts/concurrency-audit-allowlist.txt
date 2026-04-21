@@ -17,4 +17,3 @@ internal/services/mcp_client.go:20:MCPClient
 internal/services/mcp_client.go:58:HTTPTransport
 internal/services/protocol_discovery.go:19:ACPDiscoveryClient
 internal/services/protocol_federation.go:16:ProtocolDiscovery
-internal/services/provider_registry.go:72:ProviderRegistry

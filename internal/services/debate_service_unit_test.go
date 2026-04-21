@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
 	"github.com/google/uuid"
@@ -134,14 +136,14 @@ func createUnitTestProviderRegistry(providers map[string]llm.LLMProvider) *Provi
 		Providers: make(map[string]*ProviderConfig),
 	}
 	registry := &ProviderRegistry{
-		providers:             make(map[string]llm.LLMProvider),
-		circuitBreakers:       make(map[string]*CircuitBreaker),
-		concurrencySemaphores: make(map[string]*semaphore.Weighted),
-		providerConfigs:       make(map[string]*ProviderConfig),
-		providerHealth:        make(map[string]*ProviderVerificationResult),
-		activeRequests:        make(map[string]*int64),
+		providers:             safe.NewStore[string, llm.LLMProvider](),
+		circuitBreakers:       safe.NewStore[string, *CircuitBreaker](),
+		concurrencySemaphores: safe.NewStore[string, *semaphore.Weighted](),
+		providerConfigs:       safe.NewStore[string, *ProviderConfig](),
+		providerHealth:        safe.NewStore[string, *ProviderVerificationResult](),
+		activeRequests:        safe.NewStore[string, *int64](),
 		config:                cfg,
-		initOnce:              make(map[string]*sync.Once),
+		initOnce:              safe.NewStore[string, *sync.Once](),
 		initSemaphore:         semaphore.NewWeighted(5),
 	}
 	registry.ensemble = NewEnsembleService("confidence_weighted", cfg.DefaultTimeout)

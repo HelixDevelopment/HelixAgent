@@ -119,15 +119,15 @@ func createTestProviderRegistry(providers map[string]*debateMockLLMProvider) *Pr
 		Providers: make(map[string]*ProviderConfig),
 	}
 	registry := &ProviderRegistry{
-		providers:       make(map[string]llm.LLMProvider),
-		circuitBreakers: make(map[string]*CircuitBreaker),
+		providers:       safe.NewStore[string, llm.LLMProvider](),
+		circuitBreakers: safe.NewStore[string, *CircuitBreaker](),
 		config:          cfg,
 	}
 	registry.ensemble = NewEnsembleService("confidence_weighted", cfg.DefaultTimeout)
 	registry.requestService = NewRequestService("weighted", registry.ensemble, nil)
 
 	for name, provider := range providers {
-		registry.providers[name] = provider
+		registry.providers.Put(name, provider)
 	}
 
 	return registry

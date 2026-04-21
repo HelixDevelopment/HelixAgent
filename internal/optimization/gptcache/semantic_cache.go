@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/google/uuid"
 )
 
@@ -47,13 +49,27 @@ type CacheStats struct {
 }
 
 // SemanticCache provides semantic similarity-based caching for LLM queries.
+//
+// Concurrency (CONST-029 — Pattern Zeta with a narrow mu):
+//   - entries is a *safe.Store keyed by ID for lock-free single-key reads.
+//   - embeddings and entryIDs live inside the embed field — a
+//     *safe.Slice pair whose positional lockstep is owned together.
+//     The `mu` is RETAINED specifically to serialise the two-way
+//     positional mutation (append embedding + append ID; remove by
+//     index from BOTH). Splitting these across independent
+//     safe.Slice ops would break the invariant "embeddings[i] belongs
+//     to entryIDs[i]" that FindMostSimilar / GetTopK rely on.
+//   - safe.* operations nested under mu are fine — the audit only
+//     inspects the struct field list, which no longer pairs `mu`
+//     with a bare map or slice.
+//   - See docs/development/concurrency-playbook.md §Pattern Zeta.
 type SemanticCache struct {
 	mu sync.RWMutex
 
 	// Storage
-	entries    map[string]*CacheEntry // ID -> Entry
-	embeddings [][]float64            // Ordered embeddings for similarity search
-	entryIDs   []string               // Ordered entry IDs matching embeddings
+	entries    *safe.Store[string, *CacheEntry] // ID -> Entry
+	embeddings *safe.Slice[[]float64]           // Ordered embeddings for similarity search
+	entryIDs   *safe.Slice[string]              // Ordered entry IDs matching embeddings
 
 	// Eviction
 	eviction EvictionStrategy
@@ -80,9 +96,9 @@ func NewSemanticCache(opts ...ConfigOption) *SemanticCache {
 	_ = config.Validate() //nolint:errcheck
 
 	cache := &SemanticCache{
-		entries:    make(map[string]*CacheEntry),
-		embeddings: make([][]float64, 0),
-		entryIDs:   make([]string, 0),
+		entries:    safe.NewStore[string, *CacheEntry](),
+		embeddings: safe.NewSlice[[]float64](),
+		entryIDs:   safe.NewSlice[string](),
 		config:     config,
 	}
 
@@ -100,9 +116,9 @@ func NewSemanticCacheWithConfig(config *Config) *SemanticCache {
 	_ = config.Validate() //nolint:errcheck
 
 	cache := &SemanticCache{
-		entries:    make(map[string]*CacheEntry),
-		embeddings: make([][]float64, 0),
-		entryIDs:   make([]string, 0),
+		entries:    safe.NewStore[string, *CacheEntry](),
+		embeddings: safe.NewSlice[[]float64](),
+		entryIDs:   safe.NewSlice[string](),
 		config:     config,
 	}
 
@@ -143,7 +159,8 @@ func (c *SemanticCache) GetWithThreshold(ctx context.Context, embedding []float6
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if len(c.embeddings) == 0 {
+	embeddingsSnap := c.embeddings.Snapshot()
+	if len(embeddingsSnap) == 0 {
 		c.misses++
 		return nil, ErrCacheMiss
 	}
@@ -155,7 +172,7 @@ func (c *SemanticCache) GetWithThreshold(ctx context.Context, embedding []float6
 	}
 
 	// Find most similar
-	bestIdx, bestScore := FindMostSimilar(searchEmbedding, c.embeddings, c.config.SimilarityMetric)
+	bestIdx, bestScore := FindMostSimilar(searchEmbedding, embeddingsSnap, c.config.SimilarityMetric)
 
 	if bestIdx < 0 || bestScore < threshold {
 		c.misses++
@@ -163,8 +180,12 @@ func (c *SemanticCache) GetWithThreshold(ctx context.Context, embedding []float6
 	}
 
 	// Get entry
-	entryID := c.entryIDs[bestIdx]
-	entry, ok := c.entries[entryID]
+	entryID, ok := c.entryIDs.At(bestIdx)
+	if !ok {
+		c.misses++
+		return nil, ErrCacheMiss
+	}
+	entry, ok := c.entries.Get(entryID)
 	if !ok {
 		c.misses++
 		return nil, ErrCacheMiss
@@ -214,10 +235,10 @@ func (c *SemanticCache) Set(ctx context.Context, query, response string, embeddi
 		AccessCount: 1,
 	}
 
-	// Store entry
-	c.entries[entry.ID] = entry
-	c.embeddings = append(c.embeddings, storeEmbedding)
-	c.entryIDs = append(c.entryIDs, entry.ID)
+	// Store entry — append all three under mu (compound invariant).
+	c.entries.Put(entry.ID, entry)
+	c.embeddings.Append(storeEmbedding)
+	c.entryIDs.Append(entry.ID)
 
 	// Check for eviction
 	if evicted := c.eviction.Add(entry.ID); evicted != "" {
@@ -253,9 +274,9 @@ func (c *SemanticCache) SetWithID(ctx context.Context, id, query, response strin
 		AccessCount: 1,
 	}
 
-	c.entries[entry.ID] = entry
-	c.embeddings = append(c.embeddings, storeEmbedding)
-	c.entryIDs = append(c.entryIDs, entry.ID)
+	c.entries.Put(entry.ID, entry)
+	c.embeddings.Append(storeEmbedding)
+	c.entryIDs.Append(entry.ID)
 
 	if evicted := c.eviction.Add(entry.ID); evicted != "" {
 		_ = c.removeByIDLocked(evicted) //nolint:errcheck
@@ -266,10 +287,7 @@ func (c *SemanticCache) SetWithID(ctx context.Context, id, query, response strin
 
 // GetByID retrieves an entry by its ID.
 func (c *SemanticCache) GetByID(ctx context.Context, id string) (*CacheEntry, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	entry, ok := c.entries[id]
+	entry, ok := c.entries.Get(id)
 	if !ok {
 		return nil, ErrCacheMiss
 	}
@@ -281,17 +299,23 @@ func (c *SemanticCache) GetByID(ctx context.Context, id string) (*CacheEntry, er
 func (c *SemanticCache) GetByQueryHash(ctx context.Context, query string) (*CacheEntry, error) {
 	hash := hashQuery(query)
 
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	for _, entry := range c.entries {
+	var found *CacheEntry
+	c.entries.Range(func(_ string, entry *CacheEntry) bool {
 		if entry.QueryHash == hash {
-			entry.AccessedAt = time.Now()
-			entry.AccessCount++
-			c.eviction.UpdateAccess(entry.ID)
-			c.hits++
-			return entry, nil
+			found = entry
+			return false
 		}
+		return true
+	})
+	if found != nil {
+		found.AccessedAt = time.Now()
+		found.AccessCount++
+		c.eviction.UpdateAccess(found.ID)
+		c.hits++
+		return found, nil
 	}
 
 	c.misses++
@@ -313,7 +337,7 @@ func (c *SemanticCache) removeByID(id string) {
 }
 
 func (c *SemanticCache) removeByIDLocked(id string) error {
-	entry, ok := c.entries[id]
+	entry, ok := c.entries.Get(id)
 	if !ok {
 		return ErrCacheMiss
 	}
@@ -324,13 +348,17 @@ func (c *SemanticCache) removeByIDLocked(id string) error {
 	}
 
 	// Remove from entries
-	delete(c.entries, id)
+	c.entries.Delete(id)
 
-	// Remove from embeddings and entryIDs
-	for i, eid := range c.entryIDs {
+	// Remove from embeddings and entryIDs (positional lockstep).
+	idsSnap := c.entryIDs.Snapshot()
+	embSnap := c.embeddings.Snapshot()
+	for i, eid := range idsSnap {
 		if eid == id {
-			c.embeddings = append(c.embeddings[:i], c.embeddings[i+1:]...)
-			c.entryIDs = append(c.entryIDs[:i], c.entryIDs[i+1:]...)
+			newEmb := append(append([][]float64{}, embSnap[:i]...), embSnap[i+1:]...)
+			newIDs := append(append([]string{}, idsSnap[:i]...), idsSnap[i+1:]...)
+			c.embeddings.Replace(newEmb)
+			c.entryIDs.Replace(newIDs)
 			break
 		}
 	}
@@ -345,9 +373,9 @@ func (c *SemanticCache) Clear(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.entries = make(map[string]*CacheEntry)
-	c.embeddings = make([][]float64, 0)
-	c.entryIDs = make([]string, 0)
+	c.entries.Clear()
+	c.embeddings.Clear()
+	c.entryIDs.Clear()
 
 	// Reinitialize eviction
 	c.initEviction()
@@ -370,7 +398,7 @@ func (c *SemanticCache) Stats(ctx context.Context) *CacheStats {
 	}
 
 	return &CacheStats{
-		TotalEntries:  len(c.entries),
+		TotalEntries:  c.entries.Len(),
 		Hits:          c.hits,
 		Misses:        c.misses,
 		HitRate:       hitRate,
@@ -380,9 +408,7 @@ func (c *SemanticCache) Stats(ctx context.Context) *CacheStats {
 
 // Size returns the current number of entries.
 func (c *SemanticCache) Size() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.entries)
+	return c.entries.Len()
 }
 
 // GetTopK finds the top K most similar entries.
@@ -394,7 +420,8 @@ func (c *SemanticCache) GetTopK(ctx context.Context, embedding []float64, k int)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if len(c.embeddings) == 0 {
+	embeddingsSnap := c.embeddings.Snapshot()
+	if len(embeddingsSnap) == 0 {
 		return nil, nil
 	}
 
@@ -403,12 +430,15 @@ func (c *SemanticCache) GetTopK(ctx context.Context, embedding []float64, k int)
 		searchEmbedding = NormalizeL2(embedding)
 	}
 
-	indices, scores := FindTopK(searchEmbedding, c.embeddings, c.config.SimilarityMetric, k)
+	indices, scores := FindTopK(searchEmbedding, embeddingsSnap, c.config.SimilarityMetric, k)
 
 	hits := make([]*CacheHit, 0, len(indices))
 	for i, idx := range indices {
-		entryID := c.entryIDs[idx]
-		entry, ok := c.entries[entryID]
+		entryID, ok := c.entryIDs.At(idx)
+		if !ok {
+			continue
+		}
+		entry, ok := c.entries.Get(entryID)
 		if ok {
 			hits = append(hits, &CacheHit{
 				Entry:      entry,
@@ -429,14 +459,7 @@ func (c *SemanticCache) SetOnEvict(fn func(entry *CacheEntry)) {
 
 // GetAllEntries returns all cached entries (for persistence).
 func (c *SemanticCache) GetAllEntries(ctx context.Context) []*CacheEntry {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	entries := make([]*CacheEntry, 0, len(c.entries))
-	for _, entry := range c.entries {
-		entries = append(entries, entry)
-	}
-	return entries
+	return c.entries.Values()
 }
 
 // Config returns the cache configuration.
@@ -469,7 +492,7 @@ func (c *SemanticCache) Invalidate(ctx context.Context, criteria InvalidationCri
 
 	toRemove := make([]string, 0)
 
-	for id, entry := range c.entries {
+	c.entries.Range(func(id string, entry *CacheEntry) bool {
 		shouldRemove := false
 
 		// Check age
@@ -498,7 +521,8 @@ func (c *SemanticCache) Invalidate(ctx context.Context, criteria InvalidationCri
 		if shouldRemove {
 			toRemove = append(toRemove, id)
 		}
-	}
+		return true
+	})
 
 	for _, id := range toRemove {
 		_ = c.removeByIDLocked(id) //nolint:errcheck

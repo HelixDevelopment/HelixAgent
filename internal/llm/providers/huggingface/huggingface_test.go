@@ -142,6 +142,97 @@ func TestCompleteInference(t *testing.T) {
 	assert.Equal(t, "huggingface", resp.ProviderID)
 }
 
+// TestBuildInferenceURL_IncludesModelsPathAndSeparator is a regression test for a
+// production bug observed in boot logs: with baseURL
+// "https://api-inference.huggingface.co" (no trailing slash, no /models segment)
+// and model "meta-llama/Llama-3.2-3B-Instruct", a naive baseURL+model concatenation
+// produced "https://api-inference.huggingface.cometa-llama/Llama-3.2-3B-Instruct"
+// — note the missing slash causing DNS lookup of "api-inference.huggingface.cometa-llama".
+// buildInferenceURL must always emit a proper URL with the /models/ segment and a
+// separator between host/path and model.
+func TestBuildInferenceURL_IncludesModelsPathAndSeparator(t *testing.T) {
+	t.Parallel()
+	model := "meta-llama/Llama-3.2-3B-Instruct"
+
+	tests := []struct {
+		name    string
+		baseURL string
+		want    string
+	}{
+		{
+			name:    "bare host, no trailing slash (the boot-log bug)",
+			baseURL: "https://api-inference.huggingface.co",
+			want:    "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct",
+		},
+		{
+			name:    "bare host with trailing slash",
+			baseURL: "https://api-inference.huggingface.co/",
+			want:    "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct",
+		},
+		{
+			name:    "host + /models, no trailing slash",
+			baseURL: "https://api-inference.huggingface.co/models",
+			want:    "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct",
+		},
+		{
+			name:    "host + /models/ with trailing slash",
+			baseURL: "https://api-inference.huggingface.co/models/",
+			want:    "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct",
+		},
+		{
+			name:    "router.huggingface.co hf-inference form",
+			baseURL: "https://router.huggingface.co/hf-inference/models/",
+			want:    "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.2-3B-Instruct",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := buildInferenceURL(tt.baseURL, model)
+			assert.Equal(t, tt.want, got,
+				"URL must contain /models/ segment and be properly separated; "+
+					"naive concatenation is the production bug being regressed")
+			assert.Contains(t, got, "/models/",
+				"constructed URL must contain '/models/' path segment")
+			assert.NotContains(t, got, "cometa-llama",
+				"constructed URL must not contain the 'cometa-llama' DNS-typo signature "+
+					"from missing separator")
+		})
+	}
+}
+
+// TestCompleteInference_BareHostBaseURL_UsesModelsPath verifies that the
+// full completeInference flow — not just URL building — routes requests
+// through /models/<model-id> when given a bare host baseURL. This catches
+// the actual production boot failure end-to-end.
+func TestCompleteInference_BareHostBaseURL_UsesModelsPath(t *testing.T) {
+	t.Parallel()
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		responses := []InferenceResponse{{GeneratedText: "ok"}}
+		_ = json.NewEncoder(w).Encode(responses)
+	}))
+	defer server.Close()
+
+	// server.URL has no trailing slash, no /models segment — mirrors the
+	// production discovery mapping that caused the boot-log bug.
+	provider := NewProvider("test-api-key", server.URL, "meta-llama/Llama-3.2-3B-Instruct")
+	provider.usePro = false
+
+	req := &models.LLMRequest{
+		ID:       "req-bare",
+		Messages: []models.Message{{Role: "user", Content: "Hello"}},
+	}
+
+	_, err := provider.Complete(context.Background(), req)
+	require.NoError(t, err)
+	assert.Equal(t, "/models/meta-llama/Llama-3.2-3B-Instruct", gotPath,
+		"bare host baseURL must route through /models/<model-id>")
+}
+
 func TestCompleteAPIError(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

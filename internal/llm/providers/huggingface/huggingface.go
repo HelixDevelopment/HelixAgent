@@ -238,10 +238,11 @@ func (p *Provider) completePro(ctx context.Context, req *models.LLMRequest, star
 
 func (p *Provider) completeInference(ctx context.Context, req *models.LLMRequest, startTime time.Time) (*models.LLMResponse, error) {
 	apiReq := p.convertInferenceRequest(req)
-	url := p.baseURL + p.model
-	if p.baseURL == HuggingFaceProURL {
-		url = HuggingFaceInferenceURL + p.model
+	base := p.baseURL
+	if base == HuggingFaceProURL {
+		base = HuggingFaceInferenceURL
 	}
+	url := buildInferenceURL(base, p.model)
 
 	resp, err := p.makeAPICall(ctx, url, apiReq)
 	if err != nil {
@@ -663,4 +664,29 @@ func (p *Provider) SetModel(model string) {
 // GetName returns the provider name
 func (p *Provider) GetName() string {
 	return "huggingface"
+}
+
+// buildInferenceURL constructs the HuggingFace Inference API URL for a given
+// base URL and model. It guarantees:
+//   - the "/models/" path segment is present exactly once
+//   - there is always a "/" separator between base URL and model id
+//
+// Historical bug: a naive baseURL + model concatenation produced URLs like
+//
+//	"https://api-inference.huggingface.cometa-llama/Llama-3.2-3B-Instruct"
+//
+// when baseURL was "https://api-inference.huggingface.co" (no trailing slash,
+// no /models segment) and model was "meta-llama/Llama-3.2-3B-Instruct".
+// The missing separator then caused DNS lookups of the concatenated host
+// "api-inference.huggingface.cometa-llama". buildInferenceURL fixes this.
+func buildInferenceURL(baseURL, model string) string {
+	b := strings.TrimRight(baseURL, "/")
+	m := strings.TrimLeft(model, "/")
+	// Ensure /models/ segment is present before the model id. We only want to
+	// detect /models as a trailing path component, not as a substring that
+	// happens to appear in the host (unlikely but cheap to be precise).
+	if !strings.HasSuffix(b, "/models") {
+		b += "/models"
+	}
+	return b + "/" + m
 }

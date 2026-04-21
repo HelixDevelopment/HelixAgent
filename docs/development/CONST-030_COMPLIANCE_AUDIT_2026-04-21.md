@@ -15,8 +15,8 @@ Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
 | Test files scanned (`tests/` + `internal/` + `challenges/`) | 1,179 |
 | Non-unit test files scanned             | 331   |
 | Violations confirmed                    | 41    |
-| Fixed (cumulative across sessions)      | 15    |
-| Deferred to future session              | 26    |
+| Fixed (cumulative across sessions)      | 22    |
+| Deferred to future session              | 19    |
 
 No violation met the in-session fix criteria (≤50 LOC rewrite, no cross-file
 ripple, no production-code change, substitution of in-process fake with live
@@ -86,27 +86,34 @@ For each hit, confirmed:
 | `internal/security/integration_test.go` | `9b0fbcd1` (PR12) | Pattern 4 — demote to unit | Pure in-process `SecurityIntegration` tests (audit logger, guardrails, red-team gate, MCP trust, tool permissions) against `mockDebateSecurityEvaluator`. Renamed to `integration_unit_test.go`. 12 `TestSecurityIntegration_*` pass. |
 | `tests/integration/provider_verification_comprehensive_test.go` | `9d70b037` (PR13) | Pattern 1 — dead-code removal | Removed unused `MockLLMProviderForVerification` stub. Remaining tests already exercise the REAL `verifier.StartupVerifier.VerifyAllProviders` against live providers gated by `testutil.RequireAPIKey(t, "deepseek")` and `testing.Short()` skips. |
 | `tests/integration/rag_integration_test.go` | `1efac1dc` (PR14) | Pattern 4 — demote to unit | Pure in-process `rag.Pipeline` / `rag.AdvancedRAG` tests (chunking, query expansion, re-ranking, embedding registry) against `MockEmbeddingModel`. Moved to `tests/unit/rag/pipeline_test.go`, package `integration` → `rag_test`. All tests pass (0.17s). |
+| `tests/integration/helpers_test.go` + `tests/integration/mem0_ensemble_integration_test.go` | `b48cdf0c` (PR15) | Pattern 4 — strip mock + demote | Stripped `MockBaseLLMProvider` out of `helpers_test.go` (kept JWT/URL constants consumed by 7 live-HTTP tests). Demoted `mem0_ensemble_integration_test.go` (7 tests + 2 benchmarks) to `tests/unit/mem0/mem0_ensemble_test.go` carrying the mock. Extracted the live `TestMem0LiveIntegration` into `tests/integration/mem0_ensemble_live_test.go` (mock-free, hits :7061). All pass in 0.035s. |
+| `tests/integration/integration_test.go` | `58f99f5c` (PR16) | Pattern 4 — demote to unit | Pure in-process `TestMultiProviderIntegration` / `TestMCP_LSP_Integration` / `TestToolRegistry_Integration` / `TestContextManager_Integration` / `TestIntegrationOrchestrator_Workflow` / `TestNewServicesIntegration` against a local `MockTool` + httptest. Moved to `tests/unit/integration_legacy/integration_test.go`, package renamed to `integration_legacy_test`. All pass in 0.031s. |
+| `tests/integration/request_flow_test.go` | `847b3505` (PR17) | Pattern 4 — demote to unit | Pure in-process `TestRequestFlow_*` tests against local `RequestFlowMockProvider` + `httptest.NewRecorder`. Moved to `tests/unit/request_flow/request_flow_test.go`, package renamed to `request_flow_test`. All pass in 0.523s. |
+| `tests/integration/service_interaction_test.go` + `tests/integration/api_scenarios_test.go` | `4ec716a0` (PR18) | Pattern 4 — demote to unit | Both files share a local `MockProvider` struct and use `httptest.NewRecorder`. Moved together to `tests/unit/service_interactions/`, package renamed to `service_interactions_test`. All pass in 0.069s. |
+| `tests/integration/service_wiring_test.go` | `4aad7789` (PR19) | Pattern 4 — demote to unit | Pure in-process `TestServiceWiring_*` tests constructing provider registries, debate team configs, MCP/LSP/ACP managers, cache, notifier, monitoring, and security services in memory. Single mock `mockOrchestratorRegistry` is a thin adapter around the real `services.ProviderRegistry`. Moved to `tests/unit/service_wiring/service_wiring_test.go`, package renamed to `service_wiring_test`. All 16 test functions pass in 35s. |
+| `tests/integration/tool_integration_test.go` | `<TBD>` (PR20) | Pattern 4 — demote to unit | Pure in-process tool-registry / tool-schema / tool-execution tests using a local `ToolTestMockTool` struct and an in-process `httptest.Server` for WebFetch/WebSearch fixtures. Moved to `tests/unit/tool_integration/tool_integration_test.go`, package renamed to `tool_integration_test`. All tests pass in 57s. |
 
 ### Deferred (documented for future session)
 
-#### tests/integration/ — 14 files (4 fixed in PR8–PR14, 10 remaining)
+#### tests/integration/ — 14 files (11 fixed in PR8–PR20, 3 remaining)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
-| `tests/integration/helpers_test.go` | 138 | `MockBaseLLMProvider` | **high** — shared by `mem0_ensemble_integration_test.go` |
-| `tests/integration/integration_test.go` | 393 | in-process provider & cache mocks | high |
-| `tests/integration/service_wiring_test.go` | 869 | service wiring mocks | high |
-| `tests/integration/service_interaction_test.go` | 295 | multi-service mock graph | medium |
-| `tests/integration/request_flow_test.go` | 1,402 | end-to-end request-flow mocks (uses `mockProvider`) | **high** |
+| ~~`tests/integration/helpers_test.go`~~ | ~~138~~ | ~~`MockBaseLLMProvider`~~ | **Fixed** (PR15, `b48cdf0c`) — mock stripped; JWT/URL helpers retained for live-HTTP tests. |
+| ~~`tests/integration/integration_test.go`~~ | ~~393~~ | ~~in-process provider & cache mocks~~ | **Fixed** (PR16, `58f99f5c`) — demoted to `tests/unit/integration_legacy/integration_test.go`. |
+| ~~`tests/integration/service_wiring_test.go`~~ | ~~869~~ | ~~service wiring mocks~~ | **Fixed** (PR19, `4aad7789`) — demoted to `tests/unit/service_wiring/service_wiring_test.go`. |
+| ~~`tests/integration/service_interaction_test.go`~~ | ~~295~~ | ~~multi-service mock graph~~ | **Fixed** (PR18, `4ec716a0`) — demoted to `tests/unit/service_interactions/`. |
+| ~~`tests/integration/request_flow_test.go`~~ | ~~1,402~~ | ~~end-to-end request-flow mocks (uses `mockProvider`)~~ | **Fixed** (PR17, `847b3505`) — demoted to `tests/unit/request_flow/request_flow_test.go`. |
 | `tests/integration/provider_integration_test.go` | 1,246 | `mockProvider` per-test (uses `integrationMockProvider`-style pattern) | **high** |
 | ~~`tests/integration/provider_verification_comprehensive_test.go`~~ | ~~274~~ | ~~comprehensive verification with canned provider~~ | **Fixed** (PR13, `9d70b037`) — dead-mock removal; tests already CONST-030-compliant against live providers. |
 | `tests/integration/cli_agent_integration_test.go` | 1,463 | CLI-agent mocks (2 struct types) | high |
-| `tests/integration/tool_integration_test.go` | 1,621 | tool-registry mock | high |
+| ~~`tests/integration/tool_integration_test.go`~~ | ~~1,621~~ | ~~tool-registry mock~~ | **Fixed** (PR20) — demoted to `tests/unit/tool_integration/tool_integration_test.go`. |
 | ~~`tests/integration/rag_integration_test.go`~~ | ~~429~~ | ~~RAG retriever mock~~ | **Fixed** (PR14, `1efac1dc`) — demoted to `tests/unit/rag/pipeline_test.go`. |
 | `tests/integration/opencode_ensemble_flow_test.go` | 796 | OpenCode ensemble mock (uses `mockProvider`) | **high** |
 | ~~`tests/integration/debate_adversarial_integration_test.go`~~ | ~~270~~ | ~~`mockAdversarialLLM`, `failingAdversarialLLM`~~ | **Fixed** (PR8, `4a9cc548`) — demoted to `tests/unit/debate/adversarial_test.go`. |
 | ~~`tests/integration/debate_full_protocol_integration_test.go`~~ | ~~352~~ | ~~full-protocol canned LLM~~ | **Fixed** (PR9, `30cdf5f8`) — demoted to `tests/unit/debate/full_protocol_test.go`. |
 | ~~`tests/integration/debate_reflexion_integration_test.go`~~ | ~~318~~ | ~~reflexion-loop canned LLM~~ | **Fixed** (PR10, `2257dbea`) — demoted to `tests/unit/debate/reflexion_test.go`. |
+| `tests/integration/api_scenarios_test.go` (shared `MockProvider`) | 309 | shared `MockProvider` | **Fixed** (PR18, `4ec716a0`) — demoted alongside `service_interaction_test.go`. |
 
 **Blocker for every file above:** tests call an in-process interface (e.g.
 `agents.AdversarialProtocol`, `services.Orchestrator`) with canned LLM

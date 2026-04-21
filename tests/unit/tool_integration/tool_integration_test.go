@@ -1,6 +1,9 @@
-// Package integration provides comprehensive end-to-end integration tests for the HelixAgent tool system.
-// These tests verify the complete flow from CLI agent request to tool execution and response.
-package integration
+// Package tool_integration_test provides comprehensive in-process tests for
+// the HelixAgent tool system — tool registry, tool schema, tool execution via
+// httptest-backed gin router. Uses a local `ToolTestMockTool` struct and an
+// in-process `httptest.Server` for WebFetch/WebSearch fixtures. No live :7061
+// HTTP. CONST-030 compliant via Pattern-4 demote-to-unit.
+package tool_integration_test
 
 import (
 	"bytes"

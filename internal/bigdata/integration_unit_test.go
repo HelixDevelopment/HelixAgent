@@ -1,3 +1,10 @@
+// CONST-030: these tests exercise the in-process bigdata.Integration against
+// an in-process `mockLLMProvider`, covering `DefaultIntegrationConfig`,
+// lazy integration instantiation, health checks, and infinite-context /
+// cross-learning wiring. Assertions are on in-process state — no live
+// backend. Unit-level per CONST-030; renamed from integration_test.go to
+// integration_unit_test.go (PR11) so the filename no longer matches the
+// `*_integration_test.go` non-unit surface.
 package bigdata
 
 import (

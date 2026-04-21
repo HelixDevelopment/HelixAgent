@@ -1,5 +1,11 @@
 package mcp
 
+// CONST-030: these tests exercise pure in-process Go types — configs,
+// registry CRUD, type aliases, struct method signatures — with no network,
+// database, or other external dependency. They are unit tests by definition.
+// File was previously named integration_test.go; renamed so it is not swept
+// into the audit's non-unit surface (*_integration_test.go).
+
 import (
 	"context"
 	"testing"

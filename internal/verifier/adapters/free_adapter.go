@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/llm"
@@ -64,7 +65,17 @@ func DefaultFreeAdapterConfig() *FreeAdapterConfig {
 	}
 }
 
-// FreeProviderAdapter handles verification for free providers (Zen, OpenRouter :free models)
+// FreeProviderAdapter handles verification for free providers (Zen, OpenRouter :free models).
+//
+// CONST-029: the previous implementation held an fa.mu sync.RWMutex for
+// reader methods and used a per-call modelsMu sync.Mutex inside
+// VerifyZenProvider / VerifyOpenRouterFreeModels for writer paths.
+// Those two mutexes did NOT serialise against each other — a reader
+// holding fa.mu.RLock() could observe partial map writes from either
+// verify goroutine, and two concurrent verify calls could race on the
+// shared maps (two different per-call mutexes, same map).
+// safe.Store's internal synchronisation collapses both locks into one
+// discipline-free primitive: the race is structurally impossible.
 type FreeProviderAdapter struct {
 	verifierSvc *verifier.VerificationService
 	config      *FreeAdapterConfig
@@ -74,14 +85,13 @@ type FreeProviderAdapter struct {
 	zenProvider    *zen.ZenProvider
 	zenCLIProvider *zen.ZenCLIProvider // CLI facade for failed API models
 
-	// Cached verification results
-	mu             sync.RWMutex
-	verifiedModels map[string]*verifier.UnifiedModel
-	lastVerified   map[string]time.Time
-	healthStatus   map[string]bool
+	// Cached verification results (all concurrent-safe; no external mutex).
+	verifiedModels *safe.Store[string, *verifier.UnifiedModel]
+	lastVerified   *safe.Store[string, time.Time]
+	healthStatus   *safe.Store[string, bool]
 
-	// Models that failed direct API verification
-	failedAPIModels map[string]error
+	// Models that failed direct API verification.
+	failedAPIModels *safe.Store[string, error]
 }
 
 // NewFreeProviderAdapter creates a new free provider adapter
@@ -96,10 +106,10 @@ func NewFreeProviderAdapter(verifierSvc *verifier.VerificationService, config *F
 		httpClient: &http.Client{
 			Timeout: config.VerificationTimeout,
 		},
-		verifiedModels:  make(map[string]*verifier.UnifiedModel),
-		lastVerified:    make(map[string]time.Time),
-		healthStatus:    make(map[string]bool),
-		failedAPIModels: make(map[string]error),
+		verifiedModels:  safe.NewStore[string, *verifier.UnifiedModel](),
+		lastVerified:    safe.NewStore[string, time.Time](),
+		healthStatus:    safe.NewStore[string, bool](),
+		failedAPIModels: safe.NewStore[string, error](),
 	}
 
 	// Initialize ZenCLIProvider for fallback facade (lazy initialization)
@@ -144,9 +154,13 @@ func (fa *FreeProviderAdapter) VerifyZenProvider(ctx context.Context) (*verifier
 	models := make([]verifier.UnifiedModel, 0, len(freeModels))
 	failedModels := make([]string, 0)
 
-	// PHASE 1: Verify each free model via direct API
+	// PHASE 1: Verify each free model via direct API.
+	// The previous impl held a per-call modelsMu; safe.Store serialises
+	// writes to fa.verifiedModels / lastVerified / failedAPIModels
+	// internally, so we only need a local mu for the plain `models`
+	// slice and `failedModels` slice that accumulate per-call state.
 	var wg sync.WaitGroup
-	var modelsMu sync.Mutex
+	var localMu sync.Mutex
 	sem := make(chan struct{}, fa.config.MaxConcurrentVerifications)
 
 	for _, modelID := range freeModels {
@@ -164,19 +178,18 @@ func (fa *FreeProviderAdapter) VerifyZenProvider(ctx context.Context) (*verifier
 					"error":    err.Error(),
 				}).Warn("Failed to verify Zen model via direct API")
 
-				// Track the failed model for CLI fallback
-				modelsMu.Lock()
+				localMu.Lock()
 				failedModels = append(failedModels, mID)
-				fa.failedAPIModels[mID] = err
-				modelsMu.Unlock()
+				localMu.Unlock()
+				fa.failedAPIModels.Put(mID, err)
 				return
 			}
 
-			modelsMu.Lock()
+			localMu.Lock()
 			models = append(models, *model)
-			fa.verifiedModels[mID] = model
-			fa.lastVerified[mID] = time.Now()
-			modelsMu.Unlock()
+			localMu.Unlock()
+			fa.verifiedModels.Put(mID, model)
+			fa.lastVerified.Put(mID, time.Now())
 		}(modelID)
 	}
 
@@ -205,13 +218,13 @@ func (fa *FreeProviderAdapter) VerifyZenProvider(ctx context.Context) (*verifier
 				continue
 			}
 
-			modelsMu.Lock()
+			localMu.Lock()
 			models = append(models, *model)
-			fa.verifiedModels[modelID] = model
-			fa.lastVerified[modelID] = time.Now()
+			localMu.Unlock()
+			fa.verifiedModels.Put(modelID, model)
+			fa.lastVerified.Put(modelID, time.Now())
 			// Remove from failed models since CLI verification succeeded
-			delete(fa.failedAPIModels, modelID)
-			modelsMu.Unlock()
+			fa.failedAPIModels.Delete(modelID)
 			cliVerifiedModels++
 		}
 
@@ -798,7 +811,7 @@ func (fa *FreeProviderAdapter) VerifyOpenRouterFreeModels(ctx context.Context, o
 
 	models := make([]verifier.UnifiedModel, 0)
 	var wg sync.WaitGroup
-	var modelsMu sync.Mutex
+	var localMu sync.Mutex
 	sem := make(chan struct{}, fa.config.MaxConcurrentVerifications)
 
 	for _, modelID := range freeModelPatterns {
@@ -818,11 +831,11 @@ func (fa *FreeProviderAdapter) VerifyOpenRouterFreeModels(ctx context.Context, o
 				return
 			}
 
-			modelsMu.Lock()
+			localMu.Lock()
 			models = append(models, *model)
-			fa.verifiedModels[mID] = model
-			fa.lastVerified[mID] = time.Now()
-			modelsMu.Unlock()
+			localMu.Unlock()
+			fa.verifiedModels.Put(mID, model)
+			fa.lastVerified.Put(mID, time.Now())
 		}(modelID)
 	}
 
@@ -1036,34 +1049,17 @@ func (fa *FreeProviderAdapter) VerifyAllFreeProviders(ctx context.Context, openR
 
 // GetVerifiedModels returns all verified free models
 func (fa *FreeProviderAdapter) GetVerifiedModels() map[string]*verifier.UnifiedModel {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-
-	result := make(map[string]*verifier.UnifiedModel, len(fa.verifiedModels))
-	for k, v := range fa.verifiedModels {
-		result[k] = v
-	}
-	return result
+	return fa.verifiedModels.Snapshot()
 }
 
 // IsModelVerified checks if a model is verified
 func (fa *FreeProviderAdapter) IsModelVerified(modelID string) bool {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-	_, ok := fa.verifiedModels[modelID]
-	return ok
+	return fa.verifiedModels.Has(modelID)
 }
 
 // GetHealthStatus returns the health status of free providers
 func (fa *FreeProviderAdapter) GetHealthStatus() map[string]bool {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-
-	result := make(map[string]bool, len(fa.healthStatus))
-	for k, v := range fa.healthStatus {
-		result[k] = v
-	}
-	return result
+	return fa.healthStatus.Snapshot()
 }
 
 // RefreshVerification re-verifies a specific provider
@@ -1090,51 +1086,36 @@ func (fa *FreeProviderAdapter) GetCLIFacadeProvider() *zen.ZenCLIProvider {
 
 // GetFailedAPIModels returns models that failed direct API verification
 func (fa *FreeProviderAdapter) GetFailedAPIModels() map[string]error {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-
-	result := make(map[string]error, len(fa.failedAPIModels))
-	for k, v := range fa.failedAPIModels {
-		result[k] = v
-	}
-	return result
+	return fa.failedAPIModels.Snapshot()
 }
 
 // IsModelUsingCLIFacade checks if a model is being used via CLI facade
 func (fa *FreeProviderAdapter) IsModelUsingCLIFacade(modelID string) bool {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-
-	model, ok := fa.verifiedModels[modelID]
+	model, ok := fa.verifiedModels.Get(modelID)
 	if !ok {
 		return false
 	}
-
 	if model.Metadata == nil {
 		return false
 	}
-
 	verifiedVia, ok := model.Metadata["verified_via"]
 	if !ok {
 		return false
 	}
-
 	return verifiedVia == "cli_facade"
 }
 
 // GetCLIFacadeModels returns all models that are verified via CLI facade
 func (fa *FreeProviderAdapter) GetCLIFacadeModels() []*verifier.UnifiedModel {
-	fa.mu.RLock()
-	defer fa.mu.RUnlock()
-
 	var result []*verifier.UnifiedModel
-	for _, model := range fa.verifiedModels {
+	fa.verifiedModels.Range(func(_ string, model *verifier.UnifiedModel) bool {
 		if model.Metadata != nil {
 			if verifiedVia, ok := model.Metadata["verified_via"]; ok && verifiedVia == "cli_facade" {
 				result = append(result, model)
 			}
 		}
-	}
+		return true
+	})
 	return result
 }
 

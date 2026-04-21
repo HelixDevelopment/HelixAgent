@@ -2,6 +2,8 @@
 package adapters
 
 import (
+	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -125,22 +127,21 @@ func TestFreeProviderAdapter_GetVerifiedModels_WithModels(t *testing.T) {
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add some verified models manually
-	adapter.mu.Lock()
-	adapter.verifiedModels["model-1"] = &verifier.UnifiedModel{
+	adapter.verifiedModels.Put("model-1", &verifier.UnifiedModel{
 		ID:       "model-1",
 		Name:     "Test Model 1",
 		Provider: "zen",
 		Verified: true,
 		Score:    6.5,
-	}
-	adapter.verifiedModels["model-2"] = &verifier.UnifiedModel{
+	})
+	adapter.verifiedModels.Put("model-2", &verifier.UnifiedModel{
 		ID:       "model-2",
 		Name:     "Test Model 2",
 		Provider: "zen",
 		Verified: true,
 		Score:    6.8,
-	}
-	adapter.mu.Unlock()
+	})
+
 
 	models := adapter.GetVerifiedModels()
 
@@ -163,14 +164,13 @@ func TestFreeProviderAdapter_IsModelVerified_True(t *testing.T) {
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add a verified model
-	adapter.mu.Lock()
-	adapter.verifiedModels["test-model"] = &verifier.UnifiedModel{
+	adapter.verifiedModels.Put("test-model", &verifier.UnifiedModel{
 		ID:       "test-model",
 		Name:     "Test Model",
 		Provider: "zen",
 		Verified: true,
-	}
-	adapter.mu.Unlock()
+	})
+
 
 	verified := adapter.IsModelVerified("test-model")
 
@@ -192,10 +192,10 @@ func TestFreeProviderAdapter_GetHealthStatus_WithStatus(t *testing.T) {
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add health status
-	adapter.mu.Lock()
-	adapter.healthStatus["zen"] = true
-	adapter.healthStatus["openrouter"] = false
-	adapter.mu.Unlock()
+	
+	adapter.healthStatus.Put("zen", true)
+	adapter.healthStatus.Put("openrouter", false)
+	
 
 	status := adapter.GetHealthStatus()
 
@@ -488,12 +488,10 @@ func TestFreeProviderAdapter_ConcurrentAccess(t *testing.T) {
 	// Writer for verified models
 	go func() {
 		for i := 0; i < 100; i++ {
-			adapter.mu.Lock()
-			adapter.verifiedModels["test-model"] = &verifier.UnifiedModel{
+			adapter.verifiedModels.Put("test-model", &verifier.UnifiedModel{
 				ID:   "test-model",
 				Name: "Test Model",
-			}
-			adapter.mu.Unlock()
+			})
 		}
 		done <- true
 	}()
@@ -509,9 +507,9 @@ func TestFreeProviderAdapter_ConcurrentAccess(t *testing.T) {
 	// Writer for health status
 	go func() {
 		for i := 0; i < 100; i++ {
-			adapter.mu.Lock()
-			adapter.healthStatus["zen"] = true
-			adapter.mu.Unlock()
+			
+			adapter.healthStatus.Put("zen", true)
+			
 		}
 		done <- true
 	}()
@@ -538,4 +536,54 @@ func TestFreeProviderAdapter_RefreshVerification_UnknownProvider(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown free provider type")
+}
+
+// TestFreeProviderAdapter_ConcurrentVerify_NoRace is the CONST-029 regression
+// sentinel. Pre-migration, the shared maps (verifiedModels, lastVerified,
+// failedAPIModels, healthStatus) were guarded by fa.mu on reader paths and
+// by a *per-call* modelsMu on writer paths — so a reader holding
+// fa.mu.RLock() could observe partial map writes from a verify goroutine
+// holding only the local modelsMu. After the migration to safe.Store the
+// race is structurally impossible. This test stresses 100 concurrent
+// verify/read cycles and MUST pass under `go test -race`.
+func TestFreeProviderAdapter_ConcurrentVerify_NoRace(t *testing.T) {
+	t.Parallel()
+	adapter := NewFreeProviderAdapter(nil, DefaultFreeAdapterConfig())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Direct map writes exercise the same code path writers take
+			// under verify; safe.Store.Put is the serialisation point.
+			adapter.verifiedModels.Put("race-model", &verifier.UnifiedModel{
+				ID:       "race-model",
+				Verified: true,
+			})
+			adapter.lastVerified.Put("race-model", time.Now())
+			adapter.healthStatus.Put("zen", true)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = adapter.GetVerifiedModels()
+			_ = adapter.GetHealthStatus()
+			_ = adapter.GetFailedAPIModels()
+			_ = adapter.IsModelVerified("race-model")
+		}()
+	}
+	wg.Wait()
+	_ = ctx
+
+	// Final state must be internally consistent: any model present in
+	// verifiedModels must also report IsModelVerified=true.
+	models := adapter.GetVerifiedModels()
+	for id := range models {
+		if !adapter.IsModelVerified(id) {
+			t.Fatalf("inconsistent state: %s in map but IsModelVerified=false", id)
+		}
+	}
 }

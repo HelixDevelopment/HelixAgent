@@ -101,9 +101,8 @@ func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
 			Verified: true,
 			Score:    6.5,
 		}
-		adapter.mu.Lock()
-		adapter.verifiedModels["test-model"] = testModel
-		adapter.mu.Unlock()
+		adapter.verifiedModels.Put("test-model", testModel)
+
 
 		models := adapter.GetVerifiedModels()
 		assert.Len(t, models, 1)
@@ -129,12 +128,11 @@ func TestFreeProviderAdapter_IsModelVerified(t *testing.T) {
 
 	t.Run("verified model", func(t *testing.T) {
 		t.Parallel()
-		adapter.mu.Lock()
-		adapter.verifiedModels["test-model"] = &verifier.UnifiedModel{
+		adapter.verifiedModels.Put("test-model", &verifier.UnifiedModel{
 			ID:       "test-model",
 			Verified: true,
-		}
-		adapter.mu.Unlock()
+		})
+
 
 		verified := adapter.IsModelVerified("test-model")
 		assert.True(t, verified)
@@ -155,10 +153,10 @@ func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
 	t.Run("returns copy of health status", func(t *testing.T) {
 		t.Parallel()
 		adapter := NewFreeProviderAdapter(nil, nil)
-		adapter.mu.Lock()
-		adapter.healthStatus["zen"] = true
-		adapter.healthStatus["openrouter"] = false
-		adapter.mu.Unlock()
+		
+		adapter.healthStatus.Put("zen", true)
+		adapter.healthStatus.Put("openrouter", false)
+		
 
 		status := adapter.GetHealthStatus()
 		assert.Len(t, status, 2)
@@ -421,9 +419,7 @@ func TestFreeProviderAdapter_ConcurrentAccess_Comprehensive(t *testing.T) {
 				ID:       "model-" + string(rune('A'+idx)),
 				Verified: true,
 			}
-			adapter.mu.Lock()
-			adapter.verifiedModels[model.ID] = model
-			adapter.mu.Unlock()
+			adapter.verifiedModels.Put(model.ID, model)
 			done <- true
 		}(i)
 		go func() {
@@ -584,9 +580,8 @@ func TestFreeProviderAdapter_FailedAPIModels(t *testing.T) {
 		t.Parallel()
 		adapter := NewFreeProviderAdapter(nil, nil)
 		// Manually add a failed model
-		adapter.mu.Lock()
-		adapter.failedAPIModels["test-model"] = assert.AnError
-		adapter.mu.Unlock()
+		adapter.failedAPIModels.Put("test-model", assert.AnError)
+
 
 		failed1 := adapter.GetFailedAPIModels()
 		failed2 := adapter.GetFailedAPIModels()
@@ -612,12 +607,10 @@ func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
 
 	t.Run("returns false for model without CLI facade metadata", func(t *testing.T) {
 		t.Parallel()
-		adapter.mu.Lock()
-		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
+		adapter.verifiedModels.Put("api-model", &verifier.UnifiedModel{
 			ID:       "api-model",
 			Metadata: map[string]interface{}{},
-		}
-		adapter.mu.Unlock()
+		})
 
 		result := adapter.IsModelUsingCLIFacade("api-model")
 		assert.False(t, result)
@@ -625,14 +618,12 @@ func TestFreeProviderAdapter_IsModelUsingCLIFacade(t *testing.T) {
 
 	t.Run("returns true for model with CLI facade metadata", func(t *testing.T) {
 		t.Parallel()
-		adapter.mu.Lock()
-		adapter.verifiedModels["cli-model"] = &verifier.UnifiedModel{
+		adapter.verifiedModels.Put("cli-model", &verifier.UnifiedModel{
 			ID: "cli-model",
 			Metadata: map[string]interface{}{
 				"verified_via": "cli_facade",
 			},
-		}
-		adapter.mu.Unlock()
+		})
 
 		result := adapter.IsModelUsingCLIFacade("cli-model")
 		assert.True(t, result)
@@ -645,12 +636,10 @@ func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 	t.Run("returns empty when no CLI models", func(t *testing.T) {
 		t.Parallel()
 		adapter := NewFreeProviderAdapter(nil, nil)
-		adapter.mu.Lock()
-		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
+		adapter.verifiedModels.Put("api-model", &verifier.UnifiedModel{
 			ID:       "api-model",
 			Metadata: map[string]interface{}{},
-		}
-		adapter.mu.Unlock()
+		})
 
 		cliModels := adapter.GetCLIFacadeModels()
 		assert.Empty(t, cliModels)
@@ -659,24 +648,23 @@ func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 	t.Run("returns only CLI facade models", func(t *testing.T) {
 		t.Parallel()
 		adapter := NewFreeProviderAdapter(nil, nil)
-		adapter.mu.Lock()
-		adapter.verifiedModels["api-model"] = &verifier.UnifiedModel{
+		adapter.verifiedModels.Put("api-model", &verifier.UnifiedModel{
 			ID:       "api-model",
 			Metadata: map[string]interface{}{},
-		}
-		adapter.verifiedModels["cli-model-1"] = &verifier.UnifiedModel{
+		})
+		adapter.verifiedModels.Put("cli-model-1", &verifier.UnifiedModel{
 			ID: "cli-model-1",
 			Metadata: map[string]interface{}{
 				"verified_via": "cli_facade",
 			},
-		}
-		adapter.verifiedModels["cli-model-2"] = &verifier.UnifiedModel{
+		})
+		adapter.verifiedModels.Put("cli-model-2", &verifier.UnifiedModel{
 			ID: "cli-model-2",
 			Metadata: map[string]interface{}{
 				"verified_via": "cli_facade",
 			},
-		}
-		adapter.mu.Unlock()
+		})
+
 
 		cliModels := adapter.GetCLIFacadeModels()
 		assert.Len(t, cliModels, 2)

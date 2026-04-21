@@ -139,3 +139,4 @@ scripts/cli-agents/configs/backups/
 **/*.backup*
 **/*backup*.json
 /audit
+/cognee-mock

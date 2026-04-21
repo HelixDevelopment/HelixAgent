@@ -1,5 +1,10 @@
-// Package integration provides integration tests for HelixAgent components.
-package integration
+// CONST-030: these tests exercise the in-process rag.Pipeline,
+// rag.AdvancedRAG, query-expansion, re-ranking, chunking, and embedding
+// registry wiring against a canned MockEmbeddingModel. No live vector DB
+// or embeddings service is contacted — assertions are on in-process
+// pipeline state. Unit-level per CONST-030. Demoted from tests/integration/
+// to tests/unit/rag/ (PR14) and renamed package integration -> rag_test.
+package rag_test
 
 import (
 	"context"

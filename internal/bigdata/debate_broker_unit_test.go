@@ -1,5 +1,13 @@
 package bigdata
 
+// CONST-030: these tests exercise DebateIntegration against an in-process
+// mockBroker / mockSubscription implementing messaging.MessageBroker.
+// They test pure in-process wiring — message conversion, event-type enum
+// coverage, JSON serialisation shape — with no network, DB, or external
+// broker dependency. Unit tests by definition. File was previously named
+// debate_integration_test.go; renamed so it is not swept into the audit's
+// non-unit surface (*_integration_test.go).
+
 import (
 	"context"
 	"encoding/json"

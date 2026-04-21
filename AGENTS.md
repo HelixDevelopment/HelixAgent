@@ -94,3 +94,22 @@ Any struct field that is a mutable collection (map, slice, channel-map) and is a
 **Discipline and migration table:** `docs/development/concurrency-playbook.md`.
 
 **Enforcement:** `scripts/concurrency-audit.sh` runs under `make ci-validate-all`. New code failing the audit fails CI. Existing sites migrate per the playbook's priority order; allowlist is temporary.
+
+### CONST-030: Real Infrastructure for All Non-Unit Tests
+
+Mocks, stubs, fakes, placeholders, and hardcoded data MAY ONLY be used in unit tests (files ending `_test.go` run under `go test -short`). EVERY other test type — integration, E2E, functional, security, stress, chaos, challenge, benchmark, HelixQA, and any runtime verification — MUST execute against the REAL running HelixAgent system with REAL containers, REAL databases, REAL Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
+
+To enable this: before every non-unit test run, the HelixAgent binary MUST build, distribute, and boot all containers per the Mandatory Container Orchestration Flow. Non-unit tests that cannot connect to real services MUST skip (not fail). Violations are critical infrastructure failures and block merge.
+
+This rule strengthens and supersedes CONST-025.
+
+### CONST-031: Authorized Remote Distribution Hosts
+
+Authorized remote distribution hosts (via Containers module SSH orchestrator):
+
+- `thinker.local` — user `milosvasic`, port 22, podman runtime, labels `storage=fast,memory=high`
+- `amber.local` — user `milosvasic`, port 22, podman runtime, labels `storage=fast,memory=high`
+
+Configured in `Containers/.env` (`CONTAINERS_REMOTE_HOST_1_*` / `CONTAINERS_REMOTE_HOST_2_*`). Enable with `CONTAINERS_REMOTE_ENABLED=true`.
+
+Every non-unit test run and every production deployment MUST use these hosts when remote distribution is enabled. Additional hosts MUST be added via `Containers/.env` and documented in this section before use. Direct `docker`/`podman` commands, manual container start/stop, or ad-hoc remote hosts are strictly prohibited.

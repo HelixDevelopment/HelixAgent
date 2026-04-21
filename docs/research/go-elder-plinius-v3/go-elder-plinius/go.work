@@ -1,29 +1,28 @@
 go 1.22
 
+// Bucket-3a modules (go-l1b3rt4s, go-obliteratus, go-g0dm0d3,
+// go-dioscuri, go-p4rs3lt0ngv3, go-glossopetrae,
+// go-misc-prompthacks, go-basilisktoken, go-autoredteam) were
+// retired on 2026-04-21 per design
+// docs/superpowers/specs/2026-04-21-remaining-work-execution-design.md
+// §Phase-0. Their prompt corpora were lifted into
+// internal/security/redteam/fixtures/ as defensive-use
+// regression fixtures for DeepTeamRedTeamer.
 use (
 	./go-plinius-common
 	./go-autotemp
-	./go-obliteratus
 	./go-eos
 	./go-almeche
 	./go-cl4r1t4s
-	./go-glossopetrae
-	./go-p4rs3lt0ngv3
 	./go-st3gg
-	./go-g0dm0d3
 	./go-v3sp3r
-	./go-l1b3rt4s
 	./go-leakhub
 	./go-v3r1t4s
 	./go-i-llm
-	./go-basilisktoken
 	./go-hypertune
 	./go-autostorygen
-	./go-dioscuri
 	./go-ourobopus
 	./go-gitty
-	./go-misc-prompthacks
-	./go-autoredteam
 	./go-gandalf-solutions
 	./go-leda
 	./go-mixtral-prompt-leak

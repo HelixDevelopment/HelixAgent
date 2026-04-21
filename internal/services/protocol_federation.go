@@ -6,17 +6,22 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 )
 
-// ProtocolDiscovery provides automatic discovery of protocol servers
+// ProtocolDiscovery provides automatic discovery of protocol servers.
+//
+// CONST-029: both the server table and the method list are now
+// concurrent-safe containers. `discoveryMethods` is append-only in
+// practice, but we route it through *safe.Slice so concurrent
+// AddDiscoveryMethod + Start races become impossible rather than
+// review-caught.
 type ProtocolDiscovery struct {
-	discoveredServers map[string]*DiscoveredServer
-	discoveryMethods  []DiscoveryMethod
-	mu                sync.RWMutex
+	discoveredServers *safe.Store[string, *DiscoveredServer]
+	discoveryMethods  *safe.Slice[DiscoveryMethod]
 	logger            *logrus.Logger
 	stopChan          chan struct{}
 }
@@ -103,8 +108,8 @@ type ConfigurationDiscovery struct {
 // NewProtocolDiscovery creates a new protocol discovery service
 func NewProtocolDiscovery(logger *logrus.Logger) *ProtocolDiscovery {
 	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{},
+		discoveredServers: safe.NewStore[string, *DiscoveredServer](),
+		discoveryMethods:  safe.NewSlice[DiscoveryMethod](),
 		stopChan:          make(chan struct{}),
 		logger:            logger,
 	}
@@ -135,14 +140,14 @@ func NewProtocolDiscovery(logger *logrus.Logger) *ProtocolDiscovery {
 
 // AddDiscoveryMethod adds a discovery method
 func (d *ProtocolDiscovery) AddDiscoveryMethod(method DiscoveryMethod) {
-	d.discoveryMethods = append(d.discoveryMethods, method)
+	d.discoveryMethods.Append(method)
 }
 
 // Start begins the discovery process
 func (d *ProtocolDiscovery) Start(ctx context.Context) error {
 	d.logger.Info("Starting protocol discovery")
 
-	for _, method := range d.discoveryMethods {
+	for _, method := range d.discoveryMethods.Snapshot() {
 		if err := method.Start(ctx); err != nil {
 			d.logger.WithError(err).WithField("method", method.Name()).Warn("Failed to start discovery method")
 		}
@@ -161,7 +166,7 @@ func (d *ProtocolDiscovery) Stop() {
 
 	close(d.stopChan)
 
-	for _, method := range d.discoveryMethods {
+	for _, method := range d.discoveryMethods.Snapshot() {
 		if err := method.Stop(); err != nil {
 			d.logger.WithError(err).WithField("method", method.Name()).Warn("Failed to stop discovery method")
 		}
@@ -172,7 +177,7 @@ func (d *ProtocolDiscovery) Stop() {
 func (d *ProtocolDiscovery) DiscoverServers(ctx context.Context) error {
 	d.logger.Info("Performing protocol server discovery")
 
-	for _, method := range d.discoveryMethods {
+	for _, method := range d.discoveryMethods.Snapshot() {
 		servers, err := method.Discover(ctx)
 		if err != nil {
 			d.logger.WithError(err).WithField("method", method.Name()).Warn("Discovery method failed")
@@ -184,48 +189,33 @@ func (d *ProtocolDiscovery) DiscoverServers(ctx context.Context) error {
 		}
 	}
 
-	d.logger.WithField("totalServers", len(d.discoveredServers)).Info("Discovery scan completed")
+	d.logger.WithField("totalServers", d.discoveredServers.Len()).Info("Discovery scan completed")
 	return nil
 }
 
 // GetDiscoveredServers returns all discovered servers
 func (d *ProtocolDiscovery) GetDiscoveredServers() []*DiscoveredServer {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	servers := make([]*DiscoveredServer, 0, len(d.discoveredServers))
-	for _, server := range d.discoveredServers {
-		servers = append(servers, server)
-	}
-
-	return servers
+	return d.discoveredServers.Values()
 }
 
 // GetServersByProtocol returns servers for a specific protocol
 func (d *ProtocolDiscovery) GetServersByProtocol(protocol string) []*DiscoveredServer {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	var servers []*DiscoveredServer
-	for _, server := range d.discoveredServers {
+	d.discoveredServers.Range(func(_ string, server *DiscoveredServer) bool {
 		if server.Protocol == protocol {
 			servers = append(servers, server)
 		}
-	}
-
+		return true
+	})
 	return servers
 }
 
 // GetServerByID returns a server by ID
 func (d *ProtocolDiscovery) GetServerByID(serverID string) (*DiscoveredServer, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	server, exists := d.discoveredServers[serverID]
+	server, exists := d.discoveredServers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("server %s not found", serverID)
 	}
-
 	return server, nil
 }
 
@@ -256,51 +246,41 @@ func (d *ProtocolDiscovery) RegisterServer(protocol, address string, port int, n
 
 // UnregisterServer removes a server
 func (d *ProtocolDiscovery) UnregisterServer(serverID string) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if _, exists := d.discoveredServers[serverID]; !exists {
+	if _, existed := d.discoveredServers.Delete(serverID); !existed {
 		return fmt.Errorf("server %s not found", serverID)
 	}
-
-	delete(d.discoveredServers, serverID)
 	d.logger.WithField("serverId", serverID).Info("Server unregistered")
-
 	return nil
 }
 
 // HealthCheck performs health checks on discovered servers
 func (d *ProtocolDiscovery) HealthCheck(ctx context.Context) error {
-	d.mu.RLock()
-	servers := make(map[string]*DiscoveredServer)
-	for k, v := range d.discoveredServers {
-		servers[k] = v
-	}
-	d.mu.RUnlock()
-
-	for serverID, server := range servers {
+	for serverID, server := range d.discoveredServers.Snapshot() {
 		status := d.checkServerHealth(ctx, server)
 		d.updateServerStatus(serverID, status)
 	}
-
 	return nil
 }
 
 // Private methods
 
 func (d *ProtocolDiscovery) addOrUpdateServer(server *DiscoveredServer) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	isNew := false
+	d.discoveredServers.Update(server.ID, func(existing *DiscoveredServer, present bool) (*DiscoveredServer, bool) {
+		if present {
+			// Mutate in place — callers may hold references from Values()/
+			// Snapshot() and expect the same *DiscoveredServer to reflect
+			// updates. This preserves pre-migration semantics.
+			existing.LastSeen = time.Now()
+			existing.Status = server.Status
+			existing.Capabilities = server.Capabilities
+			return existing, true
+		}
+		isNew = true
+		return server, true
+	})
 
-	existing, exists := d.discoveredServers[server.ID]
-	if exists {
-		// Update existing server
-		existing.LastSeen = time.Now()
-		existing.Status = server.Status
-		existing.Capabilities = server.Capabilities
-	} else {
-		// Add new server
-		d.discoveredServers[server.ID] = server
+	if isNew {
 		d.logger.WithFields(logrus.Fields{
 			"serverId": server.ID,
 			"protocol": server.Protocol,
@@ -310,13 +290,14 @@ func (d *ProtocolDiscovery) addOrUpdateServer(server *DiscoveredServer) {
 }
 
 func (d *ProtocolDiscovery) updateServerStatus(serverID string, status ServerStatus) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if server, exists := d.discoveredServers[serverID]; exists {
+	d.discoveredServers.Update(serverID, func(server *DiscoveredServer, present bool) (*DiscoveredServer, bool) {
+		if !present {
+			return nil, false
+		}
 		server.Status = status
 		server.LastSeen = time.Now()
-	}
+		return server, true
+	})
 }
 
 func (d *ProtocolDiscovery) checkServerHealth(ctx context.Context, server *DiscoveredServer) ServerStatus {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,23 @@ func newFederationTestLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 	return log
+}
+
+// newProtocolDiscoveryForTest builds a ProtocolDiscovery with optional
+// pre-populated servers + methods. Replaces the pre-migration pattern:
+//
+//	discovery := &ProtocolDiscovery{
+//	    discoveredServers: map[string]*DiscoveredServer{...},
+//	    discoveryMethods:  []DiscoveryMethod{...},
+//	    ...
+//	}
+func newProtocolDiscoveryForTest(logger *logrus.Logger, servers map[string]*DiscoveredServer, methods ...DiscoveryMethod) *ProtocolDiscovery {
+	return &ProtocolDiscovery{
+		discoveredServers: safe.NewStoreFromMap(servers),
+		discoveryMethods:  safe.NewSlice(methods...),
+		stopChan:          make(chan struct{}),
+		logger:            logger,
+	}
 }
 
 // Tests for ProtocolDiscovery
@@ -32,20 +50,20 @@ func TestNewProtocolDiscovery(t *testing.T) {
 	assert.NotNil(t, discovery.stopChan)
 	assert.Equal(t, log, discovery.logger)
 	// Should have default discovery methods
-	assert.Len(t, discovery.discoveryMethods, 3)
+	assert.Equal(t, 3, discovery.discoveryMethods.Len())
 }
 
 func TestProtocolDiscovery_AddDiscoveryMethod(t *testing.T) {
 	log := newFederationTestLogger()
 	discovery := NewProtocolDiscovery(log)
 
-	initialCount := len(discovery.discoveryMethods)
+	initialCount := discovery.discoveryMethods.Len()
 
 	// Add a custom discovery method
 	mockMethod := &MockDiscoveryMethod{name: "mock"}
 	discovery.AddDiscoveryMethod(mockMethod)
 
-	assert.Len(t, discovery.discoveryMethods, initialCount+1)
+	assert.Equal(t, initialCount+1, discovery.discoveryMethods.Len())
 }
 
 func TestProtocolDiscovery_Start(t *testing.T) {
@@ -74,12 +92,7 @@ func TestProtocolDiscovery_Stop(t *testing.T) {
 
 func TestProtocolDiscovery_DiscoverServers(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Add a mock discovery method that returns servers
 	mockMethod := &MockDiscoveryMethod{
@@ -102,17 +115,12 @@ func TestProtocolDiscovery_DiscoverServers(t *testing.T) {
 	err := discovery.DiscoverServers(ctx)
 
 	require.NoError(t, err)
-	assert.Len(t, discovery.discoveredServers, 1)
+	assert.Equal(t, 1, discovery.discoveredServers.Len())
 }
 
 func TestProtocolDiscovery_DiscoverServers_MethodError(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Add a failing mock discovery method
 	mockMethod := &MockDiscoveryMethod{
@@ -144,17 +152,12 @@ func TestProtocolDiscovery_DiscoverServers_MethodError(t *testing.T) {
 	// Should not return error even if one method fails
 	require.NoError(t, err)
 	// Should have discovered the working server
-	assert.Len(t, discovery.discoveredServers, 1)
+	assert.Equal(t, 1, discovery.discoveredServers.Len())
 }
 
 func TestProtocolDiscovery_GetDiscoveredServers(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	t.Run("empty servers", func(t *testing.T) {
 		servers := discovery.GetDiscoveredServers()
@@ -162,18 +165,18 @@ func TestProtocolDiscovery_GetDiscoveredServers(t *testing.T) {
 	})
 
 	t.Run("with servers", func(t *testing.T) {
-		discovery.discoveredServers["server1"] = &DiscoveredServer{
+		discovery.discoveredServers.Put("server1", &DiscoveredServer{
 			ID:       "server1",
 			Protocol: "mcp",
 			Address:  "127.0.0.1",
 			Port:     3000,
-		}
-		discovery.discoveredServers["server2"] = &DiscoveredServer{
+		})
+		discovery.discoveredServers.Put("server2", &DiscoveredServer{
 			ID:       "server2",
 			Protocol: "lsp",
 			Address:  "127.0.0.1",
 			Port:     6006,
-		}
+		})
 
 		servers := discovery.GetDiscoveredServers()
 		assert.Len(t, servers, 2)
@@ -182,15 +185,12 @@ func TestProtocolDiscovery_GetDiscoveredServers(t *testing.T) {
 
 func TestProtocolDiscovery_GetServersByProtocol(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: map[string]*DiscoveredServer{
-			"mcp-1": {ID: "mcp-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
-			"mcp-2": {ID: "mcp-2", Protocol: "mcp", Address: "127.0.0.2", Port: 3001},
-			"lsp-1": {ID: "lsp-1", Protocol: "lsp", Address: "127.0.0.1", Port: 6006},
-			"acp-1": {ID: "acp-1", Protocol: "acp", Address: "127.0.0.1", Port: 7061},
-		},
-		logger: log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, map[string]*DiscoveredServer{
+		"mcp-1": {ID: "mcp-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
+		"mcp-2": {ID: "mcp-2", Protocol: "mcp", Address: "127.0.0.2", Port: 3001},
+		"lsp-1": {ID: "lsp-1", Protocol: "lsp", Address: "127.0.0.1", Port: 6006},
+		"acp-1": {ID: "acp-1", Protocol: "acp", Address: "127.0.0.1", Port: 7061},
+	})
 
 	t.Run("get mcp servers", func(t *testing.T) {
 		servers := discovery.GetServersByProtocol("mcp")
@@ -210,12 +210,9 @@ func TestProtocolDiscovery_GetServersByProtocol(t *testing.T) {
 
 func TestProtocolDiscovery_GetServerByID(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: map[string]*DiscoveredServer{
-			"server-1": {ID: "server-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
-		},
-		logger: log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, map[string]*DiscoveredServer{
+		"server-1": {ID: "server-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
+	})
 
 	t.Run("get existing server", func(t *testing.T) {
 		server, err := discovery.GetServerByID("server-1")
@@ -234,19 +231,17 @@ func TestProtocolDiscovery_GetServerByID(t *testing.T) {
 
 func TestProtocolDiscovery_RegisterServer(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	err := discovery.RegisterServer("mcp", "127.0.0.1", 3000, "My MCP Server")
 
 	require.NoError(t, err)
-	assert.Len(t, discovery.discoveredServers, 1)
+	assert.Equal(t, 1, discovery.discoveredServers.Len())
 
 	// Verify server details
 	serverID := "mcp-127.0.0.1-3000"
-	server := discovery.discoveredServers[serverID]
+	server, ok := discovery.discoveredServers.Get(serverID)
+	require.True(t, ok)
 	require.NotNil(t, server)
 	assert.Equal(t, "mcp", server.Protocol)
 	assert.Equal(t, "127.0.0.1", server.Address)
@@ -258,17 +253,14 @@ func TestProtocolDiscovery_RegisterServer(t *testing.T) {
 
 func TestProtocolDiscovery_UnregisterServer(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: map[string]*DiscoveredServer{
-			"server-1": {ID: "server-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
-		},
-		logger: log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, map[string]*DiscoveredServer{
+		"server-1": {ID: "server-1", Protocol: "mcp", Address: "127.0.0.1", Port: 3000},
+	})
 
 	t.Run("unregister existing server", func(t *testing.T) {
 		err := discovery.UnregisterServer("server-1")
 		require.NoError(t, err)
-		assert.Empty(t, discovery.discoveredServers)
+		assert.Equal(t, 0, discovery.discoveredServers.Len())
 	})
 
 	t.Run("unregister non-existent server", func(t *testing.T) {
@@ -280,18 +272,15 @@ func TestProtocolDiscovery_UnregisterServer(t *testing.T) {
 
 func TestProtocolDiscovery_HealthCheck(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: map[string]*DiscoveredServer{
-			"server-1": {
-				ID:       "server-1",
-				Protocol: "mcp",
-				Address:  "127.0.0.1",
-				Port:     3000,
-				Status:   StatusOnline,
-			},
+	discovery := newProtocolDiscoveryForTest(log, map[string]*DiscoveredServer{
+		"server-1": {
+			ID:       "server-1",
+			Protocol: "mcp",
+			Address:  "127.0.0.1",
+			Port:     3000,
+			Status:   StatusOnline,
 		},
-		logger: log,
-	}
+	})
 
 	ctx := context.Background()
 	err := discovery.HealthCheck(ctx)
@@ -302,10 +291,7 @@ func TestProtocolDiscovery_HealthCheck(t *testing.T) {
 
 func TestProtocolDiscovery_addOrUpdateServer(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	t.Run("add new server", func(t *testing.T) {
 		server := &DiscoveredServer{
@@ -319,8 +305,10 @@ func TestProtocolDiscovery_addOrUpdateServer(t *testing.T) {
 
 		discovery.addOrUpdateServer(server)
 
-		assert.Len(t, discovery.discoveredServers, 1)
-		assert.NotNil(t, discovery.discoveredServers["new-server"])
+		assert.Equal(t, 1, discovery.discoveredServers.Len())
+		stored, ok := discovery.discoveredServers.Get("new-server")
+		require.True(t, ok)
+		assert.NotNil(t, stored)
 	})
 
 	t.Run("update existing server", func(t *testing.T) {
@@ -337,41 +325,40 @@ func TestProtocolDiscovery_addOrUpdateServer(t *testing.T) {
 		discovery.addOrUpdateServer(updatedServer)
 
 		// Should still be 1 server
-		assert.Len(t, discovery.discoveredServers, 1)
+		assert.Equal(t, 1, discovery.discoveredServers.Len())
 		// Status should be updated
-		assert.Equal(t, StatusOffline, discovery.discoveredServers["new-server"].Status)
+		stored, ok := discovery.discoveredServers.Get("new-server")
+		require.True(t, ok)
+		assert.Equal(t, StatusOffline, stored.Status)
 	})
 }
 
 func TestProtocolDiscovery_updateServerStatus(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: map[string]*DiscoveredServer{
-			"server-1": {
-				ID:       "server-1",
-				Protocol: "mcp",
-				Status:   StatusOnline,
-				LastSeen: time.Now().Add(-1 * time.Hour),
-			},
+	discovery := newProtocolDiscoveryForTest(log, map[string]*DiscoveredServer{
+		"server-1": {
+			ID:       "server-1",
+			Protocol: "mcp",
+			Status:   StatusOnline,
+			LastSeen: time.Now().Add(-1 * time.Hour),
 		},
-		logger: log,
-	}
+	})
 
-	beforeUpdate := discovery.discoveredServers["server-1"].LastSeen
+	before, ok := discovery.discoveredServers.Get("server-1")
+	require.True(t, ok)
+	beforeUpdate := before.LastSeen
 
 	discovery.updateServerStatus("server-1", StatusOffline)
 
-	server := discovery.discoveredServers["server-1"]
+	server, ok := discovery.discoveredServers.Get("server-1")
+	require.True(t, ok)
 	assert.Equal(t, StatusOffline, server.Status)
 	assert.True(t, server.LastSeen.After(beforeUpdate))
 }
 
 func TestProtocolDiscovery_checkServerHealth(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	ctx := context.Background()
 
@@ -579,10 +566,7 @@ func TestDiscoveredServer_Structure(t *testing.T) {
 
 func TestProtocolDiscovery_ConcurrentAccess(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Run concurrent operations
 	var wg sync.WaitGroup
@@ -619,12 +603,7 @@ func TestProtocolDiscovery_ConcurrentDiscovery(t *testing.T) {
 		},
 	}
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{mockMethod},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil, mockMethod)
 
 	// Run concurrent discoveries
 	var wg sync.WaitGroup
@@ -674,10 +653,7 @@ func (m *MockDiscoveryMethod) Stop() error {
 
 func TestProtocolDiscovery_RegisterServer_SpecialCharacters(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Register server with special characters in name
 	err := discovery.RegisterServer("mcp", "127.0.0.1", 3000, "Server with spaces & special chars!")
@@ -690,10 +666,7 @@ func TestProtocolDiscovery_RegisterServer_SpecialCharacters(t *testing.T) {
 
 func TestProtocolDiscovery_RegisterServer_IPv6(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	err := discovery.RegisterServer("mcp", "::1", 3000, "IPv6 Server")
 
@@ -705,10 +678,7 @@ func TestProtocolDiscovery_RegisterServer_IPv6(t *testing.T) {
 
 func TestProtocolDiscovery_RegisterServer_AllProtocols(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	protocols := []string{"mcp", "lsp", "acp", "custom"}
 
@@ -732,10 +702,7 @@ func BenchmarkProtocolDiscovery_RegisterServer(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -747,10 +714,7 @@ func BenchmarkProtocolDiscovery_GetServersByProtocol(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Add some servers
 	for i := 0; i < 100; i++ {
@@ -758,10 +722,10 @@ func BenchmarkProtocolDiscovery_GetServersByProtocol(b *testing.B) {
 		if i%2 == 0 {
 			protocol = "lsp"
 		}
-		discovery.discoveredServers[string(rune(i))] = &DiscoveredServer{
+		discovery.discoveredServers.Put(string(rune(i)), &DiscoveredServer{
 			ID:       string(rune(i)),
 			Protocol: protocol,
-		}
+		})
 	}
 
 	b.ResetTimer()
@@ -774,17 +738,14 @@ func BenchmarkProtocolDiscovery_GetDiscoveredServers(b *testing.B) {
 	log := logrus.New()
 	log.SetLevel(logrus.PanicLevel)
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Add 100 servers
 	for i := 0; i < 100; i++ {
-		discovery.discoveredServers[string(rune(i))] = &DiscoveredServer{
+		discovery.discoveredServers.Put(string(rune(i)), &DiscoveredServer{
 			ID:       string(rune(i)),
 			Protocol: "mcp",
-		}
+		})
 	}
 
 	b.ResetTimer()
@@ -841,10 +802,7 @@ func TestProtocolDiscovery_GetServersByProtocol_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			discovery := &ProtocolDiscovery{
-				discoveredServers: tt.servers,
-				logger:            log,
-			}
+			discovery := newProtocolDiscoveryForTest(log, tt.servers)
 
 			result := discovery.GetServersByProtocol(tt.protocol)
 			assert.Len(t, result, tt.expectedLen)
@@ -854,9 +812,7 @@ func TestProtocolDiscovery_GetServersByProtocol_TableDriven(t *testing.T) {
 
 func TestProtocolDiscovery_checkServerHealth_TableDriven(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		logger: log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	tests := []struct {
 		name           string
@@ -919,11 +875,11 @@ func TestNewProtocolDiscovery_DefaultMethods(t *testing.T) {
 	discovery := NewProtocolDiscovery(log)
 
 	// Verify default methods are added
-	require.Len(t, discovery.discoveryMethods, 3)
+	require.Equal(t, 3, discovery.discoveryMethods.Len())
 
 	// Check method names
 	names := make([]string, 0, 3)
-	for _, method := range discovery.discoveryMethods {
+	for _, method := range discovery.discoveryMethods.Snapshot() {
 		names = append(names, method.Name())
 	}
 
@@ -936,12 +892,7 @@ func TestNewProtocolDiscovery_DefaultMethods(t *testing.T) {
 
 func TestProtocolDiscovery_PeriodicDiscovery_Stop(t *testing.T) {
 	log := newFederationTestLogger()
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil)
 
 	// Start discovery
 	ctx := context.Background()
@@ -971,12 +922,7 @@ func TestProtocolDiscovery_DiscoverServers_AllMethodsFail(t *testing.T) {
 	failingMethod1 := &MockDiscoveryMethod{name: "fail1", err: errors.New("fail1")}
 	failingMethod2 := &MockDiscoveryMethod{name: "fail2", err: errors.New("fail2")}
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: make(map[string]*DiscoveredServer),
-		discoveryMethods:  []DiscoveryMethod{failingMethod1, failingMethod2},
-		stopChan:          make(chan struct{}),
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, nil, failingMethod1, failingMethod2)
 
 	ctx := context.Background()
 	err := discovery.DiscoverServers(ctx)
@@ -984,7 +930,7 @@ func TestProtocolDiscovery_DiscoverServers_AllMethodsFail(t *testing.T) {
 	// Should not return error even if all methods fail
 	require.NoError(t, err)
 	// But should have no discovered servers
-	assert.Empty(t, discovery.discoveredServers)
+	assert.Equal(t, 0, discovery.discoveredServers.Len())
 }
 
 func TestProtocolDiscovery_HealthCheck_ConcurrentServers(t *testing.T) {
@@ -1003,10 +949,7 @@ func TestProtocolDiscovery_HealthCheck_ConcurrentServers(t *testing.T) {
 		}
 	}
 
-	discovery := &ProtocolDiscovery{
-		discoveredServers: servers,
-		logger:            log,
-	}
+	discovery := newProtocolDiscoveryForTest(log, servers)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -75,27 +76,87 @@ type VerifiedModel struct {
 	Verified bool    `json:"verified"`
 }
 
-// DiscoveredProvider represents a provider discovered from environment
+// DiscoveredProvider represents a provider discovered from environment.
+//
+// CONST-029: SupportsModels and VerifiedModels are now *safe.Slice;
+// mu retained as Pattern-Zeta to preserve the joint invariant on the
+// scalar cluster (Status, Verified, VerifiedAt, Error, Score) — these
+// fields must transition atomically (e.g., Verified=true must never
+// be observed with Status=Unhealthy). Custom MarshalJSON snapshots
+// the safe.Slices to preserve the JSON wire format 1:1.
 type DiscoveredProvider struct {
-	mu             sync.RWMutex                 // Protects Status, Verified, VerifiedAt, Error, Score fields
-	Name           string                       `json:"name"`
-	Type           string                       `json:"type"`
-	APIKeyEnvVar   string                       `json:"api_key_env_var"`
-	APIKey         string                       `json:"-"` // Hidden in JSON
-	BaseURL        string                       `json:"base_url"`
-	DefaultModel   string                       `json:"default_model"`
-	Provider       llm.LLMProvider              `json:"-"`
-	Status         ProviderHealthStatus         `json:"status"`
-	Score          float64                      `json:"score"`
-	Verified       bool                         `json:"verified"`
-	VerifiedAt     time.Time                    `json:"verified_at,omitempty"`
-	Error          string                       `json:"error,omitempty"`
-	Capabilities   *models.ProviderCapabilities `json:"capabilities,omitempty"`
-	SupportsModels []string                     `json:"supported_models,omitempty"`
+	mu           sync.RWMutex                 // Protects Status, Verified, VerifiedAt, Error, Score fields (Pattern-Zeta: joint invariant)
+	Name         string                       `json:"name"`
+	Type         string                       `json:"type"`
+	APIKeyEnvVar string                       `json:"api_key_env_var"`
+	APIKey       string                       `json:"-"` // Hidden in JSON
+	BaseURL      string                       `json:"base_url"`
+	DefaultModel string                       `json:"default_model"`
+	Provider     llm.LLMProvider              `json:"-"`
+	Status       ProviderHealthStatus         `json:"status"`
+	Score        float64                      `json:"score"`
+	Verified     bool                         `json:"verified"`
+	VerifiedAt   time.Time                    `json:"verified_at,omitempty"`
+	Error        string                       `json:"error,omitempty"`
+	Capabilities *models.ProviderCapabilities `json:"capabilities,omitempty"`
+
+	// SupportsModels lists model IDs the provider advertises support for.
+	// Migrated to *safe.Slice (CONST-029); JSON wire format preserved via
+	// MarshalJSON snapshot.
+	SupportsModels *safe.Slice[string] `json:"-"`
 	// VerifiedModels contains models that passed individual verification testing.
 	// This is used for free providers (Zen, OpenRouter free tier) where each model
 	// is tested individually for proper functionality (not canned error responses).
-	VerifiedModels []VerifiedModel `json:"verified_models,omitempty"`
+	// Migrated to *safe.Slice (CONST-029); JSON wire format preserved via
+	// MarshalJSON snapshot.
+	VerifiedModels *safe.Slice[VerifiedModel] `json:"-"`
+}
+
+// MarshalJSON preserves the historical wire format (plain []string for
+// SupportsModels, plain []VerifiedModel for VerifiedModels) after the
+// CONST-029 migration to *safe.Slice.
+func (d *DiscoveredProvider) MarshalJSON() ([]byte, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	var supports []string
+	if d.SupportsModels != nil {
+		supports = d.SupportsModels.Snapshot()
+	}
+	var verified []VerifiedModel
+	if d.VerifiedModels != nil {
+		verified = d.VerifiedModels.Snapshot()
+	}
+
+	return json.Marshal(&struct {
+		Name           string                       `json:"name"`
+		Type           string                       `json:"type"`
+		APIKeyEnvVar   string                       `json:"api_key_env_var"`
+		BaseURL        string                       `json:"base_url"`
+		DefaultModel   string                       `json:"default_model"`
+		Status         ProviderHealthStatus         `json:"status"`
+		Score          float64                      `json:"score"`
+		Verified       bool                         `json:"verified"`
+		VerifiedAt     time.Time                    `json:"verified_at,omitempty"`
+		Error          string                       `json:"error,omitempty"`
+		Capabilities   *models.ProviderCapabilities `json:"capabilities,omitempty"`
+		SupportsModels []string                     `json:"supported_models,omitempty"`
+		VerifiedModels []VerifiedModel              `json:"verified_models,omitempty"`
+	}{
+		Name:           d.Name,
+		Type:           d.Type,
+		APIKeyEnvVar:   d.APIKeyEnvVar,
+		BaseURL:        d.BaseURL,
+		DefaultModel:   d.DefaultModel,
+		Status:         d.Status,
+		Score:          d.Score,
+		Verified:       d.Verified,
+		VerifiedAt:     d.VerifiedAt,
+		Error:          d.Error,
+		Capabilities:   d.Capabilities,
+		SupportsModels: supports,
+		VerifiedModels: verified,
+	})
 }
 
 // ProviderScore represents scoring metrics for a provider
@@ -373,7 +434,7 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 		if provider != nil {
 			dp.Capabilities = provider.GetCapabilities()
 			if dp.Capabilities != nil {
-				dp.SupportsModels = dp.Capabilities.SupportedModels
+				dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
 			}
 		}
 
@@ -438,7 +499,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 					if cliProvider != nil {
 						dp.Capabilities = cliProvider.GetCapabilities()
 						if dp.Capabilities != nil {
-							dp.SupportsModels = dp.Capabilities.SupportedModels
+							dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
 						}
 					}
 
@@ -498,7 +559,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 					if cliProvider != nil {
 						dp.Capabilities = cliProvider.GetCapabilities()
 						if dp.Capabilities != nil {
-							dp.SupportsModels = dp.Capabilities.SupportedModels
+							dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
 						}
 					}
 
@@ -581,7 +642,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 			if provider != nil { //nolint:govet
 				dp.Capabilities = provider.GetCapabilities()
 				if dp.Capabilities != nil {
-					dp.SupportsModels = dp.Capabilities.SupportedModels
+					dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
 				}
 			}
 
@@ -986,7 +1047,10 @@ func (pd *ProviderDiscovery) verifyProvider(ctx context.Context, provider *Disco
 		provider.Error = ""
 
 		// Populate VerifiedModels with the verified model
-		provider.VerifiedModels = append(provider.VerifiedModels, VerifiedModel{
+		if provider.VerifiedModels == nil {
+			provider.VerifiedModels = safe.NewSlice[VerifiedModel]()
+		}
+		provider.VerifiedModels.Append(VerifiedModel{
 			Name:     provider.DefaultModel,
 			Score:    7.5,
 			Verified: true,

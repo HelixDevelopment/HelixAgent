@@ -20,6 +20,5 @@ internal/services/mcp_client.go:20:MCPClient
 internal/services/mcp_client.go:58:HTTPTransport
 internal/services/protocol_discovery.go:19:ACPDiscoveryClient
 internal/services/protocol_federation.go:16:ProtocolDiscovery
-internal/services/provider_discovery.go:79:DiscoveredProvider
 internal/services/provider_registry.go:72:ProviderRegistry
 internal/verifier/adapters/free_adapter.go:68:FreeProviderAdapter

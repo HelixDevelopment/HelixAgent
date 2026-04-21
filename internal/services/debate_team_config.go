@@ -844,7 +844,11 @@ func (dtc *DebateTeamConfig) collectOpenRouterFreeModels() {
 	// Only add free models (:free suffix) that have been ACTUALLY VERIFIED
 	// through the verification pipeline (model completion test with canned error detection)
 	addedCount := 0
-	for _, model := range discovered.VerifiedModels {
+	verifiedModelsSnapshot := []VerifiedModel{}
+	if discovered.VerifiedModels != nil {
+		verifiedModelsSnapshot = discovered.VerifiedModels.Snapshot()
+	}
+	for _, model := range verifiedModelsSnapshot {
 		// Only include free models (with :free suffix)
 		if len(model.Name) <= 5 || model.Name[len(model.Name)-5:] != ":free" {
 			continue
@@ -913,7 +917,11 @@ func (dtc *DebateTeamConfig) collectZenModels() {
 	// Only add models that have been ACTUALLY VERIFIED through the verification pipeline
 	// This means they passed the model completion test including canned error detection
 	addedCount := 0
-	for _, model := range discovered.VerifiedModels {
+	verifiedModelsSnapshot := []VerifiedModel{}
+	if discovered.VerifiedModels != nil {
+		verifiedModelsSnapshot = discovered.VerifiedModels.Snapshot()
+	}
+	for _, model := range verifiedModelsSnapshot {
 		// CRITICAL: Only add models that passed verification
 		if !model.Verified {
 			dtc.logger.WithFields(logrus.Fields{

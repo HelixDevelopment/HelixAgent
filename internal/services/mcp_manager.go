@@ -146,7 +146,7 @@ func (m *MCPManager) GetMCPStats(ctx context.Context) (map[string]interface{}, e
 		"totalServers":     len(servers),
 		"connectedServers": len(health),
 		"healthyServers":   healthyCount,
-		"totalTools":       len(c.tools),
+		"totalTools":       c.tools.Len(),
 		"lastSync":         "2024-01-01T12:00:00Z",
 	}, nil
 }

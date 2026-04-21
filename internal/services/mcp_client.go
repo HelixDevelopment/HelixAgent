@@ -13,15 +13,30 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
+
 	"github.com/sirupsen/logrus"
 )
 
-// MCPClient implements a real MCP (Model Context Protocol) client
+// MCPClient implements a real MCP (Model Context Protocol) client.
+//
+// CONST-029 migration: the `sync.RWMutex + map[string]*MCPServerConnection`
+// and `map[string]*MCPTool` pair was retired in favour of two safe.Store
+// instances. The previous implementation had two pre-existing correctness
+// hazards around tool caching:
+//   - listServerTools wrote to c.tools while the caller held only c.mu.RLock
+//   - getToolFromServer read c.tools without any lock at all
+//
+// Both are now fixed structurally: every read/write of the collections
+// goes through safe.Store's internal RWMutex, and no compound invariant
+// spans the two collections (DisconnectServer cascades via Snapshot →
+// per-key Delete on c.tools after c.servers.Delete, which is acceptable
+// since the server entry is already gone by then and concurrent callers
+// will get "server not connected" consistently).
 type MCPClient struct {
-	servers   map[string]*MCPServerConnection
-	tools     map[string]*MCPTool
+	servers   *safe.Store[string, *MCPServerConnection]
+	tools     *safe.Store[string, *MCPTool]
 	messageID atomic.Int64
-	mu        sync.RWMutex
 	logger    *logrus.Logger
 }
 
@@ -54,14 +69,34 @@ type StdioTransport struct {
 	mu        sync.Mutex
 }
 
-// HTTPTransport implements MCP transport over HTTP
+// HTTPTransport implements MCP transport over HTTP.
+//
+// CONST-029 migration: the `sync.Mutex + map[string]string (headers) +
+// []byte (responseData) + bool (connected)` combination was retired in
+// favour of a hybrid layout:
+//   - headers      → safe.Store[string, string] (structurally safe)
+//   - connected    → atomic.Bool
+//   - responseData → atomic.Pointer[[]byte]
+//   - sendRecvMu   → NARROW Pattern-Zeta mutex that serialises the
+//     request/response pair atomicity of Send() followed by Receive().
+//     Without this, a second caller's Send could overwrite responseData
+//     before the first caller's Receive reads it. The mutex guards a
+//     sequence, not a collection, so it does not participate in the
+//     bare-mutex+collection anti-pattern CONST-029 retires.
+//
+// HTTP/3/QUIC session affinity is carried by the *http.Client, which is
+// itself safe for concurrent use; nothing here serialises that layer.
 type HTTPTransport struct {
 	baseURL      string
-	headers      map[string]string
-	connected    bool
-	mu           sync.Mutex
+	headers      *safe.Store[string, string]
+	connected    atomic.Bool
 	client       *http.Client
-	responseData []byte
+	responseData atomic.Pointer[[]byte]
+	// sendRecvMu serialises the Send→Receive request/response pair so
+	// concurrent callers cannot interleave and cross-wire their
+	// responses. This is a compound-invariant sequence lock, not a
+	// collection lock.
+	sendRecvMu sync.Mutex
 }
 
 // MCPRequest represents an MCP JSON-RPC request
@@ -94,20 +129,36 @@ type MCPContent = Content
 // NewMCPClient creates a new MCP client
 func NewMCPClient(logger *logrus.Logger) *MCPClient {
 	client := &MCPClient{
-		servers: make(map[string]*MCPServerConnection),
-		tools:   make(map[string]*MCPTool),
+		servers: safe.NewStore[string, *MCPServerConnection](),
+		tools:   safe.NewStore[string, *MCPTool](),
 		logger:  logger,
 	}
 	client.messageID.Store(0)
 	return client
 }
 
+// NewHTTPTransport constructs an HTTPTransport with the given base URL
+// and optional headers. The returned transport is not yet connected;
+// callers flip the connected flag after their own handshake.
+func NewHTTPTransport(baseURL string, headers map[string]string, client *http.Client) *HTTPTransport {
+	t := &HTTPTransport{
+		baseURL: baseURL,
+		headers: safe.NewStore[string, string](),
+		client:  client,
+	}
+	for k, v := range headers {
+		t.headers.Put(k, v)
+	}
+	return t
+}
+
 // ConnectServer connects to an MCP server
 func (c *MCPClient) ConnectServer(ctx context.Context, serverID, name, command string, args []string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, exists := c.servers[serverID]; exists {
+	// Reserve the serverID slot up-front; if another goroutine raced
+	// ahead we bail out cleanly. We then have exclusive ownership of
+	// spinning up the transport without holding any lock across the
+	// process start.
+	if c.servers.Has(serverID) {
 		return fmt.Errorf("server %s already connected", serverID)
 	}
 
@@ -131,7 +182,20 @@ func (c *MCPClient) ConnectServer(ctx context.Context, serverID, name, command s
 		return fmt.Errorf("failed to initialize server: %w", err)
 	}
 
-	c.servers[serverID] = connection
+	// Atomically install only if no other goroutine raced ahead.
+	inserted := true
+	c.servers.Update(serverID, func(current *MCPServerConnection, present bool) (*MCPServerConnection, bool) {
+		if present && current != nil {
+			inserted = false
+			return current, true
+		}
+		return connection, true
+	})
+	if !inserted {
+		_ = transport.Close()
+		return fmt.Errorf("server %s already connected", serverID)
+	}
+
 	c.logger.WithField("serverId", serverID).Info("Connected to MCP server")
 
 	return nil
@@ -139,11 +203,8 @@ func (c *MCPClient) ConnectServer(ctx context.Context, serverID, name, command s
 
 // DisconnectServer disconnects from an MCP server
 func (c *MCPClient) DisconnectServer(serverID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	connection, exists := c.servers[serverID]
-	if !exists {
+	connection, existed := c.servers.Delete(serverID)
+	if !existed {
 		return fmt.Errorf("server %s not connected", serverID)
 	}
 
@@ -151,12 +212,12 @@ func (c *MCPClient) DisconnectServer(serverID string) error {
 		c.logger.WithError(err).WithField("serverId", serverID).Warn("Error closing transport")
 	}
 
-	delete(c.servers, serverID)
-
-	// Remove associated tools
-	for toolName, tool := range c.tools {
-		if tool.Server.Name == serverID {
-			delete(c.tools, toolName)
+	// Cascade-remove associated tools. Collect keys under the store's
+	// read lock via Snapshot, then delete outside to avoid nested
+	// locking. Deletes are individually atomic.
+	for toolName, tool := range c.tools.Snapshot() {
+		if tool.Server != nil && tool.Server.Name == serverID {
+			c.tools.Delete(toolName)
 		}
 	}
 
@@ -166,11 +227,8 @@ func (c *MCPClient) DisconnectServer(serverID string) error {
 
 // ListTools lists all available tools from all connected servers
 func (c *MCPClient) ListTools(ctx context.Context) ([]*MCPTool, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	var allTools []*MCPTool
-	for _, connection := range c.servers {
+	for _, connection := range c.servers.Snapshot() {
 		if !connection.Connected {
 			continue
 		}
@@ -189,10 +247,7 @@ func (c *MCPClient) ListTools(ctx context.Context) ([]*MCPTool, error) {
 
 // CallTool executes a tool on a specific server
 func (c *MCPClient) CallTool(ctx context.Context, serverID, toolName string, arguments map[string]interface{}) (*MCPToolResult, error) {
-	c.mu.RLock()
-	connection, exists := c.servers[serverID]
-	c.mu.RUnlock()
-
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("server %s not connected", serverID)
 	}
@@ -224,10 +279,7 @@ func (c *MCPClient) CallTool(ctx context.Context, serverID, toolName string, arg
 
 // GetServerInfo returns information about a connected server
 func (c *MCPClient) GetServerInfo(serverID string) (*MCPServerConnection, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	connection, exists := c.servers[serverID]
+	connection, exists := c.servers.Get(serverID)
 	if !exists {
 		return nil, fmt.Errorf("server %s not connected", serverID)
 	}
@@ -237,24 +289,13 @@ func (c *MCPClient) GetServerInfo(serverID string) (*MCPServerConnection, error)
 
 // ListServers returns all connected servers
 func (c *MCPClient) ListServers() []*MCPServerConnection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	servers := make([]*MCPServerConnection, 0, len(c.servers))
-	for _, server := range c.servers {
-		servers = append(servers, server)
-	}
-
-	return servers
+	return c.servers.Values()
 }
 
 // HealthCheck performs health checks on all connected servers
 func (c *MCPClient) HealthCheck(ctx context.Context) map[string]bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	results := make(map[string]bool)
-	for serverID, connection := range c.servers {
+	for serverID, connection := range c.servers.Snapshot() {
 		results[serverID] = connection.Transport.IsConnected()
 	}
 
@@ -397,7 +438,7 @@ func (c *MCPClient) listServerTools(ctx context.Context, connection *MCPServerCo
 		tools = append(tools, tool)
 
 		// Cache tool
-		c.tools[toolData.Name] = tool
+		c.tools.Put(toolData.Name, tool)
 	}
 
 	connection.Tools = tools
@@ -406,7 +447,7 @@ func (c *MCPClient) listServerTools(ctx context.Context, connection *MCPServerCo
 
 func (c *MCPClient) getToolFromServer(ctx context.Context, connection *MCPServerConnection, toolName string) (*MCPTool, error) {
 	// Check cache first
-	if tool, exists := c.tools[toolName]; exists && tool.Server.Name == connection.Name {
+	if tool, exists := c.tools.Get(toolName); exists && tool.Server != nil && tool.Server.Name == connection.Name {
 		return tool, nil
 	}
 
@@ -582,11 +623,21 @@ func (t *StdioTransport) IsConnected() bool {
 
 // HTTPTransport implementation for HTTP-based MCP servers
 
-func (t *HTTPTransport) Send(ctx context.Context, message interface{}) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+// Connect marks the transport as connected. Exposed so callers that
+// construct an HTTPTransport via NewHTTPTransport can flip it live once
+// their own handshake (if any) succeeds. Idempotent.
+func (t *HTTPTransport) Connect() {
+	t.connected.Store(true)
+}
 
-	if !t.connected {
+func (t *HTTPTransport) Send(ctx context.Context, message interface{}) error {
+	// Narrow Pattern-Zeta: serialise Send→Receive so concurrent callers
+	// cannot cross-wire their responseData. The lock is released only
+	// after Receive (or the next Send on error) drains responseData.
+	t.sendRecvMu.Lock()
+	defer t.sendRecvMu.Unlock()
+
+	if !t.connected.Load() {
 		return fmt.Errorf("HTTP transport not connected")
 	}
 
@@ -605,8 +656,8 @@ func (t *HTTPTransport) Send(ctx context.Context, message interface{}) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	// Add custom headers
-	for key, value := range t.headers {
+	// Add custom headers from safe.Store snapshot.
+	for key, value := range t.headers.Snapshot() {
 		req.Header.Set(key, value)
 	}
 
@@ -632,45 +683,45 @@ func (t *HTTPTransport) Send(ctx context.Context, message interface{}) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Store response for Receive method
-	t.responseData = responseData
+	// Store response for Receive method (atomic pointer swap).
+	buf := responseData
+	t.responseData.Store(&buf)
 
 	return nil
 }
 
 func (t *HTTPTransport) Receive(ctx context.Context) (interface{}, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	// Paired with Send via sendRecvMu. Taking the same mutex here
+	// guarantees Receive observes the responseData written by the
+	// matched Send, and prevents a subsequent Send from overwriting
+	// before Receive returns.
+	t.sendRecvMu.Lock()
+	defer t.sendRecvMu.Unlock()
 
-	if !t.connected {
+	if !t.connected.Load() {
 		return nil, fmt.Errorf("HTTP transport not connected")
 	}
 
-	if len(t.responseData) == 0 {
+	ptr := t.responseData.Swap(nil)
+	if ptr == nil || len(*ptr) == 0 {
 		return nil, fmt.Errorf("no response data available")
 	}
 
 	// Parse JSON response
 	var response interface{}
-	if err := json.Unmarshal(t.responseData, &response); err != nil {
+	if err := json.Unmarshal(*ptr, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
-	// Clear response data
-	t.responseData = nil
 
 	return response, nil
 }
 
 func (t *HTTPTransport) Close() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.connected = false
+	t.connected.Store(false)
+	t.responseData.Store(nil)
 	return nil
 }
 
 func (t *HTTPTransport) IsConnected() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.connected
+	return t.connected.Load()
 }

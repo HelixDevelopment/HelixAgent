@@ -1,5 +1,8 @@
-// Package integration provides integration tests for HelixAgent.
-package integration
+// Package service_wiring_test provides in-process service-wiring tests for
+// HelixAgent. These exercise in-memory construction of the provider registry,
+// debate team config, MCP/LSP/ACP managers, and other services — no live
+// :7061 HTTP. CONST-030 compliant via Pattern-4 demote-to-unit.
+package service_wiring_test
 
 import (
 	"context"

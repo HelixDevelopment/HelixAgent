@@ -1,4 +1,4 @@
-go 1.22
+go 1.24.0
 
 // Bucket-3a modules (go-l1b3rt4s, go-obliteratus, go-g0dm0d3,
 // go-dioscuri, go-p4rs3lt0ngv3, go-glossopetrae,
@@ -9,27 +9,27 @@ go 1.22
 // internal/security/redteam/fixtures/ as defensive-use
 // regression fixtures for DeepTeamRedTeamer.
 use (
-	./go-plinius-common
-	./go-autotemp
-	./go-eos
 	./go-almeche
-	./go-cl4r1t4s
-	./go-st3gg
-	./go-v3sp3r
-	./go-leakhub
-	./go-v3r1t4s
-	./go-i-llm
-	./go-hypertune
 	./go-autostorygen
-	./go-ourobopus
-	./go-gitty
+	./go-autotemp
+	./go-bing-prompt-leak
+	./go-cl4r1t4s
+	./go-eos
 	./go-gandalf-solutions
+	./go-gemini-prompt-leak
+	./go-gitgpt
+	./go-gitty
+	./go-grok-prompt-leak
+	./go-hypertune
+	./go-i-llm
+	./go-leakhub
 	./go-leda
 	./go-mixtral-prompt-leak
-	./go-grok-prompt-leak
-	./go-gemini-prompt-leak
-	./go-theseus
-	./go-bing-prompt-leak
-	./go-gitgpt
+	./go-ourobopus
+	./go-plinius-common
+	./go-st3gg
 	./go-tempest
+	./go-theseus
+	./go-v3r1t4s
+	./go-v3sp3r
 )

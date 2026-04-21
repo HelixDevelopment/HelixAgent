@@ -482,3 +482,30 @@
 [submodule "RedTeam"]
 	path = RedTeam
 	url = git@github.com:vasic-digital/RedTeam.git
+[submodule "PliniusCommon"]
+	path = PliniusCommon
+	url = git@github.com:vasic-digital/PliniusCommon.git
+[submodule "GandalfSolutions"]
+	path = GandalfSolutions
+	url = git@github.com:vasic-digital/GandalfSolutions.git
+[submodule "AutoTemp"]
+	path = AutoTemp
+	url = git@github.com:vasic-digital/AutoTemp.git
+[submodule "HyperTune"]
+	path = HyperTune
+	url = git@github.com:vasic-digital/HyperTune.git
+[submodule "I-LLM"]
+	path = I-LLM
+	url = git@github.com:vasic-digital/I-LLM.git
+[submodule "Veritas"]
+	path = Veritas
+	url = git@github.com:vasic-digital/Veritas.git
+[submodule "LeakHub"]
+	path = LeakHub
+	url = git@github.com:vasic-digital/LeakHub.git
+[submodule "Claritas"]
+	path = Claritas
+	url = git@github.com:vasic-digital/Claritas.git
+[submodule "Ouroborous"]
+	path = Ouroborous
+	url = git@github.com:vasic-digital/Ouroborous.git

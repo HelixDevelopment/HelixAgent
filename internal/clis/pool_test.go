@@ -258,7 +258,7 @@ func TestInstancePool_Invalidate(t *testing.T) {
 
 	// Instance should be removed from active
 	pool.mu.RLock()
-	_, exists := pool.active[inst.ID]
+	_, exists := pool.active.Get(inst.ID)
 	pool.mu.RUnlock()
 	assert.False(t, exists)
 	assert.Equal(t, StatusTerminated, inst.Status)
@@ -478,7 +478,7 @@ func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
 
 			// Check active count under lock - should never exceed maxActive
 			pool.mu.RLock()
-			currentActive := int64(len(pool.active))
+			currentActive := int64(pool.active.Len())
 			pool.mu.RUnlock()
 
 			// Track the max we observe

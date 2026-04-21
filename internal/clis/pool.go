@@ -7,9 +7,30 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 )
 
 // InstancePool manages a pool of reusable agent instances.
+//
+// Concurrency (CONST-029 — Pattern Zeta):
+//   - idle and active are stored in safe.Slice / safe.Store so that
+//     single-key reads/writes and Snapshot() work without an external
+//     lock.
+//   - mu is RETAINED intentionally. It serialises the compound state
+//     transition in Acquire() which spans three fields:
+//     (a) remove from idle slice, (b) insert into active map,
+//     (c) on the miss path, reserve a placeholder key in active,
+//     run factory() outside the lock, then swap placeholder → real ID.
+//     A concurrent Acquire caller must see a consistent active count
+//     when deciding whether the pool is exhausted; splitting across
+//     independent safe.Store ops would break that invariant.
+//   - mu ALSO guards inst.Status mutations in terminateInstance so that
+//     concurrent Release/terminate on the same AgentInstance pointer do
+//     not race.
+//   - safe.Store/safe.Slice operations INSIDE the mu region are fine —
+//     they just add their own narrow lock under the outer RWMutex.
+//   - See docs/development/concurrency-playbook.md §Pattern Zeta.
 type InstancePool struct {
 	agentType AgentType
 
@@ -21,11 +42,11 @@ type InstancePool struct {
 	acquireTimeout time.Duration
 
 	// Idle instances available for use
-	idle   []*AgentInstance
+	idle   *safe.Slice[*AgentInstance]
 	idleCh chan *AgentInstance
 
 	// Active instances currently in use
-	active map[string]*AgentInstance
+	active *safe.Store[string, *AgentInstance]
 
 	// Factory for creating new instances
 	factory func() (*AgentInstance, error)
@@ -87,9 +108,9 @@ func NewInstancePool(
 		maxActive:      config.MaxActive,
 		maxLifetime:    config.MaxLifetime,
 		acquireTimeout: acquireTimeout,
-		idle:           make([]*AgentInstance, 0, config.MaxIdle),
+		idle:           safe.NewSlice[*AgentInstance](),
 		idleCh:         make(chan *AgentInstance, config.MaxIdle),
-		active:         make(map[string]*AgentInstance),
+		active:         safe.NewStore[string, *AgentInstance](),
 		factory:        factory,
 		ctx:            ctx,
 		cancel:         cancel,
@@ -114,13 +135,8 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 		atomic.AddUint64(&p.hits, 1)
 		p.mu.Lock()
 		// Remove from idle slice if present (channel and slice can be out of sync)
-		for i, idleInst := range p.idle {
-			if idleInst.ID == inst.ID {
-				p.idle = append(p.idle[:i], p.idle[i+1:]...)
-				break
-			}
-		}
-		p.active[inst.ID] = inst
+		p.idle.Delete(func(idleInst *AgentInstance) bool { return idleInst.ID == inst.ID })
+		p.active.Put(inst.ID, inst)
 		p.mu.Unlock()
 		return inst, nil
 	default:
@@ -132,31 +148,29 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 	p.mu.Lock()
 
 	// Try idle slice under the same lock
-	if len(p.idle) > 0 {
-		inst := p.idle[len(p.idle)-1]
-		p.idle = p.idle[:len(p.idle)-1]
-		p.active[inst.ID] = inst
-		p.mu.Unlock()
-		atomic.AddUint64(&p.hits, 1)
-		return inst, nil
+	if n := p.idle.Len(); n > 0 {
+		last, ok := p.idle.At(n - 1)
+		if ok {
+			// Remove the last element by id equality to keep invariants.
+			p.idle.Delete(func(x *AgentInstance) bool { return x == last })
+			p.active.Put(last.ID, last)
+			p.mu.Unlock()
+			atomic.AddUint64(&p.hits, 1)
+			return last, nil
+		}
 	}
 
 	// Check if we can create a new instance. If yes, reserve the slot
 	// by using a placeholder so other goroutines see the correct active count.
-	if len(p.active) >= p.maxActive {
+	if p.active.Len() >= p.maxActive {
 		p.mu.Unlock()
 		// Pool exhausted, wait for one to become available
 		select {
 		case inst := <-p.idleCh:
 			atomic.AddUint64(&p.hits, 1)
 			p.mu.Lock()
-			for i, idleInst := range p.idle {
-				if idleInst.ID == inst.ID {
-					p.idle = append(p.idle[:i], p.idle[i+1:]...)
-					break
-				}
-			}
-			p.active[inst.ID] = inst
+			p.idle.Delete(func(idleInst *AgentInstance) bool { return idleInst.ID == inst.ID })
+			p.active.Put(inst.ID, inst)
 			p.mu.Unlock()
 			return inst, nil
 		case <-ctx.Done():
@@ -171,7 +185,7 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 	// collide with real instance IDs.
 	seq := atomic.AddUint64(&p.placeholderSeq, 1)
 	placeholderID := fmt.Sprintf("__placeholder_%d__", seq)
-	p.active[placeholderID] = nil
+	p.active.Put(placeholderID, nil)
 	p.mu.Unlock()
 
 	// Create instance OUTSIDE the lock to avoid holding it during I/O
@@ -180,15 +194,15 @@ func (p *InstancePool) Acquire(ctx context.Context) (*AgentInstance, error) {
 	if err != nil {
 		// Remove the placeholder on failure
 		p.mu.Lock()
-		delete(p.active, placeholderID)
+		p.active.Delete(placeholderID)
 		p.mu.Unlock()
 		return nil, fmt.Errorf("factory error: %w", err)
 	}
 
 	// Swap placeholder for real instance
 	p.mu.Lock()
-	delete(p.active, placeholderID)
-	p.active[inst.ID] = inst
+	p.active.Delete(placeholderID)
+	p.active.Put(inst.ID, inst)
 	p.mu.Unlock()
 
 	return inst, nil
@@ -202,10 +216,10 @@ func (p *InstancePool) Release(inst *AgentInstance) error {
 
 	// Remove from active
 	p.mu.Lock()
-	delete(p.active, inst.ID)
+	p.active.Delete(inst.ID)
 
 	// Check if pool is full
-	if len(p.idle) >= p.maxIdle {
+	if p.idle.Len() >= p.maxIdle {
 		p.mu.Unlock()
 		// Terminate instance instead of returning to pool
 		return p.terminateInstance(inst)
@@ -218,7 +232,7 @@ func (p *InstancePool) Release(inst *AgentInstance) error {
 	inst.UpdatedAt = time.Now()
 
 	// Add to idle pool
-	p.idle = append(p.idle, inst)
+	p.idle.Append(inst)
 	p.mu.Unlock()
 
 	// Try to add to channel (non-blocking)
@@ -238,15 +252,9 @@ func (p *InstancePool) Invalidate(inst *AgentInstance) error {
 	}
 
 	p.mu.Lock()
-	delete(p.active, inst.ID)
-
+	p.active.Delete(inst.ID)
 	// Remove from idle if present
-	for i, idleInst := range p.idle {
-		if idleInst.ID == inst.ID {
-			p.idle = append(p.idle[:i], p.idle[i+1:]...)
-			break
-		}
-	}
+	p.idle.Delete(func(idleInst *AgentInstance) bool { return idleInst.ID == inst.ID })
 	p.mu.Unlock()
 
 	return p.terminateInstance(inst)
@@ -254,8 +262,13 @@ func (p *InstancePool) Invalidate(inst *AgentInstance) error {
 
 // Stats returns pool statistics.
 func (p *InstancePool) Stats() map[string]interface{} {
+	// Read idle/active counts under the outer mu to preserve the compound
+	// invariant: a caller that sees active_count == maxActive also sees
+	// idle_count reflecting the same transition.
 	p.mu.RLock()
-	defer p.mu.RUnlock()
+	idleCount := p.idle.Len()
+	activeCount := p.active.Len()
+	p.mu.RUnlock()
 
 	totalHits := atomic.LoadUint64(&p.hits)
 	totalMisses := atomic.LoadUint64(&p.misses)
@@ -268,8 +281,8 @@ func (p *InstancePool) Stats() map[string]interface{} {
 
 	return map[string]interface{}{
 		"agent_type":   p.agentType,
-		"idle_count":   len(p.idle),
-		"active_count": len(p.active),
+		"idle_count":   idleCount,
+		"active_count": activeCount,
 		"hits":         totalHits,
 		"misses":       totalMisses,
 		"hit_rate":     hitRate,
@@ -288,13 +301,16 @@ func (p *InstancePool) Close() error {
 
 	// Terminate all instances
 	p.mu.Lock()
-	instances := make([]*AgentInstance, 0, len(p.idle)+len(p.active))
-	instances = append(instances, p.idle...)
-	for _, inst := range p.active {
-		instances = append(instances, inst)
-	}
-	p.idle = p.idle[:0]
-	p.active = make(map[string]*AgentInstance)
+	instances := make([]*AgentInstance, 0, p.idle.Len()+p.active.Len())
+	instances = append(instances, p.idle.Snapshot()...)
+	p.active.Range(func(_ string, inst *AgentInstance) bool {
+		if inst != nil {
+			instances = append(instances, inst)
+		}
+		return true
+	})
+	p.idle.Clear()
+	p.active.Clear()
 	p.mu.Unlock()
 
 	for _, inst := range instances {
@@ -335,7 +351,7 @@ func (p *InstancePool) cleanupExpired() {
 	var kept []*AgentInstance
 	var expired []*AgentInstance
 
-	for _, inst := range p.idle {
+	for _, inst := range p.idle.Snapshot() {
 		if now.Sub(inst.UpdatedAt) > p.maxLifetime {
 			expired = append(expired, inst)
 			atomic.AddUint64(&p.evicts, 1)
@@ -344,7 +360,7 @@ func (p *InstancePool) cleanupExpired() {
 		}
 	}
 
-	p.idle = kept
+	p.idle.Replace(kept)
 	p.mu.Unlock()
 
 	// Terminate expired instances outside the lock with goroutine tracking.
@@ -360,9 +376,9 @@ func (p *InstancePool) cleanupExpired() {
 
 // ensureMinIdle ensures minimum number of idle instances.
 func (p *InstancePool) ensureMinIdle() {
-	p.mu.Lock()
-	currentIdle := len(p.idle)
-	p.mu.Unlock()
+	p.mu.RLock()
+	currentIdle := p.idle.Len()
+	p.mu.RUnlock()
 
 	if currentIdle >= p.minIdle {
 		return
@@ -385,8 +401,8 @@ func (p *InstancePool) ensureMinIdle() {
 
 		var overflow *AgentInstance
 		p.mu.Lock()
-		if len(p.idle) < p.maxIdle {
-			p.idle = append(p.idle, inst)
+		if p.idle.Len() < p.maxIdle {
+			p.idle.Append(inst)
 			select {
 			case p.idleCh <- inst:
 			default:
@@ -413,9 +429,9 @@ func (p *InstancePool) prewarm() {
 	defer p.wg.Done()
 
 	for {
-		p.mu.Lock()
-		currentIdle := len(p.idle)
-		p.mu.Unlock()
+		p.mu.RLock()
+		currentIdle := p.idle.Len()
+		p.mu.RUnlock()
 
 		if currentIdle >= p.minIdle {
 			return
@@ -436,8 +452,8 @@ func (p *InstancePool) prewarm() {
 
 		var overflow *AgentInstance
 		p.mu.Lock()
-		if len(p.idle) < p.maxIdle {
-			p.idle = append(p.idle, inst)
+		if p.idle.Len() < p.maxIdle {
+			p.idle.Append(inst)
 			select {
 			case p.idleCh <- inst:
 			default:

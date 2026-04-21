@@ -1,4 +1,9 @@
-package integration
+// CONST-030: these tests exercise the in-process AdversarialProtocol with
+// canned LLM responses to validate protocol parsing, attack/defense cycle
+// tracking, and fallback behaviour. They assert on in-process implementation
+// details (not live-service observable invariants), so under CONST-030 they
+// are unit tests by definition. Demoted from tests/integration/ (PR8).
+package debate_test
 
 import (
 	"context"

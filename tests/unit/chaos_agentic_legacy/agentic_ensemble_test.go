@@ -1,7 +1,10 @@
-// Package agentic provides chaos tests for the AgenticEnsemble pipeline.
-// These tests inject faults to verify the system degrades gracefully and
-// recovers without data loss or goroutine leaks.
-package agentic
+// Previously tests/chaos/agentic/agentic_ensemble_chaos_test.go. CONST-030
+// forbids in-process mocks in non-unit tests; this file exercises
+// AgenticEnsemble against a local mockFailingServer (httptest) that
+// abruptly closes connections mid-request — pure in-process chaos
+// simulation. Real chaos engineering against live infrastructure is
+// separate work (Pattern-2 in the audit). PR31 of the CONST-030 campaign.
+package chaos_agentic_legacy_test
 
 import (
 	"context"

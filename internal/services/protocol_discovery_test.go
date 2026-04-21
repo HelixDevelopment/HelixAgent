@@ -18,6 +18,16 @@ func newDiscoveryTestLogger() *logrus.Logger {
 	return log
 }
 
+// seedDiscoveryAgents populates the safe.Store with the given agents. This is
+// the test-only replacement for the old pattern:
+//
+//	c.mu.Lock(); c.agents["id"] = conn; c.mu.Unlock()
+func seedDiscoveryAgents(c *ACPDiscoveryClient, agents map[string]*ACPAgentConnection) {
+	for id, conn := range agents {
+		c.agents.Put(id, conn)
+	}
+}
+
 // Tests for ACPClient helper functions specific to protocol_discovery.go
 
 func TestDiscoveryACPClient_NextMessageID(t *testing.T) {
@@ -174,13 +184,13 @@ func TestDiscoveryACPClient_ConnectAgent_DuplicateConnection(t *testing.T) {
 	client := NewACPDiscoveryClient(log)
 
 	// Add a fake agent connection directly to test duplicate check
-	client.mu.Lock()
-	client.agents["test-agent"] = &ACPAgentConnection{
-		ID:        "test-agent",
-		Name:      "Test Agent",
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"test-agent": {
+			ID:        "test-agent",
+			Name:      "Test Agent",
+			Connected: true,
+		},
+	})
 
 	ctx := context.Background()
 	err := client.ConnectAgent(ctx, "test-agent", "Test Agent", "http://localhost:7061")
@@ -206,22 +216,20 @@ func TestDiscoveryACPClient_DisconnectAgent_Connected(t *testing.T) {
 	mockTransport.connected = true
 
 	// Add a fake agent connection
-	client.mu.Lock()
-	client.agents["test-agent"] = &ACPAgentConnection{
-		ID:        "test-agent",
-		Name:      "Test Agent",
-		Transport: mockTransport,
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"test-agent": {
+			ID:        "test-agent",
+			Name:      "Test Agent",
+			Transport: mockTransport,
+			Connected: true,
+		},
+	})
 
 	err := client.DisconnectAgent("test-agent")
 	require.NoError(t, err)
 
 	// Verify agent was removed
-	client.mu.RLock()
-	_, exists := client.agents["test-agent"]
-	client.mu.RUnlock()
+	_, exists := client.agents.Get("test-agent")
 	assert.False(t, exists)
 }
 
@@ -231,17 +239,17 @@ func TestDiscoveryACPClient_GetAgentStatus_Connected(t *testing.T) {
 
 	now := time.Now()
 	// Add a fake agent connection
-	client.mu.Lock()
-	client.agents["test-agent"] = &ACPAgentConnection{
-		ID:        "test-agent",
-		Name:      "Test Agent",
-		Connected: true,
-		LastUsed:  now,
-		Capabilities: map[string]interface{}{
-			"tools": true,
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"test-agent": {
+			ID:        "test-agent",
+			Name:      "Test Agent",
+			Connected: true,
+			LastUsed:  now,
+			Capabilities: map[string]interface{}{
+				"tools": true,
+			},
 		},
-	}
-	client.mu.Unlock()
+	})
 
 	ctx := context.Background()
 	status, err := client.GetAgentStatus(ctx, "test-agent")
@@ -262,18 +270,18 @@ func TestDiscoveryACPClient_GetAgentStatus_WithWebSocketTransport(t *testing.T) 
 		connected: true,
 	}
 
-	client.mu.Lock()
-	client.agents["ws-agent"] = &ACPAgentConnection{
-		ID:        "ws-agent",
-		Name:      "WebSocket Agent",
-		Connected: true,
-		LastUsed:  now,
-		Transport: wsTransport,
-		Capabilities: map[string]interface{}{
-			"tools": true,
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"ws-agent": {
+			ID:        "ws-agent",
+			Name:      "WebSocket Agent",
+			Connected: true,
+			LastUsed:  now,
+			Transport: wsTransport,
+			Capabilities: map[string]interface{}{
+				"tools": true,
+			},
 		},
-	}
-	client.mu.Unlock()
+	})
 
 	ctx := context.Background()
 	status, err := client.GetAgentStatus(ctx, "ws-agent")
@@ -309,18 +317,18 @@ func TestDiscoveryACPClient_GetAgentStatus_WithHTTPTransport(t *testing.T) {
 		connected:  true,
 	}
 
-	client.mu.Lock()
-	client.agents["http-agent"] = &ACPAgentConnection{
-		ID:        "http-agent",
-		Name:      "HTTP Agent",
-		Connected: true,
-		LastUsed:  now,
-		Transport: httpTransport,
-		Capabilities: map[string]interface{}{
-			"tools": true,
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"http-agent": {
+			ID:        "http-agent",
+			Name:      "HTTP Agent",
+			Connected: true,
+			LastUsed:  now,
+			Transport: httpTransport,
+			Capabilities: map[string]interface{}{
+				"tools": true,
+			},
 		},
-	}
-	client.mu.Unlock()
+	})
 
 	ctx := context.Background()
 	status, err := client.GetAgentStatus(ctx, "http-agent")
@@ -341,20 +349,20 @@ func TestDiscoveryACPClient_BroadcastAction_WithAgents(t *testing.T) {
 	mockTransport2 := &MockACPTransport{connected: false}
 
 	// Add fake agent connections
-	client.mu.Lock()
-	client.agents["agent-1"] = &ACPAgentConnection{
-		ID:        "agent-1",
-		Name:      "Agent 1",
-		Transport: mockTransport1,
-		Connected: true,
-	}
-	client.agents["agent-2"] = &ACPAgentConnection{
-		ID:        "agent-2",
-		Name:      "Agent 2",
-		Transport: mockTransport2,
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"agent-1": {
+			ID:        "agent-1",
+			Name:      "Agent 1",
+			Transport: mockTransport1,
+			Connected: true,
+		},
+		"agent-2": {
+			ID:        "agent-2",
+			Name:      "Agent 2",
+			Transport: mockTransport2,
+			Connected: true,
+		},
+	})
 
 	ctx := context.Background()
 	results := client.BroadcastAction(ctx, "test-action", map[string]interface{}{"key": "value"})
@@ -370,14 +378,14 @@ func TestDiscoveryACPClient_BroadcastAction_DisconnectedAgent(t *testing.T) {
 	mockTransport := &MockACPTransport{connected: false}
 
 	// Add an agent that is marked as disconnected
-	client.mu.Lock()
-	client.agents["disconnected-agent"] = &ACPAgentConnection{
-		ID:        "disconnected-agent",
-		Name:      "Disconnected Agent",
-		Transport: mockTransport,
-		Connected: false, // Agent is not connected
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"disconnected-agent": {
+			ID:        "disconnected-agent",
+			Name:      "Disconnected Agent",
+			Transport: mockTransport,
+			Connected: false, // Agent is not connected
+		},
+	})
 
 	ctx := context.Background()
 	results := client.BroadcastAction(ctx, "test-action", nil)
@@ -398,20 +406,20 @@ func TestDiscoveryACPClient_BroadcastAction_MixedAgents(t *testing.T) {
 	mockTransport2 := &MockACPTransport{connected: false}
 
 	// Add mix of connected and disconnected agents
-	client.mu.Lock()
-	client.agents["connected-agent"] = &ACPAgentConnection{
-		ID:        "connected-agent",
-		Name:      "Connected Agent",
-		Transport: mockTransport1,
-		Connected: true,
-	}
-	client.agents["disconnected-agent"] = &ACPAgentConnection{
-		ID:        "disconnected-agent",
-		Name:      "Disconnected Agent",
-		Transport: mockTransport2,
-		Connected: false,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"connected-agent": {
+			ID:        "connected-agent",
+			Name:      "Connected Agent",
+			Transport: mockTransport1,
+			Connected: true,
+		},
+		"disconnected-agent": {
+			ID:        "disconnected-agent",
+			Name:      "Disconnected Agent",
+			Transport: mockTransport2,
+			Connected: false,
+		},
+	})
 
 	ctx := context.Background()
 	results := client.BroadcastAction(ctx, "test-action", map[string]interface{}{"key": "value"})
@@ -435,18 +443,18 @@ func TestDiscoveryACPClient_ListAgents_WithAgents(t *testing.T) {
 	client := NewACPDiscoveryClient(log)
 
 	// Add fake agent connections
-	client.mu.Lock()
-	client.agents["agent-1"] = &ACPAgentConnection{
-		ID:        "agent-1",
-		Name:      "Agent 1",
-		Connected: true,
-	}
-	client.agents["agent-2"] = &ACPAgentConnection{
-		ID:        "agent-2",
-		Name:      "Agent 2",
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"agent-1": {
+			ID:        "agent-1",
+			Name:      "Agent 1",
+			Connected: true,
+		},
+		"agent-2": {
+			ID:        "agent-2",
+			Name:      "Agent 2",
+			Connected: true,
+		},
+	})
 
 	agents := client.ListAgents()
 	assert.Len(t, agents, 2)
@@ -468,14 +476,14 @@ func TestDiscoveryACPClient_HealthCheck_WithAgents(t *testing.T) {
 	mockTransport := &MockACPTransport{connected: true}
 
 	// Add a fake agent connection
-	client.mu.Lock()
-	client.agents["agent-1"] = &ACPAgentConnection{
-		ID:        "agent-1",
-		Name:      "Agent 1",
-		Transport: mockTransport,
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"agent-1": {
+			ID:        "agent-1",
+			Name:      "Agent 1",
+			Transport: mockTransport,
+			Connected: true,
+		},
+	})
 
 	ctx := context.Background()
 	health := client.HealthCheck(ctx)
@@ -648,14 +656,14 @@ func TestDiscoveryACPClient_ExecuteAction_Connected(t *testing.T) {
 	}
 
 	// Add agent connection
-	client.mu.Lock()
-	client.agents["test-agent"] = &ACPAgentConnection{
-		ID:        "test-agent",
-		Name:      "Test Agent",
-		Transport: mockTransport,
-		Connected: true,
-	}
-	client.mu.Unlock()
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"test-agent": {
+			ID:        "test-agent",
+			Name:      "Test Agent",
+			Transport: mockTransport,
+			Connected: true,
+		},
+	})
 
 	result, err := client.ExecuteAction(ctx, "test-agent", "test-action", map[string]interface{}{})
 	assert.NoError(t, err)
@@ -677,17 +685,17 @@ func TestDiscoveryACPClient_GetAgentCapabilities_Connected(t *testing.T) {
 	client := NewACPDiscoveryClient(log)
 
 	// Add agent connection with capabilities
-	client.mu.Lock()
-	client.agents["test-agent"] = &ACPAgentConnection{
-		ID:        "test-agent",
-		Name:      "Test Agent",
-		Connected: true,
-		Capabilities: map[string]interface{}{
-			"execute":   true,
-			"broadcast": true,
+	seedDiscoveryAgents(client, map[string]*ACPAgentConnection{
+		"test-agent": {
+			ID:        "test-agent",
+			Name:      "Test Agent",
+			Connected: true,
+			Capabilities: map[string]interface{}{
+				"execute":   true,
+				"broadcast": true,
+			},
 		},
-	}
-	client.mu.Unlock()
+	})
 
 	result, err := client.GetAgentCapabilities("test-agent")
 	assert.NoError(t, err)

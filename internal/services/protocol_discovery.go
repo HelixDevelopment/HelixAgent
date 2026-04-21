@@ -11,15 +11,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	"digital.vasic.concurrency/pkg/safe"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
-// ACPDiscoveryClient implements a real Agent Client Protocol client for discovery
+// ACPDiscoveryClient implements a real Agent Client Protocol client for discovery.
+//
+// CONST-029: `agents` is a concurrent-safe *safe.Store; transport sub-structs
+// keep their own narrow mutexes (compound invariant over conn + connected).
 type ACPDiscoveryClient struct {
-	agents    map[string]*ACPAgentConnection
+	agents    *safe.Store[string, *ACPAgentConnection]
 	messageID atomic.Int64
-	mu        sync.RWMutex
 	logger    *logrus.Logger
 }
 
@@ -103,7 +106,7 @@ type ACPActionResult struct {
 // NewACPDiscoveryClient creates a new ACP discovery client
 func NewACPDiscoveryClient(logger *logrus.Logger) *ACPDiscoveryClient {
 	client := &ACPDiscoveryClient{
-		agents: make(map[string]*ACPAgentConnection),
+		agents: safe.NewStore[string, *ACPAgentConnection](),
 		logger: logger,
 	}
 	client.messageID.Store(1)
@@ -112,10 +115,7 @@ func NewACPDiscoveryClient(logger *logrus.Logger) *ACPDiscoveryClient {
 
 // ConnectAgent connects to an ACP agent
 func (c *ACPDiscoveryClient) ConnectAgent(ctx context.Context, agentID, name, endpoint string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, exists := c.agents[agentID]; exists {
+	if _, exists := c.agents.Get(agentID); exists {
 		return fmt.Errorf("ACP agent %s already connected", agentID)
 	}
 
@@ -150,7 +150,11 @@ func (c *ACPDiscoveryClient) ConnectAgent(ctx context.Context, agentID, name, en
 		return fmt.Errorf("failed to initialize ACP agent: %w", err)
 	}
 
-	c.agents[agentID] = connection
+	// PutIfAbsent protects against racing ConnectAgent calls for the same id.
+	if _, stored := c.agents.PutIfAbsent(agentID, connection); !stored {
+		_ = transport.Close()
+		return fmt.Errorf("ACP agent %s already connected", agentID)
+	}
 	c.logger.WithFields(logrus.Fields{
 		"agentId":  agentID,
 		"endpoint": endpoint,
@@ -161,19 +165,16 @@ func (c *ACPDiscoveryClient) ConnectAgent(ctx context.Context, agentID, name, en
 
 // DisconnectAgent disconnects from an ACP agent
 func (c *ACPDiscoveryClient) DisconnectAgent(agentID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	connection, exists := c.agents[agentID]
-	if !exists {
+	connection, existed := c.agents.Delete(agentID)
+	if !existed {
 		return fmt.Errorf("ACP agent %s not connected", agentID)
 	}
 
-	if err := connection.Transport.Close(); err != nil {
-		c.logger.WithError(err).Warn("Error closing ACP transport")
+	if connection.Transport != nil {
+		if err := connection.Transport.Close(); err != nil {
+			c.logger.WithError(err).Warn("Error closing ACP transport")
+		}
 	}
-
-	delete(c.agents, agentID)
 
 	c.logger.WithField("agentId", agentID).Info("Disconnected from ACP agent")
 	return nil
@@ -181,10 +182,7 @@ func (c *ACPDiscoveryClient) DisconnectAgent(agentID string) error {
 
 // ExecuteAction executes an action on an ACP agent
 func (c *ACPDiscoveryClient) ExecuteAction(ctx context.Context, agentID, action string, params map[string]interface{}) (*ACPActionResult, error) {
-	c.mu.RLock()
-	connection, exists := c.agents[agentID]
-	c.mu.RUnlock()
-
+	connection, exists := c.agents.Get(agentID)
 	if !exists {
 		return nil, fmt.Errorf("ACP agent %s not connected", agentID)
 	}
@@ -240,10 +238,7 @@ func (c *ACPDiscoveryClient) ExecuteAction(ctx context.Context, agentID, action 
 
 // GetAgentCapabilities returns capabilities for an agent
 func (c *ACPDiscoveryClient) GetAgentCapabilities(agentID string) (map[string]interface{}, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	connection, exists := c.agents[agentID]
+	connection, exists := c.agents.Get(agentID)
 	if !exists {
 		return nil, fmt.Errorf("ACP agent %s not connected", agentID)
 	}
@@ -253,24 +248,18 @@ func (c *ACPDiscoveryClient) GetAgentCapabilities(agentID string) (map[string]in
 
 // ListAgents returns all connected ACP agents
 func (c *ACPDiscoveryClient) ListAgents() []*ACPAgentConnection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	agents := make([]*ACPAgentConnection, 0, len(c.agents))
-	for _, agent := range c.agents {
-		agents = append(agents, agent)
-	}
-
-	return agents
+	return c.agents.Values()
 }
 
 // HealthCheck performs health checks on all connected agents
 func (c *ACPDiscoveryClient) HealthCheck(ctx context.Context) map[string]bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	results := make(map[string]bool)
-	for agentID, connection := range c.agents {
+	snap := c.agents.Snapshot()
+	results := make(map[string]bool, len(snap))
+	for agentID, connection := range snap {
+		if connection.Transport == nil {
+			results[agentID] = false
+			continue
+		}
 		results[agentID] = connection.Transport.IsConnected()
 	}
 
@@ -279,10 +268,7 @@ func (c *ACPDiscoveryClient) HealthCheck(ctx context.Context) map[string]bool {
 
 // GetAgentStatus returns detailed status for an agent
 func (c *ACPDiscoveryClient) GetAgentStatus(ctx context.Context, agentID string) (map[string]interface{}, error) {
-	c.mu.RLock()
-	connection, exists := c.agents[agentID]
-	c.mu.RUnlock()
-
+	connection, exists := c.agents.Get(agentID)
 	if !exists {
 		return nil, fmt.Errorf("ACP agent %s not found", agentID)
 	}
@@ -309,12 +295,7 @@ func (c *ACPDiscoveryClient) GetAgentStatus(ctx context.Context, agentID string)
 
 // BroadcastAction broadcasts an action to all connected agents
 func (c *ACPDiscoveryClient) BroadcastAction(ctx context.Context, action string, params map[string]interface{}) map[string]*ACPActionResult {
-	c.mu.RLock()
-	agents := make(map[string]*ACPAgentConnection)
-	for k, v := range c.agents {
-		agents[k] = v
-	}
-	c.mu.RUnlock()
+	agents := c.agents.Snapshot()
 
 	results := make(map[string]*ACPActionResult)
 

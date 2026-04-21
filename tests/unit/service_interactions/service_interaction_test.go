@@ -1,4 +1,4 @@
-package integration
+package service_interactions_test
 
 import (
 	"context"

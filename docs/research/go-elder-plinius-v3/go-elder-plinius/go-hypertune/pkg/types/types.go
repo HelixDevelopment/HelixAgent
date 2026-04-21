@@ -9,13 +9,13 @@ import (
 
 // ParameterSpace represents parameterspace data.
 type ParameterSpace struct {
-	FrequencyPenalty [2]float64
-	MaxTokens [2]int
-	TopP [2]float64
-	PresencePenalty [2]float64
-	RepetitionPenalty [2]float64
-	TopK [2]int
-	Temperature [2]float64
+	FrequencyPenalty float64
+	MaxTokens int
+	TopP float64
+	PresencePenalty float64
+	RepetitionPenalty float64
+	TopK int
+	Temperature float64
 }
 
 // Defaults applies default values for unset fields.

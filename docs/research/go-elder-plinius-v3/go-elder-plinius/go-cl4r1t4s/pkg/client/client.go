@@ -56,10 +56,10 @@ func (c *Client) Config() *config.Config { return c.cfg }
 // SearchPrompts Search the prompt archive with filters.
 func (c *Client) SearchPrompts(ctx context.Context, opts SearchOptions) ([]PromptEntry, int, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "cl4r1t4s", "invalid parameters", err)
+		return nil, 0, errors.Wrap(errors.ErrCodeInvalidArgument, "cl4r1t4s", "invalid parameters", err)
 	}
 	opts.Defaults()
-	return nil, errors.New(errors.ErrCodeUnimplemented, "cl4r1t4s",
+	return nil, 0, errors.New(errors.ErrCodeUnimplemented, "cl4r1t4s",
 		"SearchPrompts requires backend service integration")
 }
 

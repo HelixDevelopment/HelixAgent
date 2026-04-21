@@ -61,10 +61,10 @@ func (c *Client) SelfReflect(ctx context.Context, prompt string, model string) (
 
 // Refine Iteratively refine prompt.
 func (c *Client) Refine(ctx context.Context, cfg RefinementConfig) (*RefinementResult, error) {
-	if err := opts.Validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "ourobopus", "invalid parameters", err)
 	}
-	opts.Defaults()
+	cfg.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "ourobopus",
 		"Refine requires backend service integration")
 }

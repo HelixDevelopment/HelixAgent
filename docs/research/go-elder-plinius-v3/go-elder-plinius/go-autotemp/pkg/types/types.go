@@ -106,6 +106,11 @@ type BenchmarkOptions struct {
 	Models []string
 }
 
+// Validate checks that the BenchmarkOptions is valid.
+func (o *BenchmarkOptions) Validate() error {
+	return nil
+}
+
 // Defaults applies default values for unset fields.
 func (o *BenchmarkOptions) Defaults() {
 	if o.TopP == 0 { o.TopP = 1.0 }

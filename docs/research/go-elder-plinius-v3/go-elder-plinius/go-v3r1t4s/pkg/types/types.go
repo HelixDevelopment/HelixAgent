@@ -82,3 +82,12 @@ type FactCheck struct {
 	Correction string
 }
 
+// ModelComparison represents the truthfulness comparison result across models.
+type ModelComparison struct {
+	Claim            string
+	ModelResults     map[string]VerifyResult
+	AgreementScore   float64
+	MostAccurate     string
+	LeastAccurate    string
+}
+

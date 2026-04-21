@@ -55,7 +55,7 @@ func (c *Client) Config() *config.Config { return c.cfg }
 
 // VerifyClaim Verify a factual claim.
 func (c *Client) VerifyClaim(ctx context.Context, req VerifyRequest) (*VerifyResult, error) {
-	if err := opts.Validate(); err != nil {
+	if err := req.Validate(); err != nil {
 		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "v3r1t4s", "invalid parameters", err)
 	}
 	return nil, errors.New(errors.ErrCodeUnimplemented, "v3r1t4s",

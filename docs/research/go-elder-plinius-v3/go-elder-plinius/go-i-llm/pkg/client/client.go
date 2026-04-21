@@ -67,16 +67,16 @@ func (c *Client) ListPatterns(ctx context.Context, category string) ([]Conversat
 
 // RenderPattern Render pattern with variables.
 func (c *Client) RenderPattern(ctx context.Context, pattern ConversationPattern, vars map[string]string) (string, error) {
-	return nil, errors.New(errors.ErrCodeUnimplemented, "i-llm",
+	return "", errors.New(errors.ErrCodeUnimplemented, "i-llm",
 		"RenderPattern requires backend service integration")
 }
 
 // CreateAgent Create ReAct agent.
 func (c *Client) CreateAgent(ctx context.Context, cfg AgentConfig) (*Agent, error) {
-	if err := opts.Validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, errors.Wrap(errors.ErrCodeInvalidArgument, "i-llm", "invalid parameters", err)
 	}
-	opts.Defaults()
+	cfg.Defaults()
 	return nil, errors.New(errors.ErrCodeUnimplemented, "i-llm",
 		"CreateAgent requires backend service integration")
 }

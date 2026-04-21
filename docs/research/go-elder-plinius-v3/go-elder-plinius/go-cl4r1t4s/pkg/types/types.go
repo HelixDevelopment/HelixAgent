@@ -106,3 +106,54 @@ type ArchiveStats struct {
 	AvgConfidence float64
 }
 
+// ComparisonResult represents a side-by-side comparison across prompts.
+type ComparisonResult struct {
+	Prompts       []PromptEntry
+	Similarities  []string
+	Differences   []string
+	OverallScore  float64
+}
+
+// ExportOptions represents options for exporting archive data.
+type ExportOptions struct {
+	Companies    []string
+	Categories   []string
+	IncludeStats bool
+	PrettyPrint  bool
+}
+
+// TrendOptions represents options for trend analysis.
+type TrendOptions struct {
+	StartDate  string
+	EndDate    string
+	Granularity string
+	Companies  []string
+}
+
+// Validate checks that the TrendOptions is valid.
+func (o *TrendOptions) Validate() error {
+	return nil
+}
+
+// Defaults applies default values for unset fields.
+func (o *TrendOptions) Defaults() {
+	if strings.TrimSpace(o.Granularity) == "" {
+		o.Granularity = "monthly"
+	}
+}
+
+// TrendAnalysis represents the result of trend analysis.
+type TrendAnalysis struct {
+	Points       []TrendPoint
+	Summary      string
+	TotalChanges int
+}
+
+// TrendPoint represents a single trend data point.
+type TrendPoint struct {
+	Date        string
+	Count       int
+	TopCategory string
+}
+
+

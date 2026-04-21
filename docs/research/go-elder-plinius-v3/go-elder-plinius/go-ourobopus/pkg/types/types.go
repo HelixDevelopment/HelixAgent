@@ -79,6 +79,16 @@ func (o *RefinementConfig) Validate() error {
 	return nil
 }
 
+// Defaults applies default values for unset fields.
+func (o *RefinementConfig) Defaults() {
+	if o.Iterations == 0 {
+		o.Iterations = 3
+	}
+	if o.TargetScore == 0 {
+		o.TargetScore = 0.8
+	}
+}
+
 // RefinementResult represents refinementresult data.
 type RefinementResult struct {
 	FinalOutput string
@@ -86,5 +96,15 @@ type RefinementResult struct {
 	ImprovementHistory []float64
 	Iterations []IterationResult
 	FinalPrompt string
+}
+
+// MetaEvaluation represents the result of a meta-evaluation on a prompt/output pair.
+type MetaEvaluation struct {
+	Prompt      string
+	Output      string
+	Criteria    []string
+	Scores      map[string]float64
+	OverallScore float64
+	Analysis    string
 }
 

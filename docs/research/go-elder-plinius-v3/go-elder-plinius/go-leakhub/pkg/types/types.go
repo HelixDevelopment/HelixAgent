@@ -46,6 +46,13 @@ func (o *DetectionOptions) Validate() error {
 	return nil
 }
 
+// Defaults applies default values for unset fields.
+func (o *DetectionOptions) Defaults() {
+	if o.Sensitivity == 0 {
+		o.Sensitivity = 0.5
+	}
+}
+
 // DetectionResult represents detectionresult data.
 type DetectionResult struct {
 	Leaked bool

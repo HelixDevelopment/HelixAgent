@@ -117,6 +117,21 @@ func (o *PromptChain) Validate() error {
 	return nil
 }
 
+// Agent represents a ReAct agent instance.
+type Agent struct {
+	Config AgentConfig
+	ID     string
+}
+
+// TreeResult represents tree-of-thought exploration result data.
+type TreeResult struct {
+	Branches    []ChainResult
+	FinalOutput string
+	Breadth     int
+	TokenUsage  int
+	Success     bool
+}
+
 // ChainStep represents chainstep data.
 type ChainStep struct {
 	PromptTemplate string

@@ -15,8 +15,8 @@ Redis, REAL MCP/ACP/LSP services, and REAL HTTP calls.
 | Test files scanned (`tests/` + `internal/` + `challenges/`) | 1,179 |
 | Non-unit test files scanned             | 331   |
 | Violations confirmed                    | 41    |
-| Fixed in-session                        | 1     |
-| Deferred to dedicated session           | 40    |
+| Fixed (cumulative across sessions)      | 8     |
+| Deferred to future session              | 33    |
 
 No violation met the in-session fix criteria (≤50 LOC rewrite, no cross-file
 ripple, no production-code change, substitution of in-process fake with live
@@ -68,12 +68,17 @@ For each hit, confirmed:
 
 ## Violations
 
-### Fixed this session
+### Fixed (cumulative)
 
 | File | Commit | Pattern | Notes |
 |------|--------|---------|-------|
-| `internal/handlers/handlers_integration_test.go` | (pending commit, PR2) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 987 LOC → 402 LOC. All 14 `TestIntegration_*` cases now dial `tcp://localhost:7061`, skip cleanly when unreachable, and drive real HTTP round-trips against `/v1/health`, `/v1/chat/completions`, `/v1/models`, `/v1/debates/*`, `/v1/mcp/*`. Removed `MockLLMProvider` wiring, `setupIntegrationTest()` helper, orphan `mockSkillsService`. Compile + skip-path verified with :7061 down. |
-| `internal/services/services_integration_test.go` | (pending commit, PR1) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 803 LOC → 466 LOC. `integrationMockProvider` deleted. All 12 `TestServicesIntegration_*` cases now probe `/v1/health` via `isHelixAgentAvailable(t)` and `skipUnlessLive(t)`, driving live HTTP against `/v1/debates`, `/v1/ensemble`, `/v1/chat/completions`, `/v1/discovery/providers`. Companion `internal/services/suspiciously_fast_response_verification_test.go` dropped `TestIntegrationMockProviderLatency_...` (mock no longer exists); 3 boundary unit tests of `IsSuspiciouslyFastResponse` retained & verified green. `TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider` removed — in-process registry CRUD is not exposed over HTTP; invariant belongs in a unit test. Compile (`go build`), vet (`go vet`) and skip-path (`12/12 SKIP`) verified with :7061 down. |
+| `internal/handlers/handlers_integration_test.go` | `186f3c9c` (PR2) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 987 LOC → 402 LOC. All 14 `TestIntegration_*` cases now dial `tcp://localhost:7061`, skip cleanly when unreachable, and drive real HTTP round-trips against `/v1/health`, `/v1/chat/completions`, `/v1/models`, `/v1/debates/*`, `/v1/mcp/*`. Removed `MockLLMProvider` wiring, `setupIntegrationTest()` helper, orphan `mockSkillsService`. Compile + skip-path verified with :7061 down. |
+| `internal/services/services_integration_test.go` | `1e6999d3` (PR1) | Pattern 1 — live :7061 probe + `t.Skip` | Rewrote 803 LOC → 466 LOC. `integrationMockProvider` deleted. All 12 `TestServicesIntegration_*` cases now probe `/v1/health` via `isHelixAgentAvailable(t)` and `skipUnlessLive(t)`, driving live HTTP against `/v1/debates`, `/v1/ensemble`, `/v1/chat/completions`, `/v1/discovery/providers`. Companion `internal/services/suspiciously_fast_response_verification_test.go` dropped `TestIntegrationMockProviderLatency_...` (mock no longer exists); 3 boundary unit tests of `IsSuspiciouslyFastResponse` retained & verified green. `TestServicesIntegration_ProviderRegistry_ConfigureDisablesProvider` removed — in-process registry CRUD is not exposed over HTTP; invariant belongs in a unit test. Compile (`go build`), vet (`go vet`) and skip-path (`12/12 SKIP`) verified with :7061 down. |
+| `internal/adapters/mcp/integration_test.go` | `f2f45511` (PR3) | Pattern 4 — demote to unit | Pure in-process tests (`DefaultClientConfig`, `RegistryAdapter` CRUD, type aliases, struct method signatures). Renamed to `mcp_registry_test.go` — no longer matches `*_integration_test.go` non-unit surface. No coverage lost; all 5 test functions pass under default `go test -short`. |
+| `internal/adapters/auth/integration_test.go` | `f357f0b2` (PR4) | Pattern 4 — demote to unit | Pure in-process gin middleware + JWT / OAuth credential manager tests with on-disk JSON fixtures. Renamed to `auth_middleware_test.go`. No coverage lost; 14 test functions pass under default `go test`. |
+| `internal/services/integration_orchestrator_test.go` | `4cffaea1` + `5e7f8b9c` (PR5) | Pattern 4 — demote to unit | Pure in-process tests of `IntegrationOrchestrator` private methods with `MockLLMProviderForOrchestrator` stub. Renamed to `integration_orchestrator_unit_test.go` (new file pulled in on `5e7f8b9c`, old file deleted in `4cffaea1`). Vet clean. Pre-existing `TestIntegrationOrchestrator_executeOperation_ToolType` nil-pointer failure (`&ToolRegistry{}` zero-value post-CONST-029) is unrelated to the rename. |
+| `internal/bigdata/debate_integration_test.go` | `6f80c369` (PR6) | Pattern 4 — demote to unit | Pure in-process `DebateIntegration` tests against `mockBroker` / `mockSubscription` implementing `messaging.MessageBroker`. Renamed to `debate_broker_unit_test.go`. 16 test functions pass. |
+| `internal/bigdata/memory_integration_test.go` | `b1451b8a` (PR7) | Pattern 4 — demote to unit | Pure in-process `MemoryIntegration` tests against `mockMemoryStore` / `mockBroker`. Renamed to `memory_store_unit_test.go`. 25 test functions pass. |
 
 ### Deferred (documented for future session)
 
@@ -222,18 +227,18 @@ emulates (already enforced by CONST-018 "No GitHub Actions..." — we run
 everything via make). Likely the file can be largely deleted, as the real
 automation is the Makefile itself.
 
-#### internal/ — 9 files
+#### internal/ — 9 files (7 fixed, 2 remaining)
 
 | File | LOC | Mock class(es) | Severity |
 |------|-----|----------------|----------|
-| ~~`internal/services/services_integration_test.go`~~ | ~~803~~ | ~~`integrationMockProvider`~~ | **Fixed this session** (PR1) — see table above. |
-| `internal/services/integration_orchestrator_test.go` | ~ | `mockProvider` | high |
-| ~~`internal/handlers/handlers_integration_test.go`~~ | ~~987~~ | ~~HTTP handler mocks~~ | **Fixed this session** (PR2) — see table above. |
-| `internal/bigdata/memory_integration_test.go` | 938 | memory backend mocks | high |
-| `internal/bigdata/debate_integration_test.go` | 510 | debate backend mocks | high |
+| ~~`internal/services/services_integration_test.go`~~ | ~~803~~ | ~~`integrationMockProvider`~~ | **Fixed** (PR1, `1e6999d3`) — see Fixed table above. |
+| ~~`internal/services/integration_orchestrator_test.go`~~ | ~~1503~~ | ~~`MockLLMProviderForOrchestrator`~~ | **Fixed** (PR5, `4cffaea1` + `5e7f8b9c`) — demoted to unit (rename). |
+| ~~`internal/handlers/handlers_integration_test.go`~~ | ~~987~~ | ~~HTTP handler mocks~~ | **Fixed** (PR2, `186f3c9c`) — see Fixed table above. |
+| ~~`internal/bigdata/memory_integration_test.go`~~ | ~~938~~ | ~~memory backend mocks~~ | **Fixed** (PR7, `b1451b8a`) — demoted to unit (rename). |
+| ~~`internal/bigdata/debate_integration_test.go`~~ | ~~510~~ | ~~debate backend mocks~~ | **Fixed** (PR6, `6f80c369`) — demoted to unit (rename). |
 | `internal/bigdata/integration_test.go` | ~ | bigdata service mocks | medium |
-| `internal/adapters/auth/integration_test.go` | ~ | auth adapter mocks | medium |
-| `internal/adapters/mcp/integration_test.go` | ~ | MCP adapter mocks | medium |
+| ~~`internal/adapters/auth/integration_test.go`~~ | ~ | ~~auth adapter mocks~~ | **Fixed** (PR4, `f357f0b2`) — demoted to unit (rename). |
+| ~~`internal/adapters/mcp/integration_test.go`~~ | ~ | ~~MCP adapter mocks~~ | **Fixed** (PR3, `f2f45511`) — demoted to unit (rename). |
 | `internal/security/integration_test.go` | ~ | security integration mocks | high |
 
 **Proposed approach:** these are the highest-ROI files to fix because they

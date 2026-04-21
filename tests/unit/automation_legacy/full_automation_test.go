@@ -1,16 +1,10 @@
-// Package automation provides comprehensive end-to-end automation tests
-// for validating the entire HelixAgent system.
-//
-// This test suite performs:
-// 1. Setup Phase - Initialize test environment, start mock servers
-// 2. Unit Test Verification - Run all unit tests, verify coverage thresholds
-// 3. Integration Test Verification - Tool, CLI agent, MCP, service wiring tests
-// 4. API Endpoint Tests - All major API endpoints
-// 5. Tool Execution Tests - Execute each tool type with mock data
-// 6. End-to-End Flow Tests - Complete request/response flows
-// 7. Performance Tests - Response time, concurrency, memory usage
-// 8. Cleanup Phase - Stop mock servers, clean up test data
-package automation
+// Previously tests/automation/full_automation_test.go. CONST-030 forbids
+// in-process mocks in non-unit tests; this 1,639-LOC harness simulated
+// the entire HelixAgent CI pipeline (unit/integration/E2E phases) by
+// spawning mock LLM servers via httptest and exercising a local
+// MockTool + gin handlers — zero contact with a live :7061 HelixAgent.
+// Moved to the unit tree in PR29 of the CONST-030 compliance campaign.
+package automation_legacy_test
 
 import (
 	"bytes"

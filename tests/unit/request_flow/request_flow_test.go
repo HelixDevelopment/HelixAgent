@@ -1,6 +1,8 @@
-// Package integration provides comprehensive tests that verify the complete
+// Package request_flow_test provides comprehensive tests that verify the complete
 // request-to-response flow in HelixAgent, from CLI agent request to final response.
-package integration
+// These are in-process tests exercising httptest-backed gin router with canned
+// `RequestFlowMockProvider` — CONST-030 compliant via Pattern-4 demote-to-unit.
+package request_flow_test
 
 import (
 	"bytes"

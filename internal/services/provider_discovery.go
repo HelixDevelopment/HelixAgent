@@ -1093,17 +1093,23 @@ func (pd *ProviderDiscovery) verifyProvider(ctx context.Context, provider *Disco
 	if err != nil {
 		errStr := strings.ToLower(err.Error())
 
-		// Categorize the error
+		// Categorize the error. The log message differs per category so
+		// operators can quickly distinguish stale-credential problems
+		// (user-fixable) from URL/format/network bugs (code-fixable).
+		var logMsg string
 		switch {
 		case containsAny(errStr, "429", "quota", "rate", "resource_exhausted", "too many"):
 			provider.Status = ProviderStatusRateLimited
 			provider.Error = "rate limited or quota exceeded"
+			logMsg = "Provider verification rate-limited"
 		case containsAny(errStr, "401", "403", "unauthorized", "invalid", "authentication", "api_key", "forbidden"):
 			provider.Status = ProviderStatusAuthFailed
 			provider.Error = "authentication failed or invalid API key"
+			logMsg = "Provider API key rejected (HTTP 401/403) — likely stale or revoked"
 		default:
 			provider.Status = ProviderStatusUnhealthy
 			provider.Error = err.Error()
+			logMsg = "Provider verification failed"
 		}
 		provider.Verified = false
 
@@ -1112,7 +1118,7 @@ func (pd *ProviderDiscovery) verifyProvider(ctx context.Context, provider *Disco
 			"status":   provider.Status,
 			"error":    provider.Error,
 			"duration": responseTime,
-		}).Warn("Provider verification failed")
+		}).Warn(logMsg)
 		return
 	}
 
@@ -1359,12 +1365,14 @@ func (pd *ProviderDiscovery) GetAllProviders() []*DiscoveredProvider {
 
 // GetProviderByName returns a specific discovered provider
 func (pd *ProviderDiscovery) GetProviderByName(name string) *DiscoveredProvider {
-	v, _ := pd.providers.Get(name); return v
+	v, _ := pd.providers.Get(name)
+	return v
 }
 
 // GetProviderScore returns the score for a provider
 func (pd *ProviderDiscovery) GetProviderScore(name string) *ProviderScore {
-	v, _ := pd.scores.Get(name); return v
+	v, _ := pd.scores.Get(name)
+	return v
 }
 
 // GetDebateGroupProviders returns providers suitable for the debate AI group

@@ -44,14 +44,14 @@ func TestDebateService_UsesVerifiedProviderInstance(t *testing.T) {
 	}
 
 	teamConfig := NewDebateTeamConfig(nil, nil, logger)
-	teamConfig.members[PositionAnalyst] = &DebateTeamMember{
+	teamConfig.members.Put(PositionAnalyst, &DebateTeamMember{
 		Position:     PositionAnalyst,
 		Role:         RoleAnalyst,
 		ProviderName: "claude",
 		ModelName:    "claude-sonnet-4-5",
 		Provider:     verifiedProvider,
 		IsActive:     true,
-	}
+	})
 
 	registry := NewProviderRegistry(nil, nil)
 	svc := &DebateService{
@@ -162,26 +162,26 @@ func TestDebateService_ProviderInstanceFallbackChain(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 
 		llmProvider := &mockVerifiedProvider{name: "verified-llm"}
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{
 				ProviderName: "deepseek",
 				ModelName:    "deepseek-v3",
 				Provider:     llmProvider,
 				Verified:     true,
 			},
-		}
+		})
 
 		provider := config.GetVerifiedProviderInstance("deepseek", "deepseek-v3")
 		assert.NotNil(t, provider)
 		assert.Equal(t, llmProvider, provider)
 
 		memberProvider := &mockVerifiedProvider{name: "team-member"}
-		config.members[PositionCritic] = &DebateTeamMember{
+		config.members.Put(PositionCritic, &DebateTeamMember{
 			ProviderName: "mistral",
 			ModelName:    "mistral-large",
 			Provider:     memberProvider,
 			IsActive:     true,
-		}
+		})
 
 		provider = config.GetVerifiedProviderInstance("mistral", "mistral-large")
 		assert.NotNil(t, provider)
@@ -210,12 +210,12 @@ func TestDebateService_getParticipantResponse_UsesProviderInstance(t *testing.T)
 		}
 
 		teamConfig := NewDebateTeamConfig(nil, nil, logger)
-		teamConfig.members[PositionAnalyst] = &DebateTeamMember{
+		teamConfig.members.Put(PositionAnalyst, &DebateTeamMember{
 			ProviderName: "test-provider",
 			ModelName:    "test-model",
 			Provider:     verifiedProvider,
 			IsActive:     true,
-		}
+		})
 
 		retrieved := teamConfig.GetVerifiedProviderInstance("test-provider", "test-model")
 		require.NotNil(t, retrieved, "Should find verified instance")
@@ -235,14 +235,14 @@ func TestDebateService_getParticipantResponse_UsesProviderInstance(t *testing.T)
 		}
 
 		teamConfig := NewDebateTeamConfig(nil, nil, logger)
-		teamConfig.verifiedLLMs = []*VerifiedLLM{
+		teamConfig.verifiedLLMs.Replace([]*VerifiedLLM{
 			{
 				ProviderName: "provider-from-team",
 				ModelName:    "model-from-team",
 				Provider:     verifiedProvider,
 				Verified:     true,
 			},
-		}
+		})
 
 		retrieved := teamConfig.GetVerifiedProviderInstance("provider-from-team", "model-from-team")
 		require.NotNil(t, retrieved, "Should find from team config verified LLMs")
@@ -263,7 +263,7 @@ func TestDebateService_IntegrationWithFallbackChain(t *testing.T) {
 		fallbackProvider := &mockVerifiedProvider{name: "fallback-working"}
 
 		config := NewDebateTeamConfig(nil, nil, logger)
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			ProviderName: "primary",
 			ModelName:    "primary-model",
@@ -276,7 +276,7 @@ func TestDebateService_IntegrationWithFallbackChain(t *testing.T) {
 					Provider:     fallbackProvider,
 				},
 			},
-		}
+		})
 
 		member := config.GetTeamMember(PositionAnalyst)
 		require.NotNil(t, member)
@@ -296,7 +296,7 @@ func TestDebateService_IntegrationWithFallbackChain(t *testing.T) {
 		}
 
 		config := NewDebateTeamConfig(nil, nil, logger)
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			ProviderName: "p1",
 			ModelName:    "m1",
@@ -314,7 +314,7 @@ func TestDebateService_IntegrationWithFallbackChain(t *testing.T) {
 					Provider:     providers[2],
 				},
 			},
-		}
+		})
 
 		p1 := config.GetVerifiedProviderInstance("p1", "m1")
 		p2 := config.GetVerifiedProviderInstance("p2", "m2")

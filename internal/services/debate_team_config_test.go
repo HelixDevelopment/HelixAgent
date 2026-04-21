@@ -182,7 +182,9 @@ func TestNewDebateTeamConfig(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, nil)
 		require.NotNil(t, config)
 		assert.NotNil(t, config.members)
+		assert.Equal(t, 0, config.members.Len())
 		assert.NotNil(t, config.verifiedLLMs)
+		assert.Equal(t, 0, config.verifiedLLMs.Len())
 		assert.Nil(t, config.providerRegistry)
 		assert.Nil(t, config.discovery)
 		assert.NotNil(t, config.logger) // Should create default logger
@@ -343,7 +345,7 @@ func TestDebateTeamConfigGetTeamSummary(t *testing.T) {
 	config := NewDebateTeamConfig(nil, nil, logger)
 
 	// Manually add a member for testing
-	config.members[PositionAnalyst] = &DebateTeamMember{
+	config.members.Put(PositionAnalyst, &DebateTeamMember{
 		Position:     PositionAnalyst,
 		Role:         RoleAnalyst,
 		ProviderName: "claude",
@@ -351,7 +353,7 @@ func TestDebateTeamConfigGetTeamSummary(t *testing.T) {
 		Score:        9.5,
 		IsActive:     true,
 		IsOAuth:      true,
-	}
+	})
 
 	t.Run("Summary includes team info", func(t *testing.T) {
 		summary := config.GetTeamSummary()
@@ -418,21 +420,21 @@ func TestDebateTeamConfigGetActiveMembers(t *testing.T) {
 	config := NewDebateTeamConfig(nil, nil, logger)
 
 	// Add some members
-	config.members[PositionAnalyst] = &DebateTeamMember{
+	config.members.Put(PositionAnalyst, &DebateTeamMember{
 		Position:     PositionAnalyst,
 		ProviderName: "claude",
 		IsActive:     true,
-	}
-	config.members[PositionProposer] = &DebateTeamMember{
+	})
+	config.members.Put(PositionProposer, &DebateTeamMember{
 		Position:     PositionProposer,
 		ProviderName: "claude",
 		IsActive:     true,
-	}
-	config.members[PositionCritic] = &DebateTeamMember{
+	})
+	config.members.Put(PositionCritic, &DebateTeamMember{
 		Position:     PositionCritic,
 		ProviderName: "deepseek",
 		IsActive:     false, // Inactive
-	}
+	})
 
 	t.Run("Returns only active members", func(t *testing.T) {
 		active := config.GetActiveMembers()
@@ -466,12 +468,12 @@ func TestDebateTeamConfigGetAllLLMs(t *testing.T) {
 		ModelName:    LLMsVerifierModels.Groq,
 		Fallback:     fallback2,
 	}
-	config.members[PositionAnalyst] = &DebateTeamMember{
+	config.members.Put(PositionAnalyst, &DebateTeamMember{
 		Position:     PositionAnalyst,
 		ProviderName: "claude",
 		ModelName:    ClaudeModels.Sonnet45,
 		Fallback:     fallback1,
-	}
+	})
 
 	t.Run("Returns all LLMs including fallbacks", func(t *testing.T) {
 		allLLMs := config.GetAllLLMs()
@@ -499,12 +501,12 @@ func TestDebateTeamConfigActivateFallback(t *testing.T) {
 	})
 
 	t.Run("Returns error when no fallback available", func(t *testing.T) {
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			ProviderName: "claude",
 			IsActive:     true,
 			Fallback:     nil,
-		}
+		})
 
 		_, err := config.ActivateFallback(PositionAnalyst)
 		assert.Error(t, err)
@@ -519,13 +521,13 @@ func TestDebateTeamConfigActivateFallback(t *testing.T) {
 			IsActive:     false,
 		}
 
-		config.members[PositionProposer] = &DebateTeamMember{
+		config.members.Put(PositionProposer, &DebateTeamMember{
 			Position:     PositionProposer,
 			ProviderName: "claude",
 			ModelName:    ClaudeModels.Opus45,
 			IsActive:     true,
 			Fallback:     fallback,
-		}
+		})
 
 		activated, err := config.ActivateFallback(PositionProposer)
 		require.NoError(t, err)
@@ -554,11 +556,11 @@ func TestDebateTeamConfigCountTotalLLMs(t *testing.T) {
 			Position:     PositionAnalyst,
 			ProviderName: "qwen",
 		}
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			ProviderName: "claude",
 			Fallback:     fallback,
-		}
+		})
 
 		assert.Equal(t, 2, config.CountTotalLLMs())
 	})
@@ -575,10 +577,10 @@ func TestDebateTeamConfigIsFullyPopulated(t *testing.T) {
 	})
 
 	t.Run("Partially filled team is not fully populated", func(t *testing.T) {
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			ProviderName: "claude",
-		}
+		})
 		assert.False(t, config.IsFullyPopulated())
 	})
 }
@@ -710,10 +712,10 @@ func TestGetVerifiedLLMs(t *testing.T) {
 
 	t.Run("Returns verified LLMs after initialization", func(t *testing.T) {
 		// Manually add verified LLMs
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{ProviderName: "claude", ModelName: ClaudeModels.Sonnet45, Score: 9.5, IsOAuth: true, Verified: true},
 			{ProviderName: "deepseek", ModelName: LLMsVerifierModels.DeepSeek, Score: 8.5, IsOAuth: false, Verified: true},
-		}
+		})
 
 		llms := config.GetVerifiedLLMs()
 		assert.Len(t, llms, 2)
@@ -730,19 +732,19 @@ func TestOAuthPrioritization(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 
 		// Add LLMs with OAuth flag
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{ProviderName: "deepseek", Score: 8.5, IsOAuth: false},
 			{ProviderName: "claude", Score: 9.5, IsOAuth: true},
 			{ProviderName: "gemini", Score: 9.0, IsOAuth: false},
 			{ProviderName: "qwen", Score: 8.0, IsOAuth: true},
-		}
+		})
 
 		// OAuth providers should come first when sorted
 		// The actual sorting happens in InitializeTeam, but we can verify the logic
 		oauthFirst := make([]*VerifiedLLM, 0)
 		nonOAuth := make([]*VerifiedLLM, 0)
 
-		for _, llm := range config.verifiedLLMs {
+		for _, llm := range config.verifiedLLMs.Snapshot() {
 			if llm.IsOAuth {
 				oauthFirst = append(oauthFirst, llm)
 			} else {
@@ -798,12 +800,12 @@ func TestFallbackChainIncludesWorkingProviders(t *testing.T) {
 
 	t.Run("getFallbackLLMs prioritizes non-OAuth for OAuth primary", func(t *testing.T) {
 		// Setup: Add OAuth and non-OAuth providers to verifiedLLMs
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true},
 			{ProviderName: "cerebras", ModelName: LLMsVerifierModels.Cerebras, Score: 8.9, IsOAuth: false, Verified: true},
 			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true},
 			{ProviderName: "zen", ModelName: "grok-code", Score: 8.2, IsOAuth: false, Verified: true},
-		}
+		})
 
 		// Get fallbacks for an OAuth primary (Claude)
 		fallbacks := config.getFallbackLLMs("claude", ClaudeModels.Opus45, true, 2)
@@ -834,13 +836,13 @@ func TestFallbackChainIncludesWorkingProviders(t *testing.T) {
 		// This test ensures we don't have fallback chains like: Claude -> Zen -> Zen
 		// which would fail completely when Claude's OAuth is restricted
 
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true},
 			{ProviderName: "cerebras", ModelName: LLMsVerifierModels.Cerebras, Score: 8.9, IsOAuth: false, Verified: true},
 			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true},
 			{ProviderName: "zen", ModelName: "grok-code", Score: 8.2, IsOAuth: false, Verified: true},
 			{ProviderName: "zen", ModelName: "big-pickle", Score: 8.0, IsOAuth: false, Verified: true},
-		}
+		})
 
 		fallbacks := config.getFallbackLLMs("claude", ClaudeModels.Opus45, true, 2)
 
@@ -872,7 +874,7 @@ func TestDebateTeamMustHaveWorkingFallbacks(t *testing.T) {
 		// NOTE: Provider must be non-nil for assignPrimaryPositions to accept the LLM
 		// Using a simple stub that satisfies the llm.LLMProvider interface
 		stubProvider := &stubLLMProvider{}
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			// OAuth providers (Claude)
 			{ProviderName: "claude", ModelName: ClaudeModels.Opus45, Score: 9.8, IsOAuth: true, Verified: true, Provider: stubProvider},
 			{ProviderName: "claude", ModelName: ClaudeModels.Sonnet45, Score: 9.6, IsOAuth: true, Verified: true, Provider: stubProvider},
@@ -884,7 +886,7 @@ func TestDebateTeamMustHaveWorkingFallbacks(t *testing.T) {
 			{ProviderName: "mistral", ModelName: LLMsVerifierModels.Mistral, Score: 8.7, IsOAuth: false, Verified: true, Provider: stubProvider},
 			{ProviderName: "deepseek", ModelName: LLMsVerifierModels.DeepSeek, Score: 8.8, IsOAuth: false, Verified: true, Provider: stubProvider},
 			{ProviderName: "gemini", ModelName: LLMsVerifierModels.Gemini, Score: 8.6, IsOAuth: false, Verified: true, Provider: stubProvider},
-		}
+		})
 
 		// Manually assign positions with fallbacks
 		config.assignPrimaryPositions()
@@ -982,7 +984,7 @@ func TestDebateTeamConfig_SetStartupVerifier(t *testing.T) {
 
 	// Test setting nil verifier
 	config.SetStartupVerifier(nil)
-	assert.Nil(t, config.startupVerifier)
+	assert.Nil(t, config.startupVerifier.Load())
 }
 
 func TestDebateTeamConfig_GetProviderForPosition(t *testing.T) {
@@ -1124,7 +1126,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 		mockProvider := &mockVerifiedProvider{name: "qwen-acp"}
 
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{
 				ProviderName: "qwen",
 				ModelName:    "qwen-max",
@@ -1133,7 +1135,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 				IsOAuth:      true,
 				Verified:     true,
 			},
-		}
+		})
 
 		provider := config.GetVerifiedProviderInstance("qwen", "qwen-max")
 		assert.NotNil(t, provider, "Should find provider from verified LLMs")
@@ -1144,7 +1146,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 		mockProvider := &mockVerifiedProvider{name: "claude-cli"}
 
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			Role:         RoleAnalyst,
 			ProviderName: "claude",
@@ -1152,7 +1154,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 			Provider:     mockProvider,
 			Score:        9.0,
 			IsActive:     true,
-		}
+		})
 
 		provider := config.GetVerifiedProviderInstance("claude", "claude-sonnet-4-5")
 		assert.NotNil(t, provider, "Should find provider from team members")
@@ -1163,7 +1165,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 		fallbackProvider := &mockVerifiedProvider{name: "fireworks-fallback"}
 
-		config.members[PositionProposer] = &DebateTeamMember{
+		config.members.Put(PositionProposer, &DebateTeamMember{
 			Position:     PositionProposer,
 			Role:         RoleProposer,
 			ProviderName: "nvidia",
@@ -1179,7 +1181,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 					Score:        7.5,
 				},
 			},
-		}
+		})
 
 		provider := config.GetVerifiedProviderInstance("fireworks", "llama-v3p3-70b")
 		assert.NotNil(t, provider, "Should find provider from fallback chain")
@@ -1190,7 +1192,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 		mockProvider := &mockVerifiedProvider{name: "mistral"}
 
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{
 				ProviderName: "mistral",
 				ModelName:    "mistral-large",
@@ -1198,7 +1200,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 				Score:        7.5,
 				Verified:     true,
 			},
-		}
+		})
 
 		provider := config.GetVerifiedProviderInstance("mistral", "mistral-small")
 		assert.Nil(t, provider, "Should NOT find provider for different model")
@@ -1209,7 +1211,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 		mockProvider := &mockVerifiedProvider{name: "zen"}
 
 		// Add verified LLMs
-		config.verifiedLLMs = []*VerifiedLLM{
+		config.verifiedLLMs.Replace([]*VerifiedLLM{
 			{
 				ProviderName: "zen",
 				ModelName:    "big-pickle",
@@ -1217,7 +1219,7 @@ func TestDebateTeamConfig_GetVerifiedProviderInstance(t *testing.T) {
 				Score:        7.0,
 				Verified:     true,
 			},
-		}
+		})
 
 		// Assign team positions
 		config.assignPrimaryPositions()
@@ -1243,7 +1245,7 @@ func TestDebateTeamConfig_GetParticipantConfigs(t *testing.T) {
 		mockProvider1 := &mockVerifiedProvider{name: "provider1"}
 		mockProvider2 := &mockVerifiedProvider{name: "provider2"}
 
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			Role:         RoleAnalyst,
 			ProviderName: "claude",
@@ -1251,8 +1253,8 @@ func TestDebateTeamConfig_GetParticipantConfigs(t *testing.T) {
 			Provider:     mockProvider1,
 			Score:        9.0,
 			IsActive:     true,
-		}
-		config.members[PositionProposer] = &DebateTeamMember{
+		})
+		config.members.Put(PositionProposer, &DebateTeamMember{
 			Position:     PositionProposer,
 			Role:         RoleProposer,
 			ProviderName: "qwen",
@@ -1260,7 +1262,7 @@ func TestDebateTeamConfig_GetParticipantConfigs(t *testing.T) {
 			Provider:     mockProvider2,
 			Score:        7.5,
 			IsActive:     true,
-		}
+		})
 
 		participants := config.GetParticipantConfigs()
 
@@ -1274,20 +1276,20 @@ func TestDebateTeamConfig_GetParticipantConfigs(t *testing.T) {
 	t.Run("skips inactive members", func(t *testing.T) {
 		config := NewDebateTeamConfig(nil, nil, logger)
 
-		config.members[PositionAnalyst] = &DebateTeamMember{
+		config.members.Put(PositionAnalyst, &DebateTeamMember{
 			Position:     PositionAnalyst,
 			Role:         RoleAnalyst,
 			ProviderName: "active",
 			Provider:     &mockVerifiedProvider{name: "active"},
 			IsActive:     true,
-		}
-		config.members[PositionCritic] = &DebateTeamMember{
+		})
+		config.members.Put(PositionCritic, &DebateTeamMember{
 			Position:     PositionCritic,
 			Role:         RoleCritic,
 			ProviderName: "inactive",
 			Provider:     &mockVerifiedProvider{name: "inactive"},
 			IsActive:     false,
-		}
+		})
 
 		participants := config.GetParticipantConfigs()
 

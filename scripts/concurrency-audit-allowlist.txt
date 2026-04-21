@@ -12,7 +12,6 @@ internal/optimization/gptcache/semantic_cache.go:50:SemanticCache
 internal/services/acp_client.go:20:LSPClient
 internal/services/acp_manager.go:22:ACPManager
 internal/services/acp_manager.go:67:ACPClient
-internal/services/debate_team_config.go:304:DebateTeamConfig
 internal/services/lsp_manager.go:22:LSPManager
 internal/services/mcp_client.go:20:MCPClient
 internal/services/mcp_client.go:58:HTTPTransport

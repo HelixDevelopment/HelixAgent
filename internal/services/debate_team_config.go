@@ -6,7 +6,9 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
+	"sync/atomic"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/verifier"
@@ -300,14 +302,19 @@ type DebateTeamMember struct {
 	IsOAuth      bool                `json:"is_oauth"`
 }
 
-// DebateTeamConfig manages the AI debate team configuration
+// DebateTeamConfig manages the AI debate team configuration.
+//
+// Concurrency (CONST-029):
+//   - members is a *safe.Store keyed by DebateTeamPosition.
+//   - verifiedLLMs is a *safe.Slice; callers snapshot for sorted/ordered reads
+//     and call Replace after preparing an updated sorted slice.
+//   - startupVerifier is updated rarely, via atomic.Pointer, to avoid a lock.
 type DebateTeamConfig struct {
-	mu               sync.RWMutex
-	members          map[DebateTeamPosition]*DebateTeamMember
-	verifiedLLMs     []*VerifiedLLM // All verified LLMs sorted by score
+	members          *safe.Store[DebateTeamPosition, *DebateTeamMember]
+	verifiedLLMs     *safe.Slice[*VerifiedLLM] // All verified LLMs sorted by score
 	providerRegistry *ProviderRegistry
 	discovery        *ProviderDiscovery
-	startupVerifier  *verifier.StartupVerifier // Unified startup verification (optional)
+	startupVerifier  atomic.Pointer[verifier.StartupVerifier] // Unified startup verification (optional)
 	logger           *logrus.Logger
 }
 
@@ -321,8 +328,8 @@ func NewDebateTeamConfig(
 		logger = logrus.New()
 	}
 	config := &DebateTeamConfig{
-		members:          make(map[DebateTeamPosition]*DebateTeamMember),
-		verifiedLLMs:     make([]*VerifiedLLM, 0),
+		members:          safe.NewStore[DebateTeamPosition, *DebateTeamMember](),
+		verifiedLLMs:     safe.NewSlice[*VerifiedLLM](),
 		providerRegistry: providerRegistry,
 		discovery:        discovery,
 		logger:           logger,
@@ -334,9 +341,7 @@ func NewDebateTeamConfig(
 // When set, InitializeTeam will use the StartupVerifier's verified providers
 // instead of performing manual verification
 func (dtc *DebateTeamConfig) SetStartupVerifier(sv *verifier.StartupVerifier) {
-	dtc.mu.Lock()
-	defer dtc.mu.Unlock()
-	dtc.startupVerifier = sv
+	dtc.startupVerifier.Store(sv)
 }
 
 // NewDebateTeamConfigWithStartupVerifier creates a new debate team config with StartupVerifier
@@ -348,11 +353,11 @@ func NewDebateTeamConfigWithStartupVerifier(
 		logger = logrus.New()
 	}
 	config := &DebateTeamConfig{
-		members:         make(map[DebateTeamPosition]*DebateTeamMember),
-		verifiedLLMs:    make([]*VerifiedLLM, 0),
-		startupVerifier: sv,
-		logger:          logger,
+		members:      safe.NewStore[DebateTeamPosition, *DebateTeamMember](),
+		verifiedLLMs: safe.NewSlice[*VerifiedLLM](),
+		logger:       logger,
 	}
+	config.startupVerifier.Store(sv)
 	return config
 }
 
@@ -363,9 +368,6 @@ func NewDebateTeamConfigWithStartupVerifier(
 // 4. If not enough unique LLMs, reuse strongest ones (independent instances)
 // Total: Up to 25 LLMs (5 positions × (1 primary + 4 fallbacks))
 func (dtc *DebateTeamConfig) InitializeTeam(ctx context.Context) error {
-	dtc.mu.Lock()
-	defer dtc.mu.Unlock()
-
 	dtc.logger.Info("Initializing AI Debate Team (up to 25 LLMs)...")
 	dtc.logger.Info("Strategy: ALL providers sorted by score (NO OAuth priority) - strongest LLMs first")
 
@@ -373,12 +375,13 @@ func (dtc *DebateTeamConfig) InitializeTeam(ctx context.Context) error {
 	dtc.collectVerifiedLLMs(ctx)
 
 	// Step 2: Sort verified LLMs PURELY by score (highest first) - NO OAuth priority
-	sort.Slice(dtc.verifiedLLMs, func(i, j int) bool {
-		// Sort purely by score - highest score first
-		return dtc.verifiedLLMs[i].Score > dtc.verifiedLLMs[j].Score
+	sorted := dtc.verifiedLLMs.Snapshot()
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Score > sorted[j].Score
 	})
+	dtc.verifiedLLMs.Replace(sorted)
 
-	dtc.logger.WithField("verified_count", len(dtc.verifiedLLMs)).Info("Collected verified LLMs sorted by score")
+	dtc.logger.WithField("verified_count", len(sorted)).Info("Collected verified LLMs sorted by score")
 
 	// Step 3: Assign primary positions (5 positions) - strongest LLMs get primary
 	dtc.assignPrimaryPositions()
@@ -392,7 +395,7 @@ func (dtc *DebateTeamConfig) InitializeTeam(ctx context.Context) error {
 	dtc.logger.WithFields(logrus.Fields{
 		"total_positions": TotalDebatePositions,
 		"max_llms":        TotalDebateLLMs,
-		"assigned":        len(dtc.members),
+		"assigned":        dtc.members.Len(),
 	}).Info("AI Debate Team initialized")
 
 	return nil
@@ -401,10 +404,11 @@ func (dtc *DebateTeamConfig) InitializeTeam(ctx context.Context) error {
 // collectVerifiedLLMs gathers all verified LLMs from OAuth2, OpenRouter free models, and LLMsVerifier
 // If StartupVerifier is configured, it uses the unified verification pipeline instead
 func (dtc *DebateTeamConfig) collectVerifiedLLMs(ctx context.Context) {
-	dtc.verifiedLLMs = make([]*VerifiedLLM, 0)
+	// Reset verified LLMs before each collection.
+	dtc.verifiedLLMs.Clear()
 
 	// Use StartupVerifier if available (unified pipeline)
-	if dtc.startupVerifier != nil {
+	if dtc.startupVerifier.Load() != nil {
 		dtc.collectFromStartupVerifier()
 	} else {
 		// Legacy path: Use discovery and manual collection
@@ -440,7 +444,7 @@ func (dtc *DebateTeamConfig) collectVerifiedLLMs(ctx context.Context) {
 	dtc.filterLocalProviders()
 
 	dtc.logger.WithFields(logrus.Fields{
-		"total_verified":    len(dtc.verifiedLLMs),
+		"total_verified":    dtc.verifiedLLMs.Len(),
 		"oauth_count":       dtc.countOAuthLLMs(),
 		"free_models_count": dtc.countFreeModels(),
 	}).Info("Verified LLMs collected")
@@ -449,9 +453,10 @@ func (dtc *DebateTeamConfig) collectVerifiedLLMs(ctx context.Context) {
 // filterLocalProviders removes Ollama, local-only, and slow CLI-proxy providers
 // from the verified LLMs list. Debate requires fast remote API providers.
 func (dtc *DebateTeamConfig) filterLocalProviders() {
-	beforeCount := len(dtc.verifiedLLMs)
-	filtered := make([]*VerifiedLLM, 0, len(dtc.verifiedLLMs))
-	for _, llm := range dtc.verifiedLLMs {
+	snapshot := dtc.verifiedLLMs.Snapshot()
+	beforeCount := len(snapshot)
+	filtered := make([]*VerifiedLLM, 0, beforeCount)
+	for _, llm := range snapshot {
 		providerLower := strings.ToLower(llm.ProviderName)
 
 		// Skip Ollama/local providers
@@ -486,12 +491,12 @@ func (dtc *DebateTeamConfig) filterLocalProviders() {
 		}
 		filtered = append(filtered, llm)
 	}
-	dtc.verifiedLLMs = filtered
-	removedCount := beforeCount - len(dtc.verifiedLLMs)
+	dtc.verifiedLLMs.Replace(filtered)
+	removedCount := beforeCount - len(filtered)
 	if removedCount > 0 {
 		dtc.logger.WithFields(logrus.Fields{
 			"removed":   removedCount,
-			"remaining": len(dtc.verifiedLLMs),
+			"remaining": len(filtered),
 		}).Info("Filtered out local/Ollama providers from debate team")
 	}
 }
@@ -515,7 +520,11 @@ func isLocalOnlyModel(modelLower string) bool {
 
 // collectFromStartupVerifier collects verified LLMs from the unified StartupVerifier
 func (dtc *DebateTeamConfig) collectFromStartupVerifier() {
-	rankedProviders := dtc.startupVerifier.GetRankedProviders()
+	sv := dtc.startupVerifier.Load()
+	if sv == nil {
+		return
+	}
+	rankedProviders := sv.GetRankedProviders()
 
 	for _, provider := range rankedProviders {
 		if !provider.Verified {
@@ -548,7 +557,7 @@ func (dtc *DebateTeamConfig) collectFromStartupVerifier() {
 
 			isOAuth := provider.AuthType == verifier.AuthTypeOAuth
 
-			dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+			dtc.verifiedLLMs.Append(&VerifiedLLM{
 				ProviderName: provider.Name,
 				ModelName:    model.ID,
 				Score:        model.Score,
@@ -562,7 +571,7 @@ func (dtc *DebateTeamConfig) collectFromStartupVerifier() {
 		if len(provider.Models) == 0 && provider.DefaultModel != "" {
 			isOAuth := provider.AuthType == verifier.AuthTypeOAuth
 
-			dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+			dtc.verifiedLLMs.Append(&VerifiedLLM{
 				ProviderName: provider.Name,
 				ModelName:    provider.DefaultModel,
 				Score:        provider.Score,
@@ -574,7 +583,7 @@ func (dtc *DebateTeamConfig) collectFromStartupVerifier() {
 	}
 
 	dtc.logger.WithFields(logrus.Fields{
-		"total_verified":     len(dtc.verifiedLLMs),
+		"total_verified":     dtc.verifiedLLMs.Len(),
 		"oauth_count":        dtc.countOAuthLLMs(),
 		"free_models_count":  dtc.countFreeModels(),
 		"source":             "startup_verifier",
@@ -630,7 +639,7 @@ func (dtc *DebateTeamConfig) collectClaudeModels() {
 	}
 
 	for _, m := range claudeModels {
-		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+		dtc.verifiedLLMs.Append(&VerifiedLLM{
 			ProviderName: "claude",
 			ModelName:    m.Name,
 			Score:        m.Score,
@@ -674,7 +683,7 @@ func (dtc *DebateTeamConfig) collectQwenModels() {
 	}
 
 	for _, m := range qwenModels {
-		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+		dtc.verifiedLLMs.Append(&VerifiedLLM{
 			ProviderName: "qwen",
 			ModelName:    m.Name,
 			Score:        m.Score,
@@ -736,7 +745,7 @@ func (dtc *DebateTeamConfig) collectReliableAPIProviders() {
 			}
 		}
 
-		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+		dtc.verifiedLLMs.Append(&VerifiedLLM{
 			ProviderName: rp.name,
 			ModelName:    rp.model,
 			Score:        score,
@@ -768,7 +777,7 @@ func (dtc *DebateTeamConfig) collectLLMsVerifierProviders() {
 		}
 
 		if p.Verified && p.Provider != nil {
-			dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+			dtc.verifiedLLMs.Append(&VerifiedLLM{
 				ProviderName: p.Name,
 				ModelName:    p.DefaultModel,
 				Score:        p.Score,
@@ -863,7 +872,7 @@ func (dtc *DebateTeamConfig) collectOpenRouterFreeModels() {
 			continue
 		}
 
-		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+		dtc.verifiedLLMs.Append(&VerifiedLLM{
 			ProviderName: "openrouter",
 			ModelName:    model.Name,
 			Score:        model.Score,
@@ -931,7 +940,7 @@ func (dtc *DebateTeamConfig) collectZenModels() {
 			continue
 		}
 
-		dtc.verifiedLLMs = append(dtc.verifiedLLMs, &VerifiedLLM{
+		dtc.verifiedLLMs.Append(&VerifiedLLM{
 			ProviderName: "zen",
 			ModelName:    model.Name,
 			Score:        model.Score,
@@ -952,18 +961,19 @@ func (dtc *DebateTeamConfig) collectZenModels() {
 // countOAuthLLMs counts the number of OAuth2 LLMs in the verified list
 func (dtc *DebateTeamConfig) countOAuthLLMs() int {
 	count := 0
-	for _, llm := range dtc.verifiedLLMs {
+	dtc.verifiedLLMs.Range(func(_ int, llm *VerifiedLLM) bool {
 		if llm.IsOAuth {
 			count++
 		}
-	}
+		return true
+	})
 	return count
 }
 
 // countFreeModels counts the number of free models (OpenRouter :free + OpenCode Zen) in the verified list
 func (dtc *DebateTeamConfig) countFreeModels() int {
 	count := 0
-	for _, llm := range dtc.verifiedLLMs {
+	dtc.verifiedLLMs.Range(func(_ int, llm *VerifiedLLM) bool {
 		// Count OpenRouter free models (:free suffix)
 		if llm.ProviderName == "openrouter" && len(llm.ModelName) > 5 && llm.ModelName[len(llm.ModelName)-5:] == ":free" {
 			count++
@@ -972,18 +982,20 @@ func (dtc *DebateTeamConfig) countFreeModels() int {
 		if llm.ProviderName == "zen" && len(llm.ModelName) > 9 && llm.ModelName[:9] == "opencode/" {
 			count++
 		}
-	}
+		return true
+	})
 	return count
 }
 
 // countZenModels counts the number of OpenCode Zen models in the verified list
 func (dtc *DebateTeamConfig) countZenModels() int {
 	count := 0
-	for _, llm := range dtc.verifiedLLMs {
+	dtc.verifiedLLMs.Range(func(_ int, llm *VerifiedLLM) bool {
 		if llm.ProviderName == "zen" {
 			count++
 		}
-	}
+		return true
+	})
 	return count
 }
 
@@ -1000,13 +1012,14 @@ func (dtc *DebateTeamConfig) assignPrimaryPositions() {
 		{PositionMediator, RoleMediator},
 	}
 
+	snapshot := dtc.verifiedLLMs.Snapshot()
 	usedIdx := 0
 	for _, r := range roles {
 		var llmToUse *VerifiedLLM
 
 		// Find next available LLM WITH a valid Provider instance (can reuse if needed)
-		for usedIdx < len(dtc.verifiedLLMs) {
-			candidate := dtc.verifiedLLMs[usedIdx]
+		for usedIdx < len(snapshot) {
+			candidate := snapshot[usedIdx]
 			usedIdx++
 			if candidate.Provider != nil {
 				llmToUse = candidate
@@ -1019,8 +1032,8 @@ func (dtc *DebateTeamConfig) assignPrimaryPositions() {
 		}
 
 		// If we exhausted the list, reuse the first LLM with a valid Provider
-		if llmToUse == nil && len(dtc.verifiedLLMs) > 0 {
-			for _, candidate := range dtc.verifiedLLMs {
+		if llmToUse == nil && len(snapshot) > 0 {
+			for _, candidate := range snapshot {
 				if candidate.Provider != nil {
 					llmToUse = candidate
 					dtc.logger.WithField("position", r.Position).Debug("Reusing LLM for position (not enough unique LLMs with valid Provider)")
@@ -1040,7 +1053,7 @@ func (dtc *DebateTeamConfig) assignPrimaryPositions() {
 				IsActive:     true,
 				IsOAuth:      llmToUse.IsOAuth,
 			}
-			dtc.members[r.Position] = member
+			dtc.members.Put(r.Position, member)
 
 			dtc.logger.WithFields(logrus.Fields{
 				"position": r.Position,
@@ -1059,7 +1072,7 @@ func (dtc *DebateTeamConfig) assignPrimaryPositions() {
 // assignAllFallbacks assigns 2 fallbacks to each position
 func (dtc *DebateTeamConfig) assignAllFallbacks() {
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member == nil {
 			continue
 		}
@@ -1106,9 +1119,11 @@ func (dtc *DebateTeamConfig) getFallbackLLMs(primaryProvider, primaryModel strin
 	usedProviders := map[string]bool{primaryProvider: true}
 	hasNonOAuth := false
 
+	snapshot := dtc.verifiedLLMs.Snapshot()
+
 	// First pass: Pick best model from each UNIQUE provider (provider diversity)
 	// verifiedLLMs is sorted by score, so the first hit for each provider is its best
-	for _, llm := range dtc.verifiedLLMs {
+	for _, llm := range snapshot {
 		if len(fallbacks) >= count {
 			break
 		}
@@ -1136,7 +1151,7 @@ func (dtc *DebateTeamConfig) getFallbackLLMs(primaryProvider, primaryModel strin
 	}
 
 	// Second pass: If still need more, add best remaining models regardless of provider
-	for _, llm := range dtc.verifiedLLMs {
+	for _, llm := range snapshot {
 		if len(fallbacks) >= count {
 			break
 		}
@@ -1169,7 +1184,7 @@ func (dtc *DebateTeamConfig) getFallbackLLMs(primaryProvider, primaryModel strin
 	// OAuth diversity check: If primary is OAuth but no non-OAuth fallbacks, ensure we have one
 	if primaryIsOAuth && !hasNonOAuth {
 		var nonOAuthCandidate *VerifiedLLM
-		for _, llm := range dtc.verifiedLLMs {
+		for _, llm := range snapshot {
 			if llm.IsOAuth {
 				continue
 			}
@@ -1203,8 +1218,8 @@ func (dtc *DebateTeamConfig) getFallbackLLMs(primaryProvider, primaryModel strin
 
 	// Third pass: If not enough unique LLMs, reuse strongest ones (independent instances)
 	reuseIdx := 0
-	for len(fallbacks) < count && len(dtc.verifiedLLMs) > 0 {
-		llm := dtc.verifiedLLMs[reuseIdx%len(dtc.verifiedLLMs)]
+	for len(fallbacks) < count && len(snapshot) > 0 {
+		llm := snapshot[reuseIdx%len(snapshot)]
 		fallbacks = append(fallbacks, llm)
 		dtc.logger.WithFields(logrus.Fields{
 			"primary_provider": primaryProvider,
@@ -1225,7 +1240,7 @@ func (dtc *DebateTeamConfig) logTeamComposition() {
 	totalLLMs := 0
 
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member != nil {
 			totalLLMs++
 			fields := logrus.Fields{
@@ -1258,35 +1273,29 @@ func (dtc *DebateTeamConfig) logTeamComposition() {
 
 // GetTeamMember returns the team member at the specified position
 func (dtc *DebateTeamConfig) GetTeamMember(position DebateTeamPosition) *DebateTeamMember {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-	return dtc.members[position]
+	m, _ := dtc.members.Get(position)
+	return m
 }
 
 // GetActiveMembers returns all active team members
 func (dtc *DebateTeamConfig) GetActiveMembers() []*DebateTeamMember {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
-	members := make([]*DebateTeamMember, 0, len(dtc.members))
-	for _, member := range dtc.members {
+	members := make([]*DebateTeamMember, 0, dtc.members.Len())
+	dtc.members.Range(func(_ DebateTeamPosition, member *DebateTeamMember) bool {
 		if member != nil && member.IsActive {
 			members = append(members, member)
 		}
-	}
+		return true
+	})
 	return members
 }
 
 // GetAllLLMs returns all 25 LLMs used in the debate team (primaries + all fallbacks)
 // Note: For UI display, use GetPrimaryMembers() instead to get only 5 primary members
 func (dtc *DebateTeamConfig) GetAllLLMs() []*DebateTeamMember {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
 	allLLMs := make([]*DebateTeamMember, 0, TotalDebateLLMs)
 
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		for member != nil {
 			allLLMs = append(allLLMs, member)
 			member = member.Fallback
@@ -1300,13 +1309,10 @@ func (dtc *DebateTeamConfig) GetAllLLMs() []*DebateTeamMember {
 // Each member has its Fallbacks slice populated with all fallback LLMs
 // Use this for UI display to show each position once with its fallbacks
 func (dtc *DebateTeamConfig) GetPrimaryMembers() []*DebateTeamMember {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
 	primaries := make([]*DebateTeamMember, 0, TotalDebatePositions)
 
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member != nil {
 			primaries = append(primaries, member)
 		}
@@ -1348,12 +1354,9 @@ func (m *DebateTeamMember) ToParticipantConfig() ParticipantConfig {
 // GetParticipantConfigs converts all primary members to ParticipantConfig slice
 // This is the primary method to get verified participants for a debate.
 func (dtc *DebateTeamConfig) GetParticipantConfigs() []ParticipantConfig {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
 	participants := make([]ParticipantConfig, 0, TotalDebatePositions)
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member != nil && member.IsActive {
 			participants = append(participants, member.ToParticipantConfig())
 		}
@@ -1366,12 +1369,9 @@ func (dtc *DebateTeamConfig) GetParticipantConfigs() []ParticipantConfig {
 // instance (which may be CLI-based for OAuth providers) instead of using registry lookup.
 // Returns nil if no matching verified provider is found.
 func (dtc *DebateTeamConfig) GetVerifiedProviderInstance(providerName, modelName string) llm.LLMProvider {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
 	// First, check the team members (which have Provider instances set from verification)
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member == nil {
 			continue
 		}
@@ -1388,34 +1388,31 @@ func (dtc *DebateTeamConfig) GetVerifiedProviderInstance(providerName, modelName
 	}
 
 	// Also check verifiedLLMs (contains all verified LLMs with their provider instances)
-	for _, vllm := range dtc.verifiedLLMs {
+	var found llm.LLMProvider
+	dtc.verifiedLLMs.Range(func(_ int, vllm *VerifiedLLM) bool {
 		if vllm.ProviderName == providerName && vllm.ModelName == modelName && vllm.Provider != nil {
-			return vllm.Provider
+			found = vllm.Provider
+			return false
 		}
-	}
-
-	return nil
+		return true
+	})
+	return found
 }
 
-// GetVerifiedLLMs returns the list of verified LLMs used for team formation
+// GetVerifiedLLMs returns a snapshot of the list of verified LLMs used for team formation
 func (dtc *DebateTeamConfig) GetVerifiedLLMs() []*VerifiedLLM {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-	return dtc.verifiedLLMs
+	return dtc.verifiedLLMs.Snapshot()
 }
 
 // GetTeamSummary returns a summary of the debate team configuration
 func (dtc *DebateTeamConfig) GetTeamSummary() map[string]interface{} {
-	dtc.mu.RLock()
-	defer dtc.mu.RUnlock()
-
 	positions := make([]map[string]interface{}, 0, TotalDebatePositions)
 	totalLLMs := 0
 	oauthCount := 0
 	verifierCount := 0
 
 	for pos := PositionAnalyst; pos <= PositionMediator; pos++ {
-		member := dtc.members[pos]
+		member, _ := dtc.members.Get(pos)
 		if member == nil {
 			positions = append(positions, map[string]interface{}{
 				"position": pos,
@@ -1476,7 +1473,7 @@ func (dtc *DebateTeamConfig) GetTeamSummary() map[string]interface{} {
 		"llmsverifier_llms":   verifierCount,
 		"active_positions":    len(dtc.GetActiveMembers()),
 		"positions":           positions,
-		"verified_llms_count": len(dtc.verifiedLLMs),
+		"verified_llms_count": dtc.verifiedLLMs.Len(),
 		"sorting_method":      "score_only", // NO OAuth priority - pure score-based sorting
 		"claude_models": map[string]string{
 			// Claude 4.6 (Latest)
@@ -1572,10 +1569,7 @@ func (dtc *DebateTeamConfig) GetTeamSummary() map[string]interface{} {
 
 // ActivateFallback activates the fallback for a position when the primary fails
 func (dtc *DebateTeamConfig) ActivateFallback(position DebateTeamPosition) (*DebateTeamMember, error) {
-	dtc.mu.Lock()
-	defer dtc.mu.Unlock()
-
-	member := dtc.members[position]
+	member, _ := dtc.members.Get(position)
 	if member == nil {
 		return nil, fmt.Errorf("no member at position %d", position)
 	}
@@ -1590,7 +1584,7 @@ func (dtc *DebateTeamConfig) ActivateFallback(position DebateTeamPosition) (*Deb
 	// Activate fallback
 	fallback := member.Fallback
 	fallback.IsActive = true
-	dtc.members[position] = fallback
+	dtc.members.Put(position, fallback)
 
 	dtc.logger.WithFields(logrus.Fields{
 		"position":     position,

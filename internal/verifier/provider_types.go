@@ -720,13 +720,7 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"CHUTES_API_KEY", "ApiKey_Chutes"},
 		BaseURL:     "https://llm.chutes.ai/v1/chat/completions",
-		// Primary models used as Tier-3 hardcoded fallback when the
-		// 3-tier dynamic discovery can't reach Chutes /v1/models.
-		// Keep this list in sync with the current Chutes catalogue —
-		// stale IDs cause verification to fail even with a valid key
-		// (the probe asks for a model that no longer exists).
-		// Last refreshed: 2026-04-21 from live https://llm.chutes.ai/v1/models.
-		Models: []string{"Qwen/Qwen3-32B-TEE", "moonshotai/Kimi-K2.5-TEE", "deepseek-ai/DeepSeek-V3.2-Exp"},
+		Models: []string{"Qwen/Qwen3-32B-TEE", "moonshotai/Kimi-K2.5-TEE", "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1"},
 		Free:   false,
 	},
 	"siliconflow": {

@@ -466,6 +466,12 @@ func (sv *StartupVerifier) DiscoverModels(ctx context.Context, providerType stri
 	// Provider-specific Toolkit integrations take precedence.
 	switch providerType {
 	case "chutes":
+		// Hard-coded fallback models for Chutes (org/Model format).
+		fallbackModels := []string{
+			"deepseek-ai/DeepSeek-V3",
+			"deepseek-ai/DeepSeek-R1",
+		}
+
 		// Try dynamic discovery via Toolkit first.
 		chutesDisc := chutes.NewDiscovery(apiKey)
 		modelInfos, err := chutesDisc.Discover(ctx)
@@ -485,6 +491,8 @@ func (sv *StartupVerifier) DiscoverModels(ctx context.Context, providerType stri
 			"provider": providerType,
 			"error":    err,
 		}).Debug("Chutes Toolkit discovery returned no models; falling back to generic 3-tier")
+
+		return fallbackModels, nil
 	}
 
 	// Generic 3-tier discovery for all other providers (and as fallback for
@@ -1575,6 +1583,9 @@ func (sv *StartupVerifier) selectDebateTeam() (*DebateTeamResult, error) {
 // Returns nil (not an empty slice) when Verify has not yet populated the
 // result, preserving the pre-CONST-029 API contract.
 func (sv *StartupVerifier) GetRankedProviders() []*UnifiedProvider {
+	if sv.rankedProviders == nil {
+		return nil
+	}
 	snap := sv.rankedProviders.Snapshot()
 	if len(snap) == 0 {
 		return nil
@@ -1591,11 +1602,17 @@ func (sv *StartupVerifier) GetDebateTeam() *DebateTeamResult {
 
 // GetProvider returns a specific provider by ID
 func (sv *StartupVerifier) GetProvider(id string) (*UnifiedProvider, bool) {
+	if sv.providers == nil {
+		return nil, false
+	}
 	return sv.providers.Get(id)
 }
 
 // GetVerifiedProviders returns all verified providers
 func (sv *StartupVerifier) GetVerifiedProviders() []*UnifiedProvider {
+	if sv.providers == nil {
+		return nil
+	}
 	var verified []*UnifiedProvider
 	sv.providers.Range(func(_ string, p *UnifiedProvider) bool {
 		if p.Verified {

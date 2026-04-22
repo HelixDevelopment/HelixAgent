@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
+	"golang.org/x/sync/semaphore"
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
@@ -119,9 +120,15 @@ func createTestProviderRegistry(providers map[string]*debateMockLLMProvider) *Pr
 		Providers: make(map[string]*ProviderConfig),
 	}
 	registry := &ProviderRegistry{
-		providers:       safe.NewStore[string, llm.LLMProvider](),
-		circuitBreakers: safe.NewStore[string, *CircuitBreaker](),
-		config:          cfg,
+		providers:             safe.NewStore[string, llm.LLMProvider](),
+		circuitBreakers:       safe.NewStore[string, *CircuitBreaker](),
+		concurrencySemaphores: safe.NewStore[string, *semaphore.Weighted](),
+		providerConfigs:       safe.NewStore[string, *ProviderConfig](),
+		providerHealth:        safe.NewStore[string, *ProviderVerificationResult](),
+		activeRequests:        safe.NewStore[string, *int64](),
+		config:                cfg,
+		initSemaphore:         semaphore.NewWeighted(5),
+		initOnce:              safe.NewStore[string, *sync.Once](),
 	}
 	registry.ensemble = NewEnsembleService("confidence_weighted", cfg.DefaultTimeout)
 	registry.requestService = NewRequestService("weighted", registry.ensemble, nil)

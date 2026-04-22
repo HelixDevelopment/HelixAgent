@@ -649,6 +649,9 @@ func CanUseClaudeOAuth() bool {
 // 2. Fallback 1: Query models.dev API for Anthropic/Claude models
 // 3. Fallback 2: Use hardcoded known models
 func (p *ClaudeCLIProvider) DiscoverModels() []string {
+	if p.modelsDiscovered {
+		return p.availableModels
+	}
 	p.modelsDiscoveryOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

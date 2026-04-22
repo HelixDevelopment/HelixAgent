@@ -226,6 +226,9 @@ func TestClaudeCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
 // Integration test - only runs if Claude CLI is installed and authenticated
 func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	if !IsClaudeCodeInstalled() {
 		t.Skip("Claude Code CLI not installed")
 	}
@@ -266,6 +269,9 @@ func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 // Integration test for health check
 func TestClaudeCLIProvider_Integration_HealthCheck(t *testing.T) {
 	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	if !IsClaudeCodeInstalled() {
 		t.Skip("Claude Code CLI not installed")
 	}
@@ -450,6 +456,9 @@ func TestClaudeCLIProvider_TokenEstimation(t *testing.T) {
 // TestClaudeCLIProvider_ModelDiscovery tests model discovery functions
 func TestClaudeCLIProvider_ModelDiscovery(t *testing.T) {
 	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping CLI model discovery in short mode")
+	}
 	provider := NewClaudeCLIProviderWithModel("")
 
 	// GetAvailableModels should return models (known or discovered)
@@ -561,6 +570,9 @@ func TestGetKnownClaudeModels(t *testing.T) {
 // TestDiscoverClaudeModels tests standalone discovery function
 func TestDiscoverClaudeModels(t *testing.T) {
 	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping CLI model discovery in short mode")
+	}
 	models, err := DiscoverClaudeModels()
 	assert.NotEmpty(t, models)
 

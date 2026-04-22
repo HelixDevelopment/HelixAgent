@@ -145,7 +145,9 @@ func TestZenCLIProvider_ValidateConfig(t *testing.T) {
 	provider := NewZenCLIProviderWithModel("grok-code")
 
 	valid, errs := provider.ValidateConfig(nil)
-	if IsOpenCodeInstalled() {
+	// Use the provider's own availability check rather than IsOpenCodeInstalled()
+	// to avoid races where one check times out and the other doesn't.
+	if provider.IsCLIAvailable() {
 		assert.True(t, valid)
 		assert.Empty(t, errs)
 	} else {

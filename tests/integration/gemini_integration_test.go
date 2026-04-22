@@ -365,6 +365,9 @@ func TestGeminiAPI_ToolCalling(t *testing.T) {
 // TestGeminiUnified_AutoDetect verifies the unified provider selects the API
 // method when a valid API key is provided.
 func TestGeminiUnified_AutoDetect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Gemini integration test in short mode")
+	}
 	runtime.GOMAXPROCS(2)
 	apiKey := geminiAPIKey(t)
 

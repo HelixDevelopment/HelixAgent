@@ -138,6 +138,9 @@ func TestExternalMCPServerSourcesExist(t *testing.T) {
 
 // TestExternalMCPContainerBuild verifies that the MCP servers container can be built
 func TestExternalMCPContainerBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping container build test in short mode")
+	}
 
 	projectRoot := getExternalMCPProjectRoot()
 	require.NotEmpty(t, projectRoot, "Could not find project root")

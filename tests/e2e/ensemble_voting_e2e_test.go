@@ -17,16 +17,19 @@ func TestEnsembleVoting_ConfidenceWeighted_E2E(t *testing.T) {
 
 	responses := []*models.LLMResponse{
 		{
+			ID:           "r1",
 			Content:      "low confidence answer",
 			ProviderName: "provider-a",
 			Confidence:   0.3,
 		},
 		{
+			ID:           "r2",
 			Content:      "high confidence answer with detail",
 			ProviderName: "provider-b",
 			Confidence:   0.9,
 		},
 		{
+			ID:           "r3",
 			Content:      "medium confidence answer",
 			ProviderName: "provider-c",
 			Confidence:   0.6,
@@ -53,14 +56,17 @@ func TestEnsembleVoting_MajorityVote_E2E(t *testing.T) {
 	// Two providers agree on "Paris", one disagrees.
 	responses := []*models.LLMResponse{
 		{
+			ID:           "r1",
 			Content:      "Paris",
 			ProviderName: "provider-a",
 		},
 		{
+			ID:           "r2",
 			Content:      "Paris",
 			ProviderName: "provider-b",
 		},
 		{
+			ID:           "r3",
 			Content:      "Lyon",
 			ProviderName: "provider-c",
 		},
@@ -103,6 +109,7 @@ func TestEnsembleVoting_SingleResponse(t *testing.T) {
 
 	responses := []*models.LLMResponse{
 		{
+			ID:           "r1",
 			Content:      "only answer",
 			ProviderName: "solo-provider",
 			Confidence:   0.8,

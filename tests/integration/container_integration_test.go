@@ -8,7 +8,10 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +24,14 @@ import (
 // TestMain is the entry point for container-based integration tests.
 // It ensures all containers are running before executing tests.
 func TestMain(m *testing.M) {
+	// CONST-030: skip integration tests in -short mode because they require
+	// real infrastructure (containers, APIs, databases) that may be unavailable.
+	for _, arg := range os.Args {
+		if arg == "-test.short" || strings.HasPrefix(arg, "-test.short=") {
+			fmt.Println("SKIP: Integration tests skipped in -short mode (require real infrastructure)")
+			os.Exit(0)
+		}
+	}
 	TestMainIntegration(m)
 }
 

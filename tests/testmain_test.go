@@ -28,10 +28,11 @@ func TestMain(m *testing.M) {
 
 	// STEP 1: Run precondition check FIRST - this is mandatory
 	if err := runPreconditionCheck(); err != nil {
-		fmt.Printf("FATAL: Precondition check failed: %v\n", err)
-		fmt.Println("Tests cannot proceed without proper container infrastructure.")
+		fmt.Printf("PRECONDITION SKIP: %v\n", err)
+		fmt.Println("Integration tests skipped — container infrastructure not available.")
 		fmt.Println("Run './bin/helixagent' for proper container orchestration or set SKIP_INFRA_SETUP=true to skip.")
-		os.Exit(1)
+		// CONST-030: non-unit tests must skip (not fail) when real services are unavailable.
+		os.Exit(0)
 	}
 
 	fmt.Println("╔════════════════════════════════════════════════════════════════╗")

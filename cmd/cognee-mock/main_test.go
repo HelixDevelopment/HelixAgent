@@ -74,9 +74,7 @@ func TestHandleAdd(t *testing.T) {
 		assert.NotEmpty(t, body["id"])
 
 		// Verify memory was stored
-		server.mu.RLock()
-		memories := server.memories["test-dataset"]
-		server.mu.RUnlock()
+		memories, _ := server.memories.Get("test-dataset")
 		assert.Len(t, memories, 1)
 		assert.Equal(t, "Test memory content", memories[0].Content)
 	})
@@ -99,9 +97,7 @@ func TestHandleAdd(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Verify memory was stored in default dataset
-		server.mu.RLock()
-		memories := server.memories["default"]
-		server.mu.RUnlock()
+		memories, _ := server.memories.Get("default")
 		assert.Len(t, memories, 1)
 	})
 
@@ -135,13 +131,11 @@ func TestHandleSearch(t *testing.T) {
 	server := NewCogneeMockServer(8080)
 
 	// Add some test data first
-	server.mu.Lock()
-	server.memories["test-dataset"] = []MemoryEntry{
+	server.memories.Put("test-dataset", []MemoryEntry{
 		{ID: "mem_1", Content: "First memory", Dataset: "test-dataset", CreatedAt: time.Now()},
 		{ID: "mem_2", Content: "Second memory", Dataset: "test-dataset", CreatedAt: time.Now()},
 		{ID: "mem_3", Content: "Third memory", Dataset: "test-dataset", CreatedAt: time.Now()},
-	}
-	server.mu.Unlock()
+	})
 
 	t.Run("POST search", func(t *testing.T) {
 		reqBody := map[string]interface{}{
@@ -305,11 +299,9 @@ func TestHandleDatasets(t *testing.T) {
 	server := NewCogneeMockServer(8080)
 
 	// Add some test data
-	server.mu.Lock()
-	server.memories["dataset1"] = []MemoryEntry{{ID: "1"}}
-	server.memories["dataset2"] = []MemoryEntry{{ID: "2"}}
-	server.memories["dataset3"] = []MemoryEntry{{ID: "3"}}
-	server.mu.Unlock()
+	server.memories.Put("dataset1", []MemoryEntry{{ID: "1"}})
+	server.memories.Put("dataset2", []MemoryEntry{{ID: "2"}})
+	server.memories.Put("dataset3", []MemoryEntry{{ID: "3"}})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/datasets", nil)
 	w := httptest.NewRecorder()
@@ -378,9 +370,7 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 
 	// Verify all memories were added
-	server.mu.RLock()
-	memories := server.memories["concurrent-test"]
-	server.mu.RUnlock()
+	memories, _ := server.memories.Get("concurrent-test")
 
 	assert.Len(t, memories, 10)
 }

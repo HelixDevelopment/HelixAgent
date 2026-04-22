@@ -471,6 +471,9 @@ func getServerPort(name string) int {
 
 // TestMCPContainerStatus tests that all MCP Docker containers are running
 func TestMCPContainerStatus(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping container status check in short mode")
+	}
 
 	// Use centralized container runtime detection.
 	rt := containerRuntime()

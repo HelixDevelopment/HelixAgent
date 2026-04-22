@@ -688,7 +688,7 @@ func TestIntegrationOrchestrator_executeMCPStep_CallToolWithParams(t *testing.T)
 
 func TestIntegrationOrchestrator_executeToolStep_NoToolName(t *testing.T) {
 	ctx := context.Background()
-	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+	io := NewIntegrationOrchestrator(nil, nil, NewToolRegistry(nil, nil), nil)
 
 	step := &WorkflowStep{
 		ID:         "step1",
@@ -850,7 +850,7 @@ func TestIntegrationOrchestrator_ExecuteParallelOperations_WithErrors(t *testing
 
 func TestIntegrationOrchestrator_ExecuteToolChain_Empty(t *testing.T) {
 	ctx := context.Background()
-	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+	io := NewIntegrationOrchestrator(nil, nil, NewToolRegistry(nil, nil), nil)
 
 	results, err := io.ExecuteToolChain(ctx, []IntegrationToolExecution{})
 	assert.NoError(t, err)
@@ -879,7 +879,7 @@ func TestIntegrationOrchestrator_executeOperation_LSPType(t *testing.T) {
 
 func TestIntegrationOrchestrator_executeOperation_ToolType(t *testing.T) {
 	ctx := context.Background()
-	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+	io := NewIntegrationOrchestrator(nil, nil, NewToolRegistry(nil, nil), nil)
 
 	op := Operation{
 		ID:   "op-tool",
@@ -920,7 +920,7 @@ func TestIntegrationOrchestrator_executeStep_MCPType(t *testing.T) {
 
 func TestIntegrationOrchestrator_executeStep_ToolType(t *testing.T) {
 	ctx := context.Background()
-	io := NewIntegrationOrchestrator(nil, nil, &ToolRegistry{}, nil)
+	io := NewIntegrationOrchestrator(nil, nil, NewToolRegistry(nil, nil), nil)
 
 	step := &WorkflowStep{
 		ID:   "step-tool",

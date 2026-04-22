@@ -1,0 +1,61 @@
+{
+    "report_version": "1.0.0",
+    "generated_at": "2026-04-22T18:43:54+03:00",
+    "session": {
+        "id": "report_test_20260422_184353",
+        "start_time": "2026-04-22T18:43:54+03:00",
+        "end_time": "2026-04-22T18:43:54+03:00",
+        "duration_seconds": 10,
+        "exit_code": 0
+    },
+    "summary": {
+        "total_issues": 3,
+        "errors": 1,
+        "warnings": 1,
+        "fixes_applied": 1,
+        "status": "FAIL"
+    },
+    "issues": {
+        "errors": [
+  "[2026-04-22 18:43:53.827] Test error message"
+],
+        "warnings": [
+  "[2026-04-22 18:43:53.820] Test warning message"
+],
+        "fixes": [
+  "[2026-04-22 18:43:53.830] Test fix applied"
+]
+    },
+    "memory_analysis": {},
+    "resource_samples": [
+  {
+    "event": "resource_sample",
+    "timestamp": "2026-04-22T18:43:54+03:00",
+    "memory": {
+      "total": 64086,
+      "used": 33493,
+      "free": 678,
+      "available": 30593
+    },
+    "cpu": {
+      "usage": 0,
+      "load": [
+        14.54,
+        11.13,
+        10.68
+      ]
+    },
+    "disk": {
+      "reads": 0,
+      "writes": 0
+    },
+    "network": {
+      "rx": 0,
+      "tx": 0
+    },
+    "processes": []
+  }
+],
+    "component_analysis": [],
+    "challenge_results": []
+}

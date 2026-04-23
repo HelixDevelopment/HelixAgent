@@ -19,12 +19,12 @@ containerized infrastructure.
 
 **Module**: `dev.helix.agent`
 
-**Main Binary**: `helixagent` (built from `cmd/helixagent/`). Runs on port **7061**.
+**Main Binary**: `helixagent` (built from `cmd/helixagent/`). Runs on port **8100** (`HELIXAGENT_PORT_HTTP`).
 
 **Additional Applications**:
 - `api` — Standalone API server (port 8080, demo/development only, NOT production)
 - `grpc-server` — gRPC service endpoint implementing `LLMFacade` and `LLMProvider`
-- `mcp-bridge` — MCP SSE bridge (port 9000) wrapping stdio MCP servers
+- `mcp-bridge` — MCP SSE bridge (port 8103, `HELIXAGENT_PORT_MCP_BRIDGE`) wrapping stdio MCP servers
 - `cognee-mock` — Mock Cognee service for testing
 - `sanity-check` — System validation tool
 - `generate-constitution` — Constitution file generator
@@ -46,7 +46,7 @@ submodules together.
 | HTTP Framework | Gin |
 | gRPC | Protocol Buffers + `google.golang.org/grpc` |
 | Database | PostgreSQL (via `pgxpool` / `digital.vasic.database`) |
-| Cache | Redis (primary: port 6379, no password) |
+| Cache | Redis (primary: port 8102, no password) |
 | Observability | Prometheus metrics, Grafana dashboards, structured logging via `sirupsen/logrus` |
 | Container Runtime | Docker or Podman (auto-detected) |
 | Orchestration | Kubernetes manifests in `k8s/` (base, staging, production overlays) |
@@ -245,7 +245,7 @@ Examples: `feat(debate): add mesh topology`, `fix(handlers): correct embedding r
 | Category | Location | Mocks Allowed | Infrastructure Required |
 |----------|----------|---------------|------------------------|
 | Unit | `*_test.go` (run with `-short`) | Yes | None |
-| Integration | `tests/integration/...` | **NO** | Postgres, Redis, HelixAgent on 7061 |
+| Integration | `tests/integration/...` | **NO** | Postgres (8101), Redis (8102), HelixAgent on :8100 |
 | E2E | `tests/e2e/...` | **NO** | Full test stack (docker-compose.test.yml) |
 | Security | `tests/security/...` | **NO** | Full test stack |
 | Stress | `tests/stress/...` | **NO** | Full test stack |
@@ -260,7 +260,7 @@ when services are unavailable in local development. They MUST NOT skip when
 `CI=true` or `FULL_TEST_MODE=true`.
 
 Key helpers in `internal/testutil/`:
-- `RequireServer(t)` — skips if `:7061` not reachable
+- `RequireServer(t)` — skips if `:8100` (`HELIXAGENT_PORT_HTTP`) not reachable
 - `RequirePostgres(t)` — skips if Postgres TCP probe fails
 - `RequireRedis(t)` — skips if Redis TCP probe fails
 - `RequireMockLLM(t)` — skips if mock LLM `:18081` not up
@@ -274,10 +274,10 @@ Key helpers in `internal/testutil/`:
 | Service | Container Name | External Port |
 |---------|---------------|---------------|
 | Mock LLM | helixagent-mock-llm | 18081 |
-| PostgreSQL | helixagent-postgres | 15432 |
-| Redis | helixagent-redis | 16379 |
+| PostgreSQL | helixagent-postgres | 8101 (`HELIXAGENT_PORT_POSTGRES`) |
+| Redis | helixagent-redis | 8102 (`HELIXAGENT_PORT_REDIS`) |
 | Ollama | helixagent-ollama | 11434 |
-| HelixAgent | helixagent-app | 8080→7061 |
+| HelixAgent | helixagent-app | 8100 (`HELIXAGENT_PORT_HTTP`) |
 | Prometheus | helixagent-prometheus | 9090 |
 | Grafana | helixagent-grafana | 3000 |
 
@@ -342,7 +342,7 @@ make build
 - `docker-compose.production.yml` — Production messaging overlay
 - `docker-compose.security.yml` — Security scanning stack
 - `docker-compose.helixllm.yml` — HelixLLM infrastructure
-- `docker/mcp/docker-compose.mcp-full.yml` — 65+ MCP servers (ports 9101–9961)
+- `docker/mcp/docker-compose.mcp-full.yml` — 65+ MCP servers (ports 8200-8281, 82xx band; see `docs/development/port-registry.md`)
 
 ### Kubernetes
 Manifests are in `k8s/`:
@@ -374,7 +374,7 @@ These constraints are **permanent and non-negotiable**.
 
 ONLY unit tests may use mocks, stubs, fakes, or placeholder implementations.
 Integration tests, functional tests, E2E tests, Challenge tests, and HelixQA
-tests MUST ALL execute against the REAL running HelixAgent system (port 7061)
+tests MUST ALL execute against the REAL running HelixAgent system (port 8100, `HELIXAGENT_PORT_HTTP`)
 with real containers, real databases, real Redis, and real HTTP calls. All
 services and containers MUST be booted and operational before non-unit tests run.
 Tests that cannot connect to real services MUST skip (not fail).
@@ -399,23 +399,47 @@ Tests MUST cover:
 
 ### CONST-027: Port and Service Architecture
 
-**HelixAgent runs on port 7061** (NOT 8080). This is non-negotiable.
+**HelixAgent runs on port 8100 by default** (from the canonical port
+registry at `internal/ports/ports.go`). The single source of truth
+is `docs/development/port-registry.md`.
 
-**Eager Services** (started at boot):
-- HelixAgent: port 7061
-- HelixLLM: port 8444 (HTTPS/TLS 1.3)
-- PostgreSQL: port 5432
-- Redis (primary): port 6379, NO password (container: helixagent-redis)
-- MCP Bridge: port 9000
-- MCP Servers: ports 9101-9803
+**Configurable prefix.** All default ports share a leading digit
+controlled by `HELIXAGENT_PORT_PREFIX` (default 8, can flip to 9).
+At prefix=8 → 81xx-83xx; at prefix=9 → 91xx-93xx. Individual
+services can be overridden with their `HELIXAGENT_PORT_*` env var.
 
-**Lazy Services** (started on-demand):
-- Cognee/HelixMemory: port 8000, ChromaDB: port 8001, Neo4j: ports 7474/7687,
-  Qdrant: port 6333
+**Eager Services** (started at boot, band 81xx):
+- HelixAgent HTTP: 8100 (`HELIXAGENT_PORT_HTTP`)
+- PostgreSQL: 8101 (`HELIXAGENT_PORT_POSTGRES`)
+- Redis: 8102 (`HELIXAGENT_PORT_REDIS`, no password)
+- MCP Bridge: 8103 (`HELIXAGENT_PORT_MCP_BRIDGE`)
+- HelixLLM: 8105 (`HELIXAGENT_PORT_HELIXLLM`, HTTPS/TLS 1.3)
+- Redis MCP backend: 8110 (`HELIXAGENT_PORT_REDIS_MCP`, password
+  `helixagent123`)
+- MCP Servers: 8200-8281 (12 tiers; grep `HELIXAGENT_PORT_MCP_` in
+  `internal/ports/ports.go`)
+
+**Lazy Services** (started on-demand, band 81xx):
+- Cognee: 8120 (`HELIXAGENT_PORT_COGNEE`)
+- ChromaDB: 8121 (`HELIXAGENT_PORT_CHROMADB`)
+- Qdrant: 8122 (`HELIXAGENT_PORT_QDRANT`)
+- Neo4j HTTP/Bolt: 8123/8124 (`HELIXAGENT_PORT_NEO4J_HTTP`,
+  `HELIXAGENT_PORT_NEO4J_BOLT`)
+
+**Observability** (band 83xx): Prometheus 8310, Grafana 8311,
+Jaeger 8312, ACP Manager 8300, etc.
 
 **Redis Architecture**:
-- `helixagent-redis` port 6379: NO password — HelixAgent core, streaming, tests
-- `helixagent-mcp-redis-backend` port 16379: password `helixagent123` — MCP containers
+- `helixagent-redis` port **8102**: NO password — HelixAgent core,
+  streaming, tests
+- `helixagent-mcp-redis-backend` port **8110**: password
+  `helixagent123` — MCP containers
+
+**Invariants enforced by tests:** no offset collisions, every port
+fits in 16 bits at both prefixes, band discipline preserved, every
+service uses a `HELIXAGENT_PORT_*` env var. See
+`internal/ports/ports_test.go` and
+`./challenges/scripts/port_registry_challenge.sh`.
 
 **API Response Format Contracts** (server returns these, tests MUST match):
 - `/v1/embeddings/providers` → providers as objects `{name,model,dimension,enabled}` (NOT strings)

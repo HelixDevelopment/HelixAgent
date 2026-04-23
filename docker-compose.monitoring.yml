@@ -18,7 +18,7 @@ services:
     image: docker.io/prom/prometheus:v2.47.0
     container_name: helixagent-prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "${PROMETHEUS_PORT:-8310}:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
@@ -47,7 +47,7 @@ services:
     image: docker.io/grafana/grafana:10.2.0
     container_name: helixagent-grafana
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "${GRAFANA_PORT:-8311}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}

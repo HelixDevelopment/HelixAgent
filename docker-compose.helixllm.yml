@@ -13,8 +13,8 @@ services:
       dockerfile: container/Containerfile
     container_name: helixagent-helixllm
     ports:
-      - "${HELIX_LLM_PORT:-8443}:8443/tcp"
-      - "${HELIX_LLM_PORT:-8443}:8443/udp"
+      - "${HELIX_LLM_PORT:-8105}:8443/tcp"
+      - "${HELIX_LLM_PORT:-8105}:8443/udp"
     environment:
       # Mode configuration
       HELIX_MODE: ${HELIX_LLM_MODE:-full}

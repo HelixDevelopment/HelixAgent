@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -966,4 +967,331 @@ func TestLogrusAdapter(t *testing.T) {
 	l.Info("info %s", "test")
 	l.Warn("warn %s", "test")
 	l.Error("error %s", "test")
+}
+
+// recordingExecutor implements remote.RemoteExecutor and records
+// every Execute and CopyFile call, for asserting fan-out behavior
+// across multiple hosts without touching a real SSH daemon.
+type recordingExecutor struct {
+	mu       sync.Mutex
+	executed []recordedExec
+	copied   []recordedCopy
+	// failFor names the host to simulate a deploy failure for.
+	// Execute returns an error when called with host.Name == failFor.
+	failFor string
+}
+
+type recordedExec struct {
+	host string
+	cmd  string
+}
+
+type recordedCopy struct {
+	host         string
+	local, dest  string
+}
+
+func (m *recordingExecutor) Execute(
+	ctx context.Context, host remote.RemoteHost, cmd string,
+) (*remote.CommandResult, error) {
+	m.mu.Lock()
+	m.executed = append(m.executed, recordedExec{
+		host: host.Name, cmd: cmd,
+	})
+	m.mu.Unlock()
+	if m.failFor != "" && host.Name == m.failFor {
+		return &remote.CommandResult{ExitCode: 1},
+			fmt.Errorf("simulated failure on %s", host.Name)
+	}
+	return &remote.CommandResult{
+		Stdout:   "ok",
+		ExitCode: 0,
+	}, nil
+}
+
+func (m *recordingExecutor) ExecuteStream(
+	ctx context.Context, host remote.RemoteHost, cmd string,
+) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("stream not supported in test")
+}
+
+func (m *recordingExecutor) CopyFile(
+	ctx context.Context,
+	host remote.RemoteHost,
+	localPath, remotePath string,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.copied = append(m.copied, recordedCopy{
+		host: host.Name, local: localPath, dest: remotePath,
+	})
+	return nil
+}
+
+func (m *recordingExecutor) CopyDir(
+	ctx context.Context,
+	host remote.RemoteHost,
+	localDir, remoteDir string,
+) error {
+	return nil
+}
+
+func (m *recordingExecutor) IsReachable(
+	ctx context.Context, host remote.RemoteHost,
+) bool {
+	return true
+}
+
+// writeTempCompose drops a minimal compose file on disk and returns
+// its absolute path.
+func writeTempCompose(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	content := "services:\n  placeholder:\n    image: busybox:latest\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	return path
+}
+
+// countExecMatching returns the number of recorded Execute calls
+// for a given host where the command contains all `mustContain`
+// substrings.
+func (m *recordingExecutor) countExecMatching(
+	host string, mustContain ...string,
+) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, e := range m.executed {
+		if e.host != host {
+			continue
+		}
+		ok := true
+		for _, s := range mustContain {
+			if !strings.Contains(e.cmd, s) {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			n++
+		}
+	}
+	return n
+}
+
+// TestAdapter_RemoteComposeUp_FansOutToAllHosts verifies the
+// Mode-A-default behavior: without any deploy_profile labels,
+// RemoteComposeUp iterates every registered host and deploys the
+// compose file to each one — no more hosts[0]-only silent drop
+// of the second host (which previously left amber deployed and
+// thinker completely unvisited).
+func TestAdapter_RemoteComposeUp_FansOutToAllHosts(t *testing.T) {
+	t.Parallel()
+	composePath := writeTempCompose(t)
+
+	hm := &mockHostManager{hosts: map[string]remote.RemoteHost{
+		"thinker": {Name: "thinker", Address: "thinker.local", User: "u1"},
+		"amber":   {Name: "amber", Address: "amber.local", User: "u2"},
+	}}
+	exec := &recordingExecutor{}
+
+	adapter, err := NewAdapter(
+		WithHostManager(hm),
+		WithLogger(logging.NopLogger{}),
+	)
+	require.NoError(t, err)
+	adapter.executor = exec
+
+	err = adapter.RemoteComposeUp(
+		context.Background(), composePath, "default",
+	)
+	require.NoError(t, err)
+
+	// Each host received mkdir + file copy + compose up.
+	for _, h := range []string{"thinker", "amber"} {
+		assert.Greater(t,
+			exec.countExecMatching(h, "mkdir -p"), 0,
+			"host %s must receive mkdir", h)
+		assert.Greater(t,
+			exec.countExecMatching(h, "up", "-d"), 0,
+			"host %s must receive compose up -d", h)
+
+		copiedToHost := 0
+		exec.mu.Lock()
+		for _, c := range exec.copied {
+			if c.host == h {
+				copiedToHost++
+			}
+		}
+		exec.mu.Unlock()
+		assert.Greater(t, copiedToHost, 0,
+			"host %s must receive at least one CopyFile", h)
+	}
+}
+
+// TestAdapter_RemoteComposeUp_HostLabelOverridesProfile verifies
+// the Mode-B activation path: a host carrying the deploy_profile
+// label receives `--profile <label>` instead of the caller's
+// argument, while peers without the label still receive the
+// caller's argument.
+func TestAdapter_RemoteComposeUp_HostLabelOverridesProfile(t *testing.T) {
+	t.Parallel()
+	composePath := writeTempCompose(t)
+
+	hm := &mockHostManager{hosts: map[string]remote.RemoteHost{
+		"storage-host": {
+			Name: "storage-host", Address: "s.local", User: "u1",
+			Labels: map[string]string{
+				"deploy_profile": "storage",
+			},
+		},
+		"compute-host": {
+			Name: "compute-host", Address: "c.local", User: "u2",
+			// no deploy_profile label -> uses caller's "default".
+		},
+	}}
+	exec := &recordingExecutor{}
+
+	adapter, err := NewAdapter(
+		WithHostManager(hm),
+		WithLogger(logging.NopLogger{}),
+	)
+	require.NoError(t, err)
+	adapter.executor = exec
+
+	err = adapter.RemoteComposeUp(
+		context.Background(), composePath, "default",
+	)
+	require.NoError(t, err)
+
+	// storage-host should see --profile storage.
+	assert.Greater(t,
+		exec.countExecMatching(
+			"storage-host", "--profile", "storage", "up", "-d",
+		), 0,
+		"storage-host must get --profile storage on compose up")
+	// storage-host should NOT see --profile default.
+	assert.Equal(t, 0,
+		exec.countExecMatching(
+			"storage-host", "--profile", "default", "up", "-d",
+		),
+		"storage-host must not receive caller profile when label overrides")
+
+	// compute-host should see --profile default (caller's value).
+	assert.Greater(t,
+		exec.countExecMatching(
+			"compute-host", "--profile", "default", "up", "-d",
+		), 0,
+		"compute-host must get caller's --profile default")
+}
+
+// TestAdapter_RemoteComposeUp_PartialFailureReturnsNil verifies
+// the continue-on-error policy: one host failing does not abort
+// deployment of the others. The method returns nil (so boot can
+// proceed) but logs a warning visible in the logs.
+func TestAdapter_RemoteComposeUp_PartialFailureReturnsNil(t *testing.T) {
+	t.Parallel()
+	composePath := writeTempCompose(t)
+
+	hm := &mockHostManager{hosts: map[string]remote.RemoteHost{
+		"alive": {Name: "alive", Address: "ok.local", User: "u1"},
+		"dead":  {Name: "dead", Address: "bad.local", User: "u2"},
+	}}
+	exec := &recordingExecutor{failFor: "dead"}
+
+	adapter, err := NewAdapter(
+		WithHostManager(hm),
+		WithLogger(logging.NopLogger{}),
+	)
+	require.NoError(t, err)
+	adapter.executor = exec
+
+	err = adapter.RemoteComposeUp(
+		context.Background(), composePath, "default",
+	)
+	assert.NoError(t, err,
+		"partial success must NOT return an error — boot should proceed")
+
+	// Alive host still got the compose up.
+	assert.Greater(t,
+		exec.countExecMatching("alive", "up", "-d"), 0,
+		"alive host must have been attempted despite dead-host failure")
+}
+
+// TestAdapter_RemoteComposeUp_TotalFailureReturnsError verifies
+// the all-hosts-failed case: when every host fails, the method
+// returns a non-nil error aggregating the failure list.
+func TestAdapter_RemoteComposeUp_TotalFailureReturnsError(t *testing.T) {
+	t.Parallel()
+	composePath := writeTempCompose(t)
+
+	hm := &mockHostManager{hosts: map[string]remote.RemoteHost{
+		"h1": {Name: "h1", Address: "h1.local", User: "u1"},
+		"h2": {Name: "h2", Address: "h2.local", User: "u2"},
+	}}
+	exec := &recordingExecutor{failFor: ""} // fail for all
+
+	// Override Execute via wrapper that always errors.
+	failExec := &failingExecutor{inner: exec}
+
+	adapter, err := NewAdapter(
+		WithHostManager(hm),
+		WithLogger(logging.NopLogger{}),
+	)
+	require.NoError(t, err)
+	adapter.executor = failExec
+
+	err = adapter.RemoteComposeUp(
+		context.Background(), composePath, "default",
+	)
+	require.Error(t, err,
+		"all-hosts-failed must return error")
+	assert.Contains(t, err.Error(), "h1",
+		"aggregate error must name failing host h1")
+	assert.Contains(t, err.Error(), "h2",
+		"aggregate error must name failing host h2")
+}
+
+// failingExecutor wraps a recordingExecutor and makes Execute
+// always return an error. Used for the total-failure path test
+// where we want both hosts to fail without special-casing each.
+type failingExecutor struct {
+	inner *recordingExecutor
+}
+
+func (f *failingExecutor) Execute(
+	ctx context.Context, host remote.RemoteHost, cmd string,
+) (*remote.CommandResult, error) {
+	f.inner.Execute(ctx, host, cmd) // still record the call
+	return &remote.CommandResult{ExitCode: 1},
+		fmt.Errorf("simulated total failure on %s", host.Name)
+}
+
+func (f *failingExecutor) ExecuteStream(
+	ctx context.Context, host remote.RemoteHost, cmd string,
+) (io.ReadCloser, error) {
+	return f.inner.ExecuteStream(ctx, host, cmd)
+}
+
+func (f *failingExecutor) CopyFile(
+	ctx context.Context,
+	host remote.RemoteHost,
+	localPath, remotePath string,
+) error {
+	return f.inner.CopyFile(ctx, host, localPath, remotePath)
+}
+
+func (f *failingExecutor) CopyDir(
+	ctx context.Context,
+	host remote.RemoteHost,
+	localDir, remoteDir string,
+) error {
+	return f.inner.CopyDir(ctx, host, localDir, remoteDir)
+}
+
+func (f *failingExecutor) IsReachable(
+	ctx context.Context, host remote.RemoteHost,
+) bool {
+	return true
 }

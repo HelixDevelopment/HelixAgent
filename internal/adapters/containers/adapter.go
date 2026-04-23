@@ -882,9 +882,28 @@ func (a *Adapter) RemoteEnabled() bool {
 	return a.distributor != nil && a.hostManager != nil
 }
 
-// RemoteComposeUp deploys a compose file to the first available
-// remote host and starts its services. It copies the compose file
-// and any build contexts to the remote host and runs `podman compose up -d`.
+// deployProfileLabel is the RemoteHost.Labels key whose value,
+// when present, overrides the caller-supplied compose profile on a
+// per-host basis. This enables label-based service sharding
+// (Mode B distribution): give each host a label like
+// CONTAINERS_REMOTE_HOST_1_LABELS=deploy_profile=storage and the
+// orchestrator will call `compose up --profile storage` on that host.
+//
+// If no host carries this label, every host receives the caller's
+// profile argument — which with a compose file that has no per-service
+// profile tags is effectively full-stack replication across hosts
+// (Mode A). Mode B activates as soon as (a) hosts are labeled and
+// (b) services in the compose file get matching `profiles:` tags.
+const deployProfileLabel = "deploy_profile"
+
+// RemoteComposeUp deploys a compose file to ALL registered remote
+// hosts, honoring each host's deploy_profile label for Mode B
+// sharding. Deployment is sequential (so logs are readable and one
+// slow host doesn't block parsing of the others); per-host failures
+// are collected and reported as an aggregate error, but a failure
+// on one host does NOT abort the others. If no hosts succeed the
+// method returns an error; partial success logs a warning and
+// returns nil so the boot can proceed.
 func (a *Adapter) RemoteComposeUp(
 	ctx context.Context, composeFile, profile string,
 ) error {
@@ -899,54 +918,112 @@ func (a *Adapter) RemoteComposeUp(
 		return fmt.Errorf("no remote hosts available")
 	}
 
-	host := hosts[0]
-
 	absFile := composeFile
 	if !filepath.IsAbs(composeFile) {
 		absFile = filepath.Join(a.projectDir, composeFile)
 	}
-
 	if _, err := os.Stat(absFile); err != nil {
 		return fmt.Errorf(
 			"compose file not found: %s", absFile,
 		)
 	}
 
-	// Use user's home directory for HelixAgent deployments (no sudo required)
-	remoteDir := fmt.Sprintf("/home/%s/helixagent/deploy", host.User)
+	var (
+		deployFailures []string
+		deploySuccess  int
+	)
+
+	for _, host := range hosts {
+		effectiveProfile := profile
+		if labelProfile := host.Labels[deployProfileLabel]; labelProfile != "" {
+			effectiveProfile = labelProfile
+			a.logger.Info(
+				"host %s has %s=%s label; overriding deploy profile "+
+					"for this host (caller asked %q)",
+				host.Name, deployProfileLabel, labelProfile, profile,
+			)
+		}
+
+		if err := a.deployComposeToHost(
+			ctx, host, absFile, effectiveProfile,
+		); err != nil {
+			a.logger.Error(
+				"deploy to %s failed: %v", host.Name, err,
+			)
+			deployFailures = append(deployFailures,
+				fmt.Sprintf("%s: %v", host.Name, err))
+			continue
+		}
+		deploySuccess++
+	}
+
+	switch {
+	case deploySuccess == 0:
+		return fmt.Errorf(
+			"deploy to all %d remote hosts failed: %s",
+			len(hosts), strings.Join(deployFailures, "; "),
+		)
+	case len(deployFailures) > 0:
+		a.logger.Warn(
+			"partial remote deploy: %d/%d hosts ok; failures: %s",
+			deploySuccess, len(hosts),
+			strings.Join(deployFailures, "; "),
+		)
+	default:
+		a.logger.Info(
+			"remote deploy ok on all %d host(s)", len(hosts),
+		)
+	}
+	return nil
+}
+
+// deployComposeToHost ships the compose file (plus any build
+// contexts) to a single remote host and runs `compose up -d` with
+// the given profile. Extracted from RemoteComposeUp so the outer
+// loop stays readable.
+func (a *Adapter) deployComposeToHost(
+	ctx context.Context,
+	host remote.RemoteHost,
+	absFile, profile string,
+) error {
+	remoteDir := fmt.Sprintf(
+		"/home/%s/helixagent/deploy", host.User,
+	)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", remoteDir)
 	if _, err := a.executor.Execute(
 		ctx, host, mkdirCmd,
 	); err != nil {
-		return fmt.Errorf(
-			"create remote dir on %s: %w",
-			host.Name, err,
-		)
+		return fmt.Errorf("create remote dir: %w", err)
 	}
 
-	// Copy only the compose file itself, not the entire directory
-	// This is much faster for large project directories
 	remoteFile := remoteDir + "/" + filepath.Base(absFile)
 	if err := a.executor.CopyFile(
 		ctx, host, absFile, remoteFile,
 	); err != nil {
-		return fmt.Errorf(
-			"copy compose file to %s: %w", host.Name, err,
-		)
+		return fmt.Errorf("copy compose file: %w", err)
 	}
 
-	// Extract and copy build contexts
 	contexts, err := a.extractBuildContexts(absFile)
 	if err != nil {
-		a.logger.Warn("Failed to extract build contexts from %s: %v", absFile, err)
+		a.logger.Warn(
+			"extract build contexts from %s: %v",
+			absFile, err,
+		)
 	} else if len(contexts) > 0 {
-		a.logger.Info("Copying %d build contexts to remote host %s", len(contexts), host.Name)
-		if err := a.copyBuildContexts(ctx, host, contexts, remoteDir); err != nil {
-			a.logger.Warn("Failed to copy some build contexts: %v", err)
+		a.logger.Info(
+			"copying %d build contexts to %s",
+			len(contexts), host.Name,
+		)
+		if err := a.copyBuildContexts(
+			ctx, host, contexts, remoteDir,
+		); err != nil {
+			a.logger.Warn(
+				"partial build-context copy to %s: %v",
+				host.Name, err,
+			)
 		}
 	}
 
-	// Use RemoteComposeOrchestrator to start services.
 	remoteOrch := remote.NewRemoteComposeOrchestrator(
 		host, a.executor, a.logger,
 	)

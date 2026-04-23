@@ -269,31 +269,62 @@ func (bm *BootManager) BootAll() error {
 		bm.Logger.Warn("Remote services configured but ContainerAdapter not available for deployment")
 	}
 
-	// Start local services grouped by compose file
-	for key, services := range composeGroups {
-		parts := strings.SplitN(key, "|", 2)
-		composeFile := parts[0]
-		profile := ""
-		if len(parts) > 1 {
-			profile = parts[1]
-		}
+	// Strict-remote guard (CONST-031): when remote distribution is
+	// enabled, NO services may be started locally. Any service that
+	// landed in composeGroups without being marked Remote=true is a
+	// misconfiguration — log it loudly, record as skipped, and do
+	// NOT fall back to local compose. Falling back silently creates
+	// a hybrid local/remote deployment that violates the Mandatory
+	// Container Orchestration Flow.
+	remoteAdapter := bm.getContainerAdapter()
+	strictRemote := remoteAdapter != nil && remoteAdapter.RemoteEnabled()
 
-		start := time.Now()
-		err := bm.startComposeServices(composeFile, profile, services)
-		duration := time.Since(start)
-
-		if err != nil {
+	if strictRemote && len(composeGroups) > 0 {
+		for key, services := range composeGroups {
 			bm.Logger.WithFields(logrus.Fields{
-				"compose_file": composeFile,
-				"services":     strings.Join(services, ", "),
-				"error":        err,
-			}).Warn("Failed to start compose services")
+				"compose_group": key,
+				"services":      strings.Join(services, ", "),
+			}).Warn(
+				"CONTAINERS_REMOTE_ENABLED=true but these services " +
+					"are not marked ep.Remote; skipping local compose " +
+					"per CONST-031 (strict remote mode). Mark the " +
+					"endpoint Remote=true in config or disable remote " +
+					"distribution.",
+			)
 			for _, svc := range services {
-				bm.setResult(svc, &BootResult{Name: svc, Status: "failed", Duration: duration, Error: err})
+				bm.setResult(svc, &BootResult{
+					Name:   svc,
+					Status: "skipped_strict_remote",
+				})
 			}
-		} else {
-			for _, svc := range services {
-				bm.setResult(svc, &BootResult{Name: svc, Status: "started", Duration: duration})
+		}
+	} else {
+		// Local mode: start compose groups as before.
+		for key, services := range composeGroups {
+			parts := strings.SplitN(key, "|", 2)
+			composeFile := parts[0]
+			profile := ""
+			if len(parts) > 1 {
+				profile = parts[1]
+			}
+
+			start := time.Now()
+			err := bm.startComposeServices(composeFile, profile, services)
+			duration := time.Since(start)
+
+			if err != nil {
+				bm.Logger.WithFields(logrus.Fields{
+					"compose_file": composeFile,
+					"services":     strings.Join(services, ", "),
+					"error":        err,
+				}).Warn("Failed to start compose services")
+				for _, svc := range services {
+					bm.setResult(svc, &BootResult{Name: svc, Status: "failed", Duration: duration, Error: err})
+				}
+			} else {
+				for _, svc := range services {
+					bm.setResult(svc, &BootResult{Name: svc, Status: "started", Duration: duration})
+				}
 			}
 		}
 	}

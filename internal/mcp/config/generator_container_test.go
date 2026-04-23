@@ -69,52 +69,52 @@ func TestContainerMCPConfigGenerator_PortRanges(t *testing.T) {
 	for _, p := range MCPContainerPorts {
 		switch p.Category {
 		case "core":
-			if p.Port < 9101 || p.Port > 9199 {
-				t.Errorf("Core MCP %s port %d out of range 9101-9199", p.Name, p.Port)
+			if p.Port < 8200 || p.Port > 8209 {
+				t.Errorf("Core MCP %s port %d out of range 8200-8209", p.Name, p.Port)
 			}
 		case "database":
-			if p.Port < 9201 || p.Port > 9299 {
-				t.Errorf("Database MCP %s port %d out of range 9201-9299", p.Name, p.Port)
+			if p.Port < 8210 || p.Port > 8214 {
+				t.Errorf("Database MCP %s port %d out of range 8210-8214", p.Name, p.Port)
 			}
 		case "vector":
-			if p.Port < 9301 || p.Port > 9399 {
-				t.Errorf("Vector MCP %s port %d out of range 9301-9399", p.Name, p.Port)
+			if p.Port < 8215 || p.Port > 8218 {
+				t.Errorf("Vector MCP %s port %d out of range 8215-8218", p.Name, p.Port)
 			}
 		case "devops":
-			if p.Port < 9401 || p.Port > 9499 {
-				t.Errorf("DevOps MCP %s port %d out of range 9401-9499", p.Name, p.Port)
+			if p.Port < 8220 || p.Port > 8233 {
+				t.Errorf("DevOps MCP %s port %d out of range 8220-8233", p.Name, p.Port)
 			}
 		case "browser":
-			if p.Port < 9501 || p.Port > 9599 {
-				t.Errorf("Browser MCP %s port %d out of range 9501-9599", p.Name, p.Port)
+			if p.Port < 8234 || p.Port > 8237 {
+				t.Errorf("Browser MCP %s port %d out of range 8234-8237", p.Name, p.Port)
 			}
 		case "communication":
-			if p.Port < 9601 || p.Port > 9699 {
-				t.Errorf("Communication MCP %s port %d out of range 9601-9699", p.Name, p.Port)
+			if p.Port < 8238 || p.Port > 8240 {
+				t.Errorf("Communication MCP %s port %d out of range 8238-8240", p.Name, p.Port)
 			}
 		case "productivity":
-			if p.Port < 9701 || p.Port > 9799 {
-				t.Errorf("Productivity MCP %s port %d out of range 9701-9799", p.Name, p.Port)
+			if p.Port < 8250 || p.Port > 8259 {
+				t.Errorf("Productivity MCP %s port %d out of range 8250-8259", p.Name, p.Port)
 			}
 		case "search":
-			if p.Port < 9801 || p.Port > 9899 {
-				t.Errorf("Search MCP %s port %d out of range 9801-9899", p.Name, p.Port)
+			if p.Port < 8260 || p.Port > 8269 {
+				t.Errorf("Search MCP %s port %d out of range 8260-8269", p.Name, p.Port)
 			}
 		case "google":
-			if p.Port < 9901 || p.Port > 9920 {
-				t.Errorf("Google MCP %s port %d out of range 9901-9920", p.Name, p.Port)
+			if p.Port < 8270 || p.Port > 8274 {
+				t.Errorf("Google MCP %s port %d out of range 8270-8274", p.Name, p.Port)
 			}
 		case "monitoring":
-			if p.Port < 9921 || p.Port > 9940 {
-				t.Errorf("Monitoring MCP %s port %d out of range 9921-9940", p.Name, p.Port)
+			if p.Port < 8275 || p.Port > 8277 {
+				t.Errorf("Monitoring MCP %s port %d out of range 8275-8277", p.Name, p.Port)
 			}
 		case "finance":
-			if p.Port < 9941 || p.Port > 9960 {
-				t.Errorf("Finance MCP %s port %d out of range 9941-9960", p.Name, p.Port)
+			if p.Port < 8278 || p.Port > 8280 {
+				t.Errorf("Finance MCP %s port %d out of range 8278-8280", p.Name, p.Port)
 			}
 		case "design":
-			if p.Port < 9961 || p.Port > 9999 {
-				t.Errorf("Design MCP %s port %d out of range 9961-9999", p.Name, p.Port)
+			if p.Port < 8281 || p.Port > 8281 {
+				t.Errorf("Design MCP %s port %d out of range 8281-8281", p.Name, p.Port)
 			}
 		}
 	}

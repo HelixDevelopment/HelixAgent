@@ -719,6 +719,7 @@ CHALLENGES=(
     "test_coverage_completeness_challenge"
     "concurrency_safety_comprehensive_challenge"
     "concurrency_fixes_validation_challenge"
+    "port_registry_challenge"
     "security_scan_validation_challenge"
     "documentation_completeness_validation_challenge"
     "helixagent_plugins_challenge"

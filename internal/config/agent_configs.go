@@ -171,7 +171,7 @@ func (g *ConfigGenerator) SetMaxTokens(tokens int) *ConfigGenerator {
 
 // GenerateOpenCodeConfig generates OpenCode configuration (v1.1.30+ schema)
 // IMPORTANT: OpenCode uses LOCAL_ENDPOINT env var for the "local" provider
-// User must set: LOCAL_ENDPOINT=http://localhost:7061 (or their HelixAgent URL)
+// User must set: LOCAL_ENDPOINT=http://localhost:8100 (or their HelixAgent URL)
 // Config file must be named .opencode.json (with leading dot)
 func (g *ConfigGenerator) GenerateOpenCodeConfig() (*OpenCodeConfig, error) {
 	if err := g.validate(); err != nil {
@@ -226,7 +226,7 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 	// Parse base URL to get host for SSE MCPs
 	baseURL := g.baseURL
 	if baseURL == "" {
-		baseURL = "http://localhost:7061"
+		baseURL = "http://localhost:8100"
 	}
 
 	return map[string]OpenCodeMCPServer{
@@ -257,7 +257,7 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 		},
 		"postgres": {
 			Command: "npx",
-			Args:    []string{"-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost:5432/helixagent"},
+			Args:    []string{"-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost:8101/helixagent"},
 		},
 		"puppeteer": {
 			Command: "npx",

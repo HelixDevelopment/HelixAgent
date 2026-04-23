@@ -22,7 +22,7 @@ type Orchestrator struct {
 
 // NewOrchestrator creates an Orchestrator for HelixAgent user
 // flow testing. The baseURL should point to the running
-// HelixAgent server (e.g., "http://localhost:7061").
+// HelixAgent server (e.g., "http://localhost:8100").
 func NewOrchestrator(baseURL string) (*Orchestrator, error) {
 	reg := registry.NewRegistry()
 	adapter := uf.NewHTTPAPIAdapter(baseURL)

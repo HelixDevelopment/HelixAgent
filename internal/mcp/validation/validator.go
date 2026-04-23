@@ -137,7 +137,7 @@ func (v *MCPValidator) loadRequirements() {
 	v.requirements["helixagent"] = &MCPRequirement{
 		Name:           "helixagent",
 		Type:           "local",
-		Command:        []string{"node", "${HELIXAGENT_HOME}/plugins/mcp-server/dist/index.js", "--endpoint", "http://localhost:7061"},
+		Command:        []string{"node", "${HELIXAGENT_HOME}/plugins/mcp-server/dist/index.js", "--endpoint", "http://localhost:8100"},
 		Description:    "HelixAgent MCP plugin - provides unified access to HelixAgent APIs",
 		Category:       "helixagent",
 		CanWorkLocally: true,
@@ -599,7 +599,7 @@ func (v *MCPValidator) validateMCP(ctx context.Context, name string, req *MCPReq
 func (v *MCPValidator) checkLocalService(service string) bool {
 	switch service {
 	case "helixagent":
-		resp, err := http.Get("http://localhost:7061/health")
+		resp, err := http.Get("http://localhost:8100/health")
 		if err != nil {
 			return false
 		}

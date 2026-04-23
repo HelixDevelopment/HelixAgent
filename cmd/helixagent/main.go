@@ -468,7 +468,7 @@ func getRunningServicesWithRuntimeConfig(cfg *ContainerConfig, _ string, _ []str
 func checkServicesViaHealthProbes(services []string) map[string]bool {
 	running := make(map[string]bool)
 	serviceChecks := map[string]string{
-		"postgres": "localhost:5432",
+		"postgres": "localhost:8101",
 		"redis":    "localhost:6379",
 		"cognee":   "http://localhost:8000/",
 		"chromadb": "http://localhost:8001/",
@@ -1311,7 +1311,7 @@ func DefaultAppConfig() *AppConfig {
 		AutoStartMCP:       true, // Auto-start all 32 MCP Docker containers
 		StrictDependencies: true, // MANDATORY: All dependencies must be available
 		ServerHost:         "0.0.0.0",
-		ServerPort:         "7061",
+		ServerPort:         "8100",
 		Logger:             logger,
 		ShutdownSignal:     nil,
 	}
@@ -1393,7 +1393,7 @@ func run(appCfg *AppConfig) error {
 	if appCfg.ServerHost != "" && appCfg.ServerHost != "0.0.0.0" {
 		cfg.Server.Host = appCfg.ServerHost
 	}
-	if appCfg.ServerPort != "" && appCfg.ServerPort != "7061" {
+	if appCfg.ServerPort != "" && appCfg.ServerPort != "8100" {
 		cfg.Server.Port = appCfg.ServerPort
 	}
 	// Skip auto-discovery when verification is skipped (test mode)
@@ -2290,7 +2290,7 @@ type OpenCodeTUIDef struct {
 // handleGenerateOpenCode handles the --generate-opencode-config command
 // Generates OpenCode v1.1.30+ compatible configuration
 // Config file should be saved as opencode.json (WITHOUT leading dot) in ~/.config/opencode/
-// User must set LOCAL_ENDPOINT env var to HelixAgent URL (e.g., http://localhost:7061)
+// User must set LOCAL_ENDPOINT env var to HelixAgent URL (e.g., http://localhost:8100)
 func handleGenerateOpenCode(appCfg *AppConfig) error {
 	logger := appCfg.Logger
 	if logger == nil {
@@ -2323,7 +2323,7 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "7061"
+		port = "8100"
 	}
 
 	baseURL := fmt.Sprintf("http://%s:%s", host, port)
@@ -2628,7 +2628,7 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Type:    "local",
 			Command: []string{"node", helixHome + "/plugins/mcp-server/dist/index.js", "--endpoint", baseURL},
 		},
-		// Remote protocol endpoints (running at port 7061)
+		// Remote protocol endpoints (running at port 8100)
 		"helixagent-mcp": {
 			Type: "remote",
 			URL:  baseURL + "/v1/mcp",
@@ -3126,7 +3126,7 @@ func buildOpenCodeMCPServersOld(baseURL string) map[string]OpenCodeMCPServerDefO
 		"time":                {Type: "local", Command: []string{"npx", "-y", "@theo.foobar/mcp-time"}},
 		"git":                 {Type: "local", Command: []string{"npx", "-y", "mcp-git"}},
 		"sqlite":              {Type: "local", Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"}},
-		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost:5432/helixagent"}},
+		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost:8101/helixagent"}},
 		"puppeteer":           {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"}},
 		"brave-search":        {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-brave-search"}},
 		"google-maps":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-google-maps"}},
@@ -3679,13 +3679,13 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "7061"
+		port = "8100"
 	}
 
 	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)
 	crushPortInt, err := strconv.Atoi(port)
 	if err != nil {
-		crushPortInt = 7061 // default port
+		crushPortInt = 8100 // default port (HELIXAGENT_PORT_HTTP)
 	}
 
 	// Build the Crush configuration
@@ -3880,7 +3880,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		// HelixAgent Protocol Endpoints (7 MCPs) - LOCAL + REMOTE
 		// Local MCP plugin - runs the HelixAgent MCP server as a subprocess
 		"helixagent": {Type: "local", Command: []string{"node", helixHome + "/plugins/mcp-server/dist/index.js", "--endpoint", baseURL}, Enabled: true},
-		// Remote protocol endpoints (running at port 7061)
+		// Remote protocol endpoints (running at port 8100)
 		"helixagent-mcp":        {Type: "remote", URL: baseURL + "/v1/mcp", Enabled: true},
 		"helixagent-acp":        {Type: "remote", URL: baseURL + "/v1/acp", Enabled: true},
 		"helixagent-lsp":        {Type: "remote", URL: baseURL + "/v1/lsp", Enabled: true},
@@ -3895,7 +3895,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"time":                {Type: "local", Command: []string{"npx", "-y", "@theo.foobar/mcp-time"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"git":                 {Type: "local", Command: []string{"npx", "-y", "mcp-git"}, Enabled: true},
 		"sqlite":              {Type: "local", Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"}, Enabled: true},
-		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres"}, Env: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:5432/helixagent_db"}, Enabled: true},
+		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres"}, Env: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:8101/helixagent_db"}, Enabled: true},
 		"puppeteer":           {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"}, Enabled: true},
 		"sequential-thinking": {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sequential-thinking"}, Enabled: true},
 		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true},                                                                              // #nosec G101 -- not a credential (map key / config label / env-var reference)
@@ -4306,7 +4306,7 @@ func handleGenerateAgentConfig(appCfg *AppConfig) error {
 	// Create generator with HelixAgent + HelixLLM settings
 	config := &cliagents.GeneratorConfig{
 		HelixAgentHost: "localhost",
-		HelixAgentPort: 7061,
+		HelixAgentPort: 8100,
 		HelixLLMHost:   helixLLMHost,
 		HelixLLMPort:   helixLLMPort,
 		HelixLLMAPIKey: helixLLMAPIKey,
@@ -4458,7 +4458,7 @@ func handleGenerateAllAgents(appCfg *AppConfig) error {
 	// Create generator with HelixAgent settings
 	config := &cliagents.GeneratorConfig{
 		HelixAgentHost: "localhost",
-		HelixAgentPort: 7061,
+		HelixAgentPort: 8100,
 		OutputDir:      outputDir,
 		MCPServers:     cliagents.DefaultMCPServers(),
 		IncludeScores:  true,

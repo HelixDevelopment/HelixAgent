@@ -15,7 +15,7 @@ services:
     image: mcp-fetch:latest
     container_name: mcp-fetch
     ports:
-      - "9101:9000"
+      - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]
@@ -27,7 +27,7 @@ services:
     image: mcp-git:latest
     container_name: mcp-git
     ports:
-      - "9102:9000"
+      - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
     volumes:
       - ${HOME}:/home/user:ro  # Mount home for git operations
     restart: unless-stopped
@@ -41,7 +41,7 @@ services:
     image: mcp-time:latest
     container_name: mcp-time
     ports:
-      - "9103:9000"
+      - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]
@@ -54,7 +54,7 @@ services:
     image: mcp-filesystem:latest
     container_name: mcp-filesystem
     ports:
-      - "9104:9000"
+      - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
     volumes:
       - ${HOME}:/home/user:rw  # Mount home for filesystem operations
       - /tmp:/tmp:rw
@@ -69,7 +69,7 @@ services:
     image: mcp-memory:latest
     container_name: mcp-memory
     ports:
-      - "9105:9000"
+      - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]
@@ -81,7 +81,7 @@ services:
     image: mcp-everything:latest
     container_name: mcp-everything
     ports:
-      - "9106:9000"
+      - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]
@@ -93,7 +93,7 @@ services:
     image: mcp-sequentialthinking:latest
     container_name: mcp-sequentialthinking
     ports:
-      - "9107:9000"
+      - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9000"]

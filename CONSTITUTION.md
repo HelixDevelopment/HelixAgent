@@ -240,25 +240,30 @@ The `IsSuspiciouslyFastResponse` check (100ms / 100 chars threshold) is a produc
 
 **ID:** CONST-027
 
-The following service architecture is MANDATORY and MUST NOT be changed without updating this Constitution:
+The following service architecture is MANDATORY. Port assignments are centralized in the canonical registry at `internal/ports/ports.go`; see `docs/development/port-registry.md` for the full table. Default ports live in the **81xx band** under prefix `8` and shift to the **91xx band** under prefix `9` (env var `HELIXAGENT_PORT_PREFIX`). No ad-hoc port allocation — every service that binds a port must have an entry in the registry.
 
 **Eager Services** (started at boot, always running):
-- HelixAgent: port **7061** (NOT 8080)
-- HelixLLM: port 8444 (HTTPS/TLS 1.3)
-- PostgreSQL: port 5432
-- Redis (primary): port **6379**, **NO password** (container: helixagent-redis)
-- MCP Bridge: port 9000
-- MCP Servers: ports 9101-9803 (internal port 9000, bridged via socat)
+- HelixAgent: port **8100** (`HELIXAGENT_PORT_HTTP`)
+- PostgreSQL: port **8101** (`HELIXAGENT_PORT_POSTGRES`)
+- Redis (primary): port **8102** (`HELIXAGENT_PORT_REDIS`), **NO password** (container: helixagent-redis)
+- MCP Bridge: port **8103** (`HELIXAGENT_PORT_MCP_BRIDGE`)
+- HelixLLM: port **8105** (`HELIXAGENT_PORT_HELIXLLM`, HTTPS/TLS 1.3)
+- Redis MCP backend: port **8110** (`HELIXAGENT_PORT_REDIS_MCP`, password `helixagent123`)
+- MCP Servers: ports **8200-8281** (82xx band, 12 tiers; internal port 9000 bridged via socat)
 
 **Lazy Services** (started on-demand):
-- Cognee/HelixMemory: port 8000
-- ChromaDB: port 8001
-- Neo4j: ports 7474 (HTTP) / 7687 (Bolt)
-- Qdrant: port 6333
+- Cognee: port **8120** (`HELIXAGENT_PORT_COGNEE`)
+- ChromaDB: port **8121** (`HELIXAGENT_PORT_CHROMADB`)
+- Qdrant: port **8122** (`HELIXAGENT_PORT_QDRANT`)
+- Neo4j: ports **8123** HTTP / **8124** Bolt (`HELIXAGENT_PORT_NEO4J_HTTP`, `HELIXAGENT_PORT_NEO4J_BOLT`)
+
+**Observability** (83xx band): Prometheus **8310**, Grafana **8311**, Jaeger **8312**, ACP Manager **8300**.
 
 **Redis Architecture**:
-- `helixagent-redis` on port 6379: **NO password** — used by HelixAgent core, streaming, and functional tests
-- `helixagent-mcp-redis-backend` on port 16379: password `helixagent123` — used by MCP containers
+- `helixagent-redis` on port **8102**: **NO password** — used by HelixAgent core, streaming, and functional tests
+- `helixagent-mcp-redis-backend` on port **8110**: password `helixagent123` — used by MCP containers
+
+**Invariants enforced by `internal/ports/ports_test.go` and `challenges/scripts/port_registry_challenge.sh`:** no offset collisions, every port fits in 16 bits at prefixes 8 and 9, band discipline preserved (core ≤199, MCP 200-281, obs 300-312), every env-var name starts with `HELIXAGENT_PORT_`.
 
 **API Response Format Contracts** (server returns these exact formats, tests must match):
 - `/v1/embeddings/providers` → `{"providers":[{"name":"...","model":"...","dimension":N,"enabled":bool}]}` (objects, NOT strings)

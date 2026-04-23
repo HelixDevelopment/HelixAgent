@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HelixAgent is a Go (module `dev.helix.agent`, Go 1.25.3) ensemble LLM service exposing OpenAI-compatible APIs. It fronts **47+ LLM providers** (authoritative list: `ls internal/llm/providers/ | grep -v common`) with dynamic selection driven by LLMsVerifier verification scores.
+HelixAgent is a Go (module `dev.helix.agent`, Go 1.25.3) ensemble LLM service exposing OpenAI-compatible APIs. It fronts **50+ LLM providers** with dynamic selection driven by LLMsVerifier verification scores. For the authoritative current count run `ls internal/llm/providers/ | grep -v common | wc -l` (51 at this writing).
 
 Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and **41 extracted modules** across 8 phases. Catalog: `docs/MODULES.md`. Summary table under [Extracted Modules](#extracted-modules-submodules).
 
@@ -29,13 +29,12 @@ Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and *
 8. **Validation Before Release** — Pass `make ci-validate-all`, `./challenges/scripts/run_all_challenges.sh`, `make test-with-infra`, and benchmark/stress tests.
 9. **No Mocks or Stubs in Production** — Mocks, stubs, fakes, placeholder classes, TODO implementations STRICTLY FORBIDDEN in production code. All production code must be fully functional with real integrations. Only unit tests may use mocks/stubs.
 10. **Third-Party Submodules** — `cli_agents/` and `MCP/` are read-only third-party deps; NEVER commit/push changes. Only project-owned submodules (LLMsVerifier, formatters) may be updated. Use `git submodule update --remote`.
-11. **Container-Based Builds** — ALL release builds MUST be performed inside Docker/Podman containers for reproducibility. Use `make release` / `make release-all`. Version info injected via `-ldflags -X`.
-11a. **MANDATORY Container Rebuild** — **All running containers on local host or remote distributed machines MUST be rebuilt and redeployed if code was changed affecting any of them!** After any code changes to services, handlers, MCPs, formatters, or any containerized component: (1) Rebuild affected images with `make docker-build` or `make container-build`, (2) Restart containers with `make docker-run` or `make container-start`, (3) If using remote distribution, re-run distribution with `CONTAINERS_REMOTE_ENABLED=true`. Failure to rebuild containers after code changes will result in outdated code running in production.
+11. **Container-Based Builds & Rebuild-on-Change** — ALL release builds MUST be performed inside Docker/Podman containers for reproducibility (use `make release` / `make release-all`; version info injected via `-ldflags -X`). Additionally, **any code change affecting a containerized component requires rebuilding and redeploying the container** — locally via `make docker-build` then `make docker-run` (or `make container-build` / `make container-start`), and for remote distribution re-run with `CONTAINERS_REMOTE_ENABLED=true`. Skipping the rebuild leaves outdated code running.
 12. **Infrastructure Before Tests** — ALL infrastructure containers (PostgreSQL, Redis, Mock LLM) MUST be running before executing tests or challenges. Use `make test-infra-start` or `make test-infra-direct-start` (Podman fallback with `--userns=host`). Tests and challenges that require infrastructure WILL FAIL without running containers.
 13. **Comprehensive Verification** — Every fix MUST be verified from all angles: runtime testing (actual HTTP requests), compile verification, code structure checks, npm/dependency existence checks, backward compatibility, and no false positives in tests or challenges. Grep-only validation is NEVER sufficient.
 14. **HTTP/3 (QUIC) with Brotli Compression** — ALL HTTP communication MUST use HTTP/3 (QUIC) as primary transport with Brotli compression. HTTP/2 ONLY as fallback when HTTP/3 is unavailable. Compression: Brotli (primary) → gzip (fallback). All HTTP clients and servers MUST prefer HTTP/3. Use `quic-go/quic-go` for transport, `andybalholm/brotli` for compression.
 15. **Resource Limits for Tests & Challenges (CRITICAL)** — ALL test and challenge execution MUST be strictly limited to 30-40% of host system resources. Use `GOMAXPROCS=2`, `nice -n 19`, `ionice -c 3`, `-p 1` for go test. Container limits required. The host runs mission-critical processes — exceeding limits has caused system crashes and forced resets.
-16. **No Mocks Outside Unit Tests (CONST-025)** — ONLY unit tests may use mocks, stubs, fakes, or placeholder implementations. Integration tests, functional tests, E2E tests, Challenge tests, and HelixQA tests MUST ALL execute against the REAL running HelixAgent system (port 7061) with real containers, real databases, real Redis, and real HTTP calls. All services and containers MUST be booted and operational before non-unit tests run. Tests that cannot connect to real services MUST skip (not fail). Files like `services_integration_test.go` that use `integrationMockProvider` are VIOLATING this constraint and must be rewritten to call the live API. **See also:** CONST-030 (real-infra for all non-unit tests) — strengthens and supersedes this rule.
+16. **No Mocks Outside Unit Tests (CONST-025)** — Superseded by rule #21 (CONST-030) below; retained as a historical ID.
 17. **Both Debate Flavors Must Be Tested (CONST-026)** — HelixAgent has TWO distinct debate implementations: (1) **DebateService** (`internal/services/debate_service.go`) with `ConductDebate()`, provider registry, suspiciously-fast-response detection, and (2) **Orchestrator Framework** (`internal/services/debate_integration/`) with agent pools, 8-phase protocol, topology support. BOTH MUST have integration tests against LIVE `/v1/debates` API with 5-position and 8+ position debates.
 18. **Port and Service Architecture (CONST-027)** — HelixAgent runs on port **7061** (NOT 8080). Redis port 6379 has NO password (helixagent-redis); Redis port 16379 has password `helixagent123` (helixagent-mcp-redis-backend). Eager services: HelixAgent(7061), HelixLLM(8444), PostgreSQL(5432), Redis(6379), MCP Bridge(9000), MCP Servers(9101-9803). Lazy services: Cognee(8000), ChromaDB(8001), Neo4j(7474/7687), Qdrant(6333). API response format contracts: `/v1/embeddings/providers` returns provider objects (NOT strings), `/v1/vision/capabilities` returns capability objects with status, `/v1/acp/agents` returns agent objects with status, `/v1/acp/agents/{id}` uses `id` field, `/v1/acp/execute` uses `agent_id` field. Health check: `/v1/embeddings/health` returns 404 — use `/v1/embeddings/providers` instead.
 19. **Bugfix Documentation (CONST-028)** — All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with root cause analysis, affected files, fix description, and verification test reference. Every fix must have a corresponding verification test.
@@ -67,11 +66,12 @@ Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and *
 ```bash
 make build                # Build binary
 make build-debug          # Build with debug symbols
-make run                  # Run locally
+make run                  # Run locally (the binary boots all containers per Containers/.env)
 make run-dev              # Development mode (GIN_MODE=debug)
 make docker-build         # Build Docker image
-docker-compose up -d      # Start full stack
 ```
+
+> **Do not run `docker-compose up -d` / `podman-compose up` / `make test-infra-start` manually.** Per Hard Stop #2, the HelixAgent binary is the sole orchestrator. `make build` → `./bin/helixagent` is the entire workflow.
 
 ### Release Builds
 
@@ -79,7 +79,7 @@ All release builds MUST be performed inside Docker/Podman containers for reprodu
 
 ```bash
 make release              # Build helixagent for all platforms
-make release-all          # Build ALL 7 apps for all platforms
+make release-all          # Build ALL 8 apps for all platforms
 make release-<app>        # Build a specific app (helixagent, api, grpc-server, ...)
 make release-force        # Force rebuild all (ignore change detection)
 make release-info         # Show version codes and source hashes
@@ -172,13 +172,14 @@ Enable with `CONTAINERS_REMOTE_ENABLED=true`. The HelixAgent binary boots contai
 
 ## Architecture
 
-### Entry Points (7 apps)
+### Entry Points (8 apps — `ls cmd/` for authoritative list)
 - `cmd/helixagent/` — Main app | `cmd/api/` — API server | `cmd/grpc-server/` — gRPC
 - `cmd/cognee-mock/` — Cognee mock server | `cmd/sanity-check/` — Sanity checker
 - `cmd/mcp-bridge/` — MCP bridge | `cmd/generate-constitution/` — Constitution generator
+- `cmd/audit/` — Audit tooling
 
 ### Core Packages (`internal/`)
-- `llm/providers/` — 47+ dedicated LLM providers (full list via `ls internal/llm/providers/ | grep -v common`) + `generic/` OpenAI-compatible fallback
+- `llm/providers/` — 50+ dedicated LLM providers (audit: `ls internal/llm/providers/ | grep -v common`) + `generic/` OpenAI-compatible fallback
 - `llm/providers/generic/` — Generic OpenAI-compatible provider for verification of providers without dedicated implementations
 - `llm/discovery/` — 3-tier dynamic model discovery (Provider API → models.dev → hardcoded fallback)
 - `llm/ensemble.go` — Ensemble orchestration
@@ -418,7 +419,7 @@ CI_RESOURCE_LIMIT=medium make ci-all  # Medium resource limits (default: low)
 **IMPORTANT:** HelixAgent binary must be running (it boots all required infra) before executing challenges.
 
 ```bash
-./challenges/scripts/run_all_challenges.sh                    # Run ALL (~70+ scripts)
+./challenges/scripts/run_all_challenges.sh                    # Run ALL (650+ scripts; audit: ls challenges/scripts/*.sh | wc -l)
 ./challenges/scripts/memory_safety_challenge.sh               # Run a single challenge
 GOMAXPROCS=2 nice -n 19 ./challenges/scripts/<name>_challenge.sh   # With resource limits
 ```
@@ -475,171 +476,8 @@ Gin v1.12.0, PostgreSQL 15 (pgx/v5), Redis 7, testify v1.11.1, Prometheus/Grafan
 **Constitution Management**: `ConstitutionWatcher` (`internal/services/constitution_watcher.go`) monitors project changes and auto-updates Constitution. Triggers: new modules extracted (go.mod detection), documentation changes (AGENTS.md/CLAUDE.md), project structure changes (new top-level directories), test coverage drops. Runs as background service with configurable check interval (default: 5 minutes). Auto-syncs updates to documentation files via `DocumentationSync`. Enable with `CONSTITUTION_WATCHER_ENABLED=true`.
 
 
-<!-- BEGIN_CONSTITUTION -->
-# Project Constitution
+## Project Constitution
 
-**Version:** 1.2.0 | **Updated:** 2026-02-21 15:45
-
-Constitution with 26 rules (26 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 3, Configuration: 1, Testing: 4, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
-
-## Mandatory Principles
-
-**All development MUST adhere to these non-negotiable principles:**
-
-### Architecture
-
-**Comprehensive Decoupling** (Priority: 1)
-- Identify all parts and functionalities that can be extracted as separate modules (libraries) and reused in various projects. Perform additional work to make each module fully decoupled and independent. Each module must be a separate project with its own CLAUDE.md, AGENTS.md, README.md, docs/, tests, and challenges.
-
-### Testing
-
-**100% Test Coverage** (Priority: 1)
-- Every component MUST have 100% test coverage across ALL test types: unit, integration, E2E, security, stress, chaos, automation, and benchmark tests. No false positives. Use real data and live services (mocks only in unit tests).
-
-**Comprehensive Challenges** (Priority: 1)
-- Every component MUST have Challenge scripts validating real-life use cases. No false success - validate actual behavior, not return codes.
-
-**Stress and Integration Tests** (Priority: 2)
-- Introduce comprehensive stress and integration tests validating that the system is responsive and not possible to overload or break.
-
-**Infrastructure Before Tests** (Priority: 1)
-- ALL infrastructure containers (PostgreSQL, Redis, Mock LLM) MUST be running before executing tests or challenges. Use `make test-infra-start` or `make test-infra-direct-start` (Podman fallback with `--userns=host`). Tests and challenges that require infrastructure WILL FAIL without running containers.
-
-### Documentation
-
-**Complete Documentation** (Priority: 1)
-- Every module and feature MUST have complete documentation: README.md, CLAUDE.md, AGENTS.md, user guides, step-by-step manuals, video courses, diagrams, SQL definitions, and website content. No component can remain undocumented.
-
-**Documentation Synchronization** (Priority: 1)
-- Anything added to Constitution MUST be present in AGENTS.md and CLAUDE.md, and vice versa. Keep all three synchronized.
-
-### Quality
-
-**No Broken Components** (Priority: 1)
-- No module, application, library, or test can remain broken, disabled, or incomplete. Everything must be fully functional and operational.
-
-**No Dead Code** (Priority: 1)
-- Identify and remove all 'dead code' - features or functionalities left unconnected with the system. Perform comprehensive research and cleanup.
-
-### Safety
-
-**Memory Safety** (Priority: 1)
-- Perform comprehensive research for memory leaks, deadlocks, and race conditions. Apply safety fixes and improvements to prevent these issues.
-
-### Security
-
-**Security Scanning** (Priority: 1)
-- Execute Snyk and SonarQube scanning. Analyze findings in depth and resolve everything. Ensure scanning infrastructure is accessible via containerization (Docker/Podman).
-
-### Performance
-
-**Monitoring and Metrics** (Priority: 2)
-- Create tests that run and perform monitoring and metrics collection. Use collected data for proper optimizations.
-
-**Lazy Loading and Non-Blocking** (Priority: 2)
-- Implement lazy loading and lazy initialization wherever possible. Introduce semaphore mechanisms and non-blocking mechanisms to ensure flawless responsiveness.
-
-### Principles
-
-**Software Principles** (Priority: 2)
-- Apply all software principles: KISS, DRY, SOLID, YAGNI, etc. Ensure code is clean, maintainable, and follows best practices.
-
-**Design Patterns** (Priority: 2)
-- Use appropriate design patterns: Proxy, Facade, Factory, Abstract Factory, Observer, Mediator, Strategy, etc. Apply patterns where they add value.
-
-### Stability
-
-**Rock-Solid Changes** (Priority: 1)
-- All changes must be safe, non-error-prone, and MUST NOT BREAK any existing working functionality. Ensure backward compatibility unless explicitly breaking.
-
-### Containerization
-
-**⚠️ CRITICAL WARNING - READ THIS FIRST ⚠️**
-
-**ALL container orchestration is handled AUTOMATICALLY by the HelixAgent binary during boot. NEVER manipulate containers manually.**
-
-**FORBIDDEN ACTIONS:**
-- ❌ `docker start|stop|restart|rm` commands
-- ❌ `podman start|stop|restart|rm` commands  
-- ❌ `docker-compose up|down` commands
-- ❌ `podman-compose up|down` commands
-- ❌ `make test-infra-start` or similar Makefile targets
-- ❌ Manual SSH to remote hosts for container deployment
-
-**ONLY ACCEPTABLE WORKFLOW:**
-1. `make build` - Build the HelixAgent binary
-2. `./bin/helixagent` - Run it (ALL container orchestration happens automatically)
-3. The binary reads `Containers/.env` and orchestrates everything
-
-**Full Containerization** (Priority: 2)
-- All services MUST run in containers (Docker/Podman/K8s). Support local default execution AND remote configuration. Services must auto-boot before HelixAgent is ready.
-
-**Mandatory Container Orchestration Flow** (Priority: 1)
-- This is the ONLY acceptable container orchestration flow. All tests and challenges MUST follow this pattern:
-- **Step 1**: HelixAgent boots and initializes Containers module adapter
-- **Step 2**: Adapter reads `Containers/.env` file (NOT project root `.env`)
-- **Step 3**: Based on `Containers/.env` content: `CONTAINERS_REMOTE_ENABLED=true` → ALL containers to remote host(s) via `CONTAINERS_REMOTE_HOST_*` vars, NO local containers; `CONTAINERS_REMOTE_ENABLED=false` or missing → ALL containers locally
-- **Step 4**: Health checks performed against configured endpoints (local or remote)
-- **Step 5**: Required services failing health check cause boot failure in strict mode
-- **Rules**: NO manual container starts, NO mixed mode, tests use `tests/precondition/containers_boot_test.go`, challenges verify container placement based on `Containers/.env`
-- **Key Files**: `Containers/.env` (orchestration), `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`, `tests/precondition/containers_boot_test.go`
-
-**Container-Based Builds** (Priority: 1)
-- ALL release builds MUST be performed inside Docker/Podman containers for reproducibility. Use `make release` / `make release-all`. Version info injected via `-ldflags -X`. No release binaries should be built directly on the host unless container build is unavailable.
-
-### Configuration
-
-**Unified Configuration** (Priority: 1)
-- **CLI agent configs MUST ONLY be generated using the HelixAgent binary** (`./bin/helixagent --generate-agent-config=<agent>` or `go run ./cmd/helixagent --generate-agent-config=<agent>`).
-- **NEVER create, write, or modify CLI agent config files manually or via scripts.** The HelixAgent binary is the sole authority for config generation.
-- Config generation uses LLMsVerifier's unified generator (`pkg/cliagents/`). No third-party scripts or manual edits.
-- This ensures schema compliance, API key injection, MCP endpoint consistency, and validation for all 48 supported CLI agents.
-
-**Non-Interactive Execution** (Priority: 1)
-- **ALL commands MUST be fully non-interactive and automatable via command pipelines.**
-- **NEVER prompt for passwords, passphrases, or any user input interactively.**
-- SSH connections MUST use key-based authentication with SSH agent (`ssh-add`) or password provided via environment variables/sshpass.
-- Container distribution to remote hosts MUST be fully automated through the Containers module's SSH executor with pre-configured credentials.
-- All secrets (API keys, passwords, SSH keys) MUST be provided via environment variables or `.env` files, never via interactive prompts.
-
-### Networking
-
-**HTTP/3 (QUIC) with Brotli Compression** (Priority: 1)
-- ALL HTTP communication MUST use HTTP/3 (QUIC) as primary transport with Brotli compression. HTTP/2 only as fallback. Compression priority: Brotli → gzip. All HTTP clients and servers MUST prefer HTTP/3. Use `quic-go/quic-go` for transport and `andybalholm/brotli` for compression.
-
-### Resource Management
-
-**Test and Challenge Resource Limits** (Priority: 1)
-- ALL test and challenge execution MUST be strictly limited to 30-40% of host system resources. Use GOMAXPROCS=2, nice -n 19, ionice -c 3, and -p 1 for go test. Container limits required. Host machine runs mission-critical processes; exceeding limits has caused system crashes.
-
-### Observability
-
-**Health and Monitoring** (Priority: 2)
-- Every service MUST expose health endpoints. Circuit breakers for all external dependencies. Prometheus/OpenTelemetry integration.
-
-### GitOps
-
-**GitSpec Compliance** (Priority: 2)
-- Follow GitSpec constitution and all constraints from AGENTS.md and CLAUDE.md.
-
-**SSH Only for Git Operations** (Priority: 1)
-- **MANDATORY: NEVER use HTTPS for any Git service operations.** All cloning, fetching, pushing, and submodule operations MUST use SSH URLs (`git@github.com:org/repo.git`). HTTPS is STRICTLY FORBIDDEN even for public repositories. SSH keys are already configured on all Git services (GitHub, GitLab, etc.).
-
-### CI/CD
-
-**Manual CI/CD Only - NO Automated Pipelines or Git Hooks** (Priority: 1)
-- **NO GitHub Actions, GitLab CI/CD, Jenkins, CircleCI, Travis CI, or any automated pipeline** may exist in this repository!
-- **NO Git hooks (pre-commit, pre-push, post-commit, etc.)** may be installed or configured
-- **NO `.github/workflows/` directory** allowed
-- **NO `.gitlab-ci.yml` file** allowed  
-- **NO Jenkinsfile, .travis.yml, .circleci, or any other CI configuration** allowed
-- All builds, tests, and quality checks must be executed manually only via Makefile targets
-- This rule is permanent and non-negotiable
-
----
-
-*This Constitution is automatically synchronized with AGENTS.md, CLAUDE.md, and CONSTITUTION.json.*
-
-<!-- END_CONSTITUTION -->
+The authoritative Constitution lives in `CONSTITUTION.md` (currently v1.3.0, 33 mandatory rules across 17 categories; machine-readable form in `CONSTITUTION.json`). Every rule in the "Mandatory Development Standards" section above is a summary of a Constitution entry — when they conflict, `CONSTITUTION.md` wins. Regenerate with `./bin/generate-constitution` (or `go run ./cmd/generate-constitution`); do not hand-edit a copy inside this file.
 
 

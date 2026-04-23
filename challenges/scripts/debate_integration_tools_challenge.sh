@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: Tool enrichment flag is present
 test_start "Tool enrichment flag is present"
 TOPIC="Design a caching strategy for the API"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -53,7 +53,7 @@ fi
 # Test 4: Tool integration works with code tasks
 test_start "Tool integration works with code generation"
 TOPIC="Write a REST API endpoint for user management"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -68,7 +68,7 @@ fi
 # Test 5: Tool integration works with architecture tasks
 test_start "Tool integration works with architecture tasks"
 TOPIC="Design a microservices architecture for e-commerce"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -83,7 +83,7 @@ fi
 # Test 6: Tool integration doesn't break debates
 test_start "Tool integration doesn't break debate execution"
 TOPIC="Analyze performance bottlenecks"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -109,7 +109,7 @@ fi
 # Test 8: Multiple rounds work with tool integration
 test_start "Multiple rounds work with tool integration"
 TOPIC="Optimize database performance"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":2}")
 
@@ -138,7 +138,7 @@ TASKS=("Review code quality" "Debug authentication issue" "Test API endpoints")
 ENRICHMENT_COUNT=0
 
 for TASK in "${TASKS[@]}"; do
-  RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+  RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
     -H "Content-Type: application/json" \
     -d "{\"topic\":\"$TASK\",\"max_rounds\":1}")
 

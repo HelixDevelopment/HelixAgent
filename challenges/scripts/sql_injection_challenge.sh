@@ -18,7 +18,7 @@ TESTS_FAILED=0
 TESTS_TOTAL=0
 
 # Base URL for API
-BASE_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+BASE_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # Test function with detailed logging
 run_test() {

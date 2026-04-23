@@ -102,7 +102,7 @@ phase3_startup() {
     
     log_info "Checking if HelixAgent is running..."
     
-    if curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/health > /dev/null 2>&1; then
         log_success "HelixAgent is already running"
         return 0
     fi
@@ -121,7 +121,7 @@ phase3_startup() {
     local max_attempts=30
     
     while [ $attempts -lt $max_attempts ]; do
-        if curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+        if curl -sf http://localhost:8100/health > /dev/null 2>&1; then
             log_success "HelixAgent is healthy"
             return 0
         fi
@@ -138,7 +138,7 @@ phase3_startup() {
 phase4_core_api() {
     log_section "PHASE 4: Core API Validation"
     
-    local endpoint="http://localhost:7061"
+    local endpoint="http://localhost:8100"
     local passed=0
     local failed=0
     
@@ -224,7 +224,7 @@ phase5_cli_agents() {
 phase6_feature_tests() {
     log_section "PHASE 6: Feature-Specific Testing"
     
-    local endpoint="http://localhost:7061"
+    local endpoint="http://localhost:8100"
     local passed=0
     local failed=0
     
@@ -289,7 +289,7 @@ phase7_summary() {
     "timestamp": "$(date -Iseconds)",
     "validation_type": "cli_agents_full_system",
     "results_directory": "$RESULTS_DIR",
-    "helixagent_endpoint": "http://localhost:7061",
+    "helixagent_endpoint": "http://localhost:8100",
     "phases": [
         "build_validation",
         "config_generation",

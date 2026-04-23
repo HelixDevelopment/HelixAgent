@@ -277,7 +277,7 @@ fi
 # Test 16: HelixAgent is running
 TOTAL=$((TOTAL + 1))
 log_info "Test 16: HelixAgent is running (port 7061)"
-if curl -s --max-time 60 http://localhost:7061/health >/dev/null 2>&1; then
+if curl -s --max-time 60 http://localhost:8100/health >/dev/null 2>&1; then
     log_success "HelixAgent is running"
     PASSED=$((PASSED + 1))
 else
@@ -288,7 +288,7 @@ fi
 # Test 17: HelixAgent health endpoint returns OK
 TOTAL=$((TOTAL + 1))
 log_info "Test 17: HelixAgent health endpoint returns OK"
-HEALTH_RESPONSE=$(curl -s --max-time 60 http://localhost:7061/health 2>/dev/null || echo "")
+HEALTH_RESPONSE=$(curl -s --max-time 60 http://localhost:8100/health 2>/dev/null || echo "")
 if echo "$HEALTH_RESPONSE" | grep -qi "ok\|healthy\|status.*ok"; then
     log_success "HelixAgent health endpoint returns OK"
     PASSED=$((PASSED + 1))
@@ -300,7 +300,7 @@ fi
 # Test 18: HelixAgent /v1/models endpoint
 TOTAL=$((TOTAL + 1))
 log_info "Test 18: HelixAgent /v1/models endpoint"
-if curl -s --max-time 60 http://localhost:7061/v1/models 2>/dev/null | grep -q "data\|models\|id"; then
+if curl -s --max-time 60 http://localhost:8100/v1/models 2>/dev/null | grep -q "data\|models\|id"; then
     log_success "HelixAgent /v1/models endpoint works"
     PASSED=$((PASSED + 1))
 else
@@ -311,7 +311,7 @@ fi
 # Test 19: HelixAgent exposes AI Debate Ensemble model
 TOTAL=$((TOTAL + 1))
 log_info "Test 19: HelixAgent exposes AI Debate Ensemble model"
-if curl -s --max-time 60 http://localhost:7061/v1/models 2>/dev/null | grep -qi "debate\|ensemble\|helix"; then
+if curl -s --max-time 60 http://localhost:8100/v1/models 2>/dev/null | grep -qi "debate\|ensemble\|helix"; then
     log_success "AI Debate Ensemble model is exposed"
     PASSED=$((PASSED + 1))
 else
@@ -331,7 +331,7 @@ log_info "=============================================="
 # Test 20: MCP endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 20: MCP endpoint exists (/v1/mcp)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/mcp 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/mcp 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "MCP endpoint exists"
     PASSED=$((PASSED + 1))
@@ -343,7 +343,7 @@ fi
 # Test 21: MCP tools endpoint
 TOTAL=$((TOTAL + 1))
 log_info "Test 21: MCP tools endpoint (/v1/mcp/tools)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/mcp/tools 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/mcp/tools 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "MCP tools endpoint exists"
     PASSED=$((PASSED + 1))
@@ -355,7 +355,7 @@ fi
 # Test 22: ACP endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 22: ACP endpoint exists (/v1/acp)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/acp 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/acp 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "ACP endpoint exists"
     PASSED=$((PASSED + 1))
@@ -367,7 +367,7 @@ fi
 # Test 23: LSP endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 23: LSP endpoint exists (/v1/lsp)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/lsp 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/lsp 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "LSP endpoint exists"
     PASSED=$((PASSED + 1))
@@ -379,7 +379,7 @@ fi
 # Test 24: Embeddings endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 24: Embeddings endpoint exists (/v1/embeddings)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/embeddings 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/embeddings 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Embeddings endpoint exists"
     PASSED=$((PASSED + 1))
@@ -391,7 +391,7 @@ fi
 # Test 25: Vision endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 25: Vision endpoint exists (/v1/vision)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/vision 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/vision 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Vision endpoint exists"
     PASSED=$((PASSED + 1))
@@ -403,7 +403,7 @@ fi
 # Test 26: Cognee endpoint exists (optional - Mem0 is primary)
 TOTAL=$((TOTAL + 1))
 log_info "Test 26: Cognee endpoint exists (/v1/cognee) [optional - Mem0 is primary]"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/cognee 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/cognee 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Cognee endpoint exists"
     PASSED=$((PASSED + 1))
@@ -424,7 +424,7 @@ log_info "=============================================="
 # Test 27: Debates endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 27: Debates endpoint exists (/v1/debates)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/debates 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/debates 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Debates endpoint exists"
     PASSED=$((PASSED + 1))
@@ -436,7 +436,7 @@ fi
 # Test 28: Chat completions endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 28: Chat completions endpoint exists (/v1/chat/completions)"
-RESP=$(curl -s --max-time 60 -m 10 -o /dev/null -w "%{http_code}" -X POST http://localhost:7061/v1/chat/completions -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 10 -o /dev/null -w "%{http_code}" -X POST http://localhost:8100/v1/chat/completions -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Chat completions endpoint exists"
     PASSED=$((PASSED + 1))
@@ -566,7 +566,7 @@ fi
 # Test 38: Tasks endpoint exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 38: Tasks endpoint exists (/v1/tasks)"
-RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:7061/v1/tasks 2>/dev/null || echo "000")
+RESP=$(curl -s --max-time 60 -m 3 -o /dev/null -w "%{http_code}" http://localhost:8100/v1/tasks 2>/dev/null || echo "000")
 if [ "$RESP" != "000" ] && [ "$RESP" != "404" ]; then
     log_success "Tasks endpoint exists"
     PASSED=$((PASSED + 1))
@@ -832,7 +832,7 @@ log_info "=============================================="
 # Test 54: MCP SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 54: MCP SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/mcp 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/mcp 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "MCP SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -844,7 +844,7 @@ fi
 # Test 55: ACP SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 55: ACP SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/acp 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/acp 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "ACP SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -856,7 +856,7 @@ fi
 # Test 56: LSP SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 56: LSP SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/lsp 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/lsp 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "LSP SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -868,7 +868,7 @@ fi
 # Test 57: Embeddings SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 57: Embeddings SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/embeddings 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/embeddings 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "Embeddings SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -880,7 +880,7 @@ fi
 # Test 58: Vision SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 58: Vision SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/vision 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/vision 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "Vision SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -892,7 +892,7 @@ fi
 # Test 59: Cognee SSE endpoint responds
 TOTAL=$((TOTAL + 1))
 log_info "Test 59: Cognee SSE endpoint responds"
-RESP=$(curl -s --max-time 60 -m 3 http://localhost:7061/v1/cognee 2>/dev/null | head -1 || echo "")
+RESP=$(curl -s --max-time 60 -m 3 http://localhost:8100/v1/cognee 2>/dev/null | head -1 || echo "")
 if echo "$RESP" | grep -q "endpoint"; then
     log_success "Cognee SSE endpoint responds with endpoint event"
     PASSED=$((PASSED + 1))
@@ -904,7 +904,7 @@ fi
 # Test 60: MCP tools/list works
 TOTAL=$((TOTAL + 1))
 log_info "Test 60: MCP tools/list method works"
-RESP=$(curl -s --max-time 60 -m 5 -X POST http://localhost:7061/v1/mcp \
+RESP=$(curl -s --max-time 60 -m 5 -X POST http://localhost:8100/v1/mcp \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' 2>/dev/null || echo "{}")
 if echo "$RESP" | grep -q "tools"; then

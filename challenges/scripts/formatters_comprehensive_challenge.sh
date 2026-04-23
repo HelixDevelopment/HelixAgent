@@ -8,7 +8,7 @@ PASSED=0
 FAILED=0
 TOTAL=0
 
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 echo "=== Code Formatters Comprehensive Challenge ==="
 echo "Testing formatters system at $HELIXAGENT_URL"

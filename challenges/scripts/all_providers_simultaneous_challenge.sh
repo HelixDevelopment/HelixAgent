@@ -94,7 +94,7 @@ declare -A PROVIDER_API_KEYS=(
 )
 
 # HelixAgent configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # Test results
 PASSED=0

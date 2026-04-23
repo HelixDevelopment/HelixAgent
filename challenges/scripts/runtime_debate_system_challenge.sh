@@ -33,7 +33,7 @@ fail() { FAIL=$((FAIL + 1)); TOTAL=$((TOTAL + 1)); echo -e "  ${RED}[FAIL]${NC} 
 skip() { SKIP=$((SKIP + 1)); TOTAL=$((TOTAL + 1)); echo -e "  ${YELLOW}[SKIP]${NC} $1"; }
 
 # Check if server is running
-SERVER_URL="http://localhost:7061"
+SERVER_URL="http://localhost:8100"
 if ! curl -s --max-time 60 --connect-timeout 5 "$SERVER_URL/v1/health" > /dev/null 2>&1; then
     echo -e "${RED}ERROR: HelixAgent server not running on port 7061${NC}"
     echo "Start it with: GIN_MODE=release ./bin/helixagent"

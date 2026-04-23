@@ -181,7 +181,7 @@ else
 fi
 
 # Test 17: HelixAgent API works without Cognee
-if timeout 5 curl -s --max-time 60 -X POST "http://localhost:7061/v1/chat/completions" \
+if timeout 5 curl -s --max-time 60 -X POST "http://localhost:8100/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Hi"}],"max_tokens":5}' | jq -e '.choices[0].message.content' >/dev/null 2>&1; then
     test_result "HelixAgent API works without Cognee" "pass"
@@ -191,7 +191,7 @@ fi
 
 # Test 18: API response time is fast (<10 seconds)
 START_TIME=$(date +%s)
-curl -s --max-time 60 -X POST "http://localhost:7061/v1/chat/completions" \
+curl -s --max-time 60 -X POST "http://localhost:8100/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"model":"helixagent-debate","messages":[{"role":"user","content":"Hi"}],"max_tokens":5}' >/dev/null 2>&1 || true
 END_TIME=$(date +%s)

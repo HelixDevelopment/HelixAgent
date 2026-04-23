@@ -176,7 +176,7 @@ test_run_unit_tests() {
 test_api_response_clean() {
     section "API Response Validation"
 
-    local api_url="http://localhost:7061"
+    local api_url="http://localhost:8100"
 
     # Check if server is running
     if curl -s --max-time 60 "$api_url/health" > /dev/null 2>&1; then
@@ -220,7 +220,7 @@ test_api_response_clean() {
 test_streaming_response_clean() {
     section "Streaming Response Validation"
 
-    local api_url="http://localhost:7061"
+    local api_url="http://localhost:8100"
 
     if curl -s --max-time 60 "$api_url/health" > /dev/null 2>&1; then
         # Test streaming endpoint - use User-Agent to trigger Markdown formatting

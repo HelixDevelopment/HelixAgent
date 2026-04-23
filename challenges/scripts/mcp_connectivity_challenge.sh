@@ -47,7 +47,7 @@ section() {
 }
 
 # Configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}MCP Connectivity Challenge (v3)${NC}"

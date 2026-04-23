@@ -27,7 +27,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
-HELIX_URL="${HELIX_URL:-http://localhost:7061}"
+HELIX_URL="${HELIX_URL:-http://localhost:8100}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 

@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/challenge_framework.sh"
 CHALLENGE_NAME="background_worker_pool"
 CHALLENGE_DESCRIPTION="Validates worker pool operations including adaptive scaling and concurrent execution"
 
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 
 # Initialize challenge framework
 init_challenge "$CHALLENGE_NAME" "$CHALLENGE_DESCRIPTION"

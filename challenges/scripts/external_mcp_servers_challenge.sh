@@ -265,7 +265,7 @@ echo ""
 
 # Test 6.1: Generate config
 if [ -x "./bin/helixagent" ]; then
-    CONFIG=$(LOCAL_ENDPOINT=http://localhost:7061 ./bin/helixagent --generate-opencode-config 2>/dev/null | grep -v "^time=" | grep -v "^IMPORTANT")
+    CONFIG=$(LOCAL_ENDPOINT=http://localhost:8100 ./bin/helixagent --generate-opencode-config 2>/dev/null | grep -v "^time=" | grep -v "^IMPORTANT")
 
     # Check if config is valid JSON
     if echo "$CONFIG" | jq . &>/dev/null; then

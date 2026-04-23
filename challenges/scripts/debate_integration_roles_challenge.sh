@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: Generator role for creation tasks
 test_start "Generator role for creation tasks"
 TOPIC="Create a new user authentication module"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -33,7 +33,7 @@ fi
 # Test 2: Refactorer role for refactoring tasks
 test_start "Refactorer role for refactoring tasks"
 TOPIC="Refactor the database access layer"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -49,7 +49,7 @@ fi
 # Test 3: Performance analyzer role for optimization
 test_start "Performance analyzer for optimization tasks"
 TOPIC="Optimize the query performance"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -65,7 +65,7 @@ fi
 # Test 4: Security analyst role for security tasks
 test_start "Security analyst for security tasks"
 TOPIC="Security audit of the payment system"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -81,7 +81,7 @@ fi
 # Test 5: Debugger role for debugging tasks
 test_start "Debugger role for debugging tasks"
 TOPIC="Debug the login crash"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -97,7 +97,7 @@ fi
 # Test 6: Architect role for design tasks
 test_start "Architect role for design tasks"
 TOPIC="Design a microservices architecture"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -113,7 +113,7 @@ fi
 # Test 7: Reviewer role for review tasks
 test_start "Reviewer role for review tasks"
 TOPIC="Review the pull request for code quality"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -129,7 +129,7 @@ fi
 # Test 8: Tester role for testing tasks
 test_start "Tester role for testing tasks"
 TOPIC="Write unit tests for the service"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -145,7 +145,7 @@ fi
 # Test 9: No role for generic tasks
 test_start "No specialized role for generic tasks"
 TOPIC="Explain how the system works"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -161,7 +161,7 @@ fi
 # Test 10: Role field is always present
 test_start "Specialized role field is always present"
 TOPIC="Any random task"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 

@@ -276,9 +276,9 @@ has_helixagent_provider() {
     grep -qiE '"(helixagent|helix|ai-debate|ensemble)"' "$file" || \
     grep -qiE 'provider.*helixagent' "$file" || \
     grep -qiE 'helixagent.*provider' "$file" || \
-    grep -qiE '"baseUrl".*localhost:7061' "$file" || \
-    grep -qiE '"base_url".*localhost:7061' "$file" || \
-    grep -qiE 'http://localhost:7061' "$file"
+    grep -qiE '"baseUrl".*localhost:8100' "$file" || \
+    grep -qiE '"base_url".*localhost:8100' "$file" || \
+    grep -qiE 'http://localhost:8100' "$file"
 }
 
 # Count MCPs in config

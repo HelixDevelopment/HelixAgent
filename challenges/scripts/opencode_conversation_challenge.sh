@@ -19,7 +19,7 @@ PASSED=0
 FAILED=0
 TOTAL=0
 PROJECT_ROOT="${SCRIPT_DIR}/../.."
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # ============================================================================
 # Conversation 1: "Help me understand the codebase structure"

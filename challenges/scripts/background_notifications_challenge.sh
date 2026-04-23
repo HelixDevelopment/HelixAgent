@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/challenge_framework.sh"
 CHALLENGE_NAME="background_notifications"
 CHALLENGE_DESCRIPTION="Validates notification mechanisms including SSE, WebSocket, Webhooks, and Polling API"
 
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 
 # Initialize challenge framework
 init_challenge "$CHALLENGE_NAME" "$CHALLENGE_DESCRIPTION"

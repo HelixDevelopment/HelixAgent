@@ -63,7 +63,7 @@ check_discovery() {
 
 # Check if HelixAgent is available
 check_helixagent() {
-    if curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/health > /dev/null 2>&1; then
         return 0
     fi
     return 1
@@ -499,35 +499,35 @@ if check_helixagent; then
     echo ""
 
     # Test 7.1: HelixAgent health check
-    if curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/health > /dev/null 2>&1; then
         pass_test "7.1 HelixAgent health check passes"
     else
         fail_test "7.1 HelixAgent health check passes" "Health endpoint failed"
     fi
 
     # Test 7.2: Check MCP endpoint
-    if curl -sf http://localhost:7061/v1/mcp > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/v1/mcp > /dev/null 2>&1; then
         pass_test "7.2 HelixAgent MCP endpoint accessible"
     else
         skip_test "7.2 HelixAgent MCP endpoint accessible" "Endpoint not available"
     fi
 
     # Test 7.3: Check LSP endpoint
-    if curl -sf http://localhost:7061/v1/lsp > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/v1/lsp > /dev/null 2>&1; then
         pass_test "7.3 HelixAgent LSP endpoint accessible"
     else
         skip_test "7.3 HelixAgent LSP endpoint accessible" "Endpoint not available"
     fi
 
     # Test 7.4: Check ACP endpoint
-    if curl -sf http://localhost:7061/v1/acp > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/v1/acp > /dev/null 2>&1; then
         pass_test "7.4 HelixAgent ACP endpoint accessible"
     else
         skip_test "7.4 HelixAgent ACP endpoint accessible" "Endpoint not available"
     fi
 
     # Test 7.5: Check embeddings endpoint
-    if curl -sf http://localhost:7061/v1/embeddings > /dev/null 2>&1; then
+    if curl -sf http://localhost:8100/v1/embeddings > /dev/null 2>&1; then
         pass_test "7.5 HelixAgent embeddings endpoint accessible"
     else
         skip_test "7.5 HelixAgent embeddings endpoint accessible" "Endpoint not available"
@@ -634,7 +634,7 @@ else
     echo ""
     echo "CLI agents can discover 35+ MCP servers through:"
     echo "  - Protocol Discovery API: http://localhost:9300/v1/discovery"
-    echo "  - HelixAgent MCP endpoint: http://localhost:7061/v1/mcp"
+    echo "  - HelixAgent MCP endpoint: http://localhost:8100/v1/mcp"
     echo ""
     exit 0
 fi

@@ -339,7 +339,7 @@ fi
 log_info "Test 14: MCP Server Connectivity Test (5s timeout per server)"
 
 # Check if HelixAgent is running
-if curl -s --max-time 2 http://localhost:7061/health >/dev/null 2>&1; then
+if curl -s --max-time 2 http://localhost:8100/health >/dev/null 2>&1; then
     MCP_CONNECTIVITY_FAILURES=0
     MCP_CONNECTIVITY_SUCCESS=0
 

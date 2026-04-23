@@ -53,7 +53,7 @@ auto_boot_infrastructure() {
     fi
 
     # Ensure HelixAgent is running
-    if ! curl -sf http://localhost:7061/health >/dev/null 2>&1; then
+    if ! curl -sf http://localhost:8100/health >/dev/null 2>&1; then
         echo "Starting HelixAgent..."
         cd "$PROJECT_ROOT"
         GIN_MODE=release ./bin/helixagent \
@@ -66,7 +66,7 @@ auto_boot_infrastructure() {
         # Wait for HelixAgent
         echo "Waiting for HelixAgent to start..."
         for i in {1..30}; do
-            if curl -sf http://localhost:7061/health >/dev/null 2>&1; then
+            if curl -sf http://localhost:8100/health >/dev/null 2>&1; then
                 echo "HelixAgent is ready!"
                 break
             fi
@@ -269,7 +269,7 @@ test_core_infrastructure() {
 test_helixagent_api() {
     log_section "HELIXAGENT API"
 
-    local BASE_URL="http://localhost:7061"
+    local BASE_URL="http://localhost:8100"
 
     # Health endpoint
     http_test "HelixAgent Health" "$BASE_URL/health" "GET" "" "200" ".status"
@@ -320,7 +320,7 @@ test_mcp_protocol() {
 test_acp_protocol() {
     log_section "ACP PROTOCOL"
 
-    local BASE_URL="http://localhost:7061/v1/acp"
+    local BASE_URL="http://localhost:8100/v1/acp"
 
     # Health
     http_test "ACP Health" "$BASE_URL/health" "GET" "" "200" ".status"
@@ -347,7 +347,7 @@ test_acp_protocol() {
 test_vision_protocol() {
     log_section "VISION PROTOCOL"
 
-    local BASE_URL="http://localhost:7061/v1/vision"
+    local BASE_URL="http://localhost:8100/v1/vision"
 
     # Health
     http_test "Vision Health" "$BASE_URL/health" "GET" "" "200" ".status"
@@ -374,7 +374,7 @@ test_vision_protocol() {
 test_embeddings() {
     log_section "EMBEDDINGS"
 
-    local BASE_URL="http://localhost:7061/v1/embeddings"
+    local BASE_URL="http://localhost:8100/v1/embeddings"
 
     # Test embeddings endpoint
     local embed_data='{"input":"test text","model":"text-embedding-3-small"}'
@@ -455,7 +455,7 @@ test_rag_services() {
 test_cognee_integration() {
     log_section "COGNEE INTEGRATION"
 
-    local BASE_URL="http://localhost:7061/v1/cognee"
+    local BASE_URL="http://localhost:8100/v1/cognee"
 
     # Health
     http_test "Cognee Integration Health" "$BASE_URL/health" "GET" "" "200"
@@ -517,7 +517,7 @@ test_cli_agents() {
 test_ai_debate() {
     log_section "AI DEBATE SYSTEM"
 
-    local BASE_URL="http://localhost:7061/v1"
+    local BASE_URL="http://localhost:8100/v1"
 
     # Debate health
     http_test "Debate Health" "$BASE_URL/debates/health" "GET" "" "200"
@@ -554,7 +554,7 @@ test_ai_debate() {
 test_security() {
     log_section "SECURITY"
 
-    local BASE_URL="http://localhost:7061"
+    local BASE_URL="http://localhost:8100"
 
     # Test CORS headers
     local cors_response

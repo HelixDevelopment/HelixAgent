@@ -115,7 +115,7 @@ send_prompt() {
             curl -sS --max-time "$timeout_s" -X POST \
                 -H "Content-Type: application/json" \
                 -d "$body" \
-                "http://localhost:7061/v1/chat/completions" 2>/dev/null | \
+                "http://localhost:8100/v1/chat/completions" 2>/dev/null | \
                 python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('choices',[{}])[0].get('message',{}).get('content',''))" 2>/dev/null
             ;;
     esac

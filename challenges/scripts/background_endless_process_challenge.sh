@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/challenge_framework.sh"
 CHALLENGE_NAME="background_endless_process"
 CHALLENGE_DESCRIPTION="Validates endless/long-running process support with monitoring and graceful shutdown"
 
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 
 # Initialize challenge framework
 init_challenge "$CHALLENGE_NAME" "$CHALLENGE_DESCRIPTION"

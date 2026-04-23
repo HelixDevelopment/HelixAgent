@@ -19,7 +19,7 @@ PASSED=0
 FAILED=0
 TOTAL=0
 PROJECT_ROOT="${SCRIPT_DIR}/../.."
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # ============================================================================
 # MISSION 1: Code Intelligence (LSP Protocol)

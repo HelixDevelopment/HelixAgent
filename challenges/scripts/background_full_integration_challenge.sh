@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/challenge_framework.sh"
 CHALLENGE_NAME="background_full_integration"
 CHALLENGE_DESCRIPTION="Comprehensive E2E test of background task queue, worker pool, notifications, and CLI rendering"
 
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 
 # Initialize challenge framework
 init_challenge "$CHALLENGE_NAME" "$CHALLENGE_DESCRIPTION"

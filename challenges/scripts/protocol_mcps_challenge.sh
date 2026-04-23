@@ -43,7 +43,7 @@ echo "Mode: Standalone (no OAuth required)"
 echo ""
 
 # Check if HelixAgent is running
-HELIXAGENT_URL="http://localhost:7061"
+HELIXAGENT_URL="http://localhost:8100"
 log_test "HelixAgent server health check"
 if curl -s --max-time 60 -m 5 "$HELIXAGENT_URL/health" | grep -q "healthy"; then
     pass "HelixAgent is running"
@@ -354,7 +354,7 @@ fi
 
 log_test "MCP server can initialize"
 INIT_RESP=$(echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
-    timeout 5s node "$MCP_SERVER" --endpoint http://localhost:7061 2>/dev/null | head -1 || echo "{}")
+    timeout 5s node "$MCP_SERVER" --endpoint http://localhost:8100 2>/dev/null | head -1 || echo "{}")
 if echo "$INIT_RESP" | grep -q "serverInfo\|helixagent"; then
     pass "MCP server initializes correctly"
 else

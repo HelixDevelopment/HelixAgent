@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/common.sh" 2>/dev/null || {
 }
 
 CHALLENGE_NAME="MCP All Servers Challenge"
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 PASSED=0
 FAILED=0
 TOTAL=0

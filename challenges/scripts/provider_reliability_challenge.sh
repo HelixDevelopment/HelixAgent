@@ -90,7 +90,7 @@ log_info "${PURPLE}========================================${NC}"
 echo ""
 
 # Check if HelixAgent is running
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 log_info "Checking HelixAgent at $HELIXAGENT_URL..."
 

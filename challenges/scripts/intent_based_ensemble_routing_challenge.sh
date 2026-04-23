@@ -53,7 +53,7 @@ log_section() {
 }
 
 check_helixagent() {
-    if curl -s --max-time 60 http://localhost:7061/health > /dev/null 2>&1; then
+    if curl -s --max-time 60 http://localhost:8100/health > /dev/null 2>&1; then
         return 0
     else
         return 1

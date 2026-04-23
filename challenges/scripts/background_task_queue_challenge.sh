@@ -11,7 +11,7 @@ CHALLENGE_NAME="background_task_queue"
 CHALLENGE_DESCRIPTION="Validates background task queue operations including priority ordering and dead-letter queue"
 
 # Test configuration
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 TIMEOUT=30
 
 # Initialize challenge framework

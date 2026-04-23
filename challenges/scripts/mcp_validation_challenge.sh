@@ -91,7 +91,7 @@ fi
 
 # Test 1.4: Check HelixAgent is running
 log_info "Test 1.4: HelixAgent is running"
-if curl -s --max-time 60 http://localhost:7061/health | grep -q "healthy"; then
+if curl -s --max-time 60 http://localhost:8100/health | grep -q "healthy"; then
     log_pass "HelixAgent is running and healthy"
 else
     log_skip "HelixAgent is not running"

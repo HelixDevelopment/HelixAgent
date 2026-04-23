@@ -33,7 +33,7 @@ HELIXAGENT_BINARY="$PROJECT_ROOT/bin/helixagent"
 CLI_AGENTS_DIR="$PROJECT_ROOT/scripts/cli-agents"
 PLUGINS_SRC_DIR="$PROJECT_ROOT/plugins"
 TEMP_CONFIG_DIR="$OUTPUT_DIR/generated_configs"
-BASE_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+BASE_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # CLI Agents to test (in order of priority)
 TESTABLE_CLI_AGENTS=("opencode" "claude" "cline" "aider" "kilo-code")

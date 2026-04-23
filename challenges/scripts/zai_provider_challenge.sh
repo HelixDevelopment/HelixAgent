@@ -361,7 +361,7 @@ fi
 
 # Test 28: HelixAgent health check
 log_info "Test 28: HelixAgent health check"
-HEALTH_RESP=$(curl -s --max-time 60 http://localhost:7061/v1/health 2>/dev/null)
+HEALTH_RESP=$(curl -s --max-time 60 http://localhost:8100/v1/health 2>/dev/null)
 if [ -n "$HEALTH_RESP" ]; then
     if echo "$HEALTH_RESP" | grep -q "healthy"; then
         log_success "HelixAgent is running and healthy"

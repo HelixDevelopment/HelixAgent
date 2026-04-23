@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: Code generation triggers Test-Driven mode
 test_start "Code generation triggers Test-Driven mode"
 TOPIC="Write a Python function to calculate fibonacci numbers"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -76,7 +76,7 @@ TRIGGERED=0
 
 for KEYWORD in "${CODE_KEYWORDS[@]}"; do
   TOPIC="$KEYWORD a sorting algorithm"
-  RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+  RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
     -H "Content-Type: application/json" \
     -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -96,7 +96,7 @@ fi
 # Test 7: Non-code tasks don't trigger Test-Driven mode
 test_start "Non-code tasks don't trigger Test-Driven mode"
 TOPIC="Explain how binary search works"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -115,7 +115,7 @@ LANG_COUNT=0
 
 for LANG in "${LANGUAGES[@]}"; do
   TOPIC="Write a $LANG function for email validation"
-  RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+  RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
     -H "Content-Type: application/json" \
     -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -135,7 +135,7 @@ fi
 # Test 9: Debate ID is preserved in Test-Driven mode
 test_start "Debate ID is preserved in Test-Driven mode"
 TOPIC="Write a function to validate credit card numbers"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 

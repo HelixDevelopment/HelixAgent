@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/challenge_framework.sh"
 CHALLENGE_NAME="background_resource_monitor"
 CHALLENGE_DESCRIPTION="Validates resource monitoring for background tasks including CPU, memory, and I/O tracking"
 
-API_BASE="${API_BASE:-http://localhost:7061}"
+API_BASE="${API_BASE:-http://localhost:8100}"
 
 # Initialize challenge framework
 init_challenge "$CHALLENGE_NAME" "$CHALLENGE_DESCRIPTION"

@@ -621,7 +621,7 @@ phase_network_connectivity() {
         return
     fi
 
-    # Test 6.1: HelixAgent reachable at localhost:7061
+    # Test 6.1: HelixAgent reachable at localhost:8100
     log_info "Test 6.1: Testing HelixAgent reachability..."
     if curl -s --connect-timeout 5 "$BASE_URL/health" > /dev/null 2>&1; then
         record_assertion "network" "helixagent_reachable" "true" "HelixAgent reachable at $BASE_URL"

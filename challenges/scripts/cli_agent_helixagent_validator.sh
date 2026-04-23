@@ -55,7 +55,7 @@ AGENT_FEATURES[kiro]="context_engine,intent,relationships"
 AGENT_FEATURES[cursor]="editor,completion,chat,composer"
 
 # HelixAgent endpoint
-HELIXAGENT_ENDPOINT="${HELIXAGENT_ENDPOINT:-http://localhost:7061}"
+HELIXAGENT_ENDPOINT="${HELIXAGENT_ENDPOINT:-http://localhost:8100}"
 
 usage() {
     cat <<EOF

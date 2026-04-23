@@ -209,7 +209,7 @@ fi
 
 # Test 21: Health endpoint responds
 print_test 21 "Health endpoint is accessible"
-if timeout 5 curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+if timeout 5 curl -sf http://localhost:8100/health > /dev/null 2>&1; then
     pass
 else
     fail "Health endpoint not responding"
@@ -217,7 +217,7 @@ fi
 
 # Test 22: Health status is healthy
 print_test 22 "Health status is 'healthy'"
-HEALTH_RESPONSE=$(timeout 5 curl -s --max-time 60 http://localhost:7061/health 2>/dev/null || echo '{"status":"unreachable"}')
+HEALTH_RESPONSE=$(timeout 5 curl -s --max-time 60 http://localhost:8100/health 2>/dev/null || echo '{"status":"unreachable"}')
 if echo "$HEALTH_RESPONSE" | grep -q '"status":"healthy"'; then
     pass
 else

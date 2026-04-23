@@ -18,7 +18,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BINARY="$PROJECT_ROOT/bin/helixagent"
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 OUTPUT_DIR="/tmp/websearch-challenge-$(date +%s)"
 RESULTS_FILE="$OUTPUT_DIR/websearch_results.json"
 VALIDATION_FILE="$OUTPUT_DIR/validation_report.txt"

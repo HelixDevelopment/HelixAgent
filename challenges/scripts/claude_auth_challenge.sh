@@ -29,7 +29,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh" 2>/dev/null || true
 
 # Configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 RESULTS_DIR="${RESULTS_DIR:-${SCRIPT_DIR}/../results/claude_auth/$(date +%Y/%m/%d/%Y%m%d_%H%M%S)}"
 TIMEOUT="${TIMEOUT:-30}"
 VERBOSE="${VERBOSE:-false}"

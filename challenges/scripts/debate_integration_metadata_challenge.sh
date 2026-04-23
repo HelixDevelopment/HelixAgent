@@ -17,7 +17,7 @@ print_header "$CHALLENGE_NAME"
 # Test 1: Basic metadata is present
 test_start "Basic debate metadata is present"
 TOPIC="Test metadata propagation"
-RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESPONSE=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -31,11 +31,11 @@ fi
 
 # Test 2: Debate ID is unique
 test_start "Debate ID is unique"
-RESP1=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP1=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"First debate\",\"max_rounds\":1}")
 
-RESP2=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP2=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"Second debate\",\"max_rounds\":1}")
 
@@ -63,7 +63,7 @@ fi
 # Test 4: Topic is preserved
 test_start "Topic is preserved in response"
 TOPIC="Custom topic for preservation test"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"$TOPIC\",\"max_rounds\":1}")
 
@@ -108,7 +108,7 @@ fi
 
 # Test 8: Rounds conducted is accurate
 test_start "Rounds conducted matches max rounds"
-RESP=$(curl -s --max-time 60 -X POST http://localhost:7061/v1/debates \
+RESP=$(curl -s --max-time 60 -X POST http://localhost:8100/v1/debates \
   -H "Content-Type: application/json" \
   -d "{\"topic\":\"Test rounds\",\"max_rounds\":2}")
 

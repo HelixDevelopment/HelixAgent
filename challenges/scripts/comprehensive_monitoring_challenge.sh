@@ -27,7 +27,7 @@ FAILED=0
 WARNINGS=0
 
 # Config
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://localhost:9093}"

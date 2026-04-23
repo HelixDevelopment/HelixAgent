@@ -17,7 +17,7 @@ CHALLENGE_NAME="AI Debate Team Model Version Challenge"
 PASSED=0
 FAILED=0
 TOTAL=0
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 
 log_info "=============================================="
 log_info "$CHALLENGE_NAME"

@@ -31,101 +31,101 @@ type MCPContainerPort struct {
 // Port allocation scheme for containerized MCP servers
 // Organized by category for easy management and no conflicts
 var MCPContainerPorts = []MCPContainerPort{
-	// TIER 1: Core Official MCP Servers (9101-9120)
-	{"fetch", 9101, "core"},
-	{"git", 9102, "core"},
-	{"time", 9103, "core"},
-	{"filesystem", 9104, "core"},
-	{"memory", 9105, "core"},
-	{"everything", 9106, "core"},
-	{"sequential-thinking", 9107, "core"},
-	{"sqlite", 9108, "core"},
-	{"puppeteer", 9109, "core"},
-	{"postgres", 9110, "core"},
+	// TIER 1: Core Official MCP Servers (8200-8209)
+	{"fetch", 8200, "core"},
+	{"git", 8201, "core"},
+	{"time", 8202, "core"},
+	{"filesystem", 8203, "core"},
+	{"memory", 8204, "core"},
+	{"everything", 8205, "core"},
+	{"sequential-thinking", 8206, "core"},
+	{"sqlite", 8207, "core"},
+	{"puppeteer", 8208, "core"},
+	{"postgres", 8209, "core"},
 
-	// TIER 2: Database MCP Servers (9201-9220)
-	{"mongodb", 9201, "database"},
-	{"redis", 9202, "database"},
-	{"mysql", 9203, "database"},
-	{"elasticsearch", 9204, "database"},
-	{"supabase", 9205, "database"},
+	// TIER 2: Database MCP Servers (8210-8214)
+	{"mongodb", 8210, "database"},
+	{"redis", 8211, "database"},
+	{"mysql", 8212, "database"},
+	{"elasticsearch", 8213, "database"},
+	{"supabase", 8214, "database"},
 
-	// TIER 3: Vector Database MCP Servers (9301-9320)
-	{"qdrant", 9301, "vector"},
-	{"chroma", 9302, "vector"},
-	{"pinecone", 9303, "vector"},
-	{"weaviate", 9304, "vector"},
+	// TIER 3: Vector Database MCP Servers (8215-8218)
+	{"qdrant", 8215, "vector"},
+	{"chroma", 8216, "vector"},
+	{"pinecone", 8217, "vector"},
+	{"weaviate", 8218, "vector"},
 
-	// TIER 4: DevOps & Infrastructure (9401-9440)
-	{"github", 9401, "devops"},
-	{"gitlab", 9402, "devops"},
-	{"sentry", 9403, "devops"},
-	{"kubernetes", 9404, "devops"},
-	{"docker", 9405, "devops"},
-	{"ansible", 9406, "devops"},
-	{"aws", 9407, "devops"},
-	{"gcp", 9408, "devops"},
-	{"heroku", 9409, "devops"},
-	{"cloudflare", 9410, "devops"},
-	{"vercel", 9411, "devops"},
-	{"workers", 9412, "devops"},
-	{"jetbrains", 9413, "devops"},
-	{"k8s-alt", 9414, "devops"},
+	// TIER 4: DevOps & Infrastructure (8220-8233)
+	{"github", 8220, "devops"},
+	{"gitlab", 8221, "devops"},
+	{"sentry", 8222, "devops"},
+	{"kubernetes", 8223, "devops"},
+	{"docker", 8224, "devops"},
+	{"ansible", 8225, "devops"},
+	{"aws", 8226, "devops"},
+	{"gcp", 8227, "devops"},
+	{"heroku", 8228, "devops"},
+	{"cloudflare", 8229, "devops"},
+	{"vercel", 8230, "devops"},
+	{"workers", 8231, "devops"},
+	{"jetbrains", 8232, "devops"},
+	{"k8s-alt", 8233, "devops"},
 
-	// TIER 5: Browser & Web Automation (9501-9520)
-	{"playwright", 9501, "browser"},
-	{"browserbase", 9502, "browser"},
-	{"firecrawl", 9503, "browser"},
-	{"crawl4ai", 9504, "browser"},
+	// TIER 5: Browser & Web Automation (8234-8237)
+	{"playwright", 8234, "browser"},
+	{"browserbase", 8235, "browser"},
+	{"firecrawl", 8236, "browser"},
+	{"crawl4ai", 8237, "browser"},
 
-	// TIER 6: Communication (9601-9620)
-	{"slack", 9601, "communication"},
-	{"discord", 9602, "communication"},
-	{"telegram", 9603, "communication"},
+	// TIER 6: Communication (8238-8240)
+	{"slack", 8238, "communication"},
+	{"discord", 8239, "communication"},
+	{"telegram", 8240, "communication"},
 
-	// TIER 7: Productivity & Project Management (9701-9740)
-	{"notion", 9701, "productivity"},
-	{"linear", 9702, "productivity"},
-	{"jira", 9703, "productivity"},
-	{"asana", 9704, "productivity"},
-	{"trello", 9705, "productivity"},
-	{"todoist", 9706, "productivity"},
-	{"monday", 9707, "productivity"},
-	{"airtable", 9708, "productivity"},
-	{"obsidian", 9709, "productivity"},
-	{"atlassian", 9710, "productivity"},
+	// TIER 7: Productivity & Project Management (8250-8259)
+	{"notion", 8250, "productivity"},
+	{"linear", 8251, "productivity"},
+	{"jira", 8252, "productivity"},
+	{"asana", 8253, "productivity"},
+	{"trello", 8254, "productivity"},
+	{"todoist", 8255, "productivity"},
+	{"monday", 8256, "productivity"},
+	{"airtable", 8257, "productivity"},
+	{"obsidian", 8258, "productivity"},
+	{"atlassian", 8259, "productivity"},
 
-	// TIER 8: Search & AI (9801-9840)
-	{"brave-search", 9801, "search"},
-	{"exa", 9802, "search"},
-	{"tavily", 9803, "search"},
-	{"perplexity", 9804, "search"},
-	{"kagi", 9805, "search"},
-	{"omnisearch", 9806, "search"},
-	{"context7", 9807, "search"},
-	{"llamaindex", 9808, "search"},
-	{"langchain", 9809, "search"},
-	{"openai", 9810, "search"},
+	// TIER 8: Search & AI (8260-8269)
+	{"brave-search", 8260, "search"},
+	{"exa", 8261, "search"},
+	{"tavily", 8262, "search"},
+	{"perplexity", 8263, "search"},
+	{"kagi", 8264, "search"},
+	{"omnisearch", 8265, "search"},
+	{"context7", 8266, "search"},
+	{"llamaindex", 8267, "search"},
+	{"langchain", 8268, "search"},
+	{"openai", 8269, "search"},
 
-	// TIER 9: Google Services (9901-9920)
-	{"google-drive", 9901, "google"},
-	{"google-calendar", 9902, "google"},
-	{"google-maps", 9903, "google"},
-	{"youtube", 9904, "google"},
-	{"gmail", 9905, "google"},
+	// TIER 9: Google Services (8270-8274)
+	{"google-drive", 8270, "google"},
+	{"google-calendar", 8271, "google"},
+	{"google-maps", 8272, "google"},
+	{"youtube", 8273, "google"},
+	{"gmail", 8274, "google"},
 
-	// TIER 10: Monitoring & Observability (9921-9940)
-	{"datadog", 9921, "monitoring"},
-	{"grafana", 9922, "monitoring"},
-	{"prometheus", 9923, "monitoring"},
+	// TIER 10: Monitoring & Observability (8275-8277)
+	{"datadog", 8275, "monitoring"},
+	{"grafana", 8276, "monitoring"},
+	{"prometheus", 8277, "monitoring"},
 
-	// TIER 11: Finance & Business (9941-9960)
-	{"stripe", 9941, "finance"},
-	{"hubspot", 9942, "finance"},
-	{"zendesk", 9943, "finance"},
+	// TIER 11: Finance & Business (8278-8280)
+	{"stripe", 8278, "finance"},
+	{"hubspot", 8279, "finance"},
+	{"zendesk", 8280, "finance"},
 
-	// TIER 12: Design (9961-9970)
-	{"figma", 9961, "design"},
+	// TIER 12: Design (8281)
+	{"figma", 8281, "design"},
 }
 
 // ContainerMCPConfigGenerator generates containerized MCP configurations

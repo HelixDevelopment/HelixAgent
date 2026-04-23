@@ -383,31 +383,45 @@ func ensureMCPServers(logger *logrus.Logger) error {
 
 	// Start in background — MCP servers are optional.
 	go func() {
-		ctx, cancel := context.WithTimeout(
-			context.Background(), 120*time.Second,
-		)
-		defer cancel()
+		// No outer deadline: the Containers module applies its own
+		// CommandTimeout (30 min) per SSH call, which is the right
+		// backstop for compose operations that legitimately take
+		// several minutes to build/pull images. The previous 120s
+		// deadline here killed every remote MCP-compose run before
+		// it could finish pulling.
+		ctx := context.Background()
 
 		if globalContainerAdapter.RemoteEnabled() {
+			// Strict-remote mode (CONST-031): when remote
+			// distribution is enabled, NEVER fall back to local
+			// compose. Fan-out succeeds partially if any single
+			// host accepted the deploy; full failure is reported
+			// upstream. A mixed local+remote deployment silently
+			// masks remote breakage and violates the Mandatory
+			// Container Orchestration Flow.
 			if err := globalContainerAdapter.RemoteComposeUp(
 				ctx, mcpComposeFile, "",
 			); err != nil {
-				logger.WithError(err).Warn(
-					"Failed to start MCP servers on remote, trying local",
-				)
-			} else {
-				logger.Info(
-					"MCP servers started on remote host (32 servers on ports 9101-9999)",
+				logger.WithError(err).Error(
+					"MCP servers remote-deploy failed on ALL hosts; " +
+						"strict-remote mode skips local fallback per " +
+						"CONST-031. MCP servers will not be available " +
+						"until remote distribution recovers.",
 				)
 				return
 			}
+			logger.Info(
+				"MCP servers started on remote host(s) via Containers module",
+			)
+			return
 		}
 
+		// Only reached when CONTAINERS_REMOTE_ENABLED=false.
 		if err := globalContainerAdapter.ComposeUp(
 			ctx, mcpComposeFile, "",
 		); err != nil {
 			logger.WithError(err).Warn(
-				"Failed to start some MCP servers",
+				"Failed to start some MCP servers (local mode)",
 			)
 			return
 		}

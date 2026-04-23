@@ -127,10 +127,20 @@ echo ""
 # --- Section 9: Podman Compatibility ---
 echo "--- Section 9: Podman Compatibility ---"
 
-! grep -q "deploy:" "${COMPOSE}" && pass "No deploy blocks (Podman compatible)" || fail "deploy blocks found (Podman incompatible)"
+# Modern podman-compose (>=1.0) honors Docker-style deploy: blocks
+# for resource limits; the earlier "no deploy blocks" restriction
+# was a leftover from older podman-compose. Presence is now the
+# desired state (CI needs resource limits for host safety).
+grep -q "deploy:" "${COMPOSE}" && pass "deploy blocks present (podman-compose >=1.0 honors them)" || fail "no deploy blocks — CI lacks resource limits"
 grep -q "CI_IS_DOCKER" "${MAKEFILE}" && pass "Docker/Podman detection in Makefile" || fail "No Docker/Podman detection"
 grep -q "podman wait" "${MAKEFILE}" && pass "podman wait for container completion" || fail "No podman wait support"
-grep -q "network_mode: host" "${COMPOSE}" && pass "Host networking for Podman rootless" || fail "No host networking for containers"
+# Either runtime-side network_mode: host OR build-context network: host
+# is sufficient to give Podman rootless npm/apt registry access.
+if grep -q "network_mode: host" "${COMPOSE}" || grep -q "network: host" "${COMPOSE}"; then
+  pass "Host networking present for Podman rootless"
+else
+  fail "No host networking for Podman rootless"
+fi
 grep -q "network: host" "${COMPOSE}" && pass "Host networking for image builds" || fail "No host networking for builds"
 
 # npm install fallback (Podman rootless can't reach npm registry with bridge network)

@@ -71,10 +71,16 @@ fi
 # Test 2: Unit tests pass
 log_info "Test 2: Running unit tests for fallback mechanism..."
 cd "${PROJECT_ROOT}"
-if go test -run "TestReliableAPIProvidersCollection|TestFallbackChainIncludesWorkingProviders" ./internal/services/ > /dev/null 2>&1; then
+# Resource-gate (CONST-015) and cap wall-clock: prior version used default
+# Go test timeout (10 min) with no CPU gating, which hung under the usual
+# "full system booted + concurrent challenges" load.
+if GOMAXPROCS=2 nice -n 19 ionice -c 3 \
+    go test -short -timeout 60s -p 1 \
+    -run "TestReliableAPIProvidersCollection|TestFallbackChainIncludesWorkingProviders" \
+    ./internal/services/ > /dev/null 2>&1; then
     log_pass "Unit tests pass"
 else
-    log_warn "Some unit tests failed (may be due to test setup - checking live system instead)"
+    log_warn "Some unit tests failed or timed out (may be test setup or contention - checking live system instead)"
     # If unit tests fail, verify the live system has working fallbacks
     if grep -q "collectReliableAPIProviders" "${PROJECT_ROOT}/internal/services/debate_team_config.go"; then
         log_pass "Fallback mechanism exists in code"

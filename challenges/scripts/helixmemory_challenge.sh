@@ -276,8 +276,8 @@ run_test "HelixMemory is DEFAULT (IsHelixMemoryEnabled=true)" \
 run_test "Debate service imports HelixMemory adapter" \
     "grep -q 'memoryadapter.*internal/adapters/memory' '$PROJECT_ROOT/internal/services/debate_service.go'"
 
-run_test "Debate service has memoryAdapter field" \
-    "grep -q 'memoryAdapter.*StoreAdapter' '$PROJECT_ROOT/internal/services/debate_service.go'"
+run_test "Debate service has memoryAdapter field + SetMemoryAdapter setter" \
+    "grep -qE 'memoryAdapter[[:space:]]+interface' '$PROJECT_ROOT/internal/services/debate_service.go' && grep -qE 'SetMemoryAdapter\\(adapter \\*memoryadapter\\.StoreAdapter\\)' '$PROJECT_ROOT/internal/services/debate_service.go'"
 
 run_test "Debate service has IsHelixMemoryActive method" \
     "grep -q 'func.*DebateService.*IsHelixMemoryActive' '$PROJECT_ROOT/internal/services/debate_service.go'"

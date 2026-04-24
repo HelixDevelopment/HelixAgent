@@ -22,19 +22,38 @@ PROJECT_ROOT="${SCRIPT_DIR}/../.."
 # Detect remote container deployment
 CONTAINERS_ENV="$PROJECT_ROOT/Containers/.env"
 REMOTE_ENABLED=false
-REMOTE_HOST=""
-REMOTE_USER=""
+REMOTE_HOST=""      # first-discovered host — kept for legacy callers below
+REMOTE_USER=""      # first-discovered user
+REMOTE_HOSTS=()     # all CONTAINERS_REMOTE_HOST_N_ADDRESS values, in N order
+REMOTE_USERS=()     # parallel array of per-host users
 
 if [[ -f "$CONTAINERS_ENV" ]]; then
+    # Collect per-N values into arrays so we iterate over every configured host
+    # rather than silently keeping only the last (CONST-031: N scales freely).
+    declare -A _addr_by_n _user_by_n
     while IFS='=' read -r k v; do
         [[ "$k" =~ ^#.*$ || -z "$k" ]] && continue
         v="${v%\"}"; v="${v#\"}"
         case "$k" in
             CONTAINERS_REMOTE_ENABLED) [[ "${v,,}" == "true" ]] && REMOTE_ENABLED=true ;;
-            CONTAINERS_REMOTE_HOST_*_ADDRESS) REMOTE_HOST="$v" ;;
-            CONTAINERS_REMOTE_HOST_*_USER) REMOTE_USER="$v" ;;
+            CONTAINERS_REMOTE_HOST_*_ADDRESS)
+                n="${k#CONTAINERS_REMOTE_HOST_}"; n="${n%_ADDRESS}"
+                _addr_by_n["$n"]="$v" ;;
+            CONTAINERS_REMOTE_HOST_*_USER)
+                n="${k#CONTAINERS_REMOTE_HOST_}"; n="${n%_USER}"
+                _user_by_n["$n"]="$v" ;;
         esac
     done < "$CONTAINERS_ENV"
+    # Emit in numerical order of N so ordering is stable + deterministic.
+    for n in $(printf '%s\n' "${!_addr_by_n[@]}" | sort -n); do
+        REMOTE_HOSTS+=("${_addr_by_n[$n]}")
+        REMOTE_USERS+=("${_user_by_n[$n]:-$USER}")
+    done
+    if [ "${#REMOTE_HOSTS[@]}" -gt 0 ]; then
+        REMOTE_HOST="${REMOTE_HOSTS[0]}"
+        REMOTE_USER="${REMOTE_USERS[0]}"
+    fi
+    unset _addr_by_n _user_by_n
 fi
 
 # Helper to check port on correct host
@@ -744,12 +763,23 @@ fi
 TOTAL=$((TOTAL + 1))
 log_info "Test 50: Required containers running"
 
-if [[ "$REMOTE_ENABLED" == "true" && -n "$REMOTE_HOST" ]]; then
-    # Remote mode: check containers on remote host, fall back to local
-    CONTAINER_COUNT=$(ssh -o ConnectTimeout=5 -o BatchMode=yes "${REMOTE_USER:-$USER}@$REMOTE_HOST" \
-        "podman ps --format '{{.Names}}' | grep helixagent | wc -l" 2>/dev/null | tr -d ' ' || echo "0")
-    if [ "$CONTAINER_COUNT" -ge 2 ]; then
-        log_success "Found $CONTAINER_COUNT helixagent containers on remote host $REMOTE_HOST"
+if [[ "$REMOTE_ENABLED" == "true" && "${#REMOTE_HOSTS[@]}" -gt 0 ]]; then
+    # Remote mode: iterate EVERY configured host, summing container counts.
+    # Previous versions checked only the first-or-last host in .env, which
+    # masked distribution to other hosts (CONST-031).
+    TOTAL_REMOTE=0
+    CHECKED_HOSTS=()
+    for i in "${!REMOTE_HOSTS[@]}"; do
+        h="${REMOTE_HOSTS[$i]}"
+        u="${REMOTE_USERS[$i]:-$USER}"
+        c=$(ssh -o ConnectTimeout=5 -o BatchMode=yes "${u}@${h}" \
+            "podman ps --format '{{.Names}}' | grep helixagent | wc -l" 2>/dev/null | tr -d ' ')
+        c=${c:-0}
+        CHECKED_HOSTS+=("${h}=${c}")
+        TOTAL_REMOTE=$((TOTAL_REMOTE + c))
+    done
+    if [ "$TOTAL_REMOTE" -ge 2 ]; then
+        log_success "Found $TOTAL_REMOTE helixagent containers across ${#REMOTE_HOSTS[@]} remote host(s): ${CHECKED_HOSTS[*]}"
         PASSED=$((PASSED + 1))
     else
         # Fallback: check local containers (test infra may be running locally)
@@ -757,10 +787,10 @@ if [[ "$REMOTE_ENABLED" == "true" && -n "$REMOTE_HOST" ]]; then
         command -v docker &>/dev/null && RUNTIME="docker"
         LOCAL_COUNT=$($RUNTIME ps --format "{{.Names}}" 2>/dev/null | grep "helixagent" | wc -l | tr -d ' ')
         if [ "$LOCAL_COUNT" -ge 2 ]; then
-            log_success "Found $LOCAL_COUNT helixagent containers running locally (remote has $CONTAINER_COUNT)"
+            log_success "Found $LOCAL_COUNT helixagent containers running locally (remote total=$TOTAL_REMOTE: ${CHECKED_HOSTS[*]})"
             PASSED=$((PASSED + 1))
         else
-            log_error "Only $CONTAINER_COUNT containers on remote host $REMOTE_HOST and $LOCAL_COUNT locally (need >= 2)"
+            log_error "Only $TOTAL_REMOTE containers across remote hosts (${CHECKED_HOSTS[*]}) and $LOCAL_COUNT locally (need >= 2)"
             FAILED=$((FAILED + 1))
         fi
     fi

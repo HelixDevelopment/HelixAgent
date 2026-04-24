@@ -2996,16 +2996,25 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 		topic = "User Query"
 	}
 
-	// Configure debate with the verified team participants
+	// Configure debate with the verified team participants.
+	// Issue #43 continuation: pass source=openai_compatible metadata so
+	// DebateService.ConductDebate bypasses the orphaned Comprehensive
+	// stub (debate_service.go:697) and routes to conductRealDebate — the
+	// same path the streaming handler has always used successfully.
+	// Timeout must be > 0 — conductRealDebate calls
+	// context.WithTimeout(ctx, config.Timeout), which immediately cancels
+	// if Timeout is the zero value, producing an empty result set.
 	debateConfig := services.DebateConfig{
 		DebateID:     fmt.Sprintf("debate-%d", time.Now().UnixNano()),
 		Topic:        topic,
 		MaxRounds:    1,
+		Timeout:      120 * time.Second,
 		EnableCognee: false,
 		Strategy:     "collaborative",
 		Participants: participants,
 		Tools:        req.Tools,
 		ToolChoice:   req.ToolChoice,
+		Metadata:     map[string]any{"source": "openai_compatible"},
 	}
 
 	// Run the debate using the debate service (uses the configured 25 LLM team)

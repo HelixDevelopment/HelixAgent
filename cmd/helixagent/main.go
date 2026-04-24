@@ -1887,13 +1887,29 @@ func main() {
 	}
 	logrus.WithField("gomaxprocs", runtime.GOMAXPROCS(0)).Info("CPU parallelism configured")
 
-	// Load environment variables from .env file (if present)
-	// This allows API keys and configuration to be loaded automatically
-	if err := godotenv.Load(); err != nil {
-		// Don't fail if .env doesn't exist - environment variables may be set directly
-		// Only log if there's a real error (not "file not found")
-		if !os.IsNotExist(err) {
-			logrus.WithError(err).Debug("Could not load .env file")
+	// Load environment variables from .env files.
+	//
+	// The project's convention is a two-tier env setup:
+	//   1. `.env.bak` contains the REAL secret values under alternate names
+	//      (ApiKey_Cerebras=<actual-key>, ApiKey_GitHub_Models=<actual-key>, …).
+	//   2. `.env` contains the canonical env-var names referencing those secrets
+	//      (CEREBRAS_API_KEY=${ApiKey_Cerebras}, …).
+	//
+	// godotenv.Overload expands ${VAR} references using values already in the
+	// process environment at the time Overload runs — so .env.bak must be loaded
+	// FIRST (to populate ApiKey_*), then .env (which substitutes them).
+	//
+	// Without loading .env.bak, every ${ApiKey_*} in .env resolves to the literal
+	// string "$ApiKey_Cerebras" / "$ApiKey_Groq" / etc. and every provider gets 401.
+	// This is exactly the bug caught in SESSION_2026-04-24 late afternoon, where
+	// 17 of 25 providers failed their health check with "401 Unauthorized".
+	//
+	// Each file is optional — if missing, we skip without logging an error.
+	for _, f := range []string{".env.bak", ".env"} {
+		if _, err := os.Stat(f); err == nil {
+			if lerr := godotenv.Overload(f); lerr != nil {
+				logrus.WithError(lerr).WithField("file", f).Warn("Could not load env file")
+			}
 		}
 	}
 

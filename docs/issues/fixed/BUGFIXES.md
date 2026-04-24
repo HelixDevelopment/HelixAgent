@@ -1084,4 +1084,67 @@ But the implementation only honored that on PostgreSQL and Redis — `Remote: re
 
 ---
 
+## Issue #41: `godotenv.Load` ignored shell-exported empty keys; `.env`'s `${VAR}` refs never resolved (BUGFIX 2026-04-24)
+
+### Issue
+On boot, 17 of 25 configured LLM providers failed their health check with `401 "Wrong API Key"` or `"API key is invalid or expired"`, even though the `.env` file contained 42 `_API_KEY=` entries and the underlying keys were confirmed valid via direct `curl -H "Authorization: Bearer <key>"` against each provider's own API (every such direct call returned HTTP 200).
+
+### Root Cause
+Two layered bugs in `cmd/helixagent/main.go`'s env loading:
+
+1. **Wrong godotenv function.** The code used `godotenv.Load()`, which refuses to overwrite any env var the shell already exported — including empty strings. If the operator's shell had `CEREBRAS_API_KEY=""` (or any of the others) set to empty from a prior session, that empty value stuck.
+
+2. **`.env` is a reference file, not a values file.** The project's actual convention stores real secrets in `.env.bak` under alternate names (`ApiKey_Cerebras=csk-…`, `ApiKey_GitHub_Models=…`, etc.) and `.env` contains the canonical env-var names that reference them (`CEREBRAS_API_KEY=${ApiKey_Cerebras}`). godotenv performs `${VAR}` substitution at load time using whatever's already in the process env. So without `.env.bak` being loaded FIRST, every `${ApiKey_*}` in `.env` resolved to the literal string "$ApiKey_Cerebras" — sent verbatim as the auth header.
+
+### Fix Applied
+`cmd/helixagent/main.go` startup sequence now:
+
+```go
+for _, f := range []string{".env.bak", ".env"} {
+    if _, err := os.Stat(f); err == nil {
+        if lerr := godotenv.Overload(f); lerr != nil {
+            logrus.WithError(lerr).WithField("file", f).Warn("Could not load env file")
+        }
+    }
+}
+```
+
+- `.env.bak` loads first → populates `ApiKey_*` variables.
+- `.env` loads second → `${ApiKey_*}` references resolve against the now-populated env.
+- `Overload` (vs `Load`) ensures .env's values replace shell env vars that were set empty.
+
+### Verification
+- `/proc/<pid>/environ CEREBRAS_API_KEY` now holds a real `csk-…` key (52 chars, real format) — confirmed via sha256 hash matching `.env.bak`'s `ApiKey_Cerebras`.
+- Direct `curl -H "Authorization: Bearer <env-key>" https://api.cerebras.ai/v1/chat/completions` returns HTTP 200 with a valid completion — the loaded value is a working key.
+
+### Known Follow-Up (NOT CLOSED by this fix)
+Despite the key being correctly loaded in the process environment, helixagent's in-process HTTP request to Cerebras still returns `401 "Wrong API Key"`. The Go code path (`cerebras.NewCerebrasProvider(apiKey, "", modelID)` → `Authorization: Bearer "+p.apiKey`) is byte-identical to the direct curl that succeeds. Same observation for Mistral, Groq, Cohere, Codestral, Fireworks, Replicate. Something in helixagent's outbound HTTP stack — not the env loader — mutates the request. Possible directions to investigate:
+
+- A global `http.RoundTripper` installed by observability / security middleware.
+- The `SSL_CERT_FILE=/home/milosvasic/.helixagent/ca-bundle.pem` chain interacting with Cerebras's TLS (unlikely: bundle has 146 certs, a superset of the system bundle).
+- Per-provider config reading a different env name than the discovery code expects.
+
+Opened as Issue #42 below.
+
+### Affected Files
+- `cmd/helixagent/main.go` (env loading block ~line 1890)
+
+---
+
+## Issue #42: Loaded-but-rejected keys — 17 providers 401 from in-process calls despite env loading correctly (OPEN 2026-04-24)
+
+### Issue
+After Issue #41's fix, every LLM-provider API key is verifiably present in helixagent's environment (and matches its source in `.env.bak` byte-for-byte). Direct `curl` calls using those same keys succeed (HTTP 200) against every provider. But when the helixagent binary itself makes the same requests, Cerebras / Mistral / Groq / Cohere / Codestral / Fireworks / Replicate / GitHub-Models / Hyperbolic / Kimi / SiliconFlow / Upstage / ZAI all return `401 "Wrong API Key"`.
+
+### Status
+**OPEN** — not reproduced-and-fixed in-session. Needs a focused debugging session with a diagnostic log of the actual outbound `Authorization` header bytes at send time (compared against the curl-verified value), and a sweep for any `http.RoundTripper` or TLS config in helixagent's HTTP stack that could mutate the header.
+
+Suggested triage path:
+1. Add a SHA-256 hash log of `p.apiKey` in `cerebras.HealthCheck` and `cerebras.Complete` just before `req.Header.Set("Authorization", …)`. Compare to the hash of `/proc/<pid>/environ`'s CEREBRAS_API_KEY.
+2. If hashes match: compare the raw bytes of `req.Header.Get("Authorization")` vs the string `"Bearer "+p.apiKey` character-by-character before the request is dispatched.
+3. If those match: tcpdump / mitmproxy the outbound connection and compare the on-the-wire headers vs curl's.
+4. If still nothing: bisect the recent commits that touched provider HTTP clients / observability middleware.
+
+---
+
 Last Updated: April 24, 2026

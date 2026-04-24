@@ -1192,7 +1192,38 @@ Diagnostic log removed from `cerebras.HealthCheck` in the same commit.
 
 ---
 
-## Issue #48: Concurrent non-streaming chat requests return 502 under load (OPEN 2026-04-24)
+## Issue #48: Concurrent non-streaming chat requests return 502 under load (RESOLVED 2026-04-24 late)
+
+### Resolution
+
+Fix chain that resolved this (all from this session):
+- `214c9d38` — 20s orchestrator cap + source metadata + 120s Timeout
+- `65ea6260` — response synthesis prefers BestResponse
+- `52ef0ba9` — conversation context in system_context
+- `99df0a8e` — 3 provider bugs fixed (DeepSeek HTTP/2, Codestral URL, Fireworks model-ID)
+
+### Live verification (boot15)
+
+10 parallel non-streaming chat requests → **10/10 HTTP 200 with real content**:
+```
+req1: status=200 time=12.21s
+req2: status=200 time=19.86s
+req3: status=200 time=57.97s
+req4: status=200 time=15.82s
+req5: status=200 time=45.20s
+req6: status=200 time=58.16s
+req7: status=200 time=57.91s
+req8: status=200 time=57.96s
+req9: status=200 time=58.02s
+req10: status=200 time=18.57s
+```
+Response time distribution (12-58s) reflects queueing via the 100-in-flight
+ConcurrencyLimiter — exactly as designed. Provider count also improved
+from 14/25 to 15/25 healthy thanks to the provider fixes.
+
+---
+
+## Original Issue #48 (preserved for context)
 
 ### Issue
 

@@ -2879,7 +2879,13 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 			MinConsensus: 0.6,
 		}
 
-		debateResp, err := h.orchestratorIntegration.GetOrchestrator().ConductDebate(ctx, debateReq)
+		// Issue #43: the 8-phase NEW orchestrator regularly hangs for ~60s
+		// before failing, blowing through client curl/fetch default timeouts.
+		// Bound it to 20s so the DebateService fallback has budget to
+		// produce a real response within a reasonable client wall-clock.
+		orchCtx, orchCancel := context.WithTimeout(ctx, 20*time.Second)
+		debateResp, err := h.orchestratorIntegration.GetOrchestrator().ConductDebate(orchCtx, debateReq)
+		orchCancel()
 		if err == nil && debateResp != nil {
 			logrus.Info("[CODE PATH] NEW orchestrator SUCCEEDED - returning result")
 			// Extract the consensus response from the debate

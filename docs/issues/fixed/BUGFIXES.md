@@ -1192,7 +1192,7 @@ Diagnostic log removed from `cerebras.HealthCheck` in the same commit.
 
 ---
 
-## Issue #43: Chat completions hang 30-90s then return 0-round degenerate debate (OPEN 2026-04-24)
+## Issue #43: Chat completions hang 30-90s then return 0-round degenerate debate (PARTIAL 2026-04-24)
 
 ### Issue
 After Issues #41+#42 were fixed (14 of 25 providers now healthy, keys load correctly), end-to-end `/v1/chat/completions` requests still return degenerate responses:
@@ -1202,6 +1202,31 @@ After Issues #41+#42 were fixed (14 of 25 providers now healthy, keys load corre
 ```
 
 Timing varies from ~8s to ~100s. The HTTP response is 200 OK but carries a placeholder message.
+
+### Further Investigation (2026-04-24, systematic-debugging, ultrathink)
+
+Live request replay against running binary:
+- `stream=true` path works: 2 real rounds, 9 verified LLM responses, consensus emitted. Response completes in ~17s.
+- `stream=false` path eventually works: returned a full real-LLM response after **93 seconds** wall-clock. The "0 rounds" placeholder text is emitted ONLY by the orphaned comprehensive-debate path (`internal/services/debate_service_comprehensive.go:72`), not by the code path actually reached for `/v1/chat/completions` requests.
+
+Routing map (verified from live logs):
+- `stream=true` → `handleStreamingChatCompletions` @ `openai_compatible.go:544` → `h.debateService.ConductDebate(ctx, debateConfig)` with `Metadata["source"]="openai_compatible"` → `conductRealDebate` (comprehensive bypassed on openai source). This is the good path.
+- `stream=false` → `processWithEnsemble` @ `openai_compatible.go:2289` → `processWithOrchestrator` @ `openai_compatible.go:2854`. That function tries the NEW 8-phase orchestrator (`h.orchestratorIntegration.GetOrchestrator().ConductDebate`). The orchestrator hangs up to ~60s before returning "context canceled", then falls back to DebateService which succeeds.
+
+That ~60s NEW-orchestrator stall is what eats the client's 60s default timeout — the request would succeed if the client waited long enough.
+
+The orphaned comprehensive-stub path (`DebateOrchestrator/comprehensive/engine_debate.go` — all phase bodies are empty comments) IS on `StreamDebate` called from `processWithComprehensiveStream`, but that function is only reached by `processWithEnsembleStream` (a deeper streaming path that the current request flow does not invoke). Fix deferred, not blocking the chat path.
+
+### Mitigation Applied
+`internal/handlers/openai_compatible.go:~2882` — wrap the NEW orchestrator call in a 20-second `context.WithTimeout`. Rationale: the orchestrator's failure mode is a 30-60s hang that blows client budget; a tight bound fails it fast and lets the known-good DebateService fallback run in the remaining budget. This is a mitigation, not a structural fix — the orchestrator itself still hangs and should be separately triaged (suspected: agent-pool minimum-count check or phase-0 deadline too aggressive for the 14 currently-healthy providers).
+
+```go
+// Issue #43: the 8-phase NEW orchestrator regularly hangs for ~60s
+// before failing, blowing through client curl/fetch default timeouts.
+orchCtx, orchCancel := context.WithTimeout(ctx, 20*time.Second)
+debateResp, err := h.orchestratorIntegration.GetOrchestrator().ConductDebate(orchCtx, debateReq)
+orchCancel()
+```
 
 ### Observed Behavior
 Helixagent log shows:

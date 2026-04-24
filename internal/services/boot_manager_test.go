@@ -63,10 +63,18 @@ func TestBootAll_RemoteSkipsCompose(t *testing.T) {
 		t.Errorf("Expected no error for optional remote services, got: %v", err)
 	}
 
-	// Verify remote services are marked as "remote" in results
+	// Verify remote services are marked as "remote" in results.
+	// Only check services that are BOTH Remote and Enabled — a Remote=true,
+	// Enabled=false service correctly gets status "skipped" via the Enabled
+	// branch in BootManager (boot_manager.go:173). After
+	// config.DefaultServicesConfig() started honoring CONTAINERS_REMOTE_ENABLED
+	// to default-flip Remote on 16 services, several of them (rabbitmq,
+	// langchain, weaviate, grafana, minio, spark_worker, qdrant, neo4j,
+	// kafka, clickhouse) arrive Enabled=false and don't belong in this
+	// assertion.
 	for name, result := range bm.GetResults() {
 		ep := cfg.AllEndpoints()[name]
-		if ep.Remote && result.Status != "remote" && result.Status != "failed" {
+		if ep.Remote && ep.Enabled && result.Status != "remote" && result.Status != "failed" {
 			t.Errorf("Expected remote service %s to have status 'remote', got %s", name, result.Status)
 		}
 	}

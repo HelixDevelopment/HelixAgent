@@ -1192,4 +1192,72 @@ Diagnostic log removed from `cerebras.HealthCheck` in the same commit.
 
 ---
 
+## Issue #43: Chat completions hang 30-90s then return 0-round degenerate debate (OPEN 2026-04-24)
+
+### Issue
+After Issues #41+#42 were fixed (14 of 25 providers now healthy, keys load correctly), end-to-end `/v1/chat/completions` requests still return degenerate responses:
+
+```
+{"id":"debate-…","choices":[{"message":{"content":"Comprehensive debate completed with 0 rounds"}}]}
+```
+
+Timing varies from ~8s to ~100s. The HTTP response is 200 OK but carries a placeholder message.
+
+### Observed Behavior
+Helixagent log shows:
+1. Intent classification succeeds (Cerebras round-trip ~300ms).
+2. NEW 8-phase orchestrator starts, fails with `context canceled` or `context deadline exceeded` (~5-20s in).
+3. Fallback to DebateService triggers.
+4. DebateService logs "Debate round 1" through "Debate round 10" instantly (microseconds).
+5. Quality gate fails: `quality score 0.00 below threshold 0.85`.
+6. Returns `total_rounds=0 success=false` but handler still emits a 200 response with placeholder content.
+
+### Root Cause (suspected, not yet confirmed)
+Two intertwined issues:
+- **NEW orchestrator timeout**: inner context deadline is shorter than provider round-trip time, so the 8-phase protocol is cancelled before any phase completes. The fallback to DebateService fires unconditionally on cancellation.
+- **DebateService quality-scorer zero-floor**: when a debate runs "0 rounds" (because the participants never produced structured output), the quality scorer returns 0.0, which fails the 0.85 gate. But the handler downstream treats `success=false, total_rounds=0` as a "success" for response emission, resulting in a 200 response with placeholder body.
+
+### Status
+OPEN. Not fixed in this session — too complex to address without understanding the orchestrator's phase-by-phase timeout plan and the quality-scorer's treatment of empty rounds.
+
+### Suggested Triage
+1. Log the exact `context.Deadline()` used by the NEW orchestrator; compare to median provider round-trip time observed in production.
+2. Log per-phase progress in the 8-phase protocol so "0 rounds" is traceable to a specific phase.
+3. Distinguish "debate succeeded with low quality" from "debate never got started" in the handler — the latter should return 5xx, not 200.
+4. Separate triage: investigate DebateService's initialization. 5-participant debate with 14 healthy providers should at least complete 1 round.
+
+### Affected Files (suspected)
+- `internal/services/debate_service.go`
+- `internal/services/debate_integration/`
+- `internal/debate/` (orchestrator framework, 8-phase protocol)
+- `internal/handlers/handler.go` (`processWithDirectProvider`, `processWithOrchestrator`)
+
+---
+
+## Direct-auth status of remaining "unhealthy" providers (2026-04-24)
+
+Per-provider direct-curl tests with the actual .env-loaded keys (after Issue #42 was fixed). This separates genuinely-bad-keys from helixagent-client-bugs:
+
+| Provider | Direct curl | Helixagent | Root cause |
+|---|---|---|---|
+| DEEPSEEK_API_KEY | HTTP 200 | 401 | helixagent hits different URL; Issue #44 |
+| GITHUB_MODELS_API_KEY | HTTP 200 (catalog) | 401 (inference) | PAT scope insufficient for /inference path |
+| HYPERBOLIC_API_KEY | HTTP 200 | ✓ healthy | — (fixed by #42) |
+| SILICONFLOW_API_KEY | HTTP 200 (direct) | OpenRouter-routed failure | helixagent routes this provider via OpenRouter with different key |
+| COHERE_API_KEY | HTTP 429 | 429 | Rate-limited; key is valid. Will clear. |
+| FIREWORKS_API_KEY | HTTP 412 | 412 | Request format/precondition; needs correct headers. |
+| REPLICATE_API_KEY | HTTP 401 | 401 | Key genuinely expired. Rotate. |
+| KIMI_API_KEY | HTTP 401 | 401 | Key genuinely expired. Rotate. |
+| CLOUDFLARE_API_KEY | HTTP 401 | 401 | Key genuinely expired OR wrong endpoint tested. |
+| UPSTAGE_API_KEY | HTTP 401 | 401 | Key genuinely expired. Rotate. |
+| CODESTRAL_API_KEY | HTTP 404 (wrong URL) | 401 | Both paths failing; likely expired or needs Codestral-specific endpoint |
+
+Action items for operator:
+- Rotate expired keys: REPLICATE, KIMI, CLOUDFLARE, UPSTAGE, CODESTRAL (and check endpoints for Codestral).
+- Update GitHub PAT scope to include `models:read` if helixagent continues to hit `/inference/models`.
+- Rate-limited COHERE will self-heal.
+- Investigate Fireworks request format mismatch (Issue #45 candidate).
+
+---
+
 Last Updated: April 24, 2026

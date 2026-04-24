@@ -102,9 +102,15 @@ func NewHTTP3Client(config *HTTP3ClientConfig) *HTTP3Client {
 		}
 	}
 
-	// Create standard HTTP transport with HTTP/2 support
+	// Create standard HTTP transport with HTTP/2 support.
+	// ForceAttemptHTTP2 is required: with a custom TLSClientConfig, Go's
+	// net/http would otherwise NOT auto-configure HTTP/2, leaving the
+	// transport in HTTP/1.1 mode while the server responds with HTTP/2
+	// frames — producing "malformed HTTP response '\x00\x00\x12\x04...'"
+	// errors against e.g. api.deepseek.com which is HTTP/2-only.
 	client.httpTransport = &http.Transport{
 		TLSClientConfig:       tlsConfig,
+		ForceAttemptHTTP2:     true,
 		IdleConnTimeout:       config.IdleConnTimeout,
 		MaxIdleConns:          config.MaxIdleConns,
 		MaxIdleConnsPerHost:   config.MaxIdleConns,

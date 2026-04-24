@@ -422,9 +422,17 @@ func (p *Provider) convertRequest(req *models.LLMRequest) Request {
 		Stop:        req.ModelParams.StopSequences,
 	}
 
-	// Override model if specified
+	// Override model if specified. Fireworks returns 412 Precondition
+	// Failed when the model field is a bare name like "llama-v3p3-70b"
+	// — its API only accepts fully-qualified IDs of the form
+	// "accounts/fireworks/models/<name>". Normalize here so upstream
+	// callers don't need to know the prefix convention.
 	if req.ModelParams.Model != "" {
-		apiReq.Model = req.ModelParams.Model
+		m := req.ModelParams.Model
+		if !strings.HasPrefix(m, "accounts/") {
+			m = "accounts/fireworks/models/" + m
+		}
+		apiReq.Model = m
 	}
 
 	// Convert tools

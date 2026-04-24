@@ -16,9 +16,13 @@ import (
 )
 
 const (
-	CodestralAPIURL     = "https://api.mistral.ai/v1/chat/completions"
+	// Codestral has its own dedicated endpoint, separate from Mistral's
+	// unified API. CODESTRAL_API_KEY only authenticates against
+	// codestral.mistral.ai — hitting api.mistral.ai with a CODESTRAL key
+	// returns 401 even when the key is valid.
+	CodestralAPIURL     = "https://codestral.mistral.ai/v1/chat/completions"
 	CodestralModel      = "codestral-latest"
-	CodestralModelsURL  = "https://api.mistral.ai/v1/models"
+	CodestralModelsURL  = "https://codestral.mistral.ai/v1/models"
 	CodestralMaxContext = 32768
 	CodestralMaxOutput  = 8192
 )

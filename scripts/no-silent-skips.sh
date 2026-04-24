@@ -24,6 +24,7 @@ INCLUDES=(--include='*.go' --include='*.kt' --include='*.java'
 # Third-party / vendored / external trees — excluded per Rule #10.
 EXCLUDES=(--exclude-dir=.git --exclude-dir=vendor --exclude-dir=node_modules
           --exclude-dir=external --exclude-dir=MCP --exclude-dir=cli_agents
+          --exclude-dir=opensource
           --exclude-dir=mcp-servers --exclude-dir=releases
           --exclude-dir=reports --exclude-dir=test-results)
 

@@ -26,7 +26,7 @@ INCLUDES=(--include='*.go' --include='*.kt' --include='*.kts' --include='*.java'
 
 # Default excludes — third-party/vendored/generated trees.
 EXCLUDES=(--exclude-dir=.git --exclude-dir=vendor --exclude-dir=node_modules
-          --exclude-dir=external --exclude-dir=target --exclude-dir=build
+          --exclude-dir=external --exclude-dir=opensource --exclude-dir=target --exclude-dir=build
           --exclude-dir=.gradle --exclude-dir=.idea --exclude-dir=dist
           --exclude-dir=releases --exclude-dir=reports --exclude-dir=test-results
           --exclude-dir=.next --exclude-dir=.nuxt --exclude-dir=coverage

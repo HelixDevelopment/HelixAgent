@@ -1037,4 +1037,51 @@ The CONST-029 audit flagged 254 struct definitions that paired a `sync.Mutex`/`s
 
 ---
 
-Last Updated: April 20, 2026
+## Issue #40: Non-postgres/non-redis services hardcoded `Remote: false` blocked strict-mode boot (BUGFIX 2026-04-24)
+
+### Issue
+Under `CONTAINERS_REMOTE_ENABLED=true`, booting `./bin/helixagent` fatally failed the service-boot summary with:
+
+```
+level=warning msg="CONTAINERS_REMOTE_ENABLED=true but these services are not
+ marked ep.Remote; skipping local compose per CONST-031 (strict remote mode)"
+ services=chromadb
+level=error msg="REQUIRED service health check FAILED" service=chromadb
+ error="HTTP health check for chromadb (http://localhost:8001/api/v2/heartbeat)
+ failed: dial tcp 127.0.0.1:8001: connect: connection refused"
+level=fatal msg="Application failed" error="BOOT BLOCKED: 1 required service(s)
+ failed health check"
+```
+
+ChromaDB is `Enabled: true, Required: true`. Strict-mode skipped its local compose start (because `Remote` was false), nothing else brought it up remotely, health check timed out, boot aborted.
+
+### Root Cause
+`internal/config/config.go:DefaultServicesConfig()`. The inline comment at line 488 states:
+
+> "When true, all services are marked as Remote=true for distribution to remote hosts."
+
+and the companion comment on `LoadServicesFromEnv` at line 736 reinforces it:
+
+> "MANDATORY: When CONTAINERS_REMOTE_ENABLED=true in Containers/.env, ALL services (except HelixAgent itself) are automatically marked as Remote=true"
+
+But the implementation only honored that on PostgreSQL and Redis — `Remote: remoteEnabled` there, but `Remote: false` hardcoded for all 16 other service endpoints (Cognee, ChromaDB, Prometheus, Grafana, Neo4j, Kafka, RabbitMQ, Qdrant, Weaviate, LangChain, LlamaIndex, Zookeeper, ClickHouse, MinIO, SparkMaster, SparkWorker). Pathology hidden because most of the others default to `Enabled: false`; ChromaDB was the only Enabled+Required mismatch that surfaced the bug.
+
+### Fix Applied
+`internal/config/config.go` — replaced all 16 hardcoded `Remote: false` entries in `DefaultServicesConfig()` with `Remote: remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED` so the actual behaviour matches the documented invariant. Build: `make build` → `rc=0`.
+
+### Verification
+- `go build ./...` — clean.
+- `grep -c "Remote:      remoteEnabled" internal/config/config.go` → 18 (matches every service + helixagent itself).
+- `grep -c "Remote:      false," internal/config/config.go` → 0 inside `DefaultServicesConfig`.
+- Re-boot of `./bin/helixagent` with `CONTAINERS_REMOTE_ENABLED=true` was the final verification; see session log `docs/development/SESSION_2026-04-24.md` for the full boot transcript.
+
+### Affected Files
+- `internal/config/config.go` (16 fields updated in `DefaultServicesConfig`)
+
+### Related Constitution Rules
+- CONST-031 (dynamic remote-distribution hosts) — the strict-mode branch that surfaced this bug is the one CONST-031 mandates.
+- CONST-030 (real infra for non-unit tests) — the only reason this bug was caught was a real boot attempt, not a green `go test`. Documentation note for the DoD enforcement arm.
+
+---
+
+Last Updated: April 24, 2026

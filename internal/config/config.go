@@ -521,7 +521,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8000",
 			Enabled:     false, // DISABLED - Replaced by Mem0 memory system
 			Required:    false, // NOT REQUIRED - Mem0 is now primary memory provider
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/",
 			HealthType:  "http",
 			Timeout:     10 * time.Second,
@@ -535,7 +535,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8001",
 			Enabled:     true,
 			Required:    true,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/api/v2/heartbeat",
 			HealthType:  "http",
 			Timeout:     10 * time.Second,
@@ -549,7 +549,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "9090",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/-/healthy",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -562,7 +562,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "3000",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/api/health",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -575,7 +575,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "7474",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthType:  "http",
 			HealthPath:  "/",
 			Timeout:     5 * time.Second,
@@ -588,7 +588,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "9092",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthType:  "tcp",
 			Timeout:     5 * time.Second,
 			RetryCount:  3,
@@ -600,7 +600,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "5672",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthType:  "tcp",
 			Timeout:     5 * time.Second,
 			RetryCount:  3,
@@ -612,7 +612,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "6333",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/healthz",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -625,7 +625,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8080",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/v1/.well-known/ready",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -638,7 +638,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8011",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/health",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -651,7 +651,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8012",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/health",
 			HealthType:  "http",
 			Timeout:     5 * time.Second,
@@ -664,7 +664,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "2181",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthType:  "tcp",
 			Timeout:     5 * time.Second,
 			RetryCount:  3,
@@ -677,7 +677,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8123",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/ping",
 			HealthType:  "http",
 			Timeout:     10 * time.Second,
@@ -691,7 +691,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "9000",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/minio/health/live",
 			HealthType:  "http",
 			Timeout:     10 * time.Second,
@@ -705,7 +705,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "7077",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthType:  "tcp",
 			Timeout:     10 * time.Second,
 			RetryCount:  5,
@@ -718,7 +718,7 @@ func DefaultServicesConfig() ServicesConfig {
 			Port:        "8081",
 			Enabled:     false,
 			Required:    false,
-			Remote:      false,
+			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/",
 			HealthType:  "http",
 			Timeout:     10 * time.Second,

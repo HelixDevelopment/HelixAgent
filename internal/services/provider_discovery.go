@@ -26,15 +26,22 @@ import (
 	"dev.helix.agent/internal/llm/providers/githubmodels"
 	"dev.helix.agent/internal/llm/providers/groq"
 	"dev.helix.agent/internal/llm/providers/huggingface"
+	"dev.helix.agent/internal/llm/providers/hyperbolic"
 	"dev.helix.agent/internal/llm/providers/junie"
+	"dev.helix.agent/internal/llm/providers/kimi"
 	"dev.helix.agent/internal/llm/providers/mistral"
+	"dev.helix.agent/internal/llm/providers/novita"
+	"dev.helix.agent/internal/llm/providers/nvidia"
 	"dev.helix.agent/internal/llm/providers/ollama"
 	"dev.helix.agent/internal/llm/providers/openai"
 	"dev.helix.agent/internal/llm/providers/openrouter"
 	"dev.helix.agent/internal/llm/providers/perplexity"
 	"dev.helix.agent/internal/llm/providers/qwen"
 	"dev.helix.agent/internal/llm/providers/replicate"
+	"dev.helix.agent/internal/llm/providers/sambanova"
+	"dev.helix.agent/internal/llm/providers/siliconflow"
 	"dev.helix.agent/internal/llm/providers/together"
+	"dev.helix.agent/internal/llm/providers/upstage"
 	"dev.helix.agent/internal/llm/providers/venice"
 	"dev.helix.agent/internal/llm/providers/xai"
 	"dev.helix.agent/internal/llm/providers/zai"
@@ -844,10 +851,28 @@ func (pd *ProviderDiscovery) createProvider(mapping ProviderMapping, apiKey stri
 	case "zai":
 		return zai.NewZAIProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
 
-	// For providers without native implementations, use OpenRouter as a proxy
-	case "hyperbolic", "sambanova", "siliconflow", "cloudflare", "nvidia",
-		"kimi", "novita", "upstage":
-		// Create OpenRouter-compatible provider
+	// Native provider implementations — previously mis-routed through an
+	// OpenRouter-compatible fallback, which caused "failed to decode
+	// OpenRouter response" errors when these providers return their own
+	// response format. Each native provider speaks its own API shape.
+	case "siliconflow":
+		return siliconflow.NewSiliconFlowProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "hyperbolic":
+		return hyperbolic.NewHyperbolicProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "sambanova":
+		return sambanova.NewSambaNovaProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "nvidia":
+		return nvidia.NewNvidiaProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "kimi":
+		return kimi.NewKimiProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "novita":
+		return novita.NewNovitaProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "upstage":
+		return upstage.NewUpstageProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+
+	// Cloudflare needs an extra account ID; leave it on the generic
+	// fallback until CLOUDFLARE_ACCOUNT_ID discovery lands.
+	case "cloudflare":
 		return pd.createOpenAICompatibleProvider(mapping, apiKey)
 
 	default:

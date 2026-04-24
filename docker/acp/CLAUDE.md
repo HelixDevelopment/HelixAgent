@@ -11,13 +11,15 @@ same session as the change.** Coverage and green suites are not evidence.
 ### Acceptance demo for this module
 
 ```bash
-# Build and boot the ACP Manager, verify health + agent listing
-cd docker/acp && docker build -t acp-manager:test .
-docker run --rm -d -p 8766:8766 --name acp-demo acp-manager:test
-sleep 2
+# Build and boot the ACP Manager, verify health + agent listing.
+# Uses whichever of podman/docker is installed (HelixAgent runs rootless podman).
+RUNTIME=$(command -v podman || command -v docker) || { echo "SKIP: no container runtime"; exit 0; }
+cd docker/acp && "$RUNTIME" build -t acp-manager:test .
+"$RUNTIME" run --rm -d -p 8766:8766 --name acp-demo acp-manager:test
+sleep 3
 curl -fsS http://localhost:8766/health | jq -e '.status == "healthy"'
 curl -fsS http://localhost:8766/agents | jq -e '.agents | length > 0'
-docker stop acp-demo
+"$RUNTIME" stop acp-demo
 ```
 Expect: both `jq -e` exits 0; the 11 pre-registered agents are listed.
 

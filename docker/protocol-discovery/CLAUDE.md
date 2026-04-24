@@ -11,13 +11,15 @@ same session as the change.** Coverage and green suites are not evidence.
 ### Acceptance demo for this module
 
 ```bash
-# Build and boot Protocol Discovery, verify semantic search over registered tools
-cd docker/protocol-discovery && docker build -t protocol-discovery:test .
-docker run --rm -d -p 8765:8765 --name pd-demo protocol-discovery:test
-sleep 2
+# Build and boot Protocol Discovery, verify semantic search over registered tools.
+# Uses whichever of podman/docker is installed.
+RUNTIME=$(command -v podman || command -v docker) || { echo "SKIP: no container runtime"; exit 0; }
+cd docker/protocol-discovery && "$RUNTIME" build -t protocol-discovery:test .
+"$RUNTIME" run --rm -d -p 8765:8765 --name pd-demo protocol-discovery:test
+sleep 3
 curl -fsS 'http://localhost:8765/api/v1/search?q=filesystem' | jq -e '.tools | length > 0'
 curl -fsS http://localhost:8765/health | jq -e '.status == "healthy"'
-docker stop pd-demo
+"$RUNTIME" stop pd-demo
 ```
 Expect: both `jq -e` exits 0; search returns filesystem-related tools ranked by BM25 + semantic score.
 

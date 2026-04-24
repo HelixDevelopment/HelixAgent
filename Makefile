@@ -1382,11 +1382,35 @@ ci-validate-all:
 	@$(MAKE) ci-validate-monitoring
 	@$(MAKE) ci-validate-constitution
 	@$(MAKE) ci-validate-concurrency
+	@$(MAKE) no-silent-skips-warn
 	@echo "🔐 Running new P0/P1 regression gates..."
 	@./challenges/scripts/repo_hygiene_challenge.sh
 	@./challenges/scripts/tls_posture_challenge.sh
 	@./challenges/scripts/exec_hygiene_challenge.sh
+	@$(MAKE) demo-all-warn
 	@echo "✅ All CI/CD validations passed"
+
+# DoD enforcement arm ─────────────────────────────────────────────────────────
+# The two targets below are the structural gates for the "tests pass but
+# nothing works" pathology. Both have warn-only aliases that ci-validate-all
+# currently calls so the build doesn't brick the day they ship. Graduate by
+# swapping `-warn` out of the ci-validate-all recipe above when you're ready.
+
+no-silent-skips: ## DoD: fail on test skips without a SKIP-OK: #<ticket> annotation
+	@./scripts/no-silent-skips.sh
+
+no-silent-skips-warn: ## DoD: same as no-silent-skips but warn instead of fail (transitional)
+	@NO_SILENT_SKIPS_WARN_ONLY=1 ./scripts/no-silent-skips.sh
+
+demo-all: ## DoD: run every module's acceptance-demo block from its CLAUDE.md
+	@./scripts/demo-all.sh
+
+demo-all-warn: ## DoD: same as demo-all but warn instead of fail (transitional)
+	@DEMO_ALL_WARN_ONLY=1 DEMO_ALLOW_TODO=1 ./scripts/demo-all.sh
+
+demo-one: ## DoD helper: run a single module's demo (use: make demo-one MOD=EventBus)
+	@test -n "$(MOD)" || { echo "usage: make demo-one MOD=<module>"; exit 2; }
+	@DEMO_MODULES="$(MOD)" ./scripts/demo-all.sh
 
 ci-validate-concurrency:
 	@echo "🔍 CONST-029: auditing Pattern-A sites against allowlist..."

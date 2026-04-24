@@ -42,10 +42,14 @@ EOF
 )
 
     local start_time=$(date +%s%N)
+    # --max-time 180 (not 120): under sustained load a single non-streaming
+    # chat call can hit the 20s NEW-orchestrator fail + 120s conductRealDebate
+    # timeout + real LLM provider latency, totalling well over 120s. gptengineer
+    # and plandex hit this and returned HTTP 000 in sweep-boot15 runs.
     local response=$(curl -s -w "\n%{http_code}" "$BASE_URL/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
-        -d "$request" --max-time 120 2>/dev/null || true)
+        -d "$request" --max-time 180 2>/dev/null || true)
     local end_time=$(date +%s%N)
     local latency=$(( (end_time - start_time) / 1000000 ))
 

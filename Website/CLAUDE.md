@@ -10,15 +10,20 @@ same session as the change.** Coverage and green suites are not evidence.
 
 ### Acceptance demo for this module
 
-<!-- TODO: replace this block with the exact command(s) that exercise this
-     module end-to-end against real dependencies, and the expected output.
-     The commands must run the real artifact (built binary, deployed
-     container, real service) — no in-process fakes, no mocks, no
-     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
-
 ```bash
-# TODO
+# Serve the static site and verify home page renders with the expected index
+# Preferred: use the production container image.
+docker inspect helixagent-website:latest >/dev/null 2>&1 && \
+  docker run --rm -d -p 8080:8080 --name hw-demo helixagent-website:latest && \
+  sleep 2 && curl -fsS http://localhost:8080/ | grep -qi 'HelixAgent' && \
+  echo '✓ Website serves production image' && \
+  docker stop hw-demo
+# If no pre-built image:
+[ -z "$(docker images -q helixagent-website:latest 2>/dev/null)" ] && \
+  echo 'Build first: cd Website && docker build -t helixagent-website:latest .'
 ```
+Expect: HTTP 200 with `HelixAgent` in the served HTML. For full flow testing with Playwright, add Playwright specs that drive the deployed image (the current repo does not ship Playwright tests).
+
 
 ## MANDATORY: No CI/CD Pipelines
 

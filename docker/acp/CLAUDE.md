@@ -10,15 +10,17 @@ same session as the change.** Coverage and green suites are not evidence.
 
 ### Acceptance demo for this module
 
-<!-- TODO: replace this block with the exact command(s) that exercise this
-     module end-to-end against real dependencies, and the expected output.
-     The commands must run the real artifact (built binary, deployed
-     container, real service) — no in-process fakes, no mocks, no
-     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
-
 ```bash
-# TODO
+# Build and boot the ACP Manager, verify health + agent listing
+cd docker/acp && docker build -t acp-manager:test .
+docker run --rm -d -p 8766:8766 --name acp-demo acp-manager:test
+sleep 2
+curl -fsS http://localhost:8766/health | jq -e '.status == "healthy"'
+curl -fsS http://localhost:8766/agents | jq -e '.agents | length > 0'
+docker stop acp-demo
 ```
+Expect: both `jq -e` exits 0; the 11 pre-registered agents are listed.
+
 
 ## Module Overview
 

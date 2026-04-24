@@ -10,15 +10,17 @@ same session as the change.** Coverage and green suites are not evidence.
 
 ### Acceptance demo for this module
 
-<!-- TODO: replace this block with the exact command(s) that exercise this
-     module end-to-end against real dependencies, and the expected output.
-     The commands must run the real artifact (built binary, deployed
-     container, real service) — no in-process fakes, no mocks, no
-     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
-
 ```bash
-# TODO
+# Build and boot Protocol Discovery, verify semantic search over registered tools
+cd docker/protocol-discovery && docker build -t protocol-discovery:test .
+docker run --rm -d -p 8765:8765 --name pd-demo protocol-discovery:test
+sleep 2
+curl -fsS 'http://localhost:8765/api/v1/search?q=filesystem' | jq -e '.tools | length > 0'
+curl -fsS http://localhost:8765/health | jq -e '.status == "healthy"'
+docker stop pd-demo
 ```
+Expect: both `jq -e` exits 0; search returns filesystem-related tools ranked by BM25 + semantic score.
+
 
 ## Module Overview
 

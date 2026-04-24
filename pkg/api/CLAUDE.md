@@ -10,15 +10,15 @@ same session as the change.** Coverage and green suites are not evidence.
 
 ### Acceptance demo for this module
 
-<!-- TODO: replace this block with the exact command(s) that exercise this
-     module end-to-end against real dependencies, and the expected output.
-     The commands must run the real artifact (built binary, deployed
-     container, real service) — no in-process fakes, no mocks, no
-     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
-
 ```bash
-# TODO
+# Compile gRPC-generated code and do a real round-trip against the running HelixAgent.
+cd pkg/api && go build ./...
+# Round-trip requires ./bin/helixagent running (see root CLAUDE.md).
+grpcurl -plaintext -d '{"messages":[{"role":"user","content":"ping"}]}' \
+  localhost:50051 api.LLMFacade/Complete | jq -e '.content | length > 0'
 ```
+Expect: `go build` exits 0; `grpcurl` returns a non-empty `content` field. Regenerate the pb.go files from `specs/001-helix-agent/contracts/llm-facade.proto` per `pkg/api/CLAUDE.md`.
+
 
 ## Module Overview
 

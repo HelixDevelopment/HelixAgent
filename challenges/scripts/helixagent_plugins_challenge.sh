@@ -32,7 +32,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/challenge_framework.sh"
 
 # Configuration
-CHALLENGE_PORT="${HELIXAGENT_PORT:-7061}"
+CHALLENGE_PORT="${HELIXAGENT_PORT:-8100}"
 BASE_URL="http://localhost:$CHALLENGE_PORT"
 MCP_SSE_URL="${BASE_URL}/v1/mcp"
 SKIP_NETWORK=false

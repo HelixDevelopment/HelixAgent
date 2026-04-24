@@ -17,7 +17,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Default configuration
 HOST="${HELIXAGENT_HOST:-localhost}"
-PORT="${HELIXAGENT_PORT:-7061}"
+PORT="${HELIXAGENT_PORT:-8100}"
 RESULTS_DIR="${PROJECT_ROOT}/challenges/results/sanity_check/$(date +%Y%m%d_%H%M%S)"
 
 echo ""

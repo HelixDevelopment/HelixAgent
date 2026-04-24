@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/challenge_framework.sh"
 
-CHALLENGE_PORT="${HELIXAGENT_PORT:-7061}"
+CHALLENGE_PORT="${HELIXAGENT_PORT:-8100}"
 WS_PORT="${HELIXAGENT_WS_PORT:-7063}"
 BASE_URL="http://localhost:$CHALLENGE_PORT"
 

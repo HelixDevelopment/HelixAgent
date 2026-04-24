@@ -102,7 +102,7 @@ run_api_test() {
     local expected_status="${4:-200}"
     local description="$5"
 
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
     local url="http://localhost:$port$endpoint"
     local response_file="$OUTPUT_DIR/logs/response_$(date +%s%N).json"
 
@@ -140,7 +140,7 @@ run_optional_api_test() {
     local expected_status="${4:-200}"
     local description="$5"
 
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
     local url="http://localhost:$port$endpoint"
     local response_file="$OUTPUT_DIR/logs/response_$(date +%s%N).json"
 
@@ -414,7 +414,7 @@ run_security_tests() {
             fi
             # Test unauthorized access if API available
             if [[ "$HELIXAGENT_AVAILABLE" == "true" ]]; then
-                local port="${HELIXAGENT_PORT:-7061}"
+                local port="${HELIXAGENT_PORT:-8100}"
                 local http_code=$(curl -s --max-time 30 -w "%{http_code}" -o /dev/null \
                     "http://localhost:$port/v1/chat/completions" \
                     -X POST -H "Content-Type: application/json" \
@@ -764,7 +764,7 @@ run_basic_tests() {
 
 # Auto-start HelixAgent if binary exists and not running
 auto_start_helixagent() {
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
 
     # Check if already running
     if curl -s "http://localhost:$port/health" > /dev/null 2>&1; then
@@ -840,7 +840,7 @@ main() {
     log_info "=========================================="
 
     # Check if HelixAgent is running, auto-start if needed
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
     HELIXAGENT_AVAILABLE=false
 
     if curl -s "http://localhost:$port/health" > /dev/null 2>&1; then

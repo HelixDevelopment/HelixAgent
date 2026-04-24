@@ -18,7 +18,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Default configuration
 HOST="${HELIXAGENT_HOST:-localhost}"
-PORT="${HELIXAGENT_PORT:-7061}"
+PORT="${HELIXAGENT_PORT:-8100}"
 BASE_URL="http://${HOST}:${PORT}"
 RESULTS_DIR="${PROJECT_ROOT}/challenges/results/all_tools_validation/$(date +%Y%m%d_%H%M%S)"
 

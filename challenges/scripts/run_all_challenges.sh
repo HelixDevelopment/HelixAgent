@@ -103,10 +103,13 @@ build_helixagent() {
 
 # Check if HelixAgent is running
 check_helixagent() {
-    local port="${HELIXAGENT_PORT:-7061}"
+    # Canonical port from CONST-027 / docs/development/port-registry.md is 8100.
+    # HELIXAGENT_PORT env-var overrides; kept 7061 out of the default path — the
+    # registered port is 8100 and /v1/health is the public endpoint (not /health).
+    local port="${HELIXAGENT_PORT:-8100}"
     local host="${HELIXAGENT_HOST:-localhost}"
 
-    if curl -s --max-time 60 "http://$host:$port/health" > /dev/null 2>&1; then
+    if curl -s --max-time 60 "http://$host:$port/v1/health" > /dev/null 2>&1; then
         return 0
     elif curl -s --max-time 60 "http://$host:$port/v1/models" > /dev/null 2>&1; then
         return 0
@@ -118,7 +121,7 @@ check_helixagent() {
 start_helixagent() {
     print_phase "Starting HelixAgent Server"
 
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
     local host="${HELIXAGENT_HOST:-localhost}"
 
     # Check if already running
@@ -151,9 +154,12 @@ start_helixagent() {
     echo $HELIXAGENT_PID > "$CHALLENGES_DIR/results/helixagent_challenges.pid"
     STARTED_SERVICES+=("helixagent")
 
-    # Wait for startup (provider verification with real API calls takes ~120s, plus setup)
-    print_info "Waiting for HelixAgent to start (provider verification takes ~2 minutes)..."
-    local max_attempts=180
+    # Wait for startup. First-time remote distribution (CONTAINERS_REMOTE_ENABLED=true)
+    # SCPs build contexts and pulls container images — observed boot times in the wild
+    # reach ~15 minutes. Give it 20 minutes before giving up. Override with
+    # HELIXAGENT_BOOT_TIMEOUT=<seconds> for quicker loops on known-configured environments.
+    print_info "Waiting for HelixAgent to start (first boot with remote distribution can take ≥10 minutes)..."
+    local max_attempts="${HELIXAGENT_BOOT_TIMEOUT:-1200}"
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
         if check_helixagent; then

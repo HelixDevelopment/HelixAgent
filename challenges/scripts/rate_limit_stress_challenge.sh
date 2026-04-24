@@ -17,7 +17,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
-CHALLENGE_PORT="${HELIXAGENT_PORT:-7061}"
+CHALLENGE_PORT="${HELIXAGENT_PORT:-8100}"
 BASE_URL="http://localhost:$CHALLENGE_PORT"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 OUTPUT_DIR="$PROJECT_ROOT/challenges/results/rate_limit_stress/$TIMESTAMP"

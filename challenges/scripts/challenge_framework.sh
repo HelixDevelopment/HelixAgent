@@ -268,7 +268,7 @@ api_request() {
     local method="$1"
     local endpoint="$2"
     local data="$3"
-    local port="${HELIXAGENT_PORT:-7061}"
+    local port="${HELIXAGENT_PORT:-8100}"
 
     local url="http://localhost:$port$endpoint"
     local response_file="$OUTPUT_DIR/logs/api_response_$(date +%s%N).json"

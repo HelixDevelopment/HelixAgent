@@ -64,7 +64,7 @@ MAIN_CHALLENGE_RESULTS="$CHALLENGES_DIR/results/main_challenge"
 
 # Test configuration
 TEST_PROMPT="Do you see my codebase? If yes, tell me what programming language is dominant in this project and list the main directories."
-HELIXAGENT_PORT="${HELIXAGENT_PORT:-7061}"
+HELIXAGENT_PORT="${HELIXAGENT_PORT:-8100}"
 HELIXAGENT_HOST="${HELIXAGENT_HOST:-localhost}"
 
 # Colors

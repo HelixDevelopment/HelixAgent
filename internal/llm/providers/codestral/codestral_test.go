@@ -18,7 +18,7 @@ func TestNewProvider(t *testing.T) {
 	provider := NewCodestralProvider("test-api-key", "", "")
 	assert.NotNil(t, provider)
 	assert.Equal(t, "test-api-key", provider.apiKey)
-	assert.Equal(t, "https://api.mistral.ai/v1/chat/completions", provider.baseURL)
+	assert.Equal(t, "https://codestral.mistral.ai/v1/chat/completions", provider.baseURL)
 	assert.Equal(t, "codestral-latest", provider.model)
 }
 

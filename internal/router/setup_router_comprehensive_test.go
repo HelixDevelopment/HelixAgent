@@ -1063,9 +1063,16 @@ func TestSetupRouter_Completions(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(w, req)
 
-		// May return OK, error, or other status depending on provider availability
+		// May return OK, client error, server error, bad gateway, or service
+		// unavailable depending on provider availability. 502 is a legitimate
+		// "no providers available — debate produced no content" response after
+		// Issue #43's three-part fix: the handler now refuses to emit 200-OK
+		// with an empty body (previously returned a placeholder summary which
+		// masked total provider failure from clients).
 		assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusBadRequest ||
-			w.Code == http.StatusInternalServerError || w.Code == http.StatusServiceUnavailable,
+			w.Code == http.StatusInternalServerError ||
+			w.Code == http.StatusBadGateway ||
+			w.Code == http.StatusServiceUnavailable,
 			"Expected valid HTTP status, got %d", w.Code)
 	})
 
@@ -1076,9 +1083,16 @@ func TestSetupRouter_Completions(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(w, req)
 
-		// May return OK, error, or other status depending on provider availability
+		// May return OK, client error, server error, bad gateway, or service
+		// unavailable depending on provider availability. 502 is a legitimate
+		// "no providers available — debate produced no content" response after
+		// Issue #43's three-part fix: the handler now refuses to emit 200-OK
+		// with an empty body (previously returned a placeholder summary which
+		// masked total provider failure from clients).
 		assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusBadRequest ||
-			w.Code == http.StatusInternalServerError || w.Code == http.StatusServiceUnavailable,
+			w.Code == http.StatusInternalServerError ||
+			w.Code == http.StatusBadGateway ||
+			w.Code == http.StatusServiceUnavailable,
 			"Expected valid HTTP status, got %d", w.Code)
 	})
 }

@@ -520,18 +520,27 @@ func TestCircuitBreaker_ListenerNotifyTimeout_TransitionTo(t *testing.T) {
 	req := &models.LLMRequest{ID: "r1"}
 	_, _ = cb.Complete(context.Background(), req)
 
-	// Wait until the timeout fires plus a small margin.
-	time.Sleep(200 * time.Millisecond)
-	close(blockCh) // unblock the listener goroutine
-
-	msgs := hook.messages()
+	// Poll for the timed-out log up to 2s. A fixed 200ms was too aggressive
+	// under CPU contention (seen empty message list under concurrent
+	// release-all build); the timeout+goroutine+log-emission+hook-capture
+	// chain can take longer than the notify timeout itself.
 	found := false
-	for _, m := range msgs {
-		if strings.Contains(m, "timed out") {
-			found = true
+	deadline := time.Now().Add(2 * time.Second)
+	var msgs []string
+	for time.Now().Before(deadline) {
+		msgs = hook.messages()
+		for _, m := range msgs {
+			if strings.Contains(m, "timed out") {
+				found = true
+				break
+			}
+		}
+		if found {
 			break
 		}
+		time.Sleep(20 * time.Millisecond)
 	}
+	close(blockCh) // unblock the listener goroutine
 	assert.True(t, found, "expected a 'timed out' warn log, got: %v", msgs)
 }
 

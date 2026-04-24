@@ -761,8 +761,12 @@ func TestCerebrasProvider_WaitWithJitter(t *testing.T) {
 
 	// Should wait at least 10ms
 	assert.GreaterOrEqual(t, elapsed, 10*time.Millisecond)
-	// Should not wait more than 15ms (10ms + 10% jitter + some margin)
-	assert.LessOrEqual(t, elapsed, 20*time.Millisecond)
+	// Upper bound loose enough to survive CPU contention (seen 24ms under
+	// concurrent release-all build). Target 10ms + 10% jitter + scheduler
+	// slop + parallel-test wakeup delay can easily sum to 30-40ms under
+	// load; 100ms gives a safe ceiling that still catches real bugs
+	// (waiting minutes instead of milliseconds).
+	assert.LessOrEqual(t, elapsed, 100*time.Millisecond)
 }
 
 func TestCerebrasProvider_WaitWithJitter_ContextCancelled(t *testing.T) {

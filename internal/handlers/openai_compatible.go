@@ -3027,14 +3027,16 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 
 	logrus.Info("[CODE PATH] DebateService SUCCEEDED - returning result")
 
-	// Convert debate result to ensemble result
+	// Convert debate result to ensemble result.
+	// Priority: real participant content > consensus summary.
+	// The consensus.Summary field is formulaic ("Debate on 'X' with N responses")
+	// and useless as a user-facing answer. Only fall back to it when every
+	// participant produced an empty body, which is itself an anomaly worth
+	// surfacing to the client.
 	var finalContent string
 	var confidence float64
-	if debateResult.Consensus != nil && debateResult.Consensus.Summary != "" {
-		finalContent = debateResult.Consensus.Summary
-		confidence = debateResult.Consensus.Confidence
-	} else if debateResult.BestResponse != nil {
-		// Use the best response
+
+	if debateResult.BestResponse != nil {
 		finalContent = debateResult.BestResponse.Content
 		if finalContent == "" {
 			finalContent = debateResult.BestResponse.Response
@@ -3057,6 +3059,11 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 				break
 			}
 		}
+	}
+	if finalContent == "" && debateResult.Consensus != nil && debateResult.Consensus.Summary != "" {
+		// Last resort — formulaic consensus summary is better than empty.
+		finalContent = debateResult.Consensus.Summary
+		confidence = debateResult.Consensus.Confidence
 	}
 
 	if confidence == 0 {

@@ -1192,6 +1192,54 @@ Diagnostic log removed from `cerebras.HealthCheck` in the same commit.
 
 ---
 
+## Issue #48: Concurrent non-streaming chat requests return 502 under load (OPEN 2026-04-24)
+
+### Issue
+
+During the full challenge sweep, `curl_api_testing_challenge` failed 3 of
+13 assertions:
+
+- `chat.system_message`: FAILED — HTTP 502
+- `chat.multi_turn`: FAILED — HTTP 502
+- `concurrent.concurrent_requests`: FAILED — some requests failed
+
+Streaming chat (`streaming_done`) passed. Non-streaming chat succeeds when
+issued serially — the failures only manifest when multiple non-streaming
+requests hit the endpoint in the same second.
+
+### Observed Behavior
+
+`/tmp/helixagent-boot11.log` shows 6 ChatCompletions entries landing at
+the same second (20:13:49). All three failing assertions returned in
+~10 seconds — too fast to be the 20s NEW-orchestrator cap; more likely
+the ConcurrencyLimiter (100 in-flight) or a per-provider rate limit
+tripping, converted to 502 by the categorized-error handler.
+
+### Root Cause (suspected)
+
+Concurrent non-streaming chat requests all attempt the NEW orchestrator
+→ all fail simultaneously → all hit DebateService fallback → all contend
+for the same 5 verified providers → providers exhaust rate limit → empty
+responses → `processWithOrchestrator` correctly refuses to emit 200-OK
+with empty content, returns an error, which the gin middleware maps to
+502.
+
+### Status
+
+OPEN. Not blocking Issue #43 (that's about serial request behavior,
+which is now correct). Fix is a separate concurrency-isolation effort:
+per-request budget for the orchestrator path, provider-aware load
+shedding, or streaming-only under load.
+
+### Affected Files
+
+- `internal/handlers/openai_compatible.go` (`processWithOrchestrator`)
+- `internal/middleware/concurrency_limiter.go`
+- Any provider with aggressive rate limits (Cerebras, Mistral seen
+  most often in logs)
+
+---
+
 ## Issue #43: Chat completions hang 30-90s then return 0-round degenerate debate (FIXED 2026-04-24 late evening)
 
 ### Final fix (2026-04-24 ~19:55 local, verified end-to-end against running binary)

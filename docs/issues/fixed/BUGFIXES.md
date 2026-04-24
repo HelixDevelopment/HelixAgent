@@ -1420,3 +1420,44 @@ Action items for operator:
 ---
 
 Last Updated: April 24, 2026
+
+---
+
+## Issue #49: Auto-discovery routes 7 native providers through OpenRouter decoder (FIXED 2026-04-24 late evening)
+
+### Issue
+
+`internal/services/provider_discovery.go:847-851` had a fallthrough case
+lumping siliconflow, hyperbolic, sambanova, nvidia, kimi, novita,
+upstage, cloudflare into a generic "no native impl → use OpenRouter as a
+proxy" branch, despite each of the first seven having full native
+implementations at `internal/llm/providers/<name>/<name>.go`.
+
+Effect at runtime: each of the seven got wrapped in an OpenRouter
+provider object using the provider's base URL + key. Response-decoding
+went through OpenRouter's JSON struct, which didn't match the native
+response shape — producing runtime errors like
+
+```
+failed to decode OpenRouter response: json: cannot unmarshal string
+  into Go value of type struct {...}
+```
+
+and cascading into `Provider has failed 3 consecutive health checks`
+with `last_error="OpenRouter API key is invalid or expired"` — a
+misleading error since the actual upstream never returned an error.
+
+### Fix
+
+Commit `d355b595`. Seven explicit case branches in `createProvider()`
+wiring each provider to its native `New<Name>Provider()` constructor.
+Cloudflare stays on the generic fallback because its constructor needs
+an AccountID field not yet surfaced through `ProviderMapping`.
+
+### Verification
+
+- boot15 (pre-fix): 14/25 healthy providers; siliconflow UNHEALTHY with
+  OpenRouter-decode error.
+- boot16 (post-fix): **16/25 healthy providers** (+2). cli_agents_challenge
+  42/42 PASSED; content_generation_challenge 10/10 PASSED — both of which
+  failed on boot15.

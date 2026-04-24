@@ -3005,32 +3005,46 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 	// context.WithTimeout(ctx, config.Timeout), which immediately cancels
 	// if Timeout is the zero value, producing an empty result set.
 	//
-	// Pack system prompt + prior turns into metadata so conductRealDebate
-	// can splice them into each participant's prompt. Without this the
-	// debate sees only the last user message and loses multi-turn context
-	// (multi_turn assertions in curl_api_testing_challenge regressed
-	// because "My name is Alice" + "What is my name?" collapsed to just
-	// "What is my name?").
+	// Pack system prompt + prior turns into metadata.system_context so
+	// conductRealDebate's executeRound (debate_service.go:1222) splices
+	// them into each participant's system prompt. Without this the
+	// debate sees only the last user message and loses multi-turn
+	// context (multi_turn assertions in curl_api_testing_challenge
+	// regressed because "My name is Alice" + "What is my name?"
+	// collapsed to just "What is my name?"). executeRound currently
+	// only consumes "system_context" from metadata — conversation
+	// history must be packed into that same string so the participants
+	// see it.
 	debateMetadata := map[string]any{"source": "openai_compatible"}
-	var systemContext strings.Builder
-	var conversationContext []string
+	var combinedSystem strings.Builder
 	for _, m := range req.Messages {
 		if m.Role == "system" {
 			content := m.Content
 			if len(content) > 2000 {
 				content = content[:2000] + "\n...[truncated]"
 			}
-			systemContext.WriteString(content + "\n")
-		} else if m.Role == "user" || m.Role == "assistant" {
-			conversationContext = append(conversationContext,
-				fmt.Sprintf("[%s]: %s", m.Role, m.Content))
+			combinedSystem.WriteString(content + "\n")
 		}
 	}
-	if systemContext.Len() > 0 {
-		debateMetadata["system_context"] = systemContext.String()
+	// Append prior conversation turns so the multi-turn context travels
+	// with the system prompt. The final user-role message stays as the
+	// Topic — the system prompt describes the *prior* dialogue only.
+	hasPriorConversation := false
+	for i, m := range req.Messages {
+		if m.Role == "user" || m.Role == "assistant" {
+			// Skip the very last user message — it is the Topic.
+			if i == len(req.Messages)-1 && m.Role == "user" {
+				continue
+			}
+			if !hasPriorConversation {
+				combinedSystem.WriteString("\nPRIOR CONVERSATION (honor this context when answering):\n")
+				hasPriorConversation = true
+			}
+			combinedSystem.WriteString(fmt.Sprintf("[%s]: %s\n", m.Role, m.Content))
+		}
 	}
-	if len(conversationContext) > 0 {
-		debateMetadata["conversation_context"] = strings.Join(conversationContext, "\n")
+	if combinedSystem.Len() > 0 {
+		debateMetadata["system_context"] = combinedSystem.String()
 	}
 
 	debateConfig := services.DebateConfig{

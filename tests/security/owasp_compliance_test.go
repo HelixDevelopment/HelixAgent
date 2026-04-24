@@ -589,7 +589,7 @@ func max(a, b int) int {
 // authorization are enforced correctly across all protected endpoints.
 func TestOWASP_A01_BrokenAccessControl(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -756,7 +756,7 @@ func TestOWASP_A01_BrokenAccessControl(t *testing.T) {
 // in responses and that TLS configuration meets minimum standards.
 func TestOWASP_A02_CryptographicFailures(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -871,7 +871,7 @@ func TestOWASP_A02_CryptographicFailures(t *testing.T) {
 			[]byte(selfSignedCert), []byte(selfSignedKey),
 		)
 		if err != nil {
-			t.Skip("Could not load test TLS cert")
+			t.Skip("Could not load test TLS cert")  // SKIP-OK: #legacy-untriaged
 		}
 		tlsServer := httptest.NewUnstartedServer(tlsRouter)
 		tlsServer.TLS = &tls.Config{
@@ -943,7 +943,7 @@ func TestOWASP_A02_CryptographicFailures(t *testing.T) {
 // across multiple input vectors.
 func TestOWASP_A03_Injection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -1225,7 +1225,7 @@ func TestOWASP_A03_Injection(t *testing.T) {
 // protections, and error handling design.
 func TestOWASP_A04_InsecureDesign(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -1362,7 +1362,7 @@ func TestOWASP_A04_InsecureDesign(t *testing.T) {
 // error message sanitisation, and security header presence.
 func TestOWASP_A05_SecurityMisconfiguration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -1545,7 +1545,7 @@ func TestOWASP_A05_SecurityMisconfiguration(t *testing.T) {
 // for reproducible builds.
 func TestOWASP_A06_VulnerableComponents(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -1628,7 +1628,7 @@ func TestOWASP_A06_VulnerableComponents(t *testing.T) {
 // expiration enforcement, and resistance to common auth bypass techniques.
 func TestOWASP_A07_AuthenticationFailures(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -1809,7 +1809,7 @@ func TestOWASP_A07_AuthenticationFailures(t *testing.T) {
 // enforcement, and protection against deserialization attacks.
 func TestOWASP_A08_SoftwareIntegrity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -2013,7 +2013,7 @@ func TestOWASP_A08_SoftwareIntegrity(t *testing.T) {
 // events (failed auth, access violations, injection attempts) are logged.
 func TestOWASP_A09_LoggingMonitoringFailures(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	// Not parallel: we need sequential requests to check cumulative log entries.
 
@@ -2218,7 +2218,7 @@ func TestOWASP_A09_LoggingMonitoringFailures(t *testing.T) {
 // blocks requests to internal, private, and cloud metadata addresses.
 func TestOWASP_A10_SSRF(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 

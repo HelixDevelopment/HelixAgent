@@ -9,7 +9,7 @@ import (
 
 func TestRunEnsembleBasic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping ensemble test in short mode — requires LLM provider connectivity")
+		t.Skip("Skipping ensemble test in short mode — requires LLM provider connectivity")  // SKIP-OK: #short-mode
 	}
 	// Build a minimal request and ensure ensemble runs without error
 	req := &models.LLMRequest{
@@ -24,13 +24,13 @@ func TestRunEnsembleBasic(t *testing.T) {
 		// In test environment without API keys, no providers are configured
 		// This is expected behavior, not a test failure
 		t.Logf("ensemble returned expected error (no providers): %v", err)
-		t.Skip("No LLM providers configured in test environment - skipping ensemble test")
+		t.Skip("No LLM providers configured in test environment - skipping ensemble test")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 
 	// If no providers are available (common in test environment), that's acceptable
 	if len(responses) == 0 {
-		t.Skip("No LLM providers available for testing - skipping ensemble test")
+		t.Skip("No LLM providers available for testing - skipping ensemble test")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 

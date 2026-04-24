@@ -9,7 +9,7 @@ import (
 
 func TestAuditCLIHelp(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping CLI test in short mode")
+		t.Skip("skipping CLI test in short mode")  // SKIP-OK: #short-mode
 	}
 	bin := filepath.Join(t.TempDir(), "audit")
 	build := exec.Command("go", "build", "-o", bin, ".")
@@ -29,7 +29,7 @@ func TestAuditCLIHelp(t *testing.T) {
 
 func TestAuditCLIProducesReport(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping CLI test in short mode")
+		t.Skip("skipping CLI test in short mode")  // SKIP-OK: #short-mode
 	}
 	tmpDir := t.TempDir()
 	srcDir := filepath.Join(tmpDir, "project")
@@ -66,7 +66,7 @@ func TestAuditCLIProducesReport(t *testing.T) {
 
 func TestAuditCLIJSONOutput(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping CLI test in short mode")
+		t.Skip("skipping CLI test in short mode")  // SKIP-OK: #short-mode
 	}
 	tmpDir := t.TempDir()
 	srcDir := filepath.Join(tmpDir, "project")

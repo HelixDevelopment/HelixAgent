@@ -39,7 +39,7 @@ func buildRateLimitedRouter(rl *middleware.RateLimiter) *gin.Engine {
 // clients (distinct IPs). Each client should be tracked independently.
 func TestMiddleware_RateLimiter_ConcurrentClients(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	rl := middleware.NewRateLimiterWithConfig(nil, &middleware.RateLimitConfig{
@@ -129,7 +129,7 @@ func TestMiddleware_RateLimiter_ConcurrentClients(t *testing.T) {
 // is correctly limited to the configured request count within a time window.
 func TestMiddleware_RateLimiter_SingleKey_Enforcement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	const limit = 10
@@ -185,7 +185,7 @@ func TestMiddleware_RateLimiter_SingleKey_Enforcement(t *testing.T) {
 // when many goroutines hit the same key simultaneously.
 func TestMiddleware_RateLimiter_BurstConcurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	const limit = 50
@@ -268,7 +268,7 @@ func TestMiddleware_RateLimiter_BurstConcurrent(t *testing.T) {
 // include the Retry-After header.
 func TestMiddleware_RateLimiter_RetryAfterHeader(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	rl := middleware.NewRateLimiterWithConfig(nil, &middleware.RateLimitConfig{

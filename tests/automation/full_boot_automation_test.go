@@ -17,7 +17,7 @@ import (
 // compiles without errors.
 func TestFullBoot_BinaryBuilds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping build test in short mode")
+		t.Skip("skipping build test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -32,7 +32,7 @@ func TestFullBoot_BinaryBuilds(t *testing.T) {
 // to --help without error.
 func TestFullBoot_HelpFlag(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -60,7 +60,7 @@ func TestFullBoot_HelpFlag(t *testing.T) {
 // the --generate-agent-config flag without crashing.
 func TestFullBoot_GenerateAgentConfigFlag(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()

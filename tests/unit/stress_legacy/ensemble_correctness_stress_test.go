@@ -78,7 +78,7 @@ func (p *correctnessMockProvider) CompleteStream(
 // the Phase 1 safety fixes hold under concurrent load.
 func TestEnsemble_CorrectnessUnderConcurrentLoad_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -173,7 +173,7 @@ func TestEnsemble_CorrectnessUnderConcurrentLoad_Stress(t *testing.T) {
 // confirming the Phase 1 goroutine-lifecycle fixes hold under load.
 func TestEnsemble_NoGoroutineLeak_UnderLoad_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -247,7 +247,7 @@ func TestEnsemble_NoGoroutineLeak_UnderLoad_Stress(t *testing.T) {
 // panicking or leaving goroutines behind.
 func TestEnsemble_ContextCancellation_NoPanic_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -339,7 +339,7 @@ func TestEnsemble_ContextCancellation_NoPanic_Stress(t *testing.T) {
 // the Phase 1 mutex fix prevents data races.
 func TestEnsemble_ConcurrentProviderRegistration_NoPanic_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

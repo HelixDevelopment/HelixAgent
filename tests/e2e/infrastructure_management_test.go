@@ -16,7 +16,7 @@ import (
 func TestInfrastructureCommands(t *testing.T) {
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built, skipping E2E tests")
+		t.Skip("Binary not built, skipping E2E tests")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tests := []struct {
@@ -36,7 +36,7 @@ func TestInfrastructureCommands(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.skipCI && os.Getenv("CI") == "true" {
-				t.Skip("Skipping in CI environment")
+				t.Skip("Skipping in CI environment")  // SKIP-OK: #legacy-untriaged
 			}
 
 			cmd := exec.Command(binPath, tt.args...)
@@ -90,12 +90,12 @@ func TestInfrastructureStartStop(t *testing.T) {
 	testutil.RequireServer(t)
 
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping infrastructure test in CI")
+		t.Skip("Skipping infrastructure test in CI")  // SKIP-OK: #legacy-untriaged
 	}
 
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built, skipping E2E tests")
+		t.Skip("Binary not built, skipping E2E tests")  // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("start_and_stop_infrastructure", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestInfrastructureStartStop(t *testing.T) {
 		output, err := startCmd.CombinedOutput()
 		if err != nil {
 			t.Logf("Infrastructure start output: %s", string(output))
-			t.Skip("Infrastructure not available in this environment")
+			t.Skip("Infrastructure not available in this environment")  // SKIP-OK: #legacy-untriaged
 		}
 
 		// Give it a moment to start

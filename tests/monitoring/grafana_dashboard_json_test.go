@@ -25,7 +25,7 @@ func grafanaDashboardPath(t *testing.T) string {
 // file is present in the repository.
 func TestGrafanaDashboardJSON_FileExists(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -37,7 +37,7 @@ func TestGrafanaDashboardJSON_FileExists(t *testing.T) {
 // well-formed JSON.
 func TestGrafanaDashboardJSON_ValidJSON(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -54,7 +54,7 @@ func TestGrafanaDashboardJSON_ValidJSON(t *testing.T) {
 // containing "title", "tags", and "panels" fields.
 func TestGrafanaDashboardJSON_TopLevelStructure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -85,7 +85,7 @@ func TestGrafanaDashboardJSON_TopLevelStructure(t *testing.T) {
 // "id", "title", and "type".
 func TestGrafanaDashboardJSON_Panels(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -124,7 +124,7 @@ func TestGrafanaDashboardJSON_Panels(t *testing.T) {
 // production monitoring.
 func TestGrafanaDashboardJSON_ExpectedPanelTitles(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -176,7 +176,7 @@ func TestGrafanaDashboardJSON_ExpectedPanelTitles(t *testing.T) {
 // ensuring that all panels actually reference a metric query.
 func TestGrafanaDashboardJSON_PanelTargets(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)
@@ -230,7 +230,7 @@ func TestGrafanaDashboardJSON_PanelTargets(t *testing.T) {
 // share the same numeric ID, which would cause Grafana import errors.
 func TestGrafanaDashboardJSON_NoDuplicatePanelIDs(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	path := grafanaDashboardPath(t)

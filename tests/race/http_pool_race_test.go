@@ -16,7 +16,7 @@ import (
 // concurrently.
 func TestHTTPClientPool_ConcurrentGetClient(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool := internalhttp.NewHTTPClientPool(internalhttp.DefaultPoolConfig())
@@ -50,7 +50,7 @@ func TestHTTPClientPool_ConcurrentGetClient(t *testing.T) {
 // alongside GetClient to exercise all lock paths simultaneously.
 func TestHTTPClientPool_ConcurrentGetClientForURL(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool := internalhttp.NewHTTPClientPool(internalhttp.DefaultPoolConfig())

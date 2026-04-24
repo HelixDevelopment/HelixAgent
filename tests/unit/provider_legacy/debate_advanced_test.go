@@ -114,7 +114,7 @@ func TestIntegration_Debate_PerformanceOptimizer_CacheHit(t *testing.T) {
 
 func TestIntegration_Debate_PerformanceOptimizer_Parallel(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping parallel execution test in short mode")
+		t.Skip("Skipping parallel execution test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Create providers that simulate work with a small delay

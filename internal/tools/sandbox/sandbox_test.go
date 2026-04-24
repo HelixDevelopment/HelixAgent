@@ -42,7 +42,7 @@ func TestNewSandbox(t *testing.T) {
 	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	config := DefaultConfig()
@@ -75,7 +75,7 @@ func TestSandbox_Execute(t *testing.T) {
 	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	config := Config{
@@ -102,7 +102,7 @@ func TestSandbox_Execute_WithTimeout(t *testing.T) {
 	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	config := Config{
@@ -131,7 +131,7 @@ func TestSandbox_Execute_WithNetworkDisabled(t *testing.T) {
 	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	config := Config{
@@ -159,7 +159,7 @@ func TestSandbox_Execute_WithNetworkEnabled(t *testing.T) {
 	t.Parallel()
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	config := Config{
@@ -237,7 +237,7 @@ func TestTool_Execute(t *testing.T) {
 
 	// Skip if no runtime available
 	if len(AvailableRuntimes()) == 1 && AvailableRuntimes()[0] == RuntimeNone {
-		t.Skip("No container runtime available")
+		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
 	}
 
 	ctx := context.Background()

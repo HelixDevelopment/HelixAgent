@@ -21,7 +21,7 @@ func TestIntegration_NewClientWithFallback_Success(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -43,7 +43,7 @@ func TestIntegration_InitConnection_Success(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -72,7 +72,7 @@ func TestIntegration_Pool_ReturnsRealPool(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -100,7 +100,7 @@ func TestIntegration_Ping_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -128,7 +128,7 @@ func TestIntegration_HealthCheck_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -156,7 +156,7 @@ func TestIntegration_Exec_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -184,7 +184,7 @@ func TestIntegration_Query_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -213,7 +213,7 @@ func TestIntegration_QueryRow_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -246,7 +246,7 @@ func TestIntegration_Begin_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -280,7 +280,7 @@ func TestIntegration_Migrate_RealConnection(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -311,7 +311,7 @@ func TestIntegration_NewPostgresDB_Success(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -334,7 +334,7 @@ func TestIntegration_NewPostgresDBWithFallback_PostgresSuccess(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -356,7 +356,7 @@ func TestIntegration_Connect_Success(t *testing.T) {
 	t.Parallel()
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	db, err := Connect()

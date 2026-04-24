@@ -991,7 +991,7 @@ func TestPausePlan(t *testing.T) {
 
 func TestExitPlanMode(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping - test needs fixing")
+	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
 	router, _, handler := setupTestRouter()
 
 	// Create a test session

@@ -15,7 +15,7 @@ import (
 // with the global default registry used by production code.
 func TestPrometheusMetricRegistration_KeyMetrics(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	type metricDef struct {
@@ -126,7 +126,7 @@ func TestPrometheusMetricRegistration_KeyMetrics(t *testing.T) {
 // automatically registered by the client library.
 func TestPrometheusMetricRegistration_DefaultGathererContainsGoMetrics(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	families, err := prometheus.DefaultGatherer.Gather()
@@ -156,7 +156,7 @@ func TestPrometheusMetricRegistration_DefaultGathererContainsGoMetrics(t *testin
 // reports the correct MetricType in the gathered ProtoBuf output.
 func TestPrometheusMetricRegistration_Types(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -217,7 +217,7 @@ func TestPrometheusMetricRegistration_Types(t *testing.T) {
 // follow the snake_case convention used across HelixAgent.
 func TestPrometheusMetricRegistration_Labels(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

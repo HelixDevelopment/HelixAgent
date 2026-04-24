@@ -127,7 +127,7 @@ func newBigdataStressLogger() *logrus.Logger {
 // verifying thread safety of the conversion functions.
 func TestBigData_ConcurrentConfigConversion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	done := make(chan struct{})
@@ -210,7 +210,7 @@ func TestBigData_ConcurrentConfigConversion(t *testing.T) {
 // analytics events through AnalyticsIntegration concurrently.
 func TestBigData_ConcurrentAnalyticsPublish(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	broker := newBdStressMockBroker()
@@ -287,7 +287,7 @@ func TestBigData_ConcurrentAnalyticsPublish(t *testing.T) {
 // events through EntityIntegration concurrently.
 func TestBigData_ConcurrentEntityPublish(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	broker := newBdStressMockBroker()
@@ -361,7 +361,7 @@ func TestBigData_ConcurrentEntityPublish(t *testing.T) {
 // AnalyticsIntegration and EntityIntegration with mixed operations.
 func TestBigData_InMemoryEventLog_ConcurrentAppendAndRead(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	broker := newBdStressMockBroker()
@@ -474,7 +474,7 @@ func TestBigData_InMemoryEventLog_ConcurrentAppendAndRead(t *testing.T) {
 // verifying no panics, races, or deadlocks occur.
 func TestBigData_HealthCheck_UnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger := newBigdataStressLogger()

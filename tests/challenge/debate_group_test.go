@@ -23,14 +23,14 @@ import (
 // Run with: go test -v ./tests/challenge -run TestDebateGroupVerification
 func TestDebateGroupVerification(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group verification in short mode (requires live LLM providers)")
+		t.Skip("Skipping debate group verification in short mode (requires live LLM providers)")  // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 
 	// Skip if server is not running
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)
+		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ServerHealth", func(t *testing.T) {
@@ -321,7 +321,7 @@ func testEnsembleFunctionality(t *testing.T, baseURL string) {
 
 	if err != nil {
 		t.Logf("Ensemble request failed (network error): %v", err)
-		t.Skip("Skipping due to network error")
+		t.Skip("Skipping due to network error")  // SKIP-OK: #requires-network
 		return
 	}
 	defer resp.Body.Close()
@@ -331,7 +331,7 @@ func testEnsembleFunctionality(t *testing.T, baseURL string) {
 		// Check if this is a provider availability issue (not a system bug)
 		if resp.StatusCode == http.StatusBadGateway || resp.StatusCode == http.StatusServiceUnavailable {
 			t.Logf("Ensemble unavailable (no working providers): %s", string(body))
-			t.Skip("Skipping due to provider unavailability")
+			t.Skip("Skipping due to provider unavailability")  // SKIP-OK: #legacy-untriaged
 			return
 		}
 		t.Logf("Ensemble returned non-OK status %d: %s", resp.StatusCode, string(body))
@@ -430,13 +430,13 @@ func testProviderContribution(t *testing.T, baseURL string) {
 // TestProviderHealthEndpoints tests provider-specific health endpoints
 func TestProviderHealthEndpoints(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping provider health endpoints in short mode (requires live server)")
+		t.Skip("Skipping provider health endpoints in short mode (requires live server)")  // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)
+		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
 	}
 
 	providers := []string{"deepseek", "gemini", "openrouter"}

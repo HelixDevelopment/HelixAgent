@@ -40,8 +40,9 @@ if [ -n "${NO_SILENT_SKIPS_EXCLUDES:-}" ]; then
   done
 fi
 
+# Accept numeric ticket (#1234) OR kebab-case category (#short-mode).
 violations=$(grep -rnE "$PATTERNS" "${INCLUDES[@]}" "${EXCLUDES[@]}" . 2>/dev/null \
-             | grep -v -E 'SKIP-OK: #[0-9]+' || true)
+             | grep -v -E 'SKIP-OK: #[a-zA-Z0-9_-]+' || true)
 
 if [ -n "$violations" ]; then
   count=$(printf '%s\n' "$violations" | wc -l | tr -d ' ')

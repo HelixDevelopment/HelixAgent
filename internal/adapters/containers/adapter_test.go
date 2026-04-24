@@ -305,7 +305,7 @@ func TestAdapter_DetectRuntime_WithExisting(t *testing.T) {
 func TestAdapter_DetectRuntime_WithoutRuntime(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping runtime detection in short mode")
+		t.Skip("skipping runtime detection in short mode")  // SKIP-OK: #short-mode
 	}
 	// Create adapter without runtime; will attempt auto-detection
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
@@ -339,7 +339,7 @@ func TestAdapter_RuntimeAvailable(t *testing.T) {
 func TestAdapter_RuntimeAvailable_WithoutRuntime(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping runtime detection in short mode")
+		t.Skip("skipping runtime detection in short mode")  // SKIP-OK: #short-mode
 	}
 	adapter, err := NewAdapter(WithLogger(logging.NopLogger{}))
 	require.NoError(t, err)

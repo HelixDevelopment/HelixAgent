@@ -83,7 +83,7 @@ func doJSON(t *testing.T, method, path string, reqBody any, out any) (int, http.
 func TestIntegration_HealthEndpoint(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	status, _ := doJSON(t, http.MethodGet, "/v1/health", nil, nil)
@@ -99,7 +99,7 @@ func TestIntegration_HealthEndpoint(t *testing.T) {
 func TestIntegration_CompleteFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	reqBody := map[string]any{
@@ -127,7 +127,7 @@ func TestIntegration_CompleteFlow(t *testing.T) {
 func TestIntegration_ChatFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	reqBody := map[string]any{
@@ -148,7 +148,7 @@ func TestIntegration_ChatFlow(t *testing.T) {
 func TestIntegration_ModelsEndpoint(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	var payload map[string]any
@@ -162,7 +162,7 @@ func TestIntegration_ModelsEndpoint(t *testing.T) {
 func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	createBody := map[string]any{
@@ -194,7 +194,7 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 func TestIntegration_DebateStatusFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	createBody := map[string]any{
@@ -224,7 +224,7 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 func TestIntegration_DebateListAndDelete(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	// Create three debates.
@@ -253,7 +253,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 func TestIntegration_MCPFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	for _, path := range []string{
@@ -275,7 +275,7 @@ func TestIntegration_MCPFlow(t *testing.T) {
 func TestIntegration_InvalidRoutes(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	cases := []struct {
@@ -315,7 +315,7 @@ func TestIntegration_InvalidRoutes(t *testing.T) {
 func TestIntegration_MiddlewareNotFound(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	status, _ := doJSON(t, http.MethodGet, "/non-existent-route-const030", nil, nil)
@@ -328,7 +328,7 @@ func TestIntegration_MiddlewareNotFound(t *testing.T) {
 func TestIntegration_ConcurrentRequests(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	const n = 10
@@ -360,7 +360,7 @@ func TestIntegration_ConcurrentRequests(t *testing.T) {
 func TestIntegration_ResponseHeaders(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	_, hdr := doJSON(t, http.MethodGet, "/v1/models", nil, nil)
@@ -371,7 +371,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 func TestIntegration_ErrorResponseFormat(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	var resp map[string]any
@@ -386,7 +386,7 @@ func TestIntegration_ErrorResponseFormat(t *testing.T) {
 func TestIntegration_URLRouting(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
 	}
 
 	t.Run("GET_/v1/models", func(t *testing.T) {

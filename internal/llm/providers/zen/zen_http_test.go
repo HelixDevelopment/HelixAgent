@@ -335,14 +335,14 @@ func TestZenHTTPProvider_ModelSupportViaCapabilities(t *testing.T) {
 func TestZenHTTPProvider_Integration_Complete(t *testing.T) {
 	t.Parallel()
 	if !IsOpenCodeInstalled() {
-		t.Skip("OpenCode CLI not installed")
+		t.Skip("OpenCode CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	// Check if server is already running
 	if !provider.IsServerRunning() {
-		t.Skip("OpenCode HTTP server not running - skipping integration test")
+		t.Skip("OpenCode HTTP server not running - skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -354,7 +354,7 @@ func TestZenHTTPProvider_Integration_Complete(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Integration test failed: %v", err)
-		t.Skip("Skipping due to error")
+		t.Skip("Skipping due to error")  // SKIP-OK: #legacy-untriaged
 	}
 
 	assert.NotNil(t, resp)
@@ -368,7 +368,7 @@ func TestZenHTTPProvider_Integration_Complete(t *testing.T) {
 func TestZenHTTPProvider_Integration_HealthCheck(t *testing.T) {
 	t.Parallel()
 	if !IsOpenCodeInstalled() {
-		t.Skip("OpenCode CLI not installed")
+		t.Skip("OpenCode CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenHTTPProviderWithModel("big-pickle")
@@ -388,13 +388,13 @@ func TestZenHTTPProvider_Integration_HealthCheck(t *testing.T) {
 func TestZenHTTPProvider_CompleteStream(t *testing.T) {
 	t.Parallel()
 	if !IsOpenCodeInstalled() {
-		t.Skip("OpenCode CLI not installed")
+		t.Skip("OpenCode CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenHTTPProviderWithModel("big-pickle")
 
 	if !provider.IsServerRunning() {
-		t.Skip("Server not running - skipping streaming test")
+		t.Skip("Server not running - skipping streaming test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -406,7 +406,7 @@ func TestZenHTTPProvider_CompleteStream(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Stream test failed: %v", err)
-		t.Skip("Streaming test skipped due to error")
+		t.Skip("Streaming test skipped due to error")  // SKIP-OK: #legacy-untriaged
 	}
 
 	assert.NotNil(t, ch)
@@ -456,7 +456,7 @@ func TestZenHTTPProvider_BasicAuthCredentials(t *testing.T) {
 func TestZenHTTPProvider_StartServerWithoutCLI(t *testing.T) {
 	t.Parallel()
 	if IsOpenCodeInstalled() {
-		t.Skip("OpenCode is installed - can't test missing CLI scenario")
+		t.Skip("OpenCode is installed - can't test missing CLI scenario")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenHTTPProviderWithModel("big-pickle")
@@ -465,7 +465,7 @@ func TestZenHTTPProvider_StartServerWithoutCLI(t *testing.T) {
 	// If StartServer succeeds (e.g., binary exists but --version timed out),
 	// skip rather than fail — we can't reliably test the missing CLI scenario.
 	if err == nil {
-		t.Skip("StartServer succeeded unexpectedly — opencode may exist but --version timed out")
+		t.Skip("StartServer succeeded unexpectedly — opencode may exist but --version timed out")  // SKIP-OK: #legacy-untriaged
 	}
 	assert.Contains(t, err.Error(), "not found")
 }

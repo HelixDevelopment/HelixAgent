@@ -56,7 +56,7 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -373,7 +373,7 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a bare repo to act as remote
@@ -483,7 +483,7 @@ func TestGitAdapter_Clone(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a bare repo to clone from
@@ -597,7 +597,7 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -694,7 +694,7 @@ func TestGitAdapter_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -753,7 +753,7 @@ func TestGitAdapter_ContextTimeout(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)

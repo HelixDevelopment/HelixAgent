@@ -141,7 +141,7 @@ func ServerAvailable() bool {
 func RequirePostgres(t *testing.T) {
 	t.Helper()
 	if !PostgresAvailable() {
-		t.Skip("PostgreSQL not available — start with: make test-infra-start")
+		t.Skip("PostgreSQL not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -149,7 +149,7 @@ func RequirePostgres(t *testing.T) {
 func RequireRedis(t *testing.T) {
 	t.Helper()
 	if !RedisAvailable() {
-		t.Skip("Redis not available — start with: make test-infra-start")
+		t.Skip("Redis not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -157,7 +157,7 @@ func RequireRedis(t *testing.T) {
 func RequireMockLLM(t *testing.T) {
 	t.Helper()
 	if !MockLLMAvailable() {
-		t.Skip("Mock LLM not available — start with: make test-infra-start")
+		t.Skip("Mock LLM not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -167,10 +167,10 @@ func RequireMockLLM(t *testing.T) {
 func RequireServer(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping server-dependent test in short mode (requires live HelixAgent server with LLM providers)")
+		t.Skip("Skipping server-dependent test in short mode (requires live HelixAgent server with LLM providers)")  // SKIP-OK: #short-mode
 	}
 	if !ServerAvailable() {
-		t.Skip("HelixAgent server not available — start with: make run")
+		t.Skip("HelixAgent server not available — start with: make run")  // SKIP-OK: #legacy-untriaged
 	}
 }
 

@@ -220,7 +220,7 @@ func cleanupTestConfig(t *testing.T, config *TestConfig) {
 // TestGenerateAPIKeyCommand tests the -generate-api-key CLI command
 func TestGenerateAPIKeyCommand(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping binary command test in short mode")
+		t.Skip("Skipping binary command test in short mode")  // SKIP-OK: #short-mode
 	}
 	config := loadTestConfig(t)
 	defer cleanupTestConfig(t, config)
@@ -334,7 +334,7 @@ func TestGenerateAPIKeyCommand(t *testing.T) {
 // TestGenerateOpenCodeConfigCommand tests the -generate-opencode-config CLI command
 func TestGenerateOpenCodeConfigCommand(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping binary command test in short mode")
+		t.Skip("Skipping binary command test in short mode")  // SKIP-OK: #short-mode
 	}
 	config := loadTestConfig(t)
 	defer cleanupTestConfig(t, config)
@@ -455,7 +455,7 @@ func TestGenerateOpenCodeConfigCommand(t *testing.T) {
 // TestHelpCommand tests the -help CLI command
 func TestHelpCommand(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping binary command test in short mode")
+		t.Skip("Skipping binary command test in short mode")  // SKIP-OK: #short-mode
 	}
 	config := loadTestConfig(t)
 	defer cleanupTestConfig(t, config)

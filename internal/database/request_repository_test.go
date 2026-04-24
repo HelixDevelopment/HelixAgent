@@ -195,11 +195,11 @@ func TestRequestRepository_GetBySessionID(t *testing.T) {
 	// Skip tests that require foreign key references (session_id -> user_sessions)
 	// These tests would need a valid session to be created first
 	t.Run("Success", func(t *testing.T) {
-		t.Skip("Skipping: requires valid session record due to foreign key constraint")
+		t.Skip("Skipping: requires valid session record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
 	})
 
 	t.Run("Pagination", func(t *testing.T) {
-		t.Skip("Skipping: requires valid session record due to foreign key constraint")
+		t.Skip("Skipping: requires valid session record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
 	})
 }
 
@@ -207,7 +207,7 @@ func TestRequestRepository_GetByUserID(t *testing.T) {
 	// Skip tests that require foreign key references (user_id -> users)
 	// These tests would need a valid user to be created first
 	t.Run("Success", func(t *testing.T) {
-		t.Skip("Skipping: requires valid user record due to foreign key constraint")
+		t.Skip("Skipping: requires valid user record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
 	})
 }
 
@@ -344,11 +344,11 @@ func TestRequestRepository_GetPendingRequests(t *testing.T) {
 func TestRequestRepository_GetRequestStats(t *testing.T) {
 	// Skip all tests - they require foreign key references (user_id -> users)
 	t.Run("Success", func(t *testing.T) {
-		t.Skip("Skipping: requires valid user record due to foreign key constraint")
+		t.Skip("Skipping: requires valid user record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
 	})
 
 	t.Run("EmptyUserID", func(t *testing.T) {
-		t.Skip("Skipping: empty user_id not compatible with UUID column type")
+		t.Skip("Skipping: empty user_id not compatible with UUID column type")  // SKIP-OK: #legacy-untriaged
 	})
 }
 

@@ -19,7 +19,7 @@ import (
 // and verifies they are all stored correctly without data loss or corruption.
 func TestMemoryStore_HighWriteVolume(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -93,7 +93,7 @@ func TestMemoryStore_HighWriteVolume(t *testing.T) {
 // data races, or deadlocks occur.
 func TestMemoryStore_ConcurrentReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -212,7 +212,7 @@ func TestMemoryStore_ConcurrentReadWrite(t *testing.T) {
 // while writes are happening.
 func TestMemoryStore_SearchUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -320,7 +320,7 @@ func TestMemoryStore_SearchUnderLoad(t *testing.T) {
 // cycles, detecting potential memory leaks.
 func TestMemoryStore_MemoryNotGrowingUnbounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -387,7 +387,7 @@ func TestMemoryStore_MemoryNotGrowingUnbounded(t *testing.T) {
 // thread-safe.
 func TestMemoryStore_EntityGraphUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

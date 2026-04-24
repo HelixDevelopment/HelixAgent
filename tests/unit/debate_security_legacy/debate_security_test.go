@@ -89,7 +89,7 @@ func createSecurityTopology(t *testing.T) topology.Topology {
 // system information or alter execution.
 func TestDebate_PromptInjection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping security test in short mode")
+		t.Skip("Skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	injectionPayloads := []string{
@@ -153,7 +153,7 @@ func TestDebate_PromptInjection(t *testing.T) {
 // an extremely large number of votes without unbounded memory growth.
 func TestDebate_ResourceExhaustion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping security test in short mode")
+		t.Skip("Skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := voting.VotingConfig{
@@ -217,7 +217,7 @@ func TestDebate_ResourceExhaustion(t *testing.T) {
 // leak into another.
 func TestDebate_InformationLeakage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping security test in short mode")
+		t.Skip("Skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Create two independent debate sessions
@@ -288,7 +288,7 @@ func TestDebate_InformationLeakage(t *testing.T) {
 // content.
 func TestDebate_EpisodicMemory_InjectionResistance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping security test in short mode")
+		t.Skip("Skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	memory := reflexion.NewEpisodicMemoryBuffer(100)
@@ -342,7 +342,7 @@ func TestDebate_EpisodicMemory_InjectionResistance(t *testing.T) {
 // adversarial protocol handles malicious code input safely.
 func TestDebate_AdversarialProtocol_InputSanitization(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping security test in short mode")
+		t.Skip("Skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Use failing LLM to trigger fallback (deterministic) mode

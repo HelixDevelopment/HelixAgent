@@ -20,7 +20,7 @@ import (
 // deadlocks, or data races occur.
 func TestStress_DiscoveryHandler_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -88,7 +88,7 @@ func TestStress_DiscoveryHandler_ConcurrentAccess(t *testing.T) {
 // scoring endpoint with many concurrent requests for different models.
 func TestStress_ScoringHandler_ConcurrentScoring(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -162,7 +162,7 @@ func TestStress_ScoringHandler_ConcurrentScoring(t *testing.T) {
 // to verify it remains responsive under sustained high-throughput load.
 func TestStress_HealthHandler_HighThroughput(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -242,7 +242,7 @@ func TestStress_HealthHandler_HighThroughput(t *testing.T) {
 // completions endpoint with varied payload sizes and formats concurrently.
 func TestStress_ChatCompletionHandler_MixedPayloads(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -319,7 +319,7 @@ func TestStress_ChatCompletionHandler_MixedPayloads(t *testing.T) {
 // endpoints under concurrent access to verify metric collection safety.
 func TestStress_MonitoringHandler_ConcurrentMetrics(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 

@@ -30,7 +30,7 @@ func TestOrchestrator_NewOrchestrator_ConcurrentCreation(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -89,7 +89,7 @@ func TestOrchestrator_ListChallenges_RapidConcurrent(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -130,7 +130,7 @@ func TestOrchestrator_ChallengeCount_RapidConcurrent(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -251,7 +251,7 @@ func TestFlowConstruction_ConcurrentAllFlows(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -291,7 +291,7 @@ func TestFlowConstruction_ConcurrentAllFlows(
 // detect allocation issues or hidden state mutations.
 func TestFlowConstruction_RapidRepeated(t *testing.T) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -325,7 +325,7 @@ func TestOrchestrator_Sequential_MemoryPressure(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -386,7 +386,7 @@ func TestOrchestrator_Summary_ConcurrentAccess(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -430,7 +430,7 @@ func TestOrchestrator_Challenges_ConcurrentAccess(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -476,7 +476,7 @@ func TestOrchestrator_MixedConcurrentAccess(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -557,7 +557,7 @@ func TestOrchestrator_ConcurrentCreation_UniqueURLs(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -748,7 +748,7 @@ func allFlowValidators() []flowValidator {
 // concurrent invocation (steps have names, methods, paths).
 func TestFlowConstruction_StepIntegrity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("stress test")
+		t.Skip("stress test")  // SKIP-OK: #legacy-untriaged
 	}
 	runtime.GOMAXPROCS(2)
 

@@ -160,7 +160,7 @@ var ACPAgents = []ACPAgentConfig{
 // TestACPAgentDiscovery tests agent discovery endpoint
 func TestACPAgentDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
 	client := NewACPClient(testutil.ServerURL())
@@ -175,7 +175,7 @@ func TestACPAgentDiscovery(t *testing.T) {
 // TestACPAgentInfo tests getting agent information
 func TestACPAgentInfo(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
 	client := NewACPClient(testutil.ServerURL())
@@ -197,7 +197,7 @@ func TestACPAgentInfo(t *testing.T) {
 // TestACPAgentExecution tests actual agent task execution
 func TestACPAgentExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
 	client := NewACPClient(testutil.ServerURL())
@@ -236,7 +236,7 @@ func add(a, b int) int {
 // TestACPHealthCheck tests ACP service health
 func TestACPHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
 

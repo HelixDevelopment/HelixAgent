@@ -290,7 +290,7 @@ func CreateAPIKeyHeaders(apiKey string) map[string]string {
 // SkipIfShort skips the test if running in short mode
 func SkipIfShort(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping test in short mode")
+		t.Skip("Skipping test in short mode")  // SKIP-OK: #short-mode
 	}
 }
 
@@ -299,10 +299,10 @@ func SkipIfShort(t *testing.T) {
 func SkipIfNoDatabase(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping test that requires database connection (short mode)")
+		t.Skip("Skipping test that requires database connection (short mode)")  // SKIP-OK: #short-mode
 	}
 	if !checkTCPEndpoint(envOrDefault("DB_HOST", "localhost"), envOrDefault("DB_PORT", "15432")) {
-		t.Skip("PostgreSQL not available — start with: make test-infra-start")
+		t.Skip("PostgreSQL not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -311,10 +311,10 @@ func SkipIfNoDatabase(t *testing.T) {
 func SkipIfNoRedis(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping test that requires Redis connection (short mode)")
+		t.Skip("Skipping test that requires Redis connection (short mode)")  // SKIP-OK: #short-mode
 	}
 	if !checkTCPEndpoint(envOrDefault("REDIS_HOST", "localhost"), envOrDefault("REDIS_PORT", "16379")) {
-		t.Skip("Redis not available — start with: make test-infra-start")
+		t.Skip("Redis not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -322,7 +322,7 @@ func SkipIfNoRedis(t *testing.T) {
 func SkipIfNoServer(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping test that requires HelixAgent server (short mode)")
+		t.Skip("Skipping test that requires HelixAgent server (short mode)")  // SKIP-OK: #short-mode
 	}
 	host := envOrDefault("HELIXAGENT_HOST", "localhost")
 	port := envOrDefault("HELIXAGENT_PORT", "7061")

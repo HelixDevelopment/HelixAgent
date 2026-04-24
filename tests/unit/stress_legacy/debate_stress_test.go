@@ -61,7 +61,7 @@ func (m *stressMockInvoker) Invoke(
 // and calculating results.
 func TestDebate_ConcurrentVoting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := voting.VotingConfig{
@@ -160,7 +160,7 @@ func TestDebate_ConcurrentVoting(t *testing.T) {
 // memory buffer and verifies that memory usage stays bounded.
 func TestDebate_MemoryUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	maxSize := 500
@@ -226,7 +226,7 @@ func TestDebate_MemoryUnderLoad(t *testing.T) {
 // deadlocks in the topology implementation.
 func TestDebate_DeadlockDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cfg := topology.DefaultTopologyConfig(topology.TopologyGraphMesh)
@@ -316,7 +316,7 @@ func TestDebate_DeadlockDetection(t *testing.T) {
 // concurrently to verify they do not interfere with each other.
 func TestDebate_ConcurrentProtocolExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	const debateCount = 5
@@ -392,7 +392,7 @@ func TestDebate_ConcurrentProtocolExecution(t *testing.T) {
 // reset and reused many times without resource leaks.
 func TestDebate_VotingSystemReset(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := voting.DefaultVotingConfig()

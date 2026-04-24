@@ -66,7 +66,7 @@ type VerifyError struct {
 // TestLLMProviders_AllProviders tests all configured LLM providers
 func TestLLMProviders_AllProviders(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping live provider verification in short mode")
+		t.Skip("Skipping live provider verification in short mode")  // SKIP-OK: #short-mode
 	}
 	// External API test — each subtest skips when its API key is missing
 

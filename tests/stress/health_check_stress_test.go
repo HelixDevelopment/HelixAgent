@@ -80,7 +80,7 @@ func extractHostPort(addr string) (string, string) {
 // missed results. Each endpoint has its own local listener.
 func TestHealthChecker_ManyEndpoints(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -169,7 +169,7 @@ func TestHealthChecker_ManyEndpoints(t *testing.T) {
 // blocking the main goroutine indefinitely.
 func TestHealthChecker_CheckAllNonBlocking_TimeoutPressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -268,7 +268,7 @@ func TestHealthChecker_CheckAllNonBlocking_TimeoutPressure(t *testing.T) {
 // predictable timeframe, even when all endpoints are unresponsive.
 func TestHealthChecker_DoesNotBlockMainGoroutine(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -313,7 +313,7 @@ func TestHealthChecker_DoesNotBlockMainGoroutine(t *testing.T) {
 // invoke the health checker concurrently without data races or panics.
 func TestHealthChecker_ConcurrentChecks(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -400,7 +400,7 @@ func TestHealthChecker_ConcurrentChecks(t *testing.T) {
 // invocations — important for BootManager using tight deadlines.
 func TestHealthChecker_CheckWithContext_CancelRespected(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -473,7 +473,7 @@ func TestHealthChecker_CheckWithContext_CancelRespected(t *testing.T) {
 // checks and 30 endpoints, goroutine count should remain bounded.
 func TestHealthChecker_SemaphoreUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

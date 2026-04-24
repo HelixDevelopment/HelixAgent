@@ -35,7 +35,7 @@ import (
 // instances; we assert at least 30 to catch accidental removal.
 func TestLazyLoading_SyncOnceCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping filesystem meta-test in short mode")
+		t.Skip("skipping filesystem meta-test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Locate project root relative to this test file's package path.
@@ -86,7 +86,7 @@ func TestLazyLoading_SyncOnceCount(t *testing.T) {
 //  3. The factory is called exactly once even under concurrent access.
 func TestLazyProvider_InitDeferred(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var factoryCalls int64
@@ -133,7 +133,7 @@ func TestLazyProvider_InitDeferred(t *testing.T) {
 // occurs when many goroutines race to call Get() simultaneously.
 func TestLazyProvider_ConcurrentInit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var factoryCalls int64
@@ -183,7 +183,7 @@ func TestLazyProvider_ConcurrentInit(t *testing.T) {
 // error, IsInitialized() remains false and Error() is non-nil.
 func TestLazyProvider_ErrorPropagation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cfg := &llm.LazyProviderConfig{
@@ -217,7 +217,7 @@ func TestLazyProvider_ErrorPropagation(t *testing.T) {
 //     the factory.
 func TestLazyServiceRegistry_DeferredInit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var factoryCalls int64
@@ -263,7 +263,7 @@ func TestLazyServiceRegistry_DeferredInit(t *testing.T) {
 // registered services: initializing one must not initialize others.
 func TestLazyServiceRegistry_MultipleServices(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var calls [3]int64
@@ -296,7 +296,7 @@ func TestLazyServiceRegistry_MultipleServices(t *testing.T) {
 // calls on the same service result in exactly one factory invocation.
 func TestLazyServiceRegistry_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var factoryCalls int64

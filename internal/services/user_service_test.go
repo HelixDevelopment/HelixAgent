@@ -210,7 +210,7 @@ func TestAuthResponse_Struct(t *testing.T) {
 
 func TestUserService_PasswordHashingRoundTrip(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping argon2 hashing test in short mode (requires GOMAXPROCS >= 4)")
+		t.Skip("Skipping argon2 hashing test in short mode (requires GOMAXPROCS >= 4)")  // SKIP-OK: #short-mode
 	}
 	service := NewUserService(nil, "test-secret", 24*time.Hour)
 

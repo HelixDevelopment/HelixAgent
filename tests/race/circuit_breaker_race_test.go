@@ -13,7 +13,7 @@ import (
 // Launches 20 goroutines mixing failure and success calls on a shared circuit breaker.
 func TestCircuitBreaker_ConcurrentAfterRequest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cb := llm.NewDefaultCircuitBreaker("test-provider", nil)
@@ -49,7 +49,7 @@ func TestCircuitBreaker_ConcurrentAfterRequest(t *testing.T) {
 // and removal.
 func TestCircuitBreaker_ConcurrentAddRemoveListener(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cb := llm.NewDefaultCircuitBreaker("listener-test", nil)
@@ -76,7 +76,7 @@ func TestCircuitBreaker_ConcurrentAddRemoveListener(t *testing.T) {
 // on a CircuitBreakerManager.
 func TestCircuitBreakerManager_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	mgr := llm.NewDefaultCircuitBreakerManager()

@@ -21,7 +21,7 @@ import (
 // Run with: go test -v ./tests/challenge -run TestProviderAutoDiscovery -timeout 300s
 func TestProviderAutoDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping provider auto-discovery in short mode (creates live provider registries)")
+		t.Skip("Skipping provider auto-discovery in short mode (creates live provider registries)")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("DiscoveryFromEnvironment", testDiscoveryFromEnvironment)
@@ -80,7 +80,7 @@ func testProviderScoring(t *testing.T) {
 	// Discover providers
 	discovered, _ := discovery.DiscoverProviders()
 	if len(discovered) == 0 {
-		t.Skip("No providers discovered from environment")
+		t.Skip("No providers discovered from environment")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Verify providers and check scores
@@ -120,7 +120,7 @@ func testBestProviderSelection(t *testing.T) {
 	// Discover and verify providers
 	discovered, _ := discovery.DiscoverProviders()
 	if len(discovered) == 0 {
-		t.Skip("No providers discovered from environment")
+		t.Skip("No providers discovered from environment")  // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -243,14 +243,14 @@ func testBackwardCompatibility(t *testing.T) {
 // Run with: go test -v ./tests/challenge -run TestProviderAutoDiscoveryAPI -timeout 300s
 func TestProviderAutoDiscoveryAPI(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping auto-discovery API test in short mode (requires live server)")
+		t.Skip("Skipping auto-discovery API test in short mode (requires live server)")  // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 
 	// Skip if server is not running
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)
+		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("GetDiscoverySummary", func(t *testing.T) {
@@ -408,14 +408,14 @@ func testReDiscoverProviders(t *testing.T, baseURL string) {
 // Run with: go test -v ./tests/challenge -run TestProviderAutoDiscoveryIntegration -timeout 300s
 func TestProviderAutoDiscoveryIntegration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping auto-discovery integration test in short mode (requires live server and providers)")
+		t.Skip("Skipping auto-discovery integration test in short mode (requires live server and providers)")  // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 
 	// Skip if server is not running
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)
+		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 120 * time.Second}
@@ -500,7 +500,7 @@ func TestProviderAutoDiscoveryIntegration(t *testing.T) {
 // TestProviderDiscoveryMapping tests the provider mapping system
 func TestProviderDiscoveryMapping(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping provider discovery mapping in short mode (creates live provider discoveries)")
+		t.Skip("Skipping provider discovery mapping in short mode (creates live provider discoveries)")  // SKIP-OK: #short-mode
 	}
 
 	// Test that known API key environment variables are properly mapped

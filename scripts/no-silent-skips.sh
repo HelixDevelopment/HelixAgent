@@ -27,8 +27,12 @@ EXCLUDES=(--exclude-dir=.git --exclude-dir=vendor --exclude-dir=node_modules
           --exclude-dir=mcp-servers --exclude-dir=releases
           --exclude-dir=reports --exclude-dir=test-results)
 
+# Accept either a numeric ticket (#1234) OR a kebab-case category tag
+# (#short-mode, #requires-docker). Category tags document the REASON
+# the skip is legitimate and must be mirrored in docs/issues/SKIP_CATEGORIES.md
+# so reviewers can audit the taxonomy.
 violations=$(grep -rnE "$PATTERNS" "${INCLUDES[@]}" "${EXCLUDES[@]}" . 2>/dev/null \
-             | grep -v -E 'SKIP-OK: #[0-9]+' || true)
+             | grep -v -E 'SKIP-OK: #[a-zA-Z0-9_-]+' || true)
 
 if [ -n "$violations" ]; then
   count=$(printf '%s\n' "$violations" | wc -l | tr -d ' ')

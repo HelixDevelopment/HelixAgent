@@ -23,7 +23,7 @@ func cohereAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("COHERE_API_KEY")
 	if key == "" {
-		t.Skip("COHERE_API_KEY not set")
+		t.Skip("COHERE_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	return key
 }

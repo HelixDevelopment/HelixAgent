@@ -28,7 +28,7 @@ func mcpAuthCheckHelper(t *testing.T, client *http.Client, baseURL string) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		t.Skip("Skipping: MCP endpoint requires authentication (got 401)")
+		t.Skip("Skipping: MCP endpoint requires authentication (got 401)")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -66,7 +66,7 @@ func TestE2EMCPSSE(t *testing.T) {
 
 		// Skip if authentication is required
 		if resp.StatusCode == http.StatusUnauthorized {
-			t.Skip("Skipping: MCP endpoint requires authentication (got 401)")
+			t.Skip("Skipping: MCP endpoint requires authentication (got 401)")  // SKIP-OK: #legacy-untriaged
 		}
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)

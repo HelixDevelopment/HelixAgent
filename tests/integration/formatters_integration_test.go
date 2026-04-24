@@ -62,7 +62,7 @@ func TestFormattersSystem_PythonFormatting(t *testing.T) {
 
 	// Formatter might not be installed - that's okay
 	if err != nil {
-		t.Skip("Formatter not available (expected in test environment)")
+		t.Skip("Formatter not available (expected in test environment)")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -160,7 +160,7 @@ func TestFormattersCache(t *testing.T) {
 	// First request (cache miss)
 	result1, err := system.Executor.Execute(ctx, req)
 	if err != nil {
-		t.Skip("Formatter not available")
+		t.Skip("Formatter not available")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -228,7 +228,7 @@ func TestFormattersBatchExecution(t *testing.T) {
 
 	// Some formatters might not be installed
 	if err != nil {
-		t.Skip("Formatters not available")
+		t.Skip("Formatters not available")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 

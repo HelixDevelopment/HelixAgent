@@ -40,7 +40,7 @@ func TestGitAdapter_Initialize(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -67,7 +67,7 @@ func TestGitAdapter_Health(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -90,7 +90,7 @@ func TestGitAdapter_Status(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -140,7 +140,7 @@ func TestGitAdapter_Status_WithFiles(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -183,7 +183,7 @@ func TestGitAdapter_Add(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -221,7 +221,7 @@ func TestGitAdapter_Add_All(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -260,7 +260,7 @@ func TestGitAdapter_Commit(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -310,7 +310,7 @@ func TestGitAdapter_Commit_NoMessage(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -328,7 +328,7 @@ func TestGitAdapter_Commit_Amend_NotAllowed(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -347,7 +347,7 @@ func TestGitAdapter_Log(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -401,7 +401,7 @@ func TestGitAdapter_Branch(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -457,7 +457,7 @@ func TestGitAdapter_Checkout(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -512,7 +512,7 @@ func TestGitAdapter_Diff(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -567,7 +567,7 @@ func TestGitAdapter_Remotes(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -603,7 +603,7 @@ func TestGitAdapter_Push_NotAllowed(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -622,7 +622,7 @@ func TestGitAdapter_Push_ForceNotAllowed(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -642,7 +642,7 @@ func TestGitAdapter_RemoteOperations_NotAllowed(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -665,7 +665,7 @@ func TestGitAdapter_Stash(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -751,7 +751,7 @@ func TestGitAdapter_ExecuteTool(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a temp git repo
@@ -796,7 +796,7 @@ func TestGitAdapter_ExecuteTool_Unknown(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -856,7 +856,7 @@ func TestGitAdapter_PathNotAllowed(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	config := DefaultGitAdapterConfig()
@@ -876,7 +876,7 @@ func TestGitAdapter_DeniedPaths(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, err := os.MkdirTemp("", "git-adapter-test-*")

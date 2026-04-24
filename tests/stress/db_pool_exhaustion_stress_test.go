@@ -73,14 +73,14 @@ func isPostgresAvailable() bool {
 //   - No goroutine leaks after completion.
 func TestDBPool_Exhaustion_GracefulTimeout(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
 	runtime.GOMAXPROCS(2)
 
 	if !isPostgresAvailable() {
-		t.Skip("requires running PostgreSQL (start with: make test-infra-start)")
+		t.Skip("requires running PostgreSQL (start with: make test-infra-start)")  // SKIP-OK: #requires-infra-port
 	}
 
 	const poolSize = 3 // intentionally tiny to force exhaustion
@@ -200,13 +200,13 @@ func TestDBPool_Exhaustion_GracefulTimeout(t *testing.T) {
 // (defaulting to 10) and exercises SELECT 1 queries from many goroutines.
 func TestDBPool_Exhaustion_ConcurrentQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
 
 	if !isPostgresAvailable() {
-		t.Skip("requires running PostgreSQL (start with: make test-infra-start)")
+		t.Skip("requires running PostgreSQL (start with: make test-infra-start)")  // SKIP-OK: #requires-infra-port
 	}
 
 	maxConns := 10

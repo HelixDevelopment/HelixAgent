@@ -81,7 +81,7 @@ func (p *stormMockProvider) ValidateConfig(_ map[string]interface{}) (bool, []st
 // to open state and that state transitions are safe under concurrency.
 func TestStress_CircuitBreaker_FailureStorm(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -173,7 +173,7 @@ func TestStress_CircuitBreaker_FailureStorm(t *testing.T) {
 // via the half-open probe mechanism when a healthy provider is used.
 func TestStress_CircuitBreaker_RecoveryUnderConcurrentLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -255,7 +255,7 @@ func TestStress_CircuitBreaker_RecoveryUnderConcurrentLoad(t *testing.T) {
 // request processing.
 func TestStress_CircuitBreaker_StateTransitionLatency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -308,7 +308,7 @@ func TestStress_CircuitBreaker_StateTransitionLatency(t *testing.T) {
 // from multiple goroutines) do not cause panics or return invalid states.
 func TestStress_CircuitBreaker_ConcurrentStateReads(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

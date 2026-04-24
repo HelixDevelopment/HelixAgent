@@ -30,7 +30,7 @@ func TestConversationStreamProcessor_New(t *testing.T) {
 
 func TestConversationStreamProcessor_NewWithRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping Redis-dependent test in short mode")
+		t.Skip("skipping Redis-dependent test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireRedis(t)
 

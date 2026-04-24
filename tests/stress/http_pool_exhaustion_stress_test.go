@@ -25,7 +25,7 @@ import (
 // connections open while a wave of new requests arrives.
 func TestHTTPPoolExhaustion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

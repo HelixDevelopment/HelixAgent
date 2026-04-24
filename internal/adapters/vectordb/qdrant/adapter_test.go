@@ -204,7 +204,7 @@ func TestNewClient_NilConfig_UsesDefault(t *testing.T) {
 func TestNewClient_Connect_FailsWithoutQdrant(t *testing.T) {
 	t.Parallel()
 	if isQdrantAvailable() {
-		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")
+		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")  // SKIP-OK: #legacy-untriaged
 	}
 
 	cfg := adapter.DefaultConfig()
@@ -232,7 +232,7 @@ func TestNewClient_Close(t *testing.T) {
 func TestNewClient_HealthCheck_FailsWithoutQdrant(t *testing.T) {
 	t.Parallel()
 	if isQdrantAvailable() {
-		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")
+		t.Skip("Skipping negative-path test: Qdrant is running on localhost:6333")  // SKIP-OK: #legacy-untriaged
 	}
 
 	cfg := adapter.DefaultConfig()

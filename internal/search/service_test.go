@@ -49,7 +49,7 @@ func TestNewService_Disabled(t *testing.T) {
 
 func TestNewService_UnknownEmbedderType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -73,7 +73,7 @@ func TestNewService_UnknownEmbedderType(t *testing.T) {
 
 func TestNewService_OpenAI_NoKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -98,7 +98,7 @@ func TestNewService_OpenAI_NoKey(t *testing.T) {
 
 func TestNewService_UnknownVectorStoreType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 

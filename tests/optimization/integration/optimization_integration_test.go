@@ -14,7 +14,7 @@ import (
 func TestOptimizationService_Integration(t *testing.T) {
 	// Skip if running short tests
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Start mock servers
@@ -81,7 +81,7 @@ func TestOptimizationService_Integration(t *testing.T) {
 
 func TestOptimizationService_GracefulDegradation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Start mock servers and set them to fail
@@ -121,7 +121,7 @@ func TestOptimizationService_GracefulDegradation(t *testing.T) {
 
 func TestOptimizationService_Timeouts(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Start mock servers with delays
@@ -160,7 +160,7 @@ func TestOptimizationService_Timeouts(t *testing.T) {
 
 func TestOptimizationPipeline_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := optimization.DefaultConfig()
@@ -215,7 +215,7 @@ func TestOptimizationPipeline_Integration(t *testing.T) {
 
 func TestMockServers_RequestCounting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()

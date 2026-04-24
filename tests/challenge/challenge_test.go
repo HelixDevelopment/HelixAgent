@@ -63,7 +63,7 @@ func skipIfServerUnavailable(t *testing.T, baseURL string) {
 // TestAdvancedLoadScenarios tests complex load scenarios
 func TestAdvancedLoadScenarios(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping challenge test in short mode")
+		t.Skip("Skipping challenge test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := ChallengeTestConfig{
@@ -106,7 +106,7 @@ func TestAdvancedLoadScenarios(t *testing.T) {
 // TestResilienceScenarios tests system resilience
 func TestResilienceScenarios(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping resilience challenge test in short mode")
+		t.Skip("Skipping resilience challenge test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := ChallengeTestConfig{
@@ -139,7 +139,7 @@ func TestResilienceScenarios(t *testing.T) {
 // TestComplexQueries tests complex query scenarios
 func TestComplexQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping complex queries challenge test in short mode")
+		t.Skip("Skipping complex queries challenge test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := ChallengeTestConfig{
@@ -172,7 +172,7 @@ func TestComplexQueries(t *testing.T) {
 // TestConcurrencyChallenges tests concurrent access scenarios
 func TestConcurrencyChallenges(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping concurrency challenge test in short mode")
+		t.Skip("Skipping concurrency challenge test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := ChallengeTestConfig{

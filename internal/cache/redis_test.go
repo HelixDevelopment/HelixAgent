@@ -463,7 +463,7 @@ func TestRedisClient_Integration(t *testing.T) {
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 
 	if redisHost == "" || redisPort == "" {
-		t.Skip("Skipping integration test: REDIS_HOST and REDIS_PORT not set")
+		t.Skip("Skipping integration test: REDIS_HOST and REDIS_PORT not set")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{

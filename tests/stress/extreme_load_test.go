@@ -27,7 +27,7 @@ import (
 // load without deadlocks, panics, or unacceptable error rates.
 func TestExtreme10xConcurrentLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping extreme stress test in short mode")
+		t.Skip("skipping extreme stress test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -132,7 +132,7 @@ func TestExtreme10xConcurrentLoad(t *testing.T) {
 // all simulated providers fail, with circuit breakers activating and no panics.
 func TestExtremeProviderCascadeFailure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping cascade failure test in short mode")
+		t.Skip("skipping cascade failure test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -231,7 +231,7 @@ func TestExtremeProviderCascadeFailure(t *testing.T) {
 // operations do not cause unreasonable memory growth.
 func TestExtremeMemoryPressureGracefulDegradation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping memory pressure test in short mode")
+		t.Skip("skipping memory pressure test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -301,7 +301,7 @@ func TestExtremeMemoryPressureGracefulDegradation(t *testing.T) {
 // handles more concurrent requests than its capacity without panics, and recovers.
 func TestExtremeConnectionPoolExhaustion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping pool exhaustion test in short mode")
+		t.Skip("skipping pool exhaustion test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -411,7 +411,7 @@ func TestExtremeConnectionPoolExhaustion(t *testing.T) {
 // operations and writes the result to a report file for tracking.
 func TestExtremeP99LatencyBaseline(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping latency baseline test in short mode")
+		t.Skip("skipping latency baseline test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -532,7 +532,7 @@ func TestExtremeP99LatencyBaseline(t *testing.T) {
 // under extreme goroutine pressure, and that no goroutines leak afterward.
 func TestExtremeSemaphoreOverload(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping extreme semaphore overload test in short mode")
+		t.Skip("skipping extreme semaphore overload test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 

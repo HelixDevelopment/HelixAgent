@@ -119,7 +119,7 @@ func TestZenCLIProvider_FailedAPIModelTracking(t *testing.T) {
 func TestZenCLIProvider_CLIAvailabilityCheck(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("availability check is cached (sync.Once)", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestZenCLIProvider_CLIAvailabilityCheck(t *testing.T) {
 func TestZenCLIProvider_ProviderInterface(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("test-model")
@@ -293,7 +293,7 @@ func TestZenCLIProvider_CompleteStreamNotAvailable(t *testing.T) {
 func TestZenCLIProvider_EmptyPromptHandling(t *testing.T) {
 	t.Parallel()
 	if !IsOpenCodeInstalled() {
-		t.Skip("OpenCode CLI not installed")
+		t.Skip("OpenCode CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenCLIProviderWithModel("test-model")
@@ -331,7 +331,7 @@ func TestZenCLIProvider_EmptyPromptHandling(t *testing.T) {
 func TestZenCLIProvider_ModelDiscovery(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("initial-model")
@@ -475,7 +475,7 @@ func TestZenCLIProvider_ParseModelsOutput(t *testing.T) {
 func TestZenCLIProvider_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping concurrent access test in short mode")
+		t.Skip("Skipping concurrent access test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("test-model")
@@ -538,7 +538,7 @@ func TestZenCLIProvider_ConcurrentAccess(t *testing.T) {
 func TestZenCLIProvider_HealthCheckComprehensive(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("health check returns appropriate result based on CLI availability", func(t *testing.T) {
@@ -569,7 +569,7 @@ func TestZenCLIProvider_HealthCheckComprehensive(t *testing.T) {
 func TestDiscoverZenModels_Standalone(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	models, err := DiscoverZenModels()
@@ -615,11 +615,11 @@ func TestGetOpenCodePath_Standalone(t *testing.T) {
 func TestZenCLIProvider_ResponseMetadata(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")
+		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	if !IsOpenCodeInstalled() {
-		t.Skip("OpenCode CLI not installed - skipping response metadata test")
+		t.Skip("OpenCode CLI not installed - skipping response metadata test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewZenCLIProviderWithModel(DefaultZenModel)
@@ -640,7 +640,7 @@ func TestZenCLIProvider_ResponseMetadata(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Completion failed (may be expected): %v", err)
-		t.Skip("CLI completion failed - cannot test metadata")
+		t.Skip("CLI completion failed - cannot test metadata")  // SKIP-OK: #legacy-untriaged
 	}
 
 	require.NotNil(t, resp)

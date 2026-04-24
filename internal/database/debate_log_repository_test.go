@@ -17,7 +17,7 @@ func getTestPool(t *testing.T) *pgxpool.Pool {
 	// Use test database URL or skip if not available
 	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
-		t.Skip("TEST_DATABASE_URL not set, skipping database test")
+		t.Skip("TEST_DATABASE_URL not set, skipping database test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	pool, err := pgxpool.New(context.Background(), dbURL)

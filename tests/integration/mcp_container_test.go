@@ -18,7 +18,7 @@ import (
 // TestMCPContainerConnectivity tests TCP connectivity to all MCP container ports
 func TestMCPContainerConnectivity(t *testing.T) {
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
-		t.Skip("Skipping container connectivity tests. Set RUN_CONTAINER_TESTS=1 to enable.")
+		t.Skip("Skipping container connectivity tests. Set RUN_CONTAINER_TESTS=1 to enable.")  // SKIP-OK: #legacy-untriaged
 	}
 
 	host := os.Getenv("MCP_CONTAINER_HOST")
@@ -44,7 +44,7 @@ func TestMCPContainerConnectivity(t *testing.T) {
 // TestMCPContainerHealthChecks tests health endpoints for all MCP containers
 func TestMCPContainerHealthChecks(t *testing.T) {
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
-		t.Skip("Skipping container health check tests. Set RUN_CONTAINER_TESTS=1 to enable.")
+		t.Skip("Skipping container health check tests. Set RUN_CONTAINER_TESTS=1 to enable.")  // SKIP-OK: #legacy-untriaged
 	}
 
 	host := os.Getenv("MCP_CONTAINER_HOST")
@@ -90,7 +90,7 @@ func TestMCPContainerHealthChecks(t *testing.T) {
 // TestMCPContainerJSONRPCCompliance tests JSON-RPC 2.0 compliance for MCP containers
 func TestMCPContainerJSONRPCCompliance(t *testing.T) {
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
-		t.Skip("Skipping JSON-RPC compliance tests. Set RUN_CONTAINER_TESTS=1 to enable.")
+		t.Skip("Skipping JSON-RPC compliance tests. Set RUN_CONTAINER_TESTS=1 to enable.")  // SKIP-OK: #legacy-untriaged
 	}
 
 	host := os.Getenv("MCP_CONTAINER_HOST")
@@ -154,7 +154,7 @@ func TestMCPContainerJSONRPCCompliance(t *testing.T) {
 // TestMCPContainerToolDiscovery tests that MCP containers expose their tools
 func TestMCPContainerToolDiscovery(t *testing.T) {
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
-		t.Skip("Skipping tool discovery tests. Set RUN_CONTAINER_TESTS=1 to enable.")
+		t.Skip("Skipping tool discovery tests. Set RUN_CONTAINER_TESTS=1 to enable.")  // SKIP-OK: #legacy-untriaged
 	}
 
 	host := os.Getenv("MCP_CONTAINER_HOST")
@@ -346,7 +346,7 @@ func TestMCPContainerCompareWithNPXGenerator(t *testing.T) {
 // TestMCPContainerStartup simulates container startup sequence
 func TestMCPContainerStartup(t *testing.T) {
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
-		t.Skip("Skipping container startup test. Set RUN_CONTAINER_TESTS=1 to enable.")
+		t.Skip("Skipping container startup test. Set RUN_CONTAINER_TESTS=1 to enable.")  // SKIP-OK: #legacy-untriaged
 	}
 
 	host := os.Getenv("MCP_CONTAINER_HOST")

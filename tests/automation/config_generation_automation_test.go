@@ -31,7 +31,7 @@ func buildHelixAgent(t *testing.T) string {
 // generator produces syntactically valid JSON for known agents.
 func TestConfigGeneration_ProducesValidJSON(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping config generation test in short mode")
+		t.Skip("skipping config generation test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	binary := buildHelixAgent(t)
@@ -62,7 +62,7 @@ func TestConfigGeneration_ProducesValidJSON(t *testing.T) {
 // configs include MCP servers and provider configuration.
 func TestConfigGeneration_ContainsRequiredFields(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	binary := buildHelixAgent(t)
@@ -88,7 +88,7 @@ func TestConfigGeneration_ContainsRequiredFields(t *testing.T) {
 // for an unknown agent name does not produce valid JSON.
 func TestConfigGeneration_UnknownAgent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	binary := buildHelixAgent(t)

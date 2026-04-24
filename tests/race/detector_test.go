@@ -309,7 +309,7 @@ func TestMap_RaceCondition(t *testing.T) {
 
 	// Note: This test will FAIL the race detector intentionally
 	// to demonstrate that it catches unsafe operations
-	t.Skip("Intentionally testing race detector - skip in normal runs")
+	t.Skip("Intentionally testing race detector - skip in normal runs")  // SKIP-OK: #legacy-untriaged
 	tc.Run(t)
 }
 

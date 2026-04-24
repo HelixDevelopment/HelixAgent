@@ -15,7 +15,7 @@ import (
 
 func TestMain_BinaryBuilds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping binary build test in short mode")
+		t.Skip("skipping binary build test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -36,7 +36,7 @@ func TestMain_MCPCommandRequired(t *testing.T) {
 	// This test verifies that mcp-bridge requires MCP_COMMAND
 	// It should fail with error when MCP_COMMAND is not set
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -45,7 +45,7 @@ func TestMain_MCPCommandRequired(t *testing.T) {
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = filepath.Join("..", "..", "cmd", "mcp-bridge")
 	if err := buildCmd.Run(); err != nil {
-		t.Skip("skipping - build failed")
+		t.Skip("skipping - build failed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Try to run without MCP_COMMAND - should fail
@@ -69,7 +69,7 @@ func TestMain_BridgePkgImport(t *testing.T) {
 
 func TestMain_VersionInfo(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping version test in short mode")
+		t.Skip("skipping version test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -84,7 +84,7 @@ func TestMain_VersionInfo(t *testing.T) {
 
 func TestMain_GracefulShutdown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping shutdown test in short mode")
+		t.Skip("skipping shutdown test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Build binary first
@@ -94,7 +94,7 @@ func TestMain_GracefulShutdown(t *testing.T) {
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = filepath.Join("..", "..", "cmd", "mcp-bridge")
 	if err := buildCmd.Run(); err != nil {
-		t.Skip("skipping - build failed")
+		t.Skip("skipping - build failed")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Run with MCP_COMMAND

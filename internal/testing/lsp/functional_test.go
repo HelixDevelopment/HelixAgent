@@ -175,7 +175,7 @@ var LSPServers = []LSPServerConfig{
 // TestLSPServerInitialize tests LSP server initialization
 func TestLSPServerInitialize(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping LSP functional test in short mode")
+		t.Skip("skipping LSP functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	for _, server := range LSPServers {
 		t.Run(server.Name, func(t *testing.T) {
@@ -209,7 +209,7 @@ func TestLSPServerInitialize(t *testing.T) {
 // TestLSPServerShutdown tests LSP server shutdown
 func TestLSPServerShutdown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping LSP functional test in short mode")
+		t.Skip("skipping LSP functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	for _, server := range LSPServers {
 		t.Run(server.Name, func(t *testing.T) {

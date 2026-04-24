@@ -19,7 +19,7 @@ import (
 // reported cache size stays at or below the configured maximum.
 func TestStress_Cache_LargeCapacityFill(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -67,7 +67,7 @@ func TestStress_Cache_LargeCapacityFill(t *testing.T) {
 // concurrent access does not cause panics, races, or unbounded growth.
 func TestStress_Cache_ConcurrentReadWriteAtCapacity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -163,7 +163,7 @@ func TestStress_Cache_ConcurrentReadWriteAtCapacity(t *testing.T) {
 // would indicate lock contention or O(n) eviction complexity.
 func TestStress_Cache_EvictionLatencyBounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -224,7 +224,7 @@ func TestStress_Cache_EvictionLatencyBounded(t *testing.T) {
 // than capacity and verifies the reported size stays within bounds.
 func TestStress_Cache_SizeBoundedUnderOverflow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

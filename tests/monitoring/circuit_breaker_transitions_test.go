@@ -13,7 +13,7 @@ import (
 // metrics through a full cycle: closed -> open -> half-open -> closed.
 func TestMonitoring_CircuitBreaker_StateTransitions(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -74,7 +74,7 @@ func TestMonitoring_CircuitBreaker_StateTransitions(t *testing.T) {
 // failure counters correctly track failures by provider and error type.
 func TestMonitoring_CircuitBreaker_FailureTracking(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -110,7 +110,7 @@ func TestMonitoring_CircuitBreaker_FailureTracking(t *testing.T) {
 // one provider do not affect another.
 func TestMonitoring_CircuitBreaker_MultiProvider(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -162,7 +162,7 @@ func TestMonitoring_CircuitBreaker_MultiProvider(t *testing.T) {
 // and that the circuit breaker re-closes after sufficient successful probes.
 func TestMonitoring_CircuitBreaker_SuccessAfterHalfOpen(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

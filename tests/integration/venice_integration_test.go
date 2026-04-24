@@ -23,7 +23,7 @@ func veniceAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("VENICE_API_KEY")
 	if key == "" {
-		t.Skip("VENICE_API_KEY not set")
+		t.Skip("VENICE_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
 		t.Skipf("VENICE_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)

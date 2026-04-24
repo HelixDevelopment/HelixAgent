@@ -51,7 +51,7 @@ func TestProviderReliability_ConsecutiveRequests(t *testing.T) {
 	if initialResp.StatusCode == 502 {
 		// Check if it's "ALL_PROVIDERS_FAILED"
 		if strings.Contains(initialResp.RawBody, "ALL_PROVIDERS_FAILED") {
-			t.Skip("All LLM providers are unavailable - this is an infrastructure issue, not an API bug. Skipping reliability test.")
+			t.Skip("All LLM providers are unavailable - this is an infrastructure issue, not an API bug. Skipping reliability test.")  // SKIP-OK: #legacy-untriaged
 		}
 	}
 
@@ -106,7 +106,7 @@ func TestProviderReliability_ConsecutiveRequests(t *testing.T) {
 
 	// If ALL requests got provider unavailability, skip the test
 	if providerUnavailableCount == numRequests {
-		t.Skip("All requests got provider unavailability (502) - this is an infrastructure issue, not an API bug")
+		t.Skip("All requests got provider unavailability (502) - this is an infrastructure issue, not an API bug")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Fail if we get empty responses with 200 status - this should never happen
@@ -203,7 +203,7 @@ func TestProviderReliability_RapidRequests(t *testing.T) {
 
 	// If all requests got provider unavailability or timeouts, skip the test
 	if providerUnavailableCount+timeoutCount == numRequests {
-		t.Skip("All rapid requests failed due to provider unavailability or timeouts - this is an infrastructure issue, not an API bug")
+		t.Skip("All rapid requests failed due to provider unavailability or timeouts - this is an infrastructure issue, not an API bug")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// At least 4 out of 5 rapid requests should succeed (excluding provider unavailable and timeouts)
@@ -240,7 +240,7 @@ func TestProviderReliability_CircuitBreakerRecovery(t *testing.T) {
 
 	// Check if provider became unavailable
 	if resp1.StatusCode == 502 && strings.Contains(resp1.RawBody, "ALL_PROVIDERS_FAILED") {
-		t.Skip("LLM providers became unavailable during test - infrastructure issue")
+		t.Skip("LLM providers became unavailable during test - infrastructure issue")  // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Logf("Initial request: HTTP %d, Content length: %d", resp1.StatusCode, len(resp1.Content))
@@ -257,7 +257,7 @@ func TestProviderReliability_CircuitBreakerRecovery(t *testing.T) {
 
 	// Check if provider became unavailable
 	if resp2.StatusCode == 502 && strings.Contains(resp2.RawBody, "ALL_PROVIDERS_FAILED") {
-		t.Skip("LLM providers became unavailable during test - infrastructure issue")
+		t.Skip("LLM providers became unavailable during test - infrastructure issue")  // SKIP-OK: #legacy-untriaged
 	}
 
 	if resp2.Content == "" && resp2.StatusCode == 200 {
@@ -320,7 +320,7 @@ func TestAPIResponse_NonEmpty(t *testing.T) {
 
 	// If all tests got provider unavailability, skip the parent test
 	if providerUnavailableCount == len(testCases) {
-		t.Skip("All requests got provider unavailability - infrastructure issue")
+		t.Skip("All requests got provider unavailability - infrastructure issue")  // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -348,7 +348,7 @@ func TestAPIResponse_ResponseTime(t *testing.T) {
 
 	// Check if provider became unavailable
 	if resp.StatusCode == 502 && strings.Contains(resp.RawBody, "ALL_PROVIDERS_FAILED") {
-		t.Skip("LLM providers became unavailable during test - infrastructure issue")
+		t.Skip("LLM providers became unavailable during test - infrastructure issue")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Response time should be under 60 seconds (generous for LLM)

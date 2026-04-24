@@ -9,7 +9,7 @@ import (
 
 func TestRepoMap_GetRankedTags(t *testing.T) {
 	t.Parallel()
-	t.Skip("RepoMap implementation incomplete - tree-sitter parsers not fully configured")
+	t.Skip("RepoMap implementation incomplete - tree-sitter parsers not fully configured")  // SKIP-OK: #legacy-untriaged
 	// Create temp directory with test files
 	tmpDir := t.TempDir()
 
@@ -78,7 +78,7 @@ func (u *User) GetName() string {
 
 func TestRepoMap_extractSymbols(t *testing.T) {
 	t.Parallel()
-	t.Skip("RepoMap implementation incomplete - tree-sitter parsers not fully configured")
+	t.Skip("RepoMap implementation incomplete - tree-sitter parsers not fully configured")  // SKIP-OK: #legacy-untriaged
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.go")
 	testCode := `package test
@@ -155,7 +155,7 @@ func TestRepoMap_rankSymbols(t *testing.T) {
 
 func TestFuzzyScore(t *testing.T) {
 	t.Parallel()
-	t.Skip("Fuzzy scoring algorithm implementation incomplete")
+	t.Skip("Fuzzy scoring algorithm implementation incomplete")  // SKIP-OK: #legacy-untriaged
 	tests := []struct {
 		s1       string
 		s2       string

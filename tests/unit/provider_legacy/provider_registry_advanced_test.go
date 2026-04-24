@@ -180,7 +180,7 @@ func TestIntegration_ProviderRegistry_GetNonExistent(t *testing.T) {
 
 func TestIntegration_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping concurrent access test in short mode")
+		t.Skip("Skipping concurrent access test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)
@@ -302,7 +302,7 @@ func TestIntegration_ProviderRegistry_VerifyAndHealthCheckWorkflow(t *testing.T)
 
 func TestIntegration_ProviderRegistry_ActiveRequestTracking_Concurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping concurrent tracking test in short mode")
+		t.Skip("Skipping concurrent tracking test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := services.NewProviderRegistryWithoutAutoDiscovery(nil, nil)

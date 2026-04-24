@@ -76,7 +76,7 @@ func (p *debateParticipantProvider) CompleteStream(
 // shared counter to detect cross-session contamination.
 func TestConcurrentDebates_50(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

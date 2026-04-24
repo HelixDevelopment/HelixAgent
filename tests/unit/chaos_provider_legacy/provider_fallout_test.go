@@ -116,7 +116,7 @@ func (c *chaosFallbackChain) Execute(ctx context.Context, prompt string) (string
 // ~1 second end-to-end, so it stays in-budget for the short suite.
 func TestChaos_ProviderFallout_Hermetic(t *testing.T) {
 	if _, gated := lookupChaosEnv(); !gated {
-		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")
+		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Three providers: primary, secondary, tertiary. The primary is
@@ -226,7 +226,7 @@ func TestChaos_ProviderFallout_Hermetic(t *testing.T) {
 // hanging or returning nil/nil.
 func TestChaos_ProviderFallout_AllDown(t *testing.T) {
 	if _, gated := lookupChaosEnv(); !gated {
-		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")
+		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	providers := []*chaosMockProvider{
@@ -253,7 +253,7 @@ func TestChaos_ProviderFallout_AllDown(t *testing.T) {
 // slow. Prevents the classic "stuck in backoff retry" hang.
 func TestChaos_ProviderFallout_ContextCancelled(t *testing.T) {
 	if _, gated := lookupChaosEnv(); !gated {
-		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")
+		t.Skip("set CHAOS_TEST=true to run provider-fallout chaos test")  // SKIP-OK: #legacy-untriaged
 	}
 
 	providers := []*chaosMockProvider{

@@ -1794,7 +1794,7 @@ func TestJSONSerialization(t *testing.T) {
 func TestLSPManager_InitializeConnection_Integration(t *testing.T) {
 	// Skip if not running integration tests
 	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
-		t.Skip("Skipping integration test")
+		t.Skip("Skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	log := newLSPTestLogger()
@@ -1806,7 +1806,7 @@ func TestLSPManager_InitializeConnection_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	if !server.Available {
-		t.Skip("gopls not available")
+		t.Skip("gopls not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Try to create a connection
@@ -1857,7 +1857,7 @@ func TestExecLookPath(t *testing.T) {
 	// Test looking up a common command
 	_, err := exec.LookPath("go")
 	if err != nil {
-		t.Skip("go command not in PATH")
+		t.Skip("go command not in PATH")  // SKIP-OK: #legacy-untriaged
 	}
 }
 

@@ -95,7 +95,7 @@ func TestQdrantStore_BuildFilter_Multiple(t *testing.T) {
 
 func TestQdrantStore_CreateCollection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -120,7 +120,7 @@ func TestQdrantStore_CreateCollection(t *testing.T) {
 
 func TestQdrantStore_CreateCollection_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -137,7 +137,7 @@ func TestQdrantStore_CreateCollection_Error(t *testing.T) {
 
 func TestQdrantStore_DeleteCollection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -155,7 +155,7 @@ func TestQdrantStore_DeleteCollection(t *testing.T) {
 
 func TestQdrantStore_DeleteCollection_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -171,7 +171,7 @@ func TestQdrantStore_DeleteCollection_Error(t *testing.T) {
 
 func TestQdrantStore_Upsert(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -209,7 +209,7 @@ func TestQdrantStore_Upsert_EmptyDocs(t *testing.T) {
 
 func TestQdrantStore_Upsert_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -227,7 +227,7 @@ func TestQdrantStore_Upsert_Error(t *testing.T) {
 
 func TestQdrantStore_Delete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -259,7 +259,7 @@ func TestQdrantStore_Delete_EmptyIDs(t *testing.T) {
 
 func TestQdrantStore_Delete_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -275,7 +275,7 @@ func TestQdrantStore_Delete_Error(t *testing.T) {
 
 func TestQdrantStore_Search(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -323,7 +323,7 @@ func TestQdrantStore_Search(t *testing.T) {
 
 func TestQdrantStore_Search_WithMinScore(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -352,7 +352,7 @@ func TestQdrantStore_Search_WithMinScore(t *testing.T) {
 
 func TestQdrantStore_Search_DefaultTopK(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -374,7 +374,7 @@ func TestQdrantStore_Search_DefaultTopK(t *testing.T) {
 
 func TestQdrantStore_Search_WithFilters(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -399,7 +399,7 @@ func TestQdrantStore_Search_WithFilters(t *testing.T) {
 
 func TestQdrantStore_Search_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -427,7 +427,7 @@ func TestQdrantStore_SearchByText(t *testing.T) {
 
 func TestQdrantStore_GetCollectionStats(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -461,7 +461,7 @@ func TestQdrantStore_GetCollectionStats(t *testing.T) {
 
 func TestQdrantStore_GetCollectionStats_NotFound(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")
+		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 

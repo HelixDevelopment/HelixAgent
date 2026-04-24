@@ -133,7 +133,7 @@ var EmbeddingProviders = []EmbeddingProviderConfig{
 // TestEmbeddingProviderDiscovery tests provider discovery endpoint
 func TestEmbeddingProviderDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
 	client := NewEmbeddingClient(testutil.ServerURL())
@@ -148,7 +148,7 @@ func TestEmbeddingProviderDiscovery(t *testing.T) {
 // TestEmbeddingGeneration tests actual embedding generation
 func TestEmbeddingGeneration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
 	client := NewEmbeddingClient(testutil.ServerURL())
@@ -192,7 +192,7 @@ func TestEmbeddingGeneration(t *testing.T) {
 // TestEmbeddingSimilarity tests that similar texts have similar embeddings
 func TestEmbeddingSimilarity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
 	client := NewEmbeddingClient(testutil.ServerURL())
@@ -250,7 +250,7 @@ func TestEmbeddingSimilarity(t *testing.T) {
 // TestEmbeddingHealthCheck tests embedding service health
 func TestEmbeddingHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
 

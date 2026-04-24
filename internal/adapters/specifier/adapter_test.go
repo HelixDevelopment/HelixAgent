@@ -26,7 +26,7 @@ func TestSpecifierBackendName(t *testing.T) {
 func TestNewOptimalSpecAdapter_Default(t *testing.T) {
 	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
-		t.Skip(
+		t.Skip(  // SKIP-OK: #legacy-untriaged
 			"Skipping: nohelixspecifier tag is active",
 		)
 	}
@@ -41,7 +41,7 @@ func TestNewOptimalSpecAdapter_Default(t *testing.T) {
 func TestNewOptimalSpecAdapter_OptOut(t *testing.T) {
 	t.Parallel()
 	if adapter.IsHelixSpecifierEnabled() {
-		t.Skip(
+		t.Skip(  // SKIP-OK: #legacy-untriaged
 			"Skipping opt-out test when HelixSpecifier is active",
 		)
 	}
@@ -55,7 +55,7 @@ func TestNewOptimalSpecAdapter_OptOut(t *testing.T) {
 func TestHelixSpecifierIsDefault(t *testing.T) {
 	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
-		t.Skip("HelixSpecifier not active (nohelixspecifier tag). " +
+		t.Skip("HelixSpecifier not active (nohelixspecifier tag). " +  // SKIP-OK: #legacy-untriaged
 			"Default builds always use HelixSpecifier.")
 	}
 	assert.True(t, adapter.IsHelixSpecifierEnabled())
@@ -91,7 +91,7 @@ func TestSpecAdapter_NilEngine(t *testing.T) {
 func TestSpecAdapter_Health(t *testing.T) {
 	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
-		t.Skip("HelixSpecifier not active")
+		t.Skip("HelixSpecifier not active")  // SKIP-OK: #legacy-untriaged
 	}
 	sa := adapter.NewOptimalSpecAdapter()
 	assert.NotNil(t, sa)
@@ -102,7 +102,7 @@ func TestSpecAdapter_Health(t *testing.T) {
 func TestSpecAdapter_ClassifyEffort(t *testing.T) {
 	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
-		t.Skip("HelixSpecifier not active")
+		t.Skip("HelixSpecifier not active")  // SKIP-OK: #legacy-untriaged
 	}
 	sa := adapter.NewOptimalSpecAdapter()
 	assert.NotNil(t, sa)
@@ -119,7 +119,7 @@ func TestSpecAdapter_ClassifyEffort(t *testing.T) {
 func TestSpecAdapter_SetDebateFunc(t *testing.T) {
 	t.Parallel()
 	if !adapter.IsHelixSpecifierEnabled() {
-		t.Skip("HelixSpecifier not active")
+		t.Skip("HelixSpecifier not active")  // SKIP-OK: #legacy-untriaged
 	}
 	sa := adapter.NewOptimalSpecAdapter()
 	assert.NotNil(t, sa)

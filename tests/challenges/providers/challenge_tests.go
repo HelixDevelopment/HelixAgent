@@ -432,7 +432,7 @@ func TestChallenges_ShortRequest(t *testing.T) {
 // TestChallenges_BigRequest runs big request challenges
 func TestChallenges_BigRequest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping big request in short mode")
+		t.Skip("Skipping big request in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger, _ := zap.NewDevelopment()
@@ -472,7 +472,7 @@ func TestChallenges_BigRequest(t *testing.T) {
 // TestChallenges_AllCategories runs all challenge categories
 func TestChallenges_AllCategories(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping full challenge suite in short mode")
+		t.Skip("Skipping full challenge suite in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger, _ := zap.NewDevelopment()

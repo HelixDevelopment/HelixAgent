@@ -80,7 +80,7 @@ func (m *mockWSClient) isClosed() bool {
 // or lost registrations occur.
 func TestStress_WebSocket_ConcurrentRegistrations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -162,7 +162,7 @@ func TestStress_WebSocket_ConcurrentRegistrations(t *testing.T) {
 // cleans up resources and does not leak goroutines or memory.
 func TestStress_WebSocket_RapidConnectDisconnect(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -272,7 +272,7 @@ func TestStress_WebSocket_RapidConnectDisconnect(t *testing.T) {
 // or dropped messages.
 func TestStress_WebSocket_BroadcastUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -389,7 +389,7 @@ func TestStress_WebSocket_BroadcastUnderLoad(t *testing.T) {
 // under concurrent sends.
 func TestStress_WebSocket_BroadcastAllUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -483,7 +483,7 @@ func TestStress_WebSocket_BroadcastAllUnderLoad(t *testing.T) {
 // detect lock ordering issues or deadlocks.
 func TestStress_WebSocket_MixedOperations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

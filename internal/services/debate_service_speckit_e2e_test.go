@@ -13,7 +13,7 @@ import (
 // TestDebateService_SpecKitAutoActivation_E2E tests end-to-end SpecKit auto-activation
 func TestDebateService_SpecKitAutoActivation_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
+		t.Skip("Skipping E2E test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -26,7 +26,7 @@ func TestDebateService_SpecKitAutoActivation_E2E(t *testing.T) {
 	// Check if any providers are available (auto-discovered from environment)
 	providers := providerRegistry.ListProviders()
 	if len(providers) == 0 {
-		t.Skip("Skipping E2E test: no LLM providers configured (need API keys in environment)")
+		t.Skip("Skipping E2E test: no LLM providers configured (need API keys in environment)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	// Create debate team config with available providers
@@ -43,7 +43,7 @@ func TestDebateService_SpecKitAutoActivation_E2E(t *testing.T) {
 	// Check if team has active members (requires working LLM providers)
 	activeMembers := debateTeamConfig.GetActiveMembers()
 	if len(activeMembers) == 0 {
-		t.Skip("Skipping E2E test: no active debate team members (requires working LLM provider API keys)")
+		t.Skip("Skipping E2E test: no active debate team members (requires working LLM provider API keys)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	// Create debate service using NewDebateServiceWithDeps for proper initialization

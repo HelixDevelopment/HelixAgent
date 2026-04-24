@@ -229,7 +229,7 @@ func TestNewSSEBridge(t *testing.T) {
 func TestSSEBridge_Start(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Starts successfully with mock MCP server", func(t *testing.T) {
@@ -297,7 +297,7 @@ func TestSSEBridge_Start(t *testing.T) {
 func TestSSEBridge_Shutdown(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Shuts down gracefully", func(t *testing.T) {
@@ -355,7 +355,7 @@ func TestSSEBridge_Shutdown(t *testing.T) {
 func TestSSEBridge_HandleHealth(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Returns healthy status when running", func(t *testing.T) {
@@ -434,7 +434,7 @@ func TestSSEBridge_HandleHealth(t *testing.T) {
 func TestSSEBridge_HandleMessage(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Sends request to MCP process and receives response", func(t *testing.T) {
@@ -675,7 +675,7 @@ func TestSSEBridge_HandleMessage(t *testing.T) {
 func TestSSEBridge_HandleSSE(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Establishes SSE connection", func(t *testing.T) {
@@ -816,7 +816,7 @@ func (r *sseRecorder) Flush() {
 func TestSSEBridge_SendRequest(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Sends request and receives response", func(t *testing.T) {
@@ -869,7 +869,7 @@ func TestSSEBridge_SendRequest(t *testing.T) {
 func TestSSEBridge_SendNotification(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Sends notification successfully", func(t *testing.T) {
@@ -919,7 +919,7 @@ func TestSSEBridge_SendNotification(t *testing.T) {
 func TestSSEBridge_Metrics(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Tracks request metrics", func(t *testing.T) {
@@ -1035,7 +1035,7 @@ func TestJSONRPCResponse(t *testing.T) {
 func TestSSEBridge_EdgeCases(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Handles large request body", func(t *testing.T) {
@@ -1158,7 +1158,7 @@ func TestSSEBridge_EdgeCases(t *testing.T) {
 func TestSSEBridge_Environment(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Passes environment variables to process", func(t *testing.T) {
@@ -1219,7 +1219,7 @@ done
 func TestSSEBridge_WorkingDirectory(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Sets working directory for process", func(t *testing.T) {
@@ -1445,7 +1445,7 @@ func TestSSEBridge_InterfaceCompliance(t *testing.T) {
 func TestSSEBridge_LargeResponseHandling(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Handles large responses from MCP server", func(t *testing.T) {
@@ -1504,7 +1504,7 @@ done
 func TestSSEBridge_ConcurrentWrites(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Handles concurrent writes to stdin safely", func(t *testing.T) {
@@ -1567,7 +1567,7 @@ func TestSSEBridge_ConcurrentWrites(t *testing.T) {
 func TestSSEBridge_Broadcast(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Broadcasts responses to all SSE clients", func(t *testing.T) {
@@ -1644,7 +1644,7 @@ func TestSSEBridge_Broadcast(t *testing.T) {
 func TestSSEBridge_InitializationTimeout(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Fails on initialization timeout", func(t *testing.T) {
@@ -1686,7 +1686,7 @@ done
 func TestSSEBridge_StderrHandling(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Logs stderr output from MCP process", func(t *testing.T) {
@@ -1749,7 +1749,7 @@ done
 func TestSSEBridge_HealthCheckDetails(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Returns detailed health information", func(t *testing.T) {

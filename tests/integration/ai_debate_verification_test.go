@@ -23,13 +23,13 @@ import (
 // verification — we do not need to re-run it inside the integration package.
 func TestAIDebate_TeamInitializationWithVerifiedProviders(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping full provider verification in -short mode (see test comment)")
+		t.Skip("skipping full provider verification in -short mode (see test comment)")  // SKIP-OK: #short-mode
 	}
 
 	hasAPIKey := os.Getenv("CLAUDE_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != "" ||
 		os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("OPENROUTER_API_KEY") != ""
 	if !hasAPIKey {
-		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")
+		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -95,7 +95,7 @@ func TestAIDebate_FallbackActivation(t *testing.T) {
 	hasAPIKey := os.Getenv("CLAUDE_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != "" ||
 		os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("OPENROUTER_API_KEY") != ""
 	if !hasAPIKey {
-		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")
+		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	ctx := context.Background()
@@ -148,13 +148,13 @@ func TestAIDebate_FallbackActivation(t *testing.T) {
 // team when OLLAMA_ENABLED is not set
 func TestAIDebate_NoOllamaWhenDisabled(t *testing.T) {
 	if os.Getenv("OLLAMA_ENABLED") == "true" {
-		t.Skip("Skipping test - OLLAMA_ENABLED is set to true")
+		t.Skip("Skipping test - OLLAMA_ENABLED is set to true")  // SKIP-OK: #legacy-untriaged
 	}
 
 	hasAPIKey := os.Getenv("CLAUDE_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != "" ||
 		os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("OPENROUTER_API_KEY") != ""
 	if !hasAPIKey {
-		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")
+		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	ctx := context.Background()
@@ -199,7 +199,7 @@ func TestAIDebate_VerifiedProvidersOnly(t *testing.T) {
 	hasAPIKey := os.Getenv("CLAUDE_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != "" ||
 		os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("OPENROUTER_API_KEY") != ""
 	if !hasAPIKey {
-		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")
+		t.Skip("No API keys configured (need at least one of CLAUDE/DEEPSEEK/GEMINI/OPENROUTER)")  // SKIP-OK: #requires-upstream-key
 	}
 
 	ctx := context.Background()

@@ -33,7 +33,7 @@ func TestCLIProxyProviderDiscovery(t *testing.T) {
 			assert.Equal(t, "claude-cli", cliProvider.GetName())
 		} else {
 			t.Log("Claude CLI not available - skipping CLI proxy tests")
-			t.Skip("Claude CLI not installed or not authenticated")
+			t.Skip("Claude CLI not installed or not authenticated")  // SKIP-OK: #legacy-untriaged
 		}
 	})
 
@@ -48,7 +48,7 @@ func TestCLIProxyProviderDiscovery(t *testing.T) {
 			assert.Equal(t, "qwen-cli", cliProvider.GetName())
 		} else {
 			t.Log("Qwen CLI not available - skipping CLI proxy tests")
-			t.Skip("Qwen CLI not installed or not authenticated")
+			t.Skip("Qwen CLI not installed or not authenticated")  // SKIP-OK: #legacy-untriaged
 		}
 	})
 
@@ -63,7 +63,7 @@ func TestCLIProxyProviderDiscovery(t *testing.T) {
 			assert.Equal(t, "zen-cli", cliProvider.GetName())
 		} else {
 			t.Log("OpenCode CLI not available - skipping CLI proxy tests")
-			t.Skip("OpenCode CLI not installed")
+			t.Skip("OpenCode CLI not installed")  // SKIP-OK: #legacy-untriaged
 		}
 	})
 }
@@ -111,7 +111,7 @@ func TestCLIProxyOAuthTokenRestrictions(t *testing.T) {
 		// and cannot be used for other API requests."
 
 		if !oauth_credentials.IsClaudeOAuthEnabled() {
-			t.Skip("Claude OAuth not enabled")
+			t.Skip("Claude OAuth not enabled")  // SKIP-OK: #legacy-untriaged
 		}
 
 		// Verify credentials exist
@@ -131,7 +131,7 @@ func TestCLIProxyOAuthTokenRestrictions(t *testing.T) {
 		// are for the Qwen Portal only, NOT for DashScope API
 
 		if !oauth_credentials.IsQwenOAuthEnabled() {
-			t.Skip("Qwen OAuth not enabled")
+			t.Skip("Qwen OAuth not enabled")  // SKIP-OK: #legacy-untriaged
 		}
 
 		reader := oauth_credentials.GetGlobalReader()
@@ -168,13 +168,13 @@ func TestCLIProxyJSONOutputParsing(t *testing.T) {
 // TestCLIProviderComplete tests actual completion if CLI is available
 func TestCLIProviderComplete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Claude CLI complete", func(t *testing.T) {
 		provider := claude.NewClaudeCLIProviderWithModel("claude-sonnet-4-5-20250929")
 		if !provider.IsCLIAvailable() {
-			t.Skip("Claude CLI not available")
+			t.Skip("Claude CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -198,7 +198,7 @@ func TestCLIProviderComplete(t *testing.T) {
 	t.Run("Qwen CLI complete", func(t *testing.T) {
 		provider := qwen.NewQwenCLIProviderWithModel("qwen-turbo")
 		if !provider.IsCLIAvailable() {
-			t.Skip("Qwen CLI not available")
+			t.Skip("Qwen CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -222,7 +222,7 @@ func TestCLIProviderComplete(t *testing.T) {
 	t.Run("Zen CLI complete", func(t *testing.T) {
 		provider := zen.NewZenCLIProviderWithModel("opencode/big-pickle")
 		if !provider.IsCLIAvailable() {
-			t.Skip("OpenCode CLI not available")
+			t.Skip("OpenCode CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -247,13 +247,13 @@ func TestCLIProviderComplete(t *testing.T) {
 // TestCLIProviderHealthCheck verifies health checks work
 func TestCLIProviderHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("Claude CLI health check", func(t *testing.T) {
 		provider := claude.NewClaudeCLIProviderWithModel("claude-sonnet-4-5-20250929")
 		if !provider.IsCLIAvailable() {
-			t.Skip("Claude CLI not available")
+			t.Skip("Claude CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		err := provider.HealthCheck()
@@ -263,7 +263,7 @@ func TestCLIProviderHealthCheck(t *testing.T) {
 	t.Run("Qwen CLI health check", func(t *testing.T) {
 		provider := qwen.NewQwenCLIProviderWithModel("qwen-turbo")
 		if !provider.IsCLIAvailable() {
-			t.Skip("Qwen CLI not available")
+			t.Skip("Qwen CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		err := provider.HealthCheck()
@@ -273,7 +273,7 @@ func TestCLIProviderHealthCheck(t *testing.T) {
 	t.Run("Zen CLI health check", func(t *testing.T) {
 		provider := zen.NewZenCLIProviderWithModel("big-pickle")
 		if !provider.IsCLIAvailable() {
-			t.Skip("OpenCode CLI not available")
+			t.Skip("OpenCode CLI not available")  // SKIP-OK: #legacy-untriaged
 		}
 
 		err := provider.HealthCheck()
@@ -289,7 +289,7 @@ func TestProviderRegistryUseCLIProxy(t *testing.T) {
 
 		// Check if OAuth is enabled
 		if !oauth_credentials.IsClaudeOAuthEnabled() {
-			t.Skip("Claude OAuth not enabled")
+			t.Skip("Claude OAuth not enabled")  // SKIP-OK: #legacy-untriaged
 		}
 
 		// Verify CLI approach is correct
@@ -304,7 +304,7 @@ func TestProviderRegistryUseCLIProxy(t *testing.T) {
 
 	t.Run("Registry should use CLI for Qwen OAuth", func(t *testing.T) {
 		if !oauth_credentials.IsQwenOAuthEnabled() {
-			t.Skip("Qwen OAuth not enabled")
+			t.Skip("Qwen OAuth not enabled")  // SKIP-OK: #legacy-untriaged
 		}
 
 		cliProvider := qwen.NewQwenCLIProviderWithModel("qwen-turbo")

@@ -157,7 +157,7 @@ func createTestImage() string {
 // TestVisionCapabilityDiscovery tests capability discovery endpoint
 func TestVisionCapabilityDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())
@@ -172,7 +172,7 @@ func TestVisionCapabilityDiscovery(t *testing.T) {
 // TestVisionAnalyze tests image analysis capability
 func TestVisionAnalyze(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())
@@ -207,7 +207,7 @@ func TestVisionAnalyze(t *testing.T) {
 // TestVisionWithURL tests vision analysis with image URL
 func TestVisionWithURL(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())
@@ -234,7 +234,7 @@ func TestVisionWithURL(t *testing.T) {
 // TestVisionOCR tests OCR capability specifically
 func TestVisionOCR(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())
@@ -259,7 +259,7 @@ func TestVisionOCR(t *testing.T) {
 // TestVisionDetection tests object detection capability
 func TestVisionDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())
@@ -285,7 +285,7 @@ func TestVisionDetection(t *testing.T) {
 // TestVisionHealthCheck tests vision service health
 func TestVisionHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 
@@ -301,7 +301,7 @@ func TestVisionHealthCheck(t *testing.T) {
 // TestVisionFromFile tests vision analysis from a local file
 func TestVisionFromFile(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")
+		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
 	client := NewVisionClient(testutil.ServerURL())

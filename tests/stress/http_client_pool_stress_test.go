@@ -36,7 +36,7 @@ func startEchoServer(t *testing.T) (*httptest.Server, string) {
 // no panics, no deadlocks, and no goroutine leaks.
 func TestHTTPClientPool_ConcurrentGetRequests_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -141,7 +141,7 @@ func TestHTTPClientPool_ConcurrentGetRequests_Stress(t *testing.T) {
 // pool to create and manage multiple per-host clients concurrently.
 func TestHTTPClientPool_ConnectionChurn_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -254,7 +254,7 @@ func TestHTTPClientPool_ConnectionChurn_Stress(t *testing.T) {
 // of requests made under concurrent load.
 func TestHTTPClientPool_MetricsAccuracy_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -323,7 +323,7 @@ func TestHTTPClientPool_MetricsAccuracy_Stress(t *testing.T) {
 // no panics.
 func TestHTTPClientPool_HostClientConcurrentRequests_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -411,7 +411,7 @@ func TestHTTPClientPool_HostClientConcurrentRequests_Stress(t *testing.T) {
 // is safe for concurrent use.
 func TestHTTPClientPool_GlobalPool_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

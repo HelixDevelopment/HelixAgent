@@ -26,7 +26,7 @@ func TestNewManager(t *testing.T) {
 	// This test may fail if Playwright is not installed
 	// Skip if PLAYWRIGHT_SKIP_TESTS is set
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	manager, err := NewManager(config)
@@ -45,7 +45,7 @@ func TestNewManager(t *testing.T) {
 
 func TestNewManager_InvalidConfig(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Test with very large pool size (should still work but may fail on resource constraints)
@@ -66,7 +66,7 @@ func TestNewManager_InvalidConfig(t *testing.T) {
 
 func TestManager_Execute(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -97,7 +97,7 @@ func TestManager_Execute(t *testing.T) {
 
 func TestManager_Execute_WithScreenshot(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -132,7 +132,7 @@ func TestManager_Execute_WithScreenshot(t *testing.T) {
 
 func TestManager_Execute_WithExtract(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -168,7 +168,7 @@ func TestManager_Execute_WithExtract(t *testing.T) {
 
 func TestManager_Execute_ActionError(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -197,7 +197,7 @@ func TestManager_Execute_ActionError(t *testing.T) {
 
 func TestManager_Close(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -214,7 +214,7 @@ func TestManager_Close(t *testing.T) {
 
 func TestNewPool(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(2, true)
@@ -232,7 +232,7 @@ func TestNewPool(t *testing.T) {
 
 func TestPool_Acquire(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(2, true)
@@ -257,7 +257,7 @@ func TestPool_Acquire(t *testing.T) {
 
 func TestPool_Acquire_ContextCancelled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Create pool with small size
@@ -292,7 +292,7 @@ func TestPool_Acquire_ContextCancelled(t *testing.T) {
 
 func TestPool_Release(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(2, true)
@@ -319,7 +319,7 @@ func TestPool_Release(t *testing.T) {
 
 func TestPool_Release_Full(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Create pool with size 1
@@ -348,7 +348,7 @@ func TestPool_Release_Full(t *testing.T) {
 
 func TestPool_Close(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(2, true)
@@ -364,7 +364,7 @@ func TestPool_Close(t *testing.T) {
 
 func TestInstance_Close(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(1, true)
@@ -405,7 +405,7 @@ func TestConfig_Struct(t *testing.T) {
 
 func TestInstance_Struct(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(1, true)
@@ -429,7 +429,7 @@ func TestInstance_Struct(t *testing.T) {
 
 func TestManager_Struct(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	config := DefaultConfig()
@@ -448,7 +448,7 @@ func TestManager_Struct(t *testing.T) {
 
 func TestPool_Struct(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping browser tests in short mode")
+		t.Skip("Skipping browser tests in short mode")  // SKIP-OK: #short-mode
 	}
 
 	pool, err := NewPool(2, true)

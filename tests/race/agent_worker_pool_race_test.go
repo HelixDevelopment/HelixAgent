@@ -25,7 +25,7 @@ func noopCompleteFunc(_ context.Context, _ []models.Message) (*models.LLMRespons
 // sync.WaitGroup internally — this test drives multiple concurrent dispatches.
 func TestAgentWorkerPool_ConcurrentDispatch(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -73,7 +73,7 @@ func TestAgentWorkerPool_ConcurrentDispatch(t *testing.T) {
 // goroutines must observe the cancellation cleanly.
 func TestAgentWorkerPool_ConcurrentDispatchAndShutdown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()

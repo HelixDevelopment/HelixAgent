@@ -19,7 +19,7 @@ import (
 // to verify no race conditions and consistent results across reads.
 func TestStress_ProviderRegistry_SimultaneousGetAndList(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -137,7 +137,7 @@ func TestStress_ProviderRegistry_SimultaneousGetAndList(t *testing.T) {
 // score updates and health status reads do not corrupt registry state.
 func TestStress_ProviderRegistry_ConcurrentScoreUpdates(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -252,7 +252,7 @@ func TestStress_ProviderRegistry_ConcurrentScoreUpdates(t *testing.T) {
 // reads or corrupted state).
 func TestStress_ProviderRegistry_ConsistentResults(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -520,7 +520,7 @@ func TestInitializeAuthIntegration(t *testing.T) {
 func TestOAuthCredentialManager_Integration(t *testing.T) {
 	t.Parallel()
 	if os.Getenv("SKIP_OAUTH_TESTS") != "" {
-		t.Skip("Skipping OAuth integration tests")
+		t.Skip("Skipping OAuth integration tests")  // SKIP-OK: #integration-mode-only
 	}
 
 	logger := logrus.New()

@@ -94,7 +94,7 @@ func newTestRouter(maxInFlight int, handlerLatency time.Duration) *gin.Engine {
 // error rate under sustained load.
 func TestLoad_SustainedConstantRate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping load test in short mode")
+		t.Skip("skipping load test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	router := newTestRouter(50, 5*time.Millisecond)
@@ -151,7 +151,7 @@ func TestLoad_SustainedConstantRate(t *testing.T) {
 // rather than crashing or hanging.
 func TestLoad_SpikeTraffic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping load test in short mode")
+		t.Skip("skipping load test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Low concurrency limit to force rejections during spike
@@ -225,7 +225,7 @@ func TestLoad_SpikeTraffic(t *testing.T) {
 // (goroutine accumulation, memory growth).
 func TestLoad_SoakTest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping load test in short mode")
+		t.Skip("skipping load test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	router := newTestRouter(50, 1*time.Millisecond)
@@ -281,7 +281,7 @@ func TestLoad_SoakTest(t *testing.T) {
 // does not leak goroutines.
 func TestLoad_GoroutineLeakDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping load test in short mode")
+		t.Skip("skipping load test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	router := newTestRouter(20, 1*time.Millisecond)

@@ -21,7 +21,7 @@ import (
 // with the production agents registry.
 func TestStress_AgentHandler_ConcurrentListAndGet(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -184,7 +184,7 @@ func TestStress_AgentHandler_ConcurrentListAndGet(t *testing.T) {
 // cause data races. Simulates hot-reload or multi-instance scenarios.
 func TestStress_AgentHandler_RouterInitConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -250,7 +250,7 @@ func TestStress_AgentHandler_RouterInitConcurrency(t *testing.T) {
 // route patterns without race conditions.
 func TestStress_HandlerChain_MultiEndpointConcurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -18,7 +18,7 @@ import (
 // endpoint returns HTTP 200 with a minimal JSON body containing a status field.
 func TestHealthEndpoint_Comprehensive_RootHealth(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	r := gin.New()
@@ -47,7 +47,7 @@ func TestHealthEndpoint_Comprehensive_RootHealth(t *testing.T) {
 // endpoint returns HTTP 200 with a detailed provider status breakdown.
 func TestHealthEndpoint_Comprehensive_V1Health(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	r := gin.New()
@@ -108,7 +108,7 @@ func TestHealthEndpoint_Comprehensive_V1Health(t *testing.T) {
 // return the correct Content-Type header.
 func TestHealthEndpoint_Comprehensive_ContentType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	endpoints := []string{"/health", "/v1/health"}
@@ -140,7 +140,7 @@ func TestHealthEndpoint_Comprehensive_ContentType(t *testing.T) {
 // even when no monitors are injected (nil-safe defaults).
 func TestHealthEndpoint_Comprehensive_MonitoringStatus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	handler := handlers.NewMonitoringHandler(nil, nil, nil, nil, nil, nil)
@@ -172,7 +172,7 @@ func TestHealthEndpoint_Comprehensive_MonitoringStatus(t *testing.T) {
 // registered precisely and not catching everything.
 func TestHealthEndpoint_Comprehensive_NotFound(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	r := gin.New()
@@ -192,7 +192,7 @@ func TestHealthEndpoint_Comprehensive_NotFound(t *testing.T) {
 // to a GET-only health endpoint returns HTTP 405 Method Not Allowed.
 func TestHealthEndpoint_Comprehensive_MethodNotAllowed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	r := gin.New()
@@ -215,7 +215,7 @@ func TestHealthEndpoint_Comprehensive_MethodNotAllowed(t *testing.T) {
 // all required JSON keys are present and correctly typed.
 func TestHealthEndpoint_Comprehensive_Schema(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")
+		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	sample := map[string]interface{}{

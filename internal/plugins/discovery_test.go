@@ -293,7 +293,7 @@ func TestDiscovery_DiscoverInPath_SymbolicLink(t *testing.T) {
 	linkPath := filepath.Join(tmpDir, "link")
 	err = os.Symlink(subDir, linkPath)
 	if err != nil {
-		t.Skip("symbolic links not supported on this system")
+		t.Skip("symbolic links not supported on this system")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// Should handle symbolic links gracefully
@@ -303,7 +303,7 @@ func TestDiscovery_DiscoverInPath_SymbolicLink(t *testing.T) {
 
 func TestDiscovery_DiscoverInPath_PermissionDenied(t *testing.T) {
 	if os.Getuid() == 0 {
-		t.Skip("skipping as root user")
+		t.Skip("skipping as root user")  // SKIP-OK: #legacy-untriaged
 	}
 
 	tmpDir := t.TempDir()

@@ -21,7 +21,7 @@ import (
 // transport with Brotli compression").
 func TestHTTP3ComplianceVerification(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping HTTP/3 compliance test in short mode")
+		t.Skip("skipping HTTP/3 compliance test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("QUIC_client_dependency_available", func(t *testing.T) {

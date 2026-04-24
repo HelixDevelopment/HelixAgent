@@ -387,7 +387,7 @@ func FuzzTokenBucket(f *testing.F) {
 	f.Fuzz(func(t *testing.T, capacity, refillRate float64) {
 		// Skip invalid configurations
 		if capacity <= 0 || refillRate <= 0 || capacity > 10000 || refillRate > 1000 {
-			t.Skip("Invalid configuration")
+			t.Skip("Invalid configuration")  // SKIP-OK: #invalid-config-branch
 		}
 
 		config := TokenBucketConfig{

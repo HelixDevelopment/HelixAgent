@@ -19,7 +19,7 @@ import (
 // is measured before and after to enforce a hard memory ceiling.
 func TestStreamingBackpressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

@@ -278,7 +278,7 @@ func GenerateBenchmarkReport(results []BenchmarkResult) string {
 // TestBenchmarks runs all benchmarks
 func TestBenchmarks(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping benchmarks in short mode")
+		t.Skip("Skipping benchmarks in short mode")  // SKIP-OK: #short-mode
 	}
 
 	logger, _ := zap.NewDevelopment()

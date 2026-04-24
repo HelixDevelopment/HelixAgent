@@ -113,7 +113,7 @@ func TestConnect_SuccessPath(t *testing.T) {
 func TestInitConnection_PoolAssignmentOnSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -143,7 +143,7 @@ func TestInitConnection_PoolAssignmentOnSuccess(t *testing.T) {
 func TestExec_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -173,7 +173,7 @@ func TestExec_RealPGSuccess(t *testing.T) {
 func TestQuery_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -204,7 +204,7 @@ func TestQuery_RealPGSuccess(t *testing.T) {
 func TestQueryRow_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -239,7 +239,7 @@ func TestQueryRow_RealPGSuccess(t *testing.T) {
 func TestBegin_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -274,7 +274,7 @@ func TestBegin_RealPGSuccess(t *testing.T) {
 func TestPing_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -304,7 +304,7 @@ func TestPing_RealPGSuccess(t *testing.T) {
 func TestHealthCheck_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -334,7 +334,7 @@ func TestHealthCheck_RealPGSuccess(t *testing.T) {
 func TestMigrate_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}
@@ -367,7 +367,7 @@ func TestMigrate_RealPGSuccess(t *testing.T) {
 func TestPool_RealPGSuccess(t *testing.T) {
 	// Skip if no PostgreSQL available
 	if os.Getenv("DB_HOST") == "" && os.Getenv("CI") == "" {
-		t.Skip("PostgreSQL not available, skipping integration test")
+		t.Skip("PostgreSQL not available, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 
 	cfg := &config.Config{}

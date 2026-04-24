@@ -14,7 +14,7 @@ import (
 // Run with: go test -race -run TestRaceConditionPatterns ./tests/stress/
 func TestRaceConditionPatterns(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
+		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("AtomicCounterConsistency", func(t *testing.T) {

@@ -37,10 +37,10 @@ func TestNewInstanceManager(t *testing.T) {
 func TestInstanceManager_CreateInstance(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestInstanceManager_CreateInstance(t *testing.T) {
 func TestInstanceManager_AcquireInstance(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -129,10 +129,10 @@ func TestInstanceManager_AcquireInstance(t *testing.T) {
 func TestInstanceManager_ReleaseInstance(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestInstanceManager_ReleaseInstance(t *testing.T) {
 func TestInstanceManager_GetInstance(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -221,7 +221,7 @@ func TestInstanceManager_GetInstance(t *testing.T) {
 func TestInstanceManager_ListInstances(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -272,7 +272,7 @@ func TestInstanceManager_ListInstances(t *testing.T) {
 func TestInstanceManager_TerminateInstance(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -322,7 +322,7 @@ func TestInstanceManager_TerminateInstance(t *testing.T) {
 func TestInstanceManager_SendRequest(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestInstanceManager_SendRequest(t *testing.T) {
 func TestInstanceManager_BroadcastRequest(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -448,7 +448,7 @@ func TestInstanceManager_BroadcastRequest(t *testing.T) {
 func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
 func TestInstanceManager_GetMetrics(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping InstanceManager test in short mode - requires database setup")
+		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)

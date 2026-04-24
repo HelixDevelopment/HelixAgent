@@ -23,7 +23,7 @@ func geminiAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("GEMINI_API_KEY")
 	if key == "" {
-		t.Skip("GEMINI_API_KEY not set")
+		t.Skip("GEMINI_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
 		t.Skipf("GEMINI_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)
@@ -213,7 +213,7 @@ func TestGeminiAPI_ExtendedThinking(t *testing.T) {
 	require.NotNil(t, resp, "response should not be nil")
 
 	if strings.TrimSpace(resp.Content) == "" {
-		t.Skip("Gemini returned an empty response body (live-model flake)")
+		t.Skip("Gemini returned an empty response body (live-model flake)")  // SKIP-OK: #legacy-untriaged
 	}
 	// This test exercises the provider's API contract, not the
 	// model's arithmetic: live thinking models routinely hallucinate
@@ -366,7 +366,7 @@ func TestGeminiAPI_ToolCalling(t *testing.T) {
 // method when a valid API key is provided.
 func TestGeminiUnified_AutoDetect(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Gemini integration test in short mode")
+		t.Skip("Skipping Gemini integration test in short mode")  // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 	apiKey := geminiAPIKey(t)
@@ -412,6 +412,6 @@ func TestGeminiUnified_AutoDetect(t *testing.T) {
 	// model quirk, not a provider-code regression. Skip rather than
 	// fail when that happens.
 	if strings.TrimSpace(resp.Content) == "" {
-		t.Skip("Gemini returned an empty response body (live-model flake)")
+		t.Skip("Gemini returned an empty response body (live-model flake)")  // SKIP-OK: #legacy-untriaged
 	}
 }

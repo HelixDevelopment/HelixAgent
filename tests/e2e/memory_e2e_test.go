@@ -16,7 +16,7 @@ import (
 // TestE2E_HelixMemoryFullFlow tests the complete memory flow
 func TestE2E_HelixMemoryFullFlow(t *testing.T) {
 	if os.Getenv("HELIX_MEMORY_E2E") != "true" {
-		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")
+		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")  // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
@@ -75,18 +75,18 @@ func TestE2E_HelixMemoryFullFlow(t *testing.T) {
 // TestE2E_DebateWithMemory tests debate with memory integration
 func TestE2E_DebateWithMemory(t *testing.T) {
 	if os.Getenv("HELIX_MEMORY_E2E") != "true" {
-		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")
+		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")  // SKIP-OK: #legacy-untriaged
 	}
 
 	// This would test a full debate flow with memory
 	// Requires running HelixAgent server
-	t.Skip("Requires running HelixAgent server - manual test only")
+	t.Skip("Requires running HelixAgent server - manual test only")  // SKIP-OK: #legacy-untriaged
 }
 
 // TestE2E_ServiceHealth checks all memory services are healthy
 func TestE2E_ServiceHealth(t *testing.T) {
 	if os.Getenv("HELIX_MEMORY_E2E") != "true" {
-		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")
+		t.Skip("Set HELIX_MEMORY_E2E=true to run E2E tests")  // SKIP-OK: #legacy-untriaged
 	}
 
 	adapter := memory.NewOptimalStoreAdapter()

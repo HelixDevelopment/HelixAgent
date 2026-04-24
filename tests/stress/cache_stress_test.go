@@ -19,7 +19,7 @@ import (
 // the cache's internal locking prevents panics and data corruption.
 func TestCache_HighConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -108,7 +108,7 @@ func TestCache_HighConcurrentAccess(t *testing.T) {
 // or deadlocks under concurrent access.
 func TestCache_EvictionUnderPressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -191,7 +191,7 @@ func TestCache_EvictionUnderPressure(t *testing.T) {
 // many goroutines to detect potential deadlocks from lock ordering issues.
 func TestCache_NoDeadlocksUnderMixedOperations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -275,7 +275,7 @@ func TestCache_NoDeadlocksUnderMixedOperations(t *testing.T) {
 // while others are reading. Ensures expiration doesn't cause races.
 func TestCache_TTLExpirationUnderConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -380,7 +380,7 @@ func TestCache_TTLExpirationUnderConcurrency(t *testing.T) {
 // concurrently with cache operations does not cause panics or races.
 func TestCache_MetricsConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -469,7 +469,7 @@ func TestCache_MetricsConcurrency(t *testing.T) {
 // issues with background cleanup goroutines not being properly stopped.
 func TestCache_NoGoroutineLeaksAfterClose(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -14,7 +14,7 @@ import (
 
 func TestOllama_ExplicitlyDisabledByDefault(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	// Clear any existing OLLAMA_ENABLED env var
 	os.Unsetenv("OLLAMA_ENABLED")
@@ -48,7 +48,7 @@ func TestOllama_ExplicitlyDisabledByDefault(t *testing.T) {
 
 func TestOllama_ExplicitlyEnabled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	// Set OLLAMA_ENABLED to true
 	os.Setenv("OLLAMA_ENABLED", "true")

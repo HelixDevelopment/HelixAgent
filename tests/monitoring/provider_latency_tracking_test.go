@@ -14,7 +14,7 @@ import (
 // sample counts and sums.
 func TestMonitoring_ProviderLatency_Histogram(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -60,7 +60,7 @@ func TestMonitoring_ProviderLatency_Histogram(t *testing.T) {
 // latency data.
 func TestMonitoring_ProviderLatency_Summary(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -106,7 +106,7 @@ func TestMonitoring_ProviderLatency_Summary(t *testing.T) {
 // correctly distributed across bucket boundaries.
 func TestMonitoring_ProviderLatency_BucketDistribution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -173,7 +173,7 @@ func TestMonitoring_ProviderLatency_BucketDistribution(t *testing.T) {
 // is tracked independently per HTTP method (Complete vs CompleteStream).
 func TestMonitoring_ProviderLatency_PerMethodTracking(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")
+		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

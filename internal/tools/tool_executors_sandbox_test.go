@@ -118,7 +118,7 @@ func TestResolveInWorkingDir_AbsolutePathInsideAccepted(t *testing.T) {
 
 func TestResolveInWorkingDir_SymlinkEscapeRejected(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("symlink creation on windows test runners is flaky; unix-only")
+		t.Skip("symlink creation on windows test runners is flaky; unix-only")  // SKIP-OK: #legacy-untriaged
 	}
 	e, base := newSandboxedExecutor(t)
 

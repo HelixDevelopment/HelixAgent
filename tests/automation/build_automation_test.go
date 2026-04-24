@@ -16,7 +16,7 @@ import (
 
 func TestBuildAutomation_AllBinaries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping build automation in short mode")
+		t.Skip("skipping build automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	binaries := []string{
@@ -50,11 +50,11 @@ func TestBuildAutomation_AllBinaries(t *testing.T) {
 
 func TestDockerAutomation_BuildImage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping docker build in short mode")
+		t.Skip("skipping docker build in short mode")  // SKIP-OK: #short-mode
 	}
 
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("docker not available")
+		t.Skip("docker not available")  // SKIP-OK: #requires-docker
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -71,11 +71,11 @@ func TestDockerAutomation_BuildImage(t *testing.T) {
 
 func TestDockerAutomation_ComposeValidation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping compose validation in short mode")
+		t.Skip("skipping compose validation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("docker not available")
+		t.Skip("docker not available")  // SKIP-OK: #requires-docker
 	}
 
 	composeFiles := []string{
@@ -100,7 +100,7 @@ func TestDockerAutomation_ComposeValidation(t *testing.T) {
 
 func TestLintAutomation_FmtVetLint(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping lint automation in short mode")
+		t.Skip("skipping lint automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	t.Run("gofmt", func(t *testing.T) {
@@ -124,11 +124,11 @@ func TestLintAutomation_FmtVetLint(t *testing.T) {
 
 func TestSecurityAutomation_GosecScan(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security automation in short mode")
+		t.Skip("skipping security automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	if _, err := exec.LookPath("gosec"); err != nil {
-		t.Skip("gosec not available")
+		t.Skip("gosec not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	cmd := exec.Command("gosec", "-quiet", "-fmt=json", "./...")
@@ -143,7 +143,7 @@ func TestSecurityAutomation_GosecScan(t *testing.T) {
 
 func TestTestAutomation_UnitTests(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping test automation in short mode")
+		t.Skip("skipping test automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -160,7 +160,7 @@ func TestTestAutomation_UnitTests(t *testing.T) {
 
 func TestMakefileAutomation_AllTargets(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping makefile automation in short mode")
+		t.Skip("skipping makefile automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	targets := []string{
@@ -180,7 +180,7 @@ func TestMakefileAutomation_AllTargets(t *testing.T) {
 
 func TestGitAutomation_Status(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
+		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	cmd := exec.Command("git", "status", "--porcelain")
@@ -223,7 +223,7 @@ func TestEnvAutomation_ConfigValidation(t *testing.T) {
 
 func TestModuleAutomation_GoModTidy(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping module automation in short mode")
+		t.Skip("skipping module automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	beforeCmd := exec.Command("go", "mod", "tidy")
@@ -240,7 +240,7 @@ func TestModuleAutomation_GoModTidy(t *testing.T) {
 
 func TestReleaseAutomation_VersionInjection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping release automation in short mode")
+		t.Skip("skipping release automation in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()

@@ -14,7 +14,7 @@ import (
 // to the ensembleMaxConcurrent atomic variable via the public API.
 func TestEnsemble_ConcurrentSetGetMaxConcurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var wg sync.WaitGroup
@@ -42,7 +42,7 @@ func TestEnsemble_ConcurrentSetGetMaxConcurrent(t *testing.T) {
 // interleaved Store/Load under high concurrency.
 func TestEnsemble_ConcurrentAtomicCounter(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var counter atomic.Int64
@@ -72,7 +72,7 @@ func TestEnsemble_ConcurrentAtomicCounter(t *testing.T) {
 // concurrent map access patterns used during ensemble provider management.
 func TestCircuitBreakerManager_ConcurrentRegisterAndStats(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")
+		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	mgr := llm.NewDefaultCircuitBreakerManager()

@@ -46,7 +46,7 @@ func (p *failingProvider) CompleteStream(
 // all-providers-failed code path under concurrent load.
 func TestEnsemble_AllProvidersFail_GracefulError(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -144,7 +144,7 @@ func TestEnsemble_AllProvidersFail_GracefulError(t *testing.T) {
 // invocations.
 func TestEnsemble_AllProvidersFail_NoGoroutineLeaks(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -190,7 +190,7 @@ func TestEnsemble_AllProvidersFail_NoGoroutineLeaks(t *testing.T) {
 // error (context.Canceled or the provider error), not a panic.
 func TestEnsemble_AllProvidersFail_ContextCancelled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

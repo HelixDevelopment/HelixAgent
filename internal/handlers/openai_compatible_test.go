@@ -1381,7 +1381,7 @@ func TestStreamingEmptyChunks(t *testing.T) {
 func TestStreamingConcurrentClients(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping concurrent test in short mode")
+		t.Skip("Skipping concurrent test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	gin.SetMode(gin.TestMode)

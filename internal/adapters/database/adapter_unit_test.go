@@ -133,7 +133,7 @@ func TestNewClientWithFallback_ConnectionFailureReturnsError(t *testing.T) {
 func TestNewClientWithFallback_ConnectionSuccessReturnsClient(t *testing.T) {
 	// This test requires a real PostgreSQL instance, skip if not available
 	if os.Getenv("DB_HOST") == "" {
-		t.Skip("DB_HOST not set, skipping integration test")
+		t.Skip("DB_HOST not set, skipping integration test")  // SKIP-OK: #integration-mode-only
 	}
 	cfg := &config.Config{}
 	client, err := NewClientWithFallback(cfg)

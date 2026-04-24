@@ -115,7 +115,7 @@ func (l *stressMockEventLog) GetEventsFromNode(_ string) ([]*memory.MemoryEvent,
 // 100 goroutines simultaneously perform conflict detection and resolution.
 func TestMemory_ConcurrentCRDTOperations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	resolver := memory.NewCRDTResolver(memory.ConflictStrategyLastWriteWins)
@@ -192,7 +192,7 @@ func TestMemory_ConcurrentCRDTOperations(t *testing.T) {
 // 100 goroutines performing Increment, Update, HappensBefore, and String.
 func TestMemory_ConcurrentVectorClockUpdates(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	done := make(chan struct{})
@@ -263,7 +263,7 @@ func TestMemory_ConcurrentVectorClockUpdates(t *testing.T) {
 // 50 goroutines each build their own EventStream with multiple events.
 func TestMemory_ConcurrentEventStreamAppend(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	done := make(chan struct{})
@@ -344,7 +344,7 @@ func TestMemory_ConcurrentEventStreamAppend(t *testing.T) {
 // 50 goroutines adding memories concurrently via DistributedMemoryManager.
 func TestMemory_DistributedManager_ConcurrentAdd(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	store := memory.NewInMemoryStore()

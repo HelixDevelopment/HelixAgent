@@ -200,7 +200,7 @@ func (c *LLMClient) ListProviders() ([]string, error) {
 // TestLLMProviderDiscovery tests that LLM providers are discoverable
 func TestLLMProviderDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireServer(t)
 
@@ -216,7 +216,7 @@ func TestLLMProviderDiscovery(t *testing.T) {
 // TestLLMProviderCompletion tests each LLM provider with a simple completion
 func TestLLMProviderCompletion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireServer(t)
 
@@ -256,7 +256,7 @@ func TestLLMProviderCompletion(t *testing.T) {
 // TestMCPContextWithLLMProvider tests providing MCP context to LLM providers
 func TestMCPContextWithLLMProvider(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")
+		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
 	}
 	// First, collect MCP tool results
 	mcpContext := &MCPToolContext{
@@ -463,7 +463,7 @@ func TestAllMCPServersWithAllProviders(t *testing.T) {
 	}
 
 	if connectedServers == 0 {
-		t.Skip("No MCP servers available")
+		t.Skip("No MCP servers available")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 

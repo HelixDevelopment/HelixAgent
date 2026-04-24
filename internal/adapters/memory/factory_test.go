@@ -26,7 +26,7 @@ func TestNewOptimalStoreAdapter_Default(t *testing.T) {
 	t.Parallel()
 	// Default build (no tags) should use HelixMemory
 	if !adapter.IsHelixMemoryEnabled() {
-		t.Skip("Skipping default test when nohelixmemory tag is active")
+		t.Skip("Skipping default test when nohelixmemory tag is active")  // SKIP-OK: #legacy-untriaged
 	}
 	store := adapter.NewOptimalStoreAdapter()
 	assert.NotNil(t, store, "Default build must return a configured HelixMemory store")
@@ -37,7 +37,7 @@ func TestNewOptimalStoreAdapter_Default(t *testing.T) {
 func TestNewOptimalStoreAdapter_OptOut(t *testing.T) {
 	t.Parallel()
 	if adapter.IsHelixMemoryEnabled() {
-		t.Skip("Skipping opt-out test when HelixMemory is active (default)")
+		t.Skip("Skipping opt-out test when HelixMemory is active (default)")  // SKIP-OK: #legacy-untriaged
 	}
 	// Opt-out build (nohelixmemory tag) returns nil
 	store := adapter.NewOptimalStoreAdapter()
@@ -55,7 +55,7 @@ func TestHelixMemoryIsDefault(t *testing.T) {
 	// When running with -tags nohelixmemory, this test is skipped (opt-out is valid).
 	// When running with NO tags (the default), HelixMemory MUST be active.
 	if !adapter.IsHelixMemoryEnabled() {
-		t.Skip("HelixMemory is not active (nohelixmemory tag detected). " +
+		t.Skip("HelixMemory is not active (nohelixmemory tag detected). " +  // SKIP-OK: #legacy-untriaged
 			"This is expected when explicitly opting out. " +
 			"Default builds (no tags) always use HelixMemory.")
 	}

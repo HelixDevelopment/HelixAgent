@@ -23,7 +23,7 @@ func openrouterAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("OPENROUTER_API_KEY")
 	if key == "" {
-		t.Skip("OPENROUTER_API_KEY not set")
+		t.Skip("OPENROUTER_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
 		t.Skipf("OPENROUTER_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)

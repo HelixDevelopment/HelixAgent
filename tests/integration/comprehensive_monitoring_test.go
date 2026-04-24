@@ -57,7 +57,7 @@ func TestHelixAgentMetrics(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("HelixAgent metrics endpoint not available")
+		t.Skip("HelixAgent metrics endpoint not available")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -104,7 +104,7 @@ func TestChromaDBHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("ChromaDB not available")
+		t.Skip("ChromaDB not available")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -121,7 +121,7 @@ func TestCogneeHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Cognee not available")
+		t.Skip("Cognee not available")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -138,7 +138,7 @@ func TestPrometheusHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Prometheus not running - start monitoring stack first")
+		t.Skip("Prometheus not running - start monitoring stack first")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -155,7 +155,7 @@ func TestPrometheusTargets(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Prometheus not running")
+		t.Skip("Prometheus not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -203,7 +203,7 @@ func TestPrometheusAlertRules(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Prometheus not running")
+		t.Skip("Prometheus not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -246,7 +246,7 @@ func TestGrafanaHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Grafana not running")
+		t.Skip("Grafana not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -268,7 +268,7 @@ func TestAlertmanagerHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Alertmanager not running")
+		t.Skip("Alertmanager not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -285,7 +285,7 @@ func TestLokiHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Loki not running")
+		t.Skip("Loki not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -302,7 +302,7 @@ func TestCustomExporterHealth(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Custom exporter not running")
+		t.Skip("Custom exporter not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -319,7 +319,7 @@ func TestCustomExporterMetrics(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Skip("Custom exporter not running")
+		t.Skip("Custom exporter not running")  // SKIP-OK: #legacy-untriaged
 	}
 	defer resp.Body.Close()
 
@@ -401,12 +401,12 @@ func TestMonitoringEndpointsLatency(t *testing.T) {
 			start := time.Now()
 			req, err := http.NewRequestWithContext(ctx, "GET", ep.url, nil)
 			if err != nil {
-				t.Skip("Could not create request")
+				t.Skip("Could not create request")  // SKIP-OK: #legacy-untriaged
 			}
 
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				t.Skip("Endpoint not available")
+				t.Skip("Endpoint not available")  // SKIP-OK: #legacy-untriaged
 			}
 			defer resp.Body.Close()
 

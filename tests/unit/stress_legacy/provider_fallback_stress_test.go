@@ -111,7 +111,7 @@ func fallbackChain(
 // Verifies that failing providers' circuit breakers engage under load.
 func TestStress_ProviderFallback_ChainWithCircuitBreakers(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -226,7 +226,7 @@ func TestStress_ProviderFallback_ChainWithCircuitBreakers(t *testing.T) {
 // handles complete failure and recovery.
 func TestStress_ProviderFallback_AllFailThenRecover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -322,7 +322,7 @@ func TestStress_ProviderFallback_AllFailThenRecover(t *testing.T) {
 // traversed correctly and no goroutine starves or deadlocks.
 func TestStress_ProviderFallback_ConcurrentChainTraversal(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

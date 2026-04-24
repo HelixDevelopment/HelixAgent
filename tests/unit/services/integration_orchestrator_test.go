@@ -144,7 +144,7 @@ func TestIntegrationOrchestrator_NewIntegrationOrchestrator(t *testing.T) {
 func TestIntegrationOrchestrator_ExecuteCodeAnalysis(t *testing.T) {
 	// Skip this test - it requires valid LSP client and spawns goroutines
 	// that panic with nil dependencies. This is an integration test.
-	t.Skip("Skipping - requires valid LSP client (integration test)")
+	t.Skip("Skipping - requires valid LSP client (integration test)")  // SKIP-OK: #integration-mode-only
 
 	var mcpManager *services.MCPManager
 	var lspClient *services.LSPClient

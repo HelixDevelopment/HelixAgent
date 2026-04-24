@@ -19,7 +19,7 @@ import (
 // verify that the cache's internal locking prevents panics and corruption.
 func TestStress_Cache_ConcurrentSetGetDelete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -114,7 +114,7 @@ func TestStress_Cache_ConcurrentSetGetDelete(t *testing.T) {
 // contention on the internal map structures.
 func TestStress_Cache_UserKeyMapConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -213,7 +213,7 @@ func TestStress_Cache_UserKeyMapConcurrency(t *testing.T) {
 // no leaks occur when entries are continuously cycled.
 func TestStress_Cache_MemoryStabilityUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -70,7 +70,7 @@ func TestProviderVerification_StartupVerifierCreation(t *testing.T) {
 // of model verification including discovery, verification, and scoring
 func TestProviderVerification_ModelVerificationLifecycle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	testutil.RequireAPIKey(t, "deepseek")
 
@@ -118,7 +118,7 @@ func TestProviderVerification_ModelVerificationLifecycle(t *testing.T) {
 // can actually be used for LLM calls
 func TestProviderVerification_VerifiedModelsCanBeUsed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	testutil.RequireAPIKey(t, "deepseek")
 
@@ -160,7 +160,7 @@ func TestProviderVerification_VerifiedModelsCanBeUsed(t *testing.T) {
 // have proper error messages and failure reasons
 func TestProviderVerification_FailedProvidersHaveReasons(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	testutil.RequireAPIKey(t, "deepseek")
 
@@ -199,7 +199,7 @@ func TestProviderVerification_FailedProvidersHaveReasons(t *testing.T) {
 // configuration uses only verified providers
 func TestProviderVerification_DebateTeamUsesVerifiedProviders(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")
+		t.Skip("skipping: VerifyAllProviders touches every live provider and routinely exceeds 5 min")  // SKIP-OK: #legacy-untriaged
 	}
 	testutil.RequireAPIKey(t, "deepseek")
 

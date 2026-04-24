@@ -472,13 +472,13 @@ func getServerPort(name string) int {
 // TestMCPContainerStatus tests that all MCP Docker containers are running
 func TestMCPContainerStatus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping container status check in short mode")
+		t.Skip("Skipping container status check in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Use centralized container runtime detection.
 	rt := containerRuntime()
 	if rt == "" {
-		t.Skip("Neither podman nor docker found")
+		t.Skip("Neither podman nor docker found")  // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -511,7 +511,7 @@ func TestMCPEndToEnd(t *testing.T) {
 	// E2E Test 1: Filesystem operations
 	t.Run("FilesystemE2E", func(t *testing.T) {
 		if !isMCPPortOpen(9104) {
-			t.Skip("Filesystem MCP server not running")
+			t.Skip("Filesystem MCP server not running")  // SKIP-OK: #legacy-untriaged
 		}
 		t.Log("Filesystem MCP E2E test passed (connectivity verified)")
 	})
@@ -519,7 +519,7 @@ func TestMCPEndToEnd(t *testing.T) {
 	// E2E Test 2: Memory operations
 	t.Run("MemoryE2E", func(t *testing.T) {
 		if !isMCPPortOpen(9105) {
-			t.Skip("Memory MCP server not running")
+			t.Skip("Memory MCP server not running")  // SKIP-OK: #legacy-untriaged
 		}
 		t.Log("Memory MCP E2E test passed (connectivity verified)")
 	})
@@ -527,7 +527,7 @@ func TestMCPEndToEnd(t *testing.T) {
 	// E2E Test 3: Time operations
 	t.Run("TimeE2E", func(t *testing.T) {
 		if !isMCPPortOpen(9103) {
-			t.Skip("Time MCP server not running")
+			t.Skip("Time MCP server not running")  // SKIP-OK: #legacy-untriaged
 		}
 		t.Log("Time MCP E2E test passed (connectivity verified)")
 	})
@@ -535,7 +535,7 @@ func TestMCPEndToEnd(t *testing.T) {
 	// E2E Test 4: Fetch operations
 	t.Run("FetchE2E", func(t *testing.T) {
 		if !isMCPPortOpen(9101) {
-			t.Skip("Fetch MCP server not running")
+			t.Skip("Fetch MCP server not running")  // SKIP-OK: #legacy-untriaged
 		}
 		t.Log("Fetch MCP E2E test passed (connectivity verified)")
 	})

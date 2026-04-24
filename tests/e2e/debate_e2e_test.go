@@ -17,7 +17,7 @@ import (
 func skipIfNoServer(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping E2E debate test in short mode (requires live LLM providers)")
+		t.Skip("Skipping E2E debate test in short mode (requires live LLM providers)")  // SKIP-OK: #short-mode
 	}
 	testutil.RequireServer(t)
 }

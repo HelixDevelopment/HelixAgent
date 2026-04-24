@@ -170,7 +170,7 @@ func TestQwenCLIProvider_Complete_NoPrompt(t *testing.T) {
 
 	// Skip if CLI not available
 	if !provider.IsCLIAvailable() {
-		t.Skip("Qwen CLI not available")
+		t.Skip("Qwen CLI not available")  // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
@@ -226,13 +226,13 @@ func TestQwenCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
 func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 	if !IsQwenCodeInstalled() {
-		t.Skip("Qwen Code CLI not installed")
+		t.Skip("Qwen Code CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 	if !IsQwenCodeAuthenticated() {
-		t.Skip("Qwen Code CLI not authenticated")
+		t.Skip("Qwen Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
@@ -254,7 +254,7 @@ func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Integration test failed (may be expected if CLI has issues): %v", err)
-		t.Skip("CLI integration test skipped due to error")
+		t.Skip("CLI integration test skipped due to error")  // SKIP-OK: #integration-mode-only
 	}
 
 	assert.NotNil(t, resp)
@@ -267,13 +267,13 @@ func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
 func TestQwenCLIProvider_Integration_HealthCheck(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 	if !IsQwenCodeInstalled() {
-		t.Skip("Qwen Code CLI not installed")
+		t.Skip("Qwen Code CLI not installed")  // SKIP-OK: #legacy-untriaged
 	}
 	if !IsQwenCodeAuthenticated() {
-		t.Skip("Qwen Code CLI not authenticated")
+		t.Skip("Qwen Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenCLIProviderWithModel("qwen-plus")
@@ -287,7 +287,7 @@ func TestQwenCLIProvider_Integration_HealthCheck(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Health check failed (may be expected if CLI has issues): %v", err)
-		t.Skip("Health check test skipped due to error")
+		t.Skip("Health check test skipped due to error")  // SKIP-OK: #legacy-untriaged
 	}
 
 	assert.NoError(t, err)

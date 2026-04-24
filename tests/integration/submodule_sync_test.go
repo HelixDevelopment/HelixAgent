@@ -162,7 +162,7 @@ func TestSubmoduleSyncHelixQAOpensourceTools(t *testing.T) {
 
 	helixQAPath := "HelixQA"
 	if _, err := os.Stat(helixQAPath); os.IsNotExist(err) {
-		t.Skip("HelixQA submodule not present")
+		t.Skip("HelixQA submodule not present")  // SKIP-OK: #legacy-untriaged
 	}
 
 	helixQARoot := filepath.Join(projectRoot, helixQAPath)
@@ -185,7 +185,7 @@ func TestSubmoduleSyncHelixQAOpensourceTools(t *testing.T) {
 
 	opensourceTools := "tools/opensource"
 	if _, err := os.Stat(filepath.Join(helixQARoot, opensourceTools)); os.IsNotExist(err) {
-		t.Skip("tools/opensource not present in HelixQA")
+		t.Skip("tools/opensource not present in HelixQA")  // SKIP-OK: #legacy-untriaged
 	}
 
 	var opensourceSubmodules []string
@@ -196,7 +196,7 @@ func TestSubmoduleSyncHelixQAOpensourceTools(t *testing.T) {
 	}
 
 	if len(opensourceSubmodules) == 0 {
-		t.Skip("No opensource tool submodules found in HelixQA")
+		t.Skip("No opensource tool submodules found in HelixQA")  // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Logf("Checking %d opensource tool submodules in HelixQA", len(opensourceSubmodules))
@@ -252,7 +252,7 @@ func TestSubmoduleSyncHelixQAGitHubVsGitLab(t *testing.T) {
 
 	helixQAPath := "HelixQA"
 	if _, err := os.Stat(helixQAPath); os.IsNotExist(err) {
-		t.Skip("HelixQA submodule not present")
+		t.Skip("HelixQA submodule not present")  // SKIP-OK: #legacy-untriaged
 	}
 
 	helixQARoot := filepath.Join(projectRoot, helixQAPath)

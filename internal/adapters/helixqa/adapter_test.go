@@ -191,7 +191,7 @@ func TestAdapter_RunAutonomousSession_NilConfig(t *testing.T) {
 func TestAdapter_RunAutonomousSession_EmptyProject(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping live pipeline test in short mode")
+		t.Skip("skipping live pipeline test in short mode")  // SKIP-OK: #short-mode
 	}
 	adapter := helixqaadapter.New(nil)
 

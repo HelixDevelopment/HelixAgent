@@ -24,7 +24,7 @@ import (
 // HTTP requests through the pool does not leak goroutines or connections.
 func TestStress_ConcurrentHTTPPool_NoLeak(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -103,7 +103,7 @@ func TestStress_ConcurrentHTTPPool_NoLeak(t *testing.T) {
 // mixed get/set operations on TieredCache to verify locking correctness.
 func TestStress_ConcurrentCacheAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -175,7 +175,7 @@ func TestStress_ConcurrentCacheAccess(t *testing.T) {
 // verifies that all tasks complete without deadlocks or data loss.
 func TestStress_WorkerPoolSaturation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -236,7 +236,7 @@ func TestStress_WorkerPoolSaturation(t *testing.T) {
 // breaker 100 times to verify state machine correctness under rapid transitions.
 func TestStress_CircuitBreakerRapidCycling(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -323,7 +323,7 @@ func TestStress_CircuitBreakerRapidCycling(t *testing.T) {
 // and that all goroutines eventually acquire and release it.
 func TestStress_SemaphoreContention(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HelixAgent is a Go (module `dev.helix.agent`, Go 1.25.3) ensemble LLM service exposing OpenAI-compatible APIs. It fronts **50+ LLM providers** with dynamic selection driven by LLMsVerifier verification scores. For the authoritative current count run `ls internal/llm/providers/ | grep -v common | wc -l` (51 at this writing).
+HelixAgent is a Go (module `dev.helix.agent`, Go 1.26) ensemble LLM service exposing OpenAI-compatible APIs. It fronts **50+ LLM providers** with dynamic selection driven by LLMsVerifier verification scores. For the authoritative current count run `ls internal/llm/providers/ | grep -v common | wc -l` (51 at this writing).
 
 Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and **41 extracted modules** across 8 phases. Catalog: `docs/MODULES.md`. Summary table under [Extracted Modules](#extracted-modules-submodules).
 
@@ -48,6 +48,22 @@ Subprojects: **Toolkit** (`Toolkit/`), **LLMsVerifier** (`LLMsVerifier/`), and *
 - **Branch naming**: `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/` + short description
 - **Commits**: Conventional Commits — `feat(llm): add ensemble voting strategy`
 - **Always run `make fmt vet lint` before committing**
+
+## Definition of Done (universal, inherited by every submodule)
+
+A change is NOT done because code compiles and tests pass. "Done" requires pasted terminal output from a real run, produced in the same session as the change. Coverage and passing suites do not count as evidence — they measure the LLM's model of the product, not the product.
+
+1. **No self-certification.** The words *verified, tested, working, complete, fixed, passing* are forbidden in commits, PR bodies, and Claude Code replies unless accompanied by pasted output from a command that ran in that session.
+2. **Demo before code.** Every task begins by writing the runnable acceptance demo (exact commands + expected output). The demo pins "done"; the code is what makes the demo pass.
+3. **Real system, every time.** Demos run against real artifacts:
+   - Go services → `./bin/<binary>` running with real Postgres + Redis (no `httptest.NewServer`, no `sqlmock`, no in-memory fakes).
+   - Android / Android TV → instrumented test on a real emulator or device driving the real APK (Robolectric is unit-only, never proof-of-done).
+   - Web → Playwright against the built `docker run` image (no JSDOM as proof-of-done).
+4. **Skips are loud.** `t.Skip` / `@Ignore` / `xit` / `describe.skip` / `it.skip` without a trailing `SKIP-OK: #<ticket>` comment break `make ci-validate-all`.
+5. **Contract tests on every seam.** Any change touching an integration boundary (API↔client, API↔DB, shared module↔consumer) runs one roundtrip test that asserts the wire format on both sides. Types must be generated from a single source (OpenAPI / protobuf / Go structs → Kotlin/TS codegen), never hand-written on both sides.
+6. **Evidence in the PR.** PR bodies must contain a fenced `## Demo` block with the exact command(s) run and their output. Reviewers reject PRs missing this block. `/ultrareview` is the default adversarial review gate.
+
+Rationale, enforcement commands, and the manual-phase-smoke protocol: `docs/development/definition-of-done.md`.
 
 ## Code Style
 
@@ -89,7 +105,7 @@ make release-builder-image # Build the builder container image
 
 ## Testing
 
-**IMPORTANT:** Infrastructure containers (PostgreSQL, Redis, Mock LLM) MUST be running before executing tests or challenges. Start them with `make test-infra-start` (or `make test-infra-direct-start` for Podman rootless fallback).
+**IMPORTANT:** Infrastructure containers (PostgreSQL, Redis, Mock LLM) MUST be running before executing tests or challenges. Per Hard Stop #2, start them by running the HelixAgent binary (`make build` → `./bin/helixagent`), which reads `Containers/.env` and boots everything. The `make test-infra-start` / `make test-infra-direct-start` targets still exist for older tests but contradict the Constitution's container orchestration rule — see the note below this section.
 
 ```bash
 make test                 # All tests (auto-detects infra)
@@ -273,7 +289,7 @@ blocks it.
 - **Version Package**: `internal/version/` — single source of truth, set via `-ldflags -X` at build time
 - **Container Builds**: All release builds run inside `helixagent-builder` container (golang:1.24-alpine)
 - **Change Detection**: SHA256 hash of source files; skips build when unchanged. Version codes auto-increment per app.
-- **7 Apps**: helixagent, api, grpc-server, cognee-mock, sanity-check, mcp-bridge, generate-constitution
+- **8 Apps**: helixagent, api, grpc-server, cognee-mock, sanity-check, mcp-bridge, generate-constitution, audit
 - **5 Platforms**: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64
 - **Output**: `releases/<app>/<os>-<arch>/<version_code>/<binary>` + `build-info.json`, `latest` symlink
 - Key files: `VERSION`, `internal/version/version.go`, `scripts/build/`, `docker/build/Dockerfile.builder`
@@ -419,7 +435,7 @@ CI_RESOURCE_LIMIT=medium make ci-all  # Medium resource limits (default: low)
 **IMPORTANT:** HelixAgent binary must be running (it boots all required infra) before executing challenges.
 
 ```bash
-./challenges/scripts/run_all_challenges.sh                    # Run ALL (650+ scripts; audit: ls challenges/scripts/*.sh | wc -l)
+./challenges/scripts/run_all_challenges.sh                    # Run ALL (654+ scripts; audit: ls challenges/scripts/*.sh | wc -l)
 ./challenges/scripts/memory_safety_challenge.sh               # Run a single challenge
 GOMAXPROCS=2 nice -n 19 ./challenges/scripts/<name>_challenge.sh   # With resource limits
 ```
@@ -478,6 +494,6 @@ Gin v1.12.0, PostgreSQL 15 (pgx/v5), Redis 7, testify v1.11.1, Prometheus/Grafan
 
 ## Project Constitution
 
-The authoritative Constitution lives in `CONSTITUTION.md` (currently v1.3.0, 33 mandatory rules across 17 categories; machine-readable form in `CONSTITUTION.json`). Every rule in the "Mandatory Development Standards" section above is a summary of a Constitution entry — when they conflict, `CONSTITUTION.md` wins. Regenerate with `./bin/generate-constitution` (or `go run ./cmd/generate-constitution`); do not hand-edit a copy inside this file.
+The authoritative Constitution lives in `CONSTITUTION.md` (currently v1.3.0, CONST-001…CONST-029; machine-readable form in `CONSTITUTION.json`). The "Mandatory Development Standards" section above summarizes those entries AND lists two forward rules (CONST-030, CONST-031) that are enforced in this repo but not yet merged into `CONSTITUTION.md` — they land on the next regeneration. When a summary and `CONSTITUTION.md` conflict on CONST-001…CONST-029, `CONSTITUTION.md` wins. Regenerate with `./bin/generate-constitution` (or `go run ./cmd/generate-constitution`); do not hand-edit a copy inside this file.
 
 

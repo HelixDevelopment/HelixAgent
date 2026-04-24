@@ -1,5 +1,25 @@
 # CLAUDE.md - MCP-Servers Integration
 
+
+## Definition of Done
+
+This module inherits HelixAgent's universal Definition of Done — see the root
+`CLAUDE.md` and `docs/development/definition-of-done.md`. In one line: **no
+task is done without pasted output from a real run of the real system in the
+same session as the change.** Coverage and green suites are not evidence.
+
+### Acceptance demo for this module
+
+<!-- TODO: replace this block with the exact command(s) that exercise this
+     module end-to-end against real dependencies, and the expected output.
+     The commands must run the real artifact (built binary, deployed
+     container, real service) — no in-process fakes, no mocks, no
+     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
+
+```bash
+# TODO
+```
+
 ## Overview
 
 MCP-Servers is a **read-only third-party submodule** containing 60+ containerized MCP (Model Context Protocol) server implementations. This document describes how HelixAgent integrates with and uses these servers. **Do not modify files in this submodule.**
@@ -76,3 +96,12 @@ When a new server is added upstream:
 - `internal/mcp/config/generator_container.go` — Compose configuration generator
 - `internal/mcp/bridge/` — SSE bridge for MCP protocol transport
 - `docker/mcp/docker-compose.mcp-full.yml` — Full MCP server compose file
+
+## Integration Seams
+
+| Direction | Sibling modules |
+|-----------|-----------------|
+| Upstream (this module imports) | none (integration docs for third-party MCP-Servers submodule) |
+| Downstream (these import this module) | root HelixAgent |
+
+*Siblings* means other project-owned modules at the HelixAgent repo root. The root HelixAgent app and external systems are not listed here — the list above is intentionally scoped to module-to-module seams, because drift *between* sibling modules is where the "tests pass, product broken" class of bug most often lives. See root `CLAUDE.md` for the rules that keep these seams contract-tested.

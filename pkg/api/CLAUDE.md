@@ -1,5 +1,25 @@
 # CLAUDE.md - pkg/api
 
+
+## Definition of Done
+
+This module inherits HelixAgent's universal Definition of Done — see the root
+`CLAUDE.md` and `docs/development/definition-of-done.md`. In one line: **no
+task is done without pasted output from a real run of the real system in the
+same session as the change.** Coverage and green suites are not evidence.
+
+### Acceptance demo for this module
+
+<!-- TODO: replace this block with the exact command(s) that exercise this
+     module end-to-end against real dependencies, and the expected output.
+     The commands must run the real artifact (built binary, deployed
+     container, real service) — no in-process fakes, no mocks, no
+     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
+
+```bash
+# TODO
+```
+
 ## Module Overview
 
 The `pkg/api` module provides the public gRPC API surface for HelixAgent. It contains Protocol Buffer definitions and generated Go code that enable external clients to interact with the ensemble LLM system programmatically.
@@ -10,7 +30,7 @@ The `pkg/api` module provides the public gRPC API surface for HelixAgent. It con
 
 ```
 pkg/api/
-├── llm-facade.proto          # Original proto definition (not in repo)
+├── llm-facade.proto          # Symlink/copy; original lives at ../../specs/001-helix-agent/contracts/llm-facade.proto
 ├── llm-facade.pb.go          # Generated message types
 ├── llm-facade_grpc.pb.go     # Generated gRPC client/server interfaces
 ├── go.mod                    # Module definition
@@ -83,12 +103,16 @@ Captures ensemble-specific metadata:
 
 The `.pb.go` files are generated from Protocol Buffer definitions. **Never edit these files directly.**
 
-Regeneration command:
+Source of truth: `specs/001-helix-agent/contracts/llm-facade.proto` at the HelixAgent repo root. The `.pb.go` files in this directory were last regenerated from that source (check `// source: llm-facade.proto` + commit date in the file header).
+
+Regeneration command (run from the repo root):
 ```bash
+cd pkg/api
 protoc --go_out=. --go-grpc_out=. \
   --go_opt=paths=source_relative \
   --go-grpc_opt=paths=source_relative \
-  llm-facade.proto
+  -I../../specs/001-helix-agent/contracts \
+  ../../specs/001-helix-agent/contracts/llm-facade.proto
 ```
 
 ### Version Compatibility
@@ -213,3 +237,12 @@ When deprecating fields:
 3. Maintain for at least 2 major versions
 4. Log warnings when deprecated fields are used
 5. Eventually remove in major version bump
+
+## Integration Seams
+
+| Direction | Sibling modules |
+|-----------|-----------------|
+| Upstream (this module imports) | none (public gRPC surface) |
+| Downstream (these import this module) | external clients (out of repo) |
+
+*Siblings* means other project-owned modules at the HelixAgent repo root. The root HelixAgent app and external systems are not listed here — the list above is intentionally scoped to module-to-module seams, because drift *between* sibling modules is where the "tests pass, product broken" class of bug most often lives. See root `CLAUDE.md` for the rules that keep these seams contract-tested.

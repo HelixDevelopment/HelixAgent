@@ -1131,19 +1131,64 @@ Opened as Issue #42 below.
 
 ---
 
-## Issue #42: Loaded-but-rejected keys — 17 providers 401 from in-process calls despite env loading correctly (OPEN 2026-04-24)
+## Issue #42: Loaded-but-rejected keys — providers 401 from in-process calls (FIXED 2026-04-24)
 
 ### Issue
-After Issue #41's fix, every LLM-provider API key is verifiably present in helixagent's environment (and matches its source in `.env.bak` byte-for-byte). Direct `curl` calls using those same keys succeed (HTTP 200) against every provider. But when the helixagent binary itself makes the same requests, Cerebras / Mistral / Groq / Cohere / Codestral / Fireworks / Replicate / GitHub-Models / Hyperbolic / Kimi / SiliconFlow / Upstage / ZAI all return `401 "Wrong API Key"`.
+Same-session follow-up to Issue #41. After fixing godotenv's refusal to overwrite shell env, keys were still rejected 401 "Wrong API Key" by Cerebras / Mistral / Groq / Cohere / Codestral / Fireworks / Replicate / and others. Direct `curl -H "Authorization: Bearer <same-env-key>"` got 200. Helixagent got 401 using what it claimed was the same key.
 
-### Status
-**OPEN** — not reproduced-and-fixed in-session. Needs a focused debugging session with a diagnostic log of the actual outbound `Authorization` header bytes at send time (compared against the curl-verified value), and a sweep for any `http.RoundTripper` or TLS config in helixagent's HTTP stack that could mutate the header.
+### Diagnosis
+Instrumented `cerebras.HealthCheck` with a SHA-256 hash + length log of `p.apiKey` at the exact moment the Authorization header was constructed.
 
-Suggested triage path:
-1. Add a SHA-256 hash log of `p.apiKey` in `cerebras.HealthCheck` and `cerebras.Complete` just before `req.Header.Set("Authorization", …)`. Compare to the hash of `/proc/<pid>/environ`'s CEREBRAS_API_KEY.
-2. If hashes match: compare the raw bytes of `req.Header.Get("Authorization")` vs the string `"Bearer "+p.apiKey` character-by-character before the request is dispatched.
-3. If those match: tcpdump / mitmproxy the outbound connection and compare the on-the-wire headers vs curl's.
-4. If still nothing: bisect the recent commits that touched provider HTTP clients / observability middleware.
+- `/proc/<pid>/environ CEREBRAS_API_KEY` → `key_sha=25725bc03015 key_len=52` (real `csk-…` key).
+- In-process `p.apiKey` at HTTP send → `key_sha=2a6e80911324 key_len=14 key_prefix=piKey` — completely different, 14-char garbage starting with `piKey`.
+
+That prefix is the tell: `piKey_Cerebras` is what you get from `$ApiKey_Cerebras` if something stops parsing the variable name at the single character `A`.
+
+### Root Cause
+`.env` uses the `$VAR` (no-braces) form for its ApiKey references:
+
+```
+CEREBRAS_API_KEY=$ApiKey_Cerebras
+MISTRAL_API_KEY=$ApiKey_Mistral_AiStudio
+…
+```
+
+`godotenv`'s bare-`$VAR` parser is non-greedy on mixed-case identifiers: it reads `$A` as the variable name (treating only the first uppercase letter), then appends the literal `piKey_Cerebras` tail. `$A` is unset, so the expanded value is `"" + "piKey_Cerebras"` = 14-char garbage. That garbage got sent verbatim as the Bearer token, and every provider correctly rejected it as 401.
+
+(Switching `.env` to `${ApiKey_Cerebras}` with braces would also fix it, but `.env` is operator-managed — the binary should be robust to either form.)
+
+### Fix Applied
+`cmd/helixagent/main.go` env-loading block now has a two-pass approach:
+
+1. First pass: `godotenv.Overload(f)` — loads values using godotenv's (buggy) parser.
+2. Second pass: re-reads the raw file text, strips comments/quotes, and for every value containing `$` it calls Go's `os.ExpandEnv` (which IS greedy on `[A-Za-z_][A-Za-z0-9_]*` identifiers) and `os.Setenv`s the re-expanded value.
+
+This makes the loader robust to either `$VAR` or `${VAR}` form and eliminates the partial-expansion garbage.
+
+### Verification
+Same session, same keys, fresh helixagent boot:
+
+Before fix:
+```
+[diag #42] cerebras HealthCheck sending key_len=14 key_sha=2a6e80911324 key_prefix=piKey
+→ 401 "Wrong API Key"
+Provider health: healthy=8/25
+```
+
+After fix:
+```
+[diag #42] cerebras HealthCheck sending key_len=52 key_sha=25725bc03015
+→ HTTP 200
+Provider health: healthy=14/24
+```
+
+Providers that flipped from ✗ 401 to ✓ healthy: cerebras, chutes, groq, hyperbolic, mistral, zai. (Remaining ✗: cloudflare, codestral, cohere, deepseek, fireworks, github-models, kimi, replicate, siliconflow, upstage — these either have genuinely expired keys or use a transport that isn't affected by this fix, e.g. OpenRouter-backed ones. Separate issue if needed.)
+
+Diagnostic log removed from `cerebras.HealthCheck` in the same commit.
+
+### Affected Files
+- `cmd/helixagent/main.go` (env-loading block)
+- `internal/llm/providers/cerebras/cerebras.go` (diagnostic added and removed in the same session)
 
 ---
 

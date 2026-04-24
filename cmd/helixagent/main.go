@@ -1893,22 +1893,59 @@ func main() {
 	//   1. `.env.bak` contains the REAL secret values under alternate names
 	//      (ApiKey_Cerebras=<actual-key>, ApiKey_GitHub_Models=<actual-key>, …).
 	//   2. `.env` contains the canonical env-var names referencing those secrets
-	//      (CEREBRAS_API_KEY=${ApiKey_Cerebras}, …).
+	//      (CEREBRAS_API_KEY=$ApiKey_Cerebras, …).
 	//
-	// godotenv.Overload expands ${VAR} references using values already in the
-	// process environment at the time Overload runs — so .env.bak must be loaded
-	// FIRST (to populate ApiKey_*), then .env (which substitutes them).
+	// Two godotenv quirks make a naive load fail:
+	//   a) godotenv.Load refuses to overwrite shell env vars even if empty →
+	//      use Overload so .env is authoritative.
+	//   b) godotenv's bare `$VAR` (no braces) variable-name matcher is NOT
+	//      greedy on mixed-case identifiers: `$ApiKey_Cerebras` gets parsed as
+	//      `$A` followed by the literal `piKey_Cerebras`, producing a 14-char
+	//      garbage string as the expanded value. We fix this by running a
+	//      second pass with os.ExpandEnv (which IS greedy, cf. `${NAME}`
+	//      semantics) after godotenv.Overload has populated the env.
 	//
-	// Without loading .env.bak, every ${ApiKey_*} in .env resolves to the literal
-	// string "$ApiKey_Cerebras" / "$ApiKey_Groq" / etc. and every provider gets 401.
-	// This is exactly the bug caught in SESSION_2026-04-24 late afternoon, where
-	// 17 of 25 providers failed their health check with "401 Unauthorized".
+	// Without both halves, every ${ApiKey_*} in .env ends up as garbage and
+	// every provider gets 401 Unauthorized. This is the bug caught in
+	// SESSION_2026-04-24 late afternoon (Issues #41 + #42).
 	//
 	// Each file is optional — if missing, we skip without logging an error.
 	for _, f := range []string{".env.bak", ".env"} {
-		if _, err := os.Stat(f); err == nil {
-			if lerr := godotenv.Overload(f); lerr != nil {
-				logrus.WithError(lerr).WithField("file", f).Warn("Could not load env file")
+		if _, err := os.Stat(f); err != nil {
+			continue
+		}
+		if lerr := godotenv.Overload(f); lerr != nil {
+			logrus.WithError(lerr).WithField("file", f).Warn("Could not load env file")
+			continue
+		}
+		// Second pass: godotenv's bare `$VAR` expander is non-greedy on
+		// mixed-case identifiers and returns garbage (e.g. `$ApiKey_Cerebras`
+		// → `piKey_Cerebras`). Re-parse the FILE ourselves (not godotenv's
+		// pre-expanded output) and re-expand each value with os.ExpandEnv,
+		// which IS greedy. Set the env only when the raw value contains a `$`.
+		if raw, rerr := os.ReadFile(f); rerr == nil {
+			for _, line := range strings.Split(string(raw), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				eq := strings.IndexByte(line, '=')
+				if eq <= 0 {
+					continue
+				}
+				key := strings.TrimSpace(line[:eq])
+				val := strings.TrimSpace(line[eq+1:])
+				// Strip surrounding single or double quotes if present
+				if len(val) >= 2 && (val[0] == '"' || val[0] == '\'') && val[len(val)-1] == val[0] {
+					val = val[1 : len(val)-1]
+				}
+				if !strings.Contains(val, "$") {
+					continue
+				}
+				expanded := os.ExpandEnv(val)
+				if expanded != val {
+					_ = os.Setenv(key, expanded)
+				}
 			}
 		}
 	}

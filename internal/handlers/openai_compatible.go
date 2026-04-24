@@ -3004,6 +3004,35 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 	// Timeout must be > 0 — conductRealDebate calls
 	// context.WithTimeout(ctx, config.Timeout), which immediately cancels
 	// if Timeout is the zero value, producing an empty result set.
+	//
+	// Pack system prompt + prior turns into metadata so conductRealDebate
+	// can splice them into each participant's prompt. Without this the
+	// debate sees only the last user message and loses multi-turn context
+	// (multi_turn assertions in curl_api_testing_challenge regressed
+	// because "My name is Alice" + "What is my name?" collapsed to just
+	// "What is my name?").
+	debateMetadata := map[string]any{"source": "openai_compatible"}
+	var systemContext strings.Builder
+	var conversationContext []string
+	for _, m := range req.Messages {
+		if m.Role == "system" {
+			content := m.Content
+			if len(content) > 2000 {
+				content = content[:2000] + "\n...[truncated]"
+			}
+			systemContext.WriteString(content + "\n")
+		} else if m.Role == "user" || m.Role == "assistant" {
+			conversationContext = append(conversationContext,
+				fmt.Sprintf("[%s]: %s", m.Role, m.Content))
+		}
+	}
+	if systemContext.Len() > 0 {
+		debateMetadata["system_context"] = systemContext.String()
+	}
+	if len(conversationContext) > 0 {
+		debateMetadata["conversation_context"] = strings.Join(conversationContext, "\n")
+	}
+
 	debateConfig := services.DebateConfig{
 		DebateID:     fmt.Sprintf("debate-%d", time.Now().UnixNano()),
 		Topic:        topic,
@@ -3014,7 +3043,7 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 		Participants: participants,
 		Tools:        req.Tools,
 		ToolChoice:   req.ToolChoice,
-		Metadata:     map[string]any{"source": "openai_compatible"},
+		Metadata:     debateMetadata,
 	}
 
 	// Run the debate using the debate service (uses the configured 25 LLM team)

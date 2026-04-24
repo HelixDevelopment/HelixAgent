@@ -24,7 +24,7 @@ import (
 
 const (
 	// Mem0BaseURL is the HelixAgent memory service base URL
-	Mem0BaseURL = "http://localhost:7061/v1/cognee"
+	Mem0BaseURL = "http://localhost:8100/v1/cognee"
 )
 
 // TestMem0LLMIntegration_AuthenticationViaHelixAgent verifies Mem0 authentication works via HelixAgent

@@ -130,7 +130,7 @@ func newContainerHarness() (*ContainerHarness, error) {
 //   - CONTAINERS_REMOTE_ENABLED=true in Containers/.env
 //     (all containers live on remote hosts; a local ComposeUp would
 //     duplicate them and almost certainly fail)
-//   - HelixAgent's own health endpoint is reachable on :7061
+//   - HelixAgent's own health endpoint is reachable on :8100
 //     (the binary is already running, which means it has already
 //     booted every required container via its own adapter)
 func (h *ContainerHarness) BootAllServices() error {
@@ -153,7 +153,7 @@ func (h *ContainerHarness) BootAllServices() error {
 
 	if helixAgentPortOpen() {
 		h.Logger.Info(
-			"HelixAgent already reachable on :7061 — skipping duplicate ComposeUp " +
+			"HelixAgent already reachable on :8100 — skipping duplicate ComposeUp " +
 				"(the running binary already booted all required containers)",
 		)
 		return nil
@@ -216,10 +216,10 @@ func isRemoteContainersEnabled(projectRoot string) bool {
 
 // helixAgentPortOpen does a 2-second TCP probe against HelixAgent's
 // default port. Used as a positive signal that the full container
-// fleet is already up (since HelixAgent refuses to bind :7061 until
+// fleet is already up (since HelixAgent refuses to bind :8100 until
 // its own health-check harness has cleared every required service).
 func helixAgentPortOpen() bool {
-	conn, err := net.DialTimeout("tcp", "localhost:7061", 2*time.Second)
+	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
 		return false
 	}
@@ -327,7 +327,7 @@ func (h *ContainerHarness) Cleanup() error {
 		return nil
 	}
 	if helixAgentPortOpen() {
-		h.Logger.Info("HelixAgent still running on :7061 — skipping ComposeDown (not our containers to stop)")
+		h.Logger.Info("HelixAgent still running on :8100 — skipping ComposeDown (not our containers to stop)")
 		h.cancel()
 		return nil
 	}

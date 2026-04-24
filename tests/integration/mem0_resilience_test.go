@@ -463,7 +463,7 @@ func TestMem0LiveIntegrationResilience(t *testing.T) {
 
 	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:7061"
+		serverURL = "http://localhost:8100"
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}

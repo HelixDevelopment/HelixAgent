@@ -21,11 +21,11 @@ type EnsembleMessage struct {
 }
 
 func testEnsemble() {
-	baseURL := "http://localhost:7061/v1"
+	baseURL := "http://localhost:8100/v1"
 
 	// Test 1: Check ensemble status
 	fmt.Println("🔍 Checking ensemble status...")
-	resp, err := http.Get("http://localhost:7061/admin/ensemble/status")
+	resp, err := http.Get("http://localhost:8100/admin/ensemble/status")
 	if err == nil {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)

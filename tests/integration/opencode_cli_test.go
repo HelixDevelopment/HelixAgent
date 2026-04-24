@@ -32,7 +32,7 @@ import (
 const (
 	// Default HelixAgent configuration
 	DefaultHelixAgentHost = "localhost"
-	DefaultHelixAgentPort = "7061"
+	DefaultHelixAgentPort = "8100"
 	HelixAgentBinary      = "../../bin/helixagent"
 
 	// Timeouts
@@ -1236,7 +1236,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 					Name: "Test Provider",
 					Options: map[string]interface{}{
 						"apiKey":  "sk-test",
-						"baseURL": "http://localhost:7061/v1",
+						"baseURL": "http://localhost:8100/v1",
 					},
 				},
 			},
@@ -1261,7 +1261,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 					Name: "HelixAgent",
 					Options: map[string]interface{}{
 						"apiKey":  "{env:HELIXAGENT_API_KEY}",
-						"baseURL": "http://localhost:7061/v1",
+						"baseURL": "http://localhost:8100/v1",
 					},
 				},
 			},
@@ -1293,7 +1293,7 @@ func TestOpenCodeConfigValidation(t *testing.T) {
 				"openai": map[string]interface{}{
 					"name": "Test",
 					"options": map[string]interface{}{
-						"baseURL": "http://localhost:7061/v1",
+						"baseURL": "http://localhost:8100/v1",
 						// Missing apiKey
 					},
 				},

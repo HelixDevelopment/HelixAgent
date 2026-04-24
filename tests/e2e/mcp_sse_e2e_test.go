@@ -33,7 +33,7 @@ func mcpAuthCheckHelper(t *testing.T, client *http.Client, baseURL string) {
 }
 
 // TestE2EMCPSSE tests MCP SSE endpoint end-to-end
-// Note: These tests require a running HelixAgent server on localhost:7061
+// Note: These tests require a running HelixAgent server on localhost:8100
 func TestE2EMCPSSE(t *testing.T) {
 	testutil.RequireServer(t)
 

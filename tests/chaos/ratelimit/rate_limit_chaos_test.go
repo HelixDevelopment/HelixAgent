@@ -15,7 +15,7 @@ import (
 	"dev.helix.agent/internal/testutil"
 )
 
-const baseURL = "http://localhost:7061"
+const baseURL = "http://localhost:8100"
 
 func checkAvailable(url string) bool {
 	client := &http.Client{Timeout: 3 * time.Second}

@@ -383,8 +383,8 @@ type RequestResult struct {
 }
 
 func getHelixAgentURL() string {
-	// Default to localhost:7061
-	return "http://localhost:7061"
+	// Default to localhost:8100
+	return "http://localhost:8100"
 }
 
 func isHelixAgentRunning(baseURL string) bool {

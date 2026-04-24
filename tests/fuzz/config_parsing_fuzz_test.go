@@ -18,7 +18,7 @@ import (
 // and converts them to booleans, integers, durations, and URLs.
 func FuzzEnvVarParsing(f *testing.F) {
 	// Seed corpus: realistic and adversarial env var values
-	f.Add("true", "7061", "localhost", "helixagent123", "60s")
+	f.Add("true", "8100", "localhost", "helixagent123", "60s")
 	f.Add("false", "0", "", "", "0")
 	f.Add("1", "65535", "127.0.0.1", "pass\x00word", "1h30m")
 	f.Add("yes", "-1", "::1", strings.Repeat("x", 10000), "invalid-duration")
@@ -72,7 +72,7 @@ func FuzzEnvVarParsing(f *testing.F) {
 // never panics when given arbitrary byte sequences.
 func FuzzYAMLLikeConfigParsing(f *testing.F) {
 	// Seed corpus: realistic YAML config fragments
-	f.Add([]byte("port: 7061\ngin_mode: debug\n"))
+	f.Add([]byte("port: 8100\ngin_mode: debug\n"))
 	f.Add([]byte("database:\n  host: localhost\n  port: 15432\n  name: helixagent_db\n"))
 	f.Add([]byte("redis:\n  host: localhost\n  port: 16379\n  password: secret\n"))
 	f.Add([]byte("llm:\n  providers:\n    - name: openai\n      enabled: true\n"))
@@ -127,7 +127,7 @@ func FuzzJSONConfigParsing(f *testing.F) {
 	// Seed corpus: realistic JSON config objects
 	f.Add(`{"provider":"openai","api_key":"sk-test","base_url":"https://api.openai.com/v1","model":"gpt-4","enabled":true}`)
 	f.Add(`{"host":"localhost","port":15432,"user":"helixagent","password":"secret","dbname":"helixagent_db","sslmode":"disable"}`)
-	f.Add(`{"url":"http://localhost:7061/v1","model":"helixagent/helixagent-debate","api_key":"test-key"}`)
+	f.Add(`{"url":"http://localhost:8100/v1","model":"helixagent/helixagent-debate","api_key":"test-key"}`)
 	f.Add(`{"servers":{"filesystem":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem"]}}}`)
 	f.Add(`{}`)
 	f.Add(`null`)

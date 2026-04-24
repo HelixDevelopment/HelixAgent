@@ -276,7 +276,7 @@ func TestHelixAgent_Endpoint(t *testing.T) {
 func TestHelixAgent_Health(t *testing.T) {
 	helixagentURL := os.Getenv("HELIXAGENT_URL")
 	if helixagentURL == "" {
-		helixagentURL = "http://localhost:7061"
+		helixagentURL = "http://localhost:8100"
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}

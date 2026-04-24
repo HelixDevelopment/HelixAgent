@@ -34,7 +34,7 @@ func TestMemoryService_NewMemoryService(t *testing.T) {
 			Cognee: config.CogneeConfig{
 				Enabled:     true,
 				AutoCognify: true,
-				BaseURL:     "http://localhost:7061",
+				BaseURL:     "http://localhost:8100",
 				APIKey:      "test-key",
 			},
 		}
@@ -93,7 +93,7 @@ func TestMemoryService_EnhanceRequest(t *testing.T) {
 		cfg := &config.Config{
 			Cognee: config.CogneeConfig{
 				AutoCognify: true,
-				BaseURL:     "http://localhost:7061",
+				BaseURL:     "http://localhost:8100",
 				APIKey:      "test-key",
 			},
 		}
@@ -129,7 +129,7 @@ func TestMemoryService_CacheOperations(t *testing.T) {
 	cfg := &config.Config{
 		Cognee: config.CogneeConfig{
 			AutoCognify: true,
-			BaseURL:     "http://localhost:7061",
+			BaseURL:     "http://localhost:8100",
 			APIKey:      "test-key",
 		},
 	}
@@ -168,7 +168,7 @@ func TestMemoryService_GetStats(t *testing.T) {
 			Cognee: config.CogneeConfig{
 				Enabled:     true,
 				AutoCognify: true,
-				BaseURL:     "http://localhost:7061",
+				BaseURL:     "http://localhost:8100",
 				APIKey:      "test-key",
 			},
 		}

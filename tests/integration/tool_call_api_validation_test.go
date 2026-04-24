@@ -21,7 +21,7 @@ import (
 
 const (
 	defaultTestHost = "localhost"
-	defaultTestPort = "7061"
+	defaultTestPort = "8100"
 )
 
 func getTestBaseURL() string {

@@ -132,7 +132,7 @@ func TestNewTestConfig(t *testing.T) {
 	cfg := NewTestConfig()
 	require.NotNil(t, cfg)
 	assert.Equal(t, "localhost", cfg.Server.Host)
-	assert.Equal(t, "7061", cfg.Server.Port)
+	assert.Equal(t, "8100", cfg.Server.Port)
 	assert.NotEmpty(t, cfg.Server.JWTSecret)
 }
 

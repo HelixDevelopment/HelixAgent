@@ -21,7 +21,7 @@ import (
 // ===============================================================================================
 
 // consensusHelixAgentURL is the HelixAgent server URL for consensus tests
-const consensusHelixAgentURL = "http://localhost:7061"
+const consensusHelixAgentURL = "http://localhost:8100"
 
 // consensusServerAvailable checks if HelixAgent server is available and responding properly
 func consensusServerAvailable(t *testing.T) bool {

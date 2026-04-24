@@ -18,7 +18,7 @@ import (
 // and all service health checks.
 
 var (
-	helixAgentURL   = getEnv("HELIXAGENT_URL", "http://localhost:7061")
+	helixAgentURL   = getEnv("HELIXAGENT_URL", "http://localhost:8100")
 	prometheusURL   = getEnv("PROMETHEUS_URL", "http://localhost:9090")
 	grafanaURL      = getEnv("GRAFANA_URL", "http://localhost:3000")
 	alertmanagerURL = getEnv("ALERTMANAGER_URL", "http://localhost:9093")

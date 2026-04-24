@@ -77,7 +77,7 @@ func TestUserflowOrchestrator_FullLifecycle(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, o,
@@ -97,7 +97,7 @@ func TestUserflowOrchestrator_FullLifecycle(
 	summary := o.Summary()
 	assert.Contains(t, summary, "22 challenges",
 		"summary must mention the challenge count")
-	assert.Contains(t, summary, "localhost:7061",
+	assert.Contains(t, summary, "localhost:8100",
 		"summary must mention the base URL")
 
 	// Challenges() returns the same count.
@@ -112,7 +112,7 @@ func TestUserflowOrchestrator_RegistryIntegrity(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -139,7 +139,7 @@ func TestUserflowOrchestrator_RunByID_InvalidID(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -157,7 +157,7 @@ func TestUserflowOrchestrator_RunAll_NoServer(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -182,7 +182,7 @@ func TestUserflowOrchestrator_DependencyGraph(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -222,7 +222,7 @@ func TestUserflowOrchestrator_MetadataConsistency(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -265,7 +265,7 @@ func TestUserflowOrchestrator_SummaryFormat(
 	}{
 		{
 			"default_url",
-			"http://localhost:7061",
+			"http://localhost:8100",
 		},
 		{
 			"custom_url",
@@ -319,7 +319,7 @@ func TestMainOrchestrator_UserflowCategory(
 	cfg := challenges.OrchestratorConfig{
 		ProjectRoot: tmpDir,
 		ScriptsDir:  scriptsDir,
-		BaseURL:     "http://localhost:7061",
+		BaseURL:     "http://localhost:8100",
 	}
 	orch := challenges.NewOrchestrator(cfg)
 	require.NotNil(t, orch)
@@ -354,7 +354,7 @@ func TestUserflowOrchestrator_NoDuplicateIDs(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -376,7 +376,7 @@ func TestUserflowOrchestrator_DepsReferenceRegistered(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 
@@ -402,7 +402,7 @@ func TestUserflowOrchestrator_RunByID_CancelledCtx(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 

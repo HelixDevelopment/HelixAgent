@@ -20,8 +20,8 @@ import (
 // These tests verify that Mem0 Memory is running, features are enabled, and all functionality works
 
 const (
-	mem0BaseURL           = "http://localhost:7061/v1/cognee"
-	mem0HelixagentBaseURL = "http://localhost:7061"
+	mem0BaseURL           = "http://localhost:8100/v1/cognee"
+	mem0HelixagentBaseURL = "http://localhost:8100"
 	mem0StartTimeout      = 60 * time.Second
 )
 

@@ -119,7 +119,7 @@ func TestMCPLocalServerStartup(t *testing.T) {
 func TestHelixAgentMCPEndpoints(t *testing.T) {
 	baseURL := os.Getenv("HELIXAGENT_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:7061"
+		baseURL = "http://localhost:8100"
 	}
 
 	// Check if HelixAgent is running
@@ -211,7 +211,7 @@ func TestHelixAgentMCPEndpoints(t *testing.T) {
 func TestMCPSSEImmediateResponse(t *testing.T) {
 	baseURL := os.Getenv("HELIXAGENT_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:7061"
+		baseURL = "http://localhost:8100"
 	}
 
 	// Check if HelixAgent is running

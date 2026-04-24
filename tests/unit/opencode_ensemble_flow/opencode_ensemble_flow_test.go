@@ -347,7 +347,7 @@ func TestResponseMetadataValidation(t *testing.T) {
 
 // Note: TestOpenCodeAPIIntegration (previously defined here) has been
 // extracted to tests/integration/opencode_ensemble_live_test.go so that the
-// live-HTTP assertions run against the real HelixAgent on :7061 while the
+// live-HTTP assertions run against the real HelixAgent on :8100 while the
 // in-process ensemble-flow tests remain as unit tests (CONST-030 Pattern 4 +
 // Pattern 1 split).
 

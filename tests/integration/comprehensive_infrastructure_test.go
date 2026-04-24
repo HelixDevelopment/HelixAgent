@@ -20,7 +20,7 @@ import (
 
 func getTestConfig() TestConfig {
 	return TestConfig{
-		HelixAgentURL: getEnv("HELIXAGENT_URL", "http://localhost:7061"),
+		HelixAgentURL: getEnv("HELIXAGENT_URL", "http://localhost:8100"),
 		PostgresHost:  getEnv("DB_HOST", "localhost"),
 		PostgresPort:  getEnv("DB_PORT", "5432"),
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),

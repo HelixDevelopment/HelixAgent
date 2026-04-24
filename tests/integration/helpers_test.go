@@ -15,7 +15,7 @@ import (
 
 const (
 	// HelixAgentBaseURL is the HelixAgent service URL for integration tests
-	HelixAgentBaseURL = "http://localhost:7061"
+	HelixAgentBaseURL = "http://localhost:8100"
 	// TestEmail is the test user email for authentication
 	TestEmail = "admin@helixagent.ai"
 	// TestPassword is the test user password for authentication

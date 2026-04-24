@@ -1,7 +1,7 @@
 // Package ai_debate_legacy holds the former tests/e2e/ai_debate_e2e_test.go
 // demoted to a unit test. CONST-030 forbids in-process mocks in E2E
 // tests, and this file wires a MockDebateService directly (never
-// touching :7061). PR24 of the CONST-030 compliance campaign.
+// touching :8100). PR24 of the CONST-030 compliance campaign.
 package ai_debate_legacy_test
 
 import (

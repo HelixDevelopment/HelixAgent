@@ -16,7 +16,7 @@ func TestAPIHealthConnectivity(t *testing.T) {
 		host = "localhost"
 	}
 	if port == "" {
-		port = "7061"
+		port = "8100"
 	}
 
 	url := "http://" + host + ":" + port + "/v1/health"

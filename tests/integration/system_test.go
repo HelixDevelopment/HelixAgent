@@ -29,7 +29,7 @@ func TestFullSystemIntegration(t *testing.T) {
 	testutil.RequireServer(t)
 
 	// Test configuration
-	baseURL := "http://localhost:7061"
+	baseURL := "http://localhost:8100"
 	maxRetries := 30
 	retryDelay := 2 * time.Second
 
@@ -266,15 +266,15 @@ func TestDockerServicesIntegration(t *testing.T) {
 	testutil.RequireServer(t)
 
 	// Skip if primary server is not available (Docker environment not running)
-	if !checkServerAvailable("http://localhost:7061", 5*time.Second) {
+	if !checkServerAvailable("http://localhost:8100", 5*time.Second) {
 		t.Logf("Docker services integration test - server not available (acceptable)")
 		return
 	}
 
 	services := map[string]string{
-		"HelixAgent": "http://localhost:7061/health",
-		"PostgreSQL": "http://localhost:7061/health", // Indirect check via HelixAgent
-		"Redis":      "http://localhost:7061/health", // Indirect check via HelixAgent
+		"HelixAgent": "http://localhost:8100/health",
+		"PostgreSQL": "http://localhost:8100/health", // Indirect check via HelixAgent
+		"Redis":      "http://localhost:8100/health", // Indirect check via HelixAgent
 		"Ollama":     "http://localhost:11434/api/tags",
 	}
 

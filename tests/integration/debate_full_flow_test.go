@@ -25,7 +25,7 @@ func isDebateServerAvailable() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	url := getEnv("HELIXAGENT_URL", "http://localhost:7061") + "/health"
+	url := getEnv("HELIXAGENT_URL", "http://localhost:8100") + "/health"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false
@@ -41,7 +41,7 @@ func isDebateServerAvailable() bool {
 
 // debateBaseURL returns the configured HelixAgent base URL.
 func debateBaseURL() string {
-	return getEnv("HELIXAGENT_URL", "http://localhost:7061")
+	return getEnv("HELIXAGENT_URL", "http://localhost:8100")
 }
 
 // createDebatePayload builds a valid JSON body for POST /v1/debates.

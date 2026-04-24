@@ -20,7 +20,7 @@ import (
 // TEST SUITE: Mem0 Memory live integration against a running HelixAgent
 // =============================================================================
 // CONST-030: this file contains ONLY live-HTTP assertions against a running
-// HelixAgent instance on :7061. The in-process ensemble/wrapper unit tests
+// HelixAgent instance on :8100. The in-process ensemble/wrapper unit tests
 // were demoted to `tests/unit/mem0/mem0_ensemble_test.go` (Pattern-4) so that
 // no mock LLM provider is used outside `tests/unit/`.
 // =============================================================================
@@ -37,7 +37,7 @@ func TestMem0LiveIntegration(t *testing.T) {
 
 	serverURL := os.Getenv("HELIXAGENT_TEST_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:7061"
+		serverURL = "http://localhost:8100"
 	}
 
 	// Use longer timeout for ensemble operations

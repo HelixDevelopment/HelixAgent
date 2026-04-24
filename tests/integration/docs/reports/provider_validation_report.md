@@ -2,7 +2,7 @@
 
 **Generated:** Thu, 16 Apr 2026 02:36:41 MSK
 
-**HelixAgent Server:** http://localhost:7061 (healthy: true)
+**HelixAgent Server:** http://localhost:8100 (healthy: true)
 
 **Total Providers:** 36 | **With API Keys:** 29 | **Without Keys:** 7
 

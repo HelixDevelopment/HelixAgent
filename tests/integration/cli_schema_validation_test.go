@@ -433,7 +433,7 @@ func TestMCPServerFieldValidation(t *testing.T) {
 // This is CRITICAL for rock-solid stability - servers MUST respond fast
 func TestMCPRemoteServerConnectivity(t *testing.T) {
 	// Check if HelixAgent is running
-	resp, err := http.Get("http://localhost:7061/health")
+	resp, err := http.Get("http://localhost:8100/health")
 	if err != nil {
 		t.Logf("HelixAgent not running - cannot test MCP connectivity (acceptable)")
 		return

@@ -43,7 +43,7 @@ func loadErrorTestConfig(t *testing.T) *testConfig {
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "7061"
+		port = "8100"
 	}
 
 	return &testConfig{

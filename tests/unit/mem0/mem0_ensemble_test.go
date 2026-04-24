@@ -21,7 +21,7 @@ import (
 // exercise in-process contracts only and do NOT require a live HelixAgent
 // instance — CONST-030 compliant via Pattern-4 demote-to-unit.
 // The live-integration portion (formerly `TestMem0LiveIntegration`) lives in
-// `tests/integration/mem0_ensemble_live_test.go` and hits :7061 directly.
+// `tests/integration/mem0_ensemble_live_test.go` and hits :8100 directly.
 // =============================================================================
 
 // MockBaseLLMProvider is a basic mock LLM provider for unit testing the

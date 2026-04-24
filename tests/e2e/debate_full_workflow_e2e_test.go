@@ -18,7 +18,7 @@ import (
 
 // debateWorkflowBaseURL returns the HelixAgent server URL for E2E tests.
 func debateWorkflowBaseURL() string {
-	return "http://localhost:7061"
+	return "http://localhost:8100"
 }
 
 // isWorkflowServerAvailable checks if the HelixAgent server is reachable.

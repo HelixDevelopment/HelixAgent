@@ -19,9 +19,9 @@ func skipIfNoServerMemory(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping memory E2E test in short mode (requires live server)")  // SKIP-OK: #short-mode
 	}
-	conn, err := net.DialTimeout("tcp", "localhost:7061", 2*time.Second)
+	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
-		t.Skip("HelixAgent server not running on :7061")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running on :8100")  // SKIP-OK: #legacy-untriaged
 	}
 	conn.Close()
 }
@@ -33,7 +33,7 @@ func memoryClient() *http.Client {
 
 // memoryBaseURL returns the HelixAgent base URL.
 func memoryBaseURL() string {
-	return "http://localhost:7061"
+	return "http://localhost:8100"
 }
 
 // memoryDoRequest sends an HTTP request with auth headers and returns the

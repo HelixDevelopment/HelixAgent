@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const monitoringBaseURL = "http://localhost:7061"
+const monitoringBaseURL = "http://localhost:8100"
 
 // TestMonitoringMetrics_UnderLoad verifies Prometheus metrics are
 // populated when the system processes requests.

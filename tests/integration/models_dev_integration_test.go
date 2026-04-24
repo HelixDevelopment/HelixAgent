@@ -104,7 +104,7 @@ func setupTestRouter(t *testing.T) (*gin.Engine, func()) {
 
 	cfg := &config.Config{
 		Server: config.ServerConfig{
-			Port:         "7061",
+			Port:         "8100",
 			Mode:         gin.TestMode,
 			EnableCORS:   false,
 			DebugEnabled: false,

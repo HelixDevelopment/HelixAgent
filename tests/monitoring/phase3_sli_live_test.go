@@ -6,7 +6,7 @@ package monitoring_test
 // in docker/monitoring/grafana/dashboards/phase3-memory-safety.json.
 //
 // Activation: set HELIX_MONITOR_URL to a reachable HelixAgent metrics
-// endpoint (for example http://localhost:7061/metrics). Without the
+// endpoint (for example http://localhost:8100/metrics). Without the
 // env var the live test is skipped cleanly — the default
 // `go test ./tests/monitoring/` run stays hermetic and does not
 // require a booted helixagent.

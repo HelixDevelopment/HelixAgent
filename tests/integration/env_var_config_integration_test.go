@@ -22,7 +22,7 @@ func TestConfig_LoadDefaults(t *testing.T) {
 	cfg := config.Load()
 	require.NotNil(t, cfg)
 
-	assert.Equal(t, "7061", cfg.Server.Port, "default port should be 7061")
+	assert.Equal(t, "8100", cfg.Server.Port, "default port should be 8100")
 	assert.Equal(t, "localhost", cfg.Database.Host, "default DB host should be localhost")
 	assert.Equal(t, "5432", cfg.Database.Port, "default DB port should be 5432")
 	assert.Equal(t, "helixagent", cfg.Database.User, "default DB user")

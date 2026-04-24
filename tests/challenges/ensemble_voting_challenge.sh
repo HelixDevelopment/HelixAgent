@@ -16,7 +16,7 @@ echo "╚═══════════════════════�
 echo ""
 
 # Configuration
-ENSEMBLE_ENDPOINT="${HELIXAGENT_URL:-http://localhost:7061}"
+ENSEMBLE_ENDPOINT="${HELIXAGENT_URL:-http://localhost:8100}"
 TIMEOUT=300
 MAX_INSTANCES=5
 

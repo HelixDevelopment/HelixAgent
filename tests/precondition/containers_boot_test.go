@@ -287,7 +287,7 @@ func verifyOpenCodeConfig(t *testing.T, projectRoot string, rc *RemoteConfig) er
 
 // testHelixAgentRequests executes test requests against HelixAgent debate ensemble
 func testHelixAgentRequests(t *testing.T) error {
-	baseURL := "http://localhost:7061/v1"
+	baseURL := "http://localhost:8100/v1"
 
 	// First check if HelixAgent is running
 	if err := checkHTTPHealth(baseURL+"/../health", 5*time.Second); err != nil {
@@ -449,7 +449,7 @@ func detectMultipleServiceInstances(t *testing.T, rc *RemoteConfig) error {
 		"postgres":   5432,
 		"redis":      6379,
 		"chromadb":   8000,
-		"helixagent": 7061,
+		"helixagent": 8100,
 	}
 
 	containerCmd, containerArgs := detectContainerRuntime()
@@ -689,7 +689,7 @@ func verifyLocalContainers(t *testing.T, projectRoot string) error {
 		{"Redis", 16379, "", "Cache and session store", true},
 		{"Mock LLM", 18081, "http://localhost:18081/health", "Mock LLM server for testing", true},
 		{"ChromaDB", 8001, "http://localhost:8001/api/v2/heartbeat", "Vector store", false},
-		{"HelixAgent", 7061, "http://localhost:7061/health", "Main service (optional for tests)", false},
+		{"HelixAgent", 8100, "http://localhost:8100/health", "Main service (optional for tests)", false},
 	}
 
 	allRequiredHealthy := true

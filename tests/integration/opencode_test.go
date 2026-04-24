@@ -35,7 +35,7 @@ func TestOpenCodeBinaryValidation(t *testing.T) {
 				"test": map[string]interface{}{
 					"options": map[string]interface{}{
 						"apiKey":  "sk-test123",
-						"baseURL": "http://localhost:7061/v1",
+						"baseURL": "http://localhost:8100/v1",
 					},
 				},
 			},
@@ -213,7 +213,7 @@ func TestOpenCodeValidationScenarios(t *testing.T) {
 				"mcp": map[string]interface{}{
 					"remote": map[string]interface{}{
 						"type": "remote",
-						"url":  "http://localhost:7061/mcp",
+						"url":  "http://localhost:8100/mcp",
 					},
 				},
 			},
@@ -492,7 +492,7 @@ func TestOpenCodeWithRunningServer(t *testing.T) {
 			provMap := prov.(map[string]interface{})
 			options := provMap["options"].(map[string]interface{})
 			baseURL := options["baseURL"].(string)
-			assert.True(t, strings.Contains(baseURL, "localhost:7061") || strings.Contains(baseURL, "127.0.0.1:7061"),
+			assert.True(t, strings.Contains(baseURL, "localhost:8100") || strings.Contains(baseURL, "127.0.0.1:8100"),
 				"Generated config should point to running server")
 		}
 	})

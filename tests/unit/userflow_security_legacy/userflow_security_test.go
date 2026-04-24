@@ -536,7 +536,7 @@ func TestOrchestrator_ConcurrentConstruction(
 			}()
 
 			o, oErr := userflow.NewOrchestrator(
-				"http://localhost:7061",
+				"http://localhost:8100",
 			)
 			if oErr != nil {
 				errs <- oErr
@@ -563,7 +563,7 @@ func TestOrchestrator_ConcurrentListChallenges(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, o)
@@ -925,7 +925,7 @@ func TestOrchestrator_NoDuplicateChallengeIDs(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, o)
@@ -1005,7 +1005,7 @@ func TestOrchestrator_Summary_NoSensitiveLeak(
 	t *testing.T,
 ) {
 	o, err := userflow.NewOrchestrator(
-		"http://localhost:7061",
+		"http://localhost:8100",
 	)
 	require.NoError(t, err)
 	summary := o.Summary()

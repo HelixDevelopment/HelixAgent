@@ -71,7 +71,7 @@ func TestServerHealthCheck(t *testing.T) {
 			port int
 			want string
 		}{
-			{"localhost", 7061, "http://localhost:7061/health"},
+			{"localhost", 8100, "http://localhost:8100/health"},
 			{"127.0.0.1", 8080, "http://127.0.0.1:8080/health"},
 		}
 

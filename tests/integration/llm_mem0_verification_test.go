@@ -558,7 +558,7 @@ func TestMem0IntegrationVerification(t *testing.T) {
 	t.Run("Mem0ServiceConfiguration", func(t *testing.T) {
 		cfg := &services.CogneeServiceConfig{
 			Enabled:                true,
-			BaseURL:                "http://localhost:7061/v1/cognee",
+			BaseURL:                "http://localhost:8100/v1/cognee",
 			Timeout:                30 * time.Second,
 			AuthEmail:              "test@example.com",
 			AuthPassword:           "testpass123",
@@ -1180,7 +1180,7 @@ func TestMem0ServiceFromConfig(t *testing.T) {
 		cfg := &config.Config{
 			Cognee: config.CogneeConfig{
 				Enabled:     true,
-				BaseURL:     "http://localhost:7061/v1/cognee",
+				BaseURL:     "http://localhost:8100/v1/cognee",
 				APIKey:      "",
 				Timeout:     30 * time.Second,
 				AutoCognify: true,
@@ -1192,7 +1192,7 @@ func TestMem0ServiceFromConfig(t *testing.T) {
 
 		mem0Config := mem0Service.GetConfig()
 		assert.True(t, mem0Config.Enabled)
-		assert.Equal(t, "http://localhost:7061/v1/cognee", mem0Config.BaseURL)
+		assert.Equal(t, "http://localhost:8100/v1/cognee", mem0Config.BaseURL)
 		assert.True(t, mem0Config.AutoCognify)
 	})
 
@@ -1201,7 +1201,7 @@ func TestMem0ServiceFromConfig(t *testing.T) {
 			MemoryEnabled: true,
 			Cognee: config.CogneeConfig{
 				Enabled:     true,
-				BaseURL:     "http://localhost:7061/v1/cognee",
+				BaseURL:     "http://localhost:8100/v1/cognee",
 				Timeout:     30 * time.Second,
 				AutoCognify: true,
 			},

@@ -51,7 +51,7 @@ type FinalEnsemble struct {
 }
 
 func finalProductionMain() {
-	baseURL := getEnv("HELIXAGENT_URL", "http://localhost:7061")
+	baseURL := getEnv("HELIXAGENT_URL", "http://localhost:8100")
 	apiKey := getEnv("HELIXAGENT_API_KEY", "test-key")
 
 	fmt.Println("🚀 HelixAgent Final Production Validation Test")

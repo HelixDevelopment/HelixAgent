@@ -376,7 +376,7 @@ func TestExternalMCPServersInOpenCodeConfig(t *testing.T) {
 	binaryPath := filepath.Join(projectRoot, "bin/helixagent")
 	cmd := exec.Command(binaryPath, "--generate-opencode-config")
 	cmd.Dir = projectRoot
-	cmd.Env = append(os.Environ(), "LOCAL_ENDPOINT=http://localhost:7061")
+	cmd.Env = append(os.Environ(), "LOCAL_ENDPOINT=http://localhost:8100")
 	output, err := cmd.Output()
 	require.NoError(t, err, "Should be able to generate OpenCode config")
 

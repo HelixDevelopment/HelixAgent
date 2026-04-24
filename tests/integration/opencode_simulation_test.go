@@ -67,7 +67,7 @@ type OpenCodeError struct {
 func getTestURL() string {
 	url := os.Getenv("HELIXAGENT_URL")
 	if url == "" {
-		url = "http://localhost:7061"
+		url = "http://localhost:8100"
 	}
 	return url
 }

@@ -45,7 +45,7 @@ type E2ETestConfig struct {
 
 func getE2EConfig() E2ETestConfig {
 	return E2ETestConfig{
-		HelixAgentURL:   getEnvOrDefault("HELIXAGENT_URL", "http://localhost:7061"),
+		HelixAgentURL:   getEnvOrDefault("HELIXAGENT_URL", "http://localhost:8100"),
 		HelixAgentBin:   getEnvOrDefault("HELIXAGENT_BIN", "./bin/helixagent"),
 		SkipLiveTests:   os.Getenv("SKIP_LIVE_TESTS") == "true",
 		TimeoutPerAgent: 30 * time.Second,

@@ -3,7 +3,7 @@
 // non-unit tests; the original `TestE2ENewServicesWorkflow` wired up a
 // `MockTool` directly against `services.NewMCPManager` / `LSPClient` /
 // `ContextManager` / `IntegrationOrchestrator` without touching the live
-// HelixAgent on :7061, so it is a unit test by construction. It was
+// HelixAgent on :8100, so it is a unit test by construction. It was
 // demoted to this package (PR23, CONST-030 campaign) with no coverage
 // change.
 package e2e_services_legacy_test

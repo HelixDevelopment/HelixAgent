@@ -15,7 +15,7 @@ echo "║  CHALLENGE: Multi-Strategy Ensemble Coordination             ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
-ENSEMBLE_ENDPOINT="${HELIXAGENT_URL:-http://localhost:7061}"
+ENSEMBLE_ENDPOINT="${HELIXAGENT_URL:-http://localhost:8100}"
 
 # Colors
 RED='\033[0;31m'

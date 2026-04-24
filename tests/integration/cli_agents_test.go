@@ -50,7 +50,7 @@ func cliAgentGetBaseURL() string {
 	if url := os.Getenv("HELIXAGENT_URL"); url != "" {
 		return url
 	}
-	return "http://localhost:7061"
+	return "http://localhost:8100"
 }
 
 // cliAgentServiceAvailable checks if HelixAgent is available and returns false if not

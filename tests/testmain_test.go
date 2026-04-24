@@ -204,7 +204,7 @@ func verifyRemoteContainers(rc *RemoteConfig) error {
 	}
 
 	// Check HelixAgent health endpoint
-	if err := checkHTTPWithTimeout("http://localhost:7061/health", 10*time.Second); err != nil {
+	if err := checkHTTPWithTimeout("http://localhost:8100/health", 10*time.Second); err != nil {
 		fmt.Printf("  WARNING: HelixAgent health check failed: %v\n", err)
 	} else {
 		fmt.Println("  ✓ HelixAgent is healthy")
@@ -226,7 +226,7 @@ func verifyLocalContainers(projectRoot string) error {
 		{"PostgreSQL", 15432, "", "Primary database"},
 		{"Redis", 16379, "", "Cache and session store"},
 		{"ChromaDB", 8000, "http://localhost:8000/api/v1/heartbeat", "Vector store"},
-		{"HelixAgent", 7061, "http://localhost:7061/health", "Main service"},
+		{"HelixAgent", 8100, "http://localhost:8100/health", "Main service"},
 	}
 
 	allHealthy := true
@@ -255,14 +255,14 @@ func verifyLocalContainers(projectRoot string) error {
 		name string
 		url  string
 	}{
-		{"MCP", "http://localhost:7061/v1/mcp"},
-		{"LSP", "http://localhost:7061/v1/lsp"},
-		{"ACP", "http://localhost:7061/v1/acp"},
-		{"Embeddings", "http://localhost:7061/v1/embeddings"},
-		{"RAG", "http://localhost:7061/v1/rag"},
-		{"Formatters", "http://localhost:7061/v1/formatters"},
-		{"Vision", "http://localhost:7061/v1/vision"},
-		{"Monitoring", "http://localhost:7061/v1/monitoring"},
+		{"MCP", "http://localhost:8100/v1/mcp"},
+		{"LSP", "http://localhost:8100/v1/lsp"},
+		{"ACP", "http://localhost:8100/v1/acp"},
+		{"Embeddings", "http://localhost:8100/v1/embeddings"},
+		{"RAG", "http://localhost:8100/v1/rag"},
+		{"Formatters", "http://localhost:8100/v1/formatters"},
+		{"Vision", "http://localhost:8100/v1/vision"},
+		{"Monitoring", "http://localhost:8100/v1/monitoring"},
 	}
 
 	for _, ep := range endpoints {
@@ -326,7 +326,7 @@ func waitForServices() {
 		{"Redis", checkRedis, 30 * time.Second},
 		{"ChromaDB", func() bool { return checkHTTP("http://localhost:8000/api/v1/heartbeat") }, 60 * time.Second},
 		{"Cognee", func() bool { return checkHTTP("http://localhost:8000/") }, 90 * time.Second},
-		{"HelixAgent", func() bool { return checkHTTP("http://localhost:7061/health") }, 30 * time.Second},
+		{"HelixAgent", func() bool { return checkHTTP("http://localhost:8100/health") }, 30 * time.Second},
 	}
 
 	for _, svc := range services {

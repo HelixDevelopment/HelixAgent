@@ -3,7 +3,7 @@
 // a local chaosMockProvider to simulate per-provider outages against
 // the ensemble worker-pool fallback chain — pure package-level unit
 // logic. True fallout chaos needs toxiproxy / live containers against
-// :7061. Moved to the unit tree in PR32 of the CONST-030 campaign.
+// :8100. Moved to the unit tree in PR32 of the CONST-030 campaign.
 package chaos_provider_legacy_test
 
 // Provider-fallout chaos test — opt-in. Simulates each LLM provider

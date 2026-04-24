@@ -70,7 +70,7 @@ func createDebate(t *testing.T, topic string, maxRounds int) (*http.Response, De
 	jsonData, err := json.Marshal(request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "http://localhost:7061/v1/debates", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", "http://localhost:8100/v1/debates", bytes.NewBuffer(jsonData))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -196,7 +196,7 @@ func TestDebateE2E_IntegratedFeatures(t *testing.T) {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST",
-		"http://localhost:7061/v1/debates",
+		"http://localhost:8100/v1/debates",
 		bytes.NewBuffer(jsonData))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")

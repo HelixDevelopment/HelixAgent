@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	userflowBaseURL         = "http://localhost:7061"
+	userflowBaseURL         = "http://localhost:8100"
 	userflowConcurrency     = 50
 	userflowHighConcurrency = 1000
 	userflowSequentialCount = 500
@@ -54,7 +54,7 @@ func TestOrchestrator_NewOrchestrator_ConcurrentCreation(
 				}
 			}()
 			url := fmt.Sprintf(
-				"http://localhost:%d", 7061+idx,
+				"http://localhost:%d", 8100+idx,
 			)
 			o, oErr := userflow.NewOrchestrator(url)
 			if oErr != nil {
@@ -335,7 +335,7 @@ func TestOrchestrator_Sequential_MemoryPressure(
 
 	for i := 0; i < userflowSequentialCount; i++ {
 		url := fmt.Sprintf(
-			"http://localhost:%d", 7061+(i%100),
+			"http://localhost:%d", 8100+(i%100),
 		)
 		o, oErr := userflow.NewOrchestrator(url)
 		require.NoError(t, oErr,
@@ -576,7 +576,7 @@ func TestOrchestrator_ConcurrentCreation_UniqueURLs(
 		go func(idx int) {
 			defer wg.Done()
 			url := fmt.Sprintf(
-				"http://host-%d.local:7061", idx,
+				"http://host-%d.local:8100", idx,
 			)
 			o, oErr := userflow.NewOrchestrator(url)
 			if oErr != nil {
@@ -593,7 +593,7 @@ func TestOrchestrator_ConcurrentCreation_UniqueURLs(
 
 	for i, r := range results {
 		expected := fmt.Sprintf(
-			"host-%d.local:7061", i,
+			"host-%d.local:8100", i,
 		)
 		assert.Contains(t, r.summary, expected,
 			"orchestrator %d summary must contain "+

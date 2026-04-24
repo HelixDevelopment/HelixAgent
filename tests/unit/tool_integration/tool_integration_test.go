@@ -1,7 +1,7 @@
 // Package tool_integration_test provides comprehensive in-process tests for
 // the HelixAgent tool system — tool registry, tool schema, tool execution via
 // httptest-backed gin router. Uses a local `ToolTestMockTool` struct and an
-// in-process `httptest.Server` for WebFetch/WebSearch fixtures. No live :7061
+// in-process `httptest.Server` for WebFetch/WebSearch fixtures. No live :8100
 // HTTP. CONST-030 compliant via Pattern-4 demote-to-unit.
 package tool_integration_test
 

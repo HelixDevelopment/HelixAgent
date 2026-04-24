@@ -2,7 +2,7 @@
 // in-process mocks in non-unit tests; this 1,639-LOC harness simulated
 // the entire HelixAgent CI pipeline (unit/integration/E2E phases) by
 // spawning mock LLM servers via httptest and exercising a local
-// MockTool + gin handlers — zero contact with a live :7061 HelixAgent.
+// MockTool + gin handlers — zero contact with a live :8100 HelixAgent.
 // Moved to the unit tree in PR29 of the CONST-030 compliance campaign.
 package automation_legacy_test
 
@@ -86,7 +86,7 @@ func TestMain(m *testing.M) {
 	// Initialize suite
 	suite = &AutomationSuite{
 		config: &AutomationConfig{
-			BaseURL:           "http://localhost:7061",
+			BaseURL:           "http://localhost:8100",
 			MockLLMURL:        "http://localhost:18081",
 			Timeout:           60 * time.Second,
 			Concurrency:       50,
@@ -319,7 +319,7 @@ func TestPhase2_UnitTestVerification(t *testing.T) {
 		cfg := &config.Config{
 			Server: config.ServerConfig{
 				Host: "localhost",
-				Port: "7061",
+				Port: "8100",
 			},
 		}
 
@@ -1552,10 +1552,10 @@ func (m *MockTool) Source() string {
 
 func TestExternalServer_IfRunning(t *testing.T) {
 	// Try to connect to a running HelixAgent server
-	baseURL := "http://localhost:7061"
+	baseURL := "http://localhost:8100"
 
 	// Check if server is running
-	conn, err := net.DialTimeout("tcp", "localhost:7061", 2*time.Second)
+	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
 		t.Skip("External HelixAgent server not running - skipping external tests")  // SKIP-OK: #legacy-untriaged
 		return

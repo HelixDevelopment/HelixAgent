@@ -43,16 +43,21 @@ type InfraConfig struct {
 
 // DefaultInfraConfig returns the default infrastructure configuration
 // using environment variables with sensible defaults for the test stack.
+//
+// Defaults track the canonical 81xx port registry (CONST-027; see
+// docs/development/port-registry.md). Prior defaults targeted the
+// legacy 7061 / 15432 / 6379 / 18081 ports, which caused every
+// server-dependent e2e test to skip against a running binary.
 func DefaultInfraConfig() InfraConfig {
 	return InfraConfig{
 		PostgresHost: envOr("DB_HOST", "localhost"),
-		PostgresPort: envOr("DB_PORT", "15432"),
+		PostgresPort: envOr("DB_PORT", "8109"),        // HELIXAGENT_PORT_POSTGRES_TEST
 		RedisHost:    envOr("REDIS_HOST", "localhost"),
-		RedisPort:    envOr("REDIS_PORT", "6379"),
+		RedisPort:    envOr("REDIS_PORT", "8110"),     // HELIXAGENT_PORT_REDIS_MCP
 		MockLLMHost:  envOr("MOCK_LLM_HOST", "localhost"),
-		MockLLMPort:  envOr("MOCK_LLM_PORT", "18081"),
+		MockLLMPort:  envOr("MOCK_LLM_PORT", "8106"),  // HELIXAGENT_PORT_MOCK_LLM
 		ServerHost:   envOr("HELIXAGENT_HOST", "localhost"),
-		ServerPort:   envOr("HELIXAGENT_PORT", "7061"),
+		ServerPort:   envOr("HELIXAGENT_PORT", "8100"), // HELIXAGENT_PORT_HTTP
 	}
 }
 

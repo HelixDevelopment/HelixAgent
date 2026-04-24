@@ -1,5 +1,5 @@
 // Package e2e contains the end-to-end test suite. CONST-030 mandates all
-// non-unit tests execute against a live HelixAgent on :7061 — any
+// non-unit tests execute against a live HelixAgent on :8100 — any
 // in-process mock is a violation. The in-process `TestE2ENewServicesWorkflow`
 // subtree that used a local `MockTool` wired directly into
 // `services.NewMCPManager` / `LSPClient` / `ContextManager` /
@@ -22,7 +22,7 @@ import (
 )
 
 // TestE2EUserWorkflow tests complete user workflows against the live HelixAgent.
-// Requires a running server on localhost:7061. Probe + skip is done by
+// Requires a running server on localhost:8100. Probe + skip is done by
 // `testutil.RequireServer(t)`.
 func TestE2EUserWorkflow(t *testing.T) {
 	testutil.RequireServer(t)
@@ -183,7 +183,7 @@ func TestE2EUserWorkflow(t *testing.T) {
 	})
 }
 
-// TestE2EErrorHandling tests error scenarios end-to-end against :7061.
+// TestE2EErrorHandling tests error scenarios end-to-end against :8100.
 func TestE2EErrorHandling(t *testing.T) {
 	testutil.RequireServer(t)
 
@@ -233,7 +233,7 @@ func TestE2EErrorHandling(t *testing.T) {
 	})
 }
 
-// TestE2EPerformance tests performance characteristics against :7061.
+// TestE2EPerformance tests performance characteristics against :8100.
 func TestE2EPerformance(t *testing.T) {
 	testutil.RequireServer(t)
 

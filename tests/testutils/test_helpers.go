@@ -142,7 +142,7 @@ func NewTestConfig() *config.Config {
 	return &config.Config{
 		Server: config.ServerConfig{
 			Host:      "localhost",
-			Port:      "7061",
+			Port:      "8100",
 			JWTSecret: "test-secret-key-for-testing-purposes-only-1234567890",
 		},
 		Database: config.DatabaseConfig{
@@ -325,7 +325,7 @@ func SkipIfNoServer(t *testing.T) {
 		t.Skip("Skipping test that requires HelixAgent server (short mode)")  // SKIP-OK: #short-mode
 	}
 	host := envOrDefault("HELIXAGENT_HOST", "localhost")
-	port := envOrDefault("HELIXAGENT_PORT", "7061")
+	port := envOrDefault("HELIXAGENT_PORT", "8100")
 	if !checkTCPEndpoint(host, port) {
 		t.Skipf("HelixAgent server not available at %s:%s — start with: make run", host, port)
 	}

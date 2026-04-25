@@ -22,7 +22,12 @@ func TestVerifierE2EWorkflow(t *testing.T) {
 	testutil.RequireServer(t)
 
 	baseURL := testutil.ServerURL()
-	client := &http.Client{Timeout: 60 * time.Second}
+	// 120s per request: chat-completion path falls into the debate ensemble
+	// for unrecognized models (binary log: "Model 'gpt-4' not recognized,
+	// using AI Debate ensemble"); ensemble takes 25–30s when binary is idle
+	// and longer under concurrent test load. Drainage report 2026-04-25
+	// Findings #14 + #15 are the same calibration class.
+	client := &http.Client{Timeout: 120 * time.Second}
 
 	t.Run("CompleteVerificationWorkflow", func(t *testing.T) {
 		// Step 1: Verify a model
@@ -240,7 +245,8 @@ func TestVerifierIntegrationWithChat(t *testing.T) {
 	testutil.RequireServer(t)
 
 	baseURL := testutil.ServerURL()
-	client := &http.Client{Timeout: 60 * time.Second}
+	// See TestVerifierE2EWorkflow above for timeout rationale (Findings #14/#15).
+	client := &http.Client{Timeout: 120 * time.Second}
 
 	t.Run("VerifiedModelChat", func(t *testing.T) {
 		// First verify the model

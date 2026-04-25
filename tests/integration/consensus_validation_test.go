@@ -241,18 +241,24 @@ func TestConsensusHasSubstantiveContent(t *testing.T) {
 
 	fullResponse := string(body)
 
-	// Skip when smart-routing returned a short-circuit response OR when the
-	// response lacks both the consensus marker AND the footer marker. The
-	// test can only meaningfully assert structure when both anchors are
-	// present in the streamed body. (Finding #9)
-	hasConsensusMarker := strings.Contains(fullResponse, "## Consensus") ||
+	// Defensive backstop: if smart-routing slipped past the explicit-debate
+	// override (drainage report 2026-04-25 Finding #9 root-cause fix in
+	// internal/handlers/openai_compatible.go), the response has no ensemble
+	// framing at all and we can't assert structure. With the override in
+	// place, this skip should NEVER fire for `model=helixagent-debate`
+	// requests — if it does, the override regressed.
+	//
+	// Real renderer contract (verified live 2026-04-25): the consensus is
+	// presented under `**Final Decision**`; there is no separate `##
+	// Consensus` header. Treat `**Final Decision**` as the canonical
+	// consensus marker, with legacy alternatives kept for tolerance.
+	hasConsensusMarker := strings.Contains(fullResponse, "**Final Decision**") ||
+		strings.Contains(fullResponse, "## Consensus") ||
 		strings.Contains(fullResponse, "## Final Answer") ||
 		strings.Contains(fullResponse, "CONSENSUS REACHED")
-	hasFooterMarker := strings.Contains(fullResponse, "Powered by HelixAgent AI Debate Ensemble") ||
-		strings.Contains(fullResponse, "**Final Decision**")
-	if !hasConsensusMarker || !hasFooterMarker {
-		t.Skipf("Response missing required ensemble anchors (consensus=%v, footer=%v) — smart-routing may have short-circuited. Response excerpt: %s",
-			hasConsensusMarker, hasFooterMarker, truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
+	if !hasConsensusMarker {
+		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s",
+			truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
 	}
 
 	// Extract the consensus section content (ANSI or Markdown format).

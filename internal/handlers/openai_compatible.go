@@ -589,7 +589,23 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	}
 
 	useDebate := true // Default: always debate for full transparency
-	if h.intentRouter != nil && h.intentRouter.GetLLMClassifier() != nil {
+
+	// Explicit-model override: when the client requests a debate-specific
+	// model name (`helixagent-debate` or `helixagent-ensemble`), respect
+	// that and force the ensemble path even for short / non-actionable
+	// prompts. The model name IS the contract — a request asking for the
+	// debate model must get the debate, otherwise the model name lies.
+	// Drainage report 2026-04-25 Finding #9 root cause: the intent
+	// classifier overrode `model=helixagent-debate` for trivial prompts,
+	// producing single-provider responses that the consensus tests then
+	// (correctly) flagged as malformed. Without this override the test
+	// nondeterminism tracks classifier availability instead of the
+	// product's documented behavior.
+	requestedDebateExplicitly := req.Model == "helixagent-debate" || req.Model == "helixagent-ensemble"
+
+	if requestedDebateExplicitly {
+		logrus.WithField("model", req.Model).Info("[STREAMING] Explicit debate-model request — bypassing intent classifier")
+	} else if h.intentRouter != nil && h.intentRouter.GetLLMClassifier() != nil {
 		// Use LLM intelligence to classify intent — works in any language
 		classifyCtx, classifyCancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 		llmResult, llmErr := h.intentRouter.GetLLMClassifier().ClassifyIntentWithLLM(classifyCtx, lastUserMsg, "")
@@ -614,8 +630,10 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		}
 	}
 	logrus.WithFields(logrus.Fields{
-		"use_debate": useDebate,
-		"message":    lastUserMsg[:min(50, len(lastUserMsg))],
+		"use_debate":           useDebate,
+		"explicit_debate_req":  requestedDebateExplicitly,
+		"requested_model":      req.Model,
+		"message":              lastUserMsg[:min(50, len(lastUserMsg))],
 	}).Info("[STREAMING] Final routing decision")
 
 	// For SIMPLE messages: use strongest single provider for fast, direct response

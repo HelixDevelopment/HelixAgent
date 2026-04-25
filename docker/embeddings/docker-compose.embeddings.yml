@@ -8,6 +8,10 @@ services:
   embeddings:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
     container_name: helixagent-embeddings
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${EMBEDDINGS_PORT:-9310}:9310"
     environment:

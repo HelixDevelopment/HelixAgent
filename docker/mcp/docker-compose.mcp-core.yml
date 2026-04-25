@@ -14,6 +14,10 @@ services:
   mcp-fetch:
     image: mcp-fetch:latest
     container_name: mcp-fetch
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
     restart: unless-stopped
@@ -26,6 +30,10 @@ services:
   mcp-git:
     image: mcp-git:latest
     container_name: mcp-git
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
     volumes:
@@ -40,6 +48,10 @@ services:
   mcp-time:
     image: mcp-time:latest
     container_name: mcp-time
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
     restart: unless-stopped
@@ -53,6 +65,10 @@ services:
   mcp-filesystem:
     image: mcp-filesystem:latest
     container_name: mcp-filesystem
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
     volumes:
@@ -68,6 +84,10 @@ services:
   mcp-memory:
     image: mcp-memory:latest
     container_name: mcp-memory
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
     restart: unless-stopped
@@ -80,6 +100,10 @@ services:
   mcp-everything:
     image: mcp-everything:latest
     container_name: mcp-everything
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
     restart: unless-stopped
@@ -92,6 +116,10 @@ services:
   mcp-sequentialthinking:
     image: mcp-sequentialthinking:latest
     container_name: mcp-sequentialthinking
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
     restart: unless-stopped

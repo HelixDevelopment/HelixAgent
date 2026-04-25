@@ -10,6 +10,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: helixagent-acp-manager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${ACP_PORT:-9320}:9320"
     environment:

@@ -5,6 +5,10 @@ services:
   postgres:
     image: docker.io/postgres:15-alpine
     container_name: helixagent-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: ${DB_NAME:-helixagent_db}
       POSTGRES_USER: ${DB_USER:-helixagent}
@@ -25,6 +29,10 @@ services:
   redis:
     image: docker.io/redis:7-alpine
     container_name: helixagent-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass ${REDIS_PASSWORD:-helixagent123} --appendonly yes --ignore-warnings ARM64-COW-BUG
     volumes:
       - redis_data:/data
@@ -49,6 +57,10 @@ services:
   ollama:
     image: docker.io/ollama/ollama:latest
     container_name: helixagent-ollama
+    mem_limit: 12g
+    memswap_limit: 12g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     volumes:
@@ -78,6 +90,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: helixagent-app
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${PORT:-8100}:7061"
     environment:
@@ -192,6 +208,10 @@ services:
   prometheus:
     image: docker.io/prom/prometheus:latest
     container_name: helixagent-prometheus
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${PROMETHEUS_PORT:-8310}:9090"
     volumes:
@@ -216,6 +236,10 @@ services:
   grafana:
     image: docker.io/grafana/grafana:latest
     container_name: helixagent-grafana
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
@@ -254,6 +278,10 @@ services:
     image: helixagent-cognee:latest
     container_name: helixagent-cognee
     # Using host network for direct API access
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       # Core Configuration
       - DEBUG=${COGNEE_DEBUG:-false}
@@ -373,6 +401,10 @@ services:
   chromadb:
     image: docker.io/chromadb/chroma:0.6.3
     container_name: helixagent-chromadb
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: ["--host", "0.0.0.0", "--port", "8001"]
     environment:
       - IS_PERSISTENT=TRUE
@@ -393,6 +425,10 @@ services:
   neo4j:
     image: docker.io/neo4j:latest
     container_name: helixagent-neo4j
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       - NEO4J_AUTH=neo4j/cognee123
       - NEO4J_PLUGINS=["apoc", "graph-data-science"]
@@ -413,6 +449,10 @@ services:
   memgraph:
     image: docker.io/memgraph/memgraph-mage:latest
     container_name: helixagent-memgraph
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "7688:7687"  # Bolt protocol
       - "7445:7444"  # Lab UI
@@ -441,6 +481,10 @@ services:
       context: ./tests/mock-llm-server
       dockerfile: Dockerfile
     container_name: helixagent-mock-llm
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${MOCK_LLM_PORT:-8090}:8090"
     environment:
@@ -468,6 +512,10 @@ services:
       context: ./services/langchain
       dockerfile: Dockerfile
     container_name: helixagent-langchain
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LANGCHAIN_PORT:-8011}:8001"
     environment:
@@ -500,6 +548,10 @@ services:
       context: ./services/llamaindex
       dockerfile: Dockerfile
     container_name: helixagent-llamaindex
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LLAMAINDEX_PORT:-8012}:8002"
     environment:
@@ -536,6 +588,10 @@ services:
       context: ./services/guidance
       dockerfile: Dockerfile
     container_name: helixagent-guidance
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${GUIDANCE_PORT:-8013}:8003"
     environment:
@@ -568,6 +624,10 @@ services:
       context: ./services/lmql
       dockerfile: Dockerfile
     container_name: helixagent-lmql
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LMQL_PORT:-8014}:8004"
     environment:
@@ -598,6 +658,10 @@ services:
   sglang:
     image: docker.io/lmsysorg/sglang:latest
     container_name: helixagent-sglang
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${SGLANG_PORT:-30000}:30000"
     environment:

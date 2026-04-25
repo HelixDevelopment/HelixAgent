@@ -9,6 +9,10 @@ services:
       context: ../../..
       dockerfile: docker/security/snyk/Dockerfile
     container_name: helixagent-snyk-deps
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SNYK_TOKEN: ${SNYK_TOKEN:-}
     volumes:
@@ -26,6 +30,10 @@ services:
       context: ../../..
       dockerfile: docker/security/snyk/Dockerfile
     container_name: helixagent-snyk-code
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SNYK_TOKEN: ${SNYK_TOKEN:-}
     volumes:
@@ -43,6 +51,10 @@ services:
       context: ../../..
       dockerfile: docker/security/snyk/Dockerfile
     container_name: helixagent-snyk-iac
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SNYK_TOKEN: ${SNYK_TOKEN:-}
     volumes:
@@ -60,6 +72,10 @@ services:
       context: ../../..
       dockerfile: docker/security/snyk/Dockerfile
     container_name: helixagent-snyk-full
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SNYK_TOKEN: ${SNYK_TOKEN:-}
     volumes:

@@ -5,6 +5,10 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: helixagent-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: helixagent_db
       POSTGRES_USER: helixagent
@@ -26,6 +30,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: helixagent-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass helixagent123 --appendonly yes --ignore-warnings ARM64-COW-BUG
     volumes:
       - redis_data:/data
@@ -47,6 +55,10 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     container_name: helixagent-chromadb
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - IS_PERSISTENT=TRUE
       - CHROMA_SERVER_AUTH_CREDENTIALS=

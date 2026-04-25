@@ -23,6 +23,10 @@ services:
     build:
       context: ../MCP-Servers
       dockerfile: ../MCP/dockerfiles/Dockerfile.everything
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-everything
     ports:
       - "3001:3000"
@@ -37,6 +41,10 @@ services:
     build:
       context: ../MCP-Servers
       dockerfile: ../MCP/dockerfiles/Dockerfile.filesystem
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-filesystem
     ports:
       - "3002:3000"
@@ -50,6 +58,10 @@ services:
     build:
       context: ../MCP-Servers
       dockerfile: ../MCP/dockerfiles/Dockerfile.memory
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-memory
     ports:
       - "3003:3000"
@@ -61,6 +73,10 @@ services:
     build:
       context: ../MCP-Servers
       dockerfile: ../MCP/dockerfiles/Dockerfile.sequential-thinking
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-sequential-thinking
     ports:
       - "3004:3000"
@@ -68,6 +84,10 @@ services:
   mcp-fetch:
     <<: *mcp-base
     image: python:3.11-slim
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-fetch
     ports:
       - "3005:3000"
@@ -77,6 +97,10 @@ services:
   mcp-git:
     <<: *mcp-base
     image: python:3.11-slim
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-git
     ports:
       - "3006:3000"
@@ -88,6 +112,10 @@ services:
   mcp-time:
     <<: *mcp-base
     image: python:3.11-slim
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-time
     ports:
       - "3007:3000"
@@ -103,6 +131,10 @@ services:
     build:
       context: ./submodules/playwright-mcp
       dockerfile: ../../dockerfiles/Dockerfile.playwright
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     container_name: mcp-playwright
     ports:
       - "3010:3000"
@@ -117,6 +149,10 @@ services:
     build:
       context: ./submodules/browserbase-mcp
       dockerfile: ../../dockerfiles/Dockerfile.browserbase
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     container_name: mcp-browserbase
     ports:
       - "3011:3000"
@@ -133,6 +169,10 @@ services:
     build:
       context: ./submodules/redis-mcp
       dockerfile: ../../dockerfiles/Dockerfile.redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-redis
     ports:
       - "3020:3000"
@@ -146,6 +186,10 @@ services:
     build:
       context: ./submodules/mongodb-mcp
       dockerfile: ../../dockerfiles/Dockerfile.mongodb
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-mongodb
     ports:
       - "3021:3000"
@@ -159,6 +203,10 @@ services:
     build:
       context: ./submodules/qdrant-mcp
       dockerfile: ../../dockerfiles/Dockerfile.qdrant
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-qdrant
     ports:
       - "3022:3000"
@@ -172,6 +220,10 @@ services:
     build:
       context: ./submodules/elasticsearch-mcp
       dockerfile: ../../dockerfiles/Dockerfile.elasticsearch
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-elasticsearch
     ports:
       - "3023:3000"
@@ -183,6 +235,10 @@ services:
     build:
       context: ./submodules/supabase-mcp
       dockerfile: ../../dockerfiles/Dockerfile.supabase
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-supabase
     ports:
       - "3024:3000"
@@ -199,6 +255,10 @@ services:
     build:
       context: ./submodules/github-mcp-server
       dockerfile: ../../dockerfiles/Dockerfile.github
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-github
     ports:
       - "3030:3000"
@@ -210,6 +270,10 @@ services:
     build:
       context: ./submodules/sentry-mcp
       dockerfile: ../../dockerfiles/Dockerfile.sentry
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-sentry
     ports:
       - "3031:3000"
@@ -222,6 +286,10 @@ services:
     build:
       context: ./submodules/heroku-mcp
       dockerfile: ../../dockerfiles/Dockerfile.heroku
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-heroku
     ports:
       - "3032:3000"
@@ -233,6 +301,10 @@ services:
     build:
       context: ./submodules/cloudflare-mcp
       dockerfile: ../../dockerfiles/Dockerfile.cloudflare
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-cloudflare
     ports:
       - "3033:3000"
@@ -249,6 +321,10 @@ services:
     build:
       context: ./submodules/aws-mcp
       dockerfile: ../../dockerfiles/Dockerfile.aws
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-aws
     ports:
       - "3040:3000"
@@ -262,6 +338,10 @@ services:
     build:
       context: ./submodules/kubernetes-mcp
       dockerfile: ../../dockerfiles/Dockerfile.kubernetes
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-kubernetes
     ports:
       - "3041:3000"
@@ -277,6 +357,10 @@ services:
     build:
       context: ./submodules/slack-mcp
       dockerfile: ../../dockerfiles/Dockerfile.slack
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-slack
     ports:
       - "3050:3000"
@@ -289,6 +373,10 @@ services:
     build:
       context: ./submodules/telegram-mcp
       dockerfile: ../../dockerfiles/Dockerfile.telegram
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-telegram
     ports:
       - "3051:3000"
@@ -301,6 +389,10 @@ services:
     build:
       context: ./submodules/notion-mcp-server
       dockerfile: ../../dockerfiles/Dockerfile.notion
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-notion
     ports:
       - "3052:3000"
@@ -312,6 +404,10 @@ services:
     build:
       context: ./submodules/airtable-mcp
       dockerfile: ../../dockerfiles/Dockerfile.airtable
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-airtable
     ports:
       - "3053:3000"
@@ -323,6 +419,10 @@ services:
     build:
       context: ./submodules/trello-mcp
       dockerfile: ../../dockerfiles/Dockerfile.trello
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-trello
     ports:
       - "3054:3000"
@@ -335,6 +435,10 @@ services:
     build:
       context: ./submodules/atlassian-mcp
       dockerfile: ../../dockerfiles/Dockerfile.atlassian
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-atlassian
     ports:
       - "3055:3000"
@@ -349,6 +453,10 @@ services:
     build:
       context: ./submodules/obsidian-mcp
       dockerfile: ../../dockerfiles/Dockerfile.obsidian
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-obsidian
     ports:
       - "3056:3000"
@@ -366,6 +474,10 @@ services:
     build:
       context: ./submodules/brave-search
       dockerfile: ../../dockerfiles/Dockerfile.brave-search
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-brave-search
     ports:
       - "3060:3000"
@@ -377,6 +489,10 @@ services:
     build:
       context: ./submodules/perplexity-mcp
       dockerfile: ../../dockerfiles/Dockerfile.perplexity
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-perplexity
     ports:
       - "3061:3000"
@@ -388,6 +504,10 @@ services:
     build:
       context: ./submodules/context7-mcp
       dockerfile: ../../dockerfiles/Dockerfile.context7
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-context7
     ports:
       - "3062:3000"
@@ -399,6 +519,10 @@ services:
     build:
       context: ./submodules/firecrawl-mcp
       dockerfile: ../../dockerfiles/Dockerfile.firecrawl
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 2048
+    oom_score_adj: 500
     container_name: mcp-firecrawl
     ports:
       - "3063:3000"
@@ -410,6 +534,10 @@ services:
     build:
       context: ./submodules/omnisearch-mcp
       dockerfile: ../../dockerfiles/Dockerfile.omnisearch
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-omnisearch
     ports:
       - "3064:3000"
@@ -427,6 +555,10 @@ services:
     build:
       context: ./submodules/langchain-mcp
       dockerfile: ../../dockerfiles/Dockerfile.langchain
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-langchain
     ports:
       - "3070:3000"
@@ -439,6 +571,10 @@ services:
     build:
       context: ./submodules/llamaindex-mcp
       dockerfile: ../../dockerfiles/Dockerfile.llamaindex
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-llamaindex
     ports:
       - "3071:3000"
@@ -450,6 +586,10 @@ services:
     build:
       context: ./submodules/docs-mcp
       dockerfile: ../../dockerfiles/Dockerfile.docs
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-docs
     ports:
       - "3072:3000"
@@ -463,6 +603,10 @@ services:
     build:
       context: ./submodules/microsoft-mcp
       dockerfile: ../../dockerfiles/Dockerfile.microsoft
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: mcp-microsoft
     ports:
       - "3080:3000"
@@ -478,6 +622,10 @@ services:
   helixagent-redis:
     image: redis:7-alpine
     container_name: helixagent-mcp-redis
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     restart: unless-stopped
     ports:
       - "16379:6379"
@@ -490,6 +638,10 @@ services:
   helixagent-mongo:
     image: mongo:7
     container_name: helixagent-mcp-mongo
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -504,6 +656,10 @@ services:
   helixagent-qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-mcp-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     restart: unless-stopped
     ports:
       - "6333:6333"

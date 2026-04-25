@@ -15,6 +15,10 @@ version: '3.8'
 services:
   # RabbitMQ Production Configuration
   rabbitmq:
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       # Production credentials (override in .env.production)
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_PROD_USER:-helixagent_prod}
@@ -61,6 +65,10 @@ services:
 
   # Kafka Production Configuration
   kafka:
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -125,6 +133,10 @@ services:
 
   # Zookeeper Production Configuration
   zookeeper:
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -154,6 +166,10 @@ services:
 
   # Schema Registry Production Configuration
   schema-registry:
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
@@ -186,6 +202,10 @@ services:
 
   # Kafka UI Production (read-only access)
   kafka-ui:
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       KAFKA_CLUSTERS_0_NAME: helixagent-production
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
@@ -211,6 +231,10 @@ services:
   traefik:
     image: traefik:v2.10
     container_name: helixagent-traefik
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 1024
+    oom_score_adj: 500
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
@@ -247,6 +271,10 @@ services:
   redis-cluster:
     image: redis:7-alpine
     container_name: helixagent-redis-cluster
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}

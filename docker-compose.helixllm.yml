@@ -12,79 +12,83 @@ services:
       context: ./HelixLLM
       dockerfile: container/Containerfile
     container_name: helixagent-helixllm
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_PORT:-8105}:8443/tcp"
       - "${HELIX_LLM_PORT:-8105}:8443/udp"
     environment:
       # Mode configuration
       HELIX_MODE: ${HELIX_LLM_MODE:-full}
-      
+
       # Server configuration
       HELIX_HOST: 0.0.0.0
       HELIX_PORT: 8443
       HELIX_TLS_CERT: ${HELIX_LLM_TLS_CERT:-./certs/cert.pem}
       HELIX_TLS_KEY: ${HELIX_LLM_TLS_KEY:-./certs/key.pem}
-      
+
       # Logging and observability
       HELIX_LOG_LEVEL: ${HELIX_LLM_LOG_LEVEL:-info}
       HELIX_LOG_FORMAT: ${HELIX_LLM_LOG_FORMAT:-json}
       HELIX_OTEL_EXPORTER: ${HELIX_LLM_OTEL_EXPORTER:-otlp}
       HELIX_OTEL_ENDPOINT: http://otel-collector:4317
-      
+
       # Database configuration (shared with HelixAgent)
       HELIX_DB_HOST: ${HELIX_LLM_DB_HOST:-postgres}
       HELIX_DB_PORT: ${HELIX_LLM_DB_PORT:-5432}
       HELIX_DB_NAME: ${HELIX_LLM_DB_NAME:-helixllm}
       HELIX_DB_USER: ${HELIX_LLM_DB_USER:-helix}
       HELIX_DB_PASSWORD: ${HELIX_LLM_DB_PASSWORD:-helixllm}
-      
+
       # Redis configuration (shared with HelixAgent)
       HELIX_REDIS_HOST: ${HELIX_LLM_REDIS_HOST:-redis}
       HELIX_REDIS_PORT: ${HELIX_LLM_REDIS_PORT:-6379}
       HELIX_REDIS_PASSWORD: ${HELIX_LLM_REDIS_PASSWORD:-}
-      
+
       # Messaging
       HELIX_KAFKA_BROKERS: ${HELIX_LLM_KAFKA_BROKERS:-kafka:9092}
-      
+
       # Vector database
       HELIX_VECTOR_DB: ${HELIX_LLM_VECTOR_DB:-qdrant}
-      
+
       # LLM configuration (connected to local llama.cpp)
       HELIX_LLM_LOCAL_MODEL: ${HELIX_LLM_LOCAL_MODEL:-llama-3.1-8b}
       HELIX_LLM_LOCAL_RPC_PORT: ${HELIX_LLM_LOCAL_RPC_PORT:-8081}
       HELIX_LLM_OPENAI_KEY: ${HELIX_LLM_OPENAI_KEY:-}
       HELIX_LLM_ANTHROPIC_KEY: ${HELIX_LLM_ANTHROPIC_KEY:-}
       HELIX_LLM_DEFAULT_PROVIDER: ${HELIX_LLM_DEFAULT_PROVIDER:-llamacpp}
-      
+
       # Knowledge/RAG configuration
       HELIX_EMBEDDING_PROVIDER: ${HELIX_LLM_EMBEDDING_PROVIDER:-local}
       HELIX_EMBEDDING_MODEL: ${HELIX_LLM_EMBEDDING_MODEL:-all-mpnet-base-v2}
       HELIX_RAG_CHUNK_SIZE: ${HELIX_LLM_RAG_CHUNK_SIZE:-1000}
       HELIX_RAG_CHUNK_OVERLAP: ${HELIX_LLM_RAG_CHUNK_OVERLAP:-200}
       HELIX_RAG_TOP_K: ${HELIX_LLM_RAG_TOP_K:-5}
-      
+
       # Feature flags
       HELIX_FEATURE_GRPC: ${HELIX_LLM_FEATURE_GRPC:-true}
       HELIX_FEATURE_TOON: ${HELIX_LLM_FEATURE_TOON:-true}
       HELIX_FEATURE_SELFIMPROVE: ${HELIX_LLM_FEATURE_SELFIMPROVE:-false}
-      
+
       # Cluster configuration
       HELIX_HOSTS: ${HELIX_LLM_HOSTS:-}
       HELIX_SSH_USER: ${HELIX_LLM_SSH_USER:-}
       HELIX_SSH_KEY: ${HELIX_LLM_SSH_KEY:-}
       HELIX_SCHEDULE_STRATEGY: ${HELIX_LLM_SCHEDULE_STRATEGY:-auto}
-      
+
       # Auth
       HELIX_AUTH_JWT_SECRET: ${HELIX_LLM_AUTH_JWT_SECRET:-}
       HELIX_AUTH_API_KEYS: ${HELIX_LLM_AUTH_API_KEYS:-}
-      
+
       # Rate limiting
       HELIX_RATE_PER_MINUTE: ${HELIX_LLM_RATE_PER_MINUTE:-0}
-      
+
       # Analytics
       HELIX_CLICKHOUSE_ADDR: ${HELIX_LLM_CLICKHOUSE_ADDR:-}
       HELIX_CLICKHOUSE_DATABASE: ${HELIX_LLM_CLICKHOUSE_DATABASE:-helixllm}
-      
+
       # Integration with HelixAgent
       HELIXAGENT_ENDPOINT: http://helixagent:7061
       HELIXAGENT_API_KEY: ${HELIXAGENT_API_KEY:-}
@@ -113,6 +117,10 @@ services:
   helixllm-postgres:
     image: docker.io/postgres:16-alpine
     container_name: helixagent-helixllm-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: ${HELIX_LLM_DB_NAME:-helixllm}
       POSTGRES_USER: ${HELIX_LLM_DB_USER:-helix}
@@ -133,6 +141,10 @@ services:
   helixllm-redis:
     image: docker.io/redis:7-alpine
     container_name: helixagent-helixllm-redis
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     command: redis-server --requirepass ${HELIX_LLM_REDIS_PASSWORD:-helixllm123} --appendonly yes
     volumes:
       - helixllm_redis_data:/data
@@ -149,6 +161,10 @@ services:
   helixllm-qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-helixllm-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_QDRANT_HTTP_PORT:-6333}:6333"
       - "${HELIX_LLM_QDRANT_GRPC_PORT:-6334}:6334"
@@ -169,6 +185,10 @@ services:
   helixllm-kafka:
     image: docker.io/bitnami/kafka:3.9.0
     container_name: helixagent-helixllm-kafka
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_KAFKA_PORT:-9093}:9092"
     environment:
@@ -191,6 +211,10 @@ services:
       context: ./HelixLLM
       dockerfile: container/Containerfile.llamacpp
     container_name: helixagent-helixllm-llamacpp
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_LLAMACPP_PORT:-8081}:8080"
     environment:
@@ -233,6 +257,10 @@ services:
   helixllm-prometheus:
     image: docker.io/prom/prometheus:latest
     container_name: helixagent-helixllm-prometheus
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_PROMETHEUS_PORT:-9091}:9090"
     volumes:

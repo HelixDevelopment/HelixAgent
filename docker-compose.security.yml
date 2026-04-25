@@ -13,6 +13,10 @@ services:
   sonarqube:
     image: docker.io/sonarqube:community
     container_name: helixagent-sonarqube
+    mem_limit: 8g
+    memswap_limit: 8g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${SONARQUBE_PORT:-9000}:9000"
     environment:
@@ -41,6 +45,10 @@ services:
   sonarqube-db:
     image: postgres:15-alpine
     container_name: helixagent-sonarqube-db
+    mem_limit: 8g
+    memswap_limit: 8g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: sonarqube
       POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqube}
@@ -61,6 +69,10 @@ services:
   snyk-scanner:
     image: snyk/snyk:golang
     container_name: helixagent-snyk-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /app
     environment:
       # SNYK_TOKEN can be set for authenticated scans (optional for OSS)
@@ -81,6 +93,10 @@ services:
   trivy-scanner:
     image: aquasec/trivy:latest
     container_name: helixagent-trivy-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/app:ro
       - trivy_cache:/root/.cache/trivy
@@ -94,6 +110,10 @@ services:
   gosec-scanner:
     image: securego/gosec:latest
     container_name: helixagent-gosec-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /app
     volumes:
       - .:/app:rw
@@ -107,6 +127,10 @@ services:
   sonar-scanner:
     image: sonarsource/sonar-scanner-cli:latest
     container_name: helixagent-sonar-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /usr/src
     environment:
       SONAR_HOST_URL: "http://sonarqube:9000"
@@ -126,6 +150,10 @@ services:
   semgrep-scanner:
     image: returntocorp/semgrep:latest
     container_name: helixagent-semgrep-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /app
     volumes:
       - .:/app:ro
@@ -140,6 +168,10 @@ services:
   kics-scanner:
     image: checkmarx/kics:latest
     container_name: helixagent-kics-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /app
     volumes:
       - .:/app:ro
@@ -154,6 +186,10 @@ services:
   grype-scanner:
     image: anchore/grype:latest
     container_name: helixagent-grype-scanner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     working_dir: /app
     volumes:
       - .:/app:ro

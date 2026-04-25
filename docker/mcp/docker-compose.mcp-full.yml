@@ -52,6 +52,10 @@ services:
 
   mcp-fetch:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-fetch
     ports:
       - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
@@ -60,6 +64,10 @@ services:
 
   mcp-git:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-git
     ports:
       - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
@@ -70,6 +78,10 @@ services:
 
   mcp-time:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-time
     ports:
       - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
@@ -78,6 +90,10 @@ services:
 
   mcp-filesystem:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-filesystem
     ports:
       - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
@@ -88,6 +104,10 @@ services:
 
   mcp-memory:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-memory
     ports:
       - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
@@ -96,6 +116,10 @@ services:
 
   mcp-everything:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-everything
     ports:
       - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
@@ -104,6 +128,10 @@ services:
 
   mcp-sequential-thinking:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-sequential-thinking
     ports:
       - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
@@ -112,6 +140,10 @@ services:
 
   mcp-sqlite:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-sqlite
     ports:
       - "${HELIXAGENT_PORT_MCP_SQLITE:-8207}:9000"
@@ -122,6 +154,10 @@ services:
 
   mcp-puppeteer:
     <<: *common-config
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     container_name: helixagent-mcp-puppeteer
     ports:
       - "${HELIXAGENT_PORT_MCP_PUPPETEER:-8208}:9000"
@@ -130,6 +166,10 @@ services:
 
   mcp-postgres:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-postgres
     ports:
       - "${HELIXAGENT_PORT_MCP_POSTGRES:-8209}:9000"
@@ -144,6 +184,10 @@ services:
 
   mcp-mongodb:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-mongodb
     ports:
       - "${HELIXAGENT_PORT_MCP_MONGODB:-8210}:9000"
@@ -153,6 +197,10 @@ services:
 
   mcp-redis:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-redis
     ports:
       - "${HELIXAGENT_PORT_MCP_REDIS:-8211}:9000"
@@ -162,6 +210,10 @@ services:
 
   mcp-mysql:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-mysql
     ports:
       - "${HELIXAGENT_PORT_MCP_MYSQL:-8212}:9000"
@@ -171,6 +223,10 @@ services:
 
   mcp-elasticsearch:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-elasticsearch
     ports:
       - "${HELIXAGENT_PORT_MCP_ELASTICSEARCH:-8213}:9000"
@@ -180,6 +236,10 @@ services:
 
   mcp-supabase:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-supabase
     ports:
       - "${HELIXAGENT_PORT_MCP_SUPABASE:-8214}:9000"
@@ -195,6 +255,10 @@ services:
 
   mcp-qdrant:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-qdrant
     ports:
       - "${HELIXAGENT_PORT_MCP_QDRANT:-8215}:9000"
@@ -204,6 +268,10 @@ services:
 
   mcp-chroma:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-chroma
     ports:
       - "${HELIXAGENT_PORT_MCP_CHROMA:-8216}:9000"
@@ -213,6 +281,10 @@ services:
 
   mcp-pinecone:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-pinecone
     ports:
       - "${HELIXAGENT_PORT_MCP_PINECONE:-8217}:9000"
@@ -222,6 +294,10 @@ services:
 
   mcp-weaviate:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-weaviate
     ports:
       - "${HELIXAGENT_PORT_MCP_WEAVIATE:-8218}:9000"
@@ -236,6 +312,10 @@ services:
 
   mcp-github:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-github
     ports:
       - "${HELIXAGENT_PORT_MCP_GITHUB:-8220}:9000"
@@ -245,6 +325,10 @@ services:
 
   mcp-gitlab:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-gitlab
     ports:
       - "${HELIXAGENT_PORT_MCP_GITLAB:-8221}:9000"
@@ -254,6 +338,10 @@ services:
 
   mcp-sentry:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-sentry
     ports:
       - "${HELIXAGENT_PORT_MCP_SENTRY:-8222}:9000"
@@ -264,6 +352,10 @@ services:
 
   mcp-kubernetes:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-kubernetes
     ports:
       - "${HELIXAGENT_PORT_MCP_KUBERNETES:-8223}:9000"
@@ -274,6 +366,10 @@ services:
 
   mcp-docker:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-docker
     ports:
       - "${HELIXAGENT_PORT_MCP_DOCKER:-8224}:9000"
@@ -284,6 +380,10 @@ services:
 
   mcp-ansible:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-ansible
     ports:
       - "${HELIXAGENT_PORT_MCP_ANSIBLE:-8225}:9000"
@@ -292,6 +392,10 @@ services:
 
   mcp-aws:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-aws
     ports:
       - "${HELIXAGENT_PORT_MCP_AWS:-8226}:9000"
@@ -303,6 +407,10 @@ services:
 
   mcp-gcp:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-gcp
     ports:
       - "${HELIXAGENT_PORT_MCP_GCP:-8227}:9000"
@@ -314,6 +422,10 @@ services:
 
   mcp-heroku:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-heroku
     ports:
       - "${HELIXAGENT_PORT_MCP_HEROKU:-8228}:9000"
@@ -323,6 +435,10 @@ services:
 
   mcp-cloudflare:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-cloudflare
     ports:
       - "${HELIXAGENT_PORT_MCP_CLOUDFLARE:-8229}:9000"
@@ -333,6 +449,10 @@ services:
 
   mcp-vercel:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-vercel
     ports:
       - "${HELIXAGENT_PORT_MCP_VERCEL:-8230}:9000"
@@ -342,6 +462,10 @@ services:
 
   mcp-workers:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-workers
     ports:
       - "${HELIXAGENT_PORT_MCP_WORKERS:-8231}:9000"
@@ -351,6 +475,10 @@ services:
 
   mcp-jetbrains:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-jetbrains
     ports:
       - "${HELIXAGENT_PORT_MCP_JETBRAINS:-8232}:9000"
@@ -359,6 +487,10 @@ services:
 
   mcp-k8s-alt:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-k8s-alt
     ports:
       - "${HELIXAGENT_PORT_MCP_K8S_ALT:-8233}:9000"
@@ -374,6 +506,10 @@ services:
 
   mcp-playwright:
     <<: *common-config
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     container_name: helixagent-mcp-playwright
     ports:
       - "${HELIXAGENT_PORT_MCP_PLAYWRIGHT:-8234}:9000"
@@ -382,6 +518,10 @@ services:
 
   mcp-browserbase:
     <<: *common-config
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     container_name: helixagent-mcp-browserbase
     ports:
       - "${HELIXAGENT_PORT_MCP_BROWSERBASE:-8235}:9000"
@@ -392,6 +532,10 @@ services:
 
   mcp-firecrawl:
     <<: *common-config
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 2048
+    oom_score_adj: 500
     container_name: helixagent-mcp-firecrawl
     ports:
       - "${HELIXAGENT_PORT_MCP_FIRECRAWL:-8236}:9000"
@@ -401,6 +545,10 @@ services:
 
   mcp-crawl4ai:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-crawl4ai
     ports:
       - "${HELIXAGENT_PORT_MCP_CRAWL4AI:-8237}:9000"
@@ -414,6 +562,10 @@ services:
 
   mcp-slack:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-slack
     ports:
       - "${HELIXAGENT_PORT_MCP_SLACK:-8238}:9000"
@@ -424,6 +576,10 @@ services:
 
   mcp-discord:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-discord
     ports:
       - "${HELIXAGENT_PORT_MCP_DISCORD:-8239}:9000"
@@ -433,6 +589,10 @@ services:
 
   mcp-telegram:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-telegram
     ports:
       - "${HELIXAGENT_PORT_MCP_TELEGRAM:-8240}:9000"
@@ -447,6 +607,10 @@ services:
 
   mcp-notion:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-notion
     ports:
       - "${HELIXAGENT_PORT_MCP_NOTION:-8250}:9000"
@@ -456,6 +620,10 @@ services:
 
   mcp-linear:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-linear
     ports:
       - "${HELIXAGENT_PORT_MCP_LINEAR:-8251}:9000"
@@ -465,6 +633,10 @@ services:
 
   mcp-jira:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-jira
     ports:
       - "${HELIXAGENT_PORT_MCP_JIRA:-8252}:9000"
@@ -476,6 +648,10 @@ services:
 
   mcp-asana:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-asana
     ports:
       - "${HELIXAGENT_PORT_MCP_ASANA:-8253}:9000"
@@ -485,6 +661,10 @@ services:
 
   mcp-trello:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-trello
     ports:
       - "${HELIXAGENT_PORT_MCP_TRELLO:-8254}:9000"
@@ -495,6 +675,10 @@ services:
 
   mcp-todoist:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-todoist
     ports:
       - "${HELIXAGENT_PORT_MCP_TODOIST:-8255}:9000"
@@ -504,6 +688,10 @@ services:
 
   mcp-monday:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-monday
     ports:
       - "${HELIXAGENT_PORT_MCP_MONDAY:-8256}:9000"
@@ -513,6 +701,10 @@ services:
 
   mcp-airtable:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-airtable
     ports:
       - "${HELIXAGENT_PORT_MCP_AIRTABLE:-8257}:9000"
@@ -522,6 +714,10 @@ services:
 
   mcp-obsidian:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-obsidian
     ports:
       - "${HELIXAGENT_PORT_MCP_OBSIDIAN:-8258}:9000"
@@ -532,6 +728,10 @@ services:
 
   mcp-atlassian:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-atlassian
     ports:
       - "${HELIXAGENT_PORT_MCP_ATLASSIAN:-8259}:9000"
@@ -548,6 +748,10 @@ services:
 
   mcp-brave-search:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-brave-search
     ports:
       - "${HELIXAGENT_PORT_MCP_BRAVE_SEARCH:-8260}:9000"
@@ -557,6 +761,10 @@ services:
 
   mcp-exa:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-exa
     ports:
       - "${HELIXAGENT_PORT_MCP_EXA:-8261}:9000"
@@ -566,6 +774,10 @@ services:
 
   mcp-tavily:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-tavily
     ports:
       - "${HELIXAGENT_PORT_MCP_TAVILY:-8262}:9000"
@@ -575,6 +787,10 @@ services:
 
   mcp-perplexity:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-perplexity
     ports:
       - "${HELIXAGENT_PORT_MCP_PERPLEXITY:-8263}:9000"
@@ -584,6 +800,10 @@ services:
 
   mcp-kagi:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-kagi
     ports:
       - "${HELIXAGENT_PORT_MCP_KAGI:-8264}:9000"
@@ -593,6 +813,10 @@ services:
 
   mcp-omnisearch:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-omnisearch
     ports:
       - "${HELIXAGENT_PORT_MCP_OMNISEARCH:-8265}:9000"
@@ -601,6 +825,10 @@ services:
 
   mcp-context7:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-context7
     ports:
       - "${HELIXAGENT_PORT_MCP_CONTEXT7:-8266}:9000"
@@ -609,6 +837,10 @@ services:
 
   mcp-llamaindex:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-llamaindex
     ports:
       - "${HELIXAGENT_PORT_MCP_LLAMAINDEX:-8267}:9000"
@@ -618,6 +850,10 @@ services:
 
   mcp-langchain:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-langchain
     ports:
       - "${HELIXAGENT_PORT_MCP_LANGCHAIN:-8268}:9000"
@@ -627,6 +863,10 @@ services:
 
   mcp-openai:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-openai
     ports:
       - "${HELIXAGENT_PORT_MCP_OPENAI:-8269}:9000"
@@ -641,6 +881,10 @@ services:
 
   mcp-google-drive:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-google-drive
     ports:
       - "${HELIXAGENT_PORT_MCP_GDRIVE:-8270}:9000"
@@ -651,6 +895,10 @@ services:
 
   mcp-google-calendar:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-google-calendar
     ports:
       - "${HELIXAGENT_PORT_MCP_GCALENDAR:-8271}:9000"
@@ -661,6 +909,10 @@ services:
 
   mcp-google-maps:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-google-maps
     ports:
       - "${HELIXAGENT_PORT_MCP_GMAPS:-8272}:9000"
@@ -670,6 +922,10 @@ services:
 
   mcp-youtube:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-youtube
     ports:
       - "${HELIXAGENT_PORT_MCP_YOUTUBE:-8273}:9000"
@@ -679,6 +935,10 @@ services:
 
   mcp-gmail:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-gmail
     ports:
       - "${HELIXAGENT_PORT_MCP_GMAIL:-8274}:9000"
@@ -694,6 +954,10 @@ services:
 
   mcp-datadog:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-datadog
     ports:
       - "${HELIXAGENT_PORT_MCP_DATADOG:-8275}:9000"
@@ -704,6 +968,10 @@ services:
 
   mcp-grafana:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-grafana
     ports:
       - "${HELIXAGENT_PORT_MCP_GRAFANA:-8276}:9000"
@@ -714,6 +982,10 @@ services:
 
   mcp-prometheus:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-prometheus
     ports:
       - "${HELIXAGENT_PORT_MCP_PROMETHEUS:-8277}:9000"
@@ -728,6 +1000,10 @@ services:
 
   mcp-stripe:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-stripe
     ports:
       - "${HELIXAGENT_PORT_MCP_STRIPE:-8278}:9000"
@@ -737,6 +1013,10 @@ services:
 
   mcp-hubspot:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-hubspot
     ports:
       - "${HELIXAGENT_PORT_MCP_HUBSPOT:-8279}:9000"
@@ -746,6 +1026,10 @@ services:
 
   mcp-zendesk:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-zendesk
     ports:
       - "${HELIXAGENT_PORT_MCP_ZENDESK:-8280}:9000"
@@ -762,6 +1046,10 @@ services:
 
   mcp-figma:
     <<: *common-config
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     container_name: helixagent-mcp-figma
     ports:
       - "${HELIXAGENT_PORT_MCP_FIGMA:-8281}:9000"

@@ -5,6 +5,10 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: helixagent-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: helixagent_db
       POSTGRES_USER: helixagent
@@ -25,6 +29,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: helixagent-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass helixagent123
     ports:
       - "6379:6379"
@@ -44,6 +52,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: helixagent-server
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "8080:8080"
     environment:
@@ -53,46 +65,46 @@ services:
       DB_USER: helixagent
       DB_PASSWORD: helixagent123
       DB_NAME: helixagent_db
-      
+
       # Redis Configuration
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: helixagent123
       REDIS_DB: 0
-      
+
       # Multi-Provider API Keys (set your actual keys here)
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       QWEN_API_KEY: ${QWEN_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      
+
       # Server Configuration
       HELIXAGENT_HOST: 0.0.0.0
       HELIXAGENT_PORT: 8080
       HELIXAGENT_DEBUG: "false"
-      
+
       # JWT Configuration
       JWT_SECRET: helixagent-jwt-secret-key-minimum-32-characters-long
-      
+
       # Configuration Path
       CONFIG_PATH: /app/configs/multi-provider.yaml
-      
+
       # CORS and Security
       CORS_ORIGINS: "*"
       RATE_LIMIT_REQUESTS: 100
       RATE_LIMIT_WINDOW: 1m
-      
+
       # Logging
       LOG_LEVEL: info
       LOG_FORMAT: json
-      
+
       # Metrics
       PROMETHEUS_ENABLED: "true"
       PROMETHEUS_PORT: 9090
-      
+
       # MCP/LSP
       MCP_ENABLED: "true"
       LSP_ENABLED: "true"
-      
+
       # Models.dev Configuration
       MODELSDEV_ENABLED: ${MODELSDEV_ENABLED:-false}
       MODELSDEV_API_KEY: ${MODELSDEV_API_KEY:-}
@@ -105,14 +117,14 @@ services:
       MODELSDEV_TIMEOUT: ${MODELSDEV_TIMEOUT:-30}
       MODELSDEV_USER_AGENT: ${MODELSDEV_USER_AGENT:-HelixAgent/1.0}
       MODELSDEV_RATE_LIMIT: ${MODELSDEV_RATE_LIMIT:-10}
-      
+
       # Ensemble Configuration
       ENSEMBLE_STRATEGY: confidence_weighted
       ENSEMBLE_MIN_PROVIDERS: 2
       ENSEMBLE_MAX_PROVIDERS: 4
       CONFIDENCE_THRESHOLD: 0.75
       TIMEOUT_SECONDS: 60
-      
+
     volumes:
       - ./configs:/app/configs:ro
       - ./logs:/app/logs
@@ -134,6 +146,10 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: helixagent-prometheus
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "9090:9090"
     volumes:
@@ -155,6 +171,10 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: helixagent-grafana
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "3000:3000"
     environment:

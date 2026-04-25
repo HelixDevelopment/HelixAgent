@@ -26,6 +26,10 @@ services:
   postgres:
     image: docker.io/postgres:15-alpine
     container_name: ci-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_USER: helixagent
       POSTGRES_PASSWORD: helixagent123
@@ -50,6 +54,10 @@ services:
   redis:
     image: docker.io/redis:7-alpine
     container_name: ci-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass helixagent123 --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "helixagent123", "ping"]
@@ -69,6 +77,10 @@ services:
   chromadb:
     image: docker.io/chromadb/chroma:0.5.23
     container_name: ci-chromadb
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       ANONYMIZED_TELEMETRY: "false"
       ALLOW_RESET: "true"
@@ -90,6 +102,10 @@ services:
   qdrant:
     image: docker.io/qdrant/qdrant:v1.12.1
     container_name: ci-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
       interval: 10s
@@ -108,6 +124,10 @@ services:
   minio:
     image: docker.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
     container_name: ci-minio
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: helixagent
@@ -129,6 +149,10 @@ services:
   kafka:
     image: docker.io/apache/kafka:3.9.0
     container_name: ci-kafka
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       KAFKA_NODE_ID: "0"
       KAFKA_PROCESS_ROLES: controller,broker
@@ -158,6 +182,10 @@ services:
   rabbitmq:
     image: docker.io/rabbitmq:3.13-management-alpine
     container_name: ci-rabbitmq
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       RABBITMQ_DEFAULT_USER: helixagent
       RABBITMQ_DEFAULT_PASS: helixagent123
@@ -180,6 +208,10 @@ services:
       context: ./tests/mock-llm-server
       dockerfile: Dockerfile
     container_name: ci-mockllm
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8090/health || exit 1"]
       interval: 10s
@@ -196,6 +228,10 @@ services:
   oauthmock:
     image: ghcr.io/navikt/mock-oauth2-server:2.1.10
     container_name: ci-oauthmock
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       SERVER_PORT: "7061"
     healthcheck:
@@ -222,6 +258,10 @@ services:
       args:
         GO_VERSION: "1.24.3"
     container_name: ci-go-builder
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
       - ci-go-mod-cache:/go/pkg/mod
@@ -279,6 +319,10 @@ services:
       context: .
       dockerfile: docker/ci/Dockerfile.ci-emulator
     container_name: ci-emulator
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     privileged: true
     devices:
       - /dev/kvm:/dev/kvm
@@ -312,6 +356,10 @@ services:
       dockerfile: docker/ci/Dockerfile.ci-mobile
       network: host
     container_name: ci-mobile-builder
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
       - ci-gradle-cache:/root/.gradle
@@ -355,6 +403,10 @@ services:
       dockerfile: docker/ci/Dockerfile.ci-web
       network: host
     container_name: ci-web-builder
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
       - ci-npm-cache-web:/root/.npm
@@ -384,6 +436,10 @@ services:
       dockerfile: docker/ci/Dockerfile.ci-desktop
       network: host
     container_name: ci-desktop-builder
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
       - ci-npm-cache-desktop:/root/.npm
@@ -416,6 +472,10 @@ services:
       dockerfile: docker/ci/Dockerfile.ci-go
       network: host
     container_name: ci-integration-runner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
       - ci-go-mod-cache:/go/pkg/mod
@@ -465,6 +525,10 @@ services:
       dockerfile: docker/ci/Dockerfile.ci-reporter
       network: host
     container_name: ci-reporter
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - .:/workspace:rw
     environment:

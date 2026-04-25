@@ -23,6 +23,10 @@ services:
   mcp-redis:
     image: redis:7-alpine
     container_name: helixagent-mcp-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass ${REDIS_PASSWORD:-helixagent123} --port 16379 --appendonly yes
     ports:
       - "16379:16379"
@@ -43,6 +47,10 @@ services:
   mcp-mongodb:
     image: mongo:7
     container_name: helixagent-mcp-mongodb
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:-helixagent}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-helixagent123}
@@ -66,6 +74,10 @@ services:
   mcp-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: helixagent-mcp-elasticsearch
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -90,6 +102,10 @@ services:
   mcp-qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-mcp-qdrant
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "6335:6333"
       - "6336:6334"
@@ -110,6 +126,10 @@ services:
   mcp-chroma:
     image: chromadb/chroma:latest
     container_name: helixagent-mcp-chroma
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "8000:8000"
     volumes:
@@ -133,6 +153,10 @@ services:
   mcp-postgres:
     image: postgres:15-alpine
     container_name: helixagent-mcp-postgres
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-helixagent_db}
       POSTGRES_USER: ${POSTGRES_USER:-helixagent}
@@ -156,6 +180,10 @@ services:
   mcp-mysql:
     image: mysql:8
     container_name: helixagent-mcp-mysql
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-helixagent123}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-helixagent}
@@ -180,6 +208,10 @@ services:
   mcp-minio:
     image: minio/minio:latest
     container_name: helixagent-mcp-minio
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -204,6 +236,10 @@ services:
   mcp-browser:
     image: browserless/chrome:latest
     container_name: helixagent-mcp-browser
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "3333:3000"
     environment:

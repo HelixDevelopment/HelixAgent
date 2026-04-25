@@ -6,6 +6,10 @@ services:
   postgres-test:
     image: pgvector/pgvector:pg15
     container_name: helixagent_test_postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_USER: helixagent
       POSTGRES_PASSWORD: helixagent123
@@ -27,6 +31,10 @@ services:
   redis-test:
     image: redis:7-alpine
     container_name: helixagent_test_redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "6380:6379"
     networks:
@@ -38,6 +46,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: helixagent_test_instance
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     environment:
       - DB_HOST=postgres-test
       - DB_PORT=5432
@@ -65,6 +77,10 @@ services:
       context: .
       dockerfile: Dockerfile.test
     container_name: helixagent_test_runner
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - TEST_DATABASE_URL=postgres://helixagent:helixagent123@postgres-test:5432/helixagent_test?sslmode=disable
       - TEST_REDIS_URL=redis://redis-test:6379

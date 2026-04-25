@@ -8,6 +8,10 @@ services:
   helixllm-postgres:
     image: docker.io/postgres:16-alpine
     container_name: helixagent-helixllm-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: ${HELIX_LLM_DB_NAME:-helixllm}
       POSTGRES_USER: ${HELIX_LLM_DB_USER:-helix}
@@ -28,6 +32,10 @@ services:
   helixllm-redis:
     image: docker.io/redis:7-alpine
     container_name: helixagent-helixllm-redis
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     command: redis-server --requirepass ${HELIX_LLM_REDIS_PASSWORD:-helixllm123} --appendonly yes
     volumes:
       - helixllm_redis_data:/data
@@ -44,6 +52,10 @@ services:
   helixllm-qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-helixllm-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_QDRANT_HTTP_PORT:-6333}:6333"
       - "${HELIX_LLM_QDRANT_GRPC_PORT:-6334}:6334"
@@ -62,6 +74,10 @@ services:
   helixllm-kafka:
     image: bitnami/kafka:latest
     container_name: helixagent-helixllm-kafka
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIX_LLM_KAFKA_PORT:-9093}:9092"
     environment:

@@ -22,6 +22,10 @@ services:
       context: ./plugins/mcp-server
       dockerfile: Dockerfile
     container_name: helixagent-mcp-server
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_MCP_PORT:-9100}:9100"
     environment:
@@ -67,6 +71,10 @@ services:
       context: ./docker/mcp
       dockerfile: Dockerfile.mcp-manager
     container_name: helixagent-mcp-manager
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${MCP_MANAGER_PORT:-9000}:9000"
     environment:
@@ -98,6 +106,10 @@ services:
       context: ./docker/mcp/filesystem
       dockerfile: Dockerfile
     container_name: helixagent-mcp-filesystem
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=filesystem
       - ALLOWED_DIRECTORIES=/workspace,/data
@@ -115,6 +127,10 @@ services:
       context: ./docker/mcp/git
       dockerfile: Dockerfile
     container_name: helixagent-mcp-git
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=git
       - GIT_REPOS_DIR=/repos
@@ -133,6 +149,10 @@ services:
       context: ./docker/mcp/memory
       dockerfile: Dockerfile
     container_name: helixagent-mcp-memory
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=memory
       - MEMORY_STORE_PATH=/data/memory
@@ -149,6 +169,10 @@ services:
       context: ./docker/mcp/fetch
       dockerfile: Dockerfile
     container_name: helixagent-mcp-fetch
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=fetch
       - FETCH_TIMEOUT=${MCP_FETCH_TIMEOUT:-30000}
@@ -164,6 +188,10 @@ services:
       context: ./docker/mcp/time
       dockerfile: Dockerfile
     container_name: helixagent-mcp-time
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=time
       - TZ=${TZ:-UTC}
@@ -177,6 +205,10 @@ services:
       context: ./docker/mcp/sqlite
       dockerfile: Dockerfile
     container_name: helixagent-mcp-sqlite
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=sqlite
       - SQLITE_DB_PATH=/data/databases
@@ -192,6 +224,10 @@ services:
       context: ./mcp-servers/postgres-mcp
       dockerfile: Dockerfile
     container_name: helixagent-mcp-postgres
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=postgresql
       - POSTGRES_HOST=postgres
@@ -212,6 +248,10 @@ services:
       context: ./docker/mcp/puppeteer
       dockerfile: Dockerfile
     container_name: helixagent-mcp-puppeteer
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 4096
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=puppeteer
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
@@ -234,6 +274,10 @@ services:
       context: ./docker/mcp/sequential-thinking
       dockerfile: Dockerfile
     container_name: helixagent-mcp-sequential-thinking
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=sequential-thinking
     networks:
@@ -250,6 +294,10 @@ services:
       context: ./mcp-servers/ai-experiment-logger
       dockerfile: Dockerfile
     container_name: helixagent-mcp-ai-experiment
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=ai-experiment-logger
       - DATA_DIR=/data/experiments
@@ -265,6 +313,10 @@ services:
       context: ./mcp-servers/conversational-api-debugger
       dockerfile: Dockerfile
     container_name: helixagent-mcp-api-debugger
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=api-debugger
     networks:
@@ -277,6 +329,10 @@ services:
       context: ./mcp-servers/design-to-code
       dockerfile: Dockerfile
     container_name: helixagent-mcp-design-to-code
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=design-to-code
     networks:
@@ -289,6 +345,10 @@ services:
       context: ./mcp-servers/domain-memory-agent
       dockerfile: Dockerfile
     container_name: helixagent-mcp-domain-memory
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=domain-memory
       - MEMORY_PATH=/data/memory
@@ -304,6 +364,10 @@ services:
       context: ./mcp-servers/lumera-agent-memory
       dockerfile: Dockerfile
     container_name: helixagent-mcp-lumera-memory
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=lumera-memory
       - DATA_PATH=/data/lumera
@@ -319,6 +383,10 @@ services:
       context: ./mcp-servers/GitMCP
       dockerfile: Dockerfile
     container_name: helixagent-mcp-gitmcp
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=gitmcp
       - REPOS_DIR=/repos
@@ -334,6 +402,10 @@ services:
       context: ./mcp-servers/huggingface-mcp
       dockerfile: Dockerfile
     container_name: helixagent-mcp-huggingface
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=huggingface
       - HF_API_KEY=${HUGGINGFACE_API_KEY:-}
@@ -350,6 +422,10 @@ services:
       context: ./mcp-servers/shell-tool-mcp
       dockerfile: Dockerfile
     container_name: helixagent-mcp-shell
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=shell
       - ALLOWED_COMMANDS=${MCP_SHELL_ALLOWED:-ls,cat,grep,find,echo}
@@ -366,6 +442,10 @@ services:
       context: ./mcp-servers/workflow-orchestrator
       dockerfile: Dockerfile
     container_name: helixagent-mcp-workflow
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=workflow
       - HELIXAGENT_URL=http://helixagent:7061
@@ -382,6 +462,10 @@ services:
       context: ./mcp-servers/project-health-auditor
       dockerfile: Dockerfile
     container_name: helixagent-mcp-health-auditor
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=health-auditor
       - WORKSPACE=/workspace
@@ -397,6 +481,10 @@ services:
       context: ./mcp-servers/mcp-wiki
       dockerfile: Dockerfile
     container_name: helixagent-mcp-wiki
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=wiki
     networks:
@@ -413,6 +501,10 @@ services:
       context: ./docker/mcp/chroma
       dockerfile: Dockerfile
     container_name: helixagent-mcp-chroma
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=chroma
       - CHROMA_URL=http://chromadb:8000
@@ -430,6 +522,10 @@ services:
       context: ./docker/mcp/qdrant
       dockerfile: Dockerfile
     container_name: helixagent-mcp-qdrant
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=qdrant
       - QDRANT_URL=http://qdrant:6333
@@ -450,6 +546,10 @@ services:
       context: ./docker/mcp/adapters/slack
       dockerfile: Dockerfile
     container_name: helixagent-mcp-slack
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=slack
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
@@ -464,6 +564,10 @@ services:
       context: ./docker/mcp/adapters/github
       dockerfile: Dockerfile
     container_name: helixagent-mcp-github
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=github
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -477,6 +581,10 @@ services:
       context: ./docker/mcp/adapters/linear
       dockerfile: Dockerfile
     container_name: helixagent-mcp-linear
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=linear
       - LINEAR_API_KEY=${LINEAR_API_KEY:-}
@@ -490,6 +598,10 @@ services:
       context: ./docker/mcp/adapters/notion
       dockerfile: Dockerfile
     container_name: helixagent-mcp-notion
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=notion
       - NOTION_API_KEY=${NOTION_API_KEY:-}
@@ -503,6 +615,10 @@ services:
       context: ./docker/mcp/adapters/brave-search
       dockerfile: Dockerfile
     container_name: helixagent-mcp-brave-search
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=brave-search
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
@@ -516,6 +632,10 @@ services:
       context: ./docker/mcp/adapters/sentry
       dockerfile: Dockerfile
     container_name: helixagent-mcp-sentry
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=sentry
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN:-}
@@ -534,6 +654,10 @@ services:
       context: ./docker/mcp/figma
       dockerfile: Dockerfile
     container_name: helixagent-mcp-figma
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=figma
       - FIGMA_ACCESS_TOKEN=${FIGMA_ACCESS_TOKEN:-}
@@ -548,6 +672,10 @@ services:
       context: ./docker/mcp/svgmaker
       dockerfile: Dockerfile
     container_name: helixagent-mcp-svgmaker
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=svgmaker
       - SVGMAKER_API_KEY=${SVGMAKER_API_KEY:-}
@@ -561,6 +689,10 @@ services:
       context: ./docker/mcp/replicate
       dockerfile: Dockerfile
     container_name: helixagent-mcp-replicate
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       - MCP_SERVER_NAME=replicate
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
@@ -578,6 +710,10 @@ services:
       context: ./docker/lsp/lsp-ai
       dockerfile: Dockerfile
     container_name: helixagent-lsp-ai
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LSP_AI_PORT:-5000}:5000"
     environment:
@@ -609,6 +745,10 @@ services:
       context: ./docker/lsp/multi-language
       dockerfile: Dockerfile
     container_name: helixagent-lsp-multi
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LSP_GO_PORT:-5001}:5001"      # gopls
       - "${LSP_RUST_PORT:-5002}:5002"    # rust-analyzer
@@ -643,6 +783,10 @@ services:
       context: ./docker/lsp/manager
       dockerfile: Dockerfile
     container_name: helixagent-lsp-manager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LSP_MANAGER_PORT:-5100}:5100"
     environment:
@@ -673,6 +817,10 @@ services:
       context: ./docker/acp
       dockerfile: Dockerfile
     container_name: helixagent-acp-manager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${ACP_MANAGER_PORT:-9200}:9200"
     environment:
@@ -703,6 +851,10 @@ services:
       context: ./docker/rag/sentence-transformers
       dockerfile: Dockerfile
     container_name: helixagent-embeddings-st
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${ST_PORT:-8016}:8016"
     environment:
@@ -733,6 +885,10 @@ services:
       context: ./docker/rag/bge-m3
       dockerfile: Dockerfile
     container_name: helixagent-embeddings-bge
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${BGE_PORT:-8017}:8017"
     environment:
@@ -764,6 +920,10 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${QDRANT_HTTP_PORT:-6333}:6333"
       - "${QDRANT_GRPC_PORT:-6334}:6334"
@@ -799,6 +959,10 @@ services:
       context: ./docker/rag/manager
       dockerfile: Dockerfile
     container_name: helixagent-rag-manager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${RAG_MANAGER_PORT:-8030}:8030"
     environment:
@@ -830,6 +994,10 @@ services:
       context: ./docker/rag/reranker
       dockerfile: Dockerfile
     container_name: helixagent-rag-reranker
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${RERANKER_PORT:-8021}:8021"
     environment:
@@ -863,6 +1031,10 @@ services:
       context: ./docker/protocol-discovery
       dockerfile: Dockerfile
     container_name: helixagent-protocol-discovery
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${PROTOCOL_DISCOVERY_PORT:-9300}:9300"
     environment:

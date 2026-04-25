@@ -17,6 +17,10 @@ services:
   prometheus:
     image: docker.io/prom/prometheus:v2.47.0
     container_name: helixagent-prometheus
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${PROMETHEUS_PORT:-8310}:9090"
     volumes:
@@ -46,6 +50,10 @@ services:
   grafana:
     image: docker.io/grafana/grafana:10.2.0
     container_name: helixagent-grafana
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${GRAFANA_PORT:-8311}:3000"
     environment:
@@ -75,6 +83,10 @@ services:
   loki:
     image: docker.io/grafana/loki:2.9.2
     container_name: helixagent-loki
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${LOKI_PORT:-3100}:3100"
     volumes:
@@ -94,6 +106,10 @@ services:
   promtail:
     image: docker.io/grafana/promtail:2.9.2
     container_name: helixagent-promtail
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     volumes:
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/log:/var/log:ro
@@ -110,6 +126,10 @@ services:
   alertmanager:
     image: docker.io/prom/alertmanager:v0.26.0
     container_name: helixagent-alertmanager
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${ALERTMANAGER_PORT:-9093}:9093"
     volumes:
@@ -126,6 +146,10 @@ services:
   node-exporter:
     image: docker.io/prom/node-exporter:v1.7.0
     container_name: helixagent-node-exporter
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
     volumes:
@@ -145,6 +169,10 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
     container_name: helixagent-cadvisor
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${CADVISOR_PORT:-8081}:8080"
     volumes:
@@ -164,6 +192,10 @@ services:
   redis-exporter:
     image: docker.io/oliver006/redis_exporter:v1.55.0
     container_name: helixagent-redis-exporter
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${REDIS_EXPORTER_PORT:-9121}:9121"
     environment:
@@ -179,6 +211,10 @@ services:
   postgres-exporter:
     image: docker.io/prometheuscommunity/postgres-exporter:v0.15.0
     container_name: helixagent-postgres-exporter
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
     environment:
@@ -193,6 +229,10 @@ services:
   blackbox-exporter:
     image: docker.io/prom/blackbox-exporter:v0.24.0
     container_name: helixagent-blackbox-exporter
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${BLACKBOX_EXPORTER_PORT:-9115}:9115"
     volumes:
@@ -209,6 +249,10 @@ services:
   helixagent-exporter:
     image: docker.io/library/python:3.11-slim
     container_name: helixagent-service-exporter
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "${HELIXAGENT_EXPORTER_PORT:-9200}:9200"
     volumes:

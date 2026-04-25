@@ -26,6 +26,10 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.5
     container_name: nvidia-rag-etcd
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu", "hybrid", "minimal"]
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -49,6 +53,10 @@ services:
   minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     container_name: nvidia-rag-minio
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu", "hybrid", "minimal"]
     environment:
       MINIO_ACCESS_KEY: minioadmin
@@ -70,6 +78,10 @@ services:
   milvus:
     image: milvusdb/milvus:v2.4.0-rc.1
     container_name: nvidia-rag-milvus
+    mem_limit: 6g
+    memswap_limit: 6g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu", "hybrid", "minimal"]
     command: ["milvus", "run", "standalone"]
     environment:
@@ -99,6 +111,10 @@ services:
   nemo-extraction:
     image: nvcr.io/nvidia/nemo-retriever:24.06
     container_name: nvidia-rag-extraction
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu"]
     runtime: nvidia
     environment:
@@ -137,6 +153,10 @@ services:
   nemotron-embedding:
     image: nvcr.io/nvidia/nemo-microservices/embedding:24.06
     container_name: nvidia-rag-embedding
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu"]
     runtime: nvidia
     environment:
@@ -173,6 +193,10 @@ services:
   nemotron-reranker:
     image: nvcr.io/nvidia/nemo-microservices/reranking:24.06
     container_name: nvidia-rag-reranker
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu"]
     runtime: nvidia
     environment:
@@ -209,6 +233,10 @@ services:
   nemotron-generation:
     image: nvcr.io/nvidia/nemo-microservices/generation:24.06
     container_name: nvidia-rag-generation
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["local-gpu-large"]
     runtime: nvidia
     environment:
@@ -247,6 +275,10 @@ services:
   tika-extraction:
     image: apache/tika:2.9.1-full
     container_name: nvidia-rag-tika
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["opensource", "minimal", "hybrid"]
     ports:
       - "8105:9998"
@@ -267,6 +299,10 @@ services:
   sentence-embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
     container_name: nvidia-rag-sentence-embedding
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     profiles: ["opensource", "minimal", "hybrid"]
     ports:
       - "8106:80"
@@ -287,6 +323,10 @@ services:
   ollama-generation:
     image: ollama/ollama:latest
     container_name: nvidia-rag-ollama
+    mem_limit: 12g
+    memswap_limit: 12g
+    pids_limit: 2048
+    oom_score_adj: 500
     profiles: ["opensource", "minimal", "hybrid"]
     ports:
       - "8107:11434"
@@ -319,6 +359,10 @@ services:
       context: ../../
       dockerfile: docker/nvidia-rag/Dockerfile.rag-bridge
     container_name: nvidia-rag-bridge
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     profiles: ["local-gpu", "hybrid", "opensource", "minimal"]
     ports:
       - "8500:8500"

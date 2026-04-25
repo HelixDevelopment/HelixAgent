@@ -12,6 +12,10 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: helixagent-zookeeper
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: zookeeper
     ports:
       - "${ZOOKEEPER_PORT:-2181}:2181"
@@ -37,6 +41,10 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: helixagent-kafka
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     hostname: kafka
     depends_on:
       zookeeper:
@@ -82,6 +90,10 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:23.8-alpine
     container_name: helixagent-clickhouse
+    mem_limit: 8g
+    memswap_limit: 8g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: clickhouse
     ports:
       - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"  # HTTP
@@ -119,6 +131,10 @@ services:
   neo4j:
     image: neo4j:5.15-community
     container_name: helixagent-neo4j
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     hostname: neo4j
     ports:
       - "${NEO4J_HTTP_PORT:-8123}:7474"   # HTTP
@@ -156,6 +172,10 @@ services:
   minio:
     image: minio/minio:latest
     container_name: helixagent-minio
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: minio
     ports:
       - "${MINIO_PORT:-9000}:9000"         # S3 API
@@ -185,6 +205,10 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: helixagent-minio-init
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     depends_on:
       minio:
         condition: service_healthy
@@ -229,6 +253,10 @@ services:
   flink-jobmanager:
     image: flink:1.19-java17
     container_name: helixagent-flink-jobmanager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: flink-jobmanager
     ports:
       - "${FLINK_UI_PORT:-8082}:8081"       # Flink Web UI
@@ -280,6 +308,10 @@ services:
   flink-taskmanager:
     image: flink:1.19-java17
     container_name: helixagent-flink-taskmanager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: flink-taskmanager
     depends_on:
       flink-jobmanager:
@@ -321,6 +353,10 @@ services:
   flink-historyserver:
     image: flink:1.19-java17
     container_name: helixagent-flink-historyserver
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: flink-historyserver
     ports:
       - "${FLINK_HISTORY_PORT:-8083}:8082"
@@ -356,6 +392,10 @@ services:
   iceberg-rest:
     image: tabulario/iceberg-rest:latest
     container_name: helixagent-iceberg-rest
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: iceberg-rest
     ports:
       - "${ICEBERG_REST_PORT:-8181}:8181"
@@ -390,6 +430,10 @@ services:
   spark-master:
     image: bitnami/spark:3.5
     container_name: helixagent-spark-master
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: spark-master
     ports:
       - "${SPARK_MASTER_PORT:-7077}:7077"   # Master port
@@ -420,6 +464,10 @@ services:
   spark-worker:
     image: bitnami/spark:3.5
     container_name: helixagent-spark-worker
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: spark-worker
     depends_on:
       spark-master:
@@ -454,6 +502,10 @@ services:
   spark-history:
     image: bitnami/spark:3.5
     container_name: helixagent-spark-history
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: spark-history
     ports:
       - "${SPARK_HISTORY_PORT:-18080}:18080"
@@ -485,6 +537,10 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: qdrant
     ports:
       - "${QDRANT_HTTP_PORT:-6333}:6333"   # REST API
@@ -516,6 +572,10 @@ services:
   qdrant-init:
     image: curlimages/curl:latest
     container_name: helixagent-qdrant-init
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     depends_on:
       qdrant:
         condition: service_healthy

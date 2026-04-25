@@ -8,6 +8,10 @@ services:
   rabbitmq:
     image: docker.io/rabbitmq:3.12-management
     container_name: helixagent-rabbitmq
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: rabbitmq
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"        # AMQP
@@ -37,6 +41,10 @@ services:
   zookeeper:
     image: docker.io/confluentinc/cp-zookeeper:7.5.0
     container_name: helixagent-zookeeper
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: zookeeper
     ports:
       - "${ZOOKEEPER_PORT:-2181}:2181"
@@ -64,6 +72,10 @@ services:
   kafka:
     image: docker.io/confluentinc/cp-kafka:7.5.0
     container_name: helixagent-kafka
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     hostname: kafka
     depends_on:
       zookeeper:
@@ -106,6 +118,10 @@ services:
   schema-registry:
     image: docker.io/confluentinc/cp-schema-registry:7.5.0
     container_name: helixagent-schema-registry
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     hostname: schema-registry
     depends_on:
       kafka:
@@ -133,6 +149,10 @@ services:
   kafka-ui:
     image: docker.io/provectuslabs/kafka-ui:latest
     container_name: helixagent-kafka-ui
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     depends_on:
       kafka:
         condition: service_healthy
@@ -156,6 +176,10 @@ services:
   kafka-init:
     image: docker.io/confluentinc/cp-kafka:7.5.0
     container_name: helixagent-kafka-init
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 2048
+    oom_score_adj: 500
     depends_on:
       kafka:
         condition: service_healthy

@@ -5,6 +5,10 @@ services:
       context: ./tests/mock-llm-server
       dockerfile: Dockerfile
     container_name: helixagent-mock-llm
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${MOCK_LLM_PORT:-18081}:8090"
     environment:
@@ -22,6 +26,10 @@ services:
   oauth-mock:
     image: ghcr.io/navikt/mock-oauth2-server:2.1.0
     container_name: helixagent-oauth-mock
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${OAUTH_MOCK_PORT:-18091}:7061"
     environment:
@@ -41,6 +49,10 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: helixagent-postgres
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       POSTGRES_DB: helixagent_db
       POSTGRES_USER: helixagent
@@ -64,6 +76,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: helixagent-redis
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     command: redis-server --requirepass helixagent123 --appendonly yes
     ports:
       - "${REDIS_PORT:-16379}:6379"
@@ -82,6 +98,10 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: helixagent-ollama
+    mem_limit: 12g
+    memswap_limit: 12g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "11434:11434"
     volumes:
@@ -103,6 +123,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: helixagent-app
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 2048
+    oom_score_adj: 500
     ports:
       - "8080:7061"
     environment:
@@ -190,6 +214,10 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: helixagent-prometheus
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "9090:9090"
     volumes:
@@ -210,6 +238,10 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: helixagent-grafana
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 1024
+    oom_score_adj: 500
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin123

@@ -13,6 +13,10 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: helixagent-qdrant
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${QDRANT_HTTP_PORT:-6333}:6333"
       - "${QDRANT_GRPC_PORT:-6334}:6334"
@@ -46,6 +50,10 @@ services:
   weaviate:
     image: semitechnologies/weaviate:latest
     container_name: helixagent-weaviate
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${WEAVIATE_PORT:-8081}:8080"
       - "${WEAVIATE_GRPC_PORT:-50051}:50051"
@@ -83,6 +91,10 @@ services:
       context: ./faiss
       dockerfile: Dockerfile
     container_name: helixagent-faiss
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${FAISS_PORT:-8015}:8015"
     environment:
@@ -114,6 +126,10 @@ services:
       context: ./sentence-transformers
       dockerfile: Dockerfile
     container_name: helixagent-sentence-transformers
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${ST_PORT:-8016}:8016"
     environment:
@@ -148,6 +164,10 @@ services:
       context: ./bge-m3
       dockerfile: Dockerfile
     container_name: helixagent-bge-m3
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${BGE_PORT:-8017}:8017"
     environment:
@@ -185,6 +205,10 @@ services:
       context: ./ragatouille
       dockerfile: Dockerfile
     container_name: helixagent-ragatouille
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${RAGATOUILLE_PORT:-8018}:8018"
     environment:
@@ -219,6 +243,10 @@ services:
       context: ./hyde
       dockerfile: Dockerfile
     container_name: helixagent-hyde
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${HYDE_PORT:-8019}:8019"
     environment:
@@ -246,6 +274,10 @@ services:
       context: ./multi-query
       dockerfile: Dockerfile
     container_name: helixagent-multi-query
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${MULTI_QUERY_PORT:-8020}:8020"
     environment:
@@ -273,6 +305,10 @@ services:
       context: ./reranker
       dockerfile: Dockerfile
     container_name: helixagent-reranker
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${RERANKER_PORT:-8021}:8021"
     environment:
@@ -310,6 +346,10 @@ services:
       context: ./manager
       dockerfile: Dockerfile
     container_name: helixagent-rag-manager
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 1024
+    oom_score_adj: 500
     ports:
       - "${RAG_MANAGER_PORT:-8030}:8030"
     environment:

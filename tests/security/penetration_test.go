@@ -38,7 +38,15 @@ func TestLLMPenetration(t *testing.T) {
 
 	config := SecurityTestConfig{
 		BaseURL: testutil.ServerURL(),
-		Timeout: 30 * time.Second, // Reduced timeout to fail fast on unresponsive LLMs
+		// Per-request timeout: the security suite uses model=helixagent-debate
+		// which (after the 2026-04-25 routing fix in openai_compatible.go that
+		// makes the model name authoritative — drainage report Finding #9a)
+		// reliably engages the full debate ensemble. Live measurement of the
+		// ensemble round-trip is 26–28s per request. The previous 30s budget
+		// sat right at the deadline edge, causing intermittent timeouts that
+		// summed to a 600s package wedge (drainage report Finding #15).
+		// 90s gives a 3× buffer over measured ensemble time.
+		Timeout: 90 * time.Second,
 	}
 
 	t.Run("PromptInjection", func(t *testing.T) {

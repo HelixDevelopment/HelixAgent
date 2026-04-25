@@ -88,11 +88,39 @@ Run as Option B: full validation as drainage exercise. Phases 0 → 6, expecting
 **What:** Asserts `expected: "completed", actual: "running"` — the assertion fires before the async work finishes. Classic race.
 **Fix:** Replace fixed sleep / immediate assertion with condition-polling (per `superpowers:systematic-debugging` `condition-based-waiting.md`).
 
-### Finding #12 — Redis dial to port 0
+### Finding #12 — Redis dial to port 0 (root cause partially traced)
 **Where:** integration log: `redis: connection pool: failed to dial after 5 attempts: dial tcp 127.0.0.1:0: connect: connection refused`
 **Class:** config defaulting bug
-**What:** Some code path constructs a Redis client with `Addr: ":0"`. Either an env var is unset and the default is empty, or a pointer-default got zero-valued. Port 0 is the giveaway.
-**Fix:** Audit Redis client construction — likely a missing fallback to `8102` or `8110` (CONST-027 port registry).
+**What:** Some code path dials Redis at `127.0.0.1:0`. Investigation traced this to `internal/cache/redis.go:30-32`:
+
+```go
+if cfg == nil {
+    return &RedisClient{client: redis.NewClient(&redis.Options{
+        Addr: "localhost:0", // Invalid address to ensure connection fails
+    })}
+}
+```
+
+**This is INTENTIONAL** when `cfg == nil` (the comment is explicit). The dial errors are the no-op-on-nil path firing. Production callers (`internal/router/router.go:270`) guard correctly with `if cfg.Redis.Host != "" && cfg.Redis.Port != ""`. Test/integration callers all pass real cfg.
+
+**Real bug not yet pinned down:** the dial happens during debate execution, suggesting some debate-adjacent service in the binary is constructing a Redis client without proper config. Did not converge on the exact call site in this session — needs deeper investigation than fits this drainage round. Filing as P1 deferred.
+
+**Fix when investigated:** find the caller that passes nil cfg (or empty Redis config) to the cache layer in the debate path; ensure proper config plumbing OR explicit "Redis disabled" branch.
+
+### Finding #13 — `TestE2E_ProviderFailover_AllFail_GracefulError` (Phase 5 e2e)
+**Where:** `tests/e2e/` package
+**Class:** likely format/assertion drift (similar to #7, #9)
+**What:** Failed in Phase 5 background run. Detail not extracted — needs separate investigation.
+
+### Finding #14 — `TestVerifierIntegrationWithChat` (Phase 5 e2e/verifier)
+**Where:** `tests/e2e/verifier/`
+**Class:** unknown
+**What:** Failed in 60s — possible timeout. Detail not extracted.
+
+### Finding #15 — `tests/security` package timed out at 600s
+**Where:** `tests/security/`
+**Class:** test wedge (similar to #10)
+**What:** Whole package hit the 600s suite timeout. Some security test wedged.
 
 ## Cross-cutting observations
 

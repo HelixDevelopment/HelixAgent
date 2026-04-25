@@ -19,11 +19,26 @@ import (
 )
 
 // cohereAPIKey returns the Cohere API key or skips the test.
+//
+// In addition to the env-var presence check, this helper performs a real
+// HealthCheck against the upstream Cohere API. The verifier may have
+// flagged the key as faulty during binary boot (see binary log:
+// "Recorded faulty API key api_key=COHERE_API_KEY") in which case env
+// presence is misleading — the key is set but rejected. CONST-030 says
+// "non-unit tests that cannot connect to real services MUST skip (not
+// fail)" so we skip here rather than letting the actual test hang on a
+// 30s context deadline. Drainage report 2026-04-25 Finding #8.
 func cohereAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("COHERE_API_KEY")
 	if key == "" {
-		t.Skip("COHERE_API_KEY not set")  // SKIP-OK: #requires-upstream-key
+		t.Skip("COHERE_API_KEY not set") // SKIP-OK: #requires-upstream-key
+	}
+	// Verify the key still works upstream — boot-time verification may
+	// have flagged it as faulty even when env is set.
+	probe := cohere.NewProvider(key, "", "command-a-03-2025")
+	if err := probe.HealthCheck(); err != nil {
+		t.Skipf("Cohere HealthCheck failed (key may be faulty or upstream unreachable): %v", err) // SKIP-OK: #requires-upstream-key
 	}
 	return key
 }

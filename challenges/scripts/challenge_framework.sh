@@ -436,6 +436,24 @@ EOF
 
     log_info "Results: $RESULTS_FILE"
     log_info "Report: $report_file"
+
+    # Drainage report 2026-04-25 Finding #18: propagate status as exit code
+    # so callers (and `set -e`) see real PASS/FAIL. Previously this function
+    # always returned 0, causing standalone challenge scripts to exit 0
+    # even when assertions failed — which then bubbled up through
+    # generic_challenge.sh's meta-layer as "Challenge ... PASSED" and
+    # produced false-green tallies like "498/498 PASSED" while real
+    # assertions had failed.
+    #
+    # Two calling conventions are accepted (preserve backward compatibility
+    # for skills_comprehensive_challenge.sh + cli_agent_integration_challenge.sh
+    # which pass numeric "0"/"1" instead of the "PASSED"/"FAILED" strings):
+    #   PASSED, "0"  → success (return 0)
+    #   anything else → failure (return 1)
+    case "$status" in
+        PASSED|0) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # Cleanup on exit

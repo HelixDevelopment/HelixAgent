@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"dev.helix.agent/internal/config"
+	"digital.vasic.concurrency/pkg/safe"
 	"digital.vasic.containers/pkg/compose"
 	"digital.vasic.containers/pkg/distribution"
 	"digital.vasic.containers/pkg/endpoint"
@@ -972,13 +972,27 @@ func TestLogrusAdapter(t *testing.T) {
 // recordingExecutor implements remote.RemoteExecutor and records
 // every Execute and CopyFile call, for asserting fan-out behavior
 // across multiple hosts without touching a real SSH daemon.
+//
+// Recording slices use safe.Slice (CONST-029): the bare-mutex+slice
+// pattern is prohibited even in test scaffolding, since the audit
+// gate doesn't distinguish.
 type recordingExecutor struct {
-	mu       sync.Mutex
-	executed []recordedExec
-	copied   []recordedCopy
+	executed *safe.Slice[recordedExec]
+	copied   *safe.Slice[recordedCopy]
 	// failFor names the host to simulate a deploy failure for.
 	// Execute returns an error when called with host.Name == failFor.
 	failFor string
+}
+
+// newRecordingExecutor returns a ready-to-use recording executor.
+// failFor is the host name that Execute should simulate a deploy
+// failure for; pass "" to never fail.
+func newRecordingExecutor(failFor string) *recordingExecutor {
+	return &recordingExecutor{
+		executed: safe.NewSlice[recordedExec](),
+		copied:   safe.NewSlice[recordedCopy](),
+		failFor:  failFor,
+	}
 }
 
 type recordedExec struct {
@@ -994,11 +1008,9 @@ type recordedCopy struct {
 func (m *recordingExecutor) Execute(
 	ctx context.Context, host remote.RemoteHost, cmd string,
 ) (*remote.CommandResult, error) {
-	m.mu.Lock()
-	m.executed = append(m.executed, recordedExec{
+	m.executed.Append(recordedExec{
 		host: host.Name, cmd: cmd,
 	})
-	m.mu.Unlock()
 	if m.failFor != "" && host.Name == m.failFor {
 		return &remote.CommandResult{ExitCode: 1},
 			fmt.Errorf("simulated failure on %s", host.Name)
@@ -1020,9 +1032,7 @@ func (m *recordingExecutor) CopyFile(
 	host remote.RemoteHost,
 	localPath, remotePath string,
 ) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.copied = append(m.copied, recordedCopy{
+	m.copied.Append(recordedCopy{
 		host: host.Name, local: localPath, dest: remotePath,
 	})
 	return nil
@@ -1059,10 +1069,8 @@ func writeTempCompose(t *testing.T) string {
 func (m *recordingExecutor) countExecMatching(
 	host string, mustContain ...string,
 ) int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	n := 0
-	for _, e := range m.executed {
+	for _, e := range m.executed.Snapshot() {
 		if e.host != host {
 			continue
 		}
@@ -1094,7 +1102,7 @@ func TestAdapter_RemoteComposeUp_FansOutToAllHosts(t *testing.T) {
 		"thinker": {Name: "thinker", Address: "thinker.local", User: "u1"},
 		"amber":   {Name: "amber", Address: "amber.local", User: "u2"},
 	}}
-	exec := &recordingExecutor{}
+	exec := newRecordingExecutor("")
 
 	adapter, err := NewAdapter(
 		WithHostManager(hm),
@@ -1118,13 +1126,11 @@ func TestAdapter_RemoteComposeUp_FansOutToAllHosts(t *testing.T) {
 			"host %s must receive compose up -d", h)
 
 		copiedToHost := 0
-		exec.mu.Lock()
-		for _, c := range exec.copied {
+		for _, c := range exec.copied.Snapshot() {
 			if c.host == h {
 				copiedToHost++
 			}
 		}
-		exec.mu.Unlock()
 		assert.Greater(t, copiedToHost, 0,
 			"host %s must receive at least one CopyFile", h)
 	}
@@ -1151,7 +1157,7 @@ func TestAdapter_RemoteComposeUp_HostLabelOverridesProfile(t *testing.T) {
 			// no deploy_profile label -> uses caller's "default".
 		},
 	}}
-	exec := &recordingExecutor{}
+	exec := newRecordingExecutor("")
 
 	adapter, err := NewAdapter(
 		WithHostManager(hm),
@@ -1198,7 +1204,7 @@ func TestAdapter_RemoteComposeUp_PartialFailureReturnsNil(t *testing.T) {
 		"alive": {Name: "alive", Address: "ok.local", User: "u1"},
 		"dead":  {Name: "dead", Address: "bad.local", User: "u2"},
 	}}
-	exec := &recordingExecutor{failFor: "dead"}
+	exec := newRecordingExecutor("dead")
 
 	adapter, err := NewAdapter(
 		WithHostManager(hm),
@@ -1230,7 +1236,7 @@ func TestAdapter_RemoteComposeUp_TotalFailureReturnsError(t *testing.T) {
 		"h1": {Name: "h1", Address: "h1.local", User: "u1"},
 		"h2": {Name: "h2", Address: "h2.local", User: "u2"},
 	}}
-	exec := &recordingExecutor{failFor: ""} // fail for all
+	exec := newRecordingExecutor("") // fail for all
 
 	// Override Execute via wrapper that always errors.
 	failExec := &failingExecutor{inner: exec}

@@ -20,13 +20,13 @@ func TestDefaultInfraConfig(t *testing.T) {
 
 	cfg := DefaultInfraConfig()
 	assert.Equal(t, "localhost", cfg.PostgresHost)
-	assert.Equal(t, "15432", cfg.PostgresPort)
+	assert.Equal(t, "8109", cfg.PostgresPort) // HELIXAGENT_PORT_POSTGRES_TEST per CONST-027 (was: 15432)
 	assert.Equal(t, "localhost", cfg.RedisHost)
-	assert.Equal(t, "6379", cfg.RedisPort)
+	assert.Equal(t, "8110", cfg.RedisPort) // HELIXAGENT_PORT_REDIS_MCP per CONST-027 (was: 6379)
 	assert.Equal(t, "localhost", cfg.MockLLMHost)
-	assert.Equal(t, "18081", cfg.MockLLMPort)
+	assert.Equal(t, "8106", cfg.MockLLMPort) // HELIXAGENT_PORT_MOCK_LLM per CONST-027 (was: 18081)
 	assert.Equal(t, "localhost", cfg.ServerHost)
-	assert.Equal(t, "7061", cfg.ServerPort)
+	assert.Equal(t, "8100", cfg.ServerPort) // HELIXAGENT_PORT_HTTP per CONST-027 (was: 7061)
 }
 
 func TestDefaultInfraConfig_EnvOverride(t *testing.T) {
@@ -91,7 +91,7 @@ func TestCachedCheck(t *testing.T) {
 func TestServerURL(t *testing.T) {
 	url := ServerURL()
 	assert.Contains(t, url, "http://")
-	assert.Contains(t, url, "7061")
+	assert.Contains(t, url, "8100") // HELIXAGENT_PORT_HTTP per CONST-027 (was: 7061)
 }
 
 func TestPostgresDSN(t *testing.T) {

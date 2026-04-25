@@ -499,4 +499,13 @@ Gin v1.12.0, PostgreSQL 15 (pgx/v5), Redis 7, testify v1.11.1, Prometheus/Grafan
 
 The authoritative Constitution lives in `CONSTITUTION.md` (currently v1.3.0, CONST-001…CONST-029; machine-readable form in `CONSTITUTION.json`). The "Mandatory Development Standards" section above summarizes those entries AND lists two forward rules (CONST-030, CONST-031) that are enforced in this repo but not yet merged into `CONSTITUTION.md` — they land on the next regeneration. When a summary and `CONSTITUTION.md` conflict on CONST-001…CONST-029, `CONSTITUTION.md` wins. Regenerate with `./bin/generate-constitution` (or `go run ./cmd/generate-constitution`); do not hand-edit a copy inside this file.
 
+<!-- BEGIN_CONSTITUTION -->
+# Project Constitution
+
+This is a marker block required by `make sync-constitution` (`Makefile:1372`). The full Constitution is NOT duplicated here — see `CONSTITUTION.md` (authoritative, currently v1.3.0 covering CONST-001…CONST-029) and `CONSTITUTION.json` (machine-readable). The forward rules CONST-030 (Real Infrastructure for All Non-Unit Tests) and CONST-031 (Authorized Remote Distribution Hosts) are enforced in this repo today and will be merged into `CONSTITUTION.md` on the next regeneration via `./bin/generate-constitution`.
+
+For the human-readable summary inherited by every submodule, see the "Mandatory Development Standards" and "Definition of Done" sections at the top of this file.
+<!-- END_CONSTITUTION -->
+
+
 

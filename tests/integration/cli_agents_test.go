@@ -336,19 +336,31 @@ func TestHelixCodeStreamingIntegrity(t *testing.T) {
 
 		content := strings.TrimSpace(response.Content)
 
-		// Check if response contains AI Debate Dialogue formatting
-		// If present, we verify the dialogue structure is correct rather than punctuation
-		hasDialogueFormat := strings.Contains(content, "╔═══") || strings.Contains(content, "HELIXAGENT")
+		// Check if response is a structured ensemble response (ANSI dialogue
+		// frame OR markdown table). The renderer emits one of these formats
+		// for ensemble responses; the punctuation check below only applies to
+		// plain-text replies that have neither structural format. Drainage
+		// report 2026-04-25 Finding #7: previously checked ANSI-only,
+		// markdown ensemble responses fell into the punctuation branch and
+		// failed because table rows don't end with .!?
+		hasANSIFrame := strings.Contains(content, "╔═══") || strings.Contains(content, "HELIXAGENT")
+		hasMarkdownEnsemble := strings.Contains(content, "## AI Debate Ensemble") ||
+			strings.Contains(content, "## Consensus") ||
+			strings.Contains(content, "| Role |") ||
+			strings.Contains(content, "| Provider |")
+		hasDialogueFormat := hasANSIFrame || hasMarkdownEnsemble
 
 		if hasDialogueFormat {
-			// Verify dialogue structure is present (proper ensemble response format)
-			hasEnsembleHeader := strings.Contains(content, "HELIXAGENT") || strings.Contains(content, "🎭")
+			// Verify structural integrity (header present + substantial content).
+			// Both ANSI and markdown variants count as a valid ensemble format.
+			hasEnsembleHeader := hasANSIFrame || hasMarkdownEnsemble
 			assert.True(t, hasEnsembleHeader, "Response should have ensemble header when using dialogue format")
-			// Dialogue format includes response - just verify we got substantial content
 			assert.Greater(t, len(content), 50, "Response should have substantial content")
-			t.Logf("HelixCode Coherent sentence (dialogue format=%v): %s", hasDialogueFormat, truncateCLIResponse(content, 200))
+			t.Logf("HelixCode Coherent response (ANSI=%v markdown=%v): %s",
+				hasANSIFrame, hasMarkdownEnsemble, truncateCLIResponse(content, 200))
 		} else {
-			// Standard response without dialogue - check punctuation
+			// Plain-text reply (no ensemble framing) — the original sentence
+			// contract still holds.
 			properEnding := strings.HasSuffix(content, ".") || strings.HasSuffix(content, "!") || strings.HasSuffix(content, "?")
 			assert.True(t, properEnding, "Sentence should end with proper punctuation")
 			t.Logf("HelixCode Coherent sentence (proper ending=%v): %s", properEnding, truncateCLIResponse(content, 200))

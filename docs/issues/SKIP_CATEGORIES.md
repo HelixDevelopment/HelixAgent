@@ -44,6 +44,17 @@ category entry, not reuse of an ill-fitting one.
   "invalid configuration is rejected"; the rejection path skips further
   assertions.
 
+## Smart-routing / runtime-decision skips
+
+- `#ensemble-not-engaged` — Test exercised the `helixagent-debate` model
+  but the binary's smart-routing decided to short-circuit to a single
+  provider (e.g. for trivially simple prompts) instead of engaging the
+  full debate ensemble. The test asserts ensemble structure that isn't
+  present, so it skips. Drainage report 2026-04-25 Finding #9.
+  Long-term: either configure routing to force the ensemble for tests,
+  OR write tests that assert "either short-circuit OR ensemble" without
+  prescribing which.
+
 ## Pre-existing backlog
 
 - `#legacy-untriaged` — Bulk-annotated during the 2026-04-24 skip-backlog

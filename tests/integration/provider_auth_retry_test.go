@@ -140,7 +140,7 @@ func TestIntegration_AllProviders401Retry(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var requestCount int32
 
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-fault-injection
 				count := atomic.AddInt32(&requestCount, 1)
 
 				if count == 1 {
@@ -182,7 +182,7 @@ func TestIntegration_AllProviders401Retry(t *testing.T) {
 func TestIntegration_ClaudeProvider401Retry(t *testing.T) {
 	var requestCount int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-fault-injection
 		count := atomic.AddInt32(&requestCount, 1)
 
 		if count == 1 {
@@ -251,7 +251,7 @@ func TestIntegration_ClaudeProvider401Retry(t *testing.T) {
 func TestIntegration_GeminiProvider401Retry(t *testing.T) {
 	var requestCount int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-fault-injection
 		count := atomic.AddInt32(&requestCount, 1)
 
 		if count == 1 {
@@ -323,7 +323,7 @@ func TestIntegration_GeminiProvider401Retry(t *testing.T) {
 func TestIntegration_QwenProvider401Retry(t *testing.T) {
 	var requestCount int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-fault-injection
 		count := atomic.AddInt32(&requestCount, 1)
 
 		if count == 1 {
@@ -397,7 +397,7 @@ func TestIntegration_ConcurrentAuth401Retry(t *testing.T) {
 	// Total request count - first 5 requests fail with 401, rest succeed
 	var requestCount int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-fault-injection
 		count := atomic.AddInt32(&requestCount, 1)
 
 		// First 5 requests fail with 401 (one from each goroutine)
@@ -479,7 +479,7 @@ func TestIntegration_ConcurrentAuth401Retry(t *testing.T) {
 func TestIntegration_AuthRetryHeaderPropagation(t *testing.T) {
 	var requestHeaders []http.Header
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { // MOCK-OK: #provider-contract-test
 		// Capture headers from each request
 		headers := r.Header.Clone()
 		requestHeaders = append(requestHeaders, headers)

@@ -10,8 +10,9 @@ SRC=/path/to/HelixAgent/docs/development/dod-dropin
 
 mkdir -p scripts reports/demos
 cp "$SRC/scripts/no-silent-skips.sh" scripts/
+cp "$SRC/scripts/no-mocks-above-unit.sh" scripts/
 cp "$SRC/scripts/demo-all.sh" scripts/
-chmod +x scripts/no-silent-skips.sh scripts/demo-all.sh
+chmod +x scripts/no-silent-skips.sh scripts/no-mocks-above-unit.sh scripts/demo-all.sh
 ```
 
 ## 2. Add the CLAUDE.md clause
@@ -41,7 +42,18 @@ block.
 
 Do not proceed to step 5 until this demo exists and passes locally.
 
-## 5. Run the gates in warn-mode
+## 5. Engage the mocks-above-unit ratchet, then run the gates
+
+The mocks gate is strict-with-allowlist from day one — but the allowlist starts
+empty, which would fail the build immediately. Generate the initial allowlist
+*first* so the ratchet engages without breaking things:
+
+```bash
+make no-mocks-above-unit-update-allowlist
+git add scripts/no-mocks-above-unit-allowlist.txt
+```
+
+Then run the validation:
 
 ```bash
 make ci-validate-all
@@ -49,23 +61,33 @@ make ci-validate-all
 
 Expect a report like:
 ```
-demo-all totals: PASS=1 FAIL=0 TODO=N NO-DEMO=M
-no-silent-skips: ⚠️  K violation(s) detected
+demo-all totals:        PASS=1 FAIL=0 TODO=N NO-DEMO=M
+no-silent-skips:        ⚠️  K violation(s) detected
+no-mocks-above-unit:    OK — J site(s) total, J allowlisted, 0 new.
 ```
 
-Record `K` (skip backlog) and `N + M` (demo backlog). These are your starting
-numbers. Every PR shrinks them.
+Record `K` (skip backlog), `J` (mocks-above-unit backlog — sites in the
+allowlist queued for drainage), and `N + M` (demo backlog). These are your
+starting numbers. Every PR shrinks at least one of them.
+
+The mocks gate is **strict from day one**: any `httptest.NewServer`,
+`httptest.NewRecorder`, `sqlmock`, `gomock`, `miniredis`, `NewMockXxx(`, mock
+package import, or `testify/mock` introduced *after* install — outside the
+allowlist — will fail the build. The skip and demo gates are warn-only until
+their backlogs hit zero.
 
 ## 6. Commit the drop-in
 
 ```bash
-git add scripts/no-silent-skips.sh scripts/demo-all.sh CLAUDE.md Makefile
-git commit -m "chore(dod): install Definition of Done gates (warn-only)"
+git add scripts/no-silent-skips.sh scripts/no-mocks-above-unit.sh \
+        scripts/no-mocks-above-unit-allowlist.txt \
+        scripts/demo-all.sh CLAUDE.md Makefile
+git commit -m "chore(dod): install Definition of Done gates (mocks=strict, others=warn-only)"
 ```
 
 ## 7. Graduate (eventually)
 
-When `K=0` and demos for every significant module exist and pass:
+When `K=0`, `J=0`, and demos for every significant module exist and pass:
 
 ```bash
 # Edit Makefile: drop the -warn suffix from no-silent-skips-warn and demo-all-warn
@@ -87,13 +109,17 @@ tasks.register<Exec>("noSilentSkips") {
     commandLine("bash", "scripts/no-silent-skips.sh")
     environment("NO_SILENT_SKIPS_WARN_ONLY", "1")
 }
+tasks.register<Exec>("noMocksAboveUnit") {
+    commandLine("bash", "scripts/no-mocks-above-unit.sh")
+    environment("NO_MOCKS_ABOVE_UNIT_WARN_ONLY", "1")
+}
 tasks.register<Exec>("demoAll") {
     commandLine("bash", "scripts/demo-all.sh")
     environment("DEMO_ALL_WARN_ONLY", "1")
     environment("DEMO_ALLOW_TODO", "1")
 }
 tasks.register("ciValidateAll") {
-    dependsOn("check", "noSilentSkips", "demoAll")
+    dependsOn("check", "noSilentSkips", "noMocksAboveUnit", "demoAll")
 }
 ```
 
@@ -105,8 +131,9 @@ Add to `package.json` `scripts`:
 {
   "scripts": {
     "gate:skips": "NO_SILENT_SKIPS_WARN_ONLY=1 bash scripts/no-silent-skips.sh",
+    "gate:mocks": "NO_MOCKS_ABOVE_UNIT_WARN_ONLY=1 bash scripts/no-mocks-above-unit.sh",
     "gate:demos": "DEMO_ALL_WARN_ONLY=1 DEMO_ALLOW_TODO=1 bash scripts/demo-all.sh",
-    "gate:all": "npm run lint && npm test && npm run gate:skips && npm run gate:demos"
+    "gate:all": "npm run lint && npm test && npm run gate:skips && npm run gate:mocks && npm run gate:demos"
   }
 }
 ```

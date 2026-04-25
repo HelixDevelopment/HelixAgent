@@ -1383,6 +1383,7 @@ ci-validate-all:
 	@$(MAKE) ci-validate-constitution
 	@$(MAKE) ci-validate-concurrency
 	@$(MAKE) no-silent-skips-warn
+	@$(MAKE) no-mocks-above-unit
 	@echo "🔐 Running new P0/P1 regression gates..."
 	@./challenges/scripts/repo_hygiene_challenge.sh
 	@./challenges/scripts/tls_posture_challenge.sh
@@ -1401,6 +1402,15 @@ no-silent-skips: ## DoD: fail on test skips without a SKIP-OK: #<ticket> annotat
 
 no-silent-skips-warn: ## DoD: same as no-silent-skips but warn instead of fail (transitional)
 	@NO_SILENT_SKIPS_WARN_ONLY=1 ./scripts/no-silent-skips.sh
+
+no-mocks-above-unit: ## DoD: ratchet — fail on NEW non-unit-test mock sites beyond scripts/no-mocks-above-unit-allowlist.txt (CONST-030)
+	@./scripts/no-mocks-above-unit.sh
+
+no-mocks-above-unit-all: ## DoD: report every non-unit-test mock site, ignoring the allowlist (audit mode)
+	@./scripts/no-mocks-above-unit.sh --all
+
+no-mocks-above-unit-update-allowlist: ## DoD: regenerate scripts/no-mocks-above-unit-allowlist.txt to match current state (use after intentional drainage)
+	@./scripts/no-mocks-above-unit.sh --update-allowlist
 
 demo-all: ## DoD: run every module's acceptance-demo block from its CLAUDE.md
 	@./scripts/demo-all.sh

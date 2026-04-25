@@ -58,7 +58,7 @@ func TestSSE_FullHTTPIntegration(t *testing.T) {
 		sse.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	// Make request
@@ -109,7 +109,7 @@ func TestSSE_WithHeartbeat(t *testing.T) {
 		sse.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/sse-heartbeat")
@@ -134,7 +134,7 @@ func TestSSE_ConcurrentClients(t *testing.T) {
 		sse.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	// Spawn 10 concurrent clients
@@ -200,7 +200,7 @@ func TestWebSocket_FullIntegration(t *testing.T) {
 		}
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	// Connect as WebSocket client
@@ -242,7 +242,7 @@ func TestWebSocket_BinaryMessages(t *testing.T) {
 		wsw.WriteBinary(binaryData)
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws-binary"
@@ -286,7 +286,7 @@ func TestWebSocket_ConcurrentMessages(t *testing.T) {
 		wsw.WriteJSON(map[string]bool{"done": true})
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws-concurrent"
@@ -333,7 +333,7 @@ func TestJSONL_FullHTTPIntegration(t *testing.T) {
 		jw.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/jsonl")
@@ -371,7 +371,7 @@ func TestJSONL_LargePayload(t *testing.T) {
 		jw.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/jsonl-large")
@@ -501,7 +501,7 @@ func TestEventStream_FullHTTPIntegration(t *testing.T) {
 		esw.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/eventstream")
@@ -674,7 +674,7 @@ func TestUniversalStreamer_AllTypes(t *testing.T) {
 func TestCrossStreaming_SSEToJSONL(t *testing.T) {
 	// Simulate converting SSE to JSONL
 	sseBuffer := &bytes.Buffer{}
-	sse, _ := streaming.NewSSEWriter(httptest.NewRecorder())
+	sse, _ := streaming.NewSSEWriter(httptest.NewRecorder()) // MOCK-OK: #library-http-test
 
 	// Generate SSE events
 	for i := 0; i < 5; i++ {
@@ -714,7 +714,7 @@ func TestCrossStreaming_AsyncGenToSSE(t *testing.T) {
 	}()
 
 	// Convert to SSE
-	recorder := httptest.NewRecorder()
+	recorder := httptest.NewRecorder() // MOCK-OK: #library-http-test
 	sse, _ := streaming.NewSSEWriter(recorder)
 
 	for {
@@ -753,7 +753,7 @@ func TestPerformance_HighThroughputSSE(t *testing.T) {
 		}
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	start := time.Now()
@@ -779,7 +779,7 @@ func TestPerformance_HighThroughputJSONL(t *testing.T) {
 		jw.WriteDone()
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	start := time.Now()
@@ -814,7 +814,7 @@ func TestErrorHandling_SSEConnectionClose(t *testing.T) {
 		}
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -857,7 +857,7 @@ func TestErrorHandling_WebSocketDisconnect(t *testing.T) {
 		}
 	})
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(router) // MOCK-OK: #library-http-test
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws-disconnect"

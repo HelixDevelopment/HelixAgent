@@ -9,11 +9,12 @@ rationale).
 
 ```
 dod-dropin/
-├── README.md              ← you are here
-├── APPLY.md               ← 5-minute install procedure
+├── README.md                  ← you are here
+├── APPLY.md                   ← 5-minute install procedure
 ├── scripts/
-│   ├── no-silent-skips.sh ← gate #4: skips must be annotated
-│   └── demo-all.sh        ← gate #6: every CLAUDE.md acceptance demo must pass
+│   ├── no-silent-skips.sh     ← gate #4: skips must be annotated
+│   ├── no-mocks-above-unit.sh ← gate #3: non-unit tests must hit real infra (no httptest/sqlmock/etc)
+│   └── demo-all.sh            ← gate #6: every CLAUDE.md acceptance demo must pass
 └── templates/
     ├── CLAUDE_md_clause.md      ← paste into each CLAUDE.md
     └── Makefile_additions.md    ← wire the gates
@@ -29,5 +30,10 @@ Everything in this drop-in exists to enforce that premise.
 
 ## Install
 
-See `APPLY.md`. Five minutes to install, warn-mode by default, graduates to
-strict when your skip-and-NO-DEMO backlog hits zero.
+See `APPLY.md`. Five minutes to install. Skip and demo gates are warn-only
+by default and graduate to strict when their backlogs hit zero. The
+mocks-above-unit gate is **strict from day one** via a ratchet — running
+`make no-mocks-above-unit-update-allowlist` once at install captures the
+current state; thereafter the gate fails the build on any new in-process
+fake outside that allowlist. Drain the allowlist over time; it should only
+ever shrink.

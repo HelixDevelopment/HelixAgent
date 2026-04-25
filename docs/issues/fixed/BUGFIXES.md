@@ -1,5 +1,77 @@
 # Bug Fixes and Known Issues
 
+## Issue #31: verifier integration tests assert URLs the real binary does not serve (KNOWN ISSUE 2026-04-25, fix pending)
+
+### Issue
+`tests/integration/verifier/integration_test.go` (15 test functions) and `tests/integration/verifier/verifier_integration_test.go` (3 sub-tests under `TestVerifierAPIIntegration`) all use `httptest.NewRecorder()` against an in-process gin router built by a local `setupTestRouter` helper. The router in those tests mounts handlers under `/api/v1/verifier/*`. The real binary (`internal/router/router.go`) mounts the same handlers under different paths entirely:
+
+| Test asserts (in-process) | Real binary serves at |
+|---|---|
+| `POST /api/v1/verifier/verify` | `POST /v1/verification/model` |
+| `POST /api/v1/verifier/verify/batch` | `POST /v1/verification/batch` |
+| `GET  /api/v1/verifier/tests` | `GET  /v1/verification/tests` |
+| `GET  /api/v1/verifier/scores/:id` | `GET  /v1/scoring/model/:id` |
+| `GET  /api/v1/verifier/scores/top` | `GET  /v1/scoring/top` |
+| `GET  /api/v1/verifier/scores/weights` | `GET  /v1/scoring/weights` |
+| `PUT  /api/v1/verifier/scores/weights` | `PUT  /v1/scoring/weights` |
+| `POST /api/v1/verifier/scores/compare` | `POST /v1/scoring/compare` |
+| `GET  /api/v1/verifier/health/providers` | `GET  /v1/health/providers` |
+| `GET  /api/v1/verifier/health/healthy` | `GET  /v1/health/providers/healthy` |
+| `POST /api/v1/verifier/health/providers` | `POST /v1/health/provider` |
+| `GET  /api/v1/verifier/health/providers/:id` | `GET  /v1/health/provider/:id` |
+| `DEL  /api/v1/verifier/health/providers/:id` | `DEL  /v1/health/provider/:id` |
+| `POST /api/v1/verifier/health/fastest` | `GET  /v1/health/providers/fastest` (also: GET vs POST) |
+| `POST /api/v1/verifier/health/record/success` | `POST /v1/health/provider/:id/success` |
+| `POST /api/v1/verifier/health/record/failure` | `POST /v1/health/provider/:id/failure` |
+| `GET  /api/v1/verifier/health/available/:id` | `GET  /v1/health/provider/:id/available` |
+| `GET  /api/v1/verifier/health` | (no equivalent — the real binary has no aggregate verifier-health endpoint) |
+
+The tests have been passing for a long time. The real binary has been serving DIFFERENT routes the entire time. No real client following the in-process tests as documentation could reach those paths on a running HelixAgent.
+
+### Root Cause
+Two compounding issues:
+1. **Tests built their own router instead of exercising the real binary.** `setupTestRouter` in `tests/integration/verifier/integration_test.go:21` does `r.Group("/api/v1")` then `handlers.RegisterVerificationRoutes(api, ...)`. The real binary does `protected = r.Group("/v1")` then `verificationGroup := protected.Group("/verification")` (different prefix, different sub-segment). Because the test owns the router, it can mount handlers anywhere — and nothing forces alignment with production.
+2. **No contract test at the seam.** No test exercises a real running binary at the documented routes. The OpenAPI / route-table is not generated from a single source, and there's no roundtrip test that would have flagged the divergence on either side.
+
+This is the canonical CONST-030 violation pattern that the `no-mocks-above-unit` gate (added 2026-04-25) exists to make visible going forward.
+
+### Affected Test Functions
+- `tests/integration/verifier/integration_test.go`:
+  - `TestVerificationEndpoint_VerifyModel`
+  - `TestVerificationEndpoint_BatchVerify`
+  - `TestVerificationEndpoint_GetVerificationTests`
+  - `TestScoringEndpoint_GetModelScore`
+  - `TestScoringEndpoint_GetTopModels`
+  - `TestScoringEndpoint_GetScoringWeights`
+  - `TestScoringEndpoint_UpdateScoringWeights`
+  - `TestScoringEndpoint_CompareModels`
+  - `TestHealthEndpoint_GetAllProvidersHealth`
+  - `TestHealthEndpoint_GetHealthyProviders`
+  - `TestHealthEndpoint_AddRemoveProvider`
+  - `TestHealthEndpoint_GetFastestProvider`
+  - `TestHealthEndpoint_RecordSuccessFailure`
+  - `TestHealthEndpoint_IsProviderAvailable`
+  - `TestVerificationHealth`
+- `tests/integration/verifier/verifier_integration_test.go`:
+  - `TestVerifierAPIIntegration` (3 sub-tests using `httptest.NewRecorder` at lines 144, 156, 176)
+
+### Fix Plan (NOT YET APPLIED — drainage queued)
+Per the no-mocks-above-unit drainage workflow (`docs/issues/MOCK_CATEGORIES.md`):
+
+1. **Convert each test** to use `testutil.RequireServer(t)` + `http.Client` against the real `/v1/...` paths the binary actually serves. Pattern: see `tests/integration/ensemble_handler_integration_test.go` (the converted reference).
+2. **Run the converted tests against the real binary** (`./bin/helixagent` per CONST-030's Mandatory Container Orchestration Flow). Expect some assertions to fail — the real binary may need lazy-service wiring to actually answer `/v1/verification/*` routes (the router log says "services pending"). Each failure is a real bug to file separately.
+3. **Remove the converted entries** from `scripts/no-mocks-above-unit-allowlist.txt` via `make no-mocks-above-unit-update-allowlist`.
+4. **Update any documentation** that references `/api/v1/verifier/*` to use the real `/v1/verification/*` / `/v1/scoring/*` / `/v1/health/*` paths.
+
+### Verification Test (when fix lands)
+`tests/integration/verifier/integration_test.go` end-to-end: every test passes against `./bin/helixagent` with the real verifier services wired (or skips gracefully when not). Allowlist drained of all 18 affected entries.
+
+### Related
+- Discovered during the no-mocks-above-unit drainage proof-of-concept (see commit-range 2026-04-25 working session).
+- Companion issue: the real binary's verifier handler is currently constructed with `nil` services (`internal/router/router.go:1205`) and notes "services pending" — even after the test paths are corrected, the real endpoints may return 503 until the lazy-service provider is fully wired. That is a separate bug class to confirm during conversion.
+
+---
+
 ## Issue #30: StandardGuardrailPipeline slipped 24/47 defensive red-team fixtures (BUGFIX 2026-04-21)
 
 ### Issue

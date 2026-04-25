@@ -2,43 +2,55 @@
 // +build integration
 
 // Package integration provides ensemble handler integration tests.
-// These tests verify the ensemble HTTP endpoints using httptest against
-// a real Gin router with the EnsembleHandler wired in.
+//
+// These tests exercise the LIVE /v1/ensemble/* endpoints on a running
+// HelixAgent binary (./bin/helixagent), per CONST-030 — non-unit tests
+// must hit the real running system, not an in-process router. They skip
+// gracefully via testutil.RequireServer when the binary is not reachable.
+//
+// Converted from the in-process httptest.NewRecorder pattern on 2026-04-25
+// as the proof-of-concept for the no-mocks-above-unit drainage workflow
+// (see scripts/no-mocks-above-unit-allowlist.txt and docs/issues/MOCK_CATEGORIES.md).
+// The previous version asserted handler behaviour against a fake gin.Engine
+// — passing tests proved the handler returned the right struct, not that
+// the running binary served the documented endpoints.
 package integration
 
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"dev.helix.agent/internal/handlers"
+	"dev.helix.agent/internal/testutil"
 )
 
-func setupEnsembleRouter() *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	h := handlers.NewEnsembleHandler(nil, logger)
-
-	r := gin.New()
-	r.Use(gin.Recovery())
-	api := r.Group("/v1")
-	h.RegisterRoutes(api)
-	return r
+// ensembleBaseURL returns the /v1 base URL for the running HelixAgent
+// binary, derived from testutil.DefaultInfraConfig (HELIXAGENT_HOST/PORT
+// env vars, defaulting to localhost:8100 per the CONST-027 port registry).
+func ensembleBaseURL(t *testing.T) string {
+	t.Helper()
+	cfg := testutil.DefaultInfraConfig()
+	return fmt.Sprintf("http://%s:%s/v1", cfg.ServerHost, cfg.ServerPort)
 }
 
-// TestEnsembleHandler_CreateTeam verifies that POST /v1/ensemble/teams
-// creates a new team and returns 201 with a valid team ID.
+// ensembleHTTPClient returns a short-timeout client for the test
+// roundtrips. The /v1/ensemble routes are in the auth-skip list
+// (internal/router/router.go:387) so no Authorization header is needed.
+func ensembleHTTPClient() *http.Client {
+	return &http.Client{Timeout: 10 * time.Second}
+}
+
+// TestEnsembleHandler_CreateTeam verifies that POST /v1/ensemble/teams on
+// the real running binary creates a team and returns 201 with a valid id.
 func TestEnsembleHandler_CreateTeam(t *testing.T) {
-	r := setupEnsembleRouter()
+	testutil.RequireServer(t)
 
 	body := map[string]interface{}{
 		"name":        "integration-test-team",
@@ -51,57 +63,73 @@ func TestEnsembleHandler_CreateTeam(t *testing.T) {
 			"enable_voting":       true,
 		},
 	}
-	raw, _ := json.Marshal(body)
-
-	req := httptest.NewRequest(http.MethodPost, "/v1/ensemble/teams", bytes.NewReader(raw))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code, "should return 201 Created")
-
-	var resp map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	raw, err := json.Marshal(body)
 	require.NoError(t, err)
-	assert.NotEmpty(t, resp["id"], "response should contain a team id")
+
+	req, err := http.NewRequest(http.MethodPost, ensembleBaseURL(t)+"/ensemble/teams", bytes.NewReader(raw))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := ensembleHTTPClient().Do(req)
+	require.NoError(t, err, "POST /v1/ensemble/teams should reach the binary")
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusCreated, resp.StatusCode,
+		"should return 201 Created; body=%s", string(bodyBytes))
+
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(bodyBytes, &result))
+	assert.NotEmpty(t, result["id"], "response should contain a team id")
 }
 
-// TestEnsembleHandler_ListTeams verifies that GET /v1/ensemble/teams
-// returns 200 with an array body.
+// TestEnsembleHandler_ListTeams verifies that GET /v1/ensemble/teams on
+// the real binary returns 200 with a JSON array body.
 func TestEnsembleHandler_ListTeams(t *testing.T) {
-	r := setupEnsembleRouter()
+	testutil.RequireServer(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/ensemble/teams", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	req, err := http.NewRequest(http.MethodGet, ensembleBaseURL(t)+"/ensemble/teams", nil)
+	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	resp, err := ensembleHTTPClient().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 
-	var resp []interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	require.NoError(t, err, "response should be a JSON array")
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result),
+		"response should be a JSON array")
 }
 
 // TestEnsembleHandler_ListSessions verifies that GET /v1/ensemble/sessions
-// returns 200 and a valid JSON response.
+// on the real binary returns 200.
 func TestEnsembleHandler_ListSessions(t *testing.T) {
-	r := setupEnsembleRouter()
+	testutil.RequireServer(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/ensemble/sessions", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	req, err := http.NewRequest(http.MethodGet, ensembleBaseURL(t)+"/ensemble/sessions", nil)
+	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	resp, err := ensembleHTTPClient().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-// TestEnsembleHandler_GetTeam_NotFound verifies that requesting a
-// non-existent team returns 404.
+// TestEnsembleHandler_GetTeam_NotFound verifies that GET on a non-existent
+// team id against the real binary returns 404.
 func TestEnsembleHandler_GetTeam_NotFound(t *testing.T) {
-	r := setupEnsembleRouter()
+	testutil.RequireServer(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/ensemble/teams/nonexistent-id", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	req, err := http.NewRequest(http.MethodGet, ensembleBaseURL(t)+"/ensemble/teams/nonexistent-id", nil)
+	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	resp, err := ensembleHTTPClient().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }

@@ -1226,11 +1226,25 @@ func (sv *StartupVerifier) verifyAPIKeyProvider(ctx context.Context, provider *U
 	provider.TestResults = make(map[string]bool)
 
 	verifiedModelCount := 0
+	skippedDueToDeadline := 0
 	var lastVerifyErr error
 	var lastResult *ServiceVerificationResult
 
-	// Test each model individually (like verifyFreeProvider does)
+	// Test each model individually (like verifyFreeProvider does).
+	//
+	// Drainage report 2026-04-25 Finding #3: providers with many models
+	// (e.g. Mistral with 55) exhaust the parent context's VerificationTimeout
+	// before iterating the full list. Without the deadline check below, the
+	// remaining models hit ctx.Err() inside the underlying HTTP client and
+	// log misleading "API call failed duration=2µs error=context deadline
+	// exceeded" messages — those weren't real API failures, just
+	// post-deadline iterations. Breaking cleanly produces ONE summary log
+	// instead of dozens of confusing per-model failures.
 	for _, modelID := range disc.Models {
+		if ctx.Err() != nil {
+			skippedDueToDeadline = len(disc.Models) - len(provider.Models)
+			break
+		}
 		sv.log.WithFields(logrus.Fields{
 			"provider": provider.Type,
 			"model":    modelID,
@@ -1303,6 +1317,18 @@ func (sv *StartupVerifier) verifyAPIKeyProvider(ctx context.Context, provider *U
 				"reason":   reason,
 			}).Warn("Model not verified")
 		}
+	}
+
+	// Surface the deadline-skip count once (rather than logging per-model
+	// "API call failed" for every skipped model) — drainage report Finding #3.
+	if skippedDueToDeadline > 0 {
+		sv.log.WithFields(logrus.Fields{
+			"provider":           provider.Type,
+			"skipped_count":      skippedDueToDeadline,
+			"verified_count":     verifiedModelCount,
+			"total_models":       len(disc.Models),
+			"verification_limit": sv.config.VerificationTimeout,
+		}).Warn("Model verification budget exhausted; remaining models skipped — consider raising VerificationTimeout for providers with many models")
 	}
 
 	// Provider is only verified if at least one model passes

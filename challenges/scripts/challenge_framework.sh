@@ -335,12 +335,31 @@ finalize_challenge() {
     local end_time=$(date +%s)
     local duration=$((end_time - START_TIME))
 
-    # Count passed/failed assertions from log file
+    # Count passed/failed assertions from log file.
+    # Drainage report 2026-04-25 Finding #16: the original
+    #   passed=$(grep -c ... || echo 0)
+    # produced multi-line output ("0\n0") in some shell-mode interactions
+    # when grep had zero matches (grep -c outputs "0" + exits 1; the OR
+    # then ALSO emits "0", and the outer command-substitution preserves
+    # the inner newline). Interpolated into the JSON heredoc this produced
+    # invalid JSON like:
+    #   "assertions_failed": 0
+    #   0
+    #   }
+    # making the file unparseable, breaking the master-summary aggregator
+    # and any downstream automation. Confirmed in production output:
+    #   xxd → "_failed": 0.0.}.   (two zeros separated by newline)
+    # Fix: capture grep output once with set +e so the OR fallback is not
+    # needed; default to 0 only if the result is empty.
     local passed=0
     local failed=0
     if [[ -f "$OUTPUT_DIR/logs/assertions.log" ]]; then
-        passed=$(grep -c "|PASSED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
-        failed=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+        set +e
+        passed=$(grep -c "|PASSED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null)
+        failed=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null)
+        set -e
+        [[ -z "$passed" ]] && passed=0
+        [[ -z "$failed" ]] && failed=0
     fi
 
     # Create results JSON (simple format)

@@ -147,6 +147,33 @@ The test's "all providers fail" setup did NOT actually disable providers — the
 **Class:** server response too slow OR test client timeout too short
 **What:** Test does `POST http://localhost:8100/v1/chat/completions` with a 60s `Client.Timeout`. Hits `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`. Either: server didn't even send headers within 60s (likely if a slow provider chain was selected) OR the prompt is one that triggers a long ensemble flow. Workarounds: bump client timeout to 180-300s, OR skip when `/v1/health` reports the verifier-required provider is unhealthy.
 
+### Finding #16 — challenge framework's result-aggregation is broken (false-green at scale)
+
+**Where:** `challenges/scripts/run_all_challenges.sh` + per-challenge `*_results.json`
+**Class:** **the canonical false-green pattern** the framework was built to catch
+**What:** Phase 6 (full 498-challenge sweep, 989s wall time) reported `Passed: 498 / 498` with EXIT=0. Spot-check of the result JSONs reveals:
+
+- 998 result-JSON files written (per-challenge, per-run)
+- 502 marked `"status": "PASSED"`
+- 494 stayed `"status": "running"` (never updated to a final state)
+- **433 of the PASSED-status JSONs were inspected; ALL 433 have `"assertions": []` and `"metrics": {}`** — zero assertions across the entire sample
+
+The actual challenge scripts (e.g. `challenges/scripts/curl_api_challenge.sh`) DO have real test logic — `record_assertion "health" "health_check" ...` calls, curl probes, etc. But `record_assertion` is not making it into the final JSON, OR a separate writer overwrites it with the empty initialization JSON.
+
+The runner's "PASSED" status only checks the challenge script's exit code. A challenge can record 0 assertions and still be marked PASSED. A challenge can have its assertion-recording broken and still be marked PASSED.
+
+This is the canonical "tests pass but the product doesn't work" pattern at challenge scale. The whole 498-script sweep is currently producing zero verifiable evidence about product correctness. The binary surviving 498 invocations without crashing IS a positive signal (process robustness), but the per-challenge assertions are not being tracked, which means we have no signal about per-feature correctness.
+
+**Fix priority: P0** — this is more impactful than any single drainage finding because it invalidates the entire challenge suite as a verification mechanism. Until this is fixed, `make test-with-infra` and `./challenges/scripts/run_all_challenges.sh` are theater, not tests.
+
+**Investigation needed before fix:**
+1. Read `challenges/scripts/lib/challenge_framework.sh` (the `record_assertion` definition)
+2. Trace where `record_assertion` writes — file path, format, lifecycle
+3. Find the writer that produces the empty-assertions JSON
+4. Determine if there's a race / overwrite / wrong-path issue
+
+**Companion observation:** the master-summary aggregator at `challenges/master_results/master_summary_*.md` lists every challenge as `status: unknown / Last Run: <timestamp>` — same root: the aggregator can't read the per-challenge results because the result format is broken.
+
 ### Finding #15 — `tests/security/penetration_test.go::testDataExfiltration` wedged for 600s
 **Where:** `tests/security/penetration_test.go:310-311` (callstack: `TestLLMPenetration.func4 → testDataExfiltration → sendCompletionRequest`)
 **Class:** server hang / unbounded request

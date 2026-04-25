@@ -107,20 +107,25 @@ if cfg == nil {
 
 **Fix when investigated:** find the caller that passes nil cfg (or empty Redis config) to the cache layer in the debate path; ensure proper config plumbing OR explicit "Redis disabled" branch.
 
-### Finding #13 — `TestE2E_ProviderFailover_AllFail_GracefulError` (Phase 5 e2e)
-**Where:** `tests/e2e/` package
-**Class:** likely format/assertion drift (similar to #7, #9)
-**What:** Failed in Phase 5 background run. Detail not extracted — needs separate investigation.
+### Finding #13 — `TestE2E_ProviderFailover_AllFail_GracefulError` returns 200 instead of error
+**Where:** `tests/e2e/provider_failover_e2e_test.go:138`
+**Class:** test assumption mismatch (or real product bug — needs decision)
+**What:** Test expects `/v1/chat/completions` to return 4xx/5xx with `{"error": ...}` JSON when all providers are unavailable. Real binary returns **HTTP 200** with a long ensemble response analyzing the prompt:
+```
+"choices":[{"message":{"role":"assistant","content":"**Adversarial Analysis: Say
+Exactly: Pong**\n\n**VULNERABILITIES:**\n\n1. **Lack of Input Validation**...
+```
+The test's "all providers fail" setup did NOT actually disable providers — the binary booted with the real `.env` and routed to working providers. Either: (a) the test needs to genuinely down-select providers (env var OR config override) before asserting graceful-error behavior, OR (b) the product never actually returns errors to chat completions and silently always succeeds with whatever provider is reachable — which is a separate product question.
 
-### Finding #14 — `TestVerifierIntegrationWithChat` (Phase 5 e2e/verifier)
-**Where:** `tests/e2e/verifier/`
-**Class:** unknown
-**What:** Failed in 60s — possible timeout. Detail not extracted.
+### Finding #14 — `TestVerifierIntegrationWithChat/VerifiedModelChat` hits 60s client timeout
+**Where:** `tests/e2e/verifier/verifier_e2e_test.go:268`
+**Class:** server response too slow OR test client timeout too short
+**What:** Test does `POST http://localhost:8100/v1/chat/completions` with a 60s `Client.Timeout`. Hits `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`. Either: server didn't even send headers within 60s (likely if a slow provider chain was selected) OR the prompt is one that triggers a long ensemble flow. Workarounds: bump client timeout to 180-300s, OR skip when `/v1/health` reports the verifier-required provider is unhealthy.
 
-### Finding #15 — `tests/security` package timed out at 600s
-**Where:** `tests/security/`
-**Class:** test wedge (similar to #10)
-**What:** Whole package hit the 600s suite timeout. Some security test wedged.
+### Finding #15 — `tests/security/penetration_test.go::testDataExfiltration` wedged for 600s
+**Where:** `tests/security/penetration_test.go:310-311` (callstack: `TestLLMPenetration.func4 → testDataExfiltration → sendCompletionRequest`)
+**Class:** server hang / unbounded request
+**What:** The data-exfiltration penetration test issued an HTTP request to the binary's `/v1/chat/completions` endpoint and the request hung — goroutine stack-trapped in `net/http.(*Client).Do → (*Transport).roundTrip → (*persistConn).roundTrip` at the time of the 600s package timeout. The binary either never responded or was generating a very long ensemble response that exceeded 600s. Caps the test budget for the whole `tests/security` package. Fix options: bump per-test timeout above the 600s package budget; cancel-on-deadline in the request; OR (better) investigate why the binary takes >600s for a single chat completion.
 
 ## Cross-cutting observations
 

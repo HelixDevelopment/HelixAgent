@@ -345,13 +345,26 @@ func TestIntegration_ReplayHandler_BasicReplay(t *testing.T) {
 	assert.NotNil(t, progress)
 	assert.Equal(t, "integration-replay-test", progress.RequestID)
 
-	// Wait for replay to complete
-	time.Sleep(2 * time.Second)
-
-	// Check final status
-	finalProgress, err := handler.GetProgress("integration-replay-test")
-	require.NoError(t, err)
-	assert.Equal(t, replay.ReplayStatusCompleted, finalProgress.Status)
+	// Poll for completion (replace fixed sleep + immediate-assert race;
+	// drainage report 2026-04-25 Finding #11). Replay is async; the previous
+	// `time.Sleep(2s) + assert.Equal(Completed)` raced when the replay took
+	// longer than 2s and asserted "expected Completed, got Running" — a
+	// classic async-test bug per superpowers:systematic-debugging
+	// condition-based-waiting.md.
+	deadline := time.Now().Add(15 * time.Second)
+	var finalProgress *replay.ReplayProgress
+	for time.Now().Before(deadline) {
+		finalProgress, err = handler.GetProgress("integration-replay-test")
+		require.NoError(t, err)
+		if finalProgress.Status == replay.ReplayStatusCompleted ||
+			finalProgress.Status == replay.ReplayStatusFailed {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	require.NotNil(t, finalProgress, "GetProgress should have returned a value within deadline")
+	assert.Equal(t, replay.ReplayStatusCompleted, finalProgress.Status,
+		"Replay should reach Completed within 15s; final status was %v", finalProgress.Status)
 }
 
 func TestIntegration_ReplayHandler_ConcurrentReplays(t *testing.T) {

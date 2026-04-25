@@ -346,17 +346,18 @@ func TestAllDebatePositionsHaveRealResponses(t *testing.T) {
 
 	fullResponse := string(body)
 
-	// Skip when smart-routing returned a short-circuit response (Finding #9).
-	// Same tightened condition as the other tests in this file: skip unless
-	// the response has BOTH consensus and footer anchors.
-	hasConsensusAnchor := strings.Contains(fullResponse, "## Consensus") ||
+	// Defensive backstop (drainage report Finding #9 root-cause fix at
+	// internal/handlers/openai_compatible.go:591 should make this skip a
+	// no-op for `model=helixagent-debate` requests). Real renderer contract
+	// (verified live 2026-04-25): consensus is presented under
+	// `**Final Decision**`; there is no separate `## Consensus` header.
+	hasConsensusAnchor := strings.Contains(fullResponse, "**Final Decision**") ||
+		strings.Contains(fullResponse, "## Consensus") ||
 		strings.Contains(fullResponse, "## Final Answer") ||
 		strings.Contains(fullResponse, "CONSENSUS REACHED")
-	hasFooterAnchor := strings.Contains(fullResponse, "Powered by HelixAgent AI Debate Ensemble") ||
-		strings.Contains(fullResponse, "**Final Decision**")
-	if !hasConsensusAnchor || !hasFooterAnchor {
-		t.Skipf("Response missing required ensemble anchors (consensus=%v, footer=%v) — smart-routing may have short-circuited. Response excerpt: %s",
-			hasConsensusAnchor, hasFooterAnchor, truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
+	if !hasConsensusAnchor {
+		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s",
+			truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
 	}
 
 	// At least 3 distinct debate-position markers must be present. The

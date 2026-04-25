@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"runtime/debug"
 	"time"
 
 	"digital.vasic.cache/pkg/cache"
@@ -10,6 +11,7 @@ import (
 
 	"dev.helix.agent/internal/config"
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 )
 
 // RedisClient wraps the extracted cache module's Redis client
@@ -25,11 +27,28 @@ type RedisClient struct {
 // Uses the extracted digital.vasic.cache module internally.
 func NewRedisClient(cfg *config.Config) *RedisClient {
 	if cfg == nil {
-		// Return a client that will fail on connection attempts
-		// This ensures caching is disabled when config is nil
-		return &RedisClient{client: redis.NewClient(&redis.Options{
+		// Return a client that will fail on connection attempts.
+		// This ensures caching is disabled when config is nil.
+		//
+		// Drainage report 2026-04-25 Finding #12: log a stack-traced WARN
+		// when this branch fires so future occurrences of "redis: dial tcp
+		// 127.0.0.1:0" in any consumer log can be traced back to the actual
+		// caller passing nil cfg. Production callers (router.go) guard
+		// correctly; the warn here flags every site that doesn't.
+		logrus.WithField("stack", string(debug.Stack())).
+			Warn("cache.NewRedisClient called with nil config — returning no-op client (localhost:0). Caller should guard or wire real config.")
+		// Close the underlying client immediately so its connection-pool
+		// goroutines (checkMinIdleConns/dialConn) tear down cleanly. Without
+		// this, every nil-cfg call leaks pool goroutines that hang trying to
+		// dial localhost:0 forever — caught by goleak in the unit tests once
+		// the WARN above made the timing observable. The closed client still
+		// fulfils the *redis.Client contract (subsequent Set/Get/etc. return
+		// "client is closed" errors instead of "dial 127.0.0.1:0" hangs).
+		c := redis.NewClient(&redis.Options{
 			Addr: "localhost:0", // Invalid address to ensure connection fails
-		})}
+		})
+		_ = c.Close()
+		return &RedisClient{client: c}
 	}
 
 	// Create the extracted module's Redis client

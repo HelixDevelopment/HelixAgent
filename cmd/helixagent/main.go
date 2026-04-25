@@ -32,6 +32,7 @@ import (
 	"dev.helix.agent/internal/auth/oauth_credentials"
 	"dev.helix.agent/internal/bigdata"
 	"dev.helix.agent/internal/config"
+	"dev.helix.agent/internal/health"
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/llm/providers/ai21"
 	"dev.helix.agent/internal/llm/providers/cerebras"
@@ -1508,6 +1509,17 @@ func run(appCfg *AppConfig) error {
 	// called during startup verification. No separate orchestration needed.
 	logger.Info("Infrastructure startup delegated to BootManager")
 
+	// Drainage report 2026-04-25 Finding #2: bind a tiny liveness probe on
+	// the dedicated HelixAgentLiveness port (8111) BEFORE the ~7-min
+	// startup verification pipeline. External supervisors / watchdogs /
+	// load-balancers can hit this probe immediately to distinguish
+	// "starting" from "hung". Stays up for the lifetime of the process so
+	// the probe shape is stable.
+	livenessProbe := health.NewLiveness(logger)
+	if err := livenessProbe.Start(); err != nil {
+		logger.WithError(err).Warn("Liveness probe failed to bind — continuing without it")
+	}
+
 	// Run unified startup verification (LLMsVerifier as single source of truth)
 	// This verifies ALL providers (OAuth, API Key, Free) and selects the AI Debate Team
 	var startupResult *verifier.StartupResult
@@ -1517,6 +1529,10 @@ func run(appCfg *AppConfig) error {
 	} else {
 		startupResult, startupVerifier = runStartupVerification(logger)
 	}
+	// Mark the binary ready as soon as verification completes — the main
+	// HTTP server still needs to bind below, but the worst delay (the
+	// provider-verification wait) is over and the process is functional.
+	livenessProbe.SetReady()
 	if startupResult != nil {
 		logger.WithFields(logrus.Fields{
 			"total_providers": startupResult.TotalProviders,

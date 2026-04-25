@@ -1,7 +1,7 @@
 // Package ports is the single source of truth for TCP port
 // assignments across HelixAgent and its satellite services.
 //
-// Motivation
+// # Motivation
 //
 // Ports were previously scattered across .env files, yaml configs,
 // docker-compose files, handler code, and tests — 1000+ file
@@ -85,6 +85,13 @@ const (
 	PostgresTest Service = "HELIXAGENT_PORT_POSTGRES_TEST"
 	// RedisMCP — password-protected MCP-backend Redis (was 16379).
 	RedisMCP Service = "HELIXAGENT_PORT_REDIS_MCP"
+	// HelixAgentLiveness — early-bind liveness probe served the moment
+	// the binary starts, BEFORE the ~7-min startup verification pipeline.
+	// Returns 200 with {status:"starting"|"ready", started_at, elapsed_ms}.
+	// Drainage report 2026-04-25 Finding #2: prior to this, no /health
+	// existed during the verification window, breaking CLAUDE.md rule #6
+	// (every service MUST expose health endpoints).
+	HelixAgentLiveness Service = "HELIXAGENT_PORT_LIVENESS"
 
 	// Lazy / auxiliary data services (offsets 20-29).
 	// Cognee — knowledge-graph engine (was 8000, lazy).
@@ -104,16 +111,16 @@ const (
 // the same category.
 const (
 	// Tier 1: core (8200-8209). 10 servers.
-	MCPFetch             Service = "HELIXAGENT_PORT_MCP_FETCH"
-	MCPGit               Service = "HELIXAGENT_PORT_MCP_GIT"
-	MCPTime              Service = "HELIXAGENT_PORT_MCP_TIME"
-	MCPFilesystem        Service = "HELIXAGENT_PORT_MCP_FILESYSTEM"
-	MCPMemory            Service = "HELIXAGENT_PORT_MCP_MEMORY"
-	MCPEverything        Service = "HELIXAGENT_PORT_MCP_EVERYTHING"
+	MCPFetch              Service = "HELIXAGENT_PORT_MCP_FETCH"
+	MCPGit                Service = "HELIXAGENT_PORT_MCP_GIT"
+	MCPTime               Service = "HELIXAGENT_PORT_MCP_TIME"
+	MCPFilesystem         Service = "HELIXAGENT_PORT_MCP_FILESYSTEM"
+	MCPMemory             Service = "HELIXAGENT_PORT_MCP_MEMORY"
+	MCPEverything         Service = "HELIXAGENT_PORT_MCP_EVERYTHING"
 	MCPSequentialThinking Service = "HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING"
-	MCPSQLite            Service = "HELIXAGENT_PORT_MCP_SQLITE"
-	MCPPuppeteer         Service = "HELIXAGENT_PORT_MCP_PUPPETEER"
-	MCPPostgres          Service = "HELIXAGENT_PORT_MCP_POSTGRES"
+	MCPSQLite             Service = "HELIXAGENT_PORT_MCP_SQLITE"
+	MCPPuppeteer          Service = "HELIXAGENT_PORT_MCP_PUPPETEER"
+	MCPPostgres           Service = "HELIXAGENT_PORT_MCP_POSTGRES"
 
 	// Tier 2: database (8210-8214). 5 servers.
 	MCPMongoDB       Service = "HELIXAGENT_PORT_MCP_MONGODB"
@@ -222,22 +229,23 @@ const DefaultPrefix = 8
 // default port is Prefix()*1000 + offset.
 var offsets = map[Service]int{
 	// 81xx — core.
-	HelixAgentHTTP:  100,
-	PostgresPrimary: 101,
-	RedisDefault:    102,
-	MCPBridge:       103,
-	MCPRouterAlt:    104,
-	HelixLLM:        105,
-	MockLLM:         106,
-	PostgresReplica: 107,
-	PostgresExtra:   108,
-	PostgresTest:    109,
-	RedisMCP:        110,
-	Cognee:          120,
-	ChromaDB:        121,
-	Qdrant:          122,
-	Neo4jHTTP:       123,
-	Neo4jBolt:       124,
+	HelixAgentHTTP:     100,
+	PostgresPrimary:    101,
+	RedisDefault:       102,
+	MCPBridge:          103,
+	MCPRouterAlt:       104,
+	HelixLLM:           105,
+	MockLLM:            106,
+	PostgresReplica:    107,
+	PostgresExtra:      108,
+	PostgresTest:       109,
+	RedisMCP:           110,
+	HelixAgentLiveness: 111,
+	Cognee:             120,
+	ChromaDB:           121,
+	Qdrant:             122,
+	Neo4jHTTP:          123,
+	Neo4jBolt:          124,
 
 	// 82xx — MCP tiers.
 	// Tier 1 core: 200-209.

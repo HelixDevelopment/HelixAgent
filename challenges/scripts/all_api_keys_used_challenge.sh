@@ -69,9 +69,24 @@ declare -A ENV_TO_PROVIDER=(
     [VENICE_API_KEY]=venice
 )
 
-# Fetch /v1/providers + /v1/monitoring/status once.
-PROVIDERS_JSON=$(curl -s -m 10 "$BASE_URL/v1/providers" 2>/dev/null)
-MONITORING_JSON=$(curl -s -m 10 "$BASE_URL/v1/monitoring/status" 2>/dev/null)
+# Fetch /v1/providers + /v1/monitoring/status. Health monitor runs
+# its first cycle ~30s after boot, so on a freshly-restarted binary
+# some providers may be in /v1/providers but not yet in the monitor's
+# tracked set. Retry up to 60s before failing so cold-start races
+# don't produce spurious test failures.
+PROVIDERS_JSON=""
+MONITORING_JSON=""
+deadline=$(( $(date +%s) + 60 ))
+while [[ $(date +%s) -lt $deadline ]]; do
+    PROVIDERS_JSON=$(curl -s -m 10 "$BASE_URL/v1/providers" 2>/dev/null || true)
+    MONITORING_JSON=$(curl -s -m 10 "$BASE_URL/v1/monitoring/status" 2>/dev/null || true)
+    [[ -z "$PROVIDERS_JSON" || -z "$MONITORING_JSON" ]] && { sleep 5; continue; }
+    # Wait until provider count == monitor count (cold-start gap closes).
+    pc=$(echo "$PROVIDERS_JSON" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('providers') or []))" 2>/dev/null || echo 0)
+    mc=$(echo "$MONITORING_JSON" | python3 -c "import json,sys; print(len((json.load(sys.stdin).get('provider_health',{}).get('providers') or {})))" 2>/dev/null || echo 0)
+    [[ "$pc" -gt 0 && "$pc" == "$mc" ]] && break
+    sleep 5
+done
 
 if [[ -z "$PROVIDERS_JSON" || -z "$MONITORING_JSON" ]]; then
     record_assertion "transport" "endpoints_responded" "false" \

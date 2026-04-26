@@ -2748,9 +2748,16 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 	// observed this exact shape from helix-llm.
 	openAIToolCalls := make([]OpenAIToolCall, 0, len(resp.ToolCalls))
 	for _, tc := range resp.ToolCalls {
+		// Default to "function" when an upstream omits the type field
+		// (some providers return tool_calls with bare {id, function}).
+		// OpenAI clients reject tool_calls with empty type as malformed.
+		tcType := tc.Type
+		if tcType == "" {
+			tcType = "function"
+		}
 		openAIToolCalls = append(openAIToolCalls, OpenAIToolCall{
 			ID:   tc.ID,
-			Type: tc.Type,
+			Type: tcType,
 			Function: OpenAIFunctionCall{
 				Name:      tc.Function.Name,
 				Arguments: tc.Function.Arguments,
@@ -2876,10 +2883,14 @@ func (h *UnifiedHandler) convertChunkToSSE(chunk *models.LLMResponse, streamID, 
 	if len(chunk.ToolCalls) > 0 {
 		items := make([]sseChunkToolCallItem, 0, len(chunk.ToolCalls))
 		for i, tc := range chunk.ToolCalls {
+			tcType := tc.Type
+			if tcType == "" {
+				tcType = "function"
+			}
 			items = append(items, sseChunkToolCallItem{
 				Index: i,
 				ID:    tc.ID,
-				Type:  tc.Type,
+				Type:  tcType,
 				Function: sseChunkToolFunction{
 					Name:      tc.Function.Name,
 					Arguments: tc.Function.Arguments,

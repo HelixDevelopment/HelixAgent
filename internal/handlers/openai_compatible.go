@@ -2664,9 +2664,59 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 	}
 }
 
+// convertChunkToSSE wraps a streaming chunk in the OpenAI SSE envelope.
+//
+// The previous implementation used fmt.Sprintf with chunk.Content
+// interpolated directly into a JSON string field — any content
+// containing a `"`, `\`, control char, or newline produced malformed
+// JSON that broke client parsers (CONST-032 reproduction:
+// challenges/scripts/sse_chunk_json_validity_challenge.sh observed
+// 24/39 chunks failing JSON.parse on prompts that elicited quoted
+// text). The fix uses json.Marshal so the standard library does the
+// escaping; the marshalled struct mirrors the OpenAI chat.completion.chunk
+// shape exactly so downstream clients see identical JSON aside from
+// the now-correctly-escaped content.
 func (h *UnifiedHandler) convertChunkToSSE(chunk *models.LLMResponse, streamID, model string) string {
-	return fmt.Sprintf("data: {\"id\":\"%s\",\"object\":\"chat.completion.chunk\",\"created\":%d,\"model\":\"%s\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"%s\"},\"finish_reason\":null}]}\n\n",
-		streamID, time.Now().Unix(), model, chunk.Content)
+	envelope := struct {
+		ID      string `json:"id"`
+		Object  string `json:"object"`
+		Created int64  `json:"created"`
+		Model   string `json:"model"`
+		Choices []struct {
+			Index        int `json:"index"`
+			Delta        struct {
+				Content string `json:"content"`
+			} `json:"delta"`
+			FinishReason interface{} `json:"finish_reason"`
+		} `json:"choices"`
+	}{
+		ID:      streamID,
+		Object:  "chat.completion.chunk",
+		Created: time.Now().Unix(),
+		Model:   model,
+	}
+	envelope.Choices = []struct {
+		Index        int `json:"index"`
+		Delta        struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		FinishReason interface{} `json:"finish_reason"`
+	}{{Index: 0}}
+	envelope.Choices[0].Delta.Content = chunk.Content
+	// FinishReason intentionally left as nil interface{} — marshals as null.
+
+	b, err := json.Marshal(envelope)
+	if err != nil {
+		// json.Marshal can fail only for unrepresentable values
+		// (NaN/Inf floats, recursive types). chunk.Content is a string;
+		// the only realistic failure is OOM. Fall back to an empty
+		// safe envelope so we never emit a half-built line.
+		return fmt.Sprintf(
+			"data: {\"id\":%q,\"object\":\"chat.completion.chunk\",\"created\":%d,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\n",
+			streamID, time.Now().Unix(), model,
+		)
+	}
+	return "data: " + string(b) + "\n\n"
 }
 
 // processWithProviderChain handles helix-llm requests with provider chain and fallback

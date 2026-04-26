@@ -114,6 +114,17 @@ type Message struct {
 	// "Tool call id has to be defined." (CONST-032 reproduction:
 	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
 	ToolCallID string `json:"tool_call_id,omitempty" db:"tool_call_id"`
+	// AssistantToolCalls is the typed array of tool calls an assistant
+	// message is invoking. REQUIRED on the assistant message that
+	// PRECEDES a tool message — without it upstream providers (DeepSeek,
+	// OpenAI, Cerebras, …) reject with "Messages with role 'tool' must
+	// be a response to a preceding message with 'tool_calls'" (CONST-032
+	// reproduction:
+	// challenges/scripts/opencode_parallel_tool_calls_challenge.sh).
+	// The legacy ToolCalls map field above is preserved for backward
+	// compatibility but providers MUST read from this typed slice for
+	// correct ordered emission.
+	AssistantToolCalls []ToolCall `json:"-" db:"-"`
 }
 
 type ModelParameters struct {

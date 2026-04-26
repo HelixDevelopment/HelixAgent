@@ -336,11 +336,28 @@ func (p *DeepSeekProvider) convertRequest(req *models.LLMRequest) DeepSeekReques
 
 	// Add conversation messages
 	for _, msg := range req.Messages {
-		messages = append(messages, DeepSeekMessage{
+		dsMsg := DeepSeekMessage{
 			Role:       msg.Role,
 			Content:    msg.Content,
 			ToolCallID: msg.ToolCallID,
-		})
+		}
+		// Forward assistant tool_calls — without this DeepSeek 400s
+		// the next role="tool" message as "must be a response to a
+		// preceding message with 'tool_calls'" (CONST-032).
+		if len(msg.AssistantToolCalls) > 0 {
+			dsMsg.ToolCalls = make([]DeepSeekToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				dsMsg.ToolCalls = append(dsMsg.ToolCalls, DeepSeekToolCall{
+					ID:   tc.ID,
+					Type: tc.Type,
+					Function: DeepSeekToolCallFunction{
+						Name:      tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					},
+				})
+			}
+		}
+		messages = append(messages, dsMsg)
 	}
 
 	// Cap max_tokens to DeepSeek's limit (8192)

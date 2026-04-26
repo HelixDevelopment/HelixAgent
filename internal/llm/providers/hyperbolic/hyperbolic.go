@@ -52,7 +52,23 @@ type HyperbolicMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
+
+	ToolCalls  []HyperbolicMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
+
+// HyperbolicMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
+type HyperbolicMessageToolCall struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function HyperbolicMessageToolCallFunction `json:"function"`
+}
+
+// HyperbolicMessageToolCallFunction is the function payload of a tool_call.
+type HyperbolicMessageToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 
 type HyperbolicResponse struct {
 	ID      string             `json:"id"`
@@ -285,7 +301,17 @@ func (p *HyperbolicProvider) convertRequest(req *models.LLMRequest) HyperbolicRe
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, HyperbolicMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
+		xMsg := HyperbolicMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID}
+		if len(msg.AssistantToolCalls) > 0 {
+			xMsg.ToolCalls = make([]HyperbolicMessageToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				xMsg.ToolCalls = append(xMsg.ToolCalls, HyperbolicMessageToolCall{
+					ID: tc.ID, Type: tc.Type,
+					Function: HyperbolicMessageToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+				})
+			}
+		}
+		messages = append(messages, xMsg)
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

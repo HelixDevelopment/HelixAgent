@@ -91,7 +91,23 @@ type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
+
+	ToolCalls  []MessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
+
+// MessageToolCall mirrors OpenAI tool_call shape on an assistant message.
+type MessageToolCall struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function MessageToolCallFunction `json:"function"`
+}
+
+// MessageToolCallFunction is the function payload of a tool_call.
+type MessageToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 
 // ChatResponse represents a HuggingFace chat completions response
 type ChatResponse struct {
@@ -461,7 +477,17 @@ func (p *Provider) convertChatRequest(req *models.LLMRequest) ChatRequest {
 
 	// Add conversation messages
 	for _, msg := range req.Messages {
-		messages = append(messages, Message{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
+		xMsg := Message{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID}
+		if len(msg.AssistantToolCalls) > 0 {
+			xMsg.ToolCalls = make([]MessageToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				xMsg.ToolCalls = append(xMsg.ToolCalls, MessageToolCall{
+					ID: tc.ID, Type: tc.Type,
+					Function: MessageToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+				})
+			}
+		}
+		messages = append(messages, xMsg)
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

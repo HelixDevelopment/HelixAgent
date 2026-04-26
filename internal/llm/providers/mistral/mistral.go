@@ -440,11 +440,27 @@ func (p *MistralProvider) convertRequest(req *models.LLMRequest) MistralRequest 
 
 	// Add conversation messages
 	for _, msg := range req.Messages {
-		messages = append(messages, MistralMessage{
+		mMsg := MistralMessage{
 			Role:       msg.Role,
 			Content:    msg.Content,
 			ToolCallID: msg.ToolCallID,
-		})
+		}
+		// Forward assistant tool_calls so a following role="tool"
+		// message has its required preceding tool_calls (CONST-032).
+		if len(msg.AssistantToolCalls) > 0 {
+			mMsg.ToolCalls = make([]MistralToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				mMsg.ToolCalls = append(mMsg.ToolCalls, MistralToolCall{
+					ID:   tc.ID,
+					Type: tc.Type,
+					Function: MistralToolCallFunction{
+						Name:      tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					},
+				})
+			}
+		}
+		messages = append(messages, mMsg)
 	}
 
 	// Cap max_tokens to Mistral's limit

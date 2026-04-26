@@ -52,7 +52,23 @@ type NvidiaMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
+
+	ToolCalls  []NvidiaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
+
+// NvidiaMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
+type NvidiaMessageToolCall struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function NvidiaMessageToolCallFunction `json:"function"`
+}
+
+// NvidiaMessageToolCallFunction is the function payload of a tool_call.
+type NvidiaMessageToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 
 type NvidiaResponse struct {
 	ID      string         `json:"id"`
@@ -286,7 +302,17 @@ func (p *NvidiaProvider) convertRequest(req *models.LLMRequest) NvidiaRequest {
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, NvidiaMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
+		xMsg := NvidiaMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID}
+		if len(msg.AssistantToolCalls) > 0 {
+			xMsg.ToolCalls = make([]NvidiaMessageToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				xMsg.ToolCalls = append(xMsg.ToolCalls, NvidiaMessageToolCall{
+					ID: tc.ID, Type: tc.Type,
+					Function: NvidiaMessageToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+				})
+			}
+		}
+		messages = append(messages, xMsg)
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

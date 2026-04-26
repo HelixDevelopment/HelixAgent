@@ -51,12 +51,31 @@ type CerebrasRequest struct {
 }
 
 type CerebrasMessage struct {
-	Role       string `json:"role"`
-	Content    string `json:"content"`
+	Role       string              `json:"role"`
+	Content    string              `json:"content"`
 	// ToolCallID is required when role="tool" — Cerebras rejects
 	// follow-up messages without it (CONST-032 reproduction:
 	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
-	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolCallID string              `json:"tool_call_id,omitempty"`
+	// ToolCalls on an assistant message — required so the following
+	// tool message satisfies "must be a response to a preceding
+	// message with 'tool_calls'" (CONST-032 reproduction:
+	// challenges/scripts/opencode_parallel_tool_calls_challenge.sh).
+	ToolCalls  []CerebrasToolCall  `json:"tool_calls,omitempty"`
+}
+
+// CerebrasToolCall mirrors the OpenAI tool_call shape on an assistant
+// message. Used to forward HelixAgent's typed AssistantToolCalls.
+type CerebrasToolCall struct {
+	ID       string                   `json:"id"`
+	Type     string                   `json:"type"`
+	Function CerebrasToolCallFunction `json:"function"`
+}
+
+// CerebrasToolCallFunction is the inner function payload.
+type CerebrasToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 type CerebrasResponse struct {
@@ -408,11 +427,25 @@ func (p *CerebrasProvider) convertRequest(req *models.LLMRequest) CerebrasReques
 
 	// Add conversation messages
 	for _, msg := range req.Messages {
-		messages = append(messages, CerebrasMessage{
+		cMsg := CerebrasMessage{
 			Role:       msg.Role,
 			Content:    msg.Content,
 			ToolCallID: msg.ToolCallID,
-		})
+		}
+		if len(msg.AssistantToolCalls) > 0 {
+			cMsg.ToolCalls = make([]CerebrasToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				cMsg.ToolCalls = append(cMsg.ToolCalls, CerebrasToolCall{
+					ID:   tc.ID,
+					Type: tc.Type,
+					Function: CerebrasToolCallFunction{
+						Name:      tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					},
+				})
+			}
+		}
+		messages = append(messages, cMsg)
 	}
 
 	// Cap max_tokens to Cerebras's limit

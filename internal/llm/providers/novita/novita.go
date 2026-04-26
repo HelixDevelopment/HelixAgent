@@ -52,7 +52,23 @@ type NovitaMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
+
+	ToolCalls  []NovitaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
+
+// NovitaMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
+type NovitaMessageToolCall struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function NovitaMessageToolCallFunction `json:"function"`
+}
+
+// NovitaMessageToolCallFunction is the function payload of a tool_call.
+type NovitaMessageToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 
 type NovitaResponse struct {
 	ID      string         `json:"id"`
@@ -285,7 +301,17 @@ func (p *NovitaProvider) convertRequest(req *models.LLMRequest) NovitaRequest {
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, NovitaMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
+		xMsg := NovitaMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID}
+		if len(msg.AssistantToolCalls) > 0 {
+			xMsg.ToolCalls = make([]NovitaMessageToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				xMsg.ToolCalls = append(xMsg.ToolCalls, NovitaMessageToolCall{
+					ID: tc.ID, Type: tc.Type,
+					Function: NovitaMessageToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+				})
+			}
+		}
+		messages = append(messages, xMsg)
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

@@ -52,7 +52,23 @@ type SiliconFlowMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
+
+	ToolCalls  []SiliconFlowMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
+
+// SiliconFlowMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
+type SiliconFlowMessageToolCall struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function SiliconFlowMessageToolCallFunction `json:"function"`
+}
+
+// SiliconFlowMessageToolCallFunction is the function payload of a tool_call.
+type SiliconFlowMessageToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 
 type SiliconFlowResponse struct {
 	ID      string              `json:"id"`
@@ -286,7 +302,17 @@ func (p *SiliconFlowProvider) convertRequest(req *models.LLMRequest) SiliconFlow
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, SiliconFlowMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
+		xMsg := SiliconFlowMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID}
+		if len(msg.AssistantToolCalls) > 0 {
+			xMsg.ToolCalls = make([]SiliconFlowMessageToolCall, 0, len(msg.AssistantToolCalls))
+			for _, tc := range msg.AssistantToolCalls {
+				xMsg.ToolCalls = append(xMsg.ToolCalls, SiliconFlowMessageToolCall{
+					ID: tc.ID, Type: tc.Type,
+					Function: SiliconFlowMessageToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+				})
+			}
+		}
+		messages = append(messages, xMsg)
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

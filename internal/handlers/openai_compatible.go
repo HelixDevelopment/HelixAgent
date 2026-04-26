@@ -2338,12 +2338,34 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 			}
 		}
 
+		// Typed array of tool calls — populated alongside the legacy
+		// map so upstream providers emit them in the correct OpenAI
+		// ordered format on the assistant message. Without this,
+		// providers reject following tool messages as "no preceding
+		// tool_calls" (CONST-032 reproduction:
+		// challenges/scripts/opencode_parallel_tool_calls_challenge.sh).
+		var assistantToolCalls []models.ToolCall
+		if len(msg.ToolCalls) > 0 {
+			assistantToolCalls = make([]models.ToolCall, 0, len(msg.ToolCalls))
+			for _, tc := range msg.ToolCalls {
+				assistantToolCalls = append(assistantToolCalls, models.ToolCall{
+					ID:   tc.ID,
+					Type: tc.Type,
+					Function: models.ToolCallFunction{
+						Name:      tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					},
+				})
+			}
+		}
+
 		messages = append(messages, models.Message{
-			Role:       msg.Role,
-			Content:    msg.Content,
-			Name:       msg.Name,
-			ToolCalls:  toolCalls,
-			ToolCallID: msg.ToolCallID,
+			Role:               msg.Role,
+			Content:            msg.Content,
+			Name:               msg.Name,
+			ToolCalls:          toolCalls,
+			ToolCallID:         msg.ToolCallID,
+			AssistantToolCalls: assistantToolCalls,
 		})
 	}
 

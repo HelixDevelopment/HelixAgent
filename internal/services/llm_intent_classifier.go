@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"dev.helix.agent/internal/llm"
@@ -12,12 +13,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// providerCooldownDuration is how long a provider stays out of rotation
+// after a 429 / quota / token-budget rejection. The intent classifier hot-loops
+// on every chat request, so retrying a quota-exhausted provider on every call
+// burns latency for nothing — and floods logs. Cooldown is per-process state.
+const providerCooldownDuration = 5 * time.Minute
+
 // LLMIntentClassifier uses actual LLMs to classify user intent
 // NO HARDCODING - Pure AI semantic understanding
 type LLMIntentClassifier struct {
 	providerRegistry   *ProviderRegistry
 	logger             *logrus.Logger
 	fallbackClassifier *IntentClassifier // Fallback if LLM unavailable
+
+	cooldownMu sync.RWMutex
+	cooldowns  map[string]time.Time
 }
 
 // NewLLMIntentClassifier creates a new LLM-based intent classifier
@@ -26,7 +36,38 @@ func NewLLMIntentClassifier(registry *ProviderRegistry, logger *logrus.Logger) *
 		providerRegistry:   registry,
 		logger:             logger,
 		fallbackClassifier: NewIntentClassifier(), // Fallback only
+		cooldowns:          make(map[string]time.Time),
 	}
+}
+
+// markProviderCooldown puts a provider on the bench for providerCooldownDuration.
+func (lic *LLMIntentClassifier) markProviderCooldown(name string) {
+	lic.cooldownMu.Lock()
+	lic.cooldowns[strings.ToLower(name)] = time.Now().Add(providerCooldownDuration)
+	lic.cooldownMu.Unlock()
+}
+
+// isProviderCooledDown reports whether a provider is currently on cooldown.
+func (lic *LLMIntentClassifier) isProviderCooledDown(name string) bool {
+	lic.cooldownMu.RLock()
+	until, ok := lic.cooldowns[strings.ToLower(name)]
+	lic.cooldownMu.RUnlock()
+	return ok && time.Now().Before(until)
+}
+
+// isQuotaError reports whether the error string looks like a 429 / quota / token-budget rejection.
+func isQuotaError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "429") ||
+		strings.Contains(s, "too_many_requests") ||
+		strings.Contains(s, "quota_exceeded") ||
+		strings.Contains(s, "queue_exceeded") ||
+		strings.Contains(s, "rate limit") ||
+		strings.Contains(s, "tokens per day") ||
+		strings.Contains(s, "requests per minute")
 }
 
 // LLMIntentResponse is the structured response from the LLM
@@ -43,7 +84,7 @@ type LLMIntentResponse struct {
 // This is ZERO hardcoding - pure AI understanding
 func (lic *LLMIntentClassifier) ClassifyIntentWithLLM(ctx context.Context, userMessage string, conversationContext string) (*IntentClassificationResult, error) {
 	// Try to get a fast, lightweight LLM for classification
-	provider, err := lic.getClassificationProvider()
+	provider, providerName, err := lic.getClassificationProvider()
 	if err != nil {
 		lic.logger.WithError(err).Warn("No LLM available for intent classification, using fallback")
 		return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
@@ -72,7 +113,15 @@ func (lic *LLMIntentClassifier) ClassifyIntentWithLLM(ctx context.Context, userM
 	// Call the LLM
 	response, err := provider.Complete(classifyCtx, request)
 	if err != nil {
-		lic.logger.WithError(err).Warn("LLM intent classification failed, using fallback")
+		if isQuotaError(err) && providerName != "" {
+			lic.markProviderCooldown(providerName)
+			lic.logger.WithFields(logrus.Fields{
+				"provider": providerName,
+				"cooldown": providerCooldownDuration.String(),
+			}).Info("Intent classifier provider hit quota — benched, will retry after cooldown")
+		} else {
+			lic.logger.WithError(err).Warn("LLM intent classification failed, using fallback")
+		}
 		return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
 	}
 
@@ -95,10 +144,11 @@ func (lic *LLMIntentClassifier) ClassifyIntentWithLLM(ctx context.Context, userM
 	return lic.convertToClassificationResult(result), nil
 }
 
-// getClassificationProvider gets a fast LLM for intent classification
-func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, error) {
+// getClassificationProvider gets a fast LLM for intent classification.
+// Returns the provider, its registry name (for cooldown bookkeeping), and an error.
+func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, string, error) {
 	if lic.providerRegistry == nil {
-		return nil, fmt.Errorf("no provider registry available")
+		return nil, "", fmt.Errorf("no provider registry available")
 	}
 
 	// Try fast providers first (in order of preference for classification)
@@ -111,14 +161,18 @@ func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, er
 	}
 
 	for _, name := range preferredProviders {
+		if lic.isProviderCooledDown(name) {
+			continue
+		}
 		provider, err := lic.providerRegistry.GetProvider(name)
 		if err == nil && provider != nil {
-			return provider, nil
+			return provider, name, nil
 		}
 	}
 
 	// Get any available provider, but skip test/mock providers
 	var selected llm.LLMProvider
+	var selectedName string
 	for _, name := range lic.providerRegistry.providers.Keys() {
 		// Skip providers that look like test/mock providers
 		// This ensures we only use real LLM providers for intent classification
@@ -133,17 +187,21 @@ func (lic *LLMIntentClassifier) getClassificationProvider() (llm.LLMProvider, er
 			strings.HasPrefix(nameLower, "agent") {
 			continue
 		}
+		if lic.isProviderCooledDown(name) {
+			continue
+		}
 		provider, err := lic.providerRegistry.GetProvider(name)
 		if err == nil && provider != nil {
 			selected = provider
+			selectedName = name
 			break
 		}
 	}
 	if selected != nil {
-		return selected, nil
+		return selected, selectedName, nil
 	}
 
-	return nil, fmt.Errorf("no LLM providers available")
+	return nil, "", fmt.Errorf("no LLM providers available")
 }
 
 // getSystemPrompt returns the system prompt for intent classification

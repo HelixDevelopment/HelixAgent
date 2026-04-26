@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -479,9 +480,10 @@ func TestLLMIntentClassifier_getClassificationProvider_NilRegistry(t *testing.T)
 	logger := newLLMClassifierTestLogger()
 	lic := NewLLMIntentClassifier(nil, logger)
 
-	provider, err := lic.getClassificationProvider()
+	provider, name, err := lic.getClassificationProvider()
 	assert.Error(t, err)
 	assert.Nil(t, provider)
+	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "no provider registry")
 }
 
@@ -495,9 +497,10 @@ func TestLLMIntentClassifier_getClassificationProvider_EmptyRegistry(t *testing.
 
 	lic := NewLLMIntentClassifier(registry, logger)
 
-	provider, err := lic.getClassificationProvider()
+	provider, name, err := lic.getClassificationProvider()
 	assert.Error(t, err)
 	assert.Nil(t, provider)
+	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "no LLM providers available")
 }
 
@@ -518,9 +521,10 @@ func TestLLMIntentClassifier_getClassificationProvider_SkipsMockProviders(t *tes
 
 	lic := NewLLMIntentClassifier(registry, logger)
 
-	provider, err := lic.getClassificationProvider()
+	provider, name, err := lic.getClassificationProvider()
 	assert.Error(t, err, "Should fail because all providers are mock/test-like")
 	assert.Nil(t, provider)
+	assert.Empty(t, name)
 }
 
 func TestLLMIntentClassifier_getClassificationProvider_ReturnsRealProvider(t *testing.T) {
@@ -537,9 +541,54 @@ func TestLLMIntentClassifier_getClassificationProvider_ReturnsRealProvider(t *te
 
 	lic := NewLLMIntentClassifier(registry, logger)
 
-	provider, err := lic.getClassificationProvider()
+	provider, name, err := lic.getClassificationProvider()
 	require.NoError(t, err)
 	assert.NotNil(t, provider)
+	assert.Equal(t, "deepseek", name)
+}
+
+func TestLLMIntentClassifier_getClassificationProvider_SkipsCooledDownProvider(t *testing.T) {
+	logger := newLLMClassifierTestLogger()
+	regCfg := &RegistryConfig{
+		DefaultTimeout:        10 * time.Second,
+		MaxConcurrentRequests: 5,
+		Providers:             make(map[string]*ProviderConfig),
+	}
+	registry := NewProviderRegistryWithoutAutoDiscovery(regCfg, nil)
+	require.NoError(t, registry.RegisterProvider("cerebras", &mockLLMProvider{}))
+	require.NoError(t, registry.RegisterProvider("mistral", &mockLLMProvider{}))
+
+	lic := NewLLMIntentClassifier(registry, logger)
+
+	// Cerebras is preferred and would be returned first.
+	_, name, err := lic.getClassificationProvider()
+	require.NoError(t, err)
+	assert.Equal(t, "cerebras", name, "without cooldown, cerebras should be picked")
+
+	// Bench cerebras → mistral should be selected next.
+	lic.markProviderCooldown("cerebras")
+	_, name, err = lic.getClassificationProvider()
+	require.NoError(t, err)
+	assert.Equal(t, "mistral", name, "with cerebras cooled down, mistral should be picked")
+}
+
+func TestLLMIntentClassifier_isQuotaError(t *testing.T) {
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{nil, false},
+		{fmt.Errorf("transient network blip"), false},
+		{fmt.Errorf("HTTP 429 too many requests"), true},
+		{fmt.Errorf("provider returned token_quota_exceeded"), true},
+		{fmt.Errorf("Tokens per day limit exceeded - too many tokens processed"), true},
+		{fmt.Errorf("queue_exceeded: try again later"), true},
+		{fmt.Errorf("Rate limit hit"), true},
+	}
+	for _, c := range cases {
+		got := isQuotaError(c.err)
+		assert.Equal(t, c.want, got, "isQuotaError(%v)", c.err)
+	}
 }
 
 // =============================================================================

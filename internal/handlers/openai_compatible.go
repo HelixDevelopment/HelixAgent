@@ -2640,6 +2640,52 @@ func (h *UnifiedHandler) streamWithHelixLLM(c *gin.Context, req *OpenAIChatReque
 }
 
 func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse, model string) OpenAIChatResponse {
+	// Map internal ToolCalls onto the OpenAI message envelope. Without
+	// this, responses with finish_reason="tool_calls" arrive at clients
+	// (OpenCode, Claude Code, etc.) advertising a tool call but with an
+	// empty/missing tool_calls array — the client knows the model wants
+	// a tool but doesn't know which one or with what arguments, and
+	// hangs forever waiting for follow-up that never arrives. CONST-032
+	// reproduction:
+	// challenges/scripts/opencode_tool_call_response_challenge.sh
+	// observed this exact shape from helix-llm.
+	openAIToolCalls := make([]OpenAIToolCall, 0, len(resp.ToolCalls))
+	for _, tc := range resp.ToolCalls {
+		openAIToolCalls = append(openAIToolCalls, OpenAIToolCall{
+			ID:   tc.ID,
+			Type: tc.Type,
+			Function: OpenAIFunctionCall{
+				Name:      tc.Function.Name,
+				Arguments: tc.Function.Arguments,
+			},
+		})
+	}
+
+	// If the upstream marked finish_reason="tool_calls" but we have no
+	// tool calls to surface, reclassify to "stop" so the client doesn't
+	// spin waiting for tool-call payloads that don't exist. The
+	// alternative — emitting tool_calls with no entries — is the bug
+	// we're fixing; the alternative — leaving finish_reason="tool_calls"
+	// with no array — is the bug shape OpenCode hangs on.
+	finishReason := resp.FinishReason
+	if finishReason == "tool_calls" && len(openAIToolCalls) == 0 {
+		if strings.TrimSpace(resp.Content) != "" {
+			finishReason = "stop"
+		} else {
+			// No content AND no tool calls: surface a clear error so
+			// the client retries / fails loudly instead of hanging.
+			finishReason = "error"
+		}
+	}
+
+	msg := OpenAIMessage{
+		Role:    "assistant",
+		Content: resp.Content,
+	}
+	if len(openAIToolCalls) > 0 {
+		msg.ToolCalls = openAIToolCalls
+	}
+
 	return OpenAIChatResponse{
 		ID:                resp.ID,
 		Object:            "chat.completion",
@@ -2648,12 +2694,9 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 		SystemFingerprint: "fp_helixllm_v1",
 		Choices: []OpenAIChoice{
 			{
-				Index: 0,
-				Message: OpenAIMessage{
-					Role:    "assistant",
-					Content: resp.Content,
-				},
-				FinishReason: resp.FinishReason,
+				Index:        0,
+				Message:      msg,
+				FinishReason: finishReason,
 			},
 		},
 		Usage: &OpenAIUsage{

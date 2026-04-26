@@ -210,3 +210,76 @@ func TestProviderHealthAlert_Fields(t *testing.T) {
 		assert.Equal(t, 3, alert.ConsecutiveFails)
 	})
 }
+
+// TestDeriveTier covers the verifier filter taxonomy (CONST-032 +
+// "LLMsVerifier MUST be capable of filtering providers and models
+// properly"). Each provider is sorted into one of:
+//   - "verified":   has a recorded LastSuccess
+//   - "configured": registered but not yet probed (or transient down)
+//   - "dead":       terminal auth signal in LastError, or 5+ failures
+//                   with no prior success
+func TestDeriveTier(t *testing.T) {
+	t.Parallel()
+	now := time.Now()
+	cases := []struct {
+		name string
+		in   *MonitoredProviderHealth
+		want string
+	}{
+		{"nil → unknown", nil, "unknown"},
+		{
+			name: "fresh registration → configured",
+			in:   &MonitoredProviderHealth{ProviderID: "x"},
+			want: "configured",
+		},
+		{
+			name: "had a success → verified",
+			in:   &MonitoredProviderHealth{ProviderID: "x", LastSuccess: now},
+			want: "verified",
+		},
+		{
+			name: "401 → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "x", LastError: "auth failed: status 401"},
+			want: "dead",
+		},
+		{
+			name: "403 → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "x", LastError: "remote returned 403 Forbidden"},
+			want: "dead",
+		},
+		{
+			name: "discontinued tier → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "qwen-oauth", LastError: "qwen CLI failed: Qwen OAuth free tier was discontinued on 2026-04-15"},
+			want: "dead",
+		},
+		{
+			name: "JetBrains subscription → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "junie", LastError: "Junie: 403 Forbidden: No active JetBrains AI subscription found"},
+			want: "dead",
+		},
+		{
+			name: "insufficient balance → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "zai", LastError: "Zhipu GLM API error: insufficient balance - please recharge"},
+			want: "dead",
+		},
+		{
+			name: "5+ fails no prior success → dead",
+			in:   &MonitoredProviderHealth{ProviderID: "x", ConsecutiveFails: 5},
+			want: "dead",
+		},
+		{
+			name: "5+ fails but had prior success → verified (transient)",
+			in:   &MonitoredProviderHealth{ProviderID: "x", ConsecutiveFails: 5, LastSuccess: now.Add(-time.Hour)},
+			want: "verified",
+		},
+		{
+			name: "transient 500 (no auth signal, < 5 fails) → configured",
+			in:   &MonitoredProviderHealth{ProviderID: "x", LastError: "internal server error", ConsecutiveFails: 2},
+			want: "configured",
+		},
+	}
+	for _, c := range cases {
+		got := deriveTier(c.in)
+		assert.Equal(t, c.want, got, c.name)
+	}
+}

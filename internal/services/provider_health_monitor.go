@@ -103,6 +103,56 @@ type MonitoredProviderHealth struct {
 	ResponseTime     time.Duration `json:"response_time,omitempty"`
 	CheckCount       int64         `json:"check_count"`
 	FailCount        int64         `json:"fail_count"`
+	// Tier categorizes the provider's verifier status (CONST-032 +
+	// user requirement: "LLMsVerifier MUST be capable of filtering
+	// providers and models properly"). Computed by deriveTier() from
+	// the other fields. Possible values:
+	//   - "verified":   has at least one successful health check;
+	//                   primary chain candidate
+	//   - "configured": registered + last_success unset and < N
+	//                   consecutive fails; still attempted as fallback
+	//                   (transient down OR not-yet-probed)
+	//   - "dead":       LastError matches a terminal-auth pattern
+	//                   (401/403/quota_exceeded/discontinued/no
+	//                   subscription) OR consecutive_fails ≥ 5 with no
+	//                   prior success; excluded from rotation; operator
+	//                   should rotate the credential
+	Tier string `json:"tier"`
+}
+
+// deriveTier categorizes a provider for operator triage.
+// See MonitoredProviderHealth.Tier for the taxonomy.
+func deriveTier(h *MonitoredProviderHealth) string {
+	if h == nil {
+		return "unknown"
+	}
+	// Dead: terminal auth signal in last error message.
+	if h.LastError != "" {
+		low := strings.ToLower(h.LastError)
+		if strings.Contains(low, "401") ||
+			strings.Contains(low, "403") ||
+			strings.Contains(low, "unauthorized") ||
+			strings.Contains(low, "forbidden") ||
+			strings.Contains(low, "no active") && strings.Contains(low, "subscription") ||
+			strings.Contains(low, "discontinued") ||
+			strings.Contains(low, "quota_exceeded") ||
+			strings.Contains(low, "tokens per day") ||
+			strings.Contains(low, "insufficient balance") {
+			return "dead"
+		}
+	}
+	// Dead by sustained-failure heuristic: 5+ consecutive fails AND no
+	// success ever recorded. Genuinely transient providers either
+	// recover or have a prior LastSuccess.
+	if h.ConsecutiveFails >= 5 && h.LastSuccess.IsZero() {
+		return "dead"
+	}
+	// Verified: at least one successful health check on record.
+	if !h.LastSuccess.IsZero() {
+		return "verified"
+	}
+	// Configured: registered, no success yet, but not (yet) terminal.
+	return "configured"
 }
 
 // ProviderHealthMonitorConfig configures the monitor
@@ -368,36 +418,64 @@ func (phm *ProviderHealthMonitor) GetStatus() ProviderHealthOverallStatus {
 	providers := make(map[string]*MonitoredProviderHealth)
 	healthyCount := 0
 	unhealthyCount := 0
+	tierCounts := VerifierTierSummary{}
 
 	phm.healthStatus.Range(func(providerID string, status *MonitoredProviderHealth) bool {
 		statusCopy := *status
+		statusCopy.Tier = deriveTier(&statusCopy)
 		providers[providerID] = &statusCopy
 		if status.Healthy {
 			healthyCount++
 		} else {
 			unhealthyCount++
 		}
+		switch statusCopy.Tier {
+		case "verified":
+			tierCounts.Verified++
+		case "configured":
+			tierCounts.Configured++
+		case "dead":
+			tierCounts.Dead++
+		default:
+			tierCounts.Unknown++
+		}
 		return true
 	})
 
+	tierCounts.Total = len(providers)
+
 	return ProviderHealthOverallStatus{
-		Healthy:        unhealthyCount == 0,
-		HealthyCount:   healthyCount,
-		UnhealthyCount: unhealthyCount,
-		TotalCount:     len(providers),
-		Providers:      providers,
-		CheckedAt:      time.Now(),
+		Healthy:         unhealthyCount == 0,
+		HealthyCount:    healthyCount,
+		UnhealthyCount:  unhealthyCount,
+		TotalCount:      len(providers),
+		Providers:       providers,
+		CheckedAt:       time.Now(),
+		VerifierSummary: tierCounts,
 	}
+}
+
+// VerifierTierSummary is the operator-facing roll-up of verifier
+// classifications across all providers. Surfaced at the top level of
+// /v1/monitoring/status (as `verifier_summary`) so operators can see
+// at a glance how many keys need rotation.
+type VerifierTierSummary struct {
+	Verified   int `json:"verified"`
+	Configured int `json:"configured"`
+	Dead       int `json:"dead"`
+	Unknown    int `json:"unknown,omitempty"`
+	Total      int `json:"total"`
 }
 
 // ProviderHealthOverallStatus represents the overall health status
 type ProviderHealthOverallStatus struct {
-	Healthy        bool                                `json:"healthy"`
-	HealthyCount   int                                 `json:"healthy_count"`
-	UnhealthyCount int                                 `json:"unhealthy_count"`
-	TotalCount     int                                 `json:"total_count"`
-	Providers      map[string]*MonitoredProviderHealth `json:"providers"`
-	CheckedAt      time.Time                           `json:"checked_at"`
+	Healthy         bool                                `json:"healthy"`
+	HealthyCount    int                                 `json:"healthy_count"`
+	UnhealthyCount  int                                 `json:"unhealthy_count"`
+	TotalCount      int                                 `json:"total_count"`
+	Providers       map[string]*MonitoredProviderHealth `json:"providers"`
+	CheckedAt       time.Time                           `json:"checked_at"`
+	VerifierSummary VerifierTierSummary                 `json:"verifier_summary"`
 }
 
 // GetProviderStatus returns the health status of a specific provider

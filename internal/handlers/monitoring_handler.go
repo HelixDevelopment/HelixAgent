@@ -83,6 +83,14 @@ type OverallMonitoringStatus struct {
 	FallbackChain     *services.FallbackChainStatus         `json:"fallback_chain,omitempty"`
 	Concurrency       *services.ConcurrencyStatus           `json:"concurrency,omitempty"`
 	ConcurrencyAlerts map[string]interface{}                `json:"concurrency_alerts,omitempty"`
+	// VerifierSummary is the operator-facing roll-up of verifier
+	// classifications (verified / configured / dead / unknown).
+	// Mirrored from ProviderHealth.VerifierSummary to the top level so
+	// dashboards can surface it without nesting. CONST-032 + the user
+	// requirement: "LLMsVerifier MUST be capable of filtering providers
+	// and models properly" — operators must be able to see at a glance
+	// how many keys need rotation.
+	VerifierSummary *services.VerifierTierSummary `json:"verifier_summary,omitempty"`
 }
 
 // GetOverallStatus returns the overall monitoring status
@@ -119,6 +127,10 @@ func (h *MonitoringHandler) GetOverallStatus(c *gin.Context) {
 	if h.providerHealthMonitor != nil {
 		phStatus := h.providerHealthMonitor.GetStatus()
 		status.ProviderHealth = &phStatus
+		// Mirror the verifier summary to the top level so dashboards
+		// can render it without nesting (CONST-032).
+		summaryCopy := phStatus.VerifierSummary
+		status.VerifierSummary = &summaryCopy
 		if !phStatus.Healthy {
 			status.Healthy = false
 		}

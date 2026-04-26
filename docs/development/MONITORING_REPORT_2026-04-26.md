@@ -94,12 +94,33 @@ Post-restart success criterion (1h sample):
 | # | Finding | Disposition |
 |---|---|---|
 | 41 | HTTP shutdown deadline too tight; binary exited `level=fatal` instead of clean (forcing a `context deadline exceeded` on `HTTP server shutdown`) during graceful SIGTERM | Open. Increase shutdown grace period in `cmd/helixagent/main.go`. Low-priority cosmetic. |
-| 42 | Intent classifier sends full user message (9635 chars observed) to Cerebras → `context_length_exceeded` (400). Cooldown introduced in #28 only handles 429s; this is a 400. | Open. Add prompt-side truncation (e.g. cap user message at 4000 chars before classification) in `llm_intent_classifier.go:buildIntentClassificationPrompt`. The classifier doesn't need the full message to decide intent. |
-| 43 | **USER-VISIBLE PAIN**: binary takes ~2:18 to bind port 8100 because remote-distribution SCPs 12 build contexts to thinker.local sequentially on every restart, blocking server start. Liveness probe binds 8111 immediately, but CLI agents talk to 8100 and see "Cannot connect" with retry loop until distribution finishes. Reproduced 2026-04-26 13:02:46 → 13:06:03. | High-priority architectural fix. Two complementary changes: (a) hash-skip in `internal/adapters/containers/adapter.go:copyBuildContexts` — read remote checksum, only copy on diff; (b) make `BootAll` non-blocking — start HTTP server first, run distribution async with status endpoint surfacing partial readiness. Today's early-bind 8111 probe was the first half of (b); now extend it to 8100. |
+| 42 | Intent classifier sends full user message (9635 chars observed) to Cerebras → `context_length_exceeded` (400). Cooldown introduced in #28 only handles 429s; this is a 400. | **FIXED** — `maxClassifierUserMessageChars=4000` in `llm_intent_classifier.go:buildIntentClassificationPrompt` + truncation marker + 1 unit test. Commit `408c9c15`. |
+| 43 | **USER-VISIBLE PAIN**: binary takes ~2:18 to bind port 8100 because remote-distribution SCPs 12 build contexts to thinker.local sequentially on every restart, blocking server start. Liveness probe binds 8111 immediately, but CLI agents talk to 8100 and see "Cannot connect" with retry loop until distribution finishes. Reproduced 2026-04-26 13:02:46 → 13:06:03. | Open, **high priority**. Two complementary changes: (a) hash-skip in `internal/adapters/containers/adapter.go:copyBuildContexts` — read remote checksum, only copy on diff; (b) make `BootAll` non-blocking — start HTTP server first, run distribution async with status endpoint surfacing partial readiness. Today's early-bind 8111 probe was the first half of (b); now extend it to 8100. |
+
+## Findings discovered during continued monitoring (13:07+)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 44 | `qwen-oauth` provider keeps invoking the qwen CLI every health-check cycle even though the CLI returns "Qwen OAuth free tier was discontinued on 2026-04-15" — an unrecoverable user-action-required error. | **FIXED** — sync.RWMutex-protected `terminalErr` + `isQwenTerminalAuthError` matcher in `qwen_cli.go`; HealthCheck short-circuits after first terminal failure. 2 new tests. Commit `fb95624b`. |
+| 45 | `junie` provider keeps invoking the junie CLI every cycle despite "403 Forbidden: No active JetBrains AI subscription found." | **FIXED** — same sticky-disable pattern in `junie_cli.go`. 2 new tests. Commit `fb95624b`. |
+
+## Stage-3 carryover progress (this monitoring turn)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 20 | Add Anthropic-compatible `/v1/messages` endpoint for Claude CLI | **FIXED (non-streaming MVP)** — `internal/handlers/anthropic_compatible.go` translates Anthropic↔OpenAI request/response, delegates to ChatCompletions in-process via capturing ResponseWriter. Streaming + tools return clear 400s for now. 6 tests. Commit `f6fdd26d`. |
+| 21 | Add Google `generateContent` endpoint for Gemini CLI | Open. Same translator pattern as #20; lower priority because Gemini CLI bypasses `--openai-base-url` regardless. |
+| 22 | Document Qwen OAuth bypass for `--openai-base-url` | **DOC** in `docs/cli-agents/14-protocol-mismatches.md`. Commit `047b0c87`. |
+| 23 | Document Crush requires TTY (use `crush run`) | **DOC** in same file. Commit `047b0c87`. |
+| 24 | Fix helixcode config generator to include JWT_SECRET | **FIXED** — generator now emits `auth.jwt_secret` from `JWT_SECRET` env (or `HELIXAGENT_JWT_SECRET` fallback). Verified end-to-end with real `--generate-agent-config=helixcode` invocation against rebuilt binary. LLMsVerifier commit `f0047ca0`, vendor refreshed, parent bump commit `9d9dec38`. |
+| 25 | Document Copilot doesn't honor base URL | **DOC** in same file. Commit `047b0c87`. |
+| 26 | Fix Crush registry path | **FIXED** in `internal/agents/registry.go`. Commit `18d7af2e`. |
+| 27 | Wrapper scripts for protocol-translating agents | Possibly redundant with #20/#21 done — re-evaluate after #21 lands. |
 
 ## Next steps
 
 1. ~~Restart binary to activate cooldown + amber runtime fix.~~ DONE (13:02:46 → 13:06:03 ready).
-2. Wait 1 h, re-run this report's "Verification of code fixes" grep.
-3. Address Findings #41 (low), #42 (medium), #43 (high — user pain).
-4. Address Stage-3 carryover findings (#20-#27) per user priority.
+2. Restart binary again to activate `/v1/messages` route + the truncation, sticky-disable, and JWT-generator fixes. **Pending user OK** — current binary is in active use.
+3. Address Finding #43 (slow boot — user-visible pain). Two-part architectural fix.
+4. Optional: Finding #21 (Google generateContent translator) using the same pattern as #20.
+5. Optional: Finding #41 (shutdown grace — cosmetic, ~5 min fix).

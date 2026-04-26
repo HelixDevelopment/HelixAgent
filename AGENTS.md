@@ -12,7 +12,7 @@
 HelixAgent is a production-ready, AI-powered ensemble LLM service written in Go
 (1.26) that aggregates responses from multiple language models to provide the
 most accurate and reliable outputs. It exposes an OpenAI-compatible REST API and
-a gRPC facade. The system supports 47+ LLM providers, multi-round AI debate
+a gRPC facade. The system supports 51 LLM providers, multi-round AI debate
 orchestration, MCP (Model Context Protocol) adapters, ACP (Agent Coordination
 Protocol), LSP (Language Server Protocol), embeddings, vision, and
 containerized infrastructure.
@@ -30,11 +30,20 @@ containerized infrastructure.
 - `generate-constitution` — Constitution file generator
 - `audit` — Audit utility
 
-**Monorepo Structure**: The project is a Go monorepo with ~60 submodules,
-including `Containers`, `Database`, `Auth`, `Cache`, `Concurrency`, `EventBus`,
-`MCP_Module`, `DebateOrchestrator`, `HelixMemory`, `HelixLLM`, `HelixQA`, and
-many others. The root `go.mod` uses extensive `replace` directives to wire local
-submodules together.
+**Monorepo Structure**: The project is a Go monorepo with ~60 submodules.
+The root `go.mod` uses extensive `replace` directives to wire local submodules together.
+Key submodules:
+- `Containers` - Container orchestration and remote distribution
+- `Database` - PostgreSQL connectivity and migrations
+- `Auth` - Authentication and JWT handling
+- `Cache` - Redis-based caching layer
+- `Concurrency` - Safe concurrent data structures (`safe.Store`, `safe.Slice`)
+- `EventBus` - Event-driven architecture
+- `MCP_Module` - Model Context Protocol implementation
+- `DebateOrchestrator` - Multi-agent debate system (two implementations)
+- `HelixMemory` - Memory and knowledge graph
+- `HelixLLM` - LLM abstraction layer (51 providers)
+- `HelixQA` - Quality assurance and testing framework
 
 ---
 
@@ -60,7 +69,7 @@ submodules together.
 ## Code Organization
 
 ```
-cmd/                    # Application entry points (7 binaries)
+cmd/                    # Application entry points (8 binaries)
   helixagent/           # Main production server
   api/                  # Standalone demo API
   grpc-server/          # gRPC facade
@@ -68,12 +77,13 @@ cmd/                    # Application entry points (7 binaries)
   cognee-mock/          # Mock Cognee
   sanity-check/         # System validation
   generate-constitution/# Constitution generator
+  audit/                # Audit utility
 
 internal/               # Core application code (~50+ packages)
   router/               # Central Gin router setup, middleware, service initialization
   handlers/             # HTTP handlers (~40 files: OpenAI-compatible, debate, MCP, LSP, ACP, embeddings, etc.)
   services/             # Business logic: provider registry, ensemble, debate, caching, monitoring, OAuth
-  llm/                  # LLM abstraction layer and 47+ provider implementations
+  llm/                  # LLM abstraction layer and 51 provider implementations
   models/               # Core domain types (LLMRequest, LLMResponse, Message, etc.)
   database/             # PostgreSQL connectivity, migrations (embedded SQL strings)
   config/               # Centralized env-var based configuration
@@ -83,18 +93,19 @@ internal/               # Core application code (~50+ packages)
   features/             # Feature flags (GraphQL, Brotli, HTTP/3, etc.)
   cache/                # Caching layer
   security/             # Guardrails, red-team fixtures, normalization
+  ports/                # Centralized port registry (see CONST-027)
 
 pkg/                    # Public API packages
   api/                  # Generated protobuf code (llm-facade.pb.go, llm-facade_grpc.pb.go)
 
 tests/                  # Test suites organized by type
-  unit/                 # Unit tests by domain
-  integration/          # Cross-service integration tests
-  e2e/                  # End-to-end workflows
-  security/             # Vulnerability scans
-  stress/               # Load and saturation tests
-  chaos/                # Fault injection
-  challenge/            # Chaos/competition tests
+  unit/                 # Unit tests by domain (mocks allowed, run with `-short`)
+  integration/          # Cross-service integration tests (REAL infrastructure required)
+  e2e/                  # End-to-end workflows (REAL infrastructure required)
+  security/             # Vulnerability scans (REAL infrastructure required)
+  stress/               # Load and saturation tests (REAL infrastructure required)
+  chaos/                # Fault injection (REAL infrastructure required)
+  challenge/            # Chaos/competition tests (REAL infrastructure required)
   performance/          # Performance benchmarks (`//go:build performance`)
   benchmark/            # Benchmark suites
   fixtures/             # Shared test data
@@ -121,174 +132,59 @@ scripts/                # ~90+ build, test, deploy, security, and utility script
    of the best 15 LLMs.
 
 3. **Debate Architecture (Two Implementations)**:
-   - **DebateService** (`internal/services/debate_service.go`) — Core debate
-     with `ConductDebate()`, multi-round consensus, fallback chains,
-     suspiciously-fast-response detection.
+   - **DebateService** (`internal/services/debate_service.go`) — Core debate with
+     `ConductDebate()`, provider registry, suspiciously-fast-response detection,
+     multi-round orchestration
    - **Orchestrator Framework** (`internal/services/debate_integration/`) —
-     Advanced 8-phase protocol (Dehallucination → SelfEvolvement → Proposal →
-     Critique → Review → Optimization → Adversarial → Convergence) with agent
-     pools and topology support (mesh/star/chain/tree).
+     Advanced orchestrator with agent pools, 8-phase protocol, topology support
+     (mesh/star/chain/tree)
 
 4. **Database Migrations**: Embedded as SQL strings in `internal/database/db.go`.
    Migration files live in `internal/database/migrations/`.
+
+5. **Port and Service Architecture**:
+   - **HelixAgent runs on port 8100 by default** (from the canonical port
+     registry at `internal/ports/ports.go`).
+   - Configurable prefix: all default ports share a leading digit controlled by
+     `HELIXAGENT_PORT_PREFIX` (default 8, can flip to 9).
+   - Eager services (started at boot): HelixAgent HTTP (8100), PostgreSQL (8101),
+     Redis (8102), MCP Bridge (8103), HelixLLM (8105), Redis MCP backend (8110)
+   - Lazy services (started on-demand): Cognee (8120), ChromaDB (8121), Qdrant (8122),
+     Neo4j (8123/8124)
+   - Observability: Prometheus (8310), Grafana (8311), Jaeger (8312), ACP Manager (8300)
+   - MCP Servers: 8200-8281 (12 tiers; see `docs/development/port-registry.md`)
 
 ---
 
 ## Build and Test Commands
 
-All builds and tests are run manually or via Makefile targets. There is no CI/CD
-automation in this repository (see Mandatory Constraints below).
+All builds and tests are run manually or via Makefile targets. No CI/CD pipelines.
 
 ### Build
 
 ```bash
-make build              # Build the helixagent binary
+make build              # Build helixagent binary
 make build-debug        # Build with debug symbols
 make build-all          # Build all 7 applications
 make release            # Full release build with version injection
 ```
 
-### Quick Test
+### Test
 
 ```bash
-make test               # Auto-detects Postgres/Redis; runs full suite or falls back to -short
-make test-unit          # go test ./internal/... -short
+make test               # Auto-detects Postgres/Redis; full suite or falls back to -short
+make test-unit          # go test ./internal/... -short (unit tests only)
 make test-integration   # Integration tests via scripts/run-integration-tests.sh
-make test-e2e           # End-to-end tests
-make test-security      # Security test suite
-make test-stress        # Load and saturation tests
-make test-chaos         # Chaos/competition tests
+make test-e2e           # End-to-end tests (REAL infra)
 make test-bench         # go test -bench=. -benchmem ./...
 make test-race          # Race detector run
-make test-performance   # Performance benchmarks (//go:build performance)
-make test-pentest       # Penetration tests (//go:build pentest)
-```
-
-### Complete Test Orchestration
-
-```bash
-make test-complete      # Runs all 6 test types with full Docker/Podman infra
-make test-all           # scripts/run_all_tests.sh
-make test-with-full-infra  # Starts Kafka, RabbitMQ, MinIO, etc. then tests (600s timeout)
-```
-
-### Test Infrastructure Management
-
-```bash
-make ensure-test-infra      # Auto-detects Docker/Podman, starts Postgres + Redis
-make test-infra-start       # Start test infrastructure
-make test-infra-stop        # Stop test infrastructure
-make test-infra-full-start  # Full stack (basic, messaging, bigdata profiles)
-```
-
-### Other Useful Targets
-
-```bash
-make fmt                # gofmt + goimports
-make vet                # go vet ./...
-make lint               # golangci-lint run
-make security-scan      # Orchestrates Gosec, Trivy, Snyk, SonarQube
-make docker-build       # Build Docker image
-make podman-build       # Build Podman image
-make container-detect   # Detect available container runtime
+make test-complete      # All 6 test types with full Docker/Podman infra
 make ci-validate-all    # Full CI validation including concurrency audit
+make ensure-test-infra  # Auto-detect Docker/Podman, start Postgres + Redis
 ```
 
 ### Resource Limits
-
-All test runs are prefixed with `nice -n 19 ionice -c 3` and use:
-- `GO_TEST_FLAGS := -p 1`
-- `GOMAXPROCS := 2`
-
----
-
-## Code Style Guidelines
-
-### Go Conventions
-- **Go version**: 1.26
-- **Naming**: PascalCase for exported identifiers, camelCase for unexported.
-  Constructor functions use `New*` prefix.
-- **Context**: `context.Context` is always the first parameter when needed.
-- **Errors**: Use `fmt.Errorf("...: %w", err)` for wrapping. Never panic in
-  production code — return errors up the stack.
-- **Struct tags**: JSON tags are required for serialized structs.
-- **Logging**: Use `github.com/sirupsen/logrus` for structured logging.
-  Pattern: `log.WithError(err).Warn("...")` or `log.WithFields(...).Info("...")`.
-- **Interfaces**: Define close to consumers (e.g., `LLMProvider`, `EmbeddingGenerator`).
-
-### Concurrency (CONST-029)
-Any struct field that is a mutable collection (map, slice, channel-map) and is
-accessed concurrently **MUST** use `safe.Store[K,V]` or `safe.Slice[T]` from
-`digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map` / `sync.Mutex +
-slice` is **prohibited for new code**.
-
-- **Migration status**: ~39% drained (100 of 254 initial sites migrated).
-- **Allowlist**: `scripts/concurrency-audit-allowlist.txt` tracks remaining sites.
-- **Enforcement**: `scripts/concurrency-audit.sh` runs under `make ci-validate-all`.
-- **Guide**: `docs/development/concurrency-playbook.md`
-
-### Linting
-- **`.golangci.yml`** (root): enables `errcheck`, `govet`, `staticcheck`,
-  `unused`, `gosimple`, `ineffassign`, `typecheck`.
-- **Skipped directories**: `cli_agents`, `MCP`, `MCP-Servers`, `vendor`.
-
-### Commit Style
-Conventional Commits: `type(scope): description`.
-Examples: `feat(debate): add mesh topology`, `fix(handlers): correct embedding response format`, `docs(agents): update port architecture`.
-
----
-
-## Testing Instructions
-
-### Test Categories
-
-| Category | Location | Mocks Allowed | Infrastructure Required |
-|----------|----------|---------------|------------------------|
-| Unit | `*_test.go` (run with `-short`) | Yes | None |
-| Integration | `tests/integration/...` | **NO** | Postgres (8101), Redis (8102), HelixAgent on :8100 |
-| E2E | `tests/e2e/...` | **NO** | Full test stack (docker-compose.test.yml) |
-| Security | `tests/security/...` | **NO** | Full test stack |
-| Stress | `tests/stress/...` | **NO** | Full test stack |
-| Chaos/Challenge | `tests/challenge/...`, `tests/chaos/...` | **NO** | Full test stack |
-| Performance | `tests/performance/...` | **NO** | Full stack |
-| Benchmarks | `*_benchmark_test.go`, `*_bench_test.go` | **NO** | Varies |
-
-### Skipping Strategy
-
-Tests that require infrastructure MUST probe via TCP/HTTP and call `t.Skip()`
-when services are unavailable in local development. They MUST NOT skip when
-`CI=true` or `FULL_TEST_MODE=true`.
-
-Key helpers in `internal/testutil/`:
-- `RequireServer(t)` — skips if `:8100` (`HELIXAGENT_PORT_HTTP`) not reachable
-- `RequirePostgres(t)` — skips if Postgres TCP probe fails
-- `RequireRedis(t)` — skips if Redis TCP probe fails
-- `RequireMockLLM(t)` — skips if mock LLM `:18081` not up
-- `RequireInfra(t)` — combo check
-- `RequireEnv(t, envVar)` — skips if env var missing or placeholder-like
-- `RequireAPIKey(t, provider)` — skips if provider API key missing
-- `TestTimeout(t, d)` / `ShortTimeout(t)` / `MediumTimeout(t)` / `LongTimeout(t)`
-
-### Test Infrastructure Stack (docker-compose.test.yml)
-
-| Service | Container Name | External Port |
-|---------|---------------|---------------|
-| Mock LLM | helixagent-mock-llm | 18081 |
-| PostgreSQL | helixagent-postgres | 8101 (`HELIXAGENT_PORT_POSTGRES`) |
-| Redis | helixagent-redis | 8102 (`HELIXAGENT_PORT_REDIS`) |
-| Ollama | helixagent-ollama | 11434 |
-| HelixAgent | helixagent-app | 8100 (`HELIXAGENT_PORT_HTTP`) |
-| Prometheus | helixagent-prometheus | 9090 |
-| Grafana | helixagent-grafana | 3000 |
-
-### Test Data
-Shared fixtures live in `tests/fixtures/fixtures.go`:
-- `MockProviders()`, `MockLLMRequests()`, `MockLLMResponses()`,
-  `MockModelParameters(requestType)`, `MockUserSessions()`
-
-### Mock LLM Server
-`tests/mock-llm-server/main.go` is a Dockerized deterministic OpenAI-compatible
-API. Provider configs in tests can point to it via `CLAUDE_BASE_URL=http://localhost:18081/v1`.
+All test runs use `nice -n 19 ionice -c 3`, `GO_TEST_FLAGS := -p 1`, `GOMAXPROCS := 2`.
 
 ### Running a Single Test Package
 ```bash
@@ -298,30 +194,54 @@ go test -v ./tests/integration/...
 
 ---
 
-## Security Considerations
+## Code Style
 
-1. **No CI/CD Pipelines**: Automated pipelines are prohibited. Builds and tests
-   are manual or Makefile-driven only.
-2. **No Git Hooks**: Pre-commit, pre-push, and post-commit hooks are not
-   installed. `.pre-commit-config.yaml` exists for reference only.
-3. **Password Hashing**: Argon2id is used for user passwords.
-4. **TLS**: TLS 1.3 is configured for HelixLLM and external provider connections.
-5. **Guardrails**: `internal/security/guardrails.go` and `normalize.go` handle
-   prompt injection, jailbreak, role reversal, and other red-team attack vectors.
-   Red-team fixtures are in `internal/security/redteam/fixtures/*.yaml`.
-6. **Secrets Scanning**: `detect-secrets` with `.secrets.baseline`.
-7. **Security Scanners**: Gosec, Trivy, Snyk, SonarQube, Semgrep, KICS, Grype.
-   Run via `make security-scan` or `scripts/security-scan.sh`.
-8. **Gosec Baseline**: `.gosec-baseline.json` suppresses known false positives.
-9. **Container Security**: Images run as non-root (`helixagent:1001`).
-   Kubernetes manifests enforce `runAsNonRoot: true`, `readOnlyRootFilesystem: true`,
-   and drop all capabilities.
-10. **Non-cryptographic randomness**: Annotated with `#nosec G404` where
-    applicable (jitter calculations).
+### Concurrency (CONST-029)
+Any mutable collection accessed concurrently **MUST** use `safe.Store[K,V]` or `safe.Slice[T]`
+from `digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map`/`slice` is **prohibited for new code**.
+Enforced by `scripts/concurrency-audit.sh` under `make ci-validate-all`.
+
+### Linting
+`.golangci.yml` enables `errcheck`, `govet`, `staticcheck`, `unused`, `gosimple`, `ineffassign`, `typecheck`.
+Skipped directories: `cli_agents`, `MCP`, `MCP-Servers`, `vendor`.
+
+### Commit Style
+Conventional Commits: `type(scope): description`.
+Examples: `feat(debate): add mesh topology`, `fix(handlers): correct embedding response format`.
 
 ---
 
-## Deployment Processes
+## Testing
+
+### Test Categories
+
+| Category | Location | Mocks Allowed | Infrastructure |
+|----------|----------|---------------|----------------|
+| Unit | `*_test.go` (run with `-short`) | Yes | None |
+| Integration | `tests/integration/...` | **NO** | Postgres :8101, Redis :8102, HelixAgent :8100 |
+| E2E / Security / Stress / Chaos | `tests/{e2e,security,stress,chaos}/...` | **NO** | Full test stack |
+| Performance | `tests/performance/...` (`//go:build performance`) | **NO** | Full stack |
+| Benchmarks | `*_benchmark_test.go` | **NO** | Varies |
+
+### Skipping Strategy
+Tests that require infrastructure MUST probe via TCP/HTTP and call `t.Skip()` when unavailable.
+They MUST NOT skip when `CI=true` or `FULL_TEST_MODE=true`.
+
+Key helpers in `internal/testutil/`:
+- `RequireServer(t)` / `RequirePostgres(t)` / `RequireRedis(t)` / `RequireMockLLM(t)`
+- `RequireInfra(t)` / `RequireEnv(t, envVar)` / `RequireAPIKey(t, provider)`
+- `ShortTimeout(t)` / `MediumTimeout(t)` / `LongTimeout(t)`
+
+### Mock LLM Server
+`tests/mock-llm-server/main.go` — Dockerized, deterministic, OpenAI-compatible.
+Provider configs in tests can point to it via `CLAUDE_BASE_URL=http://localhost:18081/v1`.
+
+### Test Data
+Shared fixtures in `tests/fixtures/fixtures.go`: `MockProviders()`, `MockLLMRequests()`, `MockLLMResponses()`, `MockModelParameters(requestType)`, `MockUserSessions()`.
+
+---
+
+## Security / Operations
 
 ### Container Runtime
 The project supports both Docker and Podman. Auto-detection is performed by
@@ -345,24 +265,17 @@ make build
 - `docker/mcp/docker-compose.mcp-full.yml` — 65+ MCP servers (ports 8200-8281, 82xx band; see `docs/development/port-registry.md`)
 
 ### Kubernetes
-Manifests are in `k8s/`:
-- `k8s/base/` — Namespace, Deployment (2 replicas), Service, ConfigMap, HPA, PDB,
-  NetworkPolicy, ServiceAccount
+Manifests in `k8s/`:
+- `k8s/base/` — Namespace, Deployment (2 replicas), Service, ConfigMap, HPA, PDB, NetworkPolicy, ServiceAccount
 - `k8s/staging/` — Staging overlays
 - `k8s/production/` — Production overlays (ingress, patches)
 
 ### Remote Container Distribution
-Remote hosts are registered dynamically via `CONTAINERS_REMOTE_HOST_N_*`
-environment variables in `Containers/.env`. N iterates 1..100. Enable with
-`CONTAINERS_REMOTE_ENABLED=true`. No host name is hardcoded in source.
-
-Audit configured hosts:
+Remote hosts are registered dynamically via `CONTAINERS_REMOTE_HOST_N_*` env vars in `Containers/.env`.
+Enable with `CONTAINERS_REMOTE_ENABLED=true`. Audit configured hosts:
 ```bash
 grep '^CONTAINERS_REMOTE_HOST_' Containers/.env
 ```
-
-Direct `docker`/`podman` commands and ad-hoc remote hosts outside the `.env`
-mechanism are strictly prohibited.
 
 ---
 
@@ -371,42 +284,21 @@ mechanism are strictly prohibited.
 These constraints are **permanent and non-negotiable**.
 
 ### CONST-025: No Mocks Outside Unit Tests
-
 ONLY unit tests may use mocks, stubs, fakes, or placeholder implementations.
-Integration tests, functional tests, E2E tests, Challenge tests, and HelixQA
-tests MUST ALL execute against the REAL running HelixAgent system (port 8100, `HELIXAGENT_PORT_HTTP`)
-with real containers, real databases, real Redis, and real HTTP calls. All
-services and containers MUST be booted and operational before non-unit tests run.
-Tests that cannot connect to real services MUST skip (not fail).
+Integration, E2E, security, stress, chaos, challenge, benchmark, HelixQA tests MUST execute against the REAL running HelixAgent system with REAL containers, databases, Redis, and HTTP calls.
 
 ### CONST-026: Both Debate Flavors Must Be Tested Comprehensively
+HelixAgent has TWO distinct debate implementations that BOTH require integration tests against `/v1/debates`:
+- **DebateService** (`internal/services/debate_service.go`) — Core debate with `ConductDebate()`, multi-round orchestration
+- **Orchestrator Framework** (`internal/services/debate_integration/`) — Advanced orchestrator with agent pools, 8-phase protocol, topology support (mesh/star/chain/tree)
 
-HelixAgent has TWO distinct debate implementations that BOTH require integration
-tests against the LIVE API (`/v1/debates`):
-
-1. **DebateService** (`internal/services/debate_service.go`) — Core debate with
-   `ConductDebate()`, provider registry, suspiciously-fast-response detection,
-   multi-round orchestration
-2. **Orchestrator Framework** (`internal/services/debate_integration/`) —
-   Advanced orchestrator with agent pools, 8-phase protocol, topology support
-   (mesh/star/chain/tree)
-
-Tests MUST cover:
-- **5-position debates** (minimum viable multi-agent debate)
-- **8+ position debates** (large-scale multi-agent debate)
-- Error handling, timeout, fallback, and concurrent execution
-- Voting methods, consensus detection, quality scoring
+Tests MUST cover 5+ and 8+ position debates, error handling, timeout, fallback, concurrent execution, voting, consensus detection, and quality scoring.
 
 ### CONST-027: Port and Service Architecture
+**HelixAgent runs on port 8100 by default** (from `internal/ports/ports.go`).
 
-**HelixAgent runs on port 8100 by default** (from the canonical port
-registry at `internal/ports/ports.go`). The single source of truth
-is `docs/development/port-registry.md`.
-
-**Configurable prefix.** All default ports share a leading digit
-controlled by `HELIXAGENT_PORT_PREFIX` (default 8, can flip to 9).
-At prefix=8 → 81xx-83xx; at prefix=9 → 91xx-93xx. Individual
-services can be overridden with their `HELIXAGENT_PORT_*` env var.
+**Configurable prefix:** `HELIXAGENT_PORT_PREFIX` (default 8, can flip to 9).
+At prefix=8 → 81xx-83xx; at prefix=9 → 91xx-93xx.
 
 **Eager Services** (started at boot, band 81xx):
 - HelixAgent HTTP: 8100 (`HELIXAGENT_PORT_HTTP`)
@@ -414,94 +306,41 @@ services can be overridden with their `HELIXAGENT_PORT_*` env var.
 - Redis: 8102 (`HELIXAGENT_PORT_REDIS`, no password)
 - MCP Bridge: 8103 (`HELIXAGENT_PORT_MCP_BRIDGE`)
 - HelixLLM: 8105 (`HELIXAGENT_PORT_HELIXLLM`, HTTPS/TLS 1.3)
-- Redis MCP backend: 8110 (`HELIXAGENT_PORT_REDIS_MCP`, password
-  `helixagent123`)
-- MCP Servers: 8200-8281 (12 tiers; grep `HELIXAGENT_PORT_MCP_` in
-  `internal/ports/ports.go`)
+- Redis MCP backend: 8110 (`HELIXAGENT_PORT_REDIS_MCP`, password `helixagent123`)
 
 **Lazy Services** (started on-demand, band 81xx):
 - Cognee: 8120 (`HELIXAGENT_PORT_COGNEE`)
 - ChromaDB: 8121 (`HELIXAGENT_PORT_CHROMADB`)
 - Qdrant: 8122 (`HELIXAGENT_PORT_QDRANT`)
-- Neo4j HTTP/Bolt: 8123/8124 (`HELIXAGENT_PORT_NEO4J_HTTP`,
-  `HELIXAGENT_PORT_NEO4J_BOLT`)
+- Neo4j HTTP/Bolt: 8123/8124 (`HELIXAGENT_PORT_NEO4J_HTTP`, `HELIXAGENT_PORT_NEO4J_BOLT`)
 
-**Observability** (band 83xx): Prometheus 8310, Grafana 8311,
-Jaeger 8312, ACP Manager 8300, etc.
+**Observability** (band 83xx): Prometheus 8310, Grafana 8311, Jaeger 8312, ACP Manager 8300
 
 **Redis Architecture**:
-- `helixagent-redis` port **8102**: NO password — HelixAgent core,
-  streaming, tests
-- `helixagent-mcp-redis-backend` port **8110**: password
-  `helixagent123` — MCP containers
-
-**Invariants enforced by tests:** no offset collisions, every port
-fits in 16 bits at both prefixes, band discipline preserved, every
-service uses a `HELIXAGENT_PORT_*` env var. See
-`internal/ports/ports_test.go` and
-`./challenges/scripts/port_registry_challenge.sh`.
+- `helixagent-redis` port 8102: NO password — HelixAgent core, streaming, tests
+- `helixagent-mcp-redis-backend` port 8110: password `helixagent123` — MCP containers
 
 **API Response Format Contracts** (server returns these, tests MUST match):
-- `/v1/embeddings/providers` → providers as objects `{name,model,dimension,enabled}` (NOT strings)
-- `/v1/vision/capabilities` → capabilities as objects `{id,name,status}` with status field
-- `/v1/acp/agents` → agents as objects `{id,name,status}` with status field
+- `/v1/embeddings/providers` → objects `{name,model,dimension,enabled}` (NOT strings)
+- `/v1/vision/capabilities` → objects `{id,name,status}` with status field
+- `/v1/acp/agents` → objects `{id,name,status}` with status field
 - `/v1/acp/agents/{id}` → uses field `id` (NOT `agent_id`)
 - `/v1/acp/execute` → uses field `agent_id`
-- Health endpoints: `/v1/vision/health` works, `/v1/acp/health` works,
-  `/v1/embeddings/health` returns 404 — use `/v1/embeddings/providers` instead
+- Health: `/v1/vision/health` works, `/v1/acp/health` works, `/v1/embeddings/health` returns 404 — use `/v1/embeddings/providers`
 
 ### CONST-028: Bugfix Documentation
-
-All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with root
-cause analysis, affected files, fix description, and verification test reference.
-Every fix must have a corresponding verification test that proves the issue
-cannot regress.
+All bug fixes MUST be documented in `docs/issues/fixed/BUGFIXES.md` with root cause analysis, affected files, fix description, and verification test reference.
 
 ### CONST-029: Concurrent-Safe Containers
-
-Any struct field that is a mutable collection (map, slice, channel-map) and is
-accessed concurrently MUST use `safe.Store[K,V]` or `safe.Slice[T]` from
-`digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map` / `sync.Mutex +
-slice` combinations in shared state are prohibited for new code.
-
-**Rationale:** The bare-mutex pattern is a review-caught bug class; the
-primitives make forgetting the lock structurally impossible (there is no lock to
-forget). We have shipped 18+ fixes against Pattern-A races (BUGFIXES #29, #30,
-#34–#38); each fix was correct but the pattern that demanded fixing was wrong.
-
-**Primitives:** `digital.vasic.concurrency/pkg/safe/{store,slice}.go` — generic,
-10× race-clean, internal collection never exposed.
-
-**Discipline and migration table:** `docs/development/concurrency-playbook.md`.
-
-**Enforcement:** `scripts/concurrency-audit.sh` runs under `make ci-validate-all`.
-New code failing the audit fails CI. Existing sites migrate per the playbook's
-priority order; allowlist is temporary.
+Any mutable collection accessed concurrently **MUST** use `safe.Store[K,V]` or `safe.Slice[T]` from `digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map`/`slice` is **prohibited for new code**. Enforced by `scripts/concurrency-audit.sh`.
 
 ### CONST-030: Real Infrastructure for All Non-Unit Tests
-
-Mocks, stubs, fakes, placeholders, and hardcoded data MAY ONLY be used in unit
-tests (files ending `_test.go` run under `go test -short`). EVERY other test
-type — integration, E2E, functional, security, stress, chaos, challenge,
-benchmark, HelixQA, and any runtime verification — MUST execute against the REAL
-running HelixAgent system with REAL containers, REAL databases, REAL Redis, REAL
-MCP/ACP/LSP services, and REAL HTTP calls.
-
-To enable this: before every non-unit test run, the HelixAgent binary MUST build,
-distribute, and boot all containers per the Mandatory Container Orchestration
-Flow. Non-unit tests that cannot connect to real services MUST skip (not fail).
-Violations are critical infrastructure failures and block merge.
-
-This rule strengthens and supersedes CONST-025.
+Mocks, stubs, fakes, placeholders, and hardcoded data MAY ONLY be used in unit tests (files ending `_test.go` run under `go test -short`).
+EVERY other test type MUST execute against the REAL running HelixAgent system with REAL containers, databases, Redis, MCP/ACP/LSP services, and REAL HTTP calls.
 
 ### CONST-031: Authorized Remote Distribution Hosts
-
-Remote distribution hosts are registered **dynamically** via
-`CONTAINERS_REMOTE_HOST_N_*` environment variables in `Containers/.env`. N
-iterates 1..100; the loader (`Containers/pkg/envconfig/parser.go`) stops at the
-first absent `_NAME`. Adding an Nth host = append six env vars — no code change
-required. The `.env` file is the sole source of truth; **no host name is
-hardcoded in source, tests, challenges, or other governance docs**.
+Remote distribution hosts are registered dynamically via `CONTAINERS_REMOTE_HOST_N_*` env vars in `Containers/.env`.
+No host name is hardcoded in source, tests, challenges, or governance docs.
 
 **Per-host env var keys (each N):**
 
@@ -535,54 +374,95 @@ hosts ≥ 1.
 
 ### CONST-032: Reproduction-Before-Fix
 
-**Mandatory.** Every reported error, defect, or unexpected behavior MUST be
-reproduced by a Challenge script BEFORE any fix is attempted.
+**Mandatory.** Every reported error, defect, or unexpected behavior MUST be reproduced by a Challenge script BEFORE any fix is attempted.
 
-**Sequence (no shortcuts):**
-
-1. **Write the Challenge first.** Create
-   `challenges/scripts/<bug>_challenge.sh` (or extend an existing one) that
-   exercises the exact failing scenario against the running binary. The
-   challenge MUST exit non-zero when the bug is present.
-
-2. **Run the Challenge to confirm reproduction.** Paste the failing output
-   into the bug ticket / commit message / Claude reply. If the challenge
-   passes before the fix, it doesn't reproduce the bug — fix the challenge
-   first.
-
-3. **Then write the fix.** No code change to the product is permitted before
-   steps 1 and 2 are complete.
-
-4. **Re-run the Challenge to confirm the fix.** Paste the green output. The
-   challenge becomes the regression guard for that bug forever.
-
-5. **Commit Challenge + fix together.** Same commit, same PR. Reverting the
-   fix without reverting the challenge is not allowed; the challenge
-   protects future commits from re-introducing the same defect.
-
-**Why:** drainage cycles keep re-discovering bugs that pass `go test` and
-re-appear in production because the unit test missed the code path that
-actually breaks. A Challenge runs against the real binary with real
-infrastructure (per CONST-030), so "challenge passes" is evidence the
-product works for the real scenario, not just that the code's mental model
-of itself is consistent.
-
-**Worked example:**
-`challenges/scripts/opencode_helixllm_hello_challenge.sh` was created
-BEFORE the `HELIX_LLM_USE_LLAMACPP` fix on 2026-04-26. It failed
-pre-fix and passes post-fix; any future regression that breaks the same
-OpenCode→helix-llm flow will be caught by the same script.
+**Sequence:**
+1. Write `challenges/scripts/<bug>_challenge.sh` that exercises the exact failing scenario against the running binary. The challenge MUST exit non-zero when the bug is present.
+2. Run the Challenge to confirm reproduction. Paste the failing output into the bug ticket.
+3. Then write the fix. No code change is permitted before steps 1 and 2 are complete.
+4. Re-run the Challenge to confirm the fix. The challenge becomes the regression guard forever.
+5. Commit Challenge + fix together.
 
 <!-- BEGIN_CONSTITUTION -->
 # Project Constitution
 
 **Version:** 1.2.0 | **Updated:** 2026-02-21 15:45
 
-Constitution with 26 rules (26 mandatory) across categories: Quality: 2, Safety: 1, Security: 1, Performance: 2, Containerization: 3, Configuration: 1, Testing: 4, Documentation: 2, Principles: 2, Stability: 1, Observability: 1, GitOps: 2, CI/CD: 1, Architecture: 1, Networking: 1, Resource Management: 1
-
-## Mandatory Principles
-
-**All development MUST adhere to these non-negotiable principles:**
-
 This constitution section is synchronized from CONSTITUTION.md. For the full text of all 26 mandatory rules, see CONSTITUTION.md and CONSTITUTION.json.
 <!-- END_CONSTITUTION -->
+
+---
+
+## Universal Mandatory Constraints
+
+These rules are non-negotiable across HelixAgent and EVERY submodule
+or sibling project. They are derived from the root `CLAUDE.md` and have
+been cascaded into every project-owned repo's `CLAUDE.md`, `AGENTS.md`,
+and `CONSTITUTION.md`. Project-specific addenda are welcome but cannot
+weaken or override these.
+
+### Hard Stops (permanent, non-negotiable)
+
+1. **NO CI/CD pipelines.** No `.github/workflows/`, `.gitlab-ci.yml`,
+   `Jenkinsfile`, `.travis.yml`, `.circleci/`, or any automated pipeline.
+   No Git hooks either.
+2. **NO HTTPS for Git.** SSH URLs only (`git@github.com:…`,
+   `git@gitlab.com:…`, etc.) for clones, fetches, pushes, and submodule
+   updates — including for public repos.
+3. **NO manual container commands.** The HelixAgent binary owns
+   container orchestration; `make build` → `./bin/helixagent` is the
+   only acceptable workflow.
+
+### Mandatory Development Standards
+
+1. **100% Test Coverage** — unit, integration, E2E, security/penetration,
+   benchmark. Mocks/stubs ONLY in unit tests.
+2. **Challenge Coverage** — every component MUST have Challenge scripts
+   under `./challenges/scripts/` validating real-life use cases.
+3. **Real Data** — non-unit tests use actual API calls, real databases,
+   live services. No simulated success.
+4. **Health & Observability** — every service exposes health endpoints;
+   circuit breakers for all external dependencies.
+5. **Documentation & Quality** — Conventional Commits, follow patterns,
+   keep CLAUDE.md / AGENTS.md current.
+6. **Validation Before Release** — pass `make ci-validate-all` plus all
+   challenges.
+7. **No Mocks or Stubs in Production.**
+8. **Comprehensive Verification** — runtime testing (actual HTTP / real
+   CLI invocations); grep-only validation is NEVER sufficient.
+9. **Resource Limits for Tests & Challenges (CRITICAL)** — strictly
+   30-40% of host resources. Use `GOMAXPROCS=2`, `nice -n 19`,
+   `ionice -c 3`, `-p 1` for `go test`.
+10. **Bugfix Documentation** — every fix in `docs/issues/fixed/BUGFIXES.md`
+    with root cause, affected files, fix description, verification test.
+11. **Real Infrastructure for All Non-Unit Tests (CONST-030)** — any
+    test type beyond `go test -short` MUST execute against the REAL
+    running system with REAL containers, REAL databases, REAL services,
+    REAL HTTP calls. Tests that cannot connect to real services MUST
+    skip (not fail).
+12. **Reproduction-Before-Fix (CONST-032 — MANDATORY)** — every reported
+    bug MUST be reproduced by a Challenge script BEFORE any fix is
+    attempted. Sequence: write Challenge → run, confirm fail → write
+    fix → re-run, confirm pass → commit Challenge + fix together. The
+    Challenge becomes the regression guard for that bug forever.
+13. **Concurrent-Safe Containers (CONST-029)** — mutable shared
+    collections MUST use `safe.Store[K,V]` / `safe.Slice[T]` from
+    `digital.vasic.concurrency/pkg/safe`. Bare `sync.Mutex + map/slice`
+    is prohibited for new code.
+
+### Definition of Done (universal)
+
+A change is NOT done because code compiles and tests pass. "Done"
+requires pasted terminal output from a real run, produced in the same
+session as the change.
+
+- **No self-certification.** Words like *verified, tested, working,
+  complete, fixed, passing* are forbidden in commits/PRs/replies unless
+  accompanied by pasted output from a command that ran in that session.
+- **Demo before code.** Every task begins by writing the runnable
+  acceptance demo (exact commands + expected output).
+- **Real system, every time.** Demos run against real artifacts.
+- **Skips are loud.** `t.Skip` / `@Ignore` / `xit` / `describe.skip`
+  without a trailing `SKIP-OK: #<ticket>` comment break validation.
+- **Evidence in the PR.** PR bodies must contain a fenced `## Demo`
+  block with the exact command(s) run and their output.

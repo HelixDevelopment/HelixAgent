@@ -448,6 +448,29 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
+	// Multi-turn detection (drainage iter-2 / Finding #19): the debate
+	// orchestrator's DebateConfig only carries a single Topic string —
+	// it does NOT carry the full conversation history. So when the
+	// client sends a multi-turn request (multiple user/assistant
+	// alternations), the debate ensemble loses all prior context and
+	// answers from a fresh state ("This conversation just started, I
+	// don't have any information about you"). Until DebateConfig is
+	// extended to carry message history through executeRound and the
+	// per-participant prompt construction, multi-turn requests must
+	// route to processWithProviderChain (a single provider that
+	// natively preserves conversation context).
+	multiTurnUserCount := 0
+	for _, msg := range req.Messages {
+		if msg.Role == "user" {
+			multiTurnUserCount++
+		}
+	}
+	if multiTurnUserCount > 1 {
+		logrus.WithField("user_message_count", multiTurnUserCount).Info("Multi-turn request - routing to provider chain (debate doesn't carry conversation history; see drainage Finding #19)")
+		h.processWithProviderChain(c, &req)
+		return
+	}
+
 	// NEW user request → Full AI Debate ensemble
 	logrus.Info("New user request - initiating AI Debate")
 
@@ -590,6 +613,26 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 
 	useDebate := true // Default: always debate for full transparency
 
+	// Multi-turn detection (drainage iter-2 / Finding #19): the debate
+	// orchestrator's DebateConfig only carries a single Topic string —
+	// it does NOT carry the full conversation history. So when the
+	// client sends a multi-turn request (multiple user/assistant
+	// alternations), the debate ensemble loses all prior context and
+	// answers from a fresh state ("This conversation just started, I
+	// don't have any information about you"). Until DebateConfig is
+	// extended to carry message history through executeRound and the
+	// per-participant prompt construction, multi-turn requests must
+	// route to a single provider that natively preserves conversation
+	// context. This precedes the explicit-debate-model override below
+	// because correctness > model-name contract for this case.
+	userMessageCount := 0
+	for _, msg := range req.Messages {
+		if msg.Role == "user" {
+			userMessageCount++
+		}
+	}
+	multiTurn := userMessageCount > 1
+
 	// Explicit-model override: when the client requests a debate-specific
 	// model name (`helixagent-debate` or `helixagent-ensemble`), respect
 	// that and force the ensemble path even for short / non-actionable
@@ -603,7 +646,13 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	// product's documented behavior.
 	requestedDebateExplicitly := req.Model == "helixagent-debate" || req.Model == "helixagent-ensemble"
 
-	if requestedDebateExplicitly {
+	if multiTurn {
+		useDebate = false
+		logrus.WithFields(logrus.Fields{
+			"user_message_count": userMessageCount,
+			"requested_model":    req.Model,
+		}).Info("[STREAMING] Multi-turn request — routing to single provider (debate doesn't carry conversation history; see drainage Finding #19)")
+	} else if requestedDebateExplicitly {
 		logrus.WithField("model", req.Model).Info("[STREAMING] Explicit debate-model request — bypassing intent classifier")
 	} else if h.intentRouter != nil && h.intentRouter.GetLLMClassifier() != nil {
 		// Use LLM intelligence to classify intent — works in any language

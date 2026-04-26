@@ -130,9 +130,13 @@ func (s *HTTP3Server) Start() error {
 	return nil
 }
 
-// Stop stops the server gracefully.
+// Stop stops the server gracefully. The shutdown deadline is 60 seconds
+// (Finding #41 — the previous 30s was too tight under heavy in-flight
+// SSE / streaming load and produced `context deadline exceeded` on
+// HTTPServer.Shutdown, which the caller had been treating as a fatal
+// application error).
 func (s *HTTP3Server) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	var errs []error

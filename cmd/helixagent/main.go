@@ -1865,9 +1865,18 @@ func run(appCfg *AppConfig) error {
 	// Use r variable to avoid unused import
 	_ = r
 
+	// Finding #41: a context-deadline-exceeded on HTTP server shutdown is
+	// a cleanup-time symptom (in-flight SSE / streaming connections that
+	// didn't drain in time), not an application failure. Returning an
+	// error here makes the binary exit `level=fatal` even though the
+	// shutdown sequence is succeeding for every OTHER component
+	// (container adapter, BootManager, messaging system). Log + continue
+	// so the rest of the cleanup runs and main exits with status 0.
 	if err := http3Server.Stop(); err != nil {
-		logger.WithError(err).Error("Server forced to shutdown")
-		return fmt.Errorf("server shutdown error: %w", err)
+		logger.WithError(err).Warn(
+			"HTTP/QUIC server shutdown reported errors — continuing with " +
+				"the rest of the cleanup sequence",
+		)
 	}
 
 	// Shutdown container adapter (tunnels, volumes, distributed containers).

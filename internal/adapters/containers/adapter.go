@@ -819,61 +819,109 @@ func (a *Adapter) extractBuildContexts(composePath string) ([]string, error) {
 	return contexts, nil
 }
 
-// copyBuildContexts copies build context directories and Dockerfiles to remote host
+// copyBuildContextsParallelism caps the number of concurrent SCP
+// operations per host. Each context can take 5-10 s for the SSH+SCP
+// round-trip; serial copies of 12+ contexts dominated boot time
+// (Finding #43 — observed 2:18 to 2:33 boot from sequential SCP).
+// 4 is a safe default that keeps the host's SSH ControlMaster from
+// being overwhelmed; SSH itself multiplexes streams cheaply.
+const copyBuildContextsParallelism = 4
+
+// copyBuildContexts copies build context directories and Dockerfiles to
+// the remote host with bounded parallelism (Finding #43). Per-context
+// failures are collected and returned as an aggregate error; one slow
+// context never blocks the others.
 func (a *Adapter) copyBuildContexts(
 	ctx context.Context,
 	host remote.RemoteHost,
 	contexts []string,
 	remoteDir string,
 ) error {
-	var errors []error
+	if len(contexts) == 0 {
+		return nil
+	}
+
+	type copyResult struct {
+		err error
+	}
+
+	results := make(chan copyResult, len(contexts))
+	sem := make(chan struct{}, copyBuildContextsParallelism)
+	var wg sync.WaitGroup
+
 	for _, buildCtx := range contexts {
-		// Get relative path from project root
-		relPath, err := filepath.Rel(a.projectDir, buildCtx)
-		if err != nil {
-			// If can't get relative path, use basename
-			relPath = filepath.Base(buildCtx)
-		}
-
-		remotePath := remoteDir + "/" + relPath
-		remoteParent := filepath.Dir(remotePath)
-
-		// Create parent directory on remote
-		mkdirCmd := fmt.Sprintf("mkdir -p %s", remoteParent)
-		if _, err = a.executor.Execute(ctx, host, mkdirCmd); err != nil {
-			a.logger.Warn("Failed to create remote directory %s: %v", remoteParent, err)
-			errors = append(errors, fmt.Errorf("create remote dir %s: %w", remoteParent, err))
-			continue
-		}
-
-		// Check if it's a file or directory
-		info, err := os.Stat(buildCtx)
-		if err != nil {
-			a.logger.Warn("Failed to stat %s: %v", buildCtx, err)
-			errors = append(errors, fmt.Errorf("stat %s: %w", buildCtx, err))
-			continue
-		}
-
-		if info.IsDir() {
-			// Copy directory recursively
-			if err := a.executor.CopyDir(ctx, host, buildCtx, remotePath); err != nil {
-				a.logger.Error("Failed to copy directory %s to remote: %v", buildCtx, err)
-				errors = append(errors, fmt.Errorf("copy dir %s: %w", buildCtx, err))
-				continue
+		buildCtx := buildCtx // capture
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				results <- copyResult{err: ctx.Err()}
+				return
 			}
-			a.logger.Info("Copied build context to remote: %s -> %s", buildCtx, remotePath)
-		} else {
-			// Copy file
-			if err := a.executor.CopyFile(ctx, host, buildCtx, remotePath); err != nil {
-				a.logger.Error("Failed to copy file %s to remote: %v", buildCtx, err)
-				errors = append(errors, fmt.Errorf("copy file %s: %w", buildCtx, err))
-				continue
-			}
+			results <- copyResult{err: a.copyOneBuildContext(ctx, host, buildCtx, remoteDir)}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var errors []error
+	for r := range results {
+		if r.err != nil {
+			errors = append(errors, r.err)
 		}
 	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("copy build contexts failed: %d errors: %v", len(errors), errors)
+	}
+	return nil
+}
+
+// copyOneBuildContext does the original sequential mkdir+stat+copy work
+// for a single context. Extracted so copyBuildContexts can fan it out
+// across goroutines while keeping the per-context logic readable.
+func (a *Adapter) copyOneBuildContext(
+	ctx context.Context,
+	host remote.RemoteHost,
+	buildCtx, remoteDir string,
+) error {
+	relPath, err := filepath.Rel(a.projectDir, buildCtx)
+	if err != nil {
+		relPath = filepath.Base(buildCtx)
+	}
+
+	remotePath := remoteDir + "/" + relPath
+	remoteParent := filepath.Dir(remotePath)
+
+	mkdirCmd := fmt.Sprintf("mkdir -p %s", remoteParent)
+	if _, err = a.executor.Execute(ctx, host, mkdirCmd); err != nil {
+		a.logger.Warn("Failed to create remote directory %s: %v", remoteParent, err)
+		return fmt.Errorf("create remote dir %s: %w", remoteParent, err)
+	}
+
+	info, err := os.Stat(buildCtx)
+	if err != nil {
+		a.logger.Warn("Failed to stat %s: %v", buildCtx, err)
+		return fmt.Errorf("stat %s: %w", buildCtx, err)
+	}
+
+	if info.IsDir() {
+		if err := a.executor.CopyDir(ctx, host, buildCtx, remotePath); err != nil {
+			a.logger.Error("Failed to copy directory %s to remote: %v", buildCtx, err)
+			return fmt.Errorf("copy dir %s: %w", buildCtx, err)
+		}
+		a.logger.Info("Copied build context to remote: %s -> %s", buildCtx, remotePath)
+		return nil
+	}
+	if err := a.executor.CopyFile(ctx, host, buildCtx, remotePath); err != nil {
+		a.logger.Error("Failed to copy file %s to remote: %v", buildCtx, err)
+		return fmt.Errorf("copy file %s: %w", buildCtx, err)
 	}
 	return nil
 }

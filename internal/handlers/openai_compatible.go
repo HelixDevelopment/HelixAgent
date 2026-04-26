@@ -2954,7 +2954,6 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 		debateResp, err := h.orchestratorIntegration.GetOrchestrator().ConductDebate(orchCtx, debateReq)
 		orchCancel()
 		if err == nil && debateResp != nil {
-			logrus.Info("[CODE PATH] NEW orchestrator SUCCEEDED - returning result")
 			// Extract the consensus response from the debate
 			var finalContent string
 			var confidence float64
@@ -3002,6 +3001,12 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 					len(debateResp.Participants),
 				)
 			}
+
+			logrus.WithFields(logrus.Fields{
+				"phases":       len(debateResp.Phases),
+				"participants": len(debateResp.Participants),
+				"content_len":  len(finalContent),
+			}).Info("[CODE PATH] NEW orchestrator SUCCEEDED - returning result")
 
 			finalResponse := &models.LLMResponse{
 				ID:           debateResp.ID,

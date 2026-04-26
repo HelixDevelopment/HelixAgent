@@ -50,3 +50,73 @@ func TestJunieCLIProvider_HealthCheck_ShortCircuitsAfterTerminalError(t *testing
 type junieTestErr struct{ msg string }
 
 func (e *junieTestErr) Error() string { return e.msg }
+
+// TestJunieJSONErrorMessage covers the JSON parser that decides whether
+// Junie's stdout is a real model response or an auth-failure banner
+// dressed up as JSON (Finding #46).
+func TestJunieJSONErrorMessage(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "real response",
+			in:   `{"result":"Hello there!","session_id":"s1","model":"sonnet"}`,
+			want: "",
+		},
+		{
+			name: "auth failure with errors array (current shape)",
+			in:   `{"sessionId":"s2","errors":["Junie: 403 Forbidden: No active JetBrains AI subscription found."]}`,
+			want: "Junie: 403 Forbidden: No active JetBrains AI subscription found.",
+		},
+		{
+			name: "multiple errors joined",
+			in:   `{"errors":["one","two","three"]}`,
+			want: "one; two; three",
+		},
+		{
+			name: "legacy singular error field",
+			in:   `{"error":"old style failure"}`,
+			want: "old style failure",
+		},
+		{
+			name: "empty json",
+			in:   `{}`,
+			want: "",
+		},
+		{
+			name: "non-json input",
+			in:   `not json`,
+			want: "",
+		},
+		{
+			name: "whitespace only",
+			in:   `   `,
+			want: "",
+		},
+	}
+	for _, c := range cases {
+		got := junieJSONErrorMessage(c.in)
+		assert.Equal(t, c.want, got, c.name)
+	}
+}
+
+// TestJunieCLIProvider_CompleteStream_RejectsTerminalErrorPreflight
+// verifies that once a terminal auth error is recorded, CompleteStream
+// returns the error directly without spawning the CLI.
+func TestJunieCLIProvider_CompleteStream_RejectsTerminalErrorPreflight(t *testing.T) {
+	t.Parallel()
+	provider := NewJunieCLIProvider(JunieCLIConfig{Model: "junie-claude-sonnet-4-5"})
+	provider.cliAvailable = true
+	provider.cliCheckOnce.Do(func() {})
+
+	terminal := &junieTestErr{msg: "Junie: 403 Forbidden: No active JetBrains AI subscription found."}
+	provider.markTerminalError(terminal)
+
+	ch, err := provider.CompleteStream(nil, nil)
+	assert.Nil(t, ch, "CompleteStream should return nil channel when terminal error is set")
+	assert.ErrorIs(t, err, terminal,
+		"CompleteStream should return the recorded terminal error pre-flight")
+}

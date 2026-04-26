@@ -84,13 +84,20 @@ func (p *JunieCLIProvider) terminalError() error {
 	return p.terminalErr
 }
 
-// junieJSONResponse represents the JSON output from Junie CLI
+// junieJSONResponse represents the JSON output from Junie CLI.
+// The CLI emits two error shapes: a singular `error` string (legacy)
+// and an `errors` array (current — used for auth-failure messages
+// like "Junie: 403 Forbidden: No active JetBrains AI subscription
+// found"). Both must be captured because the CLI exits 0 even when
+// authentication fails and the auth banner is the only signal that
+// the call did not actually produce a model response.
 type junieJSONResponse struct {
 	Result    string                 `json:"result"`
 	SessionID string                 `json:"session_id"`
 	Usage     map[string]interface{} `json:"usage"`
 	Model     string                 `json:"model"`
 	Error     string                 `json:"error,omitempty"`
+	Errors    []string               `json:"errors,omitempty"`
 }
 
 // Known Junie models (aliases and BYOK providers)
@@ -331,6 +338,19 @@ func (p *JunieCLIProvider) Complete(ctx context.Context, req *models.LLMRequest)
 		return nil, fmt.Errorf("junie CLI returned empty response")
 	}
 
+	// Junie's CLI exits 0 even when authentication fails — the only
+	// signal is an `errors` array in the JSON. Detect this BEFORE
+	// using the JSON as a model response, otherwise the auth banner
+	// gets sent back to the client as if it were the assistant's
+	// reply (Finding #46, observed 2026-04-26 13:24).
+	if errMsg := junieJSONErrorMessage(rawOutput); errMsg != "" {
+		err := fmt.Errorf("junie CLI failed: %s", errMsg)
+		if isJunieTerminalAuthError(errMsg) {
+			p.markTerminalError(err)
+		}
+		return nil, err
+	}
+
 	output, sessionID, metadata := p.parseJSONResponse(rawOutput)
 
 	if sessionID != "" {
@@ -370,6 +390,36 @@ func (p *JunieCLIProvider) Complete(ctx context.Context, req *models.LLMRequest)
 	}, nil
 }
 
+// junieJSONErrorMessage parses a Junie CLI JSON output and returns a
+// flattened error message if the response indicates failure (either
+// the legacy singular `error` field or the `errors` array). Returns
+// empty string when the output is a valid model response. Used to
+// short-circuit Complete/CompleteStream before treating auth banners
+// as model content (Finding #46).
+func junieJSONErrorMessage(rawOutput string) string {
+	rawOutput = strings.TrimSpace(rawOutput)
+	if rawOutput == "" {
+		return ""
+	}
+	var jsonResp junieJSONResponse
+	if err := json.Unmarshal([]byte(rawOutput), &jsonResp); err != nil {
+		return ""
+	}
+	// If Result is non-empty AND no errors, it's a real response.
+	if jsonResp.Result != "" && jsonResp.Error == "" && len(jsonResp.Errors) == 0 {
+		return ""
+	}
+	if len(jsonResp.Errors) > 0 {
+		return strings.Join(jsonResp.Errors, "; ")
+	}
+	if jsonResp.Error != "" {
+		return jsonResp.Error
+	}
+	// No Result, no Errors — degenerate; treat as empty error so caller
+	// falls back to its existing empty-response handling.
+	return ""
+}
+
 // parseJSONResponse extracts content from Junie CLI JSON output
 func (p *JunieCLIProvider) parseJSONResponse(rawOutput string) (string, string, map[string]interface{}) {
 	rawOutput = strings.TrimSpace(rawOutput)
@@ -390,10 +440,17 @@ func (p *JunieCLIProvider) parseJSONResponse(rawOutput string) (string, string, 
 	return rawOutput, "", metadata
 }
 
-// CompleteStream implements streaming for Junie CLI
+// CompleteStream implements streaming for Junie CLI.
+// Short-circuits with the recorded terminal error if a previous call
+// has determined the provider is unrecoverable (Finding #46) — without
+// this guard, the auth-error banner streams back to the client as if
+// it were the assistant's reply.
 func (p *JunieCLIProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 	if !p.IsCLIAvailable() {
 		return nil, fmt.Errorf("Junie CLI not available: %v", p.cliCheckErr)
+	}
+	if termErr := p.terminalError(); termErr != nil {
+		return nil, termErr
 	}
 
 	var promptBuilder strings.Builder
@@ -452,25 +509,47 @@ func (p *JunieCLIProvider) CompleteStream(ctx context.Context, req *models.LLMRe
 		defer close(responseChan)
 		defer cancel()
 
+		// Junie's CLI emits a single JSON object per call — there is no
+		// true token stream. Buffer the entire stdout, then parse for
+		// errors before emitting anything to the client. Without this
+		// buffer the auth banner ("Junie: 403 Forbidden: No active
+		// JetBrains AI subscription found") streams back to the client
+		// line-by-line as if it were the model's response (Finding #46).
 		scanner := bufio.NewScanner(stdout)
 		var fullContent strings.Builder
-
 		for scanner.Scan() {
-			line := scanner.Text()
-			fullContent.WriteString(line)
+			fullContent.WriteString(scanner.Text())
 			fullContent.WriteString("\n")
-
-			responseChan <- &models.LLMResponse{
-				Content:      line,
-				ProviderName: "junie-cli",
-				FinishReason: "",
-			}
 		}
-
 		_ = cmd.Wait() //nolint:errcheck
 
+		raw := strings.TrimSpace(fullContent.String())
+		if errMsg := junieJSONErrorMessage(raw); errMsg != "" {
+			err := fmt.Errorf("junie CLI failed: %s", errMsg)
+			if isJunieTerminalAuthError(errMsg) {
+				p.markTerminalError(err)
+			}
+			// Signal failure with empty content + finish_reason="error"
+			// + the error in metadata. The provider chain checks
+			// finish_reason and falls through to the next provider when
+			// it sees "error". Without this guard the auth banner gets
+			// streamed to the client as if it were the model's reply.
+			responseChan <- &models.LLMResponse{
+				ProviderName: "junie-cli",
+				FinishReason: "error",
+				Metadata:     map[string]interface{}{"error": err.Error()},
+			}
+			return
+		}
+
+		// Real response — extract the content via the JSON parser, fall
+		// back to the raw blob if not parseable JSON.
+		content, _, _ := p.parseJSONResponse(raw)
+		if content == "" {
+			content = raw
+		}
 		responseChan <- &models.LLMResponse{
-			Content:      fullContent.String(),
+			Content:      content,
 			ProviderName: "junie-cli",
 			FinishReason: "stop",
 		}

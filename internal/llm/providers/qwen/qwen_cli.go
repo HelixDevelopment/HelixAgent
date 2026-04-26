@@ -190,6 +190,9 @@ func (p *QwenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) 
 	if !p.IsCLIAvailable() {
 		return nil, fmt.Errorf("Qwen Code CLI not available: %v", p.cliCheckErr)
 	}
+	if termErr := p.terminalError(); termErr != nil {
+		return nil, termErr
+	}
 
 	// NOTE: Message content validation removed - exec.CommandContext properly escapes arguments
 	// The prompt is passed as a separate argument to the -p flag, not concatenated into the command string
@@ -261,7 +264,16 @@ func (p *QwenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) 
 		if cmdCtx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("qwen CLI timed out after %v", p.timeout)
 		}
-		return nil, fmt.Errorf("qwen CLI failed: %w (stderr: %s)", err, stderr.String())
+		stderrStr := stderr.String()
+		failureErr := fmt.Errorf("qwen CLI failed: %w (stderr: %s)", err, stderrStr)
+		// Finding #44 / #46: short-circuit future calls when the CLI
+		// reports an unrecoverable auth error. Without this, every
+		// fallback iteration re-spawns the dead CLI for the same
+		// 60-second timeout and burns budget.
+		if isQwenTerminalAuthError(stderrStr) {
+			p.markTerminalError(failureErr)
+		}
+		return nil, failureErr
 	}
 
 	output := stdout.String()
@@ -287,10 +299,15 @@ func (p *QwenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) 
 	}, nil
 }
 
-// CompleteStream implements streaming for Qwen CLI
+// CompleteStream implements streaming for Qwen CLI.
+// Short-circuits with the recorded terminal error if a previous call
+// has determined the provider is unrecoverable (Finding #46 mirror).
 func (p *QwenCLIProvider) CompleteStream(ctx context.Context, req *models.LLMRequest) (<-chan *models.LLMResponse, error) {
 	if !p.IsCLIAvailable() {
 		return nil, fmt.Errorf("Qwen Code CLI not available: %v", p.cliCheckErr)
+	}
+	if termErr := p.terminalError(); termErr != nil {
+		return nil, termErr
 	}
 
 	// NOTE: Message content validation removed - exec.CommandContext properly escapes arguments
